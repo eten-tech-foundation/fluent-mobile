@@ -1,16 +1,16 @@
-# Title - Mobile Movie App
+# Title - Expo Discovery App
 
-A React Native application that displays popular movie recommendations using the TMDB API.
+A React Native application that displays bible verses, with audio.
 
 ## Features
-- Fetches popular movies from TMDB
+- Display different views and tab navigation
 - Built with React Native and Expo
 - Can be tested with ExpoGo APP
 
 ##  Tech Stack
 - React Native
 - Expo 
-- TMDB API
+
 
 ## Setup
 ```bash
