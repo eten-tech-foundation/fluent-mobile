@@ -24,9 +24,6 @@ To start the Metro dev server, run the following command from the root of your R
 ```sh
 # Using npm
 npm start
-
-# OR using Yarn
-yarn start
 ```
 
 ## Step 2: Build and run your app
@@ -38,9 +35,6 @@ With Metro running, open a new terminal window/pane from the root of your React 
 ```sh
 # Using npm
 npm run android
-
-# OR using Yarn
-yarn android
 ```
 
 ### iOS
@@ -64,9 +58,6 @@ For more information, please visit [CocoaPods Getting Started guide](https://gui
 ```sh
 # Using npm
 npm run ios
-
-# OR using Yarn
-yarn ios
 ```
 
 If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
