@@ -4,9 +4,9 @@ Fluent mobile
 # Getting Started
 
 ## Prerequisites
-[Node.js ^22.11.0](https://nodejs.org/en/)
-[JDK Version 17](https://adoptium.net/temurin/releases?version=17&os=any&arch=any)
-[Android Studio](https://developer.android.com/studio) - To run the emulator
+- [Node.js ^22.11.0](https://nodejs.org/en/)
+- [JDK Version 17](https://adoptium.net/temurin/releases?version=17&os=any&arch=any)
+- [Android Studio](https://developer.android.com/studio) - To run the emulator
 
 ## To Create an App Using React Native CLI
 npx @react-native-community/cli@latest init MyProject 
