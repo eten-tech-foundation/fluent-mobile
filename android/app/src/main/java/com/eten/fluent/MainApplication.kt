@@ -1,4 +1,4 @@
-package com.fluent
+package com.eten.fluent
 
 import android.app.Application
 import com.facebook.react.PackageList
