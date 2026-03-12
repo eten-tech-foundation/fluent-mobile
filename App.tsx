@@ -1,6 +1,9 @@
 import FluentLogo from './assets/icons/fluent-logo.svg';
 import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  SafeAreaProvider,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
