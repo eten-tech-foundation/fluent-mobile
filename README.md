@@ -1,102 +1,173 @@
-# About The Project
-
-Fluent mobile
-
-# Getting Started
+# Fluent Mobile
 
 ## Prerequisites
 
-- [Node.js 24.14.0](https://nodejs.org/en/)
-- [JDK Version 17](https://adoptium.net/temurin/releases?version=17&os=any&arch=any)
-- [Android Studio](https://developer.android.com/studio) - To run the emulator
+Before you begin, make sure you have the following installed:
 
-## To Create an App Using React Native CLI
+- [Node.js 24](https://nodejs.org/en/) — the app requires Node 24 specifically
+- [Android Studio](https://developer.android.com/studio) — for the Android emulator
 
-npx @react-native-community/cli@latest init MyProject
+---
 
-## Steps to run the app
+## Step 1: Install Node 24
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+Check your current Node version:
 
-## Step 1: Start Metro
+```bash
+node --version
+```
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+If it's not version 24, install and switch to it using NVM:
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+```bash
+# install and use node 24
+nvm install 24
+nvm use 24
 
-```sh
-# Using npm
+# verify
+node --version  # verify it is v24.x.x
+```
+
+---
+
+## Step 2: Install Android Studio
+
+1. Download Android Studio from https://developer.android.com/studio
+2. Extract and install it:
+
+```bash
+tar -xzf android-studio-*-linux.tar.gz
+sudo mv android-studio /opt/android-studio
+/opt/android-studio/bin/studio.sh
+```
+
+3. Follow the setup wizard — it will download the Android SDK automatically. Just click through the defaults.
+
+**Optional: Add Android Studio to your applications menu**
+
+```bash
+sudo gedit /usr/share/applications/android-studio.desktop
+```
+
+Paste this in and save:
+
+```
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Android Studio
+Exec=/opt/android-studio/bin/studio.sh
+Icon=/opt/android-studio/bin/studio128.png
+Categories=Development;IDE;
+Terminal=false
+StartupNotify=true
+```
+
+---
+
+## Step 3: Set Up Environment Variables
+
+Add the following to your `~/.bashrc`:
+
+```bash
+gedit ~/.bashrc
+```
+
+Paste at the bottom:
+
+```bash
+export ANDROID_HOME=$HOME/Android/Sdk
+export PATH=$PATH:$ANDROID_HOME/emulator
+export PATH=$PATH:$ANDROID_HOME/platform-tools
+```
+
+Apply the changes:
+
+```bash
+source ~/.bashrc
+```
+
+Verify it worked:
+
+```bash
+adb --version  # should print a version number
+```
+
+---
+
+## Step 4: Set Up an Android Emulator
+
+1. Open Android Studio: `/opt/android-studio/bin/studio.sh`
+2. Go to **More Actions → Virtual Device Manager**
+3. Click **Create Device**
+4. Pick a phone (e.g. Pixel 6) and click Next
+5. Download and select a system image (API 33 or higher recommended)
+6. Click Finish, then press the ▶ Play button to start the emulator
+
+Wait for the emulator to fully boot before continuing.
+
+---
+
+## Step 5: Install Dependencies
+
+Clone the repo and install:
+
+```bash
+git clone https://github.com/eten-tech-foundation/fluent-mobile.git
+cd fluent-mobile
+git checkout MVP_PoC_mobile_companion_app
+npm install
+```
+
+---
+
+## Step 6: Run the App
+
+Open two terminal windows from the project root.
+
+**Terminal 1 — Start Metro:**
+
+```bash
 npm start
 ```
 
-## Step 2: Build and run your app
+**Terminal 2 — Run on Android:**
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
-
-```sh
-# Using npm
+```bash
 npm run android
 ```
 
-### iOS
+The app should launch in your emulator automatically.
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+---
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+## Troubleshooting
 
-```sh
-bundle install
+**`adb: command not found`**
+Your environment variables aren't set. Make sure you completed Step 3 and ran `source ~/.bashrc`.
+
+**`npm run android` fails with SDK not found**
+Android Studio may have installed the SDK in a different location. Check:
+
+```bash
+ls ~/Android/Sdk
 ```
 
-Then, and every time you update your native dependencies, run:
+If that folder doesn't exist, open Android Studio → SDK Manager and note the SDK path shown at the top.
 
-```sh
-bundle exec pod install
+**Metro bundler port already in use**
+
+```bash
+npx react-native start --reset-cache
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+**App installs but shows blank screen**
+Make sure Metro is running in the other terminal before running `npm run android`.
 
-```sh
-# Using npm
-npm run ios
-```
+---
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+## Modifying the App
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+Once the app is running, open any file in your editor and save — the app will reload automatically via Fast Refresh.
 
-## Step 3: Modify your app
-
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+To force a full reload on Android: press **R** twice, or use **Ctrl + M** to open the Dev Menu.
