@@ -13,6 +13,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\""
   },
   "dependencies": {
+    "@op-engineering/op-sqlite": "^15.2.7",
     "@react-native-vector-icons/ionicons": "^12.4.2",
     "@react-native/new-app-screen": "0.84.1",
     "@react-navigation/native": "^7.1.33",
@@ -55,7 +56,10 @@
     "node": ">= 22.11.0"
   },
   "overrides": {
+    "brace-expansion": "^5.0.5",
+    "minimatch": "^10.0.2",
     "glob": "^13.0.6",
     "rimraf": "^4.0.0"
   }
+ 
 }
