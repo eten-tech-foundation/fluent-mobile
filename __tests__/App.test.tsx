@@ -43,6 +43,9 @@ jest.mock('../src/navigation/AppNavigator', () => {
   const { View } = require('react-native');
   return () => MockReact.createElement(View, { testID: 'app-navigator' });
 });
+jest.mock('../src/api/fluent-api.test', () => ({
+  runApiIntegrationTest: jest.fn(() => Promise.resolve()),
+}));
 
 test('renders correctly', () => {
   const { getByTestId } = render(<App />);

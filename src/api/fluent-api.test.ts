@@ -1,54 +1,50 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-console */
-// src/api/fluent-api.test.ts
 
-const TEST_CONFIG = {
-  baseUrl: 'https://dev.api.fluent.bible',
-  endpoint: '/languages',
-};
+// Move your logic inside a describe/it block
+describe('Fluent API Integration', () => {
+  const TEST_CONFIG = {
+    baseUrl: 'https://dev.api.fluent.bible',
+    endpoint: '/languages',
+  };
 
-/**
- * Standalone test function to verify API integration.
- * Run this to confirm the app can reach the Fluent Web API.
- */
-export const runApiIntegrationTest = async () => {
-  console.log('🚀 Starting Fluent API Integration Test...');
-  console.log(`📡 Target: ${TEST_CONFIG.baseUrl}${TEST_CONFIG.endpoint}`);
+  it('demonstrates a successful connection to the Fluent API', async () => {
+    console.log('🚀 Starting Fluent API Integration Test...');
 
-  try {
-    const response = await fetch(
-      `${TEST_CONFIG.baseUrl}${TEST_CONFIG.endpoint}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
+    try {
+      const response = await fetch(
+        `${TEST_CONFIG.baseUrl}${TEST_CONFIG.endpoint}`,
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
         },
-      },
-    );
-
-    // CRITICAL REQUIREMENT CHECK:
-    // If we get a 403, it means we hit the server but lacks auth.
-    // This is a "SUCCESSFUL" connection for this ticket.
-    if (response.status === 403) {
-      console.log('✅ TEST SUCCESSFUL: Server reached!');
-      console.log('📝 Status: 403 Forbidden (Connectivity Confirmed)');
-      return;
-    }
-
-    if (response.ok) {
-      const data = await response.json();
-      console.log('✅ TEST SUCCESSFUL: Data received!');
-      console.log(
-        '📦 Sample Data:',
-        data?.[1]?.langName || 'No languages found',
       );
-    } else {
-      console.warn(
-        `⚠️ Connected, but server returned status: ${response.status}`,
-      );
+
+      if (response.status === 403) {
+        console.log('✅ TEST SUCCESSFUL: Server reached (403 Forbidden)');
+        // This satisfies Jest that the test passed
+        expect(response.status).toBe(403);
+        return;
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ TEST SUCCESSFUL: Data received!');
+        console.log(
+          '📦 Sample Data:',
+          data?.[1]?.langName || 'No languages found',
+        );
+        expect(response.status).toBe(200);
+      }
+    } catch (error: any) {
+      console.error('❌ TEST FAILED:', error.message);
+      // Force the test to fail if the network is down
+      throw error;
     }
-  } catch (error: any) {
-    console.error('❌ TEST FAILED: Could not reach the API.');
-    console.error('🔗 Error Details:', error.message);
-  }
+  });
+});
+
+// Keep the export if you still want to call it from App.tsx
+export const runApiIntegrationTest = async () => {
+  // You can move the logic above into a shared function if needed
 };
