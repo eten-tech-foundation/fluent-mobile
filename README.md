@@ -65,7 +65,33 @@ StartupNotify=true
 
 ---
 
-## Step 3: Set Up Environment Variables
+## Step 3: Install Java (JDK 17)
+
+Check if Java is already installed:
+
+```bash
+java -version
+```
+
+If not installed, install JDK 17:
+
+```bash
+sudo apt update
+sudo apt install openjdk-17-jdk
+```
+
+Find the installation path:
+
+```bash
+readlink -f $(which java)
+# example output: /usr/lib/jvm/java-17-openjdk-amd64/bin/java
+```
+
+You'll need this path (minus `/bin/java`) in the next step when setting up environment variables.
+
+---
+
+## Step 4: Set Up Environment Variables
 
 Add the following to your `~/.bashrc`:
 
@@ -79,7 +105,12 @@ Paste at the bottom:
 export ANDROID_HOME=$HOME/Android/Sdk
 export PATH=$PATH:$ANDROID_HOME/emulator
 export PATH=$PATH:$ANDROID_HOME/platform-tools
+
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+export PATH=$PATH:$JAVA_HOME/bin
 ```
+
+> **Note:** Replace `/usr/lib/jvm/java-17-openjdk-amd64` with the path you found in Step 3 if it differs.
 
 Apply the changes:
 
@@ -90,12 +121,14 @@ source ~/.bashrc
 Verify it worked:
 
 ```bash
-adb --version  # should print a version number
+adb --version   # should print a version number
+java -version   # should print java 17
+echo $JAVA_HOME # should print the path you set
 ```
 
 ---
 
-## Step 4: Set Up an Android Emulator
+## Step 5: Set Up an Android Emulator
 
 1. Open Android Studio: `/opt/android-studio/bin/studio.sh`
 2. Go to **More Actions → Virtual Device Manager**
@@ -108,7 +141,7 @@ Wait for the emulator to fully boot before continuing.
 
 ---
 
-## Step 5: Install Dependencies
+## Step 6: Install Dependencies
 
 Clone the repo and install:
 
@@ -121,7 +154,7 @@ npm install
 
 ---
 
-## Step 6: Run the App
+## Step 7: Run the App
 
 Open two terminal windows from the project root.
 
@@ -144,7 +177,14 @@ The app should launch in your emulator automatically.
 ## Troubleshooting
 
 **`adb: command not found`**
-Your environment variables aren't set. Make sure you completed Step 3 and ran `source ~/.bashrc`.
+Your environment variables aren't set. Make sure you completed Step 4 and ran `source ~/.bashrc`.
+
+**`JAVA_HOME is not set` error**
+Java may be installed but `JAVA_HOME` not configured. Make sure you completed Step 3 and Step 4. If the path differs, find it with:
+```bash
+readlink -f $(which java)
+```
+Strip `/bin/java` from the output, update `JAVA_HOME` in `~/.bashrc`, then run `source ~/.bashrc`.
 
 **`npm run android` fails with SDK not found**
 Android Studio may have installed the SDK in a different location. Check:
