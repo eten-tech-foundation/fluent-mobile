@@ -21,8 +21,8 @@ If it's not version 24, install and switch to it using NVM:
 
 ```bash
 # install and use node 24
-nvm install 24
-nvm use 24
+nvm install 24.14.0
+nvm use 24.14.0
 
 # verify
 node --version  # verify it is v24.x.x

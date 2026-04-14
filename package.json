@@ -54,7 +54,7 @@
     "typescript": "^5.8.3"
   },
   "engines": {
-    "node": ">= 22.11.0"
+    "node": ">= 24.14.0"
   },
   "overrides": {
     "brace-expansion": "^5.0.5",
