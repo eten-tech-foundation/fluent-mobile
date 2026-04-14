@@ -1,20 +1,21 @@
 import globals from 'globals';
-import reactNativePlugin from 'eslint-plugin-react-native';
-import reactPlugin from 'eslint-plugin-react';
-import reactHooksPlugin from 'eslint-plugin-react-hooks';
-import typescriptPlugin from '@typescript-eslint/eslint-plugin';
-import typescriptParser from '@typescript-eslint/parser';
 import jestPlugin from 'eslint-plugin-jest';
+import reactPlugin from 'eslint-plugin-react';
+import typescriptParser from '@typescript-eslint/parser';
+import reactHooksPlugin from 'eslint-plugin-react-hooks';
+import reactNativePlugin from 'eslint-plugin-react-native';
+import typescriptPlugin from '@typescript-eslint/eslint-plugin';
 
 export default [
   {
-    ignores: ['node_modules', 'dist', 'build', '.expo'],
+    ignores: ['node_modules', 'dist', 'build', 'android', 'ios'],
   },
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
     languageOptions: {
       parser: typescriptParser,
       globals: globals.browser,
+      globals: globals.node,
       parserOptions: {
         ecmaVersion: 'latest',
         sourceType: 'module',
