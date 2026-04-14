@@ -1,0 +1,7 @@
+{
+  "extends": "@react-native/typescript-config",
+  "compilerOptions": {
+    "types": ["jest"]
+  },
+  "exclude": ["**/node_modules", "**/Pods"]
+}
