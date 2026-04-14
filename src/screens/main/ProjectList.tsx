@@ -1,26 +1,48 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
+import { getProjects } from '../../db/queries';
 import { useNavigation } from '@react-navigation/native';
+import FluentLogo from '../../assets/icons/fluent-logo.svg';
+import { RootStackParamList } from '../../navigation/types';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
-import { RootStackParamList } from '../../navigation/types';
-import FluentLogo from '../../assets/icons/fluent-logo.svg';
-
-const MOCK_PROJECTS = [
-  { id: '1', name: 'Gujrat - Paschim - Gospels', language: 'Kachi Koli' },
-  { id: '2', name: 'Gujrat - Paschim - Gospels', language: 'Varli Davri' },
-];
 
 type Nav = StackNavigationProp<RootStackParamList, 'Projects'>;
 
 export default function ProjectsScreen() {
   const navigation = useNavigation<Nav>();
+  const [projects, setProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadProjects();
+  }, []);
+
+  const loadProjects = async () => {
+    try {
+      const data = await getProjects();
+      setProjects(data);
+    } catch (error) {
+      console.error('Error loading projects:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#1a6ef5" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -34,8 +56,8 @@ export default function ProjectsScreen() {
       </View>
 
       <FlatList
-        data={MOCK_PROJECTS}
-        keyExtractor={item => item.id}
+        data={projects}
+        keyExtractor={item => item.id.toString()}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
           <TouchableOpacity
@@ -45,14 +67,16 @@ export default function ProjectsScreen() {
               navigation.navigate('Chapters', {
                 projectId: item.id,
                 projectName: item.name,
-                language: item.language,
+                language: item.target_language_name,
               })
             }
           >
             <Ionicons name="folder-outline" size={24} color="#000" />
             <View style={styles.cardText}>
               <Text style={styles.cardTitle}>{item.name}</Text>
-              <Text style={styles.cardSubtitle}>{item.language}</Text>
+              <Text style={styles.cardSubtitle}>
+                {item.target_language_name}
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#000" />
           </TouchableOpacity>
@@ -108,5 +132,8 @@ const styles = StyleSheet.create({
   cardSubtitle: {
     fontSize: 14,
     marginTop: 3,
+  },
+  centered: {
+    justifyContent: 'center',
   },
 });

@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, waitFor } from '@testing-library/react-native';
 import App from '../App';
 
 jest.mock('react-native-gesture-handler', () => ({
@@ -37,17 +37,36 @@ jest.mock('react-native-safe-area-context', () => ({
 
 jest.mock('../src/assets/icons/fluent-logo.svg', () => 'FluentLogo');
 
-// mock AppNavigator to return something renderable
 jest.mock('../src/navigation/AppNavigator', () => {
   const MockReact = require('react');
   const { View } = require('react-native');
   return () => MockReact.createElement(View, { testID: 'app-navigator' });
 });
+
 jest.mock('../src/api/fluent-api.test', () => ({
   runApiIntegrationTest: jest.fn(() => Promise.resolve()),
 }));
 
-test('renders correctly', () => {
+jest.mock('@op-engineering/op-sqlite', () => ({
+  open: jest.fn(() =>
+    Promise.resolve({
+      execute: jest.fn(),
+      transaction: jest.fn(async (fn: any) => fn({ execute: jest.fn() })),
+    }),
+  ),
+}));
+jest.mock('../src/db/index', () => ({
+  initializeDatabase: jest.fn(() => Promise.resolve()),
+}));
+
+jest.mock('../src/services/syncServices', () => ({
+  syncAllData: jest.fn(() => Promise.resolve()),
+}));
+
+test('renders correctly', async () => {
   const { getByTestId } = render(<App />);
-  expect(getByTestId('app-navigator')).toBeTruthy();
+
+  await waitFor(() => {
+    expect(getByTestId('app-navigator')).toBeTruthy();
+  });
 });
