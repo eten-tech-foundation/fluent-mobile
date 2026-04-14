@@ -1,32 +1,65 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import {
+  getProjectUnits,
+  getChapterAssignmentsWithBooks,
+} from '../../db/queries';
+import { RootStackParamList } from '../../navigation/types';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
-import { RootStackParamList } from '../../navigation/types';
-
-const MOCK_CHAPTERS = [
-  { id: '1', name: 'Matthew 1', status: 'Peer Review' },
-  { id: '2', name: 'Matthew 2', status: 'Peer Review' },
-  { id: '3', name: 'Matthew 3', status: 'Draft' },
-  { id: '4', name: 'Matthew 4', status: 'Draft' },
-  { id: '5', name: 'Matthew 5', status: 'Draft' },
-  { id: '6', name: 'Matthew 6', status: 'Unassigned' },
-  { id: '7', name: 'Matthew 7', status: 'Unassigned' },
-];
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 
 type Nav = StackNavigationProp<RootStackParamList, 'Chapters'>;
 type Route = RouteProp<RootStackParamList, 'Chapters'>;
 
 export default function ChaptersScreen() {
   const navigation = useNavigation<Nav>();
-  const { projectName, language } = useRoute<Route>().params;
+  const { projectId, projectName, language } = useRoute<Route>().params;
+
+  const [chapters, setChapters] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadChapters = async () => {
+      try {
+        const units = await getProjectUnits(projectId);
+
+        if (!units || units.length === 0) {
+          setChapters([]);
+          return;
+        }
+
+        const projectUnitId = units[0].id;
+
+        const chaptersData = await getChapterAssignmentsWithBooks(
+          projectUnitId,
+        );
+
+        setChapters(chaptersData);
+      } catch (error) {
+        console.error('Error loading chapters:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadChapters();
+  }, [projectId]);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#1a6ef5" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -43,8 +76,8 @@ export default function ChaptersScreen() {
       </TouchableOpacity>
 
       <FlatList
-        data={MOCK_CHAPTERS}
-        keyExtractor={item => item.id}
+        data={chapters}
+        keyExtractor={item => item.id.toString()}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
           <TouchableOpacity
@@ -52,18 +85,23 @@ export default function ChaptersScreen() {
             activeOpacity={0.7}
             onPress={() =>
               navigation.navigate('VerseDetail', {
-                chapterId: item.id,
-                chapterName: item.name,
+                chapterId: String(item.id),
+                chapterName: `${item.book_name} ${item.chapter_number}`,
                 projectName,
                 language,
               })
             }
           >
             <Ionicons name="folder-outline" size={24} color="#000" />
+
             <View style={styles.cardText}>
-              <Text style={styles.cardTitle}>{item.name}</Text>
+              <Text style={styles.cardTitle}>
+                {item.book_name} {item.chapter_number}
+              </Text>
+
               <Text style={styles.cardSubtitle}>{item.status}</Text>
             </View>
+
             <Ionicons name="chevron-forward" size={20} color="#000" />
           </TouchableOpacity>
         )}
@@ -113,5 +151,8 @@ const styles = StyleSheet.create({
   cardSubtitle: {
     fontSize: 14,
     marginTop: 3,
+  },
+  centered: {
+    justifyContent: 'center',
   },
 });
