@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
+import { Project } from '../../types/dbTypes';
 import { getProjects } from '../../db/queries';
 import { useNavigation } from '@react-navigation/native';
 import FluentLogo from '../../assets/icons/fluent-logo.svg';
@@ -18,7 +19,7 @@ type Nav = StackNavigationProp<RootStackParamList, 'Projects'>;
 
 export default function ProjectsScreen() {
   const navigation = useNavigation<Nav>();
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

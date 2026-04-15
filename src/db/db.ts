@@ -1,10 +1,12 @@
-let db: any;
+import { DB } from '@op-engineering/op-sqlite';
 
-export function setDatabase(instance: any) {
+let db: DB | null = null;
+
+export function setDatabase(instance: DB) {
   db = instance;
 }
 
-export function getDatabase() {
+export function getDatabase(): DB {
   if (!db) {
     throw new Error('Database not initialized');
   }
