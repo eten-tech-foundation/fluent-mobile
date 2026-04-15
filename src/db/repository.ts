@@ -1,6 +1,9 @@
 import { getDatabase } from './db';
+import { logger } from '../utils/logger';
 import * as DBTypes from '../types/dbTypes';
 import { Transaction } from '@op-engineering/op-sqlite';
+
+const log = logger.create('DBRepository');
 
 export async function insertUser(user: DBTypes.User) {
   const db = getDatabase();
@@ -19,7 +22,7 @@ export async function insertUser(user: DBTypes.User) {
       ],
     );
   } catch (error) {
-    console.error('Error inserting user:', error);
+    log.error('Error inserting user', { error });
   }
 }
 
@@ -199,7 +202,7 @@ export async function getChaptersToSync() {
 
     return bibleGroups;
   } catch (error) {
-    console.error('Error getting chapters to sync:', error);
+    log.error('Error getting chapters to sync:', { error });
     return new Map();
   }
 }
@@ -229,7 +232,7 @@ export async function insertBibleTexts(data: DBTypes.BibleText[]) {
       }
     });
   } catch (error) {
-    console.error('Error inserting bible texts:', error);
+    log.error('Error inserting bible texts:', { error });
     throw error;
   }
 }
@@ -251,7 +254,7 @@ export async function checkIfTextsSynced(
     const rows = result.rows as unknown as DBTypes.CountRow[];
     return (rows[0]?.count ?? 0) > 0;
   } catch (error) {
-    console.error('Error checking if texts synced:', error);
+    log.error('Error checking if texts synced:', { error });
     return false;
   }
 }

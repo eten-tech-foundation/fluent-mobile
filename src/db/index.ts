@@ -1,7 +1,9 @@
 import { open, DB } from '@op-engineering/op-sqlite';
 import { createTableQueries } from './schema';
+import { logger } from '../utils/logger';
 import { setDatabase } from './db';
 
+const log = logger.create('Database');
 const DB_NAME = 'fluent.db';
 
 export async function initializeDatabase(): Promise<void> {
@@ -11,7 +13,7 @@ export async function initializeDatabase(): Promise<void> {
       location: 'default',
     });
 
-    console.log('Database opened successfully');
+    log.info('Database opened successfully');
 
     setDatabase(db);
 
@@ -28,14 +30,14 @@ export async function initializeDatabase(): Promise<void> {
           error instanceof Error &&
           !error.message.includes('already exists')
         ) {
-          console.error('SQL Error:', error);
+          log.error('SQL Error:', { error });
         }
       }
     }
 
-    console.log('All tables created successfully');
+    log.info('All tables created successfully');
   } catch (error: unknown) {
-    console.error('Failed to initialize database:', error);
+    log.error('Failed to initialize database:', { error });
 
     throw error;
   }

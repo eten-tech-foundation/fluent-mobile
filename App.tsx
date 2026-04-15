@@ -1,3 +1,4 @@
+import { logger } from './src/utils/logger';
 import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import { initializeDatabase } from './src/db/index';
@@ -7,6 +8,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { syncAllData } from './src/services/syncServices';
 import { FLUENT_USER_EMAIL } from '@env';
 
+const log = logger.create('App');
+
 function App() {
   const [dbReady, setDbReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -14,9 +17,9 @@ function App() {
   useEffect(() => {
     const initApp = async () => {
       try {
-        console.log('App starting - initializing database...');
+        log.info('App starting - initializing database...');
         await initializeDatabase();
-        console.log('Database initialized successfully');
+        log.info('Database initialized successfully');
 
         const email = FLUENT_USER_EMAIL;
         if (!email) {
@@ -26,7 +29,7 @@ function App() {
         await syncAllData(email);
         setDbReady(true);
       } catch (e: unknown) {
-        console.error('DB Init Failed:', e);
+        log.error('DB Init Failed:', { error: e });
         setError((e as Error).message);
       }
     };

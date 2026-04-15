@@ -10,11 +10,14 @@ import {
   UIManager,
   ActivityIndicator,
 } from 'react-native';
+import { logger } from '../../utils/logger';
 import { RootStackParamList } from '../../navigation/types';
 import { ChapterAssignmentData, VerseData } from '../../types/dbTypes';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { getChapterAssignmentById, getBibleTexts } from '../../db/queries';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+
+const log = logger.create('ViewChapterScreen');
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -65,7 +68,7 @@ export default function VerseDetailScreen() {
           }
         }
       } catch (error) {
-        console.error('Error loading verses:', error);
+        log.error('Error loading verses:', { error });
       } finally {
         setLoading(false);
       }
