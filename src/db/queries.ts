@@ -1,5 +1,8 @@
 import { getDatabase } from './db';
+import { logger } from '../utils/logger';
 import * as DBTypes from '../types/dbTypes';
+
+const log = logger.create('DBQueries');
 
 export async function getProjects(): Promise<DBTypes.Project[]> {
   const db = getDatabase();
@@ -23,10 +26,10 @@ export async function getProjects(): Promise<DBTypes.Project[]> {
       `,
     );
 
-    console.log('Projects fetched:', result?.rows?.length);
+    log.info('Projects fetched', { count: result?.rows?.length });
     return (result?.rows as unknown as DBTypes.Project[]) || [];
   } catch (error) {
-    console.error('Error fetching projects:', error);
+    log.error('Error fetching projects', { error });
     return [];
   }
 }
@@ -40,7 +43,7 @@ export async function getProjectUnits(projectId: number) {
     );
     return result?.rows || [];
   } catch (error) {
-    console.error('Error fetching project units:', error);
+    log.error('Error fetching project units', { error });
     return [];
   }
 }
@@ -91,7 +94,7 @@ export async function getChapterAssignmentById(
       bibleAbbreviation: row.bible_abbreviation,
     };
   } catch (error) {
-    console.error('Error fetching chapter assignment by ID:', error);
+    log.error('Error fetching chapter assignment by ID:', { error });
     return null;
   }
 }
@@ -112,13 +115,12 @@ export async function getChapterAssignmentsWithBooks(projectUnitId: number) {
       ORDER BY b.id, ca.chapter_number`,
       [Number(projectUnitId)],
     );
-    console.log(
-      'Chapter assignments with books fetched:',
-      result?.rows?.length,
-    );
+    log.info('Chapter assignments with books fetched', {
+      count: result?.rows?.length,
+    });
     return (result?.rows as unknown as DBTypes.ChapterListItem[]) || [];
   } catch (error) {
-    console.error('Error fetching chapter assignments with books:', error);
+    log.error('Error fetching chapter assignments with books:', { error });
     return [];
   }
 }
@@ -153,7 +155,7 @@ export async function getBibleTexts(
       text: row.text,
     }));
   } catch (error) {
-    console.error('Error fetching bible texts:', error);
+    log.error('Error fetching bible texts', { error });
     return [];
   }
 }

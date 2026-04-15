@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
+import { logger } from '../../utils/logger';
 import { Project } from '../../types/dbTypes';
 import { getProjects } from '../../db/queries';
 import { useNavigation } from '@react-navigation/native';
@@ -15,6 +16,7 @@ import { RootStackParamList } from '../../navigation/types';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 
+const log = logger.create('ProjectListScreen');
 type Nav = StackNavigationProp<RootStackParamList, 'Projects'>;
 
 export default function ProjectsScreen() {
@@ -31,7 +33,7 @@ export default function ProjectsScreen() {
       const data = await getProjects();
       setProjects(data);
     } catch (error) {
-      console.error('Error loading projects:', error);
+      log.error('Error loading projects:', { error });
     } finally {
       setLoading(false);
     }

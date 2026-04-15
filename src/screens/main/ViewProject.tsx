@@ -11,11 +11,14 @@ import {
   getProjectUnits,
   getChapterAssignmentsWithBooks,
 } from '../../db/queries';
+import { logger } from '../../utils/logger';
 import { ChapterListItem } from '../../types/dbTypes';
 import { RootStackParamList } from '../../navigation/types';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+
+const log = logger.create('ChaptersScreen');
 
 type Nav = StackNavigationProp<RootStackParamList, 'Chapters'>;
 type Route = RouteProp<RootStackParamList, 'Chapters'>;
@@ -40,7 +43,7 @@ export default function ChaptersScreen() {
         const rawId = units[0].id;
 
         if (rawId === null || rawId === undefined) {
-          console.error('Invalid projectUnitId');
+          log.error('Invalid projectUnitId');
           setChapters([]);
           return;
         }
@@ -53,7 +56,7 @@ export default function ChaptersScreen() {
 
         setChapters(chaptersData);
       } catch (error) {
-        console.error('Error loading chapters:', error);
+        log.error('Error loading chapters:', { error });
       } finally {
         setLoading(false);
       }

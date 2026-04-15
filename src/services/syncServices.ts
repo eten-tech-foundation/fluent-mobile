@@ -10,11 +10,14 @@ import {
   insertBibleTexts,
   getChaptersToSync,
 } from '../db/repository';
+import { logger } from '../utils/logger';
 import { ApiBook, ApiVerse } from '../types/apiTypes';
+
+const log = logger.create('SyncService');
 
 export async function syncUser(email: string) {
   try {
-    console.log('Syncing user...');
+    log.info('Syncing user...');
 
     const user = await FluentAPI.getUserByEmail(email);
 
@@ -24,18 +27,18 @@ export async function syncUser(email: string) {
 
     await insertUser(user);
 
-    console.log('User synced:', user.email);
+    log.info('User synced', { email: user.email });
 
     return user;
   } catch (error) {
-    console.error('User sync failed:', error);
+    log.error('User sync failed', { error });
     throw error;
   }
 }
 
 export async function syncMasterData() {
   try {
-    console.log('Sync started');
+    log.info('Sync started');
 
     const [languages, books, bibles] = await Promise.all([
       FluentAPI.getLanguages(),
@@ -47,29 +50,29 @@ export async function syncMasterData() {
     await insertBooks(books);
     await insertBibles(bibles);
 
-    console.log('Sync completed');
+    log.info('Sync completed');
   } catch (error) {
-    console.error('Sync failed:', error);
+    log.error('Sync failed', { error });
   }
 }
 
 export async function syncProjects(userId: number, email: string) {
   try {
-    console.log('Syncing projects...');
+    log.info('Syncing projects...');
 
     const projects = await FluentAPI.getUserProjects(userId, email);
 
     await insertProjects(projects);
 
-    console.log(`Projects synced: ${projects.length}`);
+    log.info('Projects synced', { count: projects.length });
   } catch (error) {
-    console.error('Project sync failed:', error);
+    log.error('Project sync failed', { error });
   }
 }
 
 export async function syncChapterAssignments(userId: number, email: string) {
   try {
-    console.log('Syncing chapter assignments...');
+    log.info('Syncing chapter assignments...');
 
     const response = await FluentAPI.getChapterAssignments(userId, email);
 
@@ -82,21 +85,21 @@ export async function syncChapterAssignments(userId: number, email: string) {
       await insertProjectUnits(allAssignments);
 
       await insertChapterAssignments(allAssignments);
-      console.log(`Chapter assignments synced: ${allAssignments.length}`);
+      log.info('Chapter assignments synced', { count: allAssignments.length });
     }
   } catch (error) {
-    console.error('Chapter assignment sync failed:', error);
+    log.error('Chapter assignment sync failed', { error });
   }
 }
 
 export async function syncBibleTexts(email: string) {
   try {
-    console.log('Syncing bible texts...');
+    log.info('Syncing bible texts...');
 
     const bibleGroups = await getChaptersToSync();
 
     if (bibleGroups.size === 0) {
-      console.log('No chapters to sync');
+      log.info('No chapters to sync');
       return;
     }
 
@@ -104,9 +107,10 @@ export async function syncBibleTexts(email: string) {
 
     for (const [bibleId, chapters] of bibleGroups) {
       try {
-        console.log(
-          `Syncing ${chapters.length} chapters for bible ${bibleId}...`,
-        );
+        log.info('Syncing chapters for bible', {
+          bibleId,
+          chapterCount: chapters.length,
+        });
 
         const response: ApiBook[] = await FluentAPI.getBibleTexts(
           bibleId,
@@ -129,22 +133,25 @@ export async function syncBibleTexts(email: string) {
 
           await insertBibleTexts(textsWithBibleId);
           totalTextsInserted += response.length;
-          console.log(`Synced ${response.length} books for bible ${bibleId}`);
+          log.info('Synced books for bible', {
+            bibleId,
+            count: response.length,
+          });
         }
       } catch (error) {
-        console.error(`Failed to sync texts for bible ${bibleId}:`, error);
+        log.error(`Failed to sync texts for bible ${bibleId}:`, { error });
         continue;
       }
     }
 
-    console.log(`Bible texts sync completed: ${totalTextsInserted} books`);
+    log.info('Bible texts sync completed', { count: totalTextsInserted });
   } catch (error) {
-    console.error('Bible texts sync failed:', error);
+    log.error('Bible texts sync failed', { error });
   }
 }
 
 export async function syncAllData(email: string) {
-  console.log('Starting full sync...');
+  log.info('Starting full sync...');
 
   const user = await syncUser(email);
 
@@ -157,8 +164,8 @@ export async function syncAllData(email: string) {
   try {
     await syncBibleTexts(email);
   } catch (e) {
-    console.warn('Bible text sync failed, continuing...', e);
+    log.warn('Bible text sync failed, continuing...', { error: e });
   }
 
-  console.log('Full sync completed successfully!');
+  log.info('Full sync completed successfully!');
 }
