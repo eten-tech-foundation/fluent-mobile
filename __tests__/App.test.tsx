@@ -3,8 +3,9 @@
  */
 
 import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
 import App from '../App';
+import { Transaction } from '@op-engineering/op-sqlite';
+import { render, waitFor } from '@testing-library/react-native';
 
 jest.mock('react-native-gesture-handler', () => ({
   GestureHandlerRootView: ({ children }: { children: React.ReactNode }) =>
@@ -50,7 +51,11 @@ jest.mock('@op-engineering/op-sqlite', () => ({
   open: jest.fn(() =>
     Promise.resolve({
       execute: jest.fn(),
-      transaction: jest.fn(async (fn: any) => fn({ execute: jest.fn() })),
+      transaction: jest.fn(async (fn: (tx: Transaction) => Promise<void>) =>
+        fn({
+          execute: jest.fn(),
+        } as unknown as Transaction),
+      ),
     }),
   ),
 }));

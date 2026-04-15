@@ -11,6 +11,7 @@ import {
   getProjectUnits,
   getChapterAssignmentsWithBooks,
 } from '../../db/queries';
+import { ChapterListItem } from '../../types/dbTypes';
 import { RootStackParamList } from '../../navigation/types';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
@@ -23,7 +24,7 @@ export default function ChaptersScreen() {
   const navigation = useNavigation<Nav>();
   const { projectId, projectName, language } = useRoute<Route>().params;
 
-  const [chapters, setChapters] = useState<any[]>([]);
+  const [chapters, setChapters] = useState<ChapterListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,7 +37,15 @@ export default function ChaptersScreen() {
           return;
         }
 
-        const projectUnitId = units[0].id;
+        const rawId = units[0].id;
+
+        if (rawId === null || rawId === undefined) {
+          console.error('Invalid projectUnitId');
+          setChapters([]);
+          return;
+        }
+
+        const projectUnitId = Number(rawId);
 
         const chaptersData = await getChapterAssignmentsWithBooks(
           projectUnitId,
@@ -85,7 +94,7 @@ export default function ChaptersScreen() {
             activeOpacity={0.7}
             onPress={() =>
               navigation.navigate('VerseDetail', {
-                chapterId: String(item.id),
+                chapterId: item.id,
                 chapterName: `${item.book_name} ${item.chapter_number}`,
                 projectName,
                 language,

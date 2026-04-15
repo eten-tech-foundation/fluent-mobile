@@ -10,6 +10,7 @@ import {
   insertBibleTexts,
   getChaptersToSync,
 } from '../db/repository';
+import { ApiBook, ApiVerse } from '../types/apiTypes';
 
 export async function syncUser(email: string) {
   try {
@@ -107,24 +108,27 @@ export async function syncBibleTexts(email: string) {
           `Syncing ${chapters.length} chapters for bible ${bibleId}...`,
         );
 
-        const response = await FluentAPI.getBibleTexts(
+        const response: ApiBook[] = await FluentAPI.getBibleTexts(
           bibleId,
           chapters,
           email,
         );
 
         if (response && Array.isArray(response)) {
-          const textsWithBibleId = response.map((book: any) => ({
-            ...book,
-            verses: (book.verses || []).map((verse: any) => ({
-              ...verse,
-              bibleId,
+          const textsWithBibleId = response.map((book: ApiBook) => ({
+            bookId: book.bookId,
+            chapterNumber: book.chapterNumber,
+            verses: book.verses.map((verse: ApiVerse) => ({
+              bible_id: bibleId,
+              book_id: book.bookId,
+              chapter_number: book.chapterNumber,
+              verse_number: verse.verseNumber,
+              text: verse.text,
             })),
           }));
 
           await insertBibleTexts(textsWithBibleId);
           totalTextsInserted += response.length;
-
           console.log(`Synced ${response.length} books for bible ${bibleId}`);
         }
       } catch (error) {

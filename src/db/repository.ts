@@ -1,6 +1,8 @@
 import { getDatabase } from './db';
+import * as DBTypes from '../types/dbTypes';
+import { Transaction } from '@op-engineering/op-sqlite';
 
-export async function insertUser(user: any) {
+export async function insertUser(user: DBTypes.User) {
   const db = getDatabase();
 
   try {
@@ -10,7 +12,7 @@ export async function insertUser(user: any) {
       VALUES (?, ?, ?, ?, ?)`,
       [
         user.id,
-        user.username,
+        user.username ?? null,
         user.email,
         user.firstName ?? null,
         user.lastName ?? null,
@@ -21,10 +23,10 @@ export async function insertUser(user: any) {
   }
 }
 
-export async function insertLanguages(data: any[]) {
+export async function insertLanguages(data: DBTypes.Language[]) {
   const db = getDatabase();
 
-  await db.transaction(async (tx: any) => {
+  await db.transaction(async (tx: Transaction) => {
     for (const lang of data) {
       await tx.execute(
         `INSERT OR REPLACE INTO languages 
@@ -34,7 +36,7 @@ export async function insertLanguages(data: any[]) {
           lang.id,
           lang.langName,
           lang.langNameLocalized ?? null,
-          lang.langCode,
+          lang.langCode ?? null,
           lang.scriptDirection ?? 'ltr',
         ],
       );
@@ -42,70 +44,51 @@ export async function insertLanguages(data: any[]) {
   });
 }
 
-export async function insertBooks(data: any[]) {
+export async function insertBooks(data: DBTypes.Book[]) {
   const db = getDatabase();
 
-  await db.transaction(async (tx: any) => {
+  await db.transaction(async (tx: Transaction) => {
     for (const book of data) {
-      const name = book.eng_display_name;
-
-      if (!name) {
-        console.warn('Skipping invalid book:', book);
-        continue;
-      }
+      if (!book.eng_display_name) continue;
 
       await tx.execute(
         `INSERT OR REPLACE INTO books 
         (id, code, eng_display_name)
         VALUES (?, ?, ?)`,
-        [book.id, book.code, name],
+        [book.id, book.code, book.eng_display_name],
       );
     }
   });
 }
 
-export async function insertBibles(data: any[]) {
+export async function insertBibles(data: DBTypes.Bible[]) {
   const db = getDatabase();
 
-  await db.transaction(async (tx: any) => {
+  await db.transaction(async (tx: Transaction) => {
     for (const bible of data) {
-      const name = bible.name;
-      const abbr = bible.abbreviation;
-
-      if (!name || !abbr) {
-        console.warn('Skipping invalid bible:', bible);
-        continue;
-      }
+      if (!bible.name || !bible.abbreviation) continue;
 
       await tx.execute(
         `INSERT OR REPLACE INTO bibles 
         (id, language_id, name, abbreviation)
         VALUES (?, ?, ?, ?)`,
-        [bible.id, bible.languageId, name, abbr],
+        [bible.id, bible.languageId, bible.name, bible.abbreviation],
       );
     }
   });
 }
 
-export async function insertProjects(data: any[]) {
+export async function insertProjects(data: DBTypes.Project[]) {
   const db = getDatabase();
 
-  await db.transaction(async (tx: any) => {
+  await db.transaction(async (tx: Transaction) => {
     for (const project of data) {
-      if (!project?.id || !project?.name) {
-        console.warn('Skipping invalid project:', project);
-        continue;
-      }
+      if (!project?.id || !project?.name) continue;
 
-      const sourceLangId =
-        project.sourceLanguageId ?? project.source_language_id;
-      const targetLangId =
-        project.targetLanguageId ?? project.target_language_id;
+      const sourceLangId = project.sourceLanguageId ?? project.sourceLanguageId;
+      const targetLangId = project.targetLanguageId ?? project.targetLanguageId;
 
-      if (!sourceLangId || !targetLangId) {
-        console.warn('Skipping project with missing language IDs:', project);
-        continue;
-      }
+      if (!sourceLangId || !targetLangId) continue;
 
       await tx.execute(
         `INSERT OR REPLACE INTO projects 
@@ -125,15 +108,14 @@ export async function insertProjects(data: any[]) {
   });
 }
 
-export async function insertChapterAssignments(data: any[]) {
+export async function insertChapterAssignments(
+  data: DBTypes.ChapterAssignment[],
+) {
   const db = getDatabase();
 
-  await db.transaction(async (tx: any) => {
+  await db.transaction(async (tx: Transaction) => {
     for (const assignment of data) {
-      if (!assignment?.chapterAssignmentId) {
-        console.warn('Skipping invalid chapter assignment:', assignment);
-        continue;
-      }
+      if (!assignment?.chapterAssignmentId) continue;
 
       await tx.execute(
         `INSERT OR REPLACE INTO chapter_assignments 
@@ -156,30 +138,25 @@ export async function insertChapterAssignments(data: any[]) {
   });
 }
 
-export async function insertProjectUnits(assignments: any[]) {
+export async function insertProjectUnits(
+  assignments: DBTypes.ChapterAssignment[],
+) {
   const db = getDatabase();
 
   const unitsMap = new Map<number, { id: number; projectId: number }>();
 
   for (const assignment of assignments) {
-    const projectUnitId = assignment.projectUnitId;
-    const projectId = assignment.projectId;
+    if (!assignment.projectUnitId || !assignment.projectId) continue;
+    if (unitsMap.has(assignment.projectUnitId)) continue;
 
-    if (!projectUnitId || !projectId) {
-      console.warn(
-        'Skipping assignment without projectUnitId or projectId:',
-        assignment,
-      );
-      continue;
-    }
-
-    if (unitsMap.has(projectUnitId)) continue;
-
-    unitsMap.set(projectUnitId, { id: projectUnitId, projectId });
+    unitsMap.set(assignment.projectUnitId, {
+      id: assignment.projectUnitId,
+      projectId: assignment.projectId,
+    });
   }
 
   if (unitsMap.size > 0) {
-    await db.transaction(async (tx: any) => {
+    await db.transaction(async (tx: Transaction) => {
       for (const unit of unitsMap.values()) {
         await tx.execute(
           `INSERT OR REPLACE INTO project_units 
@@ -189,13 +166,12 @@ export async function insertProjectUnits(assignments: any[]) {
         );
       }
     });
-
-    console.log(`Project units inserted: ${unitsMap.size}`);
   }
 }
 
 export async function getChaptersToSync() {
   const db = getDatabase();
+
   try {
     const result = await db.execute(`
       SELECT DISTINCT bible_id, book_id, chapter_number
@@ -203,27 +179,24 @@ export async function getChaptersToSync() {
       ORDER BY bible_id, book_id, chapter_number
     `);
 
+    const rows = result.rows as unknown as DBTypes.ChapterRow[];
+
     const bibleGroups = new Map<
       number,
       Array<{ bookId: number; chapterNumber: number }>
     >();
 
-    for (const row of result?.rows || []) {
-      const bibleId = row.bible_id;
-      const bookId = row.book_id;
-      const chapterNumber = row.chapter_number;
-
-      if (!bibleGroups.has(bibleId)) {
-        bibleGroups.set(bibleId, []);
+    for (const row of rows) {
+      if (!bibleGroups.has(row.bible_id)) {
+        bibleGroups.set(row.bible_id, []);
       }
 
-      bibleGroups.get(bibleId)!.push({
-        bookId,
-        chapterNumber,
+      bibleGroups.get(row.bible_id)!.push({
+        bookId: row.book_id,
+        chapterNumber: row.chapter_number,
       });
     }
 
-    console.log(`Found ${bibleGroups.size} bibles with chapters to sync`);
     return bibleGroups;
   } catch (error) {
     console.error('Error getting chapters to sync:', error);
@@ -231,39 +204,30 @@ export async function getChaptersToSync() {
   }
 }
 
-export async function insertBibleTexts(data: any[]) {
+export async function insertBibleTexts(data: DBTypes.BibleText[]) {
   const db = getDatabase();
 
-  if (!data || data.length === 0) {
-    console.log('No bible texts to insert');
-    return;
-  }
+  if (!data?.length) return;
 
   try {
-    await db.transaction(async (tx: any) => {
-      for (const book of data) {
-        const bookId = book.bookId;
-        const chapterNumber = book.chapterNumber;
-        const verses = book.verses || [];
-
-        for (const verse of verses) {
+    await db.transaction(async (tx: Transaction) => {
+      for (const chapter of data) {
+        for (const verse of chapter.verses) {
           await tx.execute(
             `INSERT OR REPLACE INTO bible_texts 
             (bible_id, book_id, chapter_number, verse_number, text)
             VALUES (?, ?, ?, ?, ?)`,
             [
-              verse.bibleId,
-              bookId,
-              chapterNumber,
-              verse.verseNumber,
+              verse.bible_id,
+              verse.book_id,
+              verse.chapter_number,
+              verse.verse_number,
               verse.text,
             ],
           );
         }
       }
     });
-
-    console.log(`Bible texts inserted: ${data.length} books`);
   } catch (error) {
     console.error('Error inserting bible texts:', error);
     throw error;
@@ -276,6 +240,7 @@ export async function checkIfTextsSynced(
   chapterNumber: number,
 ): Promise<boolean> {
   const db = getDatabase();
+
   try {
     const result = await db.execute(
       `SELECT COUNT(*) as count FROM bible_texts 
@@ -283,7 +248,8 @@ export async function checkIfTextsSynced(
       [bibleId, bookId, chapterNumber],
     );
 
-    return (result?.rows?.[0]?.count || 0) > 0;
+    const rows = result.rows as unknown as DBTypes.CountRow[];
+    return (rows[0]?.count ?? 0) > 0;
   } catch (error) {
     console.error('Error checking if texts synced:', error);
     return false;

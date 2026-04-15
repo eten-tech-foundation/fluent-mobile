@@ -1,6 +1,7 @@
 import { getDatabase } from './db';
+import * as DBTypes from '../types/dbTypes';
 
-export async function getProjects() {
+export async function getProjects(): Promise<DBTypes.Project[]> {
   const db = getDatabase();
   try {
     const result = await db.execute(
@@ -23,14 +24,14 @@ export async function getProjects() {
     );
 
     console.log('Projects fetched:', result?.rows?.length);
-    return result?.rows || [];
+    return (result?.rows as unknown as DBTypes.Project[]) || [];
   } catch (error) {
     console.error('Error fetching projects:', error);
     return [];
   }
 }
 
-export async function getProjectUnits(projectId: string | number) {
+export async function getProjectUnits(projectId: number) {
   const db = getDatabase();
   try {
     const result = await db.execute(
@@ -44,7 +45,9 @@ export async function getProjectUnits(projectId: string | number) {
   }
 }
 
-export async function getChapterAssignmentById(id: string | number) {
+export async function getChapterAssignmentById(
+  id: number,
+): Promise<DBTypes.ChapterAssignmentData | null> {
   const db = getDatabase();
   try {
     const result = await db.execute(
@@ -65,19 +68,35 @@ export async function getChapterAssignmentById(id: string | number) {
       LEFT JOIN books b ON ca.book_id = b.id
       LEFT JOIN bibles bi ON ca.bible_id = bi.id
       WHERE ca.id = ?`,
-      [Number(id)],
+      [id],
     );
-    console.log('Chapter assignment by ID fetched:', result?.rows?.[0]);
-    return result?.rows?.[0] || null;
+
+    const row = (result?.rows as unknown as DBTypes.ChapterAssignmentRow[])?.at(
+      0,
+    );
+    if (!row) return null;
+
+    return {
+      id: row.id,
+      projectUnitId: row.project_unit_id,
+      bibleId: row.bible_id,
+      bookId: row.book_id,
+      chapterNumber: row.chapter_number,
+      assignedUserId: row.assigned_user_id ?? undefined,
+      status: row.status,
+      submittedTime: row.submitted_time ?? undefined,
+      updatedAt: row.updated_at,
+      bookName: row.book_name,
+      bibleName: row.bible_name,
+      bibleAbbreviation: row.bible_abbreviation,
+    };
   } catch (error) {
     console.error('Error fetching chapter assignment by ID:', error);
     return null;
   }
 }
 
-export async function getChapterAssignmentsWithBooks(
-  projectUnitId: string | number,
-) {
+export async function getChapterAssignmentsWithBooks(projectUnitId: number) {
   const db = getDatabase();
   try {
     const result = await db.execute(
@@ -97,7 +116,7 @@ export async function getChapterAssignmentsWithBooks(
       'Chapter assignments with books fetched:',
       result?.rows?.length,
     );
-    return result?.rows || [];
+    return (result?.rows as unknown as DBTypes.ChapterListItem[]) || [];
   } catch (error) {
     console.error('Error fetching chapter assignments with books:', error);
     return [];
@@ -105,18 +124,34 @@ export async function getChapterAssignmentsWithBooks(
 }
 
 export async function getBibleTexts(
-  bibleId: string | number,
-  bookId: string | number,
-  chapterNumber: string | number,
-) {
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+): Promise<DBTypes.VerseData[]> {
   const db = getDatabase();
   try {
     const result = await db.execute(
-      'SELECT * FROM bible_texts WHERE bible_id = ? AND book_id = ? AND chapter_number = ? ORDER BY verse_number;',
-      [Number(bibleId), Number(bookId), Number(chapterNumber)],
+      `SELECT
+        bible_id,
+        book_id,
+        chapter_number,
+        verse_number,
+        text
+      FROM bible_texts
+      WHERE bible_id = ? AND book_id = ? AND chapter_number = ?
+      ORDER BY verse_number`,
+      [bibleId, bookId, chapterNumber],
     );
-    console.log('Bible texts fetched:', result?.rows?.length);
-    return result?.rows || [];
+
+    const rows = (result?.rows as unknown as DBTypes.VerseRow[]) || [];
+
+    return rows.map(row => ({
+      bibleId: row.bible_id,
+      bookId: row.book_id,
+      chapterNumber: row.chapter_number,
+      verseNumber: row.verse_number,
+      text: row.text,
+    }));
   } catch (error) {
     console.error('Error fetching bible texts:', error);
     return [];

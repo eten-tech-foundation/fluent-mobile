@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { RootStackParamList } from '../../navigation/types';
+import { ChapterAssignmentData, VerseData } from '../../types/dbTypes';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { getChapterAssignmentById, getBibleTexts } from '../../db/queries';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -32,30 +33,35 @@ export default function VerseDetailScreen() {
   const [verseStates, setVerseStates] = useState<Record<number, VerseState>>(
     {},
   );
-  const [verses, setVerses] = useState<any[]>([]);
+  const [verses, setVerses] = useState<VerseData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [chapterData, setChapterData] = useState<any>(null);
+  const [chapterData, setChapterData] = useState<ChapterAssignmentData | null>(
+    null,
+  );
 
   useEffect(() => {
     const loadVerses = async () => {
       try {
         setLoading(true);
 
-        const assignment = await getChapterAssignmentById(Number(chapterId));
+        const assignment = await getChapterAssignmentById(chapterId);
 
         if (assignment) {
           setChapterData(assignment);
 
           const texts = await getBibleTexts(
-            assignment.bible_id,
-            assignment.book_id,
-            assignment.chapter_number,
+            assignment.bibleId,
+            assignment.bookId,
+            assignment.chapterNumber,
           );
 
           setVerses(texts);
 
           if (texts && texts.length > 0) {
-            setSelectedVerse(texts[0].verse_number);
+            const firstVerseNumber = texts[0]?.verseNumber;
+            if (firstVerseNumber !== null && firstVerseNumber !== undefined) {
+              setSelectedVerse(firstVerseNumber);
+            }
           }
         }
       } catch (error) {
@@ -85,7 +91,7 @@ export default function VerseDetailScreen() {
   }
 
   const verseState = verseStates[selectedVerse] ?? 'idle';
-  const selectedVerseData = verses.find(v => v.verse_number === selectedVerse);
+  const selectedVerseData = verses.find(v => v.verseNumber === selectedVerse);
   const sourceText = selectedVerseData?.text;
 
   function toggleSource() {
@@ -133,7 +139,7 @@ export default function VerseDetailScreen() {
       >
         <View style={styles.card}>
           <Text style={styles.cardTitle}>
-            {chapterData.bible_name} - Verse {selectedVerse}
+            {chapterData.bibleName} - Verse {selectedVerse}
           </Text>
 
           <View style={styles.playerRow}>
@@ -229,13 +235,13 @@ export default function VerseDetailScreen() {
         {verses.length > 0 ? (
           verses.map(verse => {
             const hasRecording =
-              (verseStates[verse.verse_number] ?? 'idle') === 'recorded';
-            const isSelected = selectedVerse === verse.verse_number;
+              (verseStates[verse.verseNumber] ?? 'idle') === 'recorded';
+            const isSelected = selectedVerse === verse.verseNumber;
             return (
               <TouchableOpacity
-                key={verse.verse_number}
+                key={verse.verseNumber}
                 style={[styles.chip, isSelected && styles.activeChip]}
-                onPress={() => selectVerse(verse.verse_number)}
+                onPress={() => selectVerse(verse.verseNumber)}
                 activeOpacity={0.7}
               >
                 {hasRecording && (
@@ -249,7 +255,7 @@ export default function VerseDetailScreen() {
                 <Text
                   style={[styles.chipText, isSelected && styles.activeChipText]}
                 >
-                  {verse.verse_number}
+                  {verse.verseNumber}
                 </Text>
               </TouchableOpacity>
             );

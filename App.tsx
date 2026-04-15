@@ -25,9 +25,9 @@ function App() {
 
         await syncAllData(email);
         setDbReady(true);
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error('DB Init Failed:', e);
-        setError(e.message);
+        setError((e as Error).message);
       }
     };
 
