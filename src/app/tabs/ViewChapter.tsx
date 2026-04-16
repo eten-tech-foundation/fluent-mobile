@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
   ScrollView,
   LayoutAnimation,
   Platform,
@@ -11,9 +10,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { logger } from '../../utils/logger';
-import { RootStackParamList } from '../../navigation/types';
-import { ChapterAssignmentData, VerseData } from '../../types/dbTypes';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
+import { appStyles as styles } from '../appStyles';
+import { RootStackParamList } from '../../types/navigationTypes';
+import { ChapterAssignmentData, VerseData } from '../../types/dbTypes';
 import { getChapterAssignmentById, getBibleTexts } from '../../db/queries';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 
@@ -131,7 +131,7 @@ export default function VerseDetailScreen() {
       >
         <Ionicons name="chevron-back" size={28} color="#000" />
         <View>
-          <Text style={styles.title}>{chapterName}</Text>
+          <Text style={styles.titleMd}>{chapterName}</Text>
           <Text style={styles.subtitle}>{projectName}</Text>
         </View>
       </TouchableOpacity>
@@ -140,7 +140,7 @@ export default function VerseDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.card}>
+        <View style={styles.cardColumn}>
           <Text style={styles.cardTitle}>
             {chapterData.bibleName} - Verse {selectedVerse}
           </Text>
@@ -181,7 +181,7 @@ export default function VerseDetailScreen() {
         </View>
 
         {/* Target Language Card */}
-        <View style={styles.card}>
+        <View style={styles.cardColumn}>
           <Text style={styles.cardTitle}>
             {language} - Verse {selectedVerse}
           </Text>
@@ -270,162 +270,3 @@ export default function VerseDetailScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 20,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  subtitle: {
-    fontSize: 14,
-    marginTop: 2,
-  },
-  scrollContent: {
-    gap: 12,
-    paddingBottom: 8,
-  },
-  card: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#d1d1d6',
-    padding: 16,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 14,
-  },
-  playerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
-  },
-  playBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#1a6ef5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  progressTrack: {
-    flex: 1,
-    height: 4,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 2,
-  },
-  progressFill: {
-    width: '20%',
-    height: 4,
-    backgroundColor: '#1a6ef5',
-    borderRadius: 2,
-  },
-  accordionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#d1d1d6',
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginTop: 4,
-  },
-  accordionLabel: {
-    fontSize: 14,
-  },
-  sourceTextScroll: {
-    maxHeight: 120,
-    marginTop: 10,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-  },
-  sourceText: {
-    fontSize: 14,
-    lineHeight: 24,
-    color: '#333',
-  },
-  recordBtn: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#e53935',
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-    marginVertical: 12,
-  },
-  deleteBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#e53935',
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-    marginTop: 8,
-  },
-  chipsScroll: {
-    flexGrow: 0,
-    paddingVertical: 12,
-  },
-  chipsContent: {
-    gap: 8,
-    paddingHorizontal: 2,
-  },
-  chip: {
-    minWidth: 48,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#d1d1d6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  activeChip: {
-    borderWidth: 2,
-    borderColor: '#1a6ef5',
-  },
-  chipText: {
-    fontSize: 16,
-  },
-  activeChipText: {
-    color: '#1a6ef5',
-    fontWeight: '600',
-  },
-  chipMic: {
-    position: 'absolute',
-    top: 3,
-    right: 4,
-  },
-  progressFillRecorded: {
-    width: '40%',
-    height: 4,
-    backgroundColor: '#1a6ef5',
-    borderRadius: 2,
-  },
-  noVersesText: {
-    fontSize: 14,
-    color: '#999',
-  },
-  centered: {
-    justifyContent: 'center',
-  },
-
-  emptyText: {
-    color: '#666',
-    fontSize: 16,
-  },
-});

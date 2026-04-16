@@ -1,9 +1,9 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import { RootStackParamList } from './types';
-import ProjectList from '../screens/main/ProjectList';
-import ViewProject from '../screens/main/ViewProject';
-import VerseDetailScreen from '../screens/main/ViewChapter';
+import { RootStackParamList } from '../types/navigationTypes';
+import ProjectList from '../app/tabs/ProjectList';
+import ViewProject from '../app/tabs/ViewProject';
+import VerseDetailScreen from '../app/tabs/ViewChapter';
 
 const Stack = createStackNavigator<RootStackParamList>();
 

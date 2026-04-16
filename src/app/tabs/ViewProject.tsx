@@ -4,7 +4,6 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
 } from 'react-native';
 import {
@@ -13,9 +12,10 @@ import {
 } from '../../db/queries';
 import { logger } from '../../utils/logger';
 import { ChapterListItem } from '../../types/dbTypes';
-import { RootStackParamList } from '../../navigation/types';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
+import { appStyles as styles } from '../appStyles';
+import { RootStackParamList } from '../../types/navigationTypes';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 
 const log = logger.create('ChaptersScreen');
@@ -82,7 +82,7 @@ export default function ChaptersScreen() {
       >
         <Ionicons name="chevron-back" size={28} color="#000" />
         <View>
-          <Text style={styles.title}>{projectName}</Text>
+          <Text style={styles.titleLg}>{projectName}</Text>
           <Text style={styles.subtitle}>{language}</Text>
         </View>
       </TouchableOpacity>
@@ -93,7 +93,7 @@ export default function ChaptersScreen() {
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={styles.card}
+            style={styles.cardRow}
             activeOpacity={0.7}
             onPress={() =>
               navigation.navigate('VerseDetail', {
@@ -121,50 +121,3 @@ export default function ChaptersScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 20,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  subtitle: {
-    fontSize: 14,
-    marginTop: 2,
-  },
-  listContent: {
-    gap: 12,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#d1d1d6',
-    padding: 16,
-    gap: 12,
-  },
-  cardText: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    marginTop: 3,
-  },
-  centered: {
-    justifyContent: 'center',
-  },
-});
