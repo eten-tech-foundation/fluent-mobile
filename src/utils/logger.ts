@@ -1,26 +1,31 @@
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
-type Transport = (
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+export type Transport = (
   level: LogLevel,
   tag: string,
   message: string,
   context?: Record<string, unknown>,
 ) => void;
 
-// Default: console output in __DEV__ only
-const defaultTransport: Transport = (level, tag, message, context) => {
-  if (!__DEV__) return;
+export const defaultTransport: Transport = (level, tag, message, context) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (!(globalThis as any).__DEV__) return;
   const prefix = `[${tag}]`;
-  // eslint-disable-next-line no-console
-  console[level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log'](
-    prefix,
-    message,
-    context,
-  );
+
+  const logMethod =
+    level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log';
+
+  if (context !== undefined) {
+    // eslint-disable-next-line no-console
+    console[logMethod](prefix, message, context);
+  } else {
+    // eslint-disable-next-line no-console
+    console[logMethod](prefix, message);
+  }
 };
 
-let transport = defaultTransport;
+let transport: Transport = defaultTransport;
 
-// Scoped loggers
 function create(tag: string) {
   return {
     debug: (message: string, context?: Record<string, unknown>) =>
@@ -39,6 +44,7 @@ export const logger = {
   setTransport: (fn: Transport) => {
     transport = fn;
   },
+  reset: () => {
+    transport = defaultTransport;
+  },
 };
-
-export type { LogLevel, Transport };
