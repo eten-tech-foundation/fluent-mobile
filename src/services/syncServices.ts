@@ -88,7 +88,11 @@ export async function syncChapterAssignments(userId: number, email: string) {
       log.info('Chapter assignments synced', { count: allAssignments.length });
     }
   } catch (error) {
-    log.error('Chapter assignment sync failed', { error });
+    log.error('Chapter assignment sync failed', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      raw: error,
+    });
   }
 }
 
