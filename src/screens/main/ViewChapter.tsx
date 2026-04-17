@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,36 +8,94 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  ActivityIndicator,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { Ionicons } from '@react-native-vector-icons/ionicons';
+import { logger } from '../../utils/logger';
 import { RootStackParamList } from '../../navigation/types';
+import { ChapterAssignmentData, VerseData } from '../../types/dbTypes';
+import { Ionicons } from '@react-native-vector-icons/ionicons';
+import { getChapterAssignmentById, getBibleTexts } from '../../db/queries';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+
+const log = logger.create('ViewChapterScreen');
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
 }
 
-const MOCK_VERSES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-const SOURCE_TEXT: Record<number, string> = {
-  1: 'Now when Jesus saw the crowds, he went up on a mountainside and sat down. His disciples came to him.',
-  2: 'તેમણે પોતાનું મુખ ઉઘાડીને તેઓને ઉપદેશ કરતાં કહ્યું કે,',
-  3: 'Blessed are the poor in spirit, for theirs is the kingdom of heaven.',
-};
-
 type Route = RouteProp<RootStackParamList, 'VerseDetail'>;
+type VerseState = 'idle' | 'recording' | 'recorded';
 
 export default function VerseDetailScreen() {
   const navigation = useNavigation();
-  const { chapterName, language } = useRoute<Route>().params;
+  const { chapterId, chapterName, language, projectName } =
+    useRoute<Route>().params;
 
-  const [selectedVerse, setSelectedVerse] = useState(1);
-  const [sourceExpanded, setSourceExpanded] = useState(false);
-  const [verseStates, setVerseStates] = useState<
-    Record<number, 'idle' | 'recording' | 'recorded'>
-  >({});
+  const [selectedVerse, setSelectedVerse] = useState<number>(1);
+  const [sourceExpanded, setSourceExpanded] = useState<boolean>(false);
+  const [verseStates, setVerseStates] = useState<Record<number, VerseState>>(
+    {},
+  );
+  const [verses, setVerses] = useState<VerseData[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [chapterData, setChapterData] = useState<ChapterAssignmentData | null>(
+    null,
+  );
+
+  useEffect(() => {
+    const loadVerses = async () => {
+      try {
+        setLoading(true);
+
+        const assignment = await getChapterAssignmentById(chapterId);
+
+        if (assignment) {
+          setChapterData(assignment);
+
+          const texts = await getBibleTexts(
+            assignment.bibleId,
+            assignment.bookId,
+            assignment.chapterNumber,
+          );
+
+          setVerses(texts);
+
+          if (texts && texts.length > 0) {
+            const firstVerseNumber = texts[0]?.verseNumber;
+            if (firstVerseNumber !== null && firstVerseNumber !== undefined) {
+              setSelectedVerse(firstVerseNumber);
+            }
+          }
+        }
+      } catch (error) {
+        log.error('Error loading verses:', { error });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadVerses();
+  }, [chapterId]);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#1a6ef5" />
+      </View>
+    );
+  }
+
+  if (!chapterData) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <Text style={styles.emptyText}>No chapter data found</Text>
+      </View>
+    );
+  }
 
   const verseState = verseStates[selectedVerse] ?? 'idle';
-  const sourceText = SOURCE_TEXT[selectedVerse];
+  const selectedVerseData = verses.find(v => v.verseNumber === selectedVerse);
+  const sourceText = selectedVerseData?.text;
 
   function toggleSource() {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -45,7 +103,7 @@ export default function VerseDetailScreen() {
   }
 
   function handleRecord() {
-    setVerseStates(prev => ({
+    setVerseStates((prev: Record<number, VerseState>) => ({
       ...prev,
       [selectedVerse]:
         prev[selectedVerse] === 'recording' ? 'recorded' : 'recording',
@@ -53,7 +111,10 @@ export default function VerseDetailScreen() {
   }
 
   function handleDelete() {
-    setVerseStates(prev => ({ ...prev, [selectedVerse]: 'idle' }));
+    setVerseStates((prev: Record<number, VerseState>) => ({
+      ...prev,
+      [selectedVerse]: 'idle',
+    }));
   }
 
   function selectVerse(v: number) {
@@ -69,7 +130,10 @@ export default function VerseDetailScreen() {
         activeOpacity={0.7}
       >
         <Ionicons name="chevron-back" size={28} color="#000" />
-        <Text style={styles.title}>{chapterName}</Text>
+        <View>
+          <Text style={styles.title}>{chapterName}</Text>
+          <Text style={styles.subtitle}>{projectName}</Text>
+        </View>
       </TouchableOpacity>
 
       <ScrollView
@@ -78,7 +142,7 @@ export default function VerseDetailScreen() {
       >
         <View style={styles.card}>
           <Text style={styles.cardTitle}>
-            Gujarati IRV - Verse {selectedVerse}
+            {chapterData.bibleName} - Verse {selectedVerse}
           </Text>
 
           <View style={styles.playerRow}>
@@ -116,6 +180,7 @@ export default function VerseDetailScreen() {
           )}
         </View>
 
+        {/* Target Language Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>
             {language} - Verse {selectedVerse}
@@ -163,38 +228,44 @@ export default function VerseDetailScreen() {
         </View>
       </ScrollView>
 
+      {/* Verse chips */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.chipsScroll}
         contentContainerStyle={styles.chipsContent}
       >
-        {MOCK_VERSES.map(v => {
-          const hasRecording = (verseStates[v] ?? 'idle') === 'recorded';
-          const isSelected = selectedVerse === v;
-          return (
-            <TouchableOpacity
-              key={v}
-              style={[styles.chip, isSelected && styles.activeChip]}
-              onPress={() => selectVerse(v)}
-              activeOpacity={0.7}
-            >
-              {hasRecording && (
-                <Ionicons
-                  name="mic"
-                  size={10}
-                  color="#1a6ef5"
-                  style={styles.chipMic}
-                />
-              )}
-              <Text
-                style={[styles.chipText, isSelected && styles.activeChipText]}
+        {verses.length > 0 ? (
+          verses.map(verse => {
+            const hasRecording =
+              (verseStates[verse.verseNumber] ?? 'idle') === 'recorded';
+            const isSelected = selectedVerse === verse.verseNumber;
+            return (
+              <TouchableOpacity
+                key={verse.verseNumber}
+                style={[styles.chip, isSelected && styles.activeChip]}
+                onPress={() => selectVerse(verse.verseNumber)}
+                activeOpacity={0.7}
               >
-                {v}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+                {hasRecording && (
+                  <Ionicons
+                    name="mic"
+                    size={10}
+                    color="#1a6ef5"
+                    style={styles.chipMic}
+                  />
+                )}
+                <Text
+                  style={[styles.chipText, isSelected && styles.activeChipText]}
+                >
+                  {verse.verseNumber}
+                </Text>
+              </TouchableOpacity>
+            );
+          })
+        ) : (
+          <Text style={styles.noVersesText}>No verses found</Text>
+        )}
       </ScrollView>
     </View>
   );
@@ -214,6 +285,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
+  },
+  subtitle: {
+    fontSize: 14,
+    marginTop: 2,
   },
   scrollContent: {
     gap: 12,
@@ -271,12 +346,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   sourceTextScroll: {
-    maxHeight: 72,
+    maxHeight: 120,
     marginTop: 10,
+    borderRadius: 8,
+    paddingHorizontal: 12,
   },
   sourceText: {
     fontSize: 14,
     lineHeight: 24,
+    color: '#333',
   },
   recordBtn: {
     width: 64,
@@ -337,5 +415,17 @@ const styles = StyleSheet.create({
     height: 4,
     backgroundColor: '#1a6ef5',
     borderRadius: 2,
+  },
+  noVersesText: {
+    fontSize: 14,
+    color: '#999',
+  },
+  centered: {
+    justifyContent: 'center',
+  },
+
+  emptyText: {
+    color: '#666',
+    fontSize: 16,
   },
 });
