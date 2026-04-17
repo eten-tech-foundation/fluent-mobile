@@ -11,7 +11,7 @@ import { Project } from '../../types/db/types';
 import { getProjects } from '../../db/queries';
 import { useNavigation } from '@react-navigation/native';
 import FluentLogo from '../../assets/icons/fluent-logo.svg';
-import { RootStackParamList } from '../../types/navigationTypes';
+import { RootStackParamList } from '../../types/navigation/types';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { appStyles as styles } from '../appStyles';

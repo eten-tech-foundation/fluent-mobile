@@ -15,7 +15,7 @@ import { ChapterListItem } from '../../types/db/types';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { appStyles as styles } from '../appStyles';
-import { RootStackParamList } from '../../types/navigationTypes';
+import { RootStackParamList } from '../../types/navigation/types';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 
 const log = logger.create('ChaptersScreen');

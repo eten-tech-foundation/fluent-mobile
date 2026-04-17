@@ -12,7 +12,7 @@ import {
 import { logger } from '../../utils/logger';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { appStyles as styles } from '../appStyles';
-import { RootStackParamList } from '../../types/navigationTypes';
+import { RootStackParamList } from '../../types/navigation/types';
 import { ChapterAssignmentData, VerseData } from '../../types/db/types';
 import { getChapterAssignmentById, getBibleTexts } from '../../db/queries';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -180,7 +180,6 @@ export default function VerseDetailScreen() {
           )}
         </View>
 
-        {/* Target Language Card */}
         <View style={styles.cardColumn}>
           <Text style={styles.cardTitle}>
             {language} - Verse {selectedVerse}
@@ -228,7 +227,6 @@ export default function VerseDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Verse chips */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
