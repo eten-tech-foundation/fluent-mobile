@@ -13,7 +13,7 @@ import { logger } from '../../utils/logger';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { appStyles as styles } from '../appStyles';
 import { RootStackParamList } from '../../types/navigationTypes';
-import { ChapterAssignmentData, VerseData } from '../../types/dbTypes';
+import { ChapterAssignmentData, VerseData } from '../../types/db/types';
 import { getChapterAssignmentById, getBibleTexts } from '../../db/queries';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 

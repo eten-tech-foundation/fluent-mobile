@@ -63,7 +63,7 @@ jest.mock('../src/db/index', () => ({
   initializeDatabase: jest.fn(() => Promise.resolve()),
 }));
 
-jest.mock('../src/services/syncServices', () => ({
+jest.mock('../src/services/sync', () => ({
   syncAllData: jest.fn(() => Promise.resolve()),
 }));
 

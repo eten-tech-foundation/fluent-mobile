@@ -5,7 +5,7 @@ import { initializeDatabase } from './src/db/index';
 import AppNavigator from './src/navigation/AppNavigator';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { syncAllData } from './src/services/syncServices';
+import { syncAllData } from './src/services/sync';
 import { FLUENT_USER_EMAIL } from '@env';
 
 const log = logger.create('App');

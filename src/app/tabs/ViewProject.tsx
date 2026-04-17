@@ -11,7 +11,7 @@ import {
   getChapterAssignmentsWithBooks,
 } from '../../db/queries';
 import { logger } from '../../utils/logger';
-import { ChapterListItem } from '../../types/dbTypes';
+import { ChapterListItem } from '../../types/db/types';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { appStyles as styles } from '../appStyles';

@@ -1,4 +1,4 @@
-import { FluentAPI } from './fluentApi';
+import { FluentAPI } from './api';
 import {
   insertUser,
   insertLanguages,
@@ -11,7 +11,7 @@ import {
   getChaptersToSync,
 } from '../db/repository';
 import { logger } from '../utils/logger';
-import { ApiBook, ApiVerse } from '../types/apiTypes';
+import { ApiBook, ApiVerse } from '../types/api/types';
 
 const log = logger.create('SyncService');
 

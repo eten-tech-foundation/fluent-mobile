@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { logger } from '../../utils/logger';
-import { Project } from '../../types/dbTypes';
+import { Project } from '../../types/db/types';
 import { getProjects } from '../../db/queries';
 import { useNavigation } from '@react-navigation/native';
 import FluentLogo from '../../assets/icons/fluent-logo.svg';
