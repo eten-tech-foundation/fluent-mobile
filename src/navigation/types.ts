@@ -1,12 +1,12 @@
 export type RootStackParamList = {
   Projects: undefined;
   Chapters: {
-    projectId: number;
+    projectId: string;
     projectName: string;
     language: string;
   };
   VerseDetail: {
-    chapterId: number;
+    chapterId: string;
     chapterName: string;
     projectName: string;
     language: string;

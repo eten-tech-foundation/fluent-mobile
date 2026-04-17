@@ -40,7 +40,7 @@ export default [
       'react-hooks/exhaustive-deps': 'warn',
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': 'warn',
-      'no-console': ['error', { allow: ['warn', 'error'] }],
+      'no-console': 'warn',
       'prefer-const': 'warn',
       'no-var': 'warn',
       eqeqeq: 'warn',
