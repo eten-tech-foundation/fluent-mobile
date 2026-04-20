@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable no-console */
+
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 export type Transport = (
@@ -8,7 +11,6 @@ export type Transport = (
 ) => void;
 
 export const defaultTransport: Transport = (level, tag, message, context) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (!(globalThis as any).__DEV__) return;
   const prefix = `[${tag}]`;
 
@@ -16,10 +18,8 @@ export const defaultTransport: Transport = (level, tag, message, context) => {
     level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log';
 
   if (context !== undefined) {
-    // eslint-disable-next-line no-console
     console[logMethod](prefix, message, context);
   } else {
-    // eslint-disable-next-line no-console
     console[logMethod](prefix, message);
   }
 };

@@ -1,6 +1,6 @@
 import { getDatabase } from './db';
 import { logger } from '../utils/logger';
-import * as DBTypes from '../types/dbTypes';
+import * as DBTypes from '../types/db/types';
 import { Transaction } from '@op-engineering/op-sqlite';
 
 const log = logger.create('DBRepository');

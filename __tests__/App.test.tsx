@@ -43,7 +43,7 @@ jest.mock('../src/navigation/AppNavigator', () => {
   const { View } = require('react-native');
   return () => MockReact.createElement(View, { testID: 'app-navigator' });
 });
-jest.mock('../src/api/fluent-api.test', () => ({
+jest.mock('../src/services/fluent-api.test', () => ({
   runApiIntegrationTest: jest.fn(() => Promise.resolve()),
 }));
 
@@ -63,7 +63,7 @@ jest.mock('../src/db/index', () => ({
   initializeDatabase: jest.fn(() => Promise.resolve()),
 }));
 
-jest.mock('../src/services/syncServices', () => ({
+jest.mock('../src/services/sync', () => ({
   syncAllData: jest.fn(() => Promise.resolve()),
 }));
 

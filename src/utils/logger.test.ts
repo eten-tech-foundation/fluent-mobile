@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { logger, defaultTransport } from './logger';
 
 describe('Logger', () => {
@@ -7,7 +9,6 @@ describe('Logger', () => {
   let consoleWarnSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (globalThis as any).__DEV__ = true;
     mockTransport = jest.fn();
 
@@ -26,7 +27,6 @@ describe('Logger', () => {
     logger.reset();
   });
 
-  // Log levels
   it('should support all log levels', () => {
     logger.setTransport(mockTransport);
     const log = logger.create('Test');
@@ -39,7 +39,6 @@ describe('Logger', () => {
     expect(mockTransport).toHaveBeenCalledTimes(4);
   });
 
-  // Transport calls
   it('should call transport with level, tag, message, context', () => {
     logger.setTransport(mockTransport);
     const log = logger.create('SyncService');
@@ -54,7 +53,6 @@ describe('Logger', () => {
     );
   });
 
-  // Transport switching
   it('should allow changing transport at runtime', () => {
     const transport1 = jest.fn();
     const transport2 = jest.fn();
@@ -70,7 +68,6 @@ describe('Logger', () => {
     expect(transport2).toHaveBeenCalledTimes(1);
   });
 
-  // Default transport behavior
   it('should output to console using default transport (info)', () => {
     logger.setTransport(defaultTransport);
 

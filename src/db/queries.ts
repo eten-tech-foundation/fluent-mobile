@@ -1,6 +1,6 @@
 import { getDatabase } from './db';
 import { logger } from '../utils/logger';
-import * as DBTypes from '../types/dbTypes';
+import * as DBTypes from '../types/db/types';
 
 const log = logger.create('DBQueries');
 
