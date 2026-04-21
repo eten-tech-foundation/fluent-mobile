@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable no-console */
-
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 export type Transport = (
