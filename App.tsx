@@ -8,7 +8,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import { FLUENT_USER_EMAIL } from '@env';
 
-
 const log = logger.create('App');
 
 function App() {
