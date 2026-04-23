@@ -85,7 +85,7 @@ export async function getChapterAssignmentById(
       bibleId: row.bible_id,
       bookId: row.book_id,
       chapterNumber: row.chapter_number,
-      assignedUserId: row.assigned_user_id ?? undefined,
+      assignedUserId: row.assigned_user_id,
       status: row.status,
       submittedTime: row.submitted_time ?? undefined,
       updatedAt: row.updated_at,
