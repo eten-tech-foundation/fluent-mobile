@@ -57,7 +57,7 @@ export interface ChapterAssignmentData {
   bibleId: number;
   bookId: number;
   chapterNumber: number;
-  assignedUserId?: number | null;
+  assignedUserId?: number;
   status: string;
   submittedTime?: string | null;
   updatedAt?: string;
@@ -72,7 +72,7 @@ export interface ChapterAssignmentRow {
   bible_id: number;
   book_id: number;
   chapter_number: number;
-  assigned_user_id?: number | null;
+  assigned_user_id?: number;
   status: string;
   submitted_time?: string | null;
   updated_at?: string;
@@ -86,7 +86,7 @@ export interface ChapterListItem {
   chapter_number: number;
   status: string;
   book_name: string;
-  assigned_user_id?: number | null;
+  assigned_user_id?: number;
 }
 
 export interface ChapterRow {

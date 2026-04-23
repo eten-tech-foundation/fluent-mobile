@@ -9,12 +9,13 @@ import {
 import { logger } from '../../utils/logger';
 import { Project } from '../../types/db/types';
 import { getProjects } from '../../db/queries';
+import { appStyles as styles } from '../appStyles';
 import { useNavigation } from '@react-navigation/native';
+import { SyncButton } from '../../components/ui/SyncButton';
 import FluentLogo from '../../assets/icons/fluent-logo.svg';
-import { RootStackParamList } from '../../types/navigation/types';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
-import { appStyles as styles } from '../appStyles';
+import { RootStackParamList } from '../../types/navigation/types';
 
 const log = logger.create('ProjectListScreen');
 type Nav = StackNavigationProp<RootStackParamList, 'Projects'>;
@@ -23,6 +24,7 @@ export default function ProjectsScreen() {
   const navigation = useNavigation<Nav>();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadProjects();
@@ -36,6 +38,16 @@ export default function ProjectsScreen() {
       log.error('Error loading projects:', { error });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSyncComplete = async () => {
+    log.info('Sync completed, refreshing projects list...');
+    setRefreshing(true);
+    try {
+      await loadProjects();
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -53,6 +65,8 @@ export default function ProjectsScreen() {
         <FluentLogo width={160} height={54} />
       </View>
 
+      <SyncButton onSyncComplete={handleSyncComplete} />
+
       <View style={styles.sectionHeader}>
         <Ionicons name="folder-outline" size={24} color="#000" />
         <Text style={styles.sectionHeaderText}>Projects</Text>
@@ -62,6 +76,8 @@ export default function ProjectsScreen() {
         data={projects}
         keyExtractor={item => item.id.toString()}
         contentContainerStyle={styles.listContent}
+        refreshing={refreshing}
+        onRefresh={handleSyncComplete}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.cardRow}

@@ -197,4 +197,16 @@ export const appStyles = StyleSheet.create({
     top: 3,
     right: 4,
   },
+  refreshingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    backgroundColor: '#f5f5f5',
+    gap: 8,
+  },
+  refreshingText: {
+    fontSize: 12,
+    color: '#666',
+  },
 });
