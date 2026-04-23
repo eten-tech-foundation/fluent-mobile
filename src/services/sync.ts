@@ -18,6 +18,7 @@ import {
   setSyncCount,
   setLastSyncedAt,
   KV_KEYS,
+  setSyncError,
 } from '../services/storage';
 
 const log = logger.create('SyncService');
@@ -78,7 +79,9 @@ export async function syncProjects(userId: number, email: string) {
 
     log.info('Projects synced', { count: projects.length });
   } catch (error) {
-    log.error('Project sync failed', { error });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    log.error('Project sync failed', { error: errorMessage });
+    setSyncError(KV_KEYS.SYNC_ERROR_PROJECTS, errorMessage);
   }
 }
 
@@ -110,11 +113,9 @@ export async function syncChapterAssignments(userId: number, email: string) {
       });
     }
   } catch (error) {
-    log.error('Chapter assignment sync failed', {
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-      raw: error,
-    });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    log.error('Chapter assignment sync failed', { error: errorMessage });
+    setSyncError(KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS, errorMessage);
   }
 }
 
@@ -166,7 +167,12 @@ export async function syncBibleTexts(email: string) {
           });
         }
       } catch (error) {
-        log.error(`Failed to sync texts for bible ${bibleId}:`, { error });
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        log.error(`Failed to sync texts for bible ${bibleId}:`, {
+          error: errorMessage,
+        });
+        setSyncError(KV_KEYS.SYNC_ERROR_BIBLE_TEXTS, errorMessage);
         continue;
       }
     }
@@ -181,7 +187,9 @@ export async function syncBibleTexts(email: string) {
       uniqueBiblesInDb: uniqueBiblesCount,
     });
   } catch (error) {
-    log.error('Bible texts sync failed', { error });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    log.error('Bible texts sync failed', { error: errorMessage });
+    setSyncError(KV_KEYS.SYNC_ERROR_BIBLE_TEXTS, errorMessage);
   }
 }
 
