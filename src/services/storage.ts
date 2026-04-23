@@ -12,12 +12,12 @@ export const KV_KEYS = {
   USER_EMAIL: 'userEmail',
 } as const;
 
-export function getUserIdSync(): string | undefined {
-  return kvStorage.getItemSync(KV_KEYS.USER_ID);
+export function getUserIdSync(): string {
+  return kvStorage.getItemSync(KV_KEYS.USER_ID) ?? '';
 }
 
-export function getUserEmailSync(): string | undefined {
-  return kvStorage.getItemSync(KV_KEYS.USER_EMAIL);
+export function getUserEmailSync(): string {
+  return kvStorage.getItemSync(KV_KEYS.USER_EMAIL) ?? '';
 }
 
 export function setUserSync(userId: string, userEmail: string) {
