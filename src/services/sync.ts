@@ -12,6 +12,7 @@ import {
 } from '../db/repository';
 import { logger } from '../utils/logger';
 import { ApiBook, ApiVerse } from '../types/api/types';
+import { setUserSync } from '../services/storage';
 
 const log = logger.create('SyncService');
 
@@ -27,8 +28,8 @@ export async function syncUser(email: string) {
 
     await insertUser(user);
 
+    setUserSync(String(user.id), user.email);
     log.info('User synced', { email: user.email });
-
     return user;
   } catch (error) {
     log.error('User sync failed', { error });
