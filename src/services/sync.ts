@@ -37,7 +37,6 @@ export async function syncUser(email: string) {
 
     setUserSync(String(user.id), user.email);
     log.info('User synced', { email: user.email });
-
     return user;
   } catch (error) {
     log.error('User sync failed', { error });

@@ -1,11 +1,11 @@
 import { logger } from './src/utils/logger';
+import { syncAllData } from './src/services/sync';
 import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import { initializeDatabase } from './src/db/index';
 import AppNavigator from './src/navigation/AppNavigator';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { syncAllData } from './src/services/sync';
+import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import { FLUENT_USER_EMAIL } from '@env';
 
 const log = logger.create('App');
