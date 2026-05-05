@@ -17,10 +17,10 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { RootStackParamList } from '../../types/navigation/types';
 
-const log = logger.create('ProjectListScreen');
+const log = logger.create('ProjectList');
 type Nav = StackNavigationProp<RootStackParamList, 'Projects'>;
 
-export default function ProjectsScreen() {
+export default function ProjectList() {
   const navigation = useNavigation<Nav>();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);

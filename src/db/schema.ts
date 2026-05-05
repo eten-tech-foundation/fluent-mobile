@@ -40,7 +40,7 @@ export const createTableQueries: string[] = [
 
   `CREATE TABLE IF NOT EXISTS project_units (
       id         INTEGER PRIMARY KEY,
-      project_id INTEGER NOT NULL,
+      project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
       status     TEXT NOT NULL DEFAULT 'not_started',
       updated_at TEXT 
     );`,
@@ -49,7 +49,7 @@ export const createTableQueries: string[] = [
 
   ` CREATE TABLE IF NOT EXISTS chapter_assignments (
       id               INTEGER PRIMARY KEY,
-      project_unit_id  INTEGER NOT NULL REFERENCES project_units(id),
+      project_unit_id INTEGER NOT NULL REFERENCES project_units(id) ON DELETE CASCADE,
       bible_id         INTEGER NOT NULL REFERENCES bibles(id),
       book_id          INTEGER NOT NULL REFERENCES books(id),
       chapter_number   INTEGER NOT NULL,
@@ -78,7 +78,7 @@ export const createTableQueries: string[] = [
   `CREATE TABLE IF NOT EXISTS recordings (
       id                    TEXT PRIMARY KEY,
       bible_text_id         INTEGER NOT NULL REFERENCES bible_texts(id),
-      chapter_assignment_id INTEGER NOT NULL REFERENCES chapter_assignments(id),
+      chapter_assignment_id INTEGER NOT NULL REFERENCES chapter_assignments(id) ON DELETE CASCADE,
       assigned_user_id      INTEGER NOT NULL REFERENCES users(id),
       local_file_path       TEXT NOT NULL,
       blob_key              TEXT,

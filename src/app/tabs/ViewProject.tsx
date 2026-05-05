@@ -18,12 +18,12 @@ import { appStyles as styles } from '../appStyles';
 import { RootStackParamList } from '../../types/navigation/types';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 
-const log = logger.create('ChaptersScreen');
+const log = logger.create('ViewProject');
 
 type Nav = StackNavigationProp<RootStackParamList, 'Chapters'>;
 type Route = RouteProp<RootStackParamList, 'Chapters'>;
 
-export default function ChaptersScreen() {
+export default function ViewProject() {
   const navigation = useNavigation<Nav>();
   const { projectId, projectName, language } = useRoute<Route>().params;
 

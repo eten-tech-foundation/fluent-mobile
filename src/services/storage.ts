@@ -15,6 +15,8 @@ export const KV_KEYS = {
   SYNC_COUNT_PROJECTS: 'sync_count_projects',
   SYNC_COUNT_CHAPTERS: 'sync_count_chapters',
   SYNC_COUNT_BIBLES: 'sync_count_bibles',
+  SYNC_ERROR_USER: 'sync_error_user',
+  SYNC_ERROR_MASTER_DATA: 'sync_error_master_data',
   SYNC_ERROR_PROJECTS: 'sync_error_projects',
   SYNC_ERROR_CHAPTER_ASSIGNMENTS: 'sync_error_chapter_assignments',
   SYNC_ERROR_PROJECT_UNITS: 'sync_error_project_units',
@@ -79,6 +81,8 @@ export function clearSyncError(key: (typeof KV_KEYS)[keyof typeof KV_KEYS]) {
 }
 
 export function clearAllSyncErrors() {
+  clearSyncError(KV_KEYS.SYNC_ERROR_USER);
+  clearSyncError(KV_KEYS.SYNC_ERROR_MASTER_DATA);
   clearSyncError(KV_KEYS.SYNC_ERROR_PROJECTS);
   clearSyncError(KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS);
   clearSyncError(KV_KEYS.SYNC_ERROR_PROJECT_UNITS);

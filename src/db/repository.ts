@@ -5,11 +5,101 @@ import { Transaction } from '@op-engineering/op-sqlite';
 
 const log = logger.create('DBRepository');
 
+async function insertLanguageTx(tx: Transaction, lang: DBTypes.Language) {
+  await tx.execute(
+    `INSERT OR REPLACE INTO languages
+    (id, lang_name, lang_name_localized, lang_code_iso_639_3, script_direction)
+    VALUES (?, ?, ?, ?, ?)`,
+    [
+      lang.id,
+      lang.langName,
+      lang.langNameLocalized ?? null,
+      lang.langCode ?? null,
+      lang.scriptDirection ?? 'ltr',
+    ],
+  );
+}
+
+async function insertBookTx(tx: Transaction, book: DBTypes.Book) {
+  if (!book.eng_display_name) return;
+
+  await tx.execute(
+    `INSERT OR REPLACE INTO books
+    (id, code, eng_display_name)
+    VALUES (?, ?, ?)`,
+    [book.id, book.code, book.eng_display_name],
+  );
+}
+
+async function insertBibleTx(tx: Transaction, bible: DBTypes.Bible) {
+  if (!bible.name || !bible.abbreviation) return;
+
+  await tx.execute(
+    `INSERT OR REPLACE INTO bibles
+    (id, language_id, name, abbreviation)
+    VALUES (?, ?, ?, ?)`,
+    [bible.id, bible.languageId, bible.name, bible.abbreviation],
+  );
+}
+
+async function insertProjectUnitTx(
+  tx: Transaction,
+  unit: { id: number; projectId: number },
+) {
+  await tx.execute(
+    `INSERT OR REPLACE INTO project_units
+    (id, project_id, status)
+    VALUES (?, ?, ?)`,
+    [unit.id, unit.projectId, 'not_started'],
+  );
+}
+
+async function insertChapterAssignmentTx(
+  tx: Transaction,
+  assignment: DBTypes.ChapterAssignment,
+) {
+  if (!assignment?.chapterAssignmentId) return;
+
+  await tx.execute(
+    `INSERT OR REPLACE INTO chapter_assignments
+    (id, project_unit_id, bible_id, book_id, chapter_number,
+     assigned_user_id, status, submitted_time, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      assignment.chapterAssignmentId,
+      assignment.projectUnitId,
+      assignment.bibleId,
+      assignment.bookId,
+      assignment.chapterNumber,
+      assignment.assignedUserId ?? null,
+      assignment.chapterStatus ?? 'not_started',
+      assignment.submittedTime ?? null,
+      assignment.updatedAt ?? new Date().toISOString(),
+    ],
+  );
+}
+
+function getUniqueProjectUnits(assignments: DBTypes.ChapterAssignment[]) {
+  const unitsMap = new Map<number, { id: number; projectId: number }>();
+
+  for (const assignment of assignments) {
+    if (!assignment.projectUnitId || !assignment.projectId) continue;
+    if (unitsMap.has(assignment.projectUnitId)) continue;
+
+    unitsMap.set(assignment.projectUnitId, {
+      id: assignment.projectUnitId,
+      projectId: assignment.projectId,
+    });
+  }
+
+  return unitsMap;
+}
+
 export async function insertUser(user: DBTypes.User) {
   const db = getDatabase();
 
-  try {
-    await db.execute(
+  await db.transaction(async (tx: Transaction) => {
+    await tx.execute(
       `INSERT OR REPLACE INTO users 
       (id, username, email, first_name, last_name)
       VALUES (?, ?, ?, ?, ?)`,
@@ -21,9 +111,7 @@ export async function insertUser(user: DBTypes.User) {
         user.lastName ?? null,
       ],
     );
-  } catch (error) {
-    log.error('Error inserting user', { error });
-  }
+  });
 }
 
 export async function insertLanguages(data: DBTypes.Language[]) {
@@ -31,18 +119,7 @@ export async function insertLanguages(data: DBTypes.Language[]) {
 
   await db.transaction(async (tx: Transaction) => {
     for (const lang of data) {
-      await tx.execute(
-        `INSERT OR REPLACE INTO languages 
-        (id, lang_name, lang_name_localized, lang_code_iso_639_3, script_direction)
-        VALUES (?, ?, ?, ?, ?)`,
-        [
-          lang.id,
-          lang.langName,
-          lang.langNameLocalized ?? null,
-          lang.langCode ?? null,
-          lang.scriptDirection ?? 'ltr',
-        ],
-      );
+      await insertLanguageTx(tx, lang);
     }
   });
 }
@@ -52,14 +129,7 @@ export async function insertBooks(data: DBTypes.Book[]) {
 
   await db.transaction(async (tx: Transaction) => {
     for (const book of data) {
-      if (!book.eng_display_name) continue;
-
-      await tx.execute(
-        `INSERT OR REPLACE INTO books 
-        (id, code, eng_display_name)
-        VALUES (?, ?, ?)`,
-        [book.id, book.code, book.eng_display_name],
-      );
+      await insertBookTx(tx, book);
     }
   });
 }
@@ -69,14 +139,29 @@ export async function insertBibles(data: DBTypes.Bible[]) {
 
   await db.transaction(async (tx: Transaction) => {
     for (const bible of data) {
-      if (!bible.name || !bible.abbreviation) continue;
+      await insertBibleTx(tx, bible);
+    }
+  });
+}
 
-      await tx.execute(
-        `INSERT OR REPLACE INTO bibles 
-        (id, language_id, name, abbreviation)
-        VALUES (?, ?, ?, ?)`,
-        [bible.id, bible.languageId, bible.name, bible.abbreviation],
-      );
+export async function insertMasterData(
+  languages: DBTypes.Language[],
+  books: DBTypes.Book[],
+  bibles: DBTypes.Bible[],
+) {
+  const db = getDatabase();
+
+  await db.transaction(async (tx: Transaction) => {
+    for (const lang of languages) {
+      await insertLanguageTx(tx, lang);
+    }
+
+    for (const book of books) {
+      await insertBookTx(tx, book);
+    }
+
+    for (const bible of bibles) {
+      await insertBibleTx(tx, bible);
     }
   });
 }
@@ -88,8 +173,10 @@ export async function insertProjects(data: DBTypes.Project[]) {
     for (const project of data) {
       if (!project?.id || !project?.name) continue;
 
-      const sourceLangId = project.sourceLanguageId ?? project.sourceLanguageId;
-      const targetLangId = project.targetLanguageId ?? project.targetLanguageId;
+      const sourceLangId =
+        project.sourceLanguageId ?? project.source_language_id;
+      const targetLangId =
+        project.targetLanguageId ?? project.target_language_id;
 
       if (!sourceLangId || !targetLangId) continue;
 
@@ -118,25 +205,7 @@ export async function insertChapterAssignments(
 
   await db.transaction(async (tx: Transaction) => {
     for (const assignment of data) {
-      if (!assignment?.chapterAssignmentId) continue;
-
-      await tx.execute(
-        `INSERT OR REPLACE INTO chapter_assignments 
-        (id, project_unit_id, bible_id, book_id, chapter_number, 
-         assigned_user_id, status, submitted_time, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          assignment.chapterAssignmentId,
-          assignment.projectUnitId,
-          assignment.bibleId,
-          assignment.bookId,
-          assignment.chapterNumber,
-          assignment.assignedUserId ?? null,
-          assignment.chapterStatus ?? 'not_started',
-          assignment.submittedTime ?? null,
-          assignment.updatedAt ?? new Date().toISOString(),
-        ],
-      );
+      await insertChapterAssignmentTx(tx, assignment);
     }
   });
 }
@@ -146,30 +215,32 @@ export async function insertProjectUnits(
 ) {
   const db = getDatabase();
 
-  const unitsMap = new Map<number, { id: number; projectId: number }>();
-
-  for (const assignment of assignments) {
-    if (!assignment.projectUnitId || !assignment.projectId) continue;
-    if (unitsMap.has(assignment.projectUnitId)) continue;
-
-    unitsMap.set(assignment.projectUnitId, {
-      id: assignment.projectUnitId,
-      projectId: assignment.projectId,
-    });
-  }
+  const unitsMap = getUniqueProjectUnits(assignments);
 
   if (unitsMap.size > 0) {
     await db.transaction(async (tx: Transaction) => {
       for (const unit of unitsMap.values()) {
-        await tx.execute(
-          `INSERT OR REPLACE INTO project_units 
-          (id, project_id, status)
-          VALUES (?, ?, ?)`,
-          [unit.id, unit.projectId, 'not_started'],
-        );
+        await insertProjectUnitTx(tx, unit);
       }
     });
   }
+}
+
+export async function insertChapterAssignmentSyncData(
+  assignments: DBTypes.ChapterAssignment[],
+) {
+  const db = getDatabase();
+  const unitsMap = getUniqueProjectUnits(assignments);
+
+  await db.transaction(async (tx: Transaction) => {
+    for (const unit of unitsMap.values()) {
+      await insertProjectUnitTx(tx, unit);
+    }
+
+    for (const assignment of assignments) {
+      await insertChapterAssignmentTx(tx, assignment);
+    }
+  });
 }
 
 export async function getChaptersToSync() {

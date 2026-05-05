@@ -3,7 +3,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { RootStackParamList } from '../types/navigation/types';
 import ProjectList from '../app/tabs/ProjectList';
 import ViewProject from '../app/tabs/ViewProject';
-import VerseDetailScreen from '../app/tabs/ViewChapter';
+import ViewChapter from '../app/tabs/ViewChapter';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -12,7 +12,7 @@ export default function AppNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Projects" component={ProjectList} />
       <Stack.Screen name="Chapters" component={ViewProject} />
-      <Stack.Screen name="VerseDetail" component={VerseDetailScreen} />
+      <Stack.Screen name="VerseDetail" component={ViewChapter} />
     </Stack.Navigator>
   );
 }
