@@ -21,6 +21,7 @@ import {
 } from '../services/storage';
 
 const log = logger.create('SyncService');
+const db = getDatabase();
 
 const MAX_SYNC_ATTEMPTS = 3;
 
@@ -82,7 +83,6 @@ export async function syncUser(email: string) {
 
     setUserSync(String(user.id), user.email);
     log.info('User synced', { email: user.email });
-
     return user;
   });
 }
