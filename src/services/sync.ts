@@ -11,10 +11,17 @@ import {
   getChaptersToSync,
 } from '../db/repository';
 import { logger } from '../utils/logger';
+import { getDatabase } from '../db/db';
 import { ApiBook, ApiVerse } from '../types/api/types';
-import { setUserSync } from '../services/storage';
+import {
+  setUserSync,
+  setSyncCount,
+  setLastSyncedAt,
+  KV_KEYS,
+} from '../services/storage';
 
 const log = logger.create('SyncService');
+const db = getDatabase();
 
 export async function syncUser(email: string) {
   try {
@@ -64,6 +71,9 @@ export async function syncProjects(userId: number, email: string) {
     const projects = await FluentAPI.getUserProjects(userId, email);
 
     await insertProjects(projects);
+    const result = await db.execute('SELECT COUNT(*) as count FROM projects');
+    const totalProjectsCount = result.rows?.[0]?.count || 0;
+    setSyncCount(KV_KEYS.SYNC_COUNT_PROJECTS, Number(totalProjectsCount));
 
     log.info('Projects synced', { count: projects.length });
   } catch (error) {
@@ -86,7 +96,17 @@ export async function syncChapterAssignments(userId: number, email: string) {
       await insertProjectUnits(allAssignments);
 
       await insertChapterAssignments(allAssignments);
-      log.info('Chapter assignments synced', { count: allAssignments.length });
+
+      const result = await db.execute(
+        'SELECT COUNT(*) as count FROM chapter_assignments',
+      );
+      const totalChaptersCount = result.rows?.[0]?.count || 0;
+      setSyncCount(KV_KEYS.SYNC_COUNT_CHAPTERS, Number(totalChaptersCount));
+
+      log.info('Chapter assignments synced', {
+        apiCount: allAssignments.length,
+        totalInDb: totalChaptersCount,
+      });
     }
   } catch (error) {
     log.error('Chapter assignment sync failed', {
@@ -105,7 +125,8 @@ export async function syncBibleTexts(email: string) {
 
     if (bibleGroups.size === 0) {
       log.info('No chapters to sync');
-      return;
+      setSyncCount(KV_KEYS.SYNC_COUNT_BIBLES, 0);
+      return 0;
     }
 
     let totalTextsInserted = 0;
@@ -148,8 +169,16 @@ export async function syncBibleTexts(email: string) {
         continue;
       }
     }
+    const result = await db.execute(
+      'SELECT COUNT(DISTINCT bible_id) as count FROM bible_texts',
+    );
+    const uniqueBiblesCount = result.rows?.[0]?.count || 0;
+    setSyncCount(KV_KEYS.SYNC_COUNT_BIBLES, Number(uniqueBiblesCount));
 
-    log.info('Bible texts sync completed', { count: totalTextsInserted });
+    log.info('Bible texts sync completed', {
+      textsInserted: totalTextsInserted,
+      uniqueBiblesInDb: uniqueBiblesCount,
+    });
   } catch (error) {
     log.error('Bible texts sync failed', { error });
   }
@@ -158,19 +187,26 @@ export async function syncBibleTexts(email: string) {
 export async function syncAllData(email: string) {
   log.info('Starting full sync...');
 
-  const user = await syncUser(email);
-
-  await syncMasterData();
-
-  await syncProjects(user.id, email);
-
-  await syncChapterAssignments(user.id, email);
-
   try {
-    await syncBibleTexts(email);
-  } catch (e) {
-    log.warn('Bible text sync failed, continuing...', { error: e });
-  }
+    const user = await syncUser(email);
 
-  log.info('Full sync completed successfully!');
+    await syncMasterData();
+
+    await syncProjects(user.id, email);
+
+    await syncChapterAssignments(user.id, email);
+
+    try {
+      await syncBibleTexts(email);
+    } catch (e) {
+      log.warn('Bible text sync failed, continuing...', { error: e });
+    }
+    const now = new Date().toISOString();
+    setLastSyncedAt(now);
+
+    log.info('Full sync completed successfully!', { timestamp: now });
+  } catch (error) {
+    log.error('Full sync failed', { error });
+    throw error;
+  }
 }

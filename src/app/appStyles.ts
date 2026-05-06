@@ -197,4 +197,23 @@ export const appStyles = StyleSheet.create({
     top: 3,
     right: 4,
   },
+  syncButtonContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  refreshingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    backgroundColor: '#f5f5f5',
+    gap: 8,
+  },
+  refreshingText: {
+    fontSize: 12,
+    color: '#666',
+  },
 });
