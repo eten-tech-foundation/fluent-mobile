@@ -17,7 +17,7 @@ import { ChapterAssignmentData, VerseData } from '../../types/db/types';
 import { getChapterAssignmentById, getBibleTexts } from '../../db/queries';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 
-const log = logger.create('ViewChapterScreen');
+const log = logger.create('ViewChapter');
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -26,7 +26,7 @@ if (Platform.OS === 'android') {
 type Route = RouteProp<RootStackParamList, 'VerseDetail'>;
 type VerseState = 'idle' | 'recording' | 'recorded';
 
-export default function VerseDetailScreen() {
+export default function ViewChapter() {
   const navigation = useNavigation();
   const { chapterId, chapterName, language, projectName } =
     useRoute<Route>().params;

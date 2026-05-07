@@ -55,6 +55,12 @@ export function SyncButton({
   };
 
   const getFailedStep = (): string | null => {
+    const userError = getSyncError(KV_KEYS.SYNC_ERROR_USER);
+    if (userError) return 'user';
+
+    const masterDataError = getSyncError(KV_KEYS.SYNC_ERROR_MASTER_DATA);
+    if (masterDataError) return 'master data';
+
     const projectsError = getSyncError(KV_KEYS.SYNC_ERROR_PROJECTS);
     if (projectsError) return 'projects';
 

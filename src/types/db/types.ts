@@ -15,8 +15,10 @@ export interface Project {
   id: number;
   name: string;
   sourceLanguageId?: number;
+  source_language_id?: number;
   source_language_name?: string;
   targetLanguageId?: number;
+  target_language_id?: number;
   target_language_name: string;
   isActive?: boolean;
   status?: string;
