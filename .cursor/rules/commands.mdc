@@ -1,0 +1,43 @@
+---
+description: Commands to run before and after code changes
+alwaysApply: true
+---
+
+# Commands
+
+Run from repo root. Node **>= 24.14.0**. Package manager: **npm**.
+
+## Before claiming done (CI order)
+
+1. `npm run format:check` — or `npm run format` then re-check
+2. `npm run lint`
+3. `npx tsc --noEmit` — no `typecheck` script yet; use this
+4. `FLUENT_USER_EMAIL=test@example.com npm test -- --ci`
+
+Report what ran and the outcome. If a step was skipped, say why.
+
+## Development
+
+| Command | Use |
+|---------|-----|
+| `npm install` | Install deps |
+| `npm start` | Metro bundler |
+| `npm run android` | Run on Android emulator/device |
+| `npm run ios` | Run on iOS (macOS + Xcode) |
+| `npm run format` | Fix Prettier (broader than `format:check`) |
+
+## CI mirrors
+
+- Lint + format: `.github/workflows/lint.yml`
+- Test: `.github/workflows/test.yml` (sets `FLUENT_USER_EMAIL`)
+- Android build: `.github/workflows/build.yml` (iOS job disabled)
+
+## PR workflow
+
+Slash commands in `.cursor/commands/`: `/create-pr-branch`, `/generate-pr-description`, `/create-pr`. Align with team PR title format: `[TICKET-ID]: Description`.
+
+## Do not run without user request
+
+- Force push, hard reset
+- Commits or push (unless user asks)
+- Modifying `.env` or secrets

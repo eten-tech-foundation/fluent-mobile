@@ -1,0 +1,39 @@
+---
+description: When and how to update documentation
+alwaysApply: false
+---
+
+# Documentation
+
+## Canonical agent map
+
+[docs/AGENT_ONBOARDING.md](../../docs/AGENT_ONBOARDING.md) — update when:
+
+- Commands, CI, or Node version requirements change
+- Architecture layers or sync flow change
+- New risk areas or conventions are introduced
+
+## Cursor rules
+
+Keep `.cursor/rules/*.mdc` in sync with onboarding — short pointers only; avoid duplicating full onboarding content.
+
+## README
+
+[README.md](../../README.md) — human-focused setup (Android emulator, env vars). Link to `docs/AGENT_ONBOARDING.md` for agents; do not duplicate full architecture there.
+
+## PR template
+
+[.cursor/templates/pr-template.md](../templates/pr-template.md) — update if required PR sections or verification steps change.
+
+## Style
+
+- Short, scannable sections and tables
+- Verify claims against code — do not invent behavior
+- Prefer editing existing docs over new files
+- No bloated architecture essays
+
+## Do not
+
+- Commit secrets, `.env`, or local-only files (e.g. `.bashrc`)
+- Broad rewrites of README unless asked
+- Create duplicate command lists without updating onboarding + `commands.mdc`
