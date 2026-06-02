@@ -1,9 +1,6 @@
 ---
 description: Layer boundaries and where to add features
-alwaysApply: false
-globs:
-  - "src/**"
-  - "App.tsx"
+alwaysApply: true
 ---
 
 # Architecture
