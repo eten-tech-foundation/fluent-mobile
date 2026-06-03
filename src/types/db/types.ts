@@ -25,6 +25,19 @@ export interface Project {
   updatedAt?: string;
 }
 
+export type ProjectSyncState = 'none' | 'synced' | 'unsynced';
+
+export interface ProjectSummary extends Project {
+  chapterCount: number;
+  syncState: ProjectSyncState;
+}
+
+export interface ProjectSummaryRow extends Project {
+  chapter_count: number;
+  recording_count: number;
+  pending_count: number;
+}
+
 export interface ChapterAssignment {
   chapterAssignmentId: number;
   projectUnitId: number;

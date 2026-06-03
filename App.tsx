@@ -7,6 +7,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import { FLUENT_USER_EMAIL } from '@env';
+import { theme } from './src/theme';
 
 const log = logger.create('App');
 
@@ -45,7 +46,7 @@ function App() {
             <Text style={styles.errorText}>Error: {error}</Text>
           ) : (
             <>
-              <ActivityIndicator size="large" color="#1a6ef5" />
+              <ActivityIndicator size="large" color={theme.colors.primary} />
               <Text style={styles.loadingText}>Initializing...</Text>
             </>
           )}
@@ -70,14 +71,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   errorText: {
-    color: 'red',
-    fontSize: 14,
-    padding: 20,
+    color: theme.colors.destructive,
+    fontSize: theme.typography.sizes.sm,
+    padding: theme.spacing.xl,
     textAlign: 'center',
   },
   loadingText: {
-    marginTop: 10,
-    fontSize: 14,
+    marginTop: theme.spacing.sm,
+    fontSize: theme.typography.sizes.sm,
   },
 });
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import {
   TouchableOpacity,
   Text,
@@ -9,18 +9,8 @@ import {
   ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
-import { syncAllData } from '../../services/sync';
-import {
-  getSyncState,
-  getSyncError,
-  KV_KEYS,
-  getUserEmailSync,
-} from '../../services/storage';
-import { logger } from '../../utils/logger';
-
-const log = logger.create('SyncButton');
-
-type SyncStateType = 'normal' | 'syncing' | 'never' | 'error';
+import { useSync } from '../../hooks/useSync';
+import { theme } from '../../theme';
 
 interface SyncButtonProps {
   onSyncComplete?: () => void;
@@ -28,143 +18,42 @@ interface SyncButtonProps {
   onSyncStart?: () => void;
 }
 
+function getStateColors(stateType: ReturnType<typeof useSync>['stateType']) {
+  switch (stateType) {
+    case 'syncing':
+      return {
+        backgroundColor: '#e6f1fb',
+        borderColor: '#b5d4f4',
+        textColor: theme.colors.primary,
+      };
+    case 'error':
+      return {
+        backgroundColor: '#fcebeb',
+        borderColor: '#f7c1c1',
+        textColor: theme.colors.destructive,
+      };
+    case 'never':
+    case 'normal':
+    default:
+      return {
+        backgroundColor: theme.colors.background,
+        borderColor: theme.colors.border,
+        textColor: theme.colors.mutedForeground,
+      };
+  }
+}
+
 export function SyncButton({
   onSyncComplete,
   style,
   onSyncStart,
 }: SyncButtonProps) {
-  const [stateType, setStateType] = useState<SyncStateType>('normal');
-  const [displayText, setDisplayText] = useState('');
-  const [isSyncing, setIsSyncing] = useState(false);
+  const { stateType, displayText, isSyncing, triggerSync } = useSync({
+    onSyncComplete,
+    onSyncStart,
+  });
 
-  const getRelativeTime = (isoTimestamp: string | undefined): string => {
-    if (!isoTimestamp) return 'Never synced';
-
-    const now = new Date();
-    const syncTime = new Date(isoTimestamp);
-    const diffMs = now.getTime() - syncTime.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
-    if (diffHours < 24)
-      return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-  };
-
-  const getFailedStep = (): string | null => {
-    const userError = getSyncError(KV_KEYS.SYNC_ERROR_USER);
-    if (userError) return 'user';
-
-    const masterDataError = getSyncError(KV_KEYS.SYNC_ERROR_MASTER_DATA);
-    if (masterDataError) return 'master data';
-
-    const projectsError = getSyncError(KV_KEYS.SYNC_ERROR_PROJECTS);
-    if (projectsError) return 'projects';
-
-    const chaptersError = getSyncError(KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS);
-    if (chaptersError) return 'chapter assignments';
-
-    const projectUnitsError = getSyncError(KV_KEYS.SYNC_ERROR_PROJECT_UNITS);
-    if (projectUnitsError) return 'project units';
-
-    const bibleTextsError = getSyncError(KV_KEYS.SYNC_ERROR_BIBLE_TEXTS);
-    if (bibleTextsError) return 'bible texts';
-
-    return null;
-  };
-
-  const updateState = useCallback(() => {
-    if (isSyncing) {
-      setStateType('syncing');
-      setDisplayText('Syncing...');
-    } else {
-      const failedStep = getFailedStep();
-      const syncState = getSyncState();
-
-      if (failedStep) {
-        setStateType('error');
-        setDisplayText(`Sync failed: ${failedStep}`);
-      } else if (!syncState.lastSyncedAt) {
-        setStateType('never');
-        setDisplayText('Never synced');
-      } else {
-        setStateType('normal');
-        setDisplayText(
-          `Last synced: ${getRelativeTime(syncState.lastSyncedAt)}`,
-        );
-      }
-    }
-  }, [isSyncing]);
-
-  useEffect(() => {
-    updateState();
-  }, [isSyncing, updateState]);
-
-  useEffect(() => {
-    if (stateType === 'normal') {
-      const interval = setInterval(() => {
-        updateState();
-      }, 60000);
-
-      return () => clearInterval(interval);
-    }
-  }, [stateType, updateState]);
-
-  const handleSync = useCallback(async () => {
-    try {
-      setIsSyncing(true);
-      onSyncStart?.();
-      const email = getUserEmailSync();
-
-      if (!email) {
-        log.error('No user email found for sync');
-        setIsSyncing(false);
-        return;
-      }
-
-      log.info('Triggering sync...');
-      await syncAllData(email);
-
-      log.info('Sync completed successfully');
-      updateState();
-      onSyncComplete?.();
-    } catch (error) {
-      log.error('Sync failed', { error });
-      updateState();
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [onSyncStart, onSyncComplete, updateState]);
-
-  const getStateColors = () => {
-    switch (stateType) {
-      case 'syncing':
-        return {
-          backgroundColor: '#e6f1fb',
-          borderColor: '#b5d4f4',
-          textColor: '#1a6ef5',
-        };
-      case 'error':
-        return {
-          backgroundColor: '#fcebeb',
-          borderColor: '#f7c1c1',
-          textColor: '#d32f2f',
-        };
-      case 'never':
-      case 'normal':
-      default:
-        return {
-          backgroundColor: '#fff',
-          borderColor: '#e0e0e0',
-          textColor: '#999',
-        };
-    }
-  };
-
-  const colors = getStateColors();
+  const colors = getStateColors(stateType);
 
   return (
     <View
@@ -184,7 +73,7 @@ export function SyncButton({
       </View>
 
       <TouchableOpacity
-        onPress={handleSync}
+        onPress={triggerSync}
         disabled={isSyncing}
         activeOpacity={0.7}
         style={styles.syncButton}
@@ -204,20 +93,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
-    marginBottom: 8,
+    marginBottom: theme.spacing.sm,
   },
   content: {
     flex: 1,
   },
   text: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.medium,
   },
   syncButton: {
-    padding: 8,
-    marginLeft: 12,
+    padding: theme.spacing.sm,
+    marginLeft: theme.spacing.md,
   },
 });

@@ -1,5 +1,5 @@
 export type RootStackParamList = {
-  Projects: undefined;
+  Home: undefined;
   Chapters: {
     projectId: number;
     projectName: string;
