@@ -21,6 +21,14 @@ function nonNegativeInt(value: unknown): number {
   return Math.max(0, Number(value) || 0);
 }
 
+/** Persists API workflow values using the same snake_case keys as fluent-api. */
+export function normalizeChapterStatus(
+  status: string | null | undefined,
+): string {
+  const normalized = (status ?? '').trim().toLowerCase();
+  return normalized || 'not_started';
+}
+
 export function mapApiChapterAssignment(
   api: ApiUserChapterAssignment,
 ): ChapterAssignment {
@@ -32,7 +40,7 @@ export function mapApiChapterAssignment(
     bookId: api.bookId,
     chapterNumber: api.chapterNumber,
     assignedUserId: api.assignedUserId ?? undefined,
-    chapterStatus: api.chapterStatus,
+    chapterStatus: normalizeChapterStatus(api.chapterStatus),
     submittedTime: api.submittedTime ?? undefined,
     updatedAt: api.updatedAt ?? undefined,
     totalVerses: nonNegativeInt(api.totalVerses),

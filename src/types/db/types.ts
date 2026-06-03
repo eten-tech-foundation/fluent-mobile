@@ -111,6 +111,7 @@ export interface Verse {
 }
 
 export interface BibleText {
+  bibleId: number;
   bookId: number;
   chapterNumber: number;
   verses: Verse[];

@@ -1,5 +1,5 @@
 import { FluentAPI } from './api';
-import { mapApiChapterAssignment } from './mapChapterAssignment';
+import { mergeUserChapterAssignments } from './mergeUserChapterAssignments';
 import {
   insertUser,
   insertMasterData,
@@ -136,10 +136,10 @@ export async function syncChapterAssignments(userId: number, email: string) {
 
       const response = await FluentAPI.getChapterAssignments(userId, email);
 
-      const allAssignments = [
-        ...(response?.assignedChapters || []),
-        ...(response?.peerCheckChapters || []),
-      ].map(mapApiChapterAssignment);
+      const allAssignments = mergeUserChapterAssignments(
+        response?.assignedChapters,
+        response?.peerCheckChapters,
+      );
 
       if (allAssignments.length > 0) {
         await insertChapterAssignmentSyncData(allAssignments);
@@ -194,6 +194,7 @@ export async function syncBibleTexts(email: string) {
         }
 
         const textsWithBibleId = response.map((book: ApiBook) => ({
+          bibleId,
           bookId: book.bookId,
           chapterNumber: book.chapterNumber,
           verses: book.verses.map((verse: ApiVerse) => ({
