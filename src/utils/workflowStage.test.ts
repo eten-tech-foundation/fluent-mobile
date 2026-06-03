@@ -21,16 +21,16 @@ describe('workflowStage', () => {
   });
 
   describe('getBadgeStage', () => {
-    it('maps draft and peer_check only', () => {
+    it('maps draft, peer_check, and not_started', () => {
       expect(getBadgeStage('draft')).toBe('draft');
       expect(getBadgeStage('DRAFT')).toBe('draft');
       expect(getBadgeStage('peer_check')).toBe('peer_check');
+      expect(getBadgeStage('not_started')).toBe('not_started');
+      expect(getBadgeStage('')).toBe('not_started');
     });
 
-    it('returns null when no badge should show', () => {
-      expect(getBadgeStage('not_started')).toBeNull();
+    it('returns null for statuses without a my-work badge', () => {
       expect(getBadgeStage('community_review')).toBeNull();
-      expect(getBadgeStage('')).toBeNull();
       expect(getBadgeStage(undefined)).toBeNull();
     });
   });
@@ -39,6 +39,7 @@ describe('workflowStage', () => {
     it('returns display labels', () => {
       expect(getWorkflowStageLabel('draft')).toBe('Draft');
       expect(getWorkflowStageLabel('peer_check')).toBe('Peer Check');
+      expect(getWorkflowStageLabel('not_started')).toBe('Not Started');
     });
   });
 });

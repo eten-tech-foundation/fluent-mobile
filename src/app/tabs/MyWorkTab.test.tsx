@@ -9,6 +9,18 @@ jest.mock('@react-navigation/native', () => ({
   }),
 }));
 
+jest.mock('react-native-svg', () => {
+  const MockReact = require('react');
+  const { View } = require('react-native');
+  const MockSvg = ({ children }: { children?: unknown }) =>
+    MockReact.createElement(View, null, children);
+  return {
+    __esModule: true,
+    default: MockSvg,
+    Circle: MockSvg,
+  };
+});
+
 jest.mock('lucide-react-native', () => {
   const MockReact = require('react');
   const { View } = require('react-native');
@@ -18,7 +30,8 @@ jest.mock('lucide-react-native', () => {
     ListChecks: MockIcon,
     Cloud: MockIcon,
     CloudCheck: MockIcon,
-    CloudOff: MockIcon,
+    CloudUpload: MockIcon,
+    Circle: MockIcon,
     Mic: MockIcon,
     UserCheck: MockIcon,
     ChevronRight: MockIcon,
@@ -42,21 +55,25 @@ const sampleChapter: MyWorkChapter = {
   chapterNumber: 4,
   workflowStage: 'draft',
   syncState: 'synced',
+  completedVerses: 3,
+  totalVerses: 5,
+  downloadedVerses: 5,
   lastActivityLabel: 'Jun 1, 2024',
-  tier1Downloaded: true,
   projectName: 'Gospel of Luke',
   targetLanguageName: 'Baka',
 };
 
-const chapterWithoutBadge: MyWorkChapter = {
+const notStartedChapter: MyWorkChapter = {
   id: 11,
-  displayLabel: 'John 1',
-  bookName: 'John',
-  chapterNumber: 1,
-  workflowStage: null,
+  displayLabel: 'Luke 16',
+  bookName: 'Luke',
+  chapterNumber: 16,
+  workflowStage: 'not_started',
   syncState: 'none',
-  tier1Downloaded: false,
-  projectName: 'Gospel of John',
+  completedVerses: 0,
+  totalVerses: 5,
+  downloadedVerses: 0,
+  projectName: 'Gospel of Luke',
   targetLanguageName: 'Baka',
 };
 
@@ -97,9 +114,9 @@ describe('MyWorkTab', () => {
     expect(await screen.findByText('Jun 1, 2024')).toBeTruthy();
   });
 
-  it('omits badge and date when not applicable', async () => {
+  it('renders not started badge when source is not downloaded', async () => {
     useMyWorkChapters.mockReturnValue({
-      chapters: [chapterWithoutBadge],
+      chapters: [notStartedChapter],
       loading: false,
       refreshing: false,
       refresh: jest.fn(),
@@ -107,9 +124,8 @@ describe('MyWorkTab', () => {
 
     render(<MyWorkTab />);
 
-    expect(await screen.findByText('John 1')).toBeTruthy();
-    expect(screen.queryByText('Draft')).toBeNull();
-    expect(screen.queryByText('Peer Check')).toBeNull();
-    expect(screen.getByText('Source not downloaded')).toBeTruthy();
+    expect(await screen.findByText('Luke 16')).toBeTruthy();
+    expect(await screen.findByText('Not Started')).toBeTruthy();
+    expect(screen.queryByText('Source not downloaded')).toBeNull();
   });
 });

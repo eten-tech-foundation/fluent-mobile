@@ -1,4 +1,5 @@
 import { FluentAPI } from './api';
+import { mapApiChapterAssignment } from './mapChapterAssignment';
 import {
   insertUser,
   insertMasterData,
@@ -138,7 +139,7 @@ export async function syncChapterAssignments(userId: number, email: string) {
       const allAssignments = [
         ...(response?.assignedChapters || []),
         ...(response?.peerCheckChapters || []),
-      ];
+      ].map(mapApiChapterAssignment);
 
       if (allAssignments.length > 0) {
         await insertChapterAssignmentSyncData(allAssignments);

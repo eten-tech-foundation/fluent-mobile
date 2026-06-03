@@ -14,9 +14,13 @@ type Nav = StackNavigationProp<RootStackParamList, 'Home'>;
 
 interface MyWorkTabProps {
   refreshKey?: number;
+  isSyncing?: boolean;
 }
 
-export function MyWorkTab({ refreshKey = 0 }: MyWorkTabProps) {
+export function MyWorkTab({
+  refreshKey = 0,
+  isSyncing = false,
+}: MyWorkTabProps) {
   const navigation = useNavigation<Nav>();
   const { chapters, loading, refreshing, refresh } =
     useMyWorkChapters(refreshKey);
@@ -39,6 +43,7 @@ export function MyWorkTab({ refreshKey = 0 }: MyWorkTabProps) {
       renderItem={({ item }) => (
         <MyWorkRow
           chapter={item}
+          isSyncing={isSyncing}
           onPress={() =>
             navigation.navigate('VerseDetail', {
               chapterId: item.id,
@@ -54,8 +59,5 @@ export function MyWorkTab({ refreshKey = 0 }: MyWorkTabProps) {
 }
 
 const styles = StyleSheet.create({
-  listContent: {
-    padding: theme.spacing.lg,
-    gap: theme.spacing.md,
-  },
+  listContent: theme.homeListContent,
 });

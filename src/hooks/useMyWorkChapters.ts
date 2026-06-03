@@ -1,19 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getMyWorkChapters } from '../db/queries';
 import { MyWorkChapter } from '../types/db/types';
-import { getUserIdSync } from '../services/storage';
+import { parseUserId } from '../utils/parseUserId';
 import { logger } from '../utils/logger';
 
 const log = logger.create('useMyWorkChapters');
-
-function parseUserId(): number | null {
-  const raw = getUserIdSync();
-  if (!raw) {
-    return null;
-  }
-  const userId = Number(raw);
-  return Number.isFinite(userId) && userId > 0 ? userId : null;
-}
 
 export function useMyWorkChapters(refreshKey = 0) {
   const [chapters, setChapters] = useState<MyWorkChapter[]>([]);

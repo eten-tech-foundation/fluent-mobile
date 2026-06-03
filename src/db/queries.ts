@@ -163,6 +163,12 @@ export async function getChapterAssignmentsWithBooks(projectUnitId: number) {
   }
 }
 
+const BIBLE_TEXTS_MATCH_CA = `
+  bt.bible_id = ca.bible_id
+  AND bt.book_id = ca.book_id
+  AND bt.chapter_number = ca.chapter_number
+`;
+
 function mapMyWorkChapterRow(
   row: DBTypes.MyWorkChapterRow,
 ): DBTypes.MyWorkChapter {
@@ -183,7 +189,9 @@ function mapMyWorkChapterRow(
     syncState: deriveChapterSyncState(recordingCount, pendingCount),
     lastActivityAt,
     lastActivityLabel: formatLastActivity(lastActivityAt),
-    tier1Downloaded: Boolean(row.tier1_downloaded),
+    completedVerses: Number(row.completed_verses) || 0,
+    totalVerses: Number(row.total_verses) || 0,
+    downloadedVerses: Number(row.downloaded_verses) || 0,
     projectName: row.project_name,
     targetLanguageName: row.target_language_name,
   };
@@ -210,13 +218,13 @@ export async function getMyWorkChapters(
           WHEN r.id IS NOT NULL AND r.is_latest = 1 AND r.sync_status != 'uploaded' THEN r.id
         END) AS pending_count,
         MAX(CASE WHEN r.is_latest = 1 THEN r.updated_at END) AS last_recording_activity,
-        EXISTS (
-          SELECT 1 FROM bible_texts bt
-          WHERE bt.bible_id = ca.bible_id
-            AND bt.book_id = ca.book_id
-            AND bt.chapter_number = ca.chapter_number
-          LIMIT 1
-        ) AS tier1_downloaded
+        (
+          SELECT COUNT(*)
+          FROM bible_texts bt
+          WHERE ${BIBLE_TEXTS_MATCH_CA}
+        ) AS downloaded_verses,
+        ca.total_verses,
+        ca.completed_verses
       FROM chapter_assignments ca
       JOIN books b ON ca.book_id = b.id
       JOIN project_units pu ON ca.project_unit_id = pu.id

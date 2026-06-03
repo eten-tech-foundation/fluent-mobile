@@ -1,10 +1,42 @@
 import { open, DB } from '@op-engineering/op-sqlite';
-import { createTableQueries } from './schema';
+import { chapterAssignmentMigrations, createTableQueries } from './schema';
 import { logger } from '../utils/logger';
 import { setDatabase } from './db';
 
 const log = logger.create('Database');
 const DB_NAME = 'fluent.db';
+
+function shouldIgnoreInitError(
+  message: string,
+  kind: 'table' | 'column',
+): boolean {
+  const lower = message.toLowerCase();
+  return kind === 'table'
+    ? lower.includes('already exists')
+    : lower.includes('duplicate column');
+}
+
+async function runStatements(
+  db: DB,
+  statements: string[],
+  kind: 'table' | 'column',
+): Promise<void> {
+  for (const query of statements) {
+    try {
+      await db.execute(query);
+    } catch (error: unknown) {
+      if (
+        error instanceof Error &&
+        shouldIgnoreInitError(error.message, kind)
+      ) {
+        continue;
+      }
+      log.error(kind === 'table' ? 'SQL Error:' : 'Migration error:', {
+        error,
+      });
+    }
+  }
+}
 
 export async function initializeDatabase(): Promise<void> {
   try {
@@ -22,18 +54,8 @@ export async function initializeDatabase(): Promise<void> {
     await db.execute('PRAGMA synchronous = NORMAL;');
     await db.execute('PRAGMA busy_timeout = 5000;');
 
-    for (const query of createTableQueries) {
-      try {
-        await db.execute(query);
-      } catch (error: unknown) {
-        if (
-          error instanceof Error &&
-          !error.message.includes('already exists')
-        ) {
-          log.error('SQL Error:', { error });
-        }
-      }
-    }
+    await runStatements(db, createTableQueries, 'table');
+    await runStatements(db, chapterAssignmentMigrations, 'column');
 
     log.info('All tables created successfully');
   } catch (error: unknown) {

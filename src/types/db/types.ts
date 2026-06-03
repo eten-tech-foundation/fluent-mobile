@@ -29,7 +29,7 @@ export type ProjectSyncState = 'none' | 'synced' | 'unsynced';
 
 export type ChapterSyncState = 'none' | 'synced' | 'deviceOnly';
 
-export type WorkflowBadgeStage = 'draft' | 'peer_check';
+export type WorkflowBadgeStage = 'draft' | 'peer_check' | 'not_started';
 
 export interface MyWorkChapter {
   id: number;
@@ -38,9 +38,11 @@ export interface MyWorkChapter {
   chapterNumber: number;
   workflowStage: WorkflowBadgeStage | null;
   syncState: ChapterSyncState;
+  completedVerses: number;
+  totalVerses: number;
+  downloadedVerses: number;
   lastActivityAt?: string;
   lastActivityLabel?: string;
-  tier1Downloaded: boolean;
   projectName: string;
   targetLanguageName: string;
 }
@@ -58,7 +60,9 @@ export interface MyWorkChapterRow {
   recording_count: number;
   pending_count: number;
   last_recording_activity?: string | null;
-  tier1_downloaded: number;
+  total_verses: number;
+  completed_verses: number;
+  downloaded_verses: number;
 }
 
 export interface ProjectSummary extends Project {
@@ -93,6 +97,8 @@ export interface ChapterAssignment {
   chapterStatus?: string;
   submittedTime?: string;
   updatedAt?: string;
+  totalVerses?: number;
+  completedVerses?: number;
 }
 
 export interface Verse {

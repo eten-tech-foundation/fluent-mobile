@@ -38,35 +38,42 @@ export function hslToHex(h: number, s: number, l: number): string {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
+/** Lovable mock `--card` / `bg-card` (hsl 218 35% 94% → #eaeef5). */
+const cardSurface = hslToHex(218, 35, 94);
+
 export const colors = {
   primary: '#0B50D0',
   primaryForeground: '#FFFFFF',
   background: '#FFFFFF',
   foreground: '#1A1A1A',
-  cardBackground: hslToHex(218, 35, 94),
+  cardBackground: cardSurface,
+  tabBarBackground: cardSurface,
   mutedForeground: hslToHex(0, 0, 33),
   border: hslToHex(220, 18, 80),
   syncSynced: '#16A34A',
-  syncUnsynced: '#FBBF24',
-  syncOffline: '#6B7280',
+  syncUnsynced: '#EAB308',
+  syncDownloading: '#0B50D0',
   destructive: '#DC2626',
-  tabInactive: '#6B7280',
-  workflowBadgeDraftBg: '#FBBF24',
+  workflowBadgeDraftBorder: '#FBBF24',
   workflowBadgeDraftText: '#1A1A1A',
-  workflowBadgePeerCheckBg: '#EA580C',
+  workflowBadgePeerCheckBorder: '#EA580C',
   workflowBadgePeerCheckText: '#1A1A1A',
-  sourceChipBorder: '#6B7280',
-  sourceChipText: '#6B7280',
+  workflowBadgeNotStartedBorder: '#1A1A1A',
+  workflowBadgeNotStartedText: '#1A1A1A',
 } as const;
 
 export const workflowBadges = {
   draft: {
-    background: colors.workflowBadgeDraftBg,
+    border: colors.workflowBadgeDraftBorder,
     text: colors.workflowBadgeDraftText,
   },
   peer_check: {
-    background: colors.workflowBadgePeerCheckBg,
+    border: colors.workflowBadgePeerCheckBorder,
     text: colors.workflowBadgePeerCheckText,
+  },
+  not_started: {
+    border: colors.workflowBadgeNotStartedBorder,
+    text: colors.workflowBadgeNotStartedText,
   },
 } as const;
 

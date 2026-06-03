@@ -14,25 +14,33 @@ interface ProjectRowProps {
 export function ProjectRow({ project, onPress }: ProjectRowProps) {
   return (
     <ListCard onPress={onPress}>
-      <View style={styles.titleRow}>
-        <Text style={styles.title}>{project.name}</Text>
-        <SyncIndicator syncState={project.syncState} />
+      <View style={styles.column}>
+        <View style={styles.titleRow}>
+          <Text style={styles.title} numberOfLines={1}>
+            {project.name}
+          </Text>
+          <SyncIndicator syncState={project.syncState} />
+        </View>
+        <Text style={styles.subtitle}>
+          {project.target_language_name} ·{' '}
+          {formatChapterCount(project.chapterCount)}
+        </Text>
       </View>
-      <Text style={styles.subtitle}>
-        {project.target_language_name} ·{' '}
-        {formatChapterCount(project.chapterCount)}
-      </Text>
     </ListCard>
   );
 }
 
 const styles = StyleSheet.create({
+  column: {
+    gap: theme.spacing.xs,
+  },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
   },
   title: {
+    flex: 1,
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.foreground,
@@ -40,6 +48,5 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.mutedForeground,
-    marginTop: theme.spacing.xs,
   },
 });

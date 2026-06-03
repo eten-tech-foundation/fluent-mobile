@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { BookOpen, ListChecks, LucideIcon } from 'lucide-react-native';
-import { theme, iconSizes, lucideStrokeWidth } from '../../theme';
+import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 
 export type HomeTab = 'myWork' | 'projects';
 
@@ -22,7 +22,7 @@ export function TabBar({ activeTab, onTabChange }: TabBarProps) {
         const isActive = activeTab === id;
         const color = isActive
           ? theme.colors.primary
-          : theme.colors.tabInactive;
+          : theme.colors.mutedForeground;
 
         return (
           <TouchableOpacity
@@ -35,7 +35,7 @@ export function TabBar({ activeTab, onTabChange }: TabBarProps) {
             <Icon
               size={iconSizes.headerTab}
               color={color}
-              strokeWidth={lucideStrokeWidth}
+              strokeWidth={listIconStrokeWidth}
             />
             <Text style={[styles.label, { color }]}>{label}</Text>
           </TouchableOpacity>
@@ -48,7 +48,7 @@ export function TabBar({ activeTab, onTabChange }: TabBarProps) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.tabBarBackground,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },

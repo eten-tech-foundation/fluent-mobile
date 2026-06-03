@@ -53,8 +53,5 @@ export function ProjectsTab({ refreshKey = 0 }: ProjectsTabProps) {
 }
 
 const styles = StyleSheet.create({
-  listContent: {
-    padding: theme.spacing.lg,
-    gap: theme.spacing.md,
-  },
+  listContent: theme.homeListContent,
 });

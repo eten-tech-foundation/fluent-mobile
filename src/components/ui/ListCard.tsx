@@ -7,13 +7,14 @@ import {
   ViewStyle,
 } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
-import { theme, iconSizes, lucideStrokeWidth } from '../../theme';
+import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 
 interface ListCardProps {
   children: React.ReactNode;
   onPress?: () => void;
   showChevron?: boolean;
   style?: StyleProp<ViewStyle>;
+  contentStyle?: StyleProp<ViewStyle>;
 }
 
 export function ListCard({
@@ -21,15 +22,16 @@ export function ListCard({
   onPress,
   showChevron = true,
   style,
+  contentStyle,
 }: ListCardProps) {
   const content = (
     <>
-      <View style={styles.content}>{children}</View>
+      <View style={[styles.content, contentStyle]}>{children}</View>
       {showChevron && (
         <ChevronRight
           size={iconSizes.chevron}
           color={theme.colors.mutedForeground}
-          strokeWidth={lucideStrokeWidth}
+          strokeWidth={listIconStrokeWidth}
         />
       )}
     </>
@@ -40,7 +42,7 @@ export function ListCard({
       <TouchableOpacity
         style={[styles.card, style]}
         onPress={onPress}
-        activeOpacity={0.7}
+        activeOpacity={theme.listCard.activeOpacity}
       >
         {content}
       </TouchableOpacity>
@@ -54,12 +56,13 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.cardBackground,
-    borderRadius: theme.radius.md,
+    backgroundColor: theme.listCard.backgroundColor,
+    borderRadius: theme.listCard.borderRadius,
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    padding: theme.spacing.lg,
-    gap: theme.spacing.md,
+    borderColor: theme.listCard.borderColor,
+    paddingHorizontal: theme.listCard.paddingHorizontal,
+    paddingVertical: theme.listCard.paddingVertical,
+    gap: theme.listCard.gap,
   },
   content: {
     flex: 1,

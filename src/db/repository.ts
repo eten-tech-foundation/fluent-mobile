@@ -63,8 +63,9 @@ async function insertChapterAssignmentTx(
   await tx.execute(
     `INSERT OR REPLACE INTO chapter_assignments
     (id, project_unit_id, bible_id, book_id, chapter_number,
-     assigned_user_id, status, submitted_time, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     assigned_user_id, status, submitted_time, updated_at,
+     total_verses, completed_verses)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       assignment.chapterAssignmentId,
       assignment.projectUnitId,
@@ -75,6 +76,8 @@ async function insertChapterAssignmentTx(
       assignment.chapterStatus ?? 'not_started',
       assignment.submittedTime ?? null,
       assignment.updatedAt ?? new Date().toISOString(),
+      assignment.totalVerses ?? 0,
+      assignment.completedVerses ?? 0,
     ],
   );
 }

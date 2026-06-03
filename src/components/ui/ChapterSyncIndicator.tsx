@@ -1,38 +1,33 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Cloud, CloudCheck } from 'lucide-react-native';
+import { StyleSheet, View } from 'react-native';
 import { ChapterSyncState } from '../../types/db/types';
-import { theme, iconSizes, lucideStrokeWidth } from '../../theme';
+import { iconSizes } from '../../theme';
+import { RecordingCloudIcon } from './RecordingCloudIcon';
 
-interface ChapterSyncIndicatorProps {
+interface ChapterCloudSyncIndicatorProps {
   syncState: ChapterSyncState;
 }
 
-const SYNC_ICONS = {
-  synced: { Icon: CloudCheck, color: theme.colors.syncSynced },
-  deviceOnly: { Icon: Cloud, color: theme.colors.syncOffline },
-} as const;
-
-export function ChapterSyncIndicator({ syncState }: ChapterSyncIndicatorProps) {
+/** Green/yellow cloud beside the chapter title (`h-4 w-4` in mock). */
+export function ChapterCloudSyncIndicator({
+  syncState,
+}: ChapterCloudSyncIndicatorProps) {
   if (syncState === 'none') {
     return null;
   }
 
-  const { Icon, color } = SYNC_ICONS[syncState];
-
   return (
-    <View style={styles.container}>
-      <Icon
+    <View style={styles.icon}>
+      <RecordingCloudIcon
         size={iconSizes.chapterSync}
-        color={color}
-        strokeWidth={lucideStrokeWidth}
+        variant={syncState === 'synced' ? 'synced' : 'pending'}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginLeft: theme.spacing.sm,
+  icon: {
+    flexShrink: 0,
   },
 });
