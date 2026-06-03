@@ -1,10 +1,7 @@
-/**
- * Converts HSL (degrees, percent, percent) to a hex color string for React Native.
- */
+/** Converts HSL (degrees, percent, percent) to hex for React Native StyleSheet. */
 export function hslToHex(h: number, s: number, l: number): string {
   const sat = s / 100;
   const light = l / 100;
-
   const c = (1 - Math.abs(2 * light - 1)) * sat;
   const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
   const m = light - c / 2;
@@ -41,7 +38,7 @@ export function hslToHex(h: number, s: number, l: number): string {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
-export const rawColors = {
+export const colors = {
   primary: '#0B50D0',
   primaryForeground: '#FFFFFF',
   background: '#FFFFFF',
@@ -56,7 +53,7 @@ export const rawColors = {
   tabInactive: '#6B7280',
 } as const;
 
-export const rawSpacing = {
+export const spacing = {
   xs: 4,
   sm: 8,
   md: 12,
@@ -65,14 +62,14 @@ export const rawSpacing = {
   xxl: 24,
 } as const;
 
-export const rawRadius = {
+export const radius = {
   sm: 8,
   md: 12,
   lg: 16,
   full: 9999,
 } as const;
 
-export const rawTypography = {
+export const typography = {
   fontFamily: 'System',
   sizes: {
     xs: 12,

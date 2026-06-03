@@ -7,8 +7,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
-import { theme } from '../../theme';
-import { iconSizes } from '../../theme/iconSpecs';
+import { theme, iconSizes, lucideStrokeWidth } from '../../theme';
 
 interface ListCardProps {
   children: React.ReactNode;
@@ -30,7 +29,7 @@ export function ListCard({
         <ChevronRight
           size={iconSizes.chevron}
           color={theme.colors.mutedForeground}
-          strokeWidth={2}
+          strokeWidth={lucideStrokeWidth}
         />
       )}
     </>

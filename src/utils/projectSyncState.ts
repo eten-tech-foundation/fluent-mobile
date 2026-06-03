@@ -1,4 +1,4 @@
-export type ProjectSyncState = 'none' | 'synced' | 'unsynced';
+import { ProjectSyncState } from '../types/db/types';
 
 export function deriveProjectSyncState(
   recordingCount: number,

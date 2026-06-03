@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { TabBar, HomeTab } from '../../components/layout/TabBar';
@@ -19,17 +19,9 @@ export default function HomeScreen() {
     onSyncComplete: handleSyncComplete,
   });
 
-  const handleSettingsPress = () => {
-    // TODO(#40): Navigate to Settings screen
-  };
-
   return (
     <ScreenContainer edges={['top']}>
-      <PageHeader
-        onSettingsPress={handleSettingsPress}
-        onSyncPress={triggerSync}
-        isSyncing={isSyncing}
-      />
+      <PageHeader onSyncPress={triggerSync} isSyncing={isSyncing} />
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
       <View style={styles.content}>
         {activeTab === 'myWork' ? (

@@ -21,7 +21,6 @@ import {
 } from '../services/storage';
 
 const log = logger.create('SyncService');
-const db = getDatabase();
 
 const MAX_SYNC_ATTEMPTS = 3;
 

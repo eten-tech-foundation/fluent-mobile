@@ -5,34 +5,25 @@ import { deriveProjectSyncState } from '../utils/projectSyncState';
 
 const log = logger.create('DBQueries');
 
-export async function getProjects(): Promise<DBTypes.Project[]> {
-  const db = getDatabase();
-  try {
-    const result = await db.execute(
-      `SELECT 
-        p.id,
-        p.name,
-        p.source_language_id,
-        p.target_language_id,
-        p.is_active,
-        p.status,
-        p.updated_at,
-
-        sl.lang_name AS source_language_name,
-        tl.lang_name AS target_language_name
-
-      FROM projects p
-      LEFT JOIN languages sl ON p.source_language_id = sl.id
-      LEFT JOIN languages tl ON p.target_language_id = tl.id;
-      `,
-    );
-
-    log.info('Projects fetched', { count: result?.rows?.length });
-    return (result?.rows as unknown as DBTypes.Project[]) || [];
-  } catch (error) {
-    log.error('Error fetching projects', { error });
-    return [];
-  }
+function mapProjectSummaryRow(
+  row: DBTypes.ProjectSummaryRow,
+): DBTypes.ProjectSummary {
+  return {
+    id: row.id,
+    name: row.name,
+    source_language_id: row.source_language_id,
+    target_language_id: row.target_language_id,
+    source_language_name: row.source_language_name,
+    target_language_name: row.target_language_name,
+    isActive: Boolean(row.is_active),
+    status: row.status,
+    updatedAt: row.updated_at,
+    chapterCount: Number(row.chapter_count) || 0,
+    syncState: deriveProjectSyncState(
+      Number(row.recording_count) || 0,
+      Number(row.pending_count) || 0,
+    ),
+  };
 }
 
 export async function getProjectsWithSummary(): Promise<
@@ -67,25 +58,8 @@ export async function getProjectsWithSummary(): Promise<
     );
 
     const rows = (result?.rows as unknown as DBTypes.ProjectSummaryRow[]) || [];
-
     log.info('Projects with summary fetched', { count: rows.length });
-
-    return rows.map(row => ({
-      id: row.id,
-      name: row.name,
-      source_language_id: row.source_language_id,
-      target_language_id: row.target_language_id,
-      source_language_name: row.source_language_name,
-      target_language_name: row.target_language_name,
-      is_active: row.is_active,
-      status: row.status,
-      updated_at: row.updated_at,
-      chapterCount: Number(row.chapter_count) || 0,
-      syncState: deriveProjectSyncState(
-        Number(row.recording_count) || 0,
-        Number(row.pending_count) || 0,
-      ),
-    }));
+    return rows.map(mapProjectSummaryRow);
   } catch (error) {
     log.error('Error fetching projects with summary', { error });
     return [];

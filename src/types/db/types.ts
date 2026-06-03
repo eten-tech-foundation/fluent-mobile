@@ -32,7 +32,17 @@ export interface ProjectSummary extends Project {
   syncState: ProjectSyncState;
 }
 
-export interface ProjectSummaryRow extends Project {
+/** Raw SQLite row shape for getProjectsWithSummary (snake_case columns). */
+export interface ProjectSummaryRow {
+  id: number;
+  name: string;
+  source_language_id: number;
+  target_language_id: number;
+  is_active: number;
+  status: string;
+  updated_at: string;
+  source_language_name?: string;
+  target_language_name: string;
   chapter_count: number;
   recording_count: number;
   pending_count: number;

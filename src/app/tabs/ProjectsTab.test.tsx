@@ -9,10 +9,6 @@ jest.mock('@react-navigation/native', () => ({
   }),
 }));
 
-jest.mock('@react-native-vector-icons/ionicons', () => ({
-  Ionicons: () => null,
-}));
-
 jest.mock('lucide-react-native', () => {
   const MockReact = require('react');
   const { View } = require('react-native');

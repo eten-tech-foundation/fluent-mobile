@@ -12,15 +12,22 @@ const log = logger.create('useSync');
 
 export type SyncStateType = 'normal' | 'syncing' | 'never' | 'error';
 
+const SYNC_ERROR_STEPS = [
+  { key: KV_KEYS.SYNC_ERROR_USER, label: 'user' },
+  { key: KV_KEYS.SYNC_ERROR_MASTER_DATA, label: 'master data' },
+  { key: KV_KEYS.SYNC_ERROR_PROJECTS, label: 'projects' },
+  { key: KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS, label: 'chapter assignments' },
+  { key: KV_KEYS.SYNC_ERROR_PROJECT_UNITS, label: 'project units' },
+  { key: KV_KEYS.SYNC_ERROR_BIBLE_TEXTS, label: 'bible texts' },
+] as const;
+
 function getRelativeTime(isoTimestamp: string | undefined): string {
   if (!isoTimestamp) return 'Never synced';
 
-  const now = new Date();
-  const syncTime = new Date(isoTimestamp);
-  const diffMs = now.getTime() - syncTime.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
+  const diffMs = Date.now() - new Date(isoTimestamp).getTime();
+  const diffMins = Math.floor(diffMs / 60_000);
+  const diffHours = Math.floor(diffMs / 3_600_000);
+  const diffDays = Math.floor(diffMs / 86_400_000);
 
   if (diffMins < 1) return 'Just now';
   if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
@@ -29,25 +36,37 @@ function getRelativeTime(isoTimestamp: string | undefined): string {
 }
 
 function getFailedStep(): string | null {
-  const userError = getSyncError(KV_KEYS.SYNC_ERROR_USER);
-  if (userError) return 'user';
-
-  const masterDataError = getSyncError(KV_KEYS.SYNC_ERROR_MASTER_DATA);
-  if (masterDataError) return 'master data';
-
-  const projectsError = getSyncError(KV_KEYS.SYNC_ERROR_PROJECTS);
-  if (projectsError) return 'projects';
-
-  const chaptersError = getSyncError(KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS);
-  if (chaptersError) return 'chapter assignments';
-
-  const projectUnitsError = getSyncError(KV_KEYS.SYNC_ERROR_PROJECT_UNITS);
-  if (projectUnitsError) return 'project units';
-
-  const bibleTextsError = getSyncError(KV_KEYS.SYNC_ERROR_BIBLE_TEXTS);
-  if (bibleTextsError) return 'bible texts';
-
+  for (const { key, label } of SYNC_ERROR_STEPS) {
+    if (getSyncError(key)) return label;
+  }
   return null;
+}
+
+function buildDisplayText(isSyncing: boolean): {
+  stateType: SyncStateType;
+  displayText: string;
+} {
+  if (isSyncing) {
+    return { stateType: 'syncing', displayText: 'Syncing...' };
+  }
+
+  const failedStep = getFailedStep();
+  if (failedStep) {
+    return {
+      stateType: 'error',
+      displayText: `Sync failed: ${failedStep}`,
+    };
+  }
+
+  const { lastSyncedAt } = getSyncState();
+  if (!lastSyncedAt) {
+    return { stateType: 'never', displayText: 'Never synced' };
+  }
+
+  return {
+    stateType: 'normal',
+    displayText: `Last synced: ${getRelativeTime(lastSyncedAt)}`,
+  };
 }
 
 interface UseSyncOptions {
@@ -56,52 +75,32 @@ interface UseSyncOptions {
 }
 
 export function useSync({ onSyncComplete, onSyncStart }: UseSyncOptions = {}) {
-  const [stateType, setStateType] = useState<SyncStateType>('normal');
-  const [displayText, setDisplayText] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [{ stateType, displayText }, setSyncDisplay] = useState(() =>
+    buildDisplayText(false),
+  );
 
-  const updateState = useCallback(() => {
-    if (isSyncing) {
-      setStateType('syncing');
-      setDisplayText('Syncing...');
-      return;
-    }
-
-    const failedStep = getFailedStep();
-    const syncState = getSyncState();
-
-    if (failedStep) {
-      setStateType('error');
-      setDisplayText(`Sync failed: ${failedStep}`);
-    } else if (!syncState.lastSyncedAt) {
-      setStateType('never');
-      setDisplayText('Never synced');
-    } else {
-      setStateType('normal');
-      setDisplayText(`Last synced: ${getRelativeTime(syncState.lastSyncedAt)}`);
-    }
-  }, [isSyncing]);
+  const updateState = useCallback((syncing: boolean) => {
+    setSyncDisplay(buildDisplayText(syncing));
+  }, []);
 
   useEffect(() => {
-    updateState();
+    updateState(isSyncing);
   }, [isSyncing, updateState]);
 
   useEffect(() => {
-    if (stateType === 'normal') {
-      const interval = setInterval(() => {
-        updateState();
-      }, 60000);
+    if (stateType !== 'normal') return;
 
-      return () => clearInterval(interval);
-    }
+    const interval = setInterval(() => updateState(false), 60_000);
+    return () => clearInterval(interval);
   }, [stateType, updateState]);
 
   const triggerSync = useCallback(async () => {
     try {
       setIsSyncing(true);
       onSyncStart?.();
-      const email = getUserEmailSync();
 
+      const email = getUserEmailSync();
       if (!email) {
         log.error('No user email found for sync');
         return;
@@ -109,15 +108,13 @@ export function useSync({ onSyncComplete, onSyncStart }: UseSyncOptions = {}) {
 
       log.info('Triggering sync...');
       await syncAllData(email);
-
       log.info('Sync completed successfully');
-      updateState();
       onSyncComplete?.();
     } catch (error) {
       log.error('Sync failed', { error });
-      updateState();
     } finally {
       setIsSyncing(false);
+      updateState(false);
     }
   }, [onSyncStart, onSyncComplete, updateState]);
 
@@ -126,6 +123,5 @@ export function useSync({ onSyncComplete, onSyncStart }: UseSyncOptions = {}) {
     displayText,
     isSyncing,
     triggerSync,
-    updateState,
   };
 }

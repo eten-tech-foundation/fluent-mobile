@@ -1,8 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { BookOpen, ListChecks } from 'lucide-react-native';
-import { theme } from '../../theme';
-import { iconSizes } from '../../theme/iconSpecs';
+import { BookOpen, ListChecks, LucideIcon } from 'lucide-react-native';
+import { theme, iconSizes, lucideStrokeWidth } from '../../theme';
 
 export type HomeTab = 'myWork' | 'projects';
 
@@ -11,11 +10,7 @@ interface TabBarProps {
   onTabChange: (tab: HomeTab) => void;
 }
 
-const TABS: {
-  id: HomeTab;
-  label: string;
-  Icon: typeof BookOpen;
-}[] = [
+const TABS: { id: HomeTab; label: string; Icon: LucideIcon }[] = [
   { id: 'projects', label: 'Projects', Icon: BookOpen },
   { id: 'myWork', label: 'My Work', Icon: ListChecks },
 ];
@@ -23,23 +18,26 @@ const TABS: {
 export function TabBar({ activeTab, onTabChange }: TabBarProps) {
   return (
     <View style={styles.container}>
-      {TABS.map(tab => {
-        const isActive = activeTab === tab.id;
+      {TABS.map(({ id, label, Icon }) => {
+        const isActive = activeTab === id;
         const color = isActive
           ? theme.colors.primary
           : theme.colors.tabInactive;
-        const { Icon } = tab;
 
         return (
           <TouchableOpacity
-            key={tab.id}
+            key={id}
             style={[styles.tab, isActive && styles.activeTab]}
-            onPress={() => onTabChange(tab.id)}
+            onPress={() => onTabChange(id)}
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}
           >
-            <Icon size={iconSizes.headerTab} color={color} strokeWidth={2} />
-            <Text style={[styles.label, { color }]}>{tab.label}</Text>
+            <Icon
+              size={iconSizes.headerTab}
+              color={color}
+              strokeWidth={lucideStrokeWidth}
+            />
+            <Text style={[styles.label, { color }]}>{label}</Text>
           </TouchableOpacity>
         );
       })}

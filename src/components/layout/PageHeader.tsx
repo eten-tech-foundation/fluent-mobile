@@ -7,8 +7,14 @@ import {
 } from 'react-native';
 import { Settings, CloudUpload } from 'lucide-react-native';
 import FluentLogoWhite from '../../assets/icons/fluent-logo-white.svg';
-import { theme } from '../../theme';
-import { headerLayout, iconSizes, logoSize } from '../../theme/iconSpecs';
+import {
+  theme,
+  iconSizes,
+  logoSize,
+  headerLayout,
+  lucideStrokeWidth,
+  touchHitSlop,
+} from '../../theme';
 
 interface PageHeaderProps {
   onSettingsPress?: () => void;
@@ -29,9 +35,13 @@ export function PageHeader({
         onPress={onSettingsPress}
         style={styles.sideSlot}
         accessibilityLabel="Settings"
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        hitSlop={touchHitSlop}
       >
-        <Settings size={iconSizes.header} color={iconColor} strokeWidth={2} />
+        <Settings
+          size={iconSizes.header}
+          color={iconColor}
+          strokeWidth={lucideStrokeWidth}
+        />
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -39,7 +49,7 @@ export function PageHeader({
         disabled={isSyncing}
         style={styles.sideSlot}
         accessibilityLabel="Sync"
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        hitSlop={touchHitSlop}
       >
         {isSyncing ? (
           <ActivityIndicator size="small" color={iconColor} />
@@ -47,7 +57,7 @@ export function PageHeader({
           <CloudUpload
             size={iconSizes.header}
             color={iconColor}
-            strokeWidth={2}
+            strokeWidth={lucideStrokeWidth}
           />
         )}
       </TouchableOpacity>
