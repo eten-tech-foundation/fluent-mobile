@@ -1,6 +1,13 @@
-import { colors, spacing, radius, typography } from './tokens';
+import { colors, spacing, radius, typography, workflowBadges } from './tokens';
 
-export { colors, spacing, radius, typography, hslToHex } from './tokens';
+export {
+  colors,
+  spacing,
+  radius,
+  typography,
+  workflowBadges,
+  hslToHex,
+} from './tokens';
 export {
   iconSizes,
   logoSize,
@@ -14,6 +21,7 @@ export const theme = {
   spacing,
   radius,
   typography,
+  workflowBadges,
 } as const;
 
 export type Theme = typeof theme;

@@ -25,7 +25,7 @@ export default function HomeScreen() {
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
       <View style={styles.content}>
         {activeTab === 'myWork' ? (
-          <MyWorkTab />
+          <MyWorkTab refreshKey={refreshKey} />
         ) : (
           <ProjectsTab refreshKey={refreshKey} />
         )}

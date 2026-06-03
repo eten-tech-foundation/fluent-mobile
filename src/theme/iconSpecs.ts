@@ -11,7 +11,10 @@ export const iconSizes = {
   header: 24,
   headerTab: 18,
   projectSync: 24,
+  chapterSync: 20,
   chevron: 20,
+  workflowBadge: 14,
+  sourceChip: 14,
 } as const;
 
 /** White wordmark dimensions (mock: h-10, aspect from SVG viewBox). */

@@ -27,6 +27,40 @@ export interface Project {
 
 export type ProjectSyncState = 'none' | 'synced' | 'unsynced';
 
+export type ChapterSyncState = 'none' | 'synced' | 'deviceOnly';
+
+export type WorkflowBadgeStage = 'draft' | 'peer_check';
+
+export interface MyWorkChapter {
+  id: number;
+  displayLabel: string;
+  bookName: string;
+  chapterNumber: number;
+  workflowStage: WorkflowBadgeStage | null;
+  syncState: ChapterSyncState;
+  lastActivityAt?: string;
+  lastActivityLabel?: string;
+  tier1Downloaded: boolean;
+  projectName: string;
+  targetLanguageName: string;
+}
+
+export interface MyWorkChapterRow {
+  id: number;
+  book_id: number;
+  chapter_number: number;
+  status: string;
+  book_name: string;
+  project_name: string;
+  target_language_name: string;
+  updated_at?: string | null;
+  submitted_time?: string | null;
+  recording_count: number;
+  pending_count: number;
+  last_recording_activity?: string | null;
+  tier1_downloaded: number;
+}
+
 export interface ProjectSummary extends Project {
   chapterCount: number;
   syncState: ProjectSyncState;

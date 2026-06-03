@@ -51,6 +51,23 @@ export const colors = {
   syncOffline: '#6B7280',
   destructive: '#DC2626',
   tabInactive: '#6B7280',
+  workflowBadgeDraftBg: '#FBBF24',
+  workflowBadgeDraftText: '#1A1A1A',
+  workflowBadgePeerCheckBg: '#EA580C',
+  workflowBadgePeerCheckText: '#1A1A1A',
+  sourceChipBorder: '#6B7280',
+  sourceChipText: '#6B7280',
+} as const;
+
+export const workflowBadges = {
+  draft: {
+    background: colors.workflowBadgeDraftBg,
+    text: colors.workflowBadgeDraftText,
+  },
+  peer_check: {
+    background: colors.workflowBadgePeerCheckBg,
+    text: colors.workflowBadgePeerCheckText,
+  },
 } as const;
 
 export const spacing = {
