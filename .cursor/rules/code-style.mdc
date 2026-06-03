@@ -1,0 +1,56 @@
+---
+description: TypeScript and React Native style conventions
+alwaysApply: false
+globs:
+  - "src/**/*.{ts,tsx}"
+  - "App.tsx"
+---
+
+# Code style
+
+Match existing patterns in neighboring files. Prefer minimal diffs.
+
+## Logging
+
+```typescript
+import { logger } from '../utils/logger';
+const log = logger.create('MyScreen');
+log.info('message', { context });
+```
+
+- Do **not** use `console.log` in app code (ESLint `no-console`).
+- Allowed: `src/utils/logger.ts`, test files.
+
+## Environment
+
+```typescript
+import { API_BASE_URL, FLUENT_USER_EMAIL } from '@env';
+```
+
+Never commit `.env`. Document new vars in `.env.example` and `src/types/env.d.ts`.
+
+## TypeScript
+
+- Types under `src/types/api/`, `src/types/db/`, `src/types/navigation/`.
+- Avoid `any` (warned by ESLint); use `unknown` + narrowing for errors.
+- Prefer `interface` for DB/API shapes where the file already does.
+
+## React Native
+
+- Functional components + hooks.
+- Shared layout: `src/app/appStyles.ts`.
+- Icons: `@react-native-vector-icons/ionicons`.
+- SVG: default import as component (e.g. `FluentLogo`).
+
+## Prettier (`.prettierrc.cjs`)
+
+- Single quotes, trailing commas, `arrowParens: 'avoid'`.
+
+## ESLint highlights
+
+- `react-hooks/rules-of-hooks`: error
+- `react-hooks/exhaustive-deps`: warn
+- `react-native/no-inline-styles`: warn
+- `eqeqeq`, `prefer-const`, `no-var`: warn
+
+Run `npm run lint` after edits.

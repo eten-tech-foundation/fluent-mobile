@@ -1,5 +1,7 @@
 # Fluent Mobile
 
+**For AI agents / contributors:** see [docs/AGENT_ONBOARDING.md](docs/AGENT_ONBOARDING.md) for repo layout, architecture, commands, and Cursor rules.
+
 ## Prerequisites
 
 Before you begin, make sure you have the following installed:

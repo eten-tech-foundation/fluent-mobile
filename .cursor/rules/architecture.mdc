@@ -1,0 +1,57 @@
+---
+description: Layer boundaries and where to add features
+alwaysApply: true
+---
+
+# Architecture
+
+## Data flow
+
+1. **Launch:** `App.tsx` → `initializeDatabase()` → `syncAllData(email)`
+2. **Sync:** `sync.ts` calls `FluentAPI`, writes via `repository.ts`, updates KV in `storage.ts`
+3. **UI:** screens call `queries.ts` only for reads
+
+## Layer boundaries
+
+| Layer | File(s) | Responsibility |
+|-------|---------|----------------|
+| HTTP | `services/api.ts` | `fetch`, headers (`x-user-email`), endpoints |
+| Sync | `services/sync.ts` | Orchestration, retries, sync steps |
+| KV | `services/storage.ts` | Sync timestamps, counts, errors |
+| Schema | `db/schema.ts` | `CREATE TABLE` statements |
+| Init | `db/index.ts` | Open DB, pragmas, create tables |
+| Singleton | `db/db.ts` | `getDatabase()` / `setDatabase()` |
+| Writes | `db/repository.ts` | Inserts/upserts in transactions |
+| Reads | `db/queries.ts` | SELECTs for UI |
+| UI | `app/tabs/`, `components/` | React screens |
+
+**Do not:**
+
+- Call `fetch` from screens — use `FluentAPI` + sync or new service methods
+- Write SQL in screens — use repository/queries
+- Read API directly in UI — read SQLite after sync
+
+## Adding a synced entity
+
+1. Table in `schema.ts`
+2. Types in `src/types/db/types.ts`
+3. API method in `api.ts`
+4. Insert in `repository.ts`
+5. Sync step in `sync.ts` (with retry wrapper pattern)
+6. Query in `queries.ts` if UI needs it
+
+## Adding a screen
+
+1. Component in `src/app/tabs/`
+2. Route in `AppNavigator.tsx`
+3. Params in `src/types/navigation/types.ts`
+
+## Database cautions
+
+- `getDatabase()` throws if called before `initializeDatabase()`.
+- No migration framework yet — schema edits affect existing DB files on devices.
+- Foreign keys enabled in init; use transactions in repository.
+
+## Navigation stack
+
+`Projects` → `Chapters` (project) → `VerseDetail` (chapter). Pass IDs via route params; load detail in screen `useEffect`.

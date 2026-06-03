@@ -1,0 +1,31 @@
+---
+description: Fluent Mobile — what the app is and where code lives
+alwaysApply: true
+---
+
+# Fluent Mobile — project overview
+
+Offline-first **React Native 0.84** companion for Bible translation recording. Syncs Fluent API data into local SQLite (`op-sqlite`); UI reads from DB after sync.
+
+## Key paths
+
+- Entry: `App.tsx` → `initializeDatabase()` → `syncAllData()` → `AppNavigator`
+- Screens: `src/app/tabs/` (`ProjectList`, `ViewProject`, `ViewChapter`)
+- API: `src/services/api.ts` (`FluentAPI`)
+- Sync: `src/services/sync.ts`
+- DB writes: `src/db/repository.ts` | reads: `src/db/queries.ts`
+- Types: `src/types/{api,db,navigation}/`
+- Env: `@env` from `.env` (`API_BASE_URL`, `FLUENT_USER_EMAIL`)
+
+## Package manager
+
+Use **npm** only (not pnpm/yarn).
+
+## Full onboarding map
+
+See [docs/AGENT_ONBOARDING.md](../../docs/AGENT_ONBOARDING.md) for setup, architecture diagram, risks, and common tasks.
+
+## Scope discipline
+
+- Do not refactor unrelated code in the same change.
+- Do not edit `android/`, `ios/`, or lockfiles unless the task requires it.

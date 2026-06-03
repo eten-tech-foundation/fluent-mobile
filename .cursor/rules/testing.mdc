@@ -1,0 +1,41 @@
+---
+description: Jest testing expectations and patterns
+alwaysApply: false
+globs:
+  - "**/*.{test,spec}.{ts,tsx}"
+  - "__tests__/**"
+  - "jest.config.cjs"
+---
+
+# Testing
+
+## Run tests
+
+```bash
+FLUENT_USER_EMAIL=test@example.com npm test -- --ci
+```
+
+CI uses the same env var (`.github/workflows/test.yml`).
+
+## Stack
+
+- Jest 29, preset `react-native`
+- `@testing-library/react-native` for component tests
+- Config: `jest.config.cjs` — transforms listed RN-related packages
+
+## Patterns
+
+- **App test** (`__tests__/App.test.tsx`): heavy mocks for `op-sqlite`, navigation, sync, SVG, icons. Follow this when testing root flow.
+- **Unit tests**: colocate under `src/` (e.g. `logger.test.ts`).
+- **API integration** (`fluent-api.test.ts`): live fetch to `dev.api.fluent.bible` — may fail offline; do not add more network-dependent tests without mocking unless intentional.
+
+## Expectations
+
+- Add tests for non-trivial logic (sync helpers, parsers, new repository/query behavior).
+- Do not add tests that only assert trivial constants.
+- Mock native modules and DB; never require a real device for unit tests.
+- `no-console` is off in test files; `no-focused-tests` is error.
+
+## After test changes
+
+Run full suite with `FLUENT_USER_EMAIL` set before marking work complete.
