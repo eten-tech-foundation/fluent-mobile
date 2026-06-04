@@ -80,12 +80,6 @@ export const FluentAPI = {
   getUserByEmail: (email: string) =>
     request(`/users/email/${encodeURIComponent(email)}`),
   getUserProjects: (userId: number) => request(`/users/${userId}/projects`),
-  // getChapterAssignments: (userId: number, updatedAfter?: string) =>
-  //   request(
-  //     `/project/member/${userId}/chapter-assignments${
-  //       updatedAfter ? `?updatedAfter=${updatedAfter}` : ''
-  //     }`,
-  //   ),
   getChapterAssignments: (
     userId: number,
     updatedAfter?: string,
