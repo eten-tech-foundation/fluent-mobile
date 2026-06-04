@@ -2,21 +2,24 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   TouchableOpacity,
   Text,
-  StyleSheet,
   ActivityIndicator,
   View,
   StyleProp,
   ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
-import { syncAllData } from '../../services/sync';
+import {
+  // syncAllData,
+  syncAllUsers,
+} from '../../services/sync';
 import {
   getSyncState,
   getSyncError,
   KV_KEYS,
-  getUserEmailSync,
+  // getUserIdSync,
 } from '../../services/storage';
 import { logger } from '../../utils/logger';
+import { appStyles } from '../../app/appStyles';
 
 const log = logger.create('SyncButton');
 
@@ -82,6 +85,8 @@ export function SyncButton({
       setDisplayText('Syncing...');
     } else {
       const failedStep = getFailedStep();
+      // const userId = getUserIdSync();
+      // const syncState = getSyncState(userId || undefined);
       const syncState = getSyncState();
 
       if (failedStep) {
@@ -117,18 +122,7 @@ export function SyncButton({
     try {
       setIsSyncing(true);
       onSyncStart?.();
-      const email = getUserEmailSync();
-
-      if (!email) {
-        log.error('No user email found for sync');
-        setIsSyncing(false);
-        return;
-      }
-
-      log.info('Triggering sync...');
-      await syncAllData(email);
-
-      log.info('Sync completed successfully');
+      await syncAllUsers();
       updateState();
       onSyncComplete?.();
     } catch (error) {
@@ -169,7 +163,7 @@ export function SyncButton({
   return (
     <View
       style={[
-        styles.container,
+        appStyles.syncContainer,
         style,
         {
           backgroundColor: colors.backgroundColor,
@@ -177,8 +171,8 @@ export function SyncButton({
         },
       ]}
     >
-      <View style={styles.content}>
-        <Text style={[styles.text, { color: colors.textColor }]}>
+      <View style={appStyles.syncContent}>
+        <Text style={[appStyles.syncText, { color: colors.textColor }]}>
           {displayText}
         </Text>
       </View>
@@ -187,7 +181,7 @@ export function SyncButton({
         onPress={handleSync}
         disabled={isSyncing}
         activeOpacity={0.7}
-        style={styles.syncButton}
+        style={appStyles.syncRefreshBtn}
       >
         {isSyncing ? (
           <ActivityIndicator size="small" color={colors.textColor} />
@@ -198,26 +192,3 @@ export function SyncButton({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    marginBottom: 8,
-  },
-  content: {
-    flex: 1,
-  },
-  text: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  syncButton: {
-    padding: 8,
-    marginLeft: 12,
-  },
-});

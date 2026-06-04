@@ -33,6 +33,7 @@ export interface ChapterAssignment {
   bookId: number;
   chapterNumber: number;
   assignedUserId?: number;
+  peerCheckerId?: number;
   chapterStatus?: string;
   submittedTime?: string;
   updatedAt?: string;
@@ -63,6 +64,7 @@ export interface ChapterAssignmentData {
   status: string;
   submittedTime?: string | null;
   updatedAt?: string;
+  bookCode?: string;
   bookName?: string;
   bibleName?: string;
   bibleAbbreviation?: string;
@@ -78,6 +80,7 @@ export interface ChapterAssignmentRow {
   status: string;
   submitted_time?: string | null;
   updated_at?: string;
+  book_code?: string;
   book_name?: string;
   bible_name?: string;
   bible_abbreviation?: string;
@@ -131,3 +134,14 @@ export interface VerseRow {
   verse_number: number;
   text: string;
 }
+
+export const CHAPTER_ASSIGNMENT_STATUS = {
+  not_started: 'Not Started',
+  draft: 'Draft',
+  peer_check: 'Peer Check',
+  community_review: 'Community Review',
+  linguist_check: 'Linguist Check',
+  theological_check: 'Theological Check',
+  consultant_check: 'Consultant Check',
+  complete: 'Complete',
+} as const;

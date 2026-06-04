@@ -53,15 +53,15 @@ export const createTableQueries: string[] = [
       bible_id         INTEGER NOT NULL REFERENCES bibles(id),
       book_id          INTEGER NOT NULL REFERENCES books(id),
       chapter_number   INTEGER NOT NULL,
-      assigned_user_id INTEGER REFERENCES users(id),
-      status           TEXT NOT NULL DEFAULT 'not_started',
+      assigned_user_id  INTEGER ,
+      peer_checker_id    INTEGER,
+      status           TEXT NOT NULL,
       submitted_time   TEXT,
       updated_at       TEXT NOT NULL,
       UNIQUE (project_unit_id, bible_id, book_id, chapter_number)
     );`,
 
   `CREATE INDEX IF NOT EXISTS idx_ca_project_unit ON chapter_assignments(project_unit_id);`,
-  `CREATE INDEX IF NOT EXISTS idx_ca_assigned_user ON chapter_assignments(assigned_user_id);`,
 
   `CREATE TABLE IF NOT EXISTS bible_texts (
       id             INTEGER PRIMARY KEY,
@@ -78,8 +78,6 @@ export const createTableQueries: string[] = [
   `CREATE TABLE IF NOT EXISTS recordings (
       id                    TEXT PRIMARY KEY,
       bible_text_id         INTEGER NOT NULL REFERENCES bible_texts(id),
-      chapter_assignment_id INTEGER NOT NULL REFERENCES chapter_assignments(id) ON DELETE CASCADE,
-      assigned_user_id      INTEGER NOT NULL REFERENCES users(id),
       local_file_path       TEXT NOT NULL,
       blob_key              TEXT,
       duration_ms           INTEGER,
@@ -93,6 +91,13 @@ export const createTableQueries: string[] = [
     );`,
 
   `CREATE INDEX IF NOT EXISTS idx_rec_verse      ON recordings(bible_text_id, is_latest);`,
-  `CREATE INDEX IF NOT EXISTS idx_rec_assignment ON recordings(chapter_assignment_id);`,
   `CREATE INDEX IF NOT EXISTS idx_rec_pending    ON recordings(sync_status) WHERE sync_status != 'uploaded';`,
+
+  `CREATE TABLE IF NOT EXISTS user_projects (
+  user_id    INTEGER NOT NULL,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  PRIMARY KEY (user_id, project_id)
+);`,
+
+  `CREATE INDEX IF NOT EXISTS idx_up_user ON user_projects(user_id);`,
 ];

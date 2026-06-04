@@ -1,62 +1,116 @@
 import { API_BASE_URL } from '@env';
 
-async function request(endpoint: string, options?: RequestInit) {
+let _activeToken: string | null = null;
+
+export function setActiveToken(token: string | null): void {
+  _activeToken = token;
+}
+
+const MOBILE_HEADERS = {
+  'x-client-type': 'mobile',
+  'User-Agent': 'fluent-mobile',
+};
+
+async function getHeaders(): Promise<Record<string, string>> {
+  return {
+    'Content-Type': 'application/json',
+    ...(_activeToken && { Authorization: `Bearer ${_activeToken}` }),
+  };
+}
+
+async function publicRequest(endpoint: string, options?: RequestInit) {
   const res = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      ...options?.headers,
+      Origin: API_BASE_URL,
+      ...options?.headers, // ← mobile headers come through here when passed
     },
   });
-
   if (!res.ok) {
-    throw new Error(`API failed: ${res.status}`);
+    try {
+      const errorBody = await res.json();
+      throw new Error(errorBody?.message ?? `API failed: ${res.status}`);
+    } catch (e) {
+      if (e instanceof Error && e.message !== `API failed: ${res.status}`)
+        throw e;
+      throw new Error(`API failed: ${res.status}`);
+    }
   }
-
   return res.json();
 }
 
-function getHeaders(email?: string) {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-  if (email) {
-    headers['x-user-email'] = email;
+async function request(endpoint: string, options?: RequestInit) {
+  const headers = await getHeaders();
+  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers: { ...headers, ...options?.headers },
+  });
+  if (!res.ok) {
+    const errorBody = await res.text();
+    console.error('API error:', res.status, errorBody);
+    throw new Error(`API failed: ${res.status}`);
   }
-  return headers;
+  return res.json();
 }
 
 export const FluentAPI = {
-  getLanguages: () => request('/languages'),
-  getBooks: () => request('/books'),
-  getBibles: () => request('/bibles'),
+  signIn: (email: string, password: string) =>
+    publicRequest('/api/auth/sign-in/email', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+      headers: MOBILE_HEADERS, // ← only here
+    }),
+  forgotPassword: (email: string) =>
+    publicRequest('/api/auth/forget-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+      headers: MOBILE_HEADERS, // ← only here
+    }),
 
+  signOut: () =>
+    request('/api/auth/sign-out', {
+      method: 'POST',
+      headers: MOBILE_HEADERS, // ← only here
+    }),
+
+  getLanguages: () => publicRequest('/languages'),
+  getBooks: () => publicRequest('/books'),
+  getBibles: () => publicRequest('/bibles'),
   getUserByEmail: (email: string) =>
-    request(`/users/email/${encodeURIComponent(email)}`, {
-      method: 'GET',
-      headers: getHeaders(email),
-    }),
-
-  getUserProjects: (userId: number, email: string) =>
-    request(`/users/${userId}/projects`, {
-      method: 'GET',
-      headers: getHeaders(email),
-    }),
-
-  getChapterAssignments: (userId: number, email: string) =>
-    request(`/users/${userId}/chapter-assignments`, {
-      method: 'GET',
-      headers: getHeaders(email),
-    }),
+    request(`/users/email/${encodeURIComponent(email)}`),
+  getUserProjects: (userId: number) => request(`/users/${userId}/projects`),
+  // getChapterAssignments: (userId: number, updatedAfter?: string) =>
+  //   request(
+  //     `/project/member/${userId}/chapter-assignments${
+  //       updatedAfter ? `?updatedAfter=${updatedAfter}` : ''
+  //     }`,
+  //   ),
+  getChapterAssignments: (
+    userId: number,
+    updatedAfter?: string,
+    excludeProjectIds?: number[],
+  ) => {
+    const params = new URLSearchParams();
+    if (updatedAfter) params.append('updatedAfter', updatedAfter);
+    if (excludeProjectIds?.length) {
+      params.append('excludeProjectIds', excludeProjectIds.join(','));
+    }
+    const query = params.toString();
+    return request(
+      `/project/member/${userId}/chapter-assignments${
+        query ? `?${query}` : ''
+      }`,
+    );
+  },
 
   getBibleTexts: (
     bibleId: number,
     chapters: Array<{ bookId: number; chapterNumber: number }>,
-    email: string,
+    updatedAfter?: string,
   ) =>
-    request(`/bibles/${bibleId}/bulk-texts`, {
+    publicRequest(`/bibles/${bibleId}/bulk-texts`, {
       method: 'POST',
-      headers: getHeaders(email),
-      body: JSON.stringify({ chapters }),
+      body: JSON.stringify({ chapters, ...(updatedAfter && { updatedAfter }) }),
     }),
 };

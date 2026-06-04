@@ -4,7 +4,7 @@ import * as DBTypes from '../types/db/types';
 
 const log = logger.create('DBQueries');
 
-export async function getProjects(): Promise<DBTypes.Project[]> {
+export async function getProjects(userId: number): Promise<DBTypes.Project[]> {
   const db = getDatabase();
   try {
     const result = await db.execute(
@@ -16,17 +16,15 @@ export async function getProjects(): Promise<DBTypes.Project[]> {
         p.is_active,
         p.status,
         p.updated_at,
-
         sl.lang_name AS source_language_name,
         tl.lang_name AS target_language_name
-
       FROM projects p
+      INNER JOIN user_projects up ON up.project_id = p.id  -- ← scoped to user
       LEFT JOIN languages sl ON p.source_language_id = sl.id
-      LEFT JOIN languages tl ON p.target_language_id = tl.id;
-      `,
+      LEFT JOIN languages tl ON p.target_language_id = tl.id
+      WHERE up.user_id = ?`,
+      [userId],
     );
-
-    log.info('Projects fetched', { count: result?.rows?.length });
     return (result?.rows as unknown as DBTypes.Project[]) || [];
   } catch (error) {
     log.error('Error fetching projects', { error });
@@ -64,6 +62,7 @@ export async function getChapterAssignmentById(
         ca.status,
         ca.submitted_time,
         ca.updated_at,
+        b.code as book_code,
         b.eng_display_name as book_name,
         bi.name as bible_name,
         bi.abbreviation as bible_abbreviation
@@ -89,6 +88,7 @@ export async function getChapterAssignmentById(
       status: row.status,
       submittedTime: row.submitted_time ?? undefined,
       updatedAt: row.updated_at,
+      bookCode: row.book_code,
       bookName: row.book_name,
       bibleName: row.bible_name,
       bibleAbbreviation: row.bible_abbreviation,

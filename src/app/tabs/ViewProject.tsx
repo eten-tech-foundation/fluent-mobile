@@ -11,7 +11,10 @@ import {
   getChapterAssignmentsWithBooks,
 } from '../../db/queries';
 import { logger } from '../../utils/logger';
-import { ChapterListItem } from '../../types/db/types';
+import {
+  CHAPTER_ASSIGNMENT_STATUS,
+  ChapterListItem,
+} from '../../types/db/types';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { appStyles as styles } from '../appStyles';
@@ -22,6 +25,7 @@ const log = logger.create('ViewProject');
 
 type Nav = StackNavigationProp<RootStackParamList, 'Chapters'>;
 type Route = RouteProp<RootStackParamList, 'Chapters'>;
+type AssignmentStatusKey = keyof typeof CHAPTER_ASSIGNMENT_STATUS;
 
 export default function ViewProject() {
   const navigation = useNavigation<Nav>();
@@ -54,6 +58,11 @@ export default function ViewProject() {
           projectUnitId,
         );
 
+        log.info('Chapter assignments loaded', {
+          projectUnitId,
+          count: chaptersData.length,
+        });
+
         setChapters(chaptersData);
       } catch (error) {
         log.error('Error loading chapters:', { error });
@@ -64,6 +73,13 @@ export default function ViewProject() {
 
     loadChapters();
   }, [projectId]);
+
+  const getStatusDisplayLabel = (status: string) => {
+    if (status in CHAPTER_ASSIGNMENT_STATUS) {
+      return CHAPTER_ASSIGNMENT_STATUS[status as AssignmentStatusKey];
+    }
+    return status;
+  };
 
   if (loading) {
     return (
@@ -111,7 +127,9 @@ export default function ViewProject() {
                 {item.book_name} {item.chapter_number}
               </Text>
 
-              <Text style={styles.cardSubtitle}>{item.status}</Text>
+              <Text style={[styles.cardSubtitle, styles.statusText]}>
+                {getStatusDisplayLabel(item.status)}
+              </Text>
             </View>
 
             <Ionicons name="chevron-forward" size={20} color="#000" />

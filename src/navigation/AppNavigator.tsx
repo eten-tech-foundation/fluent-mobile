@@ -4,15 +4,55 @@ import { RootStackParamList } from '../types/navigation/types';
 import ProjectList from '../app/tabs/ProjectList';
 import ViewProject from '../app/tabs/ViewProject';
 import ViewChapter from '../app/tabs/ViewChapter';
+import LoginScreen from '../app/tabs/LoginScreen';
+import PrivacyPolicyScreen from '../app/tabs/PrivacyPolicyPage';
+import TermsOfUseScreen from '../app/tabs/TermsOfUsePage';
+import { syncAllData } from '../services/sync';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
-export default function AppNavigator() {
+interface AppNavigatorProps {
+  isAuthenticated: boolean;
+  onLoginSuccess: (email: string) => void;
+  onSignOut: () => void;
+}
+
+export default function AppNavigator({
+  isAuthenticated,
+  onLoginSuccess,
+  onSignOut,
+}: AppNavigatorProps) {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Projects" component={ProjectList} />
-      <Stack.Screen name="Chapters" component={ViewProject} />
-      <Stack.Screen name="VerseDetail" component={ViewChapter} />
+      {!isAuthenticated ? (
+        <>
+          <Stack.Screen name="Login">
+            {() => <LoginScreen onLoginSuccess={onLoginSuccess} />}
+          </Stack.Screen>
+          <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+          <Stack.Screen name="TermsOfUse" component={TermsOfUseScreen} />
+        </>
+      ) : (
+        <>
+          <Stack.Screen name="Projects">
+            {() => <ProjectList onSignOut={onSignOut} />}
+          </Stack.Screen>
+          <Stack.Screen name="Chapters" component={ViewProject} />
+          <Stack.Screen name="VerseDetail" component={ViewChapter} />
+          <Stack.Screen name="AddUser">
+            {({ navigation }) => (
+              <LoginScreen
+                onLoginSuccess={(email: string) => {
+                  navigation.navigate('Projects', { newUserLoading: true });
+                  syncAllData(false, email).catch(() => {});
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+          <Stack.Screen name="TermsOfUse" component={TermsOfUseScreen} />
+        </>
+      )}
     </Stack.Navigator>
   );
 }
