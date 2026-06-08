@@ -1,14 +1,17 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { ProjectSyncState } from '../../types/db/types';
+import { ChapterSyncState } from '../../types/db/types';
 import { iconSizes } from '../../theme';
 import { RecordingCloudIcon } from './RecordingCloudIcon';
 
-interface SyncIndicatorProps {
-  syncState: ProjectSyncState;
+interface ChapterCloudSyncIndicatorProps {
+  syncState: ChapterSyncState;
 }
 
-export function SyncIndicator({ syncState }: SyncIndicatorProps) {
+/** Green/yellow cloud beside the chapter title (`h-4 w-4` in mock). */
+export function ChapterCloudSyncIndicator({
+  syncState,
+}: ChapterCloudSyncIndicatorProps) {
   if (syncState === 'none') {
     return null;
   }
@@ -16,7 +19,7 @@ export function SyncIndicator({ syncState }: SyncIndicatorProps) {
   return (
     <View style={styles.icon}>
       <RecordingCloudIcon
-        size={iconSizes.projectSync}
+        size={iconSizes.chapterSync}
         variant={syncState === 'synced' ? 'synced' : 'pending'}
       />
     </View>

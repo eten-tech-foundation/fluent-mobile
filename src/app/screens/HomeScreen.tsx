@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
+import { theme } from '../../theme';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { TabBar, HomeTab } from '../../components/layout/TabBar';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
@@ -25,7 +26,7 @@ export default function HomeScreen() {
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
       <View style={styles.content}>
         {activeTab === 'myWork' ? (
-          <MyWorkTab />
+          <MyWorkTab refreshKey={refreshKey} isSyncing={isSyncing} />
         ) : (
           <ProjectsTab refreshKey={refreshKey} />
         )}
@@ -37,5 +38,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   content: {
     flex: 1,
+    backgroundColor: theme.colors.background,
   },
 });

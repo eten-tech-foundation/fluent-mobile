@@ -1,7 +1,13 @@
 import { spacing } from './tokens';
 
-/** Lucide stroke width used across the Lovable mock. */
-export const lucideStrokeWidth = 2;
+/** Progress ring stroke (`stroke-width="2.5"` in mock). */
+export const progressRingStrokeWidth = 2.5;
+
+/** Header, tabs, chevrons, and list sync icons (`stroke-width="2"` in mock). */
+export const listIconStrokeWidth = 2;
+
+/** @deprecated Use listIconStrokeWidth — kept for compatibility with #32 naming. */
+export const lucideStrokeWidth = listIconStrokeWidth;
 
 /** Touch target expansion for header icon buttons. */
 export const touchHitSlop = { top: 8, bottom: 8, left: 8, right: 8 } as const;
@@ -11,6 +17,8 @@ export const iconSizes = {
   header: 24,
   headerTab: 18,
   projectSync: 24,
+  chapterSync: 16,
+  chapterProgress: 22,
   chevron: 20,
 } as const;
 

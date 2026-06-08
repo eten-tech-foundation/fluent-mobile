@@ -57,6 +57,8 @@ export const createTableQueries: string[] = [
       status           TEXT NOT NULL DEFAULT 'not_started',
       submitted_time   TEXT,
       updated_at       TEXT NOT NULL,
+      total_verses     INTEGER NOT NULL DEFAULT 0,
+      completed_verses INTEGER NOT NULL DEFAULT 0,
       UNIQUE (project_unit_id, bible_id, book_id, chapter_number)
     );`,
 
@@ -95,4 +97,10 @@ export const createTableQueries: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_rec_verse      ON recordings(bible_text_id, is_latest);`,
   `CREATE INDEX IF NOT EXISTS idx_rec_assignment ON recordings(chapter_assignment_id);`,
   `CREATE INDEX IF NOT EXISTS idx_rec_pending    ON recordings(sync_status) WHERE sync_status != 'uploaded';`,
+];
+
+/** For DBs created before verse progress columns were added. */
+export const chapterAssignmentMigrations: string[] = [
+  `ALTER TABLE chapter_assignments ADD COLUMN total_verses INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE chapter_assignments ADD COLUMN completed_verses INTEGER NOT NULL DEFAULT 0`,
 ];

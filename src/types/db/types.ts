@@ -27,6 +27,44 @@ export interface Project {
 
 export type ProjectSyncState = 'none' | 'synced' | 'unsynced';
 
+export type ChapterSyncState = 'none' | 'synced' | 'deviceOnly';
+
+export type WorkflowBadgeStage = 'draft' | 'peer_check' | 'not_started';
+
+export interface MyWorkChapter {
+  id: number;
+  displayLabel: string;
+  bookName: string;
+  chapterNumber: number;
+  workflowStage: WorkflowBadgeStage | null;
+  syncState: ChapterSyncState;
+  completedVerses: number;
+  totalVerses: number;
+  downloadedVerses: number;
+  lastActivityAt?: string;
+  lastActivityLabel?: string;
+  projectName: string;
+  targetLanguageName: string;
+}
+
+export interface MyWorkChapterRow {
+  id: number;
+  book_id: number;
+  chapter_number: number;
+  status: string;
+  book_name: string;
+  project_name: string;
+  target_language_name: string;
+  updated_at?: string | null;
+  submitted_time?: string | null;
+  recording_count: number;
+  pending_count: number;
+  last_recording_activity?: string | null;
+  total_verses: number;
+  completed_verses: number;
+  downloaded_verses: number;
+}
+
 export interface ProjectSummary extends Project {
   chapterCount: number;
   syncState: ProjectSyncState;
@@ -59,6 +97,8 @@ export interface ChapterAssignment {
   chapterStatus?: string;
   submittedTime?: string;
   updatedAt?: string;
+  totalVerses?: number;
+  completedVerses?: number;
 }
 
 export interface Verse {
@@ -71,6 +111,7 @@ export interface Verse {
 }
 
 export interface BibleText {
+  bibleId: number;
   bookId: number;
   chapterNumber: number;
   verses: Verse[];

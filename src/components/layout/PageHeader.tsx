@@ -12,7 +12,7 @@ import {
   iconSizes,
   logoSize,
   headerLayout,
-  lucideStrokeWidth,
+  listIconStrokeWidth,
   touchHitSlop,
 } from '../../theme';
 
@@ -33,22 +33,23 @@ export function PageHeader({
     <View style={styles.container}>
       <TouchableOpacity
         onPress={onSettingsPress}
-        style={styles.sideSlot}
+        style={styles.settingsSlot}
         accessibilityLabel="Settings"
         hitSlop={touchHitSlop}
       >
         <Settings
           size={iconSizes.header}
           color={iconColor}
-          strokeWidth={lucideStrokeWidth}
+          strokeWidth={listIconStrokeWidth}
         />
       </TouchableOpacity>
 
       <TouchableOpacity
         onPress={onSyncPress}
         disabled={isSyncing}
-        style={styles.sideSlot}
-        accessibilityLabel="Sync"
+        style={styles.syncSlot}
+        accessibilityLabel={isSyncing ? 'Syncing…. Open Sync page.' : 'Sync'}
+        accessibilityState={{ disabled: isSyncing }}
         hitSlop={touchHitSlop}
       >
         {isSyncing ? (
@@ -57,7 +58,7 @@ export function PageHeader({
           <CloudUpload
             size={iconSizes.header}
             color={iconColor}
-            strokeWidth={lucideStrokeWidth}
+            strokeWidth={listIconStrokeWidth}
           />
         )}
       </TouchableOpacity>
@@ -84,11 +85,21 @@ const styles = StyleSheet.create({
     paddingVertical: headerLayout.paddingVertical,
     minHeight: headerLayout.minHeight,
   },
-  sideSlot: {
+  settingsSlot: {
     width: headerLayout.sideSlot,
     height: headerLayout.sideSlot,
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: -theme.spacing.sm,
+    zIndex: 1,
+  },
+  syncSlot: {
+    width: headerLayout.sideSlot,
+    height: headerLayout.sideSlot,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius.full,
+    padding: 6,
     zIndex: 1,
   },
   logoOverlay: {
