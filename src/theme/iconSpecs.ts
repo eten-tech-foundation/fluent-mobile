@@ -6,6 +6,9 @@ export const progressRingStrokeWidth = 2.5;
 /** Header, tabs, chevrons, and list sync icons (`stroke-width="2"` in mock). */
 export const listIconStrokeWidth = 2;
 
+/** @deprecated Use listIconStrokeWidth — kept for compatibility with #32 naming. */
+export const lucideStrokeWidth = listIconStrokeWidth;
+
 /** Touch target expansion for header icon buttons. */
 export const touchHitSlop = { top: 8, bottom: 8, left: 8, right: 8 } as const;
 

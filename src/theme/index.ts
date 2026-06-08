@@ -15,6 +15,7 @@ export {
   headerLayout,
   progressRingStrokeWidth,
   listIconStrokeWidth,
+  lucideStrokeWidth,
   touchHitSlop,
 } from './iconSpecs';
 export { homeListContent, listCard, workflowBadge } from './layout';
