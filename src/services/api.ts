@@ -92,7 +92,7 @@ export const FluentAPI = {
     }
     const query = params.toString();
     return request(
-      `/project/member/${userId}/chapter-assignments${
+      `/users/${userId}/chapter-assignments/all${
         query ? `?${query}` : ''
       }`,
     );
