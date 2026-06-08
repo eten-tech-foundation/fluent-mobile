@@ -12,7 +12,7 @@ export const lucideStrokeWidth = listIconStrokeWidth;
 /** Touch target expansion for header icon buttons. */
 export const touchHitSlop = { top: 8, bottom: 8, left: 8, right: 8 } as const;
 
-/** Icon sizes aligned with fluent-test1.lovable.app. */
+/** Icon sizes for headers, list rows, and status indicators. */
 export const iconSizes = {
   header: 24,
   headerTab: 18,
@@ -20,7 +20,13 @@ export const iconSizes = {
   chapterSync: 16,
   chapterProgress: 22,
   chevron: 20,
+  /** Phase status circle on project chapter rows (`h-12 w-12` in mock). */
+  phaseIcon: 48,
+  phaseIconGlyph: 24,
 } as const;
+
+/** Phase icon stroke (`strokeWidth="1.75"` in mock). */
+export const phaseIconStrokeWidth = 1.75;
 
 /** White wordmark dimensions (mock: h-10, aspect from SVG viewBox). */
 export const logoSize = {

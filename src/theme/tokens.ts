@@ -38,8 +38,18 @@ export function hslToHex(h: number, s: number, l: number): string {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
-/** Lovable mock `--card` / `bg-card` (hsl 218 35% 94% → #eaeef5). */
+/** Card surface (`--card` / `bg-card`, hsl 218 35% 94% → #eaeef5). */
 const cardSurface = hslToHex(218, 35, 94);
+
+/** Stage accent + 15% tint (`bg-badge-*-bg` in mock). */
+function stageColors(h: number, s: number, l: number) {
+  const hex = hslToHex(h, s, l);
+  return {
+    phaseColor: hex,
+    phaseTint: `${hex}26`,
+    badgeBorder: hex,
+  } as const;
+}
 
 export const colors = {
   primary: '#0B50D0',
@@ -58,22 +68,61 @@ export const colors = {
   workflowBadgeDraftText: '#1A1A1A',
   workflowBadgePeerCheckBorder: '#EA580C',
   workflowBadgePeerCheckText: '#1A1A1A',
-  workflowBadgeNotStartedBorder: '#1A1A1A',
-  workflowBadgeNotStartedText: '#1A1A1A',
+  workflowBadgeNotStartedBorder: '#6B7280',
+  workflowBadgeNotStartedText: '#FFFFFF',
 } as const;
 
-export const workflowBadges = {
+/** Workflow stage tokens (light mode). */
+export const workflowStages = {
+  not_started: {
+    label: 'Not Started',
+    phaseColor: null,
+    phaseTint: null,
+    phaseIcon: null,
+    badgeBorder: hslToHex(220, 9, 46),
+  },
   draft: {
-    border: colors.workflowBadgeDraftBorder,
-    text: colors.workflowBadgeDraftText,
+    label: 'Draft',
+    phaseIcon: 'mic',
+    ...stageColors(43, 96, 56),
   },
   peer_check: {
-    border: colors.workflowBadgePeerCheckBorder,
-    text: colors.workflowBadgePeerCheckText,
+    label: 'Peer Check',
+    phaseIcon: 'user-check',
+    ...stageColors(20, 89, 48),
+  },
+  community_check: {
+    label: 'Community Check',
+    phaseIcon: 'users-round',
+    ...stageColors(271, 81, 56),
+  },
+  advanced_check: {
+    label: 'Advanced Check',
+    phaseIcon: 'badge-check',
+    ...stageColors(203, 87, 53),
+  },
+  complete: {
+    label: 'Complete',
+    phaseIcon: 'circle-check',
+    ...stageColors(142, 76, 36),
+  },
+} as const;
+
+export type WorkflowStageId = keyof typeof workflowStages;
+
+/** @deprecated Use workflowStages — kept for My Work compatibility. */
+export const workflowBadges = {
+  draft: {
+    border: workflowStages.draft.badgeBorder,
+    text: colors.foreground,
+  },
+  peer_check: {
+    border: workflowStages.peer_check.badgeBorder,
+    text: colors.foreground,
   },
   not_started: {
-    border: colors.workflowBadgeNotStartedBorder,
-    text: colors.workflowBadgeNotStartedText,
+    border: workflowStages.not_started.badgeBorder,
+    text: colors.foreground,
   },
 } as const;
 

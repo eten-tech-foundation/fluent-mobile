@@ -1,5 +1,13 @@
-import { MyWorkChapter } from '../types/db/types';
+import { ChapterSyncState, WorkflowBadgeStage } from '../types/db/types';
 import { verseProgressRatio } from './verseProgress';
+
+export interface ChapterRowDisplaySource {
+  workflowStage: WorkflowBadgeStage | null;
+  syncState: ChapterSyncState;
+  lastActivityLabel?: string;
+  downloadedVerses: number;
+  totalVerses: number;
+}
 
 export interface MyWorkRowDisplay {
   showCloudSync: boolean;
@@ -9,7 +17,7 @@ export interface MyWorkRowDisplay {
 }
 
 export function getMyWorkRowDisplay(
-  chapter: MyWorkChapter,
+  chapter: ChapterRowDisplaySource,
   isSyncing: boolean,
 ): MyWorkRowDisplay {
   const isNotStarted = chapter.workflowStage === 'not_started';

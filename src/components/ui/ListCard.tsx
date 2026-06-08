@@ -13,6 +13,7 @@ interface ListCardProps {
   children: React.ReactNode;
   onPress?: () => void;
   showChevron?: boolean;
+  leading?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
 }
@@ -21,11 +22,13 @@ export function ListCard({
   children,
   onPress,
   showChevron = true,
+  leading,
   style,
   contentStyle,
 }: ListCardProps) {
   const content = (
     <>
+      {leading}
       <View style={[styles.content, contentStyle]}>{children}</View>
       {showChevron && (
         <ChevronRight

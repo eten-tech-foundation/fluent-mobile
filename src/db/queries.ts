@@ -7,7 +7,11 @@ import {
   pickLastActivityIso,
 } from '../utils/formatLastActivity';
 import { deriveProjectSyncState } from '../utils/projectSyncState';
-import { getBadgeStage, isCompleteStatus } from '../utils/workflowStage';
+import {
+  getBadgeStage,
+  getWorkflowStage,
+  isCompleteStatus,
+} from '../utils/workflowStage';
 
 const log = logger.create('DBQueries');
 
@@ -169,11 +173,18 @@ const BIBLE_TEXTS_MATCH_CA = `
   AND bt.chapter_number = ca.chapter_number
 `;
 
-function mapMyWorkChapterRow(
-  row: DBTypes.MyWorkChapterRow,
-): DBTypes.MyWorkChapter {
-  const recordingCount = Number(row.recording_count) || 0;
-  const pendingCount = Number(row.pending_count) || 0;
+const RECORDING_AGGREGATES = `
+  COUNT(DISTINCT CASE WHEN r.id IS NOT NULL AND r.is_latest = 1 THEN r.id END) AS recording_count,
+  COUNT(DISTINCT CASE
+    WHEN r.id IS NOT NULL AND r.is_latest = 1 AND r.sync_status != 'uploaded' THEN r.id
+  END) AS pending_count,
+  MAX(CASE WHEN r.is_latest = 1 THEN r.updated_at END) AS last_recording_activity`;
+
+function mapChapterActivityFields(row: {
+  updated_at?: string | null;
+  submitted_time?: string | null;
+  last_recording_activity?: string | null;
+}) {
   const lastActivityAt = pickLastActivityIso(
     row.updated_at,
     row.submitted_time,
@@ -181,20 +192,109 @@ function mapMyWorkChapterRow(
   );
 
   return {
+    lastActivityAt,
+    lastActivityLabel: formatLastActivity(lastActivityAt),
+  };
+}
+
+function mapChapterRowCore(
+  row: Pick<
+    DBTypes.ProjectChapterRow,
+    | 'id'
+    | 'book_name'
+    | 'chapter_number'
+    | 'updated_at'
+    | 'submitted_time'
+    | 'last_recording_activity'
+    | 'recording_count'
+    | 'pending_count'
+    | 'total_verses'
+    | 'completed_verses'
+    | 'downloaded_verses'
+  >,
+) {
+  const recordingCount = Number(row.recording_count) || 0;
+  const pendingCount = Number(row.pending_count) || 0;
+  const activity = mapChapterActivityFields(row);
+
+  return {
     id: row.id,
     displayLabel: `${row.book_name} ${row.chapter_number}`,
     bookName: row.book_name,
     chapterNumber: row.chapter_number,
-    workflowStage: getBadgeStage(row.status),
     syncState: deriveChapterSyncState(recordingCount, pendingCount),
-    lastActivityAt,
-    lastActivityLabel: formatLastActivity(lastActivityAt),
+    lastActivityAt: activity.lastActivityAt,
+    lastActivityLabel: activity.lastActivityLabel,
     completedVerses: Number(row.completed_verses) || 0,
     totalVerses: Number(row.total_verses) || 0,
     downloadedVerses: Number(row.downloaded_verses) || 0,
+  };
+}
+
+function mapMyWorkChapterRow(
+  row: DBTypes.MyWorkChapterRow,
+): DBTypes.MyWorkChapter {
+  return {
+    ...mapChapterRowCore(row),
+    workflowStage: getBadgeStage(row.status),
     projectName: row.project_name,
     targetLanguageName: row.target_language_name,
   };
+}
+
+function mapProjectChapterRow(
+  row: DBTypes.ProjectChapterRow,
+): DBTypes.ProjectChapter {
+  return {
+    ...mapChapterRowCore(row),
+    workflowStage: getWorkflowStage(row.status) ?? 'not_started',
+  };
+}
+
+export async function getProjectChapters(
+  projectId: number,
+): Promise<DBTypes.ProjectChapter[]> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT
+        ca.id,
+        ca.book_id,
+        ca.chapter_number,
+        ca.status,
+        ca.updated_at,
+        ca.submitted_time,
+        b.eng_display_name AS book_name,
+        ${RECORDING_AGGREGATES},
+        (
+          SELECT COUNT(*)
+          FROM bible_texts bt
+          WHERE ${BIBLE_TEXTS_MATCH_CA}
+        ) AS downloaded_verses,
+        ca.total_verses,
+        ca.completed_verses
+      FROM chapter_assignments ca
+      JOIN books b ON ca.book_id = b.id
+      JOIN project_units pu ON ca.project_unit_id = pu.id
+      LEFT JOIN recordings r ON r.chapter_assignment_id = ca.id AND r.is_latest = 1
+      WHERE pu.project_id = ?
+      GROUP BY ca.id
+      ORDER BY b.id, ca.chapter_number`,
+      [Number(projectId)],
+    );
+
+    const rows = (result?.rows as unknown as DBTypes.ProjectChapterRow[]) || [];
+    const chapters = rows.map(mapProjectChapterRow);
+
+    log.info('Project chapters fetched', {
+      projectId,
+      count: chapters.length,
+    });
+    return chapters;
+  } catch (error) {
+    log.error('Error fetching project chapters', { error, projectId });
+    throw error;
+  }
 }
 
 export async function getMyWorkChapters(
@@ -213,11 +313,7 @@ export async function getMyWorkChapters(
         b.eng_display_name AS book_name,
         p.name AS project_name,
         tl.lang_name AS target_language_name,
-        COUNT(DISTINCT CASE WHEN r.id IS NOT NULL AND r.is_latest = 1 THEN r.id END) AS recording_count,
-        COUNT(DISTINCT CASE
-          WHEN r.id IS NOT NULL AND r.is_latest = 1 AND r.sync_status != 'uploaded' THEN r.id
-        END) AS pending_count,
-        MAX(CASE WHEN r.is_latest = 1 THEN r.updated_at END) AS last_recording_activity,
+        ${RECORDING_AGGREGATES},
         (
           SELECT COUNT(*)
           FROM bible_texts bt
