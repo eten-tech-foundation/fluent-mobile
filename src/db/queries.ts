@@ -1,14 +1,38 @@
 import { getDatabase } from './db';
 import { logger } from '../utils/logger';
 import * as DBTypes from '../types/db/types';
+import { deriveProjectSyncState } from '../utils/projectSyncState';
 
 const log = logger.create('DBQueries');
 
-export async function getProjects(): Promise<DBTypes.Project[]> {
+function mapProjectSummaryRow(
+  row: DBTypes.ProjectSummaryRow,
+): DBTypes.ProjectSummary {
+  return {
+    id: row.id,
+    name: row.name,
+    source_language_id: row.source_language_id,
+    target_language_id: row.target_language_id,
+    source_language_name: row.source_language_name,
+    target_language_name: row.target_language_name,
+    isActive: Boolean(row.is_active),
+    status: row.status,
+    updatedAt: row.updated_at,
+    chapterCount: Number(row.chapter_count) || 0,
+    syncState: deriveProjectSyncState(
+      Number(row.recording_count) || 0,
+      Number(row.pending_count) || 0,
+    ),
+  };
+}
+
+export async function getProjectsWithSummary(): Promise<
+  DBTypes.ProjectSummary[]
+> {
   const db = getDatabase();
   try {
     const result = await db.execute(
-      `SELECT 
+      `SELECT
         p.id,
         p.name,
         p.source_language_id,
@@ -16,20 +40,28 @@ export async function getProjects(): Promise<DBTypes.Project[]> {
         p.is_active,
         p.status,
         p.updated_at,
-
         sl.lang_name AS source_language_name,
-        tl.lang_name AS target_language_name
-
+        tl.lang_name AS target_language_name,
+        COUNT(DISTINCT ca.id) AS chapter_count,
+        COUNT(DISTINCT CASE WHEN r.id IS NOT NULL THEN r.id END) AS recording_count,
+        COUNT(DISTINCT CASE
+          WHEN r.id IS NOT NULL AND r.sync_status != 'uploaded' THEN r.id
+        END) AS pending_count
       FROM projects p
       LEFT JOIN languages sl ON p.source_language_id = sl.id
-      LEFT JOIN languages tl ON p.target_language_id = tl.id;
-      `,
+      LEFT JOIN languages tl ON p.target_language_id = tl.id
+      LEFT JOIN project_units pu ON pu.project_id = p.id
+      LEFT JOIN chapter_assignments ca ON ca.project_unit_id = pu.id
+      LEFT JOIN recordings r ON r.chapter_assignment_id = ca.id AND r.is_latest = 1
+      GROUP BY p.id
+      ORDER BY p.name COLLATE NOCASE;`,
     );
 
-    log.info('Projects fetched', { count: result?.rows?.length });
-    return (result?.rows as unknown as DBTypes.Project[]) || [];
+    const rows = (result?.rows as unknown as DBTypes.ProjectSummaryRow[]) || [];
+    log.info('Projects with summary fetched', { count: rows.length });
+    return rows.map(mapProjectSummaryRow);
   } catch (error) {
-    log.error('Error fetching projects', { error });
+    log.error('Error fetching projects with summary', { error });
     return [];
   }
 }
