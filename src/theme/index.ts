@@ -27,6 +27,7 @@ export {
   listIconStrokeWidth,
   lucideStrokeWidth,
   touchHitSlop,
+  syncStatusIcon,
 } from './iconSpecs';
 export { homeListContent, listCard, workflowBadge } from './layout';
 

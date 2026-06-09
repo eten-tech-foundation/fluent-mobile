@@ -63,6 +63,10 @@ export const colors = {
   syncSynced: '#16A34A',
   syncUnsynced: '#EAB308',
   syncDownloading: '#0B50D0',
+  /** Nav-bar cloud sync status (issue #38). */
+  syncStatusSynced: '#17B26A',
+  syncStatusPending: '#E48F06',
+  syncStatusOffline: '#A0A0A0',
   destructive: '#DC2626',
   workflowBadgeDraftBorder: '#FBBF24',
   workflowBadgeDraftText: '#1A1A1A',

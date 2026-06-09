@@ -1,12 +1,8 @@
 import React from 'react';
-import {
-  View,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-} from 'react-native';
-import { Settings, CloudUpload } from 'lucide-react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Settings } from 'lucide-react-native';
 import FluentLogoWhite from '../../assets/icons/fluent-logo-white.svg';
+import { CloudSyncStatusIcon } from '../ui/CloudSyncStatusIcon';
 import {
   theme,
   iconSizes,
@@ -15,17 +11,18 @@ import {
   listIconStrokeWidth,
   touchHitSlop,
 } from '../../theme';
+import { SyncStatus, SYNC_STATUS_LABELS } from '../../utils/syncStatusState';
 
 interface PageHeaderProps {
   onSettingsPress?: () => void;
   onSyncPress?: () => void;
-  isSyncing?: boolean;
+  syncStatus: SyncStatus;
 }
 
 export function PageHeader({
   onSettingsPress,
   onSyncPress,
-  isSyncing = false,
+  syncStatus,
 }: PageHeaderProps) {
   const iconColor = theme.colors.primaryForeground;
 
@@ -46,21 +43,12 @@ export function PageHeader({
 
       <TouchableOpacity
         onPress={onSyncPress}
-        disabled={isSyncing}
         style={styles.syncSlot}
-        accessibilityLabel={isSyncing ? 'Syncing…. Open Sync page.' : 'Sync'}
-        accessibilityState={{ disabled: isSyncing }}
+        accessibilityLabel={SYNC_STATUS_LABELS[syncStatus]}
+        accessibilityRole="button"
         hitSlop={touchHitSlop}
       >
-        {isSyncing ? (
-          <ActivityIndicator size="small" color={iconColor} />
-        ) : (
-          <CloudUpload
-            size={iconSizes.header}
-            color={iconColor}
-            strokeWidth={listIconStrokeWidth}
-          />
-        )}
+        <CloudSyncStatusIcon status={syncStatus} decorative />
       </TouchableOpacity>
 
       <View style={styles.logoOverlay} pointerEvents="none">

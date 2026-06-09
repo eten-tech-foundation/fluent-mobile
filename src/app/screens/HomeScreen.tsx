@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator, Text } from 'react-native';
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { theme } from '../../theme';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { TabBar, HomeTab } from '../../components/layout/TabBar';
@@ -8,6 +9,7 @@ import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { MyWorkTab } from '../tabs/MyWorkTab';
 import { ProjectsTab } from '../tabs/ProjectsTab';
 import { useSync } from '../../hooks/useSync';
+import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { UserSettingsMenu } from '../../components/ui/UserSettingsMenu';
 import { RootStackParamList } from '../../types/navigation/types';
 import { onSyncComplete, onSyncStart } from '../../services/syncEvents';
@@ -17,6 +19,7 @@ interface HomeScreenProps {
 }
 
 export default function HomeScreen({ onSignOut }: HomeScreenProps) {
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'Home'>>();
   const [activeTab, setActiveTab] = useState<HomeTab>('myWork');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -32,9 +35,11 @@ export default function HomeScreen({ onSignOut }: HomeScreenProps) {
     setRefreshKey(key => key + 1);
   }, []);
 
-  const { isSyncing, triggerSync } = useSync({
+  const { isSyncing } = useSync({
     onSyncComplete: handleSyncComplete,
   });
+
+  const { status: syncStatus } = useSyncStatus({ isSyncing, refreshKey });
 
   useEffect(() => {
     const unsubscribeComplete = onSyncComplete(() => {
@@ -61,6 +66,10 @@ export default function HomeScreen({ onSignOut }: HomeScreenProps) {
     setRefreshKey(key => key + 1);
   };
 
+  const handleSyncPress = useCallback(() => {
+    navigation.navigate('Sync');
+  }, [navigation]);
+
   const showLoading = isNewUserLoading || (isSyncingLocal && refreshKey === 0);
 
   if (showLoading) {
@@ -78,8 +87,8 @@ export default function HomeScreen({ onSignOut }: HomeScreenProps) {
     <ScreenContainer edges={['top']}>
       <PageHeader
         onSettingsPress={handleSettingsPress}
-        onSyncPress={triggerSync}
-        isSyncing={isSyncing}
+        syncStatus={syncStatus}
+        onSyncPress={handleSyncPress}
       />
       <UserSettingsMenu
         visible={settingsVisible}

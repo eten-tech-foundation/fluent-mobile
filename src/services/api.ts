@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '@env';
+import { checkServerReachable } from './connectivity';
 
 let _activeToken: string | null = null;
 
@@ -24,7 +25,7 @@ async function publicRequest(endpoint: string, options?: RequestInit) {
     headers: {
       'Content-Type': 'application/json',
       Origin: API_BASE_URL,
-      ...options?.headers, // ← mobile headers come through here when passed
+      ...options?.headers,
     },
   });
   if (!res.ok) {
@@ -55,23 +56,25 @@ async function request(endpoint: string, options?: RequestInit) {
 }
 
 export const FluentAPI = {
+  checkServerReachable,
+
   signIn: (email: string, password: string) =>
     publicRequest('/api/auth/sign-in/email', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
-      headers: MOBILE_HEADERS, // ← only here
+      headers: MOBILE_HEADERS,
     }),
   forgotPassword: (email: string) =>
     publicRequest('/api/auth/forget-password', {
       method: 'POST',
       body: JSON.stringify({ email }),
-      headers: MOBILE_HEADERS, // ← only here
+      headers: MOBILE_HEADERS,
     }),
 
   signOut: () =>
     request('/api/auth/sign-out', {
       method: 'POST',
-      headers: MOBILE_HEADERS, // ← only here
+      headers: MOBILE_HEADERS,
     }),
 
   getLanguages: () => publicRequest('/languages'),
