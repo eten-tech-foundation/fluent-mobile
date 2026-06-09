@@ -37,7 +37,7 @@ Quick map for Cursor agents and new contributors. Verified against this repo on 
 | [`src/types/`](../src/types/) | API, DB, navigation, env types |
 | [`src/components/ui/`](../src/components/ui/) | Shared UI (`SyncButton`) |
 | [`src/utils/logger.ts`](../src/utils/logger.ts) | Tagged logging |
-| [`android/`](../android/), [`ios/`](../ios/) | Native projects |
+| [`android/`](../android/) | Native Android project |
 | [`.github/workflows/`](../.github/workflows/) | CI |
 | [`.cursor/rules/`](../.cursor/rules/) | Cursor agent rules |
 | [`.cursor/commands/`](../.cursor/commands/) | Slash commands (`/create-pr`, etc.) |
@@ -67,7 +67,7 @@ Run from repo root after `npm install`:
 | `npm run format` | Prettier write (broader glob than `format:check`) |
 | `npx tsc --noEmit` | Typecheck (passes; no npm script yet) |
 | `FLUENT_USER_EMAIL=test@example.com npm test -- --ci` | Jest (3 suites, 7 tests) |
-| `npm run android` / `npm run ios` | Run on device/emulator |
+| `npm run android` | Run on Android device/emulator |
 
 **Before claiming PR-ready:** format → lint → typecheck → test (see [`.cursor/rules/commands.mdc`](../.cursor/rules/commands.mdc)).
 
@@ -158,8 +158,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 | `sync.ts` module-level `getDatabase()` | Dead import at line 24; calling `getDatabase()` before init throws |
 | `fluent-api.test.ts` | Live network dependency |
 | `format` vs `format:check` | Different glob scopes — CI only checks `src/**` |
-| Native folders | `android/`, `ios/` ignored by ESLint — validate builds locally or via CI |
-| iOS CI | Disabled in `build.yml` (commented job) |
+| Native folders | `android/` ignored by ESLint — validate builds locally or via CI |
 
 ## Open questions / TODOs
 

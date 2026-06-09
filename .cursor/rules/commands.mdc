@@ -23,14 +23,13 @@ Report what ran and the outcome. If a step was skipped, say why.
 | `npm install` | Install deps |
 | `npm start` | Metro bundler |
 | `npm run android` | Run on Android emulator/device |
-| `npm run ios` | Run on iOS (macOS + Xcode) |
 | `npm run format` | Fix Prettier (broader than `format:check`) |
 
 ## CI mirrors
 
 - Lint + format: `.github/workflows/lint.yml`
 - Test: `.github/workflows/test.yml` (sets `FLUENT_USER_EMAIL`)
-- Android build: `.github/workflows/build.yml` (iOS job disabled)
+- Android build: `.github/workflows/build.yml`
 
 ## PR workflow
 
