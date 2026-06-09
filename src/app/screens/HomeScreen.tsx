@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useState, useCallback, useEffect } from 'react';
+import { View, StyleSheet, ActivityIndicator, Text } from 'react-native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { theme } from '../../theme';
 import { PageHeader } from '../../components/layout/PageHeader';
@@ -10,14 +10,28 @@ import { MyWorkTab } from '../tabs/MyWorkTab';
 import { ProjectsTab } from '../tabs/ProjectsTab';
 import { useSync } from '../../hooks/useSync';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
+import { UserSettingsMenu } from '../../components/ui/UserSettingsMenu';
 import { RootStackParamList } from '../../types/navigation/types';
+import { onSyncComplete, onSyncStart } from '../../services/syncEvents';
 
-export default function HomeScreen() {
+interface HomeScreenProps {
+  onSignOut?: () => void;
+}
+
+export default function HomeScreen({ onSignOut }: HomeScreenProps) {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'Home'>>();
   const [activeTab, setActiveTab] = useState<HomeTab>('myWork');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [settingsAnchor, setSettingsAnchor] = useState({ top: 0, left: 16 });
+  const [isNewUserLoading, setIsNewUserLoading] = useState(
+    () => route.params?.newUserLoading === true,
+  );
+  const [isSyncingLocal, setIsSyncingLocal] = useState(false);
 
   const handleSyncComplete = useCallback(() => {
+    setIsNewUserLoading(false);
     setRefreshKey(key => key + 1);
   }, []);
 
@@ -27,13 +41,62 @@ export default function HomeScreen() {
 
   const { status: syncStatus } = useSyncStatus({ isSyncing, refreshKey });
 
+  useEffect(() => {
+    const unsubscribeComplete = onSyncComplete(() => {
+      setIsNewUserLoading(false);
+      setIsSyncingLocal(false);
+      setRefreshKey(key => key + 1);
+    });
+    const unsubscribeStart = onSyncStart(() => {
+      setIsSyncingLocal(true);
+    });
+
+    return () => {
+      unsubscribeComplete();
+      unsubscribeStart();
+    };
+  }, []);
+
+  const handleSettingsPress = () => {
+    setSettingsAnchor({ top: 56, left: 16 });
+    setSettingsVisible(true);
+  };
+
+  const handleUserSwitched = () => {
+    setRefreshKey(key => key + 1);
+  };
+
   const handleSyncPress = useCallback(() => {
     navigation.navigate('Sync');
   }, [navigation]);
 
+  const showLoading = isNewUserLoading || (isSyncingLocal && refreshKey === 0);
+
+  if (showLoading) {
+    return (
+      <ScreenContainer edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={styles.loadingText}>Syncing data...</Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
   return (
     <ScreenContainer edges={['top']}>
-      <PageHeader syncStatus={syncStatus} onSyncPress={handleSyncPress} />
+      <PageHeader
+        onSettingsPress={handleSettingsPress}
+        syncStatus={syncStatus}
+        onSyncPress={handleSyncPress}
+      />
+      <UserSettingsMenu
+        visible={settingsVisible}
+        onClose={() => setSettingsVisible(false)}
+        anchor={settingsAnchor}
+        onSignOut={onSignOut}
+        onUserSwitched={handleUserSwitched}
+      />
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
       <View style={styles.content}>
         {activeTab === 'myWork' ? (
@@ -50,5 +113,15 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: theme.spacing.sm,
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.mutedForeground,
   },
 });
