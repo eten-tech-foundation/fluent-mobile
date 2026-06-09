@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getProjectsWithSummary } from '../db/queries';
 import { ProjectSummary } from '../types/db/types';
+import { parseUserId } from '../utils/parseUserId';
 import { logger } from '../utils/logger';
 
 const log = logger.create('useProjectsSummary');
@@ -11,18 +12,22 @@ export function useProjectsSummary(refreshKey = 0) {
   const [refreshing, setRefreshing] = useState(false);
 
   const loadProjects = useCallback(async () => {
+    const userId = parseUserId();
+    if (!userId) {
+      setProjects([]);
+      return;
+    }
+
     try {
-      setProjects(await getProjectsWithSummary());
+      setProjects(await getProjectsWithSummary(userId));
     } catch (error) {
       log.error('Error loading projects:', { error });
-    } finally {
-      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     setLoading(true);
-    loadProjects();
+    loadProjects().finally(() => setLoading(false));
   }, [loadProjects, refreshKey]);
 
   const refresh = useCallback(async () => {

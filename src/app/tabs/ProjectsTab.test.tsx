@@ -22,6 +22,10 @@ jest.mock('lucide-react-native', () => {
   };
 });
 
+jest.mock('../../utils/parseUserId', () => ({
+  parseUserId: jest.fn(() => 1),
+}));
+
 jest.mock('../../db/queries', () => ({
   getProjectsWithSummary: jest.fn(),
 }));

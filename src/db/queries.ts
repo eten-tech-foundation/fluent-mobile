@@ -36,9 +36,9 @@ function mapProjectSummaryRow(
   };
 }
 
-export async function getProjectsWithSummary(): Promise<
-  DBTypes.ProjectSummary[]
-> {
+export async function getProjectsWithSummary(
+  userId: number,
+): Promise<DBTypes.ProjectSummary[]> {
   const db = getDatabase();
   try {
     const result = await db.execute(
@@ -58,13 +58,16 @@ export async function getProjectsWithSummary(): Promise<
           WHEN r.id IS NOT NULL AND r.sync_status != 'uploaded' THEN r.id
         END) AS pending_count
       FROM projects p
+      INNER JOIN user_projects up ON up.project_id = p.id
       LEFT JOIN languages sl ON p.source_language_id = sl.id
       LEFT JOIN languages tl ON p.target_language_id = tl.id
       LEFT JOIN project_units pu ON pu.project_id = p.id
       LEFT JOIN chapter_assignments ca ON ca.project_unit_id = pu.id
       LEFT JOIN recordings r ON r.chapter_assignment_id = ca.id AND r.is_latest = 1
+      WHERE up.user_id = ?
       GROUP BY p.id
       ORDER BY p.name COLLATE NOCASE;`,
+      [userId],
     );
 
     const rows = (result?.rows as unknown as DBTypes.ProjectSummaryRow[]) || [];
@@ -106,6 +109,7 @@ export async function getChapterAssignmentById(
         ca.status,
         ca.submitted_time,
         ca.updated_at,
+        b.code as book_code,
         b.eng_display_name as book_name,
         bi.name as bible_name,
         bi.abbreviation as bible_abbreviation
@@ -131,6 +135,7 @@ export async function getChapterAssignmentById(
       status: row.status,
       submittedTime: row.submitted_time ?? undefined,
       updatedAt: row.updated_at,
+      bookCode: row.book_code,
       bookName: row.book_name,
       bibleName: row.bible_name,
       bibleAbbreviation: row.bible_abbreviation,
