@@ -1,14 +1,44 @@
 import { getDatabase } from './db';
 import { logger } from '../utils/logger';
 import * as DBTypes from '../types/db/types';
+import { deriveChapterSyncState } from '../utils/chapterSyncState';
+import {
+  formatLastActivity,
+  pickLastActivityIso,
+} from '../utils/formatLastActivity';
+import { deriveProjectSyncState } from '../utils/projectSyncState';
+import { getBadgeStage, isCompleteStatus } from '../utils/workflowStage';
 
 const log = logger.create('DBQueries');
 
-export async function getProjects(userId: number): Promise<DBTypes.Project[]> {
+function mapProjectSummaryRow(
+  row: DBTypes.ProjectSummaryRow,
+): DBTypes.ProjectSummary {
+  return {
+    id: row.id,
+    name: row.name,
+    source_language_id: row.source_language_id,
+    target_language_id: row.target_language_id,
+    source_language_name: row.source_language_name,
+    target_language_name: row.target_language_name,
+    isActive: Boolean(row.is_active),
+    status: row.status,
+    updatedAt: row.updated_at,
+    chapterCount: Number(row.chapter_count) || 0,
+    syncState: deriveProjectSyncState(
+      Number(row.recording_count) || 0,
+      Number(row.pending_count) || 0,
+    ),
+  };
+}
+
+export async function getProjectsWithSummary(
+  userId: number,
+): Promise<DBTypes.ProjectSummary[]> {
   const db = getDatabase();
   try {
     const result = await db.execute(
-      `SELECT 
+      `SELECT
         p.id,
         p.name,
         p.source_language_id,
@@ -17,17 +47,30 @@ export async function getProjects(userId: number): Promise<DBTypes.Project[]> {
         p.status,
         p.updated_at,
         sl.lang_name AS source_language_name,
-        tl.lang_name AS target_language_name
+        tl.lang_name AS target_language_name,
+        COUNT(DISTINCT ca.id) AS chapter_count,
+        COUNT(DISTINCT CASE WHEN r.id IS NOT NULL THEN r.id END) AS recording_count,
+        COUNT(DISTINCT CASE
+          WHEN r.id IS NOT NULL AND r.sync_status != 'uploaded' THEN r.id
+        END) AS pending_count
       FROM projects p
-      INNER JOIN user_projects up ON up.project_id = p.id  -- ← scoped to user
+      INNER JOIN user_projects up ON up.project_id = p.id
       LEFT JOIN languages sl ON p.source_language_id = sl.id
       LEFT JOIN languages tl ON p.target_language_id = tl.id
-      WHERE up.user_id = ?`,
+      LEFT JOIN project_units pu ON pu.project_id = p.id
+      LEFT JOIN chapter_assignments ca ON ca.project_unit_id = pu.id
+      LEFT JOIN recordings r ON r.chapter_assignment_id = ca.id AND r.is_latest = 1
+      WHERE up.user_id = ?
+      GROUP BY p.id
+      ORDER BY p.name COLLATE NOCASE;`,
       [userId],
     );
-    return (result?.rows as unknown as DBTypes.Project[]) || [];
+
+    const rows = (result?.rows as unknown as DBTypes.ProjectSummaryRow[]) || [];
+    log.info('Projects with summary fetched', { count: rows.length });
+    return rows.map(mapProjectSummaryRow);
   } catch (error) {
-    log.error('Error fetching projects', { error });
+    log.error('Error fetching projects with summary', { error });
     return [];
   }
 }
@@ -121,6 +164,93 @@ export async function getChapterAssignmentsWithBooks(projectUnitId: number) {
     return (result?.rows as unknown as DBTypes.ChapterListItem[]) || [];
   } catch (error) {
     log.error('Error fetching chapter assignments with books:', { error });
+    return [];
+  }
+}
+
+const BIBLE_TEXTS_MATCH_CA = `
+  bt.bible_id = ca.bible_id
+  AND bt.book_id = ca.book_id
+  AND bt.chapter_number = ca.chapter_number
+`;
+
+function mapMyWorkChapterRow(
+  row: DBTypes.MyWorkChapterRow,
+): DBTypes.MyWorkChapter {
+  const recordingCount = Number(row.recording_count) || 0;
+  const pendingCount = Number(row.pending_count) || 0;
+  const lastActivityAt = pickLastActivityIso(
+    row.updated_at,
+    row.submitted_time,
+    row.last_recording_activity,
+  );
+
+  return {
+    id: row.id,
+    displayLabel: `${row.book_name} ${row.chapter_number}`,
+    bookName: row.book_name,
+    chapterNumber: row.chapter_number,
+    workflowStage: getBadgeStage(row.status),
+    syncState: deriveChapterSyncState(recordingCount, pendingCount),
+    lastActivityAt,
+    lastActivityLabel: formatLastActivity(lastActivityAt),
+    completedVerses: Number(row.completed_verses) || 0,
+    totalVerses: Number(row.total_verses) || 0,
+    downloadedVerses: Number(row.downloaded_verses) || 0,
+    projectName: row.project_name,
+    targetLanguageName: row.target_language_name,
+  };
+}
+
+export async function getMyWorkChapters(
+  userId: number,
+): Promise<DBTypes.MyWorkChapter[]> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT
+        ca.id,
+        ca.book_id,
+        ca.chapter_number,
+        ca.status,
+        ca.updated_at,
+        ca.submitted_time,
+        b.eng_display_name AS book_name,
+        p.name AS project_name,
+        tl.lang_name AS target_language_name,
+        COUNT(DISTINCT CASE WHEN r.id IS NOT NULL AND r.is_latest = 1 THEN r.id END) AS recording_count,
+        COUNT(DISTINCT CASE
+          WHEN r.id IS NOT NULL AND r.is_latest = 1 AND r.sync_status != 'uploaded' THEN r.id
+        END) AS pending_count,
+        MAX(CASE WHEN r.is_latest = 1 THEN r.updated_at END) AS last_recording_activity,
+        (
+          SELECT COUNT(*)
+          FROM bible_texts bt
+          WHERE ${BIBLE_TEXTS_MATCH_CA}
+        ) AS downloaded_verses,
+        ca.total_verses,
+        ca.completed_verses
+      FROM chapter_assignments ca
+      JOIN books b ON ca.book_id = b.id
+      JOIN project_units pu ON ca.project_unit_id = pu.id
+      JOIN projects p ON pu.project_id = p.id
+      LEFT JOIN languages tl ON p.target_language_id = tl.id
+      LEFT JOIN recordings r ON r.chapter_assignment_id = ca.id AND r.is_latest = 1
+      WHERE ca.assigned_user_id = ?
+      GROUP BY ca.id
+      ORDER BY b.id, ca.chapter_number`,
+      [userId],
+    );
+
+    const rows = (result?.rows as unknown as DBTypes.MyWorkChapterRow[]) || [];
+    const chapters = rows
+      .filter(row => !isCompleteStatus(row.status))
+      .map(mapMyWorkChapterRow);
+
+    log.info('My work chapters fetched', { count: chapters.length });
+    return chapters;
+  } catch (error) {
+    log.error('Error fetching my work chapters', { error });
     return [];
   }
 }

@@ -1,7 +1,7 @@
 export type RootStackParamList = {
   Login: undefined;
   AddUser: undefined;
-  Projects: { newUserLoading?: boolean } | undefined; // ← add param
+  Home: { newUserLoading?: boolean } | undefined;
   Chapters: {
     projectId: number;
     projectName: string;

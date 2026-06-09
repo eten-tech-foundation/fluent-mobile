@@ -1,4 +1,5 @@
 import { FluentAPI } from './api';
+import { mergeUserChapterAssignments } from './mergeUserChapterAssignments';
 import {
   insertUser,
   insertMasterData,
@@ -10,8 +11,7 @@ import {
 } from '../db/repository';
 import { logger } from '../utils/logger';
 import { getDatabase } from '../db/db';
-import { ApiBook, ApiChapterAssignment, ApiVerse } from '../types/api/types';
-import * as DBTypes from '../types/db/types';
+import { ApiBook, ApiVerse } from '../types/api/types';
 import {
   setUserSync,
   setSyncCount,
@@ -193,23 +193,10 @@ export async function syncChapterAssignments(
         excludeProjectIds,
       );
 
-      const raw = response.data ?? response;
-
-      const allAssignments: DBTypes.ChapterAssignment[] = (
-        raw as ApiChapterAssignment[]
-      ).map(a => ({
-        chapterAssignmentId: a.chapterAssignmentId,
-        projectId: a.projectId,
-        projectUnitId: a.projectUnitId ?? 0,
-        bibleId: a.bibleId,
-        bookId: a.bookId,
-        chapterNumber: a.chapterNumber,
-        assignedUserId: a.assignedUserId ?? undefined,
-        peerCheckerId: a.peerCheckerId ?? undefined,
-        chapterStatus: a.status ?? undefined,
-        submittedTime: a.submittedTime ?? undefined,
-        updatedAt: a.updatedAt ?? undefined,
-      }));
+      const allAssignments = mergeUserChapterAssignments(
+        response?.assignedChapters,
+        response?.peerCheckChapters,
+      );
 
       if (allAssignments.length > 0) {
         await insertChapterAssignmentSyncData(allAssignments);
@@ -281,6 +268,7 @@ export async function syncBibleTexts(updatedAfter?: string) {
           }
 
           const textsWithBibleId = books.map((book: ApiBook) => ({
+            bibleId,
             bookId: book.bookId,
             chapterNumber: book.chapterNumber,
             verses: book.verses.map((verse: ApiVerse) => ({

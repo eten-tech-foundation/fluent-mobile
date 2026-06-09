@@ -78,10 +78,23 @@ async function insertChapterAssignmentTx(
   if (!assignment?.chapterAssignmentId) return;
 
   await tx.execute(
-    `INSERT OR REPLACE INTO chapter_assignments
+    `INSERT INTO chapter_assignments
     (id, project_unit_id, bible_id, book_id, chapter_number,
-     assigned_user_id, peer_checker_id, status, submitted_time, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     assigned_user_id, peer_checker_id, status, submitted_time, updated_at,
+     total_verses, completed_verses)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      project_unit_id = excluded.project_unit_id,
+      bible_id = excluded.bible_id,
+      book_id = excluded.book_id,
+      chapter_number = excluded.chapter_number,
+      assigned_user_id = excluded.assigned_user_id,
+      peer_checker_id = excluded.peer_checker_id,
+      status = excluded.status,
+      submitted_time = excluded.submitted_time,
+      updated_at = excluded.updated_at,
+      total_verses = MAX(chapter_assignments.total_verses, excluded.total_verses),
+      completed_verses = excluded.completed_verses`,
     [
       assignment.chapterAssignmentId,
       assignment.projectUnitId,
@@ -93,6 +106,8 @@ async function insertChapterAssignmentTx(
       assignment.chapterStatus ?? 'not_started',
       assignment.submittedTime ?? null,
       assignment.updatedAt ?? new Date().toISOString(),
+      assignment.totalVerses ?? 0,
+      assignment.completedVerses ?? 0,
     ],
   );
 }
@@ -322,9 +337,15 @@ export async function insertBibleTexts(data: DBTypes.BibleText[]) {
   try {
     await db.transaction(async (tx: Transaction) => {
       for (const chapter of data) {
+        await tx.execute(
+          `DELETE FROM bible_texts
+           WHERE bible_id = ? AND book_id = ? AND chapter_number = ?`,
+          [chapter.bibleId, chapter.bookId, chapter.chapterNumber],
+        );
+
         for (const verse of chapter.verses) {
           await tx.execute(
-            `INSERT OR REPLACE INTO bible_texts
+            `INSERT INTO bible_texts
             (bible_id, book_id, chapter_number, verse_number, text)
             VALUES (?, ?, ?, ?, ?)`,
             [

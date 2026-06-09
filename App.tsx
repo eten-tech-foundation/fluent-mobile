@@ -14,6 +14,7 @@ import {
 import AppNavigator from './src/navigation/AppNavigator';
 import { setActiveToken } from './src/services/api';
 import { appStyles } from './src/app/appStyles';
+import { theme } from './src/theme';
 
 const log = logger.create('App');
 
@@ -44,8 +45,7 @@ function App() {
           }
         }
 
-        // Check all stored users in keychain directly
-        const storedUserIds = await getAllStoredUserIds(); // ← reads from keychain
+        const storedUserIds = await getAllStoredUserIds();
         log.info('Stored user IDs in keychain', { storedUserIds });
 
         if (storedUserIds.length > 0) {
@@ -78,6 +78,7 @@ function App() {
       log.error('Post-login sync failed:', { error: e });
     });
   };
+
   if (!dbReady) {
     return (
       <SafeAreaProvider>
@@ -86,7 +87,7 @@ function App() {
             <Text style={appStyles.errorTextAppInit}>Error: {error}</Text>
           ) : (
             <>
-              <ActivityIndicator size="large" color="#1a6ef5" />
+              <ActivityIndicator size="large" color={theme.colors.primary} />
               <Text style={appStyles.loadingTextAppInit}>Initializing...</Text>
             </>
           )}

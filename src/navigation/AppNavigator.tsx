@@ -1,7 +1,7 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { RootStackParamList } from '../types/navigation/types';
-import ProjectList from '../app/tabs/ProjectList';
+import HomeScreen from '../app/screens/HomeScreen';
 import ViewProject from '../app/tabs/ViewProject';
 import ViewChapter from '../app/tabs/ViewChapter';
 import LoginScreen from '../app/tabs/LoginScreen';
@@ -34,8 +34,8 @@ export default function AppNavigator({
         </>
       ) : (
         <>
-          <Stack.Screen name="Projects">
-            {() => <ProjectList onSignOut={onSignOut} />}
+          <Stack.Screen name="Home">
+            {() => <HomeScreen onSignOut={onSignOut} />}
           </Stack.Screen>
           <Stack.Screen name="Chapters" component={ViewProject} />
           <Stack.Screen name="VerseDetail" component={ViewChapter} />
@@ -43,7 +43,7 @@ export default function AppNavigator({
             {({ navigation }) => (
               <LoginScreen
                 onLoginSuccess={(email: string) => {
-                  navigation.navigate('Projects', { newUserLoading: true });
+                  navigation.navigate('Home', { newUserLoading: true });
                   syncAllData(false, email).catch(() => {});
                 }}
               />

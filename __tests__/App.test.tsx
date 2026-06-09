@@ -8,20 +8,13 @@ import { render, waitFor } from '@testing-library/react-native';
 
 // React Native Navigation
 jest.mock('@react-navigation/native', () => ({
-  NavigationContainer: ({
+  NavigationContainer: ({ children }: { children: React.ReactNode }) =>
     children,
-  }: {
-    children: React.ReactNode;
-  }) => children,
 }));
 
 // Safe Area
 jest.mock('react-native-safe-area-context', () => ({
-  SafeAreaProvider: ({
-    children,
-  }: {
-    children: React.ReactNode;
-  }) => children,
+  SafeAreaProvider: ({ children }: { children: React.ReactNode }) => children,
   useSafeAreaInsets: () => ({
     top: 0,
     bottom: 0,
@@ -32,11 +25,8 @@ jest.mock('react-native-safe-area-context', () => ({
 
 // Gesture Handler
 jest.mock('react-native-gesture-handler', () => ({
-  GestureHandlerRootView: ({
+  GestureHandlerRootView: ({ children }: { children: React.ReactNode }) =>
     children,
-  }: {
-    children: React.ReactNode;
-  }) => children,
   gestureHandlerRootHOC: (comp: unknown) => comp,
   State: {},
   Directions: {},
