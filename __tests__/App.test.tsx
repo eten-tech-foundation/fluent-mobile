@@ -5,6 +5,12 @@
 import React from 'react';
 import App from '../App';
 import { render, waitFor } from '@testing-library/react-native';
+import BootSplash from 'react-native-bootsplash';
+
+// Native splash screen
+jest.mock('react-native-bootsplash', () => ({
+  hide: jest.fn().mockResolvedValue(undefined),
+}));
 
 // React Native Navigation
 jest.mock('@react-navigation/native', () => ({
@@ -85,5 +91,6 @@ describe('App', () => {
     await waitFor(() => {
       expect(getByTestId('app-navigator')).toBeTruthy();
     });
+    expect(BootSplash.hide).toHaveBeenCalledWith({ fade: true });
   });
 });
