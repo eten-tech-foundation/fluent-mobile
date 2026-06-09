@@ -1,52 +1,34 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 
 export const appStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  centered: {
-    justifyContent: 'center',
-  },
-  titleLg: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  titleMd: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  subtitle: {
-    fontSize: 14,
-    marginTop: 2,
-  },
-  sectionHeaderText: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    marginTop: 3,
-  },
+  // ── Layout ──────────────────────────────────────────────────
+  container: { flex: 1, paddingHorizontal: 16 },
+  centered: { justifyContent: 'center' },
+  listContent: { gap: 12 },
+  scrollContent: { gap: 12, paddingBottom: 8 },
+
+  // ── Typography ──────────────────────────────────────────────
+  titleLg: { fontSize: 20, fontWeight: '700' },
+  titleMd: { fontSize: 18, fontWeight: '700' },
+  subtitle: { fontSize: 14, marginTop: 2 },
+  sectionHeaderText: { fontSize: 16, fontWeight: '500' },
+  cardTitle: { fontSize: 16, fontWeight: '600' },
+  cardSubtitle: { fontSize: 14, marginTop: 3 },
   emptyText: {
-    color: '#666',
-    fontSize: 16,
-  },
-  noVersesText: {
+    marginTop: 12,
     fontSize: 14,
     color: '#999',
+    textAlign: 'center',
   },
-  listContent: {
-    gap: 12,
+  noVersesText: { fontSize: 14, color: '#999' },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
-  scrollContent: {
-    gap: 12,
-    paddingBottom: 8,
-  },
+
+  // ── Cards & Rows ────────────────────────────────────────────
   cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -62,19 +44,15 @@ export const appStyles = StyleSheet.create({
     borderColor: '#d1d1d6',
     padding: 16,
   },
-  cardText: {
-    flex: 1,
-  },
+  cardText: { flex: 1 },
   backBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     paddingVertical: 20,
   },
-  logoContainer: {
-    alignItems: 'center',
-    paddingVertical: 28,
-  },
+
+  // ── Section Header ──────────────────────────────────────────
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -86,6 +64,9 @@ export const appStyles = StyleSheet.create({
     padding: 14,
     marginBottom: 12,
   },
+  logoContainer: { alignItems: 'center', paddingVertical: 28 },
+
+  // ── Player ──────────────────────────────────────────────────
   playerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -118,6 +99,8 @@ export const appStyles = StyleSheet.create({
     backgroundColor: '#1a6ef5',
     borderRadius: 2,
   },
+
+  // ── Accordion ───────────────────────────────────────────────
   accordionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -129,20 +112,16 @@ export const appStyles = StyleSheet.create({
     paddingVertical: 10,
     marginTop: 4,
   },
-  accordionLabel: {
-    fontSize: 14,
-  },
+  accordionLabel: { fontSize: 14 },
   sourceTextScroll: {
     maxHeight: 120,
     marginTop: 10,
     borderRadius: 8,
     paddingHorizontal: 12,
   },
-  sourceText: {
-    fontSize: 14,
-    lineHeight: 24,
-    color: '#333',
-  },
+  sourceText: { fontSize: 14, lineHeight: 24, color: '#333' },
+
+  // ── Record ──────────────────────────────────────────────────
   recordBtn: {
     width: 64,
     height: 64,
@@ -163,14 +142,10 @@ export const appStyles = StyleSheet.create({
     alignSelf: 'center',
     marginTop: 8,
   },
-  chipsScroll: {
-    flexGrow: 0,
-    paddingVertical: 12,
-  },
-  chipsContent: {
-    gap: 8,
-    paddingHorizontal: 2,
-  },
+
+  // ── Chips ───────────────────────────────────────────────────
+  chipsScroll: { flexGrow: 0, paddingVertical: 12 },
+  chipsContent: { gap: 8, paddingHorizontal: 2 },
   chip: {
     minWidth: 48,
     paddingHorizontal: 14,
@@ -181,22 +156,12 @@ export const appStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  activeChip: {
-    borderWidth: 2,
-    borderColor: '#1a6ef5',
-  },
-  chipText: {
-    fontSize: 16,
-  },
-  activeChipText: {
-    color: '#1a6ef5',
-    fontWeight: '600',
-  },
-  chipMic: {
-    position: 'absolute',
-    top: 3,
-    right: 4,
-  },
+  activeChip: { borderWidth: 2, borderColor: '#1a6ef5' },
+  chipText: { fontSize: 16 },
+  activeChipText: { color: '#1a6ef5', fontWeight: '600' },
+  chipMic: { position: 'absolute', top: 3, right: 4 },
+
+  // ── Refresh ─────────────────────────────────────────────────
   refreshingIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -205,8 +170,298 @@ export const appStyles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     gap: 8,
   },
-  refreshingText: {
-    fontSize: 12,
-    color: '#666',
+  refreshingText: { fontSize: 12, color: '#666' },
+
+  // ── Header component ────────────────────────────────────────
+  headerContainer: {
+    width: '100%',
+    backgroundColor: '#0b50d0',
+    paddingTop: Platform.OS === 'ios' ? 12 : 16,
+    paddingBottom: 10,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderColor: '#0940a6',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+      },
+      android: { elevation: 5 },
+    }),
   },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    width: '100%',
+  },
+  headerLogoWrapper: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+
+  // ── Project List header & menu ───────────────────────────────
+  screenHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+  },
+  gearButton: { padding: 8 },
+  modalOverlay: { flex: 1, backgroundColor: 'transparent' },
+  dropdown: {
+    position: 'absolute',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    minWidth: 210,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    paddingVertical: 4,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  menuItemText: { fontSize: 14, color: '#333', flex: 1 },
+  menuItemActive: { color: '#1a6ef5', fontWeight: '600' },
+  menuDivider: { height: 1, backgroundColor: '#f0f0f0', marginVertical: 4 },
+  menuSectionLabel: {
+    fontSize: 11,
+    color: '#999',
+    fontWeight: '600',
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  menuItemDanger: { color: '#d32f2f' },
+  statusText: {
+    textTransform: 'none',
+  },
+
+  // ── Sync Button ─────────────────────────────────────────────
+  syncContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    marginBottom: 8,
+  },
+  syncContent: { flex: 1 },
+  syncText: { fontSize: 14, fontWeight: '500' },
+  syncRefreshBtn: { padding: 8, marginLeft: 12 },
+
+  // ── Login Screen ────────────────────────────────────────────
+  loginContainer: { flex: 1, backgroundColor: '#0b50d0' },
+  loginScrollGrow: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loginCard: {
+    width: '100%',
+    maxWidth: 400,
+    minHeight: 500,
+    backgroundColor: '#fffef9',
+    borderRadius: 4,
+    paddingHorizontal: 40,
+    paddingVertical: 50,
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+      },
+      android: { elevation: 8 },
+    }),
+  },
+  loginWrapperBlock: { width: '100%', alignItems: 'center' },
+  loginLogo: { height: 55, width: 180, marginBottom: 24 },
+  loginTitle: {
+    fontSize: 24,
+    fontWeight: '400',
+    color: '#172b4d',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  loginSubtitle: {
+    fontSize: 14,
+    color: '#5e6c84',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 32,
+  },
+  fieldContainer: { width: '100%', marginBottom: 20, position: 'relative' },
+  floatingLabel: {
+    position: 'absolute',
+    top: -8,
+    left: 10,
+    backgroundColor: '#fffef9',
+    paddingHorizontal: 4,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1a6ef5',
+    zIndex: 2,
+  },
+  floatingLabelError: { color: '#de350b' },
+  loginInput: {
+    width: '100%',
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#dfe1e6',
+    borderRadius: 4,
+    paddingHorizontal: 12,
+    fontSize: 15,
+    color: '#172b4d',
+    backgroundColor: '#fafbfc',
+  },
+  passwordWrapper: {
+    width: '100%',
+    position: 'relative',
+    flexDirection: 'row',
+  },
+  passwordInput: {
+    flex: 1,
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#dfe1e6',
+    borderRadius: 4,
+    paddingLeft: 12,
+    paddingRight: 45,
+    fontSize: 15,
+    color: '#172b4d',
+    backgroundColor: '#fafbfc',
+  },
+  passwordToggle: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 45,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inputErrorBorder: {
+    borderColor: '#de350b',
+    borderWidth: 1.5,
+    backgroundColor: '#fff',
+  },
+  errorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+    paddingHorizontal: 2,
+  },
+  errorText: { color: '#de350b', fontSize: 13, flex: 1 },
+  linkButton: { alignSelf: 'flex-start', marginBottom: 24 },
+  subSecondaryLink: { marginTop: 16, width: '100%', alignItems: 'center' },
+  linkText: { color: '#0b50d0', fontSize: 14, fontWeight: '500' },
+  primaryButton: {
+    backgroundColor: '#0b50d0',
+    width: '100%',
+    height: 48,
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  primaryButtonDisabled: { backgroundColor: '#b3d4ff' },
+  primaryButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  successIconCircle: {
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    borderWidth: 2,
+    borderColor: '#00875a',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  boldTargetText: { fontWeight: '600', color: '#172b4d' },
+  secondaryButton: {
+    width: '100%',
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#dfe1e6',
+    backgroundColor: '#fff',
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  secondaryButtonText: { color: '#172b4d', fontSize: 15, fontWeight: '600' },
+  loginFooter: {
+    marginTop: 30,
+    width: '100%',
+    borderTopWidth: 1,
+    borderTopColor: 'transparent',
+    paddingTop: 10,
+  },
+  loginFooterText: {
+    fontSize: 12,
+    color: '#5e6c84',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  loginFooterLink: { color: '#0b50d0' },
+
+  // ── Privacy & Terms pages ────────────────────────────────────
+  pageSafeAreaWhite: { flex: 1, backgroundColor: '#fff' },
+  pageSafeAreaBlue: { flex: 1, backgroundColor: '#0b50d0' },
+  pageScrollView: { flex: 1, backgroundColor: '#fafbfc' },
+  pageContentContainer: {
+    padding: 24,
+    maxWidth: 600,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#172b4d',
+    marginBottom: 24,
+    marginTop: 8,
+  },
+  paragraph: {
+    fontSize: 15,
+    lineHeight: 24,
+    color: '#172b4d',
+    marginBottom: 20,
+  },
+  paragraphBold: { fontWeight: '600', marginBottom: 12 },
+  bulletList: { marginBottom: 24, paddingLeft: 8 },
+  bulletItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  bulletMark: {
+    fontSize: 16,
+    lineHeight: 22,
+    color: '#172b4d',
+    marginRight: 10,
+    width: 10,
+    textAlign: 'center',
+  },
+  bulletText: { flex: 1, fontSize: 15, lineHeight: 22, color: '#172b4d' },
+  //App.tsx
+  containerAppInit: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorTextAppInit: {
+    color: 'red',
+    fontSize: 14,
+    padding: 20,
+    textAlign: 'center',
+  },
+  loadingTextAppInit: { marginTop: 10, fontSize: 14 },
 });

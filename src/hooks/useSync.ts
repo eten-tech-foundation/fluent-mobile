@@ -107,7 +107,7 @@ export function useSync({ onSyncComplete, onSyncStart }: UseSyncOptions = {}) {
       }
 
       log.info('Triggering sync...');
-      await syncAllData(email);
+      await syncAllData(true);
       log.info('Sync completed successfully');
       onSyncComplete?.();
     } catch (error) {

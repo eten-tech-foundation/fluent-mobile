@@ -7,7 +7,7 @@ const log = logger.create('DBRepository');
 
 async function insertLanguageTx(tx: Transaction, lang: DBTypes.Language) {
   await tx.execute(
-    `INSERT OR REPLACE INTO languages
+    `INSERT OR IGNORE INTO languages
     (id, lang_name, lang_name_localized, lang_code_iso_639_3, script_direction)
     VALUES (?, ?, ?, ?, ?)`,
     [
@@ -18,27 +18,42 @@ async function insertLanguageTx(tx: Transaction, lang: DBTypes.Language) {
       lang.scriptDirection ?? 'ltr',
     ],
   );
+  await tx.execute(
+    `UPDATE languages SET
+      lang_name = ?, lang_name_localized = ?,
+      lang_code_iso_639_3 = ?, script_direction = ?
+    WHERE id = ?`,
+    [
+      lang.langName,
+      lang.langNameLocalized ?? null,
+      lang.langCode ?? null,
+      lang.scriptDirection ?? 'ltr',
+      lang.id,
+    ],
+  );
 }
 
 async function insertBookTx(tx: Transaction, book: DBTypes.Book) {
   if (!book.eng_display_name) return;
-
   await tx.execute(
-    `INSERT OR REPLACE INTO books
-    (id, code, eng_display_name)
-    VALUES (?, ?, ?)`,
+    `INSERT OR IGNORE INTO books (id, code, eng_display_name) VALUES (?, ?, ?)`,
     [book.id, book.code, book.eng_display_name],
+  );
+  await tx.execute(
+    `UPDATE books SET code = ?, eng_display_name = ? WHERE id = ?`,
+    [book.code, book.eng_display_name, book.id],
   );
 }
 
 async function insertBibleTx(tx: Transaction, bible: DBTypes.Bible) {
   if (!bible.name || !bible.abbreviation) return;
-
   await tx.execute(
-    `INSERT OR REPLACE INTO bibles
-    (id, language_id, name, abbreviation)
-    VALUES (?, ?, ?, ?)`,
+    `INSERT OR IGNORE INTO bibles (id, language_id, name, abbreviation) VALUES (?, ?, ?, ?)`,
     [bible.id, bible.languageId, bible.name, bible.abbreviation],
+  );
+  await tx.execute(
+    `UPDATE bibles SET language_id = ?, name = ?, abbreviation = ? WHERE id = ?`,
+    [bible.languageId, bible.name, bible.abbreviation, bible.id],
   );
 }
 
@@ -47,11 +62,13 @@ async function insertProjectUnitTx(
   unit: { id: number; projectId: number },
 ) {
   await tx.execute(
-    `INSERT OR REPLACE INTO project_units
-    (id, project_id, status)
-    VALUES (?, ?, ?)`,
+    `INSERT OR IGNORE INTO project_units (id, project_id, status) VALUES (?, ?, ?)`,
     [unit.id, unit.projectId, 'not_started'],
   );
+  await tx.execute(`UPDATE project_units SET project_id = ? WHERE id = ?`, [
+    unit.projectId,
+    unit.id,
+  ]);
 }
 
 async function insertChapterAssignmentTx(
@@ -63,15 +80,16 @@ async function insertChapterAssignmentTx(
   await tx.execute(
     `INSERT INTO chapter_assignments
     (id, project_unit_id, bible_id, book_id, chapter_number,
-     assigned_user_id, status, submitted_time, updated_at,
+     assigned_user_id, peer_checker_id, status, submitted_time, updated_at,
      total_verses, completed_verses)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       project_unit_id = excluded.project_unit_id,
       bible_id = excluded.bible_id,
       book_id = excluded.book_id,
       chapter_number = excluded.chapter_number,
       assigned_user_id = excluded.assigned_user_id,
+      peer_checker_id = excluded.peer_checker_id,
       status = excluded.status,
       submitted_time = excluded.submitted_time,
       updated_at = excluded.updated_at,
@@ -84,6 +102,7 @@ async function insertChapterAssignmentTx(
       assignment.bookId,
       assignment.chapterNumber,
       assignment.assignedUserId ?? null,
+      assignment.peerCheckerId ?? null,
       assignment.chapterStatus ?? 'not_started',
       assignment.submittedTime ?? null,
       assignment.updatedAt ?? new Date().toISOString(),
@@ -111,10 +130,9 @@ function getUniqueProjectUnits(assignments: DBTypes.ChapterAssignment[]) {
 
 export async function insertUser(user: DBTypes.User) {
   const db = getDatabase();
-
   await db.transaction(async (tx: Transaction) => {
     await tx.execute(
-      `INSERT OR REPLACE INTO users 
+      `INSERT OR IGNORE INTO users
       (id, username, email, first_name, last_name)
       VALUES (?, ?, ?, ?, ?)`,
       [
@@ -125,12 +143,21 @@ export async function insertUser(user: DBTypes.User) {
         user.lastName ?? null,
       ],
     );
+    await tx.execute(
+      `UPDATE users SET username = ?, email = ?, first_name = ?, last_name = ? WHERE id = ?`,
+      [
+        user.username ?? null,
+        user.email,
+        user.firstName ?? null,
+        user.lastName ?? null,
+        user.id,
+      ],
+    );
   });
 }
 
 export async function insertLanguages(data: DBTypes.Language[]) {
   const db = getDatabase();
-
   await db.transaction(async (tx: Transaction) => {
     for (const lang of data) {
       await insertLanguageTx(tx, lang);
@@ -140,7 +167,6 @@ export async function insertLanguages(data: DBTypes.Language[]) {
 
 export async function insertBooks(data: DBTypes.Book[]) {
   const db = getDatabase();
-
   await db.transaction(async (tx: Transaction) => {
     for (const book of data) {
       await insertBookTx(tx, book);
@@ -150,7 +176,6 @@ export async function insertBooks(data: DBTypes.Book[]) {
 
 export async function insertBibles(data: DBTypes.Bible[]) {
   const db = getDatabase();
-
   await db.transaction(async (tx: Transaction) => {
     for (const bible of data) {
       await insertBibleTx(tx, bible);
@@ -164,16 +189,13 @@ export async function insertMasterData(
   bibles: DBTypes.Bible[],
 ) {
   const db = getDatabase();
-
   await db.transaction(async (tx: Transaction) => {
     for (const lang of languages) {
       await insertLanguageTx(tx, lang);
     }
-
     for (const book of books) {
       await insertBookTx(tx, book);
     }
-
     for (const bible of bibles) {
       await insertBibleTx(tx, bible);
     }
@@ -182,7 +204,6 @@ export async function insertMasterData(
 
 export async function insertProjects(data: DBTypes.Project[]) {
   const db = getDatabase();
-
   await db.transaction(async (tx: Transaction) => {
     for (const project of data) {
       if (!project?.id || !project?.name) continue;
@@ -195,7 +216,7 @@ export async function insertProjects(data: DBTypes.Project[]) {
       if (!sourceLangId || !targetLangId) continue;
 
       await tx.execute(
-        `INSERT OR REPLACE INTO projects 
+        `INSERT OR IGNORE INTO projects
         (id, name, source_language_id, target_language_id, is_active, status, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
@@ -208,6 +229,21 @@ export async function insertProjects(data: DBTypes.Project[]) {
           project.updatedAt ?? new Date().toISOString(),
         ],
       );
+      await tx.execute(
+        `UPDATE projects SET
+          name = ?, source_language_id = ?, target_language_id = ?,
+          is_active = ?, status = ?, updated_at = ?
+        WHERE id = ?`,
+        [
+          project.name,
+          sourceLangId,
+          targetLangId,
+          project.isActive ? 1 : 0,
+          project.status ?? 'not_assigned',
+          project.updatedAt ?? new Date().toISOString(),
+          project.id,
+        ],
+      );
     }
   });
 }
@@ -216,7 +252,6 @@ export async function insertChapterAssignments(
   data: DBTypes.ChapterAssignment[],
 ) {
   const db = getDatabase();
-
   await db.transaction(async (tx: Transaction) => {
     for (const assignment of data) {
       await insertChapterAssignmentTx(tx, assignment);
@@ -228,7 +263,6 @@ export async function insertProjectUnits(
   assignments: DBTypes.ChapterAssignment[],
 ) {
   const db = getDatabase();
-
   const unitsMap = getUniqueProjectUnits(assignments);
 
   if (unitsMap.size > 0) {
@@ -246,11 +280,15 @@ export async function insertChapterAssignmentSyncData(
   const db = getDatabase();
   const unitsMap = getUniqueProjectUnits(assignments);
 
+  log.info('insertChapterAssignmentSyncData', {
+    assignmentsCount: assignments.length,
+    unitsMapSize: unitsMap.size,
+  });
+
   await db.transaction(async (tx: Transaction) => {
     for (const unit of unitsMap.values()) {
       await insertProjectUnitTx(tx, unit);
     }
-
     for (const assignment of assignments) {
       await insertChapterAssignmentTx(tx, assignment);
     }
@@ -278,7 +316,6 @@ export async function getChaptersToSync() {
       if (!bibleGroups.has(row.bible_id)) {
         bibleGroups.set(row.bible_id, []);
       }
-
       bibleGroups.get(row.bible_id)!.push({
         bookId: row.book_id,
         chapterNumber: row.chapter_number,
@@ -347,5 +384,29 @@ export async function checkIfTextsSynced(
   } catch (error) {
     log.error('Error checking if texts synced:', { error });
     return false;
+  }
+}
+
+export async function insertUserProjects(userId: number, projectIds: number[]) {
+  const db = getDatabase();
+  await db.transaction(async (tx: Transaction) => {
+    for (const projectId of projectIds) {
+      await tx.execute(
+        `INSERT OR IGNORE INTO user_projects (user_id, project_id) VALUES (?, ?)`,
+        [userId, projectId],
+      );
+    }
+  });
+}
+
+export async function getLocalProjectIds(): Promise<number[]> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute('SELECT id FROM projects');
+    const rows = result.rows as unknown as { id: number }[];
+    return rows.map(r => r.id);
+  } catch (error) {
+    log.error('Error getting local project IDs:', { error });
+    return [];
   }
 }
