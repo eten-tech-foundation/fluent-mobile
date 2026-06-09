@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import BootSplash from 'react-native-bootsplash';
 import { logger } from './src/utils/logger';
 import { initializeDatabase } from './src/db/index';
 import { syncAllData } from './src/services/sync';
@@ -71,6 +72,16 @@ function App() {
 
     initApp();
   }, []);
+
+  useEffect(() => {
+    if (!dbReady) {
+      return;
+    }
+
+    BootSplash.hide({ fade: true }).catch(e => {
+      log.error('BootSplash hide failed', { error: String(e) });
+    });
+  }, [dbReady]);
 
   const handleLoginSuccess = (email: string) => {
     setIsAuthenticated(true);
