@@ -22,16 +22,14 @@ jest.mock('lucide-react-native', () => {
   };
 });
 
-jest.mock('../../utils/parseUserId', () => ({
-  parseUserId: jest.fn(() => 1),
+jest.mock('../../hooks/useProjectsSummary', () => ({
+  useProjectsSummary: jest.fn(),
 }));
 
-jest.mock('../../db/queries', () => ({
-  getProjectsWithSummary: jest.fn(),
-}));
-
-const { getProjectsWithSummary } = jest.requireMock('../../db/queries') as {
-  getProjectsWithSummary: jest.Mock;
+const { useProjectsSummary } = jest.requireMock(
+  '../../hooks/useProjectsSummary',
+) as {
+  useProjectsSummary: jest.Mock;
 };
 
 const sampleProjects: ProjectSummary[] = [
@@ -57,7 +55,12 @@ describe('ProjectsTab', () => {
   });
 
   it('renders empty state when there are no projects', async () => {
-    getProjectsWithSummary.mockResolvedValueOnce([]);
+    useProjectsSummary.mockReturnValue({
+      projects: [],
+      loading: false,
+      refreshing: false,
+      refresh: jest.fn(),
+    });
 
     render(<ProjectsTab />);
 
@@ -69,7 +72,12 @@ describe('ProjectsTab', () => {
   });
 
   it('renders project rows with language, chapter count, and title', async () => {
-    getProjectsWithSummary.mockResolvedValueOnce(sampleProjects);
+    useProjectsSummary.mockReturnValue({
+      projects: sampleProjects,
+      loading: false,
+      refreshing: false,
+      refresh: jest.fn(),
+    });
 
     render(<ProjectsTab />);
 

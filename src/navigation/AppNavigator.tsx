@@ -20,6 +20,7 @@ interface AppNavigatorProps {
 export default function AppNavigator({
   isAuthenticated,
   onLoginSuccess,
+  onSignOut,
 }: AppNavigatorProps) {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -33,7 +34,9 @@ export default function AppNavigator({
         </>
       ) : (
         <>
-          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="Home">
+            {() => <HomeScreen onSignOut={onSignOut} />}
+          </Stack.Screen>
           <Stack.Screen name="Chapters" component={ViewProject} />
           <Stack.Screen name="VerseDetail" component={ViewChapter} />
           <Stack.Screen name="AddUser">
