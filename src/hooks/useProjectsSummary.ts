@@ -22,14 +22,12 @@ export function useProjectsSummary(refreshKey = 0) {
       setProjects(await getProjectsWithSummary(userId));
     } catch (error) {
       log.error('Error loading projects:', { error });
-    } finally {
-      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     setLoading(true);
-    loadProjects();
+    loadProjects().finally(() => setLoading(false));
   }, [loadProjects, refreshKey]);
 
   const refresh = useCallback(async () => {

@@ -6,11 +6,13 @@ import { RecordingCloudIcon } from './RecordingCloudIcon';
 
 interface ChapterCloudSyncIndicatorProps {
   syncState: ChapterSyncState;
+  size?: number;
 }
 
-/** Green/yellow cloud beside the chapter title (`h-4 w-4` in mock). */
+/** Green/yellow cloud beside the chapter title (`h-6 w-6` on project rows). */
 export function ChapterCloudSyncIndicator({
   syncState,
+  size = iconSizes.chapterSync,
 }: ChapterCloudSyncIndicatorProps) {
   if (syncState === 'none') {
     return null;
@@ -19,7 +21,7 @@ export function ChapterCloudSyncIndicator({
   return (
     <View style={styles.icon}>
       <RecordingCloudIcon
-        size={iconSizes.chapterSync}
+        size={size}
         variant={syncState === 'synced' ? 'synced' : 'pending'}
       />
     </View>

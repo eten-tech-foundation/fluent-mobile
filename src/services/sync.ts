@@ -1,5 +1,8 @@
 import { FluentAPI } from './api';
-import { mergeUserChapterAssignments } from './mergeUserChapterAssignments';
+import {
+  mapApiChapterAssignment,
+  ApiUserChapterAssignment,
+} from './mapChapterAssignment';
 import {
   insertUser,
   insertMasterData,
@@ -193,9 +196,10 @@ export async function syncChapterAssignments(
         excludeProjectIds,
       );
 
-      const allAssignments = mergeUserChapterAssignments(
-        response?.assignedChapters,
-        response?.peerCheckChapters,
+      const raw = response.data ?? response;
+      const allAssignments = (Array.isArray(raw) ? raw : []).map(
+        (assignment: ApiUserChapterAssignment) =>
+          mapApiChapterAssignment(assignment),
       );
 
       if (allAssignments.length > 0) {

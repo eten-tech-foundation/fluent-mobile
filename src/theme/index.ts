@@ -1,4 +1,11 @@
-import { colors, spacing, radius, typography, workflowBadges } from './tokens';
+import {
+  colors,
+  spacing,
+  radius,
+  typography,
+  workflowBadges,
+  workflowStages,
+} from './tokens';
 import { homeListContent, listCard, workflowBadge } from './layout';
 
 export {
@@ -7,13 +14,16 @@ export {
   radius,
   typography,
   workflowBadges,
+  workflowStages,
   hslToHex,
 } from './tokens';
+export type { WorkflowStageId } from './tokens';
 export {
   iconSizes,
   logoSize,
   headerLayout,
   progressRingStrokeWidth,
+  phaseIconStrokeWidth,
   listIconStrokeWidth,
   lucideStrokeWidth,
   touchHitSlop,
@@ -26,6 +36,7 @@ export const theme = {
   radius,
   typography,
   workflowBadges,
+  workflowStages,
   homeListContent,
   listCard,
   workflowBadge,
