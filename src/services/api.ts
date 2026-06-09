@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '@env';
+import { checkServerReachable } from './connectivity';
 
 async function request(endpoint: string, options?: RequestInit) {
   const res = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -27,6 +28,8 @@ function getHeaders(email?: string) {
 }
 
 export const FluentAPI = {
+  checkServerReachable,
+
   getLanguages: () => request('/languages'),
   getBooks: () => request('/books'),
   getBibles: () => request('/bibles'),

@@ -250,6 +250,22 @@ export async function getMyWorkChapters(
   }
 }
 
+/** Latest recordings not yet uploaded to the Fluent server. */
+export async function getPendingUploadCount(): Promise<number> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT COUNT(*) AS count
+       FROM recordings
+       WHERE is_latest = 1 AND sync_status != 'uploaded';`,
+    );
+    return Number(result.rows?.[0]?.count) || 0;
+  } catch (error) {
+    log.error('Error fetching pending upload count', { error });
+    return 0;
+  }
+}
+
 export async function getBibleTexts(
   bibleId: number,
   bookId: number,

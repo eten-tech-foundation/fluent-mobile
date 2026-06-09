@@ -29,6 +29,12 @@ export const logoSize = {
   marginVertical: -8,
 } as const;
 
+/** Two-icon nav-bar sync composition (cloud base + accent overlay). */
+export const syncStatusIcon = {
+  overlayScale: 0.52,
+  checkOffset: { bottom: 0.12, right: 0.08 },
+} as const;
+
 /** Page header layout (mock: px-4 py-3, w-10 side slots). */
 export const headerLayout = {
   paddingHorizontal: spacing.lg,

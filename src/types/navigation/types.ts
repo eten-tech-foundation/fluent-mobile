@@ -1,5 +1,6 @@
 export type RootStackParamList = {
   Home: undefined;
+  Sync: undefined;
   Chapters: {
     projectId: number;
     projectName: string;
