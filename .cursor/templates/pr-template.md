@@ -47,7 +47,6 @@
 
 ### Testing Completed
 - [ ] ✅ Android device/emulator tested
-- [ ] ✅ iOS device/simulator tested (local; iOS CI job is disabled in build.yml)
 - [ ] ✅ Unit tests added/updated and passing
 - [ ] ✅ Edge cases considered and tested
 
@@ -109,7 +108,7 @@
 ## 🧪 How to Test
 <!-- Step-by-step instructions for reviewers -->
 
-**Prerequisites:** Node 24+, `npm install`, copy `.env.example` → `.env`, Metro + `npm run android` (or `npm run ios` on macOS)
+**Prerequisites:** Node 24+, `npm install`, copy `.env.example` → `.env`, Metro + `npm run android`
 
 **Steps:**
 1. <!-- Step 1 -->

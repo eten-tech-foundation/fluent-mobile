@@ -99,14 +99,13 @@ Use **npm** only in PR text and test steps (`npm install`, `npm run lint`, etc.)
 
 ## Framework notes
 
-- Bare **React Native 0.84** (not Expo)
+- Bare **React Native 0.84** (not Expo), **Android-only** for now
 - Android CI: `assembleDebug` in `.github/workflows/build.yml`
-- iOS CI job is **commented out** — note in testing checklist when relevant
 
 ## Branch analysis
 
 - Count files/lines; classify feature / fix / chore / docs
-- Flag `package.json`, `package-lock.json`, `android/`, `ios/`, `src/db/schema.ts` as high-impact
+- Flag `package.json`, `package-lock.json`, `android/`, `src/db/schema.ts` as high-impact
 - Flag new env vars needing `.env.example` update
 
 ## Usage

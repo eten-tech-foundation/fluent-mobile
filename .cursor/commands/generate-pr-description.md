@@ -93,7 +93,7 @@ Use **npm** in all instructions (not pnpm/yarn).
 
 ## Testing section defaults
 
-**Prerequisites:** Node 24+, `npm install`, `.env` from `.env.example`, `npm start` + `npm run android` (or `npm run ios` on macOS)
+**Prerequisites:** Node 24+, `npm install`, `.env` from `.env.example`, `npm start` + `npm run android`
 
 ## Template source
 
