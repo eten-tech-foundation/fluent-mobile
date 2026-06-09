@@ -40,6 +40,7 @@ export function mapApiChapterAssignment(
     bookId: api.bookId,
     chapterNumber: api.chapterNumber,
     assignedUserId: api.assignedUserId ?? undefined,
+    peerCheckerId: api.peerCheckerId ?? undefined,
     chapterStatus: normalizeChapterStatus(api.chapterStatus),
     submittedTime: api.submittedTime ?? undefined,
     updatedAt: api.updatedAt ?? undefined,

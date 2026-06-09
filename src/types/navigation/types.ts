@@ -1,5 +1,7 @@
 export type RootStackParamList = {
-  Home: undefined;
+  Login: undefined;
+  AddUser: undefined;
+  Home: { newUserLoading?: boolean } | undefined;
   Chapters: {
     projectId: number;
     projectName: string;
@@ -11,4 +13,6 @@ export type RootStackParamList = {
     projectName: string;
     language: string;
   };
+  PrivacyPolicy: undefined;
+  TermsOfUse: undefined;
 };
