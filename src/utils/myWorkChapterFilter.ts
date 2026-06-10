@@ -7,7 +7,9 @@ export const MY_WORK_CHAPTER_STATUSES = {
 export const MY_WORK_CHAPTER_WHERE = `(ca.status = ? AND ca.assigned_user_id = ?)
   OR (ca.status = ? AND ca.peer_checker_id = ?)`;
 
-export function getMyWorkChapterQueryParams(userId: number): (string | number)[] {
+export function getMyWorkChapterQueryParams(
+  userId: number,
+): (string | number)[] {
   return [
     MY_WORK_CHAPTER_STATUSES.DRAFT,
     userId,

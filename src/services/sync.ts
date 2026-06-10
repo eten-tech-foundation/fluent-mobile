@@ -1,4 +1,5 @@
 import { FluentAPI } from './api';
+import { isAuthError, AuthError } from './authError';
 import {
   mapApiChapterAssignment,
   ApiUserChapterAssignment,
@@ -11,6 +12,7 @@ import {
   insertBibleTexts,
   getChaptersToSync,
   insertUserProjects,
+  ensureUserProjectMembership,
 } from '../db/repository';
 import { logger } from '../utils/logger';
 import { getDatabase } from '../db/db';
@@ -37,8 +39,13 @@ import {
   getCredentials,
   getTempCredentials,
   saveCredentials,
+  clearCredentials,
 } from './keychain';
-import { emitSyncComplete, emitSyncStart } from './syncEvents';
+import {
+  emitSyncComplete,
+  emitSyncStart,
+  emitAuthSessionExpired,
+} from './syncEvents';
 import { setActiveToken } from './api';
 
 const log = logger.create('SyncService');
@@ -48,6 +55,14 @@ const BIBLE_TEXT_CHUNK_SIZE = 1200;
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+async function handleSyncAuthFailure(userId: string): Promise<void> {
+  await clearCredentials(userId);
+  if (userId === getActiveUserId()) {
+    setActiveToken(null);
+    emitAuthSessionExpired();
+  }
 }
 
 function delay(ms: number): Promise<void> {
@@ -69,6 +84,18 @@ async function retrySyncStep<T>(
     } catch (error) {
       lastError = error;
       const errorMessage = getErrorMessage(error);
+
+      if (isAuthError(error)) {
+        log.error(`${stepName} failed: session invalid`, {
+          error: errorMessage,
+        });
+        setSyncError(errorKey, errorMessage);
+        const activeUserId = getActiveUserId();
+        if (activeUserId) {
+          await handleSyncAuthFailure(activeUserId);
+        }
+        throw error;
+      }
 
       if (attempt === MAX_SYNC_ATTEMPTS) {
         log.error(`${stepName} failed after ${MAX_SYNC_ATTEMPTS} attempts`, {
@@ -144,11 +171,12 @@ export async function syncProjects(userId: number) {
       log.info('Syncing projects...', { userId });
 
       const response = await FluentAPI.getUserProjects(userId);
-      const projects = response.data ?? response;
+      const raw = response?.data ?? response;
+      const projects = Array.isArray(raw) ? raw : [];
 
       log.info('Projects fetched', {
-        count: projects?.length,
-        isArray: Array.isArray(projects),
+        count: projects.length,
+        isArray: Array.isArray(raw),
       });
 
       if (projects.length > 0) {
@@ -158,6 +186,8 @@ export async function syncProjects(userId: number) {
           projects.map((p: { id: number }) => p.id),
         );
       }
+
+      await ensureUserProjectMembership(userId);
 
       const db = getDatabase();
       const result = await db.execute(
@@ -204,6 +234,13 @@ export async function syncChapterAssignments(
 
       if (allAssignments.length > 0) {
         await insertChapterAssignmentSyncData(allAssignments);
+        await insertUserProjects(userId, [
+          ...new Set(
+            allAssignments
+              .map((assignment: { projectId: number }) => assignment.projectId)
+              .filter(id => Number.isFinite(id) && id > 0),
+          ),
+        ]);
         const db = getDatabase();
         const result = await db.execute(
           'SELECT COUNT(*) as count FROM chapter_assignments',
@@ -323,6 +360,7 @@ export async function syncAllUsers(): Promise<void> {
   const knownUserIds = getKnownUserIds();
   const currentActiveUserId = getActiveUserId();
   const lastSyncedAt = getLastSyncedAt() || undefined;
+  let activeUserSyncOk = true;
 
   try {
     await syncMasterData();
@@ -331,6 +369,10 @@ export async function syncAllUsers(): Promise<void> {
       const creds = await getCredentials(userId);
       if (!creds?.token) {
         log.warn('No credentials for user, skipping', { userId });
+        if (userId === currentActiveUserId) {
+          activeUserSyncOk = false;
+          await handleSyncAuthFailure(userId);
+        }
         continue;
       }
 
@@ -348,6 +390,15 @@ export async function syncAllUsers(): Promise<void> {
           await syncChapterAssignments(userIdNum, lastSyncedAt);
         }
       } catch (error) {
+        if (isAuthError(error) && userId === currentActiveUserId) {
+          await handleSyncAuthFailure(userId);
+        } else if (isAuthError(error)) {
+          await clearCredentials(userId);
+          log.warn('Cleared expired session credentials', { userId });
+        }
+        if (userId === currentActiveUserId) {
+          activeUserSyncOk = false;
+        }
         log.error('Sync failed for user', {
           userId,
           error: getErrorMessage(error),
@@ -360,12 +411,16 @@ export async function syncAllUsers(): Promise<void> {
     const activeCreds = await getCredentials(currentActiveUserId);
     setActiveToken(activeCreds?.token ?? null);
 
-    const now = new Date().toISOString();
-    setLastSyncedAt(now);
-    setLastAssignmentSyncAt(now);
-
-    emitSyncComplete();
-    log.info('All users synced successfully!');
+    if (activeUserSyncOk) {
+      const now = new Date().toISOString();
+      setLastSyncedAt(now);
+      setLastAssignmentSyncAt(now);
+      emitSyncComplete();
+      log.info('All users synced successfully!');
+    } else {
+      emitSyncComplete();
+      log.warn('Sync finished with errors for the active user');
+    }
   } catch (error) {
     const activeCreds = await getCredentials(currentActiveUserId);
     setActiveToken(activeCreds?.token ?? null);
@@ -387,7 +442,11 @@ export async function syncAllData(isIncremental = false, email?: string) {
       userId = Number(existingUserIdStr);
 
       const creds = await getCredentials(existingUserIdStr);
-      setActiveToken(creds?.token ?? null);
+      if (!creds?.token) {
+        await handleSyncAuthFailure(existingUserIdStr);
+        throw new AuthError('No session token. Please sign in again.');
+      }
+      setActiveToken(creds.token);
     } else {
       const user = await syncUser(email);
       userId = user.id;
