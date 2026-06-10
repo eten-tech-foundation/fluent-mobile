@@ -25,6 +25,11 @@ Use **npm** only (not pnpm/yarn).
 
 See [docs/AGENT_ONBOARDING.md](../../docs/AGENT_ONBOARDING.md) for setup, architecture diagram, risks, and common tasks.
 
+## Dependencies
+
+- Dependabot: `.github/dependabot.yml` — weekly npm + Actions updates; merge via [dependabot-workflow.mdc](./dependabot-workflow.mdc).
+- Package manager: **npm** only (`package-lock.json`). Merge **one** Dependabot PR at a time; rebase others after `main` CI is green.
+
 ## Scope discipline
 
 - Do not refactor unrelated code in the same change.

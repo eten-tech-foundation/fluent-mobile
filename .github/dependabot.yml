@@ -1,0 +1,86 @@
+version: 2
+updates:
+  # npm dependencies (package-lock.json)
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+    open-pull-requests-limit: 5
+    ignore:
+      # Hold React Native to the 0.84.x line — upgrade in a dedicated ticket
+      - dependency-name: 'react-native'
+        versions:
+          - '>=0.85.0'
+      - dependency-name: 'react-native-*'
+        versions:
+          - '>=0.85.0'
+      - dependency-name: '@react-native/*'
+        versions:
+          - '>=0.85.0'
+      # React must stay lock-step with RN 0.84 (pinned in package.json)
+      - dependency-name: 'react'
+        update-types:
+          - 'version-update:semver-major'
+          - 'version-update:semver-minor'
+      - dependency-name: 'react-test-renderer'
+        update-types:
+          - 'version-update:semver-major'
+          - 'version-update:semver-minor'
+      # Native SQLite — validate binary compatibility before bumping
+      - dependency-name: '@op-engineering/op-sqlite'
+        update-types:
+          - 'version-update:semver-major'
+    reviewers:
+      - 'eten-tech-foundation/fluent-admin'
+    labels:
+      - 'dependencies'
+      - 'automated'
+    versioning-strategy: increase
+    groups:
+      react-native:
+        patterns:
+          - 'react-native'
+          - 'react-native-*'
+          - '@react-native/*'
+          - '@react-native-community/*'
+      react:
+        patterns:
+          - 'react'
+          - 'react-*'
+          - '@types/react'
+          - '@types/react-test-renderer'
+      navigation:
+        patterns:
+          - '@react-navigation/*'
+      testing:
+        patterns:
+          - 'jest'
+          - 'jest-*'
+          - '@jest/*'
+          - '@testing-library/*'
+      dev-tools:
+        patterns:
+          - 'typescript'
+          - 'eslint'
+          - 'eslint-*'
+          - '@typescript-eslint/*'
+          - 'prettier'
+          - '@babel/*'
+      tanstack:
+        patterns:
+          - '@tanstack/*'
+
+  # GitHub Actions
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+    open-pull-requests-limit: 3
+    labels:
+      - 'github-actions'
+      - 'dependencies'
+      - 'automated'
