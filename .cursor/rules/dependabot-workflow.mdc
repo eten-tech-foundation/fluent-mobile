@@ -14,7 +14,7 @@ Full guide: [docs/guides/dependabot-process.md](../../docs/guides/dependabot-pro
 
 1. **Verify author**: ONLY process PRs authored by `app/dependabot` or `dependabot[bot]`.
 2. **Never auto-merge React Native line bumps**: If a PR upgrades `react-native` past `0.84.x` or multiple `@react-native/*` packages together, DO NOT merge. Plan a dedicated RN upgrade ticket.
-3. **Mandatory validation**: NEVER merge without running the full gate from [commands.mdc](./commands.mdc): `format:check` → `lint` → `tsc --noEmit` → `npm test -- --ci`.
+3. **Mandatory validation**: NEVER merge without running the full gate from [commands.mdc](./commands.mdc): `format:check` → `lint` → `typecheck` → `npm test -- --ci`.
 4. **Target branch**: Always merge into the default branch (`main`).
 5. **Version lock-stepping**: `react`, `react-test-renderer`, and `react-native` are pinned for RN 0.84. Treat any change to those as **risky** — validate on device/emulator.
 6. **Runtime testing required**: For React/RN/navigation/native-module updates, smoke test on Android (`npm run android`). Static checks miss renderer and native ABI mismatches.
@@ -53,7 +53,7 @@ Categorize each PR:
    ```bash
    npm run format:check
    npm run lint
-   npx tsc --noEmit
+   npm run typecheck
    FLUENT_USER_EMAIL=test@example.com npm test -- --ci
    ```
 
@@ -105,7 +105,7 @@ git pull origin main
 npm ci
 npm run format:check
 npm run lint
-npx tsc --noEmit
+npm run typecheck
 FLUENT_USER_EMAIL=test@example.com npm test -- --ci
 cd android && ./gradlew assembleDebug --no-daemon && cd ..
 ```

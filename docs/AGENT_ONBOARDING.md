@@ -67,7 +67,7 @@ Run from repo root after `npm install`:
 | `npm run lint` | ESLint (passes; 1 warning: unused `db` in `sync.ts`) |
 | `npm run format:check` | Prettier on `src/**/*.{ts,tsx}` |
 | `npm run format` | Prettier write (broader glob than `format:check`) |
-| `npx tsc --noEmit` | Typecheck (passes; no npm script yet) |
+| `npm run typecheck` | TypeScript check (`tsc --noEmit`) |
 | `FLUENT_USER_EMAIL=test@example.com npm test -- --ci` | Jest (3 suites, 7 tests) |
 | `npm run android` | Run on Android device/emulator |
 
@@ -164,7 +164,6 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 
 ## Open questions / TODOs
 
-- [ ] Add `typecheck` npm script (`tsc --noEmit`) for parity with agent docs and CI
 - [ ] Remove unused `const db = getDatabase()` in `sync.ts:24`
 - [ ] Confirm `teamgloo/mobile-team` is correct for Dependabot reviewers (used in `.github/dependabot.yml`)
 - [ ] Mock or gate `fluent-api.test.ts` for offline CI

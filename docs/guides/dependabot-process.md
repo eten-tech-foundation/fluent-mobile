@@ -44,7 +44,7 @@ npm ci
 ```bash
 npm run format:check
 npm run lint
-npx tsc --noEmit
+npm run typecheck
 FLUENT_USER_EMAIL=test@example.com npm test -- --ci
 ```
 
@@ -94,7 +94,7 @@ git pull origin main
 npm ci
 npm run format:check
 npm run lint
-npx tsc --noEmit
+npm run typecheck
 FLUENT_USER_EMAIL=test@example.com npm test -- --ci
 cd android && ./gradlew assembleDebug --no-daemon && cd ..
 ```
