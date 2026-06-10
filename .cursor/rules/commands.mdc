@@ -11,7 +11,7 @@ Run from repo root. Node **>= 24.14.0**. Package manager: **npm**.
 
 1. `npm run format:check` — or `npm run format` then re-check
 2. `npm run lint`
-3. `npx tsc --noEmit` — no `typecheck` script yet; use this
+3. `npm run typecheck`
 4. `FLUENT_USER_EMAIL=test@example.com npm test -- --ci`
 
 Report what ran and the outcome. If a step was skipped, say why.
@@ -24,6 +24,7 @@ Report what ran and the outcome. If a step was skipped, say why.
 | `npm start` | Metro bundler |
 | `npm run android` | Run on Android emulator/device |
 | `npm run format` | Fix Prettier (broader than `format:check`) |
+| `npm run typecheck` | TypeScript check (`tsc --noEmit`) |
 
 ## CI mirrors
 

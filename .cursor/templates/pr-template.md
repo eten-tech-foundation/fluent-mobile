@@ -53,7 +53,7 @@
 ### Code Quality (fluent-mobile gates)
 - [ ] ✅ `npm run lint`
 - [ ] ✅ `npm run format:check`
-- [ ] ✅ `npx tsc --noEmit`
+- [ ] ✅ `npm run typecheck`
 - [ ] ✅ `FLUENT_USER_EMAIL=test@example.com npm test -- --ci`
 - [ ] ✅ Self-reviewed the code changes
 

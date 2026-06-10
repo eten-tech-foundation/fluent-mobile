@@ -1,0 +1,203 @@
+---
+description: Repeatable process for safely handling Dependabot PRs in Fluent Mobile.
+globs: ["package.json", "package-lock.json"]
+alwaysApply: false
+---
+
+# Dependabot PR Workflow
+
+Use this rule when the user asks to "handle dependabot PRs", "update dependencies", or "process dependabot".
+
+Full guide: [docs/guides/dependabot-process.md](../../docs/guides/dependabot-process.md).
+
+## Autonomous mode (default)
+
+When the user asks to handle/process Dependabot PRs, **run the full queue end-to-end without asking for confirmation at each step**. Only stop to report blockers (failed CI, conflicts after rebase, risky/RN-upgrade PRs).
+
+**Do not merge** non-Dependabot PRs (e.g. chore workflow PR #60) unless the user explicitly includes them.
+
+### Queue loop
+
+1. List open Dependabot PRs: `gh pr list --search "author:app/dependabot state:open" --json number,title,mergeable,mergeStateStatus,statusCheckRollup,files`
+2. Triage each PR (safe / risky / skip / RN upgrade).
+3. **Parallel prep**: comment `@dependabot rebase` on every open bot that is `CONFLICTING`, has stale CI (>24h), or is not the PR about to merge — **skip** PRs with `IN_PROGRESS` CI that Dependabot already refreshed after the last `main` merge.
+4. Pick the **oldest safe PR** with all required checks `SUCCESS` and `mergeable: MERGEABLE`.
+5. `gh pr review <N> --approve` then `gh pr merge <N> --squash --delete-branch`.
+6. Wait for `main` CI green: Lint Check, Test Check, Build Check (`gh run list --branch main --limit 3`).
+7. Go to step 3 until no safe PRs remain. Log results in `docs/guides/dependabot-resolution-log.md`.
+
+### CI-first merge gate (safe PRs)
+
+For **safe** PRs (lockfile-only transitive bumps; no `package.json` changes except overrides):
+
+- GitHub CI all green is sufficient — **local checkout optional**.
+- Required checks: Lint & Format, Unit Tests, Android Build — all `SUCCESS`.
+- Branch protection requires approval: always `gh pr review --approve` before merge.
+
+For **risky** PRs: local validation gate + Android smoke test still mandatory.
+
+### Skip without merge
+
+- Any required check `FAILURE` or `CANCELLED`
+- `mergeable: CONFLICTING` after `@dependabot rebase` (retry rebase once; then report)
+- RN line upgrade or pinned React/RN drift
+- `@op-engineering/op-sqlite` major bump
+
+### Useful commands
+
+    gh pr checks <N> --watch          # wait for CI
+    gh pr comment <N> --body "@dependabot rebase"
+    gh run list --branch main --limit 3 --json workflowName,conclusion,status
+
+## CRITICAL SAFETY RULES
+
+1. **Verify author**: ONLY process PRs authored by `app/dependabot` or `dependabot[bot]`.
+2. **Never auto-merge React Native line bumps**: If a PR upgrades `react-native` past `0.84.x` or multiple `@react-native/*` packages together, DO NOT merge. Plan a dedicated RN upgrade ticket.
+3. **Mandatory validation**: NEVER merge without running the full gate from [commands.mdc](./commands.mdc): `format:check` → `lint` → `typecheck` → `npm test -- --ci`.
+4. **Target branch**: Always merge into the default branch (`main`).
+5. **Version lock-stepping**: `react`, `react-test-renderer`, and `react-native` are pinned for RN 0.84. Treat any change to those as **risky** — validate on device/emulator.
+6. **Runtime testing required**: For React/RN/navigation/native-module updates, smoke test on Android (`npm run android`). Static checks miss renderer and native ABI mismatches.
+7. **Manual merges = high risk**: Prefer `@dependabot rebase`. If manual merge is required, run full validation + Android smoke test.
+8. **Final state validation**: After merging multiple PRs, ALWAYS validate the final merged state on `main`.
+9. **One Dependabot merge at a time (lockfile)**: Merge **at most one** lockfile PR, wait for **`main` CI green**, then **`@dependabot rebase` all other open bots in parallel** (prep while CI runs on the ones already rebased). Never stack merges without rebasing — corrupt `package-lock.json` breaks `npm ci`.
+
+## Implementation workflow
+
+### Step 1: Triage and categorize
+
+Fetch open Dependabot PRs:
+
+```bash
+gh pr list --author app/dependabot --author dependabot[bot] --state open --json number,title,author
+```
+
+Categorize each PR:
+
+- **Safe**: Dev dependencies, patch versions of pure JS utilities.
+- **Risky**: `react`, `react-native`, `@react-native/*`, `@react-navigation/*`, `@op-engineering/op-sqlite`, or any native-linked package.
+- **RN upgrade**: `react-native` `>=0.85` or coordinated `@react-native/*` bump. **Action: close with explanation** — use a dedicated upgrade ticket.
+
+### Step 2: Validation for each PR
+
+1. **Checkout**:
+
+   ```bash
+   git fetch origin pull/<PR_NUMBER>/head:dependabot-pr-<PR_NUMBER>
+   git checkout dependabot-pr-<PR_NUMBER>
+   npm ci
+   ```
+
+2. **Technical validation** (CI order):
+
+   ```bash
+   npm run format:check
+   npm run lint
+   npm run typecheck
+   FLUENT_USER_EMAIL=test@example.com npm test -- --ci
+   ```
+
+   *Note: `fluent-api.test.ts` may hit the network — a failure there alone does not block a dep bump if it also fails on `main`.*
+
+3. **Android build** (recommended for risky PRs; required on CI anyway):
+
+   ```bash
+   cd android && ./gradlew assembleDebug --no-daemon && cd ..
+   ```
+
+4. **Smoke test (mandatory for React/RN/navigation/native modules)**:
+
+   ```bash
+   npm start   # separate terminal
+   npm run android
+   ```
+
+   **Check**:
+
+   - App launches without crashes
+   - No "Incompatible React versions" errors
+   - Navigation: Projects → Chapters → Verse detail
+   - Sync button still runs without throwing
+
+### Step 3: Merging
+
+If all validations pass (or CI-first gate for safe PRs):
+
+    gh pr review <PR_NUMBER> --approve --body "CI green. Safe lockfile bump per dependabot workflow."
+    gh pr merge <PR_NUMBER> --squash --delete-branch
+
+Wait for `main` CI green. **Immediately** rebase all other open bots in parallel (do not wait for the next merge candidate):
+
+    for n in $(gh pr list --search "author:app/dependabot state:open" --json number -q '.[].number'); do
+      gh pr comment "$n" --body "@dependabot rebase"
+    done
+
+Skip rebasing the PR whose CI is already `IN_PROGRESS` from a recent Dependabot push. Repeat from triage for the next green PR.
+
+### Step 4: Final validation on main
+
+**CRITICAL**: After merging multiple PRs, validate the **final merged state**:
+
+```bash
+git checkout main
+git pull origin main
+npm ci
+npm run format:check
+npm run lint
+npm run typecheck
+FLUENT_USER_EMAIL=test@example.com npm test -- --ci
+cd android && ./gradlew assembleDebug --no-daemon && cd ..
+```
+
+Optional but recommended after risky merges: `npm run android` smoke test.
+
+**Why**: Individual PRs may pass, but combined merges can create incompatibilities (e.g. React patch drift vs pinned `react-test-renderer`).
+
+### Step 5: Cleanup
+
+```bash
+git branch -D dependabot-pr-<PR_NUMBER>
+```
+
+## Handling issues
+
+### Conflicts
+
+**Prefer**: Comment `@dependabot rebase` on the PR.
+
+```bash
+gh pr comment <PR_NUMBER> --body "@dependabot rebase"
+```
+
+**If manual resolution required** (high risk):
+
+1. Do not automatically choose "newer" versions for `react` / `react-native` / `@react-native/*`
+2. Run the full validation suite + Android smoke test after resolving
+3. Consider requesting user approval before merging
+
+### Version mismatches
+
+RN 0.84 pins these in `package.json` (exact versions, no caret):
+
+| Package | Current pin |
+|---------|-------------|
+| `react` | `19.2.3` |
+| `react-native` | `0.84.1` |
+| `react-test-renderer` | `19.2.3` |
+| `@react-native/babel-preset` | `0.84.1` |
+| `@react-native/metro-config` | `0.84.1` |
+| `@react-native/typescript-config` | `0.84.1` |
+
+If a Dependabot PR drifts these, align manually to the [React Native upgrade helper](https://react-native-community.github.io/upgrade-helper/) matrix for `0.84.1` before merging.
+
+### Failures
+
+- **Tests fail**: Do not merge. Share logs with user.
+- **Lint / format fail**: Do not merge. Share logs with user.
+- **`npm ci` fails on `main`**: Usually corrupted `package-lock.json` from stacked merges — regenerate with `npm install`, open a small fix PR.
+- **Runtime crash**: Check React/RN version alignment and native module compatibility (`@op-engineering/op-sqlite`, etc.).
+
+## Reference
+
+- Config: `.github/dependabot.yml`
+- Process doc: `docs/guides/dependabot-process.md`
+- Resolution log: `docs/guides/dependabot-resolution-log.md`
