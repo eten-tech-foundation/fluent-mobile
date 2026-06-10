@@ -41,6 +41,20 @@ describe('FluentAPI auth', () => {
     expect(response.token).toBe(fullToken);
   });
 
+  it('signIn throws a stable error when the failure body is not JSON', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => {
+        throw new SyntaxError('Unexpected token < in JSON at position 0');
+      },
+    });
+
+    await expect(FluentAPI.signIn('t@fluent.local', 'wrong')).rejects.toThrow(
+      'Sign-in failed: 503',
+    );
+  });
+
   it('getUserProjects throws AuthError on 401 responses', async () => {
     setActiveToken('revoked-token');
 

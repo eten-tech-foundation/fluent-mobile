@@ -20,4 +20,10 @@ describe('resolveSessionToken', () => {
   it('returns undefined when neither header nor body token is present', () => {
     expect(resolveSessionToken(null, undefined)).toBeUndefined();
   });
+
+  it('falls back to the body token when header decoding fails', () => {
+    expect(resolveSessionToken('%E0%A4%A', 'session-from-body')).toBe(
+      'session-from-body',
+    );
+  });
 });

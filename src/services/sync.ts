@@ -72,6 +72,7 @@ async function retrySyncStep<T>(
   stepName: string,
   errorKey: (typeof KV_KEYS)[keyof typeof KV_KEYS],
   operation: () => Promise<T>,
+  failingUserId?: string,
 ): Promise<T> {
   let lastError: unknown;
 
@@ -89,9 +90,9 @@ async function retrySyncStep<T>(
           error: errorMessage,
         });
         setSyncError(errorKey, errorMessage);
-        const activeUserId = getActiveUserId();
-        if (activeUserId) {
-          await handleSyncAuthFailure(activeUserId);
+        const userId = failingUserId ?? getActiveUserId();
+        if (userId) {
+          await handleSyncAuthFailure(userId);
         }
         throw error;
       }
@@ -117,26 +118,31 @@ async function retrySyncStep<T>(
 }
 
 export async function syncUser(email?: string) {
-  return retrySyncStep('User sync', KV_KEYS.SYNC_ERROR_USER, async () => {
-    const userEmail = email ?? getUserEmailSync();
-    if (!userEmail) throw new Error('No email found');
+  return retrySyncStep(
+    'User sync',
+    KV_KEYS.SYNC_ERROR_USER,
+    async () => {
+      const userEmail = email ?? getUserEmailSync();
+      if (!userEmail) throw new Error('No email found');
 
-    const user = await FluentAPI.getUserByEmail(userEmail);
-    if (!user?.id) throw new Error('Invalid user response');
+      const user = await FluentAPI.getUserByEmail(userEmail);
+      if (!user?.id) throw new Error('Invalid user response');
 
-    await insertUser(user);
-    setUserSync(String(user.id), userEmail);
+      await insertUser(user);
+      setUserSync(String(user.id), userEmail);
 
-    const tempCreds = await getTempCredentials();
-    if (tempCreds?.token) {
-      await saveCredentials(tempCreds.token, String(user.id));
-      await clearTempCredentials();
-      log.info('Token migrated from temp to userId', { userId: user.id });
-    }
+      const tempCreds = await getTempCredentials();
+      if (tempCreds?.token) {
+        await saveCredentials(tempCreds.token, String(user.id));
+        await clearTempCredentials();
+        log.info('Token migrated from temp to userId', { userId: user.id });
+      }
 
-    log.info('User synced', { email: userEmail });
-    return user;
-  });
+      log.info('User synced', { email: userEmail });
+      return user;
+    },
+    getUserIdSync() ?? getActiveUserId() ?? undefined,
+  );
 }
 
 export async function syncMasterData() {
@@ -201,6 +207,7 @@ export async function syncProjects(userId: number) {
         userProjectsInDb: totalProjectsCount,
       });
     },
+    String(userId),
   );
 }
 
@@ -255,6 +262,7 @@ export async function syncChapterAssignments(
         log.info('No chapter assignment changes');
       }
     },
+    String(userId),
   );
 }
 

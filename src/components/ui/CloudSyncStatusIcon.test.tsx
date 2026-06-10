@@ -3,20 +3,18 @@ import { render } from '@testing-library/react-native';
 import { CloudSyncStatusIcon } from './CloudSyncStatusIcon';
 import { SyncStatus } from '../../utils/syncStatusState';
 
-jest.mock('lucide-react-native', () => {
+jest.mock('react-native-svg', () => {
   const MockReact = require('react');
   const { View } = require('react-native');
-  const MockIcon = (props: { accessibilityLabel?: string }) =>
+  const MockSvg = (props: { accessibilityLabel?: string }) =>
     MockReact.createElement(View, {
       accessibilityLabel: props.accessibilityLabel,
     });
 
   return {
-    ArrowUp: MockIcon,
-    Check: MockIcon,
-    Cloud: MockIcon,
-    CloudOff: MockIcon,
-    RefreshCw: MockIcon,
+    __esModule: true,
+    default: MockSvg,
+    Path: MockSvg,
   };
 });
 

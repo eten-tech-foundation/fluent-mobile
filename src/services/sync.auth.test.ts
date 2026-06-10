@@ -104,6 +104,20 @@ describe('syncAllData auth handling', () => {
     expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
   });
 
+  it('clears credentials for the syncing user when project sync returns 401', async () => {
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'revoked-token' });
+    (getActiveUserId as jest.Mock).mockReturnValue('1');
+    (getUserIdSync as jest.Mock).mockReturnValue('2');
+    (FluentAPI.getUserProjects as jest.Mock).mockRejectedValue(
+      new AuthError('Invalid or revoked session token'),
+    );
+
+    await expect(syncAllData(true)).rejects.toThrow(AuthError);
+
+    expect(clearCredentials).toHaveBeenCalledWith('2');
+    expect(clearCredentials).not.toHaveBeenCalledWith('1');
+  });
+
   it('clears credentials and emits auth session expired when project sync returns 401', async () => {
     (getCredentials as jest.Mock).mockResolvedValue({ token: 'revoked-token' });
     (FluentAPI.getUserProjects as jest.Mock).mockRejectedValue(
