@@ -10,6 +10,45 @@ Use this rule when the user asks to "handle dependabot PRs", "update dependencie
 
 Full guide: [docs/guides/dependabot-process.md](../../docs/guides/dependabot-process.md).
 
+## Autonomous mode (default)
+
+When the user asks to handle/process Dependabot PRs, **run the full queue end-to-end without asking for confirmation at each step**. Only stop to report blockers (failed CI, conflicts after rebase, risky/RN-upgrade PRs).
+
+**Do not merge** non-Dependabot PRs (e.g. chore workflow PR #60) unless the user explicitly includes them.
+
+### Queue loop
+
+1. List open Dependabot PRs: `gh pr list --search "author:app/dependabot state:open" --json number,title,mergeable,mergeStateStatus,statusCheckRollup,files`
+2. Triage each PR (safe / risky / skip / RN upgrade).
+3. **Parallel prep**: comment `@dependabot rebase` on every open bot that is `CONFLICTING`, has stale CI (>24h), or is not the PR about to merge — **skip** PRs with `IN_PROGRESS` CI that Dependabot already refreshed after the last `main` merge.
+4. Pick the **oldest safe PR** with all required checks `SUCCESS` and `mergeable: MERGEABLE`.
+5. `gh pr review <N> --approve` then `gh pr merge <N> --squash --delete-branch`.
+6. Wait for `main` CI green: Lint Check, Test Check, Build Check (`gh run list --branch main --limit 3`).
+7. Go to step 3 until no safe PRs remain. Log results in `docs/guides/dependabot-resolution-log.md`.
+
+### CI-first merge gate (safe PRs)
+
+For **safe** PRs (lockfile-only transitive bumps; no `package.json` changes except overrides):
+
+- GitHub CI all green is sufficient — **local checkout optional**.
+- Required checks: Lint & Format, Unit Tests, Android Build — all `SUCCESS`.
+- Branch protection requires approval: always `gh pr review --approve` before merge.
+
+For **risky** PRs: local validation gate + Android smoke test still mandatory.
+
+### Skip without merge
+
+- Any required check `FAILURE` or `CANCELLED`
+- `mergeable: CONFLICTING` after `@dependabot rebase` (retry rebase once; then report)
+- RN line upgrade or pinned React/RN drift
+- `@op-engineering/op-sqlite` major bump
+
+### Useful commands
+
+    gh pr checks <N> --watch          # wait for CI
+    gh pr comment <N> --body "@dependabot rebase"
+    gh run list --branch main --limit 3 --json workflowName,conclusion,status
+
 ## CRITICAL SAFETY RULES
 
 1. **Verify author**: ONLY process PRs authored by `app/dependabot` or `dependabot[bot]`.
@@ -20,7 +59,7 @@ Full guide: [docs/guides/dependabot-process.md](../../docs/guides/dependabot-pro
 6. **Runtime testing required**: For React/RN/navigation/native-module updates, smoke test on Android (`npm run android`). Static checks miss renderer and native ABI mismatches.
 7. **Manual merges = high risk**: Prefer `@dependabot rebase`. If manual merge is required, run full validation + Android smoke test.
 8. **Final state validation**: After merging multiple PRs, ALWAYS validate the final merged state on `main`.
-9. **One Dependabot merge at a time (lockfile)**: Merge **at most one** Dependabot PR that touches `package-lock.json`, wait for **`main` CI to pass** (lint, test, Android build), then comment **`@dependabot rebase`** on remaining open PRs before merging the next. Rapid stacked squash merges can corrupt `package-lock.json` and break `npm ci` in CI.
+9. **One Dependabot merge at a time (lockfile)**: Merge **at most one** lockfile PR, wait for **`main` CI green**, then **`@dependabot rebase` all other open bots in parallel** (prep while CI runs on the ones already rebased). Never stack merges without rebasing — corrupt `package-lock.json` breaks `npm ci`.
 
 ## Implementation workflow
 
@@ -81,19 +120,18 @@ Categorize each PR:
 
 ### Step 3: Merging
 
-If all validations pass, merge **one** PR, then pause for `main`:
+If all validations pass (or CI-first gate for safe PRs):
 
-```bash
-gh pr merge <PR_NUMBER> --squash
-```
+    gh pr review <PR_NUMBER> --approve --body "CI green. Safe lockfile bump per dependabot workflow."
+    gh pr merge <PR_NUMBER> --squash --delete-branch
 
-Wait until push workflows on `main` finish green (Lint Check, Test Check, Build Check). Then rebase remaining bots:
+Wait for `main` CI green. **Immediately** rebase all other open bots in parallel (do not wait for the next merge candidate):
 
-```bash
-gh pr comment <OTHER_PR_NUMBER> --body "@dependabot rebase"
-```
+    for n in $(gh pr list --search "author:app/dependabot state:open" --json number -q '.[].number'); do
+      gh pr comment "$n" --body "@dependabot rebase"
+    done
 
-Repeat from triage/validation for the next PR.
+Skip rebasing the PR whose CI is already `IN_PROGRESS` from a recent Dependabot push. Repeat from triage for the next green PR.
 
 ### Step 4: Final validation on main
 

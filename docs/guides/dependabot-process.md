@@ -10,7 +10,8 @@ Repeatable process for safely managing Dependabot PRs in **Fluent Mobile**. Prio
 4. **Targeted merges**: Prefer squash merges into `main`.
 5. **Version lock-stepping**: `react`, `react-test-renderer`, and `react-native` are pinned — validate the **final merged state** on `main`.
 6. **Runtime testing**: Static checks miss renderer mismatches — smoke test on Android for risky bumps.
-7. **One lockfile merge at a time**: Merge **one** Dependabot PR that changes `package-lock.json`, let **`main` CI go green**, then **`@dependabot rebase`** other open Dependabot PRs before the next merge. Stacked squash merges can leave **`package-lock.json` invalid** and break `npm ci`.
+7. **One lockfile merge at a time**: Merge **one** lockfile PR, let **`main` CI go green**, then **`@dependabot rebase` all other open bots in parallel** before the next merge.
+8. **Automate the queue**: Cursor agents should run the full safe queue without per-PR confirmation (see `.cursor/rules/dependabot-workflow.mdc` → Autonomous mode).
 
 ## Categorization
 
@@ -72,17 +73,22 @@ Verify:
 
 ### 5. Merge (one at a time)
 
-```bash
-gh pr merge <PR_NUMBER> --squash
-```
+Branch protection requires approval first:
 
-Wait for **Lint Check**, **Test Check**, and **Build Check** on `main`. Then:
+    gh pr review <PR_NUMBER> --approve --body "CI green. Safe bump per dependabot process."
+    gh pr merge <PR_NUMBER> --squash --delete-branch
 
-```bash
-gh pr comment <NEXT_PR_NUMBER> --body "@dependabot rebase"
-```
+Wait for **Lint Check**, **Test Check**, and **Build Check** on `main`.
 
-Re-triage and re-validate the next PR after Dependabot pushes.
+### 6. Parallel rebase prep (do not skip)
+
+Immediately after each merge, rebase **all** remaining open Dependabot PRs — not just the next merge candidate:
+
+    gh pr comment <PR_NUMBER> --body "@dependabot rebase"
+
+Skip PRs that already have fresh `IN_PROGRESS` CI from Dependabot (auto-refreshed after `main` changed). This runs CI in parallel while you wait for `main`, saving time on the next merge.
+
+Re-triage the next PR when its checks are all green.
 
 ## Final validation on main
 
@@ -143,7 +149,17 @@ Use the [RN upgrade helper](https://react-native-community.github.io/upgrade-hel
 
 ## Automating with Cursor
 
-Load `.cursor/rules/dependabot-workflow.mdc` — ask: "Help me handle dependabot PRs".
+Ask: **"Handle dependabot PRs"** or **"Process the dependabot queue"**.
+
+The agent runs in **autonomous mode** by default:
+
+- Triages all open bots
+- Rebases stale/conflicting PRs in parallel
+- Merges safe PRs when GitHub CI is fully green (no hand-holding per PR)
+- Skips risky/failed PRs and reports blockers
+- Does not merge workflow/config PRs unless explicitly requested
+
+Rule: [`.cursor/rules/dependabot-workflow.mdc`](../../.cursor/rules/dependabot-workflow.mdc)
 
 ## Related
 
