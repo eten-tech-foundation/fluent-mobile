@@ -20,7 +20,7 @@ describe('syncEvents auth session expired', () => {
     const second = jest.fn();
     const third = jest.fn();
 
-    onAuthSessionExpired(first);
+    const unsubFirst = onAuthSessionExpired(first);
     let unsubThird = () => {};
     const unsubSecond = onAuthSessionExpired(() => {
       second();
@@ -34,6 +34,7 @@ describe('syncEvents auth session expired', () => {
     expect(second).toHaveBeenCalledTimes(1);
     expect(third).toHaveBeenCalledTimes(1);
 
+    unsubFirst();
     unsubSecond();
     unsubThird();
   });

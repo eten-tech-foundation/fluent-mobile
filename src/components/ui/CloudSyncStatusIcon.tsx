@@ -105,7 +105,7 @@ function CloudCheckGlyph({
     checkScale.setValue(0.6);
     checkOpacity.setValue(0);
 
-    Animated.parallel([
+    const animation = Animated.parallel([
       Animated.spring(checkScale, {
         toValue: 1,
         friction: 5,
@@ -118,7 +118,12 @@ function CloudCheckGlyph({
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
-    ]).start();
+    ]);
+    animation.start();
+
+    return () => {
+      animation.stop();
+    };
   }, [animateCheck, checkOpacity, checkScale]);
 
   return (
