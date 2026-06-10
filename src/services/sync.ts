@@ -30,7 +30,6 @@ import {
   clearAllSyncErrors,
   getLastAssignmentSyncAt,
   setLastAssignmentSyncAt,
-  getKnownUserIds,
   getActiveUserId,
 } from '../services/storage';
 import { getLocalProjectIds } from '../db/repository';
@@ -350,83 +349,6 @@ export async function syncBibleTexts(updatedAfter?: string) {
       });
     },
   );
-}
-
-export async function syncAllUsers(): Promise<void> {
-  log.info('Syncing all users...');
-  clearAllSyncErrors();
-  emitSyncStart();
-
-  const knownUserIds = getKnownUserIds();
-  const currentActiveUserId = getActiveUserId();
-  const lastSyncedAt = getLastSyncedAt() || undefined;
-  let activeUserSyncOk = true;
-
-  try {
-    await syncMasterData();
-
-    for (const userId of knownUserIds) {
-      const creds = await getCredentials(userId);
-      if (!creds?.token) {
-        log.warn('No credentials for user, skipping', { userId });
-        if (userId === currentActiveUserId) {
-          activeUserSyncOk = false;
-          await handleSyncAuthFailure(userId);
-        }
-        continue;
-      }
-
-      log.info('Syncing user', { userId });
-      setActiveToken(creds.token);
-      const userIdNum = Number(userId);
-
-      try {
-        const localProjectIds = await getLocalProjectIds();
-        await syncProjects(userIdNum);
-
-        if (localProjectIds.length === 0) {
-          await syncChapterAssignments(userIdNum);
-        } else {
-          await syncChapterAssignments(userIdNum, lastSyncedAt);
-        }
-      } catch (error) {
-        if (isAuthError(error) && userId === currentActiveUserId) {
-          await handleSyncAuthFailure(userId);
-        } else if (isAuthError(error)) {
-          await clearCredentials(userId);
-          log.warn('Cleared expired session credentials', { userId });
-        }
-        if (userId === currentActiveUserId) {
-          activeUserSyncOk = false;
-        }
-        log.error('Sync failed for user', {
-          userId,
-          error: getErrorMessage(error),
-        });
-      }
-    }
-
-    await syncBibleTexts(lastSyncedAt);
-
-    const activeCreds = await getCredentials(currentActiveUserId);
-    setActiveToken(activeCreds?.token ?? null);
-
-    if (activeUserSyncOk) {
-      const now = new Date().toISOString();
-      setLastSyncedAt(now);
-      setLastAssignmentSyncAt(now);
-      emitSyncComplete();
-      log.info('All users synced successfully!');
-    } else {
-      emitSyncComplete();
-      log.warn('Sync finished with errors for the active user');
-    }
-  } catch (error) {
-    const activeCreds = await getCredentials(currentActiveUserId);
-    setActiveToken(activeCreds?.token ?? null);
-    log.error('Sync all users failed', { error: getErrorMessage(error) });
-    throw error;
-  }
 }
 
 export async function syncAllData(isIncremental = false, email?: string) {
