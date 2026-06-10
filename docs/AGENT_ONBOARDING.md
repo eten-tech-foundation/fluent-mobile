@@ -39,7 +39,9 @@ Quick map for Cursor agents and new contributors. Verified against this repo on 
 | [`src/utils/logger.ts`](../src/utils/logger.ts) | Tagged logging |
 | [`android/`](../android/) | Native Android project |
 | [`.github/workflows/`](../.github/workflows/) | CI |
+| [`.github/dependabot.yml`](../.github/dependabot.yml) | Weekly dependency PRs (npm + GitHub Actions) |
 | [`.cursor/rules/`](../.cursor/rules/) | Cursor agent rules |
+| [`docs/guides/dependabot-process.md`](guides/dependabot-process.md) | Safe Dependabot merge process |
 | [`.cursor/commands/`](../.cursor/commands/) | Slash commands (`/create-pr`, etc.) |
 
 ## Setup
@@ -164,7 +166,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 
 - [ ] Add `typecheck` npm script (`tsc --noEmit`) for parity with agent docs and CI
 - [ ] Remove unused `const db = getDatabase()` in `sync.ts:24`
-- [ ] Confirm GitHub reviewer team and labels for `/create-pr` (placeholders in commands)
+- [ ] Confirm `teamgloo/mobile-team` is correct for Dependabot reviewers (used in `.github/dependabot.yml`)
 - [ ] Mock or gate `fluent-api.test.ts` for offline CI
 - [ ] Align `format:check` glob with `format` or document intentionally narrow check
 - [ ] Wire `recordings` table to actual audio capture/upload
@@ -173,4 +175,5 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 
 - Human setup: [README.md](../README.md)
 - Cursor rules: [`.cursor/rules/`](../.cursor/rules/)
+- Dependabot: [guides/dependabot-process.md](guides/dependabot-process.md) — use with `.cursor/rules/dependabot-workflow.mdc`
 - PR template: [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md)
