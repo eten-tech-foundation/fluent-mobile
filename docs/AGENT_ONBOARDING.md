@@ -165,7 +165,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 ## Open questions / TODOs
 
 - [ ] Remove unused `const db = getDatabase()` in `sync.ts:24`
-- [ ] Confirm `teamgloo/mobile-team` is correct for Dependabot reviewers (used in `.github/dependabot.yml`)
+- [x] Dependabot reviewers: `eten-tech-foundation/fluent-admin` (joelthe1, kaseywright) — not `teamgloo/mobile-team` (different org; copied in error from messaging-expo)
 - [ ] Mock or gate `fluent-api.test.ts` for offline CI
 - [ ] Align `format:check` glob with `format` or document intentionally narrow check
 - [ ] Wire `recordings` table to actual audio capture/upload
