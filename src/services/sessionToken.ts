@@ -4,7 +4,11 @@ export function resolveSessionToken(
   bodyToken?: string,
 ): string | undefined {
   if (headerToken) {
-    return decodeURIComponent(headerToken);
+    try {
+      return decodeURIComponent(headerToken);
+    } catch {
+      return bodyToken;
+    }
   }
   return bodyToken;
 }

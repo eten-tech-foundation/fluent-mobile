@@ -106,18 +106,16 @@ async function signInRequest(email: string, password: string) {
   });
 
   if (!res.ok) {
+    let message = `Sign-in failed: ${res.status}`;
     try {
       const errorBody = await res.json();
-      throw new Error(errorBody?.message ?? `Sign-in failed: ${res.status}`);
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        !error.message.startsWith('Sign-in failed')
-      ) {
-        throw error;
+      if (errorBody?.message) {
+        message = errorBody.message;
       }
-      throw new Error(`Sign-in failed: ${res.status}`);
+    } catch {
+      // Non-JSON body — keep stable status message.
     }
+    throw new Error(message);
   }
 
   const data = await res.json();

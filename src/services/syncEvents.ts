@@ -38,5 +38,5 @@ export function onAuthSessionExpired(fn: SyncListener): () => void {
 }
 
 export function emitAuthSessionExpired(): void {
-  authSessionExpiredListeners.forEach(fn => fn());
+  [...authSessionExpiredListeners].forEach(fn => fn());
 }

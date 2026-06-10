@@ -7,13 +7,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import {
-  ArrowUp,
-  Check,
-  Cloud,
-  CloudOff,
-  RefreshCw,
-} from 'lucide-react-native';
+import Svg, { Path } from 'react-native-svg';
 import CloudOffUnsynced from '../../assets/icons/cloud-off-unsynced.svg';
 import {
   iconSizes,
@@ -23,8 +17,28 @@ import {
 } from '../../theme';
 import { SYNC_STATUS_LABELS, SyncStatus } from '../../utils/syncStatusState';
 
-const ACCENT_STROKE = listIconStrokeWidth + 0.5;
 const CLOUD_COLOR = theme.colors.primaryForeground;
+const CLOUD_PATH =
+  'M5.516 16.07A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 3.501 7.327';
+const CHECK_PATH = 'm17 15-5.5 5.5L9 18';
+const REFRESH_PATHS = [
+  'M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8',
+  'M21 3v5h-5',
+  'M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16',
+  'M8 16H3v5',
+] as const;
+
+const BASE_STROKE = {
+  strokeWidth: listIconStrokeWidth,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+  fill: 'none' as const,
+};
+
+const ACCENT_STROKE = {
+  ...BASE_STROKE,
+  strokeWidth: syncStatusIcon.accentStrokeWidth,
+};
 
 interface CloudSyncStatusIconProps {
   status: SyncStatus;
@@ -34,7 +48,7 @@ interface CloudSyncStatusIconProps {
   decorative?: boolean;
 }
 
-function IconFrame({
+function SyncStatusSvg({
   size,
   children,
 }: {
@@ -42,140 +56,171 @@ function IconFrame({
   children: React.ReactNode;
 }) {
   return (
-    <View style={[styles.frame, { width: size, height: size }]}>
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       {children}
+    </Svg>
+  );
+}
+
+function CloudOutline({ size, color }: { size: number; color: string }) {
+  return (
+    <SyncStatusSvg size={size}>
+      <Path d={CLOUD_PATH} stroke={color} {...BASE_STROKE} />
+    </SyncStatusSvg>
+  );
+}
+
+function RefreshPaths({ size, color }: { size: number; color: string }) {
+  return (
+    <SyncStatusSvg size={size}>
+      {REFRESH_PATHS.map(d => (
+        <Path key={d} d={d} stroke={color} {...ACCENT_STROKE} />
+      ))}
+    </SyncStatusSvg>
+  );
+}
+
+/** Lucide `cloud-check` paths with independent cloud/check colors. */
+function CloudCheckGlyph({
+  size,
+  cloudColor,
+  checkColor,
+  animateCheck = false,
+}: {
+  size: number;
+  cloudColor: string;
+  checkColor: string;
+  animateCheck?: boolean;
+}) {
+  const checkScale = useRef(new Animated.Value(animateCheck ? 0.6 : 1)).current;
+  const checkOpacity = useRef(new Animated.Value(animateCheck ? 0 : 1)).current;
+
+  useEffect(() => {
+    if (!animateCheck) {
+      checkScale.setValue(1);
+      checkOpacity.setValue(1);
+      return;
+    }
+
+    checkScale.setValue(0.6);
+    checkOpacity.setValue(0);
+
+    Animated.parallel([
+      Animated.spring(checkScale, {
+        toValue: 1,
+        friction: 5,
+        tension: 180,
+        useNativeDriver: true,
+      }),
+      Animated.timing(checkOpacity, {
+        toValue: 1,
+        duration: 220,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [animateCheck, checkOpacity, checkScale]);
+
+  return (
+    <View style={[styles.frame, { width: size, height: size }]}>
+      <CloudOutline size={size} color={cloudColor} />
+      <Animated.View
+        style={[
+          styles.overlayFill,
+          { opacity: checkOpacity, transform: [{ scale: checkScale }] },
+        ]}
+      >
+        <SyncStatusSvg size={size}>
+          <Path d={CHECK_PATH} stroke={checkColor} {...ACCENT_STROKE} />
+        </SyncStatusSvg>
+      </Animated.View>
     </View>
   );
 }
 
-function WhiteCloud({ size }: { size: number }) {
-  return (
-    <Cloud size={size} color={CLOUD_COLOR} strokeWidth={listIconStrokeWidth} />
-  );
-}
-
-function OnlineCloudGlyph({
+/** Lucide `cloud-upload` paths with independent cloud/arrow colors. */
+function CloudUploadGlyph({
   size,
-  overlay,
+  cloudColor,
+  arrowColor,
 }: {
   size: number;
-  overlay: React.ReactNode;
+  cloudColor: string;
+  arrowColor: string;
 }) {
+  const pulse = usePendingPulse();
+
   return (
-    <IconFrame size={size}>
-      <WhiteCloud size={size} />
-      {overlay}
-    </IconFrame>
+    <View style={[styles.frame, { width: size, height: size }]}>
+      <CloudOutline size={size} color={cloudColor} />
+      <Animated.View
+        style={[styles.overlayFill, { transform: [{ translateY: pulse }] }]}
+      >
+        <SyncStatusSvg size={size}>
+          <Path d="M12 13v8" stroke={arrowColor} {...ACCENT_STROKE} />
+          <Path d="m8 17 4-4 4 4" stroke={arrowColor} {...ACCENT_STROKE} />
+        </SyncStatusSvg>
+      </Animated.View>
+    </View>
   );
 }
 
-function OnlineSyncedGlyph({ size }: { size: number }) {
+/** Lucide `cloud` + centered spinning `refresh-cw` overlay. */
+function CloudSyncingGlyph({ size }: { size: number }) {
+  const spin = useSpinAnimation();
   const overlay = size * syncStatusIcon.overlayScale;
+  const inset = (size - overlay) / 2;
+  const top = inset + size * syncStatusIcon.overlayOffsetY;
 
   return (
-    <OnlineCloudGlyph
-      size={size}
-      overlay={
-        <View
-          style={[
-            styles.overlay,
-            {
-              bottom: size * syncStatusIcon.checkOffset.bottom,
-              right: size * syncStatusIcon.checkOffset.right,
-            },
-          ]}
-        >
-          <Check
-            size={overlay}
-            color={theme.colors.syncStatusSynced}
-            strokeWidth={ACCENT_STROKE}
-          />
-        </View>
-      }
-    />
-  );
-}
-
-function OnlineSyncingGlyph({
-  size,
-  spin,
-}: {
-  size: number;
-  spin: Animated.AnimatedInterpolation<string>;
-}) {
-  const overlay = size * syncStatusIcon.overlayScale;
-
-  return (
-    <OnlineCloudGlyph
-      size={size}
-      overlay={
-        <Animated.View
-          style={[
-            styles.overlayCenter,
-            { width: overlay, height: overlay, transform: [{ rotate: spin }] },
-          ]}
-        >
-          <RefreshCw
-            size={overlay}
-            color={theme.colors.syncStatusSynced}
-            strokeWidth={ACCENT_STROKE}
-          />
-        </Animated.View>
-      }
-    />
-  );
-}
-
-function OnlinePendingGlyph({
-  size,
-  pulseScale,
-}: {
-  size: number;
-  pulseScale: Animated.Value;
-}) {
-  const overlay = size * syncStatusIcon.overlayScale;
-
-  return (
-    <OnlineCloudGlyph
-      size={size}
-      overlay={
-        <Animated.View
-          style={[styles.overlayBottom, { transform: [{ scale: pulseScale }] }]}
-        >
-          <ArrowUp
-            size={overlay}
-            color={theme.colors.syncStatusPending}
-            strokeWidth={ACCENT_STROKE}
-          />
-        </Animated.View>
-      }
-    />
+    <View style={[styles.frame, { width: size, height: size }]}>
+      <CloudOutline size={size} color={CLOUD_COLOR} />
+      <Animated.View
+        style={[
+          styles.overlayCenter,
+          {
+            width: overlay,
+            height: overlay,
+            top,
+            left: inset,
+            transform: [{ rotate: spin }],
+          },
+        ]}
+      >
+        <RefreshPaths size={overlay} color={theme.colors.syncStatusSynced} />
+      </Animated.View>
+    </View>
   );
 }
 
 const GLYPHS: Record<
   SyncStatus,
-  (props: {
-    size: number;
-    spin?: Animated.AnimatedInterpolation<string>;
-    pulseScale?: Animated.Value;
-  }) => React.ReactElement
+  (size: number, options?: { animateCheck?: boolean }) => React.ReactElement
 > = {
-  online_synced: ({ size }) => <OnlineSyncedGlyph size={size} />,
-  online_syncing: ({ size, spin }) => (
-    <OnlineSyncingGlyph size={size} spin={spin!} />
-  ),
-  online_pending: ({ size, pulseScale }) => (
-    <OnlinePendingGlyph size={size} pulseScale={pulseScale!} />
-  ),
-  offline_synced: ({ size }) => (
-    <CloudOff
+  online_synced: (size, options) => (
+    <CloudCheckGlyph
       size={size}
-      color={theme.colors.syncStatusOffline}
-      strokeWidth={listIconStrokeWidth}
+      cloudColor={CLOUD_COLOR}
+      checkColor={theme.colors.syncStatusSynced}
+      animateCheck={options?.animateCheck}
     />
   ),
-  offline_pending: ({ size }) => (
+  online_syncing: size => <CloudSyncingGlyph size={size} />,
+  online_pending: size => (
+    <CloudUploadGlyph
+      size={size}
+      cloudColor={CLOUD_COLOR}
+      arrowColor={theme.colors.syncStatusPending}
+    />
+  ),
+  offline_synced: size => (
+    <CloudCheckGlyph
+      size={size}
+      cloudColor={theme.colors.syncStatusOffline}
+      checkColor={theme.colors.syncStatusOffline}
+    />
+  ),
+  offline_pending: size => (
     <CloudOffUnsynced
       width={size}
       height={size}
@@ -184,52 +229,14 @@ const GLYPHS: Record<
   ),
 };
 
-function useStatusTransition(status: SyncStatus) {
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const prevStatus = useRef(status);
-
-  useEffect(() => {
-    if (prevStatus.current === status) {
-      return;
-    }
-
-    prevStatus.current = status;
-    fadeAnim.setValue(0.45);
-    scaleAnim.setValue(0.9);
-
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 7,
-        tension: 140,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [status, fadeAnim, scaleAnim]);
-
-  return { fadeAnim, scaleAnim };
-}
-
-function useSpinAnimation(active: boolean) {
+function useSpinAnimation() {
   const spinAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (!active) {
-      spinAnim.setValue(0);
-      return;
-    }
-
     const spin = Animated.loop(
       Animated.timing(spinAnim, {
         toValue: 1,
-        duration: 1_100,
+        duration: syncStatusIcon.spinDurationMs,
         easing: Easing.linear,
         useNativeDriver: true,
       }),
@@ -237,7 +244,7 @@ function useSpinAnimation(active: boolean) {
 
     spin.start();
     return () => spin.stop();
-  }, [active, spinAnim]);
+  }, [spinAnim]);
 
   return spinAnim.interpolate({
     inputRange: [0, 1],
@@ -245,26 +252,21 @@ function useSpinAnimation(active: boolean) {
   });
 }
 
-function usePulseAnimation(active: boolean) {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+function usePendingPulse() {
+  const pulseAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (!active) {
-      pulseAnim.setValue(1);
-      return;
-    }
-
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
-          toValue: 1.14,
-          duration: 650,
+          toValue: 1,
+          duration: syncStatusIcon.pendingPulseDurationMs / 2,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 650,
+          toValue: 0,
+          duration: syncStatusIcon.pendingPulseDurationMs / 2,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
@@ -273,9 +275,48 @@ function usePulseAnimation(active: boolean) {
 
     pulse.start();
     return () => pulse.stop();
-  }, [active, pulseAnim]);
+  }, [pulseAnim]);
 
-  return pulseAnim;
+  return pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -2.5],
+  });
+}
+
+function useStatusTransition(status: SyncStatus) {
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const prevStatus = useRef(status);
+  const [animateCheck, setAnimateCheck] = React.useState(false);
+
+  useEffect(() => {
+    if (prevStatus.current === status) {
+      return;
+    }
+
+    const enteringSynced = status === 'online_synced';
+    prevStatus.current = status;
+    setAnimateCheck(enteringSynced);
+    fadeAnim.setValue(0.35);
+    scaleAnim.setValue(0.88);
+
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 320,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 6,
+        tension: 120,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [status, fadeAnim, scaleAnim]);
+
+  return { fadeAnim, scaleAnim, animateCheck };
 }
 
 export function CloudSyncStatusIcon({
@@ -284,9 +325,7 @@ export function CloudSyncStatusIcon({
   style,
   decorative = false,
 }: CloudSyncStatusIconProps) {
-  const { fadeAnim, scaleAnim } = useStatusTransition(status);
-  const spin = useSpinAnimation(status === 'online_syncing');
-  const pulseScale = usePulseAnimation(status === 'online_pending');
+  const { fadeAnim, scaleAnim, animateCheck } = useStatusTransition(status);
 
   return (
     <Animated.View
@@ -294,7 +333,7 @@ export function CloudSyncStatusIcon({
       accessibilityLabel={decorative ? undefined : SYNC_STATUS_LABELS[status]}
       style={[style, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}
     >
-      {GLYPHS[status]({ size, spin, pulseScale })}
+      {GLYPHS[status](size, { animateCheck })}
     </Animated.View>
   );
 }
@@ -304,17 +343,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  overlay: {
-    position: 'absolute',
-  },
   overlayCenter: {
     position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  overlayBottom: {
-    position: 'absolute',
-    bottom: 0,
+  overlayFill: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
   },

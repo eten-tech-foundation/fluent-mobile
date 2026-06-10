@@ -36,7 +36,6 @@ export default function HomeScreen({
 
   const handleSyncComplete = useCallback(() => {
     setIsNewUserLoading(false);
-    setRefreshKey(key => key + 1);
   }, []);
 
   const { isSyncing, triggerSync } = useSync({
