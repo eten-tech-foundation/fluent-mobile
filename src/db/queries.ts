@@ -8,10 +8,10 @@ import {
 } from '../utils/formatLastActivity';
 import { deriveProjectSyncState } from '../utils/projectSyncState';
 import {
-  getBadgeStage,
-  getWorkflowStage,
-  isCompleteStatus,
-} from '../utils/workflowStage';
+  getMyWorkChapterQueryParams,
+  MY_WORK_CHAPTER_WHERE,
+} from '../utils/myWorkChapterFilter';
+import { getBadgeStage, getWorkflowStage } from '../utils/workflowStage';
 
 const log = logger.create('DBQueries');
 
@@ -332,16 +332,14 @@ export async function getMyWorkChapters(
       JOIN projects p ON pu.project_id = p.id
       LEFT JOIN languages tl ON p.target_language_id = tl.id
       LEFT JOIN recordings r ON r.chapter_assignment_id = ca.id AND r.is_latest = 1
-      WHERE ca.assigned_user_id = ?
+      WHERE ${MY_WORK_CHAPTER_WHERE}
       GROUP BY ca.id
       ORDER BY b.id, ca.chapter_number`,
-      [userId],
+      getMyWorkChapterQueryParams(userId),
     );
 
     const rows = (result?.rows as unknown as DBTypes.MyWorkChapterRow[]) || [];
-    const chapters = rows
-      .filter(row => !isCompleteStatus(row.status))
-      .map(mapMyWorkChapterRow);
+    const chapters = rows.map(mapMyWorkChapterRow);
 
     log.info('My work chapters fetched', { count: chapters.length });
     return chapters;

@@ -410,11 +410,7 @@ export async function syncAllData(isIncremental = false, email?: string) {
       await syncChapterAssignments(userId);
       await syncBibleTexts();
     } else {
-      await syncChapterAssignments(
-        userId,
-        lastAssignmentSyncAt,
-        localProjectIdsBefore,
-      );
+      await syncChapterAssignments(userId, lastAssignmentSyncAt);
       await syncBibleTexts(lastAssignmentSyncAt);
     }
 

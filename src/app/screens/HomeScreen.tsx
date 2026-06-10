@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator, Text } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { theme } from '../../theme';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { TabBar, HomeTab } from '../../components/layout/TabBar';
@@ -19,7 +18,6 @@ interface HomeScreenProps {
 }
 
 export default function HomeScreen({ onSignOut }: HomeScreenProps) {
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'Home'>>();
   const [activeTab, setActiveTab] = useState<HomeTab>('myWork');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -35,7 +33,7 @@ export default function HomeScreen({ onSignOut }: HomeScreenProps) {
     setRefreshKey(key => key + 1);
   }, []);
 
-  const { isSyncing } = useSync({
+  const { isSyncing, triggerSync } = useSync({
     onSyncComplete: handleSyncComplete,
   });
 
@@ -67,8 +65,8 @@ export default function HomeScreen({ onSignOut }: HomeScreenProps) {
   };
 
   const handleSyncPress = useCallback(() => {
-    navigation.navigate('Sync');
-  }, [navigation]);
+    triggerSync();
+  }, [triggerSync]);
 
   const showLoading = isNewUserLoading || (isSyncingLocal && refreshKey === 0);
 
