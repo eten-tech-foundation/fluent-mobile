@@ -1,4 +1,7 @@
 import { API_BASE_URL } from '@env';
+import { parseApiErrorMessage } from './apiError';
+import { AuthError } from './authError';
+import { resolveSessionToken } from './sessionToken';
 import { checkServerReachable } from './connectivity';
 
 let _activeToken: string | null = null;
@@ -50,20 +53,58 @@ async function request(endpoint: string, options?: RequestInit) {
   if (!res.ok) {
     const errorBody = await res.text();
     console.error('API error:', res.status, errorBody);
-    throw new Error(`API failed: ${res.status}`);
+    const message = parseApiErrorMessage(res.status, errorBody);
+    if (res.status === 401) {
+      throw new AuthError(message);
+    }
+    throw new Error(message);
   }
   return res.json();
+}
+
+async function signInRequest(email: string, password: string) {
+  const res = await fetch(`${API_BASE_URL}/api/auth/sign-in/email`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Origin: API_BASE_URL,
+      ...MOBILE_HEADERS,
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!res.ok) {
+    try {
+      const errorBody = await res.json();
+      throw new Error(errorBody?.message ?? `Sign-in failed: ${res.status}`);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        !error.message.startsWith('Sign-in failed')
+      ) {
+        throw error;
+      }
+      throw new Error(`Sign-in failed: ${res.status}`);
+    }
+  }
+
+  const data = await res.json();
+  const token = resolveSessionToken(
+    res.headers.get('set-auth-token'),
+    data.token as string | undefined,
+  );
+
+  if (!token) {
+    throw new Error('Sign-in succeeded but no session token was returned');
+  }
+
+  return { ...data, token };
 }
 
 export const FluentAPI = {
   checkServerReachable,
 
-  signIn: (email: string, password: string) =>
-    publicRequest('/api/auth/sign-in/email', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-      headers: MOBILE_HEADERS,
-    }),
+  signIn: (email: string, password: string) => signInRequest(email, password),
   forgotPassword: (email: string) =>
     publicRequest('/api/auth/forget-password', {
       method: 'POST',

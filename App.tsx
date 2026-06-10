@@ -13,6 +13,7 @@ import {
   hasCredentials,
 } from './src/services/keychain';
 import AppNavigator from './src/navigation/AppNavigator';
+import { onAuthSessionExpired } from './src/services/syncEvents';
 import { setActiveToken } from './src/services/api';
 import { appStyles } from './src/app/appStyles';
 import { theme } from './src/theme';
@@ -27,6 +28,14 @@ function App() {
   const handleSignOut = () => {
     setIsAuthenticated(false);
   };
+
+  useEffect(() => {
+    return onAuthSessionExpired(() => {
+      log.info('Session expired — returning to login');
+      setActiveToken(null);
+      setIsAuthenticated(false);
+    });
+  }, []);
 
   useEffect(() => {
     const initApp = async () => {

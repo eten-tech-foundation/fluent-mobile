@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { syncAllUsers } from '../services/sync';
+import { syncAllData } from '../services/sync';
 import { getSyncState, getSyncError, KV_KEYS } from '../services/storage';
 import { logger } from '../utils/logger';
 
@@ -96,7 +96,7 @@ export function useSync({ onSyncComplete, onSyncStart }: UseSyncOptions = {}) {
       onSyncStart?.();
 
       log.info('Triggering sync...');
-      await syncAllUsers();
+      await syncAllData(true);
       log.info('Sync completed successfully');
       onSyncComplete?.();
     } catch (error) {

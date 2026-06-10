@@ -388,6 +388,8 @@ export async function checkIfTextsSynced(
 }
 
 export async function insertUserProjects(userId: number, projectIds: number[]) {
+  if (projectIds.length === 0) return;
+
   const db = getDatabase();
   await db.transaction(async (tx: Transaction) => {
     for (const projectId of projectIds) {
@@ -397,6 +399,46 @@ export async function insertUserProjects(userId: number, projectIds: number[]) {
       );
     }
   });
+}
+
+/**
+ * Repopulates user_projects when empty — e.g. after the membership table was
+ * added or when chapter assignments synced before project membership rows.
+ */
+export async function ensureUserProjectMembership(
+  userId: number,
+): Promise<void> {
+  const db = getDatabase();
+  const countResult = await db.execute(
+    'SELECT COUNT(*) as count FROM user_projects WHERE user_id = ?',
+    [userId],
+  );
+  if (Number(countResult.rows?.[0]?.count ?? 0) > 0) {
+    return;
+  }
+
+  const assignmentProjects = await db.execute(
+    `SELECT DISTINCT pu.project_id AS project_id
+     FROM chapter_assignments ca
+     INNER JOIN project_units pu ON ca.project_unit_id = pu.id
+     WHERE ca.assigned_user_id = ? OR ca.peer_checker_id = ?`,
+    [userId, userId],
+  );
+  const projectIds = (
+    (assignmentProjects.rows ?? []) as { project_id: number }[]
+  )
+    .map(row => row.project_id)
+    .filter(id => Number.isFinite(id) && id > 0);
+
+  if (projectIds.length === 0) {
+    return;
+  }
+
+  log.info('Backfilling user_projects from chapter assignments', {
+    userId,
+    projectCount: projectIds.length,
+  });
+  await insertUserProjects(userId, projectIds);
 }
 
 export async function getLocalProjectIds(): Promise<number[]> {
