@@ -6,8 +6,21 @@ const FRAGMENT_FACTORY_IMPORT =
 const IMPORT_ANCHOR = /^import .+/m;
 const ON_CREATE_ANCHOR = /override fun onCreate\(savedInstanceState: Bundle\?\)/;
 
-function mergeOrAppend({ tag, src, newSrc, anchor, offset, fallback }) {
+function mergeOrAppend({
+  tag,
+  src,
+  newSrc,
+  anchor,
+  offset,
+  fallback,
+  requireAnchor = false,
+}) {
   if (!anchor.test(src)) {
+    if (requireAnchor) {
+      throw new Error(
+        `${PLUGIN}: anchor ${anchor} not found; cannot insert ${tag}`,
+      );
+    }
     console.warn(
       `${PLUGIN}: anchor ${anchor} not found; appending fallback for ${tag}`,
     );
@@ -53,8 +66,7 @@ const withRNScreensFragmentFactory = config =>
           '    supportFragmentManager.fragmentFactory = RNScreensFragmentFactory()',
         anchor: ON_CREATE_ANCHOR,
         offset: 1,
-        fallback:
-          '    supportFragmentManager.fragmentFactory = RNScreensFragmentFactory()',
+        requireAnchor: true,
       });
     }
 
