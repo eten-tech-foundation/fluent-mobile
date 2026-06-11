@@ -100,8 +100,7 @@ Setup and troubleshooting: [`.eas/README.md`](../.eas/README.md).
 
 ## PR preview (Android QA)
 
-1. Ensure a version tag exists on `main` (e.g. `v1.0.0`).
-2. Add the **`preview-build`** label to the PR.
+1. Add the **`preview-build`** label to the PR (uses latest git tag, or `app.config.ts` version if none).
 3. `.github/workflows/preview-build.yml` publishes a preview OTA (JS-only) or starts an Android EAS `preview` build (native/config changes).
 
 Requires `EXPO_TOKEN` in GitHub repository secrets.

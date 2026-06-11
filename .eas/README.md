@@ -53,7 +53,7 @@ Add the **`preview-build`** label to a pull request. GitHub Actions (`.github/wo
 - **JS-only changes** → publish an OTA update to the `preview` channel (QR code + deep link in PR comment)
 - **Native changes** (`app.config.ts` plugins, `eas.json`, `plugins/`) → start an Android `preview` APK build on EAS
 
-Requires at least one version tag on `main` (e.g. `v1.0.0`) so runtime version can be resolved. Requires `EXPO_TOKEN` in GitHub Actions secrets.
+Uses the latest git tag for runtime version when available; otherwise falls back to `app.config.ts` / `package.json` version (no tag required for first preview). Requires `EXPO_TOKEN` in GitHub Actions secrets.
 
 ## Manual build (without tag)
 

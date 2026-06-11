@@ -30,4 +30,4 @@ See [`.eas/README.md`](../.eas/README.md) for Expo GitHub app and Play Store set
 2. Add the label to a PR when ready for QA.
 3. Workflow posts a comment with an OTA link (JS-only) or Android EAS build link (native changes).
 
-Requires `EXPO_TOKEN` in repository secrets.
+Requires `EXPO_TOKEN` in repository secrets. Version resolves from latest git tag, or `app.config.ts` / `package.json` when no tags exist yet.

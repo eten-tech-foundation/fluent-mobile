@@ -88,30 +88,40 @@ jobs:
             fi
           fi
 
-      - name: 📊 Generate Preview Identifier
-        if: steps.change-detection.outputs.change_type == 'js-only'
-        id: preview-identifier
+      - name: 📊 Resolve preview version
+        id: preview-version
         run: |
+          set -euo pipefail
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          if [ -z "$LATEST_TAG" ]; then
-            echo "❌ No git tags found. Create at least one version tag (e.g. v1.0.0)"
-            exit 1
+          if [ -n "$LATEST_TAG" ]; then
+            VERSION_SOURCE="git tag ${LATEST_TAG}"
+            BASE_VERSION=${LATEST_TAG#v}
+          else
+            BASE_VERSION=$(grep -E "^  version:" app.config.ts | sed -E "s/.*'([^']+)'.*/\1/" || true)
+            if [ -n "$BASE_VERSION" ]; then
+              VERSION_SOURCE="app.config.ts"
+            else
+              BASE_VERSION=$(node -p "require('./package.json').version")
+              VERSION_SOURCE="package.json"
+            fi
+            echo "ℹ️ No git tags found — using ${VERSION_SOURCE} version: ${BASE_VERSION}"
           fi
-          BASE_VERSION=${LATEST_TAG#v}
+
           PREVIEW_ID="pr-${{ github.event.pull_request.number }}-${GITHUB_SHA:0:7}"
 
-          echo "PREVIEW_ID=$PREVIEW_ID" >> $GITHUB_OUTPUT
+          echo "VERSION_SOURCE=$VERSION_SOURCE" >> $GITHUB_OUTPUT
           echo "BASE_VERSION=$BASE_VERSION" >> $GITHUB_OUTPUT
-          echo "✅ Preview OTA for version: $BASE_VERSION (ID: $PREVIEW_ID)"
+          echo "PREVIEW_ID=$PREVIEW_ID" >> $GITHUB_OUTPUT
+          echo "✅ Preview base version: $BASE_VERSION (ID: $PREVIEW_ID, source: $VERSION_SOURCE)"
 
       - name: 🚀 Create Preview OTA Update
         if: steps.change-detection.outputs.change_type == 'js-only'
         id: ota-update
         env:
-          APP_VERSION: ${{ steps.preview-identifier.outputs.BASE_VERSION }}
+          APP_VERSION: ${{ steps.preview-version.outputs.BASE_VERSION }}
           EAS_UPDATE_CHANNEL: preview
-          PREVIEW_ID: ${{ steps.preview-identifier.outputs.PREVIEW_ID }}
-          BASE_VERSION: ${{ steps.preview-identifier.outputs.BASE_VERSION }}
+          PREVIEW_ID: ${{ steps.preview-version.outputs.PREVIEW_ID }}
+          BASE_VERSION: ${{ steps.preview-version.outputs.BASE_VERSION }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
@@ -138,14 +148,14 @@ jobs:
             ACTUAL_RUNTIME_VERSION=$(echo "$JSON_ARRAY" | jq -r '.[0].runtimeVersion // empty')
           fi
 
-          BASE_VERSION="${{ steps.preview-identifier.outputs.BASE_VERSION }}"
+          BASE_VERSION="${{ steps.preview-version.outputs.BASE_VERSION }}"
           RUNTIME_VERSION=${ACTUAL_RUNTIME_VERSION:-$BASE_VERSION}
           CACHE_BUSTER="${{ github.sha }}"
           QR_IMG_URL="https://qr.expo.dev/eas-update?projectId=${EAS_PROJECT_ID}&runtimeVersion=${RUNTIME_VERSION}&channel=${EAS_CHANNEL}&v=${CACHE_BUSTER:0:8}"
           DEEP_LINK_URL="https://u.expo.dev/update/${EAS_PROJECT_ID}?channel=${EAS_CHANNEL}&runtime-version=${RUNTIME_VERSION}"
 
           echo "UPDATE_GROUP_ID=$UPDATE_GROUP_ID" >> $GITHUB_OUTPUT
-          echo "PREVIEW_ID=${{ steps.preview-identifier.outputs.PREVIEW_ID }}" >> $GITHUB_OUTPUT
+          echo "PREVIEW_ID=${{ steps.preview-version.outputs.PREVIEW_ID }}" >> $GITHUB_OUTPUT
           echo "BASE_VERSION=$BASE_VERSION" >> $GITHUB_OUTPUT
           echo "RUNTIME_VERSION=$RUNTIME_VERSION" >> $GITHUB_OUTPUT
           echo "QR_IMG_URL=$QR_IMG_URL" >> $GITHUB_OUTPUT
@@ -233,27 +243,21 @@ jobs:
               body: body
             });
 
-      - name: 📊 Get Base Version
+      - name: 📊 Compute native build version
         if: steps.change-detection.outputs.change_type == 'native'
         id: base-version
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          if [ -z "$LATEST_TAG" ]; then
-            echo "❌ No git tags found. Create at least one version tag (e.g. v1.0.0)"
-            exit 1
-          fi
-          CURRENT_VERSION=${LATEST_TAG#v}
+          set -euo pipefail
+          CURRENT_VERSION="${{ steps.preview-version.outputs.BASE_VERSION }}"
 
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
           NEXT_PATCH=$((PATCH + 1))
-          BASE_VERSION="$MAJOR.$MINOR.$NEXT_PATCH"
+          BUILD_VERSION="$MAJOR.$MINOR.$NEXT_PATCH"
 
-          PREVIEW_ID="pr-${{ github.event.pull_request.number }}-${GITHUB_SHA:0:7}"
-
-          echo "BASE_VERSION=$BASE_VERSION" >> $GITHUB_OUTPUT
-          echo "PREVIEW_ID=$PREVIEW_ID" >> $GITHUB_OUTPUT
-          echo "✅ Android preview build version: $BASE_VERSION (from tag $CURRENT_VERSION)"
-          echo "   Preview ID: $PREVIEW_ID"
+          echo "BASE_VERSION=$BUILD_VERSION" >> $GITHUB_OUTPUT
+          echo "PREVIEW_ID=${{ steps.preview-version.outputs.PREVIEW_ID }}" >> $GITHUB_OUTPUT
+          echo "✅ Android preview build version: $BUILD_VERSION (from base $CURRENT_VERSION)"
+          echo "   Preview ID: ${{ steps.preview-version.outputs.PREVIEW_ID }}"
 
       - name: 🚀 Start Android Preview Build
         if: steps.change-detection.outputs.change_type == 'native'
