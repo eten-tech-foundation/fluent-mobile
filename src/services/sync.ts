@@ -13,6 +13,7 @@ import {
   getChaptersToSync,
   insertUserProjects,
   ensureUserProjectMembership,
+  userHasLocalProjects,
 } from '../db/repository';
 import { logger } from '../utils/logger';
 import { getDatabase } from '../db/db';
@@ -32,6 +33,8 @@ import {
   setLastAssignmentSyncAt,
   getActiveUserId,
   getKnownUserIds,
+  getUserLastSyncedAt,
+  setUserLastSyncedAt,
 } from '../services/storage';
 import { getLocalProjectIds } from '../db/repository';
 import {
@@ -366,32 +369,33 @@ export async function syncAllUsers(): Promise<void> {
   emitSyncStart();
 
   const currentActiveUserId = getActiveUserId();
-  const knownUserIds = getKnownUserIds();
-  const userIdsToSync =
-    knownUserIds.length > 0
-      ? knownUserIds
-      : currentActiveUserId
-      ? [currentActiveUserId]
-      : [];
-
-  if (userIdsToSync.length === 0) {
-    throw new Error('No users to sync');
-  }
-
-  const activeCreds = currentActiveUserId
-    ? await getCredentials(currentActiveUserId)
-    : null;
-  if (currentActiveUserId && !activeCreds?.token) {
-    await handleSyncAuthFailure(currentActiveUserId);
-    throw new AuthError('No session token. Please sign in again.');
-  }
-
-  const lastSyncedAt = getLastSyncedAt() || undefined;
-  const hasLocalProjects = (await getLocalProjectIds()).length > 0;
-  let activeUserSyncOk = true;
-  let activeUserAuthFailed = false;
 
   try {
+    const knownUserIds = getKnownUserIds();
+    const userIdsToSync =
+      knownUserIds.length > 0
+        ? knownUserIds
+        : currentActiveUserId
+        ? [currentActiveUserId]
+        : [];
+
+    if (userIdsToSync.length === 0) {
+      throw new Error('No users to sync');
+    }
+
+    const activeCreds = currentActiveUserId
+      ? await getCredentials(currentActiveUserId)
+      : null;
+    if (currentActiveUserId && !activeCreds?.token) {
+      await handleSyncAuthFailure(currentActiveUserId);
+      throw new AuthError('No session token. Please sign in again.');
+    }
+
+    const deviceHasLocalProjects = (await getLocalProjectIds()).length > 0;
+    const deviceLastSyncedAt = getLastSyncedAt() || undefined;
+    let activeUserSyncOk = true;
+    let activeUserAuthFailed = false;
+
     await syncMasterData();
 
     for (const userId of userIdsToSync) {
@@ -409,23 +413,24 @@ export async function syncAllUsers(): Promise<void> {
       log.info('Syncing user', { userId });
       setActiveToken(creds.token);
       const userIdNum = Number(userId);
+      const userLastSyncedAt = getUserLastSyncedAt(userId) || undefined;
+      const hasUserProjects = await userHasLocalProjects(userIdNum);
 
       try {
         await syncProjects(userIdNum);
-        if (hasLocalProjects) {
-          await syncChapterAssignments(userIdNum, lastSyncedAt);
+        if (hasUserProjects) {
+          await syncChapterAssignments(userIdNum, userLastSyncedAt);
         } else {
           await syncChapterAssignments(userIdNum);
         }
+        setUserLastSyncedAt(userId, new Date().toISOString());
       } catch (error) {
         if (isAuthError(error)) {
           if (userId === currentActiveUserId) {
             activeUserSyncOk = false;
             activeUserAuthFailed = true;
-            await handleSyncAuthFailure(userId);
           } else {
-            await clearCredentials(userId);
-            log.warn('Cleared expired session credentials', { userId });
+            log.warn('Expired session credentials for user', { userId });
           }
         } else if (userId === currentActiveUserId) {
           activeUserSyncOk = false;
@@ -437,7 +442,9 @@ export async function syncAllUsers(): Promise<void> {
       }
     }
 
-    await syncBibleTexts(hasLocalProjects ? lastSyncedAt : undefined);
+    await syncBibleTexts(
+      deviceHasLocalProjects ? deviceLastSyncedAt : undefined,
+    );
 
     const restoredCreds = currentActiveUserId
       ? await getCredentials(currentActiveUserId)
@@ -448,12 +455,10 @@ export async function syncAllUsers(): Promise<void> {
       const now = new Date().toISOString();
       setLastSyncedAt(now);
       setLastAssignmentSyncAt(now);
-      emitSyncComplete();
       log.info('All users synced successfully!');
       return;
     }
 
-    emitSyncComplete();
     log.warn('Sync finished with errors for the active user');
 
     if (activeUserAuthFailed) {
@@ -466,6 +471,8 @@ export async function syncAllUsers(): Promise<void> {
     setActiveToken(restoredCreds?.token ?? null);
     log.error('Sync all users failed', { error: getErrorMessage(error) });
     throw error;
+  } finally {
+    emitSyncComplete();
   }
 }
 
@@ -550,11 +557,12 @@ export async function syncAllData(isIncremental = false, email?: string) {
       userProjects: userProjectCount.rows[0]?.count,
     });
 
-    emitSyncComplete();
     log.info('Sync completed successfully!', { timestamp: now });
   } catch (error) {
     log.error('Sync failed', { error: getErrorMessage(error) });
     throw error;
+  } finally {
+    emitSyncComplete();
   }
 }
 

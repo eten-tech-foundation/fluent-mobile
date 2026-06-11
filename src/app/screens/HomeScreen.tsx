@@ -34,6 +34,7 @@ export default function HomeScreen({
 
   const handleSyncComplete = useCallback(() => {
     setIsNewUserLoading(false);
+    setIsSyncingLocal(false);
   }, []);
 
   const { isSyncing, triggerSync } = useSync({
