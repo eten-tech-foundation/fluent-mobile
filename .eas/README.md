@@ -50,8 +50,8 @@ Monitor:
 
 Add the **`preview-build`** label to a pull request. GitHub Actions (`.github/workflows/preview-build.yml`) will:
 
-- **JS-only changes** → find or build a matching **Install Fluent** APK, then publish an OTA to the `preview` channel (PR comment: **Install Fluent** + **Open this preview** — not Expo Go)
-- **Native changes** (`app.config.ts` plugins, `eas.json`, `plugins/`) → start an Android `preview` **dev client** APK on EAS (`developmentClient: true` in `eas.json`)
+- **JS-only changes** → find or build a matching **Install Fluent** preview APK, then publish an OTA to the `preview` channel (PR comment: install + open app — not Expo Go)
+- **Native changes** (`app.config.ts` plugins, `eas.json`, `plugins/`) → start an Android `preview` internal APK on EAS (no `developmentClient`; channel `preview`)
 
 **QA testers:** [`docs/guides/qa-preview-testing.md`](../docs/guides/qa-preview-testing.md)
 

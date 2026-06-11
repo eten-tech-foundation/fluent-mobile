@@ -313,6 +313,6 @@ One-time setup (Expo GitHub app, Play credentials, workflow permissions): see [`
 
 Add the **`preview-build`** label to a pull request to publish a preview OTA update (JS-only changes) or start an Android EAS preview APK (native/config changes). Requires `EXPO_TOKEN` in GitHub Actions secrets.
 
-**QA / non-technical testers:** [How to test a PR preview](docs/guides/qa-preview-testing.md) — two steps in the PR comment: **Install Fluent**, then **Open preview** (not Expo Go).
+**QA / non-technical testers:** [How to test a PR preview](docs/guides/qa-preview-testing.md) — install the **Fluent preview APK**, then open the app (not Expo Go or Metro dev builds).
 
 **Developers:** [`.github/README.md`](.github/README.md) · [`.eas/README.md`](.eas/README.md)

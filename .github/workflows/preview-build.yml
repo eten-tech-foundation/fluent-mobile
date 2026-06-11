@@ -13,6 +13,7 @@ env:
   EAS_CHANNEL: 'preview'
   APP_SLUG: 'fluent-mobile'
   EXPO_ACCOUNT: 'teamgloo'
+  EXPO_PUBLIC_API_BASE_URL: https://dev.api.fluent.bible
   QA_GUIDE_URL: https://github.com/${{ github.event.pull_request.head.repo.full_name || github.repository }}/blob/${{ github.event.pull_request.head.sha }}/docs/guides/qa-preview-testing.md
 
 jobs:
@@ -135,7 +136,7 @@ jobs:
           MESSAGE: QA install app for runtime ${{ steps.preview-version.outputs.BASE_VERSION }}
           BAKE_VERSION: ${{ steps.preview-version.outputs.BASE_VERSION }}
           RUNTIME_VERSION: ${{ steps.preview-version.outputs.BASE_VERSION }}
-          ALLOW_RUNTIME_MATCH: 'true'
+          ALLOW_RUNTIME_MATCH: 'false'
           WAIT_FOR_BUILD: 'true'
           POLL_IN_PROGRESS: 'true'
         run: bash .github/scripts/eas-resolve-android-build.sh
@@ -176,22 +177,11 @@ jobs:
 
           BASE_VERSION="${{ steps.preview-version.outputs.BASE_VERSION }}"
           RUNTIME_VERSION=${ACTUAL_RUNTIME_VERSION:-$BASE_VERSION}
-          CACHE_BUSTER="${{ github.sha }}"
-          if [ -n "$UPDATE_GROUP_ID" ] && [ "$UPDATE_GROUP_ID" != "null" ]; then
-            MANIFEST_URL="https://u.expo.dev/${EAS_PROJECT_ID}/group/${UPDATE_GROUP_ID}"
-          else
-            MANIFEST_URL="https://u.expo.dev/${EAS_PROJECT_ID}?channel-name=${EAS_CHANNEL}&runtime-version=${RUNTIME_VERSION}"
-          fi
-          ENCODED_MANIFEST=$(node -e "console.log(encodeURIComponent(process.argv[1]))" "$MANIFEST_URL")
-          DEEP_LINK_URL="exp+${APP_SLUG}://expo-development-client/?url=${ENCODED_MANIFEST}"
-          QR_IMG_URL="https://qr.expo.dev/eas-update?projectId=${EAS_PROJECT_ID}&runtimeVersion=${RUNTIME_VERSION}&channel=${EAS_CHANNEL}&slug=${APP_SLUG}&v=${CACHE_BUSTER:0:8}"
 
           echo "UPDATE_GROUP_ID=$UPDATE_GROUP_ID" >> $GITHUB_OUTPUT
           echo "PREVIEW_ID=${{ steps.preview-version.outputs.PREVIEW_ID }}" >> $GITHUB_OUTPUT
           echo "BASE_VERSION=$BASE_VERSION" >> $GITHUB_OUTPUT
           echo "RUNTIME_VERSION=$RUNTIME_VERSION" >> $GITHUB_OUTPUT
-          echo "QR_IMG_URL=$QR_IMG_URL" >> $GITHUB_OUTPUT
-          echo "DEEP_LINK_URL=$DEEP_LINK_URL" >> $GITHUB_OUTPUT
 
           echo "✅ Preview update completed (Group ID: $UPDATE_GROUP_ID)"
           sleep 10
@@ -205,8 +195,6 @@ jobs:
             const previewId = "${{ steps.ota-update.outputs.PREVIEW_ID }}";
             const baseVersion = "${{ steps.ota-update.outputs.BASE_VERSION }}";
             const runtimeVersion = "${{ steps.ota-update.outputs.RUNTIME_VERSION }}";
-            const qrImgUrl = "${{ steps.ota-update.outputs.QR_IMG_URL }}";
-            const deepLinkUrl = "${{ steps.ota-update.outputs.DEEP_LINK_URL }}";
             const projectId = "${{ env.EAS_PROJECT_ID }}";
 
             const qaGuideUrl = "${{ env.QA_GUIDE_URL }}";
@@ -228,7 +216,7 @@ jobs:
             const body = [
               '## 📲 Test this PR on your Android phone',
               '',
-              '**Not Expo Go.** Use the **Fluent** app only (custom dev client).',
+              '**Not Expo Go.** Install the **Fluent preview app** from the link below (internal APK — not a dev/Metro build).',
               '',
               `**Preview ID:** \`${previewId}\` · **Runtime version:** \`${runtimeVersion}\``,
               '',
@@ -247,30 +235,20 @@ jobs:
               '1. Sign in to [expo.dev](https://expo.dev) if asked (your team lead can invite you).',
               '2. Tap **Download** or **Install** when the build page opens.',
               '3. If Android blocks it: **Settings → Install unknown apps** → allow your browser.',
-              '4. Open **Fluent** from your home screen. You should see a dev/project screen — **not** the Expo Go app.',
+              '4. Open **Fluent** from your home screen — it should open the app normally (not a Metro/dev launcher).',
               '',
               '---',
               '',
-              '### Step 2 — Load this PR preview',
+              '### Step 2 — Open this PR preview',
               '',
-              'On your **Android phone**, open this PR comment and tap:',
+              'After Step 1 (or if Fluent is already installed), open **Fluent** from your home screen.',
               '',
-              `### 👉 [Open this preview in Fluent](${deepLinkUrl})`,
-              '',
-              'Fluent should open and download the update. If prompted, choose **Fluent** (not Expo Go).',
-              '',
-              '**Or scan this QR code** (after Step 1 is done):',
-              '',
-              'Open **Fluent → Scan QR code**, or use your phone **Camera** on the image below (choose **Fluent**, not Expo Go).',
-              '',
-              `<a href="https://expo.dev/projects/${projectId}/updates/${updateGroupId}">`,
-              `<img src="${qrImgUrl}" width="256" height="256" alt="QR code to load this preview in the Fluent dev client" style="border: 1px solid #ccc; border-radius: 8px; max-width: 100%; height: auto;" />`,
-              '</a>',
+              'The preview app downloads this PR\'s update from the `preview` channel over Wi‑Fi (may take a minute).',
               '',
               '### After the preview loads',
               '',
               '- Sign in and test this PR.',
-              '- If nothing changed, force-close Fluent and tap **Open this preview in Fluent** again.',
+              '- If nothing changed, fully close Fluent (swipe it away) and reopen it.',
               '',
               '### Details',
               '',
@@ -387,7 +365,7 @@ jobs:
             const body = [
               '## ✅ Fluent preview app ready (Android)',
               '',
-              '**Not Expo Go.** Use the **Fluent** app only (custom dev client).',
+              '**Not Expo Go.** Install the **Fluent preview app** from the link below (internal APK — not a dev/Metro build).',
               '',
               `**Preview ID:** \`${previewId}\` · **App version:** \`${baseVersion}\``,
               '',
@@ -408,8 +386,8 @@ jobs:
               '1. Sign in to [expo.dev](https://expo.dev) if asked (your team lead can invite you).',
               '2. Tap **Download** or **Install** when the build page opens.',
               '3. If Android blocks it: **Settings → Install unknown apps** → allow your browser.',
-              '4. Open **Fluent** from your home screen. You should see a dev/project screen — **not** the Expo Go app.',
-              '5. Sign in and test this PR. Future **JS-only** PR previews can load without reinstalling until the app version changes again.',
+              '4. Open **Fluent** from your home screen — it should open the app normally (not a Metro/dev launcher).',
+              '5. Sign in and test this PR. Future **JS-only** PR previews download over the air without reinstalling until the app version changes again.',
               '',
               '**Or scan this QR code** (opens the same install page):',
               '',
