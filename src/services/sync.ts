@@ -14,6 +14,7 @@ import {
   insertUserProjects,
   ensureUserProjectMembership,
   userHasLocalProjects,
+  userHasLocalChapterAssignments,
 } from '../db/repository';
 import { logger } from '../utils/logger';
 import { getDatabase } from '../db/db';
@@ -270,6 +271,23 @@ export async function syncChapterAssignments(
   );
 }
 
+async function syncChapterAssignmentsForUser(
+  userId: number,
+  updatedAfter?: string,
+): Promise<{ didFullSync: boolean }> {
+  if (updatedAfter && !(await userHasLocalChapterAssignments(userId))) {
+    log.info(
+      'Forcing full chapter assignment sync — local assignments empty despite sync cursor',
+      { userId, staleUpdatedAfter: updatedAfter },
+    );
+    await syncChapterAssignments(userId);
+    return { didFullSync: true };
+  }
+
+  await syncChapterAssignments(userId, updatedAfter);
+  return { didFullSync: !updatedAfter };
+}
+
 export async function syncBibleTexts(updatedAfter?: string) {
   return retrySyncStep(
     'Bible text sync',
@@ -419,10 +437,11 @@ export async function syncAllUsers(): Promise<void> {
 
       try {
         await syncProjects(userIdNum);
-        if (hasUserProjects) {
-          await syncChapterAssignments(userIdNum, userLastSyncedAt);
-        } else {
-          await syncChapterAssignments(userIdNum);
+        const { didFullSync } = await syncChapterAssignmentsForUser(
+          userIdNum,
+          hasUserProjects ? userLastSyncedAt : undefined,
+        );
+        if (didFullSync) {
           anyUserDidFullAssignmentSync = true;
         }
         setUserLastSyncedAt(userId, new Date().toISOString());
@@ -516,16 +535,22 @@ export async function syncAllData(isIncremental = false, email?: string) {
     await syncProjects(userId);
 
     if (isIncremental) {
-      await syncChapterAssignments(userId, lastSyncedAt);
-      await syncBibleTexts(lastSyncedAt);
+      const { didFullSync } = await syncChapterAssignmentsForUser(
+        userId,
+        lastSyncedAt,
+      );
+      await syncBibleTexts(didFullSync ? undefined : lastSyncedAt);
     } else if (localProjectIdsBefore.length === 0) {
       await syncChapterAssignments(userId);
       await syncBibleTexts();
     } else {
       // Omit excludeProjectIds on re-login: the API can return [] when every
       // local project is excluded before checking newly assigned work.
-      await syncChapterAssignments(userId, lastAssignmentSyncAt);
-      await syncBibleTexts(lastAssignmentSyncAt);
+      const { didFullSync } = await syncChapterAssignmentsForUser(
+        userId,
+        lastAssignmentSyncAt,
+      );
+      await syncBibleTexts(didFullSync ? undefined : lastAssignmentSyncAt);
     }
 
     const now = new Date().toISOString();
