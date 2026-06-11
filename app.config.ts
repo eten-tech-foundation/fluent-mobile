@@ -14,7 +14,8 @@ function resolveAppVersion(): string {
 }
 
 const appVersion = resolveAppVersion();
-const updateChannel = process.env.EAS_UPDATE_CHANNEL;
+
+const usesCleartextTraffic = process.env.EAS_BUILD_PROFILE !== 'production';
 
 const config: ExpoConfig = {
   name: 'Fluent',
@@ -25,7 +26,6 @@ const config: ExpoConfig = {
   updates: {
     url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
   },
-  ...(updateChannel ? { channel: updateChannel } : {}),
   runtimeVersion: appVersion,
   android: {
     package: 'com.eten.fluent',
@@ -50,7 +50,7 @@ const config: ExpoConfig = {
           minSdkVersion: 24,
           buildToolsVersion: '36.0.0',
           kotlinVersion: '2.1.20',
-          usesCleartextTraffic: true,
+          usesCleartextTraffic,
           newArchEnabled: true,
         },
       },

@@ -15,7 +15,7 @@ alwaysApply: true
 
 | Layer | File(s) | Responsibility |
 |-------|---------|----------------|
-| HTTP | `services/api.ts` | `fetch`, Bearer token + mobile client headers, endpoints |
+| HTTP | `services/api.ts` | `fetch`, endpoints; `Authorization: Bearer` via `getHeaders()`/`_activeToken` on `request()` only; `publicRequest()` has no bearer; `MOBILE_HEADERS` (`x-client-type: mobile`, `User-Agent: fluent-mobile`) on auth calls only (`signIn`, `forgotPassword`, `signOut`) |
 | Sync | `services/sync.ts` | Orchestration, retries, sync steps |
 | KV | `services/storage.ts` | Sync timestamps, counts, errors |
 | Schema | `db/schema.ts` | `CREATE TABLE` statements |

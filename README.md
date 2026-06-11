@@ -1,6 +1,10 @@
 # Fluent Mobile
 
-**Android-only** — there is no iOS app. Native code is generated for Android via `expo prebuild --platform android`.
+**Android-only** — there is no iOS app.
+
+**Expo SDK 56** (React Native 0.85) with **CNG** (Continuous Native Generation): the `android/` folder is **not committed**. It is generated locally via `expo prebuild --platform android` from `app.config.ts` and config plugins.
+
+**Custom dev client — not Expo Go.** This app uses native modules (`expo-dev-client`, `op-sqlite`, keychain, etc.) and must run in a **development build** you compile locally (`npm run android`) or install from EAS. It will **not** work in the Expo Go app from the Play Store.
 
 **For AI agents / contributors:** see [docs/AGENT_ONBOARDING.md](docs/AGENT_ONBOARDING.md) for repo layout, architecture, commands, and Cursor rules.
 
@@ -8,8 +12,9 @@
 
 Before you begin, make sure you have the following installed:
 
-- [Node.js 24](https://nodejs.org/en/) — the app requires Node 24 specifically
-- [Android Studio](https://developer.android.com/studio) — for the Android emulator
+- [Node.js 24](https://nodejs.org/en/) — `>= 24.14.0` (see `package.json` engines)
+- [Android Studio](https://developer.android.com/studio) — Android SDK, emulator, and JDK 17
+- **npm** — package manager for this repo (not yarn/pnpm)
 
 ---
 
@@ -36,8 +41,10 @@ node --version  # verify it is v24.x.x
 
 ## Step 2: Install Android Studio
 
-1. Download Android Studio from https://developer.android.com/studio
-2. Extract and install it:
+Download from https://developer.android.com/studio and run the installer for your OS. Complete the setup wizard (defaults are fine) so the **Android SDK** is installed.
+
+<details>
+<summary><strong>Linux</strong> (tarball install)</summary>
 
 ```bash
 tar -xzf android-studio-*-linux.tar.gz
@@ -45,101 +52,103 @@ sudo mv android-studio /opt/android-studio
 /opt/android-studio/bin/studio.sh
 ```
 
-3. Follow the setup wizard — it will download the Android SDK automatically. Just click through the defaults.
+Optional desktop entry: create `/usr/share/applications/android-studio.desktop` pointing `Exec` at `/opt/android-studio/bin/studio.sh`.
 
-**Optional: Add Android Studio to your applications menu**
+</details>
 
-```bash
-sudo gedit /usr/share/applications/android-studio.desktop
-```
+<details>
+<summary><strong>macOS</strong></summary>
 
-Paste this in and save:
+Open the `.dmg`, drag **Android Studio** to **Applications**, and launch it from there.
 
-```
-[Desktop Entry]
-Version=1.0
-Type=Application
-Name=Android Studio
-Exec=/opt/android-studio/bin/studio.sh
-Icon=/opt/android-studio/bin/studio128.png
-Categories=Development;IDE;
-Terminal=false
-StartupNotify=true
-```
+Default SDK path: `~/Library/Android/sdk`
+
+</details>
+
+<details>
+<summary><strong>Windows</strong></summary>
+
+Run the `.exe` installer. Default SDK path is usually `%LOCALAPPDATA%\Android\Sdk`.
+
+</details>
 
 ---
 
 ## Step 3: Install Java (JDK 17)
 
-Check if Java is already installed:
+Android builds require **JDK 17**. Android Studio’s embedded JDK often works; if Gradle complains about Java, set `JAVA_HOME` explicitly.
+
+Check your version:
 
 ```bash
 java -version
 ```
 
-If not installed, install JDK 17:
+<details>
+<summary><strong>Linux</strong> — install OpenJDK 17 if needed</summary>
 
 ```bash
 sudo apt update
 sudo apt install openjdk-17-jdk
+readlink -f $(which java)   # use parent of /bin/java as JAVA_HOME
 ```
 
-Find the installation path:
+</details>
+
+<details>
+<summary><strong>macOS</strong></summary>
 
 ```bash
-readlink -f $(which java)
-# example output: /usr/lib/jvm/java-17-openjdk-amd64/bin/java
+/usr/libexec/java_home -V          # list installed JDKs
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 ```
 
-You'll need this path (minus `/bin/java`) in the next step when setting up environment variables.
+Or use the JDK bundled with Android Studio (typical path under `Android Studio.app/Contents/jbr`).
+
+</details>
+
+<details>
+<summary><strong>Windows</strong></summary>
+
+Install JDK 17 (or use Android Studio’s bundled JBR) and set **JAVA_HOME** in System Environment Variables.
+
+</details>
 
 ---
 
 ## Step 4: Set Up Environment Variables
 
-Add the following to your `~/.bashrc`:
+Add these to your shell profile (`~/.bashrc`, `~/.zshrc`, or Windows environment variables):
 
 ```bash
-gedit ~/.bashrc
-```
-
-Paste at the bottom:
-
-```bash
-export ANDROID_HOME=$HOME/Android/Sdk
+export ANDROID_HOME=$HOME/Android/Sdk          # macOS: $HOME/Library/Android/sdk
 export PATH=$PATH:$ANDROID_HOME/emulator
 export PATH=$PATH:$ANDROID_HOME/platform-tools
 
-export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+export JAVA_HOME=/path/to/jdk-17                # see Step 3
 export PATH=$PATH:$JAVA_HOME/bin
 ```
 
-> **Note:** Replace `/usr/lib/jvm/java-17-openjdk-amd64` with the path you found in Step 3 if it differs.
+> **Paths:** Linux emulator SDK is usually `~/Android/Sdk`. macOS is `~/Library/Android/sdk`. Windows is `%LOCALAPPDATA%\Android\Sdk`. Confirm in Android Studio → **Settings → Android SDK** (SDK location at the top).
 
-Apply the changes:
-
-```bash
-source ~/.bashrc
-```
-
-Verify it worked:
+Reload your shell (e.g. `source ~/.zshrc` or `source ~/.bashrc`) and verify:
 
 ```bash
-adb --version   # should print a version number
-java -version   # should print java 17
-echo $JAVA_HOME # should print the path you set
+adb --version
+java -version
+echo $ANDROID_HOME
+echo $JAVA_HOME
 ```
 
 ---
 
 ## Step 5: Set Up an Android Emulator
 
-1. Open Android Studio: `/opt/android-studio/bin/studio.sh`
-2. Go to **More Actions → Virtual Device Manager**
-3. Click **Create Device**
-4. Pick a phone (e.g. Pixel 6) and click Next
-5. Download and select a system image (API 33 or higher recommended)
-6. Click Finish, then press the ▶ Play button to start the emulator
+1. Open **Android Studio**
+2. Go to **More Actions → Virtual Device Manager** (or **Tools → Device Manager**)
+3. **Create Device** → pick a phone (e.g. Pixel 6) → Next
+4. Download and select a system image (**API 33+** recommended)
+5. Finish, then press **▶** to start the emulator
 
 Wait for the emulator to fully boot before continuing.
 
@@ -160,6 +169,8 @@ Generate the native Android project (required before first run):
 ```bash
 npm run prebuild   # expo prebuild --clean --platform android
 ```
+
+This creates a local `android/` directory (gitignored). **Re-run prebuild** when you change `app.config.ts`, files under `plugins/`, `eas.json`, or add/update native dependencies in `package.json`. After a failed prebuild, `rm -rf android` then prebuild again.
 
 Bootsplash assets (`assets/bootsplash/`) are committed. Regenerate after changing the logo or splash background (Android only):
 
@@ -186,33 +197,48 @@ Edit `.env` and set `EXPO_PUBLIC_API_BASE_URL` (use `http://10.0.2.2:9999` for t
 
 Open two terminal windows from the project root.
 
-**Terminal 1 — Start Metro:**
+**Terminal 1 — Start Metro (Expo dev server):**
 
 ```bash
 npm start
 ```
 
-**Terminal 2 — Run on Android (dev client):**
+**Terminal 2 — Build and run the dev client on Android:**
 
 ```bash
 npm run android
 ```
 
-The app should launch in your emulator automatically.
+`npm run android` runs `expo run:android`, which **compiles and installs** the custom dev client on the emulator. The **first build can take several minutes**; later runs are faster.
+
+Do **not** open this project in **Expo Go** — it requires this dev client because of custom native code.
+
+The app should launch in your emulator once the build finishes and Metro is running.
+
+**Optional — EAS dev client:** To install a dev build from the cloud instead of compiling locally:
+
+```bash
+npx eas build --profile development --platform android
+```
+
+Requires an [Expo access token](https://expo.dev/settings/access-tokens) and access to EAS project `fluent-mobile`.
 
 ---
 
 ## Troubleshooting
 
 **`adb: command not found`**
-Your environment variables aren't set. Make sure you completed Step 4 and ran `source ~/.bashrc`.
+Your environment variables aren't set. Complete Step 4 and reload your shell (`source ~/.zshrc`, `source ~/.bashrc`, or restart the terminal).
+
+**`EXPO_PUBLIC_API_BASE_URL is required`**
+Copy `.env.example` to `.env` and set `EXPO_PUBLIC_API_BASE_URL` before starting the app.
 
 **`JAVA_HOME is not set` error**
 Java may be installed but `JAVA_HOME` not configured. Make sure you completed Step 3 and Step 4. If the path differs, find it with:
 ```bash
 readlink -f $(which java)
 ```
-Strip `/bin/java` from the output, update `JAVA_HOME` in `~/.bashrc`, then run `source ~/.bashrc`.
+Strip `/bin/java` from the output, update `JAVA_HOME` in your shell profile, then reload the shell.
 
 **`npm run android` fails with SDK not found**
 Android Studio may have installed the SDK in a different location. Check:
@@ -230,6 +256,8 @@ npx expo start --clear
 ```
 
 **Native project missing or out of date**
+
+After changing `app.config.ts`, `plugins/`, `eas.json`, or native deps in `package.json`:
 
 ```bash
 npm run prebuild   # expo prebuild --clean --platform android
@@ -254,7 +282,7 @@ Make sure Metro is running in the other terminal before running `npm run android
 
 Once the app is running, open any file in your editor and save — the app will reload automatically via Fast Refresh.
 
-To force a full reload on Android: press **R** twice, or use **Ctrl + M** to open the Dev Menu.
+To force a full reload on Android: press **R** twice, or open the Dev Menu (**Ctrl + M** on Linux/Windows, **Cmd + M** on macOS emulator).
 
 ---
 
@@ -268,3 +296,11 @@ git push origin v1.0.1
 ```
 
 One-time setup (Expo GitHub app, Play credentials, workflow permissions): see [`.eas/README.md`](.eas/README.md).
+
+## PR preview (QA)
+
+Add the **`preview-build`** label to a pull request to publish a preview OTA update (JS-only changes) or start an Android EAS preview APK (native/config changes). Requires `EXPO_TOKEN` in GitHub Actions secrets.
+
+**QA / non-technical testers:** [How to test a PR preview](docs/guides/qa-preview-testing.md) — Fluent dev client only, **not Expo Go**.
+
+**Developers:** [`.github/README.md`](.github/README.md) · [`.eas/README.md`](.eas/README.md)

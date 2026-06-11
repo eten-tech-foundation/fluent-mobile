@@ -16,7 +16,7 @@ Offline-first **Expo SDK 56** (React Native **0.85**, React **19.2.3**) companio
 - Sync: `src/services/sync.ts`
 - DB writes: `src/db/repository.ts` | reads: `src/db/queries.ts`
 - Types: `src/types/{api,db,navigation}/`
-- Env: `EXPO_PUBLIC_API_BASE_URL` in `.env` (bundled at build time)
+- Env: `EXPO_PUBLIC_API_BASE_URL` in `.env` (validated in `src/config/apiBaseUrl.ts`)
 - Native (generated): run `npm run prebuild` — regenerates `android/` only; do not commit `android/`
 - Releases: tag `v*` → `.github/workflows/eas-build.yml` + `.eas/workflows/create-production-builds.yml` (Android only)
 

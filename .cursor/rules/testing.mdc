@@ -22,6 +22,7 @@ CI runs the same command (`.github/workflows/test.yml`).
 - Jest 29, preset `jest-expo`
 - `@testing-library/react-native` for component tests
 - Config: `jest.config.cjs` — `jest-expo` preset handles RN/Expo transforms
+- `jest.env.cjs` sets a default `EXPO_PUBLIC_API_BASE_URL` for tests (CI also sets it in `test.yml`)
 
 ## Patterns
 

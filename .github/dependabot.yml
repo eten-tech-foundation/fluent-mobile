@@ -77,7 +77,6 @@ updates:
           - 'expo-*'
           - 'babel-preset-expo'
           - 'jest-expo'
-          - 'eas-cli'
 
   # GitHub Actions
   - package-ecosystem: 'github-actions'

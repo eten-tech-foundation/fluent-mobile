@@ -106,7 +106,7 @@ Use **npm** only in PR text and test steps (`npm install`, `npm run lint`, etc.)
 ## Branch analysis
 
 - Count files/lines; classify feature / fix / chore / docs
-- Flag `package.json`, `package-lock.json`, `android/`, `src/db/schema.ts` as high-impact
+- Flag `package.json`, `package-lock.json`, `app.config.ts`, `plugins/`, `eas.json`, `src/db/schema.ts` as high-impact (`android/` is gitignored CNG output)
 - Flag new env vars needing `.env.example` update
 
 ## Usage

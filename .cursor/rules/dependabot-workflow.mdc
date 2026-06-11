@@ -52,10 +52,10 @@ For **risky** PRs: local validation gate + Android smoke test still mandatory.
 ## CRITICAL SAFETY RULES
 
 1. **Verify author**: ONLY process PRs authored by `app/dependabot` or `dependabot[bot]`.
-2. **Never auto-merge React Native line bumps**: If a PR upgrades `react-native` past `0.84.x` or multiple `@react-native/*` packages together, DO NOT merge. Plan a dedicated RN upgrade ticket.
+2. **Never auto-merge React Native line bumps**: If a PR upgrades `react-native` past the pinned `0.85.x` line or multiple `@react-native/*` packages together, DO NOT merge. Plan a dedicated RN upgrade ticket.
 3. **Mandatory validation**: NEVER merge without running the full gate from [commands.mdc](./commands.mdc): `format:check` → `lint` → `typecheck` → `npm test -- --ci`.
 4. **Target branch**: Always merge into the default branch (`main`).
-5. **Version lock-stepping**: `react`, `react-test-renderer`, and `react-native` are pinned for RN 0.84. Treat any change to those as **risky** — validate on device/emulator.
+5. **Version lock-stepping**: `react`, `react-test-renderer`, and `react-native` are pinned for Expo SDK 56 / RN 0.85. Treat any change to those as **risky** — validate on device/emulator.
 6. **Runtime testing required**: For React/RN/navigation/native-module updates, smoke test on Android (`npm run android`). Static checks miss renderer and native ABI mismatches.
 7. **Manual merges = high risk**: Prefer `@dependabot rebase`. If manual merge is required, run full validation + Android smoke test.
 8. **Final state validation**: After merging multiple PRs, ALWAYS validate the final merged state on `main`.
@@ -176,18 +176,17 @@ gh pr comment <PR_NUMBER> --body "@dependabot rebase"
 
 ### Version mismatches
 
-RN 0.84 pins these in `package.json` (exact versions, no caret):
+Expo SDK 56 / RN 0.85.3 pins these in `package.json` — verify after any manual conflict resolution:
 
 | Package | Current pin |
 |---------|-------------|
 | `react` | `19.2.3` |
-| `react-native` | `0.84.1` |
+| `react-native` | `0.85.3` |
 | `react-test-renderer` | `19.2.3` |
-| `@react-native/babel-preset` | `0.84.1` |
-| `@react-native/metro-config` | `0.84.1` |
-| `@react-native/typescript-config` | `0.84.1` |
+| `@react-native/jest-preset` | `^0.85.3` |
+| `@react-native/typescript-config` | `0.85.3` |
 
-If a Dependabot PR drifts these, align manually to the [React Native upgrade helper](https://react-native-community.github.io/upgrade-helper/) matrix for `0.84.1` before merging.
+If a Dependabot PR drifts these, align manually to the [React Native upgrade helper](https://react-native-community.github.io/upgrade-helper/?from=0.85.3&to=0.85.3) matrix before merging.
 
 ### Failures
 

@@ -16,7 +16,7 @@ Tag-based version sync runs in GitHub Actions (`.github/workflows/eas-build.yml`
 Tag pushed (e.g. v1.0.1)
     ↓
 GitHub Actions (eas-build.yml)
-    ├─ Set app.config.ts version to match tag
+    ├─ Set `APP_VERSION_FALLBACK` in app.config.ts to match tag
     ├─ Commit [skip ci] and move tag to that commit
     └─ Push to main
     ↓
@@ -50,8 +50,10 @@ Monitor:
 
 Add the **`preview-build`** label to a pull request. GitHub Actions (`.github/workflows/preview-build.yml`) will:
 
-- **JS-only changes** → publish an OTA update to the `preview` channel (QR code + deep link in PR comment)
-- **Native changes** (`app.config.ts` plugins, `eas.json`, `plugins/`) → start an Android `preview` APK build on EAS
+- **JS-only changes** → publish an OTA update to the `preview` channel (QR + `exp+fluent-mobile://` deep link in PR comment — opens the **Fluent dev client**, not Expo Go)
+- **Native changes** (`app.config.ts` plugins, `eas.json`, `plugins/`) → start an Android `preview` **dev client** APK on EAS (`developmentClient: true` in `eas.json`)
+
+**QA testers:** [`docs/guides/qa-preview-testing.md`](../docs/guides/qa-preview-testing.md)
 
 Uses the latest git tag for runtime version when available; otherwise falls back to `app.config.ts` / `package.json` version (no tag required for first preview). Requires `EXPO_TOKEN` in GitHub Actions secrets.
 

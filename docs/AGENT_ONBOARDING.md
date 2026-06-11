@@ -89,11 +89,11 @@ Run from repo root after `npm install`:
 
 ## Production release (Android)
 
-Tag-driven releases — no iOS, no OTA channel in this app.
+Tag-driven production releases — no iOS. PR previews use OTA on the `preview` channel (see below).
 
 1. Merge release changes to `main`.
 2. Tag and push: `git tag v1.0.1 && git push origin v1.0.1`
-3. **GitHub Actions** (`.github/workflows/eas-build.yml`) sets `app.config.ts` `version` to match the tag, commits `[skip ci]`, and moves the tag.
+3. **GitHub Actions** (`.github/workflows/eas-build.yml`) sets `APP_VERSION_FALLBACK` in `app.config.ts` to match the tag, commits `[skip ci]`, and moves the tag.
 4. **EAS Workflow** (`.eas/workflows/create-production-builds.yml`) builds Android `production` AAB and submits to Play **internal** track.
 
 Setup and troubleshooting: [`.eas/README.md`](../.eas/README.md).
@@ -101,9 +101,10 @@ Setup and troubleshooting: [`.eas/README.md`](../.eas/README.md).
 ## PR preview (Android QA)
 
 1. Add the **`preview-build`** label to the PR (uses latest git tag, or `app.config.ts` version if none).
-3. `.github/workflows/preview-build.yml` publishes a preview OTA (JS-only) or starts an Android EAS `preview` build (native/config changes).
+2. `.github/workflows/preview-build.yml` publishes a preview OTA (JS-only) or starts an Android EAS `preview` **dev client** APK (native/config changes).
+3. The bot comment links to **[`docs/guides/qa-preview-testing.md`](guides/qa-preview-testing.md)** for non-technical testers (Fluent dev client — **not Expo Go**).
 
-Requires `EXPO_TOKEN` in GitHub repository secrets.
+Requires `EXPO_TOKEN` in GitHub repository secrets. Preview builds use `eas.json` profile `preview` (`developmentClient: true`, channel `preview`).
 
 ## Architecture and data flow
 
@@ -157,7 +158,7 @@ Auth: email/password via `FluentAPI.signIn`; authenticated API calls use `Author
 ## Coding conventions
 
 - **Logging:** `const log = logger.create('ComponentName')` — no raw `console` (ESLint); exception: `src/utils/logger.ts`, tests.
-- **Env:** `process.env.EXPO_PUBLIC_API_BASE_URL` — never commit `.env`.
+- **Env:** `EXPO_PUBLIC_API_BASE_URL` in `.env`; validated in `src/config/apiBaseUrl.ts` — never commit `.env`.
 - **Types:** API shapes in `src/types/api/`, DB in `src/types/db/`, navigation in `src/types/navigation/`.
 - **Prettier:** single quotes, trailing commas, `arrowParens: 'avoid'`.
 - **Styles:** shared patterns in `src/app/appStyles.ts`; screen-local `StyleSheet` where needed.

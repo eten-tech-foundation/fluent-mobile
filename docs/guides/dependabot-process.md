@@ -1,10 +1,10 @@
 # Dependabot PR handling process
 
-Repeatable process for safely managing Dependabot PRs in **Fluent Mobile**. Priority: keep the app stable on **React Native 0.84.1** (bare RN, Android-only today).
+Repeatable process for safely managing Dependabot PRs in **Fluent Mobile**. Priority: keep the app stable on **Expo SDK 56 (RN 0.85) with Expo CNG**.
 
 ## Core principles
 
-1. **Stability first**: Never merge updates that break RN 0.84 compatibility or native module ABI.
+1. **Stability first**: Never merge updates that break Expo SDK 56 / RN 0.85 compatibility or native module ABI.
 2. **Automated validation**: Always run the CI gate locally before merge (see [`.cursor/rules/commands.mdc`](../../.cursor/rules/commands.mdc)).
 3. **Verified authors**: Only process PRs from `app/dependabot` or `dependabot[bot]`.
 4. **Targeted merges**: Prefer squash merges into `main`.
@@ -132,20 +132,19 @@ If CI fails on `npm ci` with lockfile errors after several Dependabot merges:
 3. Open a small fix PR; merge after CI passes
 4. Enforce **one merge + rebase** going forward
 
-### Pinned versions (RN 0.84.1)
+### Pinned versions (Expo SDK 56 / RN 0.85.3)
 
 These are exact pins in `package.json` — Dependabot is configured to avoid most drift, but verify after any manual conflict resolution:
 
 | Package | Pin |
 |---------|-----|
 | `react` | `19.2.3` |
-| `react-native` | `0.84.1` |
+| `react-native` | `0.85.3` |
 | `react-test-renderer` | `19.2.3` |
-| `@react-native/babel-preset` | `0.84.1` |
-| `@react-native/metro-config` | `0.84.1` |
-| `@react-native/typescript-config` | `0.84.1` |
+| `@react-native/jest-preset` | `^0.85.3` |
+| `@react-native/typescript-config` | `0.85.3` |
 
-Use the [RN upgrade helper](https://react-native-community.github.io/upgrade-helper/?from=0.84.1&to=0.84.1) when aligning versions during an RN upgrade ticket.
+Use the [RN upgrade helper](https://react-native-community.github.io/upgrade-helper/?from=0.85.3&to=0.85.3) when aligning versions during an RN upgrade ticket.
 
 ## Automating with Cursor
 
