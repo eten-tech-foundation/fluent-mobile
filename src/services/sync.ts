@@ -395,6 +395,7 @@ export async function syncAllUsers(): Promise<void> {
     const deviceLastSyncedAt = getLastSyncedAt() || undefined;
     let activeUserSyncOk = true;
     let activeUserAuthFailed = false;
+    let anyUserDidFullAssignmentSync = false;
 
     await syncMasterData();
 
@@ -422,6 +423,7 @@ export async function syncAllUsers(): Promise<void> {
           await syncChapterAssignments(userIdNum, userLastSyncedAt);
         } else {
           await syncChapterAssignments(userIdNum);
+          anyUserDidFullAssignmentSync = true;
         }
         setUserLastSyncedAt(userId, new Date().toISOString());
       } catch (error) {
@@ -443,7 +445,11 @@ export async function syncAllUsers(): Promise<void> {
     }
 
     await syncBibleTexts(
-      deviceHasLocalProjects ? deviceLastSyncedAt : undefined,
+      anyUserDidFullAssignmentSync
+        ? undefined
+        : deviceHasLocalProjects
+        ? deviceLastSyncedAt
+        : undefined,
     );
 
     const restoredCreds = currentActiveUserId

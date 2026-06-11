@@ -73,6 +73,13 @@ jest.mock('../db/repository', () => ({
   insertUser: jest.fn().mockResolvedValue(undefined),
 }));
 
+const { getChaptersToSync, userHasLocalProjects } = jest.requireMock(
+  '../db/repository',
+) as {
+  getChaptersToSync: jest.Mock;
+  userHasLocalProjects: jest.Mock;
+};
+
 jest.mock('../db/db', () => ({
   getDatabase: jest.fn(() => ({
     execute: jest.fn().mockResolvedValue({ rows: [{ count: 0 }] }),
@@ -174,6 +181,8 @@ describe('syncAllUsers auth handling', () => {
       '2026-06-01T00:00:00.000Z',
     );
     (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
+    userHasLocalProjects.mockResolvedValue(true);
+    getChaptersToSync.mockResolvedValue(new Map());
   });
 
   afterEach(() => {
@@ -230,5 +239,26 @@ describe('syncAllUsers auth handling', () => {
     expect(syncEvents.emitAuthSessionExpired).not.toHaveBeenCalled();
     expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(2);
     expect(setActiveToken).toHaveBeenLastCalledWith('user-2-token');
+  });
+
+  it('runs full bible text sync when any user had a full assignment sync', async () => {
+    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+      userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
+    );
+    userHasLocalProjects.mockImplementation(
+      async (userId: number) => userId === 1,
+    );
+    getChaptersToSync.mockResolvedValue(
+      new Map([[1, [{ bookId: 1, chapterNumber: 1 }]]]),
+    );
+    (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({ data: [] });
+
+    await syncAllUsers();
+
+    expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+      1,
+      [{ bookId: 1, chapterNumber: 1 }],
+      undefined,
+    );
   });
 });
