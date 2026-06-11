@@ -25,7 +25,7 @@ export function MyWorkTab({
   const { chapters, loading, refreshing, refresh } =
     useMyWorkChapters(refreshKey);
 
-  if (loading) {
+  if (loading || (isSyncing && chapters.length === 0)) {
     return <LoadingSpinner />;
   }
 

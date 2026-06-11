@@ -3,7 +3,7 @@ import { getApiBaseUrl } from '../config/apiBaseUrl';
 
 export const SERVER_REACHABILITY_TIMEOUT_MS = 5_000;
 
-const getReachabilityUrl = () => `${getApiBaseUrl()}/languages`;
+const getReachabilityUrl = () => `${getApiBaseUrl()}/health`;
 
 let configured = false;
 
