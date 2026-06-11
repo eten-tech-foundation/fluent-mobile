@@ -236,11 +236,21 @@ Copy `.env.example` to `.env` and set `EXPO_PUBLIC_API_BASE_URL` before starting
 **`JAVA_HOME is not set` error**
 Java may be installed but `JAVA_HOME` not configured. Make sure you completed Step 3 and Step 4. If the path differs, find it with:
 
+**Linux:**
+
 ```bash
-readlink -f $(which java)
+readlink -f "$(which java)"
 ```
 
-Strip `/bin/java` from the output, update `JAVA_HOME` in your shell profile, then reload the shell.
+Strip `/bin/java` from the output and set `JAVA_HOME` to the remaining path.
+
+**macOS:**
+
+```bash
+/usr/libexec/java_home -v 17
+```
+
+Use that output as `JAVA_HOME`. Then update your shell profile and reload the shell.
 
 **`npm run android` fails with SDK not found**
 Android Studio may have installed the SDK in a different location. Check:

@@ -49,6 +49,13 @@ jobs:
           git add app.config.ts
           git commit -m "chore(release): set app version to $VERSION [skip ci]"
           git tag -f "$GITHUB_REF_NAME"
+          git fetch origin main
+          BASE_SHA=$(git rev-parse HEAD^)
+          MAIN_SHA=$(git rev-parse origin/main)
+          if [ "$BASE_SHA" != "$MAIN_SHA" ]; then
+            echo "❌ Refusing to push: tagged commit ($BASE_SHA) is not origin/main ($MAIN_SHA)"
+            exit 1
+          fi
           git push origin HEAD:main
           git push origin "$GITHUB_REF_NAME" --force
 

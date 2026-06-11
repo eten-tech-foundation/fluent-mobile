@@ -13,7 +13,7 @@ env:
   EAS_CHANNEL: 'preview'
   APP_SLUG: 'fluent-mobile'
   EXPO_ACCOUNT: 'teamgloo'
-  QA_GUIDE_URL: https://github.com/${{ github.repository }}/blob/${{ github.event.pull_request.head.sha }}/docs/guides/qa-preview-testing.md
+  QA_GUIDE_URL: https://github.com/${{ github.event.pull_request.head.repo.full_name || github.repository }}/blob/${{ github.event.pull_request.head.sha }}/docs/guides/qa-preview-testing.md
 
 jobs:
   preview-build:
