@@ -92,6 +92,7 @@ describe('MyWorkTab', () => {
 
     render(<MyWorkTab isSyncing />);
 
+    expect(screen.getByTestId('loading-spinner')).toBeTruthy();
     expect(
       screen.queryByText(
         "You don't have any chapters to work on right now. Check the Projects tab to find available work.",

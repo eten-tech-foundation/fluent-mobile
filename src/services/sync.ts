@@ -31,6 +31,7 @@ import {
   getLastAssignmentSyncAt,
   setLastAssignmentSyncAt,
   getActiveUserId,
+  getKnownUserIds,
 } from '../services/storage';
 import { getLocalProjectIds } from '../db/repository';
 import {
@@ -357,6 +358,115 @@ export async function syncBibleTexts(updatedAfter?: string) {
       });
     },
   );
+}
+
+export async function syncAllUsers(): Promise<void> {
+  log.info('Syncing all users...');
+  clearAllSyncErrors();
+  emitSyncStart();
+
+  const currentActiveUserId = getActiveUserId();
+  const knownUserIds = getKnownUserIds();
+  const userIdsToSync =
+    knownUserIds.length > 0
+      ? knownUserIds
+      : currentActiveUserId
+      ? [currentActiveUserId]
+      : [];
+
+  if (userIdsToSync.length === 0) {
+    throw new Error('No users to sync');
+  }
+
+  const activeCreds = currentActiveUserId
+    ? await getCredentials(currentActiveUserId)
+    : null;
+  if (currentActiveUserId && !activeCreds?.token) {
+    await handleSyncAuthFailure(currentActiveUserId);
+    throw new AuthError('No session token. Please sign in again.');
+  }
+
+  const lastSyncedAt = getLastSyncedAt() || undefined;
+  const hasLocalProjects = (await getLocalProjectIds()).length > 0;
+  let activeUserSyncOk = true;
+  let activeUserAuthFailed = false;
+
+  try {
+    await syncMasterData();
+
+    for (const userId of userIdsToSync) {
+      const creds = await getCredentials(userId);
+      if (!creds?.token) {
+        log.warn('No credentials for user, skipping', { userId });
+        if (userId === currentActiveUserId) {
+          activeUserSyncOk = false;
+          activeUserAuthFailed = true;
+          await handleSyncAuthFailure(userId);
+        }
+        continue;
+      }
+
+      log.info('Syncing user', { userId });
+      setActiveToken(creds.token);
+      const userIdNum = Number(userId);
+
+      try {
+        await syncProjects(userIdNum);
+        if (hasLocalProjects) {
+          await syncChapterAssignments(userIdNum, lastSyncedAt);
+        } else {
+          await syncChapterAssignments(userIdNum);
+        }
+      } catch (error) {
+        if (isAuthError(error)) {
+          if (userId === currentActiveUserId) {
+            activeUserSyncOk = false;
+            activeUserAuthFailed = true;
+            await handleSyncAuthFailure(userId);
+          } else {
+            await clearCredentials(userId);
+            log.warn('Cleared expired session credentials', { userId });
+          }
+        } else if (userId === currentActiveUserId) {
+          activeUserSyncOk = false;
+        }
+        log.error('Sync failed for user', {
+          userId,
+          error: getErrorMessage(error),
+        });
+      }
+    }
+
+    await syncBibleTexts(hasLocalProjects ? lastSyncedAt : undefined);
+
+    const restoredCreds = currentActiveUserId
+      ? await getCredentials(currentActiveUserId)
+      : null;
+    setActiveToken(restoredCreds?.token ?? null);
+
+    if (activeUserSyncOk) {
+      const now = new Date().toISOString();
+      setLastSyncedAt(now);
+      setLastAssignmentSyncAt(now);
+      emitSyncComplete();
+      log.info('All users synced successfully!');
+      return;
+    }
+
+    emitSyncComplete();
+    log.warn('Sync finished with errors for the active user');
+
+    if (activeUserAuthFailed) {
+      throw new AuthError('Session expired. Please sign in again.');
+    }
+  } catch (error) {
+    const restoredCreds = currentActiveUserId
+      ? await getCredentials(currentActiveUserId)
+      : null;
+    setActiveToken(restoredCreds?.token ?? null);
+    log.error('Sync all users failed', { error: getErrorMessage(error) });
+    throw error;
+  }
 }
 
 export async function syncAllData(isIncremental = false, email?: string) {

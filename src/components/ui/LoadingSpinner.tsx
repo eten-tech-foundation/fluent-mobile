@@ -4,7 +4,7 @@ import { theme } from '../../theme';
 
 export function LoadingSpinner() {
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID="loading-spinner">
       <ActivityIndicator size="large" color={theme.colors.primary} />
     </View>
   );
