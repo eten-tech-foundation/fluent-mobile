@@ -271,6 +271,10 @@ jobs:
           echo "Starting Android preview build..."
           echo "Version: $BASE_VERSION (Preview ID: $PREVIEW_ID)"
 
+          # Bake version into uploaded app.config — avoids unresolved $APP_VERSION on EAS
+          sed -i "s/^const APP_VERSION_FALLBACK = '[^']*'/const APP_VERSION_FALLBACK = '${BASE_VERSION}'/" app.config.ts
+          echo "Using app version: $(grep -E '^const APP_VERSION_FALLBACK' app.config.ts)"
+
           ANDROID_OUTPUT=$(npx eas build \
             --platform android \
             --profile preview \

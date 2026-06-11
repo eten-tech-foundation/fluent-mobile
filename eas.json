@@ -15,8 +15,7 @@
       "distribution": "internal",
       "channel": "preview",
       "env": {
-        "EAS_UPDATE_CHANNEL": "preview",
-        "APP_VERSION": "$APP_VERSION"
+        "EAS_UPDATE_CHANNEL": "preview"
       },
       "android": {
         "buildType": "apk"

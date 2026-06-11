@@ -2,9 +2,18 @@ import type { ExpoConfig } from 'expo/config';
 
 const EAS_PROJECT_ID = 'b0919574-f268-4768-b3bd-7cfa5172bbab';
 
-// Bumped by eas-build.yml on release tags; override via APP_VERSION in CI/EAS env
+// Bumped by release/preview CI before EAS builds; OTA may set APP_VERSION on the runner
 const APP_VERSION_FALLBACK = '1.0.0';
-const appVersion = process.env.APP_VERSION ?? APP_VERSION_FALLBACK;
+
+function resolveAppVersion(): string {
+  const fromEnv = process.env.APP_VERSION;
+  if (fromEnv && !fromEnv.startsWith('$')) {
+    return fromEnv;
+  }
+  return APP_VERSION_FALLBACK;
+}
+
+const appVersion = resolveAppVersion();
 const updateChannel = process.env.EAS_UPDATE_CHANNEL;
 
 const config: ExpoConfig = {
