@@ -461,3 +461,18 @@ export async function userHasLocalProjects(userId: number): Promise<boolean> {
   );
   return Number(result.rows?.[0]?.count ?? 0) > 0;
 }
+
+export async function userHasLocalChapterAssignments(
+  userId: number,
+): Promise<boolean> {
+  const db = getDatabase();
+  const result = await db.execute(
+    `SELECT COUNT(*) as count
+     FROM chapter_assignments ca
+     INNER JOIN project_units pu ON pu.id = ca.project_unit_id
+     INNER JOIN user_projects up ON up.project_id = pu.project_id
+     WHERE up.user_id = ?`,
+    [userId],
+  );
+  return Number(result.rows?.[0]?.count ?? 0) > 0;
+}

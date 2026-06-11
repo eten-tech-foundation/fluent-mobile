@@ -70,14 +70,18 @@ jest.mock('../db/repository', () => ({
   getChaptersToSync: jest.fn().mockResolvedValue(new Map()),
   getLocalProjectIds: jest.fn().mockResolvedValue([1]),
   userHasLocalProjects: jest.fn().mockResolvedValue(true),
+  userHasLocalChapterAssignments: jest.fn().mockResolvedValue(true),
   insertUser: jest.fn().mockResolvedValue(undefined),
 }));
 
-const { getChaptersToSync, userHasLocalProjects } = jest.requireMock(
-  '../db/repository',
-) as {
+const {
+  getChaptersToSync,
+  userHasLocalProjects,
+  userHasLocalChapterAssignments,
+} = jest.requireMock('../db/repository') as {
   getChaptersToSync: jest.Mock;
   userHasLocalProjects: jest.Mock;
+  userHasLocalChapterAssignments: jest.Mock;
 };
 
 jest.mock('../db/db', () => ({
@@ -100,6 +104,9 @@ describe('syncAllData auth handling', () => {
       '2026-06-01T00:00:00.000Z',
     );
     (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
+    userHasLocalProjects.mockResolvedValue(true);
+    userHasLocalChapterAssignments.mockResolvedValue(true);
+    getChaptersToSync.mockResolvedValue(new Map());
   });
 
   afterEach(() => {
@@ -162,6 +169,19 @@ describe('syncAllData auth handling', () => {
 
     expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
   });
+
+  it('forces full assignment sync when local assignments are empty but KV cursor exists', async () => {
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'valid-token' });
+    userHasLocalChapterAssignments.mockResolvedValue(false);
+
+    await syncAllData(true);
+
+    expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
+      2,
+      undefined,
+      undefined,
+    );
+  });
 });
 
 describe('syncAllUsers auth handling', () => {
@@ -182,6 +202,7 @@ describe('syncAllUsers auth handling', () => {
     );
     (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
     userHasLocalProjects.mockResolvedValue(true);
+    userHasLocalChapterAssignments.mockResolvedValue(true);
     getChaptersToSync.mockResolvedValue(new Map());
   });
 
@@ -258,6 +279,26 @@ describe('syncAllUsers auth handling', () => {
     expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
       1,
       [{ bookId: 1, chapterNumber: 1 }],
+      undefined,
+    );
+  });
+
+  it('forces full assignment sync when user has projects but no local assignments', async () => {
+    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+      userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
+    );
+    userHasLocalChapterAssignments.mockResolvedValue(false);
+
+    await syncAllUsers();
+
+    expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
+      1,
+      undefined,
+      undefined,
+    );
+    expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
+      2,
+      undefined,
       undefined,
     );
   });
