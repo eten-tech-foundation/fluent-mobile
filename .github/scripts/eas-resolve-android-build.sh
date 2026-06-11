@@ -13,6 +13,13 @@
 
 set -euo pipefail
 
+# eas-cli is not a project dependency — expo-github-action installs `eas` globally in CI.
+if command -v eas >/dev/null 2>&1; then
+  EAS=(eas)
+else
+  EAS=(npx --yes eas-cli@latest)
+fi
+
 PROFILE="${PROFILE:?PROFILE is required}"
 MESSAGE="${MESSAGE:?MESSAGE is required}"
 BAKE_VERSION="${BAKE_VERSION:-}"
@@ -39,13 +46,13 @@ normalize_builds() {
 
 list_builds() {
   local status="$1"
-  npx eas build:list \
+  "${EAS[@]}" build:list \
     -p android \
     -e "${PROFILE}" \
     --status "${status}" \
     --limit 25 \
     --json \
-    --non-interactive 2>/dev/null | normalize_builds
+    --non-interactive | normalize_builds
 }
 
 match_build() {
@@ -113,7 +120,7 @@ if [ -z "${BUILD_ID}" ]; then
   if [ "${WAIT_FOR_BUILD}" = "true" ]; then
     BUILD_ARGS+=(--wait)
   fi
-  BUILD_OUTPUT=$(npx eas build "${BUILD_ARGS[@]}")
+  BUILD_OUTPUT=$("${EAS[@]}" build "${BUILD_ARGS[@]}")
   BUILD_ID=$(echo "${BUILD_OUTPUT}" | jq -r '
     if type == "array" then (.[-1].id // .[0].id // empty) else (.id // empty) end
   ')
@@ -124,7 +131,7 @@ if [ -z "${BUILD_ID}" ]; then
     deadline=$((SECONDS + MAX_WAIT_IN_PROGRESS_SEC))
     while [ "${SECONDS}" -lt "${deadline}" ]; do
       BUILD_VIEW=$(
-        npx eas build:view "${BUILD_ID}" --json --non-interactive 2>/dev/null || echo "{}"
+        "${EAS[@]}" build:view "${BUILD_ID}" --json --non-interactive 2>/dev/null || echo "{}"
       )
       BUILD_STATUS=$(echo "${BUILD_VIEW}" | jq -r '.status // empty')
       if [ "${BUILD_STATUS}" = "FINISHED" ]; then

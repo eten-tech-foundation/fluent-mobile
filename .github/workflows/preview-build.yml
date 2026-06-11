@@ -155,7 +155,7 @@ jobs:
 
           echo "Creating preview update: $UPDATE_MESSAGE"
 
-          UPDATE_OUTPUT=$(npx eas update \
+          UPDATE_OUTPUT=$(eas update \
             --branch preview \
             --message "$UPDATE_MESSAGE" \
             --json \
