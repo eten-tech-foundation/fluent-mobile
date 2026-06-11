@@ -414,6 +414,8 @@ export async function syncAllUsers(): Promise<void> {
     let activeUserSyncOk = true;
     let activeUserAuthFailed = false;
     let anyUserDidFullAssignmentSync = false;
+    let firstNonAuthSyncError: unknown;
+    let oldestAssignmentCursor: string | undefined;
 
     await syncMasterData();
 
@@ -434,17 +436,25 @@ export async function syncAllUsers(): Promise<void> {
       const userIdNum = Number(userId);
       const userLastSyncedAt = getUserLastSyncedAt(userId) || undefined;
       const hasUserProjects = await userHasLocalProjects(userIdNum);
+      const assignmentCursor = hasUserProjects ? userLastSyncedAt : undefined;
 
       try {
         await syncProjects(userIdNum);
         const { didFullSync } = await syncChapterAssignmentsForUser(
           userIdNum,
-          hasUserProjects ? userLastSyncedAt : undefined,
+          assignmentCursor,
         );
         if (didFullSync) {
           anyUserDidFullAssignmentSync = true;
         }
         setUserLastSyncedAt(userId, new Date().toISOString());
+        if (assignmentCursor) {
+          oldestAssignmentCursor =
+            oldestAssignmentCursor === undefined ||
+            assignmentCursor < oldestAssignmentCursor
+              ? assignmentCursor
+              : oldestAssignmentCursor;
+        }
       } catch (error) {
         if (isAuthError(error)) {
           if (userId === currentActiveUserId) {
@@ -455,6 +465,9 @@ export async function syncAllUsers(): Promise<void> {
           }
         } else if (userId === currentActiveUserId) {
           activeUserSyncOk = false;
+          if (firstNonAuthSyncError === undefined) {
+            firstNonAuthSyncError = error;
+          }
         }
         log.error('Sync failed for user', {
           userId,
@@ -463,13 +476,12 @@ export async function syncAllUsers(): Promise<void> {
       }
     }
 
-    await syncBibleTexts(
-      anyUserDidFullAssignmentSync
-        ? undefined
-        : deviceHasLocalProjects
-        ? deviceLastSyncedAt
-        : undefined,
-    );
+    const bibleTextUpdatedAfter = anyUserDidFullAssignmentSync
+      ? undefined
+      : oldestAssignmentCursor ??
+        (deviceHasLocalProjects ? deviceLastSyncedAt : undefined);
+
+    await syncBibleTexts(bibleTextUpdatedAfter);
 
     const restoredCreds = currentActiveUserId
       ? await getCredentials(currentActiveUserId)
@@ -488,6 +500,10 @@ export async function syncAllUsers(): Promise<void> {
 
     if (activeUserAuthFailed) {
       throw new AuthError('Session expired. Please sign in again.');
+    }
+
+    if (firstNonAuthSyncError !== undefined) {
+      throw firstNonAuthSyncError;
     }
   } catch (error) {
     const restoredCreds = currentActiveUserId
