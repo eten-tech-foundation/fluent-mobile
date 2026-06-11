@@ -9,6 +9,7 @@ jobs:
   fingerprint:
     name: Check fingerprint
     type: fingerprint
+    environment: production
 
   get_android_build:
     name: Check for existing Android build

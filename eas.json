@@ -4,18 +4,29 @@
     "appVersionSource": "local"
   },
   "build": {
+    "base": {
+      "android": {
+        "resourceClass": "medium"
+      }
+    },
     "development": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
+      "env": {
+        "EAS_USE_CACHE": "1"
+      },
       "android": {
         "buildType": "apk"
       }
     },
     "preview": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
       "channel": "preview",
       "env": {
+        "EAS_USE_CACHE": "1",
         "EAS_UPDATE_CHANNEL": "preview"
       },
       "android": {
@@ -23,6 +34,10 @@
       }
     },
     "production": {
+      "extends": "base",
+      "env": {
+        "EAS_USE_CACHE": "1"
+      },
       "android": {
         "buildType": "app-bundle",
         "autoIncrement": "versionCode"

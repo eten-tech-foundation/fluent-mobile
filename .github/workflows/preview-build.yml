@@ -12,6 +12,7 @@ env:
   EAS_PROJECT_ID: 'b0919574-f268-4768-b3bd-7cfa5172bbab'
   EAS_CHANNEL: 'preview'
   APP_SLUG: 'fluent-mobile'
+  EXPO_ACCOUNT: 'teamgloo'
   QA_GUIDE_URL: 'https://github.com/eten-tech-foundation/fluent-mobile/blob/main/docs/guides/qa-preview-testing.md'
 
 jobs:
@@ -126,6 +127,19 @@ jobs:
           echo "PREVIEW_ID=$PREVIEW_ID" >> $GITHUB_OUTPUT
           echo "✅ Preview base version: $BASE_VERSION (ID: $PREVIEW_ID, source: $VERSION_SOURCE)"
 
+      - name: 📥 Ensure QA install app exists (js-only)
+        if: steps.change-detection.outputs.change_type == 'js-only'
+        id: qa-install
+        env:
+          PROFILE: preview
+          MESSAGE: QA install app for runtime ${{ steps.preview-version.outputs.BASE_VERSION }}
+          BAKE_VERSION: ${{ steps.preview-version.outputs.BASE_VERSION }}
+          RUNTIME_VERSION: ${{ steps.preview-version.outputs.BASE_VERSION }}
+          ALLOW_RUNTIME_MATCH: 'true'
+          WAIT_FOR_BUILD: 'true'
+          POLL_IN_PROGRESS: 'true'
+        run: bash .github/scripts/eas-resolve-android-build.sh
+
       - name: 🚀 Create Preview OTA Update
         if: steps.change-detection.outputs.change_type == 'js-only'
         id: ota-update
@@ -196,50 +210,67 @@ jobs:
             const projectId = "${{ env.EAS_PROJECT_ID }}";
 
             const qaGuideUrl = "${{ env.QA_GUIDE_URL }}";
+            const installUrl = "${{ steps.qa-install.outputs.install_url }}";
+            const installSource = "${{ steps.qa-install.outputs.install_source }}";
+            const fingerprint = "${{ steps.qa-install.outputs.fingerprint_hash }}";
+            let installNote = '_Already have Fluent on your phone? Skip to Step 2._';
+            if (installSource === 'created') {
+              installNote =
+                '_We built the Fluent install app for you (first time for this version). Step 1 used that build._';
+            } else if (installSource === 'existing' || installSource === 'waited') {
+              installNote =
+                '_Reused an existing Fluent install app from EAS (no new native build needed)._';
+            } else if (!installSource) {
+              installNote =
+                '_Could not auto-resolve an install build — use the link below or ask your team for help._';
+            }
 
             const body = [
-              '## 📲 Preview update ready (Android)',
+              '## 📲 Test this PR on your Android phone',
+              '',
+              '**Not Expo Go.** Use the **Fluent** app only (custom dev client).',
               '',
               `**Preview ID:** \`${previewId}\` · **Runtime version:** \`${runtimeVersion}\``,
               '',
-              'This PR published a **JavaScript-only** preview update. It loads inside the **Fluent dev client** — **not Expo Go**.',
+              `**Need help?** [Step-by-step guide for non-technical testers](${qaGuideUrl})`,
               '',
-              '### Before you start',
+              '---',
               '',
-              '1. On your Android phone, install the **Fluent** app (dev client). If you do not have it yet, ask your team for the latest preview APK from a prior PR, or wait for a **native preview build** on this PR.',
-              '2. **Do not** install or use **Expo Go** from the Play Store — it will not work with Fluent.',
-              `3. Your installed Fluent app must use **runtime version \`${runtimeVersion}\`**. If the steps below fail, this PR may need a native preview APK first (re-add the \`preview-build\` label after native changes).`,
+              '### Step 1 — Install Fluent (first time only)',
               '',
-              `**Full step-by-step guide (non-technical):** [How to test a PR preview](${qaGuideUrl})`,
+              installNote,
               '',
-              '### Load this preview on your phone',
+              'On your **Android phone**, tap:',
               '',
-              '**Option A — Tap the link (easiest)**',
+              `### 👉 [Install Fluent](${installUrl})`,
               '',
-              'Open this page **on your Android phone** (not a laptop), then tap:',
+              '1. Sign in to [expo.dev](https://expo.dev) if asked (your team lead can invite you).',
+              '2. Tap **Download** or **Install** when the build page opens.',
+              '3. If Android blocks it: **Settings → Install unknown apps** → allow your browser.',
+              '4. Open **Fluent** from your home screen. You should see a dev/project screen — **not** the Expo Go app.',
               '',
-              `**[Open preview in Fluent](${deepLinkUrl})**`,
+              '---',
               '',
-              'Fluent should open and download the preview. If prompted, allow the app to open the link.',
+              '### Step 2 — Load this PR preview',
               '',
-              '**Option B — Scan the QR code**',
+              'On your **Android phone**, open this PR comment and tap:',
               '',
-              '1. Open the **Fluent** app on your phone (you should see the dev client / project screen).',
-              '2. Tap **Scan QR code** (or use your phone **Camera** app on the code below — it should offer to open **Fluent**, not Expo Go).',
-              '3. Wait for the update to load, then open the project.',
+              `### 👉 [Open this preview in Fluent](${deepLinkUrl})`,
+              '',
+              'Fluent should open and download the update. If prompted, choose **Fluent** (not Expo Go).',
+              '',
+              '**Or scan this QR code** (after Step 1 is done):',
+              '',
+              'Open **Fluent → Scan QR code**, or use your phone **Camera** on the image below (choose **Fluent**, not Expo Go).',
               '',
               `<a href="https://expo.dev/projects/${projectId}/updates/${updateGroupId}">`,
               `<img src="${qrImgUrl}" width="256" height="256" alt="QR code to load this preview in the Fluent dev client" style="border: 1px solid #ccc; border-radius: 8px; max-width: 100%; height: auto;" />`,
               '</a>',
               '',
-              '**Option C — Already in Fluent**',
-              '',
-              'Fully close Fluent (swipe it away), reopen it, and wait a few seconds on the dev client screen — it may fetch the latest preview on the `preview` channel automatically.',
-              '',
               '### After the preview loads',
               '',
-              '- Sign in and run through the test steps for this PR.',
-              '- If the app looks unchanged, force-close Fluent and try **Option A** again.',
+              '- Sign in and test this PR.',
+              '- If nothing changed, force-close Fluent and tap **Open this preview in Fluent** again.',
               '',
               '### Details',
               '',
@@ -249,6 +280,10 @@ jobs:
               `| Base version | \`${baseVersion}\` |`,
               '| Channel | `preview` |',
               `| Runtime version | \`${runtimeVersion}\` |`,
+              `| Install build | \`${installSource || 'unknown'}\` |`,
+              ...(fingerprint
+                ? [`| Fingerprint | \`${fingerprint.slice(0, 12)}…\` |`]
+                : []),
               `| Commit | \`${{ github.event.pull_request.head.sha }}\` |`,
               '',
               '### Links',
@@ -268,7 +303,8 @@ jobs:
 
             const botComments = comments.filter(comment =>
               comment.user.login === 'github-actions[bot]' &&
-              (comment.body.includes('📲 Preview update ready') ||
+              (comment.body.includes('📲 Test this PR on your Android phone') ||
+               comment.body.includes('📲 Preview update ready') ||
                comment.body.includes('📲 Preview Build Ready!'))
             );
 
@@ -311,74 +347,92 @@ jobs:
           echo "✅ Android preview build version: $BUILD_VERSION (from base $CURRENT_VERSION)"
           echo "   Preview ID: ${{ steps.preview-version.outputs.PREVIEW_ID }}"
 
-      - name: 🚀 Start Android Preview Build
+      - name: 🚀 Resolve or start Android preview build
         if: steps.change-detection.outputs.change_type == 'native'
         id: native-builds
         env:
-          BUILD_MESSAGE: "Preview ${{ steps.base-version.outputs.BASE_VERSION }} - PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}"
-          PREVIEW_ID: ${{ steps.base-version.outputs.PREVIEW_ID }}
-          BASE_VERSION: ${{ steps.base-version.outputs.BASE_VERSION }}
-          APP_VERSION: ${{ steps.base-version.outputs.BASE_VERSION }}
-        run: |
-          echo "Starting Android preview build..."
-          echo "Version: $BASE_VERSION (Preview ID: $PREVIEW_ID)"
-
-          # Bake version into uploaded app.config — avoids unresolved $APP_VERSION on EAS
-          sed -i "s/^const APP_VERSION_FALLBACK = '[^']*'/const APP_VERSION_FALLBACK = '${BASE_VERSION}'/" app.config.ts
-          echo "Using app version: $(grep -E '^const APP_VERSION_FALLBACK' app.config.ts)"
-
-          ANDROID_OUTPUT=$(npx eas build \
-            --platform android \
-            --profile preview \
-            --message "$BUILD_MESSAGE" \
-            --json \
-            --non-interactive)
-
-          ANDROID_BUILD_ID=$(echo "$ANDROID_OUTPUT" | jq -r '.[] | select(.platform=="android") | .id')
-          echo "ANDROID_BUILD_ID=$ANDROID_BUILD_ID" >> $GITHUB_OUTPUT
-          echo "Android build started: $ANDROID_BUILD_ID (version $BASE_VERSION)"
+          PROFILE: preview
+          MESSAGE: Preview ${{ steps.base-version.outputs.BASE_VERSION }} - PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}
+          BAKE_VERSION: ${{ steps.base-version.outputs.BASE_VERSION }}
+          ALLOW_RUNTIME_MATCH: 'false'
+          WAIT_FOR_BUILD: 'true'
+          POLL_IN_PROGRESS: 'true'
+        run: bash .github/scripts/eas-resolve-android-build.sh
 
       - name: 💬 Post Native Preview Comment
         if: steps.change-detection.outputs.change_type == 'native'
         uses: actions/github-script@v7
         with:
           script: |
-            const androidId = "${{ steps.native-builds.outputs.ANDROID_BUILD_ID }}";
+            const androidId = "${{ steps.native-builds.outputs.build_id }}";
+            const installSource = "${{ steps.native-builds.outputs.install_source }}";
             const previewId = "${{ steps.base-version.outputs.PREVIEW_ID }}";
             const baseVersion = "${{ steps.base-version.outputs.BASE_VERSION }}";
+            const fingerprint = "${{ steps.native-builds.outputs.fingerprint_hash }}";
 
             const qaGuideUrl = "${{ env.QA_GUIDE_URL }}";
+            const installUrl = `https://expo.dev/builds/${androidId}`;
+            const installQrUrl = `https://quickchart.io/qr?size=256&margin=2&text=${encodeURIComponent(installUrl)}`;
+
+            let buildNote =
+              '_A new Fluent preview app was built for this PR. Install it once, then test._';
+            if (installSource === 'existing') {
+              buildNote =
+                '_Reused an existing Fluent preview app from EAS (same native fingerprint — no new compile)._';
+            } else if (installSource === 'waited') {
+              buildNote =
+                '_Waited for an in-progress EAS build with the same fingerprint to finish._';
+            }
 
             const body = [
-              '## 🔧 Fluent preview app building (Android)',
+              '## ✅ Fluent preview app ready (Android)',
+              '',
+              '**Not Expo Go.** Use the **Fluent** app only (custom dev client).',
               '',
               `**Preview ID:** \`${previewId}\` · **App version:** \`${baseVersion}\``,
               '',
-              'This PR changed **native** code, so QA needs a **new Fluent dev client APK** (not Expo Go). A build is running on EAS.',
+              'This PR changed **native** code (`app.config.ts`, plugins, or native dependencies), so you need this **preview APK** — not an OTA-only update.',
               '',
-              `**Full install guide:** [How to test a PR preview](${qaGuideUrl})`,
+              buildNote,
               '',
-              '### Build status',
+              `**Need help?** [Step-by-step guide for non-technical testers](${qaGuideUrl})`,
               '',
-              `- **Android APK:** [${androidId}](https://expo.dev/builds/${androidId}) — 🟡 building (~10–15 minutes)`,
+              '---',
               '',
-              'Refresh the build page until status is **Finished**.',
+              '### Install Fluent on your Android phone',
               '',
-              '### When the build finishes — install on your phone',
+              'On your **Android phone**, tap:',
               '',
-              '1. On your **Android phone**, open the build link above (you may need to sign in to [expo.dev](https://expo.dev)).',
-              '2. Tap **Download** / **Install** to get the **Fluent** APK.',
-              '3. If Android blocks the install: **Settings → Security** (or **Install unknown apps**) → allow your browser or **Files** app to install apps.',
-              '4. Open **Fluent** — you should see the **dev client** screen (not Expo Go).',
-              '5. Keep this build installed. **Future JS-only previews** on other PRs can load via QR code or link without reinstalling, as long as **runtime version** still matches.',
+              `### 👉 [Install Fluent](${installUrl})`,
               '',
-              '### ⚠️ Not Expo Go',
+              '1. Sign in to [expo.dev](https://expo.dev) if asked (your team lead can invite you).',
+              '2. Tap **Download** or **Install** when the build page opens.',
+              '3. If Android blocks it: **Settings → Install unknown apps** → allow your browser.',
+              '4. Open **Fluent** from your home screen. You should see a dev/project screen — **not** the Expo Go app.',
+              '5. Sign in and test this PR. Future **JS-only** PR previews can load without reinstalling until the app version changes again.',
               '',
-              'Fluent uses a **custom dev client**. The Expo Go app from the Play Store **cannot** run these previews.',
+              '**Or scan this QR code** (opens the same install page):',
+              '',
+              `<a href="${installUrl}">`,
+              `<img src="${installQrUrl}" width="256" height="256" alt="QR code to install the Fluent preview app" style="border: 1px solid #ccc; border-radius: 8px; max-width: 100%; height: auto;" />`,
+              '</a>',
+              '',
+              '### Details',
+              '',
+              '| | |',
+              '|---|---|',
+              `| Preview ID | \`${previewId}\` |`,
+              `| App version | \`${baseVersion}\` |`,
+              `| Build | \`${androidId}\` |`,
+              `| Install source | \`${installSource}\` |`,
+              ...(fingerprint
+                ? [`| Fingerprint | \`${fingerprint.slice(0, 12)}…\` |`]
+                : []),
+              `| Commit | \`${{ github.event.pull_request.head.sha }}\` |`,
               '',
               '### Links',
               '',
-              `- [EAS build page](https://expo.dev/builds/${androidId})`,
+              `- [EAS build page](${installUrl})`,
               `- [PR #${{ github.event.pull_request.number }}](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }})`,
               '',
               '---',
@@ -393,10 +447,13 @@ jobs:
 
             const botComments = comments.filter(comment =>
               comment.user.login === 'github-actions[bot]' &&
-              (comment.body.includes('📲 Preview update ready') ||
+              (comment.body.includes('📲 Test this PR on your Android phone') ||
+               comment.body.includes('📲 Preview update ready') ||
                comment.body.includes('📲 Preview Build Ready!') ||
                comment.body.includes('🔧 Fluent preview app building') ||
-               comment.body.includes('🔧 Android Preview Build Started!'))
+               comment.body.includes('✅ Fluent preview app ready') ||
+               comment.body.includes('🔧 Android Preview Build Started!') ||
+               comment.body.includes('Android Preview Build Started!'))
             );
 
             for (const comment of botComments) {

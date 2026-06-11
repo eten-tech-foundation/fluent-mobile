@@ -28,8 +28,8 @@ See [`.eas/README.md`](../.eas/README.md) for Expo GitHub app and Play Store set
 
 1. Create a `preview-build` label on the repo (if missing).
 2. Add the label to a PR when ready for QA.
-3. Workflow posts a comment with an OTA deep link + QR (JS-only) or an Android **dev client** APK build link (native changes).
+3. Workflow posts a comment with **Install Fluent** + **Open this preview** links (JS-only), or an Android **dev client** APK build (native changes).
 
 **QA guide (non-technical):** [`docs/guides/qa-preview-testing.md`](../docs/guides/qa-preview-testing.md)
 
-Requires `EXPO_TOKEN` in repository secrets. OTA comments use `exp+fluent-mobile://` deep links and QR codes with `slug=fluent-mobile` so Android opens **Fluent**, not Expo Go. Version resolves from latest git tag, or `app.config.ts` / `package.json` when no tags exist yet.
+Requires `EXPO_TOKEN` in repository secrets. For JS-only PRs, `.github/scripts/eas-resolve-android-build.sh` **reuses** a matching EAS build (fingerprint + runtime) or starts one — avoiding duplicate compiles. `eas.json` enables **`EAS_USE_CACHE`** (ccache) on all profiles. OTA links use `exp+fluent-mobile://` and QR codes with `slug=fluent-mobile` (not Expo Go).
