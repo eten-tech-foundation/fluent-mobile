@@ -1,4 +1,4 @@
-import { API_BASE_URL } from '../config/apiBaseUrl';
+import { getApiBaseUrl } from '../config/apiBaseUrl';
 import { checkServerReachable } from './connectivity';
 
 let _activeToken: string | null = null;
@@ -20,11 +20,12 @@ async function getHeaders(): Promise<Record<string, string>> {
 }
 
 async function publicRequest(endpoint: string, options?: RequestInit) {
-  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const apiBaseUrl = getApiBaseUrl();
+  const res = await fetch(`${apiBaseUrl}${endpoint}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      Origin: API_BASE_URL,
+      Origin: apiBaseUrl,
       ...options?.headers,
     },
   });
@@ -43,7 +44,7 @@ async function publicRequest(endpoint: string, options?: RequestInit) {
 
 async function request(endpoint: string, options?: RequestInit) {
   const headers = await getHeaders();
-  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const res = await fetch(`${getApiBaseUrl()}${endpoint}`, {
     ...options,
     headers: { ...headers, ...options?.headers },
   });

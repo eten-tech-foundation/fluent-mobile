@@ -7,5 +7,3 @@ export function getApiBaseUrl(): string {
   }
   return url;
 }
-
-export const API_BASE_URL = getApiBaseUrl();
