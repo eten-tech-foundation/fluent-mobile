@@ -1,5 +1,8 @@
 import { getApiBaseUrl } from '../config/apiBaseUrl';
+import { logger } from '../utils/logger';
 import { checkServerReachable } from './connectivity';
+
+const log = logger.create('API');
 
 let _activeToken: string | null = null;
 
@@ -50,7 +53,7 @@ async function request(endpoint: string, options?: RequestInit) {
   });
   if (!res.ok) {
     const errorBody = await res.text();
-    console.error('API error:', res.status, errorBody);
+    log.error('API error', { status: res.status, errorBody });
     throw new Error(`API failed: ${res.status}`);
   }
   return res.json();

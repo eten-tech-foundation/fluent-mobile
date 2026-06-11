@@ -36,7 +36,8 @@
     "production": {
       "extends": "base",
       "env": {
-        "EAS_USE_CACHE": "1"
+        "EAS_RESTORE_CACHE": "0",
+        "EAS_SAVE_CACHE": "1"
       },
       "android": {
         "buildType": "app-bundle",

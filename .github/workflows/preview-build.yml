@@ -190,16 +190,16 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const updateGroupId = "${{ steps.ota-update.outputs.UPDATE_GROUP_ID }}";
-            const previewId = "${{ steps.ota-update.outputs.PREVIEW_ID }}";
-            const baseVersion = "${{ steps.ota-update.outputs.BASE_VERSION }}";
-            const runtimeVersion = "${{ steps.ota-update.outputs.RUNTIME_VERSION }}";
-            const projectId = "${{ env.EAS_PROJECT_ID }}";
+            const updateGroupId = ${{ toJson(steps.ota-update.outputs.UPDATE_GROUP_ID) }};
+            const previewId = ${{ toJson(steps.ota-update.outputs.PREVIEW_ID) }};
+            const baseVersion = ${{ toJson(steps.ota-update.outputs.BASE_VERSION) }};
+            const runtimeVersion = ${{ toJson(steps.ota-update.outputs.RUNTIME_VERSION) }};
+            const projectId = ${{ toJson(env.EAS_PROJECT_ID) }};
 
-            const qaGuideUrl = "${{ env.QA_GUIDE_URL }}";
-            const installUrl = "${{ steps.qa-install.outputs.install_url }}";
-            const installSource = "${{ steps.qa-install.outputs.install_source }}";
-            const fingerprint = "${{ steps.qa-install.outputs.fingerprint_hash }}";
+            const qaGuideUrl = ${{ toJson(env.QA_GUIDE_URL) }};
+            const installUrl = ${{ toJson(steps.qa-install.outputs.install_url) }};
+            const installSource = ${{ toJson(steps.qa-install.outputs.install_source) }};
+            const fingerprint = ${{ toJson(steps.qa-install.outputs.fingerprint_hash) }};
             let installNote = '_Already have Fluent on your phone? Skip to Step 2._';
             if (installSource === 'created') {
               installNote =
@@ -321,13 +321,13 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const androidId = "${{ steps.native-builds.outputs.build_id }}";
-            const installSource = "${{ steps.native-builds.outputs.install_source }}";
-            const previewId = "${{ steps.preview-version.outputs.PREVIEW_ID }}";
-            const baseVersion = "${{ steps.preview-version.outputs.BASE_VERSION }}";
-            const fingerprint = "${{ steps.native-builds.outputs.fingerprint_hash }}";
+            const androidId = ${{ toJson(steps.native-builds.outputs.build_id) }};
+            const installSource = ${{ toJson(steps.native-builds.outputs.install_source) }};
+            const previewId = ${{ toJson(steps.preview-version.outputs.PREVIEW_ID) }};
+            const baseVersion = ${{ toJson(steps.preview-version.outputs.BASE_VERSION) }};
+            const fingerprint = ${{ toJson(steps.native-builds.outputs.fingerprint_hash) }};
 
-            const qaGuideUrl = "${{ env.QA_GUIDE_URL }}";
+            const qaGuideUrl = ${{ toJson(env.QA_GUIDE_URL) }};
             const installUrl = `https://expo.dev/builds/${androidId}`;
             const installQrUrl = `https://quickchart.io/qr?size=256&margin=2&text=${encodeURIComponent(installUrl)}`;
 
