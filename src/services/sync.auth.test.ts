@@ -302,4 +302,42 @@ describe('syncAllUsers auth handling', () => {
       undefined,
     );
   });
+
+  it('rethrows the active user first non-auth sync failure', async () => {
+    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+      userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
+    );
+    (FluentAPI.getUserProjects as jest.Mock).mockImplementation(
+      async (userId: number) => {
+        if (userId === 2) {
+          throw new Error('Project sync exploded');
+        }
+        return { data: [] };
+      },
+    );
+
+    await expect(syncAllUsers()).rejects.toThrow('Project sync exploded');
+    expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
+  });
+
+  it('uses the oldest per-user assignment cursor for bible text sync', async () => {
+    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+      userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
+    );
+    (getUserLastSyncedAt as jest.Mock).mockImplementation((userId: string) =>
+      userId === '1' ? '2026-06-01T00:00:00.000Z' : '2026-05-01T00:00:00.000Z',
+    );
+    getChaptersToSync.mockResolvedValue(
+      new Map([[1, [{ bookId: 1, chapterNumber: 1 }]]]),
+    );
+    (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({ data: [] });
+
+    await syncAllUsers();
+
+    expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+      1,
+      [{ bookId: 1, chapterNumber: 1 }],
+      '2026-05-01T00:00:00.000Z',
+    );
+  });
 });
