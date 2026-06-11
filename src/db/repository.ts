@@ -471,8 +471,9 @@ export async function userHasLocalChapterAssignments(
      FROM chapter_assignments ca
      INNER JOIN project_units pu ON pu.id = ca.project_unit_id
      INNER JOIN user_projects up ON up.project_id = pu.project_id
-     WHERE up.user_id = ?`,
-    [userId],
+     WHERE up.user_id = ?
+       AND (ca.assigned_user_id = ? OR ca.peer_checker_id = ?)`,
+    [userId, userId, userId],
   );
   return Number(result.rows?.[0]?.count ?? 0) > 0;
 }
