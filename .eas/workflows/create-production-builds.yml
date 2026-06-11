@@ -1,0 +1,30 @@
+name: Create Production Builds
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  fingerprint:
+    name: Check fingerprint
+    type: fingerprint
+    environment: production
+
+  get_android_build:
+    name: Check for existing Android build
+    needs: [fingerprint]
+    type: get-build
+    params:
+      fingerprint_hash: ${{ needs.fingerprint.outputs.android_fingerprint_hash }}
+      profile: production
+
+  build_android:
+    name: Build and submit Android
+    needs: [get_android_build]
+    if: ${{ !needs.get_android_build.outputs.build_id }}
+    type: build
+    params:
+      platform: android
+      profile: production
+      submit: true

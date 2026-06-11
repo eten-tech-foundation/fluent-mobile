@@ -1,0 +1,50 @@
+---
+description: Fluent Mobile is Android-only permanently — no iOS app, builds, or prebuild
+alwaysApply: true
+---
+
+# Android-only (permanent)
+
+Fluent Mobile ships **Android only**. There will never be an iOS app. Do not add iOS config, assets, CI, scripts, or documentation unless the user **explicitly** requests iOS.
+
+## Prebuild
+
+Always pass **`--platform android`**. Never use `--platform all`, `--platform ios`, or omit the platform flag.
+
+```bash
+npm run prebuild
+# equivalent: expo prebuild --clean --platform android
+```
+
+Do not commit generated `android/`. Ignore `ios/` — it must not be generated or maintained.
+
+## Bootsplash / native assets
+
+Generate Android assets only:
+
+```bash
+npx react-native-bootsplash generate assets/bootsplash/logo.png \
+  --platforms=android --background=0b50d0 --logo-width=100
+```
+
+`assets/bootsplash/android/` is required. iOS bootsplash assets are not used — do not add or regenerate them.
+
+## EAS
+
+Use **Android profiles only** in `eas.json` (`development`, `preview`, `production`). Do not add iOS build profiles unless explicitly requested.
+
+```bash
+npx eas build --profile development --platform android
+```
+
+Tag releases (`v*`) trigger `.github/workflows/eas-build.yml` + `.eas/workflows/create-production-builds.yml` (Android production only). See [`.eas/README.md`](../../.eas/README.md).
+
+## Development
+
+| Command | Use |
+|---------|-----|
+| `npm start` | Metro |
+| `npm run android` | Dev client on emulator/device |
+| `npm run prebuild` | Regenerate `android/` only |
+
+Do not run `expo run:ios`, `npm run ios`, or iOS simulators. `Platform.OS === 'ios'` branches in shared UI are fine when they improve Android layout.

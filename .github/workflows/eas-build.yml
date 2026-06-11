@@ -1,0 +1,64 @@
+name: EAS Build on Tag
+
+# Bumps app.config.ts on the tagged commit, moves the release tag to that commit, then EAS
+# Workflows (create-production-builds.yml) build Android with the correct marketing version.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  sync-app-version-with-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🏗 Checkout tag
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 🔢 Parse release version from tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Release version: $VERSION"
+
+      - name: 🔧 Bump app.config.ts to match tag
+        run: |
+          CURRENT=$(grep -E "^const APP_VERSION_FALLBACK" app.config.ts | sed -E "s/.*'([^']+)'.*/\1/")
+          echo "app.config.ts version before: $CURRENT"
+          if [ "$CURRENT" = "$VERSION" ]; then
+            echo "SKIP_BUMP=true" >> "$GITHUB_ENV"
+            echo "app.config.ts already at $VERSION"
+            exit 0
+          fi
+          sed -i "s/^const APP_VERSION_FALLBACK = '[^']*'/const APP_VERSION_FALLBACK = '$VERSION'/" app.config.ts
+          echo "app.config.ts version after: $(grep -E "^const APP_VERSION_FALLBACK" app.config.ts | sed -E "s/.*'([^']+)'.*/\1/")"
+
+      - name: 💾 Commit version bump and move tag
+        if: env.SKIP_BUMP != 'true'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git add app.config.ts
+          git commit -m "chore(release): set app version to $VERSION [skip ci]"
+          git tag -f "$GITHUB_REF_NAME"
+          git fetch origin main
+          BASE_SHA=$(git rev-parse HEAD^)
+          MAIN_SHA=$(git rev-parse origin/main)
+          if [ "$BASE_SHA" != "$MAIN_SHA" ]; then
+            echo "❌ Refusing to push: tagged commit ($BASE_SHA) is not origin/main ($MAIN_SHA)"
+            exit 1
+          fi
+          git push origin HEAD:main
+          git push origin "$GITHUB_REF_NAME" --force
+
+      - name: ✅ Version already aligned
+        if: env.SKIP_BUMP == 'true'
+        run: echo "No commit needed; EAS will build tag $GITHUB_REF_NAME as-is."

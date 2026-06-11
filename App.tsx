@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator, Text } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import BootSplash from 'react-native-bootsplash';
@@ -92,31 +93,37 @@ function App() {
 
   if (!dbReady) {
     return (
-      <SafeAreaProvider>
-        <View style={appStyles.containerAppInit}>
-          {error ? (
-            <Text style={appStyles.errorTextAppInit}>Error: {error}</Text>
-          ) : (
-            <>
-              <ActivityIndicator size="large" color={theme.colors.primary} />
-              <Text style={appStyles.loadingTextAppInit}>Initializing...</Text>
-            </>
-          )}
-        </View>
-      </SafeAreaProvider>
+      <GestureHandlerRootView style={appStyles.containerAppInit}>
+        <SafeAreaProvider>
+          <View style={appStyles.containerAppInit}>
+            {error ? (
+              <Text style={appStyles.errorTextAppInit}>Error: {error}</Text>
+            ) : (
+              <>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <Text style={appStyles.loadingTextAppInit}>
+                  Initializing...
+                </Text>
+              </>
+            )}
+          </View>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
     );
   }
 
   return (
-    <SafeAreaProvider>
-      <NavigationContainer>
-        <AppNavigator
-          isAuthenticated={isAuthenticated}
-          onLoginSuccess={handleLoginSuccess}
-          onSignOut={handleSignOut}
-        />
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={appStyles.containerAppInit}>
+      <SafeAreaProvider>
+        <NavigationContainer>
+          <AppNavigator
+            isAuthenticated={isAuthenticated}
+            onLoginSuccess={handleLoginSuccess}
+            onSignOut={handleSignOut}
+          />
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 

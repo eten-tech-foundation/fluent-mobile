@@ -54,7 +54,7 @@
 - [ ] ✅ `npm run lint`
 - [ ] ✅ `npm run format:check`
 - [ ] ✅ `npm run typecheck`
-- [ ] ✅ `FLUENT_USER_EMAIL=test@example.com npm test -- --ci`
+- [ ] ✅ `npm test -- --ci`
 - [ ] ✅ Self-reviewed the code changes
 
 ---

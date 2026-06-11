@@ -21,6 +21,10 @@ Keep `.cursor/rules/*.mdc` in sync with onboarding — short pointers only; avoi
 
 [README.md](../../README.md) — human-focused setup (Android emulator, env vars). Link to `docs/AGENT_ONBOARDING.md` for agents; do not duplicate full architecture there.
 
+## QA preview testing
+
+[docs/guides/qa-preview-testing.md](../../docs/guides/qa-preview-testing.md) — non-technical steps for PR previews (Fluent dev client, not Expo Go). Update when preview workflow comments or install flow change.
+
 ## PR template
 
 [.cursor/templates/pr-template.md](../templates/pr-template.md) — update if required PR sections or verification steps change.

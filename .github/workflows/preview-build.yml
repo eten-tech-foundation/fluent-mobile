@@ -1,0 +1,433 @@
+name: Preview Build
+
+on:
+  pull_request:
+    types: [labeled]
+
+concurrency:
+  group: preview-build-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  EAS_PROJECT_ID: 'b0919574-f268-4768-b3bd-7cfa5172bbab'
+  EAS_CHANNEL: 'preview'
+  APP_SLUG: 'fluent-mobile'
+  EXPO_ACCOUNT: 'teamgloo'
+  EXPO_PUBLIC_API_BASE_URL: https://dev.api.fluent.bible
+  QA_GUIDE_URL: https://github.com/${{ github.event.pull_request.head.repo.full_name || github.repository }}/blob/${{ github.event.pull_request.head.sha }}/docs/guides/qa-preview-testing.md
+
+jobs:
+  preview-build:
+    name: Create PR Preview
+    runs-on: ubuntu-latest
+    if: contains(github.event.label.name, 'preview-build')
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: 📋 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: 🏗️ Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: 🏗️ Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔍 Detect change type
+        id: change-detection
+        run: |
+          set -euo pipefail
+          BASE_REF="origin/${GITHUB_BASE_REF}"
+          CHANGED_FILES=$(git diff --name-only "${BASE_REF}"...HEAD)
+
+          # Config/plugins that require a new Android binary for preview
+          HARD_NATIVE_PATTERNS="(^plugins/|eas\.json)"
+          SOFT_DEP_PATTERNS="(package\.json|package-lock\.json)"
+          NATIVE_DEP_PATTERN='^\+.*"(react-native-|@react-native-|expo-build-properties|expo-dev-client|expo-updates|@op-engineering/)'
+
+          APP_CONFIG_CHANGED=0
+          if echo "$CHANGED_FILES" | grep -q "app\.config\.\(js\|ts\)"; then
+            APP_CONFIG_DIFF=$(git diff "${BASE_REF}"...HEAD app.config.js app.config.ts 2>/dev/null || echo "")
+
+            if echo "$APP_CONFIG_DIFF" | grep -vE "^[+-]const APP_VERSION_FALLBACK" | grep -q "^[+-][^+-]"; then
+              APP_CONFIG_CHANGED=1
+              echo "📝 app.config has native changes (not just version)"
+            else
+              echo "📝 app.config has version-only changes (safe for OTA)"
+            fi
+          fi
+
+          HARD_NATIVE_FILES=$(echo "$CHANGED_FILES" | { grep -E "$HARD_NATIVE_PATTERNS" || true; } | wc -l | tr -d ' ')
+          SOFT_DEP_FILES=$(echo "$CHANGED_FILES" | { grep -E "$SOFT_DEP_PATTERNS" || true; } | wc -l | tr -d ' ')
+
+          CHANGE_TYPE="js-only"
+          if [ "$HARD_NATIVE_FILES" -gt 0 ] || [ "$APP_CONFIG_CHANGED" -eq 1 ]; then
+            CHANGE_TYPE="native"
+          elif [ "$SOFT_DEP_FILES" -gt 0 ]; then
+            PKG_DIFF=$(git diff "${BASE_REF}"...HEAD package.json 2>/dev/null || echo "")
+            if echo "$PKG_DIFF" | grep -qE "$NATIVE_DEP_PATTERN"; then
+              CHANGE_TYPE="native"
+              echo "🔧 Native dependency changes in package.json - Android build required"
+            fi
+          fi
+
+          echo "change_type=${CHANGE_TYPE}" >> $GITHUB_OUTPUT
+          if [ "$CHANGE_TYPE" = "native" ]; then
+            echo "🔧 Native changes detected - Android build required"
+            echo "$CHANGED_FILES" | { grep -E "$HARD_NATIVE_PATTERNS" || true; }
+            if [ "$APP_CONFIG_CHANGED" -eq 1 ]; then
+              echo "  - app.config.ts (native changes)"
+            fi
+          else
+            echo "📱 JS-only changes - OTA update possible"
+            if [ "$SOFT_DEP_FILES" -gt 0 ]; then
+              echo "ℹ️ package.json / package-lock.json changed — using OTA preview"
+              echo "$CHANGED_FILES" | { grep -E "$SOFT_DEP_PATTERNS" || true; }
+            fi
+          fi
+
+      - name: 📊 Resolve preview version
+        id: preview-version
+        run: |
+          set -euo pipefail
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$LATEST_TAG" ]; then
+            VERSION_SOURCE="git tag ${LATEST_TAG}"
+            BASE_VERSION=${LATEST_TAG#v}
+            BASE_VERSION="${BASE_VERSION%%[-+]*}"
+          else
+            BASE_VERSION=$(grep -E "^const APP_VERSION_FALLBACK" app.config.ts | sed -E "s/.*'([^']+)'.*/\1/" || true)
+            if [ -n "$BASE_VERSION" ]; then
+              VERSION_SOURCE="app.config.ts"
+            else
+              BASE_VERSION=$(node -p "require('./package.json').version")
+              VERSION_SOURCE="package.json"
+            fi
+            echo "ℹ️ No git tags found — using ${VERSION_SOURCE} version: ${BASE_VERSION}"
+          fi
+
+          PREVIEW_ID="pr-${{ github.event.pull_request.number }}-${GITHUB_SHA:0:7}"
+
+          echo "VERSION_SOURCE=$VERSION_SOURCE" >> $GITHUB_OUTPUT
+          echo "BASE_VERSION=$BASE_VERSION" >> $GITHUB_OUTPUT
+          echo "PREVIEW_ID=$PREVIEW_ID" >> $GITHUB_OUTPUT
+          echo "✅ Preview base version: $BASE_VERSION (ID: $PREVIEW_ID, source: $VERSION_SOURCE)"
+
+      - name: 📥 Ensure QA install app exists (js-only)
+        if: steps.change-detection.outputs.change_type == 'js-only'
+        id: qa-install
+        env:
+          PROFILE: preview
+          MESSAGE: QA install app for runtime ${{ steps.preview-version.outputs.BASE_VERSION }}
+          BAKE_VERSION: ${{ steps.preview-version.outputs.BASE_VERSION }}
+          ALLOW_RUNTIME_MATCH: 'false'
+          WAIT_FOR_BUILD: 'true'
+          POLL_IN_PROGRESS: 'true'
+        run: bash .github/scripts/eas-resolve-android-build.sh
+
+      - name: 🚀 Create Preview OTA Update
+        if: steps.change-detection.outputs.change_type == 'js-only'
+        id: ota-update
+        env:
+          APP_VERSION: ${{ steps.preview-version.outputs.BASE_VERSION }}
+          EAS_UPDATE_CHANNEL: preview
+          PREVIEW_ID: ${{ steps.preview-version.outputs.PREVIEW_ID }}
+          BASE_VERSION: ${{ steps.preview-version.outputs.BASE_VERSION }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          UPDATE_MESSAGE="Preview ${BASE_VERSION} (PR #${PR_NUMBER}): ${PR_TITLE}"
+
+          echo "Creating preview update: $UPDATE_MESSAGE"
+
+          UPDATE_OUTPUT=$(eas update \
+            --branch preview \
+            --message "$UPDATE_MESSAGE" \
+            --json \
+            --non-interactive)
+
+          JSON_ARRAY=$(echo "$UPDATE_OUTPUT" | sed -n '/^\[/,/^\]/p')
+
+          if echo "$JSON_ARRAY" | jq empty 2>/dev/null; then
+            UPDATE_GROUP_ID=$(echo "$JSON_ARRAY" | jq -r '.[0].group')
+            ACTUAL_RUNTIME_VERSION=$(echo "$JSON_ARRAY" | jq -r '.[0].runtimeVersion // empty')
+            echo "✅ Successfully parsed JSON - Group ID: $UPDATE_GROUP_ID"
+          else
+            echo "❌ JSON parsing failed, using fallback method"
+            JSON_ARRAY=$(echo "$UPDATE_OUTPUT" | grep -A 50 '^\[' | grep -B 50 '^\]' | head -n -1)
+            UPDATE_GROUP_ID=$(echo "$JSON_ARRAY" | jq -r '.[0].group // empty')
+            ACTUAL_RUNTIME_VERSION=$(echo "$JSON_ARRAY" | jq -r '.[0].runtimeVersion // empty')
+          fi
+
+          BASE_VERSION="${{ steps.preview-version.outputs.BASE_VERSION }}"
+          RUNTIME_VERSION=${ACTUAL_RUNTIME_VERSION:-$BASE_VERSION}
+
+          echo "UPDATE_GROUP_ID=$UPDATE_GROUP_ID" >> $GITHUB_OUTPUT
+          echo "PREVIEW_ID=${{ steps.preview-version.outputs.PREVIEW_ID }}" >> $GITHUB_OUTPUT
+          echo "BASE_VERSION=$BASE_VERSION" >> $GITHUB_OUTPUT
+          echo "RUNTIME_VERSION=$RUNTIME_VERSION" >> $GITHUB_OUTPUT
+
+          echo "✅ Preview update completed (Group ID: $UPDATE_GROUP_ID)"
+          sleep 10
+
+      - name: 💬 Post Preview Comment
+        if: steps.change-detection.outputs.change_type == 'js-only'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const updateGroupId = ${{ toJson(steps.ota-update.outputs.UPDATE_GROUP_ID) }};
+            const previewId = ${{ toJson(steps.ota-update.outputs.PREVIEW_ID) }};
+            const baseVersion = ${{ toJson(steps.ota-update.outputs.BASE_VERSION) }};
+            const runtimeVersion = ${{ toJson(steps.ota-update.outputs.RUNTIME_VERSION) }};
+            const projectId = ${{ toJson(env.EAS_PROJECT_ID) }};
+
+            const qaGuideUrl = ${{ toJson(env.QA_GUIDE_URL) }};
+            const installUrl = ${{ toJson(steps.qa-install.outputs.install_url) }};
+            const installSource = ${{ toJson(steps.qa-install.outputs.install_source) }};
+            const fingerprint = ${{ toJson(steps.qa-install.outputs.fingerprint_hash) }};
+            let installNote = '_Already have Fluent on your phone? Skip to Step 2._';
+            if (installSource === 'created') {
+              installNote =
+                '_We built the Fluent install app for you (first time for this version). Step 1 used that build._';
+            } else if (installSource === 'existing' || installSource === 'waited') {
+              installNote =
+                '_Reused an existing Fluent install app from EAS (no new native build needed)._';
+            } else if (!installSource) {
+              installNote =
+                '_Could not auto-resolve an install build — use the link below or ask your team for help._';
+            }
+
+            const body = [
+              '## 📲 Test this PR on your Android phone',
+              '',
+              '**Not Expo Go.** Install the **Fluent preview app** from the link below (internal APK — not a dev/Metro build).',
+              '',
+              `**Preview ID:** \`${previewId}\` · **Runtime version:** \`${runtimeVersion}\``,
+              '',
+              `**Need help?** [Step-by-step guide for non-technical testers](${qaGuideUrl})`,
+              '',
+              '---',
+              '',
+              '### Step 1 — Install Fluent (first time only)',
+              '',
+              installNote,
+              '',
+              'On your **Android phone**, tap:',
+              '',
+              `### 👉 [Install Fluent](${installUrl})`,
+              '',
+              '1. Sign in to [expo.dev](https://expo.dev) if asked (your team lead can invite you).',
+              '2. Tap **Download** or **Install** when the build page opens.',
+              '3. If Android blocks it: **Settings → Install unknown apps** → allow your browser.',
+              '4. Open **Fluent** from your home screen — it should open the app normally (not a Metro/dev launcher).',
+              '',
+              '---',
+              '',
+              '### Step 2 — Open this PR preview',
+              '',
+              'After Step 1 (or if Fluent is already installed), open **Fluent** from your home screen.',
+              '',
+              'The preview app downloads this PR\'s update from the `preview` channel over Wi‑Fi (may take a minute).',
+              '',
+              '### After the preview loads',
+              '',
+              '- Sign in and test this PR.',
+              '- If nothing changed, fully close Fluent (swipe it away) and reopen it.',
+              '',
+              '### Details',
+              '',
+              '| | |',
+              '|---|---|',
+              `| Preview ID | \`${previewId}\` |`,
+              `| Base version | \`${baseVersion}\` |`,
+              '| Channel | `preview` |',
+              `| Runtime version | \`${runtimeVersion}\` |`,
+              `| Install build | \`${installSource || 'unknown'}\` |`,
+              ...(fingerprint
+                ? [`| Fingerprint | \`${fingerprint.slice(0, 12)}…\` |`]
+                : []),
+              `| Commit | \`${{ github.event.pull_request.head.sha }}\` |`,
+              '',
+              '### Links',
+              '',
+              `- [Expo update dashboard](https://expo.dev/projects/${projectId}/updates/${updateGroupId})`,
+              `- [PR #${{ github.event.pull_request.number }}](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }})`,
+              '',
+              '---',
+              '*OTA preview only — not a Play Store release. If this PR changed native code (`app.config.ts`, plugins, or native dependencies), use the **Android preview APK** comment instead.*',
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComments = comments.filter(comment =>
+              comment.user.login === 'github-actions[bot]' &&
+              (comment.body.includes('📲 Test this PR on your Android phone') ||
+               comment.body.includes('📲 Preview update ready') ||
+               comment.body.includes('📲 Preview Build Ready!'))
+            );
+
+            for (const comment of botComments) {
+              try {
+                await github.rest.issues.deleteComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: comment.id,
+                });
+              } catch (error) {
+                console.log(`⚠️ Could not delete comment ${comment.id}: ${error.message}`);
+              }
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
+
+      - name: 🚀 Resolve or start Android preview build
+        if: steps.change-detection.outputs.change_type == 'native'
+        id: native-builds
+        env:
+          PROFILE: preview
+          MESSAGE: Preview ${{ steps.preview-version.outputs.BASE_VERSION }} - PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}
+          BAKE_VERSION: ${{ steps.preview-version.outputs.BASE_VERSION }}
+          ALLOW_RUNTIME_MATCH: 'false'
+          WAIT_FOR_BUILD: 'true'
+          POLL_IN_PROGRESS: 'true'
+        run: bash .github/scripts/eas-resolve-android-build.sh
+
+      - name: 💬 Post Native Preview Comment
+        if: steps.change-detection.outputs.change_type == 'native'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const androidId = ${{ toJson(steps.native-builds.outputs.build_id) }};
+            const installSource = ${{ toJson(steps.native-builds.outputs.install_source) }};
+            const previewId = ${{ toJson(steps.preview-version.outputs.PREVIEW_ID) }};
+            const baseVersion = ${{ toJson(steps.preview-version.outputs.BASE_VERSION) }};
+            const fingerprint = ${{ toJson(steps.native-builds.outputs.fingerprint_hash) }};
+
+            const qaGuideUrl = ${{ toJson(env.QA_GUIDE_URL) }};
+            const installUrl = `https://expo.dev/builds/${androidId}`;
+            const installQrUrl = `https://quickchart.io/qr?size=256&margin=2&text=${encodeURIComponent(installUrl)}`;
+
+            let buildNote =
+              '_A new Fluent preview app was built for this PR. Install it once, then test._';
+            if (installSource === 'existing') {
+              buildNote =
+                '_Reused an existing Fluent preview app from EAS (same native fingerprint — no new compile)._';
+            } else if (installSource === 'waited') {
+              buildNote =
+                '_Waited for an in-progress EAS build with the same fingerprint to finish._';
+            }
+
+            const body = [
+              '## ✅ Fluent preview app ready (Android)',
+              '',
+              '**Not Expo Go.** Install the **Fluent preview app** from the link below (internal APK — not a dev/Metro build).',
+              '',
+              `**Preview ID:** \`${previewId}\` · **App version:** \`${baseVersion}\``,
+              '',
+              'This PR changed **native** code (`app.config.ts`, plugins, or native dependencies), so you need this **preview APK** — not an OTA-only update.',
+              '',
+              buildNote,
+              '',
+              `**Need help?** [Step-by-step guide for non-technical testers](${qaGuideUrl})`,
+              '',
+              '---',
+              '',
+              '### Install Fluent on your Android phone',
+              '',
+              'On your **Android phone**, tap:',
+              '',
+              `### 👉 [Install Fluent](${installUrl})`,
+              '',
+              '1. Sign in to [expo.dev](https://expo.dev) if asked (your team lead can invite you).',
+              '2. Tap **Download** or **Install** when the build page opens.',
+              '3. If Android blocks it: **Settings → Install unknown apps** → allow your browser.',
+              '4. Open **Fluent** from your home screen — it should open the app normally (not a Metro/dev launcher).',
+              '5. Sign in and test this PR. Future **JS-only** PR previews download over the air without reinstalling until the app version changes again.',
+              '',
+              '**Or scan this QR code** (opens the same install page):',
+              '',
+              `<a href="${installUrl}">`,
+              `<img src="${installQrUrl}" width="256" height="256" alt="QR code to install the Fluent preview app" style="border: 1px solid #ccc; border-radius: 8px; max-width: 100%; height: auto;" />`,
+              '</a>',
+              '',
+              '### Details',
+              '',
+              '| | |',
+              '|---|---|',
+              `| Preview ID | \`${previewId}\` |`,
+              `| App version | \`${baseVersion}\` |`,
+              `| Build | \`${androidId}\` |`,
+              `| Install source | \`${installSource}\` |`,
+              ...(fingerprint
+                ? [`| Fingerprint | \`${fingerprint.slice(0, 12)}…\` |`]
+                : []),
+              `| Commit | \`${{ github.event.pull_request.head.sha }}\` |`,
+              '',
+              '### Links',
+              '',
+              `- [EAS build page](${installUrl})`,
+              `- [PR #${{ github.event.pull_request.number }}](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }})`,
+              '',
+              '---',
+              `*Native preview APK (\`${baseVersion}\`, ID: \`${previewId}\`). Android only.*`,
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComments = comments.filter(comment =>
+              comment.user.login === 'github-actions[bot]' &&
+              (comment.body.includes('📲 Test this PR on your Android phone') ||
+               comment.body.includes('📲 Preview update ready') ||
+               comment.body.includes('📲 Preview Build Ready!') ||
+               comment.body.includes('🔧 Fluent preview app building') ||
+               comment.body.includes('✅ Fluent preview app ready') ||
+               comment.body.includes('🔧 Android Preview Build Started!') ||
+               comment.body.includes('Android Preview Build Started!'))
+            );
+
+            for (const comment of botComments) {
+              try {
+                await github.rest.issues.deleteComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: comment.id,
+                });
+              } catch (error) {
+                console.log(`⚠️ Could not delete comment ${comment.id}: ${error.message}`);
+              }
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
