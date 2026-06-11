@@ -29,15 +29,15 @@ jobs:
 
       - name: 🔧 Bump app.config.ts to match tag
         run: |
-          CURRENT=$(grep -E "^  version:" app.config.ts | sed -E "s/.*'([^']+)'.*/\1/")
+          CURRENT=$(grep -E "^const APP_VERSION_FALLBACK" app.config.ts | sed -E "s/.*'([^']+)'.*/\1/")
           echo "app.config.ts version before: $CURRENT"
           if [ "$CURRENT" = "$VERSION" ]; then
             echo "SKIP_BUMP=true" >> "$GITHUB_ENV"
             echo "app.config.ts already at $VERSION"
             exit 0
           fi
-          sed -i "s/^  version: '[^']*'/  version: '$VERSION'/" app.config.ts
-          echo "app.config.ts version after: $(grep -E "^  version:" app.config.ts | sed -E "s/.*'([^']+)'.*/\1/")"
+          sed -i "s/^const APP_VERSION_FALLBACK = '[^']*'/const APP_VERSION_FALLBACK = '$VERSION'/" app.config.ts
+          echo "app.config.ts version after: $(grep -E "^const APP_VERSION_FALLBACK" app.config.ts | sed -E "s/.*'([^']+)'.*/\1/")"
 
       - name: 💾 Commit version bump and move tag
         if: env.SKIP_BUMP != 'true'

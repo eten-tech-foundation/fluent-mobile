@@ -1,7 +1,10 @@
 import type { ExpoConfig } from 'expo/config';
 
 const EAS_PROJECT_ID = 'b0919574-f268-4768-b3bd-7cfa5172bbab';
-const appVersion = process.env.APP_VERSION ?? '1.0.0';
+
+// Bumped by eas-build.yml on release tags; override via APP_VERSION in CI/EAS env
+const APP_VERSION_FALLBACK = '1.0.0';
+const appVersion = process.env.APP_VERSION ?? APP_VERSION_FALLBACK;
 const updateChannel = process.env.EAS_UPDATE_CHANNEL;
 
 const config: ExpoConfig = {

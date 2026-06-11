@@ -61,7 +61,7 @@ jobs:
           if echo "$CHANGED_FILES" | grep -q "app\.config\.\(js\|ts\)"; then
             APP_CONFIG_DIFF=$(git diff "${BASE_REF}"...HEAD app.config.js app.config.ts 2>/dev/null || echo "")
 
-            if echo "$APP_CONFIG_DIFF" | grep -vE "^[+-]  version:" | grep -q "^[+-][^+-]"; then
+            if echo "$APP_CONFIG_DIFF" | grep -vE "^[+-]const APP_VERSION_FALLBACK" | grep -q "^[+-][^+-]"; then
               APP_CONFIG_CHANGED=1
               echo "📝 app.config has native changes (not just version)"
             else
@@ -97,7 +97,7 @@ jobs:
             VERSION_SOURCE="git tag ${LATEST_TAG}"
             BASE_VERSION=${LATEST_TAG#v}
           else
-            BASE_VERSION=$(grep -E "^  version:" app.config.ts | sed -E "s/.*'([^']+)'.*/\1/" || true)
+            BASE_VERSION=$(grep -E "^const APP_VERSION_FALLBACK" app.config.ts | sed -E "s/.*'([^']+)'.*/\1/" || true)
             if [ -n "$BASE_VERSION" ]; then
               VERSION_SOURCE="app.config.ts"
             else
