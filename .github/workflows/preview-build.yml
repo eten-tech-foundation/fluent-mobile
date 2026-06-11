@@ -135,7 +135,6 @@ jobs:
           PROFILE: preview
           MESSAGE: QA install app for runtime ${{ steps.preview-version.outputs.BASE_VERSION }}
           BAKE_VERSION: ${{ steps.preview-version.outputs.BASE_VERSION }}
-          RUNTIME_VERSION: ${{ steps.preview-version.outputs.BASE_VERSION }}
           ALLOW_RUNTIME_MATCH: 'false'
           WAIT_FOR_BUILD: 'true'
           POLL_IN_PROGRESS: 'true'
@@ -305,33 +304,13 @@ jobs:
               body: body
             });
 
-      - name: 📊 Compute native build version
-        if: steps.change-detection.outputs.change_type == 'native'
-        id: base-version
-        run: |
-          set -euo pipefail
-          CURRENT_VERSION="${{ steps.preview-version.outputs.BASE_VERSION }}"
-          CURRENT_VERSION="${CURRENT_VERSION%%[-+]*}"
-
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
-          MAJOR=${MAJOR:-0}
-          MINOR=${MINOR:-0}
-          PATCH=${PATCH:-0}
-          NEXT_PATCH=$((PATCH + 1))
-          BUILD_VERSION="$MAJOR.$MINOR.$NEXT_PATCH"
-
-          echo "BASE_VERSION=$BUILD_VERSION" >> $GITHUB_OUTPUT
-          echo "PREVIEW_ID=${{ steps.preview-version.outputs.PREVIEW_ID }}" >> $GITHUB_OUTPUT
-          echo "✅ Android preview build version: $BUILD_VERSION (from base $CURRENT_VERSION)"
-          echo "   Preview ID: ${{ steps.preview-version.outputs.PREVIEW_ID }}"
-
       - name: 🚀 Resolve or start Android preview build
         if: steps.change-detection.outputs.change_type == 'native'
         id: native-builds
         env:
           PROFILE: preview
-          MESSAGE: Preview ${{ steps.base-version.outputs.BASE_VERSION }} - PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}
-          BAKE_VERSION: ${{ steps.base-version.outputs.BASE_VERSION }}
+          MESSAGE: Preview ${{ steps.preview-version.outputs.BASE_VERSION }} - PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}
+          BAKE_VERSION: ${{ steps.preview-version.outputs.BASE_VERSION }}
           ALLOW_RUNTIME_MATCH: 'false'
           WAIT_FOR_BUILD: 'true'
           POLL_IN_PROGRESS: 'true'
@@ -344,8 +323,8 @@ jobs:
           script: |
             const androidId = "${{ steps.native-builds.outputs.build_id }}";
             const installSource = "${{ steps.native-builds.outputs.install_source }}";
-            const previewId = "${{ steps.base-version.outputs.PREVIEW_ID }}";
-            const baseVersion = "${{ steps.base-version.outputs.BASE_VERSION }}";
+            const previewId = "${{ steps.preview-version.outputs.PREVIEW_ID }}";
+            const baseVersion = "${{ steps.preview-version.outputs.BASE_VERSION }}";
             const fingerprint = "${{ steps.native-builds.outputs.fingerprint_hash }}";
 
             const qaGuideUrl = "${{ env.QA_GUIDE_URL }}";

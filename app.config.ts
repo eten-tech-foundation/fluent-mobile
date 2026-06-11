@@ -26,7 +26,9 @@ const config: ExpoConfig = {
   updates: {
     url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
   },
-  runtimeVersion: appVersion,
+  runtimeVersion: {
+    policy: 'fingerprint',
+  },
   android: {
     package: 'com.eten.fluent',
     versionCode: 1,

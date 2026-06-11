@@ -1,0 +1,20 @@
+# CI, docs, and editor config — no effect on native binary
+.github/**/*
+.cursor/**/*
+docs/**/*
+**/*.md
+.env.example
+
+# Tests (not bundled into native)
+__tests__/**/*
+**/*.test.ts
+**/*.test.tsx
+jest.config.cjs
+jest.env.cjs
+
+# EAS workflow metadata (eas.json at repo root is still hashed)
+.eas/**/*
+
+# Generated native projects (CNG; not committed; regenerated on EAS)
+android/**/*
+ios/**/*
