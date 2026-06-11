@@ -1,27 +1,29 @@
 # Agent onboarding — Fluent Mobile
 
-Quick map for Cursor agents and new contributors. Verified against this repo on branch `mrace/chore/add-cursorai-rules`.
+Quick map for Cursor agents and new contributors. Verified against Expo SDK 56 + CNG (Android-only).
 
 ## What this project is
 
-**Fluent Mobile** is an offline-first React Native companion app for Bible translation recording workflows. On launch it initializes a local SQLite database, syncs data from the Fluent API, then lets users browse **projects → chapters → verses**. Recording UI exists as local state stubs; persistence to the `recordings` table is not wired yet.
+**Fluent Mobile** is an offline-first React Native companion app for Bible translation recording workflows. **Android-only permanently** — no iOS app. On launch it initializes a local SQLite database, syncs data from the Fluent API, then lets users browse **projects → chapters → verses**. Recording UI exists as local state stubs; persistence to the `recordings` table is not wired yet.
 
 ## Tech stack
 
 | Area | Choice |
 |------|--------|
-| Framework | React Native `0.84.1`, React `19.2.3` |
-| Language | TypeScript `5.8` |
+| Framework | Expo SDK **56**, React Native **0.85**, React **19.2.3** |
+| Native | **CNG, Android-only** — `android/` generated via `npm run prebuild` (`--platform android`; not committed) |
+| Language | TypeScript ~6.0 |
 | Package manager | **npm** (`package-lock.json`) |
 | Node | `>= 24.14.0` (README: Node 24) |
 | Local DB | `@op-engineering/op-sqlite` |
 | Navigation | `@react-navigation/stack` |
 | Server state (installed) | `@tanstack/react-query` (minimal use today) |
-| Env | `react-native-dotenv` → `@env` |
+| Env | `EXPO_PUBLIC_API_BASE_URL` in `.env` (Expo public env) |
+| EAS | Project `b0919574-f268-4768-b3bd-7cfa5172bbab`, profiles in `eas.json` |
 | Lint | ESLint 9 flat config |
 | Format | Prettier 2.8 |
-| Test | Jest 29 + `@testing-library/react-native` |
-| CI | GitHub Actions: lint, test, Android debug build |
+| Test | Jest 29 + `jest-expo` + `@testing-library/react-native` |
+| CI | GitHub Actions: lint, test, prebuild + Android debug build; tag release via EAS |
 
 ## Repository layout
 
@@ -37,8 +39,12 @@ Quick map for Cursor agents and new contributors. Verified against this repo on 
 | [`src/types/`](../src/types/) | API, DB, navigation, env types |
 | [`src/components/ui/`](../src/components/ui/) | Shared UI (`SyncButton`) |
 | [`src/utils/logger.ts`](../src/utils/logger.ts) | Tagged logging |
-| [`android/`](../android/) | Native Android project |
-| [`.github/workflows/`](../.github/workflows/) | CI |
+| [`app.config.ts`](../app.config.ts) | Expo config, EAS project ID, config plugins |
+| [`eas.json`](../eas.json) | EAS build/submit profiles (Android only) |
+| [`.eas/workflows/`](../.eas/workflows/) | EAS release workflows (tag-triggered production builds) |
+| [`plugins/`](../plugins/) | Custom config plugins (e.g. RNScreens fragment factory) |
+| [`assets/`](../assets/) | App icon, adaptive icon, bootsplash source assets |
+| [`.github/workflows/`](../.github/workflows/) | CI + tag version sync (`eas-build.yml`) |
 | [`.github/dependabot.yml`](../.github/dependabot.yml) | Weekly dependency PRs (npm + GitHub Actions) |
 | [`.cursor/rules/`](../.cursor/rules/) | Cursor agent rules |
 | [`docs/guides/dependabot-process.md`](guides/dependabot-process.md) | Safe Dependabot merge process |
@@ -47,9 +53,10 @@ Quick map for Cursor agents and new contributors. Verified against this repo on 
 ## Setup
 
 1. Node 24: `nvm use 24` (or match `engines` in `package.json`).
-2. Copy env: `cp .env.example .env` — set `API_BASE_URL`, `FLUENT_USER_EMAIL`.
+2. Copy env: `cp .env.example .env` — set `EXPO_PUBLIC_API_BASE_URL`.
 3. `npm install`
-4. Android: Metro + app (two terminals):
+4. Generate native project (first time or after config plugin changes): `npm run prebuild` (Android-only)
+5. Android dev client (two terminals):
 
 ```bash
 npm start
@@ -57,6 +64,8 @@ npm run android
 ```
 
 Emulator API host: `10.0.2.2` in `.env.example` maps to host `localhost`.
+
+**Expo MCP:** Authenticate before SDK/EAS work — see [`.cursor/rules/expo-mcp.mdc`](../.cursor/rules/expo-mcp.mdc).
 
 ## Commands (verified)
 
@@ -68,10 +77,34 @@ Run from repo root after `npm install`:
 | `npm run format:check` | Prettier on `src/**/*.{ts,tsx}` |
 | `npm run format` | Prettier write (broader glob than `format:check`) |
 | `npm run typecheck` | TypeScript check (`tsc --noEmit`) |
-| `FLUENT_USER_EMAIL=test@example.com npm test -- --ci` | Jest (3 suites, 7 tests) |
-| `npm run android` | Run on Android device/emulator |
+| `npm test -- --ci` | Jest (18 suites) |
+| `npm run prebuild` | Regenerate `android/` from `app.config.ts` (`--platform android`) |
+| `npm run android` | Build + run dev client on Android |
+
+**Bootsplash assets:** committed under `assets/bootsplash/`. Regenerate with `--platforms=android` only (see README Step 6).
+
+**Prebuild failures:** if `MainApplication does not exist` → `rm -rf android` then `npm run prebuild`.
 
 **Before claiming PR-ready:** format → lint → typecheck → test (see [`.cursor/rules/commands.mdc`](../.cursor/rules/commands.mdc)).
+
+## Production release (Android)
+
+Tag-driven releases — no iOS, no OTA channel in this app.
+
+1. Merge release changes to `main`.
+2. Tag and push: `git tag v1.0.1 && git push origin v1.0.1`
+3. **GitHub Actions** (`.github/workflows/eas-build.yml`) sets `app.config.ts` `version` to match the tag, commits `[skip ci]`, and moves the tag.
+4. **EAS Workflow** (`.eas/workflows/create-production-builds.yml`) builds Android `production` AAB and submits to Play **internal** track.
+
+Setup and troubleshooting: [`.eas/README.md`](../.eas/README.md).
+
+## PR preview (Android QA)
+
+1. Ensure a version tag exists on `main` (e.g. `v1.0.0`).
+2. Add the **`preview-build`** label to the PR.
+3. `.github/workflows/preview-build.yml` publishes a preview OTA (JS-only) or starts an Android EAS `preview` build (native/config changes).
+
+Requires `EXPO_TOKEN` in GitHub repository secrets.
 
 ## Architecture and data flow
 
@@ -120,12 +153,12 @@ flowchart TD
 
 Sync order in `syncAllData`: user → master data (languages, books, bibles) → projects → chapter assignments → bible texts.
 
-Auth today: `x-user-email` header from `FLUENT_USER_EMAIL` / stored KV email — no OAuth in app yet.
+Auth: email/password via `FluentAPI.signIn`; authenticated API calls use `Authorization: Bearer <token>` from keychain. User email for sync comes from KV (`getUserEmailSync`).
 
 ## Coding conventions
 
 - **Logging:** `const log = logger.create('ComponentName')` — no raw `console` (ESLint); exception: `src/utils/logger.ts`, tests.
-- **Env:** `import { API_BASE_URL, FLUENT_USER_EMAIL } from '@env'` — never commit `.env`.
+- **Env:** `process.env.EXPO_PUBLIC_API_BASE_URL` — never commit `.env`.
 - **Types:** API shapes in `src/types/api/`, DB in `src/types/db/`, navigation in `src/types/navigation/`.
 - **Prettier:** single quotes, trailing commas, `arrowParens: 'avoid'`.
 - **Styles:** shared patterns in `src/app/appStyles.ts`; screen-local `StyleSheet` where needed.
@@ -160,12 +193,12 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 | `sync.ts` module-level `getDatabase()` | Dead import at line 24; calling `getDatabase()` before init throws |
 | `fluent-api.test.ts` | Live network dependency |
 | `format` vs `format:check` | Different glob scopes — CI only checks `src/**` |
-| Native folders | `android/` ignored by ESLint — validate builds locally or via CI |
+| Native folders | `android/` is gitignored CNG output — customize via `app.config.ts` + plugins. No iOS project. |
 
 ## Open questions / TODOs
 
 - [ ] Remove unused `const db = getDatabase()` in `sync.ts:24`
-- [x] Dependabot reviewers: `eten-tech-foundation/fluent-admin` (joelthe1, kaseywright) — not `teamgloo/mobile-team` (different org; copied in error from messaging-expo)
+- [x] Dependabot reviewers: `eten-tech-foundation/fluent-admin`
 - [ ] Mock or gate `fluent-api.test.ts` for offline CI
 - [ ] Align `format:check` glob with `format` or document intentionally narrow check
 - [ ] Wire `recordings` table to actual audio capture/upload
@@ -173,6 +206,6 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 ## Related docs
 
 - Human setup: [README.md](../README.md)
-- Cursor rules: [`.cursor/rules/`](../.cursor/rules/)
+- Cursor rules: [`.cursor/rules/`](../.cursor/rules/) — **Android-only:** [android-only.mdc](../.cursor/rules/android-only.mdc)
 - Dependabot: [guides/dependabot-process.md](guides/dependabot-process.md) — use with `.cursor/rules/dependabot-workflow.mdc`
 - PR template: [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md)

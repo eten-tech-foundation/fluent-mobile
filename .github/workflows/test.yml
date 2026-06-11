@@ -18,6 +18,4 @@ jobs:
         run: npm ci
 
       - name: Run tests
-        env:
-           FLUENT_USER_EMAIL: 'test@example.com'
         run: npm test -- --ci

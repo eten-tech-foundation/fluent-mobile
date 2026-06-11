@@ -5,17 +5,20 @@ alwaysApply: true
 
 # Fluent Mobile — project overview
 
-Offline-first **React Native 0.84** companion for Bible translation recording. **Android-only** for now. Syncs Fluent API data into local SQLite (`op-sqlite`); UI reads from DB after sync.
+Offline-first **Expo SDK 56** (React Native **0.85**, React **19.2.3**) companion for Bible translation recording. **Android-only permanently** — no iOS app (see [android-only.mdc](./android-only.mdc)). Uses **CNG** — native `android/` is generated via `expo prebuild --platform android`, not committed. Syncs Fluent API data into local SQLite (`op-sqlite`); UI reads from DB after sync.
 
 ## Key paths
 
 - Entry: `App.tsx` → `initializeDatabase()` → `syncAllData()` → `AppNavigator`
+- App config: `app.config.ts` (EAS project ID, plugins, package id)
 - Screens: `src/app/tabs/` (`ProjectList`, `ViewProject`, `ViewChapter`)
 - API: `src/services/api.ts` (`FluentAPI`)
 - Sync: `src/services/sync.ts`
 - DB writes: `src/db/repository.ts` | reads: `src/db/queries.ts`
 - Types: `src/types/{api,db,navigation}/`
-- Env: `@env` from `.env` (`API_BASE_URL`, `FLUENT_USER_EMAIL`)
+- Env: `EXPO_PUBLIC_API_BASE_URL` in `.env` (bundled at build time)
+- Native (generated): run `npm run prebuild` — regenerates `android/` only; do not commit `android/`
+- Releases: tag `v*` → `.github/workflows/eas-build.yml` + `.eas/workflows/create-production-builds.yml` (Android only)
 
 ## Package manager
 

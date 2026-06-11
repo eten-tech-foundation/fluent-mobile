@@ -32,7 +32,6 @@ local.properties
 *.hprof
 .cxx/
 *.keystore
-!debug.keystore
 .kotlin/
 
 # node.js
@@ -77,3 +76,23 @@ yarn-error.log
 # Environment files
 .env
 .env.*
+
+# Expo CNG — native projects are generated locally and in CI
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+/android
+/ios
+
+# Native signing / merge artifacts (EAS local builds)
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# TypeScript
+*.tsbuildinfo

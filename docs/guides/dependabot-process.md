@@ -46,7 +46,7 @@ npm ci
 npm run format:check
 npm run lint
 npm run typecheck
-FLUENT_USER_EMAIL=test@example.com npm test -- --ci
+npm test -- --ci
 ```
 
 Android build (mirrors `.github/workflows/build.yml`):
@@ -101,7 +101,7 @@ npm ci
 npm run format:check
 npm run lint
 npm run typecheck
-FLUENT_USER_EMAIL=test@example.com npm test -- --ci
+npm test -- --ci
 cd android && ./gradlew assembleDebug --no-daemon && cd ..
 ```
 

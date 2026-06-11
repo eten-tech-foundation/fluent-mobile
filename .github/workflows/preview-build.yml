@@ -1,0 +1,344 @@
+name: Preview Build
+
+on:
+  pull_request:
+    types: [labeled]
+
+concurrency:
+  group: preview-build-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+env:
+  EAS_PROJECT_ID: 'b0919574-f268-4768-b3bd-7cfa5172bbab'
+  EAS_CHANNEL: 'preview'
+
+jobs:
+  preview-build:
+    name: Create PR Preview
+    runs-on: ubuntu-latest
+    if: contains(github.event.label.name, 'preview-build')
+
+    steps:
+      - name: 📋 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: 🏗️ Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: 🏗️ Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔍 Detect change type
+        id: change-detection
+        run: |
+          set -euo pipefail
+          BASE_REF="origin/${{ github.base_ref }}"
+          CHANGED_FILES=$(git diff --name-only "${BASE_REF}"...HEAD)
+
+          # Config/plugins that require a new Android binary for preview
+          HARD_NATIVE_PATTERNS="(^plugins/|eas\.json)"
+          # package.json / lockfile alone are OTA-safe for PR preview
+          SOFT_DEP_PATTERNS="(package\.json|package-lock\.json)"
+
+          APP_CONFIG_CHANGED=0
+          if echo "$CHANGED_FILES" | grep -q "app\.config\.\(js\|ts\)"; then
+            APP_CONFIG_DIFF=$(git diff "${BASE_REF}"...HEAD app.config.js app.config.ts 2>/dev/null || echo "")
+
+            if echo "$APP_CONFIG_DIFF" | grep -vE "^[+-]  version:" | grep -q "^[+-][^+-]"; then
+              APP_CONFIG_CHANGED=1
+              echo "📝 app.config has native changes (not just version)"
+            else
+              echo "📝 app.config has version-only changes (safe for OTA)"
+            fi
+          fi
+
+          HARD_NATIVE_FILES=$(echo "$CHANGED_FILES" | { grep -E "$HARD_NATIVE_PATTERNS" || true; } | wc -l | tr -d ' ')
+          SOFT_DEP_FILES=$(echo "$CHANGED_FILES" | { grep -E "$SOFT_DEP_PATTERNS" || true; } | wc -l | tr -d ' ')
+
+          if [ "$HARD_NATIVE_FILES" -gt 0 ] || [ "$APP_CONFIG_CHANGED" -eq 1 ]; then
+            echo "change_type=native" >> $GITHUB_OUTPUT
+            echo "🔧 Native changes detected - Android build required"
+            echo "$CHANGED_FILES" | { grep -E "$HARD_NATIVE_PATTERNS" || true; }
+            if [ "$APP_CONFIG_CHANGED" -eq 1 ]; then
+              echo "  - app.config.ts (native changes)"
+            fi
+          else
+            echo "change_type=js-only" >> $GITHUB_OUTPUT
+            echo "📱 JS-only changes - OTA update possible"
+            if [ "$SOFT_DEP_FILES" -gt 0 ]; then
+              echo "ℹ️ package.json / package-lock.json changed — using OTA preview"
+              echo "$CHANGED_FILES" | { grep -E "$SOFT_DEP_PATTERNS" || true; }
+            fi
+          fi
+
+      - name: 📊 Generate Preview Identifier
+        if: steps.change-detection.outputs.change_type == 'js-only'
+        id: preview-identifier
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LATEST_TAG" ]; then
+            echo "❌ No git tags found. Create at least one version tag (e.g. v1.0.0)"
+            exit 1
+          fi
+          BASE_VERSION=${LATEST_TAG#v}
+          PREVIEW_ID="pr-${{ github.event.pull_request.number }}-${GITHUB_SHA:0:7}"
+
+          echo "PREVIEW_ID=$PREVIEW_ID" >> $GITHUB_OUTPUT
+          echo "BASE_VERSION=$BASE_VERSION" >> $GITHUB_OUTPUT
+          echo "✅ Preview OTA for version: $BASE_VERSION (ID: $PREVIEW_ID)"
+
+      - name: 🚀 Create Preview OTA Update
+        if: steps.change-detection.outputs.change_type == 'js-only'
+        id: ota-update
+        env:
+          APP_VERSION: ${{ steps.preview-identifier.outputs.BASE_VERSION }}
+          EAS_UPDATE_CHANNEL: preview
+          PREVIEW_ID: ${{ steps.preview-identifier.outputs.PREVIEW_ID }}
+          BASE_VERSION: ${{ steps.preview-identifier.outputs.BASE_VERSION }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          UPDATE_MESSAGE="Preview ${BASE_VERSION} (PR #${PR_NUMBER}): ${PR_TITLE}"
+
+          echo "Creating preview update: $UPDATE_MESSAGE"
+
+          UPDATE_OUTPUT=$(npx eas update \
+            --branch preview \
+            --message "$UPDATE_MESSAGE" \
+            --json \
+            --non-interactive)
+
+          JSON_ARRAY=$(echo "$UPDATE_OUTPUT" | sed -n '/^\[/,/^\]/p')
+
+          if echo "$JSON_ARRAY" | jq empty 2>/dev/null; then
+            UPDATE_GROUP_ID=$(echo "$JSON_ARRAY" | jq -r '.[0].group')
+            ACTUAL_RUNTIME_VERSION=$(echo "$JSON_ARRAY" | jq -r '.[0].runtimeVersion // empty')
+            echo "✅ Successfully parsed JSON - Group ID: $UPDATE_GROUP_ID"
+          else
+            echo "❌ JSON parsing failed, using fallback method"
+            JSON_ARRAY=$(echo "$UPDATE_OUTPUT" | grep -A 50 '^\[' | grep -B 50 '^\]' | head -n -1)
+            UPDATE_GROUP_ID=$(echo "$JSON_ARRAY" | jq -r '.[0].group // empty')
+            ACTUAL_RUNTIME_VERSION=$(echo "$JSON_ARRAY" | jq -r '.[0].runtimeVersion // empty')
+          fi
+
+          BASE_VERSION="${{ steps.preview-identifier.outputs.BASE_VERSION }}"
+          RUNTIME_VERSION=${ACTUAL_RUNTIME_VERSION:-$BASE_VERSION}
+          CACHE_BUSTER="${{ github.sha }}"
+          QR_IMG_URL="https://qr.expo.dev/eas-update?projectId=${EAS_PROJECT_ID}&runtimeVersion=${RUNTIME_VERSION}&channel=${EAS_CHANNEL}&v=${CACHE_BUSTER:0:8}"
+          DEEP_LINK_URL="https://u.expo.dev/update/${EAS_PROJECT_ID}?channel=${EAS_CHANNEL}&runtime-version=${RUNTIME_VERSION}"
+
+          echo "UPDATE_GROUP_ID=$UPDATE_GROUP_ID" >> $GITHUB_OUTPUT
+          echo "PREVIEW_ID=${{ steps.preview-identifier.outputs.PREVIEW_ID }}" >> $GITHUB_OUTPUT
+          echo "BASE_VERSION=$BASE_VERSION" >> $GITHUB_OUTPUT
+          echo "RUNTIME_VERSION=$RUNTIME_VERSION" >> $GITHUB_OUTPUT
+          echo "QR_IMG_URL=$QR_IMG_URL" >> $GITHUB_OUTPUT
+          echo "DEEP_LINK_URL=$DEEP_LINK_URL" >> $GITHUB_OUTPUT
+
+          echo "✅ Preview update completed (Group ID: $UPDATE_GROUP_ID)"
+          sleep 10
+
+      - name: 💬 Post Preview Comment
+        if: steps.change-detection.outputs.change_type == 'js-only'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const updateGroupId = "${{ steps.ota-update.outputs.UPDATE_GROUP_ID }}";
+            const previewId = "${{ steps.ota-update.outputs.PREVIEW_ID }}";
+            const baseVersion = "${{ steps.ota-update.outputs.BASE_VERSION }}";
+            const runtimeVersion = "${{ steps.ota-update.outputs.RUNTIME_VERSION }}";
+            const qrImgUrl = "${{ steps.ota-update.outputs.QR_IMG_URL }}";
+            const deepLinkUrl = "${{ steps.ota-update.outputs.DEEP_LINK_URL }}";
+            const projectId = "${{ env.EAS_PROJECT_ID }}";
+
+            const body = `## 📲 Preview Build Ready!
+
+            **Preview ID:** \`${previewId}\`
+            **Base Version:** \`${baseVersion}\`
+
+            Your changes have been deployed as a preview OTA update for QA testing.
+
+            ### 📲 Test this preview (Android)
+
+            **Method 1 (Recommended):** Open this link on your Android device with the Fluent dev client installed:
+            - [Open in Fluent dev client](${deepLinkUrl})
+
+            **Method 2:** Scan with the in-app QR scanner in the Fluent dev client:
+
+            <a href="https://expo.dev/projects/${projectId}/updates/${updateGroupId}">
+              <img src="${qrImgUrl}" width="256" height="256" alt="Scan with Fluent dev client" style="border: 1px solid #ccc; border-radius: 8px; max-width: 100%; height: auto;" />
+            </a>
+
+            ### 🔗 Links
+            - [Open Expo Update ↗](https://expo.dev/projects/${projectId}/updates/${updateGroupId})
+            - [PR #${{ github.event.pull_request.number }}](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }})
+
+            ### 📋 Update Details
+            - **Preview ID:** ${previewId}
+            - **Base Version:** ${baseVersion}
+            - **Channel:** preview
+            - **Runtime Version:** ${runtimeVersion}
+            - **Commit:** \`${{ github.event.pull_request.head.sha }}\`
+
+            ### ✅ Next Steps
+            - QA: Test this preview on Android
+            - After approval, release by pushing a version tag (see \`.eas/README.md\`)
+
+            ---
+            *Preview OTA (not a store release). Native changes require re-adding the \`preview-build\` label after merging config/plugin updates.*`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComments = comments.filter(comment =>
+              comment.user.login === 'github-actions[bot]' &&
+              comment.body.includes('📲 Preview Build Ready!')
+            );
+
+            for (const comment of botComments) {
+              try {
+                await github.rest.issues.deleteComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: comment.id,
+                });
+              } catch (error) {
+                console.log(`⚠️ Could not delete comment ${comment.id}: ${error.message}`);
+              }
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
+
+      - name: 📊 Get Base Version
+        if: steps.change-detection.outputs.change_type == 'native'
+        id: base-version
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LATEST_TAG" ]; then
+            echo "❌ No git tags found. Create at least one version tag (e.g. v1.0.0)"
+            exit 1
+          fi
+          CURRENT_VERSION=${LATEST_TAG#v}
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+          NEXT_PATCH=$((PATCH + 1))
+          BASE_VERSION="$MAJOR.$MINOR.$NEXT_PATCH"
+
+          PREVIEW_ID="pr-${{ github.event.pull_request.number }}-${GITHUB_SHA:0:7}"
+
+          echo "BASE_VERSION=$BASE_VERSION" >> $GITHUB_OUTPUT
+          echo "PREVIEW_ID=$PREVIEW_ID" >> $GITHUB_OUTPUT
+          echo "✅ Android preview build version: $BASE_VERSION (from tag $CURRENT_VERSION)"
+          echo "   Preview ID: $PREVIEW_ID"
+
+      - name: 🚀 Start Android Preview Build
+        if: steps.change-detection.outputs.change_type == 'native'
+        id: native-builds
+        env:
+          BUILD_MESSAGE: "Preview ${{ steps.base-version.outputs.BASE_VERSION }} - PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}"
+          PREVIEW_ID: ${{ steps.base-version.outputs.PREVIEW_ID }}
+          BASE_VERSION: ${{ steps.base-version.outputs.BASE_VERSION }}
+          APP_VERSION: ${{ steps.base-version.outputs.BASE_VERSION }}
+        run: |
+          echo "Starting Android preview build..."
+          echo "Version: $BASE_VERSION (Preview ID: $PREVIEW_ID)"
+
+          ANDROID_OUTPUT=$(npx eas build \
+            --platform android \
+            --profile preview \
+            --message "$BUILD_MESSAGE" \
+            --json \
+            --non-interactive)
+
+          ANDROID_BUILD_ID=$(echo "$ANDROID_OUTPUT" | jq -r '.[] | select(.platform=="android") | .id')
+          echo "ANDROID_BUILD_ID=$ANDROID_BUILD_ID" >> $GITHUB_OUTPUT
+          echo "Android build started: $ANDROID_BUILD_ID (version $BASE_VERSION)"
+
+      - name: 💬 Post Native Preview Comment
+        if: steps.change-detection.outputs.change_type == 'native'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const androidId = "${{ steps.native-builds.outputs.ANDROID_BUILD_ID }}";
+            const previewId = "${{ steps.base-version.outputs.PREVIEW_ID }}";
+            const baseVersion = "${{ steps.base-version.outputs.BASE_VERSION }}";
+
+            const body = `## 🔧 Android Preview Build Started!
+
+            **Preview ID:** \`${previewId}\`
+            **Build Version:** \`${baseVersion}\`
+
+            This PR contains native changes (config plugins, \`eas.json\`, or \`app.config.ts\`). An Android preview APK is building on EAS.
+
+            ### 📱 Build Status
+            - **Android:** [${androidId}](https://expo.dev/builds/${androidId}) 🟡 Building...
+
+            ### ⏱️ Expected Time
+            - Android: ~10–15 minutes
+
+            ### 📲 Once Complete
+            - Download the APK from the EAS build page
+            - Install on test devices (internal distribution)
+            - After QA approval, release by pushing a version tag (see \`.eas/README.md\`)
+
+            ### 🔗 Links
+            - [EAS Builds](https://expo.dev/builds/${androidId})
+            - [PR #${{ github.event.pull_request.number }}](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }})
+
+            ---
+            *Preview build (${baseVersion}, ID: ${previewId}). Android only — no iOS builds.*`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComments = comments.filter(comment =>
+              comment.user.login === 'github-actions[bot]' &&
+              (comment.body.includes('📲 Preview Build Ready!') ||
+               comment.body.includes('🔧 Android Preview Build Started!'))
+            );
+
+            for (const comment of botComments) {
+              try {
+                await github.rest.issues.deleteComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: comment.id,
+                });
+              } catch (error) {
+                console.log(`⚠️ Could not delete comment ${comment.id}: ${error.message}`);
+              }
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });

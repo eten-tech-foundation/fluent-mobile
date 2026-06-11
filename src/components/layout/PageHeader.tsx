@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   logoOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
   },

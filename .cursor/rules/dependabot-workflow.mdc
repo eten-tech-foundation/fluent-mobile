@@ -93,7 +93,7 @@ Categorize each PR:
    npm run format:check
    npm run lint
    npm run typecheck
-   FLUENT_USER_EMAIL=test@example.com npm test -- --ci
+   npm test -- --ci
    ```
 
    *Note: `fluent-api.test.ts` may hit the network — a failure there alone does not block a dep bump if it also fails on `main`.*
@@ -144,7 +144,7 @@ npm ci
 npm run format:check
 npm run lint
 npm run typecheck
-FLUENT_USER_EMAIL=test@example.com npm test -- --ci
+npm test -- --ci
 cd android && ./gradlew assembleDebug --no-daemon && cd ..
 ```
 

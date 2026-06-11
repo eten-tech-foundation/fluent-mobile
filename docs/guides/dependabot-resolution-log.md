@@ -37,7 +37,7 @@ Resolved: YYYY-MM-DD
 - [ ] `npm run format:check`
 - [ ] `npm run lint`
 - [ ] `npm run typecheck`
-- [ ] `FLUENT_USER_EMAIL=test@example.com npm test -- --ci`
+- [ ] `npm test -- --ci`
 - [ ] Android `assembleDebug` (CI or local)
 - [ ] Android smoke test (if risky)
 

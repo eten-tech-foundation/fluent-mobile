@@ -1,5 +1,6 @@
 import NetInfo from '@react-native-community/netinfo';
-import { API_BASE_URL } from '@env';
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? '';
 
 export const SERVER_REACHABILITY_TIMEOUT_MS = 5_000;
 const REACHABILITY_URL = `${API_BASE_URL}/languages`;

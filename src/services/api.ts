@@ -1,5 +1,6 @@
-import { API_BASE_URL } from '@env';
 import { checkServerReachable } from './connectivity';
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? '';
 
 let _activeToken: string | null = null;
 

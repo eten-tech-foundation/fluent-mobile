@@ -9,17 +9,17 @@ updates:
       time: '09:00'
     open-pull-requests-limit: 5
     ignore:
-      # Hold React Native to the 0.84.x line — upgrade in a dedicated ticket
+      # Hold React Native to the 0.85.x line — upgrade in a dedicated ticket
       - dependency-name: 'react-native'
         versions:
-          - '>=0.85.0'
+          - '>=0.86.0'
       - dependency-name: 'react-native-*'
         versions:
-          - '>=0.85.0'
+          - '>=0.86.0'
       - dependency-name: '@react-native/*'
         versions:
-          - '>=0.85.0'
-      # React must stay lock-step with RN 0.84 (pinned in package.json)
+          - '>=0.86.0'
+      # React must stay lock-step with RN 0.85 (pinned in package.json)
       - dependency-name: 'react'
         update-types:
           - 'version-update:semver-major'
@@ -71,6 +71,13 @@ updates:
       tanstack:
         patterns:
           - '@tanstack/*'
+      expo:
+        patterns:
+          - 'expo'
+          - 'expo-*'
+          - 'babel-preset-expo'
+          - 'jest-expo'
+          - 'eas-cli'
 
   # GitHub Actions
   - package-ecosystem: 'github-actions'

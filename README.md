@@ -1,5 +1,7 @@
 # Fluent Mobile
 
+**Android-only** — there is no iOS app. Native code is generated for Android via `expo prebuild --platform android`.
+
 **For AI agents / contributors:** see [docs/AGENT_ONBOARDING.md](docs/AGENT_ONBOARDING.md) for repo layout, architecture, commands, and Cursor rules.
 
 ## Prerequisites
@@ -150,9 +152,33 @@ Clone the repo and install:
 ```bash
 git clone https://github.com/eten-tech-foundation/fluent-mobile.git
 cd fluent-mobile
-git checkout MVP_PoC_mobile_companion_app
 npm install
 ```
+
+Generate the native Android project (required before first run):
+
+```bash
+npm run prebuild   # expo prebuild --clean --platform android
+```
+
+Bootsplash assets (`assets/bootsplash/`) are committed. Regenerate after changing the logo or splash background (Android only):
+
+```bash
+npx react-native-bootsplash generate assets/bootsplash/logo.png \
+  --platforms=android \
+  --background=#0B50D0 \
+  --logo-width=100 \
+  --assets-output=assets/bootsplash \
+  --project-type=expo
+```
+
+Copy environment variables:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set `EXPO_PUBLIC_API_BASE_URL` (use `http://10.0.2.2:9999` for the Android emulator).
 
 ---
 
@@ -166,7 +192,7 @@ Open two terminal windows from the project root.
 npm start
 ```
 
-**Terminal 2 — Run on Android:**
+**Terminal 2 — Run on Android (dev client):**
 
 ```bash
 npm run android
@@ -200,10 +226,26 @@ If that folder doesn't exist, open Android Studio → SDK Manager and note the S
 **Metro bundler port already in use**
 
 ```bash
-npx react-native start --reset-cache
+npx expo start --clear
+```
+
+**Native project missing or out of date**
+
+```bash
+npm run prebuild   # expo prebuild --clean --platform android
+```
+
+**`MainApplication does not exist` during prebuild**
+
+Usually a failed prebuild left a broken `android/` folder (e.g. only `.gradle`). Remove it and retry:
+
+```bash
+rm -rf android
+npm run prebuild
 ```
 
 **App installs but shows blank screen**
+
 Make sure Metro is running in the other terminal before running `npm run android`.
 
 ---
@@ -213,3 +255,16 @@ Make sure Metro is running in the other terminal before running `npm run android
 Once the app is running, open any file in your editor and save — the app will reload automatically via Fast Refresh.
 
 To force a full reload on Android: press **R** twice, or use **Ctrl + M** to open the Dev Menu.
+
+---
+
+## Production release (Android)
+
+Push a version tag to trigger an automated EAS production build and Play Store submit (internal track):
+
+```bash
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+One-time setup (Expo GitHub app, Play credentials, workflow permissions): see [`.eas/README.md`](.eas/README.md).
