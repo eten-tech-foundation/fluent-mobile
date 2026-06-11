@@ -4,6 +4,33 @@ import { checkServerReachable } from './connectivity';
 
 const log = logger.create('API');
 
+const API_ERROR_BODY_LOG_LIMIT = 200;
+
+function summarizeApiErrorResponse(
+  status: number,
+  body: string,
+): Record<string, number | string> {
+  const metadata: Record<string, number | string> = {
+    status,
+    contentLength: body.length,
+  };
+
+  try {
+    const parsed = JSON.parse(body) as Record<string, unknown>;
+    if (typeof parsed.message === 'string') {
+      metadata.message = parsed.message.slice(0, API_ERROR_BODY_LOG_LIMIT);
+    }
+    const errorCode = parsed.code ?? parsed.errorCode;
+    if (typeof errorCode === 'string') {
+      metadata.errorCode = errorCode;
+    }
+  } catch {
+    // Non-JSON bodies are omitted from logs to avoid leaking response content.
+  }
+
+  return metadata;
+}
+
 let _activeToken: string | null = null;
 
 export function setActiveToken(token: string | null): void {
@@ -53,7 +80,7 @@ async function request(endpoint: string, options?: RequestInit) {
   });
   if (!res.ok) {
     const errorBody = await res.text();
-    log.error('API error', { status: res.status, errorBody });
+    log.error('API error', summarizeApiErrorResponse(res.status, errorBody));
     throw new Error(`API failed: ${res.status}`);
   }
   return res.json();
