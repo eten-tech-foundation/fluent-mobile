@@ -6,6 +6,8 @@ import * as syncEvents from './syncEvents';
 import {
   getActiveUserId,
   getKnownUserIds,
+  getUserLastSyncedAt,
+  setUserLastSyncedAt,
   getLastAssignmentSyncAt,
   getLastSyncedAt,
   getUserIdSync,
@@ -47,6 +49,8 @@ jest.mock('./storage', () => ({
   getLastSyncedAt: jest.fn(),
   getLastAssignmentSyncAt: jest.fn(),
   getKnownUserIds: jest.fn(),
+  getUserLastSyncedAt: jest.fn(),
+  setUserLastSyncedAt: jest.fn(),
   setUserSync: jest.fn(),
   setSyncCount: jest.fn(),
   setLastSyncedAt: jest.fn(),
@@ -65,6 +69,7 @@ jest.mock('../db/repository', () => ({
   insertBibleTexts: jest.fn().mockResolvedValue(undefined),
   getChaptersToSync: jest.fn().mockResolvedValue(new Map()),
   getLocalProjectIds: jest.fn().mockResolvedValue([1]),
+  userHasLocalProjects: jest.fn().mockResolvedValue(true),
   insertUser: jest.fn().mockResolvedValue(undefined),
 }));
 
@@ -137,6 +142,18 @@ describe('syncAllData auth handling', () => {
       'sync_error_projects',
       'Invalid or revoked session token',
     );
+    expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
+  });
+
+  it('emits sync complete when incremental sync fails', async () => {
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'revoked-token' });
+    (FluentAPI.getUserProjects as jest.Mock).mockRejectedValue(
+      new AuthError('Invalid or revoked session token'),
+    );
+
+    await expect(syncAllData(true)).rejects.toThrow(AuthError);
+
+    expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
   });
 });
 
@@ -151,6 +168,9 @@ describe('syncAllUsers auth handling', () => {
     (getKnownUserIds as jest.Mock).mockReturnValue(['1', '2']);
     (getLastSyncedAt as jest.Mock).mockReturnValue('2026-06-01T00:00:00.000Z');
     (getLastAssignmentSyncAt as jest.Mock).mockReturnValue(
+      '2026-06-01T00:00:00.000Z',
+    );
+    (getUserLastSyncedAt as jest.Mock).mockReturnValue(
       '2026-06-01T00:00:00.000Z',
     );
     (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
@@ -171,6 +191,8 @@ describe('syncAllUsers auth handling', () => {
     expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(1);
     expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2);
     expect(setActiveToken).toHaveBeenLastCalledWith('user-2-token');
+    expect(setUserLastSyncedAt).toHaveBeenCalledWith('1', expect.any(String));
+    expect(setUserLastSyncedAt).toHaveBeenCalledWith('2', expect.any(String));
     expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
   });
 
@@ -185,6 +207,7 @@ describe('syncAllUsers auth handling', () => {
     expect(setActiveToken).toHaveBeenCalledWith(null);
     expect(syncEvents.emitAuthSessionExpired).toHaveBeenCalled();
     expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
+    expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
   });
 
   it('clears stale credentials for non-active users but continues syncing', async () => {

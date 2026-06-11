@@ -452,3 +452,12 @@ export async function getLocalProjectIds(): Promise<number[]> {
     return [];
   }
 }
+
+export async function userHasLocalProjects(userId: number): Promise<boolean> {
+  const db = getDatabase();
+  const result = await db.execute(
+    'SELECT COUNT(*) as count FROM user_projects WHERE user_id = ?',
+    [userId],
+  );
+  return Number(result.rows?.[0]?.count ?? 0) > 0;
+}
