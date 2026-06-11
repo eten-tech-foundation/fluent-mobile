@@ -73,12 +73,10 @@ export default function HomeScreen({
     triggerSync();
   }, [triggerSync]);
 
-  const isInitialSyncInProgress =
+  const showLoading =
     isNewUserLoading ||
     postLoginSyncActive ||
     ((isSyncingLocal || isSyncing) && refreshKey === 0);
-
-  const showLoading = isInitialSyncInProgress;
   const myWorkIsSyncing =
     isSyncing || isSyncingLocal || postLoginSyncActive || isNewUserLoading;
 
