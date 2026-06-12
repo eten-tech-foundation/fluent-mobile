@@ -340,4 +340,21 @@ describe('syncAllUsers auth handling', () => {
       '2026-05-01T00:00:00.000Z',
     );
   });
+
+  it('does not advance per-user cursors when bible text sync fails', async () => {
+    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+      userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
+    );
+    getChaptersToSync.mockResolvedValue(
+      new Map([[1, [{ bookId: 1, chapterNumber: 1 }]]]),
+    );
+    (FluentAPI.getBibleTexts as jest.Mock).mockRejectedValue(
+      new Error('Bible text sync failed'),
+    );
+
+    await expect(syncAllUsers()).rejects.toThrow('Bible text sync failed');
+
+    expect(setUserLastSyncedAt).not.toHaveBeenCalled();
+    expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
+  });
 });

@@ -416,6 +416,7 @@ export async function syncAllUsers(): Promise<void> {
     let anyUserDidFullAssignmentSync = false;
     let firstNonAuthSyncError: unknown;
     let oldestAssignmentCursor: string | undefined;
+    const usersPendingCursorUpdate: string[] = [];
 
     await syncMasterData();
 
@@ -447,7 +448,7 @@ export async function syncAllUsers(): Promise<void> {
         if (didFullSync) {
           anyUserDidFullAssignmentSync = true;
         }
-        setUserLastSyncedAt(userId, new Date().toISOString());
+        usersPendingCursorUpdate.push(userId);
         if (assignmentCursor) {
           oldestAssignmentCursor =
             oldestAssignmentCursor === undefined ||
@@ -482,6 +483,11 @@ export async function syncAllUsers(): Promise<void> {
         (deviceHasLocalProjects ? deviceLastSyncedAt : undefined);
 
     await syncBibleTexts(bibleTextUpdatedAfter);
+
+    const userSyncCompletedAt = new Date().toISOString();
+    for (const userId of usersPendingCursorUpdate) {
+      setUserLastSyncedAt(userId, userSyncCompletedAt);
+    }
 
     const restoredCreds = currentActiveUserId
       ? await getCredentials(currentActiveUserId)
