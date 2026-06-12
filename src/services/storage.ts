@@ -165,3 +165,12 @@ export function setLastAssignmentSyncAt(timestamp: string) {
   kvStorage.setItemSync(KV_KEYS.LAST_ASSIGNMENT_SYNC_AT, timestamp);
   log.info('Last assignment sync timestamp updated', { timestamp });
 }
+
+export function getUserLastSyncedAt(userId: string): string {
+  return kvStorage.getItemSync(`${userId}:last_synced_at`) ?? '';
+}
+
+export function setUserLastSyncedAt(userId: string, timestamp: string) {
+  kvStorage.setItemSync(`${userId}:last_synced_at`, timestamp);
+  log.info('Per-user last synced timestamp updated', { userId, timestamp });
+}

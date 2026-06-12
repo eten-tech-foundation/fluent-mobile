@@ -9,6 +9,8 @@ export interface ApiUserChapterAssignment {
   bookId: number;
   chapterNumber: number;
   chapterStatus?: string;
+  /** Field name on GET /users/:id/chapter-assignments/all */
+  status?: string;
   assignedUserId?: number | null;
   peerCheckerId?: number | null;
   submittedTime?: string | null;
@@ -41,7 +43,7 @@ export function mapApiChapterAssignment(
     chapterNumber: api.chapterNumber,
     assignedUserId: api.assignedUserId ?? undefined,
     peerCheckerId: api.peerCheckerId ?? undefined,
-    chapterStatus: normalizeChapterStatus(api.chapterStatus),
+    chapterStatus: normalizeChapterStatus(api.chapterStatus ?? api.status),
     submittedTime: api.submittedTime ?? undefined,
     updatedAt: api.updatedAt ?? undefined,
     totalVerses: nonNegativeInt(api.totalVerses),

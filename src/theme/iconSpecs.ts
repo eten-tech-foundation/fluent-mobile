@@ -35,10 +35,15 @@ export const logoSize = {
   marginVertical: -8,
 } as const;
 
-/** Two-icon nav-bar sync composition (cloud base + accent overlay). */
+/** Nav-bar sync glyph composition and motion. */
 export const syncStatusIcon = {
-  overlayScale: 0.52,
-  checkOffset: { bottom: 0.12, right: 0.08 },
+  /** Centered `refresh-cw` size relative to header icon. */
+  overlayScale: 0.46,
+  /** Nudge accent glyphs into the cloud body (fraction of icon size). */
+  overlayOffsetY: -0.06,
+  accentStrokeWidth: 2.5,
+  spinDurationMs: 1200,
+  pendingPulseDurationMs: 900,
 } as const;
 
 /** Page header layout (mock: px-4 py-3, w-10 side slots). */

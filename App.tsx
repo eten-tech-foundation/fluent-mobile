@@ -13,6 +13,7 @@ import {
   hasCredentials,
 } from './src/services/keychain';
 import AppNavigator from './src/navigation/AppNavigator';
+import { onAuthSessionExpired } from './src/services/syncEvents';
 import { setActiveToken } from './src/services/api';
 import { appStyles } from './src/app/appStyles';
 import { theme } from './src/theme';
@@ -22,11 +23,20 @@ const log = logger.create('App');
 function App() {
   const [dbReady, setDbReady] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [postLoginSyncActive, setPostLoginSyncActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSignOut = () => {
     setIsAuthenticated(false);
   };
+
+  useEffect(() => {
+    return onAuthSessionExpired(() => {
+      log.info('Session expired — returning to login');
+      setActiveToken(null);
+      setIsAuthenticated(false);
+    });
+  }, []);
 
   useEffect(() => {
     const initApp = async () => {
@@ -85,9 +95,14 @@ function App() {
 
   const handleLoginSuccess = (email: string) => {
     setIsAuthenticated(true);
-    syncAllData(false, email).catch(e => {
-      log.error('Post-login sync failed:', { error: e });
-    });
+    setPostLoginSyncActive(true);
+    syncAllData(false, email)
+      .catch(e => {
+        log.error('Post-login sync failed:', { error: e });
+      })
+      .finally(() => {
+        setPostLoginSyncActive(false);
+      });
   };
 
   if (!dbReady) {
@@ -114,6 +129,7 @@ function App() {
           isAuthenticated={isAuthenticated}
           onLoginSuccess={handleLoginSuccess}
           onSignOut={handleSignOut}
+          postLoginSyncActive={postLoginSyncActive}
         />
       </NavigationContainer>
     </SafeAreaProvider>

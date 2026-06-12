@@ -82,6 +82,24 @@ describe('MyWorkTab', () => {
     jest.clearAllMocks();
   });
 
+  it('shows loading spinner while syncing with no chapters yet', async () => {
+    useMyWorkChapters.mockReturnValue({
+      chapters: [],
+      loading: false,
+      refreshing: false,
+      refresh: jest.fn(),
+    });
+
+    render(<MyWorkTab isSyncing />);
+
+    expect(screen.getByTestId('loading-spinner')).toBeTruthy();
+    expect(
+      screen.queryByText(
+        "You don't have any chapters to work on right now. Check the Projects tab to find available work.",
+      ),
+    ).toBeNull();
+  });
+
   it('renders empty state when there are no chapters', async () => {
     useMyWorkChapters.mockReturnValue({
       chapters: [],
