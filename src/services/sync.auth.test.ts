@@ -1,6 +1,10 @@
 import { AuthError } from './authError';
 import { FluentAPI, setActiveToken } from './api';
-import { clearCredentials, getCredentials } from './keychain';
+import {
+  clearCredentials,
+  getCredentials,
+  getTempCredentials,
+} from './keychain';
 import { syncAllData, syncAllUsers } from './sync';
 import * as syncEvents from './syncEvents';
 import {
@@ -19,6 +23,7 @@ jest.mock('./api', () => ({
     getLanguages: jest.fn().mockResolvedValue([]),
     getBooks: jest.fn().mockResolvedValue([]),
     getBibles: jest.fn().mockResolvedValue([]),
+    getUserByEmail: jest.fn(),
     getUserProjects: jest.fn(),
     getChapterAssignments: jest.fn().mockResolvedValue({ data: [] }),
     getBibleTexts: jest.fn(),
@@ -172,6 +177,9 @@ describe('syncAllData auth handling', () => {
 
   it('forces full assignment sync when local assignments are empty but KV cursor exists', async () => {
     (getCredentials as jest.Mock).mockResolvedValue({ token: 'valid-token' });
+    (getUserLastSyncedAt as jest.Mock).mockReturnValue(
+      '2026-06-01T00:00:00.000Z',
+    );
     userHasLocalChapterAssignments.mockResolvedValue(false);
 
     await syncAllData(true);
@@ -181,6 +189,43 @@ describe('syncAllData auth handling', () => {
       undefined,
       undefined,
     );
+  });
+
+  it('forces full assignment sync for a new user on a shared device despite peer-checker rows', async () => {
+    (FluentAPI.getUserByEmail as jest.Mock).mockResolvedValue({
+      id: 2,
+      email: 'user2@test.com',
+    });
+    (getTempCredentials as jest.Mock).mockResolvedValue({
+      token: 'new-user-token',
+    });
+    (getCredentials as jest.Mock).mockResolvedValue({
+      token: 'new-user-token',
+    });
+    (getUserLastSyncedAt as jest.Mock).mockReturnValue('');
+    (getLastAssignmentSyncAt as jest.Mock).mockReturnValue(
+      '2026-06-01T00:00:00.000Z',
+    );
+    userHasLocalChapterAssignments.mockResolvedValue(true);
+
+    await syncAllData(false, 'user2@test.com');
+
+    expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
+      2,
+      undefined,
+      undefined,
+    );
+  });
+
+  it('stores a per-user sync cursor after syncAllData succeeds', async () => {
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'valid-token' });
+    (getUserLastSyncedAt as jest.Mock).mockReturnValue(
+      '2026-06-01T00:00:00.000Z',
+    );
+
+    await syncAllData(true);
+
+    expect(setUserLastSyncedAt).toHaveBeenCalledWith('2', expect.any(String));
   });
 });
 
@@ -296,6 +341,24 @@ describe('syncAllUsers auth handling', () => {
       undefined,
       undefined,
     );
+    expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
+      2,
+      undefined,
+      undefined,
+    );
+  });
+
+  it('forces full assignment sync when user has no per-user cursor despite local peer-checker rows', async () => {
+    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+      userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
+    );
+    (getUserLastSyncedAt as jest.Mock).mockImplementation((userId: string) =>
+      userId === '1' ? '2026-06-01T00:00:00.000Z' : '',
+    );
+    userHasLocalChapterAssignments.mockResolvedValue(true);
+
+    await syncAllUsers();
+
     expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
       2,
       undefined,

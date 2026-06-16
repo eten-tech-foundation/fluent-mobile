@@ -94,16 +94,24 @@ function App() {
     });
   }, [dbReady]);
 
-  const handleLoginSuccess = (email: string) => {
-    setIsAuthenticated(true);
-    setPostLoginSyncActive(true);
+  const runPostLoginSync = (email: string, onComplete?: () => void) => {
     syncAllData(false, email)
       .catch(e => {
         log.error('Post-login sync failed:', { error: e });
       })
       .finally(() => {
-        setPostLoginSyncActive(false);
+        onComplete?.();
       });
+  };
+
+  const handleLoginSuccess = (email: string) => {
+    setIsAuthenticated(true);
+    setPostLoginSyncActive(true);
+    runPostLoginSync(email, () => setPostLoginSyncActive(false));
+  };
+
+  const handleAddUserLoginSuccess = (email: string) => {
+    runPostLoginSync(email);
   };
 
   if (!dbReady) {
@@ -134,6 +142,7 @@ function App() {
           <AppNavigator
             isAuthenticated={isAuthenticated}
             onLoginSuccess={handleLoginSuccess}
+            onAddUserLoginSuccess={handleAddUserLoginSuccess}
             onSignOut={handleSignOut}
             postLoginSyncActive={postLoginSyncActive}
           />

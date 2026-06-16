@@ -30,7 +30,6 @@ import {
   setSyncError,
   clearSyncError,
   clearAllSyncErrors,
-  getLastAssignmentSyncAt,
   setLastAssignmentSyncAt,
   getActiveUserId,
   getKnownUserIds,
@@ -275,6 +274,17 @@ async function syncChapterAssignmentsForUser(
   userId: number,
   updatedAfter?: string,
 ): Promise<{ didFullSync: boolean }> {
+  const userIdStr = String(userId);
+
+  if (!getUserLastSyncedAt(userIdStr)) {
+    log.info(
+      'Forcing full chapter assignment sync — user has no per-user sync cursor',
+      { userId },
+    );
+    await syncChapterAssignments(userId);
+    return { didFullSync: true };
+  }
+
   if (updatedAfter && !(await userHasLocalChapterAssignments(userId))) {
     log.info(
       'Forcing full chapter assignment sync — local assignments empty despite sync cursor',
@@ -551,17 +561,19 @@ export async function syncAllData(isIncremental = false, email?: string) {
       : await getLocalProjectIds();
 
     const lastSyncedAt = getLastSyncedAt() || undefined; // global
-    const lastAssignmentSyncAt = getLastAssignmentSyncAt() || undefined;
+    const userIdStr = String(userId);
+    const userAssignmentCursor = getUserLastSyncedAt(userIdStr) || undefined;
 
     await syncMasterData();
     await syncProjects(userId);
 
     if (isIncremental) {
+      const assignmentCursor = userAssignmentCursor ?? lastSyncedAt;
       const { didFullSync } = await syncChapterAssignmentsForUser(
         userId,
-        lastSyncedAt,
+        assignmentCursor,
       );
-      await syncBibleTexts(didFullSync ? undefined : lastSyncedAt);
+      await syncBibleTexts(didFullSync ? undefined : assignmentCursor);
     } else if (localProjectIdsBefore.length === 0) {
       await syncChapterAssignments(userId);
       await syncBibleTexts();
@@ -570,14 +582,15 @@ export async function syncAllData(isIncremental = false, email?: string) {
       // local project is excluded before checking newly assigned work.
       const { didFullSync } = await syncChapterAssignmentsForUser(
         userId,
-        lastAssignmentSyncAt,
+        userAssignmentCursor,
       );
-      await syncBibleTexts(didFullSync ? undefined : lastAssignmentSyncAt);
+      await syncBibleTexts(didFullSync ? undefined : userAssignmentCursor);
     }
 
     const now = new Date().toISOString();
     setLastSyncedAt(now);
     setLastAssignmentSyncAt(now);
+    setUserLastSyncedAt(userIdStr, now);
 
     const db = getDatabase();
     const langCount = await db.execute(

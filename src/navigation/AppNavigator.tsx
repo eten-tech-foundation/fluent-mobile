@@ -9,13 +9,13 @@ import ViewChapter from '../app/tabs/ViewChapter';
 import LoginScreen from '../app/tabs/LoginScreen';
 import PrivacyPolicyScreen from '../app/tabs/PrivacyPolicyPage';
 import TermsOfUseScreen from '../app/tabs/TermsOfUsePage';
-import { syncAllData } from '../services/sync';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
 interface AppNavigatorProps {
   isAuthenticated: boolean;
   onLoginSuccess: (email: string) => void;
+  onAddUserLoginSuccess: (email: string) => void;
   onSignOut: () => void;
   postLoginSyncActive?: boolean;
 }
@@ -23,6 +23,7 @@ interface AppNavigatorProps {
 export default function AppNavigator({
   isAuthenticated,
   onLoginSuccess,
+  onAddUserLoginSuccess,
   onSignOut,
   postLoginSyncActive = false,
 }: AppNavigatorProps) {
@@ -60,7 +61,7 @@ export default function AppNavigator({
               <LoginScreen
                 onLoginSuccess={(email: string) => {
                   navigation.navigate('Home', { newUserLoading: true });
-                  syncAllData(false, email).catch(() => {});
+                  onAddUserLoginSuccess(email);
                 }}
               />
             )}
