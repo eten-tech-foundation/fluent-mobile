@@ -389,3 +389,59 @@ export async function getLocalProjectIds(): Promise<number[]> {
     return [];
   }
 }
+
+function toRelativePath(absolutePath: string): string {
+  const marker = '/Projects/';
+  const idx = absolutePath.indexOf(marker);
+  return idx !== -1 ? absolutePath.slice(idx + marker.length) : absolutePath;
+}
+
+export async function upsertRecording(data: {
+  bibleTextId: number;
+  projectUnitId: number;
+  localPath: string;
+  fileSize?: number;
+}): Promise<void> {
+  const db = getDatabase();
+  const relativePath = toRelativePath(data.localPath);
+  try {
+    await db.execute(
+      `INSERT INTO recordings
+         (bible_text_id, project_unit_id, relative_path, sync_status, file_size)
+       VALUES (?, ?, ?, 'pending', ?)
+       ON CONFLICT(project_unit_id, bible_text_id) DO UPDATE SET
+         relative_path   = excluded.relative_path,
+         sync_status  = 'pending',
+         file_size    = excluded.file_size,
+         upload_error = NULL,
+         updated_at   = datetime('now')`,
+      [
+        data.bibleTextId,
+        data.projectUnitId,
+        relativePath,
+        data.fileSize ?? null,
+      ],
+    );
+    log.info('Recording upserted', { relativePath });
+  } catch (error) {
+    log.error('Error upserting recording', { error });
+    throw error;
+  }
+}
+
+export async function deleteRecording(
+  projectUnitId: number,
+  bibleTextId: number,
+): Promise<void> {
+  const db = getDatabase();
+  try {
+    await db.execute(
+      `DELETE FROM recordings
+       WHERE project_unit_id = ? AND bible_text_id = ?`,
+      [projectUnitId, bibleTextId],
+    );
+    log.info('Recording deleted from DB', { projectUnitId, bibleTextId });
+  } catch (error) {
+    log.error('Error deleting recording', { error });
+  }
+}

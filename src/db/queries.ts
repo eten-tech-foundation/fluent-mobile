@@ -202,3 +202,24 @@ export async function getMyWorkAssignments(
     return [];
   }
 }
+
+export async function getBibleTextId(
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+  verseNumber: number,
+): Promise<number | null> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT id FROM bible_texts
+       WHERE bible_id = ? AND book_id = ? AND chapter_number = ? AND verse_number = ?`,
+      [bibleId, bookId, chapterNumber, verseNumber],
+    );
+    const rows = result?.rows as unknown as { id: number }[];
+    return rows?.[0]?.id ?? null;
+  } catch (error) {
+    log.error('Error fetching bible text id', { error });
+    return null;
+  }
+}
