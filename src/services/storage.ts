@@ -10,6 +10,7 @@ export const KV_KEYS = {
   USER_EMAIL: 'userEmail',
   ACTIVE_USER_ID: 'active_user_id',
   KNOWN_USER_IDS: 'known_user_ids',
+  KNOWN_BIBLE_IDS: 'known_bible_ids',
   LAST_ASSIGNMENT_SYNC_AT: 'last_assignment_sync_at',
   LAST_SYNCED_AT: 'last_synced_at',
   SYNC_COUNT_PROJECTS: 'sync_count_projects',
@@ -164,4 +165,21 @@ export function getLastAssignmentSyncAt(): string {
 export function setLastAssignmentSyncAt(timestamp: string) {
   kvStorage.setItemSync(KV_KEYS.LAST_ASSIGNMENT_SYNC_AT, timestamp);
   log.info('Last assignment sync timestamp updated', { timestamp });
+}
+
+export function getKnownBibleIds(): number[] {
+  const raw = kvStorage.getItemSync(KV_KEYS.KNOWN_BIBLE_IDS) ?? '';
+  return raw ? raw.split(',').filter(Boolean).map(Number) : [];
+}
+
+export function addKnownBibleId(bibleId: number) {
+  const existing = getKnownBibleIds();
+  if (!existing.includes(bibleId)) {
+    existing.push(bibleId);
+    kvStorage.setItemSync(KV_KEYS.KNOWN_BIBLE_IDS, existing.join(','));
+  }
+}
+
+export function isKnownBibleId(bibleId: number): boolean {
+  return getKnownBibleIds().includes(bibleId);
 }

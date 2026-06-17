@@ -27,6 +27,8 @@ import {
   setLastAssignmentSyncAt,
   getKnownUserIds,
   getActiveUserId,
+  addKnownBibleId,
+  isKnownBibleId,
 } from '../services/storage';
 import { getLocalProjectIds } from '../db/repository';
 import {
@@ -246,16 +248,20 @@ export async function syncBibleTexts(updatedAfter?: string) {
         return;
       }
 
-      log.info('Chapters to sync grouped by bible', {
-        bibleCount: bibleGroups.size,
-      });
-
       let totalTextsInserted = 0;
 
       for (const [bibleId, chapters] of bibleGroups) {
+        // New bible IDs must be fully fetched — no updatedAfter filter,
+        // otherwise we'd only get verses changed since lastSyncedAt
+        // (effectively nothing for a bible we've never pulled).
+        const isNew = !isKnownBibleId(bibleId);
+        const effectiveUpdatedAfter = isNew ? undefined : updatedAfter;
+
         log.info('Syncing chapters for bible', {
           bibleId,
           chapterCount: chapters.length,
+          isNew,
+          effectiveUpdatedAfter,
         });
 
         for (let i = 0; i < chapters.length; i += BIBLE_TEXT_CHUNK_SIZE) {
@@ -271,11 +277,10 @@ export async function syncBibleTexts(updatedAfter?: string) {
           const response = await FluentAPI.getBibleTexts(
             bibleId,
             chunk,
-            updatedAfter,
+            effectiveUpdatedAfter, // ← undefined for new bibles, timestamp for known ones
           );
 
           const books: ApiBook[] = response.data;
-
           if (!Array.isArray(books)) {
             throw new Error(`Invalid bible text response for bible ${bibleId}`);
           }
@@ -305,6 +310,14 @@ export async function syncBibleTexts(updatedAfter?: string) {
             chunkIndex,
             versesInserted: chunkVerseCount,
           });
+        }
+
+        // Only mark as known AFTER all chunks for this bible succeed.
+        // If any chunk throws, retrySyncStep will retry the whole bible,
+        // and we'll do a full fetch again — correct behavior.
+        if (isNew) {
+          addKnownBibleId(bibleId);
+          log.info('Bible ID marked as known after full sync', { bibleId });
         }
       }
 
