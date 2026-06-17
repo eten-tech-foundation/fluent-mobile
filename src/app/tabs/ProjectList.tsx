@@ -8,10 +8,15 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
+  StyleSheet,
 } from 'react-native';
 import { logger } from '../../utils/logger';
-import { Project } from '../../types/db/types';
-import { getProjects } from '../../db/queries';
+import { Project, CHAPTER_ASSIGNMENT_STATUS } from '../../types/db/types';
+import {
+  getProjects,
+  getMyWorkAssignments,
+  MyWorkItem,
+} from '../../db/queries';
 import { appStyles } from '../appStyles';
 import { useNavigation } from '@react-navigation/native';
 import { SyncButton } from '../../components/ui/SyncButton';
@@ -35,6 +40,8 @@ import { FluentAPI, setActiveToken } from '../../services/api';
 
 const log = logger.create('ProjectList');
 type Nav = StackNavigationProp<RootStackParamList, 'Projects'>;
+type ActiveTab = 'myWork' | 'projects';
+type AssignmentStatusKey = keyof typeof CHAPTER_ASSIGNMENT_STATUS;
 
 interface ProjectListProps {
   onSignOut?: () => void;
@@ -43,11 +50,13 @@ interface ProjectListProps {
 export default function ProjectList({ onSignOut }: ProjectListProps) {
   const navigation = useNavigation<Nav>();
   const [projects, setProjects] = useState<Project[]>([]);
+  const [myWorkItems, setMyWorkItems] = useState<MyWorkItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [syncCompleted, setSyncCompleted] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [activeTab, setActiveTab] = useState<ActiveTab>('myWork');
   const [knownUsers, setKnownUsers] = useState<
     Array<{ id: string; email: string }>
   >([]);
@@ -58,6 +67,17 @@ export default function ProjectList({ onSignOut }: ProjectListProps) {
   const [isNewUserLoading, setIsNewUserLoading] = useState(
     () => route.params?.newUserLoading === true,
   );
+
+  const loadMyWork = useCallback(async () => {
+    try {
+      const userId = Number(getUserIdSync());
+      const data = await getMyWorkAssignments(userId);
+      log.info('My work assignments loaded', { count: data.length });
+      setMyWorkItems(data);
+    } catch (error) {
+      log.error('Error loading my work:', { error });
+    }
+  }, []);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -77,12 +97,14 @@ export default function ProjectList({ onSignOut }: ProjectListProps) {
 
   useEffect(() => {
     loadProjects();
+    loadMyWork();
 
     const unsubscribeComplete = onSyncComplete(() => {
-      setIsNewUserLoading(false); // ← clear the flag when sync finishes
+      setIsNewUserLoading(false);
       setSyncCompleted(true);
       setIsSyncing(false);
       loadProjects();
+      loadMyWork();
     });
 
     const unsubscribeStart = onSyncStart(() => {
@@ -93,7 +115,7 @@ export default function ProjectList({ onSignOut }: ProjectListProps) {
       unsubscribeComplete();
       unsubscribeStart();
     };
-  }, [loadProjects]);
+  }, [loadProjects, loadMyWork]);
 
   const loadKnownUsers = useCallback(() => {
     const ids = getKnownUserIds();
@@ -135,12 +157,10 @@ export default function ProjectList({ onSignOut }: ProjectListProps) {
     });
 
     setActiveToken(creds?.token ?? null);
-    log.info('Token set, switching active user');
-
     switchActiveUser(userId);
     setLoading(true);
     setSyncCompleted(false);
-    await loadProjects();
+    await Promise.all([loadProjects(), loadMyWork()]);
     setLoading(false);
   };
 
@@ -168,7 +188,7 @@ export default function ProjectList({ onSignOut }: ProjectListProps) {
       loadKnownUsers();
       setLoading(true);
       setSyncCompleted(false);
-      await loadProjects();
+      await Promise.all([loadProjects(), loadMyWork()]);
       setLoading(false);
     } else {
       setActiveToken(null);
@@ -180,13 +200,20 @@ export default function ProjectList({ onSignOut }: ProjectListProps) {
   };
 
   const handleSyncComplete = async () => {
-    log.info('Sync completed, refreshing projects list...');
+    log.info('Sync completed, refreshing...');
     setRefreshing(true);
     try {
-      await loadProjects();
+      await Promise.all([loadProjects(), loadMyWork()]);
     } finally {
       setRefreshing(false);
     }
+  };
+
+  const getStatusLabel = (status: string) => {
+    if (status in CHAPTER_ASSIGNMENT_STATUS) {
+      return CHAPTER_ASSIGNMENT_STATUS[status as AssignmentStatusKey];
+    }
+    return status;
   };
 
   const activeUserId = getActiveUserId();
@@ -201,6 +228,52 @@ export default function ProjectList({ onSignOut }: ProjectListProps) {
       </View>
     );
   }
+
+  const renderMyWorkItem = ({ item }: { item: MyWorkItem }) => (
+    <TouchableOpacity
+      style={appStyles.cardRow}
+      activeOpacity={0.7}
+      onPress={() =>
+        navigation.navigate('VerseDetail', {
+          chapterId: item.id,
+          chapterName: `${item.book_name} ${item.chapter_number}`,
+          projectName: item.project_name,
+          language: item.target_language_name,
+        })
+      }
+    >
+      <Ionicons name="book-outline" size={24} color="#000" />
+      <View style={appStyles.cardText}>
+        <Text style={appStyles.cardTitle}>
+          {item.book_name} {item.chapter_number}
+        </Text>
+        <Text style={appStyles.cardSubtitle}>{item.project_name}</Text>
+        <Text style={tabStyles.statusLabel}>{getStatusLabel(item.status)}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={20} color="#000" />
+    </TouchableOpacity>
+  );
+
+  const renderProjectItem = ({ item }: { item: Project }) => (
+    <TouchableOpacity
+      style={appStyles.cardRow}
+      activeOpacity={0.7}
+      onPress={() =>
+        navigation.navigate('Chapters', {
+          projectId: item.id,
+          projectName: item.name,
+          language: item.target_language_name,
+        })
+      }
+    >
+      <Ionicons name="folder-outline" size={24} color="#000" />
+      <View style={appStyles.cardText}>
+        <Text style={appStyles.cardTitle}>{item.name}</Text>
+        <Text style={appStyles.cardSubtitle}>{item.target_language_name}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={20} color="#000" />
+    </TouchableOpacity>
+  );
 
   return (
     <View style={appStyles.container}>
@@ -274,6 +347,7 @@ export default function ProjectList({ onSignOut }: ProjectListProps) {
                 ))}
               </>
             )}
+
             <View style={appStyles.menuDivider} />
             <TouchableOpacity
               style={appStyles.menuItem}
@@ -294,47 +368,129 @@ export default function ProjectList({ onSignOut }: ProjectListProps) {
         onSyncStart={() => setIsSyncing(true)}
       />
 
-      <View style={appStyles.sectionHeader}>
-        <Ionicons name="folder-outline" size={24} color="#000" />
-        <Text style={appStyles.sectionHeaderText}>Projects</Text>
+      <View style={tabStyles.tabBar}>
+        <TouchableOpacity
+          style={[tabStyles.tab, activeTab === 'myWork' && tabStyles.tabActive]}
+          onPress={() => setActiveTab('myWork')}
+          activeOpacity={0.8}
+        >
+          <Ionicons
+            name="person-outline"
+            size={16}
+            color={activeTab === 'myWork' ? '#1a6ef5' : '#888'}
+          />
+          <Text
+            style={[
+              tabStyles.tabText,
+              activeTab === 'myWork' && tabStyles.tabTextActive,
+            ]}
+          >
+            My Work
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            tabStyles.tab,
+            activeTab === 'projects' && tabStyles.tabActive,
+          ]}
+          onPress={() => setActiveTab('projects')}
+          activeOpacity={0.8}
+        >
+          <Ionicons
+            name="folder-outline"
+            size={16}
+            color={activeTab === 'projects' ? '#1a6ef5' : '#888'}
+          />
+          <Text
+            style={[
+              tabStyles.tabText,
+              activeTab === 'projects' && tabStyles.tabTextActive,
+            ]}
+          >
+            Projects
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      {projects.length === 0 ? (
-        <View style={[appStyles.container, appStyles.centered]}>
-          <Ionicons name="folder-open-outline" size={48} color="#ccc" />
-          <Text style={appStyles.emptyText}>No projects found</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={projects}
-          keyExtractor={item => item.id.toString()}
-          contentContainerStyle={appStyles.listContent}
-          refreshing={refreshing}
-          onRefresh={handleSyncComplete}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={appStyles.cardRow}
-              activeOpacity={0.7}
-              onPress={() =>
-                navigation.navigate('Chapters', {
-                  projectId: item.id,
-                  projectName: item.name,
-                  language: item.target_language_name,
-                })
-              }
-            >
-              <Ionicons name="folder-outline" size={24} color="#000" />
-              <View style={appStyles.cardText}>
-                <Text style={appStyles.cardTitle}>{item.name}</Text>
-                <Text style={appStyles.cardSubtitle}>
-                  {item.target_language_name}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#000" />
-            </TouchableOpacity>
-          )}
-        />
-      )}
+      {activeTab === 'myWork' &&
+        (myWorkItems.length === 0 ? (
+          <View style={[appStyles.container, appStyles.centered]}>
+            <Ionicons name="checkmark-circle-outline" size={48} color="#ccc" />
+            <Text style={appStyles.emptyText}>No assignments found</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={myWorkItems}
+            keyExtractor={item => item.id.toString()}
+            contentContainerStyle={appStyles.listContent}
+            refreshing={refreshing}
+            onRefresh={handleSyncComplete}
+            renderItem={renderMyWorkItem}
+          />
+        ))}
+
+      {activeTab === 'projects' &&
+        (projects.length === 0 ? (
+          <View style={[appStyles.container, appStyles.centered]}>
+            <Ionicons name="folder-open-outline" size={48} color="#ccc" />
+            <Text style={appStyles.emptyText}>No projects found</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={projects}
+            keyExtractor={item => item.id.toString()}
+            contentContainerStyle={appStyles.listContent}
+            refreshing={refreshing}
+            onRefresh={handleSyncComplete}
+            renderItem={renderProjectItem}
+          />
+        ))}
     </View>
   );
 }
+
+const tabStyles = StyleSheet.create({
+  tabBar: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+    backgroundColor: '#f0f2f5',
+    borderRadius: 10,
+    padding: 3,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 9,
+    gap: 6,
+    borderRadius: 8,
+  },
+  tabActive: {
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#888',
+  },
+  tabTextActive: {
+    color: '#1a6ef5',
+    fontWeight: '600',
+  },
+  statusLabel: {
+    marginTop: 2,
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#1a6ef5',
+    textTransform: 'capitalize',
+  },
+});

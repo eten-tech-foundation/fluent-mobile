@@ -159,3 +159,46 @@ export async function getBibleTexts(
     return [];
   }
 }
+
+export interface MyWorkItem {
+  id: number;
+  chapter_number: number;
+  status: string;
+  book_name: string;
+  assigned_user_id: number | null;
+  peer_checker_id: number | null;
+  project_name: string;
+  target_language_name: string;
+}
+
+export async function getMyWorkAssignments(
+  userId: number,
+): Promise<MyWorkItem[]> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT
+        ca.id,
+        ca.chapter_number,
+        ca.status,
+        b.eng_display_name  AS book_name,
+        ca.assigned_user_id,
+        ca.peer_checker_id,
+        p.name              AS project_name,
+        tl.lang_name        AS target_language_name
+      FROM chapter_assignments ca
+      LEFT JOIN books         b  ON ca.book_id          = b.id
+      LEFT JOIN project_units pu ON ca.project_unit_id  = pu.id
+      LEFT JOIN projects      p  ON pu.project_id       = p.id
+      LEFT JOIN languages     tl ON p.target_language_id = tl.id
+      WHERE (ca.status = 'draft'        AND ca.assigned_user_id = ?)
+         OR (ca.status = 'peer_checker' AND ca.peer_checker_id  = ?)
+      ORDER BY p.name, b.id, ca.chapter_number`,
+      [userId, userId],
+    );
+    return (result?.rows as unknown as MyWorkItem[]) || [];
+  } catch (error) {
+    log.error('Error fetching my work assignments', { error });
+    return [];
+  }
+}
