@@ -76,14 +76,14 @@ export const createTableQueries: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_bt_chapter ON bible_texts(bible_id, book_id, chapter_number);`,
 
   `CREATE TABLE IF NOT EXISTS recordings (
-    id              INTEGER PRIMARY KEY,
-    bible_text_id   INTEGER NOT NULL,    project_unit_id INTEGER NOT NULL,
-    relative_path   TEXT NOT NULL,
-    sync_status     TEXT NOT NULL DEFAULT 'pending',
-    upload_error    TEXT,
-    file_size       INTEGER,
-    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    id               INTEGER PRIMARY KEY,
+    bible_text_id    INTEGER NOT NULL,
+    project_unit_id  INTEGER NOT NULL,
+    relative_path    TEXT NOT NULL,
+    sync_status      TEXT NOT NULL DEFAULT 'pending',
+    upload_error     TEXT,
+    file_size        INTEGER,
+    last_updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE (project_unit_id, bible_text_id)
 )`,
 
