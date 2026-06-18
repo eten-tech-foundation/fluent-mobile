@@ -39,6 +39,12 @@ function getFilename(relativePath: string): string {
   return relativePath.split('/').pop() ?? 'recording.m4a';
 }
 
+function toFileUri(absolutePath: string): string {
+  return absolutePath.startsWith('file://')
+    ? absolutePath
+    : `file://${absolutePath}`;
+}
+
 // ─── Single-file upload ───────────────────────────────────────────────────────
 
 async function uploadRecording(
@@ -46,6 +52,13 @@ async function uploadRecording(
   token: string,
 ): Promise<void> {
   const absolutePath = deriveAbsolutePath(job.relative_path);
+  const fileUri = toFileUri(absolutePath);
+
+  log.info('Upload attempt', {
+    url: SYNC_API_URL,
+    absolutePath,
+    fileUri,
+  });
 
   // Guard: ensure the audio file still exists on device before attempting upload
   const exists = await RNFS.exists(absolutePath);
@@ -63,7 +76,7 @@ async function uploadRecording(
   formData.append('recorded_at', job.last_updated_at);
 
   formData.append('file', {
-    uri: absolutePath,
+    uri: fileUri,
     name: getFilename(job.relative_path),
     type: 'audio/mp4',
   } as unknown as Blob);
@@ -106,45 +119,57 @@ export interface SyncResult {
   failedPaths: string[];
 }
 
+let isSyncWorkerRunning = false;
+
 export async function syncPendingRecordings(
   userToken: string,
 ): Promise<SyncResult> {
-  log.info('Starting recording sync...');
-
-  const pending = await getPendingRecordings();
-
-  if (pending.length === 0) {
-    log.info('No pending recordings to sync.');
+  if (isSyncWorkerRunning) {
+    log.info('Sync worker already running, skipping duplicate trigger.');
     return { synced: 0, failed: 0, failedPaths: [] };
   }
+  isSyncWorkerRunning = true;
 
-  log.info(`Found ${pending.length} pending recording(s).`);
+  try {
+    log.info('Starting recording sync...');
 
-  let synced = 0;
-  let failed = 0;
-  const failedPaths: string[] = [];
+    const pending = await getPendingRecordings();
 
-  for (const job of pending) {
-    await updateRecordingSyncStatus(job.id, 'syncing');
-
-    try {
-      await uploadRecording(job, userToken);
-      await updateRecordingSyncStatus(job.id, 'synced');
-      log.info('Recording synced', { id: job.id, path: job.relative_path });
-      synced++;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      await updateRecordingSyncStatus(job.id, 'failed', message);
-      log.error('Recording sync failed', {
-        id: job.id,
-        path: job.relative_path,
-        error: message,
-      });
-      failed++;
-      failedPaths.push(job.relative_path);
+    if (pending.length === 0) {
+      log.info('No pending recordings to sync.');
+      return { synced: 0, failed: 0, failedPaths: [] };
     }
-  }
 
-  log.info('Recording sync complete.', { synced, failed });
-  return { synced, failed, failedPaths };
+    log.info(`Found ${pending.length} pending recording(s).`);
+
+    let synced = 0;
+    let failed = 0;
+    const failedPaths: string[] = [];
+
+    for (const job of pending) {
+      await updateRecordingSyncStatus(job.id, 'syncing');
+
+      try {
+        await uploadRecording(job, userToken);
+        await updateRecordingSyncStatus(job.id, 'synced');
+        log.info('Recording synced', { id: job.id, path: job.relative_path });
+        synced++;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await updateRecordingSyncStatus(job.id, 'pending', message);
+        log.error('Recording sync failed', {
+          id: job.id,
+          path: job.relative_path,
+          error: message,
+        });
+        failed++;
+        failedPaths.push(job.relative_path);
+      }
+    }
+
+    log.info('Recording sync complete.', { synced, failed });
+    return { synced, failed, failedPaths };
+  } finally {
+    isSyncWorkerRunning = false;
+  }
 }

@@ -477,12 +477,12 @@ export async function getPendingRecordings(): Promise<PendingRecording[]> {
  * Updates the sync_status of a recording row after an upload attempt.
  *
  * @param id          SQLite row id of the recording.
- * @param status      'syncing' | 'synced' | 'failed'
+ * @param status      'syncing' | 'synced' | 'pending'
  * @param uploadError Human-readable error message; set to null on success.
  */
 export async function updateRecordingSyncStatus(
   id: number,
-  status: 'syncing' | 'synced' | 'failed',
+  status: 'pending' | 'syncing' | 'synced',
   uploadError?: string,
 ): Promise<void> {
   const db = getDatabase();
