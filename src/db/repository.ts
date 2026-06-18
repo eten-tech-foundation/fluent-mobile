@@ -407,14 +407,14 @@ export async function upsertRecording(data: {
   try {
     await db.execute(
       `INSERT INTO recordings
-         (bible_text_id, project_unit_id, relative_path, sync_status, file_size)
-       VALUES (?, ?, ?, 'pending', ?)
+         (bible_text_id, project_unit_id, relative_path, sync_status, file_size, last_updated_at)
+       VALUES (?, ?, ?, 'pending', ?, datetime('now'))
        ON CONFLICT(project_unit_id, bible_text_id) DO UPDATE SET
          relative_path   = excluded.relative_path,
-         sync_status  = 'pending',
-         file_size    = excluded.file_size,
-         upload_error = NULL,
-         updated_at   = datetime('now')`,
+         sync_status     = 'pending',
+         file_size       = excluded.file_size,
+         upload_error    = NULL,
+         last_updated_at = datetime('now')`,
       [
         data.bibleTextId,
         data.projectUnitId,
@@ -443,5 +443,60 @@ export async function deleteRecording(
     log.info('Recording deleted from DB', { projectUnitId, bibleTextId });
   } catch (error) {
     log.error('Error deleting recording', { error });
+  }
+}
+
+// ─── Recording sync helpers ───────────────────────────────────────────────────
+
+export interface PendingRecording {
+  id: number;
+  bible_text_id: number;
+  project_unit_id: number;
+  relative_path: string;
+  file_size: number | null;
+  last_updated_at: string;
+}
+
+export async function getPendingRecordings(): Promise<PendingRecording[]> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT id, bible_text_id, project_unit_id, relative_path, file_size, last_updated_at
+       FROM recordings
+       WHERE sync_status = 'pending'
+       ORDER BY last_updated_at ASC`,
+    );
+    return (result.rows ?? []) as unknown as PendingRecording[];
+  } catch (error) {
+    log.error('Error fetching pending recordings', { error });
+    return [];
+  }
+}
+
+/**
+ * Updates the sync_status of a recording row after an upload attempt.
+ *
+ * @param id          SQLite row id of the recording.
+ * @param status      'syncing' | 'synced' | 'pending'
+ * @param uploadError Human-readable error message; set to null on success.
+ */
+export async function updateRecordingSyncStatus(
+  id: number,
+  status: 'pending' | 'syncing' | 'synced',
+  uploadError?: string,
+): Promise<void> {
+  const db = getDatabase();
+  try {
+    await db.execute(
+      `UPDATE recordings
+       SET sync_status     = ?,
+           upload_error    = ?,
+           last_updated_at = datetime('now')
+       WHERE id = ?`,
+      [status, uploadError ?? null, id],
+    );
+  } catch (error) {
+    log.error('Error updating recording sync status', { id, status, error });
+    // Non-fatal — the upload already completed. State will self-correct on next sync.
   }
 }

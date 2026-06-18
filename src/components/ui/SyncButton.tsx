@@ -15,11 +15,14 @@ import {
 import {
   getSyncState,
   getSyncError,
+  getActiveUserId,
   KV_KEYS,
   // getUserIdSync,
 } from '../../services/storage';
+import { getCredentials } from '../../services/keychain';
 import { logger } from '../../utils/logger';
 import { appStyles } from '../../app/appStyles';
+import { syncPendingRecordings } from '../../services/recordingSync';
 
 const log = logger.create('SyncButton');
 
@@ -122,6 +125,20 @@ export function SyncButton({
     try {
       setIsSyncing(true);
       onSyncStart?.();
+
+      const activeUserId = getActiveUserId();
+      const creds = await getCredentials(activeUserId);
+      if (creds?.token) {
+        try {
+          const uploadResult = await syncPendingRecordings(creds.token);
+          log.info('Recording upload finished', { ...uploadResult });
+        } catch (uploadError) {
+          log.error('Recording upload failed', { error: uploadError });
+        }
+      } else {
+        log.warn('No credentials for active user, skipping recording upload');
+      }
+
       await syncAllUsers();
       updateState();
       onSyncComplete?.();
