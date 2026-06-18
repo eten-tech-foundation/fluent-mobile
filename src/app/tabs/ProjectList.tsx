@@ -415,7 +415,7 @@ export default function ProjectList({ onSignOut }: ProjectListProps) {
 
       {activeTab === 'myWork' &&
         (myWorkItems.length === 0 ? (
-          <View style={[appStyles.container, appStyles.centered]}>
+          <View style={tabStyles.emptyState}>
             <Ionicons name="checkmark-circle-outline" size={48} color="#ccc" />
             <Text style={appStyles.emptyText}>No assignments found</Text>
           </View>
@@ -432,7 +432,7 @@ export default function ProjectList({ onSignOut }: ProjectListProps) {
 
       {activeTab === 'projects' &&
         (projects.length === 0 ? (
-          <View style={[appStyles.container, appStyles.centered]}>
+          <View style={tabStyles.emptyState}>
             <Ionicons name="folder-open-outline" size={48} color="#ccc" />
             <Text style={appStyles.emptyText}>No projects found</Text>
           </View>
@@ -492,5 +492,10 @@ const tabStyles = StyleSheet.create({
     fontWeight: '500',
     color: '#1a6ef5',
     textTransform: 'capitalize',
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
