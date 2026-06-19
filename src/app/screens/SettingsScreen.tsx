@@ -19,12 +19,13 @@ import {
 } from '../../constants/messages';
 import { getPendingUploadCount } from '../../db/queries';
 import { FluentAPI, setActiveToken } from '../../services/api';
-import { clearCredentials } from '../../services/keychain';
+import { clearCredentials, getCredentials } from '../../services/keychain';
 import {
   getActiveUserId,
   getKnownUserIds,
   kvStorage,
   KV_KEYS,
+  switchActiveUser,
 } from '../../services/storage';
 import { usePreferences } from '../../hooks/usePreferences';
 import { RootStackParamList } from '../../types/navigation/types';
@@ -79,11 +80,19 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
     kvStorage.setItemSync(KV_KEYS.KNOWN_USER_IDS, remaining.join(','));
     log.info('User signed out', { userId: currentUserId });
 
-    setActiveToken(null);
-    kvStorage.removeItemSync(KV_KEYS.ACTIVE_USER_ID);
-    kvStorage.removeItemSync(KV_KEYS.USER_ID);
-    kvStorage.removeItemSync(KV_KEYS.USER_EMAIL);
-    onSignOut?.();
+    if (remaining.length > 0) {
+      const nextUserId = remaining[0];
+      const creds = await getCredentials(nextUserId);
+      setActiveToken(creds?.token ?? null);
+      switchActiveUser(nextUserId);
+      navigation.goBack();
+    } else {
+      setActiveToken(null);
+      kvStorage.removeItemSync(KV_KEYS.ACTIVE_USER_ID);
+      kvStorage.removeItemSync(KV_KEYS.USER_ID);
+      kvStorage.removeItemSync(KV_KEYS.USER_EMAIL);
+      onSignOut?.();
+    }
   };
 
   const handleLogOut = async () => {
