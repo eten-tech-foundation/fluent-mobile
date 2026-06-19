@@ -75,7 +75,9 @@ Check if Java is already installed:
 java -version
 ```
 
-If not installed, install JDK 17:
+
+<!-- TODO(cesar): add instructions for macos, without apt. remember to add verification steps -->
+If not installed, install JDK 17: 
 
 ```bash
 sudo apt update
@@ -150,6 +152,9 @@ Clone the repo and install:
 ```bash
 git clone https://github.com/eten-tech-foundation/fluent-mobile.git
 cd fluent-mobile
+
+# TODO(cesar): This might be outdated
+# error: pathspec 'MVP_PoC_mobile_companion_app' did not match any file(s) known to git
 git checkout MVP_PoC_mobile_companion_app
 npm install
 ```
@@ -173,7 +178,7 @@ npm run android
 ```
 
 The app should launch in your emulator automatically.
-
+ <!-- TODO(cesar): The emulator must bu turned on? -->
 ---
 
 ## Troubleshooting

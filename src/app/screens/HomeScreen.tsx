@@ -10,21 +10,14 @@ import { MyWorkTab } from '../tabs/MyWorkTab';
 import { ProjectsTab } from '../tabs/ProjectsTab';
 import { useSync } from '../../hooks/useSync';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
-import { UserSettingsMenu } from '../../components/ui/UserSettingsMenu';
 import { RootStackParamList } from '../../types/navigation/types';
 import { onSyncComplete, onSyncStart } from '../../services/syncEvents';
 
-interface HomeScreenProps {
-  onSignOut?: () => void;
-}
-
-export default function HomeScreen({ onSignOut }: HomeScreenProps) {
+export default function HomeScreen() {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'Home'>>();
   const [activeTab, setActiveTab] = useState<HomeTab>('myWork');
   const [refreshKey, setRefreshKey] = useState(0);
-  const [settingsVisible, setSettingsVisible] = useState(false);
-  const [settingsAnchor, setSettingsAnchor] = useState({ top: 0, left: 16 });
   const [isNewUserLoading, setIsNewUserLoading] = useState(
     () => route.params?.newUserLoading === true,
   );
@@ -58,13 +51,12 @@ export default function HomeScreen({ onSignOut }: HomeScreenProps) {
   }, []);
 
   const handleSettingsPress = () => {
-    setSettingsAnchor({ top: 56, left: 16 });
-    setSettingsVisible(true);
+    navigation.push('Settings');
   };
 
-  const handleUserSwitched = () => {
-    setRefreshKey(key => key + 1);
-  };
+  // const handleUserSwitched = () => {
+  //   setRefreshKey(key => key + 1);
+  // };
 
   const handleSyncPress = useCallback(() => {
     navigation.navigate('Sync');
@@ -86,16 +78,9 @@ export default function HomeScreen({ onSignOut }: HomeScreenProps) {
   return (
     <ScreenContainer edges={['top']}>
       <PageHeader
-        onSettingsPress={handleSettingsPress}
         syncStatus={syncStatus}
         onSyncPress={handleSyncPress}
-      />
-      <UserSettingsMenu
-        visible={settingsVisible}
-        onClose={() => setSettingsVisible(false)}
-        anchor={settingsAnchor}
-        onSignOut={onSignOut}
-        onUserSwitched={handleUserSwitched}
+        onSettingsPress={handleSettingsPress}
       />
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
       <View style={styles.content}>
