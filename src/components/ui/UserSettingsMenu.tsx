@@ -122,7 +122,7 @@ export function UserSettingsMenu({
             accessibilityRole="button"
           >
             <Ionicons name="settings-outline" size={18} color="#333" />
-            <Text style={appStyles.menuItemText}>Settings</Text>
+            <Text style={appStyles.menuItemText}>More Settings</Text>
           </TouchableOpacity>
 
           <View style={appStyles.menuDivider} />
