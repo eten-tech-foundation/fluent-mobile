@@ -6,6 +6,7 @@ import { theme } from '../../theme';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { SettingsButton } from '../../components/ui/SettingsButton';
 import { PageHeaderSyncButton } from '../../components/ui/PageHeaderSyncButton';
+import { UserSettingsMenu } from '../../components/ui/UserSettingsMenu';
 import { TabBar, HomeTab } from '../../components/layout/TabBar';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { MyWorkTab } from '../tabs/MyWorkTab';
@@ -15,11 +16,17 @@ import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { RootStackParamList } from '../../types/navigation/types';
 import { onSyncComplete, onSyncStart } from '../../services/syncEvents';
 
-export default function HomeScreen() {
+interface HomeScreenProps {
+  onSignOut?: () => void;
+}
+
+export default function HomeScreen({ onSignOut }: HomeScreenProps) {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'Home'>>();
   const [activeTab, setActiveTab] = useState<HomeTab>('myWork');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [settingsAnchor, setSettingsAnchor] = useState({ top: 56, left: 16 });
   const [isNewUserLoading, setIsNewUserLoading] = useState(
     () => route.params?.newUserLoading === true,
   );
@@ -53,12 +60,13 @@ export default function HomeScreen() {
   }, []);
 
   const handleSettingsPress = () => {
-    navigation.push('Settings');
+    setSettingsAnchor({ top: 56, left: 16 });
+    setSettingsVisible(true);
   };
 
-  // const handleUserSwitched = () => {
-  //   setRefreshKey(key => key + 1);
-  // };
+  const handleUserSwitched = useCallback(() => {
+    setRefreshKey(key => key + 1);
+  }, []);
 
   const handleSyncPress = useCallback(() => {
     navigation.navigate('Sync');
@@ -96,6 +104,13 @@ export default function HomeScreen() {
           <ProjectsTab refreshKey={refreshKey} />
         )}
       </View>
+      <UserSettingsMenu
+        visible={settingsVisible}
+        onClose={() => setSettingsVisible(false)}
+        anchor={settingsAnchor}
+        onSignOut={onSignOut}
+        onUserSwitched={handleUserSwitched}
+      />
     </ScreenContainer>
   );
 }

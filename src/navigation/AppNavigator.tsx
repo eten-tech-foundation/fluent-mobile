@@ -36,7 +36,9 @@ export default function AppNavigator({
         </>
       ) : (
         <>
-          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="Home">
+            {() => <HomeScreen onSignOut={onSignOut} />}
+          </Stack.Screen>
           <Stack.Screen name="Settings">
             {() => <SettingsScreen onSignOut={onSignOut} />}
           </Stack.Screen>

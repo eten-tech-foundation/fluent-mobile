@@ -19,7 +19,7 @@ import { logger } from '../../utils/logger';
 
 const log = logger.create('UserSettingsMenu');
 
-type Nav = StackNavigationProp<RootStackParamList, 'Home'>;
+type Nav = StackNavigationProp<RootStackParamList>;
 
 interface UserSettingsMenuProps {
   visible: boolean;
@@ -48,6 +48,11 @@ export function UserSettingsMenu({
 
   const handleOpen = () => {
     loadKnownUsers();
+  };
+
+  const handleOpenSettings = () => {
+    onClose();
+    navigation.navigate('Settings');
   };
 
   const handleAddUser = () => {
@@ -112,8 +117,20 @@ export function UserSettingsMenu({
         >
           <TouchableOpacity
             style={appStyles.menuItem}
+            onPress={handleOpenSettings}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+          >
+            <Ionicons name="settings-outline" size={18} color="#333" />
+            <Text style={appStyles.menuItemText}>Settings</Text>
+          </TouchableOpacity>
+
+          <View style={appStyles.menuDivider} />
+          <TouchableOpacity
+            style={appStyles.menuItem}
             onPress={handleAddUser}
             activeOpacity={0.7}
+            accessibilityRole="button"
           >
             <Ionicons name="person-add-outline" size={18} color="#333" />
             <Text style={appStyles.menuItemText}>Add User</Text>
@@ -129,6 +146,7 @@ export function UserSettingsMenu({
                   style={appStyles.menuItem}
                   onPress={() => handleSwitchUser(user.id)}
                   activeOpacity={0.7}
+                  accessibilityRole="button"
                 >
                   <Ionicons
                     name={
@@ -158,6 +176,7 @@ export function UserSettingsMenu({
             style={appStyles.menuItem}
             onPress={handleSignOut}
             activeOpacity={0.7}
+            accessibilityRole="button"
           >
             <Ionicons name="log-out-outline" size={18} color="#d32f2f" />
             <Text style={[appStyles.menuItemText, appStyles.menuItemDanger]}>
