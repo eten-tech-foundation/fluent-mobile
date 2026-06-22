@@ -4,13 +4,15 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { theme } from '../../theme';
 import { PageHeader } from '../../components/layout/PageHeader';
+import { SettingsButton } from '../../components/ui/SettingsButton';
+import { PageHeaderSyncButton } from '../../components/ui/PageHeaderSyncButton';
+import { UserSettingsMenu } from '../../components/ui/UserSettingsMenu';
 import { TabBar, HomeTab } from '../../components/layout/TabBar';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { MyWorkTab } from '../tabs/MyWorkTab';
 import { ProjectsTab } from '../tabs/ProjectsTab';
 import { useSync } from '../../hooks/useSync';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
-import { UserSettingsMenu } from '../../components/ui/UserSettingsMenu';
 import { RootStackParamList } from '../../types/navigation/types';
 import { onSyncComplete, onSyncStart } from '../../services/syncEvents';
 
@@ -24,7 +26,7 @@ export default function HomeScreen({ onSignOut }: HomeScreenProps) {
   const [activeTab, setActiveTab] = useState<HomeTab>('myWork');
   const [refreshKey, setRefreshKey] = useState(0);
   const [settingsVisible, setSettingsVisible] = useState(false);
-  const [settingsAnchor, setSettingsAnchor] = useState({ top: 0, left: 16 });
+  const [settingsAnchor, setSettingsAnchor] = useState({ top: 56, left: 16 });
   const [isNewUserLoading, setIsNewUserLoading] = useState(
     () => route.params?.newUserLoading === true,
   );
@@ -62,9 +64,9 @@ export default function HomeScreen({ onSignOut }: HomeScreenProps) {
     setSettingsVisible(true);
   };
 
-  const handleUserSwitched = () => {
+  const handleUserSwitched = useCallback(() => {
     setRefreshKey(key => key + 1);
-  };
+  }, []);
 
   const handleSyncPress = useCallback(() => {
     navigation.navigate('Sync');
@@ -86,16 +88,13 @@ export default function HomeScreen({ onSignOut }: HomeScreenProps) {
   return (
     <ScreenContainer edges={['top']}>
       <PageHeader
-        onSettingsPress={handleSettingsPress}
-        syncStatus={syncStatus}
-        onSyncPress={handleSyncPress}
-      />
-      <UserSettingsMenu
-        visible={settingsVisible}
-        onClose={() => setSettingsVisible(false)}
-        anchor={settingsAnchor}
-        onSignOut={onSignOut}
-        onUserSwitched={handleUserSwitched}
+        leftIcon={<SettingsButton onPress={handleSettingsPress} />}
+        rightIcon={
+          <PageHeaderSyncButton
+            syncStatus={syncStatus}
+            onPress={handleSyncPress}
+          />
+        }
       />
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
       <View style={styles.content}>
@@ -105,6 +104,13 @@ export default function HomeScreen({ onSignOut }: HomeScreenProps) {
           <ProjectsTab refreshKey={refreshKey} />
         )}
       </View>
+      <UserSettingsMenu
+        visible={settingsVisible}
+        onClose={() => setSettingsVisible(false)}
+        anchor={settingsAnchor}
+        onSignOut={onSignOut}
+        onUserSwitched={handleUserSwitched}
+      />
     </ScreenContainer>
   );
 }

@@ -2,6 +2,8 @@ export type RootStackParamList = {
   Login: undefined;
   AddUser: undefined;
   Home: { newUserLoading?: boolean } | undefined;
+  Settings: undefined;
+  PrepareForOffline: undefined;
   Sync: undefined;
   Chapters: {
     projectId: number;
