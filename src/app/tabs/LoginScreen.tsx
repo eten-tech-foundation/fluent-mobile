@@ -272,7 +272,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           {view === 'forgot' && (
             <View style={styles.loginWrapperBlock}>
               <Text style={styles.loginTitle}>Forgot Your Password?</Text>
-              <Text style={styles.subtitle}>
+              <Text style={styles.loginSubtitle}>
                 Enter your email address to reset your password.
               </Text>
 
