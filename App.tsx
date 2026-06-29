@@ -136,7 +136,7 @@ function App() {
   }
 
   return (
-    <GestureHandlerRootView style={appStyles.containerAppInit}>
+    <GestureHandlerRootView style={appStyles.appRoot}>
       <SafeAreaProvider>
         <NavigationContainer>
           <AppNavigator
