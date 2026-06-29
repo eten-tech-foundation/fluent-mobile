@@ -191,6 +191,14 @@ cp .env.example .env
 
 Edit `.env` and set `EXPO_PUBLIC_API_BASE_URL` (use `http://10.0.2.2:9999` for the Android emulator).
 
+**Optional — skip the long first sync:** import the team seed database after your first dev-client install (see [seed/README.md](seed/README.md)):
+
+```bash
+npm run seed:import
+```
+
+Then sign in with `t@fluent.local` / `t@123456` (fluent-api dev user). Auth tokens are not in the seed — one login is still required.
+
 ---
 
 ## Step 7: Run the App
@@ -226,6 +234,16 @@ Requires an [Expo access token](https://expo.dev/settings/access-tokens) and acc
 ---
 
 ## Troubleshooting
+
+**`Failed to download remote update` / `No returned query result` on launch**
+Local dev builds must not check Expo OTA on startup. Rebuild after pulling latest `main`:
+
+```bash
+npm run prebuild
+npm run android
+```
+
+Then keep Metro running (`npm start`). If you installed an old **EAS dev-client** or **preview** APK by mistake, uninstall it and use a fresh local build or the PR **Install Fluent** link — see [docs/guides/qa-preview-testing.md](docs/guides/qa-preview-testing.md).
 
 **`adb: command not found`**
 Your environment variables aren't set. Complete Step 4 and reload your shell (`source ~/.zshrc`, `source ~/.bashrc`, or restart the terminal).
