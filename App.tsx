@@ -14,6 +14,7 @@ import {
   hasCredentials,
 } from './src/services/keychain';
 import AppNavigator from './src/navigation/AppNavigator';
+import { onAuthSessionExpired } from './src/services/syncEvents';
 import { setActiveToken } from './src/services/api';
 import { appStyles } from './src/app/appStyles';
 import { theme } from './src/theme';
@@ -29,6 +30,14 @@ function App() {
   const handleSignOut = () => {
     setIsAuthenticated(false);
   };
+
+  useEffect(() => {
+    return onAuthSessionExpired(() => {
+      log.info('Session expired — returning to login');
+      setActiveToken(null);
+      setIsAuthenticated(false);
+    });
+  }, []);
 
   useEffect(() => {
     const initApp = async () => {
@@ -85,16 +94,24 @@ function App() {
     });
   }, [dbReady]);
 
-  const handleLoginSuccess = (email: string) => {
-    setIsAuthenticated(true);
-    setPostLoginSyncActive(true);
+  const runPostLoginSync = (email: string, onComplete?: () => void) => {
     syncAllData(false, email)
       .catch(e => {
         log.error('Post-login sync failed:', { error: e });
       })
       .finally(() => {
-        setPostLoginSyncActive(false);
+        onComplete?.();
       });
+  };
+
+  const handleLoginSuccess = (email: string) => {
+    setIsAuthenticated(true);
+    setPostLoginSyncActive(true);
+    runPostLoginSync(email, () => setPostLoginSyncActive(false));
+  };
+
+  const handleAddUserLoginSuccess = (email: string) => {
+    runPostLoginSync(email);
   };
 
   if (!dbReady) {
@@ -119,12 +136,13 @@ function App() {
   }
 
   return (
-    <GestureHandlerRootView style={appStyles.containerAppInit}>
+    <GestureHandlerRootView style={appStyles.appRoot}>
       <SafeAreaProvider>
         <NavigationContainer>
           <AppNavigator
             isAuthenticated={isAuthenticated}
             onLoginSuccess={handleLoginSuccess}
+            onAddUserLoginSuccess={handleAddUserLoginSuccess}
             onSignOut={handleSignOut}
             postLoginSyncActive={postLoginSyncActive}
           />

@@ -1,4 +1,5 @@
 import { getDatabase } from './db';
+import { ensureUserProjectMembership } from './repository';
 import { logger } from '../utils/logger';
 import * as DBTypes from '../types/db/types';
 import { deriveChapterSyncState } from '../utils/chapterSyncState';
@@ -8,12 +9,33 @@ import {
 } from '../utils/formatLastActivity';
 import { deriveProjectSyncState } from '../utils/projectSyncState';
 import {
-  getBadgeStage,
-  getWorkflowStage,
-  isCompleteStatus,
-} from '../utils/workflowStage';
+  getMyWorkChapterQueryParams,
+  MY_WORK_CHAPTER_WHERE,
+} from '../utils/myWorkChapterFilter';
+import { getBadgeStage, getWorkflowStage } from '../utils/workflowStage';
 
 const log = logger.create('DBQueries');
+
+const BIBLE_TEXTS_MATCH_CA = `
+  bt.bible_id = ca.bible_id
+  AND bt.book_id = ca.book_id
+  AND bt.chapter_number = ca.chapter_number
+`;
+
+/** Recordings are keyed by bible_text_id; join verses for the chapter assignment. */
+const RECORDINGS_JOIN_CA = `
+  LEFT JOIN bible_texts bt_r
+    ON bt_r.bible_id = ca.bible_id
+    AND bt_r.book_id = ca.book_id
+    AND bt_r.chapter_number = ca.chapter_number
+  LEFT JOIN recordings r ON r.bible_text_id = bt_r.id AND r.is_latest = 1`;
+
+const RECORDING_AGGREGATES = `
+  COUNT(DISTINCT CASE WHEN r.id IS NOT NULL AND r.is_latest = 1 THEN r.id END) AS recording_count,
+  COUNT(DISTINCT CASE
+    WHEN r.id IS NOT NULL AND r.is_latest = 1 AND r.sync_status != 'uploaded' THEN r.id
+  END) AS pending_count,
+  MAX(CASE WHEN r.is_latest = 1 THEN r.updated_at END) AS last_recording_activity`;
 
 function mapProjectSummaryRow(
   row: DBTypes.ProjectSummaryRow,
@@ -41,6 +63,8 @@ export async function getProjectsWithSummary(
 ): Promise<DBTypes.ProjectSummary[]> {
   const db = getDatabase();
   try {
+    await ensureUserProjectMembership(userId);
+
     const result = await db.execute(
       `SELECT
         p.id,
@@ -63,7 +87,7 @@ export async function getProjectsWithSummary(
       LEFT JOIN languages tl ON p.target_language_id = tl.id
       LEFT JOIN project_units pu ON pu.project_id = p.id
       LEFT JOIN chapter_assignments ca ON ca.project_unit_id = pu.id
-      LEFT JOIN recordings r ON r.chapter_assignment_id = ca.id AND r.is_latest = 1
+      ${RECORDINGS_JOIN_CA}
       WHERE up.user_id = ?
       GROUP BY p.id
       ORDER BY p.name COLLATE NOCASE;`,
@@ -74,7 +98,9 @@ export async function getProjectsWithSummary(
     log.info('Projects with summary fetched', { count: rows.length });
     return rows.map(mapProjectSummaryRow);
   } catch (error) {
-    log.error('Error fetching projects with summary', { error });
+    log.error('Error fetching projects with summary', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return [];
   }
 }
@@ -172,19 +198,6 @@ export async function getChapterAssignmentsWithBooks(projectUnitId: number) {
   }
 }
 
-const BIBLE_TEXTS_MATCH_CA = `
-  bt.bible_id = ca.bible_id
-  AND bt.book_id = ca.book_id
-  AND bt.chapter_number = ca.chapter_number
-`;
-
-const RECORDING_AGGREGATES = `
-  COUNT(DISTINCT CASE WHEN r.id IS NOT NULL AND r.is_latest = 1 THEN r.id END) AS recording_count,
-  COUNT(DISTINCT CASE
-    WHEN r.id IS NOT NULL AND r.is_latest = 1 AND r.sync_status != 'uploaded' THEN r.id
-  END) AS pending_count,
-  MAX(CASE WHEN r.is_latest = 1 THEN r.updated_at END) AS last_recording_activity`;
-
 function mapChapterActivityFields(row: {
   updated_at?: string | null;
   submitted_time?: string | null;
@@ -281,7 +294,7 @@ export async function getProjectChapters(
       FROM chapter_assignments ca
       JOIN books b ON ca.book_id = b.id
       JOIN project_units pu ON ca.project_unit_id = pu.id
-      LEFT JOIN recordings r ON r.chapter_assignment_id = ca.id AND r.is_latest = 1
+      ${RECORDINGS_JOIN_CA}
       WHERE pu.project_id = ?
       GROUP BY ca.id
       ORDER BY b.id, ca.chapter_number`,
@@ -331,22 +344,22 @@ export async function getMyWorkChapters(
       JOIN project_units pu ON ca.project_unit_id = pu.id
       JOIN projects p ON pu.project_id = p.id
       LEFT JOIN languages tl ON p.target_language_id = tl.id
-      LEFT JOIN recordings r ON r.chapter_assignment_id = ca.id AND r.is_latest = 1
-      WHERE ca.assigned_user_id = ?
+      ${RECORDINGS_JOIN_CA}
+      WHERE ${MY_WORK_CHAPTER_WHERE}
       GROUP BY ca.id
       ORDER BY b.id, ca.chapter_number`,
-      [userId],
+      getMyWorkChapterQueryParams(userId),
     );
 
     const rows = (result?.rows as unknown as DBTypes.MyWorkChapterRow[]) || [];
-    const chapters = rows
-      .filter(row => !isCompleteStatus(row.status))
-      .map(mapMyWorkChapterRow);
+    const chapters = rows.map(mapMyWorkChapterRow);
 
     log.info('My work chapters fetched', { count: chapters.length });
     return chapters;
   } catch (error) {
-    log.error('Error fetching my work chapters', { error });
+    log.error('Error fetching my work chapters', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return [];
   }
 }
