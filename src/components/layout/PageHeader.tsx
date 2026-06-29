@@ -1,63 +1,36 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
-import { Settings } from 'lucide-react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import FluentLogoWhite from '../../assets/icons/fluent-logo-white.svg';
-import { CloudSyncStatusIcon } from '../ui/CloudSyncStatusIcon';
-import {
-  theme,
-  iconSizes,
-  logoSize,
-  headerLayout,
-  listIconStrokeWidth,
-  touchHitSlop,
-} from '../../theme';
-import { SyncStatus, SYNC_STATUS_LABELS } from '../../utils/syncStatusState';
+import { theme, logoSize, headerLayout } from '../../theme';
 
 interface PageHeaderProps {
-  onSettingsPress?: () => void;
-  onSyncPress?: () => void;
-  syncStatus: SyncStatus;
+  title?: string;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
 }
 
-export function PageHeader({
-  onSettingsPress,
-  onSyncPress,
-  syncStatus,
-}: PageHeaderProps) {
-  const iconColor = theme.colors.primaryForeground;
-
+export function PageHeader({ title, leftIcon, rightIcon }: PageHeaderProps) {
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        onPress={onSettingsPress}
-        style={styles.settingsSlot}
-        accessibilityLabel="Settings"
-        hitSlop={touchHitSlop}
-      >
-        <Settings
-          size={iconSizes.header}
-          color={iconColor}
-          strokeWidth={listIconStrokeWidth}
-        />
-      </TouchableOpacity>
+      <View style={styles.leftSlot}>{leftIcon}</View>
 
-      <TouchableOpacity
-        onPress={onSyncPress}
-        style={styles.syncSlot}
-        accessibilityLabel={SYNC_STATUS_LABELS[syncStatus]}
-        accessibilityRole="button"
-        hitSlop={touchHitSlop}
-      >
-        <CloudSyncStatusIcon status={syncStatus} decorative />
-      </TouchableOpacity>
+      <View style={styles.rightSlot}>{rightIcon}</View>
 
-      <View style={styles.logoOverlay} pointerEvents="none">
-        <FluentLogoWhite
-          width={logoSize.width}
-          height={logoSize.height}
-          style={styles.logo}
-        />
-      </View>
+      {title ? (
+        <View style={styles.centerOverlay} pointerEvents="none">
+          <Text style={styles.title} numberOfLines={1}>
+            {title}
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.centerOverlay} pointerEvents="none">
+          <FluentLogoWhite
+            width={logoSize.width}
+            height={logoSize.height}
+            style={styles.logo}
+          />
+        </View>
+      )}
     </View>
   );
 }
@@ -73,7 +46,7 @@ const styles = StyleSheet.create({
     paddingVertical: headerLayout.paddingVertical,
     minHeight: headerLayout.minHeight,
   },
-  settingsSlot: {
+  leftSlot: {
     width: headerLayout.sideSlot,
     height: headerLayout.sideSlot,
     alignItems: 'center',
@@ -81,21 +54,24 @@ const styles = StyleSheet.create({
     marginLeft: -theme.spacing.sm,
     zIndex: 1,
   },
-  syncSlot: {
+  rightSlot: {
     width: headerLayout.sideSlot,
     height: headerLayout.sideSlot,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: theme.radius.full,
-    padding: 6,
     zIndex: 1,
   },
-  logoOverlay: {
+  centerOverlay: {
     ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
   },
   logo: {
     marginVertical: logoSize.marginVertical,
+  },
+  title: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.primaryForeground,
   },
 });

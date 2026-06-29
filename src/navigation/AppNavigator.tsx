@@ -2,6 +2,8 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { RootStackParamList } from '../types/navigation/types';
 import HomeScreen from '../app/screens/HomeScreen';
+import SettingsScreen from '../app/screens/SettingsScreen';
+import PrepareForOfflineScreen from '../app/screens/PrepareForOfflineScreen';
 import ViewProject from '../app/tabs/ViewProject';
 import ViewChapter from '../app/tabs/ViewChapter';
 import LoginScreen from '../app/tabs/LoginScreen';
@@ -44,6 +46,13 @@ export default function AppNavigator({
               />
             )}
           </Stack.Screen>
+          <Stack.Screen name="Settings">
+            {() => <SettingsScreen onSignOut={onSignOut} />}
+          </Stack.Screen>
+          <Stack.Screen
+            name="PrepareForOffline"
+            component={PrepareForOfflineScreen}
+          />
           <Stack.Screen name="Chapters" component={ViewProject} />
           <Stack.Screen name="VerseDetail" component={ViewChapter} />
           <Stack.Screen name="AddUser">

@@ -1,44 +1,38 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { Text } from 'react-native';
+import { render, screen } from '@testing-library/react-native';
 import { PageHeader } from './PageHeader';
-
-jest.mock('lucide-react-native', () => {
-  const MockReact = require('react');
-  const { View } = require('react-native');
-  const MockIcon = () => MockReact.createElement(View);
-  return {
-    Settings: MockIcon,
-    ArrowUp: MockIcon,
-    Check: MockIcon,
-    Cloud: MockIcon,
-    CloudOff: MockIcon,
-    RefreshCw: MockIcon,
-  };
-});
-
-jest.mock('../ui/CloudSyncStatusIcon', () => ({
-  CloudSyncStatusIcon: () => {
-    const MockReact = require('react');
-    const { View } = require('react-native');
-    return MockReact.createElement(View);
-  },
-}));
 
 jest.mock('../../assets/icons/fluent-logo-white.svg', () => {
   const MockReact = require('react');
   const { View } = require('react-native');
-  return () => MockReact.createElement(View);
+  return () => MockReact.createElement(View, { testID: 'fluent-logo' });
 });
 
 describe('PageHeader', () => {
-  it('renders sync status icon and navigates on press', () => {
-    const onSyncPress = jest.fn();
+  it('renders the Fluent logo when no title is provided', () => {
+    render(<PageHeader />);
 
-    render(<PageHeader syncStatus="online_synced" onSyncPress={onSyncPress} />);
+    expect(screen.getByTestId('fluent-logo')).toBeTruthy();
+  });
 
-    expect(screen.getByLabelText('Synced. Open Sync page.')).toBeTruthy();
+  it('renders a centered title when provided', () => {
+    render(<PageHeader title="Settings" />);
 
-    fireEvent.press(screen.getByLabelText('Synced. Open Sync page.'));
-    expect(onSyncPress).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Settings')).toBeTruthy();
+  });
+
+  it('renders left and right icon slots', () => {
+    render(
+      <PageHeader
+        title="Settings"
+        leftIcon={<Text testID="left-icon">Left</Text>}
+        rightIcon={<Text testID="right-icon">Right</Text>}
+      />,
+    );
+
+    expect(screen.getByTestId('left-icon')).toBeTruthy();
+    expect(screen.getByTestId('right-icon')).toBeTruthy();
+    expect(screen.getByText('Settings')).toBeTruthy();
   });
 });

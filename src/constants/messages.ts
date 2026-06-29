@@ -6,3 +6,9 @@ export const MY_WORK_EMPTY_MESSAGE =
 
 export const PROJECT_CHAPTERS_EMPTY_MESSAGE =
   'No chapters are available in this project yet.';
+
+export const LOGOUT_UNSYNCED_TITLE = 'Unsynced work on device';
+export const LOGOUT_UNSYNCED_MESSAGE =
+  'You have recordings that have not been uploaded. Log out anyway?';
+export const LOGOUT_UNSYNCED_CONFIRM = 'Log out';
+export const LOGOUT_UNSYNCED_CANCEL = 'Cancel';
