@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator, Text } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import BootSplash from 'react-native-bootsplash';
@@ -22,6 +23,7 @@ const log = logger.create('App');
 function App() {
   const [dbReady, setDbReady] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [postLoginSyncActive, setPostLoginSyncActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSignOut = () => {
@@ -85,38 +87,50 @@ function App() {
 
   const handleLoginSuccess = (email: string) => {
     setIsAuthenticated(true);
-    syncAllData(false, email).catch(e => {
-      log.error('Post-login sync failed:', { error: e });
-    });
+    setPostLoginSyncActive(true);
+    syncAllData(false, email)
+      .catch(e => {
+        log.error('Post-login sync failed:', { error: e });
+      })
+      .finally(() => {
+        setPostLoginSyncActive(false);
+      });
   };
 
   if (!dbReady) {
     return (
-      <SafeAreaProvider>
-        <View style={appStyles.containerAppInit}>
-          {error ? (
-            <Text style={appStyles.errorTextAppInit}>Error: {error}</Text>
-          ) : (
-            <>
-              <ActivityIndicator size="large" color={theme.colors.primary} />
-              <Text style={appStyles.loadingTextAppInit}>Initializing...</Text>
-            </>
-          )}
-        </View>
-      </SafeAreaProvider>
+      <GestureHandlerRootView style={appStyles.containerAppInit}>
+        <SafeAreaProvider>
+          <View style={appStyles.containerAppInit}>
+            {error ? (
+              <Text style={appStyles.errorTextAppInit}>Error: {error}</Text>
+            ) : (
+              <>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <Text style={appStyles.loadingTextAppInit}>
+                  Initializing...
+                </Text>
+              </>
+            )}
+          </View>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
     );
   }
 
   return (
-    <SafeAreaProvider>
-      <NavigationContainer>
-        <AppNavigator
-          isAuthenticated={isAuthenticated}
-          onLoginSuccess={handleLoginSuccess}
-          onSignOut={handleSignOut}
-        />
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={appStyles.containerAppInit}>
+      <SafeAreaProvider>
+        <NavigationContainer>
+          <AppNavigator
+            isAuthenticated={isAuthenticated}
+            onLoginSuccess={handleLoginSuccess}
+            onSignOut={handleSignOut}
+            postLoginSyncActive={postLoginSyncActive}
+          />
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 

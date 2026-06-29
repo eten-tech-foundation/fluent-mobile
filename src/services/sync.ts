@@ -410,11 +410,9 @@ export async function syncAllData(isIncremental = false, email?: string) {
       await syncChapterAssignments(userId);
       await syncBibleTexts();
     } else {
-      await syncChapterAssignments(
-        userId,
-        lastAssignmentSyncAt,
-        localProjectIdsBefore,
-      );
+      // Omit excludeProjectIds on re-login: the API can return [] when every
+      // local project is excluded before checking newly assigned work.
+      await syncChapterAssignments(userId, lastAssignmentSyncAt);
       await syncBibleTexts(lastAssignmentSyncAt);
     }
 

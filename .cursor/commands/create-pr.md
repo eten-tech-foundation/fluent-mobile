@@ -24,7 +24,7 @@ Run and report results:
 npm run format:check
 npm run lint
 npx tsc --noEmit
-FLUENT_USER_EMAIL=test@example.com npm test -- --ci
+npm test -- --ci
 ```
 
 Also check:
@@ -99,13 +99,14 @@ Use **npm** only in PR text and test steps (`npm install`, `npm run lint`, etc.)
 
 ## Framework notes
 
-- Bare **React Native 0.84** (not Expo), **Android-only** for now
-- Android CI: `assembleDebug` in `.github/workflows/build.yml`
+- **Expo SDK 56** + **CNG** (RN **0.85**, React **19.2.3**), **Android-only** for now
+- Android CI: `expo prebuild` + `assembleDebug` in `.github/workflows/build.yml`
+- EAS project ID: `b0919574-f268-4768-b3bd-7cfa5172bbab`
 
 ## Branch analysis
 
 - Count files/lines; classify feature / fix / chore / docs
-- Flag `package.json`, `package-lock.json`, `android/`, `src/db/schema.ts` as high-impact
+- Flag `package.json`, `package-lock.json`, `app.config.ts`, `plugins/`, `eas.json`, `src/db/schema.ts` as high-impact (`android/` is gitignored CNG output)
 - Flag new env vars needing `.env.example` update
 
 ## Usage

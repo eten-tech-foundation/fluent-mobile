@@ -12,16 +12,17 @@ globs:
 ## Run tests
 
 ```bash
-FLUENT_USER_EMAIL=test@example.com npm test -- --ci
+npm test -- --ci
 ```
 
-CI uses the same env var (`.github/workflows/test.yml`).
+CI runs the same command (`.github/workflows/test.yml`).
 
 ## Stack
 
-- Jest 29, preset `react-native`
+- Jest 29, preset `jest-expo`
 - `@testing-library/react-native` for component tests
-- Config: `jest.config.cjs` — transforms listed RN-related packages
+- Config: `jest.config.cjs` — `jest-expo` preset handles RN/Expo transforms
+- `jest.env.cjs` sets a default `EXPO_PUBLIC_API_BASE_URL` for tests (CI also sets it in `test.yml`)
 
 ## Patterns
 
@@ -38,4 +39,4 @@ CI uses the same env var (`.github/workflows/test.yml`).
 
 ## After test changes
 
-Run full suite with `FLUENT_USER_EMAIL` set before marking work complete.
+Run the full suite before marking work complete.

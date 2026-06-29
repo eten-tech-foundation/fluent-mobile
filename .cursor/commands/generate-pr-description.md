@@ -117,7 +117,7 @@ Tell reviewer these were run or should be run:
 - `npm run format:check`
 - `npm run lint`
 - `npx tsc --noEmit`
-- `FLUENT_USER_EMAIL=test@example.com npm test -- --ci`
+- `npm test -- --ci`
 
 Use **npm** in all instructions (not pnpm/yarn).
 

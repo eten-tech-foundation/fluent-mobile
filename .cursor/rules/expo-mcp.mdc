@@ -1,0 +1,38 @@
+---
+description: Use Expo MCP for SDK 56, CNG, EAS, and config plugin work
+alwaysApply: false
+tags:
+  - expo
+  - eas
+  - mcp
+---
+
+# Expo MCP
+
+Authenticate **before** Expo-related implementation or troubleshooting:
+
+```
+CallMcpTool server=user-expo-mcp toolName=mcp_auth arguments={}
+```
+
+After auth, prefer **Expo MCP** (`search_documentation`, `read_documentation`, EAS build tools) over guessing SDK APIs or web search.
+
+## When to query MCP
+
+| Task | MCP topics |
+|------|------------|
+| Dependencies | `npx expo install`, SDK 56 version matrix |
+| App config | `app.config.ts`, plugins, `expo-build-properties` |
+| CNG / prebuild | `expo prebuild --clean --platform android` (Android-only) |
+| EAS | `eas.json` profiles, build status, logs |
+| Jest / Metro / Babel | `jest-expo`, `expo/metro-config`, `babel-preset-expo` |
+
+## Fallback
+
+If MCP is unavailable, use Context7 `/expo/expo` docs — not memory.
+
+## Project constants
+
+- EAS project ID: `b0919574-f268-4768-b3bd-7cfa5172bbab`
+- Slug: `fluent-mobile`, scheme: `fluent`, package: `com.eten.fluent`
+- Native dir `android/` is **generated** — edit `app.config.ts` + plugins, not committed native code. No iOS project (see [android-only.mdc](./android-only.mdc)).

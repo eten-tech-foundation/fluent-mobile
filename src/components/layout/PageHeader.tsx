@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   centerOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
   },

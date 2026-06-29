@@ -17,12 +17,14 @@ interface AppNavigatorProps {
   isAuthenticated: boolean;
   onLoginSuccess: (email: string) => void;
   onSignOut: () => void;
+  postLoginSyncActive?: boolean;
 }
 
 export default function AppNavigator({
   isAuthenticated,
   onLoginSuccess,
   onSignOut,
+  postLoginSyncActive = false,
 }: AppNavigatorProps) {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -37,7 +39,12 @@ export default function AppNavigator({
       ) : (
         <>
           <Stack.Screen name="Home">
-            {() => <HomeScreen onSignOut={onSignOut} />}
+            {() => (
+              <HomeScreen
+                onSignOut={onSignOut}
+                postLoginSyncActive={postLoginSyncActive}
+              />
+            )}
           </Stack.Screen>
           <Stack.Screen name="Settings">
             {() => <SettingsScreen onSignOut={onSignOut} />}

@@ -456,7 +456,12 @@ export const appStyles = StyleSheet.create({
   },
   bulletText: { flex: 1, fontSize: 15, lineHeight: 22, color: '#172b4d' },
   //App.tsx
-  containerAppInit: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  containerAppInit: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0b50d0',
+  },
   errorTextAppInit: {
     color: 'red',
     fontSize: 14,

@@ -12,7 +12,7 @@ Run from repo root. Node **>= 24.14.0**. Package manager: **npm**.
 1. `npm run format:check` — or `npm run format` then re-check
 2. `npm run lint`
 3. `npm run typecheck`
-4. `FLUENT_USER_EMAIL=test@example.com npm test -- --ci`
+4. `npm test -- --ci`
 
 Report what ran and the outcome. If a step was skipped, say why.
 
@@ -29,8 +29,10 @@ Report what ran and the outcome. If a step was skipped, say why.
 ## CI mirrors
 
 - Lint + format: `.github/workflows/lint.yml`
-- Test: `.github/workflows/test.yml` (sets `FLUENT_USER_EMAIL`)
+- Test: `.github/workflows/test.yml`
 - Android build: `.github/workflows/build.yml`
+- Release on tag: `.github/workflows/eas-build.yml` + `.eas/workflows/create-production-builds.yml`
+- PR preview: `.github/workflows/preview-build.yml` (label `preview-build`)
 
 ## PR workflow
 
@@ -41,3 +43,15 @@ Slash commands in `.cursor/commands/`: `/create-pr-branch`, `/generate-pr-descri
 - Force push, hard reset
 - Commits or push (unless user asks)
 - Modifying `.env` or secrets
+
+## Expo / CNG (Android-only)
+
+| Command | Use |
+|---------|-----|
+| `npm run prebuild` | Regenerate `android/` from `app.config.ts` (`--platform android`) |
+| `npx eas build --profile development --platform android` | EAS dev-client APK (requires `EXPO_TOKEN` + project access) |
+| `git tag v1.0.0 && git push origin v1.0.0` | Production Android release (see `.eas/README.md`) |
+
+If `MainApplication does not exist`, `rm -rf android` then `npm run prebuild`. Regenerate bootsplash with `--platforms=android` only (see README).
+
+See [`.cursor/rules/android-only.mdc`](./android-only.mdc) and [`.cursor/rules/expo-mcp.mdc`](./expo-mcp.mdc) — authenticate Expo MCP before SDK/EAS work.

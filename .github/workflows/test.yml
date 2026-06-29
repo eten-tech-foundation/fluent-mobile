@@ -19,5 +19,5 @@ jobs:
 
       - name: Run tests
         env:
-           FLUENT_USER_EMAIL: 'test@example.com'
+          EXPO_PUBLIC_API_BASE_URL: http://localhost:9999
         run: npm test -- --ci

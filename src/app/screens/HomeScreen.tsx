@@ -18,9 +18,13 @@ import { onSyncComplete, onSyncStart } from '../../services/syncEvents';
 
 interface HomeScreenProps {
   onSignOut?: () => void;
+  postLoginSyncActive?: boolean;
 }
 
-export default function HomeScreen({ onSignOut }: HomeScreenProps) {
+export default function HomeScreen({
+  onSignOut,
+  postLoginSyncActive = false,
+}: HomeScreenProps) {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'Home'>>();
   const [activeTab, setActiveTab] = useState<HomeTab>('myWork');
@@ -72,7 +76,14 @@ export default function HomeScreen({ onSignOut }: HomeScreenProps) {
     navigation.navigate('Sync');
   }, [navigation]);
 
-  const showLoading = isNewUserLoading || (isSyncingLocal && refreshKey === 0);
+  const isInitialSyncInProgress =
+    isNewUserLoading ||
+    postLoginSyncActive ||
+    ((isSyncingLocal || isSyncing) && refreshKey === 0);
+
+  const showLoading = isInitialSyncInProgress;
+  const myWorkIsSyncing =
+    isSyncing || isSyncingLocal || postLoginSyncActive || isNewUserLoading;
 
   if (showLoading) {
     return (
@@ -99,7 +110,7 @@ export default function HomeScreen({ onSignOut }: HomeScreenProps) {
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
       <View style={styles.content}>
         {activeTab === 'myWork' ? (
-          <MyWorkTab refreshKey={refreshKey} isSyncing={isSyncing} />
+          <MyWorkTab refreshKey={refreshKey} isSyncing={myWorkIsSyncing} />
         ) : (
           <ProjectsTab refreshKey={refreshKey} />
         )}

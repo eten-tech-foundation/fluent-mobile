@@ -1,8 +1,9 @@
 import NetInfo from '@react-native-community/netinfo';
-import { API_BASE_URL } from '@env';
+import { getApiBaseUrl } from '../config/apiBaseUrl';
 
 export const SERVER_REACHABILITY_TIMEOUT_MS = 5_000;
-const REACHABILITY_URL = `${API_BASE_URL}/languages`;
+
+const getReachabilityUrl = () => `${getApiBaseUrl()}/health`;
 
 let configured = false;
 
@@ -12,7 +13,7 @@ function ensureNetInfoConfigured() {
   }
 
   NetInfo.configure({
-    reachabilityUrl: REACHABILITY_URL,
+    reachabilityUrl: getReachabilityUrl(),
     reachabilityMethod: 'GET',
     reachabilityLongTimeout: 60_000,
     reachabilityShortTimeout: SERVER_REACHABILITY_TIMEOUT_MS,
@@ -29,7 +30,7 @@ export async function checkServerReachable(): Promise<boolean> {
   );
 
   try {
-    const res = await fetch(REACHABILITY_URL, {
+    const res = await fetch(getReachabilityUrl(), {
       method: 'GET',
       signal: controller.signal,
       headers: { 'Content-Type': 'application/json' },

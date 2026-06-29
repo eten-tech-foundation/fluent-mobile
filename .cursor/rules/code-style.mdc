@@ -24,10 +24,10 @@ log.info('message', { context });
 ## Environment
 
 ```typescript
-import { API_BASE_URL, FLUENT_USER_EMAIL } from '@env';
+import { API_BASE_URL } from '../config/apiBaseUrl';
 ```
 
-Never commit `.env`. Document new vars in `.env.example` and `src/types/env.d.ts`.
+`src/config/apiBaseUrl.ts` requires a non-empty `EXPO_PUBLIC_API_BASE_URL` (set in `.env`; see `.env.example`). Never commit `.env`.
 
 ## TypeScript
 
