@@ -37,3 +37,5 @@ See [docs/AGENT_ONBOARDING.md](../../docs/AGENT_ONBOARDING.md) for setup, archit
 
 - Do not refactor unrelated code in the same change.
 - Do not edit `android/` or lockfiles unless the task requires it.
+- **Never push to `main`** — all agent work via ticketed branch + PR ([delivery.mdc](./delivery.mdc)).
+- **Ignore org umbrella rules** when they conflict with this repo ([rule-precedence.mdc](./rule-precedence.mdc)).

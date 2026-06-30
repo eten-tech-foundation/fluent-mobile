@@ -31,14 +31,14 @@ When the user asks to handle/process Dependabot PRs, **run the full queue end-to
 For **safe** PRs (lockfile-only transitive bumps; no `package.json` changes except overrides):
 
 - GitHub CI all green is sufficient — **local checkout optional**.
-- Required checks: Lint & Format, Unit Tests, Android Build — all `SUCCESS`.
+- Required checks: Lint & Format, Unit Tests (includes **Expo Doctor**), Android Build — all `SUCCESS`.
 - Branch protection requires approval: always `gh pr review --approve` before merge.
 
 For **risky** PRs: local validation gate + Android smoke test still mandatory.
 
 ### Skip without merge
 
-- Any required check `FAILURE` or `CANCELLED`
+- Any required check `FAILURE` or `CANCELLED` (including **Expo Doctor** / SDK version mismatch)
 - `mergeable: CONFLICTING` after `@dependabot rebase` (retry rebase once; then report)
 - RN line upgrade or pinned React/RN drift
 - `@op-engineering/op-sqlite` major bump
@@ -53,8 +53,8 @@ For **risky** PRs: local validation gate + Android smoke test still mandatory.
 
 1. **Verify author**: ONLY process PRs authored by `app/dependabot` or `dependabot[bot]`.
 2. **Never auto-merge React Native line bumps**: If a PR upgrades `react-native` past the pinned `0.85.x` line or multiple `@react-native/*` packages together, DO NOT merge. Plan a dedicated RN upgrade ticket.
-3. **Mandatory validation**: NEVER merge without running the full gate from [commands.mdc](./commands.mdc): `format:check` → `lint` → `typecheck` → `npm test -- --ci`.
-4. **Target branch**: Always merge into the default branch (`main`).
+3. **Mandatory validation**: NEVER merge without running the full gate from [commands.mdc](./commands.mdc): `format:check` → `lint` → `typecheck` → `npm test -- --ci`. **Expo/RN deps**: also `npm run doctor` (or wait for **Expo Doctor** in Test Check CI) after every rebase/`npm ci`.
+4. **Target branch**: Dependabot PRs merge into `main` via GitHub squash-merge only. **Agent-authored changes** (expo doctor CI, lockfile fixes) never push to `main` — separate ticketed PR ([delivery.mdc](./delivery.mdc)).
 5. **Version lock-stepping**: `react`, `react-test-renderer`, and `react-native` are pinned for Expo SDK 56 / RN 0.85. Treat any change to those as **risky** — validate on device/emulator.
 6. **Runtime testing required**: For React/RN/navigation/native-module updates, smoke test on Android (`npm run android`). Static checks miss renderer and native ABI mismatches.
 7. **Manual merges = high risk**: Prefer `@dependabot rebase`. If manual merge is required, run full validation + Android smoke test.
@@ -90,11 +90,14 @@ Categorize each PR:
 2. **Technical validation** (CI order):
 
    ```bash
+   npm run doctor          # Expo SDK / RN duplicate-module alignment — fails fast on bad rebases
    npm run format:check
    npm run lint
    npm run typecheck
    npm test -- --ci
    ```
+
+   If `npm run doctor` fails with patch mismatches, run `npx expo install --fix`, commit on the PR branch, then re-run the suite. Do **not** merge until doctor is clean.
 
    *Note: `fluent-api.test.ts` may hit the network — a failure there alone does not block a dep bump if it also fails on `main`.*
 
@@ -141,6 +144,7 @@ Skip rebasing the PR whose CI is already `IN_PROGRESS` from a recent Dependabot 
 git checkout main
 git pull origin main
 npm ci
+npm run doctor
 npm run format:check
 npm run lint
 npm run typecheck
@@ -190,6 +194,7 @@ If a Dependabot PR drifts these, align manually to the [React Native upgrade hel
 
 ### Failures
 
+- **Expo Doctor fails**: Do not merge. Run `npx expo install --check`; if mismatches are SDK patch drift, `npx expo install --fix` on the PR branch. For duplicate native modules, see [Expo FYI: resolving dependency issues](https://github.com/expo/fyi/blob/main/resolving-dependency-issues.md) (`npm why`, `npm dedupe`, `overrides`).
 - **Tests fail**: Do not merge. Share logs with user.
 - **Lint / format fail**: Do not merge. Share logs with user.
 - **`npm ci` fails on `main`**: Usually corrupted `package-lock.json` from stacked merges — regenerate with `npm install`, open a small fix PR.
