@@ -1,24 +1,30 @@
-import * as Keychain from 'react-native-keychain';
+import * as SecureStore from 'expo-secure-store';
 import { logger } from '../utils/logger';
+import { getKnownUserIds } from './storage';
 
 const log = logger.create('Keychain');
 const SERVICE_PREFIX = 'fluent.auth';
-const TEMP_SERVICE = SERVICE_PREFIX;
+const TEMP_KEY = SERVICE_PREFIX;
 
 export interface AuthCredentials {
   token: string;
 }
 
-function serviceKey(userId: string): string {
+function storageKey(userId: string): string {
   return `${SERVICE_PREFIX}.${userId}`;
 }
 
-// Save token temporarily (before numeric userId is known)
+function parseCredentials(raw: string): AuthCredentials | null {
+  try {
+    return JSON.parse(raw) as AuthCredentials;
+  } catch {
+    return null;
+  }
+}
+
 export async function saveTempCredentials(token: string): Promise<void> {
   try {
-    await Keychain.setGenericPassword('user', JSON.stringify({ token }), {
-      service: TEMP_SERVICE,
-    });
+    await SecureStore.setItemAsync(TEMP_KEY, JSON.stringify({ token }));
     log.info('Temp credentials saved');
   } catch (error) {
     log.error('Failed to save temp credentials', { error });
@@ -26,15 +32,15 @@ export async function saveTempCredentials(token: string): Promise<void> {
   }
 }
 
-// Save token permanently under numeric userId
 export async function saveCredentials(
   token: string,
   userId: string,
 ): Promise<void> {
   try {
-    await Keychain.setGenericPassword(userId, JSON.stringify({ token }), {
-      service: serviceKey(userId),
-    });
+    await SecureStore.setItemAsync(
+      storageKey(userId),
+      JSON.stringify({ token }),
+    );
     log.info('Credentials saved', { userId });
   } catch (error) {
     log.error('Failed to save credentials', { error });
@@ -46,11 +52,9 @@ export async function getCredentials(
   userId: string,
 ): Promise<AuthCredentials | null> {
   try {
-    const result = await Keychain.getGenericPassword({
-      service: serviceKey(userId),
-    });
-    if (!result) return null;
-    return JSON.parse(result.password) as AuthCredentials;
+    const raw = await SecureStore.getItemAsync(storageKey(userId));
+    if (!raw) return null;
+    return parseCredentials(raw);
   } catch (error) {
     log.error('Failed to get credentials', { error });
     return null;
@@ -59,9 +63,9 @@ export async function getCredentials(
 
 export async function getTempCredentials(): Promise<AuthCredentials | null> {
   try {
-    const result = await Keychain.getGenericPassword({ service: TEMP_SERVICE });
-    if (!result) return null;
-    return JSON.parse(result.password) as AuthCredentials;
+    const raw = await SecureStore.getItemAsync(TEMP_KEY);
+    if (!raw) return null;
+    return parseCredentials(raw);
   } catch (error) {
     log.error('Failed to get temp credentials', { error });
     return null;
@@ -70,7 +74,7 @@ export async function getTempCredentials(): Promise<AuthCredentials | null> {
 
 export async function clearTempCredentials(): Promise<void> {
   try {
-    await Keychain.resetGenericPassword({ service: TEMP_SERVICE });
+    await SecureStore.deleteItemAsync(TEMP_KEY);
     log.info('Temp credentials cleared');
   } catch {
     // ignore if already cleared
@@ -79,7 +83,7 @@ export async function clearTempCredentials(): Promise<void> {
 
 export async function clearCredentials(userId: string): Promise<void> {
   try {
-    await Keychain.resetGenericPassword({ service: serviceKey(userId) });
+    await SecureStore.deleteItemAsync(storageKey(userId));
     log.info('Credentials cleared', { userId });
   } catch (error) {
     log.error('Failed to clear credentials', { error });
@@ -89,22 +93,14 @@ export async function clearCredentials(userId: string): Promise<void> {
 
 export async function hasCredentials(userId: string): Promise<boolean> {
   try {
-    const result = await Keychain.getGenericPassword({
-      service: serviceKey(userId),
-    });
-    return !!result;
+    const raw = await SecureStore.getItemAsync(storageKey(userId));
+    return raw !== null && raw.length > 0;
   } catch {
     return false;
   }
 }
 
+/** Known account IDs from KV; expo-secure-store has no enumeration API. */
 export async function getAllStoredUserIds(): Promise<string[]> {
-  try {
-    const allServices = await Keychain.getAllGenericPasswordServices();
-    return allServices
-      .filter(s => s.startsWith(`${SERVICE_PREFIX}.`))
-      .map(s => s.replace(`${SERVICE_PREFIX}.`, ''));
-  } catch {
-    return [];
-  }
+  return getKnownUserIds();
 }

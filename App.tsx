@@ -58,7 +58,7 @@ function App() {
         }
 
         const storedUserIds = await getAllStoredUserIds();
-        log.info('Stored user IDs in keychain', { storedUserIds });
+        log.info('Stored user IDs from known accounts', { storedUserIds });
 
         if (storedUserIds.length > 0) {
           const userId = storedUserIds[0];
