@@ -121,7 +121,23 @@ Default seeded translator (after `db:init`):
 
 Project manager: `pm@fluent.local` / `pm@123456`
 
-**My Work:** After [fluent-api#207](https://github.com/eten-tech-foundation/fluent-api/issues/207) (local dev project seeder) lands, sync will populate My Work. Until then, master data and dev users exist but project/chapter assignments may be empty.
+If login fails (e.g. password drift on an old volume), reset inside the API container:
+
+```bash
+./fapi.sh run db:set-password pm@fluent.local pm@123456
+./fapi.sh run db:set-password t@fluent.local t@123456
+```
+
+### 4. My Work on local Docker
+
+`db:init` seeds org, dev users, languages, books, bibles, and texts — but **not** projects or chapter assignments. After sync you can sign in and browse master data; **My Work may be empty**.
+
+To populate My Work locally, either:
+
+- **Use Path A (hosted dev)** when you need assignment-rich testing (`https://dev.api.fluent.bible` + team credentials), or
+- **Create a project in the web app** against your local API (run [fluent-web](https://github.com/eten-tech-foundation/fluent-web) pointed at `http://localhost:9999`, sign in as `pm@fluent.local`, create a project, assign chapters to `t@fluent.local`), then re-sync on mobile.
+
+Mobile SQLite is always filled by **sync hydration** — there is no mobile-side seed.
 
 ---
 
