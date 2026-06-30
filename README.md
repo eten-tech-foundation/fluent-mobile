@@ -238,15 +238,16 @@ npm run android
 Then keep Metro running (`npm start`). If you installed an old **EAS dev-client** or **preview** APK by mistake, uninstall it and use a fresh local build or the PR **Install Fluent** link — see [docs/guides/qa-preview-testing.md](docs/guides/qa-preview-testing.md).
 
 **Dev client won't load / `UnexpectedServerData` / Expo code-signing errors on launch**
-Local development needs **no Expo account** — clone and run anonymously. This error appears when you are logged into an Expo account that lacks access to this EAS project: the CLI tries to fetch a development code-signing certificate for the committed `projectId` and fails. Log out (or run offline):
+Local development needs **no Expo account** — clone and run anonymously. The Expo CLI signs the dev manifest with your user credentials, so if you are logged into an Expo account that lacks access to this EAS project, it fails fetching a development code-signing certificate for the committed `projectId`. Check and clear your CLI session:
 
 ```bash
-npx expo logout
-# or, per run, skip all Expo network calls:
+npx expo whoami     # shows the logged-in account, or "Not logged in"
+npx expo logout     # run anonymously (recommended for local dev)
+# or, per run, skip all Expo network requests:
 npx expo start --offline
 ```
 
-The Expo session is global, not in the repo — it lives in `~/.expo/state.json`, so it persists across clones and machines (re-cloning the repo does not clear it). Expo/EAS login is only required for maintainer tasks (`eas build`, `eas update`, `eas submit`), never for local dev.
+The CLI session is stored globally on your machine, not in the repo, so it persists across clones (re-cloning does not clear it — use `expo logout`). Expo/EAS login is only required for maintainer tasks (`eas build`, `eas update`, `eas submit`), never for local dev.
 
 **`adb: command not found`**
 Your environment variables aren't set. Complete Step 4 and reload your shell (`source ~/.zshrc`, `source ~/.bashrc`, or restart the terminal).
