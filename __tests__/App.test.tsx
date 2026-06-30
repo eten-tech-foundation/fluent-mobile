@@ -84,6 +84,10 @@ jest.mock('../src/services/api', () => ({
   setActiveToken: jest.fn(),
 }));
 
+jest.mock('../src/services/connectivity', () => ({
+  checkServerReachable: jest.fn(() => Promise.resolve(true)),
+}));
+
 describe('App', () => {
   it('renders navigator after initialization', async () => {
     const { getByTestId } = render(<App />);

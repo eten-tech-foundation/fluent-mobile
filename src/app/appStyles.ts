@@ -466,10 +466,22 @@ export const appStyles = StyleSheet.create({
     backgroundColor: '#0b50d0',
   },
   errorTextAppInit: {
-    color: 'red',
+    color: '#fff',
     fontSize: 14,
     padding: 20,
     textAlign: 'center',
   },
-  loadingTextAppInit: { marginTop: 10, fontSize: 14 },
+  retryButtonAppInit: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+  },
+  retryButtonTextAppInit: {
+    color: '#0b50d0',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  loadingTextAppInit: { marginTop: 10, fontSize: 14, color: '#fff' },
 });
