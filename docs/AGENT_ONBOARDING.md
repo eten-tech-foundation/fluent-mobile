@@ -23,7 +23,7 @@ Quick map for Cursor agents and new contributors. Verified against Expo SDK 56 +
 | Lint | ESLint 9 flat config |
 | Format | Prettier 2.8 |
 | Test | Jest 29 + `jest-expo` + `@testing-library/react-native` |
-| CI | GitHub Actions: lint, test, prebuild + Android debug build; tag release via EAS |
+| CI | GitHub Actions: lint, test, typecheck, expo-doctor, expo install --check; native compile via EAS preview/release |
 
 ## Repository layout
 
