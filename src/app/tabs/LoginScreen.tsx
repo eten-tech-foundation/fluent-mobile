@@ -18,7 +18,7 @@ import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types/navigation/types';
-import { setActiveToken } from '../../services/api';
+import { authToken } from '../../services/authToken';
 import { appStyles as styles } from '../appStyles';
 
 const log = logger.create('LoginScreen');
@@ -81,7 +81,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       setIsLoggingIn(true);
       const response = await FluentAPI.signIn(loginEmail.trim(), loginPassword);
       await saveTempCredentials(response.token);
-      setActiveToken(response.token);
+      authToken.set(response.token);
       kvStorage.setItemSync(KV_KEYS.USER_EMAIL, response.user.email);
       onLoginSuccess(response.user.email);
     } catch (e: unknown) {

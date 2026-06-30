@@ -79,9 +79,12 @@ jest.mock('../src/services/keychain', () => ({
   getAllStoredUserIds: jest.fn(() => Promise.resolve([])),
 }));
 
-// API
-jest.mock('../src/services/api', () => ({
-  setActiveToken: jest.fn(),
+// Auth token
+jest.mock('../src/services/authToken', () => ({
+  authToken: {
+    get: jest.fn(),
+    set: jest.fn(),
+  },
 }));
 
 describe('App', () => {
