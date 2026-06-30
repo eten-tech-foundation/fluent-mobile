@@ -23,6 +23,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
@@ -43,6 +45,8 @@ jobs:
       EXPO_PUBLIC_API_BASE_URL: http://localhost:9999
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
@@ -63,6 +67,8 @@ jobs:
       EXPO_PUBLIC_API_BASE_URL: http://localhost:9999
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
