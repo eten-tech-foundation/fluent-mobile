@@ -39,7 +39,7 @@ npm start
 npm run android
 ```
 
-Sign in with email/password (Better Auth). After login, sync populates local SQLite; screens read from the DB.
+Sign in with email/password (Better Auth). Some read-only reference data can be fetched without a session, but user/project data requires auth. After login, sync populates local SQLite; screens read from the DB.
 
 ### What works after sync vs what needs a server
 
@@ -120,13 +120,6 @@ Default seeded translator (after `db:init`):
 | Password | `t@123456` |
 
 Project manager: `pm@fluent.local` / `pm@123456`
-
-If login fails (e.g. password drift on an old volume), reset inside the API container:
-
-```bash
-./fapi.sh run db:set-password pm@fluent.local pm@123456
-./fapi.sh run db:set-password t@fluent.local t@123456
-```
 
 ### 4. My Work on local Docker
 
