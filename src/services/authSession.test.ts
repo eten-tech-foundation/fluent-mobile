@@ -9,17 +9,20 @@ jest.mock('./keychain', () => ({
   hasCredentials: jest.fn(),
   getCredentials: jest.fn(),
   getAllStoredUserIds: jest.fn(),
+  saveTempCredentials: jest.fn(),
 }));
 
 jest.mock('./storage', () => ({
   getActiveUserId: jest.fn(),
   switchActiveUser: jest.fn(),
   clearUserSession: jest.fn(),
-  kvStorage: {
-    removeItemSync: jest.fn(),
-  },
   KV_KEYS: {
     ACTIVE_USER_ID: 'active_user_id',
+    USER_EMAIL: 'userEmail',
+  },
+  kvStorage: {
+    removeItemSync: jest.fn(),
+    setItemSync: jest.fn(),
   },
 }));
 
@@ -28,6 +31,7 @@ import {
   getAllStoredUserIds,
   getCredentials,
   hasCredentials,
+  saveTempCredentials,
 } from './keychain';
 import {
   clearUserSession,
@@ -36,7 +40,7 @@ import {
   KV_KEYS,
   switchActiveUser,
 } from './storage';
-import { restoreSession, signOut } from './authSession';
+import { restoreSession, signOut, beginLoginSession } from './authSession';
 
 describe('restoreSession', () => {
   beforeEach(() => {
@@ -85,6 +89,23 @@ describe('restoreSession', () => {
       authenticated: false,
     });
     expect(authToken.set).toHaveBeenCalledWith(null);
+  });
+});
+
+describe('beginLoginSession', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('stores temp credentials, sets the token, and records the email', async () => {
+    await beginLoginSession('session-token', 't@fluent.local');
+
+    expect(saveTempCredentials).toHaveBeenCalledWith('session-token');
+    expect(authToken.set).toHaveBeenCalledWith('session-token');
+    expect(kvStorage.setItemSync).toHaveBeenCalledWith(
+      KV_KEYS.USER_EMAIL,
+      't@fluent.local',
+    );
   });
 });
 

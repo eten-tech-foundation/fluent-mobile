@@ -3,6 +3,7 @@ import {
   getAllStoredUserIds,
   getCredentials,
   hasCredentials,
+  saveTempCredentials,
 } from './keychain';
 import {
   clearUserSession,
@@ -64,4 +65,14 @@ export function signOut(): void {
   authToken.set(null);
   kvStorage.removeItemSync(KV_KEYS.ACTIVE_USER_ID);
   clearUserSession();
+}
+
+/** Persists credentials and sets the in-memory token after a successful sign-in. */
+export async function beginLoginSession(
+  token: string,
+  email: string,
+): Promise<void> {
+  await saveTempCredentials(token);
+  authToken.set(token);
+  kvStorage.setItemSync(KV_KEYS.USER_EMAIL, email);
 }

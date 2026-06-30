@@ -62,6 +62,16 @@ export function UserSettingsMenu({
     navigation.navigate('AddUser');
   };
 
+  const handleOpenPrivacy = () => {
+    onClose();
+    navigation.navigate('PrivacyPolicy');
+  };
+
+  const handleOpenTerms = () => {
+    onClose();
+    navigation.navigate('TermsOfUse');
+  };
+
   const handleSwitchUser = async (userId: string) => {
     onClose();
     if (userId === getActiveUserId()) return;
@@ -130,9 +140,33 @@ export function UserSettingsMenu({
             onPress={handleAddUser}
             activeOpacity={0.7}
             accessibilityRole="button"
+            testID="settings-menu-add-user"
           >
             <Ionicons name="person-add-outline" size={18} color="#333" />
             <Text style={appStyles.menuItemText}>Add User</Text>
+          </TouchableOpacity>
+
+          <View style={appStyles.menuDivider} />
+          <TouchableOpacity
+            style={appStyles.menuItem}
+            onPress={handleOpenPrivacy}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            testID="settings-menu-privacy-policy"
+          >
+            <Ionicons name="document-text-outline" size={18} color="#333" />
+            <Text style={appStyles.menuItemText}>Privacy Policy</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={appStyles.menuItem}
+            onPress={handleOpenTerms}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            testID="settings-menu-terms-of-use"
+          >
+            <Ionicons name="reader-outline" size={18} color="#333" />
+            <Text style={appStyles.menuItemText}>Terms of Use</Text>
           </TouchableOpacity>
 
           {knownUsers.length > 1 && (
