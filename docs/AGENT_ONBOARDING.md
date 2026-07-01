@@ -23,7 +23,7 @@ Quick map for Cursor agents and new contributors. Verified against Expo SDK 56 +
 | Lint | ESLint 9 flat config |
 | Format | Prettier 2.8 |
 | Test | Jest 29 + `jest-expo` + `@testing-library/react-native` |
-| CI | GitHub Actions: lint, test, prebuild + Android debug build; tag release via EAS |
+| CI | GitHub Actions: lint, test, typecheck, expo-doctor, expo install --check; native compile via EAS preview/release |
 
 ## Repository layout
 
@@ -48,12 +48,13 @@ Quick map for Cursor agents and new contributors. Verified against Expo SDK 56 +
 | [`.github/dependabot.yml`](../.github/dependabot.yml) | Weekly dependency PRs (npm + GitHub Actions) |
 | [`.cursor/rules/`](../.cursor/rules/) | Cursor agent rules |
 | [`docs/guides/dependabot-process.md`](guides/dependabot-process.md) | Safe Dependabot merge process |
+| [`docs/guides/local-development-workflow.md`](guides/local-development-workflow.md) | Hosted dev + local Docker API paths |
 | [`.cursor/commands/`](../.cursor/commands/) | Slash commands (`/create-pr`, etc.) |
 
 ## Setup
 
 1. Node 24: `nvm use 24` (or match `engines` in `package.json`).
-2. Copy env: `cp .env.example .env` — set `EXPO_PUBLIC_API_BASE_URL`.
+2. Copy env: `cp .env.example .env` — set `EXPO_PUBLIC_API_BASE_URL` (see [local development workflow](guides/local-development-workflow.md)).
 3. `npm install`
 4. Generate native project (first time or after config plugin changes): `npm run prebuild` (Android-only)
 5. Android dev client (two terminals):

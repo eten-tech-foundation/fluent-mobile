@@ -20,6 +20,23 @@ Resolved: 2026-06-10
 
 ---
 
+## Batch: `main` (2026-06-30)
+
+Resolved: 2026-06-30
+
+| PR | Title / scope | Change applied |
+|----|---------------|----------------|
+| #72 | react group | **Closed** — pinned React/RN; dedicated ticket required |
+| #73 | navigation group | **Closed** — risky; needs Android smoke test |
+| #74 | testing group | **Closed** — failed CI |
+| #130 | dev-tools group (9 updates) | **Closed** — failed CI |
+
+**Left open:** #129 (@babel/core, merge candidate), #81/#127/#128 (GitHub Actions — separate review).
+
+**Verification run:** N/A (closed without merge)
+
+---
+
 ## Template (copy for each batch)
 
 ### Branch: `<branch-name>` (date)
@@ -34,6 +51,7 @@ Resolved: YYYY-MM-DD
 
 **Verification run:**
 
+- [ ] `npm run doctor`
 - [ ] `npm run format:check`
 - [ ] `npm run lint`
 - [ ] `npm run typecheck`
