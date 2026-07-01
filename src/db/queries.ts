@@ -414,3 +414,30 @@ export async function getBibleTexts(
     return [];
   }
 }
+
+export async function getRecordedVerseNumbers(
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+): Promise<Set<number>> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT bt.verse_number
+       FROM recordings r
+       JOIN bible_texts bt ON bt.id = r.bible_text_id
+       WHERE bt.bible_id = ?
+         AND bt.book_id = ?
+         AND bt.chapter_number = ?
+         AND r.is_latest = 1`,
+      [bibleId, bookId, chapterNumber],
+    );
+ 
+    const rows = (result?.rows as unknown as { verse_number: number }[]) || [];
+    return new Set(rows.map(r => r.verse_number));
+  } catch (error) {
+    log.error('Error fetching recorded verse numbers', { error });
+    return new Set();
+  }
+}
+ 

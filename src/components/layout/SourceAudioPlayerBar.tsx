@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Pause, Play, RotateCw } from 'lucide-react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   theme,
   iconSizes,
@@ -16,25 +16,15 @@ interface SourceAudioPlayerBarProps {
   selectedVerse: number;
 }
 
-/**
- * Fixed source-audio player bar, anchored above the bottom tab nav.
- * Always holds the full chapter audio (never a single verse clip).
- *
- * NOTE: Audio recording/playback is out of scope for this branch.
- * isPlaying/position below are local fake state only — there is no
- * audio library wired up yet. Replace with a real player hook later.
- */
 export function SourceAudioPlayerBar({
   verses,
   selectedVerse,
 }: SourceAudioPlayerBarProps) {
-  // Stubbed load state. Flip to 'error' manually during dev to see the
-  // error/retry UI; real loading will replace this with a real fetch.
-  const [loadState, setLoadState] = useState<LoadState>('ready');
+  const [loadState, setLoadState] = useState<LoadState>('loading');
   const [isPlaying, setIsPlaying] = useState(false);
 
   const handleRetry = () => {
-    setLoadState('ready');
+    setLoadState('loading');
   };
 
   const handleTogglePlay = () => {
@@ -43,11 +33,7 @@ export function SourceAudioPlayerBar({
   };
 
   const handleTickPress = () => {
-    // Scrubs playback to that verse's boundary. Does NOT change the
-    // selected verse (selectedVerse only changes via explicit tap on
-    // Bible Tab or prev/next on Record Tab).
     if (loadState !== 'ready') return;
-    // Fake scrub: no real audio position to update yet.
   };
 
   if (loadState === 'error') {
@@ -72,17 +58,16 @@ export function SourceAudioPlayerBar({
     );
   }
 
-  const isEmpty = loadState === 'loading';
+  const isLoading = loadState === 'loading';
 
   return (
     <View style={styles.bar}>
       <Pressable
         onPress={handleTogglePlay}
-        disabled={isEmpty}
-        style={[styles.playButton, isEmpty && styles.playButtonDisabled]}
+        disabled={isLoading}
+        style={[styles.playButton, isLoading && styles.playButtonDisabled]}
         accessibilityRole="button"
         accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
-        hitSlop={touchHitSlop}
       >
         {isPlaying ? (
           <Pause
@@ -100,7 +85,7 @@ export function SourceAudioPlayerBar({
       </Pressable>
 
       <View style={styles.waveformArea}>
-        {isEmpty ? (
+        {isLoading ? (
           <View style={styles.waveformPlaceholder} />
         ) : (
           <View style={styles.waveformRow}>
@@ -108,6 +93,7 @@ export function SourceAudioPlayerBar({
               <Pressable
                 key={verse.verseNumber}
                 onPress={handleTickPress}
+                disabled={isLoading}
                 style={styles.tickWrapper}
                 accessibilityRole="button"
                 accessibilityLabel={`Scrub to verse ${verse.verseNumber}`}

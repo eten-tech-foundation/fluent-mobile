@@ -3,28 +3,20 @@ import { logger } from '../../utils/logger';
 import { BibleTab } from '../tabs/BibleTab';
 import { useSync } from '../../hooks/useSync';
 import { RecordTab } from '../tabs/RecordTab';
+import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useCallback, useEffect, useState } from 'react';
 import { RootStackParamList } from '../../types/navigation/types';
+import { DraftingHeader } from '../../components/layout/DraftingHeader';
 import { ChapterAssignmentData, VerseData } from '../../types/db/types';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
-import { DraftingHeader } from '../../components/layout/DraftingHeader';
-import { getBibleTexts, getChapterAssignmentById } from '../../db/queries';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import {
-  DraftingProvider,
-  useDraftingContext,
-} from '../context/DraftingContext';
-import {
-  getLastActiveTab,
-  setLastActiveTab,
-} from '../../utils/draftingTabState';
+import { getLastActiveTab, setLastActiveTab } from '../../utils/draftingTabState';
+import { DraftingProvider, useDraftingContext } from '../context/DraftingContext';
 import { SourceAudioPlayerBar } from '../../components/layout/SourceAudioPlayerBar';
-import {
-  DraftingTab,
-  DraftingTabBar,
-} from '../../components/layout/DraftingTabBar';
+import { DraftingTab, DraftingTabBar } from '../../components/layout/DraftingTabBar';
+import { getBibleTexts, getChapterAssignmentById, getRecordedVerseNumbers } from '../../db/queries';
 
 const log = logger.create('DraftingScreen');
 
@@ -46,6 +38,7 @@ export default function DraftingScreen() {
     },
     [chapterId],
   );
+
   const [verses, setVerses] = useState<VerseData[]>([]);
   const [chapterData, setChapterData] = useState<ChapterAssignmentData | null>(
     null,
@@ -54,6 +47,7 @@ export default function DraftingScreen() {
   const [initialVerse, setInitialVerse] = useState(1);
 
   const { isSyncing, triggerSync } = useSync();
+  const { status: syncStatus } = useSyncStatus({ isSyncing });
 
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
 
@@ -70,19 +64,29 @@ export default function DraftingScreen() {
 
         setChapterData(assignment);
 
-        const texts = await getBibleTexts(
-          assignment.bibleId,
-          assignment.bookId,
-          assignment.chapterNumber,
-        );
+        const [texts, recordedVerseNumbers] = await Promise.all([
+          getBibleTexts(
+            assignment.bibleId,
+            assignment.bookId,
+            assignment.chapterNumber,
+          ),
+          getRecordedVerseNumbers(
+            assignment.bibleId,
+            assignment.bookId,
+            assignment.chapterNumber,
+          ),
+        ]);
+
         setVerses(texts);
 
-        // No recordings exist yet in this branch (recording is out of
-        // scope), so "first verse with no recording" stubs to verse 1.
-        const firstVerseNumber = texts[0]?.verseNumber;
-        if (firstVerseNumber !== null && firstVerseNumber !== undefined) {
-          setInitialVerse(firstVerseNumber);
-        }
+        // Default to the first verse with no existing recording.
+        // Fall back to the first verse in the chapter if all are recorded.
+        const firstUnrecorded = texts.find(
+          v => !recordedVerseNumbers.has(v.verseNumber),
+        );
+        const defaultVerse =
+          firstUnrecorded?.verseNumber ?? texts[0]?.verseNumber ?? 1;
+        setInitialVerse(defaultVerse);
       } catch (error) {
         log.error('Error loading verses', { error });
       } finally {
@@ -96,6 +100,7 @@ export default function DraftingScreen() {
   if (loading) {
     return (
       <ScreenContainer edges={['top', 'bottom']}>
+        <DraftingHeader title={chapterName} onBack={goBack} />
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
@@ -121,6 +126,7 @@ export default function DraftingScreen() {
           <DraftingHeader
             title={chapterName}
             onBack={goBack}
+            syncStatus={syncStatus}
             onSyncPress={triggerSync}
             isSyncing={isSyncing}
           />
@@ -138,13 +144,8 @@ export default function DraftingScreen() {
   );
 }
 
-/**
- * Thin wrapper so SourceAudioPlayerBar can read selectedVerse from
- * context without DraftingScreen needing to know about it directly.
- */
 function DraftingPlayerBar({ verses }: { verses: VerseData[] }) {
   const { selectedVerse } = useDraftingContext();
-
   return <SourceAudioPlayerBar verses={verses} selectedVerse={selectedVerse} />;
 }
 

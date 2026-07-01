@@ -23,9 +23,6 @@ export function DraftingTabBar({
     <View style={styles.container}>
       {TABS.map(({ id, label, Icon }) => {
         const isActive = activeTab === id;
-        const color = isActive
-          ? theme.colors.primary
-          : theme.colors.mutedForeground;
 
         return (
           <TouchableOpacity
@@ -38,10 +35,18 @@ export function DraftingTabBar({
           >
             <Icon
               size={iconSizes.headerTab}
-              color={color}
+              color={
+                isActive
+                  ? theme.colors.primary
+                  : theme.colors.mutedForeground
+              }
               strokeWidth={listIconStrokeWidth}
             />
-            <Text style={[styles.label, { color }]}>{label}</Text>
+            <Text
+              style={[styles.label, isActive ? styles.labelActive : styles.labelInactive]}
+            >
+              {label}
+            </Text>
           </TouchableOpacity>
         );
       })}
@@ -66,5 +71,11 @@ const styles = StyleSheet.create({
   label: {
     fontSize: theme.typography.sizes.xs,
     fontWeight: theme.typography.weights.medium,
+  },
+  labelActive: {
+    color: theme.colors.primary,
+  },
+  labelInactive: {
+    color: theme.colors.mutedForeground,
   },
 });

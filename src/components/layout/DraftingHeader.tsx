@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { ChevronLeft } from 'lucide-react-native';
 import { theme } from '../../theme';
 import {
   headerLayout,
@@ -13,17 +14,21 @@ import {
   listIconStrokeWidth,
   touchHitSlop,
 } from '../../theme/iconSpecs';
-import { ChevronLeft, CloudUpload } from 'lucide-react-native';
+import { CloudSyncStatusIcon } from '../ui/CloudSyncStatusIcon';
+import { SyncStatus } from '../../utils/syncStatusState';
 
 interface DraftingHeaderProps {
   title: string;
   onBack: () => void;
+  syncStatus?: SyncStatus;
   onSyncPress?: () => void;
   isSyncing?: boolean;
 }
+
 export function DraftingHeader({
   title,
   onBack,
+  syncStatus,
   onSyncPress,
   isSyncing = false,
 }: DraftingHeaderProps) {
@@ -52,26 +57,23 @@ export function DraftingHeader({
       </View>
 
       <View style={[styles.sideSlot, styles.sideSlotRight]}>
-        {onSyncPress ? (
+        {onSyncPress && syncStatus ? (
           <TouchableOpacity
             onPress={onSyncPress}
             disabled={isSyncing}
             hitSlop={touchHitSlop}
             style={styles.syncButton}
             accessibilityRole="button"
-            accessibilityLabel={
-              isSyncing ? 'Syncing. Open Sync page.' : 'Sync. Open Sync page.'
-            }
+            accessibilityLabel={isSyncing ? 'Syncing…' : 'Sync now'}
             accessibilityState={{ disabled: isSyncing }}
           >
             {isSyncing ? (
-              <ActivityIndicator size="small" color={theme.colors.foreground} />
-            ) : (
-              <CloudUpload
-                size={iconSizes.header}
+              <ActivityIndicator
+                size="small"
                 color={theme.colors.foreground}
-                strokeWidth={listIconStrokeWidth}
               />
+            ) : (
+              <CloudSyncStatusIcon status={syncStatus} decorative />
             )}
           </TouchableOpacity>
         ) : null}
