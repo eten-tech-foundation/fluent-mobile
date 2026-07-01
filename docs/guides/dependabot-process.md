@@ -11,7 +11,7 @@ Repeatable process for safely managing Dependabot PRs in **Fluent Mobile**. Prio
 5. **Version lock-stepping**: `react`, `react-test-renderer`, and `react-native` are pinned — validate the **final merged state** on `main`.
 6. **Runtime testing**: Static checks miss renderer mismatches — smoke test on Android for risky bumps.
 7. **One lockfile merge at a time**: Merge **one** lockfile PR, let **`main` CI go green**, then **`@dependabot rebase` all other open bots in parallel** before the next merge.
-8. **Expo Doctor after rebases**: Every `@dependabot rebase` triggers fresh CI — **Test Check** runs `npm run doctor` (`expo-doctor`). Do not merge if it fails; fix with `npx expo install --fix` when appropriate.
+8. **Expo Doctor after rebases**: Every `@dependabot rebase` triggers fresh CI — **Quality Gates** runs `expo-doctor` and `expo install --check`. Do not merge if either fails; fix with `npx expo install --fix` when appropriate.
 9. **Automate the queue**: Cursor agents should run the full safe queue without per-PR confirmation (see `.cursor/rules/dependabot-workflow.mdc` → Autonomous mode).
 
 ## Expo + Dependabot (best practices)
@@ -72,13 +72,14 @@ npm run typecheck
 npm test -- --ci
 ```
 
-**Expo Doctor** runs in GitHub **Test Check** on every PR push (including post-rebase). Local `npm run doctor` mirrors CI — run it after `npm ci` when triaging locally.
+**Expo Doctor** and **`expo install --check`** run in GitHub **Quality Gates** on every PR push (including post-rebase). Local `npm run doctor` mirrors the expo-doctor job — run it after `npm ci` when triaging locally.
 
 If doctor fails, see [Expo + Dependabot (best practices)](#expo--dependabot-best-practices) above.
 
-Android build (mirrors `.github/workflows/build.yml`):
+Optional local native build for risky PRs (CI no longer runs Gradle on every PR; use EAS preview for native validation):
 
 ```bash
+npm run prebuild
 cd android && ./gradlew assembleDebug --no-daemon && cd ..
 ```
 
@@ -105,7 +106,7 @@ Branch protection requires approval first:
     gh pr review <PR_NUMBER> --approve --body "CI green. Safe bump per dependabot process."
     gh pr merge <PR_NUMBER> --squash --delete-branch
 
-Wait for **Lint Check**, **Test Check**, and **Build Check** on `main`.
+Wait for **Lint Check**, **Test Check**, and **Quality Gates** on `main`.
 
 ### 6. Parallel rebase prep (do not skip)
 

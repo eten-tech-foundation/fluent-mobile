@@ -23,7 +23,7 @@ When the user asks to handle/process Dependabot PRs, **run the full queue end-to
 3. **Parallel prep**: comment `@dependabot rebase` on every open bot that is `CONFLICTING`, has stale CI (>24h), or is not the PR about to merge — **skip** PRs with `IN_PROGRESS` CI that Dependabot already refreshed after the last `main` merge.
 4. Pick the **oldest safe PR** with all required checks `SUCCESS` and `mergeable: MERGEABLE`.
 5. `gh pr review <N> --approve` then `gh pr merge <N> --squash --delete-branch`.
-6. Wait for `main` CI green: Lint Check, Test Check, Build Check (`gh run list --branch main --limit 3`).
+6. Wait for `main` CI green: Lint Check, Test Check, Quality Gates (`gh run list --branch main --limit 5`).
 7. Go to step 3 until no safe PRs remain. Log results in `docs/guides/dependabot-resolution-log.md`.
 
 ### CI-first merge gate (safe PRs)
@@ -31,7 +31,7 @@ When the user asks to handle/process Dependabot PRs, **run the full queue end-to
 For **safe** PRs (lockfile-only transitive bumps; no `package.json` changes except overrides):
 
 - GitHub CI all green is sufficient — **local checkout optional**.
-- Required checks: Lint & Format, Unit Tests (includes **Expo Doctor**), Android Build — all `SUCCESS`.
+- Required checks: Lint & Format, Unit Tests, Quality Gates (TypeScript, expo-doctor, expo install --check) — all `SUCCESS`.
 - Branch protection requires approval: always `gh pr review --approve` before merge.
 
 For **risky** PRs: local validation gate + Android smoke test still mandatory.
@@ -53,7 +53,7 @@ For **risky** PRs: local validation gate + Android smoke test still mandatory.
 
 1. **Verify author**: ONLY process PRs authored by `app/dependabot` or `dependabot[bot]`.
 2. **Never auto-merge React Native line bumps**: If a PR upgrades `react-native` past the pinned `0.85.x` line or multiple `@react-native/*` packages together, DO NOT merge. Plan a dedicated RN upgrade ticket.
-3. **Mandatory validation**: NEVER merge without running the full gate from [commands.mdc](./commands.mdc): `format:check` → `lint` → `typecheck` → `npm test -- --ci`. **Expo/RN deps**: also `npm run doctor` (or wait for **Expo Doctor** in Test Check CI) after every rebase/`npm ci`.
+3. **Mandatory validation**: NEVER merge without running the full gate from [commands.mdc](./commands.mdc): `format:check` → `lint` → `typecheck` → `npm test -- --ci`. **Expo/RN deps**: also `npm run doctor` (or wait for **Quality Gates** expo-doctor / expo install --check CI) after every rebase/`npm ci`.
 4. **Target branch**: Dependabot PRs merge into `main` via GitHub squash-merge only. **Agent-authored changes** (expo doctor CI, lockfile fixes) never push to `main` — separate ticketed PR ([delivery.mdc](./delivery.mdc)).
 5. **Version lock-stepping**: `react`, `react-test-renderer`, and `react-native` are pinned for Expo SDK 56 / RN 0.85. Treat any change to those as **risky** — validate on device/emulator.
 6. **Runtime testing required**: For React/RN/navigation/native-module updates, smoke test on Android (`npm run android`). Static checks miss renderer and native ABI mismatches.
@@ -101,9 +101,10 @@ Categorize each PR:
 
    *Note: `fluent-api.test.ts` may hit the network — a failure there alone does not block a dep bump if it also fails on `main`.*
 
-3. **Android build** (recommended for risky PRs; required on CI anyway):
+3. **Native build** (optional locally for risky PRs; CI uses EAS preview when needed):
 
    ```bash
+   npm run prebuild
    cd android && ./gradlew assembleDebug --no-daemon && cd ..
    ```
 

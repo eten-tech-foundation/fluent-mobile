@@ -33,9 +33,9 @@ Report what ran and the outcome. If a step was skipped, say why.
 
 - Lint + format: `.github/workflows/lint.yml`
 - Test: `.github/workflows/test.yml`
-- Android build: `.github/workflows/build.yml`
+- TypeScript + Expo health: `.github/workflows/quality-gates.yml` (`typecheck`, `expo-doctor`, `expo install --check`)
 - Release on tag: `.github/workflows/eas-build.yml` + `.eas/workflows/create-production-builds.yml`
-- PR preview: `.github/workflows/preview-build.yml` (label `preview-build`)
+- PR preview (native compile on demand): `.github/workflows/preview-build.yml` (label `preview-build`)
 
 ## PR workflow
 
