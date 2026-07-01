@@ -14,7 +14,8 @@ import {
   switchActiveUser,
 } from '../../services/storage';
 import { clearCredentials, getCredentials } from '../../services/keychain';
-import { FluentAPI, setActiveToken } from '../../services/api';
+import { FluentAPI } from '../../services/api';
+import { authToken } from '../../services/authToken';
 import { logger } from '../../utils/logger';
 
 const log = logger.create('UserSettingsMenu');
@@ -65,7 +66,7 @@ export function UserSettingsMenu({
     if (userId === getActiveUserId()) return;
 
     const creds = await getCredentials(userId);
-    setActiveToken(creds?.token ?? null);
+    authToken.set(creds?.token ?? null);
     switchActiveUser(userId);
     onUserSwitched?.();
   };
@@ -89,11 +90,11 @@ export function UserSettingsMenu({
     if (remaining.length > 0) {
       const nextUserId = remaining[0];
       const creds = await getCredentials(nextUserId);
-      setActiveToken(creds?.token ?? null);
+      authToken.set(creds?.token ?? null);
       switchActiveUser(nextUserId);
       onUserSwitched?.();
     } else {
-      setActiveToken(null);
+      authToken.set(null);
       kvStorage.removeItemSync(KV_KEYS.ACTIVE_USER_ID);
       kvStorage.removeItemSync(KV_KEYS.USER_ID);
       kvStorage.removeItemSync(KV_KEYS.USER_EMAIL);

@@ -15,7 +15,7 @@ import {
 } from './src/services/keychain';
 import AppNavigator from './src/navigation/AppNavigator';
 import { onAuthSessionExpired } from './src/services/syncEvents';
-import { setActiveToken } from './src/services/api';
+import { authToken } from './src/services/authToken';
 import { appStyles } from './src/app/appStyles';
 import { theme } from './src/theme';
 
@@ -34,7 +34,7 @@ function App() {
   useEffect(() => {
     return onAuthSessionExpired(() => {
       log.info('Session expired — returning to login');
-      setActiveToken(null);
+      authToken.set(null);
       setIsAuthenticated(false);
     });
   }, []);
@@ -50,7 +50,7 @@ function App() {
           const hasToken = await hasCredentials(activeUserId);
           if (hasToken) {
             const creds = await getCredentials(activeUserId);
-            setActiveToken(creds?.token ?? null);
+            authToken.set(creds?.token ?? null);
             setIsAuthenticated(true);
             setDbReady(true);
             return;
@@ -66,7 +66,7 @@ function App() {
           if (creds?.token) {
             const { switchActiveUser } = await import('./src/services/storage');
             switchActiveUser(userId);
-            setActiveToken(creds.token);
+            authToken.set(creds.token);
             setIsAuthenticated(true);
             setDbReady(true);
             return;

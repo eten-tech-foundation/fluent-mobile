@@ -49,7 +49,7 @@ import {
   emitSyncStart,
   emitAuthSessionExpired,
 } from './syncEvents';
-import { setActiveToken } from './api';
+import { authToken } from './authToken';
 
 const log = logger.create('SyncService');
 
@@ -63,7 +63,7 @@ function getErrorMessage(error: unknown): string {
 async function handleSyncAuthFailure(userId: string): Promise<void> {
   await clearCredentials(userId);
   if (userId === getActiveUserId()) {
-    setActiveToken(null);
+    authToken.set(null);
     emitAuthSessionExpired();
   }
 }
@@ -443,7 +443,7 @@ export async function syncAllUsers(): Promise<void> {
       }
 
       log.info('Syncing user', { userId });
-      setActiveToken(creds.token);
+      authToken.set(creds.token);
       const userIdNum = Number(userId);
       const userLastSyncedAt = getUserLastSyncedAt(userId) || undefined;
       const hasUserProjects = await userHasLocalProjects(userIdNum);
@@ -502,7 +502,7 @@ export async function syncAllUsers(): Promise<void> {
     const restoredCreds = currentActiveUserId
       ? await getCredentials(currentActiveUserId)
       : null;
-    setActiveToken(restoredCreds?.token ?? null);
+    authToken.set(restoredCreds?.token ?? null);
 
     if (activeUserSyncOk) {
       const now = new Date().toISOString();
@@ -525,7 +525,7 @@ export async function syncAllUsers(): Promise<void> {
     const restoredCreds = currentActiveUserId
       ? await getCredentials(currentActiveUserId)
       : null;
-    setActiveToken(restoredCreds?.token ?? null);
+    authToken.set(restoredCreds?.token ?? null);
     log.error('Sync all users failed', { error: getErrorMessage(error) });
     throw error;
   } finally {
@@ -550,7 +550,7 @@ export async function syncAllData(isIncremental = false, email?: string) {
         await handleSyncAuthFailure(existingUserIdStr);
         throw new AuthError('No session token. Please sign in again.');
       }
-      setActiveToken(creds.token);
+      authToken.set(creds.token);
     } else {
       const user = await syncUser(email);
       userId = user.id;

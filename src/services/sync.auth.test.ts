@@ -1,5 +1,6 @@
 import { AuthError } from './authError';
-import { FluentAPI, setActiveToken } from './api';
+import { FluentAPI } from './api';
+import { authToken } from './authToken';
 import {
   clearCredentials,
   getCredentials,
@@ -18,6 +19,13 @@ import {
   setSyncError,
 } from './storage';
 
+jest.mock('./authToken', () => ({
+  authToken: {
+    get: jest.fn(),
+    set: jest.fn(),
+  },
+}));
+
 jest.mock('./api', () => ({
   FluentAPI: {
     getLanguages: jest.fn().mockResolvedValue([]),
@@ -28,7 +36,6 @@ jest.mock('./api', () => ({
     getChapterAssignments: jest.fn().mockResolvedValue({ data: [] }),
     getBibleTexts: jest.fn(),
   },
-  setActiveToken: jest.fn(),
 }));
 
 jest.mock('./keychain', () => ({
@@ -126,7 +133,7 @@ describe('syncAllData auth handling', () => {
     );
 
     expect(clearCredentials).toHaveBeenCalledWith('2');
-    expect(setActiveToken).toHaveBeenCalledWith(null);
+    expect(authToken.set).toHaveBeenCalledWith(null);
     expect(syncEvents.emitAuthSessionExpired).toHaveBeenCalled();
     expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
   });
@@ -155,7 +162,7 @@ describe('syncAllData auth handling', () => {
 
     expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
     expect(clearCredentials).toHaveBeenCalledWith('2');
-    expect(setActiveToken).toHaveBeenCalledWith(null);
+    expect(authToken.set).toHaveBeenCalledWith(null);
     expect(syncEvents.emitAuthSessionExpired).toHaveBeenCalled();
     expect(setSyncError).toHaveBeenCalledWith(
       'sync_error_projects',
@@ -265,7 +272,7 @@ describe('syncAllUsers auth handling', () => {
     expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(2);
     expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(1);
     expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2);
-    expect(setActiveToken).toHaveBeenLastCalledWith('user-2-token');
+    expect(authToken.set).toHaveBeenLastCalledWith('user-2-token');
     expect(setUserLastSyncedAt).toHaveBeenCalledWith('1', expect.any(String));
     expect(setUserLastSyncedAt).toHaveBeenCalledWith('2', expect.any(String));
     expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
@@ -279,7 +286,7 @@ describe('syncAllUsers auth handling', () => {
     );
 
     expect(clearCredentials).toHaveBeenCalledWith('2');
-    expect(setActiveToken).toHaveBeenCalledWith(null);
+    expect(authToken.set).toHaveBeenCalledWith(null);
     expect(syncEvents.emitAuthSessionExpired).toHaveBeenCalled();
     expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
     expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
@@ -304,7 +311,7 @@ describe('syncAllUsers auth handling', () => {
     expect(clearCredentials).not.toHaveBeenCalledWith('2');
     expect(syncEvents.emitAuthSessionExpired).not.toHaveBeenCalled();
     expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(2);
-    expect(setActiveToken).toHaveBeenLastCalledWith('user-2-token');
+    expect(authToken.set).toHaveBeenLastCalledWith('user-2-token');
   });
 
   it('runs full bible text sync when any user had a full assignment sync', async () => {
