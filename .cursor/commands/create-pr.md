@@ -36,7 +36,7 @@ git log origin/main..HEAD --oneline
 ```
 
 - Warn on uncommitted changes unless user wants them included
-- Ensure branch is pushed: `git push -u origin HEAD` (only with user approval per session rules)
+- Ensure branch is pushed: `git push -u origin HEAD` (feature branch only — **never** `git push origin main`; see [delivery.mdc](../rules/delivery.mdc))
 
 See [docs/AGENT_ONBOARDING.md](../../docs/AGENT_ONBOARDING.md) for full command reference.
 

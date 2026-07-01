@@ -12,7 +12,8 @@
     "test": "jest",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"**/*.{js,ts,tsx,json,css,md}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx}\""
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
+    "doctor": "npx expo-doctor@latest"
   },
   "dependencies": {
     "@op-engineering/op-sqlite": "^15.2.11",
@@ -22,8 +23,8 @@
     "@react-navigation/stack": "^7.8.4",
     "@tanstack/react-query": "^5.96.1",
     "babel-preset-expo": "~56.0.0",
-    "expo": "~56.0.11",
-    "expo-build-properties": "~56.0.18",
+    "expo": "~56.0.12",
+    "expo-build-properties": "~56.0.19",
     "expo-dev-client": "~56.0.20",
     "expo-updates": "~56.0.19",
     "lucide-react-native": "^0.544.0",
