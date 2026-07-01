@@ -1,9 +1,10 @@
 import React from 'react';
+import { DraftingTab } from '../../types/drafting/types';
 import { Headphones, Mic, LucideIcon } from 'lucide-react-native';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
-export type DraftingTab = 'bible' | 'record';
+export type { DraftingTab };
 
 interface DraftingTabBarProps {
   activeTab: DraftingTab;

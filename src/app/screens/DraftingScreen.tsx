@@ -74,11 +74,14 @@ export default function DraftingScreen() {
   }, []);
 
   useEffect(() => {
+    let ignore = false;
+
     const loadVerses = async () => {
       try {
         setLoading(true);
 
         const assignment = await getChapterAssignmentById(chapterId);
+        if (ignore) return;
         if (!assignment) {
           setChapterData(null);
           return;
@@ -99,6 +102,8 @@ export default function DraftingScreen() {
           ),
         ]);
 
+        if (ignore) return;
+
         setVerses(texts);
 
         const firstUnrecorded = texts.find(
@@ -110,11 +115,14 @@ export default function DraftingScreen() {
       } catch (error) {
         log.error('Error loading verses', { error });
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     };
 
     loadVerses();
+    return () => {
+      ignore = true;
+    };
   }, [chapterId]);
 
   if (loading) {

@@ -4,7 +4,8 @@ const PLUGIN = 'withRNScreensFragmentFactory';
 const FRAGMENT_FACTORY_IMPORT =
   'import com.swmansion.rnscreens.fragment.restoration.RNScreensFragmentFactory';
 const IMPORT_ANCHOR = /^import .+/m;
-const ON_CREATE_ANCHOR = /override fun onCreate\(savedInstanceState: Bundle\?\)/;
+const ON_CREATE_ANCHOR =
+  /override fun onCreate\(savedInstanceState: Bundle\?\)/;
 
 function mergeOrAppend({
   tag,

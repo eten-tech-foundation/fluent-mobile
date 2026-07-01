@@ -1,4 +1,4 @@
-import { DraftingTab } from '../components/layout/DraftingTabBar';
+import { DraftingTab } from '../types/drafting/types';
 
 const lastActiveTabByChapter = new Map<number, DraftingTab>();
 
