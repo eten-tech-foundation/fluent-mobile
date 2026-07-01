@@ -1,28 +1,21 @@
 import React from 'react';
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { ChevronLeft } from 'lucide-react-native';
 import { theme } from '../../theme';
+import { ChevronLeft } from 'lucide-react-native';
+import { SyncStatus } from '../../utils/syncStatusState';
+import { PageHeaderSyncButton } from '../ui/PageHeaderSyncButton';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import {
   headerLayout,
   iconSizes,
   listIconStrokeWidth,
   touchHitSlop,
 } from '../../theme/iconSpecs';
-import { CloudSyncStatusIcon } from '../ui/CloudSyncStatusIcon';
-import { SyncStatus } from '../../utils/syncStatusState';
 
 interface DraftingHeaderProps {
   title: string;
   onBack: () => void;
   syncStatus?: SyncStatus;
   onSyncPress?: () => void;
-  isSyncing?: boolean;
 }
 
 export function DraftingHeader({
@@ -30,7 +23,6 @@ export function DraftingHeader({
   onBack,
   syncStatus,
   onSyncPress,
-  isSyncing = false,
 }: DraftingHeaderProps) {
   return (
     <View style={styles.header}>
@@ -57,25 +49,8 @@ export function DraftingHeader({
       </View>
 
       <View style={[styles.sideSlot, styles.sideSlotRight]}>
-        {onSyncPress && syncStatus ? (
-          <TouchableOpacity
-            onPress={onSyncPress}
-            disabled={isSyncing}
-            hitSlop={touchHitSlop}
-            style={styles.syncButton}
-            accessibilityRole="button"
-            accessibilityLabel={isSyncing ? 'Syncing…' : 'Sync now'}
-            accessibilityState={{ disabled: isSyncing }}
-          >
-            {isSyncing ? (
-              <ActivityIndicator
-                size="small"
-                color={theme.colors.foreground}
-              />
-            ) : (
-              <CloudSyncStatusIcon status={syncStatus} decorative />
-            )}
-          </TouchableOpacity>
+        {syncStatus && onSyncPress ? (
+          <PageHeaderSyncButton syncStatus={syncStatus} onPress={onSyncPress} />
         ) : null}
       </View>
     </View>
@@ -108,10 +83,6 @@ const styles = StyleSheet.create({
   backButton: {
     borderRadius: theme.radius.full,
     padding: theme.spacing.xs,
-  },
-  syncButton: {
-    borderRadius: theme.radius.full,
-    padding: theme.spacing.xs + 2,
   },
   centerOverlay: {
     ...StyleSheet.absoluteFill,

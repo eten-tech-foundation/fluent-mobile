@@ -36,14 +36,15 @@ export function DraftingTabBar({
             <Icon
               size={iconSizes.headerTab}
               color={
-                isActive
-                  ? theme.colors.primary
-                  : theme.colors.mutedForeground
+                isActive ? theme.colors.primary : theme.colors.mutedForeground
               }
               strokeWidth={listIconStrokeWidth}
             />
             <Text
-              style={[styles.label, isActive ? styles.labelActive : styles.labelInactive]}
+              style={[
+                styles.label,
+                isActive ? styles.labelActive : styles.labelInactive,
+              ]}
             >
               {label}
             </Text>

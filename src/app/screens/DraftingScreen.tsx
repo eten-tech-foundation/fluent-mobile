@@ -4,6 +4,7 @@ import { BibleTab } from '../tabs/BibleTab';
 import { useSync } from '../../hooks/useSync';
 import { RecordTab } from '../tabs/RecordTab';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
+import { onSyncComplete } from '../../services/syncEvents';
 import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useCallback, useEffect, useState } from 'react';
 import { RootStackParamList } from '../../types/navigation/types';
@@ -12,11 +13,24 @@ import { ChapterAssignmentData, VerseData } from '../../types/db/types';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { getLastActiveTab, setLastActiveTab } from '../../utils/draftingTabState';
-import { DraftingProvider, useDraftingContext } from '../context/DraftingContext';
+import {
+  getLastActiveTab,
+  setLastActiveTab,
+} from '../../utils/draftingTabState';
+import {
+  DraftingProvider,
+  useDraftingContext,
+} from '../context/DraftingContext';
 import { SourceAudioPlayerBar } from '../../components/layout/SourceAudioPlayerBar';
-import { DraftingTab, DraftingTabBar } from '../../components/layout/DraftingTabBar';
-import { getBibleTexts, getChapterAssignmentById, getRecordedVerseNumbers } from '../../db/queries';
+import {
+  DraftingTab,
+  DraftingTabBar,
+} from '../../components/layout/DraftingTabBar';
+import {
+  getBibleTexts,
+  getChapterAssignmentById,
+  getRecordedVerseNumbers,
+} from '../../db/queries';
 
 const log = logger.create('DraftingScreen');
 
@@ -45,11 +59,19 @@ export default function DraftingScreen() {
   );
   const [loading, setLoading] = useState(true);
   const [initialVerse, setInitialVerse] = useState(1);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const { isSyncing, triggerSync } = useSync();
-  const { status: syncStatus } = useSyncStatus({ isSyncing });
+  const { status: syncStatus } = useSyncStatus({ isSyncing, refreshKey });
 
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
+
+  useEffect(() => {
+    const unsubscribe = onSyncComplete(() => {
+      setRefreshKey(key => key + 1);
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     const loadVerses = async () => {
@@ -79,8 +101,6 @@ export default function DraftingScreen() {
 
         setVerses(texts);
 
-        // Default to the first verse with no existing recording.
-        // Fall back to the first verse in the chapter if all are recorded.
         const firstUnrecorded = texts.find(
           v => !recordedVerseNumbers.has(v.verseNumber),
         );
@@ -128,7 +148,6 @@ export default function DraftingScreen() {
             onBack={goBack}
             syncStatus={syncStatus}
             onSyncPress={triggerSync}
-            isSyncing={isSyncing}
           />
 
           <View style={styles.content}>

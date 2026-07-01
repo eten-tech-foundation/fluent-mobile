@@ -432,7 +432,7 @@ export async function getRecordedVerseNumbers(
          AND r.is_latest = 1`,
       [bibleId, bookId, chapterNumber],
     );
- 
+
     const rows = (result?.rows as unknown as { verse_number: number }[]) || [];
     return new Set(rows.map(r => r.verse_number));
   } catch (error) {
@@ -440,4 +440,3 @@ export async function getRecordedVerseNumbers(
     return new Set();
   }
 }
- 
