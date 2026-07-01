@@ -19,6 +19,7 @@ import {
 } from '../../constants/messages';
 import { getPendingUploadCount } from '../../db/queries';
 import { FluentAPI } from '../../services/api';
+import { signOut } from '../../services/authSession';
 import { authToken } from '../../services/authToken';
 import { clearCredentials, getCredentials } from '../../services/keychain';
 import {
@@ -88,10 +89,7 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
       switchActiveUser(nextUserId);
       navigation.goBack();
     } else {
-      authToken.set(null);
-      kvStorage.removeItemSync(KV_KEYS.ACTIVE_USER_ID);
-      kvStorage.removeItemSync(KV_KEYS.USER_ID);
-      kvStorage.removeItemSync(KV_KEYS.USER_EMAIL);
+      signOut();
       onSignOut?.();
     }
   };

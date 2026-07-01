@@ -15,6 +15,7 @@ import {
 } from '../../services/storage';
 import { clearCredentials, getCredentials } from '../../services/keychain';
 import { FluentAPI } from '../../services/api';
+import { signOut } from '../../services/authSession';
 import { authToken } from '../../services/authToken';
 import { logger } from '../../utils/logger';
 
@@ -94,10 +95,7 @@ export function UserSettingsMenu({
       switchActiveUser(nextUserId);
       onUserSwitched?.();
     } else {
-      authToken.set(null);
-      kvStorage.removeItemSync(KV_KEYS.ACTIVE_USER_ID);
-      kvStorage.removeItemSync(KV_KEYS.USER_ID);
-      kvStorage.removeItemSync(KV_KEYS.USER_EMAIL);
+      signOut();
       onSignOut?.();
     }
   };
