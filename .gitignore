@@ -29,13 +29,13 @@ yarn-error.log
 # testing
 /coverage
 
-# Yarn
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/sdks
-!.yarn/versions
+# Other package managers — npm only (see package.json preinstall)
+.pnp.cjs
+.pnp.loader.mjs
+.pnp.js
+.yarn/
+yarn.lock
+pnpm-lock.yaml
 
 # Environment files
 .env
