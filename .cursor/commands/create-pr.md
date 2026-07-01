@@ -36,7 +36,7 @@ git log origin/main..HEAD --oneline
 ```
 
 - Warn on uncommitted changes unless user wants them included
-- Ensure branch is pushed: `git push -u origin HEAD` (only with user approval per session rules)
+- Ensure branch is pushed: `git push -u origin HEAD` (feature branch only — **never** `git push origin main`; see [delivery.mdc](../rules/delivery.mdc))
 
 See [docs/AGENT_ONBOARDING.md](../../docs/AGENT_ONBOARDING.md) for full command reference.
 
@@ -100,7 +100,7 @@ Use **npm** only in PR text and test steps (`npm install`, `npm run lint`, etc.)
 ## Framework notes
 
 - **Expo SDK 56** + **CNG** (RN **0.85**, React **19.2.3**), **Android-only** for now
-- Android CI: `expo prebuild` + `assembleDebug` in `.github/workflows/build.yml`
+- PR CI: lint, test, typecheck, `expo-doctor`, `expo install --check` (`.github/workflows/quality-gates.yml`); native compile via EAS preview label
 - EAS project ID: `b0919574-f268-4768-b3bd-7cfa5172bbab`
 
 ## Branch analysis
