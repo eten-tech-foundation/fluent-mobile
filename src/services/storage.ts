@@ -174,3 +174,54 @@ export function setUserLastSyncedAt(userId: string, timestamp: string) {
   kvStorage.setItemSync(`${userId}:last_synced_at`, timestamp);
   log.info('Per-user last synced timestamp updated', { userId, timestamp });
 }
+
+/**
+ * Paused-take marker: written when the recorder pauses (manual or via
+ * backgrounding) so the drafting page can detect an in-flight take on the
+ * next mount, even after a process kill.
+ */
+export interface PausedTakeMarker {
+  bibleTextId: number;
+  fileUri: string;
+  elapsedMs: number;
+  startedAt: string;
+}
+
+function pausedTakeKey(bibleTextId: number): string {
+  return `paused_take:${bibleTextId}`;
+}
+
+export function getPausedTake(bibleTextId: number): PausedTakeMarker | null {
+  const raw = kvStorage.getItemSync(pausedTakeKey(bibleTextId));
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as PausedTakeMarker;
+    if (
+      typeof parsed?.fileUri === 'string' &&
+      typeof parsed?.elapsedMs === 'number' &&
+      typeof parsed?.startedAt === 'string'
+    ) {
+      return parsed;
+    }
+    return null;
+  } catch (error) {
+    log.error('Failed to parse paused take marker', { bibleTextId, error });
+    return null;
+  }
+}
+
+export function setPausedTake(marker: PausedTakeMarker) {
+  kvStorage.setItemSync(
+    pausedTakeKey(marker.bibleTextId),
+    JSON.stringify(marker),
+  );
+  log.info('Paused take marker set', {
+    bibleTextId: marker.bibleTextId,
+    elapsedMs: marker.elapsedMs,
+  });
+}
+
+export function clearPausedTake(bibleTextId: number) {
+  kvStorage.removeItemSync(pausedTakeKey(bibleTextId));
+  log.info('Paused take marker cleared', { bibleTextId });
+}
