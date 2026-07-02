@@ -19,18 +19,16 @@ export function useLogin(onLoginSuccess: (email: string) => void) {
 
   const loginMutation = useMutation({
     mutationKey: queryKeys.auth.signIn,
-    mutationFn: async ({
+    retry: false,
+    mutationFn: ({
       email: trimmedEmail,
       password: trimmedPassword,
     }: {
       email: string;
       password: string;
-    }) => {
-      const response = await FluentAPI.signIn(trimmedEmail, trimmedPassword);
+    }) => FluentAPI.signIn(trimmedEmail, trimmedPassword),
+    onSuccess: async response => {
       await beginLoginSession(response.token, response.user.email);
-      return response;
-    },
-    onSuccess: response => {
       onLoginSuccess(response.user.email);
     },
     onError: error => {
@@ -40,6 +38,10 @@ export function useLogin(onLoginSuccess: (email: string) => void) {
   });
 
   const handleLogin = () => {
+    if (loginMutation.isPending) {
+      return;
+    }
+
     setFieldErrors({});
     loginMutation.reset();
 

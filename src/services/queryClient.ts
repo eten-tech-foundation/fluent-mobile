@@ -3,7 +3,7 @@ import { isApiError } from '../types/api/errors';
 import { isAuthError } from './authError';
 
 const DEFAULT_QUERY_RETRIES = 3;
-const DEFAULT_MUTATION_RETRIES = 1;
+export const DEFAULT_MUTATION_RETRIES = 1;
 
 /** Shared retry policy aligned with {@link ApiError.isRetryable}. */
 export function shouldRetryApiRequest(
@@ -32,10 +32,6 @@ export function createQueryClient(): QueryClient {
       queries: {
         retry: (failureCount, error) =>
           shouldRetryApiRequest(failureCount, error, DEFAULT_QUERY_RETRIES),
-      },
-      mutations: {
-        retry: (failureCount, error) =>
-          shouldRetryApiRequest(failureCount, error, DEFAULT_MUTATION_RETRIES),
       },
     },
   });

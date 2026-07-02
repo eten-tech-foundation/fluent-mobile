@@ -4,6 +4,7 @@ import {
   mapApiChapterAssignment,
   ApiUserChapterAssignment,
 } from './mapChapterAssignment';
+import { mapApiProject } from './mapApiProject';
 import {
   insertUser,
   insertMasterData,
@@ -18,7 +19,6 @@ import {
 } from '../db/repository';
 import { logger } from '../utils/logger';
 import { getDatabase } from '../db/db';
-import * as DBTypes from '../types/db/types';
 import { ApiBook, ApiVerse } from '../types/api/types';
 import { unwrapApiListResponse } from '../types/api/responses';
 import {
@@ -183,7 +183,7 @@ export async function syncProjects(userId: number) {
 
       const response = await FluentAPI.getUserProjects(userId);
       const raw = unwrapApiListResponse(response);
-      const projects = Array.isArray(raw) ? raw : [];
+      const projects = (Array.isArray(raw) ? raw : []).map(mapApiProject);
 
       log.info('Projects fetched', {
         count: projects.length,
@@ -191,10 +191,10 @@ export async function syncProjects(userId: number) {
       });
 
       if (projects.length > 0) {
-        await insertProjects(projects as DBTypes.Project[]);
+        await insertProjects(projects);
         await insertUserProjects(
           userId,
-          projects.map((p: { id: number }) => p.id),
+          projects.map(project => project.id),
         );
       }
 

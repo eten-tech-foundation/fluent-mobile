@@ -1,4 +1,3 @@
-import { getApiBaseUrl } from '../config/apiBaseUrl';
 import {
   ApiBible,
   ApiBookMeta,
@@ -11,18 +10,14 @@ import {
   SignOutResponse,
   UserProjectsResponse,
 } from '../types/api/responses';
-import { isApiError } from '../types/api/errors';
-import { logger } from '../utils/logger';
-import { createApiError, createNetworkApiError } from './apiError';
 import { checkServerReachable } from './connectivity';
 import {
   authedRequest,
   publicRequest,
-  summarizeApiErrorResponse,
+  publicRequestWithResponse,
 } from './httpClient';
 import { resolveSessionToken } from './sessionToken';
-
-const log = logger.create('API');
+import { createApiError } from './apiError';
 
 const MOBILE_HEADERS = {
   'x-client-type': 'mobile',
@@ -33,54 +28,27 @@ async function signInRequest(
   email: string,
   password: string,
 ): Promise<SignInResponse> {
-  const apiBaseUrl = getApiBaseUrl();
+  const { data, response } = await publicRequestWithResponse<
+    Omit<SignInResponse, 'token'> & { token?: string }
+  >('/api/auth/sign-in/email', {
+    method: 'POST',
+    headers: MOBILE_HEADERS,
+    body: JSON.stringify({ email, password }),
+  });
 
-  try {
-    const res = await fetch(`${apiBaseUrl}/api/auth/sign-in/email`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Origin: apiBaseUrl,
-        ...MOBILE_HEADERS,
-      },
-      body: JSON.stringify({ email, password }),
-    });
+  const token = resolveSessionToken(
+    response.headers.get('set-auth-token'),
+    data.token,
+  );
 
-    if (!res.ok) {
-      const errorBody = await res.text();
-      log.error(
-        'Sign-in error',
-        summarizeApiErrorResponse(res.status, errorBody),
-      );
-      throw createApiError(
-        res.status,
-        errorBody || `Sign-in failed: ${res.status}`,
-      );
-    }
-
-    const data = (await res.json()) as Omit<SignInResponse, 'token'> & {
-      token?: string;
-    };
-    const token = resolveSessionToken(
-      res.headers.get('set-auth-token'),
-      data.token,
+  if (!token) {
+    throw createApiError(
+      500,
+      'Sign-in succeeded but no session token was returned',
     );
-
-    if (!token) {
-      throw createApiError(
-        500,
-        'Sign-in succeeded but no session token was returned',
-      );
-    }
-
-    return { ...data, token };
-  } catch (error) {
-    if (isApiError(error)) {
-      throw error;
-    }
-
-    throw createNetworkApiError(error);
   }
+
+  return { ...data, token };
 }
 
 export const FluentAPI = {

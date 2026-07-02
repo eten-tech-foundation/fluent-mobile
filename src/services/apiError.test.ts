@@ -19,6 +19,17 @@ describe('parseApiErrorBody', () => {
       code: undefined,
     });
   });
+
+  it('uses errorCode when code is absent', () => {
+    expect(
+      parseApiErrorBody(
+        JSON.stringify({
+          message: 'Invalid session',
+          errorCode: 'AUTH_EXPIRED',
+        }),
+      ),
+    ).toEqual({ message: 'Invalid session', code: 'AUTH_EXPIRED' });
+  });
 });
 
 describe('createApiError', () => {

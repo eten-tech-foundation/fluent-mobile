@@ -14,6 +14,7 @@ export function useForgotPassword(initialEmail = '') {
 
   const forgotPasswordMutation = useMutation({
     mutationKey: queryKeys.auth.forgotPassword,
+    retry: false,
     mutationFn: (trimmedEmail: string) =>
       FluentAPI.forgotPassword(trimmedEmail),
     onSuccess: () => {
@@ -26,6 +27,10 @@ export function useForgotPassword(initialEmail = '') {
   });
 
   const sendResetEmail = () => {
+    if (forgotPasswordMutation.isPending) {
+      return;
+    }
+
     setFieldError(null);
     forgotPasswordMutation.reset();
 

@@ -54,10 +54,11 @@ describe('FluentAPI auth', () => {
 
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({
-        token: 'abc123',
-        user: { email: 't@fluent.local' },
-      }),
+      text: async () =>
+        JSON.stringify({
+          token: 'abc123',
+          user: { email: 't@fluent.local' },
+        }),
       headers: {
         get: (name: string) =>
           name.toLowerCase() === 'set-auth-token' ? encodedHeader : null,
@@ -81,7 +82,7 @@ describe('FluentAPI auth', () => {
     ).rejects.toMatchObject({
       name: 'ApiError',
       status: 503,
-      message: 'Sign-in failed: 503',
+      message: 'API failed: 503',
     });
   });
 

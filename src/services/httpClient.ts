@@ -8,6 +8,12 @@ import { AuthError } from './authError';
 const log = logger.create('HTTP');
 
 const API_ERROR_BODY_LOG_LIMIT = 200;
+const REQUEST_TIMEOUT_MS = 30_000;
+
+export interface HttpResponse<T> {
+  data: T;
+  response: Response;
+}
 
 export function summarizeApiErrorResponse(
   status: number,
@@ -20,12 +26,9 @@ export function summarizeApiErrorResponse(
 
   try {
     const parsed = JSON.parse(body) as Record<string, unknown>;
-    if (typeof parsed.message === 'string') {
-      metadata.message = parsed.message.slice(0, API_ERROR_BODY_LOG_LIMIT);
-    }
     const errorCode = parsed.code ?? parsed.errorCode;
     if (typeof errorCode === 'string') {
-      metadata.errorCode = errorCode;
+      metadata.errorCode = errorCode.slice(0, API_ERROR_BODY_LOG_LIMIT);
     }
   } catch {
     // Non-JSON bodies are omitted from logs to avoid leaking response content.
@@ -47,7 +50,16 @@ export function buildHeaders(
 }
 
 async function parseJsonResponse<T>(res: Response): Promise<T> {
-  return (await res.json()) as T;
+  const body = await res.text();
+  if (!body.trim()) {
+    return {} as T;
+  }
+
+  try {
+    return JSON.parse(body) as T;
+  } catch {
+    return {} as T;
+  }
 }
 
 async function handleErrorResponse(
@@ -66,28 +78,49 @@ async function handleErrorResponse(
   throw apiError;
 }
 
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
 async function executeRequest<T>(
   endpoint: string,
   options: RequestInit,
   auth: boolean,
   logLabel: string,
-): Promise<T> {
-  const apiBaseUrl = getApiBaseUrl();
+  apiBaseUrl = getApiBaseUrl(),
+  returnResponse = false,
+): Promise<T | HttpResponse<T>> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    const res = await fetch(`${apiBaseUrl}${endpoint}`, options);
+    const res = await fetch(`${apiBaseUrl}${endpoint}`, {
+      ...options,
+      signal: controller.signal,
+    });
 
     if (!res.ok) {
       await handleErrorResponse(res, logLabel, auth);
     }
 
-    return parseJsonResponse<T>(res);
+    const data = await parseJsonResponse<T>(res);
+    if (returnResponse) {
+      return { data, response: res };
+    }
+
+    return data;
   } catch (error) {
     if (error instanceof AuthError || error instanceof ApiError) {
       throw error;
     }
 
+    if (isAbortError(error)) {
+      throw createNetworkApiError(new Error('Request timed out'));
+    }
+
     throw createNetworkApiError(error);
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -109,7 +142,31 @@ export async function publicRequest<T>(
     },
     false,
     'Public API error',
-  );
+    apiBaseUrl,
+  ) as Promise<T>;
+}
+
+export async function publicRequestWithResponse<T>(
+  endpoint: string,
+  options?: RequestInit,
+): Promise<HttpResponse<T>> {
+  const apiBaseUrl = getApiBaseUrl();
+
+  return executeRequest<T>(
+    endpoint,
+    {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: apiBaseUrl,
+        ...options?.headers,
+      },
+    },
+    false,
+    'Public API error',
+    apiBaseUrl,
+    true,
+  ) as Promise<HttpResponse<T>>;
 }
 
 export async function authedRequest<T>(
@@ -124,5 +181,5 @@ export async function authedRequest<T>(
     },
     true,
     'API error',
-  );
+  ) as Promise<T>;
 }

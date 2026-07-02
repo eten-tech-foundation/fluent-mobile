@@ -83,11 +83,13 @@ function App() {
     runPostLoginSync(email);
   };
 
-  if (!dbReady) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <GestureHandlerRootView style={appStyles.containerAppInit}>
-          <SafeAreaProvider>
+  return (
+    <QueryClientProvider client={queryClient}>
+      <GestureHandlerRootView
+        style={dbReady ? appStyles.appRoot : appStyles.containerAppInit}
+      >
+        <SafeAreaProvider>
+          {!dbReady ? (
             <View style={appStyles.containerAppInit}>
               {error ? (
                 <Text style={appStyles.errorTextAppInit}>Error: {error}</Text>
@@ -103,25 +105,17 @@ function App() {
                 </>
               )}
             </View>
-          </SafeAreaProvider>
-        </GestureHandlerRootView>
-      </QueryClientProvider>
-    );
-  }
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView style={appStyles.appRoot}>
-        <SafeAreaProvider>
-          <NavigationContainer>
-            <AppNavigator
-              isAuthenticated={isAuthenticated}
-              onLoginSuccess={handleLoginSuccess}
-              onAddUserLoginSuccess={handleAddUserLoginSuccess}
-              onSignOut={handleSignOut}
-              postLoginSyncActive={postLoginSyncActive}
-            />
-          </NavigationContainer>
+          ) : (
+            <NavigationContainer>
+              <AppNavigator
+                isAuthenticated={isAuthenticated}
+                onLoginSuccess={handleLoginSuccess}
+                onAddUserLoginSuccess={handleAddUserLoginSuccess}
+                onSignOut={handleSignOut}
+                postLoginSyncActive={postLoginSyncActive}
+              />
+            </NavigationContainer>
+          )}
         </SafeAreaProvider>
       </GestureHandlerRootView>
     </QueryClientProvider>
