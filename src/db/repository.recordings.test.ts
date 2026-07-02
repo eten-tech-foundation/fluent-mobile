@@ -16,11 +16,18 @@ interface MockDb {
 let mockDb: MockDb;
 let mockTx: MockTx;
 
+const mockDeleteRecordingFile = jest.fn();
+
 jest.mock('./db', () => {
   return {
     getDatabase: () => mockDb,
   };
 });
+
+jest.mock('../services/recordingStorage', () => ({
+  deleteRecordingFile: (pathOrKey: string) =>
+    mockDeleteRecordingFile(pathOrKey),
+}));
 
 function makeDb(existingMaxTake: number): MockDb {
   mockTx = {
@@ -43,7 +50,9 @@ describe('insertRecording', () => {
   const baseInput: InsertRecordingInput = {
     id: 'rec-1',
     bibleTextId: 42,
-    localFilePath: '/tmp/rec-1.m4a',
+    userId: 'user-9',
+    chapterAssignmentId: 7,
+    localFilePath: 'recordings/uuser-9/p3/GEN/c001/v001/rec-1.m4a',
     durationMs: 12000,
     fileSizeBytes: 24000,
     createdAt: '2026-07-01T00:00:00.000Z',
@@ -69,7 +78,9 @@ describe('insertRecording', () => {
     expect(insertParams).toEqual([
       'rec-1',
       42,
-      '/tmp/rec-1.m4a',
+      'user-9',
+      7,
+      'recordings/uuser-9/p3/GEN/c001/v001/rec-1.m4a',
       12000,
       24000,
       1,
@@ -86,7 +97,7 @@ describe('insertRecording', () => {
 
     expect(rec.takeNumber).toBe(4);
     const insertParams = mockTx.execute.mock.calls[2]?.[1] as unknown[];
-    expect(insertParams?.[5]).toBe(4);
+    expect(insertParams?.[7]).toBe(4);
   });
 
   it('accepts a custom sync status', async () => {
@@ -96,13 +107,20 @@ describe('insertRecording', () => {
 
     expect(rec.syncStatus).toBe('error');
     const insertParams = mockTx.execute.mock.calls[2]?.[1] as unknown[];
-    expect(insertParams?.[6]).toBe('error');
+    expect(insertParams?.[8]).toBe('error');
   });
 });
 
 describe('deleteRecordingById', () => {
-  it('runs a DELETE query with the provided id', async () => {
+  beforeEach(() => {
+    mockDeleteRecordingFile.mockClear();
+  });
+
+  it('runs a DELETE query and unlinks the stored file', async () => {
     mockDb = makeDb(0);
+    mockDb.execute.mockResolvedValueOnce({
+      rows: [{ local_file_path: 'recordings/uu/p1/GEN/c001/v001/rec-9.m4a' }],
+    });
 
     await deleteRecordingById('rec-9');
 
@@ -110,5 +128,17 @@ describe('deleteRecordingById', () => {
       expect.stringMatching(/DELETE FROM recordings WHERE id = \?/),
       ['rec-9'],
     );
+    expect(mockDeleteRecordingFile).toHaveBeenCalledWith(
+      'recordings/uu/p1/GEN/c001/v001/rec-9.m4a',
+    );
+  });
+
+  it('skips unlink when no row is found', async () => {
+    mockDb = makeDb(0);
+    mockDb.execute.mockResolvedValueOnce({ rows: [] });
+
+    await deleteRecordingById('missing');
+
+    expect(mockDeleteRecordingFile).not.toHaveBeenCalled();
   });
 });
