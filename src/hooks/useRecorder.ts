@@ -156,7 +156,9 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     toggle: togglePlaybackInternal,
     stop: stopPlayback,
   } = useDraftPlayback(
-    currentRecording ? adapter.resolvePlaybackUri(currentRecording) : null,
+    currentRecording
+      ? adapterRef.current.resolvePlaybackUri(currentRecording)
+      : null,
   );
 
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
