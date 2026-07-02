@@ -19,9 +19,9 @@ import {
 } from '../../utils/draftingTabState';
 import {
   DraftingProvider,
-  useDraftingContext,
+  // useDraftingContext,
 } from '../context/DraftingContext';
-import { SourceAudioPlayerBar } from '../../components/layout/SourceAudioPlayerBar';
+//import { SourceAudioPlayerBar } from '../../components/layout/SourceAudioPlayerBar';
 import {
   DraftingTab,
   DraftingTabBar,
@@ -162,7 +162,7 @@ export default function DraftingScreen() {
             {activeTab === 'bible' ? <BibleTab /> : <RecordTab />}
           </View>
 
-          <DraftingPlayerBar verses={verses} />
+          {/* <DraftingPlayerBar verses={verses} /> */}
 
           <DraftingTabBar activeTab={activeTab} onTabChange={setActiveTab} />
         </View>
@@ -171,12 +171,11 @@ export default function DraftingScreen() {
   );
 }
 
-function DraftingPlayerBar({ verses }: { verses: VerseData[] }) {
-  const { selectedVerse } = useDraftingContext();
-  // Source audio isn't wired up yet — bible_texts has no audio reference, hiding until implemented.
-  return null;
-  return <SourceAudioPlayerBar verses={verses} selectedVerse={selectedVerse} />;
-}
+// function DraftingPlayerBar({ verses }: { verses: VerseData[] }) {
+//   const { selectedVerse } = useDraftingContext();
+//   // Source audio isn't wired up yet — bible_texts has no audio reference, hiding until implemented.
+//   return <SourceAudioPlayerBar verses={verses} selectedVerse={selectedVerse} />;
+// }
 
 const styles = StyleSheet.create({
   screen: {

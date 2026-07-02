@@ -39,6 +39,10 @@ export function BibleTab() {
           ]}
           onPress={() => setSelectedVerse(item.verseNumber)}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`Verse ${item.verseNumber}${
+            isSelected ? ', selected' : ''
+          }`}
         >
           <View style={styles.iconColumn}>
             <Text

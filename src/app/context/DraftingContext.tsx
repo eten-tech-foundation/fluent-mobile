@@ -44,7 +44,13 @@ export function DraftingProvider({
       currentlyPlayingVerse,
       setCurrentlyPlayingVerse,
     }),
-    [selectedVerse, verses, currentlyPlayingVerse],
+    [
+      selectedVerse,
+      verses,
+      currentlyPlayingVerse,
+      setSelectedVerse,
+      setCurrentlyPlayingVerse,
+    ],
   );
 
   return (
