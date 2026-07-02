@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
   verseNav: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
   },
   verseNavButton: {
     padding: theme.spacing.sm,
@@ -565,9 +565,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     height: 72,
     width: '50%',
-    // alignContent: 'center',
     alignSelf: 'center',
-    // paddingHorizontal: theme.spacing.xs,
   },
   waveformBarLive: {
     width: 5,
