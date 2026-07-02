@@ -173,6 +173,8 @@ export default function DraftingScreen() {
 
 function DraftingPlayerBar({ verses }: { verses: VerseData[] }) {
   const { selectedVerse } = useDraftingContext();
+  // Source audio isn't wired up yet — bible_texts has no audio reference, hiding until implemented.
+  return null;
   return <SourceAudioPlayerBar verses={verses} selectedVerse={selectedVerse} />;
 }
 
