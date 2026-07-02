@@ -18,7 +18,8 @@ import {
   CircleDot,
   Pause,
   Play,
-  StopCircle,
+  RefreshCw,
+  Square,
   Trash2,
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -30,6 +31,8 @@ import { useRecorder } from '../../../hooks/useRecorder';
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
 }
+
+const LIVE_WAVEFORM_BARS = 22;
 
 interface RecordTabProps {
   bookName: string;
@@ -265,20 +268,20 @@ export function RecordTab({
           testID="record-waveform-live"
           accessibilityLabel="Recording waveform"
         >
-          {Array.from({ length: 24 }).map((_, index) => {
+          {Array.from({ length: LIVE_WAVEFORM_BARS }).map((_, index) => {
             const active = recorder.status === 'recording';
             const height =
-              8 +
+              14 +
               ((Math.abs(Math.sin((recorder.elapsedMs + index * 40) / 90)) *
-                24) |
+                48) |
                 0);
             return (
               <View
                 key={index}
                 style={[
-                  styles.waveformBar,
+                  styles.waveformBarLive,
                   {
-                    height: active ? height : 12,
+                    height: active ? height : 14,
                     opacity: active ? 1 : 0.5,
                   },
                 ]}
@@ -292,13 +295,13 @@ export function RecordTab({
           testID="record-waveform-static"
           accessibilityLabel="Draft waveform"
         >
-          {Array.from({ length: 24 }).map((_, index) => (
+          {Array.from({ length: LIVE_WAVEFORM_BARS }).map((_, index) => (
             <View
               key={index}
               style={[
-                styles.waveformBar,
+                styles.waveformBarStatic,
                 {
-                  height: 8 + ((Math.abs(Math.cos(index / 2)) * 20) | 0),
+                  height: 10 + ((Math.abs(Math.cos(index / 2)) * 28) | 0),
                   opacity: 0.85,
                 },
               ]}
@@ -327,7 +330,7 @@ export function RecordTab({
               Record {currentReference}
             </Text>
             <View
-              style={styles.playButtonDisabled}
+              style={styles.mutedPlaceholderCircle}
               accessibilityRole="button"
               accessibilityLabel="Playback unavailable until a draft is recorded"
               accessibilityState={{ disabled: true }}
@@ -343,109 +346,129 @@ export function RecordTab({
         )}
 
         {recorder.status === 'recording' && (
-          <View style={styles.recordingRow}>
+          <View style={styles.captureGroup}>
             <Text style={styles.duration} testID="record-duration">
               {formatDuration(recorder.elapsedMs)}
             </Text>
-            <View style={styles.recordingButtons}>
+            <View style={styles.captureButtonsRow}>
               <TouchableOpacity
-                style={styles.secondaryButton}
+                style={styles.stopCircleButton}
+                onPress={() => recorder.stop()}
+                accessibilityRole="button"
+                accessibilityLabel="Stop recording"
+                testID="record-stop-button"
+              >
+                <Square
+                  size={26}
+                  color={theme.colors.foreground}
+                  strokeWidth={listIconStrokeWidth}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.primaryActionCircle}
                 onPress={() => recorder.pause()}
                 accessibilityRole="button"
                 accessibilityLabel="Pause recording"
                 testID="record-pause-button"
               >
                 <Pause
-                  size={28}
-                  color={theme.colors.foreground}
-                  strokeWidth={listIconStrokeWidth}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.stopButton}
-                onPress={() => recorder.stop()}
-                accessibilityRole="button"
-                accessibilityLabel="Stop recording"
-                testID="record-stop-button"
-              >
-                <StopCircle
-                  size={32}
+                  size={30}
                   color={theme.colors.primaryForeground}
                   strokeWidth={listIconStrokeWidth}
                 />
               </TouchableOpacity>
             </View>
+            <Text style={styles.captureTip} testID="record-tip">
+              Tap pause to study the source, stop to finish.
+            </Text>
           </View>
         )}
 
         {recorder.status === 'paused' && (
-          <View style={styles.recordingRow}>
+          <View style={styles.captureGroup}>
             <Text style={styles.duration} testID="record-duration">
               {formatDuration(recorder.elapsedMs)}
             </Text>
-            <View style={styles.recordingButtons}>
+            <View style={styles.captureButtonsRow}>
               <TouchableOpacity
-                style={styles.secondaryButton}
+                style={styles.stopCircleButton}
+                onPress={() => recorder.stop()}
+                accessibilityRole="button"
+                accessibilityLabel="Stop recording"
+                testID="record-stop-button"
+              >
+                <Square
+                  size={26}
+                  color={theme.colors.foreground}
+                  strokeWidth={listIconStrokeWidth}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.primaryActionCircle}
                 onPress={() => recorder.resume()}
                 accessibilityRole="button"
                 accessibilityLabel="Resume recording"
                 testID="record-resume-button"
               >
                 <CircleDot
-                  size={28}
-                  color={theme.colors.foreground}
-                  strokeWidth={listIconStrokeWidth}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.stopButton}
-                onPress={() => recorder.stop()}
-                accessibilityRole="button"
-                accessibilityLabel="Stop recording"
-                testID="record-stop-button"
-              >
-                <StopCircle
-                  size={32}
+                  size={30}
                   color={theme.colors.primaryForeground}
                   strokeWidth={listIconStrokeWidth}
                 />
               </TouchableOpacity>
             </View>
+            <Text style={styles.captureTip} testID="record-tip">
+              Recording paused — review the source below, then resume.
+            </Text>
           </View>
         )}
 
         {recorder.status === 'review' && (
           <View style={styles.reviewGroup}>
-            <TouchableOpacity
-              style={styles.playButton}
-              onPress={() => {
-                // Playback is stubbed until #47 pipes the chapter audio player.
-                // Individual take playback still runs via expo-audio in future work.
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Play draft"
-              testID="record-play-button"
-            >
-              <Play
-                size={28}
-                color={theme.colors.primaryForeground}
-                strokeWidth={listIconStrokeWidth}
-              />
-            </TouchableOpacity>
+            <View style={styles.captureButtonsRow}>
+              <View
+                style={styles.mutedPlaceholderCircle}
+                accessibilityRole="image"
+                accessibilityLabel="Recording complete"
+                testID="record-review-record-done-placeholder"
+              >
+                <CircleDot
+                  size={22}
+                  color={theme.colors.mutedForeground}
+                  strokeWidth={listIconStrokeWidth}
+                />
+              </View>
+              <TouchableOpacity
+                style={styles.primaryPlayCircle}
+                onPress={() => {
+                  // Playback is stubbed until #47 pipes the chapter audio player.
+                  // Individual take playback still runs via expo-audio in future work.
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Play draft"
+                testID="record-play-button"
+              >
+                <Play
+                  size={30}
+                  color={theme.colors.primaryForeground}
+                  strokeWidth={listIconStrokeWidth}
+                />
+              </TouchableOpacity>
+            </View>
             <View style={styles.reviewActions}>
               <TouchableOpacity
-                style={styles.secondaryButton}
+                style={styles.reRecordButton}
                 onPress={handleReRecordPress}
                 accessibilityRole="button"
                 accessibilityLabel="Re-record draft"
                 testID="record-rerecord-button"
               >
-                <CircleDot
-                  size={22}
+                <RefreshCw
+                  size={18}
                   color={theme.colors.foreground}
                   strokeWidth={listIconStrokeWidth}
                 />
-                <Text style={styles.buttonLabel}>Re-record</Text>
+                <Text style={styles.reRecordLabel}>Re-record</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.destructiveButton}
@@ -455,7 +478,7 @@ export function RecordTab({
                 testID="record-delete-button"
               >
                 <Trash2
-                  size={22}
+                  size={18}
                   color={theme.colors.destructive}
                   strokeWidth={listIconStrokeWidth}
                 />
@@ -527,12 +550,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    height: 40,
+    height: 72,
+    width: '50%',
+    // alignContent: 'center',
+    alignSelf: 'center',
+    // paddingHorizontal: theme.spacing.xs,
   },
-  waveformBar: {
-    width: 4,
+  waveformBarLive: {
+    width: 5,
+    borderRadius: 2.5,
+    backgroundColor: theme.colors.recordAccent,
+  },
+  waveformBarStatic: {
+    width: 5,
+    borderRadius: 2.5,
     backgroundColor: theme.colors.primary,
-    borderRadius: 2,
   },
   controls: {
     alignItems: 'center',
@@ -556,7 +588,7 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.weights.medium,
     textAlign: 'center',
   },
-  playButtonDisabled: {
+  mutedPlaceholderCircle: {
     width: 48,
     height: 48,
     borderRadius: theme.radius.full,
@@ -565,23 +597,27 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.cardBackground,
     opacity: 0.6,
   },
-  recordingRow: {
-    flexDirection: 'row',
+  captureGroup: {
     alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  recordingButtons: {
-    flexDirection: 'row',
     gap: theme.spacing.md,
   },
-  duration: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: theme.typography.weights.bold,
-    fontVariant: ['tabular-nums'],
-    color: theme.colors.foreground,
+  captureButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.lg,
   },
-  secondaryButton: {
+  captureTip: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.mutedForeground,
+    textAlign: 'center',
+  },
+  duration: {
+    fontSize: 32,
+    fontWeight: theme.typography.weights.medium,
+    fontVariant: ['tabular-nums'],
+    color: theme.colors.mutedForeground,
+  },
+  stopCircleButton: {
     width: 56,
     height: 56,
     borderRadius: theme.radius.full,
@@ -590,34 +626,22 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.cardBackground,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
   },
-  stopButton: {
-    width: 64,
-    height: 64,
+  primaryActionCircle: {
+    width: 72,
+    height: 72,
     borderRadius: theme.radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.primary,
-  },
-  buttonLabel: {
-    color: theme.colors.foreground,
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.weights.medium,
-  },
-  destructiveLabel: {
-    color: theme.colors.destructive,
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.weights.medium,
+    backgroundColor: theme.colors.recordAccent,
   },
   reviewGroup: {
     alignItems: 'center',
-    gap: theme.spacing.md,
+    gap: theme.spacing.lg,
   },
-  playButton: {
-    width: 64,
-    height: 64,
+  primaryPlayCircle: {
+    width: 72,
+    height: 72,
     borderRadius: theme.radius.full,
     alignItems: 'center',
     justifyContent: 'center',
@@ -627,15 +651,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: theme.spacing.md,
   },
+  reRecordButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.cardBackground,
+  },
+  reRecordLabel: {
+    color: theme.colors.foreground,
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.weights.medium,
+  },
   destructiveButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.radius.full,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.destructive,
+    backgroundColor: theme.colors.background,
+  },
+  destructiveLabel: {
+    color: theme.colors.destructive,
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.weights.medium,
   },
   accordionHeader: {
     flexDirection: 'row',
