@@ -64,7 +64,9 @@ export interface UseRecorderApi {
   discardPaused: () => Promise<void>;
 }
 
-const TICK_INTERVAL_MS = 200;
+// 50ms tick gives ~20fps on the centiseconds portion of the duration display
+// (`MM:SS:HH`) without hammering the React state.
+const TICK_INTERVAL_MS = 50;
 
 interface PermissionLike {
   granted: boolean;
@@ -90,7 +92,11 @@ export function useRecorder({ bibleTextId }: UseRecorderArgs): UseRecorderApi {
 
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startedAtRef = useRef<string | null>(null);
+  // `baseElapsedRef` accumulates the recorded milliseconds of all previous
+  // active segments (i.e. everything up to the most recent pause). The current
+  // segment's contribution is measured by wall clock via `runningSinceRef`.
   const baseElapsedRef = useRef(0);
+  const runningSinceRef = useRef<number | null>(null);
   const bibleTextIdRef = useRef<number | null>(bibleTextId);
 
   bibleTextIdRef.current = bibleTextId;
@@ -105,11 +111,11 @@ export function useRecorder({ bibleTextId }: UseRecorderArgs): UseRecorderApi {
   const startTicking = useCallback(() => {
     clearTick();
     tickRef.current = setInterval(() => {
-      setElapsedMs(
-        baseElapsedRef.current + Math.round(recorder.currentTime * 1000),
-      );
+      const startedAt = runningSinceRef.current;
+      if (startedAt === null) return;
+      setElapsedMs(baseElapsedRef.current + (Date.now() - startedAt));
     }, TICK_INTERVAL_MS);
-  }, [clearTick, recorder]);
+  }, [clearTick]);
 
   // Load latest DB recording for the current verse and reset state.
   useEffect(() => {
@@ -119,6 +125,7 @@ export function useRecorder({ bibleTextId }: UseRecorderArgs): UseRecorderApi {
       setIsReady(false);
       setElapsedMs(0);
       baseElapsedRef.current = 0;
+      runningSinceRef.current = null;
       startedAtRef.current = null;
       clearTick();
 
@@ -221,6 +228,7 @@ export function useRecorder({ bibleTextId }: UseRecorderArgs): UseRecorderApi {
     await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
     await recorder.prepareToRecordAsync();
     baseElapsedRef.current = 0;
+    runningSinceRef.current = Date.now();
     startedAtRef.current = new Date().toISOString();
     setElapsedMs(0);
     recorder.record();
@@ -243,11 +251,14 @@ export function useRecorder({ bibleTextId }: UseRecorderArgs): UseRecorderApi {
     if (currentBibleTextId === null) return;
     if (status !== 'recording') return;
 
-    const finalElapsed =
-      baseElapsedRef.current + Math.round(recorder.currentTime * 1000);
+    const segmentStart = runningSinceRef.current;
+    const segmentElapsed =
+      segmentStart === null ? 0 : Date.now() - segmentStart;
+    const finalElapsed = baseElapsedRef.current + segmentElapsed;
     recorder.pause();
     clearTick();
     baseElapsedRef.current = finalElapsed;
+    runningSinceRef.current = null;
     setElapsedMs(finalElapsed);
     setStatus('paused');
     persistPausedMarker(recorder, finalElapsed);
@@ -260,6 +271,7 @@ export function useRecorder({ bibleTextId }: UseRecorderArgs): UseRecorderApi {
   const resume = useCallback(async () => {
     if (status !== 'paused') return;
     recorder.record();
+    runningSinceRef.current = Date.now();
     setStatus('recording');
     startTicking();
   }, [recorder, startTicking, status]);
@@ -267,10 +279,17 @@ export function useRecorder({ bibleTextId }: UseRecorderArgs): UseRecorderApi {
   const commitRecording = useCallback(async () => {
     const currentBibleTextId = bibleTextIdRef.current;
     if (currentBibleTextId === null) return;
+
+    // Compute the final duration from refs before stopping so a late tick
+    // or a stale `elapsedMs` render can't skew what lands in the DB.
+    const segmentStart = runningSinceRef.current;
+    const activeSegmentMs =
+      segmentStart === null ? 0 : Date.now() - segmentStart;
+    const duration = baseElapsedRef.current + activeSegmentMs;
+
     await recorder.stop();
     clearTick();
 
-    const duration = elapsedMs;
     const fileUri = recorder.uri;
     if (!fileUri) {
       log.error('Recorder returned no URI on stop; skipping DB write');
@@ -287,10 +306,12 @@ export function useRecorder({ bibleTextId }: UseRecorderArgs): UseRecorderApi {
 
     clearPausedTake(currentBibleTextId);
     baseElapsedRef.current = 0;
+    runningSinceRef.current = null;
     startedAtRef.current = null;
+    setElapsedMs(duration);
     setCurrentRecording(inserted);
     setStatus('review');
-  }, [clearTick, currentRecording, elapsedMs, recorder]);
+  }, [clearTick, currentRecording, recorder]);
 
   const stop = useCallback(async () => {
     if (status !== 'recording' && status !== 'paused') return;
@@ -313,6 +334,7 @@ export function useRecorder({ bibleTextId }: UseRecorderArgs): UseRecorderApi {
     setStatus('idle');
     setElapsedMs(0);
     baseElapsedRef.current = 0;
+    runningSinceRef.current = null;
   }, [currentRecording, status]);
 
   const discardPaused = useCallback(async () => {
@@ -326,6 +348,7 @@ export function useRecorder({ bibleTextId }: UseRecorderArgs): UseRecorderApi {
     clearPausedTake(currentBibleTextId);
     clearTick();
     baseElapsedRef.current = 0;
+    runningSinceRef.current = null;
     startedAtRef.current = null;
     setElapsedMs(0);
     setStatus(currentRecording ? 'review' : 'idle');

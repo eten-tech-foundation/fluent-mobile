@@ -88,11 +88,11 @@ describe('RecordTab', () => {
     mockUseRecorder.mockReturnValue({
       ...baseRecorderState(),
       status: 'recording',
-      elapsedMs: 65_000,
+      elapsedMs: 65_420,
     });
     renderTab();
 
-    expect(screen.getByTestId('record-duration')).toHaveTextContent('1:05');
+    expect(screen.getByTestId('record-duration')).toHaveTextContent('01:05:42');
     expect(screen.getByTestId('record-pause-button')).toBeTruthy();
     expect(screen.getByTestId('record-stop-button')).toBeTruthy();
     expect(screen.getByTestId('record-tip')).toHaveTextContent(
