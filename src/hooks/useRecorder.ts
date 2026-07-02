@@ -18,6 +18,7 @@ import {
 } from '../services/storage';
 import {
   buildRecordingKey,
+  deleteRecordingFile,
   extensionFromUri,
   moveIntoStore,
   resolveRecordingUri,
@@ -108,7 +109,13 @@ export function useRecorder({
   chapterNumber,
   verseNumber,
 }: UseRecorderArgs): UseRecorderApi {
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  // Capture straight into the durable document directory (not the evictable
+  // cache) so paused/backgrounded partial takes survive until we move or delete
+  // them. Committed takes are relocated into the organized tree on Stop.
+  const recorder = useAudioRecorder({
+    ...RecordingPresets.HIGH_QUALITY,
+    directory: 'document',
+  });
 
   const [status, setStatus] = useState<RecorderStatus>('idle');
   const [permission, setPermission] = useState<PermissionState>('unknown');
@@ -438,11 +445,15 @@ export function useRecorder({
   const discardPaused = useCallback(async () => {
     const currentBibleTextId = bibleTextIdRef.current;
     if (currentBibleTextId === null) return;
+    // Read the marker before clearing so we can unlink the durable partial file
+    // (recorder.uri is unreliable after a process kill; the marker is not).
+    const marker = getPausedTake(currentBibleTextId);
     try {
       await recorder.stop();
     } catch (error) {
       log.warn('Recorder stop while discarding paused take failed', { error });
     }
+    if (marker?.fileUri) deleteRecordingFile(marker.fileUri);
     clearPausedTake(currentBibleTextId);
     clearTick();
     baseElapsedRef.current = 0;
