@@ -1,6 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -84,6 +85,41 @@ function renderTab(
 describe('RecordTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('defers the record UI until the recorder is ready to avoid a flash', () => {
+    jest.useFakeTimers();
+    try {
+      mockUseVerseRecorder.mockReturnValue({
+        ...baseRecorderState(),
+        isReady: false,
+      });
+      renderTab();
+
+      // While loading, the controls are held back so idle never flashes.
+      expect(screen.getByTestId('record-loading')).toBeTruthy();
+      expect(screen.queryByTestId('record-start-button')).toBeNull();
+      // The verse reference still shows so the header does not jump.
+      expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+        'Mark 14:3',
+      );
+
+      // After the defer window the UI surfaces even if still not ready.
+      act(() => {
+        jest.advanceTimersByTime(100);
+      });
+      expect(screen.getByTestId('record-start-button')).toBeTruthy();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('renders the record UI immediately once the recorder is ready', () => {
+    mockUseVerseRecorder.mockReturnValue(baseRecorderState());
+    renderTab();
+
+    expect(screen.queryByTestId('record-loading')).toBeNull();
+    expect(screen.getByTestId('record-start-button')).toBeTruthy();
   });
 
   it('renders the idle record button with a label and disabled play hint', () => {
