@@ -9,7 +9,7 @@ import {
 import { RecordTab } from './RecordTab';
 import type { VerseData } from '../../../types/db/types';
 
-const mockUseRecorder = jest.fn();
+const mockUseVerseRecorder = jest.fn();
 
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({
@@ -19,8 +19,8 @@ jest.mock('@react-navigation/native', () => ({
   }),
 }));
 
-jest.mock('../../../hooks/useRecorder', () => ({
-  useRecorder: (args: unknown) => mockUseRecorder(args),
+jest.mock('../../../hooks/useVerseRecorder', () => ({
+  useVerseRecorder: (args: unknown) => mockUseVerseRecorder(args),
 }));
 
 const VERSES: VerseData[] = [
@@ -87,7 +87,7 @@ describe('RecordTab', () => {
   });
 
   it('renders the idle record button with a label and disabled play hint', () => {
-    mockUseRecorder.mockReturnValue(baseRecorderState());
+    mockUseVerseRecorder.mockReturnValue(baseRecorderState());
     renderTab();
 
     expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
@@ -101,7 +101,7 @@ describe('RecordTab', () => {
   });
 
   it('shows pause and stop controls with a duration and tip when recording', () => {
-    mockUseRecorder.mockReturnValue({
+    mockUseVerseRecorder.mockReturnValue({
       ...baseRecorderState(),
       status: 'recording',
       elapsedMs: 65_420,
@@ -117,7 +117,7 @@ describe('RecordTab', () => {
   });
 
   it('shows the paused tip instead of the recording tip while paused', () => {
-    mockUseRecorder.mockReturnValue({
+    mockUseVerseRecorder.mockReturnValue({
       ...baseRecorderState(),
       status: 'paused',
       elapsedMs: 3_000,
@@ -130,7 +130,7 @@ describe('RecordTab', () => {
   });
 
   it('shows the resume button while paused', () => {
-    mockUseRecorder.mockReturnValue({
+    mockUseVerseRecorder.mockReturnValue({
       ...baseRecorderState(),
       status: 'paused',
       elapsedMs: 3_000,
@@ -147,7 +147,7 @@ describe('RecordTab', () => {
       status: 'review' as const,
       currentRecording: reviewRecording(),
     };
-    mockUseRecorder.mockReturnValue(state);
+    mockUseVerseRecorder.mockReturnValue(state);
 
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     renderTab();
@@ -176,7 +176,7 @@ describe('RecordTab', () => {
 
   it('plays the draft when the review play button is pressed', () => {
     const togglePlayback = jest.fn().mockResolvedValue(undefined);
-    mockUseRecorder.mockReturnValue({
+    mockUseVerseRecorder.mockReturnValue({
       ...baseRecorderState(),
       status: 'review',
       currentRecording: reviewRecording(),
@@ -194,7 +194,7 @@ describe('RecordTab', () => {
   });
 
   it('shows a pause affordance while the draft is playing', () => {
-    mockUseRecorder.mockReturnValue({
+    mockUseVerseRecorder.mockReturnValue({
       ...baseRecorderState(),
       status: 'review',
       currentRecording: reviewRecording(),
@@ -211,7 +211,7 @@ describe('RecordTab', () => {
   });
 
   it('disables verse chevrons while recording even when navigation is possible', () => {
-    mockUseRecorder.mockReturnValue({
+    mockUseVerseRecorder.mockReturnValue({
       ...baseRecorderState(),
       status: 'recording',
       elapsedMs: 4_000,
@@ -227,7 +227,7 @@ describe('RecordTab', () => {
   });
 
   it('disables prev on the first verse and next on the last verse', () => {
-    mockUseRecorder.mockReturnValue(baseRecorderState());
+    mockUseVerseRecorder.mockReturnValue(baseRecorderState());
     const { rerender } = renderTab({ selectedVerseNumber: 1 });
 
     expect(
@@ -258,7 +258,7 @@ describe('RecordTab', () => {
       .fn()
       .mockResolvedValue({ granted: true, canAskAgain: true });
     const start = jest.fn().mockResolvedValue(undefined);
-    mockUseRecorder.mockReturnValue({
+    mockUseVerseRecorder.mockReturnValue({
       ...baseRecorderState(),
       permission: 'denied',
       requestPermission,
@@ -276,7 +276,7 @@ describe('RecordTab', () => {
     const requestPermission = jest.fn();
     const start = jest.fn();
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-    mockUseRecorder.mockReturnValue({
+    mockUseVerseRecorder.mockReturnValue({
       ...baseRecorderState(),
       permission: 'blocked',
       requestPermission,
@@ -305,7 +305,7 @@ describe('RecordTab', () => {
       .mockResolvedValue({ granted: false, canAskAgain: false });
     const start = jest.fn();
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-    mockUseRecorder.mockReturnValue({
+    mockUseVerseRecorder.mockReturnValue({
       ...baseRecorderState(),
       permission: 'denied',
       requestPermission,
@@ -328,8 +328,8 @@ describe('RecordTab', () => {
     alertSpy.mockRestore();
   });
 
-  it('forwards attribution context to useRecorder', () => {
-    mockUseRecorder.mockReturnValue(baseRecorderState());
+  it('forwards attribution context to useVerseRecorder', () => {
+    mockUseVerseRecorder.mockReturnValue(baseRecorderState());
     renderTab({
       selectedVerseNumber: 2,
       userId: 'user-7',
@@ -338,7 +338,7 @@ describe('RecordTab', () => {
       bookCode: 'MRK',
     });
 
-    expect(mockUseRecorder).toHaveBeenCalledWith(
+    expect(mockUseVerseRecorder).toHaveBeenCalledWith(
       expect.objectContaining({
         bibleTextId: 42,
         userId: 'user-7',
@@ -352,7 +352,7 @@ describe('RecordTab', () => {
   });
 
   it('source text accordion is collapsed by default and toggles open', () => {
-    mockUseRecorder.mockReturnValue(baseRecorderState());
+    mockUseVerseRecorder.mockReturnValue(baseRecorderState());
     renderTab();
 
     expect(screen.queryByTestId('record-source-body')).toBeNull();

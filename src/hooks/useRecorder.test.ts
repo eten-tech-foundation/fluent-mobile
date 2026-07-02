@@ -1,6 +1,11 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { AppState } from 'react-native';
-import { useRecorder } from './useRecorder';
+import { useRecorder, type RecorderAdapter } from './useRecorder';
+
+interface FakeTake {
+  id: string;
+  uri: string;
+}
 
 const mockRecorder = {
   currentTime: 0,
@@ -12,12 +17,6 @@ const mockRecorder = {
 };
 
 const mockUseAudioRecorder = jest.fn();
-const mockInsertRecording = jest.fn();
-const mockDeleteRecordingById = jest.fn().mockResolvedValue(undefined);
-const mockGetLatestRecordingForVerse = jest.fn().mockResolvedValue(null);
-const mockGetPausedTake = jest.fn().mockReturnValue(null);
-const mockSetPausedTake = jest.fn();
-const mockClearPausedTake = jest.fn();
 
 const mockPlayer = {
   play: jest.fn(),
@@ -30,10 +29,6 @@ let mockPlayerStatus: { playing?: boolean; didJustFinish?: boolean } = {
   playing: false,
   didJustFinish: false,
 };
-
-jest.mock('expo-crypto', () => ({
-  randomUUID: jest.fn(() => 'test-uuid-1'),
-}));
 
 jest.mock('expo-audio', () => ({
   RecordingPresets: { HIGH_QUALITY: {} },
@@ -56,37 +51,27 @@ jest.mock('expo-audio', () => ({
   setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('../db/repository', () => ({
-  insertRecording: (input: unknown) => mockInsertRecording(input),
-  deleteRecordingById: (id: string) => mockDeleteRecordingById(id),
-}));
+const COMMITTED_TAKE: FakeTake = {
+  id: 'take-1',
+  uri: 'file:///committed/take-1.m4a',
+};
 
-jest.mock('../db/queries', () => ({
-  getLatestRecordingForVerse: (id: number) =>
-    mockGetLatestRecordingForVerse(id),
-}));
-
-const MOVED_KEY = 'recordings/u/p0/UNK/c000/v000/test-uuid-1.m4a';
-
-const mockDeleteRecordingFile = jest.fn();
-
-jest.mock('../services/recordingStorage', () => ({
-  buildRecordingKey: jest.fn(() => MOVED_KEY),
-  extensionFromUri: jest.fn(() => 'm4a'),
-  moveIntoStore: jest.fn(async ({ key }: { key: string }) => ({
-    key,
-    sizeBytes: 1234,
-  })),
-  resolveRecordingUri: jest.fn((pathOrKey: string) => pathOrKey),
-  deleteRecordingFile: (pathOrKey: string) =>
-    mockDeleteRecordingFile(pathOrKey),
-}));
-
-jest.mock('../services/storage', () => ({
-  getPausedTake: (id: number) => mockGetPausedTake(id),
-  setPausedTake: (marker: unknown) => mockSetPausedTake(marker),
-  clearPausedTake: (id: number) => mockClearPausedTake(id),
-}));
+function makeAdapter(
+  overrides: Partial<RecorderAdapter<FakeTake>> = {},
+): RecorderAdapter<FakeTake> {
+  return {
+    sessionKey: 42,
+    loadInitial: jest.fn().mockResolvedValue(null),
+    onCommit: jest.fn().mockResolvedValue(COMMITTED_TAKE),
+    deleteCommitted: jest.fn().mockResolvedValue(undefined),
+    resolvePlaybackUri: jest.fn((take: FakeTake) => take.uri),
+    loadPaused: jest.fn().mockReturnValue(null),
+    persistPaused: jest.fn(),
+    clearPaused: jest.fn(),
+    deletePausedFile: jest.fn(),
+    ...overrides,
+  };
+}
 
 async function waitReady(result: { current: { isReady: boolean } }) {
   await waitFor(() => expect(result.current.isReady).toBe(true));
@@ -100,20 +85,6 @@ describe('useRecorder', () => {
     mockPlayer.currentTime = 0;
     mockPlayer.duration = 0;
     mockPlayerStatus = { playing: false, didJustFinish: false };
-    mockGetLatestRecordingForVerse.mockResolvedValue(null);
-    mockGetPausedTake.mockReturnValue(null);
-    mockInsertRecording.mockImplementation(async input => ({
-      id: input.id,
-      bibleTextId: input.bibleTextId,
-      localFilePath: input.localFilePath,
-      durationMs: input.durationMs ?? null,
-      fileSizeBytes: input.fileSizeBytes ?? null,
-      takeNumber: 1,
-      isLatest: true,
-      syncStatus: 'pending' as const,
-      createdAt: '2026-07-01T00:00:00.000Z',
-      updatedAt: '2026-07-01T00:00:00.000Z',
-    }));
     // Default AppState subscription so the background-listener cleanup has a
     // valid `remove()` on unmount; individual tests may override the impl.
     jest.spyOn(AppState, 'addEventListener').mockReturnValue({
@@ -125,45 +96,53 @@ describe('useRecorder', () => {
     jest.restoreAllMocks();
   });
 
-  it('starts in idle when the verse has no existing draft', async () => {
-    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+  it('stays inert while the session key is null', async () => {
+    const adapter = makeAdapter({ sessionKey: null });
+    const { result } = renderHook(() => useRecorder(adapter));
+    // A null session never becomes ready and never queries the adapter.
+    await waitFor(() => expect(adapter.loadInitial).not.toHaveBeenCalled());
+    expect(result.current.status).toBe('idle');
+    expect(result.current.currentRecording).toBeNull();
+    expect(result.current.isReady).toBe(false);
+  });
+
+  it('starts in idle when the session has no existing take', async () => {
+    const adapter = makeAdapter();
+    const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
     expect(result.current.status).toBe('idle');
     expect(result.current.currentRecording).toBeNull();
+    expect(adapter.loadInitial).toHaveBeenCalledWith(42);
   });
 
-  it('starts in review when a draft already exists', async () => {
-    mockGetLatestRecordingForVerse.mockResolvedValueOnce({
-      id: 'existing',
-      bibleTextId: 42,
-      localFilePath: '/tmp/existing.m4a',
-      takeNumber: 1,
-      isLatest: true,
-      syncStatus: 'pending',
-      createdAt: 'x',
-      updatedAt: 'x',
+  it('starts in review when a take already exists', async () => {
+    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+    const adapter = makeAdapter({
+      loadInitial: jest.fn().mockResolvedValue(existing),
     });
-    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+    const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
     expect(result.current.status).toBe('review');
     expect(result.current.currentRecording?.id).toBe('existing');
   });
 
   it('surfaces a persisted paused-take marker on mount', async () => {
-    mockGetPausedTake.mockReturnValueOnce({
-      bibleTextId: 42,
-      fileUri: '/tmp/paused.m4a',
-      elapsedMs: 4500,
-      startedAt: '2026-07-01T00:00:00.000Z',
+    const adapter = makeAdapter({
+      loadPaused: jest.fn().mockReturnValue({
+        fileUri: '/tmp/paused.m4a',
+        elapsedMs: 4500,
+        startedAt: '2026-07-01T00:00:00.000Z',
+      }),
     });
-    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+    const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
     expect(result.current.status).toBe('paused');
     expect(result.current.elapsedMs).toBe(4500);
   });
 
   it('transitions idle -> recording on start', async () => {
-    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+    const adapter = makeAdapter();
+    const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
 
     await act(async () => {
@@ -179,7 +158,8 @@ describe('useRecorder', () => {
     jest.useFakeTimers();
 
     try {
-      const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+      const adapter = makeAdapter();
+      const { result } = renderHook(() => useRecorder(adapter));
       await waitReady(result);
 
       // Anchor after mount so `waitFor`'s internal poll drift doesn't skew t0.
@@ -194,9 +174,8 @@ describe('useRecorder', () => {
       });
 
       expect(mockRecorder.pause).toHaveBeenCalled();
-      expect(mockSetPausedTake).toHaveBeenCalledWith(
+      expect(adapter.persistPaused).toHaveBeenCalledWith(
         expect.objectContaining({
-          bibleTextId: 42,
           fileUri: 'file:///tmp/take-1.m4a',
           elapsedMs: 2500,
         }),
@@ -219,34 +198,25 @@ describe('useRecorder', () => {
       });
 
       expect(mockRecorder.stop).toHaveBeenCalled();
-      expect(mockInsertRecording).toHaveBeenCalledWith(
-        expect.objectContaining({
-          bibleTextId: 42,
-          localFilePath: MOVED_KEY,
-          durationMs: 5500,
-          fileSizeBytes: 1234,
-        }),
-      );
-      expect(mockClearPausedTake).toHaveBeenCalledWith(42);
+      expect(adapter.onCommit).toHaveBeenCalledWith({
+        fileUri: 'file:///tmp/take-1.m4a',
+        durationMs: 5500,
+      });
+      expect(adapter.clearPaused).toHaveBeenCalled();
       expect(result.current.status).toBe('review');
+      expect(result.current.currentRecording?.id).toBe('take-1');
     } finally {
       jest.useRealTimers();
     }
   });
 
-  it('re-record starts a new recording and stop overwrites the previous draft', async () => {
-    mockGetLatestRecordingForVerse.mockResolvedValueOnce({
-      id: 'existing',
-      bibleTextId: 42,
-      localFilePath: '/tmp/existing.m4a',
-      takeNumber: 1,
-      isLatest: true,
-      syncStatus: 'pending',
-      createdAt: 'x',
-      updatedAt: 'x',
+  it('re-record starts a new recording and stop overwrites the previous take', async () => {
+    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+    const adapter = makeAdapter({
+      loadInitial: jest.fn().mockResolvedValue(existing),
     });
 
-    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+    const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
     expect(result.current.status).toBe('review');
 
@@ -261,31 +231,45 @@ describe('useRecorder', () => {
       await result.current.stop();
     });
 
-    expect(mockInsertRecording).toHaveBeenCalledTimes(1);
+    expect(adapter.onCommit).toHaveBeenCalledTimes(1);
     expect(result.current.status).toBe('review');
-    expect(result.current.currentRecording?.id).not.toBe('existing');
+    expect(result.current.currentRecording?.id).toBe('take-1');
   });
 
-  it('delete removes the current draft and returns to idle', async () => {
-    mockGetLatestRecordingForVerse.mockResolvedValueOnce({
-      id: 'existing',
-      bibleTextId: 42,
-      localFilePath: '/tmp/existing.m4a',
-      takeNumber: 1,
-      isLatest: true,
-      syncStatus: 'pending',
-      createdAt: 'x',
-      updatedAt: 'x',
+  it('reverts without committing when the adapter reports a commit failure', async () => {
+    const adapter = makeAdapter({
+      onCommit: jest.fn().mockResolvedValue(null),
+    });
+    const { result } = renderHook(() => useRecorder(adapter));
+    await waitReady(result);
+
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      await result.current.stop();
     });
 
-    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+    expect(adapter.onCommit).toHaveBeenCalled();
+    expect(adapter.clearPaused).not.toHaveBeenCalled();
+    expect(result.current.status).toBe('idle');
+    expect(result.current.currentRecording).toBeNull();
+  });
+
+  it('delete removes the current take and returns to idle', async () => {
+    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+    const adapter = makeAdapter({
+      loadInitial: jest.fn().mockResolvedValue(existing),
+    });
+
+    const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
 
     await act(async () => {
       await result.current.deleteCurrent();
     });
 
-    expect(mockDeleteRecordingById).toHaveBeenCalledWith('existing');
+    expect(adapter.deleteCommitted).toHaveBeenCalledWith(existing);
     expect(result.current.status).toBe('idle');
     expect(result.current.currentRecording).toBeNull();
   });
@@ -300,7 +284,7 @@ describe('useRecorder', () => {
       status: 'denied',
     });
 
-    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+    const { result } = renderHook(() => useRecorder(makeAdapter()));
     await waitReady(result);
     await waitFor(() => expect(result.current.permission).toBe('blocked'));
   });
@@ -321,7 +305,7 @@ describe('useRecorder', () => {
       status: 'denied',
     });
 
-    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+    const { result } = renderHook(() => useRecorder(makeAdapter()));
     await waitReady(result);
     await waitFor(() => expect(result.current.permission).toBe('denied'));
 
@@ -334,19 +318,13 @@ describe('useRecorder', () => {
     expect(result.current.permission).toBe('blocked');
   });
 
-  it('plays the current draft on togglePlayback from review', async () => {
-    mockGetLatestRecordingForVerse.mockResolvedValueOnce({
-      id: 'existing',
-      bibleTextId: 42,
-      localFilePath: '/tmp/existing.m4a',
-      takeNumber: 1,
-      isLatest: true,
-      syncStatus: 'pending',
-      createdAt: 'x',
-      updatedAt: 'x',
+  it('plays the current take on togglePlayback from review', async () => {
+    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+    const adapter = makeAdapter({
+      loadInitial: jest.fn().mockResolvedValue(existing),
     });
 
-    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+    const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
     expect(result.current.status).toBe('review');
     expect(result.current.isPlaying).toBe(false);
@@ -360,19 +338,13 @@ describe('useRecorder', () => {
   });
 
   it('pauses playback when toggled while already playing', async () => {
-    mockGetLatestRecordingForVerse.mockResolvedValueOnce({
-      id: 'existing',
-      bibleTextId: 42,
-      localFilePath: '/tmp/existing.m4a',
-      takeNumber: 1,
-      isLatest: true,
-      syncStatus: 'pending',
-      createdAt: 'x',
-      updatedAt: 'x',
+    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+    const adapter = makeAdapter({
+      loadInitial: jest.fn().mockResolvedValue(existing),
     });
     mockPlayerStatus = { playing: true, didJustFinish: false };
 
-    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+    const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
     expect(result.current.isPlaying).toBe(true);
 
@@ -384,8 +356,8 @@ describe('useRecorder', () => {
     expect(mockPlayer.play).not.toHaveBeenCalled();
   });
 
-  it('does not play when there is no draft to review', async () => {
-    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+  it('does not play when there is no take to review', async () => {
+    const { result } = renderHook(() => useRecorder(makeAdapter()));
     await waitReady(result);
     expect(result.current.status).toBe('idle');
 
@@ -397,38 +369,26 @@ describe('useRecorder', () => {
   });
 
   it('rewinds to the start when a take finishes playing', async () => {
-    mockGetLatestRecordingForVerse.mockResolvedValueOnce({
-      id: 'existing',
-      bibleTextId: 42,
-      localFilePath: '/tmp/existing.m4a',
-      takeNumber: 1,
-      isLatest: true,
-      syncStatus: 'pending',
-      createdAt: 'x',
-      updatedAt: 'x',
+    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+    const adapter = makeAdapter({
+      loadInitial: jest.fn().mockResolvedValue(existing),
     });
     mockPlayerStatus = { playing: false, didJustFinish: true };
 
-    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+    const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
 
     await waitFor(() => expect(mockPlayer.seekTo).toHaveBeenCalledWith(0));
   });
 
-  it('stops playback before re-recording an existing draft', async () => {
-    mockGetLatestRecordingForVerse.mockResolvedValueOnce({
-      id: 'existing',
-      bibleTextId: 42,
-      localFilePath: '/tmp/existing.m4a',
-      takeNumber: 1,
-      isLatest: true,
-      syncStatus: 'pending',
-      createdAt: 'x',
-      updatedAt: 'x',
+  it('stops playback before re-recording an existing take', async () => {
+    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+    const adapter = makeAdapter({
+      loadInitial: jest.fn().mockResolvedValue(existing),
     });
     mockPlayerStatus = { playing: true, didJustFinish: false };
 
-    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+    const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
 
     await act(async () => {
@@ -448,7 +408,8 @@ describe('useRecorder', () => {
         return { remove: jest.fn() };
       }) as unknown as typeof AppState.addEventListener);
 
-    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+    const adapter = makeAdapter();
+    const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
 
     await act(async () => {
@@ -461,14 +422,14 @@ describe('useRecorder', () => {
     });
 
     expect(mockRecorder.pause).toHaveBeenCalled();
-    expect(mockSetPausedTake).toHaveBeenCalled();
+    expect(adapter.persistPaused).toHaveBeenCalled();
     expect(result.current.status).toBe('paused');
 
     addSpy.mockRestore();
   });
 
   it('captures recordings into the durable document directory', async () => {
-    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+    const { result } = renderHook(() => useRecorder(makeAdapter()));
     await waitReady(result);
 
     expect(mockUseAudioRecorder).toHaveBeenCalledWith(
@@ -477,14 +438,15 @@ describe('useRecorder', () => {
   });
 
   it('unlinks the durable partial file when a paused take is discarded', async () => {
-    mockGetPausedTake.mockReturnValue({
-      bibleTextId: 42,
-      fileUri: 'file:///docs/partial-take.m4a',
-      elapsedMs: 4500,
-      startedAt: '2026-07-01T00:00:00.000Z',
+    const adapter = makeAdapter({
+      loadPaused: jest.fn().mockReturnValue({
+        fileUri: 'file:///docs/partial-take.m4a',
+        elapsedMs: 4500,
+        startedAt: '2026-07-01T00:00:00.000Z',
+      }),
     });
 
-    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+    const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
     expect(result.current.status).toBe('paused');
 
@@ -492,10 +454,10 @@ describe('useRecorder', () => {
       await result.current.discardPaused();
     });
 
-    expect(mockDeleteRecordingFile).toHaveBeenCalledWith(
+    expect(adapter.deletePausedFile).toHaveBeenCalledWith(
       'file:///docs/partial-take.m4a',
     );
-    expect(mockClearPausedTake).toHaveBeenCalledWith(42);
+    expect(adapter.clearPaused).toHaveBeenCalled();
     expect(result.current.status).toBe('idle');
   });
 });
