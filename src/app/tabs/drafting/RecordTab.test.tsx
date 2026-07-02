@@ -167,6 +167,22 @@ describe('RecordTab', () => {
     alertSpy.mockRestore();
   });
 
+  it('disables verse chevrons while recording even when navigation is possible', () => {
+    mockUseRecorder.mockReturnValue({
+      ...baseRecorderState(),
+      status: 'recording',
+      elapsedMs: 4_000,
+    });
+    renderTab({ selectedVerseNumber: 2 });
+
+    expect(
+      screen.getByTestId('record-prev-verse').props.accessibilityState,
+    ).toEqual(expect.objectContaining({ disabled: true }));
+    expect(
+      screen.getByTestId('record-next-verse').props.accessibilityState,
+    ).toEqual(expect.objectContaining({ disabled: true }));
+  });
+
   it('disables prev on the first verse and next on the last verse', () => {
     mockUseRecorder.mockReturnValue(baseRecorderState());
     const { rerender } = renderTab({ selectedVerseNumber: 1 });

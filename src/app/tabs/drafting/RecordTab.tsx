@@ -79,6 +79,11 @@ export function RecordTab({
   );
   const canGoPrev = verseIndex > 0;
   const canGoNext = verseIndex >= 0 && verseIndex < verses.length - 1;
+  // Verse navigation is locked mid-recording so the take stays anchored to
+  // the verse the user started on. Paused/idle/review keep their own guards.
+  const isRecordingLocked = recorder.status === 'recording';
+  const prevDisabled = !canGoPrev || isRecordingLocked;
+  const nextDisabled = !canGoNext || isRecordingLocked;
 
   const sourceText = useMemo(
     () => verses.find(v => v.verseNumber === selectedVerseNumber)?.text ?? '',
@@ -148,12 +153,12 @@ export function RecordTab({
   }
 
   function handlePrev() {
-    if (!canGoPrev) return;
+    if (prevDisabled) return;
     withPausedGuard(() => onSelectVerse(verses[verseIndex - 1]!.verseNumber));
   }
 
   function handleNext() {
-    if (!canGoNext) return;
+    if (nextDisabled) return;
     withPausedGuard(() => onSelectVerse(verses[verseIndex + 1]!.verseNumber));
   }
 
@@ -225,18 +230,20 @@ export function RecordTab({
           onPress={handlePrev}
           accessibilityRole="button"
           accessibilityLabel="Previous verse"
-          accessibilityState={{ disabled: !canGoPrev }}
-          disabled={!canGoPrev}
+          accessibilityState={{ disabled: prevDisabled }}
+          disabled={prevDisabled}
           style={styles.verseNavButton}
           testID="record-prev-verse"
         >
           <ChevronLeft
             size={iconSizes.header}
             color={
-              canGoPrev ? theme.colors.foreground : theme.colors.mutedForeground
+              prevDisabled
+                ? theme.colors.mutedForeground
+                : theme.colors.foreground
             }
             strokeWidth={listIconStrokeWidth}
-            style={!canGoPrev ? styles.disabledIcon : undefined}
+            style={prevDisabled ? styles.disabledIcon : undefined}
           />
         </TouchableOpacity>
         <Text style={styles.verseReference} testID="record-verse-reference">
@@ -246,18 +253,20 @@ export function RecordTab({
           onPress={handleNext}
           accessibilityRole="button"
           accessibilityLabel="Next verse"
-          accessibilityState={{ disabled: !canGoNext }}
-          disabled={!canGoNext}
+          accessibilityState={{ disabled: nextDisabled }}
+          disabled={nextDisabled}
           style={styles.verseNavButton}
           testID="record-next-verse"
         >
           <ChevronRight
             size={iconSizes.header}
             color={
-              canGoNext ? theme.colors.foreground : theme.colors.mutedForeground
+              nextDisabled
+                ? theme.colors.mutedForeground
+                : theme.colors.foreground
             }
             strokeWidth={listIconStrokeWidth}
-            style={!canGoNext ? styles.disabledIcon : undefined}
+            style={nextDisabled ? styles.disabledIcon : undefined}
           />
         </TouchableOpacity>
       </View>
