@@ -30,7 +30,7 @@ Quick map for Cursor agents and new contributors. Verified against Expo SDK 56 +
 | Path | Purpose |
 |------|---------|
 | [`App.tsx`](../App.tsx) | Root: DB init + initial `syncAllData`, then navigator |
-| [`src/app/tabs/`](../src/app/tabs/) | Screens: `ProjectList`, `ViewProject`, `ViewChapter` |
+| [`src/app/tabs/`](../src/app/tabs/) | Screens: `ProjectList`, `ViewProject`, `drafting/DraftingPage` (parent shell stub for #47) with `RecordTab` (#49) |
 | [`src/navigation/`](../src/navigation/) | Stack navigator |
 | [`src/services/api.ts`](../src/services/api.ts) | HTTP client (`FluentAPI`) |
 | [`src/services/sync.ts`](../src/services/sync.ts) | Sync orchestration, retries, KV counts |
@@ -206,7 +206,9 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 - [x] Dependabot reviewers: `eten-tech-foundation/fluent-admin`
 - [ ] Mock or gate `fluent-api.test.ts` for offline CI
 - [ ] Align `format:check` glob with `format` or document intentionally narrow check
-- [ ] Wire `recordings` table to actual audio capture/upload
+- [x] Wire `recordings` table to actual audio capture (issue #49 — upload still pending)
+- [ ] Upload/sync draft recordings to the Fluent server (`sync_status='pending'` rows)
+- [ ] Replace parent drafting shell stub with full #47 implementation (chapter audio player, tab persistence)
 
 ## Related docs
 
