@@ -425,6 +425,65 @@ export async function getPendingUploadCount(): Promise<number> {
   }
 }
 
+/** Resolves the `bible_texts.id` PK a recording joins against. */
+export async function getBibleTextId(
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+  verseNumber: number,
+): Promise<number | null> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT id FROM bible_texts
+       WHERE bible_id = ? AND book_id = ? AND chapter_number = ? AND verse_number = ?
+       LIMIT 1`,
+      [bibleId, bookId, chapterNumber, verseNumber],
+    );
+    const row = (result?.rows as unknown as { id: number }[])?.[0];
+    return row?.id ?? null;
+  } catch (error) {
+    log.error('Error resolving bible_text id', { error });
+    return null;
+  }
+}
+
+export async function getLatestRecordingForVerse(
+  bibleTextId: number,
+): Promise<DBTypes.Recording | null> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT id, bible_text_id, local_file_path, blob_key, duration_ms,
+              file_size_bytes, take_number, is_latest, sync_status, upload_error,
+              created_at, updated_at
+       FROM recordings
+       WHERE bible_text_id = ? AND is_latest = 1
+       LIMIT 1`,
+      [bibleTextId],
+    );
+    const row = (result?.rows as unknown as DBTypes.RecordingRow[])?.[0];
+    if (!row) return null;
+    return {
+      id: row.id,
+      bibleTextId: row.bible_text_id,
+      localFilePath: row.local_file_path,
+      blobKey: row.blob_key ?? undefined,
+      durationMs: row.duration_ms ?? undefined,
+      fileSizeBytes: row.file_size_bytes ?? undefined,
+      takeNumber: row.take_number,
+      isLatest: Boolean(row.is_latest),
+      syncStatus: row.sync_status,
+      uploadError: row.upload_error ?? undefined,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  } catch (error) {
+    log.error('Error fetching latest recording for verse', { error });
+    return null;
+  }
+}
+
 export async function getBibleTexts(
   bibleId: number,
   bookId: number,

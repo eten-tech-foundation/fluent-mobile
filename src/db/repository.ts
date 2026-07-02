@@ -462,6 +462,95 @@ export async function userHasLocalProjects(userId: number): Promise<boolean> {
   return Number(result.rows?.[0]?.count ?? 0) > 0;
 }
 
+export interface InsertRecordingInput {
+  id: string;
+  bibleTextId: number;
+  localFilePath: string;
+  durationMs?: number | null;
+  fileSizeBytes?: number | null;
+  syncStatus?: DBTypes.RecordingSyncStatus;
+  createdAt?: string;
+}
+
+interface MaxTakeRow {
+  max_take: number | null;
+}
+
+/**
+ * Inserts a new recording as the latest take for a verse, demoting any prior
+ * `is_latest = 1` rows. Wrapped in a transaction so callers observe the row
+ * count atomically; upload is deferred to a future ticket.
+ */
+export async function insertRecording(
+  input: InsertRecordingInput,
+): Promise<DBTypes.Recording> {
+  const db = getDatabase();
+  const now = input.createdAt ?? new Date().toISOString();
+  const syncStatus = input.syncStatus ?? 'pending';
+
+  let takeNumber = 1;
+
+  await db.transaction(async (tx: Transaction) => {
+    const takeResult = await tx.execute(
+      `SELECT COALESCE(MAX(take_number), 0) AS max_take
+         FROM recordings WHERE bible_text_id = ?`,
+      [input.bibleTextId],
+    );
+    const rows = takeResult.rows as unknown as MaxTakeRow[];
+    takeNumber = (rows?.[0]?.max_take ?? 0) + 1;
+
+    await tx.execute(
+      `UPDATE recordings SET is_latest = 0, updated_at = ?
+         WHERE bible_text_id = ? AND is_latest = 1`,
+      [now, input.bibleTextId],
+    );
+
+    await tx.execute(
+      `INSERT INTO recordings
+        (id, bible_text_id, local_file_path, duration_ms, file_size_bytes,
+         take_number, is_latest, sync_status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+      [
+        input.id,
+        input.bibleTextId,
+        input.localFilePath,
+        input.durationMs ?? null,
+        input.fileSizeBytes ?? null,
+        takeNumber,
+        syncStatus,
+        now,
+        now,
+      ],
+    );
+  });
+
+  log.info('Recording inserted', {
+    id: input.id,
+    bibleTextId: input.bibleTextId,
+    takeNumber,
+  });
+
+  return {
+    id: input.id,
+    bibleTextId: input.bibleTextId,
+    localFilePath: input.localFilePath,
+    durationMs: input.durationMs ?? null,
+    fileSizeBytes: input.fileSizeBytes ?? null,
+    takeNumber,
+    isLatest: true,
+    syncStatus,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/** Deletes a recording row by id; caller unlinks the audio file separately. */
+export async function deleteRecordingById(id: string): Promise<void> {
+  const db = getDatabase();
+  await db.execute(`DELETE FROM recordings WHERE id = ?`, [id]);
+  log.info('Recording deleted', { id });
+}
+
 export async function userHasLocalChapterAssignments(
   userId: number,
 ): Promise<boolean> {
