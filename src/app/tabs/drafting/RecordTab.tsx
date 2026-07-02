@@ -41,6 +41,10 @@ interface RecordTabProps {
   selectedVerseNumber: number;
   bibleTextIdForSelectedVerse: number | null;
   onSelectVerse: (verseNumber: number) => void;
+  userId?: string;
+  projectId?: number | null;
+  chapterAssignmentId?: number | null;
+  bookCode?: string | null;
 }
 
 function formatDuration(ms: number): string {
@@ -65,10 +69,20 @@ export function RecordTab({
   selectedVerseNumber,
   bibleTextIdForSelectedVerse,
   onSelectVerse,
+  userId,
+  projectId,
+  chapterAssignmentId,
+  bookCode,
 }: RecordTabProps) {
   const navigation = useNavigation();
   const recorder = useRecorder({
     bibleTextId: bibleTextIdForSelectedVerse,
+    userId,
+    projectId,
+    chapterAssignmentId,
+    bookCode,
+    chapterNumber,
+    verseNumber: selectedVerseNumber,
   });
   const [sourceExpanded, setSourceExpanded] = useState(false);
 

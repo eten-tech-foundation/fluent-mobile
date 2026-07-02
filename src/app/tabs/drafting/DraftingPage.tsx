@@ -8,7 +8,9 @@ import {
   getBibleTextId,
   getBibleTexts,
   getChapterAssignmentById,
+  getProjectIdForProjectUnit,
 } from '../../../db/queries';
+import { getActiveUserId } from '../../../services/storage';
 import { StackScreenHeader } from '../../../components/layout/StackScreenHeader';
 import { logger } from '../../../utils/logger';
 import { BibleTab } from './BibleTab';
@@ -35,8 +37,10 @@ export default function DraftingPage() {
   const [verses, setVerses] = useState<VerseData[]>([]);
   const [selectedVerse, setSelectedVerse] = useState<number>(1);
   const [bibleTextId, setBibleTextId] = useState<number | null>(null);
+  const [projectId, setProjectId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<DraftingTab>('record');
   const [loading, setLoading] = useState<boolean>(true);
+  const userId = getActiveUserId();
 
   useEffect(() => {
     let cancelled = false;
@@ -48,6 +52,12 @@ export default function DraftingPage() {
         if (!assignment) return;
         if (cancelled) return;
         setChapterData(assignment);
+
+        const resolvedProjectId = await getProjectIdForProjectUnit(
+          assignment.projectUnitId,
+        );
+        if (cancelled) return;
+        setProjectId(resolvedProjectId);
 
         const texts = await getBibleTexts(
           assignment.bibleId,
@@ -133,6 +143,10 @@ export default function DraftingPage() {
             selectedVerseNumber={selectedVerse}
             bibleTextIdForSelectedVerse={bibleTextId}
             onSelectVerse={setSelectedVerse}
+            userId={userId}
+            projectId={projectId}
+            chapterAssignmentId={chapterData.id}
+            bookCode={chapterData.bookCode}
           />
         ) : (
           <BibleTab />
