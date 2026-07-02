@@ -235,6 +235,42 @@ export interface VerseRow {
   text: string;
 }
 
+export type RecordingSyncStatus =
+  | 'pending'
+  | 'uploading'
+  | 'uploaded'
+  | 'error';
+
+export interface Recording {
+  id: string;
+  bibleTextId: number;
+  localFilePath: string;
+  blobKey?: string | null;
+  durationMs?: number | null;
+  fileSizeBytes?: number | null;
+  takeNumber: number;
+  isLatest: boolean;
+  syncStatus: RecordingSyncStatus;
+  uploadError?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RecordingRow {
+  id: string;
+  bible_text_id: number;
+  local_file_path: string;
+  blob_key: string | null;
+  duration_ms: number | null;
+  file_size_bytes: number | null;
+  take_number: number;
+  is_latest: number;
+  sync_status: RecordingSyncStatus;
+  upload_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export const CHAPTER_ASSIGNMENT_STATUS = {
   not_started: 'Not Started',
   draft: 'Draft',
