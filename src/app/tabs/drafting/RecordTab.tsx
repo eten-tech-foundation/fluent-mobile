@@ -158,11 +158,13 @@ export function RecordTab({
 
   function handlePrev() {
     if (prevDisabled) return;
+    recorder.stopPlayback();
     withPausedGuard(() => onSelectVerse(verses[verseIndex - 1]!.verseNumber));
   }
 
   function handleNext() {
     if (nextDisabled) return;
+    recorder.stopPlayback();
     withPausedGuard(() => onSelectVerse(verses[verseIndex + 1]!.verseNumber));
   }
 
@@ -454,18 +456,28 @@ export function RecordTab({
               <TouchableOpacity
                 style={styles.primaryPlayCircle}
                 onPress={() => {
-                  // Playback is stubbed until #47 pipes the chapter audio player.
-                  // Individual take playback still runs via expo-audio in future work.
+                  recorder.togglePlayback();
                 }}
                 accessibilityRole="button"
-                accessibilityLabel="Play draft"
+                accessibilityLabel={
+                  recorder.isPlaying ? 'Pause draft' : 'Play draft'
+                }
+                accessibilityState={{ selected: recorder.isPlaying }}
                 testID="record-play-button"
               >
-                <Play
-                  size={30}
-                  color={theme.colors.primaryForeground}
-                  strokeWidth={listIconStrokeWidth}
-                />
+                {recorder.isPlaying ? (
+                  <Pause
+                    size={30}
+                    color={theme.colors.primaryForeground}
+                    strokeWidth={listIconStrokeWidth}
+                  />
+                ) : (
+                  <Play
+                    size={30}
+                    color={theme.colors.primaryForeground}
+                    strokeWidth={listIconStrokeWidth}
+                  />
+                )}
               </TouchableOpacity>
             </View>
             <View style={styles.reviewActions}>

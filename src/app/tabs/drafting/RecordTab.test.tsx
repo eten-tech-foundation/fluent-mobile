@@ -36,6 +36,7 @@ function baseRecorderState() {
     permission: 'granted' as const,
     currentRecording: null,
     isReady: true,
+    isPlaying: false,
     requestPermission: jest
       .fn()
       .mockResolvedValue({ granted: true, canAskAgain: true }),
@@ -46,6 +47,21 @@ function baseRecorderState() {
     reRecord: jest.fn().mockResolvedValue(undefined),
     deleteCurrent: jest.fn().mockResolvedValue(undefined),
     discardPaused: jest.fn().mockResolvedValue(undefined),
+    togglePlayback: jest.fn().mockResolvedValue(undefined),
+    stopPlayback: jest.fn(),
+  };
+}
+
+function reviewRecording() {
+  return {
+    id: 'rec-1',
+    bibleTextId: 42,
+    localFilePath: '/tmp/rec-1.m4a',
+    takeNumber: 1,
+    isLatest: true,
+    syncStatus: 'pending' as const,
+    createdAt: 'x',
+    updatedAt: 'x',
   };
 }
 
@@ -129,16 +145,7 @@ describe('RecordTab', () => {
     const state = {
       ...baseRecorderState(),
       status: 'review' as const,
-      currentRecording: {
-        id: 'rec-1',
-        bibleTextId: 42,
-        localFilePath: '/tmp/rec-1.m4a',
-        takeNumber: 1,
-        isLatest: true,
-        syncStatus: 'pending' as const,
-        createdAt: 'x',
-        updatedAt: 'x',
-      },
+      currentRecording: reviewRecording(),
     };
     mockUseRecorder.mockReturnValue(state);
 
@@ -165,6 +172,42 @@ describe('RecordTab', () => {
     );
 
     alertSpy.mockRestore();
+  });
+
+  it('plays the draft when the review play button is pressed', () => {
+    const togglePlayback = jest.fn().mockResolvedValue(undefined);
+    mockUseRecorder.mockReturnValue({
+      ...baseRecorderState(),
+      status: 'review',
+      currentRecording: reviewRecording(),
+      isPlaying: false,
+      togglePlayback,
+    });
+
+    renderTab();
+
+    expect(
+      screen.getByTestId('record-play-button').props.accessibilityLabel,
+    ).toBe('Play draft');
+    fireEvent.press(screen.getByTestId('record-play-button'));
+    expect(togglePlayback).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a pause affordance while the draft is playing', () => {
+    mockUseRecorder.mockReturnValue({
+      ...baseRecorderState(),
+      status: 'review',
+      currentRecording: reviewRecording(),
+      isPlaying: true,
+    });
+
+    renderTab();
+
+    const playButton = screen.getByTestId('record-play-button');
+    expect(playButton.props.accessibilityLabel).toBe('Pause draft');
+    expect(playButton.props.accessibilityState).toEqual(
+      expect.objectContaining({ selected: true }),
+    );
   });
 
   it('disables verse chevrons while recording even when navigation is possible', () => {
