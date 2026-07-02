@@ -11,6 +11,7 @@ const mockRecorder = {
   prepareToRecordAsync: jest.fn().mockResolvedValue(undefined),
 };
 
+const mockUseAudioRecorder = jest.fn();
 const mockInsertRecording = jest.fn();
 const mockDeleteRecordingById = jest.fn().mockResolvedValue(undefined);
 const mockGetLatestRecordingForVerse = jest.fn().mockResolvedValue(null);
@@ -36,7 +37,10 @@ jest.mock('expo-crypto', () => ({
 
 jest.mock('expo-audio', () => ({
   RecordingPresets: { HIGH_QUALITY: {} },
-  useAudioRecorder: () => mockRecorder,
+  useAudioRecorder: (options: unknown) => {
+    mockUseAudioRecorder(options);
+    return mockRecorder;
+  },
   useAudioPlayer: () => mockPlayer,
   useAudioPlayerStatus: () => mockPlayerStatus,
   requestRecordingPermissionsAsync: jest.fn().mockResolvedValue({
@@ -64,6 +68,8 @@ jest.mock('../db/queries', () => ({
 
 const MOVED_KEY = 'recordings/u/p0/UNK/c000/v000/test-uuid-1.m4a';
 
+const mockDeleteRecordingFile = jest.fn();
+
 jest.mock('../services/recordingStorage', () => ({
   buildRecordingKey: jest.fn(() => MOVED_KEY),
   extensionFromUri: jest.fn(() => 'm4a'),
@@ -72,6 +78,8 @@ jest.mock('../services/recordingStorage', () => ({
     sizeBytes: 1234,
   })),
   resolveRecordingUri: jest.fn((pathOrKey: string) => pathOrKey),
+  deleteRecordingFile: (pathOrKey: string) =>
+    mockDeleteRecordingFile(pathOrKey),
 }));
 
 jest.mock('../services/storage', () => ({
@@ -106,6 +114,15 @@ describe('useRecorder', () => {
       createdAt: '2026-07-01T00:00:00.000Z',
       updatedAt: '2026-07-01T00:00:00.000Z',
     }));
+    // Default AppState subscription so the background-listener cleanup has a
+    // valid `remove()` on unmount; individual tests may override the impl.
+    jest.spyOn(AppState, 'addEventListener').mockReturnValue({
+      remove: jest.fn(),
+    } as unknown as ReturnType<typeof AppState.addEventListener>);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('starts in idle when the verse has no existing draft', async () => {
@@ -448,5 +465,37 @@ describe('useRecorder', () => {
     expect(result.current.status).toBe('paused');
 
     addSpy.mockRestore();
+  });
+
+  it('captures recordings into the durable document directory', async () => {
+    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+    await waitReady(result);
+
+    expect(mockUseAudioRecorder).toHaveBeenCalledWith(
+      expect.objectContaining({ directory: 'document' }),
+    );
+  });
+
+  it('unlinks the durable partial file when a paused take is discarded', async () => {
+    mockGetPausedTake.mockReturnValue({
+      bibleTextId: 42,
+      fileUri: 'file:///docs/partial-take.m4a',
+      elapsedMs: 4500,
+      startedAt: '2026-07-01T00:00:00.000Z',
+    });
+
+    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+    await waitReady(result);
+    expect(result.current.status).toBe('paused');
+
+    await act(async () => {
+      await result.current.discardPaused();
+    });
+
+    expect(mockDeleteRecordingFile).toHaveBeenCalledWith(
+      'file:///docs/partial-take.m4a',
+    );
+    expect(mockClearPausedTake).toHaveBeenCalledWith(42);
+    expect(result.current.status).toBe('idle');
   });
 });
