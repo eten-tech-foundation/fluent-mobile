@@ -34,6 +34,12 @@ if (Platform.OS === 'android') {
 
 const LIVE_WAVEFORM_BARS = 22;
 
+// Hold the record/review UI back for a short beat on mount and verse switches.
+// The recording state is loaded from the local DB (a few ms), so deferring the
+// first paint lets it resolve first — the UI settles straight into the correct
+// state instead of flashing "idle" and then snapping to "review".
+const PRESENTATION_DEFER_MS = 100;
+
 interface RecordTabProps {
   bookName: string;
   chapterNumber: number;
@@ -85,6 +91,21 @@ export function RecordTab({
     verseNumber: selectedVerseNumber,
   });
   const [sourceExpanded, setSourceExpanded] = useState(false);
+  const [deferElapsed, setDeferElapsed] = useState(false);
+
+  // Present as soon as the recorder has loaded its state, but cap the wait at
+  // PRESENTATION_DEFER_MS so a slow/stalled load still surfaces the UI.
+  const showContent = recorder.isReady || deferElapsed;
+
+  useEffect(() => {
+    if (recorder.isReady) return;
+    setDeferElapsed(false);
+    const timer = setTimeout(
+      () => setDeferElapsed(true),
+      PRESENTATION_DEFER_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [recorder.isReady]);
 
   const currentReference = verseReference(
     bookName,
@@ -291,242 +312,251 @@ export function RecordTab({
         </TouchableOpacity>
       </View>
 
-      {recorder.status === 'recording' || recorder.status === 'paused' ? (
-        <View
-          style={styles.waveform}
-          testID="record-waveform-live"
-          accessibilityLabel="Recording waveform"
-        >
-          {Array.from({ length: LIVE_WAVEFORM_BARS }).map((_, index) => {
-            const active = recorder.status === 'recording';
-            const height =
-              14 +
-              ((Math.abs(Math.sin((recorder.elapsedMs + index * 40) / 90)) *
-                48) |
-                0);
-            return (
-              <View
-                key={index}
-                style={[
-                  styles.waveformBarLive,
-                  {
-                    height: active ? height : 14,
-                    opacity: active ? 1 : 0.5,
-                  },
-                ]}
-              />
-            );
-          })}
-        </View>
-      ) : recorder.status === 'review' ? (
-        <View
-          style={styles.waveform}
-          testID="record-waveform-static"
-          accessibilityLabel="Draft waveform"
-        >
-          {Array.from({ length: LIVE_WAVEFORM_BARS }).map((_, index) => (
+      {!showContent ? (
+        <View style={styles.deferPlaceholder} testID="record-loading" />
+      ) : (
+        <>
+          {recorder.status === 'recording' || recorder.status === 'paused' ? (
             <View
-              key={index}
-              style={[
-                styles.waveformBarStatic,
-                {
-                  height: 10 + ((Math.abs(Math.cos(index / 2)) * 28) | 0),
-                  opacity: 0.85,
-                },
-              ]}
-            />
-          ))}
-        </View>
-      ) : null}
-
-      <View style={styles.controls}>
-        {recorder.status === 'idle' && (
-          <View style={styles.idleGroup}>
-            <TouchableOpacity
-              style={styles.recordButtonCircle}
-              onPress={handleStartPress}
-              accessibilityRole="button"
-              accessibilityLabel={`Record ${currentReference}`}
-              testID="record-start-button"
+              style={styles.waveform}
+              testID="record-waveform-live"
+              accessibilityLabel="Recording waveform"
             >
-              <CircleDot
-                size={44}
-                color={theme.colors.primaryForeground}
-                strokeWidth={listIconStrokeWidth}
-              />
-            </TouchableOpacity>
-            <Text style={styles.recordButtonLabel} testID="record-start-label">
-              Record {currentReference}
-            </Text>
+              {Array.from({ length: LIVE_WAVEFORM_BARS }).map((_, index) => {
+                const active = recorder.status === 'recording';
+                const height =
+                  14 +
+                  ((Math.abs(Math.sin((recorder.elapsedMs + index * 40) / 90)) *
+                    48) |
+                    0);
+                return (
+                  <View
+                    key={index}
+                    style={[
+                      styles.waveformBarLive,
+                      {
+                        height: active ? height : 14,
+                        opacity: active ? 1 : 0.5,
+                      },
+                    ]}
+                  />
+                );
+              })}
+            </View>
+          ) : recorder.status === 'review' ? (
             <View
-              style={styles.mutedPlaceholderCircle}
-              accessibilityRole="button"
-              accessibilityLabel="Playback unavailable until a draft is recorded"
-              accessibilityState={{ disabled: true }}
-              testID="record-play-idle-placeholder"
+              style={styles.waveform}
+              testID="record-waveform-static"
+              accessibilityLabel="Draft waveform"
             >
-              <Play
-                size={22}
-                color={theme.colors.mutedForeground}
-                strokeWidth={listIconStrokeWidth}
-              />
+              {Array.from({ length: LIVE_WAVEFORM_BARS }).map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.waveformBarStatic,
+                    {
+                      height: 10 + ((Math.abs(Math.cos(index / 2)) * 28) | 0),
+                      opacity: 0.85,
+                    },
+                  ]}
+                />
+              ))}
             </View>
-          </View>
-        )}
+          ) : null}
 
-        {recorder.status === 'recording' && (
-          <View style={styles.captureGroup}>
-            <Text style={styles.duration} testID="record-duration">
-              {formatDuration(recorder.elapsedMs)}
-            </Text>
-            <View style={styles.captureButtonsRow}>
-              <TouchableOpacity
-                style={styles.stopCircleButton}
-                onPress={() => recorder.stop()}
-                accessibilityRole="button"
-                accessibilityLabel="Stop recording"
-                testID="record-stop-button"
-              >
-                <Square
-                  size={26}
-                  color={theme.colors.foreground}
-                  strokeWidth={listIconStrokeWidth}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.primaryActionCircle}
-                onPress={() => recorder.pause()}
-                accessibilityRole="button"
-                accessibilityLabel="Pause recording"
-                testID="record-pause-button"
-              >
-                <Pause
-                  size={30}
-                  color={theme.colors.primaryForeground}
-                  strokeWidth={listIconStrokeWidth}
-                />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.captureTip} testID="record-tip">
-              Tap pause to study the source, stop to finish.
-            </Text>
-          </View>
-        )}
-
-        {recorder.status === 'paused' && (
-          <View style={styles.captureGroup}>
-            <Text style={styles.duration} testID="record-duration">
-              {formatDuration(recorder.elapsedMs)}
-            </Text>
-            <View style={styles.captureButtonsRow}>
-              <TouchableOpacity
-                style={styles.stopCircleButton}
-                onPress={() => recorder.stop()}
-                accessibilityRole="button"
-                accessibilityLabel="Stop recording"
-                testID="record-stop-button"
-              >
-                <Square
-                  size={26}
-                  color={theme.colors.foreground}
-                  strokeWidth={listIconStrokeWidth}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.primaryActionCircle}
-                onPress={() => recorder.resume()}
-                accessibilityRole="button"
-                accessibilityLabel="Resume recording"
-                testID="record-resume-button"
-              >
-                <CircleDot
-                  size={30}
-                  color={theme.colors.primaryForeground}
-                  strokeWidth={listIconStrokeWidth}
-                />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.captureTip} testID="record-tip">
-              Recording paused — review the source below, then resume.
-            </Text>
-          </View>
-        )}
-
-        {recorder.status === 'review' && (
-          <View style={styles.reviewGroup}>
-            <View style={styles.captureButtonsRow}>
-              <View
-                style={styles.mutedPlaceholderCircle}
-                accessibilityRole="image"
-                accessibilityLabel="Recording complete"
-                testID="record-review-record-done-placeholder"
-              >
-                <CircleDot
-                  size={22}
-                  color={theme.colors.mutedForeground}
-                  strokeWidth={listIconStrokeWidth}
-                />
-              </View>
-              <TouchableOpacity
-                style={styles.primaryPlayCircle}
-                onPress={() => {
-                  recorder.togglePlayback();
-                }}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  recorder.isPlaying ? 'Pause draft' : 'Play draft'
-                }
-                accessibilityState={{ selected: recorder.isPlaying }}
-                testID="record-play-button"
-              >
-                {recorder.isPlaying ? (
-                  <Pause
-                    size={30}
+          <View style={styles.controls}>
+            {recorder.status === 'idle' && (
+              <View style={styles.idleGroup}>
+                <TouchableOpacity
+                  style={styles.recordButtonCircle}
+                  onPress={handleStartPress}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Record ${currentReference}`}
+                  testID="record-start-button"
+                >
+                  <CircleDot
+                    size={44}
                     color={theme.colors.primaryForeground}
                     strokeWidth={listIconStrokeWidth}
                   />
-                ) : (
+                </TouchableOpacity>
+                <Text
+                  style={styles.recordButtonLabel}
+                  testID="record-start-label"
+                >
+                  Record {currentReference}
+                </Text>
+                <View
+                  style={styles.mutedPlaceholderCircle}
+                  accessibilityRole="button"
+                  accessibilityLabel="Playback unavailable until a draft is recorded"
+                  accessibilityState={{ disabled: true }}
+                  testID="record-play-idle-placeholder"
+                >
                   <Play
-                    size={30}
-                    color={theme.colors.primaryForeground}
+                    size={22}
+                    color={theme.colors.mutedForeground}
                     strokeWidth={listIconStrokeWidth}
                   />
-                )}
-              </TouchableOpacity>
-            </View>
-            <View style={styles.reviewActions}>
-              <TouchableOpacity
-                style={styles.reRecordButton}
-                onPress={handleReRecordPress}
-                accessibilityRole="button"
-                accessibilityLabel="Re-record draft"
-                testID="record-rerecord-button"
-              >
-                <RefreshCw
-                  size={18}
-                  color={theme.colors.foreground}
-                  strokeWidth={listIconStrokeWidth}
-                />
-                <Text style={styles.reRecordLabel}>Re-record</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.destructiveButton}
-                onPress={handleDeletePress}
-                accessibilityRole="button"
-                accessibilityLabel="Delete draft"
-                testID="record-delete-button"
-              >
-                <Trash2
-                  size={18}
-                  color={theme.colors.destructive}
-                  strokeWidth={listIconStrokeWidth}
-                />
-                <Text style={styles.destructiveLabel}>Delete</Text>
-              </TouchableOpacity>
-            </View>
+                </View>
+              </View>
+            )}
+
+            {recorder.status === 'recording' && (
+              <View style={styles.captureGroup}>
+                <Text style={styles.duration} testID="record-duration">
+                  {formatDuration(recorder.elapsedMs)}
+                </Text>
+                <View style={styles.captureButtonsRow}>
+                  <TouchableOpacity
+                    style={styles.stopCircleButton}
+                    onPress={() => recorder.stop()}
+                    accessibilityRole="button"
+                    accessibilityLabel="Stop recording"
+                    testID="record-stop-button"
+                  >
+                    <Square
+                      size={26}
+                      color={theme.colors.foreground}
+                      strokeWidth={listIconStrokeWidth}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.primaryActionCircle}
+                    onPress={() => recorder.pause()}
+                    accessibilityRole="button"
+                    accessibilityLabel="Pause recording"
+                    testID="record-pause-button"
+                  >
+                    <Pause
+                      size={30}
+                      color={theme.colors.primaryForeground}
+                      strokeWidth={listIconStrokeWidth}
+                    />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.captureTip} testID="record-tip">
+                  Tap pause to study the source, stop to finish.
+                </Text>
+              </View>
+            )}
+
+            {recorder.status === 'paused' && (
+              <View style={styles.captureGroup}>
+                <Text style={styles.duration} testID="record-duration">
+                  {formatDuration(recorder.elapsedMs)}
+                </Text>
+                <View style={styles.captureButtonsRow}>
+                  <TouchableOpacity
+                    style={styles.stopCircleButton}
+                    onPress={() => recorder.stop()}
+                    accessibilityRole="button"
+                    accessibilityLabel="Stop recording"
+                    testID="record-stop-button"
+                  >
+                    <Square
+                      size={26}
+                      color={theme.colors.foreground}
+                      strokeWidth={listIconStrokeWidth}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.primaryActionCircle}
+                    onPress={() => recorder.resume()}
+                    accessibilityRole="button"
+                    accessibilityLabel="Resume recording"
+                    testID="record-resume-button"
+                  >
+                    <CircleDot
+                      size={30}
+                      color={theme.colors.primaryForeground}
+                      strokeWidth={listIconStrokeWidth}
+                    />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.captureTip} testID="record-tip">
+                  Recording paused — review the source below, then resume.
+                </Text>
+              </View>
+            )}
+
+            {recorder.status === 'review' && (
+              <View style={styles.reviewGroup}>
+                <View style={styles.captureButtonsRow}>
+                  <View
+                    style={styles.mutedPlaceholderCircle}
+                    accessibilityRole="image"
+                    accessibilityLabel="Recording complete"
+                    testID="record-review-record-done-placeholder"
+                  >
+                    <CircleDot
+                      size={22}
+                      color={theme.colors.mutedForeground}
+                      strokeWidth={listIconStrokeWidth}
+                    />
+                  </View>
+                  <TouchableOpacity
+                    style={styles.primaryPlayCircle}
+                    onPress={() => {
+                      recorder.togglePlayback();
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      recorder.isPlaying ? 'Pause draft' : 'Play draft'
+                    }
+                    accessibilityState={{ selected: recorder.isPlaying }}
+                    testID="record-play-button"
+                  >
+                    {recorder.isPlaying ? (
+                      <Pause
+                        size={30}
+                        color={theme.colors.primaryForeground}
+                        strokeWidth={listIconStrokeWidth}
+                      />
+                    ) : (
+                      <Play
+                        size={30}
+                        color={theme.colors.primaryForeground}
+                        strokeWidth={listIconStrokeWidth}
+                      />
+                    )}
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.reviewActions}>
+                  <TouchableOpacity
+                    style={styles.reRecordButton}
+                    onPress={handleReRecordPress}
+                    accessibilityRole="button"
+                    accessibilityLabel="Re-record draft"
+                    testID="record-rerecord-button"
+                  >
+                    <RefreshCw
+                      size={18}
+                      color={theme.colors.foreground}
+                      strokeWidth={listIconStrokeWidth}
+                    />
+                    <Text style={styles.reRecordLabel}>Re-record</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.destructiveButton}
+                    onPress={handleDeletePress}
+                    accessibilityRole="button"
+                    accessibilityLabel="Delete draft"
+                    testID="record-delete-button"
+                  >
+                    <Trash2
+                      size={18}
+                      color={theme.colors.destructive}
+                      strokeWidth={listIconStrokeWidth}
+                    />
+                    <Text style={styles.destructiveLabel}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </View>
-        )}
-      </View>
+        </>
+      )}
 
       <TouchableOpacity
         onPress={toggleSource}
@@ -606,6 +636,11 @@ const styles = StyleSheet.create({
   controls: {
     alignItems: 'center',
     gap: theme.spacing.md,
+  },
+  // Reserves roughly the waveform + controls height so deferring the first
+  // paint does not shift the surrounding layout when the real UI appears.
+  deferPlaceholder: {
+    minHeight: 232,
   },
   idleGroup: {
     alignItems: 'center',
