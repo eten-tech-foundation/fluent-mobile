@@ -20,7 +20,7 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 jest.mock('../../../hooks/useRecorder', () => ({
-  useRecorder: () => mockUseRecorder(),
+  useRecorder: (args: unknown) => mockUseRecorder(args),
 }));
 
 const VERSES: VerseData[] = [
@@ -326,6 +326,29 @@ describe('RecordTab', () => {
     expect(start).not.toHaveBeenCalled();
 
     alertSpy.mockRestore();
+  });
+
+  it('forwards attribution context to useRecorder', () => {
+    mockUseRecorder.mockReturnValue(baseRecorderState());
+    renderTab({
+      selectedVerseNumber: 2,
+      userId: 'user-7',
+      projectId: 55,
+      chapterAssignmentId: 88,
+      bookCode: 'MRK',
+    });
+
+    expect(mockUseRecorder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bibleTextId: 42,
+        userId: 'user-7',
+        projectId: 55,
+        chapterAssignmentId: 88,
+        bookCode: 'MRK',
+        chapterNumber: 14,
+        verseNumber: 2,
+      }),
+    );
   });
 
   it('source text accordion is collapsed by default and toggles open', () => {
