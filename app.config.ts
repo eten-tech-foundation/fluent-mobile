@@ -74,6 +74,13 @@ const config: ExpoConfig = {
     ],
     './plugins/withRNScreensFragmentFactory',
     'expo-secure-store',
+    [
+      'expo-audio',
+      {
+        microphonePermission:
+          'Fluent needs access to your microphone so translators can record verse drafts.',
+      },
+    ],
   ],
 };
 
