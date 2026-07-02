@@ -62,6 +62,18 @@ jest.mock('../db/queries', () => ({
     mockGetLatestRecordingForVerse(id),
 }));
 
+const MOVED_KEY = 'recordings/u/p0/UNK/c000/v000/test-uuid-1.m4a';
+
+jest.mock('../services/recordingStorage', () => ({
+  buildRecordingKey: jest.fn(() => MOVED_KEY),
+  extensionFromUri: jest.fn(() => 'm4a'),
+  moveIntoStore: jest.fn(async ({ key }: { key: string }) => ({
+    key,
+    sizeBytes: 1234,
+  })),
+  resolveRecordingUri: jest.fn((pathOrKey: string) => pathOrKey),
+}));
+
 jest.mock('../services/storage', () => ({
   getPausedTake: (id: number) => mockGetPausedTake(id),
   setPausedTake: (marker: unknown) => mockSetPausedTake(marker),
@@ -193,8 +205,9 @@ describe('useRecorder', () => {
       expect(mockInsertRecording).toHaveBeenCalledWith(
         expect.objectContaining({
           bibleTextId: 42,
-          localFilePath: 'file:///tmp/take-1.m4a',
+          localFilePath: MOVED_KEY,
           durationMs: 5500,
+          fileSizeBytes: 1234,
         }),
       );
       expect(mockClearPausedTake).toHaveBeenCalledWith(42);

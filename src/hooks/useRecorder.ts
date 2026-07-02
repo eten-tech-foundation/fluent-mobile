@@ -16,6 +16,12 @@ import {
   getPausedTake,
   setPausedTake,
 } from '../services/storage';
+import {
+  buildRecordingKey,
+  extensionFromUri,
+  moveIntoStore,
+  resolveRecordingUri,
+} from '../services/recordingStorage';
 import type { Recording } from '../types/db/types';
 import { logger } from '../utils/logger';
 import { useDraftPlayback } from './useDraftPlayback';
@@ -43,9 +49,19 @@ export interface PermissionRequestResult {
  * Re-record and Delete transitions from Review.
  *
  * `bibleTextId === null` keeps the recorder inert until a verse is resolved.
+ *
+ * The remaining fields are attribution context used to build the durable file
+ * path and persist who/where a take belongs to; they are optional so the hook
+ * stays usable in isolation (e.g. tests), falling back to placeholder segments.
  */
 export interface UseRecorderArgs {
   bibleTextId: number | null;
+  userId?: string;
+  projectId?: number | null;
+  chapterAssignmentId?: number | null;
+  bookCode?: string | null;
+  chapterNumber?: number | null;
+  verseNumber?: number | null;
 }
 
 export interface UseRecorderApi {
@@ -83,7 +99,15 @@ function mapPermissionState(response: PermissionLike): PermissionState {
   return 'denied';
 }
 
-export function useRecorder({ bibleTextId }: UseRecorderArgs): UseRecorderApi {
+export function useRecorder({
+  bibleTextId,
+  userId,
+  projectId,
+  chapterAssignmentId,
+  bookCode,
+  chapterNumber,
+  verseNumber,
+}: UseRecorderArgs): UseRecorderApi {
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
   const [status, setStatus] = useState<RecorderStatus>('idle');
@@ -97,11 +121,16 @@ export function useRecorder({ bibleTextId }: UseRecorderArgs): UseRecorderApi {
   // Playback is a separate concern with a one-way dependency: it takes the
   // reviewed take's URI and knows nothing about the recorder. The recorder
   // orchestrates it explicitly (stopping playback before re-record/delete).
+  // Stored paths are relative keys, so resolve to an absolute uri here.
   const {
     isPlaying,
     toggle: togglePlaybackInternal,
     stop: stopPlayback,
-  } = useDraftPlayback(currentRecording?.localFilePath ?? null);
+  } = useDraftPlayback(
+    currentRecording
+      ? resolveRecordingUri(currentRecording.localFilePath)
+      : null,
+  );
 
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startedAtRef = useRef<string | null>(null);
@@ -113,6 +142,25 @@ export function useRecorder({ bibleTextId }: UseRecorderArgs): UseRecorderApi {
   const bibleTextIdRef = useRef<number | null>(bibleTextId);
 
   bibleTextIdRef.current = bibleTextId;
+
+  // Attribution context is read via a ref so the commit callback always sees the
+  // latest values without being re-created (and re-subscribing) on every render.
+  const contextRef = useRef({
+    userId,
+    projectId,
+    chapterAssignmentId,
+    bookCode,
+    chapterNumber,
+    verseNumber,
+  });
+  contextRef.current = {
+    userId,
+    projectId,
+    chapterAssignmentId,
+    bookCode,
+    chapterNumber,
+    verseNumber,
+  };
 
   const clearTick = useCallback(() => {
     if (tickRef.current) {
@@ -310,11 +358,40 @@ export function useRecorder({ bibleTextId }: UseRecorderArgs): UseRecorderApi {
       return;
     }
 
+    const recordingId = randomUUID();
+    const context = contextRef.current;
+    const key = buildRecordingKey({
+      userId: context.userId ?? '',
+      projectId: context.projectId ?? 0,
+      bookCode: context.bookCode ?? '',
+      chapterNumber: context.chapterNumber ?? 0,
+      verseNumber: context.verseNumber ?? 0,
+      recordingId,
+      extension: extensionFromUri(fileUri),
+    });
+
+    // Move the take out of the evictable cache before recording it in the DB so
+    // a row never points at a file the OS could reclaim.
+    let moved;
+    try {
+      moved = await moveIntoStore({ sourceUri: fileUri, key });
+    } catch (error) {
+      log.error('Failed to move recording into durable store', {
+        bibleTextId: currentBibleTextId,
+        error,
+      });
+      setStatus(currentRecording ? 'review' : 'idle');
+      return;
+    }
+
     const inserted = await insertRecording({
-      id: randomUUID(),
+      id: recordingId,
       bibleTextId: currentBibleTextId,
-      localFilePath: fileUri,
+      userId: context.userId ?? null,
+      chapterAssignmentId: context.chapterAssignmentId ?? null,
+      localFilePath: moved.key,
       durationMs: duration,
+      fileSizeBytes: moved.sizeBytes,
     });
 
     clearPausedTake(currentBibleTextId);
