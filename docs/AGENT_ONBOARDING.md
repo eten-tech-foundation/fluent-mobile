@@ -163,7 +163,7 @@ Auth: email/password via `FluentAPI.signIn`; authenticated API calls use `Author
 ## Coding conventions
 
 - **Logging:** `const log = logger.create('ComponentName')` — no raw `console` (ESLint); exception: `src/utils/logger.ts`, tests.
-- **Env:** `EXPO_PUBLIC_API_BASE_URL` in `.env`; validated in `src/config/apiBaseUrl.ts` — never commit `.env`.
+- **Env:** `EXPO_PUBLIC_API_BASE_URL` in `.env`; validated in `src/config/apiBaseUrl.ts` — never commit `.env`. ESLint blocks direct `process.env` reads and legacy imports (`@env`, `react-native-fs`, `react-native-keychain`, Simform waveform) outside the config layer.
 - **Types:** API shapes in `src/types/api/`, DB in `src/types/db/`, navigation in `src/types/navigation/`.
 - **Prettier:** single quotes, trailing commas, `arrowParens: 'avoid'`.
 - **Styles:** shared patterns in `src/app/appStyles.ts`; screen-local `StyleSheet` where needed.
