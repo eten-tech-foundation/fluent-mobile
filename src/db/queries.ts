@@ -425,6 +425,24 @@ export async function getPendingUploadCount(): Promise<number> {
   }
 }
 
+/** Resolves the owning `projects.id` for a project unit (for recording paths). */
+export async function getProjectIdForProjectUnit(
+  projectUnitId: number,
+): Promise<number | null> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT project_id FROM project_units WHERE id = ? LIMIT 1`,
+      [projectUnitId],
+    );
+    const row = (result?.rows as unknown as { project_id: number }[])?.[0];
+    return row?.project_id ?? null;
+  } catch (error) {
+    log.error('Error resolving project id for project unit', { error });
+    return null;
+  }
+}
+
 /** Resolves the `bible_texts.id` PK a recording joins against. */
 export async function getBibleTextId(
   bibleId: number,
@@ -454,9 +472,9 @@ export async function getLatestRecordingForVerse(
   const db = getDatabase();
   try {
     const result = await db.execute(
-      `SELECT id, bible_text_id, local_file_path, blob_key, duration_ms,
-              file_size_bytes, take_number, is_latest, sync_status, upload_error,
-              created_at, updated_at
+      `SELECT id, bible_text_id, user_id, chapter_assignment_id, local_file_path,
+              blob_key, duration_ms, file_size_bytes, take_number, is_latest,
+              sync_status, upload_error, created_at, updated_at
        FROM recordings
        WHERE bible_text_id = ? AND is_latest = 1
        LIMIT 1`,
@@ -467,6 +485,8 @@ export async function getLatestRecordingForVerse(
     return {
       id: row.id,
       bibleTextId: row.bible_text_id,
+      userId: row.user_id ?? undefined,
+      chapterAssignmentId: row.chapter_assignment_id ?? undefined,
       localFilePath: row.local_file_path,
       blobKey: row.blob_key ?? undefined,
       durationMs: row.duration_ms ?? undefined,

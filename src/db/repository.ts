@@ -2,6 +2,7 @@ import { getDatabase } from './db';
 import { logger } from '../utils/logger';
 import * as DBTypes from '../types/db/types';
 import { Transaction } from '@op-engineering/op-sqlite';
+import { deleteRecordingFile } from '../services/recordingStorage';
 
 const log = logger.create('DBRepository');
 
@@ -465,7 +466,10 @@ export async function userHasLocalProjects(userId: number): Promise<boolean> {
 export interface InsertRecordingInput {
   id: string;
   bibleTextId: number;
+  /** Relative storage key (see `services/recordingStorage`), not an absolute path. */
   localFilePath: string;
+  userId?: string | null;
+  chapterAssignmentId?: number | null;
   durationMs?: number | null;
   fileSizeBytes?: number | null;
   syncStatus?: DBTypes.RecordingSyncStatus;
@@ -507,12 +511,15 @@ export async function insertRecording(
 
     await tx.execute(
       `INSERT INTO recordings
-        (id, bible_text_id, local_file_path, duration_ms, file_size_bytes,
-         take_number, is_latest, sync_status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+        (id, bible_text_id, user_id, chapter_assignment_id, local_file_path,
+         duration_ms, file_size_bytes, take_number, is_latest, sync_status,
+         created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
       [
         input.id,
         input.bibleTextId,
+        input.userId ?? null,
+        input.chapterAssignmentId ?? null,
         input.localFilePath,
         input.durationMs ?? null,
         input.fileSizeBytes ?? null,
@@ -533,6 +540,8 @@ export async function insertRecording(
   return {
     id: input.id,
     bibleTextId: input.bibleTextId,
+    userId: input.userId ?? null,
+    chapterAssignmentId: input.chapterAssignmentId ?? null,
     localFilePath: input.localFilePath,
     durationMs: input.durationMs ?? null,
     fileSizeBytes: input.fileSizeBytes ?? null,
@@ -544,10 +553,18 @@ export async function insertRecording(
   };
 }
 
-/** Deletes a recording row by id; caller unlinks the audio file separately. */
+/** Deletes a recording row and unlinks its durable audio file (best-effort). */
 export async function deleteRecordingById(id: string): Promise<void> {
   const db = getDatabase();
+  const existing = await db.execute(
+    `SELECT local_file_path FROM recordings WHERE id = ?`,
+    [id],
+  );
+  const path = (existing.rows as unknown as { local_file_path: string }[])?.[0]
+    ?.local_file_path;
+
   await db.execute(`DELETE FROM recordings WHERE id = ?`, [id]);
+  if (path) deleteRecordingFile(path);
   log.info('Recording deleted', { id });
 }
 

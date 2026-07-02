@@ -1,5 +1,9 @@
 import { open, DB } from '@op-engineering/op-sqlite';
-import { chapterAssignmentMigrations, createTableQueries } from './schema';
+import {
+  chapterAssignmentMigrations,
+  createTableQueries,
+  recordingMigrations,
+} from './schema';
 import { logger } from '../utils/logger';
 import { setDatabase, getDatabase } from './db';
 
@@ -66,6 +70,7 @@ export async function initializeDatabase(): Promise<void> {
 
     await runStatements(db, createTableQueries, 'table');
     await runStatements(db, chapterAssignmentMigrations, 'column');
+    await runStatements(db, recordingMigrations, 'column');
 
     log.info('All tables created successfully');
   } catch (error: unknown) {

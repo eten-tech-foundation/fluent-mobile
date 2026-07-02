@@ -80,6 +80,8 @@ export const createTableQueries: string[] = [
   `CREATE TABLE IF NOT EXISTS recordings (
       id                    TEXT PRIMARY KEY,
       bible_text_id         INTEGER NOT NULL REFERENCES bible_texts(id),
+      user_id               TEXT,
+      chapter_assignment_id INTEGER,
       local_file_path       TEXT NOT NULL,
       blob_key              TEXT,
       duration_ms           INTEGER,
@@ -109,4 +111,10 @@ export const chapterAssignmentMigrations: string[] = [
   `ALTER TABLE chapter_assignments ADD COLUMN peer_checker_id INTEGER`,
   `ALTER TABLE chapter_assignments ADD COLUMN total_verses INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE chapter_assignments ADD COLUMN completed_verses INTEGER NOT NULL DEFAULT 0`,
+];
+
+/** For DBs created before recordings carried user/project attribution. */
+export const recordingMigrations: string[] = [
+  `ALTER TABLE recordings ADD COLUMN user_id TEXT`,
+  `ALTER TABLE recordings ADD COLUMN chapter_assignment_id INTEGER`,
 ];
