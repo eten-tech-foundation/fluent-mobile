@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -13,53 +13,27 @@ import {
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { FluentAPI } from '../../services/api';
+import { useForgotPassword } from '../../hooks/useForgotPassword';
 import { RootStackParamList } from '../../types/navigation/types';
 import { theme } from '../../theme';
-import { logger } from '../../utils/logger';
-import { isValidEmail } from '../../utils/validateEmail';
 import { AuthFormError } from '../../components/ui/AuthFormError';
 import { authFormStyles as styles } from './authFormStyles';
-
-const log = logger.create('ForgotPasswordScreen');
 
 type ForgotPasswordRoute = RouteProp<RootStackParamList, 'ForgotPassword'>;
 
 export default function ForgotPasswordScreen() {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const route = useRoute<ForgotPasswordRoute>();
-  const [view, setView] = useState<'form' | 'sent'>('form');
-  const [email, setEmail] = useState(route.params?.initialEmail ?? '');
-  const [fieldError, setFieldError] = useState<string | null>(null);
-  const [globalError, setGlobalError] = useState<string | null>(null);
-  const [isSending, setIsSending] = useState(false);
-
-  const sendResetEmail = async () => {
-    setFieldError(null);
-    setGlobalError(null);
-
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail) {
-      setFieldError('Please enter an email address');
-      return;
-    }
-    if (!isValidEmail(trimmedEmail)) {
-      setFieldError('Please enter a valid email address');
-      return;
-    }
-
-    try {
-      setIsSending(true);
-      await FluentAPI.forgotPassword(trimmedEmail);
-      setView('sent');
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e);
-      log.error('Forgot password failed', { error: message });
-      setGlobalError(message);
-    } finally {
-      setIsSending(false);
-    }
-  };
+  const {
+    view,
+    email,
+    setEmail,
+    fieldError,
+    globalError,
+    isSending,
+    sendResetEmail,
+    resetToForm,
+  } = useForgotPassword(route.params?.initialEmail ?? '');
 
   const hasError = Boolean(fieldError || globalError);
 
@@ -173,11 +147,7 @@ export default function ForgotPasswordScreen() {
 
               <TouchableOpacity
                 style={styles.secondaryButton}
-                onPress={() => {
-                  setView('form');
-                  setGlobalError(null);
-                  setFieldError(null);
-                }}
+                onPress={resetToForm}
                 activeOpacity={0.7}
                 accessibilityRole="button"
                 accessibilityLabel="Resend email"

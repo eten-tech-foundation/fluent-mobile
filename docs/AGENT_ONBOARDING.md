@@ -32,7 +32,7 @@ Quick map for Cursor agents and new contributors. Verified against Expo SDK 56 +
 | [`App.tsx`](../App.tsx) | Root: DB init + initial `syncAllData`, then navigator |
 | [`src/app/tabs/`](../src/app/tabs/) | Screens: `ProjectList`, `ViewProject`, `ViewChapter` |
 | [`src/navigation/`](../src/navigation/) | Stack navigator |
-| [`src/services/api.ts`](../src/services/api.ts) | HTTP client (`FluentAPI`) |
+| [`src/services/api.ts`](../src/services/api.ts) | HTTP client (`FluentAPI`) — see [api-client-standard.md](guides/api-client-standard.md) |
 | [`src/services/sync.ts`](../src/services/sync.ts) | Sync orchestration, retries, KV counts |
 | [`src/services/storage.ts`](../src/services/storage.ts) | KV sync state (`op-sqlite` Storage) |
 | [`src/db/`](../src/db/) | Schema, init, `repository` (writes), `queries` (reads), singleton |
