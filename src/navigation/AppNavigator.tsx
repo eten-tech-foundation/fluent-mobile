@@ -5,7 +5,7 @@ import HomeScreen from '../app/screens/HomeScreen';
 import SettingsScreen from '../app/screens/SettingsScreen';
 import PrepareForOfflineScreen from '../app/screens/PrepareForOfflineScreen';
 import ViewProject from '../app/tabs/ViewProject';
-import ViewChapter from '../app/tabs/ViewChapter';
+import DraftingPage from '../app/tabs/drafting/DraftingPage';
 import LoginScreen from '../app/tabs/LoginScreen';
 import ForgotPasswordScreen from '../app/tabs/ForgotPasswordScreen';
 import PrivacyPolicyScreen from '../app/tabs/PrivacyPolicyPage';
@@ -60,7 +60,7 @@ export default function AppNavigator({
             component={PrepareForOfflineScreen}
           />
           <Stack.Screen name="Chapters" component={ViewProject} />
-          <Stack.Screen name="VerseDetail" component={ViewChapter} />
+          <Stack.Screen name="VerseDetail" component={DraftingPage} />
           <Stack.Screen name="AddUser">
             {({ navigation }) => (
               <LoginScreen
