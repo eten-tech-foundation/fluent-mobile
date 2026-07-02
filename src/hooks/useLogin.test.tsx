@@ -73,4 +73,41 @@ describe('useLogin', () => {
       expect(result.current.globalError).toBe('Invalid credentials');
     });
   });
+
+  it('does not retry signIn when beginLoginSession fails after a successful signIn', async () => {
+    jest.mocked(FluentAPI.signIn).mockResolvedValue({
+      token: 'session-token',
+      user: { email: 't@fluent.local' },
+    });
+    jest
+      .mocked(beginLoginSession)
+      .mockRejectedValue(new Error('Session setup failed'));
+
+    const { result } = renderHook(() => useLogin(onLoginSuccess), {
+      wrapper: QueryClientTestWrapper,
+    });
+
+    act(() => {
+      result.current.setEmail('t@fluent.local');
+      result.current.setPassword('secret');
+    });
+
+    act(() => {
+      result.current.handleLogin();
+    });
+
+    await waitFor(() => {
+      expect(result.current.globalError).toBe('Session setup failed');
+    });
+
+    expect(FluentAPI.signIn).toHaveBeenCalledTimes(1);
+    expect(FluentAPI.signIn).toHaveBeenCalledWith('t@fluent.local', 'secret');
+    expect(onLoginSuccess).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.handleLogin();
+    });
+
+    expect(FluentAPI.signIn).toHaveBeenCalledTimes(1);
+  });
 });

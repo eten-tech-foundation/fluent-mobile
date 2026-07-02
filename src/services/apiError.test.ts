@@ -30,6 +30,18 @@ describe('parseApiErrorBody', () => {
       ),
     ).toEqual({ message: 'Invalid session', code: 'AUTH_EXPIRED' });
   });
+
+  it('falls back to errorCode when code is present but not a string', () => {
+    expect(
+      parseApiErrorBody(
+        JSON.stringify({
+          message: 'Invalid session',
+          code: 401,
+          errorCode: 'AUTH_EXPIRED',
+        }),
+      ),
+    ).toEqual({ message: 'Invalid session', code: 'AUTH_EXPIRED' });
+  });
 });
 
 describe('createApiError', () => {

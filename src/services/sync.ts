@@ -1,9 +1,6 @@
 import { FluentAPI } from './api';
 import { isAuthError, AuthError } from './authError';
-import {
-  mapApiChapterAssignment,
-  ApiUserChapterAssignment,
-} from './mapChapterAssignment';
+import { mapApiChapterAssignment } from './mapChapterAssignment';
 import { mapApiProject } from './mapApiProject';
 import {
   insertUser,
@@ -239,8 +236,8 @@ export async function syncChapterAssignments(
       );
 
       const raw = unwrapApiListResponse(response);
-      const allAssignments = (Array.isArray(raw) ? raw : []).map(assignment =>
-        mapApiChapterAssignment(assignment as ApiUserChapterAssignment),
+      const allAssignments = (Array.isArray(raw) ? raw : []).map(
+        mapApiChapterAssignment,
       );
 
       if (allAssignments.length > 0) {

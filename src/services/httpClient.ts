@@ -49,7 +49,7 @@ export function buildHeaders(
   };
 }
 
-async function parseJsonResponse<T>(res: Response): Promise<T> {
+export async function parseJsonResponse<T>(res: Response): Promise<T> {
   const body = await res.text();
   if (!body.trim()) {
     return {} as T;
@@ -57,8 +57,8 @@ async function parseJsonResponse<T>(res: Response): Promise<T> {
 
   try {
     return JSON.parse(body) as T;
-  } catch {
-    return {} as T;
+  } catch (error) {
+    throw createNetworkApiError(error);
   }
 }
 
@@ -92,10 +92,22 @@ async function executeRequest<T>(
 ): Promise<T | HttpResponse<T>> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const callerSignal = options.signal;
+  const onCallerAbort = () => controller.abort();
+
+  if (callerSignal) {
+    if (callerSignal.aborted) {
+      controller.abort();
+    } else {
+      callerSignal.addEventListener('abort', onCallerAbort, { once: true });
+    }
+  }
 
   try {
+    const requestOptions = { ...options };
+    delete requestOptions.signal;
     const res = await fetch(`${apiBaseUrl}${endpoint}`, {
-      ...options,
+      ...requestOptions,
       signal: controller.signal,
     });
 
@@ -121,6 +133,9 @@ async function executeRequest<T>(
     throw createNetworkApiError(error);
   } finally {
     clearTimeout(timeoutId);
+    if (callerSignal) {
+      callerSignal.removeEventListener('abort', onCallerAbort);
+    }
   }
 }
 

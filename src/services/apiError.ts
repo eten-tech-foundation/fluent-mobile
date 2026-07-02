@@ -8,8 +8,12 @@ export interface ParsedApiErrorBody {
 export function parseApiErrorBody(body: string): ParsedApiErrorBody {
   try {
     const parsed = JSON.parse(body) as Record<string, unknown>;
-    const rawCode = parsed.code ?? parsed.errorCode;
-    const code = typeof rawCode === 'string' ? rawCode : undefined;
+    let code: string | undefined;
+    if (typeof parsed.code === 'string') {
+      code = parsed.code;
+    } else if (typeof parsed.errorCode === 'string') {
+      code = parsed.errorCode;
+    }
     if (typeof parsed.message === 'string') {
       return { message: parsed.message, code };
     }
