@@ -18,6 +18,18 @@ const mockGetPausedTake = jest.fn().mockReturnValue(null);
 const mockSetPausedTake = jest.fn();
 const mockClearPausedTake = jest.fn();
 
+const mockPlayer = {
+  play: jest.fn(),
+  pause: jest.fn(),
+  seekTo: jest.fn().mockResolvedValue(undefined),
+  currentTime: 0,
+  duration: 0,
+};
+let mockPlayerStatus: { playing?: boolean; didJustFinish?: boolean } = {
+  playing: false,
+  didJustFinish: false,
+};
+
 jest.mock('expo-crypto', () => ({
   randomUUID: jest.fn(() => 'test-uuid-1'),
 }));
@@ -25,8 +37,8 @@ jest.mock('expo-crypto', () => ({
 jest.mock('expo-audio', () => ({
   RecordingPresets: { HIGH_QUALITY: {} },
   useAudioRecorder: () => mockRecorder,
-  useAudioPlayer: () => ({ play: jest.fn(), pause: jest.fn() }),
-  useAudioPlayerStatus: () => ({}),
+  useAudioPlayer: () => mockPlayer,
+  useAudioPlayerStatus: () => mockPlayerStatus,
   requestRecordingPermissionsAsync: jest.fn().mockResolvedValue({
     granted: true,
     canAskAgain: true,
@@ -65,6 +77,9 @@ describe('useRecorder', () => {
     jest.clearAllMocks();
     mockRecorder.currentTime = 0;
     mockRecorder.uri = 'file:///tmp/take-1.m4a';
+    mockPlayer.currentTime = 0;
+    mockPlayer.duration = 0;
+    mockPlayerStatus = { playing: false, didJustFinish: false };
     mockGetLatestRecordingForVerse.mockResolvedValue(null);
     mockGetPausedTake.mockReturnValue(null);
     mockInsertRecording.mockImplementation(async input => ({
@@ -287,6 +302,111 @@ describe('useRecorder', () => {
 
     expect(response).toEqual({ granted: false, canAskAgain: false });
     expect(result.current.permission).toBe('blocked');
+  });
+
+  it('plays the current draft on togglePlayback from review', async () => {
+    mockGetLatestRecordingForVerse.mockResolvedValueOnce({
+      id: 'existing',
+      bibleTextId: 42,
+      localFilePath: '/tmp/existing.m4a',
+      takeNumber: 1,
+      isLatest: true,
+      syncStatus: 'pending',
+      createdAt: 'x',
+      updatedAt: 'x',
+    });
+
+    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+    await waitReady(result);
+    expect(result.current.status).toBe('review');
+    expect(result.current.isPlaying).toBe(false);
+
+    await act(async () => {
+      await result.current.togglePlayback();
+    });
+
+    expect(mockPlayer.play).toHaveBeenCalledTimes(1);
+    expect(mockPlayer.pause).not.toHaveBeenCalled();
+  });
+
+  it('pauses playback when toggled while already playing', async () => {
+    mockGetLatestRecordingForVerse.mockResolvedValueOnce({
+      id: 'existing',
+      bibleTextId: 42,
+      localFilePath: '/tmp/existing.m4a',
+      takeNumber: 1,
+      isLatest: true,
+      syncStatus: 'pending',
+      createdAt: 'x',
+      updatedAt: 'x',
+    });
+    mockPlayerStatus = { playing: true, didJustFinish: false };
+
+    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+    await waitReady(result);
+    expect(result.current.isPlaying).toBe(true);
+
+    await act(async () => {
+      await result.current.togglePlayback();
+    });
+
+    expect(mockPlayer.pause).toHaveBeenCalledTimes(1);
+    expect(mockPlayer.play).not.toHaveBeenCalled();
+  });
+
+  it('does not play when there is no draft to review', async () => {
+    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+    await waitReady(result);
+    expect(result.current.status).toBe('idle');
+
+    await act(async () => {
+      await result.current.togglePlayback();
+    });
+
+    expect(mockPlayer.play).not.toHaveBeenCalled();
+  });
+
+  it('rewinds to the start when a take finishes playing', async () => {
+    mockGetLatestRecordingForVerse.mockResolvedValueOnce({
+      id: 'existing',
+      bibleTextId: 42,
+      localFilePath: '/tmp/existing.m4a',
+      takeNumber: 1,
+      isLatest: true,
+      syncStatus: 'pending',
+      createdAt: 'x',
+      updatedAt: 'x',
+    });
+    mockPlayerStatus = { playing: false, didJustFinish: true };
+
+    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+    await waitReady(result);
+
+    await waitFor(() => expect(mockPlayer.seekTo).toHaveBeenCalledWith(0));
+  });
+
+  it('stops playback before re-recording an existing draft', async () => {
+    mockGetLatestRecordingForVerse.mockResolvedValueOnce({
+      id: 'existing',
+      bibleTextId: 42,
+      localFilePath: '/tmp/existing.m4a',
+      takeNumber: 1,
+      isLatest: true,
+      syncStatus: 'pending',
+      createdAt: 'x',
+      updatedAt: 'x',
+    });
+    mockPlayerStatus = { playing: true, didJustFinish: false };
+
+    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+    await waitReady(result);
+
+    await act(async () => {
+      await result.current.reRecord();
+    });
+
+    expect(mockPlayer.pause).toHaveBeenCalled();
+    expect(mockRecorder.record).toHaveBeenCalled();
   });
 
   it('auto-pauses when the app is backgrounded during recording', async () => {

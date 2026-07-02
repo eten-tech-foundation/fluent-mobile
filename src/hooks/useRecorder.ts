@@ -18,6 +18,7 @@ import {
 } from '../services/storage';
 import type { Recording } from '../types/db/types';
 import { logger } from '../utils/logger';
+import { useDraftPlayback } from './useDraftPlayback';
 
 const log = logger.create('useRecorder');
 
@@ -53,6 +54,7 @@ export interface UseRecorderApi {
   permission: PermissionState;
   currentRecording: Recording | null;
   isReady: boolean;
+  isPlaying: boolean;
 
   requestPermission: () => Promise<PermissionRequestResult>;
   start: () => Promise<void>;
@@ -62,6 +64,8 @@ export interface UseRecorderApi {
   reRecord: () => Promise<void>;
   deleteCurrent: () => Promise<void>;
   discardPaused: () => Promise<void>;
+  togglePlayback: () => Promise<void>;
+  stopPlayback: () => void;
 }
 
 // 50ms tick gives ~20fps on the centiseconds portion of the duration display
@@ -89,6 +93,15 @@ export function useRecorder({ bibleTextId }: UseRecorderArgs): UseRecorderApi {
     null,
   );
   const [isReady, setIsReady] = useState(false);
+
+  // Playback is a separate concern with a one-way dependency: it takes the
+  // reviewed take's URI and knows nothing about the recorder. The recorder
+  // orchestrates it explicitly (stopping playback before re-record/delete).
+  const {
+    isPlaying,
+    toggle: togglePlaybackInternal,
+    stop: stopPlayback,
+  } = useDraftPlayback(currentRecording?.localFilePath ?? null);
 
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startedAtRef = useRef<string | null>(null);
@@ -320,22 +333,30 @@ export function useRecorder({ bibleTextId }: UseRecorderArgs): UseRecorderApi {
 
   const reRecord = useCallback(async () => {
     if (status !== 'review') return;
+    stopPlayback();
     if (permission !== 'granted') {
       const { granted } = await requestPermission();
       if (!granted) return;
     }
     await startRecordingSession();
-  }, [permission, requestPermission, startRecordingSession, status]);
+  }, [
+    permission,
+    requestPermission,
+    startRecordingSession,
+    status,
+    stopPlayback,
+  ]);
 
   const deleteCurrent = useCallback(async () => {
     if (status !== 'review' || !currentRecording) return;
+    stopPlayback();
     await deleteRecordingById(currentRecording.id);
     setCurrentRecording(null);
     setStatus('idle');
     setElapsedMs(0);
     baseElapsedRef.current = 0;
     runningSinceRef.current = null;
-  }, [currentRecording, status]);
+  }, [currentRecording, status, stopPlayback]);
 
   const discardPaused = useCallback(async () => {
     const currentBibleTextId = bibleTextIdRef.current;
@@ -354,12 +375,18 @@ export function useRecorder({ bibleTextId }: UseRecorderArgs): UseRecorderApi {
     setStatus(currentRecording ? 'review' : 'idle');
   }, [clearTick, currentRecording, recorder]);
 
+  const togglePlayback = useCallback(async () => {
+    if (status !== 'review' || !currentRecording) return;
+    await togglePlaybackInternal();
+  }, [currentRecording, status, togglePlaybackInternal]);
+
   return {
     status,
     elapsedMs,
     permission,
     currentRecording,
     isReady,
+    isPlaying,
     requestPermission,
     start,
     pause,
@@ -368,5 +395,7 @@ export function useRecorder({ bibleTextId }: UseRecorderArgs): UseRecorderApi {
     reRecord,
     deleteCurrent,
     discardPaused,
+    togglePlayback,
+    stopPlayback,
   };
 }
