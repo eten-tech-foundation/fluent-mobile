@@ -131,51 +131,62 @@ describe('useRecorder', () => {
     expect(result.current.status).toBe('recording');
   });
 
-  it('flushes to KV on pause and clears it on stop', async () => {
-    const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
-    await waitReady(result);
+  it('accumulates only active recording time across pause and resume', async () => {
+    jest.useFakeTimers();
 
-    await act(async () => {
-      await result.current.start();
-    });
+    try {
+      const { result } = renderHook(() => useRecorder({ bibleTextId: 42 }));
+      await waitReady(result);
 
-    mockRecorder.currentTime = 2.5;
+      // Anchor after mount so `waitFor`'s internal poll drift doesn't skew t0.
+      jest.setSystemTime(new Date('2026-07-01T00:00:00.000Z'));
+      await act(async () => {
+        await result.current.start();
+      });
 
-    await act(async () => {
-      await result.current.pause();
-    });
+      jest.setSystemTime(new Date('2026-07-01T00:00:02.500Z'));
+      await act(async () => {
+        await result.current.pause();
+      });
 
-    expect(mockRecorder.pause).toHaveBeenCalled();
-    expect(mockSetPausedTake).toHaveBeenCalledWith(
-      expect.objectContaining({
-        bibleTextId: 42,
-        fileUri: 'file:///tmp/take-1.m4a',
-        elapsedMs: 2500,
-      }),
-    );
-    expect(result.current.status).toBe('paused');
+      expect(mockRecorder.pause).toHaveBeenCalled();
+      expect(mockSetPausedTake).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bibleTextId: 42,
+          fileUri: 'file:///tmp/take-1.m4a',
+          elapsedMs: 2500,
+        }),
+      );
+      expect(result.current.status).toBe('paused');
+      expect(result.current.elapsedMs).toBe(2500);
 
-    // resume back to recording; then stop and commit
-    mockRecorder.currentTime = 0;
-    await act(async () => {
-      await result.current.resume();
-    });
-    expect(result.current.status).toBe('recording');
+      // Long pause window: elapsed stays put; resume starts a new active segment.
+      jest.setSystemTime(new Date('2026-07-01T00:00:12.500Z'));
+      await act(async () => {
+        await result.current.resume();
+      });
+      expect(result.current.status).toBe('recording');
+      expect(result.current.elapsedMs).toBe(2500);
 
-    mockRecorder.currentTime = 3;
-    await act(async () => {
-      await result.current.stop();
-    });
+      // Record for another 3s and stop; total active time = 5.5s, not 15.5s.
+      jest.setSystemTime(new Date('2026-07-01T00:00:15.500Z'));
+      await act(async () => {
+        await result.current.stop();
+      });
 
-    expect(mockRecorder.stop).toHaveBeenCalled();
-    expect(mockInsertRecording).toHaveBeenCalledWith(
-      expect.objectContaining({
-        bibleTextId: 42,
-        localFilePath: 'file:///tmp/take-1.m4a',
-      }),
-    );
-    expect(mockClearPausedTake).toHaveBeenCalledWith(42);
-    expect(result.current.status).toBe('review');
+      expect(mockRecorder.stop).toHaveBeenCalled();
+      expect(mockInsertRecording).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bibleTextId: 42,
+          localFilePath: 'file:///tmp/take-1.m4a',
+          durationMs: 5500,
+        }),
+      );
+      expect(mockClearPausedTake).toHaveBeenCalledWith(42);
+      expect(result.current.status).toBe('review');
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('re-record starts a new recording and stop overwrites the previous draft', async () => {

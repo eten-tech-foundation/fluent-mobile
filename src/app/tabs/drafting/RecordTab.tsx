@@ -44,10 +44,14 @@ interface RecordTabProps {
 }
 
 function formatDuration(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
+  const safeMs = ms < 0 ? 0 : ms;
+  const totalCentis = Math.floor(safeMs / 10);
+  const totalSeconds = Math.floor(totalCentis / 100);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  const centis = totalCentis % 100;
+  const pad = (value: number) => value.toString().padStart(2, '0');
+  return `${pad(minutes)}:${pad(seconds)}:${pad(centis)}`;
 }
 
 function verseReference(bookName: string, chapter: number, verse: number) {
