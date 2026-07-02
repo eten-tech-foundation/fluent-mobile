@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from '../config/apiBaseUrl';
 import { logger } from '../utils/logger';
+import { authToken } from './authToken';
 import { parseApiErrorMessage } from './apiError';
 import { AuthError } from './authError';
 import { resolveSessionToken } from './sessionToken';
@@ -34,21 +35,20 @@ function summarizeApiErrorResponse(
   return metadata;
 }
 
-let _activeToken: string | null = null;
-
-export function setActiveToken(token: string | null): void {
-  _activeToken = token;
-}
-
 const MOBILE_HEADERS = {
   'x-client-type': 'mobile',
   'User-Agent': 'fluent-mobile',
 };
 
-async function getHeaders(): Promise<Record<string, string>> {
+/** Builds authenticated request headers; synchronous and testable. */
+export function buildHeaders(
+  extra?: Record<string, string>,
+): Record<string, string> {
+  const token = authToken.get();
   return {
     'Content-Type': 'application/json',
-    ...(_activeToken && { Authorization: `Bearer ${_activeToken}` }),
+    ...(token && { Authorization: `Bearer ${token}` }),
+    ...extra,
   };
 }
 
@@ -63,20 +63,18 @@ async function publicRequest(endpoint: string, options?: RequestInit) {
     },
   });
   if (!res.ok) {
-    try {
-      const errorBody = await res.json();
-      throw new Error(errorBody?.message ?? `API failed: ${res.status}`);
-    } catch (e) {
-      if (e instanceof Error && e.message !== `API failed: ${res.status}`)
-        throw e;
-      throw new Error(`API failed: ${res.status}`);
-    }
+    const errorBody = await res.text();
+    log.error(
+      'Public API error',
+      summarizeApiErrorResponse(res.status, errorBody),
+    );
+    throw new Error(parseApiErrorMessage(res.status, errorBody));
   }
   return res.json();
 }
 
 async function request(endpoint: string, options?: RequestInit) {
-  const headers = await getHeaders();
+  const headers = buildHeaders();
   const res = await fetch(`${getApiBaseUrl()}${endpoint}`, {
     ...options,
     headers: { ...headers, ...options?.headers },

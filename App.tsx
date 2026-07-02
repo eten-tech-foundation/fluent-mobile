@@ -7,15 +7,9 @@ import BootSplash from 'react-native-bootsplash';
 import { logger } from './src/utils/logger';
 import { initializeDatabase } from './src/db/index';
 import { syncAllData } from './src/services/sync';
-import { getActiveUserId } from './src/services/storage';
-import {
-  getAllStoredUserIds,
-  getCredentials,
-  hasCredentials,
-} from './src/services/keychain';
+import { restoreSession, signOut } from './src/services/authSession';
 import AppNavigator from './src/navigation/AppNavigator';
 import { onAuthSessionExpired } from './src/services/syncEvents';
-import { setActiveToken } from './src/services/api';
 import { appStyles } from './src/app/appStyles';
 import { theme } from './src/theme';
 
@@ -28,13 +22,14 @@ function App() {
   const [error, setError] = useState<string | null>(null);
 
   const handleSignOut = () => {
+    signOut();
     setIsAuthenticated(false);
   };
 
   useEffect(() => {
     return onAuthSessionExpired(() => {
       log.info('Session expired — returning to login');
-      setActiveToken(null);
+      signOut();
       setIsAuthenticated(false);
     });
   }, []);
@@ -43,36 +38,8 @@ function App() {
     const initApp = async () => {
       try {
         await initializeDatabase();
-
-        const activeUserId = getActiveUserId();
-
-        if (activeUserId) {
-          const hasToken = await hasCredentials(activeUserId);
-          if (hasToken) {
-            const creds = await getCredentials(activeUserId);
-            setActiveToken(creds?.token ?? null);
-            setIsAuthenticated(true);
-            setDbReady(true);
-            return;
-          }
-        }
-
-        const storedUserIds = await getAllStoredUserIds();
-        log.info('Stored user IDs in keychain', { storedUserIds });
-
-        if (storedUserIds.length > 0) {
-          const userId = storedUserIds[0];
-          const creds = await getCredentials(userId);
-          if (creds?.token) {
-            const { switchActiveUser } = await import('./src/services/storage');
-            switchActiveUser(userId);
-            setActiveToken(creds.token);
-            setIsAuthenticated(true);
-            setDbReady(true);
-            return;
-          }
-        }
-
+        const session = await restoreSession();
+        setIsAuthenticated(session.authenticated);
         setDbReady(true);
       } catch (e: unknown) {
         log.error('initApp failed:', { error: String(e) });

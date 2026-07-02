@@ -18,7 +18,9 @@ import {
   LOGOUT_UNSYNCED_TITLE,
 } from '../../constants/messages';
 import { getPendingUploadCount } from '../../db/queries';
-import { FluentAPI, setActiveToken } from '../../services/api';
+import { FluentAPI } from '../../services/api';
+import { signOut } from '../../services/authSession';
+import { authToken } from '../../services/authToken';
 import { clearCredentials, getCredentials } from '../../services/keychain';
 import {
   getActiveUserId,
@@ -83,14 +85,11 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
     if (remaining.length > 0) {
       const nextUserId = remaining[0];
       const creds = await getCredentials(nextUserId);
-      setActiveToken(creds?.token ?? null);
+      authToken.set(creds?.token ?? null);
       switchActiveUser(nextUserId);
       navigation.goBack();
     } else {
-      setActiveToken(null);
-      kvStorage.removeItemSync(KV_KEYS.ACTIVE_USER_ID);
-      kvStorage.removeItemSync(KV_KEYS.USER_ID);
-      kvStorage.removeItemSync(KV_KEYS.USER_EMAIL);
+      signOut();
       onSignOut?.();
     }
   };

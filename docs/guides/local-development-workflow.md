@@ -15,7 +15,7 @@ Web app (login / project UI in browser): https://dev.app.fluent.bible
 
 ## Prerequisites
 
-- Node **≥ 24.14.0**, **npm**
+- Node **≥ 24.14.0**, **npm** (not yarn/pnpm — `preinstall` enforces npm; see [README troubleshooting](../../README.md#troubleshooting))
 - Android Studio + emulator (API 33+), or a physical Android device with USB debugging
 - **Custom dev client** — this app does not run in Expo Go (see [README](../../README.md))
 - For **Path B** only: Docker Desktop or Podman, plus a clone of [fluent-api](https://github.com/eten-tech-foundation/fluent-api)

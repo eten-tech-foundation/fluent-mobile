@@ -230,6 +230,15 @@ Requires an [Expo access token](https://expo.dev/settings/access-tokens) and acc
 
 ## Troubleshooting
 
+**Accidentally ran `yarn` or `pnpm` (bootsplash / semver / PnP errors)**
+This repo uses **npm only** (`package-lock.json`). Muscle memory from other projects can run `yarn install` and leave Yarn PnP files (`.pnp.cjs`) that break `expo start`. `preinstall` blocks `yarn install` / `pnpm install`; if you already ran the wrong tool, reset and reinstall:
+
+```bash
+rm -rf .pnp.cjs .pnp.loader.mjs .pnp.js yarn.lock pnpm-lock.yaml .yarn node_modules
+npm install
+npm start
+```
+
 **`Failed to download remote update` / `No returned query result` on launch**
 Local dev builds must not check Expo OTA on startup. Rebuild after pulling latest `main`:
 
