@@ -1,10 +1,6 @@
 import * as SecureStore from './expo-secure-store';
 import * as FileSystem from './expo-file-system';
-import {
-  AudioPlayer,
-  AudioRecorder,
-  resetAudioMock,
-} from './expo-audio';
+import { AudioPlayer, AudioRecorder, resetAudioMock } from './expo-audio';
 import { resetFileSystemMock } from './expo-file-system';
 import { resetSecureStoreMock } from './expo-secure-store';
 
