@@ -84,7 +84,7 @@ describe('RecordTab', () => {
     expect(screen.getByTestId('record-play-idle-placeholder')).toBeTruthy();
   });
 
-  it('shows pause and stop controls with a duration when recording', () => {
+  it('shows pause and stop controls with a duration and tip when recording', () => {
     mockUseRecorder.mockReturnValue({
       ...baseRecorderState(),
       status: 'recording',
@@ -95,6 +95,22 @@ describe('RecordTab', () => {
     expect(screen.getByTestId('record-duration')).toHaveTextContent('1:05');
     expect(screen.getByTestId('record-pause-button')).toBeTruthy();
     expect(screen.getByTestId('record-stop-button')).toBeTruthy();
+    expect(screen.getByTestId('record-tip')).toHaveTextContent(
+      'Tap pause to study the source, stop to finish.',
+    );
+  });
+
+  it('shows the paused tip instead of the recording tip while paused', () => {
+    mockUseRecorder.mockReturnValue({
+      ...baseRecorderState(),
+      status: 'paused',
+      elapsedMs: 3_000,
+    });
+    renderTab();
+
+    expect(screen.getByTestId('record-tip')).toHaveTextContent(
+      'Recording paused — review the source below, then resume.',
+    );
   });
 
   it('shows the resume button while paused', () => {
@@ -109,7 +125,7 @@ describe('RecordTab', () => {
     expect(screen.queryByTestId('record-pause-button')).toBeNull();
   });
 
-  it('renders review controls with delete confirmation prompt', () => {
+  it('renders review controls with placeholder, play, re-record and delete', () => {
     const state = {
       ...baseRecorderState(),
       status: 'review' as const,
@@ -128,6 +144,18 @@ describe('RecordTab', () => {
 
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     renderTab();
+
+    expect(
+      screen.getByTestId('record-review-record-done-placeholder'),
+    ).toBeTruthy();
+    expect(screen.getByTestId('record-play-button')).toBeTruthy();
+    expect(screen.getByTestId('record-rerecord-button')).toHaveTextContent(
+      'Re-record',
+    );
+    expect(screen.getByTestId('record-delete-button')).toHaveTextContent(
+      'Delete',
+    );
+    expect(screen.queryByTestId('record-tip')).toBeNull();
 
     fireEvent.press(screen.getByTestId('record-delete-button'));
     expect(alertSpy).toHaveBeenCalledWith(
