@@ -309,22 +309,37 @@ export function RecordTab({
 
       <View style={styles.controls}>
         {recorder.status === 'idle' && (
-          <TouchableOpacity
-            style={styles.recordButton}
-            onPress={handleStartPress}
-            accessibilityRole="button"
-            accessibilityLabel={`Record ${currentReference}`}
-            testID="record-start-button"
-          >
-            <CircleDot
-              size={40}
-              color={theme.colors.primaryForeground}
-              strokeWidth={listIconStrokeWidth}
-            />
-            <Text style={styles.recordButtonLabel}>
+          <View style={styles.idleGroup}>
+            <TouchableOpacity
+              style={styles.recordButtonCircle}
+              onPress={handleStartPress}
+              accessibilityRole="button"
+              accessibilityLabel={`Record ${currentReference}`}
+              testID="record-start-button"
+            >
+              <CircleDot
+                size={44}
+                color={theme.colors.primaryForeground}
+                strokeWidth={listIconStrokeWidth}
+              />
+            </TouchableOpacity>
+            <Text style={styles.recordButtonLabel} testID="record-start-label">
               Record {currentReference}
             </Text>
-          </TouchableOpacity>
+            <View
+              style={styles.playButtonDisabled}
+              accessibilityRole="button"
+              accessibilityLabel="Playback unavailable until a draft is recorded"
+              accessibilityState={{ disabled: true }}
+              testID="record-play-idle-placeholder"
+            >
+              <Play
+                size={22}
+                color={theme.colors.mutedForeground}
+                strokeWidth={listIconStrokeWidth}
+              />
+            </View>
+          </View>
         )}
 
         {recorder.status === 'recording' && (
@@ -523,19 +538,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: theme.spacing.md,
   },
-  recordButton: {
-    flexDirection: 'row',
+  idleGroup: {
     alignItems: 'center',
     gap: theme.spacing.md,
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.primary,
+  },
+  recordButtonCircle: {
+    width: 88,
+    height: 88,
     borderRadius: theme.radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.recordAccent,
   },
   recordButtonLabel: {
-    color: theme.colors.primaryForeground,
+    color: theme.colors.foreground,
     fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.weights.semibold,
+    fontWeight: theme.typography.weights.medium,
+    textAlign: 'center',
+  },
+  playButtonDisabled: {
+    width: 48,
+    height: 48,
+    borderRadius: theme.radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.cardBackground,
+    opacity: 0.6,
   },
   recordingRow: {
     flexDirection: 'row',

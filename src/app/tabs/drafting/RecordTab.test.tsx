@@ -70,16 +70,18 @@ describe('RecordTab', () => {
     jest.clearAllMocks();
   });
 
-  it('renders the record button labelled with the verse reference in idle', () => {
+  it('renders the idle record button with a label and disabled play hint', () => {
     mockUseRecorder.mockReturnValue(baseRecorderState());
     renderTab();
 
     expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
       'Mark 14:3',
     );
-    expect(screen.getByTestId('record-start-button')).toHaveTextContent(
+    expect(screen.getByTestId('record-start-button')).toBeTruthy();
+    expect(screen.getByTestId('record-start-label')).toHaveTextContent(
       'Record Mark 14:3',
     );
+    expect(screen.getByTestId('record-play-idle-placeholder')).toBeTruthy();
   });
 
   it('shows pause and stop controls with a duration when recording', () => {
