@@ -33,6 +33,20 @@
         "buildType": "apk"
       }
     },
+    "demo": {
+      "extends": "base",
+      "distribution": "internal",
+      "channel": "demo",
+      "env": {
+        "EAS_USE_CACHE": "1",
+        "EAS_UPDATE_CHANNEL": "demo",
+        "EXPO_PUBLIC_DEMO_MODE": "true",
+        "EXPO_PUBLIC_API_BASE_URL": "https://dev.api.fluent.bible"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
     "production": {
       "extends": "base",
       "env": {

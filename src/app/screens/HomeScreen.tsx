@@ -12,6 +12,8 @@ import { MyWorkTab } from '../tabs/MyWorkTab';
 import { ProjectsTab } from '../tabs/ProjectsTab';
 import { useSync } from '../../hooks/useSync';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
+import { IS_DEMO_MODE } from '../../config/demoMode';
+import { DemoModeBanner } from '../../components/ui/DemoModeBanner';
 import { RootStackParamList } from '../../types/navigation/types';
 import { onSyncComplete, onSyncStart } from '../../services/syncEvents';
 
@@ -75,11 +77,13 @@ export default function HomeScreen({
   }, [triggerSync]);
 
   const showLoading =
-    isNewUserLoading ||
-    postLoginSyncActive ||
-    ((isSyncingLocal || isSyncing) && refreshKey === 0);
+    !IS_DEMO_MODE &&
+    (isNewUserLoading ||
+      postLoginSyncActive ||
+      ((isSyncingLocal || isSyncing) && refreshKey === 0));
   const myWorkIsSyncing =
-    isSyncing || isSyncingLocal || postLoginSyncActive || isNewUserLoading;
+    !IS_DEMO_MODE &&
+    (isSyncing || isSyncingLocal || postLoginSyncActive || isNewUserLoading);
 
   if (showLoading) {
     return (
@@ -97,12 +101,15 @@ export default function HomeScreen({
       <PageHeader
         leftIcon={<SettingsButton onPress={handleSettingsPress} />}
         rightIcon={
-          <PageHeaderSyncButton
-            syncStatus={syncStatus}
-            onPress={handleSyncPress}
-          />
+          IS_DEMO_MODE ? undefined : (
+            <PageHeaderSyncButton
+              syncStatus={syncStatus}
+              onPress={handleSyncPress}
+            />
+          )
         }
       />
+      {IS_DEMO_MODE ? <DemoModeBanner /> : null}
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
       <View style={styles.content}>
         {activeTab === 'myWork' ? (

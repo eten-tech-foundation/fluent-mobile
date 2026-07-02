@@ -15,6 +15,7 @@ import {
 } from '../../services/storage';
 import { clearCredentials, getCredentials } from '../../services/keychain';
 import { FluentAPI } from '../../services/api';
+import { IS_DEMO_MODE } from '../../config/demoMode';
 import { signOut } from '../../services/authSession';
 import { authToken } from '../../services/authToken';
 import { logger } from '../../utils/logger';
@@ -135,18 +136,22 @@ export function UserSettingsMenu({
           </TouchableOpacity>
 
           <View style={appStyles.menuDivider} />
-          <TouchableOpacity
-            style={appStyles.menuItem}
-            onPress={handleAddUser}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            testID="settings-menu-add-user"
-          >
-            <Ionicons name="person-add-outline" size={18} color="#333" />
-            <Text style={appStyles.menuItemText}>Add User</Text>
-          </TouchableOpacity>
+          {!IS_DEMO_MODE ? (
+            <>
+              <TouchableOpacity
+                style={appStyles.menuItem}
+                onPress={handleAddUser}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                testID="settings-menu-add-user"
+              >
+                <Ionicons name="person-add-outline" size={18} color="#333" />
+                <Text style={appStyles.menuItemText}>Add User</Text>
+              </TouchableOpacity>
 
-          <View style={appStyles.menuDivider} />
+              <View style={appStyles.menuDivider} />
+            </>
+          ) : null}
           <TouchableOpacity
             style={appStyles.menuItem}
             onPress={handleOpenPrivacy}
@@ -169,7 +174,7 @@ export function UserSettingsMenu({
             <Text style={appStyles.menuItemText}>Terms of Use</Text>
           </TouchableOpacity>
 
-          {knownUsers.length > 1 && (
+          {knownUsers.length > 1 && !IS_DEMO_MODE ? (
             <>
               <View style={appStyles.menuDivider} />
               <Text style={appStyles.menuSectionLabel}>Switch User</Text>
@@ -202,20 +207,26 @@ export function UserSettingsMenu({
                 </TouchableOpacity>
               ))}
             </>
-          )}
+          ) : null}
 
-          <View style={appStyles.menuDivider} />
-          <TouchableOpacity
-            style={appStyles.menuItem}
-            onPress={handleSignOut}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-          >
-            <Ionicons name="log-out-outline" size={18} color="#d32f2f" />
-            <Text style={[appStyles.menuItemText, appStyles.menuItemDanger]}>
-              Sign Out
-            </Text>
-          </TouchableOpacity>
+          {!IS_DEMO_MODE ? (
+            <>
+              <View style={appStyles.menuDivider} />
+              <TouchableOpacity
+                style={appStyles.menuItem}
+                onPress={handleSignOut}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+              >
+                <Ionicons name="log-out-outline" size={18} color="#d32f2f" />
+                <Text
+                  style={[appStyles.menuItemText, appStyles.menuItemDanger]}
+                >
+                  Sign Out
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : null}
         </View>
       </Pressable>
     </Modal>

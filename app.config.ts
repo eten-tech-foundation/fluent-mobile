@@ -17,13 +17,15 @@ const appVersion = resolveAppVersion();
 
 const buildProfile = process.env.EAS_BUILD_PROFILE;
 const usesCleartextTraffic = buildProfile !== 'production';
-// OTA updates apply to EAS preview/production only. Local and development
+// OTA updates apply to EAS preview/demo/production only. Local and development
 // builds use Metro; checking u.expo.dev on launch crashes when no bundle exists.
 const updatesEnabled =
-  buildProfile === 'preview' || buildProfile === 'production';
+  buildProfile === 'preview' ||
+  buildProfile === 'demo' ||
+  buildProfile === 'production';
 
 const config: ExpoConfig = {
-  name: 'Fluent',
+  name: buildProfile === 'demo' ? 'Fluent Demo' : 'Fluent',
   slug: 'fluent-mobile',
   scheme: 'fluent',
   version: appVersion,
@@ -33,6 +35,8 @@ const config: ExpoConfig = {
     enabled: updatesEnabled,
     ...(buildProfile === 'preview'
       ? { requestHeaders: { 'expo-channel-name': 'preview' } }
+      : buildProfile === 'demo'
+      ? { requestHeaders: { 'expo-channel-name': 'demo' } }
       : {}),
   },
   runtimeVersion: {

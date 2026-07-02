@@ -8,6 +8,8 @@ import { logger } from './src/utils/logger';
 import { initializeDatabase } from './src/db/index';
 import { syncAllData } from './src/services/sync';
 import { restoreSession, signOut } from './src/services/authSession';
+import { IS_DEMO_MODE } from './src/config/demoMode';
+import { seedDemoDataIfNeeded } from './src/demo/seedDemoData';
 import AppNavigator from './src/navigation/AppNavigator';
 import { onAuthSessionExpired } from './src/services/syncEvents';
 import { appStyles } from './src/app/appStyles';
@@ -38,6 +40,14 @@ function App() {
     const initApp = async () => {
       try {
         await initializeDatabase();
+
+        if (IS_DEMO_MODE) {
+          await seedDemoDataIfNeeded();
+          setIsAuthenticated(true);
+          setDbReady(true);
+          return;
+        }
+
         const session = await restoreSession();
         setIsAuthenticated(session.authenticated);
         setDbReady(true);
@@ -72,12 +82,18 @@ function App() {
   };
 
   const handleLoginSuccess = (email: string) => {
+    if (IS_DEMO_MODE) {
+      return;
+    }
     setIsAuthenticated(true);
     setPostLoginSyncActive(true);
     runPostLoginSync(email, () => setPostLoginSyncActive(false));
   };
 
   const handleAddUserLoginSuccess = (email: string) => {
+    if (IS_DEMO_MODE) {
+      return;
+    }
     runPostLoginSync(email);
   };
 

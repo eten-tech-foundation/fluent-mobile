@@ -1,0 +1,60 @@
+name: Demo Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_version:
+        description: 'Optional app version to bake (defaults to app.config.ts fallback)'
+        required: false
+        type: string
+
+env:
+  EAS_PROJECT_ID: 'b0919574-f268-4768-b3bd-7cfa5172bbab'
+  EXPO_ACCOUNT: 'teamgloo'
+
+jobs:
+  demo-build:
+    name: Build Android Demo APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve demo build
+        id: demo-build
+        env:
+          PROFILE: demo
+          MESSAGE: Demo stakeholder build (${{ github.sha }})
+          BAKE_VERSION: ${{ inputs.app_version }}
+          ALLOW_RUNTIME_MATCH: 'false'
+          WAIT_FOR_BUILD: 'true'
+          POLL_IN_PROGRESS: 'true'
+        run: bash .github/scripts/eas-resolve-android-build.sh
+
+      - name: Summary
+        run: |
+          echo "## Fluent Demo build" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Install the stakeholder demo APK from the EAS build page:" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "https://expo.dev/builds/${{ steps.demo-build.outputs.build_id }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "This build uses \`EXPO_PUBLIC_DEMO_MODE=true\` and ships with seeded offline sample data." >> "$GITHUB_STEP_SUMMARY"

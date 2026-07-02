@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { syncAllUsers } from '../services/sync';
 import { getSyncState, getSyncError, KV_KEYS } from '../services/storage';
+import { IS_DEMO_MODE } from '../config/demoMode';
 import { logger } from '../utils/logger';
 
 const log = logger.create('useSync');
@@ -91,6 +92,11 @@ export function useSync({ onSyncComplete, onSyncStart }: UseSyncOptions = {}) {
   }, [stateType, updateState]);
 
   const triggerSync = useCallback(async () => {
+    if (IS_DEMO_MODE) {
+      log.info('Sync skipped in demo mode');
+      return;
+    }
+
     try {
       setIsSyncing(true);
       onSyncStart?.();

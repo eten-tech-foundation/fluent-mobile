@@ -21,6 +21,7 @@ export const KV_KEYS = {
   SYNC_ERROR_CHAPTER_ASSIGNMENTS: 'sync_error_chapter_assignments',
   SYNC_ERROR_PROJECT_UNITS: 'sync_error_project_units',
   SYNC_ERROR_BIBLE_TEXTS: 'sync_error_bible_texts',
+  DEMO_SEED_VERSION: 'demo_seed_version',
 } as const;
 
 export function clearUserSession() {
@@ -173,4 +174,18 @@ export function getUserLastSyncedAt(userId: string): string {
 export function setUserLastSyncedAt(userId: string, timestamp: string) {
   kvStorage.setItemSync(`${userId}:last_synced_at`, timestamp);
   log.info('Per-user last synced timestamp updated', { userId, timestamp });
+}
+
+export function getDemoSeedVersion(): number {
+  const raw = kvStorage.getItemSync(KV_KEYS.DEMO_SEED_VERSION);
+  if (!raw) {
+    return 0;
+  }
+  const version = Number(raw);
+  return Number.isFinite(version) ? version : 0;
+}
+
+export function setDemoSeedVersion(version: number) {
+  kvStorage.setItemSync(KV_KEYS.DEMO_SEED_VERSION, String(version));
+  log.info('Demo seed version updated', { version });
 }

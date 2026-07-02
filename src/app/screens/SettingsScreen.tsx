@@ -18,6 +18,7 @@ import {
   LOGOUT_UNSYNCED_TITLE,
 } from '../../constants/messages';
 import { getPendingUploadCount } from '../../db/queries';
+import { IS_DEMO_MODE } from '../../config/demoMode';
 import { FluentAPI } from '../../services/api';
 import { signOut } from '../../services/authSession';
 import { authToken } from '../../services/authToken';
@@ -140,48 +141,59 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
           </SettingsSection>
 
           <SettingsSection label="Sync">
-            <SettingsToggleRow
-              title="Upload over cellular"
-              subtitle="When off, uploads only happen on WiFi"
-              icon={
-                <CloudUpload
-                  size={iconSizes.headerTab}
-                  color={iconColor}
-                  strokeWidth={listIconStrokeWidth}
-                />
-              }
-              value={uploadOverCellular}
-              onValueChange={setUploadOverCellular}
-            />
+            {!IS_DEMO_MODE ? (
+              <SettingsToggleRow
+                title="Upload over cellular"
+                subtitle="When off, uploads only happen on WiFi"
+                icon={
+                  <CloudUpload
+                    size={iconSizes.headerTab}
+                    color={iconColor}
+                    strokeWidth={listIconStrokeWidth}
+                  />
+                }
+                value={uploadOverCellular}
+                onValueChange={setUploadOverCellular}
+              />
+            ) : (
+              <View style={styles.demoInfoRow}>
+                <Text style={styles.demoInfoText}>
+                  Demo mode uses offline sample data. Sync and uploads are
+                  disabled.
+                </Text>
+              </View>
+            )}
           </SettingsSection>
 
-          <SettingsSection label="Account">
-            <SettingsNavigationRow
-              title="Add user"
-              subtitle="Sign in with another account on this device"
-              icon={
-                <UserPlus
-                  size={iconSizes.headerTab}
-                  color={iconColor}
-                  strokeWidth={listIconStrokeWidth}
-                />
-              }
-              onPress={handleAddUser}
-            />
-            <SettingsDestructiveRow
-              title="Log out"
-              icon={
-                <LogOut
-                  size={iconSizes.headerTab}
-                  color={theme.colors.destructive}
-                  strokeWidth={listIconStrokeWidth}
-                />
-              }
-              onPress={() => {
-                void handleLogOut();
-              }}
-            />
-          </SettingsSection>
+          {!IS_DEMO_MODE ? (
+            <SettingsSection label="Account">
+              <SettingsNavigationRow
+                title="Add user"
+                subtitle="Sign in with another account on this device"
+                icon={
+                  <UserPlus
+                    size={iconSizes.headerTab}
+                    color={iconColor}
+                    strokeWidth={listIconStrokeWidth}
+                  />
+                }
+                onPress={handleAddUser}
+              />
+              <SettingsDestructiveRow
+                title="Log out"
+                icon={
+                  <LogOut
+                    size={iconSizes.headerTab}
+                    color={theme.colors.destructive}
+                    strokeWidth={listIconStrokeWidth}
+                  />
+                }
+                onPress={() => {
+                  void handleLogOut();
+                }}
+              />
+            </SettingsSection>
+          ) : null}
         </ScrollView>
       </View>
     </ScreenContainer>
@@ -212,5 +224,13 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.cardBackground,
     borderRadius: theme.radius.lg,
     overflow: 'hidden',
+  },
+  demoInfoRow: {
+    padding: theme.spacing.lg,
+  },
+  demoInfoText: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.mutedForeground,
+    lineHeight: 20,
   },
 });
