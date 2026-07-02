@@ -8,22 +8,6 @@ import {
   useAudioRecorder,
 } from 'expo-audio';
 import type { AudioRecorder } from 'expo-audio';
-import { randomUUID } from 'expo-crypto';
-import { deleteRecordingById, insertRecording } from '../db/repository';
-import { getLatestRecordingForVerse } from '../db/queries';
-import {
-  clearPausedTake,
-  getPausedTake,
-  setPausedTake,
-} from '../services/storage';
-import {
-  buildRecordingKey,
-  deleteRecordingFile,
-  extensionFromUri,
-  moveIntoStore,
-  resolveRecordingUri,
-} from '../services/recordingStorage';
-import type { Recording } from '../types/db/types';
 import { logger } from '../utils/logger';
 import { useDraftPlayback } from './useDraftPlayback';
 
@@ -45,31 +29,58 @@ export interface PermissionRequestResult {
 }
 
 /**
- * Wraps `expo-audio`'s recorder and player primitives with the state machine
- * described in issue #49: Idle -> Recording -> Paused -> Review, plus
- * Re-record and Delete transitions from Review.
- *
- * `bibleTextId === null` keeps the recorder inert until a verse is resolved.
- *
- * The remaining fields are attribution context used to build the durable file
- * path and persist who/where a take belongs to; they are optional so the hook
- * stays usable in isolation (e.g. tests), falling back to placeholder segments.
+ * A partial take captured before the recorder was paused (manually or by
+ * backgrounding). Persisted by the adapter so an in-flight take survives a
+ * process kill; the `startedAt`/`elapsedMs` pair rehydrates the timer on mount.
  */
-export interface UseRecorderArgs {
-  bibleTextId: number | null;
-  userId?: string;
-  projectId?: number | null;
-  chapterAssignmentId?: number | null;
-  bookCode?: string | null;
-  chapterNumber?: number | null;
-  verseNumber?: number | null;
+export interface PausedTakeState {
+  fileUri: string;
+  elapsedMs: number;
+  startedAt: string;
 }
 
-export interface UseRecorderApi {
+/**
+ * Use-case adapter injected into {@link useRecorder}. It isolates every concern
+ * the generic recorder does not own: which session a take belongs to, how a
+ * committed take is persisted/resolved/deleted, and where paused-take markers
+ * live. The recorder itself stays agnostic of the DB, storage layout, and any
+ * domain vocabulary.
+ *
+ * `sessionKey === null` keeps the recorder inert until the caller resolves a
+ * target (e.g. a selected verse).
+ */
+export interface RecorderAdapter<T> {
+  sessionKey: number | string | null;
+  /** Load the most recent committed take for the session, if any. */
+  loadInitial: (key: number | string) => Promise<T | null>;
+  /**
+   * Persist a freshly stopped take. Return the committed take on success, or
+   * `null` to signal a recoverable failure (the recorder reverts to its prior
+   * state). Throwing is also treated as a recoverable failure.
+   */
+  onCommit: (args: {
+    fileUri: string;
+    durationMs: number;
+  }) => Promise<T | null>;
+  /** Delete a committed take (row + file). */
+  deleteCommitted: (take: T) => Promise<void>;
+  /** Resolve a committed take to an absolute, playable uri. */
+  resolvePlaybackUri: (take: T) => string | null;
+  /** Read the paused-take marker for the session, if one exists. */
+  loadPaused: (key: number | string) => PausedTakeState | null;
+  /** Write the paused-take marker for the current session. */
+  persistPaused: (state: PausedTakeState) => void;
+  /** Clear the paused-take marker for the current session. */
+  clearPaused: () => void;
+  /** Best-effort unlink of a paused partial file being discarded. */
+  deletePausedFile: (fileUri: string) => void;
+}
+
+export interface UseRecorderApi<T> {
   status: RecorderStatus;
   elapsedMs: number;
   permission: PermissionState;
-  currentRecording: Recording | null;
+  currentRecording: T | null;
   isReady: boolean;
   isPlaying: boolean;
 
@@ -100,15 +111,22 @@ function mapPermissionState(response: PermissionLike): PermissionState {
   return 'denied';
 }
 
-export function useRecorder({
-  bibleTextId,
-  userId,
-  projectId,
-  chapterAssignmentId,
-  bookCode,
-  chapterNumber,
-  verseNumber,
-}: UseRecorderArgs): UseRecorderApi {
+/**
+ * Wraps `expo-audio`'s recorder and player primitives with the state machine
+ * described in issue #49: Idle -> Recording -> Paused -> Review, plus
+ * Re-record and Delete transitions from Review.
+ *
+ * The hook owns only recording mechanics — the state machine, elapsed-time
+ * ticking, permissions, background auto-pause, and playback orchestration. All
+ * persistence, storage layout, and domain identity is injected via a
+ * {@link RecorderAdapter}, so the recorder is reusable across use cases.
+ *
+ * `adapter.sessionKey === null` keeps the recorder inert until a target is
+ * resolved.
+ */
+export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
+  const { sessionKey } = adapter;
+
   // Capture straight into the durable document directory (not the evictable
   // cache) so paused/backgrounded partial takes survive until we move or delete
   // them. Committed takes are relocated into the organized tree on Stop.
@@ -120,23 +138,25 @@ export function useRecorder({
   const [status, setStatus] = useState<RecorderStatus>('idle');
   const [permission, setPermission] = useState<PermissionState>('unknown');
   const [elapsedMs, setElapsedMs] = useState(0);
-  const [currentRecording, setCurrentRecording] = useState<Recording | null>(
-    null,
-  );
+  const [currentRecording, setCurrentRecording] = useState<T | null>(null);
   const [isReady, setIsReady] = useState(false);
+
+  // The adapter is read via a ref inside callbacks/effects so they always see
+  // the latest injected closures without being re-created (and re-subscribing)
+  // on every render.
+  const adapterRef = useRef(adapter);
+  adapterRef.current = adapter;
 
   // Playback is a separate concern with a one-way dependency: it takes the
   // reviewed take's URI and knows nothing about the recorder. The recorder
   // orchestrates it explicitly (stopping playback before re-record/delete).
-  // Stored paths are relative keys, so resolve to an absolute uri here.
+  // The adapter resolves a committed take to an absolute uri.
   const {
     isPlaying,
     toggle: togglePlaybackInternal,
     stop: stopPlayback,
   } = useDraftPlayback(
-    currentRecording
-      ? resolveRecordingUri(currentRecording.localFilePath)
-      : null,
+    currentRecording ? adapter.resolvePlaybackUri(currentRecording) : null,
   );
 
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -146,28 +166,9 @@ export function useRecorder({
   // segment's contribution is measured by wall clock via `runningSinceRef`.
   const baseElapsedRef = useRef(0);
   const runningSinceRef = useRef<number | null>(null);
-  const bibleTextIdRef = useRef<number | null>(bibleTextId);
+  const sessionKeyRef = useRef<number | string | null>(sessionKey);
 
-  bibleTextIdRef.current = bibleTextId;
-
-  // Attribution context is read via a ref so the commit callback always sees the
-  // latest values without being re-created (and re-subscribing) on every render.
-  const contextRef = useRef({
-    userId,
-    projectId,
-    chapterAssignmentId,
-    bookCode,
-    chapterNumber,
-    verseNumber,
-  });
-  contextRef.current = {
-    userId,
-    projectId,
-    chapterAssignmentId,
-    bookCode,
-    chapterNumber,
-    verseNumber,
-  };
+  sessionKeyRef.current = sessionKey;
 
   const clearTick = useCallback(() => {
     if (tickRef.current) {
@@ -185,7 +186,7 @@ export function useRecorder({
     }, TICK_INTERVAL_MS);
   }, [clearTick]);
 
-  // Load latest DB recording for the current verse and reset state.
+  // Load the latest committed take for the current session and reset state.
   useEffect(() => {
     let cancelled = false;
 
@@ -197,15 +198,16 @@ export function useRecorder({
       startedAtRef.current = null;
       clearTick();
 
-      if (bibleTextId === null) {
+      if (sessionKey === null) {
         setStatus('idle');
         setCurrentRecording(null);
         return;
       }
 
+      const currentAdapter = adapterRef.current;
       const [latest, paused] = await Promise.all([
-        getLatestRecordingForVerse(bibleTextId),
-        Promise.resolve(getPausedTake(bibleTextId)),
+        currentAdapter.loadInitial(sessionKey),
+        Promise.resolve(currentAdapter.loadPaused(sessionKey)),
       ]);
 
       if (cancelled) return;
@@ -225,13 +227,13 @@ export function useRecorder({
     }
 
     load().catch(error => {
-      log.error('Failed to load recorder state', { bibleTextId, error });
+      log.error('Failed to load recorder state', { sessionKey, error });
     });
 
     return () => {
       cancelled = true;
     };
-  }, [bibleTextId, clearTick]);
+  }, [sessionKey, clearTick]);
 
   // Ensure permission state is populated without prompting the user.
   useEffect(() => {
@@ -268,12 +270,11 @@ export function useRecorder({
 
   const persistPausedMarker = useCallback(
     (rec: AudioRecorder, elapsed: number) => {
-      const currentBibleTextId = bibleTextIdRef.current;
-      if (currentBibleTextId === null || !rec.uri) return;
+      const currentSessionKey = sessionKeyRef.current;
+      if (currentSessionKey === null || !rec.uri) return;
       const startedAt = startedAtRef.current ?? new Date().toISOString();
       startedAtRef.current = startedAt;
-      setPausedTake({
-        bibleTextId: currentBibleTextId,
+      adapterRef.current.persistPaused({
         fileUri: rec.uri,
         elapsedMs: elapsed,
         startedAt,
@@ -305,8 +306,8 @@ export function useRecorder({
   }, [recorder, startTicking]);
 
   const start = useCallback(async () => {
-    const currentBibleTextId = bibleTextIdRef.current;
-    if (currentBibleTextId === null) return;
+    const currentSessionKey = sessionKeyRef.current;
+    if (currentSessionKey === null) return;
     if (permission !== 'granted') {
       const { granted } = await requestPermission();
       if (!granted) return;
@@ -315,8 +316,8 @@ export function useRecorder({
   }, [permission, requestPermission, startRecordingSession]);
 
   const pauseInternal = useCallback(async () => {
-    const currentBibleTextId = bibleTextIdRef.current;
-    if (currentBibleTextId === null) return;
+    const currentSessionKey = sessionKeyRef.current;
+    if (currentSessionKey === null) return;
     if (status !== 'recording') return;
 
     const segmentStart = runningSinceRef.current;
@@ -345,11 +346,11 @@ export function useRecorder({
   }, [recorder, startTicking, status]);
 
   const commitRecording = useCallback(async () => {
-    const currentBibleTextId = bibleTextIdRef.current;
-    if (currentBibleTextId === null) return;
+    const currentSessionKey = sessionKeyRef.current;
+    if (currentSessionKey === null) return;
 
     // Compute the final duration from refs before stopping so a late tick
-    // or a stale `elapsedMs` render can't skew what lands in the DB.
+    // or a stale `elapsedMs` render can't skew what lands in storage.
     const segmentStart = runningSinceRef.current;
     const activeSegmentMs =
       segmentStart === null ? 0 : Date.now() - segmentStart;
@@ -360,53 +361,37 @@ export function useRecorder({
 
     const fileUri = recorder.uri;
     if (!fileUri) {
-      log.error('Recorder returned no URI on stop; skipping DB write');
+      log.error('Recorder returned no URI on stop; skipping commit');
       setStatus(currentRecording ? 'review' : 'idle');
       return;
     }
 
-    const recordingId = randomUUID();
-    const context = contextRef.current;
-    const key = buildRecordingKey({
-      userId: context.userId ?? '',
-      projectId: context.projectId ?? 0,
-      bookCode: context.bookCode ?? '',
-      chapterNumber: context.chapterNumber ?? 0,
-      verseNumber: context.verseNumber ?? 0,
-      recordingId,
-      extension: extensionFromUri(fileUri),
-    });
-
-    // Move the take out of the evictable cache before recording it in the DB so
-    // a row never points at a file the OS could reclaim.
-    let moved;
+    let committed: T | null;
     try {
-      moved = await moveIntoStore({ sourceUri: fileUri, key });
+      committed = await adapterRef.current.onCommit({
+        fileUri,
+        durationMs: duration,
+      });
     } catch (error) {
-      log.error('Failed to move recording into durable store', {
-        bibleTextId: currentBibleTextId,
+      log.error('Failed to commit recording', {
+        sessionKey: currentSessionKey,
         error,
       });
       setStatus(currentRecording ? 'review' : 'idle');
       return;
     }
 
-    const inserted = await insertRecording({
-      id: recordingId,
-      bibleTextId: currentBibleTextId,
-      userId: context.userId ?? null,
-      chapterAssignmentId: context.chapterAssignmentId ?? null,
-      localFilePath: moved.key,
-      durationMs: duration,
-      fileSizeBytes: moved.sizeBytes,
-    });
+    if (!committed) {
+      setStatus(currentRecording ? 'review' : 'idle');
+      return;
+    }
 
-    clearPausedTake(currentBibleTextId);
+    adapterRef.current.clearPaused();
     baseElapsedRef.current = 0;
     runningSinceRef.current = null;
     startedAtRef.current = null;
     setElapsedMs(duration);
-    setCurrentRecording(inserted);
+    setCurrentRecording(committed);
     setStatus('review');
   }, [clearTick, currentRecording, recorder]);
 
@@ -434,7 +419,7 @@ export function useRecorder({
   const deleteCurrent = useCallback(async () => {
     if (status !== 'review' || !currentRecording) return;
     stopPlayback();
-    await deleteRecordingById(currentRecording.id);
+    await adapterRef.current.deleteCommitted(currentRecording);
     setCurrentRecording(null);
     setStatus('idle');
     setElapsedMs(0);
@@ -443,18 +428,18 @@ export function useRecorder({
   }, [currentRecording, status, stopPlayback]);
 
   const discardPaused = useCallback(async () => {
-    const currentBibleTextId = bibleTextIdRef.current;
-    if (currentBibleTextId === null) return;
+    const currentSessionKey = sessionKeyRef.current;
+    if (currentSessionKey === null) return;
     // Read the marker before clearing so we can unlink the durable partial file
     // (recorder.uri is unreliable after a process kill; the marker is not).
-    const marker = getPausedTake(currentBibleTextId);
+    const marker = adapterRef.current.loadPaused(currentSessionKey);
     try {
       await recorder.stop();
     } catch (error) {
       log.warn('Recorder stop while discarding paused take failed', { error });
     }
-    if (marker?.fileUri) deleteRecordingFile(marker.fileUri);
-    clearPausedTake(currentBibleTextId);
+    if (marker?.fileUri) adapterRef.current.deletePausedFile(marker.fileUri);
+    adapterRef.current.clearPaused();
     clearTick();
     baseElapsedRef.current = 0;
     runningSinceRef.current = null;

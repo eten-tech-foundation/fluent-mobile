@@ -26,7 +26,7 @@ import { useNavigation } from '@react-navigation/native';
 import { theme } from '../../../theme';
 import { iconSizes, listIconStrokeWidth } from '../../../theme/iconSpecs';
 import type { VerseData } from '../../../types/db/types';
-import { useRecorder } from '../../../hooks/useRecorder';
+import { useVerseRecorder } from '../../../hooks/useVerseRecorder';
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -75,7 +75,7 @@ export function RecordTab({
   bookCode,
 }: RecordTabProps) {
   const navigation = useNavigation();
-  const recorder = useRecorder({
+  const recorder = useVerseRecorder({
     bibleTextId: bibleTextIdForSelectedVerse,
     userId,
     projectId,
