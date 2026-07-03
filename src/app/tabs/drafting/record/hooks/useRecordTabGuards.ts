@@ -89,8 +89,9 @@ export function useRecordTabGuards({
   );
 
   useEffect(() => {
-    if (status !== 'paused') return;
+    if (status !== 'paused' && status !== 'recording') return;
 
+    const isRecording = status === 'recording';
     const beforeRemove = (event: {
       preventDefault: () => void;
       data: { action: unknown };
@@ -98,9 +99,11 @@ export function useRecordTabGuards({
       event.preventDefault();
       Alert.alert(
         'Recording in progress',
-        'You have a paused recording. Resume it or discard the take before leaving.',
+        isRecording
+          ? 'You are actively recording. Discard the take before leaving.'
+          : 'You have a paused recording. Resume it or discard the take before leaving.',
         [
-          { text: 'Resume', style: 'cancel' },
+          { text: isRecording ? 'Keep recording' : 'Resume', style: 'cancel' },
           {
             text: 'Discard',
             style: 'destructive',
