@@ -161,6 +161,18 @@ export function RecordTab({
     }
   }
 
+  async function handleDiscardPress() {
+    try {
+      await recorder.discardPaused();
+    } catch (error) {
+      log.warn('Failed to discard recovered take', { error });
+      Alert.alert(
+        'Could not discard take',
+        'Something went wrong while removing the recovered take. Try again, or restart the app if the problem continues.',
+      );
+    }
+  }
+
   function handleDeletePress() {
     Alert.alert('Delete draft?', 'This cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
@@ -197,10 +209,12 @@ export function RecordTab({
             reference={currentReference}
             elapsedMs={recorder.elapsedMs}
             isPlaying={recorder.isPlaying}
+            canResume={recorder.canResume}
             onStart={handleStartPress}
             onPause={handlePausePress}
             onResume={handleResumePress}
             onStop={handleStopPress}
+            onDiscard={handleDiscardPress}
             onTogglePlayback={() => recorder.togglePlayback()}
             onReRecord={handleReRecordPress}
             onDelete={handleDeletePress}
