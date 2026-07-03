@@ -87,16 +87,19 @@ export default function DraftingPage() {
 
   useEffect(() => {
     let cancelled = false;
+    setBibleTextId(null);
+
+    if (!chapterData) {
+      return;
+    }
+
+    const { bibleId, bookId, chapterNumber } = chapterData;
 
     async function resolveId() {
-      if (!chapterData) {
-        setBibleTextId(null);
-        return;
-      }
       const id = await getBibleTextId(
-        chapterData.bibleId,
-        chapterData.bookId,
-        chapterData.chapterNumber,
+        bibleId,
+        bookId,
+        chapterNumber,
         selectedVerse,
       );
       if (!cancelled) setBibleTextId(id);
