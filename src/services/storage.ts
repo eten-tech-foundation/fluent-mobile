@@ -197,6 +197,8 @@ export function getPausedTake(bibleTextId: number): PausedTakeMarker | null {
   try {
     const parsed = JSON.parse(raw) as PausedTakeMarker;
     if (
+      Number.isFinite(parsed?.bibleTextId) &&
+      parsed.bibleTextId === bibleTextId &&
       typeof parsed?.fileUri === 'string' &&
       typeof parsed?.elapsedMs === 'number' &&
       typeof parsed?.startedAt === 'string'
