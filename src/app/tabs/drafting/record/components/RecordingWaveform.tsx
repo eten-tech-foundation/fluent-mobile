@@ -1,9 +1,24 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type ViewStyle } from 'react-native';
 import type { RecorderStatus } from '../../../../../hooks/useRecorder';
 import { theme } from '../../../../../theme';
 
 const LIVE_WAVEFORM_BARS = 22;
+
+function liveBarHeight(height: number): ViewStyle {
+  return { height };
+}
+
+const staticBarHeightStyles = StyleSheet.create(
+  Object.fromEntries(
+    Array.from({ length: LIVE_WAVEFORM_BARS }, (_, index) => [
+      `h${index}`,
+      {
+        height: 10 + ((Math.abs(Math.cos(index / 2)) * 28) | 0),
+      },
+    ]),
+  ) as Record<string, ViewStyle>,
+);
 
 interface RecordingWaveformProps {
   status: RecorderStatus;
@@ -28,13 +43,15 @@ export function RecordingWaveform({
           return (
             <View
               key={index}
-              style={[
-                styles.waveformBarLive,
-                {
-                  height: active ? height : 14,
-                  opacity: active ? 1 : 0.5,
-                },
-              ]}
+              style={
+                active
+                  ? [
+                      styles.waveformBarLive,
+                      styles.waveformBarLiveActive,
+                      liveBarHeight(height),
+                    ]
+                  : styles.waveformBarLivePaused
+              }
             />
           );
         })}
@@ -54,10 +71,7 @@ export function RecordingWaveform({
             key={index}
             style={[
               styles.waveformBarStatic,
-              {
-                height: 10 + ((Math.abs(Math.cos(index / 2)) * 28) | 0),
-                opacity: 0.85,
-              },
+              staticBarHeightStyles[`h${index}`],
             ]}
           />
         ))}
@@ -82,9 +96,20 @@ const styles = StyleSheet.create({
     borderRadius: 2.5,
     backgroundColor: theme.colors.recordAccent,
   },
+  waveformBarLiveActive: {
+    opacity: 1,
+  },
+  waveformBarLivePaused: {
+    height: 14,
+    width: 5,
+    borderRadius: 2.5,
+    backgroundColor: theme.colors.recordAccent,
+    opacity: 0.5,
+  },
   waveformBarStatic: {
     width: 5,
     borderRadius: 2.5,
     backgroundColor: theme.colors.primary,
+    opacity: 0.85,
   },
 });
