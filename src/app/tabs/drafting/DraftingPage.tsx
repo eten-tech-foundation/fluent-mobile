@@ -16,7 +16,7 @@ import { logger } from '../../../utils/logger';
 import { BibleTab } from './BibleTab';
 import { ChapterAudioPlayerBar } from './ChapterAudioPlayerBar';
 import { DraftingTab, DraftingTabBar } from './DraftingTabBar';
-import { RecordTab } from './RecordTab';
+import { RecordTab } from './record/RecordTab';
 
 const log = logger.create('DraftingPage');
 

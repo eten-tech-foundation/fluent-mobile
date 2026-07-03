@@ -1,27 +1,30 @@
 import { useMemo } from 'react';
 import { randomUUID } from 'expo-crypto';
-import { deleteRecordingById, insertRecording } from '../db/repository';
-import { getLatestRecordingForVerse } from '../db/queries';
+import {
+  deleteRecordingById,
+  insertRecording,
+} from '../../../../../db/repository';
+import { getLatestRecordingForVerse } from '../../../../../db/queries';
 import {
   clearPausedTake,
   getPausedTake,
   setPausedTake,
-} from '../services/storage';
+} from '../../../../../services/storage';
 import {
   buildRecordingKey,
   deleteRecordingFile,
   extensionFromUri,
   moveIntoStore,
   resolveRecordingUri,
-} from '../services/recordingStorage';
-import type { Recording } from '../types/db/types';
-import { logger } from '../utils/logger';
+} from '../../../../../services/recordingStorage';
+import type { Recording } from '../../../../../types/db/types';
+import { logger } from '../../../../../utils/logger';
 import type {
   PausedTakeState,
   RecorderAdapter,
   UseRecorderApi,
-} from './useRecorder';
-import { useRecorder } from './useRecorder';
+} from '../../../../../hooks/useRecorder';
+import { useRecorder } from '../../../../../hooks/useRecorder';
 
 const log = logger.create('useVerseRecorder');
 

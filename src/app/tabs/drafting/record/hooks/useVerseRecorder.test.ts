@@ -54,19 +54,19 @@ jest.mock('expo-audio', () => ({
   setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('../db/repository', () => ({
+jest.mock('../../../../../db/repository', () => ({
   insertRecording: (input: unknown) => mockInsertRecording(input),
   deleteRecordingById: (id: string) => mockDeleteRecordingById(id),
 }));
 
-jest.mock('../db/queries', () => ({
+jest.mock('../../../../../db/queries', () => ({
   getLatestRecordingForVerse: (id: number) =>
     mockGetLatestRecordingForVerse(id),
 }));
 
 const MOVED_KEY = 'recordings/u/p0/UNK/c000/v000/test-uuid-1.m4a';
 
-jest.mock('../services/recordingStorage', () => ({
+jest.mock('../../../../../services/recordingStorage', () => ({
   buildRecordingKey: (parts: unknown) => {
     mockBuildRecordingKey(parts);
     return MOVED_KEY;
@@ -81,14 +81,15 @@ jest.mock('../services/recordingStorage', () => ({
     mockDeleteRecordingFile(pathOrKey),
 }));
 
-jest.mock('../services/storage', () => ({
+jest.mock('../../../../../services/storage', () => ({
   getPausedTake: (id: number) => mockGetPausedTake(id),
   setPausedTake: (marker: unknown) => mockSetPausedTake(marker),
   clearPausedTake: (id: number) => mockClearPausedTake(id),
 }));
 
-const RESOLVE_MOCK = jest.requireMock('../services/recordingStorage')
-  .resolveRecordingUri as jest.Mock;
+const RESOLVE_MOCK = jest.requireMock(
+  '../../../../../services/recordingStorage',
+).resolveRecordingUri as jest.Mock;
 
 function existingRecording(overrides: Record<string, unknown> = {}) {
   return {
