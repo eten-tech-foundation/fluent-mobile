@@ -1,6 +1,6 @@
 import React from 'react';
+import { theme } from '../../theme';
 import { StyleSheet, Text, View } from 'react-native';
-import { theme } from '../../../theme';
 
 /**
  * Placeholder Bible tab. Full implementation lands in issue #48.
@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
     color: theme.colors.foreground,
   },
   body: {
-    fontSize: theme.typography.sizes.sm,
+    fontSize: theme.typography.sizes.md,
     color: theme.colors.mutedForeground,
     textAlign: 'center',
   },

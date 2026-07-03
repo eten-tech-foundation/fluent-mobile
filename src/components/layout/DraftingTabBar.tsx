@@ -1,10 +1,10 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Headphones, LucideIcon, Mic } from 'lucide-react-native';
-import { theme } from '../../../theme';
-import { iconSizes, listIconStrokeWidth } from '../../../theme/iconSpecs';
+import { DraftingTab } from '../../types/drafting/types';
+import { Headphones, Mic, LucideIcon } from 'lucide-react-native';
+import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
-export type DraftingTab = 'bible' | 'record';
+export type { DraftingTab };
 
 interface DraftingTabBarProps {
   activeTab: DraftingTab;
@@ -24,26 +24,31 @@ export function DraftingTabBar({
     <View style={styles.container}>
       {TABS.map(({ id, label, Icon }) => {
         const isActive = activeTab === id;
-        const color = isActive
-          ? theme.colors.primary
-          : theme.colors.mutedForeground;
 
         return (
           <TouchableOpacity
             key={id}
-            style={[styles.tab, isActive && styles.activeTab]}
+            style={styles.tab}
             onPress={() => onTabChange(id)}
             accessibilityRole="tab"
-            accessibilityLabel={`${label} tab`}
             accessibilityState={{ selected: isActive }}
-            testID={`drafting-tab-${id}`}
+            accessibilityLabel={label}
           >
             <Icon
-              size={iconSizes.header}
-              color={color}
+              size={iconSizes.headerTab}
+              color={
+                isActive ? theme.colors.primary : theme.colors.mutedForeground
+              }
               strokeWidth={listIconStrokeWidth}
             />
-            <Text style={[styles.label, { color }]}>{label}</Text>
+            <Text
+              style={[
+                styles.label,
+                isActive ? styles.labelActive : styles.labelInactive,
+              ]}
+            >
+              {label}
+            </Text>
           </TouchableOpacity>
         );
       })}
@@ -62,16 +67,17 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-    paddingVertical: theme.spacing.md,
-    borderTopWidth: 2,
-    borderTopColor: 'transparent',
-  },
-  activeTab: {
-    borderTopColor: theme.colors.primary,
+    gap: theme.spacing.xs,
+    paddingVertical: theme.spacing.sm,
   },
   label: {
     fontSize: theme.typography.sizes.xs,
     fontWeight: theme.typography.weights.medium,
+  },
+  labelActive: {
+    color: theme.colors.primary,
+  },
+  labelInactive: {
+    color: theme.colors.mutedForeground,
   },
 });
