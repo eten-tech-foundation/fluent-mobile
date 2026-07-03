@@ -182,21 +182,82 @@ describe('useRecordTabGuards', () => {
     alertSpy.mockRestore();
   });
 
-  it('registers a beforeRemove listener while paused', () => {
+  it.each(['paused', 'recording'] as const)(
+    'registers a beforeRemove listener while %s',
+    status => {
+      renderHook(() =>
+        useRecordTabGuards({
+          status,
+          permission: 'granted',
+          requestPermission: jest.fn(),
+          discardPaused: jest.fn().mockResolvedValue(undefined),
+          navigation: mockNavigation as never,
+        }),
+      );
+
+      expect(mockNavigation.addListener).toHaveBeenCalledWith(
+        'beforeRemove',
+        expect.any(Function),
+      );
+    },
+  );
+
+  it('beforeRemove prompts to discard an active recording before leaving', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const discardPaused = jest.fn().mockResolvedValue(undefined);
+    const dispatch = jest.fn();
+    const navigationAction = { type: 'GO_BACK' };
+    let beforeRemoveHandler:
+      | ((event: {
+          preventDefault: () => void;
+          data: { action: unknown };
+        }) => void)
+      | undefined;
+
+    const navigation = {
+      addListener: jest.fn((event, handler) => {
+        if (event === 'beforeRemove') beforeRemoveHandler = handler;
+        return jest.fn();
+      }),
+      dispatch,
+    };
+
     renderHook(() =>
       useRecordTabGuards({
-        status: 'paused',
+        status: 'recording',
         permission: 'granted',
         requestPermission: jest.fn(),
-        discardPaused: jest.fn().mockResolvedValue(undefined),
-        navigation: mockNavigation as never,
+        discardPaused,
+        navigation: navigation as never,
       }),
     );
 
-    expect(mockNavigation.addListener).toHaveBeenCalledWith(
-      'beforeRemove',
-      expect.any(Function),
+    const preventDefault = jest.fn();
+    beforeRemoveHandler?.({
+      preventDefault,
+      data: { action: navigationAction },
+    });
+
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Recording in progress',
+      expect.stringContaining('actively recording'),
+      expect.any(Array),
     );
+
+    const buttons = alertSpy.mock.calls[0]![2] as Array<{
+      text: string;
+      onPress?: () => void | Promise<void>;
+    }>;
+    const discardButton = buttons.find(button => button.text === 'Discard');
+    await act(async () => {
+      await discardButton?.onPress?.();
+    });
+
+    expect(discardPaused).toHaveBeenCalledTimes(1);
+    expect(dispatch).toHaveBeenCalledWith(navigationAction);
+
+    alertSpy.mockRestore();
   });
 
   it('ensureMicPermission returns true when permission is granted', async () => {
