@@ -37,6 +37,7 @@ function baseRecorderState() {
     permission: 'granted' as const,
     currentRecording: null,
     isReady: true,
+    canResume: true,
     isPlaying: false,
     requestPermission: jest
       .fn()

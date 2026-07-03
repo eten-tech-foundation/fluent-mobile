@@ -173,6 +173,7 @@ describe('useVerseRecorder', () => {
           bibleTextId: 42,
           fileUri: 'file:///tmp/take-1.m4a',
           elapsedMs: 2500,
+          sessionToken: expect.any(String),
         }),
       );
     } finally {
@@ -280,11 +281,13 @@ describe('useVerseRecorder', () => {
       fileUri: 'file:///docs/partial-take.m4a',
       elapsedMs: 4500,
       startedAt: '2026-07-01T00:00:00.000Z',
+      sessionToken: 'stale-token',
     });
 
     const { result } = renderHook(() => useVerseRecorder({ bibleTextId: 42 }));
     await waitReady(result);
     expect(result.current.status).toBe('paused');
+    expect(result.current.canResume).toBe(false);
 
     await act(async () => {
       await result.current.discardPaused();

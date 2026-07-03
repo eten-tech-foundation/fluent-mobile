@@ -37,6 +37,8 @@ export interface PausedTakeState {
   fileUri: string;
   elapsedMs: number;
   startedAt: string;
+  /** Present on markers written during a live session; absent on legacy markers. */
+  sessionToken?: string;
 }
 
 /**
@@ -82,6 +84,8 @@ export interface UseRecorderApi<T> {
   permission: PermissionState;
   currentRecording: T | null;
   isReady: boolean;
+  /** False when a paused take was rehydrated from storage (no live native session). */
+  canResume: boolean;
   isPlaying: boolean;
 
   requestPermission: () => Promise<PermissionRequestResult>;
@@ -99,6 +103,10 @@ export interface UseRecorderApi<T> {
 // 50ms tick gives ~20fps on the centiseconds portion of the duration display
 // (`MM:SS:HH`) without hammering the React state.
 const TICK_INTERVAL_MS = 50;
+
+function createLiveSessionToken(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
 
 interface PermissionLike {
   granted: boolean;
@@ -140,6 +148,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   const [elapsedMs, setElapsedMs] = useState(0);
   const [currentRecording, setCurrentRecording] = useState<T | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [canResume, setCanResume] = useState(false);
 
   // The adapter is read via a ref inside callbacks/effects so they always see
   // the latest injected closures without being re-created (and re-subscribing)
@@ -168,6 +177,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   // segment's contribution is measured by wall clock via `runningSinceRef`.
   const baseElapsedRef = useRef(0);
   const runningSinceRef = useRef<number | null>(null);
+  const liveSessionTokenRef = useRef<string | null>(null);
   const sessionKeyRef = useRef<number | string | null>(sessionKey);
 
   sessionKeyRef.current = sessionKey;
@@ -194,10 +204,12 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
 
     async function load() {
       setIsReady(false);
+      setCanResume(false);
       setElapsedMs(0);
       baseElapsedRef.current = 0;
       runningSinceRef.current = null;
       startedAtRef.current = null;
+      liveSessionTokenRef.current = null;
       clearTick();
 
       if (sessionKey === null) {
@@ -217,7 +229,10 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
       setCurrentRecording(latest);
 
       if (paused) {
-        // Surface the marker so the UI can prompt Resume/Discard on next mount.
+        // Restored markers have no live native recorder — resume is blocked;
+        // the UI should steer the user toward discardPaused instead.
+        liveSessionTokenRef.current = null;
+        setCanResume(false);
         setStatus('paused');
         setElapsedMs(paused.elapsedMs);
         baseElapsedRef.current = paused.elapsedMs;
@@ -273,13 +288,16 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   const persistPausedMarker = useCallback(
     (rec: AudioRecorder, elapsed: number) => {
       const currentSessionKey = sessionKeyRef.current;
-      if (currentSessionKey === null || !rec.uri) return;
+      const sessionToken = liveSessionTokenRef.current;
+      if (currentSessionKey === null || !rec.uri || sessionToken === null)
+        return;
       const startedAt = startedAtRef.current ?? new Date().toISOString();
       startedAtRef.current = startedAt;
       adapterRef.current.persistPaused({
         fileUri: rec.uri,
         elapsedMs: elapsed,
         startedAt,
+        sessionToken,
       });
     },
     [],
@@ -298,6 +316,8 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   const startRecordingSession = useCallback(async () => {
     await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
     await recorder.prepareToRecordAsync();
+    liveSessionTokenRef.current = createLiveSessionToken();
+    setCanResume(false);
     baseElapsedRef.current = 0;
     runningSinceRef.current = Date.now();
     startedAtRef.current = new Date().toISOString();
@@ -332,6 +352,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     runningSinceRef.current = null;
     setElapsedMs(finalElapsed);
     setStatus('paused');
+    setCanResume(liveSessionTokenRef.current !== null);
     persistPausedMarker(recorder, finalElapsed);
   }, [clearTick, persistPausedMarker, recorder, status]);
 
@@ -340,10 +361,11 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   }, [pauseInternal]);
 
   const resume = useCallback(async () => {
-    if (status !== 'paused') return;
+    if (status !== 'paused' || liveSessionTokenRef.current === null) return;
     recorder.record();
     runningSinceRef.current = Date.now();
     setStatus('recording');
+    setCanResume(false);
     startTicking();
   }, [recorder, startTicking, status]);
 
@@ -392,6 +414,8 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     baseElapsedRef.current = 0;
     runningSinceRef.current = null;
     startedAtRef.current = null;
+    liveSessionTokenRef.current = null;
+    setCanResume(false);
     setElapsedMs(duration);
     setCurrentRecording(committed);
     setStatus('review');
@@ -399,6 +423,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
 
   const stop = useCallback(async () => {
     if (status !== 'recording' && status !== 'paused') return;
+    if (status === 'paused' && liveSessionTokenRef.current === null) return;
     await commitRecording();
   }, [commitRecording, status]);
 
@@ -446,6 +471,8 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     baseElapsedRef.current = 0;
     runningSinceRef.current = null;
     startedAtRef.current = null;
+    liveSessionTokenRef.current = null;
+    setCanResume(false);
     setElapsedMs(0);
     setStatus(currentRecording ? 'review' : 'idle');
   }, [clearTick, currentRecording, recorder]);
@@ -461,6 +488,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     permission,
     currentRecording,
     isReady,
+    canResume,
     isPlaying,
     requestPermission,
     start,

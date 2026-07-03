@@ -18,10 +18,13 @@ interface RecordingControlsProps {
   reference: string;
   elapsedMs: number;
   isPlaying: boolean;
+  /** False when a paused take was rehydrated without a live native recorder session. */
+  canResume?: boolean;
   onStart: () => void;
   onPause: () => void;
   onResume: () => void;
   onStop: () => void;
+  onDiscard?: () => void;
   onTogglePlayback: () => void;
   onReRecord: () => void;
   onDelete: () => void;
@@ -32,10 +35,12 @@ export function RecordingControls({
   reference,
   elapsedMs,
   isPlaying,
+  canResume = true,
   onStart,
   onPause,
   onResume,
   onStop,
+  onDiscard,
   onTogglePlayback,
   onReRecord,
   onDelete,
@@ -121,35 +126,56 @@ export function RecordingControls({
             {formatDuration(elapsedMs)}
           </Text>
           <View style={styles.captureButtonsRow}>
-            <TouchableOpacity
-              style={styles.stopCircleButton}
-              onPress={onStop}
-              accessibilityRole="button"
-              accessibilityLabel="Stop recording"
-              testID="record-stop-button"
-            >
-              <Square
-                size={26}
-                color={theme.colors.foreground}
-                strokeWidth={listIconStrokeWidth}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.primaryActionCircle}
-              onPress={onResume}
-              accessibilityRole="button"
-              accessibilityLabel="Resume recording"
-              testID="record-resume-button"
-            >
-              <CircleDot
-                size={30}
-                color={theme.colors.primaryForeground}
-                strokeWidth={listIconStrokeWidth}
-              />
-            </TouchableOpacity>
+            {canResume ? (
+              <>
+                <TouchableOpacity
+                  style={styles.stopCircleButton}
+                  onPress={onStop}
+                  accessibilityRole="button"
+                  accessibilityLabel="Stop recording"
+                  testID="record-stop-button"
+                >
+                  <Square
+                    size={26}
+                    color={theme.colors.foreground}
+                    strokeWidth={listIconStrokeWidth}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.primaryActionCircle}
+                  onPress={onResume}
+                  accessibilityRole="button"
+                  accessibilityLabel="Resume recording"
+                  testID="record-resume-button"
+                >
+                  <CircleDot
+                    size={30}
+                    color={theme.colors.primaryForeground}
+                    strokeWidth={listIconStrokeWidth}
+                  />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity
+                style={styles.destructiveButton}
+                onPress={onDiscard}
+                accessibilityRole="button"
+                accessibilityLabel="Discard recovered take"
+                testID="record-discard-button"
+              >
+                <Trash2
+                  size={18}
+                  color={theme.colors.destructive}
+                  strokeWidth={listIconStrokeWidth}
+                />
+                <Text style={styles.destructiveLabel}>Discard take</Text>
+              </TouchableOpacity>
+            )}
           </View>
           <Text style={styles.captureTip} testID="record-tip">
-            Recording paused — review the source below, then resume.
+            {canResume
+              ? 'Recording paused — review the source below, then resume.'
+              : 'A paused take was recovered from a previous session. Discard it to start fresh.'}
           </Text>
         </View>
       )}

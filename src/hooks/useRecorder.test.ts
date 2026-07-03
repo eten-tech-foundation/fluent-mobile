@@ -132,12 +132,34 @@ describe('useRecorder', () => {
         fileUri: '/tmp/paused.m4a',
         elapsedMs: 4500,
         startedAt: '2026-07-01T00:00:00.000Z',
+        sessionToken: 'stale-token',
       }),
     });
     const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
     expect(result.current.status).toBe('paused');
     expect(result.current.elapsedMs).toBe(4500);
+    expect(result.current.canResume).toBe(false);
+  });
+
+  it('does not resume a rehydrated paused take without a live native session', async () => {
+    const adapter = makeAdapter({
+      loadPaused: jest.fn().mockReturnValue({
+        fileUri: '/tmp/paused.m4a',
+        elapsedMs: 4500,
+        startedAt: '2026-07-01T00:00:00.000Z',
+        sessionToken: 'stale-token',
+      }),
+    });
+    const { result } = renderHook(() => useRecorder(adapter));
+    await waitReady(result);
+
+    await act(async () => {
+      await result.current.resume();
+    });
+
+    expect(mockRecorder.record).not.toHaveBeenCalled();
+    expect(result.current.status).toBe('paused');
   });
 
   it('transitions idle -> recording on start', async () => {
@@ -178,10 +200,12 @@ describe('useRecorder', () => {
         expect.objectContaining({
           fileUri: 'file:///tmp/take-1.m4a',
           elapsedMs: 2500,
+          sessionToken: expect.any(String),
         }),
       );
       expect(result.current.status).toBe('paused');
       expect(result.current.elapsedMs).toBe(2500);
+      expect(result.current.canResume).toBe(true);
 
       // Long pause window: elapsed stays put; resume starts a new active segment.
       jest.setSystemTime(new Date('2026-07-01T00:00:12.500Z'));
@@ -443,6 +467,7 @@ describe('useRecorder', () => {
         fileUri: 'file:///docs/partial-take.m4a',
         elapsedMs: 4500,
         startedAt: '2026-07-01T00:00:00.000Z',
+        sessionToken: 'stale-token',
       }),
     });
 

@@ -187,6 +187,7 @@ export interface PausedTakeMarker {
   fileUri: string;
   elapsedMs: number;
   startedAt: string;
+  sessionToken?: string;
 }
 
 function pausedTakeKey(bibleTextId: number): string {

@@ -76,13 +76,14 @@ describe('RecordingControls', () => {
     );
   });
 
-  it('shows the resume button while paused', () => {
+  it('shows the resume button while paused with a live session', () => {
     render(
       <RecordingControls
         status="paused"
         reference={REFERENCE}
         elapsedMs={3_000}
         isPlaying={false}
+        canResume
         onStart={jest.fn()}
         onPause={jest.fn()}
         onResume={jest.fn()}
@@ -95,6 +96,34 @@ describe('RecordingControls', () => {
 
     expect(screen.getByTestId('record-resume-button')).toBeTruthy();
     expect(screen.queryByTestId('record-pause-button')).toBeNull();
+    expect(screen.queryByTestId('record-discard-button')).toBeNull();
+  });
+
+  it('shows discard instead of resume for a rehydrated paused take', () => {
+    render(
+      <RecordingControls
+        status="paused"
+        reference={REFERENCE}
+        elapsedMs={3_000}
+        isPlaying={false}
+        canResume={false}
+        onStart={jest.fn()}
+        onPause={jest.fn()}
+        onResume={jest.fn()}
+        onStop={jest.fn()}
+        onDiscard={jest.fn()}
+        onTogglePlayback={jest.fn()}
+        onReRecord={jest.fn()}
+        onDelete={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('record-discard-button')).toBeTruthy();
+    expect(screen.queryByTestId('record-resume-button')).toBeNull();
+    expect(screen.queryByTestId('record-stop-button')).toBeNull();
+    expect(screen.getByTestId('record-tip')).toHaveTextContent(
+      'A paused take was recovered from a previous session. Discard it to start fresh.',
+    );
   });
 
   it('renders review controls with placeholder, play, re-record and delete', () => {
