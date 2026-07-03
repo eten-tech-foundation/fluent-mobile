@@ -380,8 +380,18 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
       segmentStart === null ? 0 : Date.now() - segmentStart;
     const duration = baseElapsedRef.current + activeSegmentMs;
 
-    await recorder.stop();
-    clearTick();
+    try {
+      await recorder.stop();
+    } catch (error) {
+      log.warn('Recorder stop failed while committing take', {
+        sessionKey: currentSessionKey,
+        error,
+      });
+      setStatus(currentRecording ? 'review' : 'idle');
+      return;
+    } finally {
+      clearTick();
+    }
 
     const fileUri = recorder.uri;
     if (!fileUri) {
@@ -446,7 +456,16 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   const deleteCurrent = useCallback(async () => {
     if (status !== 'review' || !currentRecording) return;
     stopPlayback();
-    await adapterRef.current.deleteCommitted(currentRecording);
+    const currentSessionKey = sessionKeyRef.current;
+    try {
+      await adapterRef.current.deleteCommitted(currentRecording);
+    } catch (error) {
+      log.error('Failed to delete committed recording', {
+        sessionKey: currentSessionKey,
+        error,
+      });
+      return;
+    }
     setCurrentRecording(null);
     setStatus('idle');
     setElapsedMs(0);

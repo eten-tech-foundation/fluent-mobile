@@ -280,6 +280,44 @@ describe('useRecorder', () => {
     expect(result.current.currentRecording).toBeNull();
   });
 
+  it('reverts without committing when recorder.stop throws', async () => {
+    mockRecorder.stop.mockRejectedValueOnce(new Error('stop failed'));
+    const adapter = makeAdapter();
+    const { result } = renderHook(() => useRecorder(adapter));
+    await waitReady(result);
+
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      await result.current.stop();
+    });
+
+    expect(adapter.onCommit).not.toHaveBeenCalled();
+    expect(result.current.status).toBe('idle');
+  });
+
+  it('returns to review when recorder.stop throws during re-record', async () => {
+    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+    mockRecorder.stop.mockRejectedValueOnce(new Error('stop failed'));
+    const adapter = makeAdapter({
+      loadInitial: jest.fn().mockResolvedValue(existing),
+    });
+    const { result } = renderHook(() => useRecorder(adapter));
+    await waitReady(result);
+
+    await act(async () => {
+      await result.current.reRecord();
+    });
+    await act(async () => {
+      await result.current.stop();
+    });
+
+    expect(adapter.onCommit).not.toHaveBeenCalled();
+    expect(result.current.status).toBe('review');
+    expect(result.current.currentRecording?.id).toBe('existing');
+  });
+
   it('delete removes the current take and returns to idle', async () => {
     const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
     const adapter = makeAdapter({
@@ -296,6 +334,25 @@ describe('useRecorder', () => {
     expect(adapter.deleteCommitted).toHaveBeenCalledWith(existing);
     expect(result.current.status).toBe('idle');
     expect(result.current.currentRecording).toBeNull();
+  });
+
+  it('keeps the current take in review when deleteCommitted throws', async () => {
+    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+    const adapter = makeAdapter({
+      loadInitial: jest.fn().mockResolvedValue(existing),
+      deleteCommitted: jest.fn().mockRejectedValue(new Error('delete failed')),
+    });
+
+    const { result } = renderHook(() => useRecorder(adapter));
+    await waitReady(result);
+
+    await act(async () => {
+      await result.current.deleteCurrent();
+    });
+
+    expect(adapter.deleteCommitted).toHaveBeenCalledWith(existing);
+    expect(result.current.status).toBe('review');
+    expect(result.current.currentRecording?.id).toBe('existing');
   });
 
   it('reports blocked permission when the OS has suppressed the prompt', async () => {
