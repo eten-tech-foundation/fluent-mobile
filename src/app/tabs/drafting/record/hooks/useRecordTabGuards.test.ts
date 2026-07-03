@@ -88,6 +88,100 @@ describe('useRecordTabGuards', () => {
     alertSpy.mockRestore();
   });
 
+  it('withPausedGuard does not run the action when discard fails', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const discardPaused = jest
+      .fn()
+      .mockRejectedValue(new Error('discard failed'));
+    const action = jest.fn();
+
+    const { result } = renderHook(() =>
+      useRecordTabGuards({
+        status: 'paused',
+        permission: 'granted',
+        requestPermission: jest.fn(),
+        discardPaused,
+        navigation: mockNavigation as never,
+      }),
+    );
+
+    result.current.withPausedGuard(action);
+
+    const buttons = alertSpy.mock.calls[0]![2] as Array<{
+      text: string;
+      onPress?: () => void | Promise<void>;
+    }>;
+    const discardButton = buttons.find(button => button.text === 'Discard');
+    await act(async () => {
+      await discardButton?.onPress?.();
+    });
+
+    expect(discardPaused).toHaveBeenCalledTimes(1);
+    expect(action).not.toHaveBeenCalled();
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Could not discard recording',
+      expect.stringContaining('paused take'),
+    );
+
+    alertSpy.mockRestore();
+  });
+
+  it('beforeRemove does not dispatch navigation when discard fails', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const discardPaused = jest
+      .fn()
+      .mockRejectedValue(new Error('discard failed'));
+    const dispatch = jest.fn();
+    const navigationAction = { type: 'GO_BACK' };
+    let beforeRemoveHandler:
+      | ((event: {
+          preventDefault: () => void;
+          data: { action: unknown };
+        }) => void)
+      | undefined;
+
+    const navigation = {
+      addListener: jest.fn((event, handler) => {
+        if (event === 'beforeRemove') beforeRemoveHandler = handler;
+        return jest.fn();
+      }),
+      dispatch,
+    };
+
+    renderHook(() =>
+      useRecordTabGuards({
+        status: 'paused',
+        permission: 'granted',
+        requestPermission: jest.fn(),
+        discardPaused,
+        navigation: navigation as never,
+      }),
+    );
+
+    beforeRemoveHandler?.({
+      preventDefault: jest.fn(),
+      data: { action: navigationAction },
+    });
+
+    const buttons = alertSpy.mock.calls[0]![2] as Array<{
+      text: string;
+      onPress?: () => void | Promise<void>;
+    }>;
+    const discardButton = buttons.find(button => button.text === 'Discard');
+    await act(async () => {
+      await discardButton?.onPress?.();
+    });
+
+    expect(discardPaused).toHaveBeenCalledTimes(1);
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Could not discard recording',
+      expect.stringContaining('paused take'),
+    );
+
+    alertSpy.mockRestore();
+  });
+
   it('registers a beforeRemove listener while paused', () => {
     renderHook(() =>
       useRecordTabGuards({
