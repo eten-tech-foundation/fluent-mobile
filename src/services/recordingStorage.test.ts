@@ -101,6 +101,21 @@ describe('buildRecordingKey', () => {
       buildRecordingKey({ ...baseParts, userId: 'a/b c', bookCode: 'x!y' }),
     ).toBe('recordings/ua_b_c/p45/X_Y/c001/v007/rec-1.m4a');
   });
+
+  it('replaces reserved path segments (. and ..) with safe fallbacks', () => {
+    expect(buildRecordingKey({ ...baseParts, bookCode: '..' })).toBe(
+      'recordings/u123/p45/UNK/c001/v007/rec-1.m4a',
+    );
+    expect(buildRecordingKey({ ...baseParts, bookCode: '.' })).toBe(
+      'recordings/u123/p45/UNK/c001/v007/rec-1.m4a',
+    );
+    expect(buildRecordingKey({ ...baseParts, userId: '..' })).toBe(
+      'recordings/uunknown/p45/GEN/c001/v007/rec-1.m4a',
+    );
+    expect(buildRecordingKey({ ...baseParts, recordingId: '..' })).toBe(
+      'recordings/u123/p45/GEN/c001/v007/unknown.m4a',
+    );
+  });
 });
 
 describe('resolveRecordingUri', () => {
@@ -118,6 +133,12 @@ describe('resolveRecordingUri', () => {
       'file:///tmp/legacy.m4a',
     );
     expect(resolveRecordingUri('/tmp/legacy.m4a')).toBe('/tmp/legacy.m4a');
+  });
+
+  it('rejects relative keys containing reserved path segments', () => {
+    expect(() => resolveRecordingUri('recordings/u1/../secret.m4a')).toThrow(
+      'Invalid recording path segment',
+    );
   });
 });
 
@@ -142,6 +163,15 @@ describe('moveIntoStore', () => {
       key: 'recordings/u1/p2/GEN/c001/v001/rec-1.m4a',
       sizeBytes: 4096,
     });
+  });
+
+  it('rejects keys containing reserved path segments', async () => {
+    await expect(
+      moveIntoStore({
+        sourceUri: 'file:///cache/take.m4a',
+        key: 'recordings/u1/p2/../v001/rec-1.m4a',
+      }),
+    ).rejects.toThrow('Invalid recording path segment');
   });
 });
 
