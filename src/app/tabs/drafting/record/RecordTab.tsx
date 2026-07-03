@@ -7,9 +7,12 @@ import { RecordingControls } from './components/RecordingControls';
 import { RecordingWaveform } from './components/RecordingWaveform';
 import { SourceTextPanel } from './components/SourceTextPanel';
 import { VerseNav } from './components/VerseNav';
+import { logger } from '../../../../utils/logger';
 import { useRecordTabGuards } from './hooks/useRecordTabGuards';
 import { useVerseRecorder } from './hooks/useVerseRecorder';
 import { verseReference } from './utils/recordTabUtils';
+
+const log = logger.create('RecordTab');
 
 // Hold the record/review UI back for a short beat on mount and verse switches.
 // The recording state is loaded from the local DB (a few ms), so deferring the
@@ -122,6 +125,42 @@ export function RecordTab({
     await recorder.reRecord();
   }
 
+  async function handlePausePress() {
+    try {
+      await recorder.pause();
+    } catch (error) {
+      log.warn('Failed to pause recording', { error });
+      Alert.alert(
+        'Could not pause recording',
+        'Something went wrong while pausing. Try again, or restart the app if the problem continues.',
+      );
+    }
+  }
+
+  async function handleResumePress() {
+    try {
+      await recorder.resume();
+    } catch (error) {
+      log.warn('Failed to resume recording', { error });
+      Alert.alert(
+        'Could not resume recording',
+        'Something went wrong while resuming. Try again, or restart the app if the problem continues.',
+      );
+    }
+  }
+
+  async function handleStopPress() {
+    try {
+      await recorder.stop();
+    } catch (error) {
+      log.warn('Failed to stop recording', { error });
+      Alert.alert(
+        'Could not save recording',
+        'Your take could not be saved. Try stopping again, or restart the app if the problem continues.',
+      );
+    }
+  }
+
   function handleDeletePress() {
     Alert.alert('Delete draft?', 'This cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
@@ -159,9 +198,9 @@ export function RecordTab({
             elapsedMs={recorder.elapsedMs}
             isPlaying={recorder.isPlaying}
             onStart={handleStartPress}
-            onPause={() => recorder.pause()}
-            onResume={() => recorder.resume()}
-            onStop={() => recorder.stop()}
+            onPause={handlePausePress}
+            onResume={handleResumePress}
+            onStop={handleStopPress}
             onTogglePlayback={() => recorder.togglePlayback()}
             onReRecord={handleReRecordPress}
             onDelete={handleDeletePress}
