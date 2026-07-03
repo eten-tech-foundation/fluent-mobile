@@ -108,15 +108,24 @@ export function useVerseRecorder({
           return null;
         }
 
-        return insertRecording({
-          id: recordingId,
-          bibleTextId,
-          userId: userId ?? null,
-          chapterAssignmentId: chapterAssignmentId ?? null,
-          localFilePath: moved.key,
-          durationMs,
-          fileSizeBytes: moved.sizeBytes,
-        });
+        try {
+          return await insertRecording({
+            id: recordingId,
+            bibleTextId,
+            userId: userId ?? null,
+            chapterAssignmentId: chapterAssignmentId ?? null,
+            localFilePath: moved.key,
+            durationMs,
+            fileSizeBytes: moved.sizeBytes,
+          });
+        } catch (error) {
+          log.error(
+            'Failed to insert recording after move; removing durable file',
+            { bibleTextId, localFilePath: moved.key, error },
+          );
+          deleteRecordingFile(moved.key);
+          return null;
+        }
       },
 
       deleteCommitted: take => deleteRecordingById(take.id),

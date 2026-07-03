@@ -233,6 +233,33 @@ describe('useVerseRecorder', () => {
     }
   });
 
+  it('removes the durable file when insertRecording fails after moveIntoStore', async () => {
+    jest.useFakeTimers();
+    try {
+      mockInsertRecording.mockRejectedValueOnce(new Error('db write failed'));
+      const { result } = renderHook(() =>
+        useVerseRecorder({ bibleTextId: 42 }),
+      );
+      await waitReady(result);
+
+      jest.setSystemTime(new Date('2026-07-01T00:00:00.000Z'));
+      await act(async () => {
+        await result.current.start();
+      });
+
+      jest.setSystemTime(new Date('2026-07-01T00:00:02.000Z'));
+      await act(async () => {
+        await result.current.stop();
+      });
+
+      expect(mockDeleteRecordingFile).toHaveBeenCalledWith(MOVED_KEY);
+      expect(result.current.status).toBe('idle');
+      expect(result.current.currentRecording).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('deletes the current take via the repository', async () => {
     mockGetLatestRecordingForVerse.mockResolvedValueOnce(existingRecording());
     const { result } = renderHook(() => useVerseRecorder({ bibleTextId: 42 }));
