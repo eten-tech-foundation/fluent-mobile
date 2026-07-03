@@ -5,11 +5,11 @@ import HomeScreen from '../app/screens/HomeScreen';
 import SettingsScreen from '../app/screens/SettingsScreen';
 import PrepareForOfflineScreen from '../app/screens/PrepareForOfflineScreen';
 import ViewProject from '../app/tabs/ViewProject';
-import ViewChapter from '../app/tabs/ViewChapter';
 import LoginScreen from '../app/tabs/LoginScreen';
 import ForgotPasswordScreen from '../app/tabs/ForgotPasswordScreen';
 import PrivacyPolicyScreen from '../app/tabs/PrivacyPolicyPage';
 import TermsOfUseScreen from '../app/tabs/TermsOfUsePage';
+import DraftingScreen from '../app/screens/DraftingScreen';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -60,7 +60,7 @@ export default function AppNavigator({
             component={PrepareForOfflineScreen}
           />
           <Stack.Screen name="Chapters" component={ViewProject} />
-          <Stack.Screen name="VerseDetail" component={ViewChapter} />
+          <Stack.Screen name="VerseDetail" component={DraftingScreen} />
           <Stack.Screen name="AddUser">
             {({ navigation }) => (
               <LoginScreen
