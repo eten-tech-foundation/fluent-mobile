@@ -1,0 +1,29 @@
+---
+description: Git delivery contract — branch, PR, ticket; never push to main
+alwaysApply: true
+---
+
+# Delivery (Fluent Mobile)
+
+## Never push to `main`
+
+**Agents must not** commit, push, or merge directly to `main` (or the default branch).
+
+Every change — including infra, CI, docs, Dependabot follow-ups, and `expo install --fix` — goes through:
+
+1. **Linear ticket** — required; ask if missing (`FLUENT-###`)
+2. **Feature branch** — `{author}/{type}/{ticket-id}-{slug}` (see `/create-pr-branch`)
+3. **Pull request** — title `[TICKET-ID]: Description`; body `Refs [TICKET-ID]` under Details
+4. **Human merge** — agents open PRs and push **feature branches only**; never merge on GitHub unless the user explicitly asks for a Dependabot squash merge in that session
+
+Allowed on `main` locally: `git checkout main`, `git pull`, read-only validation after merges. **Not allowed:** `git push origin main`, commits on `main`, or opening PRs with `main` as the head branch.
+
+## Dependabot exception (merge only)
+
+When the user asks to **handle/process Dependabot PRs**, agents may **approve and squash-merge existing Dependabot PR branches** into `main` per [dependabot-workflow.mdc](./dependabot-workflow.mdc). That is merging **their** PRs, not pushing agent-authored commits to `main`.
+
+Agent-authored fixes (expo doctor CI, lockfile repair, conflict resolution) still require a **separate ticketed PR** — never push those straight to `main`.
+
+## Before delivery
+
+Run gates from [commands.mdc](./commands.mdc). Use `/create-pr` when the user wants a PR opened.

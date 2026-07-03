@@ -8,9 +8,11 @@ Workflows for Fluent Mobile (**Android-only**).
 |------|---------|---------|
 | `lint.yml` | push, PR | ESLint + Prettier |
 | `test.yml` | push, PR | Jest unit tests |
-| `build.yml` | push, PR | `expo prebuild` + Android debug Gradle build |
+| `quality-gates.yml` | push, PR | TypeScript, `expo-doctor`, `expo install --check` |
 | `eas-build.yml` | push tag `v*` | Sync `APP_VERSION_FALLBACK` in `app.config.ts` with tag; hand off to EAS |
 | `preview-build.yml` | PR label `preview-build` | Android preview OTA or native APK for QA |
+
+Native Android compile is **not** run on every PR. Use the **`preview-build`** label for EAS preview APKs (native/config changes) and tag releases for production builds.
 
 ## Release flow
 

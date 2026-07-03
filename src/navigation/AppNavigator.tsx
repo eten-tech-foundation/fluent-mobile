@@ -6,6 +6,7 @@ import SettingsScreen from '../app/screens/SettingsScreen';
 import PrepareForOfflineScreen from '../app/screens/PrepareForOfflineScreen';
 import ViewProject from '../app/tabs/ViewProject';
 import LoginScreen from '../app/tabs/LoginScreen';
+import ForgotPasswordScreen from '../app/tabs/ForgotPasswordScreen';
 import PrivacyPolicyScreen from '../app/tabs/PrivacyPolicyPage';
 import TermsOfUseScreen from '../app/tabs/TermsOfUsePage';
 import DraftingScreen from '../app/screens/DraftingScreen';
@@ -34,6 +35,10 @@ export default function AppNavigator({
           <Stack.Screen name="Login">
             {() => <LoginScreen onLoginSuccess={onLoginSuccess} />}
           </Stack.Screen>
+          <Stack.Screen
+            name="ForgotPassword"
+            component={ForgotPasswordScreen}
+          />
           <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
           <Stack.Screen name="TermsOfUse" component={TermsOfUseScreen} />
         </>
@@ -68,6 +73,10 @@ export default function AppNavigator({
           </Stack.Screen>
           <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
           <Stack.Screen name="TermsOfUse" component={TermsOfUseScreen} />
+          <Stack.Screen
+            name="ForgotPassword"
+            component={ForgotPasswordScreen}
+          />
         </>
       )}
     </Stack.Navigator>

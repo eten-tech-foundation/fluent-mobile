@@ -7,11 +7,33 @@ Repeatable process for safely managing Dependabot PRs in **Fluent Mobile**. Prio
 1. **Stability first**: Never merge updates that break Expo SDK 56 / RN 0.85 compatibility or native module ABI.
 2. **Automated validation**: Always run the CI gate locally before merge (see [`.cursor/rules/commands.mdc`](../../.cursor/rules/commands.mdc)).
 3. **Verified authors**: Only process PRs from `app/dependabot` or `dependabot[bot]`.
-4. **Targeted merges**: Prefer squash merges into `main`.
+4. **Targeted merges**: Prefer squash merges into `main` via **Dependabot PRs only** — agent-authored fixes use a separate ticketed PR ([delivery.mdc](../../.cursor/rules/delivery.mdc)).
 5. **Version lock-stepping**: `react`, `react-test-renderer`, and `react-native` are pinned — validate the **final merged state** on `main`.
 6. **Runtime testing**: Static checks miss renderer mismatches — smoke test on Android for risky bumps.
 7. **One lockfile merge at a time**: Merge **one** lockfile PR, let **`main` CI go green**, then **`@dependabot rebase` all other open bots in parallel** before the next merge.
-8. **Automate the queue**: Cursor agents should run the full safe queue without per-PR confirmation (see `.cursor/rules/dependabot-workflow.mdc` → Autonomous mode).
+8. **Expo Doctor after rebases**: Every `@dependabot rebase` triggers fresh CI — **Quality Gates** runs `expo-doctor` and `expo install --check`. Do not merge if either fails; fix with `npx expo install --fix` when appropriate.
+9. **Automate the queue**: Cursor agents should run the full safe queue without per-PR confirmation (see `.cursor/rules/dependabot-workflow.mdc` → Autonomous mode).
+
+## Expo + Dependabot (best practices)
+
+Expo documents dependency hygiene in [resolving-dependency-issues](https://github.com/expo/fyi/blob/main/resolving-dependency-issues.md) and [troubleshooting-sdk-upgrades](https://github.com/expo/fyi/blob/main/troubleshooting-sdk-upgrades.md):
+
+| Practice | Why |
+|----------|-----|
+| Run **`npx expo-doctor@latest`** after any dependency change | Catches SDK version drift, duplicate native modules (SDK 54+), misaligned `react`/`react-native` |
+| Use **`npx expo install --check`** / **`--fix`** instead of raw `npm update` for Expo ecosystem packages | Aligns versions to the installed SDK — Dependabot/npm alone can leave patch drift |
+| Prefer **`npx expo install <pkg>`** when adding native modules | Version ranges are validated against the SDK matrix |
+| Treat **expo / react / react-native / navigation / native modules** as **risky** | Dependabot groups help, but lockfile-only bumps can still break autolinking |
+| **GitHub Actions** `expo/expo-github-action` bumps are separate from app deps | Validate workflows; app Expo alignment is still `npm run doctor` |
+
+Renovate/Dependabot do not understand Expo’s SDK pin matrix — this repo uses Dependabot for breadth but **enforces Expo alignment via CI + doctor**, not blind semver.
+
+**When doctor fails on a Dependabot PR:**
+
+1. `npx expo install --check` — list mismatches
+2. If SDK patch drift only: `npx expo install --fix` on the PR branch, push, re-run doctor
+3. If duplicate native modules: `npm why <pkg>`, `npm dedupe`, or targeted `overrides` (see Expo FYI)
+4. If the bump is incompatible with SDK 56: close the PR or defer to an SDK upgrade ticket
 
 ## Categorization
 
@@ -43,15 +65,21 @@ npm ci
 ### 3. Validation suite (CI order)
 
 ```bash
+npm run doctor
 npm run format:check
 npm run lint
 npm run typecheck
 npm test -- --ci
 ```
 
-Android build (mirrors `.github/workflows/build.yml`):
+**Expo Doctor** and **`expo install --check`** run in GitHub **Quality Gates** on every PR push (including post-rebase). Local `npm run doctor` mirrors the expo-doctor job — run it after `npm ci` when triaging locally.
+
+If doctor fails, see [Expo + Dependabot (best practices)](#expo--dependabot-best-practices) above.
+
+Optional local native build for risky PRs (CI no longer runs Gradle on every PR; use EAS preview for native validation):
 
 ```bash
+npm run prebuild
 cd android && ./gradlew assembleDebug --no-daemon && cd ..
 ```
 
@@ -78,7 +106,7 @@ Branch protection requires approval first:
     gh pr review <PR_NUMBER> --approve --body "CI green. Safe bump per dependabot process."
     gh pr merge <PR_NUMBER> --squash --delete-branch
 
-Wait for **Lint Check**, **Test Check**, and **Build Check** on `main`.
+Wait for **Lint Check**, **Test Check**, and **Quality Gates** on `main`.
 
 ### 6. Parallel rebase prep (do not skip)
 
@@ -98,6 +126,7 @@ After merging multiple PRs:
 git checkout main
 git pull origin main
 npm ci
+npm run doctor
 npm run format:check
 npm run lint
 npm run typecheck

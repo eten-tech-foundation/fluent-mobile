@@ -2,7 +2,35 @@ jest.mock('./connectivity', () => ({
   checkServerReachable: jest.fn(),
 }));
 
-import { FluentAPI, setActiveToken } from './api';
+import { buildHeaders, FluentAPI } from './api';
+import { authToken } from './authToken';
+
+describe('buildHeaders', () => {
+  beforeEach(() => {
+    authToken.set(null);
+  });
+
+  it('omits Authorization when no token is set', () => {
+    expect(buildHeaders()).toEqual({ 'Content-Type': 'application/json' });
+  });
+
+  it('includes Authorization when a token is set', () => {
+    authToken.set('session-abc');
+    expect(buildHeaders()).toEqual({
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer session-abc',
+    });
+  });
+
+  it('merges extra headers', () => {
+    authToken.set('session-abc');
+    expect(buildHeaders({ 'x-client-type': 'mobile' })).toEqual({
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer session-abc',
+      'x-client-type': 'mobile',
+    });
+  });
+});
 
 describe('FluentAPI auth', () => {
   const fetchMock = jest.fn();
@@ -12,7 +40,7 @@ describe('FluentAPI auth', () => {
     jest
       .spyOn(globalThis, 'fetch')
       .mockImplementation(fetchMock as unknown as typeof fetch);
-    setActiveToken(null);
+    authToken.set(null);
   });
 
   afterEach(() => {
@@ -56,7 +84,7 @@ describe('FluentAPI auth', () => {
   });
 
   it('getUserProjects throws AuthError on 401 responses', async () => {
-    setActiveToken('revoked-token');
+    authToken.set('revoked-token');
 
     fetchMock.mockResolvedValue({
       ok: false,

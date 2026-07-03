@@ -6,7 +6,7 @@
 
 **Custom dev client — not Expo Go.** This app uses native modules (`expo-dev-client`, `op-sqlite`, keychain, etc.) and must run in a **development build** you compile locally (`npm run android`) or install from EAS. It will **not** work in the Expo Go app from the Play Store.
 
-**For AI agents / contributors:** see [docs/AGENT_ONBOARDING.md](docs/AGENT_ONBOARDING.md) for repo layout, architecture, commands, and Cursor rules.
+**For AI agents / contributors:** see [docs/AGENT_ONBOARDING.md](docs/AGENT_ONBOARDING.md) for repo layout, architecture, commands, and Cursor rules. For **hosted dev vs local Docker API** setup, see [docs/guides/local-development-workflow.md](docs/guides/local-development-workflow.md).
 
 ## Prerequisites
 
@@ -189,7 +189,10 @@ Copy environment variables:
 cp .env.example .env
 ```
 
-Edit `.env` and set `EXPO_PUBLIC_API_BASE_URL` (use `http://10.0.2.2:9999` for the Android emulator).
+Edit `.env` and set `EXPO_PUBLIC_API_BASE_URL`:
+
+- **Hosted dev:** `https://dev.api.fluent.bible` (shared remote data; ask team for login credentials)
+- **Local Docker API:** `http://10.0.2.2:9999` (see [docs/guides/local-development-workflow.md](docs/guides/local-development-workflow.md))
 
 ---
 
@@ -226,6 +229,15 @@ Requires an [Expo access token](https://expo.dev/settings/access-tokens) and acc
 ---
 
 ## Troubleshooting
+
+**Accidentally ran `yarn` or `pnpm` (bootsplash / semver / PnP errors)**
+This repo uses **npm only** (`package-lock.json`). Muscle memory from other projects can run `yarn install` and leave Yarn PnP files (`.pnp.cjs`) that break `expo start`. `preinstall` blocks `yarn install` / `pnpm install`; if you already ran the wrong tool, reset and reinstall:
+
+```bash
+rm -rf .pnp.cjs .pnp.loader.mjs .pnp.js yarn.lock pnpm-lock.yaml .yarn node_modules
+npm install
+npm start
+```
 
 **`Failed to download remote update` / `No returned query result` on launch**
 Local dev builds must not check Expo OTA on startup. Rebuild after pulling latest `main`:

@@ -66,10 +66,10 @@ jest.mock('../src/services/sync', () => ({
   syncAllData: jest.fn(() => Promise.resolve()),
 }));
 
-// Storage
-jest.mock('../src/services/storage', () => ({
-  getActiveUserId: jest.fn(() => null),
-  switchActiveUser: jest.fn(),
+// Auth session
+jest.mock('../src/services/authSession', () => ({
+  restoreSession: jest.fn(() => Promise.resolve({ authenticated: false })),
+  signOut: jest.fn(),
 }));
 
 // Keychain
@@ -77,11 +77,6 @@ jest.mock('../src/services/keychain', () => ({
   hasCredentials: jest.fn(() => Promise.resolve(false)),
   getCredentials: jest.fn(() => Promise.resolve(null)),
   getAllStoredUserIds: jest.fn(() => Promise.resolve([])),
-}));
-
-// API
-jest.mock('../src/services/api', () => ({
-  setActiveToken: jest.fn(),
 }));
 
 describe('App', () => {

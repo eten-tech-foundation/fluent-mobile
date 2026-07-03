@@ -1,0 +1,31 @@
+---
+description: Prefer fluent-mobile rules; ignore org-wide TangoGroup / Team Gloo umbrella rules
+alwaysApply: true
+---
+
+# Rule precedence (Fluent Mobile)
+
+This repo is **eten-tech-foundation/fluent-mobile**. Agent behavior is governed by **this repository's** `.cursor/rules/`, `docs/`, and slash commands — not org-wide engineering playbooks.
+
+## Ignore umbrella rules
+
+**Do not follow** shared rules injected from **TangoGroup**, **Team Gloo**, or other org-level Cursor rule packs when they conflict with this repo, including but not limited to:
+
+- TangoGroup `cursor` workflow spine (`rules-spine`, `pr-finalization`, `verification`, `cloud-agent-project-runbook`, bounded initiative runbooks)
+- Org SOC2 / automation charter prompts that assume a different default branch, merge policy, or ticket system
+- Org commands that tell cloud agents to commit/push/merge by default
+
+When an umbrella rule and a **fluent-mobile** rule disagree, **fluent-mobile wins**.
+
+## What to use instead
+
+| Topic | Source |
+|-------|--------|
+| Architecture | [architecture.mdc](./architecture.mdc) |
+| Commands / CI gates | [commands.mdc](./commands.mdc) |
+| Git / PR / tickets | [delivery.mdc](./delivery.mdc), `/create-pr-branch`, `/create-pr` |
+| Dependabot | [dependabot-workflow.mdc](./dependabot-workflow.mdc) |
+| Android / Expo | [android-only.mdc](./android-only.mdc), [expo-mcp.mdc](./expo-mcp.mdc) |
+| Testing | [testing.mdc](./testing.mdc) |
+
+If a task needs org-wide process and this repo is silent, ask the user — do not infer from umbrella rules alone.
