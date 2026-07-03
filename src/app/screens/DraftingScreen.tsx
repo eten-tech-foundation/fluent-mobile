@@ -21,7 +21,6 @@ import {
   DraftingProvider,
   // useDraftingContext,
 } from '../context/DraftingContext';
-//import { SourceAudioPlayerBar } from '../../components/layout/SourceAudioPlayerBar';
 import {
   DraftingTab,
   DraftingTabBar,
@@ -170,12 +169,6 @@ export default function DraftingScreen() {
     </ScreenContainer>
   );
 }
-
-// function DraftingPlayerBar({ verses }: { verses: VerseData[] }) {
-//   const { selectedVerse } = useDraftingContext();
-//   // Source audio isn't wired up yet — bible_texts has no audio reference, hiding until implemented.
-//   return <SourceAudioPlayerBar verses={verses} selectedVerse={selectedVerse} />;
-// }
 
 const styles = StyleSheet.create({
   screen: {
