@@ -4,6 +4,9 @@ import type {
   PermissionState,
   RecorderStatus,
 } from '../../../../../hooks/useRecorder';
+import { logger } from '../../../../../utils/logger';
+
+const log = logger.create('useRecordTabGuards');
 
 interface RecordTabNavigation {
   addListener: (
@@ -22,6 +25,22 @@ interface UseRecordTabGuardsArgs {
   requestPermission: () => Promise<{ granted: boolean; canAskAgain: boolean }>;
   discardPaused: () => Promise<void>;
   navigation: RecordTabNavigation;
+}
+
+async function discardPausedThen(
+  discardPaused: () => Promise<void>,
+  onSuccess: () => void,
+) {
+  try {
+    await discardPaused();
+    onSuccess();
+  } catch (error) {
+    log.warn('Failed to discard paused take', { error });
+    Alert.alert(
+      'Could not discard recording',
+      'The paused take could not be removed. Try resuming it, or restart the app if the problem continues.',
+    );
+  }
 }
 
 function showMicBlockedAlert() {
@@ -58,10 +77,7 @@ export function useRecordTabGuards({
             {
               text: 'Discard',
               style: 'destructive',
-              onPress: async () => {
-                await discardPaused();
-                action();
-              },
+              onPress: () => discardPausedThen(discardPaused, action),
             },
           ],
         );
@@ -88,10 +104,10 @@ export function useRecordTabGuards({
           {
             text: 'Discard',
             style: 'destructive',
-            onPress: async () => {
-              await discardPaused();
-              navigation.dispatch(event.data.action);
-            },
+            onPress: () =>
+              discardPausedThen(discardPaused, () =>
+                navigation.dispatch(event.data.action),
+              ),
           },
         ],
       );
