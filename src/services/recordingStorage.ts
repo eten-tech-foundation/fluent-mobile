@@ -44,9 +44,25 @@ function pad3(value: number): string {
   return String(value).padStart(3, '0');
 }
 
+const RESERVED_SEGMENTS = new Set(['', '.', '..']);
+
+function isReservedSegment(segment: string): boolean {
+  return RESERVED_SEGMENTS.has(segment);
+}
+
 /** Keeps path segments filesystem-safe without collapsing distinct values. */
-function sanitizeSegment(value: string): string {
-  return value.replace(/[^a-zA-Z0-9._-]/g, '_');
+function sanitizeSegment(value: string, fallback = 'unknown'): string {
+  const sanitized = value.replace(/[^a-zA-Z0-9._-]/g, '_');
+  return isReservedSegment(sanitized) ? fallback : sanitized;
+}
+
+/** Rejects reserved segments before passing paths to Directory/File constructors. */
+function assertSafePathSegments(segments: string[]): void {
+  for (const segment of segments) {
+    if (isReservedSegment(segment)) {
+      throw new Error(`Invalid recording path segment: "${segment}"`);
+    }
+  }
 }
 
 /** Extracts a lowercase file extension from a uri, falling back to `.m4a`. */
@@ -62,12 +78,12 @@ export function extensionFromUri(
 export function recordingKeySegments(parts: RecordingKeyParts): string[] {
   return [
     RECORDINGS_ROOT,
-    `u${sanitizeSegment(parts.userId || 'unknown')}`,
+    `u${sanitizeSegment(parts.userId, 'unknown')}`,
     `p${parts.projectId}`,
-    sanitizeSegment(parts.bookCode || 'UNK').toUpperCase(),
+    sanitizeSegment(parts.bookCode, 'UNK').toUpperCase(),
     `c${pad3(parts.chapterNumber)}`,
     `v${pad3(parts.verseNumber)}`,
-    `${sanitizeSegment(parts.recordingId)}.${
+    `${sanitizeSegment(parts.recordingId, 'unknown')}.${
       parts.extension ?? DEFAULT_EXTENSION
     }`,
   ];
@@ -87,7 +103,9 @@ export function resolveRecordingUri(pathOrKey: string): string {
   if (pathOrKey.startsWith('file:') || pathOrKey.startsWith('/')) {
     return pathOrKey;
   }
-  return new File(Paths.document, ...pathOrKey.split('/')).uri;
+  const segments = pathOrKey.split('/');
+  assertSafePathSegments(segments);
+  return new File(Paths.document, ...segments).uri;
 }
 
 /**
@@ -100,6 +118,7 @@ export async function moveIntoStore({
   key,
 }: MoveIntoStoreArgs): Promise<MoveIntoStoreResult> {
   const segments = key.split('/');
+  assertSafePathSegments(segments);
   const fileName = segments[segments.length - 1]!;
   const dirSegments = segments.slice(0, -1);
 
@@ -130,7 +149,7 @@ export function deleteUserTree(userId: string): void {
     const dir = new Directory(
       Paths.document,
       RECORDINGS_ROOT,
-      `u${sanitizeSegment(userId || 'unknown')}`,
+      `u${sanitizeSegment(userId, 'unknown')}`,
     );
     if (dir.exists) dir.delete();
   } catch (error) {
