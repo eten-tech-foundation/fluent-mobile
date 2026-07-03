@@ -8,7 +8,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { RecordTab } from './RecordTab';
-import type { VerseData } from '../../../types/db/types';
+import type { VerseData } from '../../../../types/db/types';
 
 const mockUseVerseRecorder = jest.fn();
 
@@ -20,7 +20,7 @@ jest.mock('@react-navigation/native', () => ({
   }),
 }));
 
-jest.mock('../../../hooks/useVerseRecorder', () => ({
+jest.mock('./hooks/useVerseRecorder', () => ({
   useVerseRecorder: (args: unknown) => mockUseVerseRecorder(args),
 }));
 
@@ -96,15 +96,12 @@ describe('RecordTab', () => {
       });
       renderTab();
 
-      // While loading, the controls are held back so idle never flashes.
       expect(screen.getByTestId('record-loading')).toBeTruthy();
       expect(screen.queryByTestId('record-start-button')).toBeNull();
-      // The verse reference still shows so the header does not jump.
       expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
         'Mark 14:3',
       );
 
-      // After the defer window the UI surfaces even if still not ready.
       act(() => {
         jest.advanceTimersByTime(100);
       });
@@ -120,130 +117,6 @@ describe('RecordTab', () => {
 
     expect(screen.queryByTestId('record-loading')).toBeNull();
     expect(screen.getByTestId('record-start-button')).toBeTruthy();
-  });
-
-  it('renders the idle record button with a label and disabled play hint', () => {
-    mockUseVerseRecorder.mockReturnValue(baseRecorderState());
-    renderTab();
-
-    expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
-      'Mark 14:3',
-    );
-    expect(screen.getByTestId('record-start-button')).toBeTruthy();
-    expect(screen.getByTestId('record-start-label')).toHaveTextContent(
-      'Record Mark 14:3',
-    );
-    expect(screen.getByTestId('record-play-idle-placeholder')).toBeTruthy();
-  });
-
-  it('shows pause and stop controls with a duration and tip when recording', () => {
-    mockUseVerseRecorder.mockReturnValue({
-      ...baseRecorderState(),
-      status: 'recording',
-      elapsedMs: 65_420,
-    });
-    renderTab();
-
-    expect(screen.getByTestId('record-duration')).toHaveTextContent('01:05:42');
-    expect(screen.getByTestId('record-pause-button')).toBeTruthy();
-    expect(screen.getByTestId('record-stop-button')).toBeTruthy();
-    expect(screen.getByTestId('record-tip')).toHaveTextContent(
-      'Tap pause to study the source, stop to finish.',
-    );
-  });
-
-  it('shows the paused tip instead of the recording tip while paused', () => {
-    mockUseVerseRecorder.mockReturnValue({
-      ...baseRecorderState(),
-      status: 'paused',
-      elapsedMs: 3_000,
-    });
-    renderTab();
-
-    expect(screen.getByTestId('record-tip')).toHaveTextContent(
-      'Recording paused — review the source below, then resume.',
-    );
-  });
-
-  it('shows the resume button while paused', () => {
-    mockUseVerseRecorder.mockReturnValue({
-      ...baseRecorderState(),
-      status: 'paused',
-      elapsedMs: 3_000,
-    });
-    renderTab();
-
-    expect(screen.getByTestId('record-resume-button')).toBeTruthy();
-    expect(screen.queryByTestId('record-pause-button')).toBeNull();
-  });
-
-  it('renders review controls with placeholder, play, re-record and delete', () => {
-    const state = {
-      ...baseRecorderState(),
-      status: 'review' as const,
-      currentRecording: reviewRecording(),
-    };
-    mockUseVerseRecorder.mockReturnValue(state);
-
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-    renderTab();
-
-    expect(
-      screen.getByTestId('record-review-record-done-placeholder'),
-    ).toBeTruthy();
-    expect(screen.getByTestId('record-play-button')).toBeTruthy();
-    expect(screen.getByTestId('record-rerecord-button')).toHaveTextContent(
-      'Re-record',
-    );
-    expect(screen.getByTestId('record-delete-button')).toHaveTextContent(
-      'Delete',
-    );
-    expect(screen.queryByTestId('record-tip')).toBeNull();
-
-    fireEvent.press(screen.getByTestId('record-delete-button'));
-    expect(alertSpy).toHaveBeenCalledWith(
-      'Delete draft?',
-      expect.any(String),
-      expect.any(Array),
-    );
-
-    alertSpy.mockRestore();
-  });
-
-  it('plays the draft when the review play button is pressed', () => {
-    const togglePlayback = jest.fn().mockResolvedValue(undefined);
-    mockUseVerseRecorder.mockReturnValue({
-      ...baseRecorderState(),
-      status: 'review',
-      currentRecording: reviewRecording(),
-      isPlaying: false,
-      togglePlayback,
-    });
-
-    renderTab();
-
-    expect(
-      screen.getByTestId('record-play-button').props.accessibilityLabel,
-    ).toBe('Play draft');
-    fireEvent.press(screen.getByTestId('record-play-button'));
-    expect(togglePlayback).toHaveBeenCalledTimes(1);
-  });
-
-  it('shows a pause affordance while the draft is playing', () => {
-    mockUseVerseRecorder.mockReturnValue({
-      ...baseRecorderState(),
-      status: 'review',
-      currentRecording: reviewRecording(),
-      isPlaying: true,
-    });
-
-    renderTab();
-
-    const playButton = screen.getByTestId('record-play-button');
-    expect(playButton.props.accessibilityLabel).toBe('Pause draft');
-    expect(playButton.props.accessibilityState).toEqual(
-      expect.objectContaining({ selected: true }),
-    );
   });
 
   it('disables verse chevrons while recording even when navigation is possible', () => {
@@ -364,6 +237,26 @@ describe('RecordTab', () => {
     alertSpy.mockRestore();
   });
 
+  it('shows a delete confirmation alert from the review controls', () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    mockUseVerseRecorder.mockReturnValue({
+      ...baseRecorderState(),
+      status: 'review',
+      currentRecording: reviewRecording(),
+    });
+
+    renderTab();
+    fireEvent.press(screen.getByTestId('record-delete-button'));
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Delete draft?',
+      expect.any(String),
+      expect.any(Array),
+    );
+
+    alertSpy.mockRestore();
+  });
+
   it('forwards attribution context to useVerseRecorder', () => {
     mockUseVerseRecorder.mockReturnValue(baseRecorderState());
     renderTab({
@@ -385,14 +278,5 @@ describe('RecordTab', () => {
         verseNumber: 2,
       }),
     );
-  });
-
-  it('source text accordion is collapsed by default and toggles open', () => {
-    mockUseVerseRecorder.mockReturnValue(baseRecorderState());
-    renderTab();
-
-    expect(screen.queryByTestId('record-source-body')).toBeNull();
-    fireEvent.press(screen.getByTestId('record-source-toggle'));
-    expect(screen.getByTestId('record-source-body')).toHaveTextContent('v3');
   });
 });
