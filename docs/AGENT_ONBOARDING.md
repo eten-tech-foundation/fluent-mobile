@@ -1,6 +1,8 @@
 # Agent onboarding — Fluent Mobile
 
-Quick map for Cursor agents and new contributors. Verified against Expo SDK 56 + CNG (Android-only).
+Quick map for Cursor agents, other coding tools, and new contributors. Verified against Expo SDK 56 + CNG (Android-only).
+
+**Delivery judgment** (acceptance criteria, scope, abstraction budget, human device QA): root [`AGENTS.md`](../AGENTS.md).
 
 ## What this project is
 
@@ -211,6 +213,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 ## Related docs
 
 - Human setup: [README.md](../README.md)
+- Agent delivery guardrails: [`AGENTS.md`](../AGENTS.md)
 - Cursor rules: [`.cursor/rules/`](../.cursor/rules/) — **Android-only:** [android-only.mdc](../.cursor/rules/android-only.mdc)
 - Dependabot: [guides/dependabot-process.md](guides/dependabot-process.md) — use with `.cursor/rules/dependabot-workflow.mdc`
 - PR template: [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md)
