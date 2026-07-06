@@ -41,7 +41,9 @@ function isUserRow(row: unknown): row is DBTypes.UserRow {
   if (!row || typeof row !== 'object') return false;
 
   const candidate = row as Record<string, unknown>;
-  return typeof candidate.id === 'number' && typeof candidate.email === 'string';
+  return (
+    typeof candidate.id === 'number' && typeof candidate.email === 'string'
+  );
 }
 
 function mapProjectSummaryRow(
