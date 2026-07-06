@@ -37,6 +37,13 @@ const RECORDING_AGGREGATES = `
   END) AS pending_count,
   MAX(CASE WHEN r.is_latest = 1 THEN r.updated_at END) AS last_recording_activity`;
 
+function isUserRow(row: unknown): row is DBTypes.UserRow {
+  if (!row || typeof row !== 'object') return false;
+
+  const candidate = row as Record<string, unknown>;
+  return typeof candidate.id === 'number' && typeof candidate.email === 'string';
+}
+
 function mapProjectSummaryRow(
   row: DBTypes.ProjectSummaryRow,
 ): DBTypes.ProjectSummary {
@@ -122,8 +129,8 @@ export async function getProjectUnits(projectId: number) {
 export async function getUserById(
   userId: number,
 ): Promise<DBTypes.User | null> {
-  const db = getDatabase();
   try {
+    const db = getDatabase();
     const result = await db.execute(
       `SELECT id, username, email, first_name, last_name
        FROM users
@@ -131,9 +138,9 @@ export async function getUserById(
        LIMIT 1;`,
       [userId],
     );
-    const row = (result?.rows?.[0] as unknown as DBTypes.UserRow) || null;
+    const row = result?.rows?.[0];
 
-    if (!row) return null;
+    if (!isUserRow(row)) return null;
 
     return {
       id: row.id,

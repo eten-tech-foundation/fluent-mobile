@@ -19,12 +19,14 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import {
   getLastActiveTab,
   setLastActiveTab,
 } from '../../utils/draftingTabState';
+import { headerLayout } from '../../theme/iconSpecs';
 import {
   DraftingProvider,
   // useDraftingContext,
@@ -48,6 +50,7 @@ export default function DraftingScreen() {
   const navigation = useNavigation<Nav>();
   const { chapterId, chapterName } = useRoute<Route>().params;
   const { width: windowWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   const [activeTab, setActiveTabState] = useState<DraftingTab>(
     () => getLastActiveTab(chapterId) ?? 'bible',
@@ -77,7 +80,7 @@ export default function DraftingScreen() {
 
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
   const accountSwitcherAnchor = {
-    top: 56,
+    top: insets.top + headerLayout.minHeight,
     left: Math.max(16, windowWidth - 226),
   };
 

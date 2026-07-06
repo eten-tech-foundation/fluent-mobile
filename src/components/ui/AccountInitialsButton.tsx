@@ -1,7 +1,6 @@
-import React from 'react';
 import { StyleSheet, Text, TouchableOpacity } from 'react-native';
-import { theme } from '../../theme';
 import { touchHitSlop } from '../../theme/iconSpecs';
+import { theme } from '../../theme';
 
 interface AccountInitialsButtonProps {
   firstName?: string;
