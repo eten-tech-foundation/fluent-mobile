@@ -3,6 +3,7 @@ import { Alert, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../../../../theme';
 import type { VerseData } from '../../../../types/db/types';
+import type { TabSwitchGuardRef } from '../../../../types/drafting/types';
 import { RecordingControls } from './components/RecordingControls';
 import { RecordingWaveform } from './components/RecordingWaveform';
 import { SourceTextPanel } from './components/SourceTextPanel';
@@ -11,6 +12,7 @@ import { logger } from '../../../../utils/logger';
 import { useRecordTabGuards } from './hooks/useRecordTabGuards';
 import { useVerseRecorder } from './hooks/useVerseRecorder';
 import { verseReference } from './utils/recordTabUtils';
+import { RecorderStatus } from '../../../../types/recording/types';
 
 const log = logger.create('RecordTab');
 
@@ -31,6 +33,7 @@ interface RecordTabProps {
   projectId?: number | null;
   chapterAssignmentId?: number | null;
   bookCode?: string | null;
+  tabSwitchGuardRef?: TabSwitchGuardRef;
 }
 
 export function RecordTab({
@@ -44,6 +47,7 @@ export function RecordTab({
   projectId,
   chapterAssignmentId,
   bookCode,
+  tabSwitchGuardRef,
 }: RecordTabProps) {
   const navigation = useNavigation();
   const recorder = useVerseRecorder({
@@ -57,15 +61,24 @@ export function RecordTab({
   });
   const [deferElapsed, setDeferElapsed] = useState(false);
 
-  const { withPausedGuard, ensureMicPermission } = useRecordTabGuards({
-    status: recorder.status,
-    permission: recorder.permission,
-    requestPermission: recorder.requestPermission,
-    discardPaused: recorder.discardPaused,
-    navigation: navigation as unknown as Parameters<
-      typeof useRecordTabGuards
-    >[0]['navigation'],
-  });
+  const { withPausedGuard, withTabSwitchGuard, ensureMicPermission } =
+    useRecordTabGuards({
+      status: recorder.status,
+      permission: recorder.permission,
+      requestPermission: recorder.requestPermission,
+      discardPaused: recorder.discardPaused,
+      navigation: navigation as unknown as Parameters<
+        typeof useRecordTabGuards
+      >[0]['navigation'],
+    });
+
+  useEffect(() => {
+    if (!tabSwitchGuardRef) return;
+    tabSwitchGuardRef.current = withTabSwitchGuard;
+    return () => {
+      tabSwitchGuardRef.current = null;
+    };
+  }, [tabSwitchGuardRef, withTabSwitchGuard]);
 
   // Present as soon as the recorder has loaded its state, but cap the wait at
   // PRESENTATION_DEFER_MS so a slow/stalled load still surfaces the UI.
@@ -94,7 +107,7 @@ export function RecordTab({
   const canGoNext = verseIndex >= 0 && verseIndex < verses.length - 1;
   // Verse navigation is locked mid-recording so the take stays anchored to
   // the verse the user started on. Paused/idle/review keep their own guards.
-  const isRecordingLocked = recorder.status === 'recording';
+  const isRecordingLocked = recorder.status === RecorderStatus.Recording;
   const prevDisabled = !canGoPrev || isRecordingLocked;
   const nextDisabled = !canGoNext || isRecordingLocked;
 

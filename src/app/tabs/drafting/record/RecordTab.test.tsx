@@ -9,6 +9,7 @@ import {
 } from '@testing-library/react-native';
 import { RecordTab } from './RecordTab';
 import type { VerseData } from '../../../../types/db/types';
+import { RecorderStatus } from '../../../../types/recording/types';
 
 const mockUseVerseRecorder = jest.fn();
 
@@ -32,7 +33,7 @@ const VERSES: VerseData[] = [
 
 function baseRecorderState() {
   return {
-    status: 'idle' as const,
+    status: RecorderStatus.Idle,
     elapsedMs: 0,
     permission: 'granted' as const,
     currentRecording: null,
@@ -123,7 +124,7 @@ describe('RecordTab', () => {
   it('disables verse chevrons while recording even when navigation is possible', () => {
     mockUseVerseRecorder.mockReturnValue({
       ...baseRecorderState(),
-      status: 'recording',
+      status: RecorderStatus.Recording,
       elapsedMs: 4_000,
     });
     renderTab({ selectedVerseNumber: 2 });
@@ -242,7 +243,7 @@ describe('RecordTab', () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     mockUseVerseRecorder.mockReturnValue({
       ...baseRecorderState(),
-      status: 'review',
+      status: RecorderStatus.Review,
       currentRecording: reviewRecording(),
     });
 

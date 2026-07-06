@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
-import type { RecorderStatus } from '../../../../../hooks/useRecorder';
+import { RecorderStatus } from '../../../../../types/recording/types';
 import { theme } from '../../../../../theme';
 
 const LIVE_WAVEFORM_BARS = 22;
@@ -29,8 +29,8 @@ export function RecordingWaveform({
   status,
   elapsedMs,
 }: RecordingWaveformProps) {
-  if (status === 'recording' || status === 'paused') {
-    const active = status === 'recording';
+  if (status === RecorderStatus.Recording || status === RecorderStatus.Paused) {
+    const active = status === RecorderStatus.Recording;
     return (
       <View
         style={styles.waveform}
@@ -59,7 +59,7 @@ export function RecordingWaveform({
     );
   }
 
-  if (status === 'review') {
+  if (status === RecorderStatus.Review) {
     return (
       <View
         style={styles.waveform}

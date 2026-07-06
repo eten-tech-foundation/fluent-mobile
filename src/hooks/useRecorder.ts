@@ -13,7 +13,9 @@ import { useDraftPlayback } from './useDraftPlayback';
 
 const log = logger.create('useRecorder');
 
-export type RecorderStatus = 'idle' | 'recording' | 'paused' | 'review';
+import { RecorderStatus } from '../types/recording/types';
+
+export { RecorderStatus };
 /**
  * Microphone permission state.
  * - `unknown`  — hook still probing the OS.
@@ -143,7 +145,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     directory: 'document',
   });
 
-  const [status, setStatus] = useState<RecorderStatus>('idle');
+  const [status, setStatus] = useState<RecorderStatus>(RecorderStatus.Idle);
   const [permission, setPermission] = useState<PermissionState>('unknown');
   const [elapsedMs, setElapsedMs] = useState(0);
   const [currentRecording, setCurrentRecording] = useState<T | null>(null);
@@ -213,7 +215,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
       clearTick();
 
       if (sessionKey === null) {
-        setStatus('idle');
+        setStatus(RecorderStatus.Idle);
         setCurrentRecording(null);
         return;
       }
@@ -233,12 +235,12 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
         // the UI should steer the user toward discardPaused instead.
         liveSessionTokenRef.current = null;
         setCanResume(false);
-        setStatus('paused');
+        setStatus(RecorderStatus.Paused);
         setElapsedMs(paused.elapsedMs);
         baseElapsedRef.current = paused.elapsedMs;
         startedAtRef.current = paused.startedAt;
       } else {
-        setStatus(latest ? 'review' : 'idle');
+        setStatus(latest ? RecorderStatus.Review : RecorderStatus.Idle);
       }
       setIsReady(true);
     }
@@ -271,7 +273,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     const subscription = AppState.addEventListener(
       'change',
       (nextState: AppStateStatus) => {
-        if (nextState !== 'active' && status === 'recording') {
+        if (nextState !== 'active' && status === RecorderStatus.Recording) {
           pauseInternal().catch(error =>
             log.error('Auto-pause on background failed', { error }),
           );
@@ -323,7 +325,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     startedAtRef.current = new Date().toISOString();
     setElapsedMs(0);
     recorder.record();
-    setStatus('recording');
+    setStatus(RecorderStatus.Recording);
     startTicking();
   }, [recorder, startTicking]);
 
@@ -340,7 +342,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   const pauseInternal = useCallback(async () => {
     const currentSessionKey = sessionKeyRef.current;
     if (currentSessionKey === null) return;
-    if (status !== 'recording') return;
+    if (status !== RecorderStatus.Recording) return;
 
     const segmentStart = runningSinceRef.current;
     const segmentElapsed =
@@ -351,7 +353,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     baseElapsedRef.current = finalElapsed;
     runningSinceRef.current = null;
     setElapsedMs(finalElapsed);
-    setStatus('paused');
+    setStatus(RecorderStatus.Paused);
     setCanResume(liveSessionTokenRef.current !== null);
     persistPausedMarker(recorder, finalElapsed);
   }, [clearTick, persistPausedMarker, recorder, status]);
@@ -361,10 +363,14 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   }, [pauseInternal]);
 
   const resume = useCallback(async () => {
-    if (status !== 'paused' || liveSessionTokenRef.current === null) return;
+    if (
+      status !== RecorderStatus.Paused ||
+      liveSessionTokenRef.current === null
+    )
+      return;
     recorder.record();
     runningSinceRef.current = Date.now();
-    setStatus('recording');
+    setStatus(RecorderStatus.Recording);
     setCanResume(false);
     startTicking();
   }, [recorder, startTicking, status]);
@@ -387,7 +393,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
         sessionKey: currentSessionKey,
         error,
       });
-      setStatus(currentRecording ? 'review' : 'idle');
+      setStatus(currentRecording ? RecorderStatus.Review : RecorderStatus.Idle);
       return;
     } finally {
       clearTick();
@@ -396,7 +402,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     const fileUri = recorder.uri;
     if (!fileUri) {
       log.error('Recorder returned no URI on stop; skipping commit');
-      setStatus(currentRecording ? 'review' : 'idle');
+      setStatus(currentRecording ? RecorderStatus.Review : RecorderStatus.Idle);
       return;
     }
 
@@ -411,12 +417,12 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
         sessionKey: currentSessionKey,
         error,
       });
-      setStatus(currentRecording ? 'review' : 'idle');
+      setStatus(currentRecording ? RecorderStatus.Review : RecorderStatus.Idle);
       return;
     }
 
     if (!committed) {
-      setStatus(currentRecording ? 'review' : 'idle');
+      setStatus(currentRecording ? RecorderStatus.Review : RecorderStatus.Idle);
       return;
     }
 
@@ -428,17 +434,22 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     setCanResume(false);
     setElapsedMs(duration);
     setCurrentRecording(committed);
-    setStatus('review');
+    setStatus(RecorderStatus.Review);
   }, [clearTick, currentRecording, recorder]);
 
   const stop = useCallback(async () => {
-    if (status !== 'recording' && status !== 'paused') return;
-    if (status === 'paused' && liveSessionTokenRef.current === null) return;
+    if (status !== RecorderStatus.Recording && status !== RecorderStatus.Paused)
+      return;
+    if (
+      status === RecorderStatus.Paused &&
+      liveSessionTokenRef.current === null
+    )
+      return;
     await commitRecording();
   }, [commitRecording, status]);
 
   const reRecord = useCallback(async () => {
-    if (status !== 'review') return;
+    if (status !== RecorderStatus.Review) return;
     stopPlayback();
     if (permission !== 'granted') {
       const { granted } = await requestPermission();
@@ -454,7 +465,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   ]);
 
   const deleteCurrent = useCallback(async () => {
-    if (status !== 'review' || !currentRecording) return;
+    if (status !== RecorderStatus.Review || !currentRecording) return;
     stopPlayback();
     const currentSessionKey = sessionKeyRef.current;
     try {
@@ -467,7 +478,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
       return;
     }
     setCurrentRecording(null);
-    setStatus('idle');
+    setStatus(RecorderStatus.Idle);
     setElapsedMs(0);
     baseElapsedRef.current = 0;
     runningSinceRef.current = null;
@@ -482,9 +493,12 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     try {
       await recorder.stop();
     } catch (error) {
-      log.warn('Recorder stop while discarding paused take failed', { error });
+      log.warn('Recorder stop while discarding in-progress take failed', {
+        error,
+      });
     }
-    if (marker?.fileUri) adapterRef.current.deletePausedFile(marker.fileUri);
+    const fileUri = marker?.fileUri ?? recorder.uri;
+    if (fileUri) adapterRef.current.deletePausedFile(fileUri);
     adapterRef.current.clearPaused();
     clearTick();
     baseElapsedRef.current = 0;
@@ -493,11 +507,11 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     liveSessionTokenRef.current = null;
     setCanResume(false);
     setElapsedMs(0);
-    setStatus(currentRecording ? 'review' : 'idle');
+    setStatus(currentRecording ? RecorderStatus.Review : RecorderStatus.Idle);
   }, [clearTick, currentRecording, recorder]);
 
   const togglePlayback = useCallback(async () => {
-    if (status !== 'review' || !currentRecording) return;
+    if (status !== RecorderStatus.Review || !currentRecording) return;
     await togglePlaybackInternal();
   }, [currentRecording, status, togglePlaybackInternal]);
 

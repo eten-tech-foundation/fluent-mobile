@@ -1,6 +1,7 @@
 import { Alert } from 'react-native';
 import { act, renderHook } from '@testing-library/react-native';
 import { useRecordTabGuards } from './useRecordTabGuards';
+import { RecorderStatus } from '../../../../../types/recording/types';
 
 const mockNavigation = {
   addListener: jest.fn(() => jest.fn()),
@@ -18,7 +19,7 @@ describe('useRecordTabGuards', () => {
 
     const { result } = renderHook(() =>
       useRecordTabGuards({
-        status: 'paused',
+        status: RecorderStatus.Paused,
         permission: 'granted',
         requestPermission: jest.fn(),
         discardPaused: jest.fn().mockResolvedValue(undefined),
@@ -43,7 +44,7 @@ describe('useRecordTabGuards', () => {
 
     const { result } = renderHook(() =>
       useRecordTabGuards({
-        status: 'idle',
+        status: RecorderStatus.Idle,
         permission: 'granted',
         requestPermission: jest.fn(),
         discardPaused: jest.fn().mockResolvedValue(undefined),
@@ -63,7 +64,7 @@ describe('useRecordTabGuards', () => {
 
     const { result } = renderHook(() =>
       useRecordTabGuards({
-        status: 'paused',
+        status: RecorderStatus.Paused,
         permission: 'granted',
         requestPermission: jest.fn(),
         discardPaused,
@@ -97,7 +98,7 @@ describe('useRecordTabGuards', () => {
 
     const { result } = renderHook(() =>
       useRecordTabGuards({
-        status: 'paused',
+        status: RecorderStatus.Paused,
         permission: 'granted',
         requestPermission: jest.fn(),
         discardPaused,
@@ -150,7 +151,7 @@ describe('useRecordTabGuards', () => {
 
     renderHook(() =>
       useRecordTabGuards({
-        status: 'paused',
+        status: RecorderStatus.Paused,
         permission: 'granted',
         requestPermission: jest.fn(),
         discardPaused,
@@ -182,7 +183,7 @@ describe('useRecordTabGuards', () => {
     alertSpy.mockRestore();
   });
 
-  it.each(['paused', 'recording'] as const)(
+  it.each([RecorderStatus.Paused, RecorderStatus.Recording] as const)(
     'registers a beforeRemove listener while %s',
     status => {
       renderHook(() =>
@@ -224,7 +225,7 @@ describe('useRecordTabGuards', () => {
 
     renderHook(() =>
       useRecordTabGuards({
-        status: 'recording',
+        status: RecorderStatus.Recording,
         permission: 'granted',
         requestPermission: jest.fn(),
         discardPaused,
@@ -260,10 +261,164 @@ describe('useRecordTabGuards', () => {
     alertSpy.mockRestore();
   });
 
+  describe('withTabSwitchGuard', () => {
+    it('shows a paused alert with tab copy instead of running the action', () => {
+      const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+      const action = jest.fn();
+
+      const { result } = renderHook(() =>
+        useRecordTabGuards({
+          status: RecorderStatus.Paused,
+          permission: 'granted',
+          requestPermission: jest.fn(),
+          discardPaused: jest.fn().mockResolvedValue(undefined),
+          navigation: mockNavigation as never,
+        }),
+      );
+
+      result.current.withTabSwitchGuard(action);
+
+      expect(alertSpy).toHaveBeenCalledWith(
+        'Recording in progress',
+        expect.stringContaining('switching tabs'),
+        expect.any(Array),
+      );
+      expect(action).not.toHaveBeenCalled();
+
+      alertSpy.mockRestore();
+    });
+
+    it('discards the paused take before switching tabs', async () => {
+      const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+      const discardPaused = jest.fn().mockResolvedValue(undefined);
+      const action = jest.fn();
+
+      const { result } = renderHook(() =>
+        useRecordTabGuards({
+          status: RecorderStatus.Paused,
+          permission: 'granted',
+          requestPermission: jest.fn(),
+          discardPaused,
+          navigation: mockNavigation as never,
+        }),
+      );
+
+      result.current.withTabSwitchGuard(action);
+
+      const buttons = alertSpy.mock.calls[0]![2] as Array<{
+        text: string;
+        onPress?: () => Promise<void>;
+      }>;
+      const discardButton = buttons.find(button => button.text === 'Discard');
+      await act(async () => {
+        await discardButton?.onPress?.();
+      });
+
+      expect(discardPaused).toHaveBeenCalledTimes(1);
+      expect(action).toHaveBeenCalledTimes(1);
+
+      alertSpy.mockRestore();
+    });
+
+    it('prompts to discard an active recording before switching tabs', async () => {
+      const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+      const discardPaused = jest.fn().mockResolvedValue(undefined);
+      const action = jest.fn();
+
+      const { result } = renderHook(() =>
+        useRecordTabGuards({
+          status: RecorderStatus.Recording,
+          permission: 'granted',
+          requestPermission: jest.fn(),
+          discardPaused,
+          navigation: mockNavigation as never,
+        }),
+      );
+
+      result.current.withTabSwitchGuard(action);
+
+      expect(alertSpy).toHaveBeenCalledWith(
+        'Recording in progress',
+        expect.stringContaining('switching tabs'),
+        expect.any(Array),
+      );
+      expect(action).not.toHaveBeenCalled();
+
+      const buttons = alertSpy.mock.calls[0]![2] as Array<{
+        text: string;
+        onPress?: () => void | Promise<void>;
+      }>;
+      const discardButton = buttons.find(button => button.text === 'Discard');
+      await act(async () => {
+        await discardButton?.onPress?.();
+      });
+
+      expect(discardPaused).toHaveBeenCalledTimes(1);
+      expect(action).toHaveBeenCalledTimes(1);
+
+      alertSpy.mockRestore();
+    });
+
+    it('does not switch tabs when discard fails', async () => {
+      const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+      const discardPaused = jest
+        .fn()
+        .mockRejectedValue(new Error('discard failed'));
+      const action = jest.fn();
+
+      const { result } = renderHook(() =>
+        useRecordTabGuards({
+          status: RecorderStatus.Recording,
+          permission: 'granted',
+          requestPermission: jest.fn(),
+          discardPaused,
+          navigation: mockNavigation as never,
+        }),
+      );
+
+      result.current.withTabSwitchGuard(action);
+
+      const buttons = alertSpy.mock.calls[0]![2] as Array<{
+        text: string;
+        onPress?: () => void | Promise<void>;
+      }>;
+      const discardButton = buttons.find(button => button.text === 'Discard');
+      await act(async () => {
+        await discardButton?.onPress?.();
+      });
+
+      expect(discardPaused).toHaveBeenCalledTimes(1);
+      expect(action).not.toHaveBeenCalled();
+
+      alertSpy.mockRestore();
+    });
+
+    it.each([RecorderStatus.Idle, RecorderStatus.Review] as const)(
+      'runs the action immediately when status is %s',
+      status => {
+        const action = jest.fn();
+
+        const { result } = renderHook(() =>
+          useRecordTabGuards({
+            status,
+            permission: 'granted',
+            requestPermission: jest.fn(),
+            discardPaused: jest.fn().mockResolvedValue(undefined),
+            navigation: mockNavigation as never,
+          }),
+        );
+
+        result.current.withTabSwitchGuard(action);
+
+        expect(action).toHaveBeenCalledTimes(1);
+      },
+    );
+  });
+
   it('ensureMicPermission returns true when permission is granted', async () => {
     const { result } = renderHook(() =>
       useRecordTabGuards({
-        status: 'idle',
+        status: RecorderStatus.Idle,
         permission: 'granted',
         requestPermission: jest.fn(),
         discardPaused: jest.fn().mockResolvedValue(undefined),
@@ -280,7 +435,7 @@ describe('useRecordTabGuards', () => {
 
     const { result } = renderHook(() =>
       useRecordTabGuards({
-        status: 'idle',
+        status: RecorderStatus.Idle,
         permission: 'blocked',
         requestPermission,
         discardPaused: jest.fn().mockResolvedValue(undefined),

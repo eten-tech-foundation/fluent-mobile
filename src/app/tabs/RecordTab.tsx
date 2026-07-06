@@ -1,33 +1,82 @@
-import React from 'react';
-import { theme } from '../../theme';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { useDraftingContext } from '../context/DraftingContext';
+import { getBibleTextId, getProjectIdForProjectUnit } from '../../db/queries';
+import { getActiveUserId } from '../../services/storage';
+import type { TabSwitchGuardRef } from '../../types/drafting/types';
+import { RecordTab as RecordTabPanel } from './drafting/record/RecordTab';
 
-/**
- * Empty stub. This is a mount point only — built out as part of a
- * separate Record Tab ticket (record/stop, recorded playback, delete,
- * prev/next), once audio recording lands in this app.
- *
- * Not derived from the existing ViewChapter.tsx — that file is left
- * untouched and unreferenced; it belongs to whoever picks up the
- * Record Tab ticket to retire or reuse as they see fit.
- */
-export function RecordTab() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.text}>Record tab</Text>
-    </View>
-  );
+export type { TabSwitchGuardRef } from '../../types/drafting/types';
+
+interface RecordTabProps {
+  tabSwitchGuardRef?: TabSwitchGuardRef;
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.background,
-  },
-  text: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.mutedForeground,
-  },
-});
+/**
+ * Record tab mount point for the drafting screen. Resolves recording metadata
+ * from the chapter assignment and wires verse selection through DraftingContext.
+ */
+export function RecordTab({ tabSwitchGuardRef }: RecordTabProps = {}) {
+  const {
+    verses,
+    selectedVerse,
+    setSelectedVerse,
+    chapterAssignment,
+    bookDisplayName,
+  } = useDraftingContext();
+
+  const [bibleTextId, setBibleTextId] = useState<number | null>(null);
+  const [projectId, setProjectId] = useState<number | null>(null);
+  const userId = getActiveUserId();
+
+  useEffect(() => {
+    let cancelled = false;
+    setBibleTextId(null);
+
+    async function resolveId() {
+      const id = await getBibleTextId(
+        chapterAssignment.bibleId,
+        chapterAssignment.bookId,
+        chapterAssignment.chapterNumber,
+        selectedVerse,
+      );
+      if (!cancelled) setBibleTextId(id);
+    }
+
+    resolveId();
+    return () => {
+      cancelled = true;
+    };
+  }, [chapterAssignment, selectedVerse]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function resolveProjectId() {
+      const id = await getProjectIdForProjectUnit(
+        chapterAssignment.projectUnitId,
+      );
+      if (!cancelled) setProjectId(id);
+    }
+
+    resolveProjectId();
+    return () => {
+      cancelled = true;
+    };
+  }, [chapterAssignment.projectUnitId]);
+
+  return (
+    <RecordTabPanel
+      bookName={bookDisplayName}
+      chapterNumber={chapterAssignment.chapterNumber}
+      verses={verses}
+      selectedVerseNumber={selectedVerse}
+      bibleTextIdForSelectedVerse={bibleTextId}
+      onSelectVerse={setSelectedVerse}
+      userId={userId}
+      projectId={projectId}
+      chapterAssignmentId={chapterAssignment.id}
+      bookCode={chapterAssignment.bookCode ?? null}
+      tabSwitchGuardRef={tabSwitchGuardRef}
+    />
+  );
+}
