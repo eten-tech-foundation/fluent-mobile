@@ -8,7 +8,7 @@ import {
   Square,
   Trash2,
 } from 'lucide-react-native';
-import type { RecorderStatus } from '../../../../../hooks/useRecorder';
+import { RecorderStatus } from '../../../../../types/recording/types';
 import { theme } from '../../../../../theme';
 import { listIconStrokeWidth } from '../../../../../theme/iconSpecs';
 import { formatDuration } from '../utils/recordTabUtils';
@@ -47,7 +47,7 @@ export function RecordingControls({
 }: RecordingControlsProps) {
   return (
     <View style={styles.controls}>
-      {status === 'idle' && (
+      {status === RecorderStatus.Idle && (
         <View style={styles.idleGroup}>
           <TouchableOpacity
             style={styles.recordButtonCircle}
@@ -81,7 +81,7 @@ export function RecordingControls({
         </View>
       )}
 
-      {status === 'recording' && (
+      {status === RecorderStatus.Recording && (
         <View style={styles.captureGroup}>
           <Text style={styles.duration} testID="record-duration">
             {formatDuration(elapsedMs)}
@@ -120,7 +120,7 @@ export function RecordingControls({
         </View>
       )}
 
-      {status === 'paused' && (
+      {status === RecorderStatus.Paused && (
         <View style={styles.captureGroup}>
           <Text style={styles.duration} testID="record-duration">
             {formatDuration(elapsedMs)}
@@ -180,7 +180,7 @@ export function RecordingControls({
         </View>
       )}
 
-      {status === 'review' && (
+      {status === RecorderStatus.Review && (
         <View style={styles.reviewGroup}>
           <View style={styles.captureButtonsRow}>
             <View

@@ -1,9 +1,8 @@
 import { useCallback, useEffect } from 'react';
 import { Alert, Linking } from 'react-native';
-import type {
-  PermissionState,
-  RecorderStatus,
-} from '../../../../../hooks/useRecorder';
+import { PermissionState } from '../../../../../hooks/useRecorder';
+import { RecorderStatus } from '../../../../../types/recording/types';
+import { GuardContext } from '../../../../../types/drafting/types';
 import { logger } from '../../../../../utils/logger';
 
 const log = logger.create('useRecordTabGuards');
@@ -43,6 +42,60 @@ async function discardPausedThen(
   }
 }
 
+function pausedMessage(context: GuardContext): string {
+  switch (context) {
+    case GuardContext.Verse:
+      return 'Resume or discard the paused take before switching verses.';
+    case GuardContext.Tab:
+      return 'Resume or discard the paused take before switching tabs.';
+    case GuardContext.Leave:
+      return 'You have a paused recording. Resume it or discard the take before leaving.';
+  }
+}
+
+function recordingMessage(context: GuardContext): string {
+  switch (context) {
+    case GuardContext.Tab:
+      return 'You are actively recording. Discard the take before switching tabs.';
+    case GuardContext.Leave:
+    default:
+      return 'You are actively recording. Discard the take before leaving.';
+  }
+}
+
+function promptBeforeAction(
+  status: RecorderStatus,
+  context: GuardContext,
+  discardPaused: () => Promise<void>,
+  action: () => void,
+) {
+  if (status === RecorderStatus.Paused) {
+    Alert.alert('Recording in progress', pausedMessage(context), [
+      { text: 'Resume', style: 'cancel' },
+      {
+        text: 'Discard',
+        style: 'destructive',
+        onPress: () => discardPausedThen(discardPaused, action),
+      },
+    ]);
+    return;
+  }
+
+  if (status === RecorderStatus.Recording) {
+    Alert.alert('Recording in progress', recordingMessage(context), [
+      { text: 'Keep recording', style: 'cancel' },
+      {
+        text: 'Discard',
+        style: 'destructive',
+        onPress: () => discardPausedThen(discardPaused, action),
+      },
+    ]);
+    return;
+  }
+
+  action();
+}
+
 function showMicBlockedAlert() {
   Alert.alert(
     'Microphone access required',
@@ -68,19 +121,8 @@ export function useRecordTabGuards({
 }: UseRecordTabGuardsArgs) {
   const withPausedGuard = useCallback(
     (action: () => void) => {
-      if (status === 'paused') {
-        Alert.alert(
-          'Recording in progress',
-          'Resume or discard the paused take before switching verses.',
-          [
-            { text: 'Resume', style: 'cancel' },
-            {
-              text: 'Discard',
-              style: 'destructive',
-              onPress: () => discardPausedThen(discardPaused, action),
-            },
-          ],
-        );
+      if (status === RecorderStatus.Paused) {
+        promptBeforeAction(status, GuardContext.Verse, discardPaused, action);
         return;
       }
       action();
@@ -88,31 +130,24 @@ export function useRecordTabGuards({
     [discardPaused, status],
   );
 
-  useEffect(() => {
-    if (status !== 'paused' && status !== 'recording') return;
+  const withTabSwitchGuard = useCallback(
+    (action: () => void) => {
+      promptBeforeAction(status, GuardContext.Tab, discardPaused, action);
+    },
+    [discardPaused, status],
+  );
 
-    const isRecording = status === 'recording';
+  useEffect(() => {
+    if (status !== RecorderStatus.Paused && status !== RecorderStatus.Recording)
+      return;
+
     const beforeRemove = (event: {
       preventDefault: () => void;
       data: { action: unknown };
     }) => {
       event.preventDefault();
-      Alert.alert(
-        'Recording in progress',
-        isRecording
-          ? 'You are actively recording. Discard the take before leaving.'
-          : 'You have a paused recording. Resume it or discard the take before leaving.',
-        [
-          { text: isRecording ? 'Keep recording' : 'Resume', style: 'cancel' },
-          {
-            text: 'Discard',
-            style: 'destructive',
-            onPress: () =>
-              discardPausedThen(discardPaused, () =>
-                navigation.dispatch(event.data.action),
-              ),
-          },
-        ],
+      promptBeforeAction(status, GuardContext.Leave, discardPaused, () =>
+        navigation.dispatch(event.data.action),
       );
     };
 
@@ -132,5 +167,5 @@ export function useRecordTabGuards({
     return false;
   }, [permission, requestPermission]);
 
-  return { withPausedGuard, ensureMicPermission };
+  return { withPausedGuard, withTabSwitchGuard, ensureMicPermission };
 }

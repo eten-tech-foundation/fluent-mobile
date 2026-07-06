@@ -1,6 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { RecordingControls } from './RecordingControls';
+import { RecorderStatus } from '../../../../../types/recording/types';
 
 const REFERENCE = 'Mark 14:3';
 
@@ -8,7 +9,7 @@ describe('RecordingControls', () => {
   it('renders the idle record button with a label and disabled play hint', () => {
     render(
       <RecordingControls
-        status="idle"
+        status={RecorderStatus.Idle}
         reference={REFERENCE}
         elapsedMs={0}
         isPlaying={false}
@@ -32,7 +33,7 @@ describe('RecordingControls', () => {
   it('shows pause and stop controls with a duration and tip when recording', () => {
     render(
       <RecordingControls
-        status="recording"
+        status={RecorderStatus.Recording}
         reference={REFERENCE}
         elapsedMs={65_420}
         isPlaying={false}
@@ -57,7 +58,7 @@ describe('RecordingControls', () => {
   it('shows the paused tip instead of the recording tip while paused', () => {
     render(
       <RecordingControls
-        status="paused"
+        status={RecorderStatus.Paused}
         reference={REFERENCE}
         elapsedMs={3_000}
         isPlaying={false}
@@ -79,7 +80,7 @@ describe('RecordingControls', () => {
   it('shows the resume button while paused with a live session', () => {
     render(
       <RecordingControls
-        status="paused"
+        status={RecorderStatus.Paused}
         reference={REFERENCE}
         elapsedMs={3_000}
         isPlaying={false}
@@ -102,7 +103,7 @@ describe('RecordingControls', () => {
   it('shows discard instead of resume for a rehydrated paused take', () => {
     render(
       <RecordingControls
-        status="paused"
+        status={RecorderStatus.Paused}
         reference={REFERENCE}
         elapsedMs={3_000}
         isPlaying={false}
@@ -131,7 +132,7 @@ describe('RecordingControls', () => {
 
     render(
       <RecordingControls
-        status="review"
+        status={RecorderStatus.Review}
         reference={REFERENCE}
         elapsedMs={0}
         isPlaying={false}
@@ -166,7 +167,7 @@ describe('RecordingControls', () => {
 
     render(
       <RecordingControls
-        status="review"
+        status={RecorderStatus.Review}
         reference={REFERENCE}
         elapsedMs={0}
         isPlaying={false}
@@ -190,7 +191,7 @@ describe('RecordingControls', () => {
   it('shows a pause affordance while the draft is playing', () => {
     render(
       <RecordingControls
-        status="review"
+        status={RecorderStatus.Review}
         reference={REFERENCE}
         elapsedMs={0}
         isPlaying={true}

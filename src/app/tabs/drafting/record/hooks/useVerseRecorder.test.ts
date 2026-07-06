@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { AppState } from 'react-native';
 import { useVerseRecorder } from './useVerseRecorder';
+import { RecorderStatus } from '../../../../../types/recording/types';
 
 const mockRecorder = {
   currentTime: 0,
@@ -146,7 +147,7 @@ describe('useVerseRecorder', () => {
     await waitReady(result);
 
     expect(mockGetLatestRecordingForVerse).toHaveBeenCalledWith(42);
-    expect(result.current.status).toBe('review');
+    expect(result.current.status).toBe(RecorderStatus.Review);
     expect(result.current.currentRecording?.id).toBe('existing');
   });
 
@@ -228,7 +229,7 @@ describe('useVerseRecorder', () => {
         }),
       );
       expect(mockClearPausedTake).toHaveBeenCalledWith(42);
-      expect(result.current.status).toBe('review');
+      expect(result.current.status).toBe(RecorderStatus.Review);
     } finally {
       jest.useRealTimers();
     }
@@ -254,7 +255,7 @@ describe('useVerseRecorder', () => {
       });
 
       expect(mockDeleteRecordingFile).toHaveBeenCalledWith(MOVED_KEY);
-      expect(result.current.status).toBe('idle');
+      expect(result.current.status).toBe(RecorderStatus.Idle);
       expect(result.current.currentRecording).toBeNull();
     } finally {
       jest.useRealTimers();
@@ -271,7 +272,7 @@ describe('useVerseRecorder', () => {
     });
 
     expect(mockDeleteRecordingById).toHaveBeenCalledWith('existing');
-    expect(result.current.status).toBe('idle');
+    expect(result.current.status).toBe(RecorderStatus.Idle);
     expect(result.current.currentRecording).toBeNull();
   });
 
@@ -286,7 +287,7 @@ describe('useVerseRecorder', () => {
 
     const { result } = renderHook(() => useVerseRecorder({ bibleTextId: 42 }));
     await waitReady(result);
-    expect(result.current.status).toBe('paused');
+    expect(result.current.status).toBe(RecorderStatus.Paused);
     expect(result.current.canResume).toBe(false);
 
     await act(async () => {
@@ -297,14 +298,14 @@ describe('useVerseRecorder', () => {
       'file:///docs/partial-take.m4a',
     );
     expect(mockClearPausedTake).toHaveBeenCalledWith(42);
-    expect(result.current.status).toBe('idle');
+    expect(result.current.status).toBe(RecorderStatus.Idle);
   });
 
   it('resolves the stored key to an absolute uri for playback', async () => {
     mockGetLatestRecordingForVerse.mockResolvedValueOnce(existingRecording());
     const { result } = renderHook(() => useVerseRecorder({ bibleTextId: 42 }));
     await waitReady(result);
-    expect(result.current.status).toBe('review');
+    expect(result.current.status).toBe(RecorderStatus.Review);
 
     await act(async () => {
       await result.current.togglePlayback();

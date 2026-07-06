@@ -6,7 +6,7 @@ import { RecordTab } from '../tabs/RecordTab';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { onSyncComplete } from '../../services/syncEvents';
 import { StackNavigationProp } from '@react-navigation/stack';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { RootStackParamList } from '../../types/navigation/types';
 import { DraftingHeader } from '../../components/layout/DraftingHeader';
 import { ChapterAssignmentData, VerseData } from '../../types/db/types';
@@ -24,8 +24,9 @@ import {
 import { SourceAudioPlayerBar } from '../../components/layout/SourceAudioPlayerBar';
 import {
   DraftingTab,
-  DraftingTabBar,
-} from '../../components/layout/DraftingTabBar';
+  type TabSwitchGuardRef,
+} from '../../types/drafting/types';
+import { DraftingTabBar } from '../../components/layout/DraftingTabBar';
 import {
   getBibleTexts,
   getChapterAssignmentById,
@@ -42,7 +43,7 @@ export default function DraftingScreen() {
   const { chapterId, chapterName } = useRoute<Route>().params;
 
   const [activeTab, setActiveTabState] = useState<DraftingTab>(
-    () => getLastActiveTab(chapterId) ?? 'bible',
+    () => getLastActiveTab(chapterId) ?? DraftingTab.Bible,
   );
 
   const setActiveTab = useCallback(
@@ -51,6 +52,22 @@ export default function DraftingScreen() {
       setLastActiveTab(chapterId, tab);
     },
     [chapterId],
+  );
+
+  const tabSwitchGuardRef = useRef<TabSwitchGuardRef['current']>(null);
+
+  const handleTabChange = useCallback(
+    (tab: DraftingTab) => {
+      if (tab === activeTab) return;
+      const leaveRecord =
+        activeTab === DraftingTab.Record && tab === DraftingTab.Bible;
+      if (leaveRecord && tabSwitchGuardRef.current) {
+        tabSwitchGuardRef.current(() => setActiveTab(tab));
+        return;
+      }
+      setActiveTab(tab);
+    },
+    [activeTab, setActiveTab],
   );
 
   const [verses, setVerses] = useState<VerseData[]>([]);
@@ -166,12 +183,29 @@ export default function DraftingScreen() {
           />
 
           <View style={styles.content}>
-            {activeTab === 'bible' ? <BibleTab /> : <RecordTab />}
+            <View
+              style={[
+                styles.tabPanel,
+                activeTab !== DraftingTab.Bible && styles.tabHidden,
+              ]}
+              pointerEvents={activeTab === DraftingTab.Bible ? 'auto' : 'none'}
+            >
+              <BibleTab />
+            </View>
+            <View
+              style={[
+                styles.tabPanel,
+                activeTab !== DraftingTab.Record && styles.tabHidden,
+              ]}
+              pointerEvents={activeTab === DraftingTab.Record ? 'auto' : 'none'}
+            >
+              <RecordTab tabSwitchGuardRef={tabSwitchGuardRef} />
+            </View>
           </View>
 
           <DraftingPlayerBar verses={verses} />
 
-          <DraftingTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+          <DraftingTabBar activeTab={activeTab} onTabChange={handleTabChange} />
         </View>
       </DraftingProvider>
     </ScreenContainer>
@@ -190,6 +224,12 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  tabPanel: {
+    flex: 1,
+  },
+  tabHidden: {
+    display: 'none',
   },
   centered: {
     flex: 1,

@@ -12,8 +12,8 @@ interface DraftingTabBarProps {
 }
 
 const TABS: { id: DraftingTab; label: string; Icon: LucideIcon }[] = [
-  { id: 'bible', label: 'Bible', Icon: Headphones },
-  { id: 'record', label: 'Record', Icon: Mic },
+  { id: DraftingTab.Bible, label: 'Bible', Icon: Headphones },
+  { id: DraftingTab.Record, label: 'Record', Icon: Mic },
 ];
 
 export function DraftingTabBar({

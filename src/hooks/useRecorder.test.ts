@@ -1,6 +1,10 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { AppState } from 'react-native';
-import { useRecorder, type RecorderAdapter } from './useRecorder';
+import {
+  useRecorder,
+  type RecorderAdapter,
+  RecorderStatus,
+} from './useRecorder';
 
 interface FakeTake {
   id: string;
@@ -101,7 +105,7 @@ describe('useRecorder', () => {
     const { result } = renderHook(() => useRecorder(adapter));
     // A null session never becomes ready and never queries the adapter.
     await waitFor(() => expect(adapter.loadInitial).not.toHaveBeenCalled());
-    expect(result.current.status).toBe('idle');
+    expect(result.current.status).toBe(RecorderStatus.Idle);
     expect(result.current.currentRecording).toBeNull();
     expect(result.current.isReady).toBe(false);
   });
@@ -110,7 +114,7 @@ describe('useRecorder', () => {
     const adapter = makeAdapter();
     const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
-    expect(result.current.status).toBe('idle');
+    expect(result.current.status).toBe(RecorderStatus.Idle);
     expect(result.current.currentRecording).toBeNull();
     expect(adapter.loadInitial).toHaveBeenCalledWith(42);
   });
@@ -122,7 +126,7 @@ describe('useRecorder', () => {
     });
     const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
-    expect(result.current.status).toBe('review');
+    expect(result.current.status).toBe(RecorderStatus.Review);
     expect(result.current.currentRecording?.id).toBe('existing');
   });
 
@@ -137,7 +141,7 @@ describe('useRecorder', () => {
     });
     const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
-    expect(result.current.status).toBe('paused');
+    expect(result.current.status).toBe(RecorderStatus.Paused);
     expect(result.current.elapsedMs).toBe(4500);
     expect(result.current.canResume).toBe(false);
   });
@@ -159,7 +163,7 @@ describe('useRecorder', () => {
     });
 
     expect(mockRecorder.record).not.toHaveBeenCalled();
-    expect(result.current.status).toBe('paused');
+    expect(result.current.status).toBe(RecorderStatus.Paused);
   });
 
   it('transitions idle -> recording on start', async () => {
@@ -173,7 +177,7 @@ describe('useRecorder', () => {
 
     expect(mockRecorder.prepareToRecordAsync).toHaveBeenCalled();
     expect(mockRecorder.record).toHaveBeenCalled();
-    expect(result.current.status).toBe('recording');
+    expect(result.current.status).toBe(RecorderStatus.Recording);
   });
 
   it('accumulates only active recording time across pause and resume', async () => {
@@ -203,7 +207,7 @@ describe('useRecorder', () => {
           sessionToken: expect.any(String),
         }),
       );
-      expect(result.current.status).toBe('paused');
+      expect(result.current.status).toBe(RecorderStatus.Paused);
       expect(result.current.elapsedMs).toBe(2500);
       expect(result.current.canResume).toBe(true);
 
@@ -212,7 +216,7 @@ describe('useRecorder', () => {
       await act(async () => {
         await result.current.resume();
       });
-      expect(result.current.status).toBe('recording');
+      expect(result.current.status).toBe(RecorderStatus.Recording);
       expect(result.current.elapsedMs).toBe(2500);
 
       // Record for another 3s and stop; total active time = 5.5s, not 15.5s.
@@ -227,7 +231,7 @@ describe('useRecorder', () => {
         durationMs: 5500,
       });
       expect(adapter.clearPaused).toHaveBeenCalled();
-      expect(result.current.status).toBe('review');
+      expect(result.current.status).toBe(RecorderStatus.Review);
       expect(result.current.currentRecording?.id).toBe('take-1');
     } finally {
       jest.useRealTimers();
@@ -242,13 +246,13 @@ describe('useRecorder', () => {
 
     const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
-    expect(result.current.status).toBe('review');
+    expect(result.current.status).toBe(RecorderStatus.Review);
 
     await act(async () => {
       await result.current.reRecord();
     });
     expect(mockRecorder.record).toHaveBeenCalled();
-    expect(result.current.status).toBe('recording');
+    expect(result.current.status).toBe(RecorderStatus.Recording);
 
     mockRecorder.currentTime = 1;
     await act(async () => {
@@ -256,7 +260,7 @@ describe('useRecorder', () => {
     });
 
     expect(adapter.onCommit).toHaveBeenCalledTimes(1);
-    expect(result.current.status).toBe('review');
+    expect(result.current.status).toBe(RecorderStatus.Review);
     expect(result.current.currentRecording?.id).toBe('take-1');
   });
 
@@ -276,7 +280,7 @@ describe('useRecorder', () => {
 
     expect(adapter.onCommit).toHaveBeenCalled();
     expect(adapter.clearPaused).not.toHaveBeenCalled();
-    expect(result.current.status).toBe('idle');
+    expect(result.current.status).toBe(RecorderStatus.Idle);
     expect(result.current.currentRecording).toBeNull();
   });
 
@@ -294,7 +298,7 @@ describe('useRecorder', () => {
     });
 
     expect(adapter.onCommit).not.toHaveBeenCalled();
-    expect(result.current.status).toBe('idle');
+    expect(result.current.status).toBe(RecorderStatus.Idle);
   });
 
   it('returns to review when recorder.stop throws during re-record', async () => {
@@ -314,7 +318,7 @@ describe('useRecorder', () => {
     });
 
     expect(adapter.onCommit).not.toHaveBeenCalled();
-    expect(result.current.status).toBe('review');
+    expect(result.current.status).toBe(RecorderStatus.Review);
     expect(result.current.currentRecording?.id).toBe('existing');
   });
 
@@ -332,7 +336,7 @@ describe('useRecorder', () => {
     });
 
     expect(adapter.deleteCommitted).toHaveBeenCalledWith(existing);
-    expect(result.current.status).toBe('idle');
+    expect(result.current.status).toBe(RecorderStatus.Idle);
     expect(result.current.currentRecording).toBeNull();
   });
 
@@ -351,7 +355,7 @@ describe('useRecorder', () => {
     });
 
     expect(adapter.deleteCommitted).toHaveBeenCalledWith(existing);
-    expect(result.current.status).toBe('review');
+    expect(result.current.status).toBe(RecorderStatus.Review);
     expect(result.current.currentRecording?.id).toBe('existing');
   });
 
@@ -407,7 +411,7 @@ describe('useRecorder', () => {
 
     const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
-    expect(result.current.status).toBe('review');
+    expect(result.current.status).toBe(RecorderStatus.Review);
     expect(result.current.isPlaying).toBe(false);
 
     await act(async () => {
@@ -440,7 +444,7 @@ describe('useRecorder', () => {
   it('does not play when there is no take to review', async () => {
     const { result } = renderHook(() => useRecorder(makeAdapter()));
     await waitReady(result);
-    expect(result.current.status).toBe('idle');
+    expect(result.current.status).toBe(RecorderStatus.Idle);
 
     await act(async () => {
       await result.current.togglePlayback();
@@ -504,7 +508,7 @@ describe('useRecorder', () => {
 
     expect(mockRecorder.pause).toHaveBeenCalled();
     expect(adapter.persistPaused).toHaveBeenCalled();
-    expect(result.current.status).toBe('paused');
+    expect(result.current.status).toBe(RecorderStatus.Paused);
 
     addSpy.mockRestore();
   });
@@ -516,6 +520,27 @@ describe('useRecorder', () => {
     expect(mockUseAudioRecorder).toHaveBeenCalledWith(
       expect.objectContaining({ directory: 'document' }),
     );
+  });
+
+  it('unlinks the finalized file when an active recording is discarded without a paused marker', async () => {
+    const adapter = makeAdapter();
+    const { result } = renderHook(() => useRecorder(adapter));
+    await waitReady(result);
+
+    await act(async () => {
+      await result.current.start();
+    });
+    expect(result.current.status).toBe(RecorderStatus.Recording);
+
+    await act(async () => {
+      await result.current.discardPaused();
+    });
+
+    expect(adapter.deletePausedFile).toHaveBeenCalledWith(
+      'file:///tmp/take-1.m4a',
+    );
+    expect(adapter.clearPaused).toHaveBeenCalled();
+    expect(result.current.status).toBe(RecorderStatus.Idle);
   });
 
   it('unlinks the durable partial file when a paused take is discarded', async () => {
@@ -530,7 +555,7 @@ describe('useRecorder', () => {
 
     const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
-    expect(result.current.status).toBe('paused');
+    expect(result.current.status).toBe(RecorderStatus.Paused);
 
     await act(async () => {
       await result.current.discardPaused();
@@ -540,6 +565,6 @@ describe('useRecorder', () => {
       'file:///docs/partial-take.m4a',
     );
     expect(adapter.clearPaused).toHaveBeenCalled();
-    expect(result.current.status).toBe('idle');
+    expect(result.current.status).toBe(RecorderStatus.Idle);
   });
 });
