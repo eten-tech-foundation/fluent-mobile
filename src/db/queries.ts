@@ -119,6 +119,35 @@ export async function getProjectUnits(projectId: number) {
   }
 }
 
+export async function getUserById(
+  userId: number,
+): Promise<DBTypes.User | null> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT id, username, email, first_name, last_name
+       FROM users
+       WHERE id = ?
+       LIMIT 1;`,
+      [userId],
+    );
+    const row = (result?.rows?.[0] as unknown as DBTypes.UserRow) || null;
+
+    if (!row) return null;
+
+    return {
+      id: row.id,
+      username: row.username ?? undefined,
+      email: row.email,
+      firstName: row.first_name ?? undefined,
+      lastName: row.last_name ?? undefined,
+    };
+  } catch (error) {
+    log.error('Error fetching user by id', { error, userId });
+    return null;
+  }
+}
+
 export async function getChapterAssignmentById(
   id: number,
 ): Promise<DBTypes.ChapterAssignmentData | null> {
