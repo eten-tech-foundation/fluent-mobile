@@ -164,6 +164,73 @@ export async function concatenateAacSegments(
   return merged.uri;
 }
 
+/**
+ * ADTS `sampling_frequency_index` -> sample rate (Hz). Indices 13-15 are
+ * reserved/explicit and unused by our recorder, so they terminate parsing.
+ */
+const ADTS_SAMPLE_RATES = [
+  96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025,
+  8000, 7350,
+] as const;
+
+/** Samples per AAC raw data block (fixed by the codec). */
+const SAMPLES_PER_BLOCK = 1024;
+
+/** Minimum ADTS header size in bytes (7 without CRC, 9 with). */
+const ADTS_MIN_HEADER = 7;
+
+/**
+ * Computes the exact playable duration (ms) of an ADTS AAC bitstream by walking
+ * its frame headers. Every ADTS frame carries a fixed sample count
+ * (`1024 * raw_data_blocks`), so summing across frames yields a sample-accurate
+ * length that is independent of the wall-clock timer (which undercounts,
+ * especially after a process kill). Parsing stops cleanly on a lost sync,
+ * reserved sample-rate index, or truncated tail; returns `0` when no valid
+ * frame is found (caller should fall back to the timer value).
+ */
+export function aacDurationMsFromBytes(bytes: Uint8Array): number {
+  let seconds = 0;
+  let i = 0;
+  const end = bytes.length;
+
+  while (i + ADTS_MIN_HEADER <= end) {
+    const syncOk = bytes[i] === 0xff && (bytes[i + 1]! & 0xf0) === 0xf0;
+    if (!syncOk) break;
+
+    const sampleRateIndex = (bytes[i + 2]! & 0x3c) >> 2;
+    const sampleRate = ADTS_SAMPLE_RATES[sampleRateIndex];
+    if (sampleRate === undefined) break;
+
+    const frameLength =
+      ((bytes[i + 3]! & 0x03) << 11) |
+      (bytes[i + 4]! << 3) |
+      ((bytes[i + 5]! & 0xe0) >> 5);
+    if (frameLength < ADTS_MIN_HEADER || i + frameLength > end) break;
+
+    const rawBlocks = bytes[i + 6]! & 0x03;
+    const samples = SAMPLES_PER_BLOCK * (rawBlocks + 1);
+    seconds += samples / sampleRate;
+    i += frameLength;
+  }
+
+  return Math.round(seconds * 1000);
+}
+
+/**
+ * Reads an ADTS AAC file and returns its duration (ms) via
+ * {@link aacDurationMsFromBytes}. Returns `0` on any read/parse failure so
+ * callers can fall back to a timer-derived value.
+ */
+export async function aacDurationMs(fileUri: string): Promise<number> {
+  try {
+    const bytes = await new File(fileUri).bytes();
+    return aacDurationMsFromBytes(bytes);
+  } catch (error) {
+    log.warn('Failed to probe AAC duration', { fileUri, error });
+    return 0;
+  }
+}
+
 /** Best-effort unlink of a stored recording file. Never throws. */
 export function deleteRecordingFile(pathOrKey: string): void {
   try {

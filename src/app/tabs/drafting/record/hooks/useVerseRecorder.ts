@@ -11,6 +11,7 @@ import {
   setPausedTake,
 } from '../../../../../services/storage';
 import {
+  aacDurationMs,
   buildRecordingKey,
   concatenateAacSegments,
   deleteRecordingFile,
@@ -111,6 +112,13 @@ export function useVerseRecorder({
           return null;
         }
 
+        // Derive the true length from the audio itself; the wall-clock timer
+        // undercounts (esp. after a kill). Probe the merged file while it still
+        // exists at its source path (before moveIntoStore relocates it) and
+        // fall back to the timer value if the probe yields nothing.
+        const probedMs = await aacDurationMs(mergedUri);
+        const committedDurationMs = probedMs > 0 ? probedMs : durationMs;
+
         const recordingId = randomUUID();
         const key = buildRecordingKey({
           userId: userId ?? '',
@@ -148,7 +156,7 @@ export function useVerseRecorder({
             userId: userId ?? null,
             chapterAssignmentId: chapterAssignmentId ?? null,
             localFilePath: moved.key,
-            durationMs,
+            durationMs: committedDurationMs,
             fileSizeBytes: moved.sizeBytes,
           });
         } catch (error) {
@@ -164,6 +172,8 @@ export function useVerseRecorder({
       deleteCommitted: take => deleteRecordingById(take.id),
 
       resolvePlaybackUri: take => resolveRecordingUri(take.localFilePath),
+
+      resolveDurationMs: take => take.durationMs ?? null,
     }),
     [
       bibleTextId,

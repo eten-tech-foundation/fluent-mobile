@@ -1,4 +1,6 @@
 import {
+  aacDurationMs,
+  aacDurationMsFromBytes,
   buildRecordingKey,
   concatenateAacSegments,
   deleteRecordingFile,
@@ -221,6 +223,106 @@ describe('concatenateAacSegments', () => {
       append: true,
     });
     expect(result).toContain('merge-merge-uuid.aac');
+  });
+});
+
+/**
+ * Builds a single ADTS AAC frame of `frameLength` bytes carrying one raw data
+ * block (1024 samples). Only the header fields our parser reads are set; the
+ * payload is zero-filled.
+ */
+function adtsFrame(
+  frameLength: number,
+  sampleRateIndex = 4,
+): Uint8Array<ArrayBuffer> {
+  const frame = new Uint8Array(frameLength);
+  frame[0] = 0xff;
+  frame[1] = 0xf1; // syncword tail + protection_absent
+  frame[2] = 0x40 | (sampleRateIndex << 2); // AAC-LC profile + sfi
+  frame[3] = (frameLength >> 11) & 0x03;
+  frame[4] = (frameLength >> 3) & 0xff;
+  frame[5] = (frameLength & 0x07) << 5;
+  frame[6] = 0x00; // number_of_raw_data_blocks = 0 -> 1 block
+  return frame;
+}
+
+function adtsStream(
+  frameCount: number,
+  frameLength = 16,
+): Uint8Array<ArrayBuffer> {
+  const stream = new Uint8Array(frameCount * frameLength);
+  for (let i = 0; i < frameCount; i++) {
+    stream.set(adtsFrame(frameLength), i * frameLength);
+  }
+  return stream;
+}
+
+describe('aacDurationMsFromBytes', () => {
+  it('sums frame durations for a well-formed stream', () => {
+    const frames = 10;
+    const expected = Math.round(((frames * 1024) / 44100) * 1000);
+    expect(aacDurationMsFromBytes(adtsStream(frames))).toBe(expected);
+  });
+
+  it('respects the sample-rate index in the header', () => {
+    // Index 8 -> 16000 Hz.
+    const frames = 5;
+    const stream = new Uint8Array(frames * 16);
+    for (let i = 0; i < frames; i++) {
+      stream.set(adtsFrame(16, 8), i * 16);
+    }
+    const expected = Math.round(((frames * 1024) / 16000) * 1000);
+    expect(aacDurationMsFromBytes(stream)).toBe(expected);
+  });
+
+  it('stops cleanly at a truncated or garbage tail', () => {
+    const valid = adtsStream(3);
+    const garbage = new Uint8Array([0x00, 0x01, 0x02, 0x03, 0x04]);
+    const combined = new Uint8Array(valid.length + garbage.length);
+    combined.set(valid, 0);
+    combined.set(garbage, valid.length);
+
+    const expected = Math.round(((3 * 1024) / 44100) * 1000);
+    expect(aacDurationMsFromBytes(combined)).toBe(expected);
+  });
+
+  it('ignores a trailing frame whose length runs past the buffer', () => {
+    // A final header advertising a longer frame than remains must not count.
+    const valid = adtsStream(2);
+    const truncatedHeader = adtsFrame(64).slice(0, 10);
+    const combined = new Uint8Array(valid.length + truncatedHeader.length);
+    combined.set(valid, 0);
+    combined.set(truncatedHeader, valid.length);
+
+    const expected = Math.round(((2 * 1024) / 44100) * 1000);
+    expect(aacDurationMsFromBytes(combined)).toBe(expected);
+  });
+
+  it('returns 0 for empty or non-ADTS bytes', () => {
+    expect(aacDurationMsFromBytes(new Uint8Array())).toBe(0);
+    expect(aacDurationMsFromBytes(new Uint8Array([1, 2, 3, 4, 5, 6, 7]))).toBe(
+      0,
+    );
+  });
+});
+
+describe('aacDurationMs', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('reads the file and returns the parsed duration', async () => {
+    const frames = 8;
+    mockBytes.mockResolvedValueOnce(adtsStream(frames));
+    const expected = Math.round(((frames * 1024) / 44100) * 1000);
+    await expect(aacDurationMs('file:///docs/take.aac')).resolves.toBe(
+      expected,
+    );
+  });
+
+  it('returns 0 when the file cannot be read', async () => {
+    mockBytes.mockRejectedValueOnce(new Error('read failed'));
+    await expect(aacDurationMs('file:///docs/missing.aac')).resolves.toBe(0);
   });
 });
 

@@ -74,6 +74,7 @@ jest.mock('../../../../../services/recordingStorage', () => ({
   },
   extensionFromUri: jest.fn(() => 'aac'),
   concatenateAacSegments: jest.fn(async (fileUris: string[]) => fileUris[0]),
+  aacDurationMs: jest.fn(async () => 0),
   moveIntoStore: jest.fn(async ({ key }: { key: string }) => ({
     key,
     sizeBytes: 1234,
@@ -98,6 +99,10 @@ const CONCAT_MOCK = jest.requireMock('../../../../../services/recordingStorage')
 
 const MOVE_MOCK = jest.requireMock('../../../../../services/recordingStorage')
   .moveIntoStore as jest.Mock;
+
+const AAC_DURATION_MOCK = jest.requireMock(
+  '../../../../../services/recordingStorage',
+).aacDurationMs as jest.Mock;
 
 function existingRecording(overrides: Record<string, unknown> = {}) {
   return {
@@ -239,6 +244,9 @@ describe('useVerseRecorder', () => {
       );
       await waitReady(result);
 
+      // The audio-derived duration overrides the wall-clock timer value.
+      AAC_DURATION_MOCK.mockResolvedValueOnce(3210);
+
       jest.setSystemTime(new Date('2026-07-01T00:00:00.000Z'));
       await act(async () => {
         await result.current.start();
@@ -265,12 +273,39 @@ describe('useVerseRecorder', () => {
           bibleTextId: 42,
           chapterAssignmentId: 88,
           localFilePath: MOVED_KEY,
-          durationMs: 3000,
+          durationMs: 3210,
           fileSizeBytes: 1234,
         }),
       );
       expect(mockClearPausedTake).toHaveBeenCalledWith(42);
       expect(result.current.status).toBe(RecorderStatus.Review);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('falls back to the wall-clock duration when the probe yields nothing', async () => {
+    jest.useFakeTimers();
+    try {
+      // Default probe mock resolves 0 (unreadable/malformed file).
+      const { result } = renderHook(() =>
+        useVerseRecorder({ bibleTextId: 42 }),
+      );
+      await waitReady(result);
+
+      jest.setSystemTime(new Date('2026-07-01T00:00:00.000Z'));
+      await act(async () => {
+        await result.current.start();
+      });
+
+      jest.setSystemTime(new Date('2026-07-01T00:00:04.000Z'));
+      await act(async () => {
+        await result.current.stop();
+      });
+
+      expect(mockInsertRecording).toHaveBeenCalledWith(
+        expect.objectContaining({ durationMs: 4000 }),
+      );
     } finally {
       jest.useRealTimers();
     }
@@ -315,6 +350,8 @@ describe('useVerseRecorder', () => {
       });
       // A genuine multi-segment merge produces a distinct merged file.
       CONCAT_MOCK.mockResolvedValueOnce('file:///docs/merged.aac');
+      // The merged file's real length is derived from its frames, not the timer.
+      AAC_DURATION_MOCK.mockResolvedValueOnce(6100);
 
       const { result } = renderHook(() =>
         useVerseRecorder({ bibleTextId: 42 }),
@@ -348,7 +385,7 @@ describe('useVerseRecorder', () => {
         'file:///docs/seg-1.aac',
       );
       expect(mockInsertRecording).toHaveBeenCalledWith(
-        expect.objectContaining({ localFilePath: MOVED_KEY, durationMs: 5500 }),
+        expect.objectContaining({ localFilePath: MOVED_KEY, durationMs: 6100 }),
       );
       expect(result.current.status).toBe(RecorderStatus.Review);
     } finally {
