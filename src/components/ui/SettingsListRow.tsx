@@ -8,6 +8,8 @@ interface SettingsNavigationRowProps {
   title: string;
   subtitle: string;
   onPress: () => void;
+  disabled?: boolean;
+  disabledSubtitle?: string;
 }
 
 export function SettingsNavigationRow({
@@ -15,24 +17,34 @@ export function SettingsNavigationRow({
   title,
   subtitle,
   onPress,
+  disabled = false,
+  disabledSubtitle,
 }: SettingsNavigationRowProps) {
   return (
     <TouchableOpacity
-      style={styles.row}
+      style={[styles.row, disabled && styles.rowDisabled]}
       onPress={onPress}
+      disabled={disabled}
       activeOpacity={0.7}
       accessibilityRole="button"
+      accessibilityState={{ disabled }}
     >
       <View style={styles.iconSlot}>{icon}</View>
       <View style={styles.textBlock}>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.subtitle}>{subtitle}</Text>
+        <Text style={[styles.title, disabled && styles.titleDisabled]}>
+          {title}
+        </Text>
+        <Text style={styles.subtitle}>
+          {disabled && disabledSubtitle ? disabledSubtitle : subtitle}
+        </Text>
       </View>
-      <ChevronRight
-        size={iconSizes.headerTab}
-        color={theme.colors.mutedForeground}
-        strokeWidth={listIconStrokeWidth}
-      />
+      {!disabled && (
+        <ChevronRight
+          size={iconSizes.headerTab}
+          color={theme.colors.mutedForeground}
+          strokeWidth={listIconStrokeWidth}
+        />
+      )}
     </TouchableOpacity>
   );
 }
@@ -125,5 +137,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: theme.typography.sizes.md,
     color: theme.colors.destructive,
+  },
+  rowDisabled: {
+    opacity: 0.5,
+  },
+  titleDisabled: {
+    color: theme.colors.mutedForeground,
   },
 });
