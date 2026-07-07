@@ -191,45 +191,42 @@ export interface PausedTakeMarker {
   elapsedMs: number;
   startedAt: string;
   sessionToken?: string;
+  /**
+   * Navigation context captured when the take was paused, so a recovered take
+   * can be surfaced (and navigated to) from the home screen without a fragile
+   * reverse lookup. Optional because the recorder can run without a resolved
+   * verse (e.g. in isolation/tests); the home recovery prompt only fires when
+   * both are present.
+   */
+  chapterAssignmentId?: number;
+  verseNumber?: number;
 }
 
+const PAUSED_TAKE_PREFIX = 'paused_take:';
+
 function pausedTakeKey(bibleTextId: number): string {
-  return `paused_take:${bibleTextId}`;
+  return `${PAUSED_TAKE_PREFIX}${bibleTextId}`;
 }
 
 /**
- * Accepts the current `segments` array and also coerces a legacy single
- * `fileUri` marker into a one-segment list, so a take paused before this change
- * still loads. Returns null when neither shape is present/valid.
+ * Parses and validates a stored marker payload, requiring it to belong to
+ * `expectedBibleTextId`. Returns null for malformed/mismatched payloads.
  */
-function normalizeSegments(parsed: {
-  segments?: unknown;
-  fileUri?: unknown;
-}): string[] | null {
-  if (
-    Array.isArray(parsed.segments) &&
-    parsed.segments.length > 0 &&
-    parsed.segments.every(segment => typeof segment === 'string')
-  ) {
-    return parsed.segments as string[];
-  }
-  if (typeof parsed.fileUri === 'string') {
-    return [parsed.fileUri];
-  }
-  return null;
-}
-
-export function getPausedTake(bibleTextId: number): PausedTakeMarker | null {
-  const raw = kvStorage.getItemSync(pausedTakeKey(bibleTextId));
-  if (!raw) return null;
+function parsePausedTakeMarker(
+  raw: string,
+  expectedBibleTextId: number,
+): PausedTakeMarker | null {
   try {
-    const parsed = JSON.parse(raw) as Partial<PausedTakeMarker> & {
-      fileUri?: string;
-    };
-    const segments = normalizeSegments(parsed);
+    const parsed = JSON.parse(raw) as Partial<PausedTakeMarker>;
+    const segments =
+      Array.isArray(parsed.segments) &&
+      parsed.segments.length > 0 &&
+      parsed.segments.every(segment => typeof segment === 'string')
+        ? (parsed.segments as string[])
+        : null;
     if (
       Number.isFinite(parsed?.bibleTextId) &&
-      parsed.bibleTextId === bibleTextId &&
+      parsed.bibleTextId === expectedBibleTextId &&
       segments !== null &&
       typeof parsed?.elapsedMs === 'number' &&
       typeof parsed?.startedAt === 'string'
@@ -242,13 +239,50 @@ export function getPausedTake(bibleTextId: number): PausedTakeMarker | null {
         ...(typeof parsed.sessionToken === 'string'
           ? { sessionToken: parsed.sessionToken }
           : {}),
+        ...(Number.isFinite(parsed.chapterAssignmentId)
+          ? { chapterAssignmentId: parsed.chapterAssignmentId }
+          : {}),
+        ...(Number.isFinite(parsed.verseNumber)
+          ? { verseNumber: parsed.verseNumber }
+          : {}),
       };
     }
     return null;
   } catch (error) {
-    log.error('Failed to parse paused take marker', { bibleTextId, error });
+    log.error('Failed to parse paused take marker', {
+      bibleTextId: expectedBibleTextId,
+      error,
+    });
     return null;
   }
+}
+
+export function getPausedTake(bibleTextId: number): PausedTakeMarker | null {
+  const raw = kvStorage.getItemSync(pausedTakeKey(bibleTextId));
+  if (!raw) return null;
+  return parsePausedTakeMarker(raw, bibleTextId);
+}
+
+/**
+ * Returns the first valid persisted paused-take marker, or null if none exists.
+ * Used by the home screen to surface a recording recovered after a process kill.
+ * A forced Continue/Discard decision keeps at most one marker around at a time,
+ * so a single result is enough; malformed or mismatched markers are skipped.
+ */
+export function findPausedTake(): PausedTakeMarker | null {
+  const keys = kvStorage.getAllKeys();
+  for (const key of keys) {
+    if (typeof key !== 'string' || !key.startsWith(PAUSED_TAKE_PREFIX)) {
+      continue;
+    }
+    const bibleTextId = Number(key.slice(PAUSED_TAKE_PREFIX.length));
+    if (!Number.isFinite(bibleTextId)) continue;
+    const raw = kvStorage.getItemSync(key);
+    if (!raw) continue;
+    const marker = parsePausedTakeMarker(raw, bibleTextId);
+    if (marker) return marker;
+  }
+  return null;
 }
 
 export function setPausedTake(marker: PausedTakeMarker) {

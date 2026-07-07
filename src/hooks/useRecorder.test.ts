@@ -253,6 +253,26 @@ describe('useRecorder', () => {
     expect(result.current.status).toBe(RecorderStatus.Recording);
   });
 
+  it('persists a recoverable marker as soon as recording starts', async () => {
+    // A hard process kill can happen before any pause/background event runs, so
+    // the manifest must exist from the first moment of recording.
+    const adapter = makeAdapter();
+    const { result } = renderHook(() => useRecorder(adapter));
+    await waitReady(result);
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(adapter.persistPaused).toHaveBeenCalledWith(
+      expect.objectContaining({
+        segments: ['file:///tmp/take-1.aac'],
+        elapsedMs: 0,
+        sessionToken: expect.any(String),
+      }),
+    );
+  });
+
   it('accumulates only active recording time across pause and resume', async () => {
     jest.useFakeTimers();
 

@@ -212,6 +212,30 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     }
   }, []);
 
+  // Persist the in-flight take's manifest (segments + accumulated elapsed +
+  // start time). Written at session start and on pause, so a hard process kill
+  // — which may not give the background auto-pause a chance to run — still
+  // leaves a recoverable marker. No-op until a live session owns at least one
+  // segment.
+  const persistLiveMarker = useCallback((elapsed: number) => {
+    const currentSessionKey = sessionKeyRef.current;
+    const sessionToken = liveSessionTokenRef.current;
+    if (
+      currentSessionKey === null ||
+      sessionToken === null ||
+      segmentsRef.current.length === 0
+    )
+      return;
+    const startedAt = startedAtRef.current ?? new Date().toISOString();
+    startedAtRef.current = startedAt;
+    adapterRef.current.persistPaused({
+      segments: segmentsRef.current,
+      elapsedMs: elapsed,
+      startedAt,
+      sessionToken,
+    });
+  }, []);
+
   const startTicking = useCallback(() => {
     clearTick();
     tickRef.current = setInterval(() => {
@@ -342,25 +366,6 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     }
   }, [recorder]);
 
-  const persistPausedMarker = useCallback((elapsed: number) => {
-    const currentSessionKey = sessionKeyRef.current;
-    const sessionToken = liveSessionTokenRef.current;
-    if (
-      currentSessionKey === null ||
-      sessionToken === null ||
-      segmentsRef.current.length === 0
-    )
-      return;
-    const startedAt = startedAtRef.current ?? new Date().toISOString();
-    startedAtRef.current = startedAt;
-    adapterRef.current.persistPaused({
-      segments: segmentsRef.current,
-      elapsedMs: elapsed,
-      startedAt,
-      sessionToken,
-    });
-  }, []);
-
   const requestPermission =
     useCallback(async (): Promise<PermissionRequestResult> => {
       const response = await requestRecordingPermissionsAsync();
@@ -385,9 +390,11 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     setElapsedMs(0);
     recorder.record();
     registerCurrentSegment();
+    // Persist immediately so a kill right after start is still recoverable.
+    persistLiveMarker(0);
     setStatus(RecorderStatus.Recording);
     startTicking();
-  }, [recorder, registerCurrentSegment, startTicking]);
+  }, [persistLiveMarker, recorder, registerCurrentSegment, startTicking]);
 
   // Resume a take rehydrated after a process kill: open a NEW segment appended
   // to the restored ones, preserving the accumulated elapsed time and started-at
@@ -399,11 +406,14 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     runningSinceRef.current = Date.now();
     recorder.record();
     registerCurrentSegment();
+    // Persist the appended segment immediately so a kill right after resuming
+    // is still recoverable.
+    persistLiveMarker(baseElapsedRef.current);
     setCanResume(false);
     setIsRecovered(false);
     setStatus(RecorderStatus.Recording);
     startTicking();
-  }, [recorder, registerCurrentSegment, startTicking]);
+  }, [persistLiveMarker, recorder, registerCurrentSegment, startTicking]);
 
   const start = useCallback(async () => {
     const currentSessionKey = sessionKeyRef.current;
@@ -431,8 +441,8 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     setElapsedMs(finalElapsed);
     setStatus(RecorderStatus.Paused);
     setCanResume(liveSessionTokenRef.current !== null);
-    persistPausedMarker(finalElapsed);
-  }, [clearTick, persistPausedMarker, recorder, status]);
+    persistLiveMarker(finalElapsed);
+  }, [clearTick, persistLiveMarker, recorder, status]);
 
   const pause = useCallback(async () => {
     await pauseInternal();

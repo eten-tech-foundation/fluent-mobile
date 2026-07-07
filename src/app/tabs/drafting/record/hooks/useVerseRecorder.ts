@@ -72,7 +72,16 @@ export function useVerseRecorder({
 
       persistPaused: (state: PausedTakeState) => {
         if (bibleTextId === null) return;
-        setPausedTake({ bibleTextId, ...state });
+        setPausedTake({
+          bibleTextId,
+          ...(chapterAssignmentId !== null && chapterAssignmentId !== undefined
+            ? { chapterAssignmentId }
+            : {}),
+          ...(verseNumber !== null && verseNumber !== undefined
+            ? { verseNumber }
+            : {}),
+          ...state,
+        });
       },
 
       clearPaused: () => {
