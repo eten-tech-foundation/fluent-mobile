@@ -21,7 +21,6 @@ type Nav = StackNavigationProp<RootStackParamList>;
 interface AccountSwitcherPanelProps {
   visible: boolean;
   onClose: () => void;
-  onUserSwitched?: () => void;
 }
 
 export function AccountSwitcherPanel({

@@ -66,7 +66,6 @@ export default function DraftingScreen() {
   const { isSyncing, triggerSync } = useSync();
   const { status: syncStatus } = useSyncStatus({ isSyncing, refreshKey });
   const activeAccount = useActiveAccountSummary(refreshKey);
-  const { refresh: refreshActiveAccount } = activeAccount;
   const closeAccountSwitcher = useCallback(() => {
     setAccountSwitcherVisible(false);
   }, []);
@@ -76,11 +75,6 @@ export default function DraftingScreen() {
   const handleAccountPress = useCallback(() => {
     setAccountSwitcherVisible(true);
   }, []);
-
-  const handleUserSwitched = useCallback(() => {
-    refreshActiveAccount();
-    setRefreshKey(key => key + 1);
-  }, [refreshActiveAccount]);
 
   const renderHeader = () => (
     <DraftingHeader
@@ -100,7 +94,6 @@ export default function DraftingScreen() {
     <AccountSwitcherPanel
       visible={accountSwitcherVisible}
       onClose={closeAccountSwitcher}
-      onUserSwitched={handleUserSwitched}
     />
   );
 
