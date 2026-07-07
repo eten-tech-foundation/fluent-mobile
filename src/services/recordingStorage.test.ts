@@ -1,5 +1,6 @@
 import {
   buildRecordingKey,
+  concatenateAacSegments,
   deleteRecordingFile,
   extensionFromUri,
   moveIntoStore,
@@ -11,8 +12,15 @@ const mockDocument = { uri: 'file:///docs' };
 const mockMove = jest.fn().mockResolvedValue(undefined);
 const mockCreate = jest.fn();
 const mockDelete = jest.fn();
+const mockCreateFile = jest.fn();
+const mockWrite = jest.fn();
+const mockBytes = jest.fn(async () => new Uint8Array([1, 2, 3]));
 let mockFileExists = true;
 let mockFileSize = 4096;
+
+jest.mock('expo-crypto', () => ({
+  randomUUID: jest.fn(() => 'merge-uuid'),
+}));
 
 jest.mock('expo-file-system', () => ({
   Paths: {
@@ -26,6 +34,9 @@ jest.mock('expo-file-system', () => ({
       uri: uris.map(u => (typeof u === 'string' ? u : u.uri)).join('/'),
       move: mockMove,
       delete: mockDelete,
+      create: mockCreateFile,
+      write: mockWrite,
+      bytes: mockBytes,
       get exists() {
         return mockFileExists;
       },
@@ -172,6 +183,44 @@ describe('moveIntoStore', () => {
         key: 'recordings/u1/p2/../v001/rec-1.m4a',
       }),
     ).rejects.toThrow('Invalid recording path segment');
+  });
+});
+
+describe('concatenateAacSegments', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('throws when given no segments', async () => {
+    await expect(concatenateAacSegments([])).rejects.toThrow(
+      'at least one segment',
+    );
+  });
+
+  it('returns a single segment unchanged without touching the filesystem', async () => {
+    const result = await concatenateAacSegments(['file:///docs/only.aac']);
+
+    expect(result).toBe('file:///docs/only.aac');
+    expect(mockCreateFile).not.toHaveBeenCalled();
+    expect(mockWrite).not.toHaveBeenCalled();
+  });
+
+  it('byte-appends multiple segments into a fresh merged file', async () => {
+    const result = await concatenateAacSegments([
+      'file:///docs/a.aac',
+      'file:///docs/b.aac',
+    ]);
+
+    expect(mockCreateFile).toHaveBeenCalledWith({
+      intermediates: true,
+      overwrite: true,
+    });
+    expect(mockBytes).toHaveBeenCalledTimes(2);
+    expect(mockWrite).toHaveBeenCalledTimes(2);
+    expect(mockWrite).toHaveBeenCalledWith(expect.any(Uint8Array), {
+      append: true,
+    });
+    expect(result).toContain('merge-merge-uuid.aac');
   });
 });
 

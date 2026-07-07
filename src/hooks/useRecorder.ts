@@ -7,7 +7,6 @@ import {
   setAudioModeAsync,
   useAudioRecorder,
 } from 'expo-audio';
-import type { AudioRecorder } from 'expo-audio';
 import { logger } from '../utils/logger';
 import { useDraftPlayback } from './useDraftPlayback';
 
@@ -34,12 +33,16 @@ export interface PermissionRequestResult {
  * A partial take captured before the recorder was paused (manually or by
  * backgrounding). Persisted by the adapter so an in-flight take survives a
  * process kill; the `startedAt`/`elapsedMs` pair rehydrates the timer on mount.
+ *
+ * `segments` is the ordered list of audio files that make up the take — one per
+ * app-lifetime recording session. A live session is a single segment; resuming
+ * after a process kill appends a new segment. They are concatenated on stop.
  */
 export interface PausedTakeState {
-  fileUri: string;
+  segments: string[];
   elapsedMs: number;
   startedAt: string;
-  /** Present on markers written during a live session; absent on legacy markers. */
+  /** Present on markers written during a live session; absent once rehydrated. */
   sessionToken?: string;
 }
 
@@ -63,7 +66,7 @@ export interface RecorderAdapter<T> {
    * state). Throwing is also treated as a recoverable failure.
    */
   onCommit: (args: {
-    fileUri: string;
+    fileUris: string[];
     durationMs: number;
   }) => Promise<T | null>;
   /** Delete a committed take (row + file). */
@@ -76,8 +79,8 @@ export interface RecorderAdapter<T> {
   persistPaused: (state: PausedTakeState) => void;
   /** Clear the paused-take marker for the current session. */
   clearPaused: () => void;
-  /** Best-effort unlink of a paused partial file being discarded. */
-  deletePausedFile: (fileUri: string) => void;
+  /** Best-effort unlink of the partial segment files being discarded. */
+  deletePausedFiles: (fileUris: string[]) => void;
 }
 
 export interface UseRecorderApi<T> {
@@ -86,8 +89,14 @@ export interface UseRecorderApi<T> {
   permission: PermissionState;
   currentRecording: T | null;
   isReady: boolean;
-  /** False when a paused take was rehydrated from storage (no live native session). */
+  /** True while a paused take can be resumed (always true once paused). */
   canResume: boolean;
+  /**
+   * True when the current paused take was rehydrated from storage after a
+   * process kill (no live native session). Resuming opens a new segment; the UI
+   * should also offer Discard.
+   */
+  isRecovered: boolean;
   isPlaying: boolean;
 
   requestPermission: () => Promise<PermissionRequestResult>;
@@ -140,8 +149,16 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   // Capture straight into the durable document directory (not the evictable
   // cache) so paused/backgrounded partial takes survive until we move or delete
   // them. Committed takes are relocated into the organized tree on Stop.
+  //
+  // Record as ADTS AAC (`.aac`) rather than the preset's `.m4a`: an MP4/M4A file
+  // is only valid once its `moov` atom is written on a clean stop(), so a
+  // process kill leaves it unplayable and un-appendable. ADTS is a self-framing
+  // stream — a killed segment stays playable and multiple segments concatenate
+  // by byte append, which is what makes resume-after-kill possible.
   const recorder = useAudioRecorder({
     ...RecordingPresets.HIGH_QUALITY,
+    extension: '.aac',
+    android: { outputFormat: 'aac_adts', audioEncoder: 'aac' },
     directory: 'document',
   });
 
@@ -151,6 +168,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   const [currentRecording, setCurrentRecording] = useState<T | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [canResume, setCanResume] = useState(false);
+  const [isRecovered, setIsRecovered] = useState(false);
 
   // The adapter is read via a ref inside callbacks/effects so they always see
   // the latest injected closures without being re-created (and re-subscribing)
@@ -180,6 +198,9 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   const baseElapsedRef = useRef(0);
   const runningSinceRef = useRef<number | null>(null);
   const liveSessionTokenRef = useRef<string | null>(null);
+  // Ordered audio files that make up the in-flight take (one per app-lifetime
+  // recording session). Concatenated on stop; unlinked on discard.
+  const segmentsRef = useRef<string[]>([]);
   const sessionKeyRef = useRef<number | string | null>(sessionKey);
 
   sessionKeyRef.current = sessionKey;
@@ -207,11 +228,13 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     async function load() {
       setIsReady(false);
       setCanResume(false);
+      setIsRecovered(false);
       setElapsedMs(0);
       baseElapsedRef.current = 0;
       runningSinceRef.current = null;
       startedAtRef.current = null;
       liveSessionTokenRef.current = null;
+      segmentsRef.current = [];
       clearTick();
 
       if (sessionKey === null) {
@@ -231,10 +254,14 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
       setCurrentRecording(latest);
 
       if (paused) {
-        // Restored markers have no live native recorder — resume is blocked;
-        // the UI should steer the user toward discardPaused instead.
+        // Restored markers have no live native recorder session, but the take
+        // is still resumable: resume() records a NEW segment appended to the
+        // rehydrated ones. `liveSessionTokenRef` stays null so resume() knows to
+        // open a fresh session rather than resume the (nonexistent) native one.
         liveSessionTokenRef.current = null;
-        setCanResume(false);
+        segmentsRef.current = paused.segments;
+        setCanResume(true);
+        setIsRecovered(true);
         setStatus(RecorderStatus.Paused);
         setElapsedMs(paused.elapsedMs);
         baseElapsedRef.current = paused.elapsedMs;
@@ -305,23 +332,34 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
 
   useEffect(() => () => clearTick(), [clearTick]);
 
-  const persistPausedMarker = useCallback(
-    (rec: AudioRecorder, elapsed: number) => {
-      const currentSessionKey = sessionKeyRef.current;
-      const sessionToken = liveSessionTokenRef.current;
-      if (currentSessionKey === null || !rec.uri || sessionToken === null)
-        return;
-      const startedAt = startedAtRef.current ?? new Date().toISOString();
-      startedAtRef.current = startedAt;
-      adapterRef.current.persistPaused({
-        fileUri: rec.uri,
-        elapsedMs: elapsed,
-        startedAt,
-        sessionToken,
-      });
-    },
-    [],
-  );
+  // Append the recorder's current output file to the segment list. Called after
+  // starting/continuing a session; `includes` keeps it idempotent if the uri
+  // was already registered (e.g. re-read after stop()).
+  const registerCurrentSegment = useCallback(() => {
+    const uri = recorder.uri;
+    if (uri && !segmentsRef.current.includes(uri)) {
+      segmentsRef.current = [...segmentsRef.current, uri];
+    }
+  }, [recorder]);
+
+  const persistPausedMarker = useCallback((elapsed: number) => {
+    const currentSessionKey = sessionKeyRef.current;
+    const sessionToken = liveSessionTokenRef.current;
+    if (
+      currentSessionKey === null ||
+      sessionToken === null ||
+      segmentsRef.current.length === 0
+    )
+      return;
+    const startedAt = startedAtRef.current ?? new Date().toISOString();
+    startedAtRef.current = startedAt;
+    adapterRef.current.persistPaused({
+      segments: segmentsRef.current,
+      elapsedMs: elapsed,
+      startedAt,
+      sessionToken,
+    });
+  }, []);
 
   const requestPermission =
     useCallback(async (): Promise<PermissionRequestResult> => {
@@ -333,19 +371,39 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
       };
     }, []);
 
+  // Fresh take: reset elapsed and the segment list, then open the first segment.
   const startRecordingSession = useCallback(async () => {
     await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
     await recorder.prepareToRecordAsync();
     liveSessionTokenRef.current = createLiveSessionToken();
+    segmentsRef.current = [];
     setCanResume(false);
+    setIsRecovered(false);
     baseElapsedRef.current = 0;
     runningSinceRef.current = Date.now();
     startedAtRef.current = new Date().toISOString();
     setElapsedMs(0);
     recorder.record();
+    registerCurrentSegment();
     setStatus(RecorderStatus.Recording);
     startTicking();
-  }, [recorder, startTicking]);
+  }, [recorder, registerCurrentSegment, startTicking]);
+
+  // Resume a take rehydrated after a process kill: open a NEW segment appended
+  // to the restored ones, preserving the accumulated elapsed time and started-at
+  // so the take reads as one continuous recording.
+  const continueRecordingSession = useCallback(async () => {
+    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+    await recorder.prepareToRecordAsync();
+    liveSessionTokenRef.current = createLiveSessionToken();
+    runningSinceRef.current = Date.now();
+    recorder.record();
+    registerCurrentSegment();
+    setCanResume(false);
+    setIsRecovered(false);
+    setStatus(RecorderStatus.Recording);
+    startTicking();
+  }, [recorder, registerCurrentSegment, startTicking]);
 
   const start = useCallback(async () => {
     const currentSessionKey = sessionKeyRef.current;
@@ -373,7 +431,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     setElapsedMs(finalElapsed);
     setStatus(RecorderStatus.Paused);
     setCanResume(liveSessionTokenRef.current !== null);
-    persistPausedMarker(recorder, finalElapsed);
+    persistPausedMarker(finalElapsed);
   }, [clearTick, persistPausedMarker, recorder, status]);
 
   const pause = useCallback(async () => {
@@ -381,16 +439,21 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   }, [pauseInternal]);
 
   const resume = useCallback(async () => {
-    if (
-      status !== RecorderStatus.Paused ||
-      liveSessionTokenRef.current === null
-    )
+    if (status !== RecorderStatus.Paused) return;
+
+    // Rehydrated take (no live native session): the previous recorder died with
+    // the process, so open a new segment instead of resuming a native session.
+    if (liveSessionTokenRef.current === null) {
+      if (segmentsRef.current.length === 0) return;
+      await continueRecordingSession();
       return;
-    // Guard against the native recorder already running: if the app was
-    // backgrounded and expo-audio auto-resumed it (and our foreground re-pause
-    // was missed due to lifecycle ordering), calling record() again would
-    // start an already-started recorder and throw. Only resume the native
-    // session when it is actually paused.
+    }
+
+    // Live session: the native recorder still holds the current segment file.
+    // Guard against it already running: if the app was backgrounded and
+    // expo-audio auto-resumed it (and our foreground re-pause was missed due to
+    // lifecycle ordering), calling record() again would start an already-started
+    // recorder and throw. Only resume the native session when it is paused.
     if (!recorder.isRecording) {
       recorder.record();
     }
@@ -398,7 +461,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     setStatus(RecorderStatus.Recording);
     setCanResume(false);
     startTicking();
-  }, [recorder, startTicking, status]);
+  }, [continueRecordingSession, recorder, startTicking, status]);
 
   const commitRecording = useCallback(async () => {
     const currentSessionKey = sessionKeyRef.current;
@@ -411,22 +474,36 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
       segmentStart === null ? 0 : Date.now() - segmentStart;
     const duration = baseElapsedRef.current + activeSegmentMs;
 
-    try {
-      await recorder.stop();
-    } catch (error) {
-      log.warn('Recorder stop failed while committing take', {
-        sessionKey: currentSessionKey,
-        error,
-      });
-      setStatus(currentRecording ? RecorderStatus.Review : RecorderStatus.Idle);
-      return;
-    } finally {
+    // A take rehydrated after a process kill (Stop pressed straight from the
+    // recovery prompt) has no live native recorder — its segments are already
+    // finalized on disk. Only stop/finalize the recorder when a session is
+    // actually live; otherwise committing the persisted segments is enough.
+    const hasLiveSession = liveSessionTokenRef.current !== null;
+    if (hasLiveSession) {
+      try {
+        await recorder.stop();
+      } catch (error) {
+        log.warn('Recorder stop failed while committing take', {
+          sessionKey: currentSessionKey,
+          error,
+        });
+        setStatus(
+          currentRecording ? RecorderStatus.Review : RecorderStatus.Idle,
+        );
+        return;
+      } finally {
+        clearTick();
+      }
+      // Capture the just-finalized segment in case its uri wasn't ready when
+      // the session opened, then commit the full ordered segment list.
+      registerCurrentSegment();
+    } else {
       clearTick();
     }
 
-    const fileUri = recorder.uri;
-    if (!fileUri) {
-      log.error('Recorder returned no URI on stop; skipping commit');
+    const fileUris = segmentsRef.current;
+    if (fileUris.length === 0) {
+      log.error('Recorder produced no segments on stop; skipping commit');
       setStatus(currentRecording ? RecorderStatus.Review : RecorderStatus.Idle);
       return;
     }
@@ -434,7 +511,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     let committed: T | null;
     try {
       committed = await adapterRef.current.onCommit({
-        fileUri,
+        fileUris,
         durationMs: duration,
       });
     } catch (error) {
@@ -452,22 +529,28 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     }
 
     adapterRef.current.clearPaused();
+    segmentsRef.current = [];
     baseElapsedRef.current = 0;
     runningSinceRef.current = null;
     startedAtRef.current = null;
     liveSessionTokenRef.current = null;
     setCanResume(false);
+    setIsRecovered(false);
     setElapsedMs(duration);
     setCurrentRecording(committed);
     setStatus(RecorderStatus.Review);
-  }, [clearTick, currentRecording, recorder]);
+  }, [clearTick, currentRecording, recorder, registerCurrentSegment]);
 
   const stop = useCallback(async () => {
     if (status !== RecorderStatus.Recording && status !== RecorderStatus.Paused)
       return;
+    // A rehydrated paused take can be committed straight from the recovery
+    // prompt as long as it still has segments on disk; only bail when there is
+    // nothing to finalize.
     if (
       status === RecorderStatus.Paused &&
-      liveSessionTokenRef.current === null
+      liveSessionTokenRef.current === null &&
+      segmentsRef.current.length === 0
     )
       return;
     await commitRecording();
@@ -512,7 +595,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   const discardPaused = useCallback(async () => {
     const currentSessionKey = sessionKeyRef.current;
     if (currentSessionKey === null) return;
-    // Read the marker before clearing so we can unlink the durable partial file
+    // Read the marker before clearing so we can unlink every partial segment
     // (recorder.uri is unreliable after a process kill; the marker is not).
     const marker = adapterRef.current.loadPaused(currentSessionKey);
     try {
@@ -522,18 +605,21 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
         error,
       });
     }
-    const fileUri = marker?.fileUri ?? recorder.uri;
-    if (fileUri) adapterRef.current.deletePausedFile(fileUri);
+    registerCurrentSegment();
+    const fileUris = marker?.segments ?? segmentsRef.current;
+    if (fileUris.length > 0) adapterRef.current.deletePausedFiles(fileUris);
     adapterRef.current.clearPaused();
     clearTick();
+    segmentsRef.current = [];
     baseElapsedRef.current = 0;
     runningSinceRef.current = null;
     startedAtRef.current = null;
     liveSessionTokenRef.current = null;
     setCanResume(false);
+    setIsRecovered(false);
     setElapsedMs(0);
     setStatus(currentRecording ? RecorderStatus.Review : RecorderStatus.Idle);
-  }, [clearTick, currentRecording, recorder]);
+  }, [clearTick, currentRecording, recorder, registerCurrentSegment]);
 
   const togglePlayback = useCallback(async () => {
     if (status !== RecorderStatus.Review || !currentRecording) return;
@@ -547,6 +633,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     currentRecording,
     isReady,
     canResume,
+    isRecovered,
     isPlaying,
     requestPermission,
     start,

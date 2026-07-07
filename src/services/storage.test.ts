@@ -18,7 +18,7 @@ const mockRemoveItemSync = jest.mocked(Storage).mock.results[0]!.value
 
 const validMarker = {
   bibleTextId: 42,
-  fileUri: 'file:///docs/partial-take.m4a',
+  segments: ['file:///docs/partial-take-0.aac'],
   elapsedMs: 4500,
   startedAt: '2026-07-01T00:00:00.000Z',
 };
@@ -36,10 +36,28 @@ describe('getPausedTake', () => {
     expect(mockGetItemSync).toHaveBeenCalledWith('paused_take:42');
   });
 
+  it('coerces a legacy single-fileUri marker into a one-segment list', () => {
+    mockGetItemSync.mockReturnValue(
+      JSON.stringify({
+        bibleTextId: 42,
+        fileUri: 'file:///docs/legacy-take.m4a',
+        elapsedMs: 4500,
+        startedAt: '2026-07-01T00:00:00.000Z',
+      }),
+    );
+
+    expect(getPausedTake(42)).toEqual({
+      bibleTextId: 42,
+      segments: ['file:///docs/legacy-take.m4a'],
+      elapsedMs: 4500,
+      startedAt: '2026-07-01T00:00:00.000Z',
+    });
+  });
+
   it('returns null when bibleTextId is missing', () => {
     mockGetItemSync.mockReturnValue(
       JSON.stringify({
-        fileUri: validMarker.fileUri,
+        segments: validMarker.segments,
         elapsedMs: validMarker.elapsedMs,
         startedAt: validMarker.startedAt,
       }),
@@ -68,13 +86,21 @@ describe('getPausedTake', () => {
     expect(getPausedTake(42)).toBeNull();
   });
 
-  it('returns null when fileUri is missing', () => {
+  it('returns null when neither segments nor a legacy fileUri are present', () => {
     mockGetItemSync.mockReturnValue(
       JSON.stringify({
         bibleTextId: validMarker.bibleTextId,
         elapsedMs: validMarker.elapsedMs,
         startedAt: validMarker.startedAt,
       }),
+    );
+
+    expect(getPausedTake(42)).toBeNull();
+  });
+
+  it('returns null when segments is an empty array', () => {
+    mockGetItemSync.mockReturnValue(
+      JSON.stringify({ ...validMarker, segments: [] }),
     );
 
     expect(getPausedTake(42)).toBeNull();

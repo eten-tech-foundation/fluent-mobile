@@ -12,6 +12,7 @@ import {
 } from '../../../../../services/storage';
 import {
   buildRecordingKey,
+  concatenateAacSegments,
   deleteRecordingFile,
   extensionFromUri,
   moveIntoStore,
@@ -79,10 +80,27 @@ export function useVerseRecorder({
         clearPausedTake(bibleTextId);
       },
 
-      deletePausedFile: fileUri => deleteRecordingFile(fileUri),
+      deletePausedFiles: fileUris =>
+        fileUris.forEach(fileUri => deleteRecordingFile(fileUri)),
 
-      onCommit: async ({ fileUri, durationMs }) => {
+      onCommit: async ({ fileUris, durationMs }) => {
         if (bibleTextId === null) return null;
+
+        // Merge the take's segments into a single file. For a one-segment take
+        // this returns that file unchanged (moveIntoStore relocates it below);
+        // for a multi-segment take (resumed across a kill) it produces a new
+        // merged file, leaving the raw segments to be unlinked afterwards.
+        let mergedUri: string;
+        try {
+          mergedUri = await concatenateAacSegments(fileUris);
+        } catch (error) {
+          log.error('Failed to concatenate recording segments', {
+            bibleTextId,
+            segments: fileUris.length,
+            error,
+          });
+          return null;
+        }
 
         const recordingId = randomUUID();
         const key = buildRecordingKey({
@@ -92,14 +110,14 @@ export function useVerseRecorder({
           chapterNumber: chapterNumber ?? 0,
           verseNumber: verseNumber ?? 0,
           recordingId,
-          extension: extensionFromUri(fileUri),
+          extension: extensionFromUri(mergedUri),
         });
 
         // Move the take out of the evictable cache before recording it in the
         // DB so a row never points at a file the OS could reclaim.
         let moved;
         try {
-          moved = await moveIntoStore({ sourceUri: fileUri, key });
+          moved = await moveIntoStore({ sourceUri: mergedUri, key });
         } catch (error) {
           log.error('Failed to move recording into durable store', {
             bibleTextId,
@@ -107,6 +125,12 @@ export function useVerseRecorder({
           });
           return null;
         }
+
+        // Unlink any raw segments not consumed by the move (i.e. everything but
+        // a single-segment take, whose only file was the one just moved).
+        fileUris
+          .filter(fileUri => fileUri !== mergedUri)
+          .forEach(fileUri => deleteRecordingFile(fileUri));
 
         try {
           return await insertRecording({
