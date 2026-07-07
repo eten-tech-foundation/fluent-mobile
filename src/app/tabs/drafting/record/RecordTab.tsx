@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, ToastAndroid, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../../../../theme';
 import type { VerseData } from '../../../../types/db/types';
@@ -129,6 +129,17 @@ export function RecordTab({
   }
 
   async function handleStartPress() {
+    // TEMP: the source verse row hasn't resolved a bible_text id (sync gap /
+    // unstable backend contract), which leaves the recorder inert and the record
+    // button silently dead. Surface it until the team settles the session-key /
+    // bible_text_id approach once sync is stable.
+    if (bibleTextIdForSelectedVerse === null) {
+      ToastAndroid.show(
+        'No bible text id for this verse yet.',
+        ToastAndroid.SHORT,
+      );
+      return;
+    }
     if (!(await ensureMicPermission())) return;
     await recorder.start();
   }
