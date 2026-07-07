@@ -268,22 +268,40 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     };
   }, []);
 
-  // Auto-pause when the app is backgrounded mid-recording.
+  // Auto-pause when the app is backgrounded mid-recording, and undo
+  // expo-audio's native auto-resume when we return to the foreground.
   useEffect(() => {
     const subscription = AppState.addEventListener(
       'change',
       (nextState: AppStateStatus) => {
-        if (nextState !== 'active' && status === RecorderStatus.Recording) {
-          pauseInternal().catch(error =>
-            log.error('Auto-pause on background failed', { error }),
-          );
+        if (nextState !== 'active') {
+          if (status === RecorderStatus.Recording) {
+            pauseInternal().catch(error =>
+              log.error('Auto-pause on background failed', { error }),
+            );
+          }
+          return;
+        }
+
+        // expo-audio's native module auto-resumes a recorder it paused on
+        // background (OnActivityEntersForeground -> recorder.record()). Our
+        // state machine owns pause/resume, so if we come back to the foreground
+        // while still paused with a live session, undo that auto-resume and stay
+        // paused until the user explicitly resumes. Reading `isRecording` before
+        // pausing keeps this idempotent (a paused recorder reports false).
+        if (
+          status === RecorderStatus.Paused &&
+          liveSessionTokenRef.current !== null &&
+          recorder.isRecording
+        ) {
+          recorder.pause();
         }
       },
     );
     return () => subscription.remove();
     // pauseInternal is stable via closure and eslint-disable to avoid re-subscribing every tick.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+  }, [status, recorder]);
 
   useEffect(() => () => clearTick(), [clearTick]);
 
@@ -368,7 +386,14 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
       liveSessionTokenRef.current === null
     )
       return;
-    recorder.record();
+    // Guard against the native recorder already running: if the app was
+    // backgrounded and expo-audio auto-resumed it (and our foreground re-pause
+    // was missed due to lifecycle ordering), calling record() again would
+    // start an already-started recorder and throw. Only resume the native
+    // session when it is actually paused.
+    if (!recorder.isRecording) {
+      recorder.record();
+    }
     runningSinceRef.current = Date.now();
     setStatus(RecorderStatus.Recording);
     setCanResume(false);
