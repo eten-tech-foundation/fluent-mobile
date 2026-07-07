@@ -58,7 +58,8 @@ flowchart TD
     seg1 --> rec
 
     rec -->|Stop| concat["Concatenate segments<br/>(byte append)"]
-    concat --> move["Move merged file into<br/>durable recordings tree"]
+    concat --> probe["Derive duration from<br/>ADTS frames"]
+    probe --> move["Move merged file into<br/>durable recordings tree"]
     move --> cleanup["Unlink raw segments"]
     cleanup --> insert["Insert DB row"]
     insert --> review["Review"]
@@ -76,7 +77,8 @@ flowchart TD
 | Find the recovered take for the home prompt | `src/services/storage.ts` — `findPausedTake()` |
 | Home recovery prompt (Continue / Discard) | `src/app/screens/hooks/useRecordingRecovery.ts` |
 | Concatenation | `src/services/recordingStorage.ts` — `concatenateAacSegments()` |
-| Merge → move → cleanup → insert | `src/app/tabs/drafting/record/hooks/useVerseRecorder.ts` — `onCommit`, `deletePausedFiles` |
+| Duration from audio (not timer) | `src/services/recordingStorage.ts` — `aacDurationMs()` / `aacDurationMsFromBytes()` |
+| Merge → probe duration → move → cleanup → insert | `src/app/tabs/drafting/record/hooks/useVerseRecorder.ts` — `onCommit`, `deletePausedFiles` |
 | UI (Resume / Stop / Discard + copy) | `src/app/tabs/drafting/record/components/RecordingControls.tsx` |
 
 ## Manifest shape
@@ -111,8 +113,10 @@ interface PausedTakeMarker {
 3. **Resume** calls `continueRecordingSession()`: it prepares and starts a fresh
    recording (a new segment file), preserves the accumulated elapsed time and
    `startedAt`, and pushes the new segment onto `segmentsRef`.
-4. **Stop** concatenates every segment, moves the merged file into the durable
-   `recordings/` tree, unlinks the raw segments, and inserts the DB row.
+4. **Stop** concatenates every segment, derives the take's true length from the
+   merged file's ADTS frames (`aacDurationMs`), moves the merged file into the
+   durable `recordings/` tree, unlinks the raw segments, and inserts the DB row
+   with the derived `durationMs`.
 5. **Discard** unlinks all segments and clears the marker.
 
 ## Caveats
@@ -129,8 +133,10 @@ interface PausedTakeMarker {
   container difference is what buys resilience. Downstream upload/playback must
   accept `.aac`.
 - **Elapsed time on kill.** The marker's `elapsedMs` is written at start (`0`)
-  and refreshed on pause — not continuously while recording. A kill mid-recording
-  therefore recovers the full **audio** but the recovered take's timer/committed
-  duration can undercount the un-paused portion. This is an intentional
-  simplification (kill recovery, not precise timing); the captured bytes are
-  unaffected — resume appends a new segment and stop concatenates everything.
+  and refreshed on pause — not continuously while recording — so the live
+  wall-clock timer can undercount after a kill. This no longer affects stored
+  metadata: on **Stop**, the committed `durationMs` is derived from the merged
+  file's ADTS frames (`aacDurationMs` in `recordingStorage.ts`), which is
+  sample-accurate regardless of kills or encoder latency. The wall-clock timer
+  remains only a live display and a commit-time fallback if the probe returns
+  `0` (unreadable/malformed file).
