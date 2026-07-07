@@ -14,6 +14,7 @@ interface FakeTake {
 const mockRecorder = {
   currentTime: 0,
   uri: 'file:///tmp/take-1.m4a',
+  isRecording: false,
   record: jest.fn(),
   pause: jest.fn(),
   stop: jest.fn().mockResolvedValue(undefined),
@@ -86,6 +87,7 @@ describe('useRecorder', () => {
     jest.clearAllMocks();
     mockRecorder.currentTime = 0;
     mockRecorder.uri = 'file:///tmp/take-1.m4a';
+    mockRecorder.isRecording = false;
     mockPlayer.currentTime = 0;
     mockPlayer.duration = 0;
     mockPlayerStatus = { playing: false, didJustFinish: false };
@@ -511,6 +513,72 @@ describe('useRecorder', () => {
     expect(result.current.status).toBe(RecorderStatus.Paused);
 
     addSpy.mockRestore();
+  });
+
+  it('undoes the native auto-resume when returning to the foreground', async () => {
+    const listeners: Array<(state: string) => void> = [];
+    const addSpy = jest
+      .spyOn(AppState, 'addEventListener')
+      .mockImplementation(((_event: string, cb: (state: string) => void) => {
+        listeners.push(cb);
+        return { remove: jest.fn() };
+      }) as unknown as typeof AppState.addEventListener);
+
+    const adapter = makeAdapter();
+    const { result } = renderHook(() => useRecorder(adapter));
+    await waitReady(result);
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    await act(async () => {
+      listeners.forEach(cb => cb('background'));
+      await Promise.resolve();
+    });
+    expect(result.current.status).toBe(RecorderStatus.Paused);
+
+    // Simulate expo-audio's native OnActivityEntersForeground auto-resume,
+    // which flips the native recorder back to recording before our JS handler.
+    mockRecorder.pause.mockClear();
+    mockRecorder.isRecording = true;
+
+    await act(async () => {
+      listeners.forEach(cb => cb('active'));
+      await Promise.resolve();
+    });
+
+    // We re-pause the native recorder and keep our state paused.
+    expect(mockRecorder.pause).toHaveBeenCalledTimes(1);
+    expect(result.current.status).toBe(RecorderStatus.Paused);
+
+    addSpy.mockRestore();
+  });
+
+  it('resumes without restarting a recorder that is already recording', async () => {
+    const adapter = makeAdapter();
+    const { result } = renderHook(() => useRecorder(adapter));
+    await waitReady(result);
+
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      await result.current.pause();
+    });
+    expect(result.current.status).toBe(RecorderStatus.Paused);
+
+    // Native recorder is already recording (e.g. auto-resumed on foreground);
+    // resume() must not call record() again or it would double-start and throw.
+    mockRecorder.record.mockClear();
+    mockRecorder.isRecording = true;
+
+    await act(async () => {
+      await result.current.resume();
+    });
+
+    expect(mockRecorder.record).not.toHaveBeenCalled();
+    expect(result.current.status).toBe(RecorderStatus.Recording);
   });
 
   it('captures recordings into the durable document directory', async () => {
