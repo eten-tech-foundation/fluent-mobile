@@ -15,6 +15,11 @@ export type RootStackParamList = {
     chapterName: string;
     projectName: string;
     language: string;
+    /**
+     * When set (e.g. navigating from the home recovery prompt), the drafting
+     * screen lands on this verse instead of the first-unrecorded default.
+     */
+    recoverVerse?: number;
   };
   PrivacyPolicy: undefined;
   TermsOfUse: undefined;
