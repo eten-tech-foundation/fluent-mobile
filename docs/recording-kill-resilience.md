@@ -34,13 +34,17 @@ Two changes make partial takes durable:
 
 A persisted marker (the "manifest") records the segment list, accumulated
 elapsed time, and start timestamp so the take can be rehydrated on the next app
-launch.
+launch. The marker is written **the moment recording starts** and again on every
+pause/background. Writing at start (not only on pause) is what makes a hard
+task-swipe kill recoverable: such a kill can destroy the process before the
+background auto-pause handler gets to run, so a pause-only marker would never
+exist for the very case this is meant to cover.
 
 ## Lifecycle
 
 ```mermaid
 flowchart TD
-    start["Start recording"] --> seg0["Open segment 0<br/>(document dir, .aac)"]
+    start["Start recording"] --> seg0["Open segment 0<br/>(document dir, .aac)<br/>persist marker at start"]
     seg0 --> rec["Recording"]
     rec -->|pause / background| paused["Paused<br/>persist marker:<br/>segments + elapsedMs"]
     paused -->|resume, same session| rec
@@ -67,7 +71,10 @@ flowchart TD
 | Record as ADTS AAC | `src/hooks/useRecorder.ts` — `useAudioRecorder({ extension: '.aac', android: { outputFormat: 'aac_adts', audioEncoder: 'aac' } })` |
 | Segment tracking + resume-after-kill | `src/hooks/useRecorder.ts` — `segmentsRef`, `startRecordingSession()`, `continueRecordingSession()`, `resume()` |
 | `isRecovered` flag (rehydrated take) | `src/hooks/useRecorder.ts` — surfaced in the hook API |
-| Segment manifest persistence | `src/services/storage.ts` — `PausedTakeMarker.segments`, legacy `fileUri` coercion |
+| When the marker is written | `src/hooks/useRecorder.ts` — `persistLiveMarker()` (at start and on pause) |
+| Segment manifest persistence | `src/services/storage.ts` — `PausedTakeMarker.segments` |
+| Find the recovered take for the home prompt | `src/services/storage.ts` — `findPausedTake()` |
+| Home recovery prompt (Continue / Discard) | `src/app/screens/hooks/useRecordingRecovery.ts` |
 | Concatenation | `src/services/recordingStorage.ts` — `concatenateAacSegments()` |
 | Merge → move → cleanup → insert | `src/app/tabs/drafting/record/hooks/useVerseRecorder.ts` — `onCommit`, `deletePausedFiles` |
 | UI (Resume / Stop / Discard + copy) | `src/app/tabs/drafting/record/components/RecordingControls.tsx` |
@@ -83,15 +90,19 @@ interface PausedTakeMarker {
   elapsedMs: number; // accumulated active recording time
   startedAt: string; // ISO timestamp of the first session
   sessionToken?: string; // present on live markers
+  chapterAssignmentId?: number; // navigation context for the home prompt
+  verseNumber?: number; // navigation context for the home prompt
 }
 ```
 
-`getPausedTake()` coerces a legacy single-`fileUri` marker (written before this
-change) into a one-segment list, so a take paused across the upgrade still
-loads.
-
 ## Resume-after-kill flow
 
+0. On the home screen (after sync), `useRecordingRecovery` calls
+   `findPausedTake()`. If a marker exists it forces a decision — **Continue**
+   navigates to that verse's Record tab (steps below), **Discard** unlinks the
+   segments and clears the marker. This is what surfaces a killed take without
+   the user having to remember which verse they were on. A forced decision keeps
+   at most one marker around, so a single lookup is enough.
 1. On mount, `useVerseRecorder` reads the marker via `getPausedTake()`.
 2. `useRecorder` rehydrates: `status = Paused`, `canResume = true`,
    `isRecovered = true`, `elapsedMs = marker.elapsedMs`, and
@@ -117,3 +128,9 @@ loads.
 - **ADTS vs M4A quality/size.** ADTS AAC is functionally equivalent audio; the
   container difference is what buys resilience. Downstream upload/playback must
   accept `.aac`.
+- **Elapsed time on kill.** The marker's `elapsedMs` is written at start (`0`)
+  and refreshed on pause — not continuously while recording. A kill mid-recording
+  therefore recovers the full **audio** but the recovered take's timer/committed
+  duration can undercount the un-paused portion. This is an intentional
+  simplification (kill recovery, not precise timing); the captured bytes are
+  unaffected — resume appends a new segment and stop concatenates everything.
