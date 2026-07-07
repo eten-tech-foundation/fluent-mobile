@@ -13,7 +13,7 @@ interface FakeTake {
 
 const mockRecorder = {
   currentTime: 0,
-  uri: 'file:///tmp/take-1.m4a',
+  uri: 'file:///tmp/take-1.aac',
   isRecording: false,
   record: jest.fn(),
   pause: jest.fn(),
@@ -73,7 +73,7 @@ function makeAdapter(
     loadPaused: jest.fn().mockReturnValue(null),
     persistPaused: jest.fn(),
     clearPaused: jest.fn(),
-    deletePausedFile: jest.fn(),
+    deletePausedFiles: jest.fn(),
     ...overrides,
   };
 }
@@ -86,7 +86,7 @@ describe('useRecorder', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockRecorder.currentTime = 0;
-    mockRecorder.uri = 'file:///tmp/take-1.m4a';
+    mockRecorder.uri = 'file:///tmp/take-1.aac';
     mockRecorder.isRecording = false;
     mockPlayer.currentTime = 0;
     mockPlayer.duration = 0;
@@ -132,10 +132,10 @@ describe('useRecorder', () => {
     expect(result.current.currentRecording?.id).toBe('existing');
   });
 
-  it('surfaces a persisted paused-take marker on mount', async () => {
+  it('surfaces a persisted paused-take marker on mount as a recoverable, resumable take', async () => {
     const adapter = makeAdapter({
       loadPaused: jest.fn().mockReturnValue({
-        fileUri: '/tmp/paused.m4a',
+        segments: ['/tmp/paused-0.aac'],
         elapsedMs: 4500,
         startedAt: '2026-07-01T00:00:00.000Z',
         sessionToken: 'stale-token',
@@ -145,13 +145,14 @@ describe('useRecorder', () => {
     await waitReady(result);
     expect(result.current.status).toBe(RecorderStatus.Paused);
     expect(result.current.elapsedMs).toBe(4500);
-    expect(result.current.canResume).toBe(false);
+    expect(result.current.canResume).toBe(true);
+    expect(result.current.isRecovered).toBe(true);
   });
 
-  it('does not resume a rehydrated paused take without a live native session', async () => {
+  it('resumes a rehydrated paused take by opening a new appended segment', async () => {
     const adapter = makeAdapter({
       loadPaused: jest.fn().mockReturnValue({
-        fileUri: '/tmp/paused.m4a',
+        segments: ['/tmp/paused-0.aac'],
         elapsedMs: 4500,
         startedAt: '2026-07-01T00:00:00.000Z',
         sessionToken: 'stale-token',
@@ -160,12 +161,82 @@ describe('useRecorder', () => {
     const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
 
+    // The previous native recorder died with the process, so resume must open a
+    // fresh session (prepare + record) rather than resume a native session.
     await act(async () => {
       await result.current.resume();
     });
 
-    expect(mockRecorder.record).not.toHaveBeenCalled();
+    expect(mockRecorder.prepareToRecordAsync).toHaveBeenCalled();
+    expect(mockRecorder.record).toHaveBeenCalled();
+    expect(result.current.status).toBe(RecorderStatus.Recording);
+    // Elapsed time is preserved across the kill (rehydrated base of 4.5s).
+    expect(result.current.elapsedMs).toBe(4500);
+    expect(result.current.isRecovered).toBe(false);
+  });
+
+  it('commits a rehydrated take when Stop is pressed straight from the recovery prompt', async () => {
+    const adapter = makeAdapter({
+      loadPaused: jest.fn().mockReturnValue({
+        segments: ['/tmp/paused-0.aac', '/tmp/paused-1.aac'],
+        elapsedMs: 7200,
+        startedAt: '2026-07-01T00:00:00.000Z',
+        sessionToken: 'stale-token',
+      }),
+    });
+    const { result } = renderHook(() => useRecorder(adapter));
+    await waitReady(result);
     expect(result.current.status).toBe(RecorderStatus.Paused);
+
+    await act(async () => {
+      await result.current.stop();
+    });
+
+    // No live native recorder, so we must not call stop() on it, but we still
+    // commit the persisted segments with the rehydrated elapsed time.
+    expect(mockRecorder.stop).not.toHaveBeenCalled();
+    expect(adapter.onCommit).toHaveBeenCalledWith({
+      fileUris: ['/tmp/paused-0.aac', '/tmp/paused-1.aac'],
+      durationMs: 7200,
+    });
+    expect(adapter.clearPaused).toHaveBeenCalled();
+    expect(result.current.status).toBe(RecorderStatus.Review);
+  });
+
+  it('commits every segment of a take resumed after a kill', async () => {
+    jest.useFakeTimers();
+    try {
+      const adapter = makeAdapter({
+        loadPaused: jest.fn().mockReturnValue({
+          segments: ['/tmp/paused-0.aac'],
+          elapsedMs: 4500,
+          startedAt: '2026-07-01T00:00:00.000Z',
+          sessionToken: 'stale-token',
+        }),
+      });
+      const { result } = renderHook(() => useRecorder(adapter));
+      await waitReady(result);
+
+      // The new session records into a distinct segment file.
+      mockRecorder.uri = 'file:///tmp/paused-1.aac';
+      jest.setSystemTime(new Date('2026-07-01T00:00:00.000Z'));
+      await act(async () => {
+        await result.current.resume();
+      });
+
+      jest.setSystemTime(new Date('2026-07-01T00:00:01.000Z'));
+      await act(async () => {
+        await result.current.stop();
+      });
+
+      expect(adapter.onCommit).toHaveBeenCalledWith({
+        fileUris: ['/tmp/paused-0.aac', 'file:///tmp/paused-1.aac'],
+        durationMs: 5500,
+      });
+      expect(result.current.status).toBe(RecorderStatus.Review);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('transitions idle -> recording on start', async () => {
@@ -204,7 +275,7 @@ describe('useRecorder', () => {
       expect(mockRecorder.pause).toHaveBeenCalled();
       expect(adapter.persistPaused).toHaveBeenCalledWith(
         expect.objectContaining({
-          fileUri: 'file:///tmp/take-1.m4a',
+          segments: ['file:///tmp/take-1.aac'],
           elapsedMs: 2500,
           sessionToken: expect.any(String),
         }),
@@ -229,7 +300,7 @@ describe('useRecorder', () => {
 
       expect(mockRecorder.stop).toHaveBeenCalled();
       expect(adapter.onCommit).toHaveBeenCalledWith({
-        fileUri: 'file:///tmp/take-1.m4a',
+        fileUris: ['file:///tmp/take-1.aac'],
         durationMs: 5500,
       });
       expect(adapter.clearPaused).toHaveBeenCalled();
@@ -604,17 +675,20 @@ describe('useRecorder', () => {
       await result.current.discardPaused();
     });
 
-    expect(adapter.deletePausedFile).toHaveBeenCalledWith(
-      'file:///tmp/take-1.m4a',
-    );
+    expect(adapter.deletePausedFiles).toHaveBeenCalledWith([
+      'file:///tmp/take-1.aac',
+    ]);
     expect(adapter.clearPaused).toHaveBeenCalled();
     expect(result.current.status).toBe(RecorderStatus.Idle);
   });
 
-  it('unlinks the durable partial file when a paused take is discarded', async () => {
+  it('unlinks every partial segment when a paused take is discarded', async () => {
     const adapter = makeAdapter({
       loadPaused: jest.fn().mockReturnValue({
-        fileUri: 'file:///docs/partial-take.m4a',
+        segments: [
+          'file:///docs/partial-take-0.aac',
+          'file:///docs/partial-take-1.aac',
+        ],
         elapsedMs: 4500,
         startedAt: '2026-07-01T00:00:00.000Z',
         sessionToken: 'stale-token',
@@ -629,9 +703,10 @@ describe('useRecorder', () => {
       await result.current.discardPaused();
     });
 
-    expect(adapter.deletePausedFile).toHaveBeenCalledWith(
-      'file:///docs/partial-take.m4a',
-    );
+    expect(adapter.deletePausedFiles).toHaveBeenCalledWith([
+      'file:///docs/partial-take-0.aac',
+      'file:///docs/partial-take-1.aac',
+    ]);
     expect(adapter.clearPaused).toHaveBeenCalled();
     expect(result.current.status).toBe(RecorderStatus.Idle);
   });

@@ -5,7 +5,7 @@ import { RecorderStatus } from '../../../../../types/recording/types';
 
 const mockRecorder = {
   currentTime: 0,
-  uri: 'file:///tmp/take-1.m4a',
+  uri: 'file:///tmp/take-1.aac',
   record: jest.fn(),
   pause: jest.fn(),
   stop: jest.fn().mockResolvedValue(undefined),
@@ -65,14 +65,15 @@ jest.mock('../../../../../db/queries', () => ({
     mockGetLatestRecordingForVerse(id),
 }));
 
-const MOVED_KEY = 'recordings/u/p0/UNK/c000/v000/test-uuid-1.m4a';
+const MOVED_KEY = 'recordings/u/p0/UNK/c000/v000/test-uuid-1.aac';
 
 jest.mock('../../../../../services/recordingStorage', () => ({
   buildRecordingKey: (parts: unknown) => {
     mockBuildRecordingKey(parts);
     return MOVED_KEY;
   },
-  extensionFromUri: jest.fn(() => 'm4a'),
+  extensionFromUri: jest.fn(() => 'aac'),
+  concatenateAacSegments: jest.fn(async (fileUris: string[]) => fileUris[0]),
   moveIntoStore: jest.fn(async ({ key }: { key: string }) => ({
     key,
     sizeBytes: 1234,
@@ -91,6 +92,12 @@ jest.mock('../../../../../services/storage', () => ({
 const RESOLVE_MOCK = jest.requireMock(
   '../../../../../services/recordingStorage',
 ).resolveRecordingUri as jest.Mock;
+
+const CONCAT_MOCK = jest.requireMock('../../../../../services/recordingStorage')
+  .concatenateAacSegments as jest.Mock;
+
+const MOVE_MOCK = jest.requireMock('../../../../../services/recordingStorage')
+  .moveIntoStore as jest.Mock;
 
 function existingRecording(overrides: Record<string, unknown> = {}) {
   return {
@@ -114,7 +121,7 @@ describe('useVerseRecorder', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockRecorder.currentTime = 0;
-    mockRecorder.uri = 'file:///tmp/take-1.m4a';
+    mockRecorder.uri = 'file:///tmp/take-1.aac';
     mockPlayer.currentTime = 0;
     mockPlayer.duration = 0;
     mockPlayerStatus = { playing: false, didJustFinish: false };
@@ -172,7 +179,7 @@ describe('useVerseRecorder', () => {
       expect(mockSetPausedTake).toHaveBeenCalledWith(
         expect.objectContaining({
           bibleTextId: 42,
-          fileUri: 'file:///tmp/take-1.m4a',
+          segments: ['file:///tmp/take-1.aac'],
           elapsedMs: 2500,
           sessionToken: expect.any(String),
         }),
@@ -262,6 +269,59 @@ describe('useVerseRecorder', () => {
     }
   });
 
+  it('merges segments and unlinks the raw parts when committing a resumed take', async () => {
+    jest.useFakeTimers();
+    try {
+      mockGetPausedTake.mockReturnValue({
+        bibleTextId: 42,
+        segments: ['file:///docs/seg-0.aac'],
+        elapsedMs: 4500,
+        startedAt: '2026-07-01T00:00:00.000Z',
+        sessionToken: 'stale-token',
+      });
+      // A genuine multi-segment merge produces a distinct merged file.
+      CONCAT_MOCK.mockResolvedValueOnce('file:///docs/merged.aac');
+
+      const { result } = renderHook(() =>
+        useVerseRecorder({ bibleTextId: 42 }),
+      );
+      await waitReady(result);
+      expect(result.current.status).toBe(RecorderStatus.Paused);
+
+      mockRecorder.uri = 'file:///docs/seg-1.aac';
+      jest.setSystemTime(new Date('2026-07-01T00:00:00.000Z'));
+      await act(async () => {
+        await result.current.resume();
+      });
+
+      jest.setSystemTime(new Date('2026-07-01T00:00:01.000Z'));
+      await act(async () => {
+        await result.current.stop();
+      });
+
+      expect(CONCAT_MOCK).toHaveBeenCalledWith([
+        'file:///docs/seg-0.aac',
+        'file:///docs/seg-1.aac',
+      ]);
+      expect(MOVE_MOCK).toHaveBeenCalledWith(
+        expect.objectContaining({ sourceUri: 'file:///docs/merged.aac' }),
+      );
+      // Both raw segments are unlinked; the merged file was moved into the store.
+      expect(mockDeleteRecordingFile).toHaveBeenCalledWith(
+        'file:///docs/seg-0.aac',
+      );
+      expect(mockDeleteRecordingFile).toHaveBeenCalledWith(
+        'file:///docs/seg-1.aac',
+      );
+      expect(mockInsertRecording).toHaveBeenCalledWith(
+        expect.objectContaining({ localFilePath: MOVED_KEY, durationMs: 5500 }),
+      );
+      expect(result.current.status).toBe(RecorderStatus.Review);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('deletes the current take via the repository', async () => {
     mockGetLatestRecordingForVerse.mockResolvedValueOnce(existingRecording());
     const { result } = renderHook(() => useVerseRecorder({ bibleTextId: 42 }));
@@ -276,10 +336,13 @@ describe('useVerseRecorder', () => {
     expect(result.current.currentRecording).toBeNull();
   });
 
-  it('unlinks the durable partial file when a paused take is discarded', async () => {
+  it('unlinks every partial segment when a recovered paused take is discarded', async () => {
     mockGetPausedTake.mockReturnValue({
       bibleTextId: 42,
-      fileUri: 'file:///docs/partial-take.m4a',
+      segments: [
+        'file:///docs/partial-take-0.aac',
+        'file:///docs/partial-take-1.aac',
+      ],
       elapsedMs: 4500,
       startedAt: '2026-07-01T00:00:00.000Z',
       sessionToken: 'stale-token',
@@ -288,14 +351,19 @@ describe('useVerseRecorder', () => {
     const { result } = renderHook(() => useVerseRecorder({ bibleTextId: 42 }));
     await waitReady(result);
     expect(result.current.status).toBe(RecorderStatus.Paused);
-    expect(result.current.canResume).toBe(false);
+    // A rehydrated take is now resumable and flagged as recovered.
+    expect(result.current.canResume).toBe(true);
+    expect(result.current.isRecovered).toBe(true);
 
     await act(async () => {
       await result.current.discardPaused();
     });
 
     expect(mockDeleteRecordingFile).toHaveBeenCalledWith(
-      'file:///docs/partial-take.m4a',
+      'file:///docs/partial-take-0.aac',
+    );
+    expect(mockDeleteRecordingFile).toHaveBeenCalledWith(
+      'file:///docs/partial-take-1.aac',
     );
     expect(mockClearPausedTake).toHaveBeenCalledWith(42);
     expect(result.current.status).toBe(RecorderStatus.Idle);

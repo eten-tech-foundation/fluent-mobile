@@ -179,10 +179,15 @@ export function setUserLastSyncedAt(userId: string, timestamp: string) {
  * Paused-take marker: written when the recorder pauses (manual or via
  * backgrounding) so the drafting page can detect an in-flight take on the
  * next mount, even after a process kill.
+ *
+ * A take is captured as an ordered list of `segments` (one audio file per
+ * app-lifetime recording session). A single live session is one segment;
+ * resuming after a process kill appends a new segment. On stop the segments are
+ * concatenated into the committed take.
  */
 export interface PausedTakeMarker {
   bibleTextId: number;
-  fileUri: string;
+  segments: string[];
   elapsedMs: number;
   startedAt: string;
   sessionToken?: string;
@@ -192,19 +197,52 @@ function pausedTakeKey(bibleTextId: number): string {
   return `paused_take:${bibleTextId}`;
 }
 
+/**
+ * Accepts the current `segments` array and also coerces a legacy single
+ * `fileUri` marker into a one-segment list, so a take paused before this change
+ * still loads. Returns null when neither shape is present/valid.
+ */
+function normalizeSegments(parsed: {
+  segments?: unknown;
+  fileUri?: unknown;
+}): string[] | null {
+  if (
+    Array.isArray(parsed.segments) &&
+    parsed.segments.length > 0 &&
+    parsed.segments.every(segment => typeof segment === 'string')
+  ) {
+    return parsed.segments as string[];
+  }
+  if (typeof parsed.fileUri === 'string') {
+    return [parsed.fileUri];
+  }
+  return null;
+}
+
 export function getPausedTake(bibleTextId: number): PausedTakeMarker | null {
   const raw = kvStorage.getItemSync(pausedTakeKey(bibleTextId));
   if (!raw) return null;
   try {
-    const parsed = JSON.parse(raw) as PausedTakeMarker;
+    const parsed = JSON.parse(raw) as Partial<PausedTakeMarker> & {
+      fileUri?: string;
+    };
+    const segments = normalizeSegments(parsed);
     if (
       Number.isFinite(parsed?.bibleTextId) &&
       parsed.bibleTextId === bibleTextId &&
-      typeof parsed?.fileUri === 'string' &&
+      segments !== null &&
       typeof parsed?.elapsedMs === 'number' &&
       typeof parsed?.startedAt === 'string'
     ) {
-      return parsed;
+      return {
+        bibleTextId: parsed.bibleTextId,
+        segments,
+        elapsedMs: parsed.elapsedMs,
+        startedAt: parsed.startedAt,
+        ...(typeof parsed.sessionToken === 'string'
+          ? { sessionToken: parsed.sessionToken }
+          : {}),
+      };
     }
     return null;
   } catch (error) {
@@ -221,6 +259,7 @@ export function setPausedTake(marker: PausedTakeMarker) {
   log.info('Paused take marker set', {
     bibleTextId: marker.bibleTextId,
     elapsedMs: marker.elapsedMs,
+    segments: marker.segments.length,
   });
 }
 

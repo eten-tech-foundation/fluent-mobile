@@ -1,4 +1,5 @@
 import { Directory, File, Paths } from 'expo-file-system';
+import { randomUUID } from 'expo-crypto';
 import { logger } from '../utils/logger';
 
 const log = logger.create('recordingStorage');
@@ -131,6 +132,36 @@ export async function moveIntoStore({
 
   const size = dest.size;
   return { key, sizeBytes: typeof size === 'number' ? size : null };
+}
+
+/**
+ * Concatenates ordered ADTS AAC (`.aac`) segments into a single file. ADTS is a
+ * self-framing bitstream, so a plain byte append yields a valid, playable file
+ * — this is what lets a take span multiple recording sessions (including ones
+ * separated by a process kill). A single segment is returned unchanged (the
+ * caller moves it into durable storage directly, so no copy is needed).
+ *
+ * The merged file is written to the document directory; the caller is
+ * responsible for moving it into the durable tree and unlinking the raw
+ * segments afterwards.
+ */
+export async function concatenateAacSegments(
+  fileUris: string[],
+): Promise<string> {
+  if (fileUris.length === 0) {
+    throw new Error('concatenateAacSegments requires at least one segment');
+  }
+  if (fileUris.length === 1) {
+    return fileUris[0]!;
+  }
+
+  const merged = new File(Paths.document, `merge-${randomUUID()}.aac`);
+  merged.create({ intermediates: true, overwrite: true });
+  for (const uri of fileUris) {
+    const bytes = await new File(uri).bytes();
+    merged.write(bytes, { append: true });
+  }
+  return merged.uri;
 }
 
 /** Best-effort unlink of a stored recording file. Never throws. */

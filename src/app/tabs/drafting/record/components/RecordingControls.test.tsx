@@ -100,7 +100,35 @@ describe('RecordingControls', () => {
     expect(screen.queryByTestId('record-discard-button')).toBeNull();
   });
 
-  it('shows discard instead of resume for a rehydrated paused take', () => {
+  it('offers resume, stop and discard for a recovered paused take', () => {
+    render(
+      <RecordingControls
+        status={RecorderStatus.Paused}
+        reference={REFERENCE}
+        elapsedMs={3_000}
+        isPlaying={false}
+        canResume
+        isRecovered
+        onStart={jest.fn()}
+        onPause={jest.fn()}
+        onResume={jest.fn()}
+        onStop={jest.fn()}
+        onDiscard={jest.fn()}
+        onTogglePlayback={jest.fn()}
+        onReRecord={jest.fn()}
+        onDelete={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('record-resume-button')).toBeTruthy();
+    expect(screen.getByTestId('record-stop-button')).toBeTruthy();
+    expect(screen.getByTestId('record-discard-button')).toBeTruthy();
+    expect(screen.getByTestId('record-tip')).toHaveTextContent(
+      'Recovered a paused take from a previous session. Resume to keep recording, or discard it.',
+    );
+  });
+
+  it('renders the legacy discard-only layout when a paused take cannot be resumed', () => {
     render(
       <RecordingControls
         status={RecorderStatus.Paused}

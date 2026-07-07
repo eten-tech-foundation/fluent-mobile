@@ -234,6 +234,7 @@ export function RecordTab({
             elapsedMs={recorder.elapsedMs}
             isPlaying={recorder.isPlaying}
             canResume={recorder.canResume}
+            isRecovered={recorder.isRecovered}
             onStart={handleStartPress}
             onPause={handlePausePress}
             onResume={handleResumePress}

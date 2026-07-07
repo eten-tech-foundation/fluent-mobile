@@ -13,13 +13,29 @@ import { theme } from '../../../../../theme';
 import { listIconStrokeWidth } from '../../../../../theme/iconSpecs';
 import { formatDuration } from '../utils/recordTabUtils';
 
+/** Paused-state helper copy, keyed by whether the take is resumable/recovered. */
+function pausedTip(canResume: boolean, isRecovered: boolean): string {
+  if (!canResume) {
+    return 'A paused take was recovered from a previous session. Discard it to start fresh.';
+  }
+  if (isRecovered) {
+    return 'Recovered a paused take from a previous session. Resume to keep recording, or discard it.';
+  }
+  return 'Recording paused — review the source below, then resume.';
+}
+
 interface RecordingControlsProps {
   status: RecorderStatus;
   reference: string;
   elapsedMs: number;
   isPlaying: boolean;
-  /** False when a paused take was rehydrated without a live native recorder session. */
+  /** Whether the paused take can be resumed (always true once paused). */
   canResume?: boolean;
+  /**
+   * True when the paused take was rehydrated after a process kill. Adds a
+   * Discard affordance alongside Resume/Stop and swaps in recovery copy.
+   */
+  isRecovered?: boolean;
   onStart: () => void;
   onPause: () => void;
   onResume: () => void;
@@ -36,6 +52,7 @@ export function RecordingControls({
   elapsedMs,
   isPlaying,
   canResume = true,
+  isRecovered = false,
   onStart,
   onPause,
   onResume,
@@ -172,10 +189,24 @@ export function RecordingControls({
               </TouchableOpacity>
             )}
           </View>
+          {canResume && isRecovered && onDiscard ? (
+            <TouchableOpacity
+              style={styles.destructiveButton}
+              onPress={onDiscard}
+              accessibilityRole="button"
+              accessibilityLabel="Discard recovered take"
+              testID="record-discard-button"
+            >
+              <Trash2
+                size={18}
+                color={theme.colors.destructive}
+                strokeWidth={listIconStrokeWidth}
+              />
+              <Text style={styles.destructiveLabel}>Discard take</Text>
+            </TouchableOpacity>
+          ) : null}
           <Text style={styles.captureTip} testID="record-tip">
-            {canResume
-              ? 'Recording paused — review the source below, then resume.'
-              : 'A paused take was recovered from a previous session. Discard it to start fresh.'}
+            {pausedTip(canResume, isRecovered)}
           </Text>
         </View>
       )}
