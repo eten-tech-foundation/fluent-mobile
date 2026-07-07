@@ -1,0 +1,18 @@
+---
+description: Delivery judgment gates — see AGENTS.md
+alwaysApply: true
+---
+
+# Agent delivery guardrails
+
+Canonical text: root [`AGENTS.md`](../../AGENTS.md). Follow it for every change.
+
+Quick checklist:
+
+1. **AC** — done means ticket acceptance criteria (or ticket-level waiver + follow-up), not green CI alone
+2. **Scope** — one ticket = one PR; no adjacent tickets unless asked
+3. **Abstraction** — no generic adapter/framework without a second caller or ticket ask
+4. **Human QA** — native / mic / camera / filesystem / permissions need Android device results before ready-for-review
+5. **Agent-authored features** — review scope, abstraction, and AC-vs-CI first
+
+See also [delivery.mdc](./delivery.mdc) and [commands.mdc](./commands.mdc).
