@@ -41,7 +41,7 @@ type Route = RouteProp<RootStackParamList, 'VerseDetail'>;
 
 export default function DraftingScreen() {
   const navigation = useNavigation<Nav>();
-  const { chapterId, chapterName } = useRoute<Route>().params;
+  const { chapterId, chapterName, recoverVerse } = useRoute<Route>().params;
 
   const [activeTab, setActiveTabState] = useState<DraftingTab>(
     () => getLastActiveTab(chapterId) ?? DraftingTab.Bible,
@@ -159,7 +159,12 @@ export default function DraftingScreen() {
         );
         const defaultVerse =
           firstUnrecorded?.verseNumber ?? texts[0]?.verseNumber ?? 1;
-        setInitialVerse(defaultVerse);
+        // A recovery navigation targets a specific verse; honor it when that
+        // verse exists in the chapter, otherwise fall back to the default.
+        const recoveredVerseExists =
+          recoverVerse !== undefined &&
+          texts.some(v => v.verseNumber === recoverVerse);
+        setInitialVerse(recoveredVerseExists ? recoverVerse : defaultVerse);
       } catch (error) {
         log.error('Error loading verses', { error });
       } finally {
@@ -171,7 +176,7 @@ export default function DraftingScreen() {
     return () => {
       ignore = true;
     };
-  }, [chapterId]);
+  }, [chapterId, recoverVerse]);
 
   if (loading) {
     return (

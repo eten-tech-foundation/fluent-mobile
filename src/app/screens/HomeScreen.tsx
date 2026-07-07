@@ -15,6 +15,7 @@ import { useSync } from '../../hooks/useSync';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { RootStackParamList } from '../../types/navigation/types';
 import { onSyncComplete, onSyncStart } from '../../services/syncEvents';
+import { useRecordingRecovery } from './hooks/useRecordingRecovery';
 
 interface HomeScreenProps {
   onSignOut?: () => void;
@@ -115,6 +116,10 @@ export default function HomeScreen({
     ((isSyncingLocal || isSyncing) && refreshKey === 0);
   const myWorkIsSyncing =
     isSyncing || isSyncingLocal || postLoginSyncActive || isNewUserLoading;
+
+  // Once the landing tabs are visible, surface any recording recovered after a
+  // process kill and prompt to continue or discard.
+  useRecordingRecovery(!showLoading);
 
   if (showLoading) {
     return (
