@@ -73,6 +73,12 @@ export interface RecorderAdapter<T> {
   deleteCommitted: (take: T) => Promise<void>;
   /** Resolve a committed take to an absolute, playable uri. */
   resolvePlaybackUri: (take: T) => string | null;
+  /**
+   * Resolve a committed take's stored duration (ms) for the Review display, so
+   * the timer reflects the persisted (audio-derived) length rather than the
+   * live wall-clock value. Optional; falls back to the wall-clock duration.
+   */
+  resolveDurationMs?: (take: T) => number | null;
   /** Read the paused-take marker for the session, if one exists. */
   loadPaused: (key: number | string) => PausedTakeState | null;
   /** Write the paused-take marker for the current session. */
@@ -291,6 +297,11 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
         baseElapsedRef.current = paused.elapsedMs;
         startedAtRef.current = paused.startedAt;
       } else {
+        // Show the persisted (audio-derived) duration for a reloaded take so
+        // the Review timer isn't stuck at 0:00 after remount.
+        setElapsedMs(
+          latest ? currentAdapter.resolveDurationMs?.(latest) ?? 0 : 0,
+        );
         setStatus(latest ? RecorderStatus.Review : RecorderStatus.Idle);
       }
       setIsReady(true);
@@ -546,7 +557,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     liveSessionTokenRef.current = null;
     setCanResume(false);
     setIsRecovered(false);
-    setElapsedMs(duration);
+    setElapsedMs(adapterRef.current.resolveDurationMs?.(committed) ?? duration);
     setCurrentRecording(committed);
     setStatus(RecorderStatus.Review);
   }, [clearTick, currentRecording, recorder, registerCurrentSegment]);
