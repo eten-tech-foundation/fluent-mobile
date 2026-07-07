@@ -72,6 +72,13 @@ Load [`.cursor/templates/pr-template.md`](../templates/pr-template.md) and pre-f
 - Screenshots for UI changes
 - Why This Solution (technical reasoning)
 
+**Delivery guardrails** (root [`AGENTS.md`](../../AGENTS.md)):
+
+- Leave **Acceptance criteria**, **Scope**, and **Android device tested** checkboxes **unchecked** unless verified.
+- Do **not** auto-check device QA for native / mic / camera / filesystem / permissions changes.
+- Do **not** mark such PRs ready for review until a human records device results.
+- Deferred AC requires a ticket-level waiver and linked follow-up issues — not only a PR “known limitations” note.
+
 Keep output under ~400 lines; no nested fenced code blocks inside the PR body code block when pasting via `/generate-pr-description` rules.
 
 ## Linear integration
@@ -121,10 +128,10 @@ Type `/create-pr` in Cursor chat.
 
 **After creation:**
 
-1. Review auto-filled body
+1. Review auto-filled body (confirm AC / Scope / device-QA checkboxes match reality per [`AGENTS.md`](../../AGENTS.md))
 2. Add screenshots if UI changed
 3. Confirm reviewers/labels
-4. Mark ready for review when gates pass (do not merge unless user explicitly asks)
+4. Mark ready for review only when CI gates **and** delivery guardrails pass (AC met or waived in ticket; device QA when required). Do not merge unless user explicitly asks.
 
 ## Related commands
 
