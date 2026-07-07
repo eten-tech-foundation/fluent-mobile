@@ -189,6 +189,40 @@ describe('useVerseRecorder', () => {
     }
   });
 
+  it('persists the navigation context alongside the paused marker', async () => {
+    jest.useFakeTimers();
+    try {
+      const { result } = renderHook(() =>
+        useVerseRecorder({
+          bibleTextId: 42,
+          chapterAssignmentId: 88,
+          verseNumber: 5,
+        }),
+      );
+      await waitReady(result);
+
+      jest.setSystemTime(new Date('2026-07-01T00:00:00.000Z'));
+      await act(async () => {
+        await result.current.start();
+      });
+
+      jest.setSystemTime(new Date('2026-07-01T00:00:01.000Z'));
+      await act(async () => {
+        await result.current.pause();
+      });
+
+      expect(mockSetPausedTake).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bibleTextId: 42,
+          chapterAssignmentId: 88,
+          verseNumber: 5,
+        }),
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('commits a stopped take into durable storage and the DB', async () => {
     jest.useFakeTimers();
     try {
