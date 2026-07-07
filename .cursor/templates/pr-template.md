@@ -17,6 +17,11 @@
 - [ ] 📚 Documentation update
 - [ ] 🔧 Maintenance/refactor (no functional changes)
 
+### Acceptance criteria
+<!-- See AGENTS.md — done means ticket AC, not green CI alone -->
+- [ ] All ticket acceptance criteria met, **or** unmet AC waived **in the ticket** with linked follow-up issues
+- [ ] No “known limitations” in this PR body without a ticket-level waiver + follow-up link
+
 ---
 
 ## 🔧 Technical Changes
@@ -41,12 +46,16 @@
 - [ ] No database changes
 - [ ] Database/storage changes: <!-- Describe with migration info -->
 
+### Scope
+<!-- See AGENTS.md — one ticket = one PR -->
+- [ ] Changes are limited to this ticket; no adjacent tickets implemented or stubbed without approval
+
 ---
 
 ## ✅ Testing & Quality Checklist
 
 ### Testing Completed
-- [ ] ✅ Android device/emulator tested
+- [ ] Android device tested (REQUIRED for native / mic / camera / filesystem / permissions changes — do **not** check unless verified on a device; see `AGENTS.md`)
 - [ ] ✅ Unit tests added/updated and passing
 - [ ] ✅ Edge cases considered and tested
 
@@ -126,6 +135,6 @@
 **Deployment Notes:** <!-- Special deployment considerations -->
 
 
-**Follow-up Tasks:** <!-- Related tasks or future work -->
-- [ ] <!-- Future task 1 -->
+**Follow-up Tasks:** <!-- Deferred AC must link to follow-up issues (ticket-level waiver required; see AGENTS.md) -->
+- [ ] <!-- e.g. #NNN — deferred AC description -->
 - [ ] <!-- Future task 2 -->
