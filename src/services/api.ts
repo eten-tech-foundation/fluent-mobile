@@ -3,6 +3,7 @@ import { logger } from '../utils/logger';
 import { authToken } from './authToken';
 import { parseApiErrorMessage } from './apiError';
 import { AuthError } from './authError';
+import { NetworkError } from './networkError';
 import { resolveSessionToken } from './sessionToken';
 import { checkServerReachable } from './connectivity';
 
@@ -93,15 +94,21 @@ async function request(endpoint: string, options?: RequestInit) {
 
 async function signInRequest(email: string, password: string) {
   const apiBaseUrl = getApiBaseUrl();
-  const res = await fetch(`${apiBaseUrl}/api/auth/sign-in/email`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Origin: apiBaseUrl,
-      ...MOBILE_HEADERS,
-    },
-    body: JSON.stringify({ email, password }),
-  });
+
+  let res: Response;
+  try {
+    res = await fetch(`${apiBaseUrl}/api/auth/sign-in/email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: apiBaseUrl,
+        ...MOBILE_HEADERS,
+      },
+      body: JSON.stringify({ email, password }),
+    });
+  } catch {
+    throw new NetworkError();
+  }
 
   if (!res.ok) {
     let message = `Sign-in failed: ${res.status}`;
