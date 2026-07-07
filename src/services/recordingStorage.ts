@@ -156,12 +156,24 @@ export async function concatenateAacSegments(
   }
 
   const merged = new File(Paths.document, `merge-${randomUUID()}.aac`);
-  merged.create({ intermediates: true, overwrite: true });
-  for (const uri of fileUris) {
-    const bytes = await new File(uri).bytes();
-    merged.write(bytes, { append: true });
+  try {
+    merged.create({ intermediates: true, overwrite: true });
+    for (const uri of fileUris) {
+      const bytes = await new File(uri).bytes();
+      merged.write(bytes, { append: true });
+    }
+    return merged.uri;
+  } catch (error) {
+    try {
+      if (merged.exists) merged.delete();
+    } catch (cleanupError) {
+      log.warn('Failed to delete partial merged AAC file', {
+        uri: merged.uri,
+        error: cleanupError,
+      });
+    }
+    throw error;
   }
-  return merged.uri;
 }
 
 /**
