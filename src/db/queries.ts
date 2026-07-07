@@ -443,6 +443,65 @@ export async function getProjectIdForProjectUnit(
   }
 }
 
+export interface VerseDetailNavParams {
+  chapterId: number;
+  chapterName: string;
+  projectName: string;
+  language: string;
+}
+
+/**
+ * Resolves the `VerseDetail` route params for a chapter assignment, so a
+ * recovered paused take (which stores only its `chapterAssignmentId`) can be
+ * navigated to from the home screen. Not user-scoped, so it also resolves
+ * chapters opened via the Projects tab.
+ */
+export async function getVerseDetailNavByChapterAssignment(
+  chapterAssignmentId: number,
+): Promise<VerseDetailNavParams | null> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT
+        ca.id AS chapter_id,
+        ca.chapter_number,
+        b.eng_display_name AS book_name,
+        p.name AS project_name,
+        tl.lang_name AS target_language_name
+      FROM chapter_assignments ca
+      JOIN books b ON ca.book_id = b.id
+      JOIN project_units pu ON ca.project_unit_id = pu.id
+      JOIN projects p ON pu.project_id = p.id
+      LEFT JOIN languages tl ON p.target_language_id = tl.id
+      WHERE ca.id = ?
+      LIMIT 1`,
+      [chapterAssignmentId],
+    );
+    const row = (
+      result?.rows as unknown as {
+        chapter_id: number;
+        chapter_number: number;
+        book_name: string | null;
+        project_name: string | null;
+        target_language_name: string | null;
+      }[]
+    )?.[0];
+    if (!row) return null;
+    return {
+      chapterId: row.chapter_id,
+      chapterName: `${row.book_name ?? ''} ${row.chapter_number}`.trim(),
+      projectName: row.project_name ?? '',
+      language: row.target_language_name ?? '',
+    };
+  } catch (error) {
+    log.error('Error resolving verse detail nav by chapter assignment', {
+      chapterAssignmentId,
+      error,
+    });
+    return null;
+  }
+}
+
 /** Resolves the `bible_texts.id` PK a recording joins against. */
 export async function getBibleTextId(
   bibleId: number,
