@@ -84,7 +84,8 @@ export function AccountSwitcherPanel({
       onRequestClose={onClose}
     >
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <View
+        <Pressable
+          onPress={event => event.stopPropagation()}
           style={[
             styles.sheet,
             { paddingBottom: insets.bottom + theme.spacing.lg },
@@ -122,13 +123,14 @@ export function AccountSwitcherPanel({
                   style={[
                     styles.accountRow,
                     account.isActive && styles.accountRowActive,
+                    switchingUserId !== null &&
+                      switchingUserId !== account.userId &&
+                      styles.accountRowDisabled,
                   ]}
-                  activeOpacity={0.8}
-                  disabled={account.isActive || switchingUserId !== null}
-                  onPress={() => {
-                    if (!account.isActive) {
-                      void handleSwitchAccount(account.userId);
-                    }
+                  activeOpacity={account.isActive ? 1 : 0.8}
+                  onPress={() => {     
+                    if (account.isActive || switchingUserId !== null) return;
+                    void handleSwitchAccount(account.userId);
                   }}
                   accessibilityRole="button"
                   accessibilityLabel={`Switch to ${account.displayName}`}
@@ -204,7 +206,7 @@ export function AccountSwitcherPanel({
               </TouchableOpacity>
             )}
           </View>
-        </View>
+        </Pressable>
       </Pressable>
     </Modal>
   );
@@ -336,6 +338,9 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.md,
     color: theme.colors.mutedForeground,
     textAlign: 'center',
+  },
+  accountRowDisabled: {
+    opacity: 0.5,
   },
   errorBanner: {
     marginHorizontal: theme.spacing.lg,
