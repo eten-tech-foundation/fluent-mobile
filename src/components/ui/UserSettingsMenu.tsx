@@ -1,5 +1,12 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, Pressable } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  Pressable,
+  Alert,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
@@ -43,6 +50,7 @@ export function UserSettingsMenu({
   const [knownUsers, setKnownUsers] = useState<
     Array<{ id: string; email: string }>
   >([]);
+  const [switchingUserId, setSwitchingUserId] = useState<string | null>(null);
 
   const loadKnownUsers = useCallback(() => {
     const ids = getKnownUserIds();
@@ -77,13 +85,32 @@ export function UserSettingsMenu({
   };
 
   const handleSwitchUser = async (userId: string) => {
-    onClose();
-    if (userId === getActiveUserId()) return;
+    if (userId === getActiveUserId() || switchingUserId) {
+      onClose();
+      return;
+    }
 
-    const creds = await getCredentials(userId);
-    authToken.set(creds?.token ?? null);
-    switchActiveUser(userId);
-    onUserSwitched?.();
+    setSwitchingUserId(userId);
+    try {
+      const creds = await getCredentials(userId);
+      if (!creds?.token) {
+        throw new Error('No usable stored session for this account');
+      }
+
+      authToken.set(creds.token);
+      switchActiveUser(userId);
+      onClose();
+      onUserSwitched?.();
+    } catch (error) {
+      log.error('Account switch failed', { userId, error });
+      onClose();
+      Alert.alert(
+        'Switch Failed',
+        "Couldn't switch to that account. Its saved session may be corrupted — try adding it again.",
+      );
+    } finally {
+      setSwitchingUserId(null);
+    }
   };
 
   const handleSignOut = async () => {
@@ -202,6 +229,7 @@ export function UserSettingsMenu({
                   onPress={() => handleSwitchUser(user.id)}
                   activeOpacity={0.7}
                   accessibilityRole="button"
+                  disabled={switchingUserId !== null}
                 >
                   <Ionicons
                     name={
