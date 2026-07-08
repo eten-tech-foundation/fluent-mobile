@@ -106,10 +106,9 @@ async function signInRequest(email: string, password: string) {
       },
       body: JSON.stringify({ email, password }),
     });
-  } catch {
-    throw new NetworkError();
+  } catch (err) {
+    throw new NetworkError(undefined, err);
   }
-
   if (!res.ok) {
     let message = `Sign-in failed: ${res.status}`;
     try {
