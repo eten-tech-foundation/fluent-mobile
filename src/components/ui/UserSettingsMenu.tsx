@@ -12,6 +12,7 @@ import {
   kvStorage,
   KV_KEYS,
   switchActiveUser,
+  MAX_DEVICE_ACCOUNTS,
 } from '../../services/storage';
 import { clearCredentials, getCredentials } from '../../services/keychain';
 import { FluentAPI } from '../../services/api';
@@ -48,7 +49,7 @@ export function UserSettingsMenu({
     setKnownUsers(ids.map(id => ({ id, email: getUserEmail(id) })));
   }, []);
 
-  const atAccountLimit = knownUsers.length >= 3;
+  const atAccountLimit = knownUsers.length >= MAX_DEVICE_ACCOUNTS;
 
   const handleOpen = () => {
     loadKnownUsers();

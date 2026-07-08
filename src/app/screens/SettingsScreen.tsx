@@ -29,6 +29,7 @@ import {
   kvStorage,
   KV_KEYS,
   switchActiveUser,
+  MAX_DEVICE_ACCOUNTS,
 } from '../../services/storage';
 import { usePreferences } from '../../hooks/usePreferences';
 import { RootStackParamList } from '../../types/navigation/types';
@@ -62,12 +63,12 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
   const navigation = useNavigation<Nav>();
   const { uploadOverCellular, setUploadOverCellular } = usePreferences();
   const [atAccountLimit, setAtAccountLimit] = useState(
-    () => getKnownUserIds().length >= 3,
+    () => getKnownUserIds().length >= MAX_DEVICE_ACCOUNTS,
   );
 
   useFocusEffect(
     useCallback(() => {
-      setAtAccountLimit(getKnownUserIds().length >= 3);
+      setAtAccountLimit(getKnownUserIds().length >= MAX_DEVICE_ACCOUNTS);
     }, []),
   );
 

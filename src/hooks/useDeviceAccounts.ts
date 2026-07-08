@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { getUserById } from '../db/queries';
 import {
   getAccountDisplayName,
@@ -8,7 +8,12 @@ import {
   getActiveUserId,
   getKnownUserIds,
   getUserEmail,
+  MAX_DEVICE_ACCOUNTS,
 } from '../services/storage';
+import { logger } from '../utils/logger';
+import { useAsyncRequestGuard } from './useAsyncRequestGuard';
+
+const log = logger.create('useDeviceAccounts');
 
 export interface DeviceAccount {
   userId: string;
@@ -30,22 +35,14 @@ interface UseDeviceAccountsResult {
 export function useDeviceAccounts(visible: boolean): UseDeviceAccountsResult {
   const [accounts, setAccounts] = useState<DeviceAccount[]>([]);
   const [loading, setLoading] = useState(false);
-  const requestIdRef = useRef(0);
-  const mountedRef = useRef(true);
-
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false;
-      requestIdRef.current += 1;
-    };
-  }, []);
+  const { startRequest, isStale } = useAsyncRequestGuard();
 
   const reload = useCallback(async () => {
-    const requestId = ++requestIdRef.current;
+    const requestId = startRequest();
     const activeUserId = getActiveUserId();
     const knownUserIds = getKnownUserIds();
 
-    if (!mountedRef.current) return;
+    if (isStale(requestId)) return;
     setLoading(true);
 
     try {
@@ -76,17 +73,17 @@ export function useDeviceAccounts(visible: boolean): UseDeviceAccountsResult {
         }),
       );
 
-      if (!mountedRef.current || requestId !== requestIdRef.current) {
-        return;
-      }
+      if (isStale(requestId)) return;
 
       setAccounts(loadedAccounts);
+    } catch (error) {
+      log.error('Failed to load device accounts', { error });
     } finally {
-      if (mountedRef.current && requestId === requestIdRef.current) {
+      if (!isStale(requestId)) {
         setLoading(false);
       }
     }
-  }, []);
+  }, [startRequest, isStale]);
 
   useEffect(() => {
     if (!visible) return;
@@ -97,7 +94,7 @@ export function useDeviceAccounts(visible: boolean): UseDeviceAccountsResult {
     accounts,
     accountCount: accounts.length,
     activeUserId: getActiveUserId(),
-    hasAccountLimit: accounts.length >= 3,
+    hasAccountLimit: accounts.length >= MAX_DEVICE_ACCOUNTS,
     loading,
     reload,
   };
