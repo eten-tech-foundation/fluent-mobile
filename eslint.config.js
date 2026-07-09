@@ -6,6 +6,34 @@ import reactHooksPlugin from 'eslint-plugin-react-hooks';
 import reactNativePlugin from 'eslint-plugin-react-native';
 import typescriptPlugin from '@typescript-eslint/eslint-plugin';
 
+const handoffAntiPatternImports = {
+  paths: [
+    {
+      name: '@env',
+      message:
+        'Use src/config/ (EXPO_PUBLIC_* via process.env). @env was removed in #70.',
+    },
+    {
+      name: 'react-native-fs',
+      message: 'Use expo-file-system.',
+    },
+    {
+      name: 'react-native-keychain',
+      message: 'Use expo-secure-store.',
+    },
+    {
+      name: '@simform_solutions/react-native-audio-waveform',
+      message: 'Use expo-audio.',
+    },
+  ],
+};
+
+const banDirectProcessEnv = {
+  selector: "MemberExpression[object.name='process'][property.name='env']",
+  message:
+    'Read env via src/config/ (typed + validated), not process.env directly.',
+};
+
 export default [
   {
     ignores: ['node_modules', 'dist', 'build', 'android', 'ios'],
@@ -41,6 +69,8 @@ export default [
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': 'warn',
       'no-console': ['error', { allow: ['warn', 'error'] }],
+      'no-restricted-imports': ['error', handoffAntiPatternImports],
+      'no-restricted-syntax': ['error', banDirectProcessEnv],
       'prefer-const': 'warn',
       'no-var': 'warn',
       eqeqeq: 'warn',
@@ -72,6 +102,12 @@ export default [
     rules: {
       'no-console': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
+  {
+    files: ['src/config/**/*.{ts,tsx}', 'app.config.ts'],
+    rules: {
+      'no-restricted-syntax': 'off',
     },
   },
 ];
