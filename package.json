@@ -43,7 +43,7 @@
     "@babel/core": "^7.29.6",
     "@babel/preset-env": "^7.25.3",
     "@babel/runtime": "^7.25.0",
-    "@react-native-community/cli": "^20.1.2",
+    "@react-native-community/cli": "^20.2.0",
     "@react-native-community/cli-platform-android": "^20.1.2",
     "@react-native/jest-preset": "^0.85.3",
     "@react-native/typescript-config": "0.85.3",
