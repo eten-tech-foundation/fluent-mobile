@@ -187,7 +187,7 @@ jobs:
 
       - name: 💬 Post Preview Comment
         if: steps.change-detection.outputs.change_type == 'js-only'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const updateGroupId = ${{ toJson(steps.ota-update.outputs.UPDATE_GROUP_ID) }};
@@ -318,7 +318,7 @@ jobs:
 
       - name: 💬 Post Native Preview Comment
         if: steps.change-detection.outputs.change_type == 'native'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const androidId = ${{ toJson(steps.native-builds.outputs.build_id) }};
