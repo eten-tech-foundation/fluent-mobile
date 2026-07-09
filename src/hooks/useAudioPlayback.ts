@@ -7,34 +7,35 @@ import {
 import type { AudioSource } from 'expo-audio';
 import { logger } from '../utils/logger';
 
-const log = logger.create('useDraftPlayback');
+const log = logger.create('useAudioPlayback');
 
-export interface UseDraftPlaybackApi {
+export interface UseAudioPlaybackApi {
   isPlaying: boolean;
   /** Current playback position in ms (0 until a source is loaded). */
   positionMs: number;
-  /** Total length of the loaded take in ms (0 until known). */
+  /** Total length of the loaded audio in ms (0 until known). */
   durationMs: number;
   toggle: () => Promise<void>;
-  /** Seek to an absolute position (ms), clamped to the start of the take. */
+  /** Seek to an absolute position (ms), clamped to the start of the audio. */
   seek: (ms: number) => Promise<void>;
   stop: () => void;
 }
 
 /**
- * Owns playback of a recorded draft take. This hook is intentionally decoupled
- * from the recorder state machine: it only needs the take's file URI, so it can
- * be tested and reused independently of recording.
+ * Generic single-source audio playback: given a file/remote URI it exposes
+ * play/pause, seek, and position/duration state. It knows nothing about what it
+ * is playing, so it can back draft-take review today and source-audio (e.g.
+ * original verse recordings) or any other single-clip playback later.
  *
  * Audio-session ownership is split by concern — this hook owns the *playback*
  * side (`allowsRecording: false`, routing through the speaker rather than the
- * earpiece used while capturing); the recorder owns the recording side. Callers
+ * earpiece used while capturing); any recorder owns the recording side. Callers
  * that transition back into recording must re-assert the recording audio mode.
  *
- * `source === null` keeps the player idle when there is no draft to review.
+ * `source === null` keeps the player idle when there is nothing to play.
  */
-export function useDraftPlayback(source: string | null): UseDraftPlaybackApi {
-  // Recreate the player whenever the reviewed take changes; `useAudioPlayer`
+export function useAudioPlayback(source: string | null): UseAudioPlaybackApi {
+  // Recreate the player whenever the source changes; `useAudioPlayer`
   // releases the previous instance for us.
   const playbackSource = useMemo<AudioSource>(
     () => (source ? { uri: source } : null),
@@ -75,7 +76,7 @@ export function useDraftPlayback(source: string | null): UseDraftPlaybackApi {
     player.play();
   }, [player, playerStatus, source]);
 
-  // Rewind to the start once a take finishes so the next tap replays it whole.
+  // Rewind to the start once playback finishes so the next tap replays it whole.
   useEffect(() => {
     if (playerStatus?.didJustFinish) {
       player.seekTo(0).catch(error => {

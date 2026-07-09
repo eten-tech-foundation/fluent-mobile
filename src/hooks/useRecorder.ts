@@ -8,7 +8,7 @@ import {
   useAudioRecorder,
 } from 'expo-audio';
 import { logger } from '../utils/logger';
-import { useDraftPlayback } from './useDraftPlayback';
+import { useAudioPlayback } from './useAudioPlayback';
 
 const log = logger.create('useRecorder');
 
@@ -210,7 +210,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     toggle: togglePlaybackInternal,
     seek: seekPlaybackInternal,
     stop: stopPlayback,
-  } = useDraftPlayback(
+  } = useAudioPlayback(
     currentRecording
       ? adapterRef.current.resolvePlaybackUri(currentRecording)
       : null,
