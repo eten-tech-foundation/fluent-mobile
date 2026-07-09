@@ -9,6 +9,7 @@ import {
 } from 'expo-audio';
 import { logger } from '../utils/logger';
 import { useAudioPlayback } from './useAudioPlayback';
+import type { UseAudioPlaybackApi } from './useAudioPlayback';
 
 const log = logger.create('useRecorder');
 
@@ -104,12 +105,12 @@ export interface UseRecorderApi<T> {
    */
   isRecovered: boolean;
   /**
-   * Playback of the committed take under review. It is a distinct concern (own
-   * hook) that the recorder only coordinates — gating it to the Review state and
-   * sequencing it against the shared audio session — so it is grouped here
-   * rather than flattened onto the recorder's own controls.
+   * Playback of the committed take under review — the same surface as
+   * {@link UseAudioPlaybackApi}, but coordinated by the recorder: `toggle`/`seek`
+   * only act in the Review state and are sequenced against the shared audio
+   * session. Grouped here rather than flattened onto the recorder's controls.
    */
-  playback: RecorderPlaybackApi;
+  playback: UseAudioPlaybackApi;
 
   requestPermission: () => Promise<PermissionRequestResult>;
   start: () => Promise<void>;
@@ -119,19 +120,6 @@ export interface UseRecorderApi<T> {
   reRecord: () => Promise<void>;
   deleteCurrent: () => Promise<void>;
   discardPaused: () => Promise<void>;
-}
-
-/** Review-take playback surface, coordinated by {@link useRecorder}. */
-export interface RecorderPlaybackApi {
-  isPlaying: boolean;
-  /** Current playback position (ms) of the reviewed take. */
-  positionMs: number;
-  /** Total length (ms) of the reviewed take, from the loaded audio. */
-  durationMs: number;
-  toggle: () => Promise<void>;
-  /** Seek the reviewed take to an absolute position (ms). */
-  seek: (ms: number) => Promise<void>;
-  stop: () => void;
 }
 
 // 50ms tick gives ~20fps on the centiseconds portion of the duration display
