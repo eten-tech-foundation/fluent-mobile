@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import {
@@ -38,6 +38,13 @@ export function AccountSwitcherPanel({
   const { accounts, hasAccountLimit, loading } = useDeviceAccounts(visible);
   const [switchingUserId, setSwitchingUserId] = useState<string | null>(null);
   const [switchError, setSwitchError] = useState<string | null>(null);
+
+  const sheetStyle = useMemo(
+    () => ({
+      paddingBottom: insets.bottom + theme.spacing.lg,
+    }),
+    [insets.bottom],
+  );
 
   const handleOpenAddAccount = useCallback(() => {
     onClose();
@@ -86,10 +93,7 @@ export function AccountSwitcherPanel({
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable
           onPress={event => event.stopPropagation()}
-          style={[
-            styles.sheet,
-            { paddingBottom: insets.bottom + theme.spacing.lg },
-          ]}
+          style={[styles.sheet, sheetStyle]}
         >
           <View style={styles.header}>
             <Text style={styles.title}>Accounts on this device</Text>

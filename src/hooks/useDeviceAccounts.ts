@@ -90,11 +90,13 @@ export function useDeviceAccounts(visible: boolean): UseDeviceAccountsResult {
     void reload();
   }, [visible, reload]);
 
+  const knownAccountCount = getKnownUserIds().length;
+
   return {
     accounts,
     accountCount: accounts.length,
     activeUserId: getActiveUserId(),
-    hasAccountLimit: accounts.length >= MAX_DEVICE_ACCOUNTS,
+    hasAccountLimit: knownAccountCount >= MAX_DEVICE_ACCOUNTS,
     loading,
     reload,
   };
