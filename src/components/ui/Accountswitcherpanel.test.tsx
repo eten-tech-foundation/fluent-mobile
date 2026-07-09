@@ -65,7 +65,7 @@ const otherAccount = {
 
 function setDeviceAccountsResult(
   overrides: Partial<{
-    accounts: typeof activeAccount[];
+    accounts: (typeof activeAccount)[];
     hasAccountLimit: boolean;
     loading: boolean;
   }> = {},

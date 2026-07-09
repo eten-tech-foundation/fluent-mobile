@@ -128,7 +128,7 @@ export function AccountSwitcherPanel({
                       styles.accountRowDisabled,
                   ]}
                   activeOpacity={account.isActive ? 1 : 0.8}
-                  onPress={() => {     
+                  onPress={() => {
                     if (account.isActive || switchingUserId !== null) return;
                     void handleSwitchAccount(account.userId);
                   }}
