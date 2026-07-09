@@ -7,6 +7,10 @@ import {
 } from '@testing-library/react-native';
 import ForgotPasswordScreen from './ForgotPasswordScreen';
 import { FluentAPI } from '../../services/api';
+import { QueryClientTestWrapper } from '../../test/queryClientWrapper';
+
+const renderForgotPasswordScreen = () =>
+  render(<ForgotPasswordScreen />, { wrapper: QueryClientTestWrapper });
 
 const mockNavigate = jest.fn();
 const mockGoBack = jest.fn();
@@ -33,7 +37,7 @@ describe('ForgotPasswordScreen', () => {
   });
 
   it('shows a validation error for an invalid email', async () => {
-    render(<ForgotPasswordScreen />);
+    renderForgotPasswordScreen();
 
     fireEvent.changeText(
       screen.getByTestId('forgot-password-email-input'),
@@ -50,7 +54,7 @@ describe('ForgotPasswordScreen', () => {
   it('renders the sent state after a successful request', async () => {
     jest.mocked(FluentAPI.forgotPassword).mockResolvedValue({});
 
-    render(<ForgotPasswordScreen />);
+    renderForgotPasswordScreen();
 
     fireEvent.press(screen.getByTestId('forgot-password-submit-button'));
 
@@ -63,7 +67,7 @@ describe('ForgotPasswordScreen', () => {
   it('resends the reset email from the sent state', async () => {
     jest.mocked(FluentAPI.forgotPassword).mockResolvedValue({});
 
-    render(<ForgotPasswordScreen />);
+    renderForgotPasswordScreen();
     fireEvent.press(screen.getByTestId('forgot-password-submit-button'));
 
     await waitFor(() => {

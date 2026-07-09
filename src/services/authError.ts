@@ -1,8 +1,9 @@
-export class AuthError extends Error {
-  readonly status = 401;
+import { ApiError } from '../types/api/errors';
 
-  constructor(message: string) {
-    super(message);
+/** Session invalid or missing on an authenticated API request (HTTP 401). */
+export class AuthError extends ApiError {
+  constructor(message: string, code?: string) {
+    super(401, message, code);
     this.name = 'AuthError';
   }
 }
