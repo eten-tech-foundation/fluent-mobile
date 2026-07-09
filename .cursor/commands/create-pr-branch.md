@@ -5,12 +5,14 @@
 Creates a new git branch using the team naming convention:
 
 ```text
-{author}/{type}/{ticket-id}-{slug-from-title}
+{author}/{type}/{issue-number}-{slug-from-title}
 ```
 
-**Example:** `mrace/chore/fluent-123-add-cursorai-rules`
+**Example:** `mrace/chore/173-phase1-agent-process-docs`
 
 Run with `/create-pr-branch` in Cursor chat.
+
+**Tracker:** GitHub Issues for this repo right now — see [docs/issue-tracking.md](../../docs/issue-tracking.md).
 
 ## Branch name format
 
@@ -18,25 +20,28 @@ Run with `/create-pr-branch` in Cursor chat.
 | ------- | ------ | ------- |
 | `author` | Local part of `git config user.email` | `mrace` |
 | `type` | `feature`, `fix`, or `chore` only | `chore` |
-| `ticket-id` | Linear identifier, lowercase | `fluent-123` |
-| `slug` | Meaningful words from ticket title | `add-cursorai-rules` |
+| `issue-number` | GitHub issue number | `173` |
+| `slug` | Meaningful words from issue title | `phase1-agent-process-docs` |
 
-**Full pattern:** `{author}/{type}/{ticket-id}-{slug}`
+**Full pattern:** `{author}/{type}/{issue-number}-{slug}`
 
 ## When you run this command
 
 Execute these steps in order. Do not skip validation or user confirmation before creating the branch.
 
-### 1. Resolve ticket ID
+### 1. Resolve issue number
 
-- If the user message or recent conversation already includes a Linear ticket (e.g. `FLUENT-123`), use it.
-- Otherwise, **ask once**: "What's the Linear ticket ID? (e.g. FLUENT-123)"
-- Normalize to uppercase team prefix + number (e.g. `FLUENT-123`).
+- If the user message or recent conversation already includes a GitHub issue (e.g. `#173` or `173`), use it.
+- Otherwise, **ask once**: "What's the GitHub issue number? (e.g. 173)"
+- Normalize to digits only for the branch segment.
 
-### 2. Fetch Linear ticket
+### 2. Fetch GitHub issue
 
-- Use the Linear MCP `get_issue` tool with the ticket ID.
-- If the ticket is not found, report the error and stop.
+```bash
+gh issue view NNN --repo eten-tech-foundation/fluent-mobile --json number,title,labels,body
+```
+
+If the issue is not found, report the error and stop.
 
 ### 3. Resolve branch author prefix
 
@@ -55,36 +60,34 @@ If `user.email` is unset, ask the user to configure git (`git config user.email 
 
 Use **only** these three types.
 
-**Infer from Linear (in order):**
+**Infer from the GitHub issue (in order):**
 
 | Signal | Type |
 | ------ | ---- |
 | Labels contain `bug`, `bugfix`, `hotfix`, `defect` | `fix` |
-| Labels contain `chore`, `maintenance`, `tech-debt`, `dependencies` | `chore` |
+| Labels contain `chore`, `maintenance`, `tech-debt`, `dependencies`, `documentation` | `chore` |
 | Labels contain `feature`, `story`, `enhancement` | `feature` |
 | Title starts with or contains strong fix signals: `fix`, `fixes`, `fixed`, `bug`, `hotfix`, `resolve` | `fix` |
 | Title signals: `add`, `implement`, `introduce`, `support`, `enable` | `feature` |
-| Title signals: `replace`, `migrate`, `upgrade`, `bump`, `refactor`, `remove`, `cleanup`, `chore`, `update` (non-user-facing) | `chore` |
+| Title signals: `replace`, `migrate`, `upgrade`, `bump`, `refactor`, `remove`, `cleanup`, `chore`, `update`, `adopt`, `docs` (non-user-facing) | `chore` |
 
 If still ambiguous, use **AskQuestion** with: feature / fix / chore (default from best guess).
 
 ### 5. Build title slug
 
-From the Linear **title** (not description):
+From the GitHub issue **title** (not description):
 
 1. Remove prefixes like `[Mobile App]`, `(Mobile)`, etc.
 2. Lowercase the title.
 3. Split into words (alphanumeric tokens); split camelCase into words when obvious.
 4. **Drop filler words:** `a`, `an`, `the`, `and`, `or`, `but`, `for`, `with`, `from`, `into`, `to`, `of`, `in`, `on`, `at`, `by`, `as`, `is`, `are`, `was`, `were`, `be`, `been`, `being`, `this`, `that`, `these`, `those`, `it`, `its`, `via`, `using`, `use`, `please`
-5. Keep **3–6 meaningful words**; cap slug length (~45 chars after ticket id).
+5. Keep **3–6 meaningful words**; cap slug length (~45 chars after issue number).
 6. Join with single hyphens; lowercase `a-z0-9-` only.
-
-**Ticket segment:** lowercase identifier, e.g. `fluent-123`.
 
 **Final branch name:**
 
 ```text
-{author}/{type}/{ticket-id}-{slug}
+{author}/{type}/{issue-number}-{slug}
 ```
 
 ### 6. Pre-flight checks
@@ -104,8 +107,8 @@ git branch --list '{proposed-branch-name}'
 Show a short summary before creating:
 
 ```text
-Branch: mrace/chore/fluent-123-add-cursorai-rules
-Ticket: FLUENT-123 — Add Cursor AI rules
+Branch: mrace/chore/173-phase1-agent-process-docs
+Issue:  #173 — Adopt Phase 1 agent/process docs
 Base:   main @ abc1234
 ```
 
@@ -114,7 +117,7 @@ Ask: **"Create this branch?"** (or create immediately if the user was explicit).
 ### 8. Create branch
 
 ```bash
-git checkout -b "{author}/{type}/{ticket-id}-{slug}"
+git checkout -b "{author}/{type}/{issue-number}-{slug}"
 ```
 
 If branching from `main` explicitly and behind:
@@ -129,8 +132,8 @@ Report success and remind them to use `/create-pr` when ready.
 ## Integration
 
 - Pairs with `/create-pr` and `/generate-pr-description`.
-- Linear ticket in branch name enables automatic ticket detection in `/create-pr`.
-- PR title format: `[TICKET-ID]: Description` (team PR conventions).
+- Issue number in the branch name enables automatic detection in `/create-pr`.
+- PR title format: `[#NNN]: Description` (see [docs/issue-tracking.md](../../docs/issue-tracking.md)).
 
 ## Author setup (one-time per machine)
 
@@ -143,8 +146,8 @@ git config --global user.email "you@gloo.us"
 
 | User says | Action |
 | --------- | ------ |
-| `/create-pr-branch` | Ask for ticket ID, then run workflow |
-| `/create-pr-branch FLUENT-123` | Fetch ticket, propose branch, create after confirm |
+| `/create-pr-branch` | Ask for issue number, then run workflow |
+| `/create-pr-branch 173` | Fetch issue, propose branch, create after confirm |
 
 ## Rules
 
@@ -152,4 +155,4 @@ git config --global user.email "you@gloo.us"
 - **Never** use branch types outside `feature`, `fix`, `chore`.
 - **Never** force-push or delete branches unless the user explicitly asks.
 - **Always** show the final branch name before `git checkout -b`.
-- Prefer Linear MCP for ticket title; do not guess the slug from memory if the ticket can be fetched.
+- Prefer `gh issue view` for the title; do not guess the slug from memory if the issue can be fetched.
