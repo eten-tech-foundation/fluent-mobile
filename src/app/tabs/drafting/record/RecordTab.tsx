@@ -118,13 +118,13 @@ export function RecordTab({
 
   function handlePrev() {
     if (prevDisabled) return;
-    recorder.stopPlayback();
+    recorder.playback.stop();
     withPausedGuard(() => onSelectVerse(verses[verseIndex - 1]!.verseNumber));
   }
 
   function handleNext() {
     if (nextDisabled) return;
-    recorder.stopPlayback();
+    recorder.playback.stop();
     withPausedGuard(() => onSelectVerse(verses[verseIndex + 1]!.verseNumber));
   }
 
@@ -227,12 +227,15 @@ export function RecordTab({
           <RecordingWaveform
             status={recorder.status}
             elapsedMs={recorder.elapsedMs}
+            positionMs={recorder.playback.positionMs}
+            durationMs={recorder.playback.durationMs || recorder.elapsedMs}
+            onSeek={recorder.playback.seek}
           />
           <RecordingControls
             status={recorder.status}
             reference={currentReference}
             elapsedMs={recorder.elapsedMs}
-            isPlaying={recorder.isPlaying}
+            isPlaying={recorder.playback.isPlaying}
             canResume={recorder.canResume}
             isRecovered={recorder.isRecovered}
             onStart={handleStartPress}
@@ -240,7 +243,7 @@ export function RecordTab({
             onResume={handleResumePress}
             onStop={handleStopPress}
             onDiscard={handleDiscardPress}
-            onTogglePlayback={() => recorder.togglePlayback()}
+            onTogglePlayback={() => recorder.playback.toggle()}
             onReRecord={handleReRecordPress}
             onDelete={handleDeletePress}
           />

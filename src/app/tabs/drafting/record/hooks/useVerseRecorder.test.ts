@@ -447,7 +447,7 @@ describe('useVerseRecorder', () => {
     expect(result.current.status).toBe(RecorderStatus.Review);
 
     await act(async () => {
-      await result.current.togglePlayback();
+      await result.current.playback.toggle();
     });
 
     expect(RESOLVE_MOCK).toHaveBeenCalledWith(

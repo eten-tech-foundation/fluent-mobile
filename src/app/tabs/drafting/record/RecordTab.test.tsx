@@ -39,7 +39,14 @@ function baseRecorderState() {
     currentRecording: null,
     isReady: true,
     canResume: true,
-    isPlaying: false,
+    playback: {
+      isPlaying: false,
+      positionMs: 0,
+      durationMs: 0,
+      toggle: jest.fn().mockResolvedValue(undefined),
+      seek: jest.fn().mockResolvedValue(undefined),
+      stop: jest.fn(),
+    },
     requestPermission: jest
       .fn()
       .mockResolvedValue({ granted: true, canAskAgain: true }),
@@ -50,8 +57,6 @@ function baseRecorderState() {
     reRecord: jest.fn().mockResolvedValue(undefined),
     deleteCurrent: jest.fn().mockResolvedValue(undefined),
     discardPaused: jest.fn().mockResolvedValue(undefined),
-    togglePlayback: jest.fn().mockResolvedValue(undefined),
-    stopPlayback: jest.fn(),
   };
 }
 
