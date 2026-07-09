@@ -26,4 +26,4 @@ Agent-authored fixes (expo doctor CI, lockfile repair, conflict resolution) stil
 
 ## Before delivery
 
-Run gates from [commands.mdc](./commands.mdc). Use `/create-pr` when the user wants a PR opened.
+Run gates from [commands.mdc](./commands.mdc). Also apply delivery judgment from root [`AGENTS.md`](../../AGENTS.md) (AC, scope, abstraction, human QA) — Cursor pointer: [agent-guardrails.mdc](./agent-guardrails.mdc). Use `/create-pr` when the user wants a PR opened.
