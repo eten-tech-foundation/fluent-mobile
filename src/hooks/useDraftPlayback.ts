@@ -11,7 +11,13 @@ const log = logger.create('useDraftPlayback');
 
 export interface UseDraftPlaybackApi {
   isPlaying: boolean;
+  /** Current playback position in ms (0 until a source is loaded). */
+  positionMs: number;
+  /** Total length of the loaded take in ms (0 until known). */
+  durationMs: number;
   toggle: () => Promise<void>;
+  /** Seek to an absolute position (ms), clamped to the start of the take. */
+  seek: (ms: number) => Promise<void>;
   stop: () => void;
 }
 
@@ -37,10 +43,22 @@ export function useDraftPlayback(source: string | null): UseDraftPlaybackApi {
   const player = useAudioPlayer(playbackSource);
   const playerStatus = useAudioPlayerStatus(player);
   const isPlaying = playerStatus?.playing ?? false;
+  // expo-audio reports position/duration in seconds; expose ms to match the
+  // rest of the recorder surface.
+  const positionMs = Math.max(0, (playerStatus?.currentTime ?? 0) * 1000);
+  const durationMs = Math.max(0, (playerStatus?.duration ?? 0) * 1000);
 
   const stop = useCallback(() => {
     if (playerStatus?.playing) player.pause();
   }, [player, playerStatus]);
+
+  const seek = useCallback(
+    async (ms: number) => {
+      if (!source) return;
+      await player.seekTo(Math.max(0, ms / 1000));
+    },
+    [player, source],
+  );
 
   const toggle = useCallback(async () => {
     if (!source) return;
@@ -66,5 +84,5 @@ export function useDraftPlayback(source: string | null): UseDraftPlaybackApi {
     }
   }, [player, playerStatus?.didJustFinish]);
 
-  return { isPlaying, toggle, stop };
+  return { isPlaying, positionMs, durationMs, toggle, seek, stop };
 }

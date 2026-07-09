@@ -103,7 +103,13 @@ export interface UseRecorderApi<T> {
    * should also offer Discard.
    */
   isRecovered: boolean;
-  isPlaying: boolean;
+  /**
+   * Playback of the committed take under review. It is a distinct concern (own
+   * hook) that the recorder only coordinates — gating it to the Review state and
+   * sequencing it against the shared audio session — so it is grouped here
+   * rather than flattened onto the recorder's own controls.
+   */
+  playback: RecorderPlaybackApi;
 
   requestPermission: () => Promise<PermissionRequestResult>;
   start: () => Promise<void>;
@@ -113,8 +119,19 @@ export interface UseRecorderApi<T> {
   reRecord: () => Promise<void>;
   deleteCurrent: () => Promise<void>;
   discardPaused: () => Promise<void>;
-  togglePlayback: () => Promise<void>;
-  stopPlayback: () => void;
+}
+
+/** Review-take playback surface, coordinated by {@link useRecorder}. */
+export interface RecorderPlaybackApi {
+  isPlaying: boolean;
+  /** Current playback position (ms) of the reviewed take. */
+  positionMs: number;
+  /** Total length (ms) of the reviewed take, from the loaded audio. */
+  durationMs: number;
+  toggle: () => Promise<void>;
+  /** Seek the reviewed take to an absolute position (ms). */
+  seek: (ms: number) => Promise<void>;
+  stop: () => void;
 }
 
 // 50ms tick gives ~20fps on the centiseconds portion of the duration display
@@ -188,7 +205,10 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   // The adapter resolves a committed take to an absolute uri.
   const {
     isPlaying,
+    positionMs: playbackPositionMs,
+    durationMs: playbackDurationMs,
     toggle: togglePlaybackInternal,
+    seek: seekPlaybackInternal,
     stop: stopPlayback,
   } = useDraftPlayback(
     currentRecording
@@ -647,6 +667,14 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     await togglePlaybackInternal();
   }, [currentRecording, status, togglePlaybackInternal]);
 
+  const seekPlayback = useCallback(
+    async (ms: number) => {
+      if (status !== RecorderStatus.Review || !currentRecording) return;
+      await seekPlaybackInternal(ms);
+    },
+    [currentRecording, status, seekPlaybackInternal],
+  );
+
   return {
     status,
     elapsedMs,
@@ -655,7 +683,14 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     isReady,
     canResume,
     isRecovered,
-    isPlaying,
+    playback: {
+      isPlaying,
+      positionMs: playbackPositionMs,
+      durationMs: playbackDurationMs,
+      toggle: togglePlayback,
+      seek: seekPlayback,
+      stop: stopPlayback,
+    },
     requestPermission,
     start,
     pause,
@@ -664,7 +699,5 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     reRecord,
     deleteCurrent,
     discardPaused,
-    togglePlayback,
-    stopPlayback,
   };
 }

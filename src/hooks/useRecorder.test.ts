@@ -30,7 +30,12 @@ const mockPlayer = {
   currentTime: 0,
   duration: 0,
 };
-let mockPlayerStatus: { playing?: boolean; didJustFinish?: boolean } = {
+let mockPlayerStatus: {
+  playing?: boolean;
+  didJustFinish?: boolean;
+  currentTime?: number;
+  duration?: number;
+} = {
   playing: false,
   didJustFinish: false,
 };
@@ -505,10 +510,10 @@ describe('useRecorder', () => {
     const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
     expect(result.current.status).toBe(RecorderStatus.Review);
-    expect(result.current.isPlaying).toBe(false);
+    expect(result.current.playback.isPlaying).toBe(false);
 
     await act(async () => {
-      await result.current.togglePlayback();
+      await result.current.playback.toggle();
     });
 
     expect(mockPlayer.play).toHaveBeenCalledTimes(1);
@@ -524,10 +529,10 @@ describe('useRecorder', () => {
 
     const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
-    expect(result.current.isPlaying).toBe(true);
+    expect(result.current.playback.isPlaying).toBe(true);
 
     await act(async () => {
-      await result.current.togglePlayback();
+      await result.current.playback.toggle();
     });
 
     expect(mockPlayer.pause).toHaveBeenCalledTimes(1);
@@ -540,7 +545,7 @@ describe('useRecorder', () => {
     expect(result.current.status).toBe(RecorderStatus.Idle);
 
     await act(async () => {
-      await result.current.togglePlayback();
+      await result.current.playback.toggle();
     });
 
     expect(mockPlayer.play).not.toHaveBeenCalled();
@@ -557,6 +562,54 @@ describe('useRecorder', () => {
     await waitReady(result);
 
     await waitFor(() => expect(mockPlayer.seekTo).toHaveBeenCalledWith(0));
+  });
+
+  it('seeks the current take on seekPlayback from review', async () => {
+    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+    const adapter = makeAdapter({
+      loadInitial: jest.fn().mockResolvedValue(existing),
+    });
+
+    const { result } = renderHook(() => useRecorder(adapter));
+    await waitReady(result);
+    expect(result.current.status).toBe(RecorderStatus.Review);
+
+    await act(async () => {
+      await result.current.playback.seek(4500);
+    });
+
+    expect(mockPlayer.seekTo).toHaveBeenCalledWith(4.5);
+  });
+
+  it('does not seek when there is no take to review', async () => {
+    const { result } = renderHook(() => useRecorder(makeAdapter()));
+    await waitReady(result);
+    expect(result.current.status).toBe(RecorderStatus.Idle);
+
+    await act(async () => {
+      await result.current.playback.seek(1000);
+    });
+
+    expect(mockPlayer.seekTo).not.toHaveBeenCalled();
+  });
+
+  it('exposes playback position and duration in ms from the player status', async () => {
+    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+    const adapter = makeAdapter({
+      loadInitial: jest.fn().mockResolvedValue(existing),
+    });
+    mockPlayerStatus = {
+      playing: true,
+      didJustFinish: false,
+      currentTime: 2,
+      duration: 8,
+    };
+
+    const { result } = renderHook(() => useRecorder(adapter));
+    await waitReady(result);
+
+    expect(result.current.playback.positionMs).toBe(2000);
+    expect(result.current.playback.durationMs).toBe(8000);
   });
 
   it('stops playback before re-recording an existing take', async () => {
