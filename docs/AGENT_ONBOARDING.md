@@ -176,11 +176,12 @@ Keep changes **small and scoped** — avoid drive-by refactors.
 ## Testing strategy
 
 - **Unit:** Jest + Testing Library; mocks for native modules in [`__tests__/App.test.tsx`](../__tests__/App.test.tsx).
+- **Expo mocks:** [`src/test/mocks/`](../src/test/mocks/) — global `moduleNameMapper` in `jest.config.cjs` for `expo-secure-store`, `expo-file-system`, `expo-audio`.
 - **Colocated:** `src/utils/logger.test.ts`, `src/services/fluent-api.test.ts`.
-- **Integration test caveat:** `fluent-api.test.ts` hits `https://dev.api.fluent.bible` — can fail offline; CI may need network.
+- **Live API test:** `fluent-api.test.ts` is **skipped by default**; opt in with `RUN_LIVE_API_TESTS=1 npm test -- fluent-api.test.ts`.
 - **No E2E** in this repo yet.
 
-When adding features: mock `op-sqlite`, navigation, and sync in screen tests following existing patterns.
+When adding features: mock `op-sqlite`, navigation, and sync in screen tests following existing patterns. Reset shared Expo mocks in `beforeEach` when mutating secure-store/file-system state.
 
 ## Common tasks
 
@@ -198,7 +199,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 |------|------|
 | `src/db/schema.ts` | No migrations yet — schema changes affect existing installs |
 | `sync.ts` module-level `getDatabase()` | Dead import at line 24; calling `getDatabase()` before init throws |
-| `fluent-api.test.ts` | Live network dependency |
+| `fluent-api.test.ts` | Skipped in CI; opt-in live network via `RUN_LIVE_API_TESTS=1` |
 | `format` vs `format:check` | Different glob scopes — CI only checks `src/**` |
 | Native folders | `android/` is gitignored CNG output — customize via `app.config.ts` + plugins. No iOS project. |
 
@@ -206,7 +207,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 
 - [ ] Remove unused `const db = getDatabase()` in `sync.ts:24`
 - [x] Dependabot reviewers: `eten-tech-foundation/fluent-admin`
-- [ ] Mock or gate `fluent-api.test.ts` for offline CI
+- [x] Mock or gate `fluent-api.test.ts` for offline CI
 - [ ] Align `format:check` glob with `format` or document intentionally narrow check
 - [ ] Wire `recordings` table to actual audio capture/upload
 
