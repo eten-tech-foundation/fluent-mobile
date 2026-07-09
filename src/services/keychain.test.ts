@@ -1,19 +1,3 @@
-const mockSecureStore = new Map<string, string>();
-
-jest.mock('expo-secure-store', () => ({
-  setItemAsync: jest.fn((key: string, value: string) => {
-    mockSecureStore.set(key, value);
-    return Promise.resolve();
-  }),
-  getItemAsync: jest.fn((key: string) =>
-    Promise.resolve(mockSecureStore.get(key) ?? null),
-  ),
-  deleteItemAsync: jest.fn((key: string) => {
-    mockSecureStore.delete(key);
-    return Promise.resolve();
-  }),
-}));
-
 jest.mock('./storage', () => ({
   getKnownUserIds: jest.fn(() => ['1', '2']),
 }));
@@ -28,10 +12,11 @@ import {
   saveCredentials,
   saveTempCredentials,
 } from './keychain';
+import { resetSecureStoreMock } from '../test/mocks/expo-secure-store';
 
 describe('keychain (expo-secure-store)', () => {
   beforeEach(() => {
-    mockSecureStore.clear();
+    resetSecureStoreMock();
     jest.clearAllMocks();
   });
 

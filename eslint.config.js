@@ -105,6 +105,21 @@ export default [
     },
   },
   {
+    files: ['src/services/fluent-api.test.ts'],
+    rules: {
+      'no-restricted-syntax': 'off',
+    },
+  },
+  {
+    files: ['src/test/mocks/**'],
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^__' },
+      ],
+    },
+  },
+  {
     files: ['src/config/**/*.{ts,tsx}', 'app.config.ts'],
     rules: {
       'no-restricted-syntax': 'off',
