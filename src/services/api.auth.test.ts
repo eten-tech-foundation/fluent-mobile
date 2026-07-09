@@ -54,10 +54,11 @@ describe('FluentAPI auth', () => {
 
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({
-        token: 'abc123',
-        user: { email: 't@fluent.local' },
-      }),
+      text: async () =>
+        JSON.stringify({
+          token: 'abc123',
+          user: { email: 't@fluent.local' },
+        }),
       headers: {
         get: (name: string) =>
           name.toLowerCase() === 'set-auth-token' ? encodedHeader : null,
@@ -73,14 +74,16 @@ describe('FluentAPI auth', () => {
     fetchMock.mockResolvedValue({
       ok: false,
       status: 503,
-      json: async () => {
-        throw new SyntaxError('Unexpected token < in JSON at position 0');
-      },
+      text: async () => '',
     });
 
-    await expect(FluentAPI.signIn('t@fluent.local', 'wrong')).rejects.toThrow(
-      'Sign-in failed: 503',
-    );
+    await expect(
+      FluentAPI.signIn('t@fluent.local', 'wrong'),
+    ).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 503,
+      message: 'API failed: 503',
+    });
   });
 
   it('getUserProjects throws AuthError on 401 responses', async () => {

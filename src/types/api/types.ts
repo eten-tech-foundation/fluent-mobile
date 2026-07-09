@@ -12,13 +12,17 @@ export interface ApiBook {
 export interface ApiChapterAssignment {
   chapterAssignmentId: number;
   projectId: number;
-  projectUnitId?: number | null;
+  projectUnitId: number;
   bibleId: number;
   bookId: number;
   chapterNumber: number;
+  chapterStatus?: string;
+  /** Field name on GET /users/:id/chapter-assignments/all */
+  status?: string | null;
   assignedUserId?: number | null;
   peerCheckerId?: number | null;
-  status?: string | null;
   submittedTime?: string | null;
   updatedAt?: string | null;
+  totalVerses: number;
+  completedVerses: number;
 }
