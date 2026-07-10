@@ -18,7 +18,9 @@ let mockPlayerStatus: {
   didJustFinish: false,
 };
 const mockSetAudioModeAsync = jest.fn().mockResolvedValue(undefined);
-const mockUseAudioPlayer = jest.fn(() => mockPlayer);
+const mockUseAudioPlayer = jest.fn(
+  (_source: unknown, _options: unknown) => mockPlayer,
+);
 
 jest.mock('expo-audio', () => ({
   useAudioPlayer: (source: unknown, options: unknown) =>
@@ -33,7 +35,7 @@ describe('useAudioPlayback', () => {
     mockPlayerStatus = { playing: false, didJustFinish: false };
   });
 
-  it('polls player status every 50ms so the position readout updates smoothly', () => {
+  it('polls player status every 30ms so the position readout updates smoothly', () => {
     renderHook(() => useAudioPlayback('/tmp/take-1.m4a'));
 
     expect(mockUseAudioPlayer).toHaveBeenCalledWith(

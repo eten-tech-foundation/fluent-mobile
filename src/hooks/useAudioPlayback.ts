@@ -41,7 +41,7 @@ export function useAudioPlayback(source: string | null): UseAudioPlaybackApi {
     () => (source ? { uri: source } : null),
     [source],
   );
-  // Poll status every 50ms so the review position readout and waveform fill
+  // Poll status every 30ms so the review position readout and waveform fill
   // update smoothly; the default (~500ms) makes the label visibly step.
   const player = useAudioPlayer(playbackSource, { updateInterval: 30 });
   const playerStatus = useAudioPlayerStatus(player);
