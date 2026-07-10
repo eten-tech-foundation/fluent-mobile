@@ -2,16 +2,18 @@
 
 ## Overview
 
-Automated PR creation for **fluent-mobile** when you run `/create-pr`. Creates a GitHub PR with title, description from the repo template, and draft settings. Integrates Linear tickets and branch analysis when available.
+Automated PR creation for **fluent-mobile** when you run `/create-pr`. Creates a GitHub PR with title, description from the repo template, and draft settings. Integrates **GitHub Issues** and branch analysis.
 
-Complements team PR conventions (title `[TICKET-ID]: Description`, verification gates). Does not merge PRs.
+Complements team PR conventions (title `[#NNN]: Description`, verification gates). Does not merge PRs.
+
+**Tracker:** GitHub Issues — [docs/issue-tracking.md](../../docs/issue-tracking.md).
 
 ## What happens
 
 1. **Validate prerequisites** — branch pushed (or push with user approval), quality gates, clean intent for draft PR
-2. **Fetch Linear ticket** — from branch name via Linear MCP when possible
+2. **Fetch GitHub issue** — from branch name via `gh issue view` when possible
 3. **Analyze branch** — commits, files changed, change type
-4. **Generate title** — `[TICKET-ID]: Title` from Linear + branch
+4. **Generate title** — `[#NNN]: Title` from issue + branch
 5. **Fill template** — [`.cursor/templates/pr-template.md`](../templates/pr-template.md)
 6. **Reviewers / labels** — use team defaults if configured below; otherwise omit or ask user
 7. **Create draft PR** — via `gh pr create`
@@ -42,72 +44,62 @@ See [docs/AGENT_ONBOARDING.md](../../docs/AGENT_ONBOARDING.md) for full command 
 
 ## Title format
 
-**Always:** `TICKET-ID: Title text`
+**Always:** `[#NNN]: Title text` (or `#NNN: Title text`)
 
-**With Linear:**
+**With GitHub issue:**
 
-- Branch `mrace/chore/fluent-123-add-cursor-rules` + Linear → `FLUENT-123: Add Cursor AI rules`
+- Branch `mrace/chore/173-phase1-agent-process-docs` + issue → `[#173]: Adopt Phase 1 agent/process docs`
 
-**Without Linear (fallback):**
+**Without issue (fallback):**
 
 - `fix/sync-retry-logic` → `Fix: Sync retry logic`
-- Strip `[Mobile App]` or similar prefixes from Linear titles
+- Strip `[Mobile App]` or similar prefixes from issue titles
 
 ## Template
 
 Load [`.cursor/templates/pr-template.md`](../templates/pr-template.md) and pre-fill:
 
-**From Linear:**
+**From GitHub issue:**
 
-- TLDR, Summary (issue / root cause / solution), Related Issue URL, business impact when present
+- TLDR, Details, `Closes #NNN` when the PR completes the issue
 
 **From branch analysis:**
 
-- Technical Changes (files, line counts, key diffs)
-- Type of Change checkboxes
-- How to Test (npm setup, Metro + `npm run android`)
-
-**Manual (reviewer adds):**
-
-- Screenshots for UI changes
-- Why This Solution (technical reasoning)
+- Technical changes (files, line counts)
+- Type of change checkboxes
+- How to verify (npm setup, Metro + `npm run android` when relevant)
 
 **Delivery guardrails** (root [`AGENTS.md`](../../AGENTS.md)):
 
 - Leave **Acceptance criteria**, **Scope**, and **Android device tested** checkboxes **unchecked** unless verified.
 - Do **not** auto-check device QA for native / mic / camera / filesystem / permissions changes.
 - Do **not** mark such PRs ready for review until a human records device results.
-- Deferred AC requires a ticket-level waiver and linked follow-up issues — not only a PR “known limitations” note.
+- Deferred AC requires an issue-level waiver and linked follow-up issues — not only a PR “known limitations” note.
 
-Keep output under ~400 lines; no nested fenced code blocks inside the PR body code block when pasting via `/generate-pr-description` rules.
+Keep output under ~400 lines; no nested fenced code blocks inside the PR body.
 
-## Linear integration
+## GitHub issue integration
 
-- Detect ticket patterns from branch: `TEAM-123`, lowercase in branch segment `team-123`
-- Use Linear MCP `get_issue`; graceful fallback to git-only context
-- Link PR to Linear in **Related Issue**
+- Detect issue number from branch: `…/173-…` or leading `173-…`
+- Fetch with `gh issue view NNN --repo eten-tech-foundation/fluent-mobile`
+- Body must include `Closes #NNN` on its own line under Details when the PR completes the issue
 
 ## GitHub (`gh`)
 
 ```bash
-gh pr create --draft --title "TICKET-ID: Title" --body-file /tmp/pr-body.md
+gh pr create --draft --title "[#NNN]: Title" --body-file /tmp/pr-body.md
 ```
 
-**Reviewers / labels (confirm for this repo):**
-
-- Reviewers: `<!-- e.g. @org/team-name -->` — replace with fluent-mobile defaults when known
-- Labels: `<!-- e.g. mobile, react-native -->` — replace when known
-
-If unknown, create PR without reviewers/labels and tell the user to add them in GitHub.
+**Reviewers / labels:** omit if unknown; tell the user to add them in GitHub.
 
 ## Package manager
 
-Use **npm** only in PR text and test steps (`npm install`, `npm run lint`, etc.). Do not reference pnpm or yarn.
+Use **npm** only in PR text and test steps. Do not reference pnpm or yarn.
 
 ## Framework notes
 
-- **Expo SDK 56** + **CNG** (RN **0.85**, React **19.2.3**), **Android-only** for now
-- PR CI: lint, test, typecheck, `expo-doctor`, `expo install --check` (`.github/workflows/quality-gates.yml`); native compile via EAS preview label
+- **Expo SDK 56** + **CNG** (RN **0.85**, React **19.2.3**), **Android-only**
+- PR CI: lint, test, typecheck, `expo-doctor`, `expo install --check` (see [docs/ci.md](../../docs/ci.md)); native compile via EAS preview label
 - EAS project ID: `b0919574-f268-4768-b3bd-7cfa5172bbab`
 
 ## Branch analysis
@@ -120,20 +112,15 @@ Use **npm** only in PR text and test steps (`npm install`, `npm run lint`, etc.)
 
 Type `/create-pr` in Cursor chat.
 
-**Good for:**
-
-- Branches with Linear ticket IDs in the name
-- Branches without tickets (git-only analysis)
-- Doc-only changes (chore/docs type)
-
 **After creation:**
 
 1. Review auto-filled body (confirm AC / Scope / device-QA checkboxes match reality per [`AGENTS.md`](../../AGENTS.md))
 2. Add screenshots if UI changed
 3. Confirm reviewers/labels
-4. Mark ready for review only when CI gates **and** delivery guardrails pass (AC met or waived in ticket; device QA when required). Do not merge unless user explicitly asks.
+4. Mark ready for review only when CI gates **and** delivery guardrails pass. Do not merge unless user explicitly asks.
 
 ## Related commands
 
 - `/create-pr-branch` — create branch before work
 - `/generate-pr-description` — body only, manual GitHub PR creation
+- `/onboard`, `/dep-bump` — setup and dependency changes

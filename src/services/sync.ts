@@ -1,9 +1,7 @@
 import { FluentAPI } from './api';
 import { isAuthError, AuthError } from './authError';
-import {
-  mapApiChapterAssignment,
-  ApiUserChapterAssignment,
-} from './mapChapterAssignment';
+import { mapApiChapterAssignment } from './mapChapterAssignment';
+import { mapApiProject } from './mapApiProject';
 import {
   insertUser,
   insertMasterData,
@@ -19,6 +17,7 @@ import {
 import { logger } from '../utils/logger';
 import { getDatabase } from '../db/db';
 import { ApiBook, ApiVerse } from '../types/api/types';
+import { unwrapApiListResponse } from '../types/api/responses';
 import {
   setUserSync,
   setSyncCount,
@@ -180,8 +179,8 @@ export async function syncProjects(userId: number) {
       log.info('Syncing projects...', { userId });
 
       const response = await FluentAPI.getUserProjects(userId);
-      const raw = response?.data ?? response;
-      const projects = Array.isArray(raw) ? raw : [];
+      const raw = unwrapApiListResponse(response);
+      const projects = (Array.isArray(raw) ? raw : []).map(mapApiProject);
 
       log.info('Projects fetched', {
         count: projects.length,
@@ -192,7 +191,7 @@ export async function syncProjects(userId: number) {
         await insertProjects(projects);
         await insertUserProjects(
           userId,
-          projects.map((p: { id: number }) => p.id),
+          projects.map(project => project.id),
         );
       }
 
@@ -236,10 +235,9 @@ export async function syncChapterAssignments(
         excludeProjectIds,
       );
 
-      const raw = response.data ?? response;
+      const raw = unwrapApiListResponse(response);
       const allAssignments = (Array.isArray(raw) ? raw : []).map(
-        (assignment: ApiUserChapterAssignment) =>
-          mapApiChapterAssignment(assignment),
+        mapApiChapterAssignment,
       );
 
       if (allAssignments.length > 0) {

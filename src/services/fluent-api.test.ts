@@ -1,13 +1,22 @@
-describe('Fluent API Integration', () => {
-  const TEST_CONFIG = {
-    baseUrl: 'https://dev.api.fluent.bible',
-    endpoint: '/languages',
-  };
+/**
+ * Live-network integration test — skipped by default in CI.
+ *
+ * Opt in locally:
+ *   RUN_LIVE_API_TESTS=1 npm test -- fluent-api.test.ts
+ */
+const runLiveApiTests = process.env.RUN_LIVE_API_TESTS === '1';
 
-  it('demonstrates a successful connection to the Fluent API', async () => {
-    console.log('Starting Fluent API Integration Test...');
+(runLiveApiTests ? describe : describe.skip)(
+  'Fluent API Integration (live)',
+  () => {
+    const TEST_CONFIG = {
+      baseUrl: 'https://dev.api.fluent.bible',
+      endpoint: '/languages',
+    };
 
-    try {
+    it('demonstrates a successful connection to the Fluent API', async () => {
+      console.log('Starting Fluent API Integration Test...');
+
       const response = await fetch(
         `${TEST_CONFIG.baseUrl}${TEST_CONFIG.endpoint}`,
         {
@@ -30,12 +39,12 @@ describe('Fluent API Integration', () => {
           data?.[1]?.langName || 'No languages found',
         );
         expect(response.status).toBe(200);
+        return;
       }
-    } catch (error: any) {
-      console.error('TEST FAILED:', error.message);
-      throw error;
-    }
-  });
-});
+
+      throw new Error(`Unexpected response status: ${response.status}`);
+    });
+  },
+);
 
 export const runApiIntegrationTest = async () => {};

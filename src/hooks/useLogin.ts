@@ -1,7 +1,10 @@
+import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { FluentAPI } from '../services/api';
 import { beginLoginSession } from '../services/authSession';
+import { queryKeys } from '../services/queryKeys';
 import { logger } from '../utils/logger';
+import { isApiError } from '../services/apiError';
 import { isValidEmail } from '../utils/validateEmail';
 
 const log = logger.create('useLogin');
@@ -14,12 +17,34 @@ export function useLogin(onLoginSuccess: (email: string) => void) {
     email?: string;
     password?: string;
   }>({});
-  const [globalError, setGlobalError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleLogin = async () => {
+  const loginMutation = useMutation({
+    mutationKey: queryKeys.auth.signIn,
+    retry: false,
+    mutationFn: ({
+      email: trimmedEmail,
+      password: trimmedPassword,
+    }: {
+      email: string;
+      password: string;
+    }) => FluentAPI.signIn(trimmedEmail, trimmedPassword),
+    onSuccess: async response => {
+      await beginLoginSession(response.token, response.user.email);
+      onLoginSuccess(response.user.email);
+    },
+    onError: error => {
+      const message = error instanceof Error ? error.message : String(error);
+      log.error('Login failed', { error: message });
+    },
+  });
+
+  const handleLogin = () => {
+    if (loginMutation.isPending) {
+      return;
+    }
+
     setFieldErrors({});
-    setGlobalError(null);
+    loginMutation.reset();
 
     const errors: { email?: string; password?: string } = {};
     const trimmedEmail = email.trim();
@@ -39,19 +64,19 @@ export function useLogin(onLoginSuccess: (email: string) => void) {
       return;
     }
 
-    try {
-      setIsSubmitting(true);
-      const response = await FluentAPI.signIn(trimmedEmail, password);
-      await beginLoginSession(response.token, response.user.email);
-      onLoginSuccess(response.user.email);
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e);
-      log.error('Login failed', { error: message });
-      setGlobalError(message);
-    } finally {
-      setIsSubmitting(false);
-    }
+    loginMutation.mutate({ email: trimmedEmail, password });
   };
+
+  const globalError = (() => {
+    const error = loginMutation.error;
+    if (!error) return null;
+
+    if (isApiError(error) && error.status === 0) {
+      return 'Unable to connect. Please check your internet connection and try again.';
+    }
+
+    return error instanceof Error ? error.message : String(error);
+  })();
 
   return {
     email,
@@ -62,7 +87,7 @@ export function useLogin(onLoginSuccess: (email: string) => void) {
     setShowPassword,
     fieldErrors,
     globalError,
-    isSubmitting,
+    isSubmitting: loginMutation.isPending,
     handleLogin,
   };
 }
