@@ -37,6 +37,16 @@ export function DraftingProvider({
 }: DraftingProviderProps) {
   const [selectedVerse, setSelectedVerse] = useState<number>(initialVerse);
 
+  // Re-point the selection when the screen hands us a new target verse (e.g. a
+  // recovery navigation, or a chapter reload with a new default). Without this
+  // the selection would stay frozen at the first mount's value if the provider
+  // is kept mounted across an initialVerse change.
+  const [prevInitialVerse, setPrevInitialVerse] = useState(initialVerse);
+  if (initialVerse !== prevInitialVerse) {
+    setPrevInitialVerse(initialVerse);
+    setSelectedVerse(initialVerse);
+  }
+
   const value = useMemo(
     () => ({
       selectedVerse,
