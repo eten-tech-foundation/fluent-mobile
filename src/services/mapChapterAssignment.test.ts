@@ -28,6 +28,8 @@ describe('mapApiChapterAssignment', () => {
       bookId: 12,
       chapterNumber: 2,
       status: 'peer_check',
+      totalVerses: 0,
+      completedVerses: 0,
     });
 
     expect(mapped.chapterStatus).toBe('peer_check');
@@ -43,6 +45,8 @@ describe('mapApiChapterAssignment', () => {
       chapterNumber: 3,
       chapterStatus: 'draft',
       status: 'peer_check',
+      totalVerses: 0,
+      completedVerses: 0,
     });
 
     expect(mapped.chapterStatus).toBe('draft');
