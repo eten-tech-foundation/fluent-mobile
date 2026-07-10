@@ -19,9 +19,8 @@ import {
 } from '../../utils/draftingTabState';
 import {
   DraftingProvider,
-  useDraftingContext,
+  // useDraftingContext,
 } from '../context/DraftingContext';
-import { SourceAudioPlayerBar } from '../../components/layout/SourceAudioPlayerBar';
 import {
   DraftingTab,
   type TabSwitchGuardRef,
@@ -208,18 +207,13 @@ export default function DraftingScreen() {
             </View>
           </View>
 
-          <DraftingPlayerBar verses={verses} />
+          {/* <DraftingPlayerBar verses={verses} /> */}
 
           <DraftingTabBar activeTab={activeTab} onTabChange={handleTabChange} />
         </View>
       </DraftingProvider>
     </ScreenContainer>
   );
-}
-
-function DraftingPlayerBar({ verses }: { verses: VerseData[] }) {
-  const { selectedVerse } = useDraftingContext();
-  return <SourceAudioPlayerBar verses={verses} selectedVerse={selectedVerse} />;
 }
 
 const styles = StyleSheet.create({

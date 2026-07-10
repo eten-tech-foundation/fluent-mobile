@@ -2,18 +2,21 @@ import { ChapterAssignmentData, VerseData } from '../../types/db/types';
 import React, { createContext, useContext, useMemo, useState } from 'react';
 
 interface DraftingContextValue {
-  /** The verse the translator is currently working on. */
   selectedVerse: number;
-  /**
-   * Changes the selected verse. Only call this from explicit user actions
-   * (tapping a verse on the Bible Tab, or prev/next on the Record Tab).
-   * Passive audio playback must NOT call this.
-   */
+
   setSelectedVerse: (verseNumber: number) => void;
   verses: VerseData[];
   chapterAssignment: ChapterAssignmentData;
   /** Book name for verse references (falls back to route chapter name). */
   bookDisplayName: string;
+  /**
+   * The verse whose source audio is currently playing, tracked
+   * independently of `selectedVerse`. Not wired to real audio yet —
+   * present so BibleTab's playing-row highlight and the player bar
+   * don't need reshaping once playback lands.
+   */
+  currentlyPlayingVerse: number | null;
+  setCurrentlyPlayingVerse: (verseNumber: number | null) => void;
 }
 
 const DraftingContext = createContext<DraftingContextValue | undefined>(
@@ -36,6 +39,9 @@ export function DraftingProvider({
   bookDisplayName,
 }: DraftingProviderProps) {
   const [selectedVerse, setSelectedVerse] = useState<number>(initialVerse);
+  const [currentlyPlayingVerse, setCurrentlyPlayingVerse] = useState<
+    number | null
+  >(null);
 
   // Re-point the selection when the screen hands us a new target verse (e.g. a
   // recovery navigation, or a chapter reload with a new default). Without this
@@ -54,8 +60,18 @@ export function DraftingProvider({
       verses,
       chapterAssignment,
       bookDisplayName,
+      currentlyPlayingVerse,
+      setCurrentlyPlayingVerse,
     }),
-    [selectedVerse, verses, chapterAssignment, bookDisplayName],
+    [
+      selectedVerse,
+      verses,
+      chapterAssignment,
+      bookDisplayName,
+      currentlyPlayingVerse,
+      setSelectedVerse,
+      setCurrentlyPlayingVerse,
+    ],
   );
 
   return (
