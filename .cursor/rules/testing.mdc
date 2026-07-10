@@ -28,7 +28,8 @@ CI runs the same command (`.github/workflows/test.yml`).
 
 - **App test** (`__tests__/App.test.tsx`): heavy mocks for `op-sqlite`, navigation, sync, SVG, icons. Follow this when testing root flow.
 - **Unit tests**: colocate under `src/` (e.g. `logger.test.ts`).
-- **API integration** (`fluent-api.test.ts`): live fetch to `dev.api.fluent.bible` — may fail offline; do not add more network-dependent tests without mocking unless intentional.
+- **API integration** (`fluent-api.test.ts`): live fetch to `dev.api.fluent.bible` — **skipped by default**; opt in with `RUN_LIVE_API_TESTS=1 npm test -- fluent-api.test.ts`.
+- **Expo native mocks** (`src/test/mocks/`): `expo-secure-store`, `expo-file-system`, and `expo-audio` are mapped globally in `jest.config.cjs` — use `resetSecureStoreMock()` / `resetFileSystemMock()` / `resetAudioMock()` in `beforeEach` when tests mutate shared state.
 
 ## Expectations
 
