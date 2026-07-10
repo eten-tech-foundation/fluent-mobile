@@ -38,7 +38,7 @@ describe('useAudioPlayback', () => {
 
     expect(mockUseAudioPlayer).toHaveBeenCalledWith(
       { uri: '/tmp/take-1.m4a' },
-      { updateInterval: 50 },
+      { updateInterval: 30 },
     );
   });
 
@@ -97,11 +97,12 @@ describe('useAudioPlayback', () => {
     expect(mockPlayer.pause).not.toHaveBeenCalled();
   });
 
-  it('rewinds to the start when a take finishes playing', async () => {
+  it('pauses and rewinds to the start when a take finishes playing', async () => {
     mockPlayerStatus = { playing: false, didJustFinish: true };
     renderHook(() => useAudioPlayback('/tmp/take-1.m4a'));
 
     await waitFor(() => expect(mockPlayer.seekTo).toHaveBeenCalledWith(0));
+    expect(mockPlayer.pause).toHaveBeenCalledTimes(1);
   });
 
   it('exposes position and duration in ms from the player status (seconds)', () => {

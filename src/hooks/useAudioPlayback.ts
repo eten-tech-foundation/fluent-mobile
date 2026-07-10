@@ -78,9 +78,13 @@ export function useAudioPlayback(source: string | null): UseAudioPlaybackApi {
     player.play();
   }, [player, playerStatus, source]);
 
-  // Rewind to the start once playback finishes so the next tap replays it whole.
+  // Pause and rewind to the start once playback finishes so the next tap
+  // replays it whole. Pausing first matters on Android: ExoPlayer leaves
+  // `playWhenReady` true when a track ends naturally, so seeking back to 0
+  // without pausing resumes playback immediately instead of stopping.
   useEffect(() => {
     if (playerStatus?.didJustFinish) {
+      player.pause();
       player.seekTo(0).catch(error => {
         log.warn('Failed to rewind finished playback', { error });
       });

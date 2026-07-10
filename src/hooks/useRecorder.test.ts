@@ -551,7 +551,7 @@ describe('useRecorder', () => {
     expect(mockPlayer.play).not.toHaveBeenCalled();
   });
 
-  it('rewinds to the start when a take finishes playing', async () => {
+  it('pauses and rewinds to the start when a take finishes playing', async () => {
     const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
     const adapter = makeAdapter({
       loadInitial: jest.fn().mockResolvedValue(existing),
@@ -562,6 +562,7 @@ describe('useRecorder', () => {
     await waitReady(result);
 
     await waitFor(() => expect(mockPlayer.seekTo).toHaveBeenCalledWith(0));
+    expect(mockPlayer.pause).toHaveBeenCalled();
   });
 
   it('seeks the current take on seekPlayback from review', async () => {
