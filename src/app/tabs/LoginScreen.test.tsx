@@ -8,6 +8,14 @@ import {
 import LoginScreen from './LoginScreen';
 import { FluentAPI } from '../../services/api';
 import { beginLoginSession } from '../../services/authSession';
+import { QueryClientTestWrapper } from '../../test/queryClientWrapper';
+
+const renderLoginScreen = () =>
+  render(<LoginScreen onLoginSuccess={onLoginSuccess} />, {
+    wrapper: QueryClientTestWrapper,
+  });
+
+let onLoginSuccess: jest.Mock;
 
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({
@@ -26,14 +34,13 @@ jest.mock('../../services/authSession', () => ({
 }));
 
 describe('LoginScreen', () => {
-  const onLoginSuccess = jest.fn();
-
   beforeEach(() => {
+    onLoginSuccess = jest.fn();
     jest.clearAllMocks();
   });
 
   it('shows validation errors for empty fields', async () => {
-    render(<LoginScreen onLoginSuccess={onLoginSuccess} />);
+    renderLoginScreen();
 
     fireEvent.press(screen.getByTestId('login-submit-button'));
 
@@ -48,7 +55,7 @@ describe('LoginScreen', () => {
       user: { email: 't@fluent.local' },
     });
 
-    render(<LoginScreen onLoginSuccess={onLoginSuccess} />);
+    renderLoginScreen();
 
     fireEvent.changeText(
       screen.getByTestId('login-email-input'),
@@ -72,7 +79,7 @@ describe('LoginScreen', () => {
       .mocked(FluentAPI.signIn)
       .mockRejectedValue(new Error('Invalid credentials'));
 
-    render(<LoginScreen onLoginSuccess={onLoginSuccess} />);
+    renderLoginScreen();
 
     fireEvent.changeText(
       screen.getByTestId('login-email-input'),

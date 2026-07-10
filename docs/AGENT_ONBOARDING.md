@@ -34,7 +34,7 @@ Quick map for Cursor agents, other coding tools, and new contributors. Verified 
 | [`App.tsx`](../App.tsx) | Root: DB init + initial `syncAllData`, then navigator |
 | [`src/app/tabs/`](../src/app/tabs/) | Screens: `ProjectList`, `ViewProject`, `ViewChapter` |
 | [`src/navigation/`](../src/navigation/) | Stack navigator |
-| [`src/services/api.ts`](../src/services/api.ts) | HTTP client (`FluentAPI`) |
+| [`src/services/api.ts`](../src/services/api.ts) | HTTP client (`FluentAPI`) — see [api-client-standard.md](guides/api-client-standard.md) |
 | [`src/services/sync.ts`](../src/services/sync.ts) | Sync orchestration, retries, KV counts |
 | [`src/services/storage.ts`](../src/services/storage.ts) | KV sync state (`op-sqlite` Storage) |
 | [`src/db/`](../src/db/) | Schema, init, `repository` (writes), `queries` (reads), singleton |
@@ -165,7 +165,7 @@ Auth: email/password via `FluentAPI.signIn`; authenticated API calls use `Author
 ## Coding conventions
 
 - **Logging:** `const log = logger.create('ComponentName')` — no raw `console` (ESLint); exception: `src/utils/logger.ts`, tests.
-- **Env:** `EXPO_PUBLIC_API_BASE_URL` in `.env`; validated in `src/config/apiBaseUrl.ts` — never commit `.env`.
+- **Env:** `EXPO_PUBLIC_API_BASE_URL` in `.env`; validated in `src/config/apiBaseUrl.ts` — never commit `.env`. ESLint blocks direct `process.env` reads and legacy imports (`@env`, `react-native-fs`, `react-native-keychain`, Simform waveform) outside the config layer.
 - **Types:** API shapes in `src/types/api/`, DB in `src/types/db/`, navigation in `src/types/navigation/`.
 - **Prettier:** single quotes, trailing commas, `arrowParens: 'avoid'`.
 - **Styles:** shared patterns in `src/app/appStyles.ts`; screen-local `StyleSheet` where needed.
@@ -176,11 +176,12 @@ Keep changes **small and scoped** — avoid drive-by refactors.
 ## Testing strategy
 
 - **Unit:** Jest + Testing Library; mocks for native modules in [`__tests__/App.test.tsx`](../__tests__/App.test.tsx).
+- **Expo mocks:** [`src/test/mocks/`](../src/test/mocks/) — global `moduleNameMapper` in `jest.config.cjs` for `expo-secure-store`, `expo-file-system`, `expo-audio`.
 - **Colocated:** `src/utils/logger.test.ts`, `src/services/fluent-api.test.ts`.
-- **Integration test caveat:** `fluent-api.test.ts` hits `https://dev.api.fluent.bible` — can fail offline; CI may need network.
+- **Live API test:** `fluent-api.test.ts` is **skipped by default**; opt in with `RUN_LIVE_API_TESTS=1 npm test -- fluent-api.test.ts`.
 - **No E2E** in this repo yet.
 
-When adding features: mock `op-sqlite`, navigation, and sync in screen tests following existing patterns.
+When adding features: mock `op-sqlite`, navigation, and sync in screen tests following existing patterns. Reset shared Expo mocks in `beforeEach` when mutating secure-store/file-system state.
 
 ## Common tasks
 
@@ -198,7 +199,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 |------|------|
 | `src/db/schema.ts` | No migrations yet — schema changes affect existing installs |
 | `sync.ts` module-level `getDatabase()` | Dead import at line 24; calling `getDatabase()` before init throws |
-| `fluent-api.test.ts` | Live network dependency |
+| `fluent-api.test.ts` | Skipped in CI; opt-in live network via `RUN_LIVE_API_TESTS=1` |
 | `format` vs `format:check` | Different glob scopes — CI only checks `src/**` |
 | Native folders | `android/` is gitignored CNG output — customize via `app.config.ts` + plugins. No iOS project. |
 
@@ -206,7 +207,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 
 - [ ] Remove unused `const db = getDatabase()` in `sync.ts:24`
 - [x] Dependabot reviewers: `eten-tech-foundation/fluent-admin`
-- [ ] Mock or gate `fluent-api.test.ts` for offline CI
+- [x] Mock or gate `fluent-api.test.ts` for offline CI
 - [ ] Align `format:check` glob with `format` or document intentionally narrow check
 - [ ] Wire `recordings` table to actual audio capture/upload
 
@@ -214,6 +215,10 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 
 - Human setup: [README.md](../README.md)
 - Agent delivery guardrails: [`AGENTS.md`](../AGENTS.md)
+- Issue tracking (GitHub Issues): [issue-tracking.md](issue-tracking.md)
+- CI inventory: [ci.md](ci.md)
 - Cursor rules: [`.cursor/rules/`](../.cursor/rules/) — **Android-only:** [android-only.mdc](../.cursor/rules/android-only.mdc)
 - Dependabot: [guides/dependabot-process.md](guides/dependabot-process.md) — use with `.cursor/rules/dependabot-workflow.mdc`
 - PR template: [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md)
+- Slash commands: `/onboard`, `/dep-bump`, `/create-pr-branch`, `/create-pr`, `/handle-dependabot` (see [`.cursor/commands/`](../.cursor/commands/))
+- Hot-path notes: [src/services/AGENTS.md](../src/services/AGENTS.md), [src/db/AGENTS.md](../src/db/AGENTS.md)
