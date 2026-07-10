@@ -8,9 +8,8 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { PageHeader } from '../../components/layout/PageHeader';
-import { PageHeaderBackButton } from '../../components/ui/PageHeaderBackButton';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
+import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { usePrepareOfflineSelection } from '../../hooks/usePrepareOfflineSelection';
@@ -30,18 +29,12 @@ export default function PrepareForOfflineScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const routeProjectId = route.params?.projectId;
-  const routeProjectName = route.params?.projectName;
 
-  const [pickedProject, setPickedProject] = useState<{
-    id: number;
-    name: string;
-  } | null>(
-    routeProjectId
-      ? { id: routeProjectId, name: routeProjectName ?? 'Project' }
-      : null,
+  const [pickedProjectId, setPickedProjectId] = useState<number | null>(
+    routeProjectId ?? null,
   );
 
-  const projectId = pickedProject?.id ?? routeProjectId ?? null;
+  const projectId = pickedProjectId ?? routeProjectId ?? null;
   const userId = useMemo(() => parseUserId(), []);
 
   const {
@@ -51,6 +44,8 @@ export default function PrepareForOfflineScreen() {
     selectedIds,
     accordionExpanded,
     setAccordionExpanded,
+    expandedBookIds,
+    toggleBookExpanded,
     accordionTitle,
     toggleChapter,
     toggleBook,
@@ -61,17 +56,17 @@ export default function PrepareForOfflineScreen() {
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
 
   const handleSelectProject = useCallback((project: ProjectSummary) => {
-    setPickedProject({ id: project.id, name: project.name });
-  }, []);
-
-  const handleChangeProject = useCallback(() => {
-    setPickedProject(null);
+    setPickedProjectId(project.id);
   }, []);
 
   let body: React.ReactNode;
 
   if (!projectId) {
-    body = <ProjectPickerStep onSelectProject={handleSelectProject} />;
+    body = (
+      <ScrollView contentContainerStyle={styles.content}>
+        <ProjectPickerStep onSelectProject={handleSelectProject} />
+      </ScrollView>
+    );
   } else if (loading) {
     body = (
       <View style={styles.centered}>
@@ -94,42 +89,33 @@ export default function PrepareForOfflineScreen() {
     body = <EmptyState message="No chapters available for this project." />;
   } else {
     body = (
-      <>
-        {pickedProject && !routeProjectId ? (
-          <TouchableOpacity
-            onPress={handleChangeProject}
-            accessibilityRole="button"
-          >
-            <Text style={styles.projectLink}>
-              {pickedProject.name} · Change
-            </Text>
-          </TouchableOpacity>
-        ) : null}
+      <ScrollView contentContainerStyle={styles.content}>
         <ChapterSelectionAccordion
           title={accordionTitle}
           expanded={accordionExpanded}
           onToggleExpanded={() => setAccordionExpanded(prev => !prev)}
           books={books}
           selectedIds={selectedIds}
+          expandedBookIds={expandedBookIds}
+          onToggleBookExpanded={toggleBookExpanded}
           onToggleChapter={toggleChapter}
           onToggleBook={toggleBook}
           isBookFullySelected={isBookFullySelected}
         />
-      </>
+      </ScrollView>
     );
   }
 
   return (
-    <ScreenContainer edges={['top']}>
+    <ScreenContainer>
       <View style={styles.screen}>
-        <PageHeader
+        <StackScreenHeader
           title="Prepare for Offline"
-          leftIcon={<PageHeaderBackButton onPress={goBack} />}
+          subtitle={INSTRUCTION}
+          onBack={goBack}
+          subtitleLines={2}
         />
-        <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.instruction}>{INSTRUCTION}</Text>
-          {body}
-        </ScrollView>
+        {body}
       </View>
     </ScreenContainer>
   );
@@ -142,18 +128,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: theme.spacing.lg,
-    gap: theme.spacing.md,
-    flexGrow: 1,
-  },
-  instruction: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.mutedForeground,
-    lineHeight: 22,
-  },
-  projectLink: {
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.weights.medium,
-    color: theme.colors.primary,
+    paddingBottom: theme.spacing.xxl,
   },
   centered: {
     flex: 1,

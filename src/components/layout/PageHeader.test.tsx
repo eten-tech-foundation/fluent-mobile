@@ -9,6 +9,10 @@ jest.mock('../../assets/icons/fluent-logo-white.svg', () => {
   return () => MockReact.createElement(View, { testID: 'fluent-logo' });
 });
 
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+
 describe('PageHeader', () => {
   it('renders the Fluent logo when no title is provided', () => {
     render(<PageHeader />);

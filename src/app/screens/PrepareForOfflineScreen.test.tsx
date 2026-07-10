@@ -64,12 +64,16 @@ jest.mock('lucide-react-native', () => {
     ChevronRight: MockIcon,
     ChevronUp: MockIcon,
     ChevronDown: MockIcon,
-    CircleCheck: MockIcon,
+    Check: MockIcon,
   };
 });
 
 jest.mock('../../components/layout/ScreenContainer', () => ({
   ScreenContainer: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
 const { usePrepareOfflineSelection } = jest.requireMock(
@@ -87,8 +91,11 @@ describe('PrepareForOfflineScreen', () => {
             loading: false,
             error: null,
             selectedIds: new Set(),
+            selectedCount: 0,
             accordionExpanded: true,
             setAccordionExpanded: jest.fn(),
+            expandedBookIds: new Set(),
+            toggleBookExpanded: jest.fn(),
             accordionTitle: 'Selected chapters (0)',
             toggleChapter: jest.fn(),
             toggleBook: jest.fn(),
@@ -116,8 +123,11 @@ describe('PrepareForOfflineScreen', () => {
           loading: false,
           error: null,
           selectedIds: new Set([100]),
+          selectedCount: 1,
           accordionExpanded: true,
           setAccordionExpanded: jest.fn(),
+          expandedBookIds: new Set([1]),
+          toggleBookExpanded: jest.fn(),
           accordionTitle: 'Assigned chapters (1)',
           toggleChapter: jest.fn(),
           toggleBook: jest.fn(),

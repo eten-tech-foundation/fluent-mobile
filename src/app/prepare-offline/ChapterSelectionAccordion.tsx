@@ -11,6 +11,8 @@ interface ChapterSelectionAccordionProps {
   onToggleExpanded: () => void;
   books: PrepareOfflineBookGroup[];
   selectedIds: Set<number>;
+  expandedBookIds: Set<number>;
+  onToggleBookExpanded: (bookId: number) => void;
   onToggleChapter: (chapterId: number) => void;
   onToggleBook: (book: PrepareOfflineBookGroup) => void;
   isBookFullySelected: (book: PrepareOfflineBookGroup) => boolean;
@@ -22,6 +24,8 @@ export function ChapterSelectionAccordion({
   onToggleExpanded,
   books,
   selectedIds,
+  expandedBookIds,
+  onToggleBookExpanded,
   onToggleChapter,
   onToggleBook,
   isBookFullySelected,
@@ -51,12 +55,14 @@ export function ChapterSelectionAccordion({
       </TouchableOpacity>
 
       {expanded ? (
-        <View style={styles.body}>
+        <View style={styles.books}>
           {books.map(book => (
             <BookChapterSection
               key={book.bookId}
               book={book}
+              expanded={expandedBookIds.has(book.bookId)}
               selectedIds={selectedIds}
+              onToggleExpanded={() => onToggleBookExpanded(book.bookId)}
               onToggleChapter={onToggleChapter}
               onToggleBook={onToggleBook}
               isBookFullySelected={isBookFullySelected(book)}
@@ -71,30 +77,27 @@ export function ChapterSelectionAccordion({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: theme.colors.cardBackground,
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    overflow: 'hidden',
+    paddingHorizontal: theme.spacing.md,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
+    minHeight: 44,
+    paddingVertical: theme.spacing.sm,
     gap: theme.spacing.sm,
   },
   title: {
     flex: 1,
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.weights.semibold,
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.medium,
     color: theme.colors.foreground,
   },
-  body: {
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    paddingHorizontal: theme.spacing.md,
+  books: {
+    gap: theme.spacing.xs,
     paddingBottom: theme.spacing.md,
-    gap: theme.spacing.sm,
   },
 });

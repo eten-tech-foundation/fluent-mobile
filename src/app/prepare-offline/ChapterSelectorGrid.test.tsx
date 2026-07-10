@@ -2,11 +2,6 @@ import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ChapterSelectorGrid } from './ChapterSelectorGrid';
 
-jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
-  __esModule: true,
-  default: jest.fn(() => ({ width: 400, height: 800, scale: 1, fontScale: 1 })),
-}));
-
 describe('ChapterSelectorGrid', () => {
   it('renders chapter numbers and toggles selection', () => {
     const onToggleChapter = jest.fn();

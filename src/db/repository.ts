@@ -477,3 +477,31 @@ export async function userHasLocalChapterAssignments(
   );
   return Number(result.rows?.[0]?.count ?? 0) > 0;
 }
+
+/** True when the user has project chapters locally but none have assignee/checker set. */
+export async function userNeedsAssigneeRepair(
+  userId: number,
+): Promise<boolean> {
+  const db = getDatabase();
+  const result = await db.execute(
+    `SELECT
+       COUNT(*) AS total,
+       SUM(
+         CASE
+           WHEN ca.assigned_user_id IS NOT NULL OR ca.peer_checker_id IS NOT NULL THEN 1
+           ELSE 0
+         END
+       ) AS with_role
+     FROM chapter_assignments ca
+     INNER JOIN project_units pu ON pu.id = ca.project_unit_id
+     INNER JOIN user_projects up ON up.project_id = pu.project_id
+     WHERE up.user_id = ?`,
+    [userId],
+  );
+  const row = result.rows?.[0] as
+    | { total: number; with_role: number }
+    | undefined;
+  const total = Number(row?.total ?? 0);
+  const withRole = Number(row?.with_role ?? 0);
+  return total > 0 && withRole === 0;
+}

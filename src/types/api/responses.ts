@@ -1,4 +1,8 @@
-import { ApiBook, ApiChapterAssignment } from './types';
+import {
+  ApiBook,
+  ApiChapterAssignment,
+  ApiUserChapterAssignmentsByUser,
+} from './types';
 
 export interface ApiUser {
   id: number;
@@ -65,6 +69,8 @@ export type BibleTextsResponse = ApiDataResponse<ApiBook[]>;
 export type ChapterAssignmentsResponse =
   | ApiDataResponse<ApiChapterAssignment[]>
   | ApiChapterAssignment[];
+
+export type UserChapterAssignmentsResponse = ApiUserChapterAssignmentsByUser;
 
 export type UserProjectsResponse = ApiDataResponse<ApiProject[]> | ApiProject[];
 

@@ -42,6 +42,7 @@ describe('usePrepareOfflineSelection', () => {
     expect(result.current.selectedIds.has(2)).toBe(false);
     expect(result.current.accordionExpanded).toBe(false);
     expect(result.current.accordionTitle).toBe('Assigned chapters (1)');
+    expect(result.current.expandedBookIds.size).toBe(0);
   });
 
   it('starts empty with expanded accordion for unassigned users', async () => {
@@ -106,5 +107,45 @@ describe('usePrepareOfflineSelection', () => {
       result.current.toggleBook(result.current.books[0]);
     });
     expect(result.current.selectedIds.size).toBe(0);
+  });
+
+  it('re-initializes selection when project changes', async () => {
+    mockGetChapters.mockResolvedValue([
+      {
+        id: 1,
+        bookId: 10,
+        bookName: 'Genesis',
+        chapterNumber: 1,
+        assignedUserId: 42,
+      },
+    ]);
+
+    const { result, rerender } = renderHook(
+      ({ projectId }: { projectId: number | null }) =>
+        usePrepareOfflineSelection(projectId, 42),
+      { initialProps: { projectId: 1 } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(result.current.selectedIds.has(1)).toBe(true);
+
+    mockGetChapters.mockResolvedValue([
+      {
+        id: 2,
+        bookId: 11,
+        bookName: 'Exodus',
+        chapterNumber: 1,
+        assignedUserId: null,
+      },
+    ]);
+
+    rerender({ projectId: 2 });
+
+    await waitFor(() => {
+      expect(result.current.selectedIds.size).toBe(0);
+    });
+    expect(result.current.isAssignedUser).toBe(false);
   });
 });

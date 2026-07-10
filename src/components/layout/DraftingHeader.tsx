@@ -3,7 +3,14 @@ import { theme } from '../../theme';
 import { ChevronLeft } from 'lucide-react-native';
 import { SyncStatus } from '../../utils/syncStatusState';
 import { PageHeaderSyncButton } from '../ui/PageHeaderSyncButton';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useHeaderSafeAreaPadding } from './useHeaderSafeAreaPadding';
 import {
   headerLayout,
   iconSizes,
@@ -24,8 +31,14 @@ export function DraftingHeader({
   syncStatus,
   onSyncPress,
 }: DraftingHeaderProps) {
+  const headerPadding = useHeaderSafeAreaPadding();
+
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, headerPadding]}>
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor={theme.colors.cardBackground}
+      />
       <View style={styles.sideSlot}>
         <TouchableOpacity
           onPress={onBack}
@@ -64,7 +77,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: headerLayout.paddingHorizontal,
-    paddingVertical: headerLayout.paddingVertical,
     minHeight: headerLayout.minHeight,
     backgroundColor: theme.colors.cardBackground,
     borderBottomWidth: 1,

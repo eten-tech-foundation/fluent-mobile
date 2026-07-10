@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getPrepareOfflineChapters } from '../db/queries.prepareOffline';
 import { PrepareOfflineBookGroup } from '../types/prepareOffline/types';
 import { groupChaptersByBook } from '../utils/groupChaptersByBook';
@@ -36,17 +36,21 @@ export function usePrepareOfflineSelection(
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isAssignedUser, setIsAssignedUser] = useState(false);
   const [accordionExpanded, setAccordionExpanded] = useState(true);
-  const [initializedForProject, setInitializedForProject] = useState<
-    number | null
-  >(null);
+  const [expandedBookIds, setExpandedBookIds] = useState<Set<number>>(
+    new Set(),
+  );
+  const initializedForKeyRef = useRef<string | null>(null);
 
   const loadChapters = useCallback(async () => {
     if (!projectId) {
       setChapters([]);
       setLoading(false);
       setError(null);
+      initializedForKeyRef.current = null;
       return;
     }
+
+    const initKey = `${projectId}:${userId ?? 'none'}`;
 
     try {
       setError(null);
@@ -54,12 +58,13 @@ export function usePrepareOfflineSelection(
       const rows = await getPrepareOfflineChapters(projectId);
       setChapters(rows);
 
-      if (initializedForProject !== projectId) {
+      if (initializedForKeyRef.current !== initKey) {
         const initial = buildInitialSelection(rows, userId);
         setSelectedIds(initial.selectedIds);
         setIsAssignedUser(initial.isAssignedUser);
         setAccordionExpanded(!initial.isAssignedUser);
-        setInitializedForProject(projectId);
+        setExpandedBookIds(new Set());
+        initializedForKeyRef.current = initKey;
       }
     } catch (err) {
       log.error('Failed to load prepare offline chapters', {
@@ -71,7 +76,7 @@ export function usePrepareOfflineSelection(
     } finally {
       setLoading(false);
     }
-  }, [projectId, userId, initializedForProject]);
+  }, [projectId, userId]);
 
   useEffect(() => {
     void loadChapters();
@@ -123,6 +128,18 @@ export function usePrepareOfflineSelection(
     await loadChapters();
   }, [loadChapters]);
 
+  const toggleBookExpanded = useCallback((bookId: number) => {
+    setExpandedBookIds(prev => {
+      const next = new Set(prev);
+      if (next.has(bookId)) {
+        next.delete(bookId);
+      } else {
+        next.add(bookId);
+      }
+      return next;
+    });
+  }, []);
+
   const accordionTitle = isAssignedUser
     ? `Assigned chapters (${selectedCount})`
     : `Selected chapters (${selectedCount})`;
@@ -136,6 +153,8 @@ export function usePrepareOfflineSelection(
     isAssignedUser,
     accordionExpanded,
     setAccordionExpanded,
+    expandedBookIds,
+    toggleBookExpanded,
     accordionTitle,
     toggleChapter,
     toggleBook,

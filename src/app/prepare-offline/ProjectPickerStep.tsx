@@ -1,5 +1,5 @@
 import React from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { ProjectSummary } from '../../types/db/types';
 import { useProjectsSummary } from '../../hooks/useProjectsSummary';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -30,14 +30,15 @@ export function ProjectPickerStep({ onSelectProject }: ProjectPickerStepProps) {
   return (
     <View style={styles.container}>
       <Text style={styles.label}>Select a project</Text>
-      <FlatList
-        data={projects}
-        keyExtractor={item => String(item.id)}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <ProjectRow project={item} onPress={() => onSelectProject(item)} />
-        )}
-      />
+      <View style={styles.listContent}>
+        {projects.map(project => (
+          <ProjectRow
+            key={project.id}
+            project={project}
+            onPress={() => onSelectProject(project)}
+          />
+        ))}
+      </View>
     </View>
   );
 }
