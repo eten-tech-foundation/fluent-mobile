@@ -55,6 +55,46 @@ describe('RecordingWaveform', () => {
     expect(screen.getByTestId('record-waveform-static')).toBeTruthy();
   });
 
+  it('shows the current position over the total duration in review', () => {
+    render(
+      <RecordingWaveform
+        status={RecorderStatus.Review}
+        elapsedMs={10_000}
+        positionMs={2_500}
+        durationMs={10_000}
+      />,
+    );
+
+    expect(screen.getByTestId('record-review-position')).toHaveTextContent(
+      '00:02:50 / 00:10:00',
+    );
+  });
+
+  it('shows the scrub target position while dragging in review', () => {
+    const onSeek = jest.fn();
+    render(
+      <RecordingWaveform
+        status={RecorderStatus.Review}
+        elapsedMs={10_000}
+        positionMs={0}
+        durationMs={10_000}
+        onSeek={onSeek}
+      />,
+    );
+
+    const waveform = screen.getByTestId('record-waveform-static');
+    fireEvent(waveform, 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 200, height: 72 } },
+    });
+    fireEvent(waveform, 'responderGrant', {
+      nativeEvent: { locationX: 150 },
+    });
+
+    expect(screen.getByTestId('record-review-position')).toHaveTextContent(
+      '00:07:50 / 00:10:00',
+    );
+  });
+
   it('seeks to the scrubbed position on release in review', () => {
     const onSeek = jest.fn();
     render(

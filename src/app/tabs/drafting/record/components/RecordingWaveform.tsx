@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
+  Text,
   View,
   type GestureResponderEvent,
   type LayoutChangeEvent,
@@ -8,6 +9,7 @@ import {
 } from 'react-native';
 import { RecorderStatus } from '../../../../../types/recording/types';
 import { theme } from '../../../../../theme';
+import { formatDuration } from '../utils/recordTabUtils';
 
 const LIVE_WAVEFORM_BARS = 22;
 
@@ -122,6 +124,10 @@ export function RecordingWaveform({
       scrubRatio ??
       (durationMs > 0 ? clamp(effectivePositionMs / durationMs, 0, 1) : 0);
     const filledBars = Math.round(displayRatio * LIVE_WAVEFORM_BARS);
+    // Position shown to the user: while dragging this is the scrub target,
+    // otherwise it is the current (pending-seek or live) playback position —
+    // so the readout answers both "where am I scrubbing to" and "where am I".
+    const displayPositionMs = displayRatio * durationMs;
 
     const ratioFromEvent = (event: GestureResponderEvent): number =>
       clamp(event.nativeEvent.locationX / width, 0, 1);
@@ -160,28 +166,45 @@ export function RecordingWaveform({
       : {};
 
     return (
-      <View
-        style={styles.waveform}
-        testID="record-waveform-static"
-        accessibilityLabel={
-          scrubbable ? 'Draft waveform, scrub to seek' : 'Draft waveform'
-        }
-        accessibilityRole={scrubbable ? 'adjustable' : undefined}
-        onLayout={handleLayout}
-        pointerEvents="box-only"
-        {...responderHandlers}
-      >
-        {Array.from({ length: LIVE_WAVEFORM_BARS }).map((_, index) => (
-          <View
-            key={index}
-            style={[
-              index < filledBars
-                ? styles.waveformBarFilled
-                : styles.waveformBarStatic,
-              staticBarHeightStyles[`h${index}`],
-            ]}
-          />
-        ))}
+      <View style={styles.reviewContainer}>
+        <Text
+          style={styles.reviewTime}
+          testID="record-review-position"
+          accessibilityLabel={`Position ${formatDuration(
+            displayPositionMs,
+          )} of ${formatDuration(durationMs)}`}
+        >
+          <Text style={styles.reviewPosition}>
+            {formatDuration(displayPositionMs)}
+          </Text>
+          <Text style={styles.reviewDuration}>
+            {' / '}
+            {formatDuration(durationMs)}
+          </Text>
+        </Text>
+        <View
+          style={styles.waveform}
+          testID="record-waveform-static"
+          accessibilityLabel={
+            scrubbable ? 'Draft waveform, scrub to seek' : 'Draft waveform'
+          }
+          accessibilityRole={scrubbable ? 'adjustable' : undefined}
+          onLayout={handleLayout}
+          pointerEvents="box-only"
+          {...responderHandlers}
+        >
+          {Array.from({ length: LIVE_WAVEFORM_BARS }).map((_, index) => (
+            <View
+              key={index}
+              style={[
+                index < filledBars
+                  ? styles.waveformBarFilled
+                  : styles.waveformBarStatic,
+                staticBarHeightStyles[`h${index}`],
+              ]}
+            />
+          ))}
+        </View>
       </View>
     );
   }
@@ -190,6 +213,24 @@ export function RecordingWaveform({
 }
 
 const styles = StyleSheet.create({
+  reviewContainer: {
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  reviewTime: {
+    fontVariant: ['tabular-nums'],
+    textAlign: 'center',
+  },
+  reviewPosition: {
+    fontSize: 32,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.foreground,
+  },
+  reviewDuration: {
+    fontSize: 32,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.mutedForeground,
+  },
   waveform: {
     flexDirection: 'row',
     alignItems: 'center',

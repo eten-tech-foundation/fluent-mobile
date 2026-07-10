@@ -41,7 +41,9 @@ export function useAudioPlayback(source: string | null): UseAudioPlaybackApi {
     () => (source ? { uri: source } : null),
     [source],
   );
-  const player = useAudioPlayer(playbackSource);
+  // Poll status every 50ms so the review position readout and waveform fill
+  // update smoothly; the default (~500ms) makes the label visibly step.
+  const player = useAudioPlayer(playbackSource, { updateInterval: 30 });
   const playerStatus = useAudioPlayerStatus(player);
   const isPlaying = playerStatus?.playing ?? false;
   // expo-audio reports position/duration in seconds; expose ms to match the
