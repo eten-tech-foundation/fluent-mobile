@@ -72,9 +72,11 @@ jest.mock('../../../../../services/recordingStorage', () => ({
     mockBuildRecordingKey(parts);
     return MOVED_KEY;
   },
-  extensionFromUri: jest.fn(() => 'aac'),
+  extensionFromUri: jest.fn((uri: string) => uri.split('.').pop() ?? 'aac'),
   concatenateAacSegments: jest.fn(async (fileUris: string[]) => fileUris[0]),
   aacDurationMs: jest.fn(async () => 0),
+  // Default to the fallback (remuxer unavailable): return the input unchanged.
+  remuxTakeToSeekableContainer: jest.fn(async (uri: string) => uri),
   moveIntoStore: jest.fn(async ({ key }: { key: string }) => ({
     key,
     sizeBytes: 1234,
@@ -103,6 +105,9 @@ const MOVE_MOCK = jest.requireMock('../../../../../services/recordingStorage')
 const AAC_DURATION_MOCK = jest.requireMock(
   '../../../../../services/recordingStorage',
 ).aacDurationMs as jest.Mock;
+
+const REMUX_MOCK = jest.requireMock('../../../../../services/recordingStorage')
+  .remuxTakeToSeekableContainer as jest.Mock;
 
 function existingRecording(overrides: Record<string, unknown> = {}) {
   return {
@@ -386,6 +391,63 @@ describe('useVerseRecorder', () => {
       );
       expect(mockInsertRecording).toHaveBeenCalledWith(
         expect.objectContaining({ localFilePath: MOVED_KEY, durationMs: 6100 }),
+      );
+      expect(result.current.status).toBe(RecorderStatus.Review);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('remuxes the merged take to MP4 and moves the seekable file into the store', async () => {
+    jest.useFakeTimers();
+    try {
+      mockGetPausedTake.mockReturnValue({
+        bibleTextId: 42,
+        segments: ['file:///docs/seg-0.aac'],
+        elapsedMs: 4500,
+        startedAt: '2026-07-01T00:00:00.000Z',
+        sessionToken: 'stale-token',
+      });
+      CONCAT_MOCK.mockResolvedValueOnce('file:///docs/merged.aac');
+      // The native remuxer is available and produces a seekable .m4a.
+      REMUX_MOCK.mockResolvedValueOnce('file:///docs/remux-1.m4a');
+
+      const { result } = renderHook(() =>
+        useVerseRecorder({ bibleTextId: 42 }),
+      );
+      await waitReady(result);
+
+      mockRecorder.uri = 'file:///docs/seg-1.aac';
+      jest.setSystemTime(new Date('2026-07-01T00:00:00.000Z'));
+      await act(async () => {
+        await result.current.resume();
+      });
+
+      jest.setSystemTime(new Date('2026-07-01T00:00:01.000Z'));
+      await act(async () => {
+        await result.current.stop();
+      });
+
+      expect(REMUX_MOCK).toHaveBeenCalledWith('file:///docs/merged.aac');
+      // The seekable .m4a — not the raw .aac — is what gets stored.
+      expect(MOVE_MOCK).toHaveBeenCalledWith(
+        expect.objectContaining({ sourceUri: 'file:///docs/remux-1.m4a' }),
+      );
+      expect(mockBuildRecordingKey).toHaveBeenCalledWith(
+        expect.objectContaining({ extension: 'm4a' }),
+      );
+      // Raw segments and the intermediate merged .aac are all unlinked.
+      expect(mockDeleteRecordingFile).toHaveBeenCalledWith(
+        'file:///docs/seg-0.aac',
+      );
+      expect(mockDeleteRecordingFile).toHaveBeenCalledWith(
+        'file:///docs/seg-1.aac',
+      );
+      expect(mockDeleteRecordingFile).toHaveBeenCalledWith(
+        'file:///docs/merged.aac',
+      );
+      expect(mockDeleteRecordingFile).not.toHaveBeenCalledWith(
+        'file:///docs/remux-1.m4a',
       );
       expect(result.current.status).toBe(RecorderStatus.Review);
     } finally {

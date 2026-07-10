@@ -1,6 +1,7 @@
 import { Directory, File, Paths } from 'expo-file-system';
 import { randomUUID } from 'expo-crypto';
 import { logger } from '../utils/logger';
+import { isAacRemuxAvailable, remuxAacToMp4 } from './aacRemux';
 
 const log = logger.create('recordingStorage');
 
@@ -173,6 +174,44 @@ export async function concatenateAacSegments(
       });
     }
     throw error;
+  }
+}
+
+/**
+ * Repackages a merged ADTS AAC take into a seekable MP4 (`.m4a`) container for
+ * review playback. Capture stays ADTS (kill-safe, byte-appendable), but raw
+ * ADTS is not reliably seekable in ExoPlayer, so the committed take is remuxed
+ * (lossless, no re-encode) via the native `AacRemux` module.
+ *
+ * Returns the new `.m4a` uri on success. Falls back to the input `.aac` uri
+ * unchanged when the native remuxer is unavailable (e.g. a build that hasn't
+ * been prebuilt) or the remux fails — playback still works from ADTS, it just
+ * isn't seekable. The caller decides which uri to move into durable storage.
+ */
+export async function remuxTakeToSeekableContainer(
+  aacUri: string,
+): Promise<string> {
+  if (!isAacRemuxAvailable()) {
+    return aacUri;
+  }
+
+  const dest = new File(Paths.document, `remux-${randomUUID()}.m4a`);
+  try {
+    return await remuxAacToMp4(aacUri, dest.uri);
+  } catch (error) {
+    log.warn('Failed to remux take to MP4; falling back to ADTS', {
+      aacUri,
+      error,
+    });
+    try {
+      if (dest.exists) dest.delete();
+    } catch (cleanupError) {
+      log.warn('Failed to delete partial remuxed file', {
+        uri: dest.uri,
+        error: cleanupError,
+      });
+    }
+    return aacUri;
   }
 }
 

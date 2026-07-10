@@ -17,6 +17,7 @@ import {
   deleteRecordingFile,
   extensionFromUri,
   moveIntoStore,
+  remuxTakeToSeekableContainer,
   resolveRecordingUri,
 } from '../../../../../services/recordingStorage';
 import type { Recording } from '../../../../../types/db/types';
@@ -119,6 +120,12 @@ export function useVerseRecorder({
         const probedMs = await aacDurationMs(mergedUri);
         const committedDurationMs = probedMs > 0 ? probedMs : durationMs;
 
+        // Repackage the take into a seekable MP4 container for review playback;
+        // raw ADTS is not reliably seekable in ExoPlayer. Probe duration above
+        // first — it walks ADTS frame headers, which the `.m4a` no longer has.
+        // Falls back to the ADTS file when the native remuxer is unavailable.
+        const playbackUri = await remuxTakeToSeekableContainer(mergedUri);
+
         const recordingId = randomUUID();
         const key = buildRecordingKey({
           userId: userId ?? '',
@@ -127,14 +134,14 @@ export function useVerseRecorder({
           chapterNumber: chapterNumber ?? 0,
           verseNumber: verseNumber ?? 0,
           recordingId,
-          extension: extensionFromUri(mergedUri),
+          extension: extensionFromUri(playbackUri),
         });
 
         // Move the take out of the evictable cache before recording it in the
         // DB so a row never points at a file the OS could reclaim.
         let moved;
         try {
-          moved = await moveIntoStore({ sourceUri: mergedUri, key });
+          moved = await moveIntoStore({ sourceUri: playbackUri, key });
         } catch (error) {
           log.error('Failed to move recording into durable store', {
             bibleTextId,
@@ -143,11 +150,14 @@ export function useVerseRecorder({
           return null;
         }
 
-        // Unlink any raw segments not consumed by the move (i.e. everything but
-        // a single-segment take, whose only file was the one just moved).
-        fileUris
-          .filter(fileUri => fileUri !== mergedUri)
-          .forEach(fileUri => deleteRecordingFile(fileUri));
+        // Unlink every intermediate file except the one just moved into the
+        // store (whose source path no longer exists). When remux produced a new
+        // `.m4a`, that includes the raw segments and the merged `.aac`; when it
+        // fell back, `playbackUri === mergedUri` stays and only the extra raw
+        // segments of a multi-segment take are removed.
+        const leftovers = new Set<string>([...fileUris, mergedUri]);
+        leftovers.delete(playbackUri);
+        leftovers.forEach(fileUri => deleteRecordingFile(fileUri));
 
         try {
           return await insertRecording({

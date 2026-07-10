@@ -7,8 +7,18 @@ import {
   extensionFromUri,
   moveIntoStore,
   recordingKeySegments,
+  remuxTakeToSeekableContainer,
   resolveRecordingUri,
 } from './recordingStorage';
+
+const mockIsAacRemuxAvailable = jest.fn();
+const mockRemuxAacToMp4 = jest.fn();
+
+jest.mock('./aacRemux', () => ({
+  isAacRemuxAvailable: () => mockIsAacRemuxAvailable(),
+  remuxAacToMp4: (sourceUri: string, destUri: string) =>
+    mockRemuxAacToMp4(sourceUri, destUri),
+}));
 
 const mockDocument = { uri: 'file:///docs' };
 const mockMove = jest.fn().mockResolvedValue(undefined);
@@ -341,5 +351,47 @@ describe('deleteRecordingFile', () => {
     mockFileExists = false;
     deleteRecordingFile('recordings/u1/p2/GEN/c001/v001/missing.m4a');
     expect(mockDelete).not.toHaveBeenCalled();
+  });
+});
+
+describe('remuxTakeToSeekableContainer', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockFileExists = true;
+  });
+
+  it('remuxes to a fresh .m4a in the document directory when available', async () => {
+    mockIsAacRemuxAvailable.mockReturnValue(true);
+    mockRemuxAacToMp4.mockImplementation(
+      async (_src: string, dest: string) => dest,
+    );
+
+    const result = await remuxTakeToSeekableContainer('file:///docs/take.aac');
+
+    expect(mockRemuxAacToMp4).toHaveBeenCalledWith(
+      'file:///docs/take.aac',
+      'file:///docs/remux-merge-uuid.m4a',
+    );
+    expect(result).toBe('file:///docs/remux-merge-uuid.m4a');
+  });
+
+  it('returns the input unchanged when the native remuxer is unavailable', async () => {
+    mockIsAacRemuxAvailable.mockReturnValue(false);
+
+    const result = await remuxTakeToSeekableContainer('file:///docs/take.aac');
+
+    expect(result).toBe('file:///docs/take.aac');
+    expect(mockRemuxAacToMp4).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the ADTS file and cleans up when the remux fails', async () => {
+    mockIsAacRemuxAvailable.mockReturnValue(true);
+    mockRemuxAacToMp4.mockRejectedValueOnce(new Error('muxer failed'));
+
+    const result = await remuxTakeToSeekableContainer('file:///docs/take.aac');
+
+    expect(result).toBe('file:///docs/take.aac');
+    // The partial destination file is best-effort unlinked.
+    expect(mockDelete).toHaveBeenCalledTimes(1);
   });
 });

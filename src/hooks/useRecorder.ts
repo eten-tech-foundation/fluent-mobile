@@ -165,7 +165,9 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   // is only valid once its `moov` atom is written on a clean stop(), so a
   // process kill leaves it unplayable and un-appendable. ADTS is a self-framing
   // stream — a killed segment stays playable and multiple segments concatenate
-  // by byte append, which is what makes resume-after-kill possible.
+  // by byte append, which is what makes resume-after-kill possible. The
+  // committed take is remuxed into a seekable MP4 container on stop (raw ADTS
+  // is not reliably seekable in ExoPlayer); see the commit path in the adapter.
   const recorder = useAudioRecorder({
     ...RecordingPresets.HIGH_QUALITY,
     extension: '.aac',
