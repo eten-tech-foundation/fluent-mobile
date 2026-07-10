@@ -227,6 +227,9 @@ export function RecordTab({
           <RecordingWaveform
             status={recorder.status}
             elapsedMs={recorder.elapsedMs}
+            positionMs={recorder.playback.positionMs}
+            durationMs={recorder.playback.durationMs || recorder.elapsedMs}
+            onSeek={recorder.playback.seek}
           />
           <RecordingControls
             status={recorder.status}
