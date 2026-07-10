@@ -13,6 +13,13 @@ alwaysApply: false
 - Architecture layers or sync flow change
 - New risk areas or conventions are introduced
 
+## Issue tracking & CI
+
+- [docs/issue-tracking.md](../../docs/issue-tracking.md) — GitHub Issues, branch naming, PR linking (`Closes #NNN`)
+- [docs/ci.md](../../docs/ci.md) — workflow inventory + future required-check guardrail
+
+Update these when tracker policy or CI workflows change.
+
 ## Cursor rules
 
 Keep `.cursor/rules/*.mdc` in sync with onboarding — short pointers only; avoid duplicating full onboarding content.
@@ -28,6 +35,17 @@ Keep `.cursor/rules/*.mdc` in sync with onboarding — short pointers only; avoi
 ## PR template
 
 [.cursor/templates/pr-template.md](../templates/pr-template.md) — update if required PR sections or verification steps change.
+
+## Nested hot-path notes
+
+Short pointers next to code (keep thin; link to full guides):
+
+- [src/services/AGENTS.md](../../src/services/AGENTS.md)
+- [src/db/AGENTS.md](../../src/db/AGENTS.md)
+
+## Session env hook
+
+Warn-only Cursor `sessionStart` hook: [`.cursor/hooks.json`](../hooks.json) + [`.cursor/hooks/session-env-check.sh`](../hooks/session-env-check.sh). Never deny tools.
 
 ## Style
 

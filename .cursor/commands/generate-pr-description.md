@@ -23,36 +23,36 @@ Every run **must** output a suggested title before the description block. Do not
 
 ### Format
 
-`TICKET-ID: Title text` — present tense, sentence case for title text after the colon.
+`[#NNN]: Title text` — present tense, sentence case for title text after the colon.
 
 | Source | Title ID | Example |
 |--------|----------|---------|
-| GitHub issue branch (`38-cloud-sync-status-icon`) | `#38` | `#38: Build cloud sync status icon` |
-| Linear branch segment (`fluent-123-…`) | `FLUENT-123` | `FLUENT-123: Sync retry handling` |
+| GitHub issue in branch (`…/173-…` or `38-…`) | `#173` | `[#173]: Adopt Phase 1 agent/process docs` |
 | No ticket | descriptive prefix | `Chore: Add Cursor AI rules` |
+
+**Tracker:** GitHub Issues ([docs/issue-tracking.md](../../docs/issue-tracking.md)).
 
 ### Title synthesis (apply in order)
 
-1. **Detect ticket ID** from branch name:
+1. **Detect issue number** from branch name:
+   - Author/type path: `mrace/chore/173-phase1-…` → `#173`
    - Leading digits + hyphen: `38-cloud-sync-status-icon` → `#38`
-   - Linear slug: `…/fluent-123-…` or `fluent-123-…` → `FLUENT-123` (uppercase team prefix)
 2. **Fetch issue title** when ID found:
-   - GitHub: `gh issue view N --repo eten-tech-foundation/fluent-mobile --json title`
-   - Linear: MCP when `LINEAR`/`FLUENT`/`CORE` pattern
+   - `gh issue view N --repo eten-tech-foundation/fluent-mobile --json title`
 3. **Normalize issue title** for PR title text:
    - Strip prefixes like `[Mobile App]`
    - Sentence case (first word capitalized; proper nouns unchanged)
-   - Keep concise (~60 chars after colon); trim filler ("Implement", "Add support for") only if redundant with ticket scope
-4. **Fallback** when no issue: derive from branch slug after ticket segment (`cloud-sync-status-icon` → `Cloud sync status icon`) or top commit subject (strip `#38:` prefix)
-5. **Never** output a generic title like "Update files" or only the ticket ID with no description
+   - Keep concise (~60 chars after colon); trim filler ("Implement", "Add support for") only if redundant with issue scope
+4. **Fallback** when no issue: derive from branch slug after issue segment (`cloud-sync-status-icon` → `Cloud sync status icon`) or top commit subject (strip `#38:` prefix)
+5. **Never** output a generic title like "Update files" or only the issue number with no description
 
 ### Title examples (this repo)
 
 | Branch | Issue title | Suggested PR title |
 |--------|-------------|-------------------|
-| `38-cloud-sync-status-icon` | Build Cloud Sync Status Icon | `#38: Build cloud sync status icon` |
-| `45-my-work-tab` | Build My Work tab | `#45: Build My Work tab` |
-| `mrace/fix/fluent-456-sync-retry` | — | `FLUENT-456: Sync retry handling` |
+| `mrace/chore/173-phase1-agent-process-docs` | Adopt Phase 1… | `[#173]: Adopt Phase 1 agent/process docs` |
+| `38-cloud-sync-status-icon` | Build Cloud Sync Status Icon | `[#38]: Build cloud sync status icon` |
+| `45-my-work-tab` | Build My Work tab | `[#45]: Build My Work tab` |
 
 ## Generation steps
 
@@ -67,7 +67,7 @@ gh issue view <N> --repo eten-tech-foundation/fluent-mobile --json title,body   
 1. Load template from `.cursor/templates/pr-template.md`
 2. **Synthesize PR title** (mandatory — see above)
 3. Detect branch type: `feature/`, `fix/`, `chore/` → suggest change type checkbox
-4. Fetch GitHub/Linear issue when ticket ID present
+4. Fetch GitHub issue when issue number present (`Closes #NNN` in Details)
 5. Pre-fill Technical Changes and Testing from diff + [docs/AGENT_ONBOARDING.md](../../docs/AGENT_ONBOARDING.md) gates
 
 ## Output format
@@ -107,8 +107,7 @@ gh issue view <N> --repo eten-tech-foundation/fluent-mobile --json title,body   
 
 ## Ticket patterns
 
-- GitHub issues: `#123` in PR title and **Related Issue** link
-- Linear: `FLUENT-123`, `CORE-123`, etc. (uppercase in title; lowercase in branch segment)
+- GitHub issues: `[#123]` / `#123` in PR title; `Closes #123` under Details when the PR completes the issue
 
 ## Quality checklist (pre-fill reminders)
 
