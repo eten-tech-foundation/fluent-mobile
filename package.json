@@ -31,7 +31,7 @@
     "expo-secure-store": "~56.0.4",
     "expo-updates": "~56.0.21",
     "lucide-react-native": "^0.544.0",
-    "react": "19.2.3",
+    "react": "19.2.7",
     "react-native": "0.85.3",
     "react-native-bootsplash": "^6.3.10",
     "react-native-gesture-handler": "^2.30.0",
@@ -49,7 +49,7 @@
     "@react-native/typescript-config": "0.85.3",
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^29.5.13",
-    "@types/react": "^19.2.0",
+    "@types/react": "^19.2.17",
     "@types/react-test-renderer": "^19.1.0",
     "@typescript-eslint/eslint-plugin": "^8.57.1",
     "@typescript-eslint/parser": "^8.57.1",
@@ -62,7 +62,7 @@
     "jest-expo": "~56.0.5",
     "prettier": "2.8.8",
     "react-native-svg-transformer": "^1.5.3",
-    "react-test-renderer": "19.2.3",
+    "react-test-renderer": "19.2.7",
     "typescript": "~6.0.3"
   },
   "engines": {
