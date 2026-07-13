@@ -6,6 +6,8 @@ import {
   deleteRecordingFile,
   extensionFromUri,
   moveIntoStore,
+  mp4DurationMs,
+  mp4DurationMsFromBytes,
   recordingKeySegments,
   remuxTakeToSeekableContainer,
   resolveRecordingUri,
@@ -333,6 +335,141 @@ describe('aacDurationMs', () => {
   it('returns 0 when the file cannot be read', async () => {
     mockBytes.mockRejectedValueOnce(new Error('read failed'));
     await expect(aacDurationMs('file:///docs/missing.aac')).resolves.toBe(0);
+  });
+});
+
+function u32(value: number): Uint8Array {
+  return new Uint8Array([
+    (value >>> 24) & 0xff,
+    (value >>> 16) & 0xff,
+    (value >>> 8) & 0xff,
+    value & 0xff,
+  ]);
+}
+
+function u64(value: number): Uint8Array {
+  return concatBytes(u32(Math.floor(value / 2 ** 32)), u32(value >>> 0));
+}
+
+function concatBytes(...parts: Uint8Array[]): Uint8Array<ArrayBuffer> {
+  const total = parts.reduce((n, p) => n + p.length, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const part of parts) {
+    out.set(part, offset);
+    offset += part.length;
+  }
+  return out;
+}
+
+/** Wraps a payload in an MP4 box (`[uint32 size][4-char type][payload]`). */
+function mp4Box(type: string, payload: Uint8Array): Uint8Array<ArrayBuffer> {
+  const header = concatBytes(
+    u32(8 + payload.length),
+    new Uint8Array([
+      type.charCodeAt(0),
+      type.charCodeAt(1),
+      type.charCodeAt(2),
+      type.charCodeAt(3),
+    ]),
+  );
+  return concatBytes(header, payload);
+}
+
+/** Version-0 `mvhd` payload up to (and including) the duration field. */
+function mvhdV0(timescale: number, duration: number): Uint8Array<ArrayBuffer> {
+  return concatBytes(
+    new Uint8Array([0, 0, 0, 0]), // version 0 + flags
+    u32(0), // creation_time
+    u32(0), // modification_time
+    u32(timescale),
+    u32(duration),
+    u32(0x00010000), // rate (padding our parser skips)
+  );
+}
+
+/** Version-1 `mvhd` payload with 64-bit times and duration. */
+function mvhdV1(timescale: number, duration: number): Uint8Array<ArrayBuffer> {
+  return concatBytes(
+    new Uint8Array([1, 0, 0, 0]), // version 1 + flags
+    u64(0), // creation_time
+    u64(0), // modification_time
+    u32(timescale),
+    u64(duration),
+  );
+}
+
+describe('mp4DurationMsFromBytes', () => {
+  it('reads the duration from moov > mvhd (version 0)', () => {
+    const file = concatBytes(
+      mp4Box('ftyp', new Uint8Array([0, 0, 0, 0])),
+      mp4Box('moov', mp4Box('mvhd', mvhdV0(1000, 3500))),
+    );
+    expect(mp4DurationMsFromBytes(file)).toBe(3500);
+  });
+
+  it('reads a version-1 (64-bit) mvhd', () => {
+    const file = concatBytes(
+      mp4Box('ftyp', new Uint8Array([0, 0, 0, 0])),
+      mp4Box('moov', mp4Box('mvhd', mvhdV1(48000, 96000))),
+    );
+    // 96000 / 48000 * 1000 = 2000ms.
+    expect(mp4DurationMsFromBytes(file)).toBe(2000);
+  });
+
+  it('finds moov even when it trails mdat (MediaRecorder layout)', () => {
+    const file = concatBytes(
+      mp4Box('ftyp', new Uint8Array([0, 0, 0, 0])),
+      mp4Box('mdat', new Uint8Array(32)),
+      mp4Box('moov', mp4Box('mvhd', mvhdV0(44100, 88200))),
+    );
+    expect(mp4DurationMsFromBytes(file)).toBe(2000);
+  });
+
+  it('returns 0 for a moov-less (crash-truncated) file', () => {
+    const file = concatBytes(
+      mp4Box('ftyp', new Uint8Array([0, 0, 0, 0])),
+      mp4Box('mdat', new Uint8Array(64)),
+    );
+    expect(mp4DurationMsFromBytes(file)).toBe(0);
+  });
+
+  it('returns 0 for the unknown-duration sentinel and a zero timescale', () => {
+    const sentinel = concatBytes(
+      mp4Box('moov', mp4Box('mvhd', mvhdV0(1000, 0xffffffff))),
+    );
+    expect(mp4DurationMsFromBytes(sentinel)).toBe(0);
+
+    const zeroTimescale = concatBytes(
+      mp4Box('moov', mp4Box('mvhd', mvhdV0(0, 1000))),
+    );
+    expect(mp4DurationMsFromBytes(zeroTimescale)).toBe(0);
+  });
+
+  it('returns 0 for empty or non-MP4 bytes', () => {
+    expect(mp4DurationMsFromBytes(new Uint8Array())).toBe(0);
+    expect(mp4DurationMsFromBytes(new Uint8Array([1, 2, 3, 4, 5, 6, 7]))).toBe(
+      0,
+    );
+  });
+});
+
+describe('mp4DurationMs', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('reads the file and returns the parsed duration', async () => {
+    const file = concatBytes(
+      mp4Box('moov', mp4Box('mvhd', mvhdV0(1000, 4200))),
+    );
+    mockBytes.mockResolvedValueOnce(file);
+    await expect(mp4DurationMs('file:///docs/take.m4a')).resolves.toBe(4200);
+  });
+
+  it('returns 0 when the file cannot be read', async () => {
+    mockBytes.mockRejectedValueOnce(new Error('read failed'));
+    await expect(mp4DurationMs('file:///docs/missing.m4a')).resolves.toBe(0);
   });
 });
 

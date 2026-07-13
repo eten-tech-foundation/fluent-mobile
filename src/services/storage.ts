@@ -301,3 +301,34 @@ export function clearPausedTake(bibleTextId: number) {
   kvStorage.removeItemSync(pausedTakeKey(bibleTextId));
   log.info('Paused take marker cleared', { bibleTextId });
 }
+
+/**
+ * DEBUG (#176): clears every paused-take marker and returns the segment file
+ * uris they referenced, so the caller can unlink the partial files. Never
+ * throws on individual malformed markers.
+ */
+export function clearAllPausedTakes(): string[] {
+  const keys = kvStorage.getAllKeys();
+  const segments: string[] = [];
+  for (const key of keys) {
+    if (typeof key !== 'string' || !key.startsWith(PAUSED_TAKE_PREFIX)) {
+      continue;
+    }
+    const raw = kvStorage.getItemSync(key);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as Partial<PausedTakeMarker>;
+        if (Array.isArray(parsed.segments)) {
+          for (const segment of parsed.segments) {
+            if (typeof segment === 'string') segments.push(segment);
+          }
+        }
+      } catch {
+        // Ignore malformed markers; still remove the key below.
+      }
+    }
+    kvStorage.removeItemSync(key);
+  }
+  log.info('All paused take markers cleared', { count: segments.length });
+  return segments;
+}

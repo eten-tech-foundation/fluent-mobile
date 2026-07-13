@@ -13,6 +13,14 @@ import { useRecordTabGuards } from './hooks/useRecordTabGuards';
 import { useVerseRecorder } from './hooks/useVerseRecorder';
 import { verseReference } from './utils/recordTabUtils';
 import { RecorderStatus } from '../../../../types/recording/types';
+import {
+  useSegmentedAudioPlayback,
+  type PlaybackSegment,
+} from '../../../../hooks/useSegmentedAudioPlayback';
+import { useSpikeFlags, useSpikeManifest } from '../../../../spike/m4aSpike';
+import { SpikeFlagSwitcher } from '../../../../spike/SpikeFlagSwitcher';
+import { SpikeSegmentList } from '../../../../spike/SpikeSegmentList';
+import { SpikeClearRecordingsButton } from '../../../../spike/SpikeClearRecordingsButton';
 
 const log = logger.create('RecordTab');
 
@@ -60,6 +68,31 @@ export function RecordTab({
     verseNumber: selectedVerseNumber,
   });
   const [deferElapsed, setDeferElapsed] = useState(false);
+
+  // SPIKE (#176): when the `segmentPlayback` debug flag is on, route Review
+  // playback through the JS-only segment-manifest hook instead of the recorder's
+  // built-in single-file playback, to evaluate dropping the native remux. Both
+  // hooks are always called (rules of hooks); with the flag off the manifest is
+  // null and `reviewPlayback` is exactly the production `recorder.playback`.
+  const { segmentPlayback } = useSpikeFlags();
+  const spikeManifest = useSpikeManifest(recorder.currentRecording);
+  const segmentedPlayback = useSegmentedAudioPlayback(
+    segmentPlayback ? spikeManifest : null,
+  );
+  const reviewPlayback =
+    segmentPlayback && spikeManifest ? segmentedPlayback : recorder.playback;
+
+  // SPIKE (#176): the segments backing the current Review playback, surfaced in
+  // an on-screen list. Segmented playback shows every manifest segment; the
+  // production single-file path degenerates to one row (the committed take).
+  const displaySegments = useMemo<PlaybackSegment[] | null>(() => {
+    if (segmentPlayback && spikeManifest) return spikeManifest;
+    const filePath = recorder.currentRecording?.localFilePath;
+    if (!filePath) return null;
+    return [
+      { uri: filePath, durationMs: recorder.currentRecording?.durationMs ?? 0 },
+    ];
+  }, [segmentPlayback, spikeManifest, recorder.currentRecording]);
 
   const { withPausedGuard, withTabSwitchGuard, ensureMicPermission } =
     useRecordTabGuards({
@@ -118,13 +151,13 @@ export function RecordTab({
 
   function handlePrev() {
     if (prevDisabled) return;
-    recorder.playback.stop();
+    reviewPlayback.stop();
     withPausedGuard(() => onSelectVerse(verses[verseIndex - 1]!.verseNumber));
   }
 
   function handleNext() {
     if (nextDisabled) return;
-    recorder.playback.stop();
+    reviewPlayback.stop();
     withPausedGuard(() => onSelectVerse(verses[verseIndex + 1]!.verseNumber));
   }
 
@@ -212,6 +245,8 @@ export function RecordTab({
 
   return (
     <View style={styles.container}>
+      <SpikeFlagSwitcher />
+      <SpikeClearRecordingsButton onCleared={() => reviewPlayback.stop()} />
       <VerseNav
         reference={currentReference}
         prevDisabled={prevDisabled}
@@ -227,15 +262,15 @@ export function RecordTab({
           <RecordingWaveform
             status={recorder.status}
             elapsedMs={recorder.elapsedMs}
-            positionMs={recorder.playback.positionMs}
-            durationMs={recorder.playback.durationMs || recorder.elapsedMs}
-            onSeek={recorder.playback.seek}
+            positionMs={reviewPlayback.positionMs}
+            durationMs={reviewPlayback.durationMs || recorder.elapsedMs}
+            onSeek={reviewPlayback.seek}
           />
           <RecordingControls
             status={recorder.status}
             reference={currentReference}
             elapsedMs={recorder.elapsedMs}
-            isPlaying={recorder.playback.isPlaying}
+            isPlaying={reviewPlayback.isPlaying}
             canResume={recorder.canResume}
             isRecovered={recorder.isRecovered}
             onStart={handleStartPress}
@@ -243,9 +278,13 @@ export function RecordTab({
             onResume={handleResumePress}
             onStop={handleStopPress}
             onDiscard={handleDiscardPress}
-            onTogglePlayback={() => recorder.playback.toggle()}
+            onTogglePlayback={() => reviewPlayback.toggle()}
             onReRecord={handleReRecordPress}
             onDelete={handleDeletePress}
+          />
+          <SpikeSegmentList
+            segments={displaySegments}
+            positionMs={reviewPlayback.positionMs}
           />
         </>
       )}

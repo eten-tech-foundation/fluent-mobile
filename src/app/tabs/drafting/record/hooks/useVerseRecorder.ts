@@ -28,6 +28,11 @@ import type {
   UseRecorderApi,
 } from '../../../../../hooks/useRecorder';
 import { useRecorder } from '../../../../../hooks/useRecorder';
+import {
+  getSpikeFlag,
+  SPIKE_MANIFEST_EXTENSION,
+  writeSpikeManifest,
+} from '../../../../../spike/m4aSpike';
 
 const log = logger.create('useVerseRecorder');
 
@@ -97,6 +102,42 @@ export function useVerseRecorder({
       onCommit: async ({ fileUris, durationMs }) => {
         if (bibleTextId === null) return null;
 
+        // SPIKE (#176): keep the raw ADTS segments and persist a JSON manifest
+        // instead of merging + remuxing into a single seekable `.m4a`, so the
+        // segmented playback hook can be evaluated on a real multi-segment take.
+        // Read the flag imperatively (this runs at commit time, not render).
+        // Defaults off; the production single-file path below is untouched.
+        if (getSpikeFlag('keepSegmentManifest')) {
+          const recordingId = randomUUID();
+          const manifestKey = buildRecordingKey({
+            userId: userId ?? '',
+            projectId: projectId ?? 0,
+            bookCode: bookCode ?? '',
+            chapterNumber: chapterNumber ?? 0,
+            verseNumber: verseNumber ?? 0,
+            recordingId,
+            extension: SPIKE_MANIFEST_EXTENSION,
+          });
+          try {
+            const written = await writeSpikeManifest(manifestKey, fileUris);
+            return await insertRecording({
+              id: recordingId,
+              bibleTextId,
+              userId: userId ?? null,
+              chapterAssignmentId: chapterAssignmentId ?? null,
+              localFilePath: written.key,
+              durationMs: written.totalMs > 0 ? written.totalMs : durationMs,
+              fileSizeBytes: written.sizeBytes,
+            });
+          } catch (error) {
+            log.error('Failed to commit spike segment manifest', {
+              bibleTextId,
+              error,
+            });
+            return null;
+          }
+        }
+
         // Merge the take's segments into a single file. For a one-segment take
         // this returns that file unchanged (moveIntoStore relocates it below);
         // for a multi-segment take (resumed across a kill) it produces a new
@@ -124,7 +165,14 @@ export function useVerseRecorder({
         // raw ADTS is not reliably seekable in ExoPlayer. Probe duration above
         // first — it walks ADTS frame headers, which the `.m4a` no longer has.
         // Falls back to the ADTS file when the native remuxer is unavailable.
-        const playbackUri = await remuxTakeToSeekableContainer(mergedUri);
+        //
+        // SPIKE (#176): the `skipRemux` debug flag commits the merged ADTS take
+        // as-is (single `.aac`, no native remux) so seek behaviour can be
+        // compared against the remuxed `.m4a`. Read imperatively (commit time,
+        // not render); defaults off, leaving the production path untouched.
+        const playbackUri = getSpikeFlag('skipRemux')
+          ? mergedUri
+          : await remuxTakeToSeekableContainer(mergedUri);
 
         const recordingId = randomUUID();
         const key = buildRecordingKey({

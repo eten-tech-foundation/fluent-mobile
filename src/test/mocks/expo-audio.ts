@@ -150,4 +150,24 @@ export function useAudioPlayer(_source?: unknown): AudioPlayer {
   return new AudioPlayer();
 }
 
+// The newer expo-audio hooks API surface used by useAudioPlayback /
+// useSegmentedAudioPlayback. Kept minimal: tests that exercise those hooks in
+// detail mock `expo-audio` inline; this only needs to exist so components that
+// merely mount the hooks (e.g. RecordTab) don't crash on an undefined import.
+export function useAudioPlayerStatus(_player?: unknown): {
+  playing: boolean;
+  currentTime: number;
+  duration: number;
+  didJustFinish: boolean;
+} {
+  return {
+    playing: playbackStatus.isPlaying,
+    currentTime: playbackStatus.positionMillis / 1000,
+    duration: playbackStatus.durationMillis / 1000,
+    didJustFinish: false,
+  };
+}
+
+export async function setAudioModeAsync(_mode?: unknown): Promise<void> {}
+
 resetAudioMock();

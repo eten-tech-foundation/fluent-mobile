@@ -92,6 +92,21 @@ jest.mock('../../../../../services/storage', () => ({
   clearPausedTake: (id: number) => mockClearPausedTake(id),
 }));
 
+// These tests assert the PRODUCTION commit path (merge + remux + move). The
+// spike module is hard-forced ON for on-device testing, so mock it OFF here to
+// keep this suite pinned to production behaviour regardless of that override.
+jest.mock('../../../../../spike/m4aSpike', () => ({
+  getSpikeFlag: () => false,
+  useSpikeFlags: () => ({
+    recordM4a: false,
+    keepSegmentManifest: false,
+    segmentPlayback: false,
+    skipRemux: false,
+  }),
+  SPIKE_MANIFEST_EXTENSION: 'json',
+  writeSpikeManifest: jest.fn(),
+}));
+
 const RESOLVE_MOCK = jest.requireMock(
   '../../../../../services/recordingStorage',
 ).resolveRecordingUri as jest.Mock;

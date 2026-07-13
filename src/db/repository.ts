@@ -553,6 +553,22 @@ export async function insertRecording(
   };
 }
 
+/**
+ * DEBUG (#176): deletes every recording row. Returns the number of rows
+ * removed. File cleanup is the caller's responsibility (see
+ * `deleteAllRecordingFiles`); this only touches the `recordings` table.
+ */
+export async function deleteAllRecordings(): Promise<number> {
+  const db = getDatabase();
+  const countResult = await db.execute(
+    `SELECT COUNT(*) AS count FROM recordings`,
+  );
+  const count = Number(countResult.rows?.[0]?.count) || 0;
+  await db.execute(`DELETE FROM recordings`);
+  log.info('All recordings deleted', { count });
+  return count;
+}
+
 /** Deletes a recording row and unlinks its durable audio file (best-effort). */
 export async function deleteRecordingById(id: string): Promise<void> {
   const db = getDatabase();

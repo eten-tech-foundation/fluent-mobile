@@ -10,6 +10,7 @@ import {
 import { logger } from '../utils/logger';
 import { useAudioPlayback } from './useAudioPlayback';
 import type { UseAudioPlaybackApi } from './useAudioPlayback';
+import { useSpikeFlags } from '../spike/m4aSpike';
 
 const log = logger.create('useRecorder');
 
@@ -168,12 +169,23 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   // by byte append, which is what makes resume-after-kill possible. The
   // committed take is remuxed into a seekable MP4 container on stop (raw ADTS
   // is not reliably seekable in ExoPlayer); see the commit path in the adapter.
-  const recorder = useAudioRecorder({
-    ...RecordingPresets.HIGH_QUALITY,
-    extension: '.aac',
-    android: { outputFormat: 'aac_adts', audioEncoder: 'aac' },
-    directory: 'document',
-  });
+  // SPIKE (#176): when the `recordM4a` debug flag is on, capture with the
+  // default HIGH_QUALITY `.m4a` (`mpeg4`) preset instead of ADTS to run the
+  // kill test (steps 1-2 of the spike) — record, kill the app mid-take, and
+  // confirm the classic-MP4 partial is unplayable (no `moov`) while the ADTS
+  // partial plays. Toggle it from the record screen BEFORE starting a take.
+  // Defaults to `false`; the production path stays ADTS.
+  const { recordM4a } = useSpikeFlags();
+  const recorder = useAudioRecorder(
+    recordM4a
+      ? { ...RecordingPresets.HIGH_QUALITY, directory: 'document' }
+      : {
+          ...RecordingPresets.HIGH_QUALITY,
+          extension: '.aac',
+          android: { outputFormat: 'aac_adts', audioEncoder: 'aac' },
+          directory: 'document',
+        },
+  );
 
   const [status, setStatus] = useState<RecorderStatus>(RecorderStatus.Idle);
   const [permission, setPermission] = useState<PermissionState>('unknown');

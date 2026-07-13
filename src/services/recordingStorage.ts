@@ -282,6 +282,131 @@ export async function aacDurationMs(fileUri: string): Promise<number> {
   }
 }
 
+function readUint32(bytes: Uint8Array, offset: number): number {
+  return (
+    ((bytes[offset]! << 24) |
+      (bytes[offset + 1]! << 16) |
+      (bytes[offset + 2]! << 8) |
+      bytes[offset + 3]!) >>>
+    0
+  );
+}
+
+function readUint64(bytes: Uint8Array, offset: number): number {
+  return readUint32(bytes, offset) * 2 ** 32 + readUint32(bytes, offset + 4);
+}
+
+interface Mp4Box {
+  /** First byte of the box payload (after its size + type header). */
+  contentStart: number;
+  /** One past the last byte of the box (exclusive). */
+  contentEnd: number;
+}
+
+/**
+ * Finds the first MP4 box of `type` directly within `[start, end)`. MP4 is a
+ * flat list of size-prefixed boxes (`[uint32 size][4-char type][payload]`), so
+ * this walks siblings without recursing; descend by calling it again over a
+ * parent box's content range. `size === 1` selects a 64-bit `largesize`;
+ * `size === 0` runs the box to `end`. Returns `null` on a malformed / truncated
+ * chain (e.g. the moov-less file left by a process kill).
+ */
+function findMp4Box(
+  bytes: Uint8Array,
+  type: string,
+  start: number,
+  end: number,
+): Mp4Box | null {
+  let i = start;
+  while (i + 8 <= end) {
+    let size = readUint32(bytes, i);
+    let headerSize = 8;
+    if (size === 1) {
+      if (i + 16 > end) break;
+      size = readUint64(bytes, i + 8);
+      headerSize = 16;
+    } else if (size === 0) {
+      size = end - i;
+    }
+    if (size < headerSize || i + size > end) break;
+
+    const boxType = String.fromCharCode(
+      bytes[i + 4]!,
+      bytes[i + 5]!,
+      bytes[i + 6]!,
+      bytes[i + 7]!,
+    );
+    if (boxType === type) {
+      return { contentStart: i + headerSize, contentEnd: i + size };
+    }
+    i += size;
+  }
+  return null;
+}
+
+/** Unknown-duration sentinel MediaRecorder can leave in an mvhd. */
+const MP4_UNKNOWN_DURATION = 0xffffffff;
+
+function readMvhdDurationMs(
+  bytes: Uint8Array,
+  start: number,
+  end: number,
+): number {
+  if (start + 4 > end) return 0;
+  const version = bytes[start]!;
+
+  // Layout after the 1-byte version + 3-byte flags: creation & modification
+  // times, then timescale (uint32) and duration. Both times and the duration
+  // widen from 32 to 64 bits in version 1.
+  if (version === 1) {
+    const timescaleOffset = start + 4 + 8 + 8;
+    const durationOffset = timescaleOffset + 4;
+    if (durationOffset + 8 > end) return 0;
+    const timescale = readUint32(bytes, timescaleOffset);
+    const duration = readUint64(bytes, durationOffset);
+    if (timescale === 0) return 0;
+    return Math.round((duration / timescale) * 1000);
+  }
+
+  const timescaleOffset = start + 4 + 4 + 4;
+  const durationOffset = timescaleOffset + 4;
+  if (durationOffset + 4 > end) return 0;
+  const timescale = readUint32(bytes, timescaleOffset);
+  const duration = readUint32(bytes, durationOffset);
+  if (timescale === 0 || duration === MP4_UNKNOWN_DURATION) return 0;
+  return Math.round((duration / timescale) * 1000);
+}
+
+/**
+ * Computes the duration (ms) of an MP4/M4A container by reading `moov > mvhd`
+ * (movie timescale + duration). Unlike ADTS, an MP4 has no per-frame framing:
+ * its duration lives in the `moov` atom, which `MediaRecorder` only writes on a
+ * clean `stop()`. A file killed mid-record therefore has no `moov` and yields
+ * `0` here — the signal the manifest uses to drop an unplayable segment.
+ */
+export function mp4DurationMsFromBytes(bytes: Uint8Array): number {
+  const moov = findMp4Box(bytes, 'moov', 0, bytes.length);
+  if (!moov) return 0;
+  const mvhd = findMp4Box(bytes, 'mvhd', moov.contentStart, moov.contentEnd);
+  if (!mvhd) return 0;
+  return readMvhdDurationMs(bytes, mvhd.contentStart, mvhd.contentEnd);
+}
+
+/**
+ * Reads an MP4/M4A file and returns its duration (ms) via
+ * {@link mp4DurationMsFromBytes}. Returns `0` on any read/parse failure (a
+ * missing `moov`, i.e. a crash-truncated take, included).
+ */
+export async function mp4DurationMs(fileUri: string): Promise<number> {
+  try {
+    const bytes = await new File(fileUri).bytes();
+    return mp4DurationMsFromBytes(bytes);
+  } catch (error) {
+    log.warn('Failed to probe MP4 duration', { fileUri, error });
+    return 0;
+  }
+}
+
 /** Best-effort unlink of a stored recording file. Never throws. */
 export function deleteRecordingFile(pathOrKey: string): void {
   try {
@@ -289,6 +414,19 @@ export function deleteRecordingFile(pathOrKey: string): void {
     if (file.exists) file.delete();
   } catch (error) {
     log.warn('Failed to delete recording file', { pathOrKey, error });
+  }
+}
+
+/**
+ * DEBUG (#176): best-effort removal of the entire recordings tree (all users).
+ * Wipes committed takes on disk; DB rows are cleared separately. Never throws.
+ */
+export function deleteAllRecordingFiles(): void {
+  try {
+    const dir = new Directory(Paths.document, RECORDINGS_ROOT);
+    if (dir.exists) dir.delete();
+  } catch (error) {
+    log.warn('Failed to delete recordings root', { error });
   }
 }
 
