@@ -226,7 +226,7 @@ export function RecordTab({
         <>
           <RecordingWaveform
             status={recorder.status}
-            elapsedMs={recorder.elapsedMs}
+            levels={recorder.meteringLevels}
           />
           <RecordingControls
             status={recorder.status}
