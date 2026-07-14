@@ -5,12 +5,21 @@ import { useSync } from '../../hooks/useSync';
 import { RecordTab } from '../tabs/RecordTab';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { onSyncComplete } from '../../services/syncEvents';
+import { UserSettingsMenu } from '../../components/ui/UserSettingsMenu';
 import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useCallback, useEffect, useState } from 'react';
+import { useActiveAccountSummary } from '../../hooks/useActiveAccountSummary';
 import { RootStackParamList } from '../../types/navigation/types';
 import { DraftingHeader } from '../../components/layout/DraftingHeader';
 import { ChapterAssignmentData, VerseData } from '../../types/db/types';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useActiveAccountSummary } from '../../hooks/useActiveAccountSummary';
@@ -19,6 +28,7 @@ import {
   getLastActiveTab,
   setLastActiveTab,
 } from '../../utils/draftingTabState';
+import { headerLayout } from '../../theme/iconSpecs';
 import {
   DraftingProvider,
   // useDraftingContext,
@@ -41,6 +51,8 @@ type Route = RouteProp<RootStackParamList, 'VerseDetail'>;
 export default function DraftingScreen() {
   const navigation = useNavigation<Nav>();
   const { chapterId, chapterName } = useRoute<Route>().params;
+  const { width: windowWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   const [activeTab, setActiveTabState] = useState<DraftingTab>(
     () => getLastActiveTab(chapterId) ?? 'bible',
@@ -71,6 +83,42 @@ export default function DraftingScreen() {
   }, []);
 
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
+  const accountSwitcherAnchor = {
+    top: insets.top + headerLayout.minHeight,
+    left: Math.max(16, windowWidth - 226),
+  };
+
+  const handleAccountPress = useCallback(() => {
+    setAccountSwitcherVisible(true);
+  }, []);
+
+  const handleUserSwitched = useCallback(() => {
+    refreshActiveAccount();
+    setRefreshKey(key => key + 1);
+  }, [refreshActiveAccount]);
+
+  const renderHeader = () => (
+    <DraftingHeader
+      title={chapterName}
+      onBack={goBack}
+      syncStatus={syncStatus}
+      onSyncPress={triggerSync}
+      showAccountIndicator={activeAccount.hasMultipleAccounts}
+      accountFirstName={activeAccount.firstName}
+      accountLastName={activeAccount.lastName}
+      accountEmail={activeAccount.email}
+      onAccountPress={handleAccountPress}
+    />
+  );
+
+  const renderAccountSwitcher = () => (
+    <UserSettingsMenu
+      visible={accountSwitcherVisible}
+      onClose={() => setAccountSwitcherVisible(false)}
+      anchor={accountSwitcherAnchor}
+      onUserSwitched={handleUserSwitched}
+    />
+  );
 
   const handleAccountPress = useCallback(() => {
     setAccountSwitcherVisible(true);
