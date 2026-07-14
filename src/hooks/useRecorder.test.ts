@@ -2,6 +2,9 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { AppState } from 'react-native';
 import {
   useRecorder,
+  dbfsToLevel,
+  METERING_FLOOR_DB,
+  METERING_SAMPLE_CAP,
   type RecorderAdapter,
   RecorderStatus,
 } from './useRecorder';
@@ -11,6 +14,9 @@ interface FakeTake {
   uri: string;
 }
 
+// dBFS input level returned by `getStatus()`; tests mutate it to simulate audio.
+let mockMetering: number | undefined;
+
 const mockRecorder = {
   currentTime: 0,
   uri: 'file:///tmp/take-1.aac',
@@ -19,6 +25,16 @@ const mockRecorder = {
   pause: jest.fn(),
   stop: jest.fn().mockResolvedValue(undefined),
   prepareToRecordAsync: jest.fn().mockResolvedValue(undefined),
+  // Only `.metering` is read by the hook; other fields round out RecorderState.
+  // Don't reference `mockRecorder` here (avoids self-referential implicit-any).
+  getStatus: jest.fn(() => ({
+    canRecord: true,
+    isRecording: false,
+    durationMillis: 0,
+    mediaServicesDidReset: false,
+    metering: mockMetering,
+    url: null,
+  })),
 };
 
 const mockUseAudioRecorder = jest.fn();
@@ -93,6 +109,7 @@ describe('useRecorder', () => {
     mockRecorder.currentTime = 0;
     mockRecorder.uri = 'file:///tmp/take-1.aac';
     mockRecorder.isRecording = false;
+    mockMetering = undefined;
     mockPlayer.currentTime = 0;
     mockPlayer.duration = 0;
     mockPlayerStatus = { playing: false, didJustFinish: false };
@@ -734,6 +751,85 @@ describe('useRecorder', () => {
     );
   });
 
+  it('enables metering on the recorder', async () => {
+    const { result } = renderHook(() => useRecorder(makeAdapter()));
+    await waitReady(result);
+
+    expect(mockUseAudioRecorder).toHaveBeenCalledWith(
+      expect.objectContaining({ isMeteringEnabled: true }),
+    );
+  });
+
+  it('samples normalized metering into a bounded buffer while recording, and freezes it on pause', async () => {
+    jest.useFakeTimers();
+    try {
+      const adapter = makeAdapter();
+      const { result } = renderHook(() => useRecorder(adapter));
+      await waitReady(result);
+      expect(result.current.meteringLevels).toEqual([]);
+
+      // -30 dBFS is the midpoint of the default [-60, 0] range -> ~0.5.
+      mockMetering = -30;
+      await act(async () => {
+        await result.current.start();
+      });
+
+      // Advance well past the sample cap to confirm the buffer stays bounded.
+      await act(async () => {
+        jest.advanceTimersByTime(50 * (METERING_SAMPLE_CAP + 10));
+      });
+
+      const levels = result.current.meteringLevels;
+      expect(levels.length).toBe(METERING_SAMPLE_CAP);
+      expect(levels.every(level => level >= 0 && level <= 1)).toBe(true);
+      expect(levels[levels.length - 1]).toBeCloseTo(0.5, 5);
+
+      // Pause clears the tick, so the buffer must stop growing and stay put.
+      await act(async () => {
+        await result.current.pause();
+      });
+      const frozen = [...result.current.meteringLevels];
+      await act(async () => {
+        jest.advanceTimersByTime(50 * 10);
+      });
+      expect(result.current.meteringLevels).toEqual(frozen);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('resets the metering buffer when a new take starts', async () => {
+    jest.useFakeTimers();
+    try {
+      const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+      const adapter = makeAdapter({
+        loadInitial: jest.fn().mockResolvedValue(existing),
+      });
+      const { result } = renderHook(() => useRecorder(adapter));
+      await waitReady(result);
+
+      mockMetering = -10;
+      await act(async () => {
+        await result.current.reRecord();
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(50 * 3);
+      });
+      expect(result.current.meteringLevels.length).toBeGreaterThan(0);
+
+      await act(async () => {
+        await result.current.stop();
+      });
+      // A fresh take must start from an empty buffer, not the previous take's.
+      await act(async () => {
+        await result.current.reRecord();
+      });
+      expect(result.current.meteringLevels).toEqual([]);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('unlinks the finalized file when an active recording is discarded without a paused marker', async () => {
     const adapter = makeAdapter();
     const { result } = renderHook(() => useRecorder(adapter));
@@ -782,5 +878,33 @@ describe('useRecorder', () => {
     ]);
     expect(adapter.clearPaused).toHaveBeenCalled();
     expect(result.current.status).toBe(RecorderStatus.Idle);
+  });
+});
+
+describe('dbfsToLevel', () => {
+  it('returns 0 for missing or invalid readings', () => {
+    expect(dbfsToLevel(undefined)).toBe(0);
+    expect(dbfsToLevel(null)).toBe(0);
+    expect(dbfsToLevel(NaN)).toBe(0);
+    expect(dbfsToLevel(-Infinity)).toBe(0);
+  });
+
+  it('maps the floor to 0 and 0 dBFS to 1', () => {
+    expect(dbfsToLevel(METERING_FLOOR_DB)).toBe(0);
+    expect(dbfsToLevel(0)).toBe(1);
+  });
+
+  it('linearly interpolates between the floor and 0 dBFS', () => {
+    expect(dbfsToLevel(-30)).toBeCloseTo(0.5, 5);
+    expect(dbfsToLevel(-15)).toBeCloseTo(0.75, 5);
+  });
+
+  it('clamps readings outside the range', () => {
+    expect(dbfsToLevel(-120)).toBe(0);
+    expect(dbfsToLevel(6)).toBe(1);
+  });
+
+  it('honors a custom floor', () => {
+    expect(dbfsToLevel(-20, -40)).toBeCloseTo(0.5, 5);
   });
 });

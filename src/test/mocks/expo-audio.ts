@@ -2,6 +2,8 @@ export type RecordingStatus = {
   isRecording: boolean;
   durationMillis: number;
   canRecord: boolean;
+  /** Input level (dBFS) when metering is enabled; `undefined` otherwise. */
+  metering?: number;
 };
 
 export type PlaybackStatus = {

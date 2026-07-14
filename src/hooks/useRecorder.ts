@@ -104,6 +104,8 @@ export interface UseRecorderApi<T> {
    * should also offer Discard.
    */
   isRecovered: boolean;
+  /** Normalized (`0..1`) input levels for the live waveform, newest last. */
+  meteringLevels: number[];
   /**
    * Playback of the committed take under review — the same surface as
    * {@link UseAudioPlaybackApi}, but coordinated by the recorder: `toggle`/`seek`
@@ -125,6 +127,27 @@ export interface UseRecorderApi<T> {
 // 50ms tick gives ~20fps on the centiseconds portion of the duration display
 // (`MM:SS:HH`) without hammering the React state.
 const TICK_INTERVAL_MS = 50;
+
+// One retained metering sample per `RecordingWaveform` bar.
+export const METERING_SAMPLE_CAP = 40;
+
+/** Below this level (dBFS) input is treated as silence for the waveform. */
+export const METERING_FLOOR_DB = -60;
+
+/**
+ * Normalizes an `expo-audio` metering reading (dBFS, `0` loudest) to a `0..1`
+ * bar-height level. `<= floorDb` clamps to silence; a missing/invalid reading
+ * (`undefined`/`null`/`NaN`/`-Infinity`) returns `0`.
+ */
+export function dbfsToLevel(
+  db: number | undefined | null,
+  floorDb: number = METERING_FLOOR_DB,
+): number {
+  if (db === undefined || db === null || !Number.isFinite(db)) return 0;
+  if (db >= 0) return 1;
+  if (db <= floorDb) return 0;
+  return (db - floorDb) / (0 - floorDb);
+}
 
 function createLiveSessionToken(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
@@ -171,6 +194,8 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     extension: '.aac',
     android: { outputFormat: 'aac_adts', audioEncoder: 'aac' },
     directory: 'document',
+    // Input levels for the live waveform, sampled on the tick below.
+    isMeteringEnabled: true,
   });
 
   const [status, setStatus] = useState<RecorderStatus>(RecorderStatus.Idle);
@@ -180,6 +205,9 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   const [isReady, setIsReady] = useState(false);
   const [canResume, setCanResume] = useState(false);
   const [isRecovered, setIsRecovered] = useState(false);
+  const [meteringLevels, setMeteringLevels] = useState<number[]>([]);
+  // Mirror so the tick can append without re-subscribing on every sample.
+  const meteringLevelsRef = useRef<number[]>([]);
 
   // The adapter is read via a ref inside callbacks/effects so they always see
   // the latest injected closures without being re-created (and re-subscribing)
@@ -226,6 +254,21 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     }
   }, []);
 
+  // Append a level, dropping the oldest past `METERING_SAMPLE_CAP`.
+  const pushMeteringSample = useCallback((level: number) => {
+    const next = [...meteringLevelsRef.current, level];
+    if (next.length > METERING_SAMPLE_CAP) {
+      next.splice(0, next.length - METERING_SAMPLE_CAP);
+    }
+    meteringLevelsRef.current = next;
+    setMeteringLevels(next);
+  }, []);
+
+  const resetMetering = useCallback(() => {
+    meteringLevelsRef.current = [];
+    setMeteringLevels([]);
+  }, []);
+
   // Persist the in-flight take's manifest (segments + accumulated elapsed +
   // start time). Written at session start and on pause, so a hard process kill
   // — which may not give the background auto-pause a chance to run — still
@@ -256,8 +299,10 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
       const startedAt = runningSinceRef.current;
       if (startedAt === null) return;
       setElapsedMs(baseElapsedRef.current + (Date.now() - startedAt));
+      // Sample the current input level for the live waveform.
+      pushMeteringSample(dbfsToLevel(recorder.getStatus().metering));
     }, TICK_INTERVAL_MS);
-  }, [clearTick]);
+  }, [clearTick, pushMeteringSample, recorder]);
 
   // Load the latest committed take for the current session and reset state.
   useEffect(() => {
@@ -274,6 +319,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
       liveSessionTokenRef.current = null;
       segmentsRef.current = [];
       clearTick();
+      resetMetering();
 
       if (sessionKey === null) {
         setStatus(RecorderStatus.Idle);
@@ -322,7 +368,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     return () => {
       cancelled = true;
     };
-  }, [sessionKey, clearTick]);
+  }, [sessionKey, clearTick, resetMetering]);
 
   // Ensure permission state is populated without prompting the user.
   useEffect(() => {
@@ -407,13 +453,20 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     runningSinceRef.current = Date.now();
     startedAtRef.current = new Date().toISOString();
     setElapsedMs(0);
+    resetMetering();
     recorder.record();
     registerCurrentSegment();
     // Persist immediately so a kill right after start is still recoverable.
     persistLiveMarker(0);
     setStatus(RecorderStatus.Recording);
     startTicking();
-  }, [persistLiveMarker, recorder, registerCurrentSegment, startTicking]);
+  }, [
+    persistLiveMarker,
+    recorder,
+    registerCurrentSegment,
+    resetMetering,
+    startTicking,
+  ]);
 
   // Resume a take rehydrated after a process kill: open a NEW segment appended
   // to the restored ones, preserving the accumulated elapsed time and started-at
@@ -619,7 +672,8 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     setElapsedMs(0);
     baseElapsedRef.current = 0;
     runningSinceRef.current = null;
-  }, [currentRecording, status, stopPlayback]);
+    resetMetering();
+  }, [currentRecording, resetMetering, status, stopPlayback]);
 
   const discardPaused = useCallback(async () => {
     const currentSessionKey = sessionKeyRef.current;
@@ -647,8 +701,15 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     setCanResume(false);
     setIsRecovered(false);
     setElapsedMs(0);
+    resetMetering();
     setStatus(currentRecording ? RecorderStatus.Review : RecorderStatus.Idle);
-  }, [clearTick, currentRecording, recorder, registerCurrentSegment]);
+  }, [
+    clearTick,
+    currentRecording,
+    recorder,
+    registerCurrentSegment,
+    resetMetering,
+  ]);
 
   const togglePlayback = useCallback(async () => {
     if (status !== RecorderStatus.Review || !currentRecording) return;
@@ -671,6 +732,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     isReady,
     canResume,
     isRecovered,
+    meteringLevels,
     playback: {
       isPlaying,
       positionMs: playbackPositionMs,
