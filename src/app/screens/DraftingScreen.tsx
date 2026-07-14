@@ -5,18 +5,28 @@ import { useSync } from '../../hooks/useSync';
 import { RecordTab } from '../tabs/RecordTab';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { onSyncComplete } from '../../services/syncEvents';
+import { UserSettingsMenu } from '../../components/ui/UserSettingsMenu';
 import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useCallback, useEffect, useState } from 'react';
+import { useActiveAccountSummary } from '../../hooks/useActiveAccountSummary';
 import { RootStackParamList } from '../../types/navigation/types';
 import { DraftingHeader } from '../../components/layout/DraftingHeader';
 import { ChapterAssignmentData, VerseData } from '../../types/db/types';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import {
   getLastActiveTab,
   setLastActiveTab,
 } from '../../utils/draftingTabState';
+import { headerLayout } from '../../theme/iconSpecs';
 import {
   DraftingProvider,
   // useDraftingContext,
@@ -39,6 +49,8 @@ type Route = RouteProp<RootStackParamList, 'VerseDetail'>;
 export default function DraftingScreen() {
   const navigation = useNavigation<Nav>();
   const { chapterId, chapterName } = useRoute<Route>().params;
+  const { width: windowWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   const [activeTab, setActiveTabState] = useState<DraftingTab>(
     () => getLastActiveTab(chapterId) ?? 'bible',
@@ -59,11 +71,50 @@ export default function DraftingScreen() {
   const [loading, setLoading] = useState(true);
   const [initialVerse, setInitialVerse] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [accountSwitcherVisible, setAccountSwitcherVisible] = useState(false);
 
   const { isSyncing, triggerSync } = useSync();
   const { status: syncStatus } = useSyncStatus({ isSyncing, refreshKey });
+  const activeAccount = useActiveAccountSummary(refreshKey);
+  const { refresh: refreshActiveAccount } = activeAccount;
 
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
+  const accountSwitcherAnchor = {
+    top: insets.top + headerLayout.minHeight,
+    left: Math.max(16, windowWidth - 226),
+  };
+
+  const handleAccountPress = useCallback(() => {
+    setAccountSwitcherVisible(true);
+  }, []);
+
+  const handleUserSwitched = useCallback(() => {
+    refreshActiveAccount();
+    setRefreshKey(key => key + 1);
+  }, [refreshActiveAccount]);
+
+  const renderHeader = () => (
+    <DraftingHeader
+      title={chapterName}
+      onBack={goBack}
+      syncStatus={syncStatus}
+      onSyncPress={triggerSync}
+      showAccountIndicator={activeAccount.hasMultipleAccounts}
+      accountFirstName={activeAccount.firstName}
+      accountLastName={activeAccount.lastName}
+      accountEmail={activeAccount.email}
+      onAccountPress={handleAccountPress}
+    />
+  );
+
+  const renderAccountSwitcher = () => (
+    <UserSettingsMenu
+      visible={accountSwitcherVisible}
+      onClose={() => setAccountSwitcherVisible(false)}
+      anchor={accountSwitcherAnchor}
+      onUserSwitched={handleUserSwitched}
+    />
+  );
 
   useEffect(() => {
     const unsubscribe = onSyncComplete(() => {
@@ -127,10 +178,11 @@ export default function DraftingScreen() {
   if (loading) {
     return (
       <ScreenContainer edges={['top', 'bottom']}>
-        <DraftingHeader title={chapterName} onBack={goBack} />
+        {renderHeader()}
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
+        {renderAccountSwitcher()}
       </ScreenContainer>
     );
   }
@@ -138,10 +190,11 @@ export default function DraftingScreen() {
   if (!chapterData) {
     return (
       <ScreenContainer edges={['top', 'bottom']}>
-        <DraftingHeader title={chapterName} onBack={goBack} />
+        {renderHeader()}
         <View style={styles.centered}>
           <Text style={styles.emptyText}>No chapter data found</Text>
         </View>
+        {renderAccountSwitcher()}
       </ScreenContainer>
     );
   }
@@ -150,12 +203,7 @@ export default function DraftingScreen() {
     <ScreenContainer edges={['top', 'bottom']}>
       <DraftingProvider verses={verses} initialVerse={initialVerse}>
         <View style={styles.screen}>
-          <DraftingHeader
-            title={chapterName}
-            onBack={goBack}
-            syncStatus={syncStatus}
-            onSyncPress={triggerSync}
-          />
+          {renderHeader()}
 
           <View style={styles.content}>
             {activeTab === 'bible' ? <BibleTab /> : <RecordTab />}
@@ -165,6 +213,7 @@ export default function DraftingScreen() {
 
           <DraftingTabBar activeTab={activeTab} onTabChange={setActiveTab} />
         </View>
+        {renderAccountSwitcher()}
       </DraftingProvider>
     </ScreenContainer>
   );
