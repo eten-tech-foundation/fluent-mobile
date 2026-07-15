@@ -8,6 +8,7 @@ import {
   ForgotPasswordResponse,
   SignInResponse,
   SignOutResponse,
+  UserChapterAssignmentsResponse,
   UserProjectsResponse,
 } from '../types/api/responses';
 import { checkServerReachable } from './connectivity';
@@ -99,6 +100,14 @@ export const FluentAPI = {
       `/users/${userId}/chapter-assignments/all${query ? `?${query}` : ''}`,
     );
   },
+
+  /** Role-filtered assignments — matches web My Work / My History. */
+  getUserChapterAssignments: (
+    userId: number,
+  ): Promise<UserChapterAssignmentsResponse> =>
+    authedRequest<UserChapterAssignmentsResponse>(
+      `/users/${userId}/chapter-assignments`,
+    ),
 
   getBibleTexts: (
     bibleId: number,

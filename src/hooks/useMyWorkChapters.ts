@@ -21,7 +21,7 @@ export function useMyWorkChapters(refreshKey = 0) {
     try {
       setChapters(await getMyWorkChapters(userId));
     } catch (error) {
-      log.error('Error loading my work chapters:', { error });
+      log.error('Error loading my work chapters', { error });
       setChapters([]);
     }
   }, []);

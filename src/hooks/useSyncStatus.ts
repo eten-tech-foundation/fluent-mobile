@@ -1,4 +1,5 @@
 import { useConnectivity } from './useConnectivity';
+import { useLocalSyncHealth } from './useLocalSyncHealth';
 import { usePendingUploads } from './usePendingUploads';
 import { deriveSyncStatus } from '../utils/syncStatusState';
 
@@ -13,11 +14,18 @@ export function useSyncStatus({
 }: UseSyncStatusOptions) {
   const { isOnline } = useConnectivity();
   const { pendingCount, hasPendingUploads } = usePendingUploads(refreshKey);
+  const { needsDownloadSync } = useLocalSyncHealth(refreshKey);
 
   return {
-    status: deriveSyncStatus({ isOnline, isSyncing, hasPendingUploads }),
+    status: deriveSyncStatus({
+      isOnline,
+      isSyncing,
+      hasPendingUploads,
+      needsDownloadSync,
+    }),
     isOnline,
     pendingCount,
     hasPendingUploads,
+    needsDownloadSync,
   };
 }

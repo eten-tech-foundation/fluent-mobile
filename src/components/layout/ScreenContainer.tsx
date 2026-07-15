@@ -10,7 +10,7 @@ interface ScreenContainerProps {
 
 export function ScreenContainer({
   children,
-  edges = ['top', 'bottom'],
+  edges = ['bottom'],
 }: ScreenContainerProps) {
   const insets = useSafeAreaInsets();
   const paddingTop = edges.includes('top') ? insets.top : 0;

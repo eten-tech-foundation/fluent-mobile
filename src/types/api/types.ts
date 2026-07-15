@@ -23,6 +23,12 @@ export interface ApiChapterAssignment {
   peerCheckerId?: number | null;
   submittedTime?: string | null;
   updatedAt?: string | null;
-  totalVerses: number;
-  completedVerses: number;
+  totalVerses?: number;
+  completedVerses?: number;
+}
+
+/** GET /users/:id/chapter-assignments — same shape web My Work uses. */
+export interface ApiUserChapterAssignmentsByUser {
+  assignedChapters: ApiChapterAssignment[];
+  peerCheckChapters: ApiChapterAssignment[];
 }
