@@ -1,6 +1,7 @@
-import { StyleSheet, Text, TouchableOpacity } from 'react-native';
-import { touchHitSlop } from '../../theme/iconSpecs';
 import { theme } from '../../theme';
+import { touchHitSlop } from '../../theme/iconSpecs';
+import { getAccountInitials } from '../../utils/accountDisplay';
+import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 
 interface AccountInitialsButtonProps {
   firstName?: string;
@@ -9,41 +10,13 @@ interface AccountInitialsButtonProps {
   onPress: () => void;
 }
 
-function firstCharacter(value?: string): string {
-  return value?.trim().charAt(0).toUpperCase() ?? '';
-}
-
-function deriveInitials({
-  firstName,
-  lastName,
-  email,
-}: Pick<
-  AccountInitialsButtonProps,
-  'firstName' | 'lastName' | 'email'
->): string {
-  const nameInitials = `${firstCharacter(firstName)}${firstCharacter(
-    lastName,
-  )}`;
-
-  if (nameInitials.length > 0) return nameInitials;
-
-  const emailName = email?.split('@')[0] ?? '';
-  const emailParts = emailName.split(/[._\s-]+/).filter(Boolean);
-  const emailInitials =
-    emailParts.length > 1
-      ? `${firstCharacter(emailParts[0])}${firstCharacter(emailParts[1])}`
-      : emailName.trim().slice(0, 2).toUpperCase();
-
-  return emailInitials || '?';
-}
-
 export function AccountInitialsButton({
   firstName,
   lastName,
   email,
   onPress,
 }: AccountInitialsButtonProps) {
-  const initials = deriveInitials({ firstName, lastName, email });
+  const initials = getAccountInitials({ firstName, lastName, email });
 
   return (
     <TouchableOpacity
