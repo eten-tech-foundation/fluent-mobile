@@ -37,6 +37,15 @@ const RECORDING_AGGREGATES = `
   END) AS pending_count,
   MAX(CASE WHEN r.is_latest = 1 THEN r.updated_at END) AS last_recording_activity`;
 
+function isUserRow(row: unknown): row is DBTypes.UserRow {
+  if (!row || typeof row !== 'object') return false;
+
+  const candidate = row as Record<string, unknown>;
+  return (
+    typeof candidate.id === 'number' && typeof candidate.email === 'string'
+  );
+}
+
 function mapProjectSummaryRow(
   row: DBTypes.ProjectSummaryRow,
 ): DBTypes.ProjectSummary {
@@ -116,6 +125,35 @@ export async function getProjectUnits(projectId: number) {
   } catch (error) {
     log.error('Error fetching project units', { error });
     return [];
+  }
+}
+
+export async function getUserById(
+  userId: number,
+): Promise<DBTypes.User | null> {
+  try {
+    const db = getDatabase();
+    const result = await db.execute(
+      `SELECT id, username, email, first_name, last_name
+       FROM users
+       WHERE id = ?
+       LIMIT 1;`,
+      [userId],
+    );
+    const row = result?.rows?.[0];
+
+    if (!isUserRow(row)) return null;
+
+    return {
+      id: row.id,
+      username: row.username ?? undefined,
+      email: row.email,
+      firstName: row.first_name ?? undefined,
+      lastName: row.last_name ?? undefined,
+    };
+  } catch (error) {
+    log.error('Error fetching user by id', { error, userId });
+    return null;
   }
 }
 

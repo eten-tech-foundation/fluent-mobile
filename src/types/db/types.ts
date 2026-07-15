@@ -219,6 +219,14 @@ export interface User {
   lastName?: string;
 }
 
+export interface UserRow {
+  id: number;
+  username?: string | null;
+  email: string;
+  first_name?: string | null;
+  last_name?: string | null;
+}
+
 export interface VerseData {
   bibleId: number;
   bookId: number;

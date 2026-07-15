@@ -3,6 +3,7 @@ import { theme } from '../../theme';
 import { ChevronLeft } from 'lucide-react-native';
 import { SyncStatus } from '../../utils/syncStatusState';
 import { PageHeaderSyncButton } from '../ui/PageHeaderSyncButton';
+import { AccountInitialsButton } from '../ui/AccountInitialsButton';
 import {
   StatusBar,
   StyleSheet,
@@ -23,6 +24,11 @@ interface DraftingHeaderProps {
   onBack: () => void;
   syncStatus?: SyncStatus;
   onSyncPress?: () => void;
+  showAccountIndicator?: boolean;
+  accountFirstName?: string;
+  accountLastName?: string;
+  accountEmail?: string;
+  onAccountPress?: () => void;
 }
 
 export function DraftingHeader({
@@ -30,6 +36,11 @@ export function DraftingHeader({
   onBack,
   syncStatus,
   onSyncPress,
+  showAccountIndicator = false,
+  accountFirstName,
+  accountLastName,
+  accountEmail,
+  onAccountPress,
 }: DraftingHeaderProps) {
   const headerPadding = useHeaderSafeAreaPadding();
 
@@ -61,9 +72,17 @@ export function DraftingHeader({
         </Text>
       </View>
 
-      <View style={[styles.sideSlot, styles.sideSlotRight]}>
+      <View style={styles.rightActions}>
         {syncStatus && onSyncPress ? (
           <PageHeaderSyncButton syncStatus={syncStatus} onPress={onSyncPress} />
+        ) : null}
+        {showAccountIndicator && onAccountPress ? (
+          <AccountInitialsButton
+            firstName={accountFirstName}
+            lastName={accountLastName}
+            email={accountEmail}
+            onPress={onAccountPress}
+          />
         ) : null}
       </View>
     </View>
@@ -89,8 +108,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 1,
   },
-  sideSlotRight: {
-    alignItems: 'flex-end',
+  rightActions: {
+    minWidth: headerLayout.sideSlot * 2,
+    height: headerLayout.sideSlot,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: theme.spacing.md,
+    zIndex: 1,
   },
   backButton: {
     borderRadius: theme.radius.full,
