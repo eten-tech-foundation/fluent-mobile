@@ -6,6 +6,7 @@ import SettingsScreen from '../app/screens/SettingsScreen';
 import PrepareForOfflineScreen from '../app/screens/PrepareForOfflineScreen';
 import ViewProject from '../app/tabs/ViewProject';
 import LoginScreen from '../app/tabs/LoginScreen';
+import SyncScreen from '../app/screens/SyncScreen';
 import ForgotPasswordScreen from '../app/tabs/ForgotPasswordScreen';
 import PrivacyPolicyScreen from '../app/tabs/PrivacyPolicyPage';
 import TermsOfUseScreen from '../app/tabs/TermsOfUsePage';
@@ -59,6 +60,7 @@ export default function AppNavigator({
             name="PrepareForOffline"
             component={PrepareForOfflineScreen}
           />
+          <Stack.Screen name="Sync" component={SyncScreen} />
           <Stack.Screen name="Chapters" component={ViewProject} />
           <Stack.Screen name="VerseDetail" component={DraftingScreen} />
           <Stack.Screen name="AddUser">

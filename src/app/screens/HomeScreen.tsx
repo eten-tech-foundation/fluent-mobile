@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator, Text } from 'react-native';
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { theme } from '../../theme';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { SettingsButton } from '../../components/ui/SettingsButton';
 import { PageHeaderSyncButton } from '../../components/ui/PageHeaderSyncButton';
@@ -20,10 +21,13 @@ interface HomeScreenProps {
   postLoginSyncActive?: boolean;
 }
 
+type Nav = StackNavigationProp<RootStackParamList, 'Home'>;
+
 export default function HomeScreen({
   onSignOut,
   postLoginSyncActive = false,
 }: HomeScreenProps) {
+  const navigation = useNavigation<Nav>();
   const route = useRoute<RouteProp<RootStackParamList, 'Home'>>();
   const [activeTab, setActiveTab] = useState<HomeTab>('myWork');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -39,7 +43,7 @@ export default function HomeScreen({
     setIsSyncingLocal(false);
   }, []);
 
-  const { isSyncing, triggerSync } = useSync({
+  const { isSyncing } = useSync({
     onSyncComplete: handleSyncComplete,
   });
 
@@ -70,9 +74,11 @@ export default function HomeScreen({
     setRefreshKey(key => key + 1);
   }, []);
 
+  // CHANGED: was `triggerSync()`. Tapping the icon now navigates to the
+  // Sync page instead of kicking off a sync directly (per #38 / #149).
   const handleSyncPress = useCallback(() => {
-    triggerSync();
-  }, [triggerSync]);
+    navigation.navigate('Sync');
+  }, [navigation]);
 
   const showLoading =
     isNewUserLoading ||

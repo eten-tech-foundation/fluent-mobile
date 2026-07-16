@@ -73,7 +73,7 @@ export default function DraftingScreen() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [accountSwitcherVisible, setAccountSwitcherVisible] = useState(false);
 
-  const { isSyncing, triggerSync } = useSync();
+  const { isSyncing } = useSync();
   const { status: syncStatus } = useSyncStatus({ isSyncing, refreshKey });
   const activeAccount = useActiveAccountSummary(refreshKey);
   const { refresh: refreshActiveAccount } = activeAccount;
@@ -93,12 +93,18 @@ export default function DraftingScreen() {
     setRefreshKey(key => key + 1);
   }, [refreshActiveAccount]);
 
+  // CHANGED: was `triggerSync`. Tapping the icon now navigates to the
+  // Sync page instead of kicking off a sync directly (per #38 / #149).
+  const handleSyncPress = useCallback(() => {
+    navigation.navigate('Sync');
+  }, [navigation]);
+
   const renderHeader = () => (
     <DraftingHeader
       title={chapterName}
       onBack={goBack}
       syncStatus={syncStatus}
-      onSyncPress={triggerSync}
+      onSyncPress={handleSyncPress}
       showAccountIndicator={activeAccount.hasMultipleAccounts}
       accountFirstName={activeAccount.firstName}
       accountLastName={activeAccount.lastName}
