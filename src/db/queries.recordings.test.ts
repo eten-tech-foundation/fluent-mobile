@@ -39,18 +39,21 @@ describe('getBibleTextId', () => {
 });
 
 describe('getLatestRecordingForVerse', () => {
-  it('maps snake_case rows into the Recording shape', async () => {
+  it('maps snake_case rows into the Recording shape for a user', async () => {
     mockDb = {
       execute: jest.fn().mockResolvedValue({
         rows: [
           {
             id: 'rec-1',
             bible_text_id: 42,
-            local_file_path: '/tmp/rec-1.m4a',
+            user_id: 'user-9',
+            project_unit_id: 3,
+            chapter_assignment_id: 7,
+            local_file_path: '/tmp/rec-1.aac',
             blob_key: null,
             duration_ms: 12000,
             file_size_bytes: 24000,
-            take_number: 2,
+            take_number: 1,
             is_latest: 1,
             sync_status: 'pending',
             upload_error: null,
@@ -61,16 +64,19 @@ describe('getLatestRecordingForVerse', () => {
       }),
     };
 
-    const result = await getLatestRecordingForVerse(42);
+    const result = await getLatestRecordingForVerse(42, 'user-9');
 
     expect(result).toEqual({
       id: 'rec-1',
       bibleTextId: 42,
-      localFilePath: '/tmp/rec-1.m4a',
+      userId: 'user-9',
+      projectUnitId: 3,
+      chapterAssignmentId: 7,
+      localFilePath: '/tmp/rec-1.aac',
       blobKey: undefined,
       durationMs: 12000,
       fileSizeBytes: 24000,
-      takeNumber: 2,
+      takeNumber: 1,
       isLatest: true,
       syncStatus: 'pending',
       uploadError: undefined,
@@ -79,12 +85,12 @@ describe('getLatestRecordingForVerse', () => {
     });
     expect(mockDb.execute).toHaveBeenCalledWith(
       expect.stringMatching(/FROM recordings/),
-      [42],
+      [42, 'user-9'],
     );
   });
 
-  it('returns null when no latest row exists', async () => {
+  it('returns null when no row exists for the user', async () => {
     mockDb = { execute: jest.fn().mockResolvedValue({ rows: [] }) };
-    expect(await getLatestRecordingForVerse(42)).toBeNull();
+    expect(await getLatestRecordingForVerse(42, 'user-9')).toBeNull();
   });
 });

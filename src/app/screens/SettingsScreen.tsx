@@ -91,7 +91,7 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
   };
 
   const handleLogOut = async () => {
-    const pendingCount = await getPendingUploadCount();
+    const pendingCount = await getPendingUploadCount(getActiveUserId());
 
     if (pendingCount > 0) {
       Alert.alert(LOGOUT_UNSYNCED_TITLE, LOGOUT_UNSYNCED_MESSAGE, [

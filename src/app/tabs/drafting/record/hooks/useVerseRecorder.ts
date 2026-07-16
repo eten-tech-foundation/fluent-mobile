@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { randomUUID } from 'expo-crypto';
 import {
   deleteRecordingById,
-  insertRecording,
+  upsertLatestRecordingForUser,
 } from '../../../../../db/repository';
 import { getLatestRecordingForVerse } from '../../../../../db/queries';
 import {
@@ -21,59 +21,68 @@ import {
 } from '../../../../../services/recordingStorage';
 import type { Recording } from '../../../../../types/db/types';
 import { logger } from '../../../../../utils/logger';
-import type {
-  PausedTakeState,
-  RecorderAdapter,
-  UseRecorderApi,
+import {
+  useRecorder,
+  type PausedTakeState,
+  type RecordingSessionDeps,
+  type UseRecorderApi,
 } from '../../../../../hooks/useRecorder';
-import { useRecorder } from '../../../../../hooks/useRecorder';
 
 const log = logger.create('useVerseRecorder');
 
 /**
  * Attribution context used to build the durable file path and persist who/where
- * a take belongs to. `bibleTextId === null` keeps the recorder inert until a
- * verse is resolved. The remaining fields are optional so the hook stays usable
- * in isolation (e.g. tests), falling back to placeholder path segments.
+ * a take belongs to. `bibleTextId === null` or empty `userId` keeps the
+ * recorder inert until both are resolved.
  */
 export interface UseVerseRecorderArgs {
   bibleTextId: number | null;
-  userId?: string;
+  userId: string;
   projectId?: number | null;
+  projectUnitId?: number | null;
   chapterAssignmentId?: number | null;
   bookCode?: string | null;
   chapterNumber?: number | null;
   verseNumber?: number | null;
 }
 
-export type VerseRecorderApi = UseRecorderApi<Recording>;
+export type VerseRecorderApi = UseRecorderApi;
 
 /**
- * Adapts the generic {@link useRecorder} to the verse-recording use case: it
- * wires SQLite persistence, the verse-shaped durable storage layout, and the
- * paused-take marker (keyed by `bibleTextId`). The recorder itself stays
- * agnostic of all of this.
+ * Verse draft recorder: owns SQLite upsert (one latest per user+verse), durable
+ * storage layout, and paused-take markers keyed by user.
  */
 export function useVerseRecorder({
   bibleTextId,
   userId,
   projectId,
+  projectUnitId,
   chapterAssignmentId,
   bookCode,
   chapterNumber,
   verseNumber,
 }: UseVerseRecorderArgs): VerseRecorderApi {
-  const adapter = useMemo<RecorderAdapter<Recording>>(
-    () => ({
-      sessionKey: bibleTextId,
+  const deps = useMemo<RecordingSessionDeps>(() => {
+    const sessionKey =
+      bibleTextId !== null && userId ? `${userId}:${bibleTextId}` : null;
 
-      loadInitial: key => getLatestRecordingForVerse(key as number),
+    return {
+      sessionKey,
 
-      loadPaused: key => getPausedTake(key as number),
+      loadInitial: async () => {
+        if (bibleTextId === null || !userId) return null;
+        return getLatestRecordingForVerse(bibleTextId, userId);
+      },
+
+      loadPaused: () => {
+        if (bibleTextId === null || !userId) return null;
+        return getPausedTake(userId, bibleTextId);
+      },
 
       persistPaused: (state: PausedTakeState) => {
-        if (bibleTextId === null) return;
+        if (bibleTextId === null || !userId) return;
         setPausedTake({
+          userId,
           bibleTextId,
           ...(chapterAssignmentId !== null && chapterAssignmentId !== undefined
             ? { chapterAssignmentId }
@@ -86,42 +95,35 @@ export function useVerseRecorder({
       },
 
       clearPaused: () => {
-        if (bibleTextId === null) return;
-        clearPausedTake(bibleTextId);
+        if (bibleTextId === null || !userId) return;
+        clearPausedTake(userId, bibleTextId);
       },
 
       deletePausedFiles: fileUris =>
         fileUris.forEach(fileUri => deleteRecordingFile(fileUri)),
 
       onCommit: async ({ fileUris, durationMs }) => {
-        if (bibleTextId === null) return null;
+        if (bibleTextId === null || !userId) return null;
 
-        // Merge the take's segments into a single file. For a one-segment take
-        // this returns that file unchanged (moveIntoStore relocates it below);
-        // for a multi-segment take (resumed across a kill) it produces a new
-        // merged file, leaving the raw segments to be unlinked afterwards.
         let mergedUri: string;
         try {
           mergedUri = await concatenateAacSegments(fileUris);
         } catch (error) {
           log.error('Failed to concatenate recording segments', {
             bibleTextId,
+            userId,
             segments: fileUris.length,
             error,
           });
           return null;
         }
 
-        // Derive the true length from the audio itself; the wall-clock timer
-        // undercounts (esp. after a kill). Probe the merged file while it still
-        // exists at its source path (before moveIntoStore relocates it) and
-        // fall back to the timer value if the probe yields nothing.
         const probedMs = await aacDurationMs(mergedUri);
         const committedDurationMs = probedMs > 0 ? probedMs : durationMs;
 
         const recordingId = randomUUID();
         const key = buildRecordingKey({
-          userId: userId ?? '',
+          userId,
           projectId: projectId ?? 0,
           bookCode: bookCode ?? '',
           chapterNumber: chapterNumber ?? 0,
@@ -130,30 +132,28 @@ export function useVerseRecorder({
           extension: extensionFromUri(mergedUri),
         });
 
-        // Move the take out of the evictable cache before recording it in the
-        // DB so a row never points at a file the OS could reclaim.
         let moved;
         try {
           moved = await moveIntoStore({ sourceUri: mergedUri, key });
         } catch (error) {
           log.error('Failed to move recording into durable store', {
             bibleTextId,
+            userId,
             error,
           });
           return null;
         }
 
-        // Unlink any raw segments not consumed by the move (i.e. everything but
-        // a single-segment take, whose only file was the one just moved).
         fileUris
           .filter(fileUri => fileUri !== mergedUri)
           .forEach(fileUri => deleteRecordingFile(fileUri));
 
         try {
-          return await insertRecording({
+          return await upsertLatestRecordingForUser({
             id: recordingId,
             bibleTextId,
-            userId: userId ?? null,
+            userId,
+            projectUnitId: projectUnitId ?? null,
             chapterAssignmentId: chapterAssignmentId ?? null,
             localFilePath: moved.key,
             durationMs: committedDurationMs,
@@ -161,30 +161,31 @@ export function useVerseRecorder({
           });
         } catch (error) {
           log.error(
-            'Failed to insert recording after move; removing durable file',
-            { bibleTextId, localFilePath: moved.key, error },
+            'Failed to upsert recording after move; removing durable file',
+            { bibleTextId, userId, localFilePath: moved.key, error },
           );
           deleteRecordingFile(moved.key);
           return null;
         }
       },
 
-      deleteCommitted: take => deleteRecordingById(take.id),
+      deleteCommitted: (take: Recording) => deleteRecordingById(take.id),
 
-      resolvePlaybackUri: take => resolveRecordingUri(take.localFilePath),
+      resolvePlaybackUri: (take: Recording) =>
+        resolveRecordingUri(take.localFilePath),
 
-      resolveDurationMs: take => take.durationMs ?? null,
-    }),
-    [
-      bibleTextId,
-      userId,
-      projectId,
-      chapterAssignmentId,
-      bookCode,
-      chapterNumber,
-      verseNumber,
-    ],
-  );
+      resolveDurationMs: (take: Recording) => take.durationMs ?? null,
+    };
+  }, [
+    bibleTextId,
+    userId,
+    projectId,
+    projectUnitId,
+    chapterAssignmentId,
+    bookCode,
+    chapterNumber,
+    verseNumber,
+  ]);
 
-  return useRecorder(adapter);
+  return useRecorder(deps);
 }

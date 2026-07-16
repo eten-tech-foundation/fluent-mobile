@@ -24,8 +24,11 @@ type Nav = StackNavigationProp<RootStackParamList>;
  */
 export function discardPausedTake(marker: PausedTakeMarker): void {
   marker.segments.forEach(fileUri => deleteRecordingFile(fileUri));
-  clearPausedTake(marker.bibleTextId);
-  log.info('Discarded recovered take', { bibleTextId: marker.bibleTextId });
+  clearPausedTake(marker.userId, marker.bibleTextId);
+  log.info('Discarded recovered take', {
+    userId: marker.userId,
+    bibleTextId: marker.bibleTextId,
+  });
 }
 
 /**

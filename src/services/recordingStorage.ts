@@ -253,7 +253,12 @@ export function deleteRecordingFile(pathOrKey: string): void {
   }
 }
 
-/** Best-effort removal of a user's entire recordings subtree (e.g. on logout). */
+/**
+ * Best-effort removal of a user's recordings subtree.
+ * Intentionally unwired from account switch / logout — #87 requires preserving
+ * unsynced data for inactive accounts. Reserve for future explicit account
+ * removal only.
+ */
 export function deleteUserTree(userId: string): void {
   try {
     const dir = new Directory(

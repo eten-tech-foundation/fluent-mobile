@@ -252,7 +252,8 @@ export type RecordingSyncStatus =
 export interface Recording {
   id: string;
   bibleTextId: number;
-  userId?: string | null;
+  userId: string;
+  projectUnitId?: number | null;
   chapterAssignmentId?: number | null;
   localFilePath: string;
   blobKey?: string | null;
@@ -269,7 +270,8 @@ export interface Recording {
 export interface RecordingRow {
   id: string;
   bible_text_id: number;
-  user_id: string | null;
+  user_id: string;
+  project_unit_id: number | null;
   chapter_assignment_id: number | null;
   local_file_path: string;
   blob_key: string | null;

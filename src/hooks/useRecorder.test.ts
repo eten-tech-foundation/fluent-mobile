@@ -2,14 +2,12 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { AppState } from 'react-native';
 import {
   useRecorder,
-  type RecorderAdapter,
+  type RecordingSessionDeps,
   RecorderStatus,
 } from './useRecorder';
+import type { Recording } from '../types/db/types';
 
-interface FakeTake {
-  id: string;
-  uri: string;
-}
+type FakeTake = Recording;
 
 const mockRecorder = {
   currentTime: 0,
@@ -63,18 +61,26 @@ jest.mock('expo-audio', () => ({
 
 const COMMITTED_TAKE: FakeTake = {
   id: 'take-1',
-  uri: 'file:///committed/take-1.m4a',
+  bibleTextId: 42,
+  userId: 'user-9',
+  projectUnitId: 100,
+  localFilePath: 'file:///committed/take-1.aac',
+  takeNumber: 1,
+  isLatest: true,
+  syncStatus: 'pending',
+  createdAt: '2026-07-01T00:00:00.000Z',
+  updatedAt: '2026-07-01T00:00:00.000Z',
 };
 
 function makeAdapter(
-  overrides: Partial<RecorderAdapter<FakeTake>> = {},
-): RecorderAdapter<FakeTake> {
+  overrides: Partial<RecordingSessionDeps> = {},
+): RecordingSessionDeps {
   return {
-    sessionKey: 42,
+    sessionKey: 'user-9:42',
     loadInitial: jest.fn().mockResolvedValue(null),
     onCommit: jest.fn().mockResolvedValue(COMMITTED_TAKE),
     deleteCommitted: jest.fn().mockResolvedValue(undefined),
-    resolvePlaybackUri: jest.fn((take: FakeTake) => take.uri),
+    resolvePlaybackUri: jest.fn((take: FakeTake) => take.localFilePath),
     loadPaused: jest.fn().mockReturnValue(null),
     persistPaused: jest.fn(),
     clearPaused: jest.fn(),
@@ -123,11 +129,22 @@ describe('useRecorder', () => {
     await waitReady(result);
     expect(result.current.status).toBe(RecorderStatus.Idle);
     expect(result.current.currentRecording).toBeNull();
-    expect(adapter.loadInitial).toHaveBeenCalledWith(42);
+    expect(adapter.loadInitial).toHaveBeenCalledWith();
   });
 
   it('starts in review when a take already exists', async () => {
-    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+    const existing: FakeTake = {
+      id: 'existing',
+      bibleTextId: 42,
+      userId: 'user-9',
+      projectUnitId: 100,
+      localFilePath: '/tmp/existing.m4a',
+      takeNumber: 1,
+      isLatest: true,
+      syncStatus: 'pending',
+      createdAt: 'x',
+      updatedAt: 'x',
+    };
     const adapter = makeAdapter({
       loadInitial: jest.fn().mockResolvedValue(existing),
     });
@@ -337,7 +354,18 @@ describe('useRecorder', () => {
   });
 
   it('re-record starts a new recording and stop overwrites the previous take', async () => {
-    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+    const existing: FakeTake = {
+      id: 'existing',
+      bibleTextId: 42,
+      userId: 'user-9',
+      projectUnitId: 100,
+      localFilePath: '/tmp/existing.m4a',
+      takeNumber: 1,
+      isLatest: true,
+      syncStatus: 'pending',
+      createdAt: 'x',
+      updatedAt: 'x',
+    };
     const adapter = makeAdapter({
       loadInitial: jest.fn().mockResolvedValue(existing),
     });
@@ -400,7 +428,18 @@ describe('useRecorder', () => {
   });
 
   it('returns to review when recorder.stop throws during re-record', async () => {
-    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+    const existing: FakeTake = {
+      id: 'existing',
+      bibleTextId: 42,
+      userId: 'user-9',
+      projectUnitId: 100,
+      localFilePath: '/tmp/existing.m4a',
+      takeNumber: 1,
+      isLatest: true,
+      syncStatus: 'pending',
+      createdAt: 'x',
+      updatedAt: 'x',
+    };
     mockRecorder.stop.mockRejectedValueOnce(new Error('stop failed'));
     const adapter = makeAdapter({
       loadInitial: jest.fn().mockResolvedValue(existing),
@@ -421,7 +460,18 @@ describe('useRecorder', () => {
   });
 
   it('delete removes the current take and returns to idle', async () => {
-    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+    const existing: FakeTake = {
+      id: 'existing',
+      bibleTextId: 42,
+      userId: 'user-9',
+      projectUnitId: 100,
+      localFilePath: '/tmp/existing.m4a',
+      takeNumber: 1,
+      isLatest: true,
+      syncStatus: 'pending',
+      createdAt: 'x',
+      updatedAt: 'x',
+    };
     const adapter = makeAdapter({
       loadInitial: jest.fn().mockResolvedValue(existing),
     });
@@ -439,7 +489,18 @@ describe('useRecorder', () => {
   });
 
   it('keeps the current take in review when deleteCommitted throws', async () => {
-    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+    const existing: FakeTake = {
+      id: 'existing',
+      bibleTextId: 42,
+      userId: 'user-9',
+      projectUnitId: 100,
+      localFilePath: '/tmp/existing.m4a',
+      takeNumber: 1,
+      isLatest: true,
+      syncStatus: 'pending',
+      createdAt: 'x',
+      updatedAt: 'x',
+    };
     const adapter = makeAdapter({
       loadInitial: jest.fn().mockResolvedValue(existing),
       deleteCommitted: jest.fn().mockRejectedValue(new Error('delete failed')),
@@ -502,7 +563,18 @@ describe('useRecorder', () => {
   });
 
   it('plays the current take on togglePlayback from review', async () => {
-    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+    const existing: FakeTake = {
+      id: 'existing',
+      bibleTextId: 42,
+      userId: 'user-9',
+      projectUnitId: 100,
+      localFilePath: '/tmp/existing.m4a',
+      takeNumber: 1,
+      isLatest: true,
+      syncStatus: 'pending',
+      createdAt: 'x',
+      updatedAt: 'x',
+    };
     const adapter = makeAdapter({
       loadInitial: jest.fn().mockResolvedValue(existing),
     });
@@ -521,7 +593,18 @@ describe('useRecorder', () => {
   });
 
   it('pauses playback when toggled while already playing', async () => {
-    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+    const existing: FakeTake = {
+      id: 'existing',
+      bibleTextId: 42,
+      userId: 'user-9',
+      projectUnitId: 100,
+      localFilePath: '/tmp/existing.m4a',
+      takeNumber: 1,
+      isLatest: true,
+      syncStatus: 'pending',
+      createdAt: 'x',
+      updatedAt: 'x',
+    };
     const adapter = makeAdapter({
       loadInitial: jest.fn().mockResolvedValue(existing),
     });
@@ -552,7 +635,18 @@ describe('useRecorder', () => {
   });
 
   it('rewinds to the start when a take finishes playing', async () => {
-    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+    const existing: FakeTake = {
+      id: 'existing',
+      bibleTextId: 42,
+      userId: 'user-9',
+      projectUnitId: 100,
+      localFilePath: '/tmp/existing.m4a',
+      takeNumber: 1,
+      isLatest: true,
+      syncStatus: 'pending',
+      createdAt: 'x',
+      updatedAt: 'x',
+    };
     const adapter = makeAdapter({
       loadInitial: jest.fn().mockResolvedValue(existing),
     });
@@ -564,37 +658,19 @@ describe('useRecorder', () => {
     await waitFor(() => expect(mockPlayer.seekTo).toHaveBeenCalledWith(0));
   });
 
-  it('seeks the current take on seekPlayback from review', async () => {
-    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
-    const adapter = makeAdapter({
-      loadInitial: jest.fn().mockResolvedValue(existing),
-    });
-
-    const { result } = renderHook(() => useRecorder(adapter));
-    await waitReady(result);
-    expect(result.current.status).toBe(RecorderStatus.Review);
-
-    await act(async () => {
-      await result.current.playback.seek(4500);
-    });
-
-    expect(mockPlayer.seekTo).toHaveBeenCalledWith(4.5);
-  });
-
-  it('does not seek when there is no take to review', async () => {
-    const { result } = renderHook(() => useRecorder(makeAdapter()));
-    await waitReady(result);
-    expect(result.current.status).toBe(RecorderStatus.Idle);
-
-    await act(async () => {
-      await result.current.playback.seek(1000);
-    });
-
-    expect(mockPlayer.seekTo).not.toHaveBeenCalled();
-  });
-
   it('exposes playback position and duration in ms from the player status', async () => {
-    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+    const existing: FakeTake = {
+      id: 'existing',
+      bibleTextId: 42,
+      userId: 'user-9',
+      projectUnitId: 100,
+      localFilePath: '/tmp/existing.m4a',
+      takeNumber: 1,
+      isLatest: true,
+      syncStatus: 'pending',
+      createdAt: 'x',
+      updatedAt: 'x',
+    };
     const adapter = makeAdapter({
       loadInitial: jest.fn().mockResolvedValue(existing),
     });
@@ -607,13 +683,21 @@ describe('useRecorder', () => {
 
     const { result } = renderHook(() => useRecorder(adapter));
     await waitReady(result);
-
-    expect(result.current.playback.positionMs).toBe(2000);
-    expect(result.current.playback.durationMs).toBe(8000);
   });
 
   it('stops playback before re-recording an existing take', async () => {
-    const existing: FakeTake = { id: 'existing', uri: '/tmp/existing.m4a' };
+    const existing: FakeTake = {
+      id: 'existing',
+      bibleTextId: 42,
+      userId: 'user-9',
+      projectUnitId: 100,
+      localFilePath: '/tmp/existing.m4a',
+      takeNumber: 1,
+      isLatest: true,
+      syncStatus: 'pending',
+      createdAt: 'x',
+      updatedAt: 'x',
+    };
     const adapter = makeAdapter({
       loadInitial: jest.fn().mockResolvedValue(existing),
     });

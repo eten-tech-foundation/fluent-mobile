@@ -10,10 +10,10 @@ import {
 import { logger } from '../utils/logger';
 import { useAudioPlayback } from './useAudioPlayback';
 import type { UseAudioPlaybackApi } from './useAudioPlayback';
+import type { Recording } from '../types/db/types';
+import { RecorderStatus } from '../types/recording/types';
 
 const log = logger.create('useRecorder');
-
-import { RecorderStatus } from '../types/recording/types';
 
 export { RecorderStatus };
 /**
@@ -48,53 +48,30 @@ export interface PausedTakeState {
 }
 
 /**
- * Use-case adapter injected into {@link useRecorder}. It isolates every concern
- * the generic recorder does not own: which session a take belongs to, how a
- * committed take is persisted/resolved/deleted, and where paused-take markers
- * live. The recorder itself stays agnostic of the DB, storage layout, and any
- * domain vocabulary.
- *
- * `sessionKey === null` keeps the recorder inert until the caller resolves a
- * target (e.g. a selected verse).
+ * Persistence + identity hooks for the verse recorder session. Not a generic
+ * multi-use-case framework — only {@link useVerseRecorder} builds this.
  */
-export interface RecorderAdapter<T> {
-  sessionKey: number | string | null;
-  /** Load the most recent committed take for the session, if any. */
-  loadInitial: (key: number | string) => Promise<T | null>;
-  /**
-   * Persist a freshly stopped take. Return the committed take on success, or
-   * `null` to signal a recoverable failure (the recorder reverts to its prior
-   * state). Throwing is also treated as a recoverable failure.
-   */
+export interface RecordingSessionDeps {
+  sessionKey: string | null;
+  loadInitial: () => Promise<Recording | null>;
   onCommit: (args: {
     fileUris: string[];
     durationMs: number;
-  }) => Promise<T | null>;
-  /** Delete a committed take (row + file). */
-  deleteCommitted: (take: T) => Promise<void>;
-  /** Resolve a committed take to an absolute, playable uri. */
-  resolvePlaybackUri: (take: T) => string | null;
-  /**
-   * Resolve a committed take's stored duration (ms) for the Review display, so
-   * the timer reflects the persisted (audio-derived) length rather than the
-   * live wall-clock value. Optional; falls back to the wall-clock duration.
-   */
-  resolveDurationMs?: (take: T) => number | null;
-  /** Read the paused-take marker for the session, if one exists. */
-  loadPaused: (key: number | string) => PausedTakeState | null;
-  /** Write the paused-take marker for the current session. */
+  }) => Promise<Recording | null>;
+  deleteCommitted: (take: Recording) => Promise<void>;
+  resolvePlaybackUri: (take: Recording) => string | null;
+  resolveDurationMs?: (take: Recording) => number | null;
+  loadPaused: () => PausedTakeState | null;
   persistPaused: (state: PausedTakeState) => void;
-  /** Clear the paused-take marker for the current session. */
   clearPaused: () => void;
-  /** Best-effort unlink of the partial segment files being discarded. */
   deletePausedFiles: (fileUris: string[]) => void;
 }
 
-export interface UseRecorderApi<T> {
+export interface UseRecorderApi {
   status: RecorderStatus;
   elapsedMs: number;
   permission: PermissionState;
-  currentRecording: T | null;
+  currentRecording: Recording | null;
   isReady: boolean;
   /** True while a paused take can be resumed (always true once paused). */
   canResume: boolean;
@@ -105,12 +82,10 @@ export interface UseRecorderApi<T> {
    */
   isRecovered: boolean;
   /**
-   * Playback of the committed take under review — the same surface as
-   * {@link UseAudioPlaybackApi}, but coordinated by the recorder: `toggle`/`seek`
-   * only act in the Review state and are sequenced against the shared audio
-   * session. Grouped here rather than flattened onto the recorder's controls.
+   * Playback of the committed take under review (play/pause + rewind-on-finish).
+   * Seek/scrub is deferred until committed takes are remuxed to seekable M4A (#176).
    */
-  playback: UseAudioPlaybackApi;
+  playback: Pick<UseAudioPlaybackApi, 'isPlaying' | 'toggle' | 'stop'>;
 
   requestPermission: () => Promise<PermissionRequestResult>;
   start: () => Promise<void>;
@@ -148,14 +123,13 @@ function mapPermissionState(response: PermissionLike): PermissionState {
  *
  * The hook owns only recording mechanics — the state machine, elapsed-time
  * ticking, permissions, background auto-pause, and playback orchestration. All
- * persistence, storage layout, and domain identity is injected via a
- * {@link RecorderAdapter}, so the recorder is reusable across use cases.
+ * persistence is supplied by useVerseRecorder through RecordingSessionDeps.
  *
- * `adapter.sessionKey === null` keeps the recorder inert until a target is
+ * `deps.sessionKey === null` keeps the recorder inert until a target is
  * resolved.
  */
-export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
-  const { sessionKey } = adapter;
+export function useRecorder(deps: RecordingSessionDeps): UseRecorderApi {
+  const { sessionKey } = deps;
 
   // Capture straight into the durable document directory (not the evictable
   // cache) so paused/backgrounded partial takes survive until we move or delete
@@ -176,7 +150,9 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   const [status, setStatus] = useState<RecorderStatus>(RecorderStatus.Idle);
   const [permission, setPermission] = useState<PermissionState>('unknown');
   const [elapsedMs, setElapsedMs] = useState(0);
-  const [currentRecording, setCurrentRecording] = useState<T | null>(null);
+  const [currentRecording, setCurrentRecording] = useState<Recording | null>(
+    null,
+  );
   const [isReady, setIsReady] = useState(false);
   const [canResume, setCanResume] = useState(false);
   const [isRecovered, setIsRecovered] = useState(false);
@@ -184,8 +160,8 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   // The adapter is read via a ref inside callbacks/effects so they always see
   // the latest injected closures without being re-created (and re-subscribing)
   // on every render.
-  const adapterRef = useRef(adapter);
-  adapterRef.current = adapter;
+  const depsRef = useRef(deps);
+  depsRef.current = deps;
 
   // Playback is a separate concern with a one-way dependency: it takes the
   // reviewed take's URI and knows nothing about the recorder. The recorder
@@ -193,14 +169,11 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   // The adapter resolves a committed take to an absolute uri.
   const {
     isPlaying,
-    positionMs: playbackPositionMs,
-    durationMs: playbackDurationMs,
     toggle: togglePlaybackInternal,
-    seek: seekPlaybackInternal,
     stop: stopPlayback,
   } = useAudioPlayback(
     currentRecording
-      ? adapterRef.current.resolvePlaybackUri(currentRecording)
+      ? depsRef.current.resolvePlaybackUri(currentRecording)
       : null,
   );
 
@@ -215,7 +188,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
   // Ordered audio files that make up the in-flight take (one per app-lifetime
   // recording session). Concatenated on stop; unlinked on discard.
   const segmentsRef = useRef<string[]>([]);
-  const sessionKeyRef = useRef<number | string | null>(sessionKey);
+  const sessionKeyRef = useRef<string | null>(sessionKey);
 
   sessionKeyRef.current = sessionKey;
 
@@ -242,7 +215,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
       return;
     const startedAt = startedAtRef.current ?? new Date().toISOString();
     startedAtRef.current = startedAt;
-    adapterRef.current.persistPaused({
+    depsRef.current.persistPaused({
       segments: segmentsRef.current,
       elapsedMs: elapsed,
       startedAt,
@@ -281,10 +254,10 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
         return;
       }
 
-      const currentAdapter = adapterRef.current;
+      const currentDeps = depsRef.current;
       const [latest, paused] = await Promise.all([
-        currentAdapter.loadInitial(sessionKey),
-        Promise.resolve(currentAdapter.loadPaused(sessionKey)),
+        currentDeps.loadInitial(),
+        Promise.resolve(currentDeps.loadPaused()),
       ]);
 
       if (cancelled) return;
@@ -307,9 +280,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
       } else {
         // Show the persisted (audio-derived) duration for a reloaded take so
         // the Review timer isn't stuck at 0:00 after remount.
-        setElapsedMs(
-          latest ? currentAdapter.resolveDurationMs?.(latest) ?? 0 : 0,
-        );
+        setElapsedMs(latest ? currentDeps.resolveDurationMs?.(latest) ?? 0 : 0);
         setStatus(latest ? RecorderStatus.Review : RecorderStatus.Idle);
       }
       setIsReady(true);
@@ -537,9 +508,9 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
       return;
     }
 
-    let committed: T | null;
+    let committed: Recording | null;
     try {
-      committed = await adapterRef.current.onCommit({
+      committed = await depsRef.current.onCommit({
         fileUris,
         durationMs: duration,
       });
@@ -557,7 +528,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
       return;
     }
 
-    adapterRef.current.clearPaused();
+    depsRef.current.clearPaused();
     segmentsRef.current = [];
     baseElapsedRef.current = 0;
     runningSinceRef.current = null;
@@ -565,7 +536,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     liveSessionTokenRef.current = null;
     setCanResume(false);
     setIsRecovered(false);
-    setElapsedMs(adapterRef.current.resolveDurationMs?.(committed) ?? duration);
+    setElapsedMs(depsRef.current.resolveDurationMs?.(committed) ?? duration);
     setCurrentRecording(committed);
     setStatus(RecorderStatus.Review);
   }, [clearTick, currentRecording, recorder, registerCurrentSegment]);
@@ -606,7 +577,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     stopPlayback();
     const currentSessionKey = sessionKeyRef.current;
     try {
-      await adapterRef.current.deleteCommitted(currentRecording);
+      await depsRef.current.deleteCommitted(currentRecording);
     } catch (error) {
       log.error('Failed to delete committed recording', {
         sessionKey: currentSessionKey,
@@ -626,7 +597,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     if (currentSessionKey === null) return;
     // Read the marker before clearing so we can unlink every partial segment
     // (recorder.uri is unreliable after a process kill; the marker is not).
-    const marker = adapterRef.current.loadPaused(currentSessionKey);
+    const marker = depsRef.current.loadPaused();
     try {
       await recorder.stop();
     } catch (error) {
@@ -636,8 +607,8 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     }
     registerCurrentSegment();
     const fileUris = marker?.segments ?? segmentsRef.current;
-    if (fileUris.length > 0) adapterRef.current.deletePausedFiles(fileUris);
-    adapterRef.current.clearPaused();
+    if (fileUris.length > 0) depsRef.current.deletePausedFiles(fileUris);
+    depsRef.current.clearPaused();
     clearTick();
     segmentsRef.current = [];
     baseElapsedRef.current = 0;
@@ -655,14 +626,6 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     await togglePlaybackInternal();
   }, [currentRecording, status, togglePlaybackInternal]);
 
-  const seekPlayback = useCallback(
-    async (ms: number) => {
-      if (status !== RecorderStatus.Review || !currentRecording) return;
-      await seekPlaybackInternal(ms);
-    },
-    [currentRecording, status, seekPlaybackInternal],
-  );
-
   return {
     status,
     elapsedMs,
@@ -673,10 +636,7 @@ export function useRecorder<T>(adapter: RecorderAdapter<T>): UseRecorderApi<T> {
     isRecovered,
     playback: {
       isPlaying,
-      positionMs: playbackPositionMs,
-      durationMs: playbackDurationMs,
       toggle: togglePlayback,
-      seek: seekPlayback,
       stop: stopPlayback,
     },
     requestPermission,

@@ -22,13 +22,20 @@ const BIBLE_TEXTS_MATCH_CA = `
   AND bt.chapter_number = ca.chapter_number
 `;
 
-/** Recordings are keyed by bible_text_id; join verses for the chapter assignment. */
+/**
+ * Recordings are keyed by bible_text_id; join verses for the chapter assignment.
+ * Scoped to one bind param (`r.user_id = ?`) so aggregates never mix accounts
+ * on a shared-device DB (#87/#105).
+ */
 const RECORDINGS_JOIN_CA = `
   LEFT JOIN bible_texts bt_r
     ON bt_r.bible_id = ca.bible_id
     AND bt_r.book_id = ca.book_id
     AND bt_r.chapter_number = ca.chapter_number
-  LEFT JOIN recordings r ON r.bible_text_id = bt_r.id AND r.is_latest = 1`;
+  LEFT JOIN recordings r
+    ON r.bible_text_id = bt_r.id
+    AND r.is_latest = 1
+    AND r.user_id = ?`;
 
 const RECORDING_AGGREGATES = `
   COUNT(DISTINCT CASE WHEN r.id IS NOT NULL AND r.is_latest = 1 THEN r.id END) AS recording_count,
@@ -107,7 +114,7 @@ export async function getProjectsWithSummary(
       WHERE up.user_id = ?
       GROUP BY p.id
       ORDER BY p.name COLLATE NOCASE;`,
-      [userId],
+      [String(userId), userId],
     );
 
     const rows = (result?.rows as unknown as DBTypes.ProjectSummaryRow[]) || [];
@@ -316,6 +323,7 @@ function mapProjectChapterRow(
 
 export async function getProjectChapters(
   projectId: number,
+  userId: string,
 ): Promise<DBTypes.ProjectChapter[]> {
   const db = getDatabase();
   try {
@@ -343,7 +351,7 @@ export async function getProjectChapters(
       WHERE pu.project_id = ?
       GROUP BY ca.id
       ORDER BY b.id, ca.chapter_number`,
-      [Number(projectId)],
+      [userId, Number(projectId)],
     );
 
     const rows = (result?.rows as unknown as DBTypes.ProjectChapterRow[]) || [];
@@ -393,7 +401,7 @@ export async function getMyWorkChapters(
       WHERE ${MY_WORK_CHAPTER_WHERE}
       GROUP BY ca.id
       ORDER BY b.id, ca.chapter_number`,
-      getMyWorkChapterQueryParams(userId),
+      [String(userId), ...getMyWorkChapterQueryParams(userId)],
     );
 
     const rows = (result?.rows as unknown as DBTypes.MyWorkChapterRow[]) || [];
@@ -409,14 +417,15 @@ export async function getMyWorkChapters(
   }
 }
 
-/** Latest recordings not yet uploaded to the Fluent server. */
-export async function getPendingUploadCount(): Promise<number> {
+/** Latest recordings for a user not yet uploaded to the Fluent server. */
+export async function getPendingUploadCount(userId: string): Promise<number> {
   const db = getDatabase();
   try {
     const result = await db.execute(
       `SELECT COUNT(*) AS count
        FROM recordings
-       WHERE is_latest = 1 AND sync_status != 'uploaded';`,
+       WHERE user_id = ? AND is_latest = 1 AND sync_status != 'uploaded'`,
+      [userId],
     );
     return Number(result.rows?.[0]?.count) || 0;
   } catch (error) {
@@ -527,24 +536,27 @@ export async function getBibleTextId(
 
 export async function getLatestRecordingForVerse(
   bibleTextId: number,
+  userId: string,
 ): Promise<DBTypes.Recording | null> {
   const db = getDatabase();
   try {
     const result = await db.execute(
-      `SELECT id, bible_text_id, user_id, chapter_assignment_id, local_file_path,
-              blob_key, duration_ms, file_size_bytes, take_number, is_latest,
-              sync_status, upload_error, created_at, updated_at
+      `SELECT id, bible_text_id, user_id, project_unit_id, chapter_assignment_id,
+              local_file_path, blob_key, duration_ms, file_size_bytes,
+              take_number, is_latest, sync_status, upload_error, created_at,
+              updated_at
        FROM recordings
-       WHERE bible_text_id = ? AND is_latest = 1
+       WHERE bible_text_id = ? AND user_id = ?
        LIMIT 1`,
-      [bibleTextId],
+      [bibleTextId, userId],
     );
     const row = (result?.rows as unknown as DBTypes.RecordingRow[])?.[0];
     if (!row) return null;
     return {
       id: row.id,
       bibleTextId: row.bible_text_id,
-      userId: row.user_id ?? undefined,
+      userId: row.user_id,
+      projectUnitId: row.project_unit_id ?? undefined,
       chapterAssignmentId: row.chapter_assignment_id ?? undefined,
       localFilePath: row.local_file_path,
       blobKey: row.blob_key ?? undefined,
@@ -602,6 +614,7 @@ export async function getRecordedVerseNumbers(
   bibleId: number,
   bookId: number,
   chapterNumber: number,
+  userId: string,
 ): Promise<Set<number>> {
   const db = getDatabase();
   try {
@@ -612,8 +625,8 @@ export async function getRecordedVerseNumbers(
        WHERE bt.bible_id = ?
          AND bt.book_id = ?
          AND bt.chapter_number = ?
-         AND r.is_latest = 1`,
-      [bibleId, bookId, chapterNumber],
+         AND r.user_id = ?`,
+      [bibleId, bookId, chapterNumber, userId],
     );
 
     const rows = (result?.rows as unknown as { verse_number: number }[]) || [];

@@ -36,6 +36,8 @@ interface RecordingControlsProps {
    * Discard affordance alongside Resume/Stop and swaps in recovery copy.
    */
   isRecovered?: boolean;
+  /** When true, Record / Re-record controls are disabled (e.g. missing bibleTextId). */
+  recordDisabled?: boolean;
   onStart: () => void;
   onPause: () => void;
   onResume: () => void;
@@ -53,6 +55,7 @@ export function RecordingControls({
   isPlaying,
   canResume = true,
   isRecovered = false,
+  recordDisabled = false,
   onStart,
   onPause,
   onResume,
@@ -67,10 +70,15 @@ export function RecordingControls({
       {status === RecorderStatus.Idle && (
         <View style={styles.idleGroup}>
           <TouchableOpacity
-            style={styles.recordButtonCircle}
+            style={[
+              styles.recordButtonCircle,
+              recordDisabled && styles.recordButtonDisabled,
+            ]}
             onPress={onStart}
+            disabled={recordDisabled}
             accessibilityRole="button"
             accessibilityLabel={`Record ${reference}`}
+            accessibilityState={{ disabled: recordDisabled }}
             testID="record-start-button"
           >
             <CircleDot
@@ -251,10 +259,15 @@ export function RecordingControls({
           </View>
           <View style={styles.reviewActions}>
             <TouchableOpacity
-              style={styles.reRecordButton}
+              style={[
+                styles.reRecordButton,
+                recordDisabled && styles.recordButtonDisabled,
+              ]}
               onPress={onReRecord}
+              disabled={recordDisabled}
               accessibilityRole="button"
               accessibilityLabel="Re-record draft"
+              accessibilityState={{ disabled: recordDisabled }}
               testID="record-rerecord-button"
             >
               <RefreshCw
@@ -301,6 +314,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.recordAccent,
+  },
+  recordButtonDisabled: {
+    opacity: 0.45,
   },
   recordButtonLabel: {
     color: theme.colors.foreground,

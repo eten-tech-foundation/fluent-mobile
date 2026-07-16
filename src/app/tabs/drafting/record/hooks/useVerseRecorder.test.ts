@@ -12,7 +12,7 @@ const mockRecorder = {
   prepareToRecordAsync: jest.fn().mockResolvedValue(undefined),
 };
 
-const mockInsertRecording = jest.fn();
+const mockUpsertRecording = jest.fn();
 const mockDeleteRecordingById = jest.fn().mockResolvedValue(undefined);
 const mockGetLatestRecordingForVerse = jest.fn().mockResolvedValue(null);
 const mockGetPausedTake = jest.fn().mockReturnValue(null);
@@ -56,13 +56,13 @@ jest.mock('expo-audio', () => ({
 }));
 
 jest.mock('../../../../../db/repository', () => ({
-  insertRecording: (input: unknown) => mockInsertRecording(input),
+  upsertLatestRecordingForUser: (input: unknown) => mockUpsertRecording(input),
   deleteRecordingById: (id: string) => mockDeleteRecordingById(id),
 }));
 
 jest.mock('../../../../../db/queries', () => ({
-  getLatestRecordingForVerse: (id: number) =>
-    mockGetLatestRecordingForVerse(id),
+  getLatestRecordingForVerse: (id: number, userId: string) =>
+    mockGetLatestRecordingForVerse(id, userId),
 }));
 
 const MOVED_KEY = 'recordings/u/p0/UNK/c000/v000/test-uuid-1.aac';
@@ -85,9 +85,10 @@ jest.mock('../../../../../services/recordingStorage', () => ({
 }));
 
 jest.mock('../../../../../services/storage', () => ({
-  getPausedTake: (id: number) => mockGetPausedTake(id),
+  getPausedTake: (userId: string, id: number) => mockGetPausedTake(userId, id),
   setPausedTake: (marker: unknown) => mockSetPausedTake(marker),
-  clearPausedTake: (id: number) => mockClearPausedTake(id),
+  clearPausedTake: (userId: string, id: number) =>
+    mockClearPausedTake(userId, id),
 }));
 
 const RESOLVE_MOCK = jest.requireMock(
@@ -132,7 +133,7 @@ describe('useVerseRecorder', () => {
     mockPlayerStatus = { playing: false, didJustFinish: false };
     mockGetLatestRecordingForVerse.mockResolvedValue(null);
     mockGetPausedTake.mockReturnValue(null);
-    mockInsertRecording.mockImplementation(async input => ({
+    mockUpsertRecording.mockImplementation(async input => ({
       id: input.id,
       bibleTextId: input.bibleTextId,
       localFilePath: input.localFilePath,
@@ -155,19 +156,43 @@ describe('useVerseRecorder', () => {
 
   it('loads the latest verse recording on mount', async () => {
     mockGetLatestRecordingForVerse.mockResolvedValueOnce(existingRecording());
-    const { result } = renderHook(() => useVerseRecorder({ bibleTextId: 42 }));
+    const { result } = renderHook(() =>
+      useVerseRecorder({ userId: 'user-9', bibleTextId: 42 }),
+    );
     await waitReady(result);
 
-    expect(mockGetLatestRecordingForVerse).toHaveBeenCalledWith(42);
+    expect(mockGetLatestRecordingForVerse).toHaveBeenCalledWith(42, 'user-9');
     expect(result.current.status).toBe(RecorderStatus.Review);
     expect(result.current.currentRecording?.id).toBe('existing');
+  });
+
+  it('scopes loadInitial to the active user for the same verse', async () => {
+    mockGetLatestRecordingForVerse.mockResolvedValueOnce(null);
+    const { result: resultA } = renderHook(() =>
+      useVerseRecorder({ userId: 'user-a', bibleTextId: 42 }),
+    );
+    await waitReady(resultA);
+    expect(mockGetLatestRecordingForVerse).toHaveBeenCalledWith(42, 'user-a');
+    expect(resultA.current.status).toBe(RecorderStatus.Idle);
+
+    mockGetLatestRecordingForVerse.mockResolvedValueOnce({
+      ...existingRecording(),
+      id: 'user-b-take',
+      userId: 'user-b',
+    });
+    const { result: resultB } = renderHook(() =>
+      useVerseRecorder({ userId: 'user-b', bibleTextId: 42 }),
+    );
+    await waitReady(resultB);
+    expect(mockGetLatestRecordingForVerse).toHaveBeenCalledWith(42, 'user-b');
+    expect(resultB.current.currentRecording?.id).toBe('user-b-take');
   });
 
   it('persists the paused marker keyed by bibleTextId', async () => {
     jest.useFakeTimers();
     try {
       const { result } = renderHook(() =>
-        useVerseRecorder({ bibleTextId: 42 }),
+        useVerseRecorder({ userId: 'user-9', bibleTextId: 42 }),
       );
       await waitReady(result);
 
@@ -183,6 +208,7 @@ describe('useVerseRecorder', () => {
 
       expect(mockSetPausedTake).toHaveBeenCalledWith(
         expect.objectContaining({
+          userId: 'user-9',
           bibleTextId: 42,
           segments: ['file:///tmp/take-1.aac'],
           elapsedMs: 2500,
@@ -199,6 +225,7 @@ describe('useVerseRecorder', () => {
     try {
       const { result } = renderHook(() =>
         useVerseRecorder({
+          userId: 'user-9',
           bibleTextId: 42,
           chapterAssignmentId: 88,
           verseNumber: 5,
@@ -233,8 +260,8 @@ describe('useVerseRecorder', () => {
     try {
       const { result } = renderHook(() =>
         useVerseRecorder({
+          userId: 'user-9',
           bibleTextId: 42,
-          userId: 'user-7',
           projectId: 55,
           chapterAssignmentId: 88,
           bookCode: 'MRK',
@@ -259,7 +286,7 @@ describe('useVerseRecorder', () => {
 
       expect(mockBuildRecordingKey).toHaveBeenCalledWith(
         expect.objectContaining({
-          userId: 'user-7',
+          userId: 'user-9',
           projectId: 55,
           bookCode: 'MRK',
           chapterNumber: 14,
@@ -267,17 +294,18 @@ describe('useVerseRecorder', () => {
           recordingId: 'test-uuid-1',
         }),
       );
-      expect(mockInsertRecording).toHaveBeenCalledWith(
+      expect(mockUpsertRecording).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 'test-uuid-1',
           bibleTextId: 42,
+          userId: 'user-9',
           chapterAssignmentId: 88,
           localFilePath: MOVED_KEY,
           durationMs: 3210,
           fileSizeBytes: 1234,
         }),
       );
-      expect(mockClearPausedTake).toHaveBeenCalledWith(42);
+      expect(mockClearPausedTake).toHaveBeenCalledWith('user-9', 42);
       expect(result.current.status).toBe(RecorderStatus.Review);
     } finally {
       jest.useRealTimers();
@@ -289,7 +317,7 @@ describe('useVerseRecorder', () => {
     try {
       // Default probe mock resolves 0 (unreadable/malformed file).
       const { result } = renderHook(() =>
-        useVerseRecorder({ bibleTextId: 42 }),
+        useVerseRecorder({ userId: 'user-9', bibleTextId: 42 }),
       );
       await waitReady(result);
 
@@ -303,7 +331,7 @@ describe('useVerseRecorder', () => {
         await result.current.stop();
       });
 
-      expect(mockInsertRecording).toHaveBeenCalledWith(
+      expect(mockUpsertRecording).toHaveBeenCalledWith(
         expect.objectContaining({ durationMs: 4000 }),
       );
     } finally {
@@ -311,12 +339,12 @@ describe('useVerseRecorder', () => {
     }
   });
 
-  it('removes the durable file when insertRecording fails after moveIntoStore', async () => {
+  it('removes the durable file when upsertLatestRecordingForUser fails after moveIntoStore', async () => {
     jest.useFakeTimers();
     try {
-      mockInsertRecording.mockRejectedValueOnce(new Error('db write failed'));
+      mockUpsertRecording.mockRejectedValueOnce(new Error('db write failed'));
       const { result } = renderHook(() =>
-        useVerseRecorder({ bibleTextId: 42 }),
+        useVerseRecorder({ userId: 'user-9', bibleTextId: 42 }),
       );
       await waitReady(result);
 
@@ -342,6 +370,7 @@ describe('useVerseRecorder', () => {
     jest.useFakeTimers();
     try {
       mockGetPausedTake.mockReturnValue({
+        userId: 'user-9',
         bibleTextId: 42,
         segments: ['file:///docs/seg-0.aac'],
         elapsedMs: 4500,
@@ -354,7 +383,7 @@ describe('useVerseRecorder', () => {
       AAC_DURATION_MOCK.mockResolvedValueOnce(6100);
 
       const { result } = renderHook(() =>
-        useVerseRecorder({ bibleTextId: 42 }),
+        useVerseRecorder({ userId: 'user-9', bibleTextId: 42 }),
       );
       await waitReady(result);
       expect(result.current.status).toBe(RecorderStatus.Paused);
@@ -384,7 +413,7 @@ describe('useVerseRecorder', () => {
       expect(mockDeleteRecordingFile).toHaveBeenCalledWith(
         'file:///docs/seg-1.aac',
       );
-      expect(mockInsertRecording).toHaveBeenCalledWith(
+      expect(mockUpsertRecording).toHaveBeenCalledWith(
         expect.objectContaining({ localFilePath: MOVED_KEY, durationMs: 6100 }),
       );
       expect(result.current.status).toBe(RecorderStatus.Review);
@@ -395,7 +424,9 @@ describe('useVerseRecorder', () => {
 
   it('deletes the current take via the repository', async () => {
     mockGetLatestRecordingForVerse.mockResolvedValueOnce(existingRecording());
-    const { result } = renderHook(() => useVerseRecorder({ bibleTextId: 42 }));
+    const { result } = renderHook(() =>
+      useVerseRecorder({ userId: 'user-9', bibleTextId: 42 }),
+    );
     await waitReady(result);
 
     await act(async () => {
@@ -419,7 +450,9 @@ describe('useVerseRecorder', () => {
       sessionToken: 'stale-token',
     });
 
-    const { result } = renderHook(() => useVerseRecorder({ bibleTextId: 42 }));
+    const { result } = renderHook(() =>
+      useVerseRecorder({ userId: 'user-9', bibleTextId: 42 }),
+    );
     await waitReady(result);
     expect(result.current.status).toBe(RecorderStatus.Paused);
     // A rehydrated take is now resumable and flagged as recovered.
@@ -436,13 +469,15 @@ describe('useVerseRecorder', () => {
     expect(mockDeleteRecordingFile).toHaveBeenCalledWith(
       'file:///docs/partial-take-1.aac',
     );
-    expect(mockClearPausedTake).toHaveBeenCalledWith(42);
+    expect(mockClearPausedTake).toHaveBeenCalledWith('user-9', 42);
     expect(result.current.status).toBe(RecorderStatus.Idle);
   });
 
   it('resolves the stored key to an absolute uri for playback', async () => {
     mockGetLatestRecordingForVerse.mockResolvedValueOnce(existingRecording());
-    const { result } = renderHook(() => useVerseRecorder({ bibleTextId: 42 }));
+    const { result } = renderHook(() =>
+      useVerseRecorder({ userId: 'user-9', bibleTextId: 42 }),
+    );
     await waitReady(result);
     expect(result.current.status).toBe(RecorderStatus.Review);
 

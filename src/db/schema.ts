@@ -80,7 +80,8 @@ export const createTableQueries: string[] = [
   `CREATE TABLE IF NOT EXISTS recordings (
       id                    TEXT PRIMARY KEY,
       bible_text_id         INTEGER NOT NULL REFERENCES bible_texts(id),
-      user_id               TEXT,
+      user_id               TEXT NOT NULL,
+      project_unit_id       INTEGER,
       chapter_assignment_id INTEGER,
       local_file_path       TEXT NOT NULL,
       blob_key              TEXT,
@@ -94,8 +95,11 @@ export const createTableQueries: string[] = [
       updated_at            TEXT NOT NULL
     );`,
 
-  `CREATE INDEX IF NOT EXISTS idx_rec_verse      ON recordings(bible_text_id, is_latest);`,
-  `CREATE INDEX IF NOT EXISTS idx_rec_pending    ON recordings(sync_status) WHERE sync_status != 'uploaded';`,
+  // One latest draft per verse per user on a shared-device multi-account DB (#87/#105).
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_rec_verse_user
+      ON recordings(bible_text_id, user_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_rec_pending
+      ON recordings(sync_status) WHERE sync_status != 'uploaded';`,
 
   `CREATE TABLE IF NOT EXISTS user_projects (
   user_id    INTEGER NOT NULL,
@@ -117,4 +121,5 @@ export const chapterAssignmentMigrations: string[] = [
 export const recordingMigrations: string[] = [
   `ALTER TABLE recordings ADD COLUMN user_id TEXT`,
   `ALTER TABLE recordings ADD COLUMN chapter_assignment_id INTEGER`,
+  `ALTER TABLE recordings ADD COLUMN project_unit_id INTEGER`,
 ];

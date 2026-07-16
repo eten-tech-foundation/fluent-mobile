@@ -1,4 +1,4 @@
-import { VerseData } from '../../types/db/types';
+import { ChapterAssignmentData, VerseData } from '../../types/db/types';
 import React, { createContext, useContext, useMemo, useState } from 'react';
 
 interface DraftingContextValue {
@@ -6,6 +6,9 @@ interface DraftingContextValue {
 
   setSelectedVerse: (verseNumber: number) => void;
   verses: VerseData[];
+  chapterAssignment: ChapterAssignmentData;
+  /** Book name for verse references (falls back to route chapter name). */
+  bookDisplayName: string;
   /**
    * The verse whose source audio is currently playing, tracked
    * independently of `selectedVerse`. Not wired to real audio yet —
@@ -24,12 +27,16 @@ interface DraftingProviderProps {
   children: React.ReactNode;
   verses: VerseData[];
   initialVerse: number;
+  chapterAssignment: ChapterAssignmentData;
+  bookDisplayName: string;
 }
 
 export function DraftingProvider({
   children,
   verses,
   initialVerse,
+  chapterAssignment,
+  bookDisplayName,
 }: DraftingProviderProps) {
   const [selectedVerse, setSelectedVerse] = useState<number>(initialVerse);
   const [currentlyPlayingVerse, setCurrentlyPlayingVerse] = useState<
@@ -51,12 +58,16 @@ export function DraftingProvider({
       selectedVerse,
       setSelectedVerse,
       verses,
+      chapterAssignment,
+      bookDisplayName,
       currentlyPlayingVerse,
       setCurrentlyPlayingVerse,
     }),
     [
       selectedVerse,
       verses,
+      chapterAssignment,
+      bookDisplayName,
       currentlyPlayingVerse,
       setSelectedVerse,
       setCurrentlyPlayingVerse,

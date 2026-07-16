@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getPendingUploadCount } from '../db/queries';
+import { getActiveUserId } from '../services/storage';
 import { logger } from '../utils/logger';
 
 const log = logger.create('usePendingUploads');
@@ -10,7 +11,7 @@ export function usePendingUploads(refreshKey = 0) {
   useEffect(() => {
     let cancelled = false;
 
-    getPendingUploadCount()
+    getPendingUploadCount(getActiveUserId())
       .then(count => {
         if (!cancelled) {
           setPendingCount(count);

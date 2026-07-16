@@ -74,6 +74,7 @@ export function RecordTab({ tabSwitchGuardRef }: RecordTabProps = {}) {
       onSelectVerse={setSelectedVerse}
       userId={userId}
       projectId={projectId}
+      projectUnitId={chapterAssignment.projectUnitId}
       chapterAssignmentId={chapterAssignment.id}
       bookCode={chapterAssignment.bookCode ?? null}
       tabSwitchGuardRef={tabSwitchGuardRef}

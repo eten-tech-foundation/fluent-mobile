@@ -1,7 +1,6 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import {
-  act,
   fireEvent,
   render,
   screen,
@@ -84,6 +83,7 @@ function renderTab(
       selectedVerseNumber={overrides.selectedVerseNumber ?? 3}
       bibleTextIdForSelectedVerse={42}
       onSelectVerse={jest.fn()}
+      userId="user-9"
       {...overrides}
     />,
   );
@@ -94,28 +94,28 @@ describe('RecordTab', () => {
     jest.clearAllMocks();
   });
 
-  it('defers the record UI until the recorder is ready to avoid a flash', () => {
-    jest.useFakeTimers();
-    try {
-      mockUseVerseRecorder.mockReturnValue({
-        ...baseRecorderState(),
-        isReady: false,
-      });
-      renderTab();
+  it('shows a loading placeholder until the recorder is ready', () => {
+    mockUseVerseRecorder.mockReturnValue({
+      ...baseRecorderState(),
+      isReady: false,
+    });
+    renderTab();
 
-      expect(screen.getByTestId('record-loading')).toBeTruthy();
-      expect(screen.queryByTestId('record-start-button')).toBeNull();
-      expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
-        'Mark 14:3',
-      );
+    expect(screen.getByTestId('record-loading')).toBeTruthy();
+    expect(screen.queryByTestId('record-start-button')).toBeNull();
+    expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+      'Mark 14:3',
+    );
+  });
 
-      act(() => {
-        jest.advanceTimersByTime(100);
-      });
-      expect(screen.getByTestId('record-start-button')).toBeTruthy();
-    } finally {
-      jest.useRealTimers();
-    }
+  it('disables record and shows a syncing hint when bibleTextId is null', () => {
+    mockUseVerseRecorder.mockReturnValue(baseRecorderState());
+    renderTab({ bibleTextIdForSelectedVerse: null });
+
+    expect(
+      screen.getByTestId('record-start-button').props.accessibilityState,
+    ).toEqual(expect.objectContaining({ disabled: true }));
+    expect(screen.getByTestId('record-syncing-hint')).toBeTruthy();
   });
 
   it('renders the record UI immediately once the recorder is ready', () => {
@@ -161,6 +161,7 @@ describe('RecordTab', () => {
         selectedVerseNumber={3}
         bibleTextIdForSelectedVerse={42}
         onSelectVerse={jest.fn()}
+        userId="user-9"
       />,
     );
 

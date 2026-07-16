@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, StyleSheet, ToastAndroid, View } from 'react-native';
+import React, { useEffect, useMemo } from 'react';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../../../../theme';
 import type { VerseData } from '../../../../types/db/types';
@@ -16,12 +16,6 @@ import { RecorderStatus } from '../../../../types/recording/types';
 
 const log = logger.create('RecordTab');
 
-// Hold the record/review UI back for a short beat on mount and verse switches.
-// The recording state is loaded from the local DB (a few ms), so deferring the
-// first paint lets it resolve first — the UI settles straight into the correct
-// state instead of flashing "idle" and then snapping to "review".
-const PRESENTATION_DEFER_MS = 100;
-
 interface RecordTabProps {
   bookName: string;
   chapterNumber: number;
@@ -29,8 +23,9 @@ interface RecordTabProps {
   selectedVerseNumber: number;
   bibleTextIdForSelectedVerse: number | null;
   onSelectVerse: (verseNumber: number) => void;
-  userId?: string;
+  userId: string;
   projectId?: number | null;
+  projectUnitId?: number | null;
   chapterAssignmentId?: number | null;
   bookCode?: string | null;
   tabSwitchGuardRef?: TabSwitchGuardRef;
@@ -45,6 +40,7 @@ export function RecordTab({
   onSelectVerse,
   userId,
   projectId,
+  projectUnitId,
   chapterAssignmentId,
   bookCode,
   tabSwitchGuardRef,
@@ -54,12 +50,12 @@ export function RecordTab({
     bibleTextId: bibleTextIdForSelectedVerse,
     userId,
     projectId,
+    projectUnitId,
     chapterAssignmentId,
     bookCode,
     chapterNumber,
     verseNumber: selectedVerseNumber,
   });
-  const [deferElapsed, setDeferElapsed] = useState(false);
 
   const { withPausedGuard, withTabSwitchGuard, ensureMicPermission } =
     useRecordTabGuards({
@@ -80,20 +76,6 @@ export function RecordTab({
     };
   }, [tabSwitchGuardRef, withTabSwitchGuard]);
 
-  // Present as soon as the recorder has loaded its state, but cap the wait at
-  // PRESENTATION_DEFER_MS so a slow/stalled load still surfaces the UI.
-  const showContent = recorder.isReady || deferElapsed;
-
-  useEffect(() => {
-    if (recorder.isReady) return;
-    setDeferElapsed(false);
-    const timer = setTimeout(
-      () => setDeferElapsed(true),
-      PRESENTATION_DEFER_MS,
-    );
-    return () => clearTimeout(timer);
-  }, [recorder.isReady]);
-
   const currentReference = verseReference(
     bookName,
     chapterNumber,
@@ -105,11 +87,11 @@ export function RecordTab({
   );
   const canGoPrev = verseIndex > 0;
   const canGoNext = verseIndex >= 0 && verseIndex < verses.length - 1;
-  // Verse navigation is locked mid-recording so the take stays anchored to
-  // the verse the user started on. Paused/idle/review keep their own guards.
   const isRecordingLocked = recorder.status === RecorderStatus.Recording;
   const prevDisabled = !canGoPrev || isRecordingLocked;
   const nextDisabled = !canGoNext || isRecordingLocked;
+  const canRecord =
+    bibleTextIdForSelectedVerse !== null && Boolean(userId) && recorder.isReady;
 
   const sourceText = useMemo(
     () => verses.find(v => v.verseNumber === selectedVerseNumber)?.text ?? '',
@@ -129,22 +111,13 @@ export function RecordTab({
   }
 
   async function handleStartPress() {
-    // TEMP: the source verse row hasn't resolved a bible_text id (sync gap /
-    // unstable backend contract), which leaves the recorder inert and the record
-    // button silently dead. Surface it until the team settles the session-key /
-    // bible_text_id approach once sync is stable.
-    if (bibleTextIdForSelectedVerse === null) {
-      ToastAndroid.show(
-        'No bible text id for this verse yet.',
-        ToastAndroid.SHORT,
-      );
-      return;
-    }
+    if (!canRecord) return;
     if (!(await ensureMicPermission())) return;
     await recorder.start();
   }
 
   async function handleReRecordPress() {
+    if (!canRecord) return;
     if (!(await ensureMicPermission())) return;
     await recorder.reRecord();
   }
@@ -220,8 +193,8 @@ export function RecordTab({
         onNext={handleNext}
       />
 
-      {!showContent ? (
-        <View style={styles.deferPlaceholder} testID="record-loading" />
+      {!recorder.isReady ? (
+        <View style={styles.loadingPlaceholder} testID="record-loading" />
       ) : (
         <>
           <RecordingWaveform
@@ -235,6 +208,7 @@ export function RecordTab({
             isPlaying={recorder.playback.isPlaying}
             canResume={recorder.canResume}
             isRecovered={recorder.isRecovered}
+            recordDisabled={!canRecord}
             onStart={handleStartPress}
             onPause={handlePausePress}
             onResume={handleResumePress}
@@ -244,6 +218,12 @@ export function RecordTab({
             onReRecord={handleReRecordPress}
             onDelete={handleDeletePress}
           />
+          {bibleTextIdForSelectedVerse === null ? (
+            <Text style={styles.syncHint} testID="record-syncing-hint">
+              Source text is still syncing for this verse. Recording will unlock
+              when it is ready.
+            </Text>
+          ) : null}
         </>
       )}
 
@@ -258,9 +238,12 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     gap: theme.spacing.lg,
   },
-  // Reserves roughly the waveform + controls height so deferring the first
-  // paint does not shift the surrounding layout when the real UI appears.
-  deferPlaceholder: {
+  loadingPlaceholder: {
     minHeight: 232,
+  },
+  syncHint: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.mutedForeground,
+    textAlign: 'center',
   },
 });

@@ -33,6 +33,7 @@ import {
   getChapterAssignmentById,
   getRecordedVerseNumbers,
 } from '../../db/queries';
+import { getActiveUserId } from '../../services/storage';
 
 const log = logger.create('DraftingScreen');
 
@@ -137,6 +138,7 @@ export default function DraftingScreen() {
 
         setChapterData(assignment);
 
+        const activeUserId = getActiveUserId();
         const [texts, recordedVerseNumbers] = await Promise.all([
           getBibleTexts(
             assignment.bibleId,
@@ -147,6 +149,7 @@ export default function DraftingScreen() {
             assignment.bibleId,
             assignment.bookId,
             assignment.chapterNumber,
+            activeUserId,
           ),
         ]);
 
@@ -202,9 +205,16 @@ export default function DraftingScreen() {
     );
   }
 
+  const bookDisplayName = chapterData.bookName ?? chapterName;
+
   return (
     <ScreenContainer>
-      <DraftingProvider verses={verses} initialVerse={initialVerse}>
+      <DraftingProvider
+        verses={verses}
+        initialVerse={initialVerse}
+        chapterAssignment={chapterData}
+        bookDisplayName={bookDisplayName}
+      >
         <View style={styles.screen}>
           {renderHeader()}
 

@@ -463,12 +463,14 @@ export async function userHasLocalProjects(userId: number): Promise<boolean> {
   return Number(result.rows?.[0]?.count ?? 0) > 0;
 }
 
-export interface InsertRecordingInput {
+export interface UpsertLatestRecordingInput {
   id: string;
   bibleTextId: number;
+  /** Active account id at capture time (#87/#105). Required. */
+  userId: string;
   /** Relative storage key (see `services/recordingStorage`), not an absolute path. */
   localFilePath: string;
-  userId?: string | null;
+  projectUnitId?: number | null;
   chapterAssignmentId?: number | null;
   durationMs?: number | null;
   fileSizeBytes?: number | null;
@@ -476,54 +478,67 @@ export interface InsertRecordingInput {
   createdAt?: string;
 }
 
-interface MaxTakeRow {
-  max_take: number | null;
+/**
+ * Replaces this user's latest draft for a verse (one row per
+ * `(bible_text_id, user_id)`). Other users' local takes for the same verse are
+ * left untouched. Upload is deferred to a future ticket.
+ *
+ * @deprecated Prefer {@link upsertLatestRecordingForUser}. Kept as an alias
+ * during the #49 rewrite so call sites can migrate.
+ */
+export async function insertRecording(
+  input: UpsertLatestRecordingInput,
+): Promise<DBTypes.Recording> {
+  return upsertLatestRecordingForUser(input);
 }
 
 /**
- * Inserts a new recording as the latest take for a verse, demoting any prior
- * `is_latest = 1` rows. Wrapped in a transaction so callers observe the row
- * count atomically; upload is deferred to a future ticket.
+ * Upserts the active user's one latest recording for a verse: deletes that
+ * user's prior row (and unlinks its file), then inserts the new take.
  */
-export async function insertRecording(
-  input: InsertRecordingInput,
+export async function upsertLatestRecordingForUser(
+  input: UpsertLatestRecordingInput,
 ): Promise<DBTypes.Recording> {
+  if (!input.userId) {
+    throw new Error('upsertLatestRecordingForUser requires a non-empty userId');
+  }
+
   const db = getDatabase();
   const now = input.createdAt ?? new Date().toISOString();
   const syncStatus = input.syncStatus ?? 'pending';
-
-  let takeNumber = 1;
+  const priorPaths: string[] = [];
 
   await db.transaction(async (tx: Transaction) => {
-    const takeResult = await tx.execute(
-      `SELECT COALESCE(MAX(take_number), 0) AS max_take
-         FROM recordings WHERE bible_text_id = ?`,
-      [input.bibleTextId],
+    const prior = await tx.execute(
+      `SELECT local_file_path FROM recordings
+         WHERE bible_text_id = ? AND user_id = ?`,
+      [input.bibleTextId, input.userId],
     );
-    const rows = takeResult.rows as unknown as MaxTakeRow[];
-    takeNumber = (rows?.[0]?.max_take ?? 0) + 1;
+    const rows = prior.rows as unknown as { local_file_path: string }[];
+    for (const row of rows ?? []) {
+      if (row.local_file_path) priorPaths.push(row.local_file_path);
+    }
 
     await tx.execute(
-      `UPDATE recordings SET is_latest = 0, updated_at = ?
-         WHERE bible_text_id = ? AND is_latest = 1`,
-      [now, input.bibleTextId],
+      `DELETE FROM recordings WHERE bible_text_id = ? AND user_id = ?`,
+      [input.bibleTextId, input.userId],
     );
 
     await tx.execute(
       `INSERT INTO recordings
-        (id, bible_text_id, user_id, chapter_assignment_id, local_file_path,
-         duration_ms, file_size_bytes, take_number, is_latest, sync_status,
-         created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+        (id, bible_text_id, user_id, project_unit_id, chapter_assignment_id,
+         local_file_path, duration_ms, file_size_bytes, take_number, is_latest,
+         sync_status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1, ?, ?, ?)`,
       [
         input.id,
         input.bibleTextId,
-        input.userId ?? null,
+        input.userId,
+        input.projectUnitId ?? null,
         input.chapterAssignmentId ?? null,
         input.localFilePath,
         input.durationMs ?? null,
         input.fileSizeBytes ?? null,
-        takeNumber,
         syncStatus,
         now,
         now,
@@ -531,21 +546,26 @@ export async function insertRecording(
     );
   });
 
-  log.info('Recording inserted', {
+  for (const path of priorPaths) {
+    if (path !== input.localFilePath) deleteRecordingFile(path);
+  }
+
+  log.info('Recording upserted for user', {
     id: input.id,
     bibleTextId: input.bibleTextId,
-    takeNumber,
+    userId: input.userId,
   });
 
   return {
     id: input.id,
     bibleTextId: input.bibleTextId,
-    userId: input.userId ?? null,
+    userId: input.userId,
+    projectUnitId: input.projectUnitId ?? null,
     chapterAssignmentId: input.chapterAssignmentId ?? null,
     localFilePath: input.localFilePath,
     durationMs: input.durationMs ?? null,
     fileSizeBytes: input.fileSizeBytes ?? null,
-    takeNumber,
+    takeNumber: 1,
     isLatest: true,
     syncStatus,
     createdAt: now,

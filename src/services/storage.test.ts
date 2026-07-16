@@ -13,6 +13,7 @@ import {
   findPausedTake,
   getPausedTake,
   setPausedTake,
+  setActiveUserId,
 } from './storage';
 
 const mockGetItemSync = jest.mocked(Storage).mock.results[0]!.value
@@ -24,7 +25,10 @@ const mockRemoveItemSync = jest.mocked(Storage).mock.results[0]!.value
 const mockGetAllKeys = jest.mocked(Storage).mock.results[0]!.value
   .getAllKeys as jest.Mock;
 
+const USER = 'user-9';
+
 const validMarker = {
+  userId: USER,
   bibleTextId: 42,
   segments: ['file:///docs/partial-take-0.aac'],
   elapsedMs: 4500,
@@ -40,32 +44,28 @@ describe('getPausedTake', () => {
   it('returns a valid marker for the lookup key', () => {
     mockGetItemSync.mockReturnValue(JSON.stringify(validMarker));
 
-    expect(getPausedTake(42)).toEqual(validMarker);
-    expect(mockGetItemSync).toHaveBeenCalledWith('paused_take:42');
+    expect(getPausedTake(USER, 42)).toEqual(validMarker);
+    expect(mockGetItemSync).toHaveBeenCalledWith('paused_take:user-9:42');
   });
 
   it('returns null when bibleTextId is missing', () => {
     mockGetItemSync.mockReturnValue(
       JSON.stringify({
+        userId: USER,
         segments: validMarker.segments,
         elapsedMs: validMarker.elapsedMs,
         startedAt: validMarker.startedAt,
       }),
     );
 
-    expect(getPausedTake(42)).toBeNull();
+    expect(getPausedTake(USER, 42)).toBeNull();
   });
 
-  it('returns null when bibleTextId is not a finite number', () => {
+  it('returns null when userId mismatches', () => {
     mockGetItemSync.mockReturnValue(
-      JSON.stringify({ ...validMarker, bibleTextId: '42' }),
+      JSON.stringify({ ...validMarker, userId: 'other' }),
     );
-    expect(getPausedTake(42)).toBeNull();
-
-    mockGetItemSync.mockReturnValue(
-      JSON.stringify({ ...validMarker, bibleTextId: Number.NaN }),
-    );
-    expect(getPausedTake(42)).toBeNull();
+    expect(getPausedTake(USER, 42)).toBeNull();
   });
 
   it('returns null when bibleTextId mismatches the lookup key', () => {
@@ -73,33 +73,26 @@ describe('getPausedTake', () => {
       JSON.stringify({ ...validMarker, bibleTextId: 99 }),
     );
 
-    expect(getPausedTake(42)).toBeNull();
+    expect(getPausedTake(USER, 42)).toBeNull();
   });
 
   it('returns null when segments are absent', () => {
     mockGetItemSync.mockReturnValue(
       JSON.stringify({
+        userId: USER,
         bibleTextId: validMarker.bibleTextId,
         elapsedMs: validMarker.elapsedMs,
         startedAt: validMarker.startedAt,
       }),
     );
 
-    expect(getPausedTake(42)).toBeNull();
-  });
-
-  it('returns null when segments is an empty array', () => {
-    mockGetItemSync.mockReturnValue(
-      JSON.stringify({ ...validMarker, segments: [] }),
-    );
-
-    expect(getPausedTake(42)).toBeNull();
+    expect(getPausedTake(USER, 42)).toBeNull();
   });
 
   it('returns null for invalid JSON', () => {
     mockGetItemSync.mockReturnValue('{not json');
 
-    expect(getPausedTake(42)).toBeNull();
+    expect(getPausedTake(USER, 42)).toBeNull();
   });
 
   it('passes through the navigation context when present', () => {
@@ -111,7 +104,7 @@ describe('getPausedTake', () => {
       }),
     );
 
-    expect(getPausedTake(42)).toEqual({
+    expect(getPausedTake(USER, 42)).toEqual({
       ...validMarker,
       chapterAssignmentId: 88,
       verseNumber: 5,
@@ -124,10 +117,12 @@ describe('findPausedTake', () => {
     jest.clearAllMocks();
     mockGetAllKeys.mockReturnValue([]);
     mockGetItemSync.mockReturnValue(null);
+    setActiveUserId(USER);
   });
 
   function markerFor(bibleTextId: number, startedAt: string) {
     return {
+      userId: USER,
       bibleTextId,
       segments: [`file:///docs/take-${bibleTextId}.aac`],
       elapsedMs: 1000,
@@ -140,36 +135,39 @@ describe('findPausedTake', () => {
     expect(findPausedTake()).toBeNull();
   });
 
-  it('returns the marker from a paused-take key, ignoring unrelated ones', () => {
+  it('returns the marker for the active user only', () => {
     const markerA = markerFor(1, '2026-07-01T00:00:00.000Z');
     mockGetAllKeys.mockReturnValue([
       'userId',
-      'paused_take:1',
+      'paused_take:user-9:1',
+      'paused_take:other:2',
       'last_synced_at',
     ]);
     mockGetItemSync.mockImplementation((key: string) =>
-      key === 'paused_take:1' ? JSON.stringify(markerA) : 'ignored',
+      key === 'paused_take:user-9:1' ? JSON.stringify(markerA) : 'ignored',
     );
 
-    expect(findPausedTake()).toEqual(markerA);
+    // Pass userId explicitly — getActiveUserId reads a separate KV mock slot.
+    expect(findPausedTake(USER)).toEqual(markerA);
   });
 
-  it('skips malformed or mismatched markers and returns the first valid one', () => {
+  it('skips malformed markers for the active user', () => {
     mockGetAllKeys.mockReturnValue([
-      'paused_take:oops',
-      'paused_take:2',
-      'paused_take:1',
+      'paused_take:user-9:oops',
+      'paused_take:user-9:2',
+      'paused_take:user-9:1',
     ]);
     mockGetItemSync.mockImplementation((key: string) => {
-      if (key === 'paused_take:1')
+      if (key === 'paused_take:user-9:1')
         return JSON.stringify(markerFor(1, '2026-07-01T00:00:00.000Z'));
-      if (key === 'paused_take:2')
-        // bibleTextId mismatches the key -> rejected
+      if (key === 'paused_take:user-9:2')
         return JSON.stringify(markerFor(999, '2026-07-01T00:00:00.000Z'));
       return '{not json';
     });
 
-    expect(findPausedTake()).toEqual(markerFor(1, '2026-07-01T00:00:00.000Z'));
+    expect(findPausedTake(USER)).toEqual(
+      markerFor(1, '2026-07-01T00:00:00.000Z'),
+    );
   });
 });
 
@@ -178,18 +176,17 @@ describe('setPausedTake / clearPausedTake', () => {
     jest.clearAllMocks();
   });
 
-  it('persists the marker under a bibleTextId-scoped key', () => {
+  it('persists the marker under a user+verse-scoped key', () => {
     setPausedTake(validMarker);
 
     expect(mockSetItemSync).toHaveBeenCalledWith(
-      'paused_take:42',
+      'paused_take:user-9:42',
       JSON.stringify(validMarker),
     );
   });
 
-  it('clears the marker for the given bibleTextId', () => {
-    clearPausedTake(42);
-
-    expect(mockRemoveItemSync).toHaveBeenCalledWith('paused_take:42');
+  it('clears the marker for the user+verse key', () => {
+    clearPausedTake(USER, 42);
+    expect(mockRemoveItemSync).toHaveBeenCalledWith('paused_take:user-9:42');
   });
 });

@@ -12,7 +12,8 @@ const mockFindPausedTake = jest.fn();
 const mockClearPausedTake = jest.fn();
 jest.mock('../../../services/storage', () => ({
   findPausedTake: () => mockFindPausedTake(),
-  clearPausedTake: (id: number) => mockClearPausedTake(id),
+  clearPausedTake: (userId: string, id: number) =>
+    mockClearPausedTake(userId, id),
 }));
 
 const mockGetNav = jest.fn();
@@ -32,6 +33,7 @@ jest.mock('../../../utils/draftingTabState', () => ({
 }));
 
 const marker = {
+  userId: 'user-9',
   bibleTextId: 42,
   segments: ['file:///docs/seg-0.aac', 'file:///docs/seg-1.aac'],
   elapsedMs: 4500,
@@ -119,7 +121,7 @@ describe('useRecordingRecovery', () => {
     expect(mockDeleteRecordingFile).toHaveBeenCalledWith(
       'file:///docs/seg-1.aac',
     );
-    expect(mockClearPausedTake).toHaveBeenCalledWith(42);
+    expect(mockClearPausedTake).toHaveBeenCalledWith('user-9', 42);
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
