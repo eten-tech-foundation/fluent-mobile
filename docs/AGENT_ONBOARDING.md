@@ -32,7 +32,7 @@ Quick map for Cursor agents, other coding tools, and new contributors. Verified 
 | Path | Purpose |
 |------|---------|
 | [`App.tsx`](../App.tsx) | Root: DB init + initial `syncAllData`, then navigator |
-| [`src/app/tabs/`](../src/app/tabs/) | Screens: `ProjectList`, `ViewProject`, `drafting/DraftingPage` (parent shell stub for #47) with `RecordTab` (#49) |
+| [`src/app/tabs/`](../src/app/tabs/) | Screens: `ProjectList`, `ViewProject`, `DraftingScreen` + `RecordTab` (#49) |
 | [`src/navigation/`](../src/navigation/) | Stack navigator |
 | [`src/services/api.ts`](../src/services/api.ts) | HTTP client (`FluentAPI`) — see [api-client-standard.md](guides/api-client-standard.md) |
 | [`src/services/sync.ts`](../src/services/sync.ts) | Sync orchestration, retries, KV counts |

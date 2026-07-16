@@ -11,7 +11,7 @@ Offline-first **Expo SDK 56** (React Native **0.85**, React **19.2.3**) companio
 
 - Entry: `App.tsx` → `initializeDatabase()` → `syncAllData()` → `AppNavigator`
 - App config: `app.config.ts` (EAS project ID, plugins, package id)
-- Screens: `src/app/tabs/` (`ProjectList`, `ViewProject`, `drafting/DraftingPage` + `RecordTab`)
+- Screens: `src/app/tabs/` (`ProjectList`, `ViewProject`, `DraftingScreen` / `RecordTab`)
 - API: `src/services/api.ts` (`FluentAPI`)
 - Sync: `src/services/sync.ts`
 - DB writes: `src/db/repository.ts` | reads: `src/db/queries.ts`

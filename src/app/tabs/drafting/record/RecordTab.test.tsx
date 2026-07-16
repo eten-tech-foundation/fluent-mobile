@@ -40,10 +40,7 @@ function baseRecorderState() {
     canResume: true,
     playback: {
       isPlaying: false,
-      positionMs: 0,
-      durationMs: 0,
       toggle: jest.fn().mockResolvedValue(undefined),
-      seek: jest.fn().mockResolvedValue(undefined),
       stop: jest.fn(),
     },
     requestPermission: jest
@@ -84,6 +81,7 @@ function renderTab(
       bibleTextIdForSelectedVerse={42}
       onSelectVerse={jest.fn()}
       userId="user-9"
+      projectId={55}
       {...overrides}
     />,
   );
@@ -116,6 +114,16 @@ describe('RecordTab', () => {
       screen.getByTestId('record-start-button').props.accessibilityState,
     ).toEqual(expect.objectContaining({ disabled: true }));
     expect(screen.getByTestId('record-syncing-hint')).toBeTruthy();
+  });
+
+  it('disables record until projectId is resolved for durable paths', () => {
+    mockUseVerseRecorder.mockReturnValue(baseRecorderState());
+    renderTab({ projectId: null });
+
+    expect(
+      screen.getByTestId('record-start-button').props.accessibilityState,
+    ).toEqual(expect.objectContaining({ disabled: true }));
+    expect(screen.queryByTestId('record-syncing-hint')).toBeNull();
   });
 
   it('renders the record UI immediately once the recorder is ready', () => {
@@ -162,6 +170,7 @@ describe('RecordTab', () => {
         bibleTextIdForSelectedVerse={42}
         onSelectVerse={jest.fn()}
         userId="user-9"
+        projectId={55}
       />,
     );
 
@@ -243,6 +252,24 @@ describe('RecordTab', () => {
     expect(start).not.toHaveBeenCalled();
 
     alertSpy.mockRestore();
+  });
+
+  it('calls playback.toggle when the review play button is pressed', () => {
+    const togglePlayback = jest.fn().mockResolvedValue(undefined);
+    mockUseVerseRecorder.mockReturnValue({
+      ...baseRecorderState(),
+      status: RecorderStatus.Review,
+      currentRecording: reviewRecording(),
+      playback: {
+        ...baseRecorderState().playback,
+        toggle: togglePlayback,
+      },
+    });
+
+    renderTab();
+    fireEvent.press(screen.getByTestId('record-play-button'));
+
+    expect(togglePlayback).toHaveBeenCalledTimes(1);
   });
 
   it('shows a delete confirmation alert from the review controls', () => {

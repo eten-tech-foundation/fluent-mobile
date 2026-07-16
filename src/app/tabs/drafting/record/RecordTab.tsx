@@ -91,7 +91,10 @@ export function RecordTab({
   const prevDisabled = !canGoPrev || isRecordingLocked;
   const nextDisabled = !canGoNext || isRecordingLocked;
   const canRecord =
-    bibleTextIdForSelectedVerse !== null && Boolean(userId) && recorder.isReady;
+    bibleTextIdForSelectedVerse !== null &&
+    typeof projectId === 'number' &&
+    Boolean(userId) &&
+    recorder.isReady;
 
   const sourceText = useMemo(
     () => verses.find(v => v.verseNumber === selectedVerseNumber)?.text ?? '',

@@ -188,6 +188,63 @@ describe('useVerseRecorder', () => {
     expect(resultB.current.currentRecording?.id).toBe('user-b-take');
   });
 
+  it('does not upsert on pause but commits on stop', async () => {
+    jest.useFakeTimers();
+    try {
+      const { result } = renderHook(() =>
+        useVerseRecorder({ userId: 'user-9', bibleTextId: 42 }),
+      );
+      await waitReady(result);
+
+      jest.setSystemTime(new Date('2026-07-01T00:00:00.000Z'));
+      await act(async () => {
+        await result.current.start();
+      });
+
+      jest.setSystemTime(new Date('2026-07-01T00:00:02.500Z'));
+      await act(async () => {
+        await result.current.pause();
+      });
+
+      expect(mockUpsertRecording).not.toHaveBeenCalled();
+      expect(mockClearPausedTake).not.toHaveBeenCalled();
+      expect(result.current.status).toBe(RecorderStatus.Paused);
+
+      jest.setSystemTime(new Date('2026-07-01T00:00:05.000Z'));
+      await act(async () => {
+        await result.current.stop();
+      });
+
+      expect(mockUpsertRecording).toHaveBeenCalledTimes(1);
+      expect(mockClearPausedTake).toHaveBeenCalledWith('user-9', 42);
+      expect(result.current.status).toBe(RecorderStatus.Review);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('reloads a committed take into Review when the hook remounts', async () => {
+    const committed = existingRecording({ id: 'committed-take' });
+    mockGetLatestRecordingForVerse.mockResolvedValue(committed);
+
+    const { result, unmount } = renderHook(() =>
+      useVerseRecorder({ userId: 'user-9', bibleTextId: 42 }),
+    );
+    await waitReady(result);
+    expect(result.current.status).toBe(RecorderStatus.Review);
+    expect(result.current.currentRecording?.id).toBe('committed-take');
+
+    unmount();
+
+    const { result: remounted } = renderHook(() =>
+      useVerseRecorder({ userId: 'user-9', bibleTextId: 42 }),
+    );
+    await waitReady(remounted);
+    expect(mockGetLatestRecordingForVerse).toHaveBeenCalledWith(42, 'user-9');
+    expect(remounted.current.status).toBe(RecorderStatus.Review);
+    expect(remounted.current.currentRecording?.id).toBe('committed-take');
+  });
+
   it('persists the paused marker keyed by bibleTextId', async () => {
     jest.useFakeTimers();
     try {

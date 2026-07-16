@@ -50,7 +50,8 @@ export async function initializeDatabase(): Promise<void> {
       return;
     }
   } catch {
-    log.warn('Error accessing existing database, attempting to open a new one');
+    // Expected on cold start before setDatabase() — not a recoverable error.
+    log.info('No open database handle; opening fluent.db');
   }
 
   try {
