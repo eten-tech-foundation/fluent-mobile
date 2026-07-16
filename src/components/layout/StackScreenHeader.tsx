@@ -1,11 +1,13 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useHeaderSafeAreaPadding } from './useHeaderSafeAreaPadding';
 import { ChevronLeft, CloudUpload } from 'lucide-react-native';
 import { theme } from '../../theme';
 import {
@@ -17,10 +19,11 @@ import {
 
 interface StackScreenHeaderProps {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   onBack: () => void;
   onSyncPress?: () => void;
   isSyncing?: boolean;
+  subtitleLines?: number;
 }
 
 export function StackScreenHeader({
@@ -29,9 +32,16 @@ export function StackScreenHeader({
   onBack,
   onSyncPress,
   isSyncing = false,
+  subtitleLines = 1,
 }: StackScreenHeaderProps) {
+  const headerPadding = useHeaderSafeAreaPadding();
+
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, headerPadding]}>
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor={theme.colors.cardBackground}
+      />
       <TouchableOpacity
         onPress={onBack}
         hitSlop={touchHitSlop}
@@ -50,9 +60,11 @@ export function StackScreenHeader({
         <Text style={styles.title} numberOfLines={1}>
           {title}
         </Text>
-        <Text style={styles.subtitle} numberOfLines={1}>
-          {subtitle}
-        </Text>
+        {subtitle ? (
+          <Text style={styles.subtitle} numberOfLines={subtitleLines}>
+            {subtitle}
+          </Text>
+        ) : null}
       </View>
 
       {onSyncPress ? (
@@ -90,7 +102,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: theme.spacing.md,
     paddingHorizontal: headerLayout.paddingHorizontal,
-    paddingVertical: headerLayout.paddingVertical,
     backgroundColor: theme.colors.cardBackground,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,

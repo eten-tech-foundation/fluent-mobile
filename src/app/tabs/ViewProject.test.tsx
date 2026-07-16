@@ -61,6 +61,10 @@ jest.mock('../../components/layout/ScreenContainer', () => ({
   ScreenContainer: ({ children }: { children: React.ReactNode }) => children,
 }));
 
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+
 const { useProjectChapters } = jest.requireMock(
   '../../hooks/useProjectChapters',
 ) as {

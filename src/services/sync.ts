@@ -13,6 +13,7 @@ import {
   ensureUserProjectMembership,
   userHasLocalProjects,
   userHasLocalChapterAssignments,
+  userNeedsAssigneeRepair,
 } from '../db/repository';
 import { logger } from '../utils/logger';
 import { getDatabase } from '../db/db';
@@ -268,31 +269,58 @@ export async function syncChapterAssignments(
   );
 }
 
+async function syncUserChapterWork(userId: number) {
+  return retrySyncStep(
+    'User chapter work sync',
+    KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS,
+    async () => {
+      const response = await FluentAPI.getUserChapterAssignments(userId);
+      const assigned = response.assignedChapters ?? [];
+      const peerCheck = response.peerCheckChapters ?? [];
+      const mapped = [...assigned, ...peerCheck].map(mapApiChapterAssignment);
+
+      if (mapped.length > 0) {
+        await insertChapterAssignmentSyncData(mapped);
+      }
+    },
+    String(userId),
+  );
+}
+
 async function syncChapterAssignmentsForUser(
   userId: number,
   updatedAfter?: string,
 ): Promise<{ didFullSync: boolean }> {
   const userIdStr = String(userId);
 
+  const runFullProjectAssignments = async () => {
+    await syncChapterAssignments(userId);
+    await syncUserChapterWork(userId);
+  };
+
   if (!getUserLastSyncedAt(userIdStr)) {
     log.info(
       'Forcing full chapter assignment sync — user has no per-user sync cursor',
       { userId },
     );
-    await syncChapterAssignments(userId);
+    await runFullProjectAssignments();
     return { didFullSync: true };
   }
 
-  if (updatedAfter && !(await userHasLocalChapterAssignments(userId))) {
+  if (
+    (updatedAfter && !(await userHasLocalChapterAssignments(userId))) ||
+    (await userNeedsAssigneeRepair(userId))
+  ) {
     log.info(
-      'Forcing full chapter assignment sync — local assignments empty despite sync cursor',
-      { userId, staleUpdatedAfter: updatedAfter },
+      'Forcing full chapter assignment sync — local assignments incomplete',
+      { userId },
     );
-    await syncChapterAssignments(userId);
+    await runFullProjectAssignments();
     return { didFullSync: true };
   }
 
   await syncChapterAssignments(userId, updatedAfter);
+  await syncUserChapterWork(userId);
   return { didFullSync: !updatedAfter };
 }
 
@@ -574,6 +602,7 @@ export async function syncAllData(isIncremental = false, email?: string) {
       await syncBibleTexts(didFullSync ? undefined : assignmentCursor);
     } else if (localProjectIdsBefore.length === 0) {
       await syncChapterAssignments(userId);
+      await syncUserChapterWork(userId);
       await syncBibleTexts();
     } else {
       // Omit excludeProjectIds on re-login: the API can return [] when every
