@@ -5,6 +5,8 @@ const log = logger.create('KVStorage');
 
 export const kvStorage = new Storage({ location: 'kv' });
 
+export const MAX_DEVICE_ACCOUNTS = 3;
+
 export const KV_KEYS = {
   USER_ID: 'userId',
   USER_EMAIL: 'userEmail',

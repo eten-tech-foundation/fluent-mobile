@@ -12,6 +12,7 @@ import {
   kvStorage,
   KV_KEYS,
   switchActiveUser,
+  MAX_DEVICE_ACCOUNTS,
 } from '../../services/storage';
 import { clearCredentials, getCredentials } from '../../services/keychain';
 import { FluentAPI } from '../../services/api';
@@ -48,6 +49,8 @@ export function UserSettingsMenu({
     setKnownUsers(ids.map(id => ({ id, email: getUserEmail(id) })));
   }, []);
 
+  const atAccountLimit = knownUsers.length >= MAX_DEVICE_ACCOUNTS;
+
   const handleOpen = () => {
     loadKnownUsers();
   };
@@ -58,6 +61,7 @@ export function UserSettingsMenu({
   };
 
   const handleAddUser = () => {
+    if (atAccountLimit) return;
     onClose();
     navigation.navigate('AddUser');
   };
@@ -136,14 +140,32 @@ export function UserSettingsMenu({
 
           <View style={appStyles.menuDivider} />
           <TouchableOpacity
-            style={appStyles.menuItem}
+            style={[
+              appStyles.menuItem,
+              atAccountLimit && appStyles.menuItemDisabled,
+            ]}
             onPress={handleAddUser}
-            activeOpacity={0.7}
+            activeOpacity={atAccountLimit ? 1 : 0.7}
             accessibilityRole="button"
+            accessibilityState={{ disabled: atAccountLimit }}
+            disabled={atAccountLimit}
             testID="settings-menu-add-user"
           >
-            <Ionicons name="person-add-outline" size={18} color="#333" />
-            <Text style={appStyles.menuItemText}>Add User</Text>
+            <Ionicons
+              name="person-add-outline"
+              size={18}
+              color={atAccountLimit ? '#999' : '#333'}
+            />
+            <Text
+              style={[
+                appStyles.menuItemText,
+                atAccountLimit && appStyles.menuItemTextDisabled,
+              ]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {atAccountLimit ? '3-account limit reached' : 'Add User'}
+            </Text>
           </TouchableOpacity>
 
           <View style={appStyles.menuDivider} />

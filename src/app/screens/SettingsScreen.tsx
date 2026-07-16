@@ -1,4 +1,5 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -27,6 +28,7 @@ import {
   kvStorage,
   KV_KEYS,
   switchActiveUser,
+  MAX_DEVICE_ACCOUNTS,
 } from '../../services/storage';
 import { usePreferences } from '../../hooks/usePreferences';
 import { RootStackParamList } from '../../types/navigation/types';
@@ -44,12 +46,22 @@ interface SettingsScreenProps {
 export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
   const navigation = useNavigation<Nav>();
   const { uploadOverCellular, setUploadOverCellular } = usePreferences();
+  const [atAccountLimit, setAtAccountLimit] = useState(
+    () => getKnownUserIds().length >= MAX_DEVICE_ACCOUNTS,
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      setAtAccountLimit(getKnownUserIds().length >= MAX_DEVICE_ACCOUNTS);
+    }, []),
+  );
 
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
 
   const handleAddUser = useCallback(() => {
+    if (atAccountLimit) return;
     navigation.navigate('AddUser');
-  }, [navigation]);
+  }, [navigation, atAccountLimit]);
 
   const performLogOut = async () => {
     const currentUserId = getActiveUserId();
@@ -139,6 +151,8 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
               <SettingsNavigationRow
                 title="Add user"
                 subtitle="Sign in with another account on this device"
+                disabled={atAccountLimit}
+                disabledSubtitle="You've reached the 3-account limit"
                 icon={
                   <UserPlus
                     size={iconSizes.headerTab}
