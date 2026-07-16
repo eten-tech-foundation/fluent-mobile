@@ -23,8 +23,14 @@ export function mapApiChapterAssignment(
     bibleId: api.bibleId,
     bookId: api.bookId,
     chapterNumber: api.chapterNumber,
-    assignedUserId: api.assignedUserId ?? undefined,
-    peerCheckerId: api.peerCheckerId ?? undefined,
+    assignedUserId:
+      api.assignedUserId ??
+      (api as { assigned_user_id?: number | null }).assigned_user_id ??
+      undefined,
+    peerCheckerId:
+      api.peerCheckerId ??
+      (api as { peer_checker_id?: number | null }).peer_checker_id ??
+      undefined,
     chapterStatus: normalizeChapterStatus(api.chapterStatus ?? api.status),
     submittedTime: api.submittedTime ?? undefined,
     updatedAt: api.updatedAt ?? undefined,

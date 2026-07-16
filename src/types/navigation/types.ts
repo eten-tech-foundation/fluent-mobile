@@ -3,7 +3,7 @@ export type RootStackParamList = {
   AddUser: undefined;
   Home: { newUserLoading?: boolean } | undefined;
   Settings: undefined;
-  PrepareForOffline: undefined;
+  PrepareForOffline: { projectId?: number; projectName?: string } | undefined;
   Sync: undefined;
   Chapters: {
     projectId: number;

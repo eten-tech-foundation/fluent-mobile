@@ -34,6 +34,10 @@ jest.mock('./api', () => ({
     getUserByEmail: jest.fn(),
     getUserProjects: jest.fn(),
     getChapterAssignments: jest.fn().mockResolvedValue({ data: [] }),
+    getUserChapterAssignments: jest.fn().mockResolvedValue({
+      assignedChapters: [],
+      peerCheckChapters: [],
+    }),
     getBibleTexts: jest.fn(),
   },
 }));
@@ -83,6 +87,7 @@ jest.mock('../db/repository', () => ({
   getLocalProjectIds: jest.fn().mockResolvedValue([1]),
   userHasLocalProjects: jest.fn().mockResolvedValue(true),
   userHasLocalChapterAssignments: jest.fn().mockResolvedValue(true),
+  userNeedsAssigneeRepair: jest.fn().mockResolvedValue(false),
   insertUser: jest.fn().mockResolvedValue(undefined),
 }));
 
@@ -90,10 +95,12 @@ const {
   getChaptersToSync,
   userHasLocalProjects,
   userHasLocalChapterAssignments,
+  userNeedsAssigneeRepair,
 } = jest.requireMock('../db/repository') as {
   getChaptersToSync: jest.Mock;
   userHasLocalProjects: jest.Mock;
   userHasLocalChapterAssignments: jest.Mock;
+  userNeedsAssigneeRepair: jest.Mock;
 };
 
 jest.mock('../db/db', () => ({
@@ -118,6 +125,7 @@ describe('syncAllData auth handling', () => {
     (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
     userHasLocalProjects.mockResolvedValue(true);
     userHasLocalChapterAssignments.mockResolvedValue(true);
+    userNeedsAssigneeRepair.mockResolvedValue(false);
     getChaptersToSync.mockResolvedValue(new Map());
   });
 

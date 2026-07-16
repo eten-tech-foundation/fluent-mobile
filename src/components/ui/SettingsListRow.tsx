@@ -50,7 +50,7 @@ export function SettingsNavigationRow({
 }
 
 interface SettingsToggleRowProps {
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   title: string;
   subtitle: string;
   value: boolean;
@@ -66,7 +66,7 @@ export function SettingsToggleRow({
 }: SettingsToggleRowProps) {
   return (
     <View style={styles.row}>
-      <View style={styles.iconSlot}>{icon}</View>
+      {icon ? <View style={styles.iconSlot}>{icon}</View> : null}
       <View style={styles.textBlock}>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.subtitle}>{subtitle}</Text>

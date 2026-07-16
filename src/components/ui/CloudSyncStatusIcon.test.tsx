@@ -1,7 +1,7 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import { CloudSyncStatusIcon } from './CloudSyncStatusIcon';
-import { SyncStatus } from '../../utils/syncStatusState';
+import { SyncStatus, SYNC_STATUS_LABELS } from '../../utils/syncStatusState';
 
 jest.mock('react-native-svg', () => {
   const MockReact = require('react');
@@ -30,6 +30,7 @@ jest.mock('../../assets/icons/cloud-off-unsynced.svg', () => {
 const ALL_STATUSES: SyncStatus[] = [
   'online_synced',
   'online_syncing',
+  'online_needs_sync',
   'online_pending',
   'offline_synced',
   'offline_pending',
@@ -39,6 +40,6 @@ describe('CloudSyncStatusIcon', () => {
   it.each(ALL_STATUSES)('renders for status %s', status => {
     const { getByLabelText } = render(<CloudSyncStatusIcon status={status} />);
 
-    expect(getByLabelText(/Open Sync page/i)).toBeTruthy();
+    expect(getByLabelText(SYNC_STATUS_LABELS[status])).toBeTruthy();
   });
 });

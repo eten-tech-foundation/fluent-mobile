@@ -158,7 +158,7 @@ export default function DraftingScreen() {
 
   if (loading) {
     return (
-      <ScreenContainer edges={['top', 'bottom']}>
+      <ScreenContainer>
         {renderHeader()}
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -170,7 +170,7 @@ export default function DraftingScreen() {
 
   if (!chapterData) {
     return (
-      <ScreenContainer edges={['top', 'bottom']}>
+      <ScreenContainer>
         {renderHeader()}
         <View style={styles.centered}>
           <Text style={styles.emptyText}>No chapter data found</Text>
@@ -181,7 +181,7 @@ export default function DraftingScreen() {
   }
 
   return (
-    <ScreenContainer edges={['top', 'bottom']}>
+    <ScreenContainer>
       <DraftingProvider verses={verses} initialVerse={initialVerse}>
         <View style={styles.screen}>
           {renderHeader()}
