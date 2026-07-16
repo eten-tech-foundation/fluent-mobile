@@ -144,10 +144,10 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
               </View>
             </View>
           </View>
-          
+
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Account</Text>
-              <View style={styles.sectionCard}>
+            <View style={styles.sectionCard}>
               <SettingsNavigationRow
                 title="Add user"
                 subtitle="Sign in with another account on this device"
