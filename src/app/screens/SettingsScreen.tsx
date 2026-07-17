@@ -78,16 +78,33 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
     kvStorage.setItemSync(KV_KEYS.KNOWN_USER_IDS, remaining.join(','));
     log.info('User signed out', { userId: currentUserId });
 
-    if (remaining.length > 0) {
-      const nextUserId = remaining[0];
-      const creds = await getCredentials(nextUserId);
-      authToken.set(creds?.token ?? null);
-      switchActiveUser(nextUserId);
+    for (const candidateUserId of remaining) {
+      let creds;
+      try {
+        creds = await getCredentials(candidateUserId);
+      } catch (e) {
+        log.error('Failed to read credentials for candidate account', {
+          userId: candidateUserId,
+          error: e,
+        });
+        continue;
+      }
+
+      if (!creds?.token) {
+        log.error('Skipping candidate account with no usable session', {
+          userId: candidateUserId,
+        });
+        continue;
+      }
+
+      authToken.set(creds.token);
+      switchActiveUser(candidateUserId);
       navigation.goBack();
-    } else {
-      signOut();
-      onSignOut?.();
+      return;
     }
+
+    signOut();
+    onSignOut?.();
   };
 
   const handleLogOut = async () => {
