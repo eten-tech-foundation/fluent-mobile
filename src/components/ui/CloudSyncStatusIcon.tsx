@@ -176,14 +176,20 @@ function CloudUploadGlyph({
 }
 
 /** Lucide `cloud` + centered static `refresh-cw` — download updates available. */
-function CloudNeedsSyncGlyph({ size }: { size: number }) {
+function CloudNeedsSyncGlyph({
+  size,
+  cloudColor = CLOUD_COLOR,
+}: {
+  size: number;
+  cloudColor?: string;
+}) {
   const overlay = size * syncStatusIcon.overlayScale;
   const inset = (size - overlay) / 2;
   const top = inset + size * syncStatusIcon.overlayOffsetY;
 
   return (
     <View style={[styles.frame, { width: size, height: size }]}>
-      <CloudOutline size={size} color={CLOUD_COLOR} />
+      <CloudOutline size={size} color={cloudColor} />
       <View
         style={[
           styles.overlayCenter,
@@ -262,7 +268,9 @@ const GLYPHS: Record<
       animated={options?.animated}
     />
   ),
-  online_needs_sync: size => <CloudNeedsSyncGlyph size={size} />,
+  online_needs_sync: (size, options) => (
+    <CloudNeedsSyncGlyph size={size} cloudColor={options?.cloudColor} />
+  ),
   online_pending: (size, options) => (
     <CloudUploadGlyph
       size={size}

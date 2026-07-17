@@ -26,6 +26,7 @@ jest.mock('react-native-svg', () => {
     __esModule: true,
     default: MockSvg,
     Circle: MockSvg,
+    Path: MockSvg,
   };
 });
 
@@ -38,6 +39,7 @@ jest.mock('lucide-react-native', () => {
     ChevronRight: MockIcon,
     CloudUpload: MockIcon,
     CloudCheck: MockIcon,
+    CloudOff: MockIcon,
     Mic: MockIcon,
     UserCheck: MockIcon,
     UsersRound: MockIcon,
@@ -54,6 +56,16 @@ jest.mock('../../hooks/useSync', () => ({
   useSync: jest.fn(() => ({
     isSyncing: false,
     triggerSync: jest.fn(),
+  })),
+}));
+
+jest.mock('../../hooks/useSyncStatus', () => ({
+  useSyncStatus: jest.fn(() => ({
+    status: 'online_synced',
+    isOnline: true,
+    pendingCount: 0,
+    hasPendingUploads: false,
+    needsDownloadSync: false,
   })),
 }));
 

@@ -170,8 +170,8 @@ function renderStatusLine(
           : 'No connection to Fluent. Nothing waiting to upload.'}
       </Text>
       {!isOnline && (
-  <CantReachFluentPill hasPendingUploads={hasPendingUploads} />
-)}
+        <CantReachFluentPill hasPendingUploads={hasPendingUploads} />
+      )}
     </>
   );
 }

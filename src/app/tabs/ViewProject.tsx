@@ -16,6 +16,7 @@ import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { ProjectChapterRow } from '../../components/ui/ProjectChapterRow';
 import { PROJECT_CHAPTERS_EMPTY_MESSAGE } from '../../constants/messages';
 import { useProjectChapters } from '../../hooks/useProjectChapters';
+import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { useSync } from '../../hooks/useSync';
 import { theme } from '../../theme';
 import { ProjectChapter } from '../../types/db/types';
@@ -30,9 +31,13 @@ export default function ViewProject() {
   const { chapters, loading, refreshing, error, refresh, retry, reload } =
     useProjectChapters(projectId);
 
-  const { isSyncing, triggerSync } = useSync({ onSyncComplete: reload });
-
+  const { isSyncing } = useSync({ onSyncComplete: reload });
+  const { status: syncStatus } = useSyncStatus({ isSyncing });
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
+
+  const handleSyncPress = useCallback(() => {
+    navigation.navigate('Sync');
+  }, [navigation]);
 
   const renderChapter: ListRenderItem<ProjectChapter> = useCallback(
     ({ item }) => (
@@ -57,8 +62,8 @@ export default function ViewProject() {
       title={projectName}
       subtitle={language}
       onBack={goBack}
-      onSyncPress={triggerSync}
-      isSyncing={isSyncing}
+      onSyncPress={handleSyncPress}
+      syncStatus={syncStatus}
     />
   );
 
