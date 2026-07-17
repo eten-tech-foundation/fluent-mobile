@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { View, StyleSheet, ActivityIndicator, Text } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../theme';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { PageHeader } from '../../components/layout/PageHeader';
@@ -27,6 +28,7 @@ export default function HomeScreen({
   onSignOut,
   postLoginSyncActive = false,
 }: HomeScreenProps) {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
   const route = useRoute<RouteProp<RootStackParamList, 'Home'>>();
   const [activeTab, setActiveTab] = useState<HomeTab>('myWork');
@@ -47,7 +49,16 @@ export default function HomeScreen({
     onSyncComplete: handleSyncComplete,
   });
 
-  const { status: syncStatus } = useSyncStatus({ isSyncing, refreshKey });
+  const {
+    status: syncStatus,
+    needsDownloadSync,
+    isOnline,
+  } = useSyncStatus({
+    isSyncing,
+    refreshKey,
+  });
+
+  const autoRepairSyncAttempted = useRef(false);
 
   useEffect(() => {
     const unsubscribeComplete = onSyncComplete(() => {
@@ -65,12 +76,36 @@ export default function HomeScreen({
     };
   }, []);
 
+  useEffect(() => {
+    if (
+      !needsDownloadSync ||
+      !isOnline ||
+      isSyncing ||
+      postLoginSyncActive ||
+      isNewUserLoading ||
+      autoRepairSyncAttempted.current
+    ) {
+      return;
+    }
+
+    autoRepairSyncAttempted.current = true;
+    void triggerSync();
+  }, [
+    needsDownloadSync,
+    isOnline,
+    isSyncing,
+    postLoginSyncActive,
+    isNewUserLoading,
+    triggerSync,
+  ]);
+
   const handleSettingsPress = () => {
     setSettingsAnchor({ top: 56, left: 16 });
     setSettingsVisible(true);
   };
 
   const handleUserSwitched = useCallback(() => {
+    autoRepairSyncAttempted.current = false;
     setRefreshKey(key => key + 1);
   }, []);
 
@@ -89,8 +124,8 @@ export default function HomeScreen({
 
   if (showLoading) {
     return (
-      <ScreenContainer edges={['top']}>
-        <View style={styles.loadingContainer}>
+      <ScreenContainer>
+        <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text style={styles.loadingText}>Syncing data...</Text>
         </View>
@@ -99,7 +134,7 @@ export default function HomeScreen({
   }
 
   return (
-    <ScreenContainer edges={['top']}>
+    <ScreenContainer>
       <PageHeader
         leftIcon={<SettingsButton onPress={handleSettingsPress} />}
         rightIcon={

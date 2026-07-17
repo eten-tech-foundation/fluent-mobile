@@ -472,4 +472,10 @@ export const appStyles = StyleSheet.create({
     textAlign: 'center',
   },
   loadingTextAppInit: { marginTop: 10, fontSize: 14 },
+  menuItemDisabled: {
+    opacity: 0.5,
+  },
+  menuItemTextDisabled: {
+    color: '#999',
+  },
 });

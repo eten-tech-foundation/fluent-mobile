@@ -51,4 +51,21 @@ describe('mapApiChapterAssignment', () => {
 
     expect(mapped.chapterStatus).toBe('draft');
   });
+
+  it('maps snake_case assignee fields when camelCase is absent', () => {
+    const mapped = mapApiChapterAssignment({
+      chapterAssignmentId: 12,
+      projectId: 2,
+      projectUnitId: 2,
+      bibleId: 4,
+      bookId: 12,
+      chapterNumber: 1,
+      status: 'not_started',
+      assigned_user_id: 241,
+      peer_checker_id: 99,
+    } as Parameters<typeof mapApiChapterAssignment>[0]);
+
+    expect(mapped.assignedUserId).toBe(241);
+    expect(mapped.peerCheckerId).toBe(99);
+  });
 });

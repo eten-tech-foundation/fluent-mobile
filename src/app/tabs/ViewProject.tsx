@@ -103,7 +103,7 @@ export default function ViewProject() {
   }
 
   return (
-    <ScreenContainer edges={['top']}>
+    <ScreenContainer edges={['bottom']}>
       <View style={styles.screen}>{body}</View>
     </ScreenContainer>
   );

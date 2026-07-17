@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useAsyncRequestGuard } from './useAsyncRequestGuard';
+import { useCallback, useEffect, useState } from 'react';
 import { getUserById } from '../db/queries';
 import {
   getActiveUserId,
@@ -26,25 +27,15 @@ export function useActiveAccountSummary(refreshKey = 0) {
   const [summary, setSummary] = useState<ActiveAccountSummary>(() =>
     emptySummary(),
   );
-  const requestIdRef = useRef(0);
-  const mountedRef = useRef(true);
-
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false;
-      requestIdRef.current += 1;
-    };
-  }, []);
+  const { startRequest, isStale } = useAsyncRequestGuard();
 
   const refresh = useCallback(async () => {
-    const requestId = ++requestIdRef.current;
+    const requestId = startRequest();
     const activeUserId = getActiveUserId();
     const knownUserIds = getKnownUserIds();
 
     if (!activeUserId) {
-      if (!mountedRef.current || requestId !== requestIdRef.current) {
-        return;
-      }
+      if (isStale(requestId)) return;
       setSummary({
         ...emptySummary(),
         accountCount: knownUserIds.length,
@@ -57,9 +48,7 @@ export function useActiveAccountSummary(refreshKey = 0) {
       ? await getUserById(parsedUserId)
       : null;
 
-    if (!mountedRef.current || requestId !== requestIdRef.current) {
-      return;
-    }
+    if (isStale(requestId)) return;
 
     setSummary({
       activeUserId,
@@ -68,7 +57,7 @@ export function useActiveAccountSummary(refreshKey = 0) {
       lastName: dbUser?.lastName,
       accountCount: knownUserIds.length,
     });
-  }, []);
+  }, [startRequest, isStale]);
 
   useEffect(() => {
     refresh();

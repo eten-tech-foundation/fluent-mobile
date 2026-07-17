@@ -41,8 +41,15 @@ function isUserRow(row: unknown): row is DBTypes.UserRow {
   if (!row || typeof row !== 'object') return false;
 
   const candidate = row as Record<string, unknown>;
+  const isNullableString = (value: unknown) =>
+    value === null || value === undefined || typeof value === 'string';
+
   return (
-    typeof candidate.id === 'number' && typeof candidate.email === 'string'
+    typeof candidate.id === 'number' &&
+    typeof candidate.email === 'string' &&
+    isNullableString(candidate.username) &&
+    isNullableString(candidate.first_name) &&
+    isNullableString(candidate.last_name)
   );
 }
 

@@ -4,6 +4,7 @@ import { FluentAPI } from '../services/api';
 import { beginLoginSession } from '../services/authSession';
 import { queryKeys } from '../services/queryKeys';
 import { logger } from '../utils/logger';
+import { isApiError } from '../services/apiError';
 import { isValidEmail } from '../utils/validateEmail';
 
 const log = logger.create('useLogin');
@@ -66,8 +67,16 @@ export function useLogin(onLoginSuccess: (email: string) => void) {
     loginMutation.mutate({ email: trimmedEmail, password });
   };
 
-  const globalError =
-    loginMutation.error instanceof Error ? loginMutation.error.message : null;
+  const globalError = (() => {
+    const error = loginMutation.error;
+    if (!error) return null;
+
+    if (isApiError(error) && error.status === 0) {
+      return 'Unable to connect. Please check your internet connection and try again.';
+    }
+
+    return error instanceof Error ? error.message : String(error);
+  })();
 
   return {
     email,
