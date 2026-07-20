@@ -29,6 +29,7 @@ import { getBibleTextId } from '../../db/queries';
 import { useVerseAudio } from '../../hooks/useVerseAudio';
 import { requestMicPermission } from '../../audio/micPermission';
 import { PlaybackProgressBar } from '../../components/ui/PlaybackProgressBar';
+import { SourceAudioPlayerBar } from '../../components/layout/SourceAudioPlayerBar';
 import { RootStackParamList } from '../../types/navigation/types';
 import { ChapterAssignmentData } from '../../types/db/types';
 
@@ -38,11 +39,12 @@ if (Platform.OS === 'android') {
 
 type Route = RouteProp<RootStackParamList, 'VerseDetail'>;
 
+/** Design timer: `0:13` (no leading zero on minutes). */
 function formatDuration(ms: number): string {
-  const totalSec = Math.floor(ms / 1000);
+  const totalSec = Math.floor(Math.max(0, ms) / 1000);
   const m = Math.floor(totalSec / 60);
   const s = totalSec % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 type RecordTabProps = {
@@ -51,7 +53,8 @@ type RecordTabProps = {
 
 /**
  * Record tab — draft capture / review for the selected drafting verse.
- * Built on useVerseAudio (#97); kill-safe ADTS multi-segment pause is #176/#170 follow-up.
+ * Visual states follow docs/design/record-tab/01–04 (Matt).
+ * Built on useVerseAudio (#97); kill-safe ADTS multi-segment pause is #176/#170.
  */
 export function RecordTab({ chapterData }: RecordTabProps) {
   const { chapterName } = useRoute<Route>().params;
@@ -173,12 +176,15 @@ export function RecordTab({ chapterData }: RecordTabProps) {
   }
 
   const showIdle = verseAudio.state === 'idle' || verseAudio.state === 'error';
-  const showCapture =
-    verseAudio.state === 'recording' || verseAudio.state === 'paused';
+  const isRecording = verseAudio.state === 'recording';
+  const isPaused = verseAudio.state === 'paused';
+  const showCapture = isRecording || isPaused;
   const showReview =
     verseAudio.state === 'recorded' ||
     verseAudio.state === 'playing' ||
     verseAudio.state === 'saving';
+  const showSourceAudio = showIdle || showReview;
+  const isPlaying = verseAudio.state === 'playing';
 
   return (
     <View style={styles.container} testID="record-tab">
@@ -236,189 +242,239 @@ export function RecordTab({ chapterData }: RecordTabProps) {
         </TouchableOpacity>
       </View>
 
-      {showCapture || showReview ? (
-        <View style={styles.waveformWrap}>
-          <PlaybackProgressBar
-            positionMs={showCapture ? elapsedMs : verseAudio.positionMs}
-            durationMs={
-              showCapture ? Math.max(elapsedMs, 1) : verseAudio.durationMs
-            }
-          />
-        </View>
-      ) : null}
-
-      <View style={styles.controls}>
-        {syncingMessage ? (
-          <Text style={styles.syncHint} testID="record-syncing-hint">
-            {syncingMessage}
-          </Text>
-        ) : null}
-
-        {showIdle ? (
-          <View style={styles.idleGroup}>
-            <TouchableOpacity
-              style={[styles.recordCircle, recordDisabled && styles.disabled]}
-              onPress={() => {
-                void handleStart();
-              }}
-              disabled={recordDisabled}
-              accessibilityRole="button"
-              accessibilityLabel={`Record ${reference}`}
-              testID="record-start-button"
-            >
-              <CircleDot
-                size={44}
-                color={theme.colors.primaryForeground}
-                strokeWidth={listIconStrokeWidth}
-              />
-            </TouchableOpacity>
-            <Text style={styles.recordLabel}>Record {reference}</Text>
-            <View style={styles.mutedPlay}>
-              <Play
-                size={22}
-                color={theme.colors.mutedForeground}
-                strokeWidth={listIconStrokeWidth}
-              />
-            </View>
+      <View style={styles.main}>
+        {showCapture || showReview ? (
+          <View style={styles.waveformWrap} testID="record-waveform">
+            <PlaybackProgressBar
+              positionMs={showCapture ? elapsedMs : verseAudio.positionMs}
+              durationMs={
+                showCapture ? Math.max(elapsedMs, 1) : verseAudio.durationMs
+              }
+              barCount={22}
+              tall
+              accentColor={
+                isRecording ? theme.colors.recordAccent : theme.colors.primary
+              }
+            />
           </View>
         ) : null}
 
-        {showCapture ? (
-          <View style={styles.captureGroup}>
-            <Text style={styles.duration} testID="record-duration">
-              {formatDuration(elapsedMs)}
+        <View style={styles.controls}>
+          {syncingMessage ? (
+            <Text style={styles.syncHint} testID="record-syncing-hint">
+              {syncingMessage}
             </Text>
-            <View style={styles.row}>
+          ) : null}
+
+          {showIdle ? (
+            <View style={styles.idleGroup}>
               <TouchableOpacity
-                style={styles.secondaryCircle}
+                style={[styles.recordCircle, recordDisabled && styles.disabled]}
                 onPress={() => {
-                  void (verseAudio.state === 'paused'
-                    ? verseAudio.resume()
-                    : verseAudio.pause());
+                  void handleStart();
                 }}
+                disabled={recordDisabled}
                 accessibilityRole="button"
-                accessibilityLabel={
-                  verseAudio.state === 'paused' ? 'Resume recording' : 'Pause'
-                }
-                testID="record-pause-button"
+                accessibilityLabel={`Record ${reference}`}
+                testID="record-start-button"
               >
-                {verseAudio.state === 'paused' ? (
-                  <CircleDot
-                    size={28}
-                    color={theme.colors.primaryForeground}
-                    strokeWidth={listIconStrokeWidth}
-                  />
-                ) : (
-                  <Pause
-                    size={28}
-                    color={theme.colors.primaryForeground}
-                    strokeWidth={listIconStrokeWidth}
-                  />
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.stopCircle}
-                onPress={() => {
-                  void handleStop();
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="Stop recording"
-                testID="record-stop-button"
-              >
-                <Square
-                  size={28}
+                <CircleDot
+                  size={44}
                   color={theme.colors.primaryForeground}
                   strokeWidth={listIconStrokeWidth}
                 />
               </TouchableOpacity>
+              <Text style={styles.recordLabel}>Record {reference}</Text>
+              <View
+                style={styles.mutedPlay}
+                accessibilityRole="button"
+                accessibilityLabel="Playback unavailable until a draft is recorded"
+                accessibilityState={{ disabled: true }}
+                testID="record-play-idle-placeholder"
+              >
+                <Play
+                  size={22}
+                  color={theme.colors.mutedForeground}
+                  strokeWidth={listIconStrokeWidth}
+                />
+              </View>
             </View>
-            {verseAudio.state === 'paused' ? (
-              <Text style={styles.hint}>
-                Recording paused — resume or stop to commit the take.
-              </Text>
-            ) : null}
-          </View>
-        ) : null}
+          ) : null}
 
-        {showReview ? (
-          <View style={styles.reviewGroup}>
-            <TouchableOpacity
-              style={styles.playCircle}
-              onPress={() => {
-                void verseAudio.play();
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Play draft"
-              testID="record-play-button"
-            >
-              <Play
-                size={28}
-                color={theme.colors.primaryForeground}
-                strokeWidth={listIconStrokeWidth}
-              />
-            </TouchableOpacity>
-            <View style={styles.row}>
-              <TouchableOpacity
-                style={styles.textAction}
-                onPress={() => {
-                  void handleReRecord();
-                }}
-                testID="record-rerecord-button"
-              >
-                <RefreshCw
-                  size={20}
-                  color={theme.colors.foreground}
-                  strokeWidth={listIconStrokeWidth}
-                />
-                <Text style={styles.textActionLabel}>Re-record</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.textAction}
-                onPress={handleDelete}
-                testID="record-delete-button"
-              >
-                <Trash2
-                  size={20}
-                  color={theme.colors.foreground}
-                  strokeWidth={listIconStrokeWidth}
-                />
-                <Text style={styles.textActionLabel}>Delete</Text>
-              </TouchableOpacity>
+          {showCapture ? (
+            <View style={styles.captureGroup}>
+              <Text style={styles.duration} testID="record-duration">
+                {formatDuration(elapsedMs)}
+              </Text>
+              <View style={styles.row}>
+                <TouchableOpacity
+                  style={styles.stopCircle}
+                  onPress={() => {
+                    void handleStop();
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Stop recording"
+                  testID="record-stop-button"
+                >
+                  <Square
+                    size={26}
+                    color={theme.colors.foreground}
+                    strokeWidth={listIconStrokeWidth}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.primaryRecordCircle}
+                  onPress={() => {
+                    void (isPaused ? verseAudio.resume() : verseAudio.pause());
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={isPaused ? 'Resume recording' : 'Pause'}
+                  testID={
+                    isPaused ? 'record-resume-button' : 'record-pause-button'
+                  }
+                >
+                  {isPaused ? (
+                    <CircleDot
+                      size={30}
+                      color={theme.colors.primaryForeground}
+                      strokeWidth={listIconStrokeWidth}
+                    />
+                  ) : (
+                    <Pause
+                      size={30}
+                      color={theme.colors.primaryForeground}
+                      strokeWidth={listIconStrokeWidth}
+                    />
+                  )}
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.hint} testID="record-tip">
+                {isPaused
+                  ? 'Recording paused — review the source below, then resume.'
+                  : 'Tap pause to study the source, stop to finish.'}
+              </Text>
             </View>
+          ) : null}
+
+          {showReview ? (
+            <View style={styles.reviewGroup}>
+              <View style={styles.row}>
+                <View
+                  style={styles.mutedPlay}
+                  accessibilityRole="image"
+                  accessibilityLabel="Recording complete"
+                  testID="record-review-secondary"
+                >
+                  <CircleDot
+                    size={22}
+                    color={theme.colors.mutedForeground}
+                    strokeWidth={listIconStrokeWidth}
+                  />
+                </View>
+                <TouchableOpacity
+                  style={styles.playCircle}
+                  onPress={() => {
+                    void verseAudio.play();
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={isPlaying ? 'Pause draft' : 'Play draft'}
+                  testID="record-play-button"
+                >
+                  {isPlaying ? (
+                    <Pause
+                      size={30}
+                      color={theme.colors.primaryForeground}
+                      strokeWidth={listIconStrokeWidth}
+                    />
+                  ) : (
+                    <Play
+                      size={30}
+                      color={theme.colors.primaryForeground}
+                      strokeWidth={listIconStrokeWidth}
+                    />
+                  )}
+                </TouchableOpacity>
+              </View>
+              <View style={styles.reviewActions}>
+                <TouchableOpacity
+                  style={[
+                    styles.reRecordButton,
+                    recordDisabled && styles.disabled,
+                  ]}
+                  onPress={() => {
+                    void handleReRecord();
+                  }}
+                  disabled={recordDisabled}
+                  testID="record-rerecord-button"
+                >
+                  <RefreshCw
+                    size={18}
+                    color={theme.colors.foreground}
+                    strokeWidth={listIconStrokeWidth}
+                  />
+                  <Text style={styles.reRecordLabel}>Re-record</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={handleDelete}
+                  testID="record-delete-button"
+                >
+                  <Trash2
+                    size={18}
+                    color={theme.colors.destructive}
+                    strokeWidth={listIconStrokeWidth}
+                  />
+                  <Text style={styles.deleteLabel}>Delete</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : null}
+        </View>
+
+        <TouchableOpacity
+          onPress={() => {
+            LayoutAnimation.configureNext(
+              LayoutAnimation.Presets.easeInEaseOut,
+            );
+            setSourceExpanded(v => !v);
+          }}
+          style={styles.sourceLink}
+          accessibilityRole="button"
+          accessibilityLabel={
+            sourceExpanded ? 'Hide source text' : 'View source text'
+          }
+          testID="record-source-toggle"
+        >
+          {sourceExpanded ? (
+            <ChevronUp
+              size={iconSizes.chevron}
+              color={theme.colors.primary}
+              strokeWidth={listIconStrokeWidth}
+            />
+          ) : (
+            <ChevronDown
+              size={iconSizes.chevron}
+              color={theme.colors.primary}
+              strokeWidth={listIconStrokeWidth}
+            />
+          )}
+          <Text style={styles.sourceLinkLabel}>
+            {sourceExpanded ? 'Hide source text' : 'View source text'}
+          </Text>
+        </TouchableOpacity>
+        {sourceExpanded && selected?.text ? (
+          <View style={styles.sourceBody} testID="record-source-body">
+            <Text style={styles.sourceText}>{selected.text}</Text>
           </View>
         ) : null}
       </View>
 
-      <TouchableOpacity
-        onPress={() => {
-          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-          setSourceExpanded(v => !v);
-        }}
-        style={styles.accordion}
-        accessibilityRole="button"
-        testID="record-source-toggle"
-      >
-        <Text style={styles.accordionLabel}>
-          {sourceExpanded ? 'Hide source text' : 'Show source text'}
-        </Text>
-        {sourceExpanded ? (
-          <ChevronUp
-            size={iconSizes.chevron}
-            color={theme.colors.foreground}
-            strokeWidth={listIconStrokeWidth}
-          />
-        ) : (
-          <ChevronDown
-            size={iconSizes.chevron}
-            color={theme.colors.foreground}
-            strokeWidth={listIconStrokeWidth}
-          />
-        )}
-      </TouchableOpacity>
-      {sourceExpanded && selected?.text ? (
-        <View style={styles.sourceBody} testID="record-source-body">
-          <Text style={styles.sourceText}>{selected.text}</Text>
-        </View>
+      {showSourceAudio ? (
+        <SourceAudioPlayerBar
+          verses={verses}
+          selectedVerse={selectedVerse}
+          sourceLabel={chapterData.bibleName ?? 'Source'}
+        />
       ) : null}
     </View>
   );
@@ -427,14 +483,14 @@ export function RecordTab({ chapterData }: RecordTabProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    gap: theme.spacing.md,
+    backgroundColor: theme.colors.background,
   },
   verseNav: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
   },
   navBtn: { padding: theme.spacing.sm },
   reference: {
@@ -443,19 +499,41 @@ const styles = StyleSheet.create({
     color: theme.colors.foreground,
   },
   dim: { opacity: 0.35 },
-  waveformWrap: { minHeight: 36 },
+  main: {
+    flex: 1,
+    paddingHorizontal: theme.spacing.lg,
+    gap: theme.spacing.md,
+    justifyContent: 'center',
+  },
+  waveformWrap: {
+    minHeight: 72,
+    width: '55%',
+    alignSelf: 'center',
+  },
   controls: { alignItems: 'center', gap: theme.spacing.md },
   syncHint: {
     color: theme.colors.mutedForeground,
     fontSize: theme.typography.sizes.sm,
     textAlign: 'center',
   },
-  idleGroup: { alignItems: 'center', gap: theme.spacing.sm },
+  idleGroup: { alignItems: 'center', gap: theme.spacing.md },
   recordCircle: {
     width: 88,
     height: 88,
-    borderRadius: 44,
-    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.recordAccent,
+    borderWidth: 4,
+    borderColor: theme.colors.primaryForeground,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryRecordCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.recordAccent,
+    borderWidth: 3,
+    borderColor: theme.colors.primaryForeground,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -468,70 +546,103 @@ const styles = StyleSheet.create({
   mutedPlay: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: theme.radius.full,
     backgroundColor: theme.colors.cardBackground,
     alignItems: 'center',
     justifyContent: 'center',
+    opacity: 0.6,
   },
-  captureGroup: { alignItems: 'center', gap: theme.spacing.sm },
+  captureGroup: { alignItems: 'center', gap: theme.spacing.md },
   duration: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.foreground,
+    fontSize: 32,
+    fontWeight: theme.typography.weights.medium,
+    fontVariant: ['tabular-nums'],
+    color: theme.colors.mutedForeground,
   },
-  row: { flexDirection: 'row', gap: theme.spacing.lg, alignItems: 'center' },
-  secondaryCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: theme.colors.primary,
+  row: {
+    flexDirection: 'row',
+    gap: theme.spacing.lg,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   stopCircle: {
     width: 56,
     height: 56,
-    borderRadius: 28,
-    backgroundColor: theme.colors.destructive,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     alignItems: 'center',
     justifyContent: 'center',
+    // Light shadow for white stop control (design)
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
   },
   hint: {
     color: theme.colors.mutedForeground,
     fontSize: theme.typography.sizes.sm,
     textAlign: 'center',
+    paddingHorizontal: theme.spacing.lg,
   },
-  reviewGroup: { alignItems: 'center', gap: theme.spacing.md },
+  reviewGroup: { alignItems: 'center', gap: theme.spacing.lg },
   playCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 72,
+    height: 72,
+    borderRadius: theme.radius.full,
     backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  textAction: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  textActionLabel: {
-    color: theme.colors.foreground,
-    fontSize: theme.typography.sizes.sm,
+  reviewActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
   },
-  accordion: {
+  reRecordButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.cardBackground,
+    gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
     borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.cardBackground,
   },
-  accordionLabel: {
+  reRecordLabel: {
+    color: theme.colors.foreground,
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.weights.medium,
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.destructive,
+    backgroundColor: theme.colors.background,
+  },
+  deleteLabel: {
+    color: theme.colors.destructive,
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.weights.medium,
+  },
+  sourceLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
+    paddingVertical: theme.spacing.sm,
+  },
+  sourceLinkLabel: {
     fontSize: theme.typography.sizes.sm,
     fontWeight: theme.typography.weights.medium,
-    color: theme.colors.foreground,
+    color: theme.colors.primary,
   },
   sourceBody: {
     padding: theme.spacing.md,
-    backgroundColor: theme.colors.cardBackground,
-    borderRadius: theme.radius.md,
   },
   sourceText: {
     fontSize: theme.typography.sizes.md,

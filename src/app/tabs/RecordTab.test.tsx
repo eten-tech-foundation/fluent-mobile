@@ -36,12 +36,12 @@ const chapterData = {
   bibleId: 1,
   bookId: 1,
   chapterNumber: 14,
-  bibleName: 'Source',
+  bibleName: 'BSB',
   bookName: 'Mark',
 } as never;
 
 describe('RecordTab', () => {
-  it('renders verse nav and record affordance', () => {
+  it('renders idle design chrome: verse nav, record, source link, source audio', () => {
     render(
       <DraftingProvider
         verses={[
@@ -62,5 +62,10 @@ describe('RecordTab', () => {
     expect(screen.getByTestId('record-tab')).toBeTruthy();
     expect(screen.getByTestId('record-verse-reference')).toBeTruthy();
     expect(screen.getByTestId('record-start-button')).toBeTruthy();
+    expect(screen.getByTestId('record-play-idle-placeholder')).toBeTruthy();
+    expect(screen.getByTestId('record-source-toggle')).toBeTruthy();
+    expect(screen.getByText('View source text')).toBeTruthy();
+    expect(screen.getByTestId('source-audio-bar')).toBeTruthy();
+    expect(screen.getByTestId('source-audio-label')).toBeTruthy();
   });
 });
