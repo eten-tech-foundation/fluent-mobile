@@ -1,0 +1,253 @@
+name: Nightly Preview
+
+# Binary-only Android internal APK for internal testers (dev API).
+# Does not use OTA / eas update. Does not require the Expo GitHub App —
+# only secrets.EXPO_TOKEN (same pattern as preview-build.yml).
+
+on:
+  schedule:
+    # 06:00 UTC daily
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Build even when HEAD matches the last successful nightly'
+        required: false
+        type: boolean
+        default: false
+      notify_slack:
+        description: 'Send Slack notifications'
+        required: false
+        type: boolean
+        default: true
+
+concurrency:
+  group: nightly-preview
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  EAS_PROJECT_ID: 'b0919574-f268-4768-b3bd-7cfa5172bbab'
+  EXPECTED_DEV_API_URL: https://dev.api.fluent.bible
+  EAS_PROFILE: nightly
+
+jobs:
+  nightly-preview:
+    name: Nightly Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      # On schedule, inputs are empty → force false, notify true.
+      FORCE_BUILD: ${{ inputs.force_build || false }}
+      NOTIFY_SLACK: ${{ github.event_name == 'schedule' || inputs.notify_slack }}
+
+    steps:
+      - name: 📋 Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 🏗️ Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Resolve trigger metadata
+        id: meta
+        run: |
+          set -euo pipefail
+          TRIGGER="${{ github.event_name }}"
+          AUTHOR=$(git log -1 --pretty=format:'%an')
+          BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          BASE_VERSION=$(grep -E "^const APP_VERSION_FALLBACK" app.config.ts | sed -E "s/.*'([^']+)'.*/\1/" || true)
+          if [ -z "${BASE_VERSION}" ]; then
+            BASE_VERSION=$(node -p "require('./package.json').version")
+          fi
+          {
+            echo "trigger=${TRIGGER}"
+            echo "author=${AUTHOR}"
+            echo "build_date=${BUILD_DATE}"
+            echo "base_version=${BASE_VERSION}"
+            echo "branch=${GITHUB_REF_NAME}"
+            echo "sha=${GITHUB_SHA}"
+            echo "short_sha=${GITHUB_SHA:0:7}"
+            echo "run_url=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Check for new commits since last success
+        id: skip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          FORCE="${FORCE_BUILD}"
+          PREV_SHA=""
+          # Latest successful run of this workflow on the default branch (main)
+          PREV_SHA=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${GITHUB_REPOSITORY}/actions/workflows/nightly-preview.yml/runs?branch=main&status=completed&per_page=20" \
+            --jq '[.workflow_runs[] | select(.conclusion == "success" and .head_sha != null)] | .[0].head_sha // empty' \
+            2>/dev/null || true)
+
+          echo "prev_sha=${PREV_SHA}" >> "${GITHUB_OUTPUT}"
+
+          SHOULD_SKIP=false
+          if [ "${FORCE}" = "true" ]; then
+            echo "🔁 force_build=true — will build"
+          elif [ -n "${PREV_SHA}" ] && [ "${PREV_SHA}" = "${GITHUB_SHA}" ]; then
+            SHOULD_SKIP=true
+            echo "⏭️ HEAD ${GITHUB_SHA:0:7} matches last successful nightly — skipping build"
+          else
+            echo "✅ New commits since last successful nightly (prev=${PREV_SHA:-none})"
+          fi
+          echo "should_skip=${SHOULD_SKIP}" >> "${GITHUB_OUTPUT}"
+
+      - name: Changelog
+        id: changelog
+        env:
+          PREV_SHA: ${{ steps.skip.outputs.prev_sha }}
+        run: bash .github/scripts/nightly-changelog.sh
+
+      - name: Write skip summary
+        if: steps.skip.outputs.should_skip == 'true'
+        run: |
+          {
+            echo "## Nightly preview — skipped"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Trigger | \`${{ steps.meta.outputs.trigger }}\` |"
+            echo "| Branch | \`${{ steps.meta.outputs.branch }}\` |"
+            echo "| Commit | \`${{ steps.meta.outputs.short_sha }}\` |"
+            echo "| Author | ${{ steps.meta.outputs.author }} |"
+            echo "| Reason | No new commits since last successful nightly |"
+            echo ""
+            echo "Re-run with **force_build** to build anyway."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Notify Slack (skipped)
+        if: steps.skip.outputs.should_skip == 'true'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          STATUS: skipped
+          TRIGGER: ${{ steps.meta.outputs.trigger }}
+          BRANCH: ${{ steps.meta.outputs.branch }}
+          SHA: ${{ steps.meta.outputs.sha }}
+          RUN_URL: ${{ steps.meta.outputs.run_url }}
+        run: bash .github/scripts/notify-slack-nightly.sh
+
+      - name: 📦 Install dependencies
+        if: steps.skip.outputs.should_skip != 'true'
+        run: npm ci
+
+      - name: Validate nightly API URL
+        if: steps.skip.outputs.should_skip != 'true'
+        id: api-url
+        run: bash .github/scripts/validate-nightly-api-url.sh
+
+      - name: Format check
+        if: steps.skip.outputs.should_skip != 'true'
+        run: npm run format:check
+
+      - name: Lint
+        if: steps.skip.outputs.should_skip != 'true'
+        run: npm run lint
+
+      - name: Typecheck
+        if: steps.skip.outputs.should_skip != 'true'
+        run: npm run typecheck
+
+      - name: Unit tests
+        if: steps.skip.outputs.should_skip != 'true'
+        env:
+          EXPO_PUBLIC_API_BASE_URL: http://localhost:9999
+        run: npm test -- --ci
+
+      - name: Expo doctor
+        if: steps.skip.outputs.should_skip != 'true'
+        env:
+          EXPO_PUBLIC_API_BASE_URL: http://localhost:9999
+        run: npm run doctor
+
+      - name: 🏗️ Setup EAS
+        if: steps.skip.outputs.should_skip != 'true'
+        uses: expo/expo-github-action@v9
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 🚀 EAS nightly Android build (binary only)
+        if: steps.skip.outputs.should_skip != 'true'
+        id: build
+        env:
+          PROFILE: ${{ env.EAS_PROFILE }}
+          MESSAGE: Nightly ${{ steps.meta.outputs.base_version }} ${{ steps.meta.outputs.short_sha }} (${{ steps.meta.outputs.trigger }})
+        run: bash .github/scripts/eas-build-android-nightly.sh
+
+      - name: Job summary (success)
+        if: steps.skip.outputs.should_skip != 'true' && steps.build.outputs.build_id != ''
+        env:
+          CHANGELOG: ${{ steps.changelog.outputs.changelog }}
+        run: |
+          {
+            echo "## Nightly preview — success"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Platform | Android |"
+            echo "| Environment | development API (\`${{ steps.api-url.outputs.api_base_url }}\`) |"
+            echo "| EAS profile | \`${{ env.EAS_PROFILE }}\` |"
+            echo "| Expo Updates | disabled (binary only — no OTA) |"
+            echo "| Trigger | \`${{ steps.meta.outputs.trigger }}\` |"
+            echo "| Branch | \`${{ steps.meta.outputs.branch }}\` |"
+            echo "| Commit | \`${{ steps.meta.outputs.sha }}\` |"
+            echo "| Author | ${{ steps.meta.outputs.author }} |"
+            echo "| Build date | ${{ steps.meta.outputs.build_date }} |"
+            echo "| App version | ${{ steps.build.outputs.app_version || steps.meta.outputs.base_version }} |"
+            echo "| Native build number | ${{ steps.build.outputs.version_code || 'n/a' }} |"
+            echo "| Build id | \`${{ steps.build.outputs.build_id }}\` |"
+            echo "| Install | ${{ steps.build.outputs.install_url }} |"
+            echo ""
+            echo "### Changelog"
+            echo ""
+            echo "${CHANGELOG}"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Notify Slack (success)
+        if: steps.skip.outputs.should_skip != 'true' && steps.build.outputs.build_id != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          STATUS: success
+          TRIGGER: ${{ steps.meta.outputs.trigger }}
+          PLATFORM: android
+          PROFILE: ${{ env.EAS_PROFILE }}
+          BRANCH: ${{ steps.meta.outputs.branch }}
+          SHA: ${{ steps.meta.outputs.sha }}
+          AUTHOR: ${{ steps.meta.outputs.author }}
+          BUILD_DATE: ${{ steps.meta.outputs.build_date }}
+          APP_VERSION: ${{ steps.build.outputs.app_version || steps.meta.outputs.base_version }}
+          VERSION_CODE: ${{ steps.build.outputs.version_code }}
+          INSTALL_URL: ${{ steps.build.outputs.install_url }}
+          BUILD_ID: ${{ steps.build.outputs.build_id }}
+          CHANGELOG: ${{ steps.changelog.outputs.changelog }}
+          RUN_URL: ${{ steps.meta.outputs.run_url }}
+          API_BASE_URL: ${{ steps.api-url.outputs.api_base_url }}
+          FEEDBACK_URL: https://github.com/${{ github.repository }}/issues/new
+        run: bash .github/scripts/notify-slack-nightly.sh
+
+      - name: Notify Slack (failure)
+        if: failure() && steps.skip.outputs.should_skip != 'true'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          STATUS: failure
+          TRIGGER: ${{ steps.meta.outputs.trigger }}
+          BRANCH: ${{ steps.meta.outputs.branch }}
+          SHA: ${{ steps.meta.outputs.sha }}
+          RUN_URL: ${{ steps.meta.outputs.run_url }}
+          FAILED_STEP: ${{ github.job }}
+        run: bash .github/scripts/notify-slack-nightly.sh
