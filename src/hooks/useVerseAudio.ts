@@ -7,6 +7,7 @@ import {
 } from '../db/repository';
 import type { Recording } from '../types/db/types';
 import { ensureRecordingsDir, recordingPath } from '../utils/audioStorage';
+import { ensureSeekableTakeUri } from '../audio/ensureSeekableTakeUri';
 import { logger } from '../utils/logger';
 import { usePlaybackEngine } from './usePlaybackEngine';
 import { useRecordingEngine } from './useRecordingEngine';
@@ -38,7 +39,8 @@ async function defaultPersistTake(args: {
     .toString(36)
     .slice(2, 10)}`;
   const dest = recordingPath(id);
-  await FileSystem.copyAsync({ from: args.tempUri, to: dest });
+  const seekableUri = await ensureSeekableTakeUri(args.tempUri);
+  await FileSystem.copyAsync({ from: seekableUri, to: dest });
   await addRecordingTake({
     id,
     bibleTextId: args.bibleTextId,
