@@ -47,21 +47,21 @@ describe('Expo module mocks', () => {
     it('records and returns a mock uri', async () => {
       const recorder = new AudioRecorder();
       await recorder.prepareToRecordAsync();
-      await recorder.startAsync();
-      const result = await recorder.stopAsync();
-      expect(result.uri).toBe('file:///mock-recording.m4a');
+      recorder.record();
+      await recorder.stop();
+      expect(recorder.uri).toBe('file:///mock-recording.m4a');
       expect(recorder.getStatus().isRecording).toBe(false);
     });
 
     it('loads and plays audio', async () => {
       const player = new AudioPlayer();
-      await player.loadAsync({ uri: 'file:///mock-recording.m4a' });
-      await player.playAsync();
+      player.replace({ uri: 'file:///mock-recording.m4a' });
+      player.play();
       expect(player.getStatus()).toMatchObject({
         isLoaded: true,
         isPlaying: true,
       });
-      await player.pauseAsync();
+      player.pause();
       expect(player.getStatus().isPlaying).toBe(false);
     });
   });
