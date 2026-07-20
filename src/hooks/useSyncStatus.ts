@@ -18,6 +18,7 @@ export function useSyncStatus({
   const { pendingCount, hasPendingUploads } = usePendingUploads(refreshKey);
   const { needsDownloadSync } = useLocalSyncHealth(refreshKey);
 
+  // "Online" for sync chrome means allowed to sync: WiFi, or cellular when opted in.
   const effectivelyOnline = isOnline && (isWifi || uploadOverCellular);
 
   return {
