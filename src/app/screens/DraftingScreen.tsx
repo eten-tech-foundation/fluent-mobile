@@ -193,7 +193,11 @@ export default function DraftingScreen() {
           {renderHeader()}
 
           <View style={styles.content}>
-            {activeTab === 'bible' ? <BibleTab /> : <RecordTab />}
+            {activeTab === 'bible' ? (
+              <BibleTab />
+            ) : (
+              <RecordTab chapterData={chapterData} />
+            )}
           </View>
 
           {/* <DraftingPlayerBar verses={verses} /> */}
