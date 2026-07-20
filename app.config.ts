@@ -74,6 +74,7 @@ const config: ExpoConfig = {
     ],
     './plugins/withRNScreensFragmentFactory',
     'expo-secure-store',
+    'expo-asset',
     [
       'expo-audio',
       {
