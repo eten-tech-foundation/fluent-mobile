@@ -11,14 +11,24 @@ import {
   UserChapterAssignmentsResponse,
   UserProjectsResponse,
 } from '../types/api/responses';
+import type {
+  UploadVerseAudioParams,
+  VerseAudioResponse,
+} from '../types/api/verseAudio';
 import { checkServerReachable } from './connectivity';
 import {
+  authedMultipartRequest,
   authedRequest,
   publicRequest,
   publicRequestWithResponse,
 } from './httpClient';
 import { resolveSessionToken } from './sessionToken';
 import { createApiError } from './apiError';
+import { parseVerseAudioResponse } from './verseAudioContract';
+import {
+  buildVerseAudioFormData,
+  verseAudioUploadPath,
+} from './verseAudioFormData';
 
 const MOBILE_HEADERS = {
   'x-client-type': 'mobile',
@@ -50,6 +60,17 @@ async function signInRequest(
   }
 
   return { ...data, token };
+}
+
+async function uploadVerseAudioRequest(
+  params: UploadVerseAudioParams,
+): Promise<VerseAudioResponse> {
+  const raw = await authedMultipartRequest<unknown>(
+    verseAudioUploadPath(params.projectUnitId, params.bibleTextId),
+    buildVerseAudioFormData(params),
+    { method: 'PUT' },
+  );
+  return parseVerseAudioResponse(raw);
 }
 
 export const FluentAPI = {
@@ -118,6 +139,15 @@ export const FluentAPI = {
       method: 'POST',
       body: JSON.stringify({ chapters, ...(updatedAfter && { updatedAfter }) }),
     }),
+
+  /**
+   * Upload or replace one verse recording (Azure Blob via Fluent API).
+   * Contract: docs/guides/recordings-sync-contract.md (#102 / fluent-api #224).
+   * Worker orchestration lives in #100 (`recordingSync.ts`).
+   */
+  uploadVerseAudio: (
+    params: UploadVerseAudioParams,
+  ): Promise<VerseAudioResponse> => uploadVerseAudioRequest(params),
 };
 
-export { buildHeaders } from './httpClient';
+export { buildHeaders, buildMultipartAuthHeaders } from './httpClient';
