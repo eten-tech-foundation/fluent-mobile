@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import {
@@ -11,10 +11,16 @@ import {
   View,
 } from 'react-native';
 import { theme, touchHitSlop } from '../../theme';
+import { authToken } from '../../services/authToken';
 import { Check, UserPlus, X } from 'lucide-react-native';
+import { getCredentials } from '../../services/keychain';
+import { switchActiveUser } from '../../services/storage';
 import { RootStackParamList } from '../../types/navigation/types';
 import { useDeviceAccounts } from '../../hooks/useDeviceAccounts';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { logger } from '../../utils/logger';
+
+const log = logger.create('AccountSwitcherPanel');
 
 type Nav = StackNavigationProp<RootStackParamList>;
 
@@ -30,11 +36,52 @@ export function AccountSwitcherPanel({
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
   const { accounts, hasAccountLimit, loading } = useDeviceAccounts(visible);
+  const [switchingUserId, setSwitchingUserId] = useState<string | null>(null);
+  const [switchError, setSwitchError] = useState<string | null>(null);
+
+  const sheetStyle = useMemo(
+    () => ({
+      paddingBottom: insets.bottom + theme.spacing.lg,
+    }),
+    [insets.bottom],
+  );
 
   const handleOpenAddAccount = useCallback(() => {
     onClose();
     navigation.navigate('AddUser');
   }, [navigation, onClose]);
+
+  const handleSwitchAccount = useCallback(
+    async (userId: string) => {
+      if (switchingUserId) return;
+      setSwitchError(null);
+      setSwitchingUserId(userId);
+
+      try {
+        const creds = await getCredentials(userId);
+        if (!creds?.token) {
+          throw new Error('No usable stored session for this account');
+        }
+
+        authToken.set(creds.token);
+        switchActiveUser(userId);
+
+        onClose();
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Home', params: { newUserLoading: false } }],
+        });
+      } catch (error) {
+        log.error('Account switch failed', { userId, error });
+        setSwitchError(
+          "Couldn't switch to that account. Its saved session may be corrupted — try adding it again.",
+        );
+      } finally {
+        setSwitchingUserId(null);
+      }
+    },
+    [switchingUserId, onClose, navigation],
+  );
 
   return (
     <Modal
@@ -44,11 +91,9 @@ export function AccountSwitcherPanel({
       onRequestClose={onClose}
     >
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <View
-          style={[
-            styles.sheet,
-            { paddingBottom: insets.bottom + theme.spacing.lg },
-          ]}
+        <Pressable
+          onPress={event => event.stopPropagation()}
+          style={[styles.sheet, sheetStyle]}
         >
           <View style={styles.header}>
             <Text style={styles.title}>Accounts on this device</Text>
@@ -64,6 +109,12 @@ export function AccountSwitcherPanel({
             </TouchableOpacity>
           </View>
 
+          {switchError && (
+            <View style={styles.errorBanner} testID="account-switcher-error">
+              <Text style={styles.errorText}>{switchError}</Text>
+            </View>
+          )}
+
           <View style={styles.list}>
             {loading ? (
               <View style={styles.loadingRow}>
@@ -76,8 +127,15 @@ export function AccountSwitcherPanel({
                   style={[
                     styles.accountRow,
                     account.isActive && styles.accountRowActive,
+                    switchingUserId !== null &&
+                      switchingUserId !== account.userId &&
+                      styles.accountRowDisabled,
                   ]}
-                  activeOpacity={0.8}
+                  activeOpacity={account.isActive ? 1 : 0.8}
+                  onPress={() => {
+                    if (account.isActive || switchingUserId !== null) return;
+                    void handleSwitchAccount(account.userId);
+                  }}
                   accessibilityRole="button"
                   accessibilityLabel={`Switch to ${account.displayName}`}
                   accessibilityState={{ selected: account.isActive }}
@@ -103,7 +161,13 @@ export function AccountSwitcherPanel({
                     ) : null}
                   </View>
 
-                  {account.isActive ? (
+                  {switchingUserId === account.userId ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={theme.colors.primary}
+                      testID={`account-switcher-loading-${account.userId}`}
+                    />
+                  ) : account.isActive ? (
                     <Check
                       size={24}
                       color={theme.colors.primary}
@@ -146,7 +210,7 @@ export function AccountSwitcherPanel({
               </TouchableOpacity>
             )}
           </View>
-        </View>
+        </Pressable>
       </Pressable>
     </Modal>
   );
@@ -278,5 +342,19 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.md,
     color: theme.colors.mutedForeground,
     textAlign: 'center',
+  },
+  accountRowDisabled: {
+    opacity: 0.5,
+  },
+  errorBanner: {
+    marginHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
+    padding: theme.spacing.sm,
+    borderRadius: theme.radius.md,
+    backgroundColor: '#FDECEC',
+  },
+  errorText: {
+    color: theme.colors.destructive,
+    fontSize: theme.typography.sizes.sm,
   },
 });
