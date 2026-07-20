@@ -14,10 +14,15 @@ import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { appStyles as styles } from '../appStyles';
 import { RootStackParamList } from '../../types/navigation/types';
 import { ChapterAssignmentData, VerseData } from '../../types/db/types';
-import { getChapterAssignmentById, getBibleTexts } from '../../db/queries';
+import {
+  getChapterAssignmentById,
+  getBibleTexts,
+  getBibleTextId,
+} from '../../db/queries';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { usePlaybackEngine } from '../../hooks/usePlaybackEngine';
 import { PlaybackProgressBar } from '../../components/ui/PlaybackProgressBar';
+import { useVerseAudio } from '../../hooks/useVerseAudio';
+import { requestMicPermission } from '../../audio/micPermission';
 
 const log = logger.create('ViewChapter');
 
@@ -26,26 +31,23 @@ if (Platform.OS === 'android') {
 }
 
 type Route = RouteProp<RootStackParamList, 'VerseDetail'>;
-type VerseState = 'idle' | 'recording' | 'recorded';
 
 export default function ViewChapter() {
   const navigation = useNavigation();
   const { chapterId, chapterName, language, projectName } =
     useRoute<Route>().params;
-  const playback = usePlaybackEngine();
 
   const [selectedVerse, setSelectedVerse] = useState<number>(1);
   const [sourceExpanded, setSourceExpanded] = useState<boolean>(false);
-  const [verseStates, setVerseStates] = useState<Record<number, VerseState>>(
-    {},
-  );
-  /** Per-verse review URI once a take exists (#97 will populate on STOP). */
-  const [reviewUris, setReviewUris] = useState<Record<number, string>>({});
   const [verses, setVerses] = useState<VerseData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [chapterData, setChapterData] = useState<ChapterAssignmentData | null>(
     null,
   );
+  const [bibleTextId, setBibleTextId] = useState<number | null>(null);
+  const [micDenied, setMicDenied] = useState(false);
+
+  const verseAudio = useVerseAudio({ bibleTextId });
 
   useEffect(() => {
     const loadVerses = async () => {
@@ -82,6 +84,28 @@ export default function ViewChapter() {
     loadVerses();
   }, [chapterId]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!chapterData) {
+        setBibleTextId(null);
+        return;
+      }
+      const id = await getBibleTextId(
+        chapterData.bibleId,
+        chapterData.bookId,
+        chapterData.chapterNumber,
+        selectedVerse,
+      );
+      if (!cancelled) {
+        setBibleTextId(id);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [chapterData, selectedVerse]);
+
   if (loading) {
     return (
       <View style={[styles.container, styles.centered]}>
@@ -98,56 +122,36 @@ export default function ViewChapter() {
     );
   }
 
-  const verseState = verseStates[selectedVerse] ?? 'idle';
   const selectedVerseData = verses.find(v => v.verseNumber === selectedVerse);
   const sourceText = selectedVerseData?.text;
+  const uiState = verseAudio.state;
+  const showRecorded =
+    uiState === 'recorded' || uiState === 'playing' || uiState === 'saving';
+  const showRecording = uiState === 'recording' || uiState === 'paused';
 
   function toggleSource() {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setSourceExpanded(prev => !prev);
   }
 
-  function handleRecord() {
-    setVerseStates((prev: Record<number, VerseState>) => ({
-      ...prev,
-      [selectedVerse]:
-        prev[selectedVerse] === 'recording' ? 'recorded' : 'recording',
-    }));
-  }
-
-  function handleDelete() {
-    void playback.stop();
-    setVerseStates((prev: Record<number, VerseState>) => ({
-      ...prev,
-      [selectedVerse]: 'idle',
-    }));
-    setReviewUris(prev => {
-      const next = { ...prev };
-      delete next[selectedVerse];
-      return next;
-    });
+  async function handleRecordPress() {
+    if (showRecording) {
+      await verseAudio.stop();
+      return;
+    }
+    const permission = await requestMicPermission();
+    if (permission !== 'granted') {
+      setMicDenied(true);
+      return;
+    }
+    setMicDenied(false);
+    await verseAudio.start();
   }
 
   function selectVerse(v: number) {
-    void playback.stop();
     setSelectedVerse(v);
     setSourceExpanded(false);
   }
-
-  async function handleReviewPlayback() {
-    const uri = reviewUris[selectedVerse];
-    if (!uri) {
-      return;
-    }
-    if (playback.status === 'playing') {
-      await playback.pause();
-      return;
-    }
-    await playback.play(uri);
-  }
-
-  const reviewUri = reviewUris[selectedVerse];
-  const canPlayReview = Boolean(reviewUri);
 
   return (
     <View style={styles.container}>
@@ -212,65 +216,89 @@ export default function ViewChapter() {
             {language} - Verse {selectedVerse}
           </Text>
 
-          {verseState === 'idle' && (
+          {micDenied && (
+            <Text style={styles.emptyText}>
+              Microphone access is required to record.
+            </Text>
+          )}
+
+          {uiState === 'idle' || uiState === 'error' ? (
             <TouchableOpacity
               style={styles.recordBtn}
-              onPress={handleRecord}
+              onPress={() => {
+                void handleRecordPress();
+              }}
               activeOpacity={0.8}
+              disabled={bibleTextId === null}
             >
               <Ionicons name="mic" size={28} color="#fff" />
             </TouchableOpacity>
-          )}
+          ) : null}
 
-          {verseState === 'recording' && (
-            <TouchableOpacity
-              style={styles.recordBtn}
-              onPress={handleRecord}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="stop" size={24} color="#fff" />
-            </TouchableOpacity>
-          )}
+          {showRecording ? (
+            <View style={styles.playerRow}>
+              <TouchableOpacity
+                style={styles.playBtn}
+                onPress={() => {
+                  void (uiState === 'paused'
+                    ? verseAudio.resume()
+                    : verseAudio.pause());
+                }}
+              >
+                <Ionicons
+                  name={uiState === 'paused' ? 'mic' : 'pause'}
+                  size={16}
+                  color="#fff"
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.recordBtn}
+                onPress={() => {
+                  void handleRecordPress();
+                }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="stop" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          ) : null}
 
-          {verseState === 'recorded' && (
+          {showRecorded ? (
             <>
               <View style={styles.playerRow}>
                 <TouchableOpacity
                   style={[
                     styles.playBtn,
-                    !canPlayReview && styles.playBtnDisabled,
+                    !verseAudio.latest?.localFilePath && styles.playBtnDisabled,
                   ]}
                   onPress={() => {
-                    void handleReviewPlayback();
+                    void verseAudio.play();
                   }}
-                  disabled={!canPlayReview}
+                  disabled={!verseAudio.latest?.localFilePath}
                   activeOpacity={0.8}
-                  accessibilityLabel={
-                    playback.status === 'playing'
-                      ? 'Pause recording'
-                      : 'Play recording'
-                  }
                 >
                   <Ionicons
-                    name={playback.status === 'playing' ? 'pause' : 'play'}
+                    name={uiState === 'playing' ? 'pause' : 'play'}
                     size={16}
                     color="#fff"
                   />
                 </TouchableOpacity>
                 <PlaybackProgressBar
-                  positionMs={playback.positionMs}
-                  durationMs={playback.durationMs}
+                  positionMs={verseAudio.positionMs}
+                  durationMs={verseAudio.durationMs}
                 />
               </View>
               <TouchableOpacity
                 style={styles.deleteBtn}
-                onPress={handleDelete}
+                onPress={() => {
+                  void verseAudio.deleteCurrent();
+                }}
                 activeOpacity={0.8}
               >
                 <Ionicons name="trash" size={20} color="#fff" />
               </TouchableOpacity>
             </>
-          )}
+          ) : null}
         </View>
       </ScrollView>
 
@@ -283,7 +311,7 @@ export default function ViewChapter() {
         {verses.length > 0 ? (
           verses.map(verse => {
             const hasRecording =
-              (verseStates[verse.verseNumber] ?? 'idle') === 'recorded';
+              verse.verseNumber === selectedVerse && Boolean(verseAudio.latest);
             const isSelected = selectedVerse === verse.verseNumber;
             return (
               <TouchableOpacity

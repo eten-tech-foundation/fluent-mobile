@@ -90,6 +90,24 @@ export async function readAsStringAsync(
   return files.get(path) ?? '';
 }
 
+export async function copyAsync(options: {
+  from: string;
+  to: string;
+}): Promise<void> {
+  const from = resolveUri(options.from);
+  const to = resolveUri(options.to);
+  const content = files.get(from) ?? '';
+  files.set(to, content);
+}
+
+export async function moveAsync(options: {
+  from: string;
+  to: string;
+}): Promise<void> {
+  await copyAsync(options);
+  await deleteAsync(options.from);
+}
+
 resetFileSystemMock();
 
 /** Test-only helper to inspect stored files. */
