@@ -3,7 +3,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { HardDrive, LogOut, UserPlus } from 'lucide-react-native';
+import { HardDrive, LogOut, Trash2, UserPlus } from 'lucide-react-native';
 import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import {
@@ -30,6 +30,7 @@ import {
   switchActiveUser,
   MAX_DEVICE_ACCOUNTS,
 } from '../../services/storage';
+import { clearAllPausedTakes } from '../../services/pausedTakes';
 import { usePreferences } from '../../hooks/usePreferences';
 import { RootStackParamList } from '../../types/navigation/types';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
@@ -127,6 +128,27 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
     await performLogOut();
   };
 
+  const handleClearCache = useCallback(() => {
+    Alert.alert(
+      'Clear cache?',
+      'Removes paused draft takes stored on this device.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              const all = await clearAllPausedTakes();
+              log.info('Cache cleared', { all });
+              Alert.alert('Cache cleared', 'Paused draft takes were removed.');
+            })();
+          },
+        },
+      ],
+    );
+  }, []);
+
   const iconColor = theme.colors.foreground;
 
   return (
@@ -157,6 +179,19 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
                   subtitle="Use mobile data to upload recordings when WiFi isn't available."
                   value={uploadOverCellular}
                   onValueChange={setUploadOverCellular}
+                />
+              </View>
+              <View style={styles.sectionCard}>
+                <SettingsDestructiveRow
+                  title="Clear cache"
+                  icon={
+                    <Trash2
+                      size={iconSizes.headerTab}
+                      color={theme.colors.destructive}
+                      strokeWidth={listIconStrokeWidth}
+                    />
+                  }
+                  onPress={handleClearCache}
                 />
               </View>
             </View>
