@@ -1,7 +1,7 @@
 import React from 'react';
-import { Alert, Modal } from 'react-native';
+import { Alert } from 'react-native';
 import { UserSettingsMenu } from './UserSettingsMenu';
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 
 const mockNavigate = jest.fn();
 jest.mock('@react-navigation/native', () => ({
@@ -23,12 +23,10 @@ jest.mock('../../services/keychain', () => ({
 const mockSwitchActiveUser = jest.fn();
 const mockGetActiveUserId = jest.fn();
 const mockGetKnownUserIds = jest.fn();
-const mockGetUserEmail = jest.fn();
 const mockSetItemSync = jest.fn();
 jest.mock('../../services/storage', () => ({
   getActiveUserId: (...args: unknown[]) => mockGetActiveUserId(...args),
   getKnownUserIds: (...args: unknown[]) => mockGetKnownUserIds(...args),
-  getUserEmail: (...args: unknown[]) => mockGetUserEmail(...args),
   kvStorage: { setItemSync: (...args: unknown[]) => mockSetItemSync(...args) },
   KV_KEYS: { KNOWN_USER_IDS: 'known_user_ids' },
   switchActiveUser: (...args: unknown[]) => mockSwitchActiveUser(...args),
@@ -49,6 +47,45 @@ jest.mock('../../utils/logger', () => ({
   logger: { create: () => ({ info: jest.fn(), error: jest.fn() }) },
 }));
 
+const mockUseDeviceAccounts = jest.fn();
+jest.mock('../../hooks/useDeviceAccounts', () => ({
+  useDeviceAccounts: (...args: unknown[]) => mockUseDeviceAccounts(...args),
+}));
+
+const activeAccount = {
+  userId: 'active-1',
+  displayName: 'Active User',
+  email: 'active@example.com',
+  initials: 'AU',
+  isActive: true,
+};
+
+const otherAccount = {
+  userId: 'other-2',
+  displayName: 'Other User',
+  email: 'other@example.com',
+  initials: 'OU',
+  isActive: false,
+};
+
+function setDeviceAccountsResult(
+  overrides: Partial<{
+    accounts: (typeof activeAccount)[];
+    hasAccountLimit: boolean;
+    loading: boolean;
+  }> = {},
+) {
+  const accounts = overrides.accounts ?? [activeAccount, otherAccount];
+  mockUseDeviceAccounts.mockReturnValue({
+    accounts,
+    accountCount: accounts.length,
+    activeUserId: 'active-1',
+    hasAccountLimit: overrides.hasAccountLimit ?? false,
+    loading: overrides.loading ?? false,
+    reload: jest.fn(),
+  });
+}
+
 describe('UserSettingsMenu', () => {
   const onClose = jest.fn();
   const onUserSwitched = jest.fn();
@@ -63,15 +100,13 @@ describe('UserSettingsMenu', () => {
 
     mockGetActiveUserId.mockReturnValue('active-1');
     mockGetKnownUserIds.mockReturnValue(['active-1', 'other-2']);
-    mockGetUserEmail.mockImplementation((id: string) =>
-      id === 'active-1' ? 'active@example.com' : 'other@example.com',
-    );
     mockSignOutApi.mockResolvedValue(undefined);
+    setDeviceAccountsResult();
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 
   function renderMenu() {
-    const utils = render(
+    return render(
       <UserSettingsMenu
         visible
         onClose={onClose}
@@ -80,33 +115,77 @@ describe('UserSettingsMenu', () => {
         onUserSwitched={onUserSwitched}
       />,
     );
+  }
 
-    // The real Modal fires onShow natively; RN's test-environment Modal
-    // mock doesn't simulate that, so the component's onShow-triggered
-    // loadKnownUsers() never runs unless we fire it ourselves.
-    act(() => {
-      utils.UNSAFE_getByType(Modal).props.onShow();
+  it('groups accounts under Accounts with Add User below the list', () => {
+    const { getByText, getByTestId, queryByText } = renderMenu();
+
+    expect(getByText('Accounts')).toBeTruthy();
+    expect(getByText('Active User')).toBeTruthy();
+    expect(getByText('Other User')).toBeTruthy();
+    expect(getByTestId('settings-menu-add-user')).toBeTruthy();
+    expect(getByText('Add User')).toBeTruthy();
+    expect(queryByText('Switch User')).toBeNull();
+  });
+
+  it('keeps Add User out of the top group (after Privacy / Terms)', () => {
+    const { getByText, getByTestId } = renderMenu();
+    const privacy = getByTestId('settings-menu-privacy-policy');
+    const terms = getByTestId('settings-menu-terms-of-use');
+    const addUser = getByTestId('settings-menu-add-user');
+    const accountsLabel = getByText('Accounts');
+
+    expect(privacy).toBeTruthy();
+    expect(terms).toBeTruthy();
+    expect(accountsLabel).toBeTruthy();
+    expect(addUser).toBeTruthy();
+  });
+
+  it('shows the 3-account limit message instead of Add User when capped', () => {
+    setDeviceAccountsResult({
+      accounts: [
+        activeAccount,
+        otherAccount,
+        {
+          userId: 'third-3',
+          displayName: 'Third User',
+          email: 'third@example.com',
+          initials: 'TU',
+          isActive: false,
+        },
+      ],
+      hasAccountLimit: true,
     });
 
-    return utils;
-  }
+    const { getByTestId, queryByTestId } = renderMenu();
+
+    expect(getByTestId('settings-menu-account-limit')).toBeTruthy();
+    expect(queryByTestId('settings-menu-add-user')).toBeNull();
+  });
+
+  it('navigates to AddUser when Add User is pressed', () => {
+    const { getByTestId } = renderMenu();
+    fireEvent.press(getByTestId('settings-menu-add-user'));
+
+    expect(onClose).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('AddUser');
+  });
 
   it('does nothing when tapping the already-active user', async () => {
     const { getByText } = renderMenu();
-    await waitFor(() => getByText('active@example.com'));
 
-    fireEvent.press(getByText('active@example.com'));
+    fireEvent.press(getByText('Active User'));
 
     expect(mockGetCredentials).not.toHaveBeenCalled();
     expect(mockSwitchActiveUser).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
   });
 
   it('switches successfully when the target user has a valid session', async () => {
     mockGetCredentials.mockResolvedValueOnce({ token: 'valid-token' });
     const { getByText } = renderMenu();
-    await waitFor(() => getByText('other@example.com'));
 
-    fireEvent.press(getByText('other@example.com'));
+    fireEvent.press(getByText('Other User'));
 
     await waitFor(() => {
       expect(mockAuthTokenSet).toHaveBeenCalledWith('valid-token');
@@ -119,9 +198,8 @@ describe('UserSettingsMenu', () => {
   it('shows an alert and does not switch when credentials are missing', async () => {
     mockGetCredentials.mockResolvedValueOnce(null);
     const { getByText } = renderMenu();
-    await waitFor(() => getByText('other@example.com'));
 
-    fireEvent.press(getByText('other@example.com'));
+    fireEvent.press(getByText('Other User'));
 
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalledWith(
@@ -136,9 +214,8 @@ describe('UserSettingsMenu', () => {
   it('shows an alert when the stored session has no token', async () => {
     mockGetCredentials.mockResolvedValueOnce({ token: '' });
     const { getByText } = renderMenu();
-    await waitFor(() => getByText('other@example.com'));
 
-    fireEvent.press(getByText('other@example.com'));
+    fireEvent.press(getByText('Other User'));
 
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalled();
@@ -151,7 +228,6 @@ describe('UserSettingsMenu', () => {
     mockGetCredentials.mockResolvedValueOnce({ token: 'next-token' });
 
     const { getByText } = renderMenu();
-    await waitFor(() => getByText('Sign Out'));
     fireEvent.press(getByText('Sign Out'));
 
     await waitFor(() => {
@@ -164,9 +240,9 @@ describe('UserSettingsMenu', () => {
 
   it('fully signs out when no accounts remain', async () => {
     mockGetKnownUserIds.mockReturnValue(['active-1']);
+    setDeviceAccountsResult({ accounts: [activeAccount] });
 
     const { getByText } = renderMenu();
-    await waitFor(() => getByText('Sign Out'));
     fireEvent.press(getByText('Sign Out'));
 
     await waitFor(() => {
