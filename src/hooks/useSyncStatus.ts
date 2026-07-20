@@ -1,3 +1,4 @@
+import { usePreferences } from './usePreferences';
 import { useConnectivity } from './useConnectivity';
 import { useLocalSyncHealth } from './useLocalSyncHealth';
 import { usePendingUploads } from './usePendingUploads';
@@ -12,18 +13,22 @@ export function useSyncStatus({
   isSyncing,
   refreshKey = 0,
 }: UseSyncStatusOptions) {
-  const { isOnline } = useConnectivity();
+  const { isOnline, isWifi } = useConnectivity();
+  const { uploadOverCellular } = usePreferences();
   const { pendingCount, hasPendingUploads } = usePendingUploads(refreshKey);
   const { needsDownloadSync } = useLocalSyncHealth(refreshKey);
 
+  // "Online" for sync chrome means allowed to sync: WiFi, or cellular when opted in.
+  const effectivelyOnline = isOnline && (isWifi || uploadOverCellular);
+
   return {
     status: deriveSyncStatus({
-      isOnline,
+      isOnline: effectivelyOnline,
       isSyncing,
       hasPendingUploads,
       needsDownloadSync,
     }),
-    isOnline,
+    isOnline: effectivelyOnline,
     pendingCount,
     hasPendingUploads,
     needsDownloadSync,

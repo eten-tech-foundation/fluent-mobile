@@ -1,13 +1,15 @@
-import { useState } from 'react';
 import { theme } from '../../theme';
+import { useEffect, useState } from 'react';
 import { useSync } from '../../hooks/useSync';
 import { Pause, Play, X } from 'lucide-react-native';
 import { SyncPageStatus } from '../../types/sync/types';
 import { useNavigation } from '@react-navigation/native';
 import { getPendingUploadCount } from '../../db/queries';
 import { listIconStrokeWidth } from '../../theme/iconSpecs';
+import { usePreferences } from '../../hooks/usePreferences';
 import { useConnectivity } from '../../hooks/useConnectivity';
 import { usePendingUploads } from '../../hooks/usePendingUploads';
+import { SettingsToggleRow } from '../../components/ui/SettingsListRow';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { UploadProgressBar } from '../../components/ui/UploadProgressBar';
 import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
@@ -34,8 +36,10 @@ export default function SyncScreen() {
   );
   const [status, setStatus] = useState<SyncPageStatus>('pending');
 
-  const { isOnline } = useConnectivity();
+  const { isOnline, isWifi } = useConnectivity();
+  const { uploadOverCellular, setUploadOverCellular } = usePreferences();
   const { hasPendingUploads } = usePendingUploads(refreshKey);
+  const effectivelyOnline = isOnline && (isWifi || uploadOverCellular);
 
   // Once the real sync finishes, re-check the pending count directly
   // (rather than relying on hasPendingUploads above, which only refetches
@@ -58,18 +62,32 @@ export default function SyncScreen() {
     },
   });
 
+  useEffect(() => {
+    if (status === 'syncing' && isOnline && !isWifi && !uploadOverCellular) {
+      setStatus('paused');
+    }
+  }, [status, isOnline, isWifi, uploadOverCellular]);
+
+  const handleSyncNow = () => {
+    if (isOnline && !isWifi && !uploadOverCellular) {
+      return;
+    }
+    triggerSync();
+    setStatus('syncing');
+  };
+
   return (
-    <ScreenContainer edges={['top']}>
+    <ScreenContainer edges={['bottom']}>
       <StackScreenHeader title="Sync" onBack={() => navigation.goBack()} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <View style={styles.statusSection}>
           <SyncStatusIndicator
             status={status}
-            isOnline={isOnline}
+            isOnline={effectivelyOnline}
             hasPendingUploads={hasPendingUploads}
           />
 
-          {renderStatusLine(status, isOnline, hasPendingUploads)}
+          {renderStatusLine(status, effectivelyOnline, hasPendingUploads)}
         </View>
 
         <View style={styles.uploadSection}>
@@ -87,7 +105,7 @@ export default function SyncScreen() {
           real Pause/Resume/Cancel/Sync Now wired to #150's engine.
         */}
         <View style={styles.controlsSection}>
-          {renderMockControls(status, setStatus, triggerSync)}
+          {renderMockControls(status, setStatus, handleSyncNow)}
         </View>
         {/*
           TODO: render the already-drafted downloads queue section here
@@ -95,6 +113,14 @@ export default function SyncScreen() {
           the action controls, and both this section and the
           "Upload complete" state can be visible simultaneously.
         */}
+        <View style={styles.cellularSection}>
+          <SettingsToggleRow
+            title="Upload/Download over cellular"
+            subtitle="Use mobile data to upload recordings when WiFi isn't available."
+            value={uploadOverCellular}
+            onValueChange={setUploadOverCellular}
+          />
+        </View>
       </ScrollView>
     </ScreenContainer>
   );
@@ -230,14 +256,14 @@ function renderSecondaryContent(
 // 'pending' (uploads still queued, nothing actively running); that mapping
 // isn't spec'd anywhere, just a reasonable guess for demo purposes.
 //
-// Only "Sync Now" (pending state) calls the real triggerSync(), so
+// Only "Sync Now" (pending state) calls the gated sync handler, so
 // there's at least one working manual-sync path until #151 wires up the
 // real thing. Pause, Resume, and Cancel remain visual-only — there's no
 // real pause/resume/cancel behavior to call yet (that's #150).
 function renderMockControls(
   status: SyncPageStatus,
   setStatus: (status: SyncPageStatus) => void,
-  triggerSync: () => void,
+  onSyncNow: () => void,
 ) {
   switch (status) {
     case 'syncing':
@@ -283,10 +309,7 @@ function renderMockControls(
           Icon={Play}
           variant="primary"
           fullWidth
-          onPress={() => {
-            triggerSync();
-            setStatus('syncing');
-          }}
+          onPress={onSyncNow}
         />
       );
 
@@ -371,10 +394,7 @@ const styles = StyleSheet.create({
   },
   content: {
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.md,
-    paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.lg,
-    gap: theme.spacing.md,
   },
   statusSection: {
     width: '100%',
@@ -382,18 +402,27 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.xl,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
+    backgroundColor: theme.colors.cardBackground,
   },
 
   uploadSection: {
     width: '100%',
-    paddingVertical: theme.spacing.lg,
     borderBottomWidth: 1,
+    paddingVertical: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.md,
     borderBottomColor: theme.colors.border,
+    backgroundColor: theme.colors.cardBackground,
   },
 
   controlsSection: {
-    width: '100%',
+    width: '90%',
     paddingVertical: theme.spacing.lg,
+  },
+
+  cellularSection: {
+    width: '100%',
+    backgroundColor: theme.colors.cardBackground,
+    overflow: 'hidden',
   },
   pausedLabel: {
     fontSize: theme.typography.sizes.md,
@@ -451,6 +480,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.cardBackground,
   },
   controlButtonPrimary: {
     backgroundColor: theme.colors.primary,
