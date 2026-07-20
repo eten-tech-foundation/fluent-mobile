@@ -1,3 +1,21 @@
+const mockKv = new Map<string, string>();
+
+jest.mock('./storage', () => ({
+  kvStorage: {
+    getItemSync: (key: string) => mockKv.get(key) ?? null,
+    setItemSync: (key: string, value: string) => {
+      mockKv.set(key, value);
+    },
+    removeItemSync: (key: string) => {
+      mockKv.delete(key);
+    },
+  },
+}));
+
+jest.mock('../utils/audioStorage', () => ({
+  deleteFile: jest.fn(async () => undefined),
+}));
+
 import {
   clearAllPausedTakes,
   clearOrphanedPausedTakes,
@@ -8,15 +26,10 @@ import {
   upsertPausedTake,
   type PausedTakeMarker,
 } from './pausedTakes';
-import { kvStorage } from './storage';
-
-jest.mock('../utils/audioStorage', () => ({
-  deleteFile: jest.fn(async () => undefined),
-}));
 
 describe('pausedTakes (#170)', () => {
   beforeEach(() => {
-    kvStorage.removeItemSync(PAUSED_TAKES_KV_KEY);
+    mockKv.clear();
   });
 
   it('detects orphaned markers without verse/chapter', () => {
@@ -48,6 +61,7 @@ describe('pausedTakes (#170)', () => {
     const removed = await clearOrphanedPausedTakes();
     expect(removed).toBe(1);
     expect(listPausedTakes().map(m => m.sessionKey)).toEqual(['ok']);
+    expect(mockKv.get(PAUSED_TAKES_KV_KEY)).toContain('ok');
   });
 
   it('clearAllPausedTakes empties storage', async () => {

@@ -66,6 +66,11 @@ jest.mock('../src/services/sync', () => ({
   syncAllData: jest.fn(() => Promise.resolve()),
 }));
 
+// Paused-take orphan cleanup (#170)
+jest.mock('../src/services/pausedTakes', () => ({
+  clearOrphanedPausedTakes: jest.fn(() => Promise.resolve(0)),
+}));
+
 // Auth session
 jest.mock('../src/services/authSession', () => ({
   restoreSession: jest.fn(() => Promise.resolve({ authenticated: false })),
