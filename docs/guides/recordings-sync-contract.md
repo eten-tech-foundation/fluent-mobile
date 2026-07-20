@@ -61,7 +61,7 @@ JSON matching `verseAudioResponseSchema`: `id`, `projectUnitId`, `bibleTextId`, 
 
 ## Out of scope here
 
-- Upload worker / retries / single-flight — #100
+- Upload worker / retries / single-flight — #100 (`src/services/recordingSync.ts`)
 - Upload orchestrator — #150 (`setChapterUploadWorker`)
 - Live DevQA until #224 (or chosen API) is merged and deployed — waived on #102 with follow-up
 

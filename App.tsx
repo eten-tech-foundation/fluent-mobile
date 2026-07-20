@@ -15,11 +15,14 @@ import {
   startUploadOrchestrator,
   stopUploadOrchestrator,
 } from './src/services/uploadOrchestrator';
+import { registerRecordingUploadWorker } from './src/services/recordingSync';
 import { queryClient } from './src/services/queryClient';
 import { appStyles } from './src/app/appStyles';
 import { theme } from './src/theme';
 
 const log = logger.create('App');
+
+registerRecordingUploadWorker();
 
 function App() {
   const [dbReady, setDbReady] = useState(false);

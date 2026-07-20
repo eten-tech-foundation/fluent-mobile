@@ -74,6 +74,11 @@ jest.mock('../src/services/authSession', () => ({
 jest.mock('../src/services/uploadOrchestrator', () => ({
   startUploadOrchestrator: jest.fn(),
   stopUploadOrchestrator: jest.fn(),
+  setChapterUploadWorker: jest.fn(),
+}));
+
+jest.mock('../src/services/recordingSync', () => ({
+  registerRecordingUploadWorker: jest.fn(),
 }));
 
 // Keychain
