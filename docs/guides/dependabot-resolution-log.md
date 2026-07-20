@@ -4,20 +4,23 @@ Records how open Dependabot PRs were resolved in a given branch so the team can 
 
 ## Batch: `main` (2026-07-20)
 
-Resolved: 2026-07-20
+Resolved: 2026-07-20 (finish pass same day)
 
 | PR | Title / scope | Change applied |
 |----|---------------|----------------|
-| #194 | actions/setup-node 4 → 7 | **Merged** — safe GitHub Actions only; CI green |
-| #195 | react group (`react` / `react-test-renderer` 19.2.3 → 19.2.7) | **Deferred** — risky; CI red; needs Android smoke |
-| #196 | navigation group (`@react-navigation/*`) | **Deferred** — risky; CI green but Android smoke required |
-| #197 | testing group (Jest 29→30, RTL 13→14, `@types/jest` 29→30) | **Deferred** — major tooling; CI red |
-| #198 | dev-tools group (Babel 8, ESLint 10, Prettier 3, TS 7) | **Deferred** — stacked majors; CI red |
+| #194 | actions/setup-node 4 → 7 | **Merged** — safe GitHub Actions only; CI green; `main` Lint/Test/Quality Gates green after squash |
+| #195 | react group (`react` / `react-test-renderer` 19.2.3 → 19.2.7) | **Deferred** — risky; CI red after rebase; needs Android smoke |
+| #196 | navigation group (`@react-navigation/native` / `stack`) | **Deferred** — risky; CI green after rebase but Android smoke required (not run) |
+| #197 | testing group (Jest 29→30, RTL 13→14, `@types/jest` 29→30) | **Deferred** — major tooling; CI red after rebase |
+| #198 | dev-tools group (Babel 8, ESLint 10, Prettier 3, TS 7) | **Closed by Dependabot** — superseded after rebase; see #216 |
 | #199 | expo group (`expo` ~56 → ~57) | **Closed** — SDK upgrade; use dedicated SDK 57 ticket |
+| #216 | dev-tools group (Babel 8, ESLint 10, Prettier 3, TS 7 + related) | **Deferred** — replacement for #198; stacked majors; CI red |
 
-**Action:** Merged #194 squash. Closed #199. Deferred #195–#198 with comments. `@dependabot rebase` on remaining open bots after #194.
+**Action:** Merged #194 squash. Closed #199 (Expo). #198 superseded/closed by Dependabot; deferred replacement #216. Deferred #195–#197 (risky/majors). Finish pass: no additional safe merges — remaining open bots are risky or majors with red CI. Re-triage comments posted after rebase.
 
-**Verification run:** GitHub CI on #194 (Lint, Test, Quality Gates) green before merge. `main` CI for #194 merge watched after squash.
+**Left open (Dependabot):** #195, #196, #197, #216.
+
+**Verification run:** GitHub CI on #194 green before merge. `main` CI (Lint Check, Test Check, Quality Gates) success for #194 squash. Finish pass used CI-first triage only; no Android smoke (required before merging #195/#196).
 
 ---
 
