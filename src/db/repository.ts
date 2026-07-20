@@ -505,3 +505,11 @@ export async function userNeedsAssigneeRepair(
   const withRole = Number(row?.with_role ?? 0);
   return total > 0 && withRole === 0;
 }
+
+export {
+  addRecordingTake,
+  getLatestRecordingForVerse,
+  getTakesForVerse,
+  deleteRecordingTake,
+} from './recordingsRepository';
+export type { AddRecordingTakeInput } from './recordingsRepository';
