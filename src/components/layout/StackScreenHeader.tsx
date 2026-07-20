@@ -1,14 +1,15 @@
 import React from 'react';
 import {
-  ActivityIndicator,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SyncStatus, SYNC_STATUS_LABELS } from '../../utils/syncStatusState';
 import { useHeaderSafeAreaPadding } from './useHeaderSafeAreaPadding';
-import { ChevronLeft, CloudUpload } from 'lucide-react-native';
+import { CloudSyncStatusIcon } from '../ui/CloudSyncStatusIcon';
+import { ChevronLeft } from 'lucide-react-native';
 import { theme } from '../../theme';
 import {
   headerLayout,
@@ -22,7 +23,7 @@ interface StackScreenHeaderProps {
   subtitle?: string;
   onBack: () => void;
   onSyncPress?: () => void;
-  isSyncing?: boolean;
+  syncStatus?: SyncStatus;
   subtitleLines?: number;
 }
 
@@ -31,7 +32,7 @@ export function StackScreenHeader({
   subtitle,
   onBack,
   onSyncPress,
-  isSyncing = false,
+  syncStatus,
   subtitleLines = 1,
 }: StackScreenHeaderProps) {
   const headerPadding = useHeaderSafeAreaPadding();
@@ -67,27 +68,15 @@ export function StackScreenHeader({
         ) : null}
       </View>
 
-      {onSyncPress ? (
+      {onSyncPress && syncStatus ? (
         <TouchableOpacity
           onPress={onSyncPress}
-          disabled={isSyncing}
           hitSlop={touchHitSlop}
           style={styles.syncButton}
           accessibilityRole="button"
-          accessibilityLabel={
-            isSyncing ? 'Syncing. Open Sync page.' : 'Sync. Open Sync page.'
-          }
-          accessibilityState={{ disabled: isSyncing }}
+          accessibilityLabel={SYNC_STATUS_LABELS[syncStatus]}
         >
-          {isSyncing ? (
-            <ActivityIndicator size="small" color={theme.colors.foreground} />
-          ) : (
-            <CloudUpload
-              size={iconSizes.header}
-              color={theme.colors.foreground}
-              strokeWidth={listIconStrokeWidth}
-            />
-          )}
+          <CloudSyncStatusIcon status={syncStatus} decorative />
         </TouchableOpacity>
       ) : (
         <View style={styles.syncPlaceholder} />

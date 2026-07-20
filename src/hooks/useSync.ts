@@ -67,9 +67,14 @@ function buildDisplayText(isSyncing: boolean): {
 interface UseSyncOptions {
   onSyncComplete?: () => void;
   onSyncStart?: () => void;
+  onError?: (error: unknown) => void;
 }
 
-export function useSync({ onSyncComplete, onSyncStart }: UseSyncOptions = {}) {
+export function useSync({
+  onSyncComplete,
+  onSyncStart,
+  onError,
+}: UseSyncOptions = {}) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [{ stateType, displayText }, setSyncDisplay] = useState(() =>
     buildDisplayText(false),
@@ -101,11 +106,12 @@ export function useSync({ onSyncComplete, onSyncStart }: UseSyncOptions = {}) {
       onSyncComplete?.();
     } catch (error) {
       log.error('Sync failed', { error });
+      onError?.(error);
     } finally {
       setIsSyncing(false);
       updateState(false);
     }
-  }, [onSyncStart, onSyncComplete, updateState]);
+  }, [onSyncStart, onSyncComplete, onError, updateState]);
 
   return {
     stateType,

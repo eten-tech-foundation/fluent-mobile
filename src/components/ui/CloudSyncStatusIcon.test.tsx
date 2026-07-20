@@ -27,6 +27,18 @@ jest.mock('../../assets/icons/cloud-off-unsynced.svg', () => {
     });
 });
 
+jest.mock('lucide-react-native', () => {
+  const MockReact = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    CloudOff: (props: { accessibilityLabel?: string }) =>
+      MockReact.createElement(View, {
+        accessibilityLabel: props.accessibilityLabel,
+      }),
+  };
+});
+
 const ALL_STATUSES: SyncStatus[] = [
   'online_synced',
   'online_syncing',
