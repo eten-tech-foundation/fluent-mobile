@@ -17,7 +17,6 @@ import {
   LOGOUT_UNSYNCED_MESSAGE,
   LOGOUT_UNSYNCED_TITLE,
 } from '../../constants/messages';
-import { getPendingUploadCount } from '../../db/queries';
 import { FluentAPI } from '../../services/api';
 import { signOut } from '../../services/authSession';
 import { authToken } from '../../services/authToken';
@@ -30,6 +29,7 @@ import {
   switchActiveUser,
   MAX_DEVICE_ACCOUNTS,
 } from '../../services/storage';
+import { loadPendingUploadCount } from '../../hooks/usePendingUploads';
 import { usePreferences } from '../../hooks/usePreferences';
 import { RootStackParamList } from '../../types/navigation/types';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
@@ -108,7 +108,7 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
   };
 
   const handleLogOut = async () => {
-    const pendingCount = await getPendingUploadCount();
+    const pendingCount = await loadPendingUploadCount();
 
     if (pendingCount > 0) {
       Alert.alert(LOGOUT_UNSYNCED_TITLE, LOGOUT_UNSYNCED_MESSAGE, [
