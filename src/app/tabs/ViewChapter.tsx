@@ -16,6 +16,8 @@ import { RootStackParamList } from '../../types/navigation/types';
 import { ChapterAssignmentData, VerseData } from '../../types/db/types';
 import { getChapterAssignmentById, getBibleTexts } from '../../db/queries';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { usePlaybackEngine } from '../../hooks/usePlaybackEngine';
+import { PlaybackProgressBar } from '../../components/ui/PlaybackProgressBar';
 
 const log = logger.create('ViewChapter');
 
@@ -30,12 +32,15 @@ export default function ViewChapter() {
   const navigation = useNavigation();
   const { chapterId, chapterName, language, projectName } =
     useRoute<Route>().params;
+  const playback = usePlaybackEngine();
 
   const [selectedVerse, setSelectedVerse] = useState<number>(1);
   const [sourceExpanded, setSourceExpanded] = useState<boolean>(false);
   const [verseStates, setVerseStates] = useState<Record<number, VerseState>>(
     {},
   );
+  /** Per-verse review URI once a take exists (#97 will populate on STOP). */
+  const [reviewUris, setReviewUris] = useState<Record<number, string>>({});
   const [verses, setVerses] = useState<VerseData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [chapterData, setChapterData] = useState<ChapterAssignmentData | null>(
@@ -111,16 +116,38 @@ export default function ViewChapter() {
   }
 
   function handleDelete() {
+    void playback.stop();
     setVerseStates((prev: Record<number, VerseState>) => ({
       ...prev,
       [selectedVerse]: 'idle',
     }));
+    setReviewUris(prev => {
+      const next = { ...prev };
+      delete next[selectedVerse];
+      return next;
+    });
   }
 
   function selectVerse(v: number) {
+    void playback.stop();
     setSelectedVerse(v);
     setSourceExpanded(false);
   }
+
+  async function handleReviewPlayback() {
+    const uri = reviewUris[selectedVerse];
+    if (!uri) {
+      return;
+    }
+    if (playback.status === 'playing') {
+      await playback.pause();
+      return;
+    }
+    await playback.play(uri);
+  }
+
+  const reviewUri = reviewUris[selectedVerse];
+  const canPlayReview = Boolean(reviewUri);
 
   return (
     <View style={styles.container}>
@@ -208,12 +235,32 @@ export default function ViewChapter() {
           {verseState === 'recorded' && (
             <>
               <View style={styles.playerRow}>
-                <TouchableOpacity style={styles.playBtn}>
-                  <Ionicons name="play" size={16} color="#fff" />
+                <TouchableOpacity
+                  style={[
+                    styles.playBtn,
+                    !canPlayReview && styles.playBtnDisabled,
+                  ]}
+                  onPress={() => {
+                    void handleReviewPlayback();
+                  }}
+                  disabled={!canPlayReview}
+                  activeOpacity={0.8}
+                  accessibilityLabel={
+                    playback.status === 'playing'
+                      ? 'Pause recording'
+                      : 'Play recording'
+                  }
+                >
+                  <Ionicons
+                    name={playback.status === 'playing' ? 'pause' : 'play'}
+                    size={16}
+                    color="#fff"
+                  />
                 </TouchableOpacity>
-                <View style={styles.progressTrack}>
-                  <View style={styles.progressFillRecorded} />
-                </View>
+                <PlaybackProgressBar
+                  positionMs={playback.positionMs}
+                  durationMs={playback.durationMs}
+                />
               </View>
               <TouchableOpacity
                 style={styles.deleteBtn}

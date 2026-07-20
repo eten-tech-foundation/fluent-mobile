@@ -81,6 +81,9 @@ export const appStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  playBtnDisabled: {
+    opacity: 0.4,
+  },
   progressTrack: {
     flex: 1,
     height: 4,
