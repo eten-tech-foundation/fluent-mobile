@@ -8,6 +8,7 @@ Agents: keep this layer thin. Full contract: [docs/guides/api-client-standard.md
 - **SQLite-first reads** — UI loads from `src/db/queries.ts` after sync; do not add react-query list hooks for projects/chapters/verses.
 - **Auth** — bearer via `authToken` / `authedRequest`; `publicRequest` has no bearer. Mobile headers on auth calls only (`signIn`, `forgotPassword`, `signOut`).
 - **Sync** — orchestration + retries live in `sync.ts`; persist through `src/db/repository.ts`; KV timestamps/counts in `storage.ts`.
+- **Recording uploads** — trigger/pause/cancel/cellular gate live in `uploadOrchestrator.ts` (+ `uploadOrchestratorCore.ts`). Register the real chapter worker via `setChapterUploadWorker` from #100. Do not conflate with metadata `syncAllData`.
 - **Errors** — `ApiError` / `AuthError`; no raw response bodies in logs.
 
 ## Adding an endpoint
