@@ -49,7 +49,7 @@ alwaysApply: true
 ## Database cautions
 
 - `getDatabase()` throws if called before `initializeDatabase()`.
-- No migration framework yet — schema edits affect existing DB files on devices.
+- Schema changes go through versioned migrations in `db/migrations.ts` (`PRAGMA user_version`); do not ship ad-hoc ignore-errors `ALTER` arrays.
 - Foreign keys enabled in init; use transactions in repository.
 
 ## Navigation stack

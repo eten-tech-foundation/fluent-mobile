@@ -197,7 +197,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 
 | Area | Risk |
 |------|------|
-| `src/db/schema.ts` | No migrations yet — schema changes affect existing installs |
+| `src/db/schema.ts` + `migrations.ts` | Baseline DDL + versioned `user_version` migrations |
 | `sync.ts` module-level `getDatabase()` | Dead import at line 24; calling `getDatabase()` before init throws |
 | `fluent-api.test.ts` | Skipped in CI; opt-in live network via `RUN_LIVE_API_TESTS=1` |
 | `format` vs `format:check` | Different glob scopes — CI only checks `src/**` |
