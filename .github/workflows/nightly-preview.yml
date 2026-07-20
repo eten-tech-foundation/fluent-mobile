@@ -20,6 +20,10 @@ on:
         required: false
         type: boolean
         default: true
+  # Same-repo label trigger so the workflow can be tested from a PR before it
+  # exists on main (workflow_dispatch only registers after the file is on default).
+  pull_request:
+    types: [labeled]
 
 concurrency:
   group: nightly-preview
@@ -39,10 +43,14 @@ jobs:
     name: Nightly Android APK
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    if: >
+      github.event_name != 'pull_request' ||
+      contains(github.event.label.name, 'nightly-preview')
     env:
       # On schedule, inputs are empty → force false, notify true.
-      FORCE_BUILD: ${{ inputs.force_build || false }}
-      NOTIFY_SLACK: ${{ github.event_name == 'schedule' || inputs.notify_slack }}
+      # PR label runs always force a build (test / one-off).
+      FORCE_BUILD: ${{ inputs.force_build || github.event_name == 'pull_request' || false }}
+      NOTIFY_SLACK: ${{ github.event_name == 'schedule' || github.event_name == 'pull_request' || inputs.notify_slack }}
 
     steps:
       - name: 📋 Checkout repository

@@ -53,4 +53,6 @@ Scheduled (and manually dispatchable) workflow [`.github/workflows/nightly-previ
 | `EXPO_TOKEN` | EAS CLI auth (same as PR preview) |
 | `SLACK_WEBHOOK_URL` | Incoming webhook for success / failure / skip notices |
 
-Does **not** require the Expo GitHub App — only `EXPO_TOKEN`. Manual run: **Actions → Nightly Preview → Run workflow**.
+Does **not** require the Expo GitHub App — only `EXPO_TOKEN`. Manual run: **Actions → Nightly Preview → Run workflow** (available after this workflow exists on `main`).
+
+To test from a PR before merge, add the **`nightly-preview`** label (forces a build + Slack notify).
