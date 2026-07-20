@@ -12,6 +12,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
+import { UserPlus } from 'lucide-react-native';
 import { appStyles } from '../../app/appStyles';
 import { RootStackParamList } from '../../types/navigation/types';
 import {
@@ -27,6 +28,9 @@ import { signOut } from '../../services/authSession';
 import { authToken } from '../../services/authToken';
 import { useDeviceAccounts } from '../../hooks/useDeviceAccounts';
 import { logger } from '../../utils/logger';
+
+const MENU_ICON_COLOR = '#333';
+const MENU_ICON_ACTIVE = '#1a6ef5';
 
 const log = logger.create('UserSettingsMenu');
 
@@ -146,11 +150,14 @@ export function UserSettingsMenu({
             activeOpacity={0.7}
             accessibilityRole="button"
           >
-            <Ionicons name="settings-outline" size={18} color="#333" />
+            <Ionicons
+              name="settings-outline"
+              size={18}
+              color={MENU_ICON_COLOR}
+            />
             <Text style={appStyles.menuItemText}>More Settings</Text>
           </TouchableOpacity>
 
-          <View style={appStyles.menuDivider} />
           <TouchableOpacity
             style={appStyles.menuItem}
             onPress={handleOpenPrivacy}
@@ -158,7 +165,11 @@ export function UserSettingsMenu({
             accessibilityRole="button"
             testID="settings-menu-privacy-policy"
           >
-            <Ionicons name="document-text-outline" size={18} color="#333" />
+            <Ionicons
+              name="document-text-outline"
+              size={18}
+              color={MENU_ICON_COLOR}
+            />
             <Text style={appStyles.menuItemText}>Privacy Policy</Text>
           </TouchableOpacity>
 
@@ -169,7 +180,11 @@ export function UserSettingsMenu({
             accessibilityRole="button"
             testID="settings-menu-terms-of-use"
           >
-            <Ionicons name="reader-outline" size={18} color="#333" />
+            <Ionicons
+              name="shield-checkmark-outline"
+              size={18}
+              color={MENU_ICON_COLOR}
+            />
             <Text style={appStyles.menuItemText}>Terms of Use</Text>
           </TouchableOpacity>
 
@@ -181,7 +196,7 @@ export function UserSettingsMenu({
               style={styles.loadingRow}
               testID="settings-menu-accounts-loading"
             >
-              <ActivityIndicator size="small" color="#1a6ef5" />
+              <ActivityIndicator size="small" color={MENU_ICON_ACTIVE} />
             </View>
           ) : (
             accounts.map(account => (
@@ -198,9 +213,18 @@ export function UserSettingsMenu({
                 disabled={switchingUserId !== null}
                 testID={`settings-menu-account-${account.userId}`}
               >
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{account.initials}</Text>
-                </View>
+                <Ionicons
+                  name={
+                    account.isActive ? 'checkmark-circle' : 'person-outline'
+                  }
+                  size={18}
+                  color={account.isActive ? MENU_ICON_ACTIVE : MENU_ICON_COLOR}
+                  testID={
+                    account.isActive
+                      ? `settings-menu-active-${account.userId}`
+                      : `settings-menu-inactive-${account.userId}`
+                  }
+                />
                 <Text
                   style={[
                     appStyles.menuItemText,
@@ -210,14 +234,6 @@ export function UserSettingsMenu({
                 >
                   {account.displayName}
                 </Text>
-                {account.isActive ? (
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={18}
-                    color="#1a6ef5"
-                    testID={`settings-menu-active-${account.userId}`}
-                  />
-                ) : null}
               </TouchableOpacity>
             ))
           )}
@@ -235,7 +251,7 @@ export function UserSettingsMenu({
               accessibilityLabel="Add User"
               testID="settings-menu-add-user"
             >
-              <Ionicons name="person-add-outline" size={18} color="#333" />
+              <UserPlus size={18} color={MENU_ICON_COLOR} />
               <Text style={appStyles.menuItemText}>Add User</Text>
             </TouchableOpacity>
           )}
@@ -266,19 +282,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
-  },
-  avatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#1a6ef5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '700',
   },
   limitText: {
     paddingHorizontal: 16,

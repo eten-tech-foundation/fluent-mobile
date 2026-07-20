@@ -128,6 +128,13 @@ describe('UserSettingsMenu', () => {
     expect(queryByText('Switch User')).toBeNull();
   });
 
+  it('uses leading checkmark for active and person icon for inactive (design mock)', () => {
+    const { getByTestId } = renderMenu();
+
+    expect(getByTestId('settings-menu-active-active-1')).toBeTruthy();
+    expect(getByTestId('settings-menu-inactive-other-2')).toBeTruthy();
+  });
+
   it('keeps Add User out of the top group (after Privacy / Terms)', () => {
     const { getByText, getByTestId } = renderMenu();
     const privacy = getByTestId('settings-menu-privacy-policy');
