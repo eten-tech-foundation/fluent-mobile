@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { theme } from '../../theme';
 import { useSync } from '../../hooks/useSync';
+import { Pause, Play, X } from 'lucide-react-native';
 import { SyncPageStatus } from '../../types/sync/types';
 import { useNavigation } from '@react-navigation/native';
 import { getPendingUploadCount } from '../../db/queries';
+import { listIconStrokeWidth } from '../../theme/iconSpecs';
 import { useConnectivity } from '../../hooks/useConnectivity';
 import { usePendingUploads } from '../../hooks/usePendingUploads';
-import { ChevronLeft, Pause, Play, X } from 'lucide-react-native';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { UploadProgressBar } from '../../components/ui/UploadProgressBar';
+import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
 import { SyncStatusIndicator } from '../../components/ui/SyncStatusIndicator';
 import { CloudSyncStatusIcon } from '../../components/ui/CloudSyncStatusIcon';
 import {
@@ -18,12 +20,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import {
-  headerLayout,
-  iconSizes,
-  listIconStrokeWidth,
-  touchHitSlop,
-} from '../../theme/iconSpecs';
 
 // TODO(#150): status/uploadedChapters/totalChapters/nextRetryAt are mock
 // state for the UI-only #149 ticket. Replace with real derivation once
@@ -33,7 +29,9 @@ export default function SyncScreen() {
   const [totalChapters] = useState(17);
   const [uploadedChapters] = useState(14);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [nextRetryAt] = useState<Date | undefined>(undefined);
+  const [nextRetryAt] = useState<Date | undefined>(
+    new Date(Date.now() + 23 * 60 * 60 * 1000),
+  );
   const [status, setStatus] = useState<SyncPageStatus>('pending');
 
   const { isOnline } = useConnectivity();
@@ -55,32 +53,14 @@ export default function SyncScreen() {
       const count = await getPendingUploadCount();
       setStatus(count > 0 ? 'pending' : 'uploadComplete');
     },
+    onError: () => {
+      setStatus('pending');
+    },
   });
 
   return (
     <ScreenContainer edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={touchHitSlop}
-          style={styles.backButton}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <ChevronLeft
-            size={iconSizes.header}
-            color={theme.colors.foreground}
-            strokeWidth={listIconStrokeWidth}
-          />
-        </TouchableOpacity>
-
-        <View style={styles.headerCenterOverlay} pointerEvents="none">
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            Sync
-          </Text>
-        </View>
-      </View>
-
+      <StackScreenHeader title="Sync" onBack={() => navigation.goBack()} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <View style={styles.statusSection}>
           <SyncStatusIndicator
@@ -385,33 +365,6 @@ function formatRetryText(nextRetryAt?: Date): string {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    position: 'relative',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: headerLayout.paddingHorizontal,
-    paddingVertical: headerLayout.paddingVertical,
-    minHeight: headerLayout.minHeight,
-    backgroundColor: theme.colors.cardBackground,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  backButton: {
-    borderRadius: theme.radius.full,
-    padding: theme.spacing.xs,
-    zIndex: 1,
-  },
-  headerCenterOverlay: {
-    ...StyleSheet.absoluteFill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.bold,
-    color: theme.colors.foreground,
-  },
   scroll: {
     flex: 1,
     backgroundColor: theme.colors.background,

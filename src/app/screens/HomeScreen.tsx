@@ -15,6 +15,7 @@ import { ProjectsTab } from '../tabs/ProjectsTab';
 import { useSync } from '../../hooks/useSync';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { RootStackParamList } from '../../types/navigation/types';
+import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
 import { onSyncComplete, onSyncStart } from '../../services/syncEvents';
 
 interface HomeScreenProps {
@@ -45,6 +46,10 @@ export default function HomeScreen({
     setIsSyncingLocal(false);
   }, []);
 
+  const isSyncingGlobal = useGlobalSyncStatus(() => {
+    setIsNewUserLoading(false);
+    setRefreshKey(key => key + 1);
+  });
   const { isSyncing, triggerSync } = useSync({
     onSyncComplete: handleSyncComplete,
   });
@@ -54,7 +59,7 @@ export default function HomeScreen({
     needsDownloadSync,
     isOnline,
   } = useSyncStatus({
-    isSyncing,
+    isSyncing: isSyncing || isSyncingGlobal,
     refreshKey,
   });
 

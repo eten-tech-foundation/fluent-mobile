@@ -1,13 +1,13 @@
 import { theme } from '../../theme';
 import { logger } from '../../utils/logger';
 import { BibleTab } from '../tabs/BibleTab';
-import { useSync } from '../../hooks/useSync';
 import { RecordTab } from '../tabs/RecordTab';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { onSyncComplete } from '../../services/syncEvents';
 import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useCallback, useEffect, useState } from 'react';
 import { RootStackParamList } from '../../types/navigation/types';
+import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
 import { DraftingHeader } from '../../components/layout/DraftingHeader';
 import { ChapterAssignmentData, VerseData } from '../../types/db/types';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -63,7 +63,7 @@ export default function DraftingScreen() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [accountSwitcherVisible, setAccountSwitcherVisible] = useState(false);
 
-  const { isSyncing } = useSync();
+  const isSyncing = useGlobalSyncStatus(() => setRefreshKey(key => key + 1));
   const { status: syncStatus } = useSyncStatus({ isSyncing, refreshKey });
   const activeAccount = useActiveAccountSummary(refreshKey);
   const closeAccountSwitcher = useCallback(() => {

@@ -15,9 +15,9 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { ProjectChapterRow } from '../../components/ui/ProjectChapterRow';
 import { PROJECT_CHAPTERS_EMPTY_MESSAGE } from '../../constants/messages';
+import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
 import { useProjectChapters } from '../../hooks/useProjectChapters';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
-import { useSync } from '../../hooks/useSync';
 import { theme } from '../../theme';
 import { ProjectChapter } from '../../types/db/types';
 import { RootStackParamList } from '../../types/navigation/types';
@@ -31,7 +31,7 @@ export default function ViewProject() {
   const { chapters, loading, refreshing, error, refresh, retry, reload } =
     useProjectChapters(projectId);
 
-  const { isSyncing } = useSync({ onSyncComplete: reload });
+  const isSyncing = useGlobalSyncStatus(reload);
   const { status: syncStatus } = useSyncStatus({ isSyncing });
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
 

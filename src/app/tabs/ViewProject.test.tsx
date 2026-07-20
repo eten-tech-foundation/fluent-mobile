@@ -52,11 +52,8 @@ jest.mock('../../hooks/useProjectChapters', () => ({
   useProjectChapters: jest.fn(),
 }));
 
-jest.mock('../../hooks/useSync', () => ({
-  useSync: jest.fn(() => ({
-    isSyncing: false,
-    triggerSync: jest.fn(),
-  })),
+jest.mock('../../hooks/useGlobalSyncStatus', () => ({
+  useGlobalSyncStatus: jest.fn(() => false),
 }));
 
 jest.mock('../../hooks/useSyncStatus', () => ({
