@@ -53,25 +53,47 @@ export async function resolveServerOnline(
   return checkServerReachable();
 }
 
+async function resolveConnectivityState(state: {
+  isConnected: boolean | null;
+  type: string;
+}): Promise<{ isOnline: boolean; isWifi: boolean }> {
+  const isOnline = await resolveServerOnline(state.isConnected);
+  return {
+    isOnline,
+    isWifi: state.type === 'wifi',
+  };
+}
+
+export async function getConnectivitySnapshot(): Promise<{
+  isOnline: boolean;
+  isWifi: boolean;
+}> {
+  ensureNetInfoConfigured();
+  return resolveConnectivityState(await NetInfo.fetch());
+}
+
 export function subscribeToConnectivity(
-  onChange: (isOnline: boolean) => void,
+  onChange: (isOnline: boolean, isWifi: boolean) => void,
 ): () => void {
   ensureNetInfoConfigured();
 
   let cancelled = false;
 
-  const evaluate = async (isConnected: boolean | null) => {
-    const isOnline = await resolveServerOnline(isConnected);
+  const evaluate = async (state: {
+    isConnected: boolean | null;
+    type: string;
+  }) => {
+    const { isOnline, isWifi } = await resolveConnectivityState(state);
     if (!cancelled) {
-      onChange(isOnline);
+      onChange(isOnline, isWifi);
     }
   };
 
   const unsubscribe = NetInfo.addEventListener(state => {
-    void evaluate(state.isConnected);
+    void evaluate(state);
   });
 
-  void NetInfo.fetch().then(state => evaluate(state.isConnected));
+  void NetInfo.fetch().then(evaluate);
 
   return () => {
     cancelled = true;
