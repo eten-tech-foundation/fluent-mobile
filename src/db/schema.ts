@@ -103,10 +103,3 @@ export const createTableQueries: string[] = [
 
   `CREATE INDEX IF NOT EXISTS idx_up_user ON user_projects(user_id);`,
 ];
-
-/** For DBs created before verse progress columns were added. */
-export const chapterAssignmentMigrations: string[] = [
-  `ALTER TABLE chapter_assignments ADD COLUMN peer_checker_id INTEGER`,
-  `ALTER TABLE chapter_assignments ADD COLUMN total_verses INTEGER NOT NULL DEFAULT 0`,
-  `ALTER TABLE chapter_assignments ADD COLUMN completed_verses INTEGER NOT NULL DEFAULT 0`,
-];
