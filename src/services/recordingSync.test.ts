@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { waitFor } from '@testing-library/react-native';
 import { resetFileSystemMock } from '../test/mocks/expo-file-system';
 import type { PendingRecording } from '../types/db/types';
