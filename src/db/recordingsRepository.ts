@@ -15,10 +15,31 @@ function newRecordingId(): string {
     .slice(2, 10)}`;
 }
 
+function parseActiveUserId(raw: string): number | null {
+  if (!raw) return null;
+  const id = Number(raw);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+/** Active account id for capture / latest-take scoping (#105). */
+export function resolveRecordedByUserId(
+  override?: number | null,
+): number | null {
+  if (override !== undefined) {
+    return override;
+  }
+  // Lazy require keeps `repository`/`queries` loadable in unit tests that only
+  // import SQL constants without pulling op-sqlite KV storage.
+  const { getActiveUserId } =
+    require('../services/storage') as typeof import('../services/storage');
+  return parseActiveUserId(getActiveUserId());
+}
+
 function mapRecordingRow(row: RecordingRow): Recording {
   return {
     id: row.id,
     bibleTextId: row.bible_text_id,
+    recordedByUserId: row.recorded_by_user_id,
     localFilePath: row.local_file_path,
     blobKey: row.blob_key,
     durationMs: row.duration_ms,
@@ -32,6 +53,17 @@ function mapRecordingRow(row: RecordingRow): Recording {
   };
 }
 
+/** SQL predicate + params for optional recorded_by_user_id (incl. NULL). */
+function recordedByClause(
+  userId: number | null,
+  column = 'recorded_by_user_id',
+): { sql: string; params: (number | null)[] } {
+  if (userId === null) {
+    return { sql: `${column} IS NULL`, params: [] };
+  }
+  return { sql: `${column} = ?`, params: [userId] };
+}
+
 export type AddRecordingTakeInput = {
   bibleTextId: number;
   localFilePath: string;
@@ -40,15 +72,19 @@ export type AddRecordingTakeInput = {
   /** Optional stable id (defaults to generated). */
   id?: string;
   syncStatus?: RecordingSyncStatus;
+  /**
+   * Capture-time owner. Defaults to `getActiveUserId()`.
+   * Pass `null` explicitly only in tests for legacy unattributed rows.
+   */
+  recordedByUserId?: number | null;
 };
 
 /**
- * Insert a new take for a verse: clear prior `is_latest`, bump `take_number`,
- * insert with `is_latest = 1` in one transaction.
+ * Insert a new take for a verse: clear prior `is_latest` for this user, bump
+ * per-user `take_number`, insert with `is_latest = 1` in one transaction.
  *
  * Linkage is verse-based (`bible_text_id`) — see #98 / #99. Shared-device
- * `(bible_text_id, user_id)` scoping lands with #105 once `user_id` exists on
- * `recordings` — until then latest is per verse.
+ * scoping is `(bible_text_id, recorded_by_user_id)` (#105).
  */
 export async function addRecordingTake(
   input: AddRecordingTakeInput,
@@ -57,17 +93,20 @@ export async function addRecordingTake(
   const id = input.id ?? newRecordingId();
   const now = new Date().toISOString();
   const syncStatus = input.syncStatus ?? 'pending';
+  const recordedByUserId = resolveRecordedByUserId(input.recordedByUserId);
+  const owner = recordedByClause(recordedByUserId);
 
   await db.transaction(async (tx: Transaction) => {
     await tx.execute(
       `UPDATE recordings SET is_latest = 0, updated_at = ?
-       WHERE bible_text_id = ? AND is_latest = 1`,
-      [now, input.bibleTextId],
+       WHERE bible_text_id = ? AND is_latest = 1 AND ${owner.sql}`,
+      [now, input.bibleTextId, ...owner.params],
     );
 
     const maxResult = await tx.execute(
-      `SELECT MAX(take_number) AS max_take FROM recordings WHERE bible_text_id = ?`,
-      [input.bibleTextId],
+      `SELECT MAX(take_number) AS max_take FROM recordings
+       WHERE bible_text_id = ? AND ${owner.sql}`,
+      [input.bibleTextId, ...owner.params],
     );
     const maxTake = Number(
       (maxResult.rows?.[0] as { max_take?: number | null } | undefined)
@@ -77,12 +116,14 @@ export async function addRecordingTake(
 
     await tx.execute(
       `INSERT INTO recordings (
-         id, bible_text_id, local_file_path, duration_ms, file_size_bytes,
-         take_number, is_latest, sync_status, created_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+         id, bible_text_id, recorded_by_user_id, local_file_path, duration_ms,
+         file_size_bytes, take_number, is_latest, sync_status, created_at,
+         updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
       [
         id,
         input.bibleTextId,
+        recordedByUserId,
         input.localFilePath,
         input.durationMs ?? null,
         input.fileSizeBytes ?? null,
@@ -97,19 +138,23 @@ export async function addRecordingTake(
   log.info('Recording take added', {
     id,
     bibleTextId: input.bibleTextId,
+    recordedByUserId,
   });
   return id;
 }
 
 export async function getLatestRecordingForVerse(
   bibleTextId: number,
+  recordedByUserId?: number | null,
 ): Promise<Recording | null> {
   const db = getDatabase();
+  const ownerId = resolveRecordedByUserId(recordedByUserId);
+  const owner = recordedByClause(ownerId);
   const result = await db.execute(
     `SELECT * FROM recordings
-     WHERE bible_text_id = ? AND is_latest = 1
+     WHERE bible_text_id = ? AND is_latest = 1 AND ${owner.sql}
      LIMIT 1`,
-    [bibleTextId],
+    [bibleTextId, ...owner.params],
   );
   const row = result.rows?.[0] as unknown as RecordingRow | undefined;
   return row ? mapRecordingRow(row) : null;
@@ -117,13 +162,16 @@ export async function getLatestRecordingForVerse(
 
 export async function getTakesForVerse(
   bibleTextId: number,
+  recordedByUserId?: number | null,
 ): Promise<Recording[]> {
   const db = getDatabase();
+  const ownerId = resolveRecordedByUserId(recordedByUserId);
+  const owner = recordedByClause(ownerId);
   const result = await db.execute(
     `SELECT * FROM recordings
-     WHERE bible_text_id = ?
+     WHERE bible_text_id = ? AND ${owner.sql}
      ORDER BY take_number ASC`,
-    [bibleTextId],
+    [bibleTextId, ...owner.params],
   );
   const rows = (result.rows ?? []) as unknown as RecordingRow[];
   return rows.map(mapRecordingRow);
@@ -131,7 +179,7 @@ export async function getTakesForVerse(
 
 /**
  * Delete a take by id. If it was latest, promote the highest remaining
- * `take_number` for that verse (or leave none latest if empty).
+ * `take_number` for that verse + owner (or leave none latest if empty).
  */
 export async function deleteRecordingTake(id: string): Promise<void> {
   const db = getDatabase();
@@ -139,11 +187,16 @@ export async function deleteRecordingTake(id: string): Promise<void> {
 
   await db.transaction(async (tx: Transaction) => {
     const existing = await tx.execute(
-      `SELECT bible_text_id, is_latest FROM recordings WHERE id = ?`,
+      `SELECT bible_text_id, recorded_by_user_id, is_latest
+       FROM recordings WHERE id = ?`,
       [id],
     );
     const row = existing.rows?.[0] as
-      | { bible_text_id: number; is_latest: number }
+      | {
+          bible_text_id: number;
+          recorded_by_user_id: number | null;
+          is_latest: number;
+        }
       | undefined;
     if (!row) {
       return;
@@ -151,6 +204,7 @@ export async function deleteRecordingTake(id: string): Promise<void> {
 
     const wasLatest = row.is_latest === 1;
     const bibleTextId = row.bible_text_id;
+    const owner = recordedByClause(row.recorded_by_user_id);
 
     await tx.execute(`DELETE FROM recordings WHERE id = ?`, [id]);
 
@@ -160,10 +214,10 @@ export async function deleteRecordingTake(id: string): Promise<void> {
 
     const prior = await tx.execute(
       `SELECT id FROM recordings
-       WHERE bible_text_id = ?
+       WHERE bible_text_id = ? AND ${owner.sql}
        ORDER BY take_number DESC
        LIMIT 1`,
-      [bibleTextId],
+      [bibleTextId, ...owner.params],
     );
     const priorId = (prior.rows?.[0] as { id?: string } | undefined)?.id;
     if (priorId) {

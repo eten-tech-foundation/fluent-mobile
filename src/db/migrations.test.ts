@@ -577,6 +577,26 @@ describe('migrations framework', () => {
     db._seedUsers([5]);
     db._seedProjects([100]);
     db._seedOldUserProjects();
+    // Pre-v5 recordings shape so migration v5 can ADD COLUMN (#105).
+    db._tables.set('recordings', {
+      columns: new Set([
+        'id',
+        'bible_text_id',
+        'local_file_path',
+        'blob_key',
+        'duration_ms',
+        'file_size_bytes',
+        'take_number',
+        'is_latest',
+        'sync_status',
+        'upload_error',
+        'created_at',
+        'updated_at',
+      ]),
+      rows: [],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
 
     const before = await db.execute('SELECT * FROM user_projects');
     expect(before.rows).toHaveLength(2);
@@ -593,7 +613,10 @@ describe('migrations framework', () => {
     expect(after.foreignKeys.get('user_id')).toBe('users');
     expect(after.foreignKeys.get('project_id')).toBe('projects');
     expect(db._indexes.has('idx_up_user')).toBe(true);
-    await expect(getUserVersion(db)).resolves.toBe(4);
+    expect(await columnExists(db, 'recordings', 'recorded_by_user_id')).toBe(
+      true,
+    );
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
   });
 
   it('drops orphan user_projects rows during the integrity rebuild', async () => {
@@ -704,5 +727,46 @@ describe('recordings linkage (#99)', () => {
     expect(recordingsSql).toBeDefined();
     expect(recordingsSql).toContain('bible_text_id');
     expect(recordingsSql).not.toContain('chapter_assignment_id');
+  });
+});
+
+describe('recordings attribution migration (#105)', () => {
+  it('includes recorded_by_user_id in baseline recordings schema', () => {
+    const recordingsSql = createTableQueries.find(q =>
+      q.includes('CREATE TABLE IF NOT EXISTS recordings'),
+    );
+    expect(recordingsSql).toBeDefined();
+    expect(recordingsSql).toContain('recorded_by_user_id');
+    expect(recordingsSql).toContain('REFERENCES users(id)');
+  });
+
+  it('adds recorded_by_user_id when upgrading from v4', async () => {
+    const old = createFakeDb(4);
+    old._tables.set('recordings', {
+      columns: new Set([
+        'id',
+        'bible_text_id',
+        'local_file_path',
+        'blob_key',
+        'duration_ms',
+        'file_size_bytes',
+        'take_number',
+        'is_latest',
+        'sync_status',
+        'upload_error',
+        'created_at',
+        'updated_at',
+      ]),
+      rows: [],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+
+    await runMigrations(old);
+    expect(await columnExists(old, 'recordings', 'recorded_by_user_id')).toBe(
+      true,
+    );
+    expect(old._indexes.has('idx_rec_verse_user')).toBe(true);
+    await expect(getUserVersion(old)).resolves.toBe(CURRENT_SCHEMA_VERSION);
   });
 });
