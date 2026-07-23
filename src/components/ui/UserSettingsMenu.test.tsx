@@ -8,39 +8,20 @@ jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate }),
 }));
 
-const mockAuthTokenSet = jest.fn();
-jest.mock('../../services/authToken', () => ({
-  authToken: { set: (...args: unknown[]) => mockAuthTokenSet(...args) },
-}));
-
-const mockGetCredentials = jest.fn();
-const mockClearCredentials = jest.fn();
-jest.mock('../../services/keychain', () => ({
-  getCredentials: (...args: unknown[]) => mockGetCredentials(...args),
-  clearCredentials: (...args: unknown[]) => mockClearCredentials(...args),
-}));
-
-const mockSwitchActiveUser = jest.fn();
 const mockGetActiveUserId = jest.fn();
-const mockGetKnownUserIds = jest.fn();
-const mockSetItemSync = jest.fn();
 jest.mock('../../services/storage', () => ({
   getActiveUserId: (...args: unknown[]) => mockGetActiveUserId(...args),
-  getKnownUserIds: (...args: unknown[]) => mockGetKnownUserIds(...args),
-  kvStorage: { setItemSync: (...args: unknown[]) => mockSetItemSync(...args) },
-  KV_KEYS: { KNOWN_USER_IDS: 'known_user_ids' },
-  switchActiveUser: (...args: unknown[]) => mockSwitchActiveUser(...args),
+  getKnownUserIds: jest.fn(),
   MAX_DEVICE_ACCOUNTS: 3,
 }));
 
-const mockSignOutApi = jest.fn();
-jest.mock('../../services/api', () => ({
-  FluentAPI: { signOut: (...args: unknown[]) => mockSignOutApi(...args) },
-}));
-
-const mockSignOut = jest.fn();
-jest.mock('../../services/authSession', () => ({
-  signOut: (...args: unknown[]) => mockSignOut(...args),
+const mockSwitchToDeviceAccount = jest.fn();
+const mockSignOutCurrentDeviceAccount = jest.fn();
+jest.mock('../../services/accountSession', () => ({
+  switchToDeviceAccount: (...args: unknown[]) =>
+    mockSwitchToDeviceAccount(...args),
+  signOutCurrentDeviceAccount: (...args: unknown[]) =>
+    mockSignOutCurrentDeviceAccount(...args),
 }));
 
 jest.mock('../../utils/logger', () => ({
@@ -93,14 +74,9 @@ describe('UserSettingsMenu', () => {
   const anchor = { top: 0, left: 0 };
 
   beforeEach(() => {
-    // resetAllMocks (not clearAllMocks) — clearAllMocks only wipes call
-    // history, it leaves queued mockReturnValueOnce/mockResolvedValueOnce
-    // values in place, which then leak into the next test.
     jest.resetAllMocks();
 
     mockGetActiveUserId.mockReturnValue('active-1');
-    mockGetKnownUserIds.mockReturnValue(['active-1', 'other-2']);
-    mockSignOutApi.mockResolvedValue(undefined);
     setDeviceAccountsResult();
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
@@ -183,27 +159,25 @@ describe('UserSettingsMenu', () => {
 
     fireEvent.press(getByText('active@example.com'));
 
-    expect(mockGetCredentials).not.toHaveBeenCalled();
-    expect(mockSwitchActiveUser).not.toHaveBeenCalled();
+    expect(mockSwitchToDeviceAccount).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
   });
 
   it('switches successfully when the target user has a valid session', async () => {
-    mockGetCredentials.mockResolvedValueOnce({ token: 'valid-token' });
+    mockSwitchToDeviceAccount.mockResolvedValueOnce(undefined);
     const { getByText } = renderMenu();
 
     fireEvent.press(getByText('other@example.com'));
 
     await waitFor(() => {
-      expect(mockAuthTokenSet).toHaveBeenCalledWith('valid-token');
-      expect(mockSwitchActiveUser).toHaveBeenCalledWith('other-2');
+      expect(mockSwitchToDeviceAccount).toHaveBeenCalledWith('other-2');
       expect(onClose).toHaveBeenCalled();
       expect(onUserSwitched).toHaveBeenCalled();
     });
   });
 
-  it('shows an alert and does not switch when credentials are missing', async () => {
-    mockGetCredentials.mockResolvedValueOnce(null);
+  it('shows an alert when switch fails', async () => {
+    mockSwitchToDeviceAccount.mockRejectedValueOnce(new Error('missing'));
     const { getByText } = renderMenu();
 
     fireEvent.press(getByText('other@example.com'));
@@ -214,46 +188,34 @@ describe('UserSettingsMenu', () => {
         expect.stringContaining('corrupted'),
       );
     });
-    expect(mockSwitchActiveUser).not.toHaveBeenCalled();
     expect(onUserSwitched).not.toHaveBeenCalled();
   });
 
-  it('shows an alert when the stored session has no token', async () => {
-    mockGetCredentials.mockResolvedValueOnce({ token: '' });
-    const { getByText } = renderMenu();
-
-    fireEvent.press(getByText('other@example.com'));
-
-    await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalled();
+  it('signs out and notifies when switched to another account', async () => {
+    mockSignOutCurrentDeviceAccount.mockResolvedValueOnce({
+      kind: 'switched',
+      userId: 'other-2',
     });
-    expect(mockSwitchActiveUser).not.toHaveBeenCalled();
-  });
-
-  it('signs out and picks the next known user when remaining accounts exist', async () => {
-    mockGetKnownUserIds.mockReturnValue(['active-1', 'other-2']);
-    mockGetCredentials.mockResolvedValueOnce({ token: 'next-token' });
 
     const { getByText } = renderMenu();
     fireEvent.press(getByText('Sign Out'));
 
     await waitFor(() => {
-      expect(mockClearCredentials).toHaveBeenCalledWith('active-1');
-      expect(mockSwitchActiveUser).toHaveBeenCalledWith('other-2');
+      expect(mockSignOutCurrentDeviceAccount).toHaveBeenCalled();
       expect(onUserSwitched).toHaveBeenCalled();
-      expect(mockSignOut).not.toHaveBeenCalled();
+      expect(onSignOut).not.toHaveBeenCalled();
     });
   });
 
   it('fully signs out when no accounts remain', async () => {
-    mockGetKnownUserIds.mockReturnValue(['active-1']);
-    setDeviceAccountsResult({ accounts: [activeAccount] });
+    mockSignOutCurrentDeviceAccount.mockResolvedValueOnce({
+      kind: 'signed_out',
+    });
 
     const { getByText } = renderMenu();
     fireEvent.press(getByText('Sign Out'));
 
     await waitFor(() => {
-      expect(mockSignOut).toHaveBeenCalled();
       expect(onSignOut).toHaveBeenCalled();
     });
   });
