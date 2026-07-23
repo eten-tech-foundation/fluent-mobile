@@ -11,13 +11,7 @@ import { RootStackParamList } from '../../types/navigation/types';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
 import { DraftingHeader } from '../../components/layout/DraftingHeader';
 import { ChapterAssignmentData, VerseData } from '../../types/db/types';
-import {
-  ActivityIndicator,
-  Alert,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useActiveAccountSummary } from '../../hooks/useActiveAccountSummary';
@@ -55,11 +49,7 @@ export default function DraftingScreen() {
   const setActiveTab = useCallback(
     (tab: DraftingTab) => {
       if (tab === activeTab) return;
-      if (
-        recordCaptureActive &&
-        activeTab === 'record' &&
-        tab !== 'record'
-      ) {
+      if (recordCaptureActive && activeTab === 'record' && tab !== 'record') {
         Alert.alert(
           'Recording in progress',
           'Stop or finish the current take before leaving the Record tab.',

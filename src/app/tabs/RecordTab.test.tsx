@@ -2,13 +2,16 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react-native';
 import { RecordTab } from './RecordTab';
 import { DraftingProvider } from '../context/DraftingContext';
+import type { useVerseAudio } from '../../hooks/useVerseAudio';
 
 jest.mock('@react-navigation/native', () => ({
   useRoute: () => ({ params: { chapterName: 'Mark 14' } }),
 }));
 
-const idleAudio = {
-  state: 'idle' as const,
+type VerseAudioApi = ReturnType<typeof useVerseAudio>;
+
+const idleAudio: VerseAudioApi = {
+  state: 'idle',
   latest: null,
   errorMessage: null,
   positionMs: 0,
@@ -22,7 +25,7 @@ const idleAudio = {
   deleteCurrent: jest.fn(),
 };
 
-const mockUseVerseAudio = jest.fn(() => idleAudio);
+const mockUseVerseAudio = jest.fn((): VerseAudioApi => idleAudio);
 
 jest.mock('../../hooks/useVerseAudio', () => ({
   useVerseAudio: () => mockUseVerseAudio(),
@@ -75,7 +78,11 @@ describe('RecordTab', () => {
     expect(screen.getByTestId('record-source-toggle')).toBeTruthy();
     expect(screen.getByText('View source text')).toBeTruthy();
     expect(screen.getByTestId('source-audio-bar')).toBeTruthy();
-    expect(screen.getByTestId('source-audio-label')).toBeTruthy();
+    // Stub defaults to empty until #235 wires real source audio.
+    expect(screen.getByTestId('source-audio-label')).toHaveTextContent(
+      'No source audio',
+    );
+    expect(screen.queryByTestId('source-audio-time-stub')).toBeNull();
 
     await waitFor(() => {
       expect(screen.queryByTestId('record-syncing-hint')).toBeNull();
@@ -88,9 +95,14 @@ describe('RecordTab', () => {
       state: 'recorded',
       latest: {
         id: 'rec_1',
-        takeNumber: 1,
-        durationMs: 13000,
+        bibleTextId: 42,
         localFilePath: 'file:///take.m4a',
+        takeNumber: 1,
+        isLatest: true,
+        durationMs: 13000,
+        syncStatus: 'pending',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
       },
       positionMs: 0,
       durationMs: 13000,
@@ -110,9 +122,8 @@ describe('RecordTab', () => {
     expect(screen.getByTestId('record-delete-button')).toBeTruthy();
     expect(screen.getByTestId('record-new-take-button')).toBeTruthy();
     expect(screen.getByText('Record New Take')).toBeTruthy();
-    // Source dock times are decorative stubs — not the take engine clock.
-    expect(screen.getByTestId('source-audio-time-stub')).toHaveTextContent(
-      '0:00',
+    expect(screen.getByTestId('source-audio-label')).toHaveTextContent(
+      'No source audio',
     );
   });
 
@@ -141,9 +152,14 @@ describe('RecordTab', () => {
       state: 'recorded',
       latest: {
         id: 'rec_1',
-        takeNumber: 1,
-        durationMs: 1000,
+        bibleTextId: 42,
         localFilePath: 'file:///take.m4a',
+        takeNumber: 1,
+        isLatest: true,
+        durationMs: 1000,
+        syncStatus: 'pending',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
       },
       durationMs: 1000,
     });

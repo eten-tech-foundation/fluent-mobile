@@ -36,8 +36,7 @@ export type RecordingEngine = RecorderApi & {
 export function createRecordingEngine(
   deps: RecordingEngineDeps,
 ): RecordingEngine {
-  const { recorder, prepareAudioMode, releaseAudioMode, onStatusChange } =
-    deps;
+  const { recorder, prepareAudioMode, releaseAudioMode, onStatusChange } = deps;
   let status: RecorderStatus = 'idle';
   let prepared = false;
 

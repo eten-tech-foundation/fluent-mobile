@@ -1,7 +1,4 @@
-const {
-  AndroidConfig,
-  withAndroidStyles,
-} = require('@expo/config-plugins');
+const { AndroidConfig, withAndroidStyles } = require('@expo/config-plugins');
 
 /**
  * After BootSplash hands off to AppTheme, keep the Android window white so

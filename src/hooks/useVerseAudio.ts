@@ -195,9 +195,7 @@ export function useVerseAudio({
       }
       const size = await fileSize(path);
       if (size === undefined || size <= 0) {
-        throw new Error(
-          'Take file is empty (0 bytes). Re-record this verse.',
-        );
+        throw new Error('Take file is empty (0 bytes). Re-record this verse.');
       }
       setErrorMessage(null);
       // Dispatch PLAY only after the engine confirms load + non-zero duration

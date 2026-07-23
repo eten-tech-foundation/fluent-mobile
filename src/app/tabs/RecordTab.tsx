@@ -202,8 +202,7 @@ export function RecordTab({
   // error + no take → idle chrome; error after a saved take → keep review so
   // a failed play/delete doesn't look like the draft vanished.
   const showIdle =
-    verseAudio.state === 'idle' ||
-    (verseAudio.state === 'error' && !hasTake);
+    verseAudio.state === 'idle' || (verseAudio.state === 'error' && !hasTake);
   const isRecording = verseAudio.state === 'recording';
   const isPaused = verseAudio.state === 'paused';
   const showCapture = isRecording || isPaused;

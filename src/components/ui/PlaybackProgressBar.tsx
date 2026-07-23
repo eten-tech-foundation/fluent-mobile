@@ -102,10 +102,7 @@ export function PlaybackProgressBar({
           }),
         ]),
       );
-      const starter = Animated.sequence([
-        Animated.delay((i % 8) * 55),
-        anim,
-      ]);
+      const starter = Animated.sequence([Animated.delay((i % 8) * 55), anim]);
       starter.start();
       return { starter, anim };
     });
