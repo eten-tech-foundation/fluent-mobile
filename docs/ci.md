@@ -10,6 +10,7 @@ This repo runs GitHub Actions on pushes and pull requests. This doc maps what ru
 | `test.yml` | `Unit Tests` | Jest (`npm test -- --ci`) |
 | `quality-gates.yml` | `TypeScript`, `expo-doctor`, `expo install --check` | Typecheck + Expo SDK / native-module alignment |
 | `preview-build.yml` | Preview OTA / Android EAS | On-demand when PR has label `preview-build` |
+| `nightly-preview.yml` | Nightly Android APK | Scheduled binary-only internal APK (dev API); also `workflow_dispatch` |
 | `eas-build.yml` | Tag → version sync | Production release path on `v*` tags |
 
 Local mirrors (run before claiming PR-ready):
@@ -40,6 +41,7 @@ Branch protection / required status checks may change over time. Treat the table
 
 - JS-only preview OTA vs native Android APK is decided by `preview-build.yml` + [`.github/scripts/eas-resolve-android-build.sh`](../.github/scripts/eas-resolve-android-build.sh)
 - Human QA steps: [guides/qa-preview-testing.md](guides/qa-preview-testing.md)
+- Nightly internal APK (no OTA): `nightly-preview.yml` + EAS profile `nightly` — see [`.github/README.md`](../.github/README.md)
 - Production: tag `v*` → `eas-build.yml` + [`.eas/README.md`](../.eas/README.md)
 
 ## Future guardrail — do not brick required checks

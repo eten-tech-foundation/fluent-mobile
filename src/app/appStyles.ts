@@ -81,6 +81,9 @@ export const appStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  playBtnDisabled: {
+    opacity: 0.4,
+  },
   progressTrack: {
     flex: 1,
     height: 4,
@@ -455,15 +458,17 @@ export const appStyles = StyleSheet.create({
     textAlign: 'center',
   },
   bulletText: { flex: 1, fontSize: 15, lineHeight: 22, color: '#172b4d' },
-  //App.tsx
+  // App.tsx — keep white (not brand blue). Metro remount resets `dbReady`, so a
+  // blue init root flashes over white chrome; cold-start bootsplash stays blue.
   appRoot: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   containerAppInit: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0b50d0',
+    backgroundColor: '#FFFFFF',
   },
   errorTextAppInit: {
     color: 'red',
@@ -471,7 +476,7 @@ export const appStyles = StyleSheet.create({
     padding: 20,
     textAlign: 'center',
   },
-  loadingTextAppInit: { marginTop: 10, fontSize: 14 },
+  loadingTextAppInit: { marginTop: 10, fontSize: 14, color: '#1A1A1A' },
   menuItemDisabled: {
     opacity: 0.5,
   },

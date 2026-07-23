@@ -398,7 +398,35 @@ describe('syncAllUsers auth handling', () => {
     expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
   });
 
-  it('uses the oldest per-user assignment cursor for bible text sync', async () => {
+  it('full-fetches bible texts when assigned chapters have zero local verses (#177)', async () => {
+    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+      userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
+    );
+    (getUserLastSyncedAt as jest.Mock).mockImplementation((userId: string) =>
+      userId === '1' ? '2026-06-01T00:00:00.000Z' : '2026-05-01T00:00:00.000Z',
+    );
+    getChaptersToSync.mockResolvedValue(
+      new Map([[1, [{ bookId: 1, chapterNumber: 1 }]]]),
+    );
+    (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({ data: [] });
+
+    await syncAllUsers();
+
+    // Incremental cursor is dropped when local verse count is 0.
+    expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+      1,
+      [{ bookId: 1, chapterNumber: 1 }],
+      undefined,
+    );
+  });
+
+  it('keeps incremental bible-text cursor when local verses already exist', async () => {
+    const { getDatabase } = jest.requireMock('../db/db') as {
+      getDatabase: jest.Mock;
+    };
+    getDatabase.mockReturnValue({
+      execute: jest.fn().mockResolvedValue({ rows: [{ count: 12 }] }),
+    });
     (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
       userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
     );

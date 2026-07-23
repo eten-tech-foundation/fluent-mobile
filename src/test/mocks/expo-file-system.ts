@@ -11,6 +11,12 @@ const directories = new Set<string>();
 export const documentDirectory = 'file:///mock-document/';
 export const cacheDirectory = 'file:///mock-cache/';
 
+/** Mirrors `expo-file-system/legacy` EncodingType. */
+export const EncodingType = {
+  UTF8: 'utf8',
+  Base64: 'base64',
+} as const;
+
 export function resetFileSystemMock(): void {
   files.clear();
   directories.clear();
@@ -88,6 +94,24 @@ export async function readAsStringAsync(
     throw new Error(`File not found: ${path}`);
   }
   return files.get(path) ?? '';
+}
+
+export async function copyAsync(options: {
+  from: string;
+  to: string;
+}): Promise<void> {
+  const from = resolveUri(options.from);
+  const to = resolveUri(options.to);
+  const content = files.get(from) ?? '';
+  files.set(to, content);
+}
+
+export async function moveAsync(options: {
+  from: string;
+  to: string;
+}): Promise<void> {
+  await copyAsync(options);
+  await deleteAsync(options.from);
 }
 
 resetFileSystemMock();

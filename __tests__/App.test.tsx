@@ -3,7 +3,6 @@
  */
 
 import React from 'react';
-import App from '../App';
 import { render, waitFor } from '@testing-library/react-native';
 import BootSplash from 'react-native-bootsplash';
 
@@ -14,6 +13,23 @@ jest.mock('react-native-bootsplash', () => ({
 
 // React Native Navigation
 jest.mock('@react-navigation/native', () => ({
+  DefaultTheme: {
+    dark: false,
+    colors: {
+      primary: '#0B50D0',
+      background: '#FFFFFF',
+      card: '#FFFFFF',
+      text: '#1A1A1A',
+      border: '#CCCCCC',
+      notification: '#DC2626',
+    },
+    fonts: {
+      regular: { fontFamily: 'System', fontWeight: '400' },
+      medium: { fontFamily: 'System', fontWeight: '500' },
+      bold: { fontFamily: 'System', fontWeight: '700' },
+      heavy: { fontFamily: 'System', fontWeight: '800' },
+    },
+  },
   NavigationContainer: ({ children }: { children: React.ReactNode }) =>
     children,
 }));
@@ -66,10 +82,25 @@ jest.mock('../src/services/sync', () => ({
   syncAllData: jest.fn(() => Promise.resolve()),
 }));
 
+// Paused-take orphan cleanup (#170)
+jest.mock('../src/services/pausedTakes', () => ({
+  clearOrphanedPausedTakes: jest.fn(() => Promise.resolve(0)),
+}));
+
 // Auth session
 jest.mock('../src/services/authSession', () => ({
   restoreSession: jest.fn(() => Promise.resolve({ authenticated: false })),
   signOut: jest.fn(),
+}));
+
+jest.mock('../src/services/uploadOrchestrator', () => ({
+  startUploadOrchestrator: jest.fn(),
+  stopUploadOrchestrator: jest.fn(),
+  setChapterUploadWorker: jest.fn(),
+}));
+
+jest.mock('../src/services/recordingSync', () => ({
+  registerRecordingUploadWorker: jest.fn(),
 }));
 
 // Keychain
@@ -78,6 +109,8 @@ jest.mock('../src/services/keychain', () => ({
   getCredentials: jest.fn(() => Promise.resolve(null)),
   getAllStoredUserIds: jest.fn(() => Promise.resolve([])),
 }));
+
+import App from '../App';
 
 describe('App', () => {
   it('renders navigator after initialization', async () => {

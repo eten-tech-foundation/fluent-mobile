@@ -17,8 +17,9 @@ const appVersion = resolveAppVersion();
 
 const buildProfile = process.env.EAS_BUILD_PROFILE;
 const usesCleartextTraffic = buildProfile !== 'production';
-// OTA updates apply to EAS preview/production only. Local and development
-// builds use Metro; checking u.expo.dev on launch crashes when no bundle exists.
+// OTA updates apply to EAS preview/production only. Local, development, and
+// nightly builds keep updates disabled (nightly ships a self-contained APK).
+// Checking u.expo.dev on launch crashes when no bundle exists.
 const updatesEnabled =
   buildProfile === 'preview' || buildProfile === 'production';
 
@@ -28,6 +29,10 @@ const config: ExpoConfig = {
   scheme: 'fluent',
   version: appVersion,
   icon: './assets/icon.png',
+  // Root / window background after splash — white app chrome (not brand blue).
+  // BootSplash cold-start still uses assets/bootsplash (blue).
+  backgroundColor: '#FFFFFF',
+  userInterfaceStyle: 'light',
   updates: {
     url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
     enabled: updatesEnabled,
@@ -72,8 +77,20 @@ const config: ExpoConfig = {
         assetsDir: 'assets/bootsplash',
       },
     ],
+    // After bootsplash → AppTheme, keep window white (avoids Metro blue flash).
+    './plugins/withAppWindowBackground',
     './plugins/withRNScreensFragmentFactory',
     'expo-secure-store',
+    'expo-asset',
+    [
+      'expo-audio',
+      {
+        // Android RECORD_AUDIO via config plugin (recordAudioAndroid defaults true).
+        // No microphonePermission — that string is iOS-only and this app is Android-only.
+        recordAudioAndroid: true,
+        enableBackgroundRecording: false,
+      },
+    ],
   ],
 };
 

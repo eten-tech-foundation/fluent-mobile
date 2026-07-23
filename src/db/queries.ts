@@ -35,7 +35,7 @@ const BIBLE_TEXTS_MATCH_CA = `
 `;
 
 /** Recordings are keyed by bible_text_id; join verses for the chapter assignment. */
-const RECORDINGS_JOIN_CA = `
+export const RECORDINGS_JOIN_CA = `
   LEFT JOIN bible_texts bt_r
     ON bt_r.bible_id = ca.bible_id
     AND bt_r.book_id = ca.book_id
@@ -439,6 +439,38 @@ export async function getPendingUploadCount(): Promise<number> {
   }
 }
 
+export type PendingUploadChapter = {
+  bookId: number;
+  chapterNumber: number;
+};
+
+/**
+ * Distinct chapters with at least one latest non-uploaded recording.
+ * Upload engine (#150) processes work per chapter, not per verse.
+ */
+export async function getPendingUploadChapters(): Promise<
+  PendingUploadChapter[]
+> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT DISTINCT bt.book_id AS book_id, bt.chapter_number AS chapter_number
+       FROM recordings r
+       JOIN bible_texts bt ON bt.id = r.bible_text_id
+       WHERE r.is_latest = 1 AND r.sync_status != 'uploaded'
+       ORDER BY bt.book_id, bt.chapter_number`,
+    );
+    const rows = result.rows ?? [];
+    return rows.map(row => ({
+      bookId: Number(row.book_id),
+      chapterNumber: Number(row.chapter_number),
+    }));
+  } catch (error) {
+    log.error('Error fetching pending upload chapters', { error });
+    return [];
+  }
+}
+
 export async function getBibleTexts(
   bibleId: number,
   bookId: number,
@@ -523,5 +555,27 @@ export async function isUserAssignedToProject(
       projectId,
     });
     return false;
+  }
+}
+/** Resolve `bible_texts.id` for a verse — required for recording persistence. */
+export async function getBibleTextId(
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+  verseNumber: number,
+): Promise<number | null> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT id FROM bible_texts
+       WHERE bible_id = ? AND book_id = ? AND chapter_number = ? AND verse_number = ?
+       LIMIT 1`,
+      [bibleId, bookId, chapterNumber, verseNumber],
+    );
+    const row = (result?.rows as unknown as { id: number }[])?.[0];
+    return row?.id ?? null;
+  } catch (error) {
+    log.error('Error resolving bible_text id', { error });
+    return null;
   }
 }
