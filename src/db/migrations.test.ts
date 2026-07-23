@@ -2,18 +2,25 @@ import type { DB, QueryResult, Transaction } from '@op-engineering/op-sqlite';
 import {
   addColumnIfMissing,
   columnExists,
+  CURRENT_SCHEMA_VERSION,
   getUserVersion,
   Migration,
   rebuildTable,
+  restoreChapterAssignmentAssignedUserIntegrity,
   runMigrations,
   setUserVersion,
 } from './migrations';
+import { createTableQueries } from './schema';
 
 type Row = Record<string, string | number | null>;
 
 type FakeTable = {
   columns: Set<string>;
   rows: Row[];
+  /** Column → referenced table (simple FK tracking for unit tests). */
+  foreignKeys: Map<string, string>;
+  /** Column → default expression string when present. */
+  defaults: Map<string, string>;
 };
 
 function emptyResult(rows: Row[] = []): QueryResult {
@@ -25,12 +32,14 @@ function emptyResult(rows: Row[] = []): QueryResult {
 
 /**
  * Minimal SQLite stand-in for migration unit tests (no native op-sqlite).
- * Supports: PRAGMA user_version, PRAGMA table_info, CREATE TABLE IF NOT EXISTS,
- * ALTER TABLE ADD COLUMN, INSERT, SELECT, DROP, RENAME, and no-op indexes.
+ * Supports: PRAGMA user_version, PRAGMA table_info, CREATE TABLE,
+ * ALTER TABLE ADD COLUMN, INSERT…SELECT (incl. LEFT JOIN users), INSERT VALUES,
+ * SELECT, DROP, RENAME, indexes, and basic FK checks on INSERT VALUES.
  */
 function createFakeDb(initialVersion = 0) {
   let userVersion = initialVersion;
   const tables = new Map<string, FakeTable>();
+  const indexes = new Set<string>();
 
   const ensureChapterAssignmentsOldShape = () => {
     if (tables.has('chapter_assignments')) {
@@ -61,32 +70,107 @@ function createFakeDb(initialVersion = 0) {
           updated_at: '2024-01-01',
         },
       ],
+      foreignKeys: new Map(),
+      defaults: new Map(),
     });
+  };
+
+  const ensureUsers = (ids: number[] = [5]) => {
+    if (tables.has('users')) {
+      return;
+    }
+    tables.set('users', {
+      columns: new Set(['id', 'email']),
+      rows: ids.map(id => ({ id, email: `u${id}@example.com` })),
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+  };
+
+  const ensureAssignmentParents = () => {
+    if (!tables.has('project_units')) {
+      tables.set('project_units', {
+        columns: new Set(['id']),
+        rows: [{ id: 10 }],
+        foreignKeys: new Map(),
+        defaults: new Map(),
+      });
+    }
+    if (!tables.has('bibles')) {
+      tables.set('bibles', {
+        columns: new Set(['id']),
+        rows: [{ id: 1 }],
+        foreignKeys: new Map(),
+        defaults: new Map(),
+      });
+    }
+    if (!tables.has('books')) {
+      tables.set('books', {
+        columns: new Set(['id']),
+        rows: [{ id: 1 }],
+        foreignKeys: new Map(),
+        defaults: new Map(),
+      });
+    }
   };
 
   const parseCreateTable = (sql: string): void => {
     const match = sql.match(
-      /CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+(\w+)\s*\(([\s\S]*)\)/i,
+      /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)\s*\(([\s\S]*)\)/i,
     );
     if (!match) {
       return;
     }
     const [, name, body] = match;
-    if (tables.has(name)) {
+    if (tables.has(name) && /IF\s+NOT\s+EXISTS/i.test(sql)) {
       return;
     }
+    if (tables.has(name)) {
+      throw new Error(`table already exists: ${name}`);
+    }
     const columns = new Set<string>();
+    const foreignKeys = new Map<string, string>();
+    const defaults = new Map<string, string>();
     for (const part of body.split(',')) {
-      const col = part.trim().split(/\s+/)[0];
+      const trimmed = part.trim();
+      const col = trimmed.split(/\s+/)[0];
       if (
         col &&
         !/^(PRIMARY|UNIQUE|FOREIGN|CONSTRAINT|CHECK)$/i.test(col) &&
         col !== ')'
       ) {
-        columns.add(col.replace(/[^a-zA-Z0-9_]/g, ''));
+        const clean = col.replace(/[^a-zA-Z0-9_]/g, '');
+        columns.add(clean);
+        const fk = trimmed.match(/REFERENCES\s+(\w+)\s*\(/i);
+        if (fk) {
+          foreignKeys.set(clean, fk[1]);
+        }
+        const dflt = trimmed.match(/DEFAULT\s+('(?:[^']*)'|\S+)/i);
+        if (dflt) {
+          defaults.set(clean, dflt[1].replace(/^'|'$/g, ''));
+        }
       }
     }
-    tables.set(name, { columns, rows: [] });
+    tables.set(name, { columns, rows: [], foreignKeys, defaults });
+  };
+
+  const assertForeignKeys = (tableName: string, row: Row): void => {
+    const table = tables.get(tableName);
+    if (!table) {
+      return;
+    }
+    for (const [column, refTable] of table.foreignKeys) {
+      const value = row[column];
+      if (value === null || value === undefined) {
+        continue;
+      }
+      const ref = tables.get(refTable);
+      if (!ref || !ref.rows.some(r => r.id === value)) {
+        throw new Error(
+          `FOREIGN KEY constraint failed: ${tableName}.${column} → ${refTable}(${value})`,
+        );
+      }
+    }
   };
 
   const executor = {
@@ -115,7 +199,7 @@ function createFakeDb(initialVersion = 0) {
             name,
             type: 'TEXT',
             notnull: 0,
-            dflt_value: null,
+            dflt_value: table.defaults.get(name) ?? null,
             pk: 0,
           })),
         );
@@ -126,7 +210,11 @@ function createFakeDb(initialVersion = 0) {
         return emptyResult();
       }
 
-      if (/^CREATE\s+INDEX/i.test(sql)) {
+      const createIndex = sql.match(
+        /^CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)/i,
+      );
+      if (createIndex) {
+        indexes.add(createIndex[1]);
         return emptyResult();
       }
 
@@ -149,6 +237,42 @@ function createFakeDb(initialVersion = 0) {
         return emptyResult();
       }
 
+      const insertSelectJoinUsers = sql.match(
+        /^INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*SELECT[\s\S]+FROM\s+(\w+)\s+\w+\s+LEFT\s+JOIN\s+users/i,
+      );
+      if (insertSelectJoinUsers) {
+        const [, dest, destCols, src] = insertSelectJoinUsers;
+        const source = tables.get(src);
+        const target = tables.get(dest);
+        const users = tables.get('users');
+        if (!source || !target) {
+          throw new Error('missing table for copy');
+        }
+        const cols = destCols.split(',').map(c => c.trim());
+        const userIds = new Set((users?.rows ?? []).map(r => r.id));
+        target.rows = source.rows.map(row => {
+          const next: Row = {};
+          for (const col of cols) {
+            let value = (row[col] as string | number | null) ?? null;
+            if (col === 'assigned_user_id' && value !== null) {
+              value = userIds.has(value) ? value : null;
+            }
+            if (col === 'status' && (value === null || value === undefined)) {
+              value = 'not_started';
+            }
+            if (
+              (col === 'total_verses' || col === 'completed_verses') &&
+              (value === null || value === undefined)
+            ) {
+              value = 0;
+            }
+            next[col] = value;
+          }
+          return next;
+        });
+        return emptyResult();
+      }
+
       const insertSelect = sql.match(
         /^INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*SELECT\s+(.+)\s+FROM\s+(\w+)/i,
       );
@@ -167,6 +291,36 @@ function createFakeDb(initialVersion = 0) {
           }
           return next;
         });
+        return emptyResult();
+      }
+
+      const insertValues = sql.match(
+        /^INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/i,
+      );
+      if (insertValues) {
+        const [, tableName, colList, valueList] = insertValues;
+        const table = tables.get(tableName);
+        if (!table) {
+          throw new Error(`no such table: ${tableName}`);
+        }
+        const cols = colList.split(',').map(c => c.trim());
+        const values = valueList.split(',').map(v => {
+          const trimmed = v.trim();
+          if (trimmed === 'NULL') {
+            return null;
+          }
+          if (/^'.*'$/.test(trimmed)) {
+            return trimmed.slice(1, -1);
+          }
+          const num = Number(trimmed);
+          return Number.isNaN(num) ? trimmed : num;
+        });
+        const row: Row = {};
+        cols.forEach((col, index) => {
+          row[col] = values[index] ?? null;
+        });
+        assertForeignKeys(tableName, row);
+        table.rows.push(row);
         return emptyResult();
       }
 
@@ -208,12 +362,18 @@ function createFakeDb(initialVersion = 0) {
       await fn(executor as unknown as Transaction);
     },
     _tables: tables,
+    _indexes: indexes,
     _seedOldChapterAssignments: ensureChapterAssignmentsOldShape,
+    _seedUsers: ensureUsers,
+    _seedAssignmentParents: ensureAssignmentParents,
   };
 
   return db as unknown as DB & {
     _tables: Map<string, FakeTable>;
+    _indexes: Set<string>;
     _seedOldChapterAssignments: () => void;
+    _seedUsers: (ids?: number[]) => void;
+    _seedAssignmentParents: () => void;
   };
 }
 
@@ -221,7 +381,7 @@ describe('migrations framework', () => {
   it('applies all migrations from version 0 and sets user_version', async () => {
     const db = createFakeDb(0);
     await runMigrations(db);
-    await expect(getUserVersion(db)).resolves.toBe(2);
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
   });
 
   it('is idempotent on a second run', async () => {
@@ -276,6 +436,7 @@ describe('migrations framework', () => {
 
   it('upgrades an old-shape chapter_assignments table without losing rows', async () => {
     const db = createFakeDb(0);
+    db._seedUsers([5]);
     db._seedOldChapterAssignments();
 
     const before = await db.execute('SELECT * FROM chapter_assignments');
@@ -301,7 +462,54 @@ describe('migrations framework', () => {
     expect(after.rows).toHaveLength(1);
     expect(after.rows[0].id).toBe(1);
     expect(after.rows[0].status).toBe('in_progress');
-    await expect(getUserVersion(db)).resolves.toBe(2);
+    expect(after.rows[0].assigned_user_id).toBe(5);
+    expect(db._indexes.has('idx_ca_assigned_user')).toBe(true);
+    expect(
+      db._tables
+        .get('chapter_assignments')!
+        .foreignKeys.get('assigned_user_id'),
+    ).toBe('users');
+    expect(db._tables.get('chapter_assignments')!.defaults.get('status')).toBe(
+      'not_started',
+    );
+    await expect(getUserVersion(db)).resolves.toBe(3);
+  });
+
+  it('nulls orphan assigned_user_id values during the integrity rebuild', async () => {
+    const db = createFakeDb(2);
+    db._seedUsers([5]);
+    db._seedOldChapterAssignments();
+    db._tables.get('chapter_assignments')!.rows[0].assigned_user_id = 999;
+
+    await restoreChapterAssignmentAssignedUserIntegrity(db);
+
+    const rows = db._tables.get('chapter_assignments')!.rows;
+    expect(rows).toHaveLength(1);
+    expect(rows[0].assigned_user_id).toBeNull();
+    expect(db._indexes.has('idx_ca_assigned_user')).toBe(true);
+  });
+
+  it('rejects INSERT that violates assigned_user_id FK after rebuild', async () => {
+    const db = createFakeDb(2);
+    db._seedUsers([5]);
+    db._seedAssignmentParents();
+    db._seedOldChapterAssignments();
+
+    await restoreChapterAssignmentAssignedUserIntegrity(db);
+
+    await expect(
+      db.execute(
+        `INSERT INTO chapter_assignments (id, project_unit_id, bible_id, book_id, chapter_number, assigned_user_id, status, updated_at)
+         VALUES (2, 10, 1, 1, 2, 999, 'not_started', '2024-01-02')`,
+      ),
+    ).rejects.toThrow(/FOREIGN KEY constraint failed/);
+
+    await expect(
+      db.execute(
+        `INSERT INTO chapter_assignments (id, project_unit_id, bible_id, book_id, chapter_number, assigned_user_id, status, updated_at)
+         VALUES (3, 10, 1, 1, 3, 5, 'not_started', '2024-01-02')`,
+      ),
+    ).resolves.toBeDefined();
   });
 
   it('addColumnIfMissing is a no-op when the column already exists', async () => {
@@ -349,11 +557,23 @@ describe('migrations framework', () => {
     expect(table!.rows[0].id).toBe(1);
     expect(table!.rows[0].status).toBe('in_progress');
     expect(db._tables.has('chapter_assignments_new')).toBe(false);
+    expect(db._indexes.has('idx_ca_status')).toBe(true);
   });
 
   it('setUserVersion and getUserVersion round-trip', async () => {
     const db = createFakeDb(0);
     await setUserVersion(db, 7);
     await expect(getUserVersion(db)).resolves.toBe(7);
+  });
+});
+
+describe('recordings linkage (#99)', () => {
+  it('keeps bible_text_id as the canonical recordings link in schema SQL', () => {
+    const recordingsSql = createTableQueries.find(q =>
+      q.includes('CREATE TABLE IF NOT EXISTS recordings'),
+    );
+    expect(recordingsSql).toBeDefined();
+    expect(recordingsSql).toContain('bible_text_id');
+    expect(recordingsSql).not.toContain('chapter_assignment_id');
   });
 });

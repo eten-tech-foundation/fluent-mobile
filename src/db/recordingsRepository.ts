@@ -46,8 +46,9 @@ export type AddRecordingTakeInput = {
  * Insert a new take for a verse: clear prior `is_latest`, bump `take_number`,
  * insert with `is_latest = 1` in one transaction.
  *
- * Shared-device `(bible_text_id, user_id)` scoping lands with #99/#105 once
- * `user_id` exists on `recordings` — until then latest is per verse.
+ * Linkage is verse-based (`bible_text_id`) — see #98 / #99. Shared-device
+ * `(bible_text_id, user_id)` scoping lands with #105 once `user_id` exists on
+ * `recordings` — until then latest is per verse.
  */
 export async function addRecordingTake(
   input: AddRecordingTakeInput,
