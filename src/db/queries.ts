@@ -425,6 +425,38 @@ export async function getPendingUploadCount(): Promise<number> {
   }
 }
 
+export type PendingUploadChapter = {
+  bookId: number;
+  chapterNumber: number;
+};
+
+/**
+ * Distinct chapters with at least one latest non-uploaded recording.
+ * Upload engine (#150) processes work per chapter, not per verse.
+ */
+export async function getPendingUploadChapters(): Promise<
+  PendingUploadChapter[]
+> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT DISTINCT bt.book_id AS book_id, bt.chapter_number AS chapter_number
+       FROM recordings r
+       JOIN bible_texts bt ON bt.id = r.bible_text_id
+       WHERE r.is_latest = 1 AND r.sync_status != 'uploaded'
+       ORDER BY bt.book_id, bt.chapter_number`,
+    );
+    const rows = result.rows ?? [];
+    return rows.map(row => ({
+      bookId: Number(row.book_id),
+      chapterNumber: Number(row.chapter_number),
+    }));
+  } catch (error) {
+    log.error('Error fetching pending upload chapters', { error });
+    return [];
+  }
+}
+
 export async function getBibleTexts(
   bibleId: number,
   bookId: number,

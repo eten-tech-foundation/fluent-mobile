@@ -39,7 +39,7 @@ Report what ran and the outcome. If a step was skipped, say why.
 
 ## PR workflow
 
-Slash commands in `.cursor/commands/`: `/create-pr-branch`, `/generate-pr-description`, `/create-pr`, `/onboard`, `/dep-bump`, `/handle-dependabot`. Align with team PR title format: `[#NNN]: Description` (GitHub Issues — [docs/issue-tracking.md](../../docs/issue-tracking.md)). CI map: [docs/ci.md](../../docs/ci.md).
+Slash commands in `.cursor/commands/`: `/create-pr-branch`, `/generate-pr-description`, `/create-pr`, `/onboard`, `/dep-bump`, `/handle-dependabot`. Align with team PR title format: `[#NNN]: Description` (Project 4 Fluent Mobile Board — [docs/issue-tracking.md](../../docs/issue-tracking.md)). **PR body must be filled from** [`.cursor/templates/pr-template.md`](../templates/pr-template.md) on every agent-opened PR — see [delivery.mdc](./delivery.mdc) (not optional; not only when `/create-pr` is typed). CI map: [docs/ci.md](../../docs/ci.md).
 
 ## Do not run without user request
 

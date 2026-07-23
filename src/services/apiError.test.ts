@@ -31,6 +31,20 @@ describe('parseApiErrorBody', () => {
     ).toEqual({ message: 'Invalid session', code: 'AUTH_EXPIRED' });
   });
 
+  it('joins error + details when message is absent (verse-audio 503)', () => {
+    expect(
+      parseApiErrorBody(
+        JSON.stringify({
+          error: 'Verse audio is not available',
+          details: 'Audio storage is not configured',
+        }),
+      ),
+    ).toEqual({
+      message: 'Verse audio is not available: Audio storage is not configured',
+      code: undefined,
+    });
+  });
+
   it('falls back to errorCode when code is present but not a string', () => {
     expect(
       parseApiErrorBody(

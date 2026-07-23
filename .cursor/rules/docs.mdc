@@ -15,7 +15,7 @@ alwaysApply: false
 
 ## Issue tracking & CI
 
-- [docs/issue-tracking.md](../../docs/issue-tracking.md) — GitHub Issues, branch naming, PR linking (`Closes #NNN`)
+- [docs/issue-tracking.md](../../docs/issue-tracking.md) — Project 4 Fluent Mobile Board, branch naming, PR linking (`Closes #NNN`)
 - [docs/ci.md](../../docs/ci.md) — workflow inventory + future required-check guardrail
 
 Update these when tracker policy or CI workflows change.
@@ -34,7 +34,7 @@ Keep `.cursor/rules/*.mdc` in sync with onboarding — short pointers only; avoi
 
 ## PR template
 
-[.cursor/templates/pr-template.md](../templates/pr-template.md) — update if required PR sections or verification steps change.
+[.cursor/templates/pr-template.md](../templates/pr-template.md) — update if required PR sections or verification steps change. Agents must fill this template on every PR ([delivery.mdc](./delivery.mdc)).
 
 ## Nested hot-path notes
 

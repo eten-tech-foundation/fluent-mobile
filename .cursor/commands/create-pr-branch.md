@@ -12,7 +12,7 @@ Creates a new git branch using the team naming convention:
 
 Run with `/create-pr-branch` in Cursor chat.
 
-**Tracker:** GitHub Issues for this repo right now — see [docs/issue-tracking.md](../../docs/issue-tracking.md).
+**Tracker:** Project 4 Fluent Mobile Board — see [docs/issue-tracking.md](../../docs/issue-tracking.md).
 
 ## Branch name format
 
