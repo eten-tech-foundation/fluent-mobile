@@ -1,10 +1,8 @@
 import { theme } from '../../theme';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSync } from '../../hooks/useSync';
-import { Pause, Play, X } from 'lucide-react-native';
 import { SyncPageStatus } from '../../types/sync/types';
 import { useNavigation } from '@react-navigation/native';
-import { listIconStrokeWidth } from '../../theme/iconSpecs';
 import { usePreferences } from '../../hooks/usePreferences';
 import { useConnectivity } from '../../hooks/useConnectivity';
 import {
@@ -17,16 +15,11 @@ import { UploadProgressBar } from '../../components/ui/UploadProgressBar';
 import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
 import { SyncStatusIndicator } from '../../components/ui/SyncStatusIndicator';
 import { CloudSyncStatusIcon } from '../../components/ui/CloudSyncStatusIcon';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { SyncActionControls } from '../../components/ui/SyncActionControls';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 // TODO(#150): status/uploadedChapters/totalChapters/nextRetryAt are mock
-// state for the UI-only #149 ticket. Replace with real derivation once
+// state until the upload orchestrator owns them.
 export default function SyncScreen() {
   const navigation = useNavigation();
 
@@ -42,6 +35,7 @@ export default function SyncScreen() {
   const { uploadOverCellular, setUploadOverCellular } = usePreferences();
   const { hasPendingUploads } = usePendingUploads(refreshKey);
   const effectivelyOnline = isOnline && (isWifi || uploadOverCellular);
+  const cellularBlocked = isOnline && !isWifi && !uploadOverCellular;
 
   // Once the real sync finishes, re-check the pending count directly
   // (rather than relying on hasPendingUploads above, which only refetches
@@ -53,7 +47,7 @@ export default function SyncScreen() {
   // "no downloads pending" too, and there's no download-queue signal to
   // check yet (that section is still a TODO). It'll stay dead code until
   // that integration exists.
-  const { triggerSync } = useSync({
+  const { triggerSync, isSyncing } = useSync({
     onSyncComplete: async () => {
       setRefreshKey(key => key + 1);
       const count = await loadPendingUploadCount();
@@ -65,18 +59,34 @@ export default function SyncScreen() {
   });
 
   useEffect(() => {
-    if (status === 'syncing' && isOnline && !isWifi && !uploadOverCellular) {
+    if (status === 'syncing' && cellularBlocked) {
       setStatus('paused');
     }
-  }, [status, isOnline, isWifi, uploadOverCellular]);
+  }, [status, cellularBlocked]);
 
-  const handleSyncNow = () => {
-    if (isOnline && !isWifi && !uploadOverCellular) {
+  const runSyncNow = useCallback(() => {
+    if (cellularBlocked) {
       return;
     }
+    // TODO(#150): invoke upload-engine Sync Now (clears pause window).
     triggerSync();
     setStatus('syncing');
-  };
+  }, [cellularBlocked, triggerSync]);
+
+  // TODO(#150): invoke upload-engine pause.
+  const handlePause = useCallback(() => {
+    setStatus('paused');
+  }, []);
+
+  // TODO(#150): invoke upload-engine resume (distinct from Sync Now pause-window clear).
+  const handleResume = useCallback(() => {
+    runSyncNow();
+  }, [runSyncNow]);
+
+  // TODO(#150): invoke upload-engine cancel / clear pause window.
+  const handleCancel = useCallback(() => {
+    setStatus('pending');
+  }, []);
 
   return (
     <ScreenContainer edges={['bottom']}>
@@ -100,14 +110,16 @@ export default function SyncScreen() {
             nextRetryAt,
           )}
         </View>
-        {/*
-          PREVIEW ONLY, not #151. These buttons just flip local mock
-          `status` so we can visually confirm the icon/label changes per
-          state render correctly. #151 replaces this block entirely with
-          real Pause/Resume/Cancel/Sync Now wired to #150's engine.
-        */}
         <View style={styles.controlsSection}>
-          {renderMockControls(status, setStatus, handleSyncNow)}
+          <SyncActionControls
+            status={status}
+            onPause={handlePause}
+            onResume={handleResume}
+            onCancel={handleCancel}
+            onSyncNow={runSyncNow}
+            syncNowDisabled={cellularBlocked}
+            busy={isSyncing}
+          />
         </View>
         {/*
           TODO: render the already-drafted downloads queue section here
@@ -254,120 +266,6 @@ function renderSecondaryContent(
   }
 }
 
-// PREVIEW ONLY — see note above. Cancel is assumed to drop the page into
-// 'pending' (uploads still queued, nothing actively running); that mapping
-// isn't spec'd anywhere, just a reasonable guess for demo purposes.
-//
-// Only "Sync Now" (pending state) calls the gated sync handler, so
-// there's at least one working manual-sync path until #151 wires up the
-// real thing. Pause, Resume, and Cancel remain visual-only — there's no
-// real pause/resume/cancel behavior to call yet (that's #150).
-function renderMockControls(
-  status: SyncPageStatus,
-  setStatus: (status: SyncPageStatus) => void,
-  onSyncNow: () => void,
-) {
-  switch (status) {
-    case 'syncing':
-      return (
-        <View style={styles.controlsRow}>
-          <MockActionButton
-            label="Pause"
-            Icon={Pause}
-            variant="secondary"
-            onPress={() => setStatus('paused')}
-          />
-          <MockActionButton
-            label="Cancel"
-            Icon={X}
-            variant="secondary"
-            onPress={() => setStatus('pending')}
-          />
-        </View>
-      );
-
-    case 'paused':
-      return (
-        <View style={styles.controlsRow}>
-          <MockActionButton
-            label="Resume"
-            Icon={Play}
-            variant="secondary"
-            onPress={() => setStatus('syncing')}
-          />
-          <MockActionButton
-            label="Cancel"
-            Icon={X}
-            variant="secondary"
-            onPress={() => setStatus('pending')}
-          />
-        </View>
-      );
-
-    case 'pending':
-      return (
-        <MockActionButton
-          label="Sync Now"
-          Icon={Play}
-          variant="primary"
-          fullWidth
-          onPress={onSyncNow}
-        />
-      );
-
-    case 'uploadComplete':
-    case 'allComplete':
-    default:
-      return null;
-  }
-}
-
-interface MockActionButtonProps {
-  label: string;
-  Icon: typeof Pause;
-  variant: 'primary' | 'secondary';
-  fullWidth?: boolean;
-  onPress: () => void;
-}
-
-function MockActionButton({
-  label,
-  Icon,
-  variant,
-  fullWidth,
-  onPress,
-}: MockActionButtonProps) {
-  const isPrimary = variant === 'primary';
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      accessibilityRole="button"
-      style={[
-        styles.controlButton,
-        isPrimary && styles.controlButtonPrimary,
-        fullWidth && styles.controlButtonFullWidth,
-      ]}
-    >
-      <Icon
-        size={18}
-        color={
-          isPrimary ? theme.colors.primaryForeground : theme.colors.foreground
-        }
-        strokeWidth={listIconStrokeWidth}
-      />
-      <Text
-        style={[
-          styles.controlButtonLabel,
-          isPrimary && styles.controlButtonLabelPrimary,
-        ]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
 function formatRetryText(nextRetryAt?: Date): string {
   if (!nextRetryAt) {
     return '';
@@ -466,37 +364,5 @@ const styles = StyleSheet.create({
     color: theme.colors.foreground,
     textAlign: 'center',
     paddingVertical: theme.spacing.lg,
-  },
-  controlsRow: {
-    flexDirection: 'row',
-    width: '100%',
-    gap: theme.spacing.sm,
-  },
-  controlButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.xs,
-    paddingVertical: theme.spacing.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.cardBackground,
-  },
-  controlButtonPrimary: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
-  },
-  controlButtonFullWidth: {
-    width: '100%',
-  },
-  controlButtonLabel: {
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.weights.medium,
-    color: theme.colors.foreground,
-  },
-  controlButtonLabelPrimary: {
-    color: theme.colors.primaryForeground,
   },
 });

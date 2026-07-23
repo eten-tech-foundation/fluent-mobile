@@ -16,15 +16,12 @@ import {
   getActiveUserId,
   getKnownUserIds,
   getUserEmail,
-  kvStorage,
-  KV_KEYS,
-  switchActiveUser,
   MAX_DEVICE_ACCOUNTS,
 } from '../../services/storage';
-import { clearCredentials, getCredentials } from '../../services/keychain';
-import { FluentAPI } from '../../services/api';
-import { signOut } from '../../services/authSession';
-import { authToken } from '../../services/authToken';
+import {
+  signOutCurrentDeviceAccount,
+  switchToDeviceAccount,
+} from '../../services/accountSession';
 import { logger } from '../../utils/logger';
 
 const log = logger.create('UserSettingsMenu');
@@ -92,13 +89,7 @@ export function UserSettingsMenu({
 
     setSwitchingUserId(userId);
     try {
-      const creds = await getCredentials(userId);
-      if (!creds?.token) {
-        throw new Error('No usable stored session for this account');
-      }
-
-      authToken.set(creds.token);
-      switchActiveUser(userId);
+      await switchToDeviceAccount(userId);
       onClose();
       onUserSwitched?.();
     } catch (error) {
@@ -115,30 +106,12 @@ export function UserSettingsMenu({
 
   const handleSignOut = async () => {
     onClose();
-    const currentUserId = getActiveUserId();
-
-    try {
-      await FluentAPI.signOut();
-    } catch (e) {
-      log.error('Server sign out failed', { error: e });
-    }
-
-    await clearCredentials(currentUserId);
-
-    const remaining = getKnownUserIds().filter(id => id !== currentUserId);
-    kvStorage.setItemSync(KV_KEYS.KNOWN_USER_IDS, remaining.join(','));
-    log.info('User signed out', { userId: currentUserId });
-
-    if (remaining.length > 0) {
-      const nextUserId = remaining[0];
-      const creds = await getCredentials(nextUserId);
-      authToken.set(creds?.token ?? null);
-      switchActiveUser(nextUserId);
+    const result = await signOutCurrentDeviceAccount();
+    if (result.kind === 'switched') {
       onUserSwitched?.();
-    } else {
-      signOut();
-      onSignOut?.();
+      return;
     }
+    onSignOut?.();
   };
 
   const activeUserId = getActiveUserId();

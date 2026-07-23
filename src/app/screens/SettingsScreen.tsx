@@ -17,25 +17,12 @@ import {
   LOGOUT_UNSYNCED_MESSAGE,
   LOGOUT_UNSYNCED_TITLE,
 } from '../../constants/messages';
-import { FluentAPI } from '../../services/api';
-import { signOut } from '../../services/authSession';
-import { authToken } from '../../services/authToken';
-import { clearCredentials, getCredentials } from '../../services/keychain';
-import {
-  getActiveUserId,
-  getKnownUserIds,
-  kvStorage,
-  KV_KEYS,
-  switchActiveUser,
-  MAX_DEVICE_ACCOUNTS,
-} from '../../services/storage';
+import { signOutCurrentDeviceAccount } from '../../services/accountSession';
+import { getKnownUserIds, MAX_DEVICE_ACCOUNTS } from '../../services/storage';
 import { loadPendingUploadCount } from '../../hooks/usePendingUploads';
 import { usePreferences } from '../../hooks/usePreferences';
 import { RootStackParamList } from '../../types/navigation/types';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
-import { logger } from '../../utils/logger';
-
-const log = logger.create('SettingsScreen');
 
 type Nav = StackNavigationProp<RootStackParamList, 'Settings'>;
 
@@ -64,46 +51,11 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
   }, [navigation, atAccountLimit]);
 
   const performLogOut = async () => {
-    const currentUserId = getActiveUserId();
-
-    try {
-      await FluentAPI.signOut();
-    } catch (e) {
-      log.error('Server sign out failed', { error: e });
-    }
-
-    await clearCredentials(currentUserId);
-
-    const remaining = getKnownUserIds().filter(id => id !== currentUserId);
-    kvStorage.setItemSync(KV_KEYS.KNOWN_USER_IDS, remaining.join(','));
-    log.info('User signed out', { userId: currentUserId });
-
-    for (const candidateUserId of remaining) {
-      let creds;
-      try {
-        creds = await getCredentials(candidateUserId);
-      } catch (e) {
-        log.error('Failed to read credentials for candidate account', {
-          userId: candidateUserId,
-          error: e,
-        });
-        continue;
-      }
-
-      if (!creds?.token) {
-        log.error('Skipping candidate account with no usable session', {
-          userId: candidateUserId,
-        });
-        continue;
-      }
-
-      authToken.set(creds.token);
-      switchActiveUser(candidateUserId);
+    const result = await signOutCurrentDeviceAccount();
+    if (result.kind === 'switched') {
       navigation.goBack();
       return;
     }
-
-    signOut();
     onSignOut?.();
   };
 
