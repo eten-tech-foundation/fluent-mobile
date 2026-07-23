@@ -14,5 +14,6 @@ Quick checklist:
 3. **Abstraction** — no generic adapter/framework without a second caller or ticket ask
 4. **Human QA** — native / mic / camera / filesystem / permissions need Android device results before ready-for-review
 5. **Agent-authored features** — review scope, abstraction, and AC-vs-CI first
+6. **PR body** — filled from [`.cursor/templates/pr-template.md`](../templates/pr-template.md) on every agent-opened PR ([delivery.mdc](./delivery.mdc)) — not a short Summary/Test plan substitute
 
 See also [delivery.mdc](./delivery.mdc) and [commands.mdc](./commands.mdc).

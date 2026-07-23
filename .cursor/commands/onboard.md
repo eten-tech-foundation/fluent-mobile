@@ -58,7 +58,7 @@ npm run doctor          # after native-impacting / dependency changes
 ## Step 4 — Point at docs
 
 - [docs/AGENT_ONBOARDING.md](../../docs/AGENT_ONBOARDING.md) — architecture map
-- [docs/issue-tracking.md](../../docs/issue-tracking.md) — GitHub Issues + PR linking
+- [docs/issue-tracking.md](../../docs/issue-tracking.md) — Project 4 Fluent Mobile Board + PR linking
 - [docs/ci.md](../../docs/ci.md) — CI inventory
 - [README.md](../../README.md) — human setup
 

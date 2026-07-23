@@ -57,9 +57,26 @@ Add the **`preview-build`** label to a pull request. GitHub Actions (`.github/wo
 
 Uses the latest git tag for runtime version when available; otherwise falls back to `app.config.ts` / `package.json` version (no tag required for first preview). Requires `EXPO_TOKEN` in GitHub Actions secrets.
 
+## Nightly builds (binary only)
+
+GitHub Actions [`.github/workflows/nightly-preview.yml`](../.github/workflows/nightly-preview.yml) builds a fresh Android **internal APK** with the EAS **`nightly`** profile each night (or on `workflow_dispatch`).
+
+- Bakes `EXPO_PUBLIC_API_BASE_URL=https://dev.api.fluent.bible`
+- **No Updates channel** and **no `eas update`** — what you install is what you run
+- Does **not** require the Expo GitHub App (uses `EXPO_TOKEN`, same as PR preview)
+- Distinct from PR `preview` (which may OTA to channel `preview`)
+
+See [`.github/README.md`](../.github/README.md) for secrets and skip / force behavior.
+
 ## Manual build (without tag)
 
 ```bash
 npx eas build --profile production --platform android
 npx eas submit --profile production --platform android
+```
+
+Nightly-equivalent local build:
+
+```bash
+npx eas build --profile nightly --platform android
 ```
