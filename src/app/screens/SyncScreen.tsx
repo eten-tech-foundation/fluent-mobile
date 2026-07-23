@@ -3,10 +3,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSync } from '../../hooks/useSync';
 import { SyncPageStatus } from '../../types/sync/types';
 import { useNavigation } from '@react-navigation/native';
-import { getPendingUploadCount } from '../../db/queries';
 import { usePreferences } from '../../hooks/usePreferences';
 import { useConnectivity } from '../../hooks/useConnectivity';
-import { usePendingUploads } from '../../hooks/usePendingUploads';
+import {
+  loadPendingUploadCount,
+  usePendingUploads,
+} from '../../hooks/usePendingUploads';
 import { SettingsToggleRow } from '../../components/ui/SettingsListRow';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { UploadProgressBar } from '../../components/ui/UploadProgressBar';
@@ -48,7 +50,7 @@ export default function SyncScreen() {
   const { triggerSync, isSyncing } = useSync({
     onSyncComplete: async () => {
       setRefreshKey(key => key + 1);
-      const count = await getPendingUploadCount();
+      const count = await loadPendingUploadCount();
       setStatus(count > 0 ? 'pending' : 'uploadComplete');
     },
     onError: () => {
