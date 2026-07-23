@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { getApiBaseUrl } from '../config/apiBaseUrl';
 import type { PendingUploadChapter } from '../db/queries';
 import {
