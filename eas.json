@@ -35,6 +35,7 @@
     },
     "nightly": {
       "extends": "base",
+      "developmentClient": false,
       "distribution": "internal",
       "env": {
         "EAS_USE_CACHE": "1",

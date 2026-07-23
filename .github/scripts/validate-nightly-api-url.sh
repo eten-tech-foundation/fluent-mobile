@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Fail if the nightly EAS profile would bake a non-dev / production-like API URL.
+# Fail if the nightly EAS profile would bake a non-dev / production-like API URL,
+# or if it would produce a development-client (Metro) APK.
 # Requires: jq, eas.json at repo root.
 set -euo pipefail
 
@@ -8,6 +9,26 @@ EAS_JSON="${EAS_JSON_PATH:-eas.json}"
 
 if [ ! -f "${EAS_JSON}" ]; then
   echo "❌ Missing ${EAS_JSON}"
+  exit 1
+fi
+
+if ! jq -e '.build.nightly' "${EAS_JSON}" >/dev/null; then
+  echo "❌ eas.json build.nightly profile is missing"
+  exit 1
+fi
+
+# Standalone internal APK — must not inherit / enable developmentClient.
+DEV_CLIENT=$(jq -r '.build.nightly.developmentClient // false' "${EAS_JSON}")
+if [ "${DEV_CLIENT}" = "true" ]; then
+  echo "❌ eas.json build.nightly must not set developmentClient: true"
+  echo "   Nightly should ship a standalone internal APK (JS bundled), not a Metro dev client."
+  exit 1
+fi
+
+DISTRIBUTION=$(jq -r '.build.nightly.distribution // empty' "${EAS_JSON}")
+if [ "${DISTRIBUTION}" != "internal" ]; then
+  echo "❌ eas.json build.nightly.distribution must be \"internal\""
+  echo "   Found: ${DISTRIBUTION:-<missing>}"
   exit 1
 fi
 
@@ -34,6 +55,7 @@ case "${HOST}" in
     ;;
 esac
 
+echo "✅ Nightly profile OK: developmentClient=${DEV_CLIENT}, distribution=${DISTRIBUTION}"
 echo "✅ Nightly API URL OK: ${URL}"
 if [ -n "${GITHUB_OUTPUT:-}" ]; then
   echo "api_base_url=${URL}" >> "${GITHUB_OUTPUT}"

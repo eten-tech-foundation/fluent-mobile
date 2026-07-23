@@ -62,6 +62,7 @@ Uses the latest git tag for runtime version when available; otherwise falls back
 GitHub Actions [`.github/workflows/nightly-preview.yml`](../.github/workflows/nightly-preview.yml) builds a fresh Android **internal APK** with the EAS **`nightly`** profile each night (or on `workflow_dispatch`).
 
 - Bakes `EXPO_PUBLIC_API_BASE_URL=https://dev.api.fluent.bible`
+- **`developmentClient: false`** — standalone APK with JS bundled (not a Metro / `development` profile build)
 - **No Updates channel** and **no `eas update`** — what you install is what you run
 - Does **not** require the Expo GitHub App (uses `EXPO_TOKEN`, same as PR preview)
 - Distinct from PR `preview` (which may OTA to channel `preview`)

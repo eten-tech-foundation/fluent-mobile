@@ -41,8 +41,8 @@ Requires `EXPO_TOKEN` in repository secrets. For JS-only PRs, `.github/scripts/e
 
 Scheduled (and manually dispatchable) workflow [`.github/workflows/nightly-preview.yml`](workflows/nightly-preview.yml):
 
-- Always starts a **new** EAS Android build with profile **`nightly`** (internal APK, baked `https://dev.api.fluent.bible`).
-- **No OTA** (`eas update` is not used). Expo Updates stay disabled for `nightly` so the APK cannot pull PR `preview` channel updates.
+- Always starts a **new** EAS Android build with profile **`nightly`** (internal APK, `developmentClient: false`, baked `https://dev.api.fluent.bible`).
+- **No OTA** (`eas update` is not used). Expo Updates stay disabled for `nightly` so the APK cannot pull PR `preview` channel updates. Not a Metro / `development` client.
 - Skips when `main` HEAD matches the last successful nightly unless `force_build` is set.
 - Posts a GitHub Actions job summary and optional Slack notification.
 
