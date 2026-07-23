@@ -1,6 +1,6 @@
 module.exports = {
   preset: 'jest-expo',
-  setupFiles: ['<rootDir>/jest.env.cjs'],
+  setupFiles: ['<rootDir>/jest.env.cjs', '<rootDir>/jest.setup.expo-fs.cjs'],
   testPathIgnorePatterns: ['/node_modules/', '/android/', '/ios/'],
   moduleNameMapper: {
     '^expo-secure-store$': '<rootDir>/src/test/mocks/expo-secure-store.ts',
