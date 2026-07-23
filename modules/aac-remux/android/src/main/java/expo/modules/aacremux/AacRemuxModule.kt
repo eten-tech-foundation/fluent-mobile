@@ -8,6 +8,7 @@ import android.net.Uri
 import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import java.io.File
 import java.nio.ByteBuffer
 
 /**
@@ -38,6 +39,7 @@ class AacRemuxModule : Module() {
     val extractor = MediaExtractor()
     var muxer: MediaMuxer? = null
     var muxerStarted = false
+    var remuxError: Exception? = null
     try {
       extractor.setDataSource(srcPath)
 
@@ -57,15 +59,14 @@ class AacRemuxModule : Module() {
         ?: throw CodedException("No audio track found in $srcPath")
       extractor.selectTrack(audioTrackIndex)
 
-      // ADTS carries no container timestamps, so synthesize monotonically
-      // increasing presentation times from the fixed AAC frame length
-      // (1024 samples per frame). MP4 requires increasing timestamps.
+      // ADTS carries no container timestamps, so synthesize presentation times
+      // from AAC frame index × 1024 samples (rational µs), not by accumulating
+      // a truncated per-frame duration (avoids drift vs 1024-sample boundaries).
       val sampleRate = if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
         format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
       } else {
         44100
       }
-      val frameDurationUs = 1_000_000L * 1024L / sampleRate
 
       muxer = MediaMuxer(dstPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
       val outputTrackIndex = muxer.addTrack(format)
@@ -79,37 +80,66 @@ class AacRemuxModule : Module() {
       }
       val buffer = ByteBuffer.allocate(maxInputSize)
       val bufferInfo = MediaCodec.BufferInfo()
-      var presentationTimeUs = 0L
+      var frameIndex = 0L
+      var lastPtsUs = -1L
 
       while (true) {
         val sampleSize = extractor.readSampleData(buffer, 0)
         if (sampleSize < 0) {
           break
         }
+        var ptsUs = frameIndex * 1024L * 1_000_000L / sampleRate
+        if (ptsUs <= lastPtsUs) {
+          ptsUs = lastPtsUs + 1
+        }
+        lastPtsUs = ptsUs
         bufferInfo.offset = 0
         bufferInfo.size = sampleSize
-        bufferInfo.presentationTimeUs = presentationTimeUs
+        bufferInfo.presentationTimeUs = ptsUs
         bufferInfo.flags = MediaCodec.BUFFER_FLAG_KEY_FRAME
         muxer.writeSampleData(outputTrackIndex, buffer, bufferInfo)
-        presentationTimeUs += frameDurationUs
+        frameIndex += 1
         extractor.advance()
       }
     } catch (e: CodedException) {
-      throw e
+      remuxError = e
     } catch (e: Exception) {
-      throw CodedException("Failed to remux AAC to M4A: ${e.message}")
+      remuxError = CodedException("Failed to remux AAC to M4A: ${e.message}")
     } finally {
+      var cleanupError: Exception? = null
       if (muxerStarted) {
         try {
           muxer?.stop()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+          if (remuxError == null) {
+            cleanupError = CodedException(
+              "Failed to finalize M4A muxer: ${e.message}",
+            )
+          }
         }
       }
       try {
         muxer?.release()
+      } catch (e: Exception) {
+        if (remuxError == null && cleanupError == null) {
+          cleanupError = CodedException(
+            "Failed to release M4A muxer: ${e.message}",
+          )
+        }
+      }
+      try {
+        extractor.release()
       } catch (_: Exception) {
       }
-      extractor.release()
+
+      val failure = remuxError ?: cleanupError
+      if (failure != null) {
+        File(dstPath).delete()
+        when (failure) {
+          is CodedException -> throw failure
+          else -> throw CodedException(failure.message ?: "Remux failed")
+        }
+      }
     }
   }
 }
