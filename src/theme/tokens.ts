@@ -68,6 +68,8 @@ export const colors = {
   syncStatusPending: '#E48F06',
   syncStatusOffline: '#A0A0A0',
   destructive: '#DC2626',
+  /** Record button + live-recording waveform (drafting Record tab). */
+  recordAccent: '#DC2626',
   workflowBadgeDraftBorder: '#FBBF24',
   workflowBadgeDraftText: '#1A1A1A',
   workflowBadgePeerCheckBorder: '#EA580C',

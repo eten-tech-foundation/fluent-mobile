@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,23 +6,25 @@ import {
   Modal,
   Pressable,
   Alert,
+  StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
+import { UserPlus } from 'lucide-react-native';
 import { appStyles } from '../../app/appStyles';
 import { RootStackParamList } from '../../types/navigation/types';
-import {
-  getActiveUserId,
-  getKnownUserIds,
-  getUserEmail,
-  MAX_DEVICE_ACCOUNTS,
-} from '../../services/storage';
+import { getActiveUserId } from '../../services/storage';
 import {
   signOutCurrentDeviceAccount,
   switchToDeviceAccount,
 } from '../../services/accountSession';
+import { useDeviceAccounts } from '../../hooks/useDeviceAccounts';
 import { logger } from '../../utils/logger';
+
+const MENU_ICON_COLOR = '#333';
+const MENU_ICON_ACTIVE = '#1a6ef5';
 
 const log = logger.create('UserSettingsMenu');
 
@@ -44,21 +46,8 @@ export function UserSettingsMenu({
   onUserSwitched,
 }: UserSettingsMenuProps) {
   const navigation = useNavigation<Nav>();
-  const [knownUsers, setKnownUsers] = useState<
-    Array<{ id: string; email: string }>
-  >([]);
+  const { accounts, hasAccountLimit, loading } = useDeviceAccounts(visible);
   const [switchingUserId, setSwitchingUserId] = useState<string | null>(null);
-
-  const loadKnownUsers = useCallback(() => {
-    const ids = getKnownUserIds();
-    setKnownUsers(ids.map(id => ({ id, email: getUserEmail(id) })));
-  }, []);
-
-  const atAccountLimit = knownUsers.length >= MAX_DEVICE_ACCOUNTS;
-
-  const handleOpen = () => {
-    loadKnownUsers();
-  };
 
   const handleOpenSettings = () => {
     onClose();
@@ -66,7 +55,7 @@ export function UserSettingsMenu({
   };
 
   const handleAddUser = () => {
-    if (atAccountLimit) return;
+    if (hasAccountLimit) return;
     onClose();
     navigation.navigate('AddUser');
   };
@@ -114,15 +103,12 @@ export function UserSettingsMenu({
     onSignOut?.();
   };
 
-  const activeUserId = getActiveUserId();
-
   return (
     <Modal
       transparent
       visible={visible}
       animationType="fade"
       onRequestClose={onClose}
-      onShow={handleOpen}
     >
       <Pressable style={appStyles.modalOverlay} onPress={onClose}>
         <View
@@ -134,41 +120,14 @@ export function UserSettingsMenu({
             activeOpacity={0.7}
             accessibilityRole="button"
           >
-            <Ionicons name="settings-outline" size={18} color="#333" />
+            <Ionicons
+              name="settings-outline"
+              size={18}
+              color={MENU_ICON_COLOR}
+            />
             <Text style={appStyles.menuItemText}>More Settings</Text>
           </TouchableOpacity>
 
-          <View style={appStyles.menuDivider} />
-          <TouchableOpacity
-            style={[
-              appStyles.menuItem,
-              atAccountLimit && appStyles.menuItemDisabled,
-            ]}
-            onPress={handleAddUser}
-            activeOpacity={atAccountLimit ? 1 : 0.7}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: atAccountLimit }}
-            disabled={atAccountLimit}
-            testID="settings-menu-add-user"
-          >
-            <Ionicons
-              name="person-add-outline"
-              size={18}
-              color={atAccountLimit ? '#999' : '#333'}
-            />
-            <Text
-              style={[
-                appStyles.menuItemText,
-                atAccountLimit && appStyles.menuItemTextDisabled,
-              ]}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {atAccountLimit ? '3-account limit reached' : 'Add User'}
-            </Text>
-          </TouchableOpacity>
-
-          <View style={appStyles.menuDivider} />
           <TouchableOpacity
             style={appStyles.menuItem}
             onPress={handleOpenPrivacy}
@@ -176,7 +135,11 @@ export function UserSettingsMenu({
             accessibilityRole="button"
             testID="settings-menu-privacy-policy"
           >
-            <Ionicons name="document-text-outline" size={18} color="#333" />
+            <Ionicons
+              name="document-text-outline"
+              size={18}
+              color={MENU_ICON_COLOR}
+            />
             <Text style={appStyles.menuItemText}>Privacy Policy</Text>
           </TouchableOpacity>
 
@@ -187,50 +150,94 @@ export function UserSettingsMenu({
             accessibilityRole="button"
             testID="settings-menu-terms-of-use"
           >
-            <Ionicons name="reader-outline" size={18} color="#333" />
+            <Ionicons
+              name="shield-checkmark-outline"
+              size={18}
+              color={MENU_ICON_COLOR}
+            />
             <Text style={appStyles.menuItemText}>Terms of Use</Text>
           </TouchableOpacity>
 
-          {knownUsers.length > 1 && (
-            <>
-              <View style={appStyles.menuDivider} />
-              <Text style={appStyles.menuSectionLabel}>Switch User</Text>
-              {knownUsers.map(user => (
+          <View style={appStyles.menuDivider} />
+          <Text style={appStyles.menuSectionLabel}>Accounts</Text>
+
+          {loading ? (
+            <View
+              style={styles.loadingRow}
+              testID="settings-menu-accounts-loading"
+            >
+              <ActivityIndicator size="small" color={MENU_ICON_ACTIVE} />
+            </View>
+          ) : (
+            accounts.map(account => {
+              // Mockup (#193) labels accounts by email; fall back to displayName.
+              const accountLabel = account.email || account.displayName;
+              return (
                 <TouchableOpacity
-                  key={user.id}
+                  key={account.userId}
                   style={appStyles.menuItem}
-                  onPress={() => handleSwitchUser(user.id)}
+                  onPress={() => {
+                    void handleSwitchUser(account.userId);
+                  }}
                   activeOpacity={0.7}
                   accessibilityRole="button"
+                  accessibilityLabel={`Switch to ${accountLabel}`}
+                  accessibilityState={{ selected: account.isActive }}
                   disabled={switchingUserId !== null}
+                  testID={`settings-menu-account-${account.userId}`}
                 >
                   <Ionicons
                     name={
-                      user.id === activeUserId
-                        ? 'checkmark-circle'
-                        : 'person-outline'
+                      account.isActive ? 'checkmark-circle' : 'person-outline'
                     }
                     size={18}
-                    color={user.id === activeUserId ? '#1a6ef5' : '#333'}
+                    color={
+                      account.isActive ? MENU_ICON_ACTIVE : MENU_ICON_COLOR
+                    }
+                    testID={
+                      account.isActive
+                        ? `settings-menu-active-${account.userId}`
+                        : `settings-menu-inactive-${account.userId}`
+                    }
                   />
                   <Text
                     style={[
                       appStyles.menuItemText,
-                      user.id === activeUserId && appStyles.menuItemActive,
+                      account.isActive && appStyles.menuItemActive,
                     ]}
                     numberOfLines={1}
                   >
-                    {user.email || `User ${user.id}`}
+                    {accountLabel}
                   </Text>
                 </TouchableOpacity>
-              ))}
-            </>
+              );
+            })
+          )}
+
+          {hasAccountLimit ? (
+            <Text style={styles.limitText} testID="settings-menu-account-limit">
+              You&apos;ve reached the 3-account limit.
+            </Text>
+          ) : (
+            <TouchableOpacity
+              style={appStyles.menuItem}
+              onPress={handleAddUser}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Add User"
+              testID="settings-menu-add-user"
+            >
+              <UserPlus size={18} color={MENU_ICON_COLOR} />
+              <Text style={appStyles.menuItemText}>Add User</Text>
+            </TouchableOpacity>
           )}
 
           <View style={appStyles.menuDivider} />
           <TouchableOpacity
             style={appStyles.menuItem}
-            onPress={handleSignOut}
+            onPress={() => {
+              void handleSignOut();
+            }}
             activeOpacity={0.7}
             accessibilityRole="button"
           >
@@ -244,3 +251,19 @@ export function UserSettingsMenu({
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingRow: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  limitText: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 13,
+    color: '#999',
+    textAlign: 'center',
+  },
+});
