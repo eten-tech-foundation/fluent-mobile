@@ -17,8 +17,9 @@ const appVersion = resolveAppVersion();
 
 const buildProfile = process.env.EAS_BUILD_PROFILE;
 const usesCleartextTraffic = buildProfile !== 'production';
-// OTA updates apply to EAS preview/production only. Local and development
-// builds use Metro; checking u.expo.dev on launch crashes when no bundle exists.
+// OTA updates apply to EAS preview/production only. Local, development, and
+// nightly builds keep updates disabled (nightly ships a self-contained APK).
+// Checking u.expo.dev on launch crashes when no bundle exists.
 const updatesEnabled =
   buildProfile === 'preview' || buildProfile === 'production';
 
