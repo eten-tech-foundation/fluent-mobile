@@ -199,43 +199,49 @@ export function UserSettingsMenu({
               <ActivityIndicator size="small" color={MENU_ICON_ACTIVE} />
             </View>
           ) : (
-            accounts.map(account => (
-              <TouchableOpacity
-                key={account.userId}
-                style={appStyles.menuItem}
-                onPress={() => {
-                  void handleSwitchUser(account.userId);
-                }}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={`Switch to ${account.displayName}`}
-                accessibilityState={{ selected: account.isActive }}
-                disabled={switchingUserId !== null}
-                testID={`settings-menu-account-${account.userId}`}
-              >
-                <Ionicons
-                  name={
-                    account.isActive ? 'checkmark-circle' : 'person-outline'
-                  }
-                  size={18}
-                  color={account.isActive ? MENU_ICON_ACTIVE : MENU_ICON_COLOR}
-                  testID={
-                    account.isActive
-                      ? `settings-menu-active-${account.userId}`
-                      : `settings-menu-inactive-${account.userId}`
-                  }
-                />
-                <Text
-                  style={[
-                    appStyles.menuItemText,
-                    account.isActive && appStyles.menuItemActive,
-                  ]}
-                  numberOfLines={1}
+            accounts.map(account => {
+              // Mockup (#193) labels accounts by email; fall back to displayName.
+              const accountLabel = account.email || account.displayName;
+              return (
+                <TouchableOpacity
+                  key={account.userId}
+                  style={appStyles.menuItem}
+                  onPress={() => {
+                    void handleSwitchUser(account.userId);
+                  }}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Switch to ${accountLabel}`}
+                  accessibilityState={{ selected: account.isActive }}
+                  disabled={switchingUserId !== null}
+                  testID={`settings-menu-account-${account.userId}`}
                 >
-                  {account.displayName}
-                </Text>
-              </TouchableOpacity>
-            ))
+                  <Ionicons
+                    name={
+                      account.isActive ? 'checkmark-circle' : 'person-outline'
+                    }
+                    size={18}
+                    color={
+                      account.isActive ? MENU_ICON_ACTIVE : MENU_ICON_COLOR
+                    }
+                    testID={
+                      account.isActive
+                        ? `settings-menu-active-${account.userId}`
+                        : `settings-menu-inactive-${account.userId}`
+                    }
+                  />
+                  <Text
+                    style={[
+                      appStyles.menuItemText,
+                      account.isActive && appStyles.menuItemActive,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {accountLabel}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })
           )}
 
           {hasAccountLimit ? (

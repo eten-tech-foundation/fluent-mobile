@@ -121,8 +121,8 @@ describe('UserSettingsMenu', () => {
     const { getByText, getByTestId, queryByText } = renderMenu();
 
     expect(getByText('Accounts')).toBeTruthy();
-    expect(getByText('Active User')).toBeTruthy();
-    expect(getByText('Other User')).toBeTruthy();
+    expect(getByText('active@example.com')).toBeTruthy();
+    expect(getByText('other@example.com')).toBeTruthy();
     expect(getByTestId('settings-menu-add-user')).toBeTruthy();
     expect(getByText('Add User')).toBeTruthy();
     expect(queryByText('Switch User')).toBeNull();
@@ -181,7 +181,7 @@ describe('UserSettingsMenu', () => {
   it('does nothing when tapping the already-active user', async () => {
     const { getByText } = renderMenu();
 
-    fireEvent.press(getByText('Active User'));
+    fireEvent.press(getByText('active@example.com'));
 
     expect(mockGetCredentials).not.toHaveBeenCalled();
     expect(mockSwitchActiveUser).not.toHaveBeenCalled();
@@ -192,7 +192,7 @@ describe('UserSettingsMenu', () => {
     mockGetCredentials.mockResolvedValueOnce({ token: 'valid-token' });
     const { getByText } = renderMenu();
 
-    fireEvent.press(getByText('Other User'));
+    fireEvent.press(getByText('other@example.com'));
 
     await waitFor(() => {
       expect(mockAuthTokenSet).toHaveBeenCalledWith('valid-token');
@@ -206,7 +206,7 @@ describe('UserSettingsMenu', () => {
     mockGetCredentials.mockResolvedValueOnce(null);
     const { getByText } = renderMenu();
 
-    fireEvent.press(getByText('Other User'));
+    fireEvent.press(getByText('other@example.com'));
 
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalledWith(
@@ -222,7 +222,7 @@ describe('UserSettingsMenu', () => {
     mockGetCredentials.mockResolvedValueOnce({ token: '' });
     const { getByText } = renderMenu();
 
-    fireEvent.press(getByText('Other User'));
+    fireEvent.press(getByText('other@example.com'));
 
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalled();
