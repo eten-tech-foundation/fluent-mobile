@@ -5,6 +5,9 @@ import {
   typography,
   workflowBadges,
   workflowStages,
+  recordControlSizes,
+  shadows,
+  waveform,
 } from './tokens';
 import { homeListContent, listCard, workflowBadge } from './layout';
 
@@ -15,6 +18,9 @@ export {
   typography,
   workflowBadges,
   workflowStages,
+  recordControlSizes,
+  shadows,
+  waveform,
   hslToHex,
 } from './tokens';
 export type { WorkflowStageId } from './tokens';
@@ -38,6 +44,9 @@ export const theme = {
   typography,
   workflowBadges,
   workflowStages,
+  recordControlSizes,
+  shadows,
+  waveform,
   homeListContent,
   listCard,
   workflowBadge,

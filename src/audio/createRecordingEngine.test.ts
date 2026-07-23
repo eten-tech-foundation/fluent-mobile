@@ -102,15 +102,33 @@ describe('createRecordingEngine', () => {
     await expect(engine.stop()).rejects.toThrow(/idle/i);
   });
 
-  it('throws when stop yields no uri', async () => {
+  it('calls releaseAudioMode after stop so the session drops recording', async () => {
     const recorder = makeFakeRecorder();
+    const releaseAudioMode = jest.fn(async () => undefined);
+    const engine = createRecordingEngine({
+      recorder,
+      prepareAudioMode: async () => undefined,
+      releaseAudioMode,
+    });
+
+    await engine.start();
+    await engine.stop();
+    expect(releaseAudioMode).toHaveBeenCalledTimes(1);
+    expect(engine.getStatus()).toBe('idle');
+  });
+
+  it('still releases audio mode when stop yields no uri', async () => {
+    const recorder = makeFakeRecorder();
+    const releaseAudioMode = jest.fn(async () => undefined);
     recorder.stop = async () => {
       recorder.calls.push('stop');
       recorder._uri = null;
       recorder._time = 0;
     };
-    const engine = createRecordingEngine({ recorder });
+    const engine = createRecordingEngine({ recorder, releaseAudioMode });
     await engine.start();
     await expect(engine.stop()).rejects.toThrow(/URI/i);
+    expect(releaseAudioMode).toHaveBeenCalledTimes(1);
+    expect(engine.getStatus()).toBe('idle');
   });
 });

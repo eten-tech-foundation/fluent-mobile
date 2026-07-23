@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pause, Play, RotateCw } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import {
@@ -8,36 +8,55 @@ import {
   touchHitSlop,
 } from '../../theme';
 import { VerseData } from '../../types/db/types';
+import { PlaybackProgressBar } from '../ui/PlaybackProgressBar';
 
-type LoadState = 'loading' | 'ready' | 'error';
+export type SourceAudioLoadState = 'loading' | 'ready' | 'empty' | 'error';
 
 interface SourceAudioPlayerBarProps {
   verses: VerseData[];
   selectedVerse: number;
   /** Bible / source name shown in the footer label (e.g. BSB). */
   sourceLabel?: string;
+  /**
+   * Source-audio availability. Playback is still a **stub** — chrome matches
+   * Lovable; times and the play toggle are decorative until source audio is
+   * wired to a real player.
+   */
+  loadState?: SourceAudioLoadState;
 }
 
 /**
  * Bottom source-audio strip for Record tab idle/review (design 01 / 04).
- * Playback wiring is still a stub — UI matches the design panel chrome.
+ *
+ * STUB: play control, waveform progress, and `0:00` / `--:--` are decorative.
+ * They do **not** reflect real source-audio duration or position. Draft take
+ * review time lives on `DraftTakeRow` (engine-backed).
  */
 export function SourceAudioPlayerBar({
   verses,
   selectedVerse,
   sourceLabel = 'Source',
+  // Default empty until #235 wires real source audio (avoid fake "ready" chrome).
+  loadState: loadStateProp = 'empty',
 }: SourceAudioPlayerBarProps) {
-  // Decorative ready state until real source-audio playback lands.
-  const [loadState, setLoadState] = useState<LoadState>('ready');
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [loadState, setLoadState] =
+    useState<SourceAudioLoadState>(loadStateProp);
+  /** Decorative only — does not drive audio. */
+  const [isPlayingVisual, setIsPlayingVisual] = useState(false);
+
+  useEffect(() => {
+    setLoadState(loadStateProp);
+    setIsPlayingVisual(false);
+  }, [loadStateProp, selectedVerse]);
 
   const handleRetry = () => {
-    setLoadState('ready');
+    setLoadState(loadStateProp === 'empty' ? 'empty' : 'ready');
   };
 
   const handleTogglePlay = () => {
     if (loadState !== 'ready') return;
-    setIsPlaying(prev => !prev);
+    // Stub: toggle chrome only. No player / no advancing timer.
+    setIsPlayingVisual(prev => !prev);
   };
 
   if (loadState === 'error') {
@@ -63,23 +82,40 @@ export function SourceAudioPlayerBar({
   }
 
   const isLoading = loadState === 'loading';
-  const barCount = 40;
+  const isEmpty = loadState === 'empty';
+  const playDisabled = isLoading || isEmpty;
   const step = Math.max(1, Math.floor(verses.length / 6) || 1);
   const markers = verses.filter((_, i) => i % step === 0).slice(0, 8);
+  // Decorative progress keyed to selected verse index — not clock time.
   const selectedIndex = verses.findIndex(v => v.verseNumber === selectedVerse);
+  const stubProgressMs =
+    verses.length > 0 && selectedIndex >= 0
+      ? ((selectedIndex + 1) / verses.length) * 1000
+      : 0;
+
+  const footerLabel = isLoading
+    ? 'Loading source audio…'
+    : isEmpty
+    ? 'No source audio'
+    : `${sourceLabel} Source Audio · Verse ${selectedVerse}`;
 
   return (
     <View style={styles.bar} testID="source-audio-bar">
       <Pressable
         onPress={handleTogglePlay}
-        disabled={isLoading}
-        style={[styles.playButton, isLoading && styles.playButtonDisabled]}
+        disabled={playDisabled}
+        style={[styles.playButton, playDisabled && styles.playButtonDisabled]}
         accessibilityRole="button"
         accessibilityLabel={
-          isPlaying ? 'Pause source audio' : 'Play source audio'
+          isPlayingVisual
+            ? 'Pause source audio (not wired yet)'
+            : 'Play source audio (not wired yet)'
         }
+        accessibilityState={{ disabled: playDisabled }}
+        android_ripple={{ color: 'transparent' }}
+        testID="source-audio-play-stub"
       >
-        {isPlaying ? (
+        {isPlayingVisual ? (
           <Pause
             size={iconSizes.headerTab}
             color={theme.colors.primaryForeground}
@@ -95,7 +131,7 @@ export function SourceAudioPlayerBar({
       </Pressable>
 
       <View style={styles.waveformArea}>
-        {isLoading ? (
+        {isLoading || isEmpty ? (
           <View style={styles.waveformPlaceholder} />
         ) : (
           <>
@@ -106,41 +142,32 @@ export function SourceAudioPlayerBar({
                 </Text>
               ))}
             </View>
-            <View style={styles.waveformRow}>
-              {Array.from({ length: barCount }, (_, i) => {
-                const height = 8 + ((i * 11) % 20);
-                const active =
-                  verses.length === 0
-                    ? false
-                    : Math.floor((i / barCount) * verses.length) <=
-                      Math.max(0, selectedIndex);
-                return (
-                  <View
-                    key={i}
-                    style={[
-                      styles.waveBar,
-                      { height },
-                      active ? styles.waveBarActive : styles.waveBarIdle,
-                    ]}
-                  />
-                );
-              })}
+            <View style={styles.waveformRow} testID="source-audio-waveform">
+              <PlaybackProgressBar
+                positionMs={stubProgressMs}
+                durationMs={1000}
+                barCount={56}
+                accentColor={theme.colors.waveformActive}
+              />
             </View>
             <View style={styles.timeRow}>
-              <Text style={styles.timeText}>0:00</Text>
-              <Text style={styles.timeText}>—</Text>
+              {/* Hardcoded stub times — not engine position/duration. */}
+              <Text style={styles.timeText} testID="source-audio-time-stub">
+                0:00
+              </Text>
+              <Text style={styles.timeText}>--:--</Text>
             </View>
           </>
         )}
         <Text style={styles.footerLabel} testID="source-audio-label">
-          {sourceLabel} Source Audio · Verse {selectedVerse}
+          {footerLabel}
         </Text>
       </View>
     </View>
   );
 }
 
-const TOUCH_TARGET = 48;
+const TOUCH_TARGET = theme.recordControlSizes.secondary;
 
 const styles = StyleSheet.create({
   bar: {
@@ -150,8 +177,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     backgroundColor: theme.colors.cardBackground,
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: theme.colors.border,
+    width: '100%',
   },
   playButton: {
     width: TOUCH_TARGET,
@@ -160,49 +188,40 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   playButtonDisabled: {
     backgroundColor: theme.colors.mutedForeground,
   },
   waveformArea: {
     flex: 1,
+    minWidth: 0,
     justifyContent: 'center',
     gap: 2,
   },
   waveformPlaceholder: {
     height: 4,
+    width: '100%',
     borderRadius: theme.radius.full,
     backgroundColor: theme.colors.border,
   },
   markerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    width: '100%',
   },
   marker: {
-    fontSize: 10,
+    fontSize: theme.typography.sizes.xs,
     color: theme.colors.mutedForeground,
   },
   waveformRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    width: '100%',
     height: 28,
-    gap: 1,
-  },
-  waveBar: {
-    flex: 1,
-    maxWidth: 3,
-    borderRadius: 1,
-    backgroundColor: theme.colors.primary,
-  },
-  waveBarActive: {
-    opacity: 1,
-  },
-  waveBarIdle: {
-    opacity: 0.45,
   },
   timeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    width: '100%',
   },
   timeText: {
     fontSize: theme.typography.sizes.xs,

@@ -57,4 +57,8 @@ describe('verseAudioReducer', () => {
   it('START from recorded begins a re-record', () => {
     expect(step('recorded', { type: 'START' })).toBe('recording');
   });
+
+  it('START from playing begins a re-record', () => {
+    expect(step('playing', { type: 'START' })).toBe('recording');
+  });
 });

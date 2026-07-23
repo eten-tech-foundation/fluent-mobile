@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import * as FileSystem from 'expo-file-system/legacy';
 import {
   addRecordingTake,
@@ -6,7 +6,12 @@ import {
   getLatestRecordingForVerse,
 } from '../db/repository';
 import type { Recording } from '../types/db/types';
-import { ensureRecordingsDir, recordingPath } from '../utils/audioStorage';
+import {
+  ensureRecordingsDir,
+  fileExists,
+  fileSize,
+  recordingPath,
+} from '../utils/audioStorage';
 import { ensureSeekableTakeUri } from '../audio/ensureSeekableTakeUri';
 import { logger } from '../utils/logger';
 import { usePlaybackEngine } from './usePlaybackEngine';
@@ -68,6 +73,8 @@ export function useVerseAudio({
   );
   const [latest, setLatest] = useState<Recording | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  /** Stable verse id for the in-flight take — stop must not no-op if lookup clears. */
+  const captureBibleTextIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,15 +107,24 @@ export function useVerseAudio({
   const start = useCallback(async () => {
     if (bibleTextId === null) return;
     try {
+      // Stop review playback first so re-record from `playing` can transition
+      // and so audio mode is free for the mic (see createRecordingEngine).
+      try {
+        await playback.stop();
+      } catch {
+        // Ignore — recorder start below is what matters.
+      }
+      captureBibleTextIdRef.current = bibleTextId;
       await recording.start();
       dispatch({ type: 'START' });
       setErrorMessage(null);
     } catch (error) {
+      captureBibleTextIdRef.current = null;
       const message = error instanceof Error ? error.message : 'start failed';
       setErrorMessage(message);
       dispatch({ type: 'ERROR', message });
     }
-  }, [bibleTextId, recording]);
+  }, [bibleTextId, playback, recording]);
 
   const pause = useCallback(async () => {
     try {
@@ -133,20 +149,23 @@ export function useVerseAudio({
   }, [recording]);
 
   const stop = useCallback(async () => {
-    if (bibleTextId === null) return;
+    const id = captureBibleTextIdRef.current ?? bibleTextId;
+    if (id === null) return;
     try {
-      dispatch({ type: 'STOP' });
+      // Release the native mic first so captureActive / navigation guards only
+      // clear after Android no longer considers us recording.
       const { uri, durationMs } = await recording.stop();
+      dispatch({ type: 'STOP' });
       const saved = await persistTake({
-        bibleTextId,
+        bibleTextId: id,
         tempUri: uri,
         durationMs,
       });
       const row =
-        (await loadLatest(bibleTextId)) ??
+        (await loadLatest(id)) ??
         ({
           id: saved.id,
-          bibleTextId,
+          bibleTextId: id,
           localFilePath: saved.localFilePath,
           takeNumber: 1,
           isLatest: true,
@@ -156,8 +175,10 @@ export function useVerseAudio({
           updatedAt: new Date().toISOString(),
         } satisfies Recording);
       setLatest(row);
+      captureBibleTextIdRef.current = null;
       dispatch({ type: 'SAVED' });
     } catch (error) {
+      captureBibleTextIdRef.current = null;
       const message = error instanceof Error ? error.message : 'stop failed';
       setErrorMessage(message);
       dispatch({ type: 'ERROR', message });
@@ -167,7 +188,21 @@ export function useVerseAudio({
   const play = useCallback(async () => {
     if (!latest?.localFilePath) return;
     try {
-      await playback.play(latest.localFilePath);
+      const path = latest.localFilePath;
+      const exists = await fileExists(path);
+      if (!exists) {
+        throw new Error('Take file is missing on disk. Re-record this verse.');
+      }
+      const size = await fileSize(path);
+      if (size === undefined || size <= 0) {
+        throw new Error(
+          'Take file is empty (0 bytes). Re-record this verse.',
+        );
+      }
+      setErrorMessage(null);
+      // Dispatch PLAY only after the engine confirms load + non-zero duration
+      // so the take row never shows "playing" stuck at 0:00.
+      await playback.play(path);
       dispatch({ type: 'PLAY' });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'play failed';
@@ -175,6 +210,28 @@ export function useVerseAudio({
       dispatch({ type: 'ERROR', message });
     }
   }, [latest, playback]);
+
+  /** Pause draft review playback (design review control shows Pause while playing). */
+  const pausePlayback = useCallback(async () => {
+    try {
+      await playback.pause();
+      dispatch({ type: 'PLAYBACK_END' });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'pause playback failed';
+      setErrorMessage(message);
+      dispatch({ type: 'ERROR', message });
+    }
+  }, [playback]);
+
+  // Natural end (`didJustFinish` → idle). Explicit pause already dispatches
+  // PLAYBACK_END. Do not treat brief !playing during load as end — that raced
+  // the take UI back to recorded with duration stuck at 0:00.
+  useEffect(() => {
+    if (state === 'playing' && playback.status === 'idle') {
+      dispatch({ type: 'PLAYBACK_END' });
+    }
+  }, [state, playback.status]);
 
   const deleteCurrent = useCallback(async () => {
     try {
@@ -191,17 +248,27 @@ export function useVerseAudio({
     }
   }, [deleteTake, latest, playback]);
 
+  // Prefer live player duration; fall back to DB duration from capture so the
+  // take row can show a real length before/without a successful play().
+  const storedDurationMs =
+    typeof latest?.durationMs === 'number' && latest.durationMs > 0
+      ? latest.durationMs
+      : 0;
+  const durationMs =
+    playback.durationMs > 0 ? playback.durationMs : storedDurationMs;
+
   return {
     state,
     latest,
     errorMessage,
     positionMs: playback.positionMs,
-    durationMs: playback.durationMs,
+    durationMs,
     start,
     pause,
     resume,
     stop,
     play,
+    pausePlayback,
     deleteCurrent,
   };
 }

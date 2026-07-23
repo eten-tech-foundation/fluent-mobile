@@ -13,6 +13,23 @@ jest.mock('react-native-bootsplash', () => ({
 
 // React Native Navigation
 jest.mock('@react-navigation/native', () => ({
+  DefaultTheme: {
+    dark: false,
+    colors: {
+      primary: '#0B50D0',
+      background: '#FFFFFF',
+      card: '#FFFFFF',
+      text: '#1A1A1A',
+      border: '#CCCCCC',
+      notification: '#DC2626',
+    },
+    fonts: {
+      regular: { fontFamily: 'System', fontWeight: '400' },
+      medium: { fontFamily: 'System', fontWeight: '500' },
+      bold: { fontFamily: 'System', fontWeight: '700' },
+      heavy: { fontFamily: 'System', fontWeight: '800' },
+    },
+  },
   NavigationContainer: ({ children }: { children: React.ReactNode }) =>
     children,
 }));

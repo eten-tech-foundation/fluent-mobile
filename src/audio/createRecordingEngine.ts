@@ -16,6 +16,11 @@ export type RecordingEngineDeps = {
   recorder: EngineRecorder;
   /** Optional audio-mode setup before first start (injectable for tests). */
   prepareAudioMode?: () => Promise<void>;
+  /**
+   * Drop recording capability after stop/cleanup so Android / the audio
+   * session no longer treat the app as actively recording.
+   */
+  releaseAudioMode?: () => Promise<void>;
   /** Override status notifications (React setState, etc.). */
   onStatusChange?: (status: RecorderStatus) => void;
 };
@@ -31,7 +36,8 @@ export type RecordingEngine = RecorderApi & {
 export function createRecordingEngine(
   deps: RecordingEngineDeps,
 ): RecordingEngine {
-  const { recorder, prepareAudioMode, onStatusChange } = deps;
+  const { recorder, prepareAudioMode, releaseAudioMode, onStatusChange } =
+    deps;
   let status: RecorderStatus = 'idle';
   let prepared = false;
 
@@ -49,6 +55,17 @@ export function createRecordingEngine(
     }
     await recorder.prepareToRecordAsync();
     prepared = true;
+  }
+
+  async function releaseMode(): Promise<void> {
+    if (!releaseAudioMode) {
+      return;
+    }
+    try {
+      await releaseAudioMode();
+    } catch {
+      // Best-effort — never block stop/cleanup on mode reset failure.
+    }
   }
 
   return {
@@ -84,11 +101,19 @@ export function createRecordingEngine(
       if (status !== 'recording' && status !== 'paused') {
         throw new Error('Cannot stop recorder while idle');
       }
-      await recorder.stop();
-      const durationMs = Math.max(0, Math.round(recorder.currentTime * 1000));
-      const uri = recorder.uri;
-      prepared = false;
-      setStatus('idle');
+      let uri: string | null = null;
+      let durationMs = 0;
+      try {
+        await recorder.stop();
+        durationMs = Math.max(0, Math.round(recorder.currentTime * 1000));
+        uri = recorder.uri;
+      } finally {
+        // Native MediaRecorder is released inside expo-audio stop; clear our
+        // prepared flag and drop allowsRecording so the OS mic session ends.
+        prepared = false;
+        setStatus('idle');
+        await releaseMode();
+      }
       if (!uri) {
         throw new Error('Recording stopped without a file URI');
       }

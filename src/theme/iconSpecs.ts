@@ -23,6 +23,10 @@ export const iconSizes = {
   /** Phase status circle on project chapter rows (`h-12 w-12` in mock). */
   phaseIcon: 48,
   phaseIconGlyph: 24,
+  /** Glyph inside idle Record CTA (Lovable / design `h-24` control). */
+  recordIdleGlyph: 44,
+  /** Glyph inside capture/review primary control (`h-20`). */
+  recordPrimaryGlyph: 30,
 } as const;
 
 /** Phase icon stroke (`strokeWidth="1.75"` in mock). */

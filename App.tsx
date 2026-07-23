@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator, Text } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { NavigationContainer } from '@react-navigation/native';
+import {
+  DefaultTheme,
+  NavigationContainer,
+  type Theme as NavTheme,
+} from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
 import BootSplash from 'react-native-bootsplash';
@@ -22,6 +26,15 @@ import { appStyles } from './src/app/appStyles';
 import { theme } from './src/theme';
 
 const log = logger.create('App');
+
+const navigationTheme: NavTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: theme.colors.background,
+    card: theme.colors.background,
+  },
+};
 
 registerRecordingUploadWorker();
 
@@ -111,9 +124,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView
-        style={dbReady ? appStyles.appRoot : appStyles.containerAppInit}
-      >
+      <GestureHandlerRootView style={appStyles.appRoot}>
         <SafeAreaProvider>
           {!dbReady ? (
             <View style={appStyles.containerAppInit}>
@@ -132,7 +143,7 @@ function App() {
               )}
             </View>
           ) : (
-            <NavigationContainer>
+            <NavigationContainer theme={navigationTheme}>
               <AppNavigator
                 isAuthenticated={isAuthenticated}
                 onLoginSuccess={handleLoginSuccess}

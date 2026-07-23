@@ -48,7 +48,8 @@ export function DraftingHeader({
     <View style={[styles.header, headerPadding]}>
       <StatusBar
         barStyle="dark-content"
-        backgroundColor={theme.colors.cardBackground}
+        backgroundColor={theme.colors.background}
+        translucent={false}
       />
       <View style={styles.sideSlot}>
         <TouchableOpacity
@@ -57,6 +58,7 @@ export function DraftingHeader({
           style={styles.backButton}
           accessibilityRole="button"
           accessibilityLabel="Go back"
+          activeOpacity={0.7}
         >
           <ChevronLeft
             size={iconSizes.header}
@@ -74,7 +76,11 @@ export function DraftingHeader({
 
       <View style={styles.rightActions}>
         {syncStatus && onSyncPress ? (
-          <PageHeaderSyncButton syncStatus={syncStatus} onPress={onSyncPress} />
+          <PageHeaderSyncButton
+            syncStatus={syncStatus}
+            onPress={onSyncPress}
+            cloudColor={theme.colors.foreground}
+          />
         ) : null}
         {showAccountIndicator && onAccountPress ? (
           <AccountInitialsButton
@@ -97,8 +103,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: headerLayout.paddingHorizontal,
     minHeight: headerLayout.minHeight,
-    backgroundColor: theme.colors.cardBackground,
-    borderBottomWidth: 1,
+    backgroundColor: theme.colors.background,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.colors.border,
   },
   sideSlot: {
