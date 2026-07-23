@@ -79,17 +79,28 @@ export default function DraftingScreen() {
     setAccountSwitcherVisible(false);
   }, []);
 
+  const alertRecordingInProgress = useCallback(() => {
+    Alert.alert(
+      'Recording in progress',
+      'Stop or finish the current take before leaving.',
+      [{ text: 'OK' }],
+    );
+  }, []);
+
+  // Block header back, Android system back, and any other pop while capturing.
+  useEffect(() => {
+    return navigation.addListener('beforeRemove', e => {
+      if (!recordCaptureActive) {
+        return;
+      }
+      e.preventDefault();
+      alertRecordingInProgress();
+    });
+  }, [alertRecordingInProgress, navigation, recordCaptureActive]);
+
   const goBack = useCallback(() => {
-    if (recordCaptureActive) {
-      Alert.alert(
-        'Recording in progress',
-        'Stop or finish the current take before leaving.',
-        [{ text: 'OK' }],
-      );
-      return;
-    }
     navigation.goBack();
-  }, [navigation, recordCaptureActive]);
+  }, [navigation]);
 
   const handleAccountPress = useCallback(() => {
     setAccountSwitcherVisible(true);
@@ -97,9 +108,14 @@ export default function DraftingScreen() {
 
   // CHANGED: was `triggerSync`. Tapping the icon now navigates to the
   // Sync page instead of kicking off a sync directly (per #38 / #149).
+  // Sync pushes another route (beforeRemove may not fire) — guard explicitly.
   const handleSyncPress = useCallback(() => {
+    if (recordCaptureActive) {
+      alertRecordingInProgress();
+      return;
+    }
     navigation.navigate('Sync');
-  }, [navigation]);
+  }, [alertRecordingInProgress, navigation, recordCaptureActive]);
 
   const renderHeader = () => (
     <DraftingHeader

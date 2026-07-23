@@ -192,6 +192,42 @@ describe('createPlaybackEngine', () => {
     expect(player.calls.filter(c => c === 'remove')).toHaveLength(0);
   });
 
+  it('pause then play same URI resumes without replace', async () => {
+    const player = makeFakePlayer();
+    const engine = createPlaybackEngine({
+      player,
+      delayMs: async () => undefined,
+    });
+
+    await engine.play('file:///take.m4a');
+    await engine.pause();
+    // Simulate progress during play before pause.
+    await player.seekTo(1.25);
+    player.calls.length = 0;
+
+    await engine.play('file:///take.m4a');
+    expect(engine.getStatus()).toBe('playing');
+    expect(player.calls).not.toContain('replace');
+    expect(player.calls).toContain('play');
+    expect(engine.positionMs).toBe(1250);
+  });
+
+  it('play different URI replaces after a prior take', async () => {
+    const player = makeFakePlayer();
+    const engine = createPlaybackEngine({
+      player,
+      delayMs: async () => undefined,
+    });
+
+    await engine.play('file:///take-a.m4a');
+    await engine.pause();
+    player.calls.length = 0;
+
+    await engine.play('file:///take-b.m4a');
+    expect(player.calls[0]).toBe('replace');
+    expect(engine.getStatus()).toBe('playing');
+  });
+
   it('calls prepareAudioMode once', async () => {
     const player = makeFakePlayer();
     const prepareAudioMode = jest.fn(async () => undefined);

@@ -25,7 +25,10 @@ export interface VerseAudioFilePart {
 export interface UploadVerseAudioParams {
   projectUnitId: number;
   bibleTextId: number;
-  /** Audio bytes (RN: `{ uri, name, type }`). */
+  /**
+   * Audio bytes. Callers may pass RN `{ uri, name, type }`; the upload path
+   * reads the file and appends a Blob (Expo fetch rejects uri FormData parts).
+   */
   file: Blob | VerseAudioFilePart;
   /** Optional client-measured duration (seconds); form field `durationSeconds`. */
   durationSeconds?: number;

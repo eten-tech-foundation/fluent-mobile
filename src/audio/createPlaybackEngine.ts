@@ -50,6 +50,8 @@ export function createPlaybackEngine(deps: PlaybackEngineDeps): PlaybackEngine {
   } = deps;
   let status: PlayerStatus = 'idle';
   let modeReady = false;
+  /** URI last successfully loaded via `replace` — skip replace on same-URI resume. */
+  let loadedUri: string | null = null;
 
   function setStatus(next: PlayerStatus): void {
     status = next;
@@ -103,9 +105,13 @@ export function createPlaybackEngine(deps: PlaybackEngineDeps): PlaybackEngine {
     },
     async play(uri: string) {
       await ensureMode();
-      // Leave prior status until load succeeds so UI does not show "playing" at 0:00.
-      player.replace({ uri });
-      await waitUntilLoaded();
+      // `replace` resets currentTime to 0 — only load a new take, not pause→play.
+      if (loadedUri !== uri || !player.isLoaded) {
+        // Leave prior status until load succeeds so UI does not show "playing" at 0:00.
+        player.replace({ uri });
+        await waitUntilLoaded();
+        loadedUri = uri;
+      }
       player.play();
       // Some containers (e.g. raw ADTS) report duration 0 until playback starts.
       await delayMs(100);

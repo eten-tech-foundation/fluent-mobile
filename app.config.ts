@@ -85,11 +85,10 @@ const config: ExpoConfig = {
     [
       'expo-audio',
       {
-        // Android RECORD_AUDIO via config plugin (recordAudioAndroid defaults true)
+        // Android RECORD_AUDIO via config plugin (recordAudioAndroid defaults true).
+        // No microphonePermission — that string is iOS-only and this app is Android-only.
         recordAudioAndroid: true,
         enableBackgroundRecording: false,
-        microphonePermission:
-          'Fluent needs access to your microphone so translators can record verse drafts.',
       },
     ],
   ],
