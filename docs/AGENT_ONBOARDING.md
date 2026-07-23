@@ -54,6 +54,7 @@ Quick map for Cursor agents, other coding tools, and new contributors. Verified 
 | [`.cursor/rules/`](../.cursor/rules/) | Cursor agent rules |
 | [`docs/guides/dependabot-process.md`](guides/dependabot-process.md) | Safe Dependabot merge process |
 | [`docs/guides/local-development-workflow.md`](guides/local-development-workflow.md) | Hosted dev + local Docker API paths |
+| [`docs/guides/recordings-sync-contract.md`](guides/recordings-sync-contract.md) | Verse audio upload contract (#102 / fluent-api #224) |
 | [`.cursor/commands/`](../.cursor/commands/) | Slash commands (`/create-pr`, etc.) |
 
 ## Setup
