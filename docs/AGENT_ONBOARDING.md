@@ -6,7 +6,7 @@ Quick map for Cursor agents, other coding tools, and new contributors. Verified 
 
 ## What this project is
 
-**Fluent Mobile** is an offline-first React Native companion app for Bible translation recording workflows. **Android-only permanently** — no iOS app. On launch it initializes a local SQLite database, syncs data from the Fluent API, then lets users browse **projects → chapters → verses**. Recording UI exists as local state stubs; persistence to the `recordings` table is not wired yet.
+**Fluent Mobile** is an offline-first React Native companion app for Bible translation recording workflows. **Android-only permanently** — no iOS app. On launch it initializes a local SQLite database and restores the auth session, then shows the navigator. After login (or when the user triggers sync), it syncs Fluent API data into SQLite so translators can browse **projects → chapters → drafting** (Bible / Resources / Record). Recording UI is still largely stubbed; persistence to the `recordings` table is not fully wired yet.
 
 ## Tech stack
 
@@ -31,15 +31,18 @@ Quick map for Cursor agents, other coding tools, and new contributors. Verified 
 
 | Path | Purpose |
 |------|---------|
-| [`App.tsx`](../App.tsx) | Root: DB init + initial `syncAllData`, then navigator |
-| [`src/app/tabs/`](../src/app/tabs/) | Screens: `ProjectList`, `ViewProject`, `ViewChapter` |
+| [`App.tsx`](../App.tsx) | Root: DB init + session restore, then navigator; sync runs post-login |
+| [`src/app/screens/`](../src/app/screens/) | Stack screens: Home, Settings, Sync, Drafting, PrepareForOffline |
+| [`src/app/tabs/`](../src/app/tabs/) | Nested surfaces: ProjectsTab, MyWorkTab, BibleTab, RecordTab, auth/legal |
+| [`src/components/`](../src/components/) | Shared `layout/` + `ui/` |
+| [`src/theme/`](../src/theme/) | Canonical design tokens (`theme` object) for new UI |
 | [`src/navigation/`](../src/navigation/) | Stack navigator |
 | [`src/services/api.ts`](../src/services/api.ts) | HTTP client (`FluentAPI`) — see [api-client-standard.md](guides/api-client-standard.md) |
 | [`src/services/sync.ts`](../src/services/sync.ts) | Sync orchestration, retries, KV counts |
 | [`src/services/storage.ts`](../src/services/storage.ts) | KV sync state (`op-sqlite` Storage) |
 | [`src/db/`](../src/db/) | Schema, init, `repository` (writes), `queries` (reads), singleton |
 | [`src/types/`](../src/types/) | API, DB, navigation, env types |
-| [`src/components/ui/`](../src/components/ui/) | Shared UI (`SyncButton`) |
+| [`src/hooks/`](../src/hooks/) | Screen data/sync/auth hooks (SQLite-first lists) |
 | [`src/utils/logger.ts`](../src/utils/logger.ts) | Tagged logging |
 | [`app.config.ts`](../app.config.ts) | Expo config, EAS project ID, config plugins |
 | [`eas.json`](../eas.json) | EAS build/submit profiles (Android only) |
@@ -51,6 +54,7 @@ Quick map for Cursor agents, other coding tools, and new contributors. Verified 
 | [`.cursor/rules/`](../.cursor/rules/) | Cursor agent rules |
 | [`docs/guides/dependabot-process.md`](guides/dependabot-process.md) | Safe Dependabot merge process |
 | [`docs/guides/local-development-workflow.md`](guides/local-development-workflow.md) | Hosted dev + local Docker API paths |
+| [`docs/guides/recordings-sync-contract.md`](guides/recordings-sync-contract.md) | Verse audio upload contract (#102 / fluent-api #224) |
 | [`.cursor/commands/`](../.cursor/commands/) | Slash commands (`/create-pr`, etc.) |
 
 ## Setup
@@ -120,8 +124,13 @@ flowchart TD
   subgraph launch [App launch]
     App[App.tsx]
     InitDB[initializeDatabase]
-    SyncAll[syncAllData email]
-    App --> InitDB --> SyncAll
+    Restore[restoreSession]
+    Nav[AppNavigator]
+    App --> InitDB --> Restore --> Nav
+  end
+
+  subgraph postLogin [Post-login / manual sync]
+    SyncAll[syncAllData / syncAllUsers]
   end
 
   subgraph remote [Remote]
@@ -144,18 +153,19 @@ flowchart TD
   end
 
   subgraph ui [UI]
-    Screens[app/tabs screens]
+    Screens[screens + tabs via hooks]
     Queries --> Screens
-    SyncBtn[SyncButton] --> SyncSvc
   end
 ```
 
+**Launch (actual):** `App.tsx` → `initializeDatabase()` → `restoreSession()` → set auth + `dbReady` → `AppNavigator`. **Sync is not automatic on every cold start**; it runs after successful login (`syncAllData`) and when the user/manual sync hooks call `syncAllUsers`.
+
 **Layer rules (do not bypass):**
 
-- **HTTP only in** `src/services/api.ts`
+- **HTTP only in** `src/services/api.ts` (via `httpClient`)
 - **Sync orchestration only in** `src/services/sync.ts`
 - **Writes** → `src/db/repository.ts` (transactions)
-- **Reads** → `src/db/queries.ts`
+- **Reads** → `src/db/queries.ts` (prefer hooks in UI; avoid importing queries from screens when a hook exists)
 - **DB handle** → `setDatabase` / `getDatabase` in `src/db/db.ts` — must run after `initializeDatabase()`
 
 Sync order in `syncAllData`: user → master data (languages, books, bibles) → projects → chapter assignments → bible texts.
@@ -165,10 +175,10 @@ Auth: email/password via `FluentAPI.signIn`; authenticated API calls use `Author
 ## Coding conventions
 
 - **Logging:** `const log = logger.create('ComponentName')` — no raw `console` (ESLint); exception: `src/utils/logger.ts`, tests.
-- **Env:** `EXPO_PUBLIC_API_BASE_URL` in `.env`; validated in `src/config/apiBaseUrl.ts` — never commit `.env`. ESLint blocks direct `process.env` reads and legacy imports (`@env`, `react-native-fs`, `react-native-keychain`, Simform waveform) outside the config layer.
+- **Env:** `EXPO_PUBLIC_API_BASE_URL` in `.env`; read via `getApiBaseUrl()` from `src/config/apiBaseUrl.ts` — never commit `.env`. ESLint blocks direct `process.env` reads and legacy imports (`@env`, `react-native-fs`, `react-native-keychain`, Simform waveform) outside the config layer.
 - **Types:** API shapes in `src/types/api/`, DB in `src/types/db/`, navigation in `src/types/navigation/`.
 - **Prettier:** single quotes, trailing commas, `arrowParens: 'avoid'`.
-- **Styles:** shared patterns in `src/app/appStyles.ts`; screen-local `StyleSheet` where needed.
+- **Styles:** **`src/theme` (`theme` object) is canonical for new UI.** Do not add new hardcoded hex colors in new StyleSheets. [`src/app/appStyles.ts`](../src/app/appStyles.ts) is legacy shared styles — migrate callers to tokens when you touch them; do not expand it with new hex.
 - **SVG:** import as React components (Metro SVG transformer).
 
 Keep changes **small and scoped** — avoid drive-by refactors.
@@ -180,6 +190,7 @@ Keep changes **small and scoped** — avoid drive-by refactors.
 - **Colocated:** `src/utils/logger.test.ts`, `src/services/fluent-api.test.ts`.
 - **Live API test:** `fluent-api.test.ts` is **skipped by default**; opt in with `RUN_LIVE_API_TESTS=1 npm test -- fluent-api.test.ts`.
 - **No E2E** in this repo yet.
+- **Gap:** `src/db/` currently has little/no unit coverage — prefer adding tests when changing queries/repository.
 
 When adding features: mock `op-sqlite`, navigation, and sync in screen tests following existing patterns. Reset shared Expo mocks in `beforeEach` when mutating secure-store/file-system state.
 
@@ -187,21 +198,23 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 
 | Task | Start here |
 |------|------------|
-| New screen | `src/app/tabs/`, register in `AppNavigator.tsx`, extend `RootStackParamList` |
+| New stack screen | Prefer `src/app/screens/`, register in `AppNavigator.tsx`, extend `RootStackParamList` |
+| Nested drafting/list UI | `src/app/tabs/` or `src/components/` |
 | New API endpoint | `FluentAPI` in `api.ts`, then `sync.ts` step + `repository.ts` |
-| New table / column | `schema.ts` → repository inserts → queries → types |
-| Manual re-sync | `SyncButton` → `syncAllData` |
+| New table / column | `schema.ts` → prefer versioned migrations (`#110`) → repository inserts → queries → types |
+| Manual re-sync | Sync page / header sync → `useSync` / `syncAllUsers` |
 | PR workflow | `/create-pr-branch`, `/generate-pr-description`, `/create-pr` (see `.cursor/commands/`) |
 
 ## Risk areas (change carefully)
 
 | Area | Risk |
 |------|------|
-| `src/db/schema.ts` | No migrations yet — schema changes affect existing installs |
-| `sync.ts` module-level `getDatabase()` | Dead import at line 24; calling `getDatabase()` before init throws |
+| `src/db/schema.ts` | Prefer versioned migrations (`#110`); ad-hoc ALTER-on-launch is fragile for existing installs |
+| `getDatabase()` before init | Calling `getDatabase()` before `initializeDatabase()` throws |
 | `fluent-api.test.ts` | Skipped in CI; opt-in live network via `RUN_LIVE_API_TESTS=1` |
 | `format` vs `format:check` | Different glob scopes — CI only checks `src/**` |
 | Native folders | `android/` is gitignored CNG output — customize via `app.config.ts` + plugins. No iOS project. |
+| Dual styles | `src/theme` vs legacy `appStyles.ts` hex — new UI must use tokens |
 
 ## Open questions / TODOs
 
@@ -215,7 +228,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 
 - Human setup: [README.md](../README.md)
 - Agent delivery guardrails: [`AGENTS.md`](../AGENTS.md)
-- Issue tracking (GitHub Issues): [issue-tracking.md](issue-tracking.md)
+- Issue tracking (Project 4 Fluent Mobile Board): [issue-tracking.md](issue-tracking.md)
 - CI inventory: [ci.md](ci.md)
 - Cursor rules: [`.cursor/rules/`](../.cursor/rules/) — **Android-only:** [android-only.mdc](../.cursor/rules/android-only.mdc)
 - Dependabot: [guides/dependabot-process.md](guides/dependabot-process.md) — use with `.cursor/rules/dependabot-workflow.mdc`

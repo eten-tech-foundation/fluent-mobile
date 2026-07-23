@@ -9,14 +9,16 @@ Offline-first **Expo SDK 56** (React Native **0.85**, React **19.2.3**) companio
 
 ## Key paths
 
-- Entry: `App.tsx` → `initializeDatabase()` → `syncAllData()` → `AppNavigator`
+- Entry: `App.tsx` → `initializeDatabase()` → `restoreSession()` → `AppNavigator` (sync post-login / via hooks)
 - App config: `app.config.ts` (EAS project ID, plugins, package id)
-- Screens: `src/app/tabs/` (`ProjectList`, `ViewProject`, `ViewChapter`)
+- Stack screens: `src/app/screens/` (Home, Settings, Sync, Drafting, PrepareForOffline)
+- Nested UI: `src/app/tabs/` (ProjectsTab, MyWorkTab, BibleTab, RecordTab, auth/legal)
+- Theme: `src/theme/` (canonical tokens for new UI)
 - API: `src/services/api.ts` (`FluentAPI`)
 - Sync: `src/services/sync.ts`
 - DB writes: `src/db/repository.ts` | reads: `src/db/queries.ts`
 - Types: `src/types/{api,db,navigation}/`
-- Env: `EXPO_PUBLIC_API_BASE_URL` in `.env` (validated in `src/config/apiBaseUrl.ts`)
+- Env: `EXPO_PUBLIC_API_BASE_URL` in `.env` (via `getApiBaseUrl()` in `src/config/apiBaseUrl.ts`)
 - Native (generated): run `npm run prebuild` — regenerates `android/` only; do not commit `android/`
 - Releases: tag `v*` → `.github/workflows/eas-build.yml` + `.eas/workflows/create-production-builds.yml` (Android only)
 
