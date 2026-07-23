@@ -20,6 +20,7 @@ const mockMarkRecordingUploaded = jest.fn();
 const mockMarkRecordingFailed = jest.fn();
 const mockUploadVerseAudio = jest.fn();
 const mockSetChapterUploadWorker = jest.fn();
+const mockGetCredentials = jest.fn();
 
 jest.mock('../db/repository', () => ({
   getPendingRecordings: (...args: unknown[]) =>
@@ -42,6 +43,10 @@ jest.mock('./uploadOrchestrator', () => ({
     mockSetChapterUploadWorker(...args),
 }));
 
+jest.mock('./keychain', () => ({
+  getCredentials: (...args: unknown[]) => mockGetCredentials(...args),
+}));
+
 const FILE_URI = 'file:///mock-document/recordings/verse-1.m4a';
 
 function pendingRecording(
@@ -55,6 +60,7 @@ function pendingRecording(
     bookId: 40,
     chapterNumber: 1,
     projectUnitId: 12,
+    recordedByUserId: null,
     ...overrides,
   };
 }
@@ -89,6 +95,7 @@ describe('recordingSync', () => {
     mockMarkRecordingUploaded.mockResolvedValue(undefined);
     mockMarkRecordingFailed.mockResolvedValue(undefined);
     mockUploadVerseAudio.mockResolvedValue(successResponse());
+    mockGetCredentials.mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -119,6 +126,31 @@ describe('recordingSync', () => {
       'unit-12/text-42',
     );
     expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+  });
+
+  it('uploads with the recording owner token when credentials exist (#105)', async () => {
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ recordedByUserId: 7 }),
+    ]);
+    mockGetCredentials.mockResolvedValue({ token: 'owner-tok' });
+
+    await syncPendingRecordings('active-tok', { delay });
+
+    expect(mockGetCredentials).toHaveBeenCalledWith('7');
+    expect(authToken.get()).toBe('owner-tok');
+    expect(mockUploadVerseAudio).toHaveBeenCalled();
+  });
+
+  it('falls back to the pass token when owner credentials are missing', async () => {
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ recordedByUserId: 9 }),
+    ]);
+    mockGetCredentials.mockResolvedValue(null);
+
+    await syncPendingRecordings('pass-tok', { delay });
+
+    expect(mockGetCredentials).toHaveBeenCalledWith('9');
+    expect(authToken.get()).toBe('pass-tok');
   });
 
   it('filters by chapter when provided (orchestrator batching)', async () => {

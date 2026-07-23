@@ -22,13 +22,17 @@ const BIBLE_TEXTS_MATCH_CA = `
   AND bt.chapter_number = ca.chapter_number
 `;
 
-/** Recordings are keyed by bible_text_id; join verses for the chapter assignment. */
+/** Recordings are keyed by bible_text_id; join verses for the chapter assignment.
+ * Bound `recorded_by_user_id = ?` scopes aggregates to the active account (#105).
+ */
 export const RECORDINGS_JOIN_CA = `
   LEFT JOIN bible_texts bt_r
     ON bt_r.bible_id = ca.bible_id
     AND bt_r.book_id = ca.book_id
     AND bt_r.chapter_number = ca.chapter_number
-  LEFT JOIN recordings r ON r.bible_text_id = bt_r.id AND r.is_latest = 1`;
+  LEFT JOIN recordings r ON r.bible_text_id = bt_r.id
+    AND r.is_latest = 1
+    AND r.recorded_by_user_id = ?`;
 
 const RECORDING_AGGREGATES = `
   COUNT(DISTINCT CASE WHEN r.id IS NOT NULL AND r.is_latest = 1 THEN r.id END) AS recording_count,
@@ -107,7 +111,7 @@ export async function getProjectsWithSummary(
       WHERE up.user_id = ?
       GROUP BY p.id
       ORDER BY p.name COLLATE NOCASE;`,
-      [userId],
+      [userId, userId],
     );
 
     const rows = (result?.rows as unknown as DBTypes.ProjectSummaryRow[]) || [];
@@ -316,6 +320,7 @@ function mapProjectChapterRow(
 
 export async function getProjectChapters(
   projectId: number,
+  userId: number,
 ): Promise<DBTypes.ProjectChapter[]> {
   const db = getDatabase();
   try {
@@ -343,7 +348,7 @@ export async function getProjectChapters(
       WHERE pu.project_id = ?
       GROUP BY ca.id
       ORDER BY b.id, ca.chapter_number`,
-      [Number(projectId)],
+      [userId, Number(projectId)],
     );
 
     const rows = (result?.rows as unknown as DBTypes.ProjectChapterRow[]) || [];
@@ -393,7 +398,7 @@ export async function getMyWorkChapters(
       WHERE ${MY_WORK_CHAPTER_WHERE}
       GROUP BY ca.id
       ORDER BY b.id, ca.chapter_number`,
-      getMyWorkChapterQueryParams(userId),
+      [userId, ...getMyWorkChapterQueryParams(userId)],
     );
 
     const rows = (result?.rows as unknown as DBTypes.MyWorkChapterRow[]) || [];

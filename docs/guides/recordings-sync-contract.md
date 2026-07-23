@@ -65,6 +65,18 @@ JSON matching `verseAudioResponseSchema`: `id`, `projectUnitId`, `bibleTextId`, 
 - Upload orchestrator — #150 (`setChapterUploadWorker`)
 - Live DevQA until #224 (or chosen API) is merged and deployed — waived on #102 with follow-up
 
+## Local attribution (#105)
+
+| | |
+| --- | --- |
+| Column | `recordings.recorded_by_user_id` (nullable FK → `users(id)`, migration v5) |
+| Capture | `addRecordingTake` sets the column from `getActiveUserId()` |
+| Latest / takes | Scoped per `(bible_text_id, recorded_by_user_id)` so shared devices keep separate take stacks |
+| Aggregates | Project / My Work joins filter `r.recorded_by_user_id = ?` for the active user |
+| Upload | `recordingSync` prefers `getCredentials(recordedByUserId)` for each pending row; falls back to the pass token when owner credentials are missing or the row is unattributed (pre-v5) |
+
+Server identity still comes from the Bearer token on `PUT /verse-audio/...`. Local attribution ensures the **correct** token is selected when multiple accounts share a device.
+
 ## Verification
 
 ```bash

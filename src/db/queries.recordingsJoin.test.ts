@@ -5,4 +5,8 @@ describe('queries recordings join', () => {
     expect(RECORDINGS_JOIN_CA).toContain('r.bible_text_id = bt_r.id');
     expect(RECORDINGS_JOIN_CA).not.toContain('chapter_assignment_id');
   });
+
+  it('scopes latest recordings to recorded_by_user_id (#105)', () => {
+    expect(RECORDINGS_JOIN_CA).toContain('r.recorded_by_user_id = ?');
+  });
 });
