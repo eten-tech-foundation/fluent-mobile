@@ -40,3 +40,29 @@ export function onAuthSessionExpired(fn: SyncListener): () => void {
 export function emitAuthSessionExpired(): void {
   [...authSessionExpiredListeners].forEach(fn => fn());
 }
+
+/** Recording-upload session events (distinct from metadata sync). */
+export type UploadSessionEvent =
+  | { type: 'start'; totalChapters: number }
+  | { type: 'progress'; completedChapters: number; totalChapters: number }
+  | { type: 'paused'; reason: 'user' | 'connectivity' }
+  | { type: 'cancelled' }
+  | { type: 'complete' }
+  | { type: 'waiting_wifi' }
+  | { type: 'idle' };
+
+type UploadSessionListener = (event: UploadSessionEvent) => void;
+
+const uploadSessionListeners: UploadSessionListener[] = [];
+
+export function onUploadSessionEvent(fn: UploadSessionListener): () => void {
+  uploadSessionListeners.push(fn);
+  return () => {
+    const idx = uploadSessionListeners.indexOf(fn);
+    if (idx > -1) uploadSessionListeners.splice(idx, 1);
+  };
+}
+
+export function emitUploadSessionEvent(event: UploadSessionEvent): void {
+  [...uploadSessionListeners].forEach(fn => fn(event));
+}

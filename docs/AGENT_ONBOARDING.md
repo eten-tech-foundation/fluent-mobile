@@ -209,7 +209,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 
 | Area | Risk |
 |------|------|
-| `src/db/schema.ts` | Prefer versioned migrations (`#110`); ad-hoc ALTER-on-launch is fragile for existing installs |
+| `src/db/schema.ts` + `migrations.ts` | Baseline DDL + versioned `user_version` migrations |
 | `getDatabase()` before init | Calling `getDatabase()` before `initializeDatabase()` throws |
 | `fluent-api.test.ts` | Skipped in CI; opt-in live network via `RUN_LIVE_API_TESTS=1` |
 | `format` vs `format:check` | Different glob scopes — CI only checks `src/**` |
