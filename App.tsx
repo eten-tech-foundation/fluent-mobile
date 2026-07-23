@@ -11,11 +11,18 @@ import { syncAllData } from './src/services/sync';
 import { restoreSession, signOut } from './src/services/authSession';
 import AppNavigator from './src/navigation/AppNavigator';
 import { onAuthSessionExpired } from './src/services/syncEvents';
+import {
+  startUploadOrchestrator,
+  stopUploadOrchestrator,
+} from './src/services/uploadOrchestrator';
+import { registerRecordingUploadWorker } from './src/services/recordingSync';
 import { queryClient } from './src/services/queryClient';
 import { appStyles } from './src/app/appStyles';
 import { theme } from './src/theme';
 
 const log = logger.create('App');
+
+registerRecordingUploadWorker();
 
 function App() {
   const [dbReady, setDbReady] = useState(false);
@@ -24,6 +31,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
 
   const handleSignOut = () => {
+    stopUploadOrchestrator();
     signOut();
     setIsAuthenticated(false);
   };
@@ -31,6 +39,7 @@ function App() {
   useEffect(() => {
     return onAuthSessionExpired(() => {
       log.info('Session expired — returning to login');
+      stopUploadOrchestrator();
       signOut();
       setIsAuthenticated(false);
     });
@@ -52,6 +61,18 @@ function App() {
 
     initApp();
   }, []);
+
+  useEffect(() => {
+    if (!dbReady || !isAuthenticated) {
+      stopUploadOrchestrator();
+      return;
+    }
+
+    startUploadOrchestrator();
+    return () => {
+      stopUploadOrchestrator();
+    };
+  }, [dbReady, isAuthenticated]);
 
   useEffect(() => {
     if (!dbReady) {

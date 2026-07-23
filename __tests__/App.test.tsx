@@ -3,7 +3,6 @@
  */
 
 import React from 'react';
-import App from '../App';
 import { render, waitFor } from '@testing-library/react-native';
 import BootSplash from 'react-native-bootsplash';
 
@@ -72,12 +71,24 @@ jest.mock('../src/services/authSession', () => ({
   signOut: jest.fn(),
 }));
 
+jest.mock('../src/services/uploadOrchestrator', () => ({
+  startUploadOrchestrator: jest.fn(),
+  stopUploadOrchestrator: jest.fn(),
+  setChapterUploadWorker: jest.fn(),
+}));
+
+jest.mock('../src/services/recordingSync', () => ({
+  registerRecordingUploadWorker: jest.fn(),
+}));
+
 // Keychain
 jest.mock('../src/services/keychain', () => ({
   hasCredentials: jest.fn(() => Promise.resolve(false)),
   getCredentials: jest.fn(() => Promise.resolve(null)),
   getAllStoredUserIds: jest.fn(() => Promise.resolve([])),
 }));
+
+import App from '../App';
 
 describe('App', () => {
   it('renders navigator after initialization', async () => {

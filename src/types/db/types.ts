@@ -243,6 +243,28 @@ export interface VerseRow {
   text: string;
 }
 
+/** Local recording upload lifecycle (`recordings.sync_status`). */
+export type RecordingSyncStatus =
+  | 'pending'
+  | 'uploading'
+  | 'uploaded'
+  | 'failed';
+
+/**
+ * Latest non-uploaded recording row for the upload worker (#100).
+ * `projectUnitId` comes from a matching `chapter_assignments` row.
+ */
+export interface PendingRecording {
+  id: string;
+  bibleTextId: number;
+  localFilePath: string;
+  durationMs: number | null;
+  bookId: number;
+  chapterNumber: number;
+  /** Null when no chapter assignment maps this verse's chapter. */
+  projectUnitId: number | null;
+}
+
 export const CHAPTER_ASSIGNMENT_STATUS = {
   not_started: 'Not Started',
   draft: 'Draft',
