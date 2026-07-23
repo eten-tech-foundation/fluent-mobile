@@ -198,7 +198,6 @@ export function getPrepareOfflineDownloadStarted(
 
 export function setPrepareOfflineDismissed(userId: string, projectId: number) {
   kvStorage.setItemSync(prepareOfflineDismissedKey(userId, projectId), 'true');
-  log.info('Prepare for Offline dismissed', { userId, projectId });
 }
 
 export function setPrepareOfflineDownloadStarted(
@@ -209,7 +208,6 @@ export function setPrepareOfflineDownloadStarted(
     prepareOfflineDownloadStartedKey(userId, projectId),
     'true',
   );
-  log.info('Prepare for Offline download started', { userId, projectId });
 }
 
 /** End of user pause window (ms since epoch), or null if not paused. */

@@ -19,8 +19,15 @@ function parseConnectivityProfile(
 ): DBTypes.ConnectivityProfile | null {
   if (!metadata) return null;
   try {
-    const parsed = JSON.parse(metadata) as { connectivityProfile?: string };
-    return (parsed.connectivityProfile as DBTypes.ConnectivityProfile) ?? null;
+    const parsed: unknown = JSON.parse(metadata);
+    if (!parsed || typeof parsed !== 'object') return null;
+
+    const profile = (parsed as Record<string, unknown>).connectivityProfile;
+    return profile === 'usually_connected' ||
+      profile === 'sometimes_connected' ||
+      profile === 'rarely_connected'
+      ? profile
+      : null;
   } catch {
     return null;
   }

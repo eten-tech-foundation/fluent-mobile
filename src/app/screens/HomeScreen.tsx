@@ -76,10 +76,11 @@ export default function HomeScreen({
   const isCellularRef = useRef(isCellular);
   const hasResolvedRef = useRef(hasResolved);
   const uploadOverCellularRef = useRef(uploadOverCellular);
-  const appStateRef = useRef(AppState.currentState);
   const prepareOfflinePromptShownThisAppOpenRef = useRef(false);
 
   const evaluateRef = useRef<(() => Promise<void>) | undefined>(undefined);
+  const appStateRef = useRef(AppState.currentState);
+  const evaluateInFlightRef = useRef(false);
 
   useEffect(() => {
     isWifiRef.current = isWifi;
@@ -169,32 +170,46 @@ export default function HomeScreen({
         (isWifiRef.current ||
           (uploadOverCellularRef.current && isCellularRef.current));
       if (!eligibleConnection) return;
-      if (prepareOfflinePromptShownThisAppOpenRef.current) return;
+      if (
+        prepareOfflinePromptShownThisAppOpenRef.current ||
+        evaluateInFlightRef.current
+      ) {
+        return;
+      }
 
-      const userId = parseUserId();
-      if (!userId) return;
+      evaluateInFlightRef.current = true;
+      try {
+        const userId = parseUserId();
+        if (!userId) return;
 
-      const projects = await getProjectsWithSummary(userId);
+        const projects = await getProjectsWithSummary(userId);
 
-      for (const project of projects) {
-        const isAssigned = await isUserAssignedToProject(userId, project.id);
-        const present = shouldPresentPrepareOffline({
-          connectivityProfile: project.connectivityProfile ?? null,
-          isAssigned,
-          isOnline: connectivityIsOnlineRef.current,
-          isWifi: isWifiRef.current,
-          isCellular: isCellularRef.current,
-          uploadOverCellular: uploadOverCellularRef.current,
-        });
-
-        if (
-          present &&
-          !getPrepareOfflineDownloadStarted(String(userId), project.id)
-        ) {
-          prepareOfflinePromptShownThisAppOpenRef.current = true;
-          navigation.navigate('PrepareForOffline');
+        if (prepareOfflinePromptShownThisAppOpenRef.current) {
           return;
         }
+
+        for (const project of projects) {
+          const isAssigned = await isUserAssignedToProject(userId, project.id);
+          const present = shouldPresentPrepareOffline({
+            connectivityProfile: project.connectivityProfile ?? null,
+            isAssigned,
+            isOnline: connectivityIsOnlineRef.current,
+            isWifi: isWifiRef.current,
+            isCellular: isCellularRef.current,
+            uploadOverCellular: uploadOverCellularRef.current,
+          });
+
+          if (
+            present &&
+            !getPrepareOfflineDownloadStarted(String(userId), project.id)
+          ) {
+            prepareOfflinePromptShownThisAppOpenRef.current = true;
+            navigation.navigate('PrepareForOffline');
+            return;
+          }
+        }
+      } finally {
+        evaluateInFlightRef.current = false;
       }
     };
     evaluateRef.current = evaluate;
@@ -220,10 +235,14 @@ export default function HomeScreen({
     if (!hasResolved) return;
     const eligibleConnection =
       connectivityIsOnline && (isWifi || (uploadOverCellular && isCellular));
+
+    if (!isFocused) {
+      wasEligibleRef.current = false;
+      return;
+    }
+
     const wasEligible = wasEligibleRef.current;
     wasEligibleRef.current = eligibleConnection;
-
-    if (!isFocused) return;
     if (eligibleConnection && !wasEligible) {
       void evaluateRef.current?.();
     }
