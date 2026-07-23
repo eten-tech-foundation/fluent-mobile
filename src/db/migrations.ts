@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -71,7 +71,7 @@ export type RebuildTableOptions = {
 /**
  * SQLite table rebuild for FK / default / column-type changes.
  * Pattern: create `_new` → copy → drop old → rename → indexes.
- * Used by follow-ups #99 / #103 (not invoked by baseline migrations).
+ * Used by #99 (`chapter_assignments`) and #103 (`user_projects`).
  */
 export async function rebuildTable(
   db: SqlExecutor,
@@ -117,6 +117,58 @@ async function applyVerseProgressColumns(db: SqlExecutor): Promise<void> {
   );
 }
 
+/**
+ * Restore `assigned_user_id` FK + `status` default + My Work index (#99).
+ * Orphan assignment user ids are nulled so the copy succeeds with FKs on.
+ * `user_projects.user_id` FK rebuild is owned by #103.
+ */
+export async function restoreChapterAssignmentAssignedUserIntegrity(
+  db: SqlExecutor,
+): Promise<void> {
+  await rebuildTable(db, {
+    tableName: 'chapter_assignments',
+    createSql: `CREATE TABLE chapter_assignments_new (
+      id               INTEGER PRIMARY KEY,
+      project_unit_id  INTEGER NOT NULL REFERENCES project_units(id) ON DELETE CASCADE,
+      bible_id         INTEGER NOT NULL REFERENCES bibles(id),
+      book_id          INTEGER NOT NULL REFERENCES books(id),
+      chapter_number   INTEGER NOT NULL,
+      assigned_user_id INTEGER REFERENCES users(id),
+      peer_checker_id  INTEGER,
+      status           TEXT NOT NULL DEFAULT 'not_started',
+      submitted_time   TEXT,
+      updated_at       TEXT NOT NULL,
+      total_verses     INTEGER NOT NULL DEFAULT 0,
+      completed_verses INTEGER NOT NULL DEFAULT 0,
+      UNIQUE (project_unit_id, bible_id, book_id, chapter_number)
+    )`,
+    copySql: `INSERT INTO chapter_assignments_new (
+      id, project_unit_id, bible_id, book_id, chapter_number,
+      assigned_user_id, peer_checker_id, status, submitted_time, updated_at,
+      total_verses, completed_verses
+    )
+    SELECT
+      ca.id,
+      ca.project_unit_id,
+      ca.bible_id,
+      ca.book_id,
+      ca.chapter_number,
+      CASE WHEN u.id IS NOT NULL THEN ca.assigned_user_id ELSE NULL END,
+      ca.peer_checker_id,
+      COALESCE(ca.status, 'not_started'),
+      ca.submitted_time,
+      ca.updated_at,
+      COALESCE(ca.total_verses, 0),
+      COALESCE(ca.completed_verses, 0)
+    FROM chapter_assignments ca
+    LEFT JOIN users u ON u.id = ca.assigned_user_id`,
+    indexes: [
+      'CREATE INDEX IF NOT EXISTS idx_ca_project_unit ON chapter_assignments(project_unit_id)',
+      'CREATE INDEX IF NOT EXISTS idx_ca_assigned_user ON chapter_assignments(assigned_user_id)',
+    ],
+  });
+}
+
 /** Ordered schema migrations. Version 1 = current CREATE IF NOT EXISTS baseline. */
 export const migrations: Migration[] = [
   {
@@ -128,6 +180,11 @@ export const migrations: Migration[] = [
     version: 2,
     name: 'chapter_assignment_verse_progress',
     up: applyVerseProgressColumns,
+  },
+  {
+    version: 3,
+    name: 'chapter_assignment_assigned_user_integrity',
+    up: restoreChapterAssignmentAssignedUserIntegrity,
   },
 ];
 

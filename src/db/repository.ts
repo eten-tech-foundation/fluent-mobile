@@ -71,9 +71,54 @@ async function insertProjectUnitTx(
   ]);
 }
 
+/**
+ * Keep assigned_user_id only when the user row exists locally.
+ * Matches migration v3 orphan nulling — sync only upserts the active user, but
+ * chapter-assignment payloads include other project members' assignee ids.
+ */
+export function coalesceAssignedUserId(
+  assignedUserId: number | null | undefined,
+  knownUserIds: ReadonlySet<number>,
+): number | null {
+  if (assignedUserId == null) return null;
+  return knownUserIds.has(assignedUserId) ? assignedUserId : null;
+}
+
+async function loadKnownUserIds(
+  tx: Transaction,
+  userIds: number[],
+): Promise<Set<number>> {
+  const known = new Set<number>();
+  if (userIds.length === 0) return known;
+
+  const placeholders = userIds.map(() => '?').join(',');
+  const result = await tx.execute(
+    `SELECT id FROM users WHERE id IN (${placeholders})`,
+    userIds,
+  );
+  for (const row of result.rows) {
+    const id = Number((row as { id: number }).id);
+    if (Number.isFinite(id)) known.add(id);
+  }
+  return known;
+}
+
+function collectAssigneeIds(
+  assignments: DBTypes.ChapterAssignment[],
+): number[] {
+  return [
+    ...new Set(
+      assignments
+        .map(a => a.assignedUserId)
+        .filter((id): id is number => typeof id === 'number' && id > 0),
+    ),
+  ];
+}
+
 async function insertChapterAssignmentTx(
   tx: Transaction,
   assignment: DBTypes.ChapterAssignment,
+  knownUserIds: ReadonlySet<number>,
 ) {
   if (!assignment?.chapterAssignmentId) return;
 
@@ -101,7 +146,7 @@ async function insertChapterAssignmentTx(
       assignment.bibleId,
       assignment.bookId,
       assignment.chapterNumber,
-      assignment.assignedUserId ?? null,
+      coalesceAssignedUserId(assignment.assignedUserId, knownUserIds),
       assignment.peerCheckerId ?? null,
       assignment.chapterStatus ?? 'not_started',
       assignment.submittedTime ?? null,
@@ -252,9 +297,11 @@ export async function insertChapterAssignments(
   data: DBTypes.ChapterAssignment[],
 ) {
   const db = getDatabase();
+  const assigneeIds = collectAssigneeIds(data);
   await db.transaction(async (tx: Transaction) => {
+    const knownUserIds = await loadKnownUserIds(tx, assigneeIds);
     for (const assignment of data) {
-      await insertChapterAssignmentTx(tx, assignment);
+      await insertChapterAssignmentTx(tx, assignment, knownUserIds);
     }
   });
 }
@@ -279,18 +326,29 @@ export async function insertChapterAssignmentSyncData(
 ) {
   const db = getDatabase();
   const unitsMap = getUniqueProjectUnits(assignments);
+  const assigneeIds = collectAssigneeIds(assignments);
 
   log.info('insertChapterAssignmentSyncData', {
     assignmentsCount: assignments.length,
     unitsMapSize: unitsMap.size,
+    distinctAssignees: assigneeIds.length,
   });
 
   await db.transaction(async (tx: Transaction) => {
+    const knownUserIds = await loadKnownUserIds(tx, assigneeIds);
+    const orphanedAssignees = assigneeIds.filter(id => !knownUserIds.has(id));
+    if (orphanedAssignees.length > 0) {
+      log.info('Nulling assigned_user_id for users not in local users table', {
+        orphanedCount: orphanedAssignees.length,
+        knownCount: knownUserIds.size,
+      });
+    }
+
     for (const unit of unitsMap.values()) {
       await insertProjectUnitTx(tx, unit);
     }
     for (const assignment of assignments) {
-      await insertChapterAssignmentTx(tx, assignment);
+      await insertChapterAssignmentTx(tx, assignment, knownUserIds);
     }
   });
 }

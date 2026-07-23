@@ -47,15 +47,15 @@ export const createTableQueries: string[] = [
 
   `CREATE INDEX IF NOT EXISTS idx_pu_project ON project_units(project_id);`,
 
-  ` CREATE TABLE IF NOT EXISTS chapter_assignments (
+  `CREATE TABLE IF NOT EXISTS chapter_assignments (
       id               INTEGER PRIMARY KEY,
       project_unit_id INTEGER NOT NULL REFERENCES project_units(id) ON DELETE CASCADE,
       bible_id         INTEGER NOT NULL REFERENCES bibles(id),
       book_id          INTEGER NOT NULL REFERENCES books(id),
       chapter_number   INTEGER NOT NULL,
-      assigned_user_id  INTEGER ,
+      assigned_user_id  INTEGER REFERENCES users(id),
       peer_checker_id    INTEGER,
-      status           TEXT NOT NULL,
+      status           TEXT NOT NULL DEFAULT 'not_started',
       submitted_time   TEXT,
       updated_at       TEXT NOT NULL,
       total_verses     INTEGER NOT NULL DEFAULT 0,
@@ -64,6 +64,7 @@ export const createTableQueries: string[] = [
     );`,
 
   `CREATE INDEX IF NOT EXISTS idx_ca_project_unit ON chapter_assignments(project_unit_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_ca_assigned_user ON chapter_assignments(assigned_user_id);`,
 
   `CREATE TABLE IF NOT EXISTS bible_texts (
       id             INTEGER PRIMARY KEY,
@@ -77,6 +78,11 @@ export const createTableQueries: string[] = [
 
   `CREATE INDEX IF NOT EXISTS idx_bt_chapter ON bible_texts(bible_id, book_id, chapter_number);`,
 
+  /**
+   * Recordings link to a verse via `bible_text_id` (canonical; see #98 / #99).
+   * Do not join recordings on `chapter_assignment_id` — that column is not used.
+   * Per-user attribution on recordings is owned by #105.
+   */
   `CREATE TABLE IF NOT EXISTS recordings (
       id                    TEXT PRIMARY KEY,
       bible_text_id         INTEGER NOT NULL REFERENCES bible_texts(id),
