@@ -425,6 +425,22 @@ export async function getPendingUploadCount(): Promise<number> {
   }
 }
 
+/** Latest recordings whose last upload attempt failed. */
+export async function getFailedUploadCount(): Promise<number> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT COUNT(*) AS count
+       FROM recordings
+       WHERE is_latest = 1 AND sync_status = 'failed'`,
+    );
+    return Number(result.rows?.[0]?.count) || 0;
+  } catch (error) {
+    log.error('Error fetching failed upload count', { error });
+    return 0;
+  }
+}
+
 export type PendingUploadChapter = {
   bookId: number;
   chapterNumber: number;

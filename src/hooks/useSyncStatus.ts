@@ -15,7 +15,14 @@ export function useSyncStatus({
 }: UseSyncStatusOptions) {
   const { isOnline, isWifi } = useConnectivity();
   const { uploadOverCellular } = usePreferences();
-  const { pendingCount, hasPendingUploads } = usePendingUploads(refreshKey);
+  const {
+    pendingCount,
+    failedCount,
+    hasPendingUploads,
+    hasFailedUploads,
+    isUploading,
+    uploadProgress,
+  } = usePendingUploads(refreshKey);
   const { needsDownloadSync } = useLocalSyncHealth(refreshKey);
 
   // "Online" for sync chrome means allowed to sync: WiFi, or cellular when opted in.
@@ -26,11 +33,17 @@ export function useSyncStatus({
       isOnline: effectivelyOnline,
       isSyncing,
       hasPendingUploads,
+      isUploading,
+      hasFailedUploads,
       needsDownloadSync,
     }),
     isOnline: effectivelyOnline,
     pendingCount,
+    failedCount,
     hasPendingUploads,
+    hasFailedUploads,
+    isUploading,
+    uploadProgress,
     needsDownloadSync,
   };
 }

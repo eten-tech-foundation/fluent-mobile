@@ -11,12 +11,23 @@ function resolveIconState(
   status: SyncPageStatus,
   isOnline: boolean,
   hasPendingUploads: boolean,
+  hasFailedUploads: boolean,
+  isUploading: boolean,
 ): { status: SyncStatus; animated: boolean } {
+  if (isUploading || status === 'syncing') {
+    // Lovable Sync page uses the spinning cloud-sync glyph for online-syncing.
+    return { status: 'online_syncing', animated: true };
+  }
+
+  if (status === 'paused') {
+    return { status: 'online_syncing', animated: false };
+  }
+
+  if (hasFailedUploads && isOnline) {
+    return { status: 'online_failed', animated: false };
+  }
+
   switch (status) {
-    case 'syncing':
-      return { status: 'online_syncing', animated: true };
-    case 'paused':
-      return { status: 'online_syncing', animated: false };
     case 'pending':
       if (hasPendingUploads) {
         return {
@@ -39,17 +50,23 @@ interface SyncStatusIndicatorProps {
   status: SyncPageStatus;
   isOnline?: boolean;
   hasPendingUploads?: boolean;
+  hasFailedUploads?: boolean;
+  isUploading?: boolean;
 }
 
 export function SyncStatusIndicator({
   status,
   isOnline = true,
   hasPendingUploads = false,
+  hasFailedUploads = false,
+  isUploading = false,
 }: SyncStatusIndicatorProps) {
   const { status: iconStatus, animated } = resolveIconState(
     status,
     isOnline,
     hasPendingUploads,
+    hasFailedUploads,
+    isUploading,
   );
 
   return (
