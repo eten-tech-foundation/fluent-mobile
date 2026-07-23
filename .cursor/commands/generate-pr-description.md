@@ -30,7 +30,7 @@ Every run **must** output a suggested title before the description block. Do not
 | GitHub issue in branch (`…/173-…` or `38-…`) | `#173` | `[#173]: Adopt Phase 1 agent/process docs` |
 | No ticket | descriptive prefix | `Chore: Add Cursor AI rules` |
 
-**Tracker:** GitHub Issues ([docs/issue-tracking.md](../../docs/issue-tracking.md)).
+**Tracker:** Project 4 Fluent Mobile Board ([docs/issue-tracking.md](../../docs/issue-tracking.md)).
 
 ### Title synthesis (apply in order)
 

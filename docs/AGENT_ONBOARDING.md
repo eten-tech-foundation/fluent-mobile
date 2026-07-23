@@ -228,7 +228,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 
 - Human setup: [README.md](../README.md)
 - Agent delivery guardrails: [`AGENTS.md`](../AGENTS.md)
-- Issue tracking (GitHub Issues): [issue-tracking.md](issue-tracking.md)
+- Issue tracking (Project 4 Fluent Mobile Board): [issue-tracking.md](issue-tracking.md)
 - CI inventory: [ci.md](ci.md)
 - Cursor rules: [`.cursor/rules/`](../.cursor/rules/) — **Android-only:** [android-only.mdc](../.cursor/rules/android-only.mdc)
 - Dependabot: [guides/dependabot-process.md](guides/dependabot-process.md) — use with `.cursor/rules/dependabot-workflow.mdc`

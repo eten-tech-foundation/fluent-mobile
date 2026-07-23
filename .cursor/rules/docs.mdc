@@ -15,7 +15,7 @@ alwaysApply: false
 
 ## Issue tracking & CI
 
-- [docs/issue-tracking.md](../../docs/issue-tracking.md) — GitHub Issues, branch naming, PR linking (`Closes #NNN`)
+- [docs/issue-tracking.md](../../docs/issue-tracking.md) — Project 4 Fluent Mobile Board, branch naming, PR linking (`Closes #NNN`)
 - [docs/ci.md](../../docs/ci.md) — workflow inventory + future required-check guardrail
 
 Update these when tracker policy or CI workflows change.

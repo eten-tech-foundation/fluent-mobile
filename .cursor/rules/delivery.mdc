@@ -11,9 +11,9 @@ alwaysApply: true
 
 Every change — including infra, CI, docs, Dependabot follow-ups, and `expo install --fix` — goes through:
 
-1. **GitHub issue** — required; ask if missing (`#NNN`). See [docs/issue-tracking.md](../../docs/issue-tracking.md). (Linear is not the tracker for this repo right now.)
+1. **Ticket on Project 4** — GitHub Issue `#NNN` **on** the [Fluent Mobile Board](https://github.com/orgs/eten-tech-foundation/projects/4/views/9) (org project #4, view 9). Ask if missing. See [docs/issue-tracking.md](../../docs/issue-tracking.md). The repo Issues list is not the triage board. (Not Linear.)
 2. **Feature branch** — `{author}/{type}/{issue-number}-{slug}` (see `/create-pr-branch`)
-3. **Pull request** — title `[#NNN]: Description`; body filled from the PR template (below)
+3. **Pull request** — title `[#NNN]: Description`; body filled from the PR template (below); include `Closes #NNN` under Details when the PR completes the issue; set Project 4 Status to **In PR Review**
 4. **Human merge** — agents open PRs and push **feature branches only**; never merge on GitHub unless the user explicitly asks for a Dependabot squash merge in that session
 
 Allowed on `main` locally: `git checkout main`, `git pull`, read-only validation after merges. **Not allowed:** `git push origin main`, commits on `main`, or opening PRs with `main` as the head branch.

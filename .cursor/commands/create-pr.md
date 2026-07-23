@@ -6,7 +6,7 @@ Automated PR creation for **fluent-mobile** when you run `/create-pr`. Creates a
 
 Complements team PR conventions (title `[#NNN]: Description`, verification gates). Does not merge PRs.
 
-**Tracker:** GitHub Issues — [docs/issue-tracking.md](../../docs/issue-tracking.md).
+**Tracker:** Project 4 Fluent Mobile Board — [docs/issue-tracking.md](../../docs/issue-tracking.md).
 
 ## What happens
 
