@@ -577,6 +577,26 @@ describe('migrations framework', () => {
     db._seedUsers([5]);
     db._seedProjects([100]);
     db._seedOldUserProjects();
+    // Pre-v5 recordings shape so migration v5 can ADD COLUMN (#105).
+    db._tables.set('recordings', {
+      columns: new Set([
+        'id',
+        'bible_text_id',
+        'local_file_path',
+        'blob_key',
+        'duration_ms',
+        'file_size_bytes',
+        'take_number',
+        'is_latest',
+        'sync_status',
+        'upload_error',
+        'created_at',
+        'updated_at',
+      ]),
+      rows: [],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
 
     const before = await db.execute('SELECT * FROM user_projects');
     expect(before.rows).toHaveLength(2);
@@ -593,6 +613,9 @@ describe('migrations framework', () => {
     expect(after.foreignKeys.get('user_id')).toBe('users');
     expect(after.foreignKeys.get('project_id')).toBe('projects');
     expect(db._indexes.has('idx_up_user')).toBe(true);
+    expect(await columnExists(db, 'recordings', 'recorded_by_user_id')).toBe(
+      true,
+    );
     await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
   });
 

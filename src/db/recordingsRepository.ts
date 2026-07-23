@@ -30,7 +30,6 @@ export function resolveRecordedByUserId(
   }
   // Lazy require keeps `repository`/`queries` loadable in unit tests that only
   // import SQL constants without pulling op-sqlite KV storage.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { getActiveUserId } =
     require('../services/storage') as typeof import('../services/storage');
   return parseActiveUserId(getActiveUserId());
