@@ -14,6 +14,18 @@ import {
 } from '../utils/myWorkChapterFilter';
 import { getBadgeStage, getWorkflowStage } from '../utils/workflowStage';
 
+function parseConnectivityProfile(
+  metadata: string | null,
+): DBTypes.ConnectivityProfile | null {
+  if (!metadata) return null;
+  try {
+    const parsed = JSON.parse(metadata) as { connectivityProfile?: string };
+    return (parsed.connectivityProfile as DBTypes.ConnectivityProfile) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 const log = logger.create('DBQueries');
 
 const BIBLE_TEXTS_MATCH_CA = `
@@ -66,6 +78,7 @@ function mapProjectSummaryRow(
     isActive: Boolean(row.is_active),
     status: row.status,
     updatedAt: row.updated_at,
+    connectivityProfile: parseConnectivityProfile(row.metadata),
     chapterCount: Number(row.chapter_count) || 0,
     syncState: deriveProjectSyncState(
       Number(row.recording_count) || 0,
@@ -83,13 +96,14 @@ export async function getProjectsWithSummary(
 
     const result = await db.execute(
       `SELECT
-        p.id,
-        p.name,
-        p.source_language_id,
-        p.target_language_id,
-        p.is_active,
-        p.status,
-        p.updated_at,
+         p.id,
+         p.name,
+         p.source_language_id,
+         p.target_language_id,
+         p.is_active,
+         p.status,
+         p.updated_at,
+         p.metadata,
         sl.lang_name AS source_language_name,
         tl.lang_name AS target_language_name,
         COUNT(DISTINCT ca.id) AS chapter_count,
@@ -483,5 +497,31 @@ export async function getRecordedVerseNumbers(
   } catch (error) {
     log.error('Error fetching recorded verse numbers', { error });
     return new Set();
+  }
+}
+
+/** True when the user is assigned as translator or peer checker on any chapter in this project. */
+export async function isUserAssignedToProject(
+  userId: number,
+  projectId: number,
+): Promise<boolean> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT COUNT(*) as count
+       FROM chapter_assignments ca
+       INNER JOIN project_units pu ON pu.id = ca.project_unit_id
+       WHERE pu.project_id = ?
+          AND (ca.assigned_user_id = ? OR ca.peer_checker_id = ?)`,
+      [projectId, userId, userId],
+    );
+    return Number(result.rows?.[0]?.count ?? 0) > 0;
+  } catch (error) {
+    log.error('Error checking project assignment', {
+      error,
+      userId,
+      projectId,
+    });
+    return false;
   }
 }

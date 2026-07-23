@@ -23,6 +23,7 @@ export interface Project {
   isActive?: boolean;
   status?: string;
   updatedAt?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export type ProjectSyncState = 'none' | 'synced' | 'unsynced';
@@ -104,6 +105,7 @@ export interface MyWorkChapterRow {
 export interface ProjectSummary extends Project {
   chapterCount: number;
   syncState: ProjectSyncState;
+  connectivityProfile: ConnectivityProfile | null;
 }
 
 /** Raw SQLite row shape for getProjectsWithSummary (snake_case columns). */
@@ -115,6 +117,7 @@ export interface ProjectSummaryRow {
   is_active: number;
   status: string;
   updated_at: string;
+  metadata: string | null;
   source_language_name?: string;
   target_language_name: string;
   chapter_count: number;
@@ -253,3 +256,8 @@ export const CHAPTER_ASSIGNMENT_STATUS = {
   consultant_check: 'Consultant Check',
   complete: 'Complete',
 } as const;
+
+export type ConnectivityProfile =
+  | 'usually_connected'
+  | 'sometimes_connected'
+  | 'rarely_connected';
