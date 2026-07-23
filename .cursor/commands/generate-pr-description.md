@@ -30,7 +30,7 @@ Every run **must** output a suggested title before the description block. Do not
 | GitHub issue in branch (`…/173-…` or `38-…`) | `#173` | `[#173]: Adopt Phase 1 agent/process docs` |
 | No ticket | descriptive prefix | `Chore: Add Cursor AI rules` |
 
-**Tracker:** GitHub Issues ([docs/issue-tracking.md](../../docs/issue-tracking.md)).
+**Tracker:** Project 4 Fluent Mobile Board ([docs/issue-tracking.md](../../docs/issue-tracking.md)).
 
 ### Title synthesis (apply in order)
 
@@ -128,7 +128,8 @@ Fluent Mobile is **Android-only** for now. Generated PR descriptions must not in
 
 ## Template source
 
-Always read the current [`.cursor/templates/pr-template.md`](../templates/pr-template.md) — do not duplicate template content in this command file.
+**Always** read the current [`.cursor/templates/pr-template.md`](../templates/pr-template.md) — do not duplicate template content in this command file. Filling this template is mandatory for agent-opened PRs ([delivery.mdc](../rules/delivery.mdc)), including when generating a body for manual paste.
+
 
 ## Usage
 

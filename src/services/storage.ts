@@ -23,6 +23,8 @@ export const KV_KEYS = {
   SYNC_ERROR_CHAPTER_ASSIGNMENTS: 'sync_error_chapter_assignments',
   SYNC_ERROR_PROJECT_UNITS: 'sync_error_project_units',
   SYNC_ERROR_BIBLE_TEXTS: 'sync_error_bible_texts',
+  /** ISO timestamp; empty / missing = not paused. */
+  SYNC_PAUSED_UNTIL: 'sync_paused_until',
 } as const;
 
 export function clearUserSession() {
@@ -175,4 +177,26 @@ export function getUserLastSyncedAt(userId: string): string {
 export function setUserLastSyncedAt(userId: string, timestamp: string) {
   kvStorage.setItemSync(`${userId}:last_synced_at`, timestamp);
   log.info('Per-user last synced timestamp updated', { userId, timestamp });
+}
+
+/** End of user pause window (ms since epoch), or null if not paused. */
+export function getSyncPausedUntilMs(): number | null {
+  const raw = kvStorage.getItemSync(KV_KEYS.SYNC_PAUSED_UNTIL);
+  if (!raw) {
+    return null;
+  }
+  const ms = Date.parse(raw);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+export function setSyncPausedUntilMs(ms: number | null): void {
+  if (ms === null) {
+    kvStorage.removeItemSync(KV_KEYS.SYNC_PAUSED_UNTIL);
+    return;
+  }
+  kvStorage.setItemSync(KV_KEYS.SYNC_PAUSED_UNTIL, new Date(ms).toISOString());
+}
+
+export function clearSyncPausedUntil(): void {
+  setSyncPausedUntilMs(null);
 }

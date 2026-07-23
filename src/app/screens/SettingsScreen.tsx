@@ -3,7 +3,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { HardDrive, LogOut, Trash2, UserPlus } from 'lucide-react-native';
+import { HardDrive, LogOut, UserPlus } from 'lucide-react-native';
 import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import {
@@ -17,26 +17,12 @@ import {
   LOGOUT_UNSYNCED_MESSAGE,
   LOGOUT_UNSYNCED_TITLE,
 } from '../../constants/messages';
-import { getPendingUploadCount } from '../../db/queries';
-import { FluentAPI } from '../../services/api';
-import { signOut } from '../../services/authSession';
-import { authToken } from '../../services/authToken';
-import { clearCredentials, getCredentials } from '../../services/keychain';
-import {
-  getActiveUserId,
-  getKnownUserIds,
-  kvStorage,
-  KV_KEYS,
-  switchActiveUser,
-  MAX_DEVICE_ACCOUNTS,
-} from '../../services/storage';
-import { clearAllPausedTakes } from '../../services/pausedTakes';
+import { signOutCurrentDeviceAccount } from '../../services/accountSession';
+import { getKnownUserIds, MAX_DEVICE_ACCOUNTS } from '../../services/storage';
+import { loadPendingUploadCount } from '../../hooks/usePendingUploads';
 import { usePreferences } from '../../hooks/usePreferences';
 import { RootStackParamList } from '../../types/navigation/types';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
-import { logger } from '../../utils/logger';
-
-const log = logger.create('SettingsScreen');
 
 type Nav = StackNavigationProp<RootStackParamList, 'Settings'>;
 
@@ -65,51 +51,16 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
   }, [navigation, atAccountLimit]);
 
   const performLogOut = async () => {
-    const currentUserId = getActiveUserId();
-
-    try {
-      await FluentAPI.signOut();
-    } catch (e) {
-      log.error('Server sign out failed', { error: e });
-    }
-
-    await clearCredentials(currentUserId);
-
-    const remaining = getKnownUserIds().filter(id => id !== currentUserId);
-    kvStorage.setItemSync(KV_KEYS.KNOWN_USER_IDS, remaining.join(','));
-    log.info('User signed out', { userId: currentUserId });
-
-    for (const candidateUserId of remaining) {
-      let creds;
-      try {
-        creds = await getCredentials(candidateUserId);
-      } catch (e) {
-        log.error('Failed to read credentials for candidate account', {
-          userId: candidateUserId,
-          error: e,
-        });
-        continue;
-      }
-
-      if (!creds?.token) {
-        log.error('Skipping candidate account with no usable session', {
-          userId: candidateUserId,
-        });
-        continue;
-      }
-
-      authToken.set(creds.token);
-      switchActiveUser(candidateUserId);
+    const result = await signOutCurrentDeviceAccount();
+    if (result.kind === 'switched') {
       navigation.goBack();
       return;
     }
-
-    signOut();
     onSignOut?.();
   };
 
   const handleLogOut = async () => {
-    const pendingCount = await getPendingUploadCount();
+    const pendingCount = await loadPendingUploadCount();
 
     if (pendingCount > 0) {
       Alert.alert(LOGOUT_UNSYNCED_TITLE, LOGOUT_UNSYNCED_MESSAGE, [
@@ -127,27 +78,6 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
 
     await performLogOut();
   };
-
-  const handleClearCache = useCallback(() => {
-    Alert.alert(
-      'Clear cache?',
-      'Removes paused draft takes stored on this device.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear',
-          style: 'destructive',
-          onPress: () => {
-            void (async () => {
-              const all = await clearAllPausedTakes();
-              log.info('Cache cleared', { all });
-              Alert.alert('Cache cleared', 'Paused draft takes were removed.');
-            })();
-          },
-        },
-      ],
-    );
-  }, []);
 
   const iconColor = theme.colors.foreground;
 
@@ -179,19 +109,6 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
                   subtitle="Use mobile data to upload recordings when WiFi isn't available."
                   value={uploadOverCellular}
                   onValueChange={setUploadOverCellular}
-                />
-              </View>
-              <View style={styles.sectionCard}>
-                <SettingsDestructiveRow
-                  title="Clear cache"
-                  icon={
-                    <Trash2
-                      size={iconSizes.headerTab}
-                      color={theme.colors.destructive}
-                      strokeWidth={listIconStrokeWidth}
-                    />
-                  }
-                  onPress={handleClearCache}
                 />
               </View>
             </View>

@@ -478,6 +478,118 @@ export async function userHasLocalChapterAssignments(
   return Number(result.rows?.[0]?.count ?? 0) > 0;
 }
 
+/** Latest recordings not yet uploaded (`is_latest = 1 AND sync_status != 'uploaded'`). */
+export async function getPendingRecordings(chapter?: {
+  bookId: number;
+  chapterNumber: number;
+}): Promise<DBTypes.PendingRecording[]> {
+  const db = getDatabase();
+  const params: number[] = [];
+  let chapterFilter = '';
+  if (chapter) {
+    chapterFilter = 'AND bt.book_id = ? AND bt.chapter_number = ?';
+    params.push(chapter.bookId, chapter.chapterNumber);
+  }
+
+  const result = await db.execute(
+    `SELECT
+       r.id AS id,
+       r.bible_text_id AS bible_text_id,
+       r.local_file_path AS local_file_path,
+       r.duration_ms AS duration_ms,
+       bt.book_id AS book_id,
+       bt.chapter_number AS chapter_number,
+       (
+         SELECT ca.project_unit_id
+         FROM chapter_assignments ca
+         WHERE ca.bible_id = bt.bible_id
+           AND ca.book_id = bt.book_id
+           AND ca.chapter_number = bt.chapter_number
+         ORDER BY ca.id
+         LIMIT 1
+       ) AS project_unit_id
+     FROM recordings r
+     JOIN bible_texts bt ON bt.id = r.bible_text_id
+     WHERE r.is_latest = 1
+       AND r.sync_status != 'uploaded'
+       ${chapterFilter}
+     ORDER BY bt.book_id, bt.chapter_number, r.bible_text_id`,
+    params,
+  );
+
+  const rows = result.rows ?? [];
+  return rows.map(row => {
+    const projectUnitRaw = row.project_unit_id;
+    const projectUnitId =
+      projectUnitRaw === null || projectUnitRaw === undefined
+        ? null
+        : Number(projectUnitRaw);
+    const durationRaw = row.duration_ms;
+    return {
+      id: String(row.id),
+      bibleTextId: Number(row.bible_text_id),
+      localFilePath: String(row.local_file_path),
+      durationMs:
+        durationRaw === null || durationRaw === undefined
+          ? null
+          : Number(durationRaw),
+      bookId: Number(row.book_id),
+      chapterNumber: Number(row.chapter_number),
+      projectUnitId:
+        projectUnitId !== null && Number.isFinite(projectUnitId)
+          ? projectUnitId
+          : null,
+    };
+  });
+}
+
+export async function setRecordingSyncStatus(
+  id: string,
+  status: DBTypes.RecordingSyncStatus,
+): Promise<void> {
+  const db = getDatabase();
+  const updatedAt = new Date().toISOString();
+  await db.execute(
+    `UPDATE recordings
+     SET sync_status = ?, updated_at = ?
+     WHERE id = ?`,
+    [status, updatedAt, id],
+  );
+}
+
+export async function markRecordingUploaded(
+  id: string,
+  blobKey: string,
+): Promise<void> {
+  const db = getDatabase();
+  const updatedAt = new Date().toISOString();
+  await db.execute(
+    `UPDATE recordings
+     SET sync_status = 'uploaded',
+         blob_key = ?,
+         upload_error = NULL,
+         updated_at = ?
+     WHERE id = ?`,
+    [blobKey, updatedAt, id],
+  );
+}
+
+export async function markRecordingFailed(
+  id: string,
+  uploadError: string,
+): Promise<void> {
+  const db = getDatabase();
+  const updatedAt = new Date().toISOString();
+  await db.execute(
+    `UPDATE recordings
+     SET sync_status = 'failed',
+         upload_error = ?,
+         updated_at = ?
+     WHERE id = ?`,
+    [uploadError, updatedAt, id],
+  );
+}
+
 /** True when the user has project chapters locally but none have assignee/checker set. */
 export async function userNeedsAssigneeRepair(
   userId: number,

@@ -6,7 +6,7 @@ Automated PR creation for **fluent-mobile** when you run `/create-pr`. Creates a
 
 Complements team PR conventions (title `[#NNN]: Description`, verification gates). Does not merge PRs.
 
-**Tracker:** GitHub Issues — [docs/issue-tracking.md](../../docs/issue-tracking.md).
+**Tracker:** Project 4 Fluent Mobile Board — [docs/issue-tracking.md](../../docs/issue-tracking.md).
 
 ## What happens
 
@@ -57,7 +57,9 @@ See [docs/AGENT_ONBOARDING.md](../../docs/AGENT_ONBOARDING.md) for full command 
 
 ## Template
 
-Load [`.cursor/templates/pr-template.md`](../templates/pr-template.md) and pre-fill:
+**Always** load [`.cursor/templates/pr-template.md`](../templates/pr-template.md) and pre-fill — this is mandatory for **every** agent-opened PR in this repo ([delivery.mdc](../rules/delivery.mdc)), not only when this slash command is used. Do not substitute a short Summary/Test plan body.
+
+Pre-fill:
 
 **From GitHub issue:**
 

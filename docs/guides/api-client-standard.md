@@ -39,10 +39,12 @@ Both `publicRequest` and `authedRequest` log sanitized metadata via `summarizeAp
 ## Adding an endpoint
 
 1. Add request/response types under `src/types/api/`.
-2. Add a method on `FluentAPI` using `authedRequest<T>` or `publicRequest<T>`.
+2. Add a method on `FluentAPI` using `authedRequest<T>`, `publicRequest<T>`, or `authedMultipartRequest<T>` (multipart must use `buildMultipartAuthHeaders` — no JSON `Content-Type`).
 3. If the UI needs a one-off network action, wrap in `useMutation` with a key from `queryKeys`.
 4. If sync needs the data, call the new method from `src/services/sync.ts` and persist via `repository.ts`.
-5. Unit-test with mocked `fetch` (see `src/services/api.auth.test.ts`).
+5. Unit-test with mocked `fetch` (see `src/services/api.auth.test.ts`, `api.verseAudio.test.ts`).
+
+Verse audio upload contract (#102): [recordings-sync-contract.md](./recordings-sync-contract.md).
 
 ## Testing
 
