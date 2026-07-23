@@ -70,6 +70,8 @@ export const colors = {
   destructive: '#DC2626',
   /** Record button + live-recording waveform (drafting Record tab). */
   recordAccent: '#DC2626',
+  /** Progress / paused waveform fill (Lovable `--waveform-active`). */
+  waveformActive: hslToHex(219, 87, 59),
   workflowBadgeDraftBorder: '#FBBF24',
   workflowBadgeDraftText: '#1A1A1A',
   workflowBadgePeerCheckBorder: '#EA580C',
@@ -156,6 +158,8 @@ export const typography = {
     md: 16,
     lg: 18,
     xl: 20,
+    /** Record capture timer (`text-4xl` / 2.25rem in Lovable). */
+    display: 32,
   },
   weights: {
     regular: '400' as const,
@@ -166,5 +170,44 @@ export const typography = {
   lineHeights: {
     tight: 20,
     normal: 24,
+  },
+} as const;
+
+/** Record-tab control diameters (Lovable `h-24` / `h-20` / `h-14`). */
+export const recordControlSizes = {
+  idle: 96,
+  primary: 80,
+  stop: 56,
+  secondary: 48,
+} as const;
+
+/**
+ * Decorative waveform chrome (Lovable `flex-1 rounded-full` / `w-1.5 rounded-full`).
+ * Capsule bars that flex across the row — not stubby max-width rectangles.
+ */
+export const waveform = {
+  /** Gap between bars (`gap-0.5` ≈ 2px, slightly roomier for RN). */
+  barGap: 3,
+  barMinWidth: 3,
+  barMinHeight: 4,
+  dockHeight: 28,
+  tallHeight: 72,
+} as const;
+
+/** Soft elevation for white stop control + red record CTA. */
+export const shadows = {
+  soft: {
+    shadowColor: '#000000',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  elevated: {
+    shadowColor: '#000000',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
 } as const;

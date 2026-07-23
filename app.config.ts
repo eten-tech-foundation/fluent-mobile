@@ -29,6 +29,10 @@ const config: ExpoConfig = {
   scheme: 'fluent',
   version: appVersion,
   icon: './assets/icon.png',
+  // Root / window background after splash — white app chrome (not brand blue).
+  // BootSplash cold-start still uses assets/bootsplash (blue).
+  backgroundColor: '#FFFFFF',
+  userInterfaceStyle: 'light',
   updates: {
     url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
     enabled: updatesEnabled,
@@ -73,6 +77,8 @@ const config: ExpoConfig = {
         assetsDir: 'assets/bootsplash',
       },
     ],
+    // After bootsplash → AppTheme, keep window white (avoids Metro blue flash).
+    './plugins/withAppWindowBackground',
     './plugins/withRNScreensFragmentFactory',
     'expo-secure-store',
     'expo-asset',
@@ -82,6 +88,8 @@ const config: ExpoConfig = {
         // Android RECORD_AUDIO via config plugin (recordAudioAndroid defaults true)
         recordAudioAndroid: true,
         enableBackgroundRecording: false,
+        microphonePermission:
+          'Fluent needs access to your microphone so translators can record verse drafts.',
       },
     ],
   ],

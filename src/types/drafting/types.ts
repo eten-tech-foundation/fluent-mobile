@@ -1,1 +1,1 @@
-export type DraftingTab = 'bible' | 'record';
+export type DraftingTab = 'bible' | 'resources' | 'record';

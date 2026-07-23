@@ -33,7 +33,12 @@ export function verseAudioReducer(
       }
       return event.hasTake ? 'recorded' : 'idle';
     case 'START':
-      if (state === 'idle' || state === 'recorded' || state === 'error') {
+      if (
+        state === 'idle' ||
+        state === 'recorded' ||
+        state === 'playing' ||
+        state === 'error'
+      ) {
         return 'recording';
       }
       return state;

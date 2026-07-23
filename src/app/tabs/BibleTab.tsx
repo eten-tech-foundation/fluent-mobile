@@ -11,7 +11,12 @@ import {
 } from 'react-native';
 import { iconSizes, listIconStrokeWidth, theme } from '../../theme';
 
-export function BibleTab() {
+type BibleTabProps = {
+  /** Opens the Record tab for the tapped verse (drafting bottom nav). */
+  onOpenRecord?: () => void;
+};
+
+export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
   const { verses, selectedVerse, setSelectedVerse, currentlyPlayingVerse } =
     useDraftingContext();
   const listRef = useRef<FlatList<VerseData>>(null);
@@ -23,6 +28,14 @@ export function BibleTab() {
       listRef.current?.scrollToIndex({ index: info.index, animated: false });
     });
   }, []);
+
+  const handleVersePress = useCallback(
+    (verseNumber: number) => {
+      setSelectedVerse(verseNumber);
+      onOpenRecord?.();
+    },
+    [onOpenRecord, setSelectedVerse],
+  );
 
   const renderItem = useCallback(
     ({ item }: { item: VerseData }) => {
@@ -37,7 +50,7 @@ export function BibleTab() {
             isSelected && styles.rowSelected,
             isPlaying && styles.rowPlaying,
           ]}
-          onPress={() => setSelectedVerse(item.verseNumber)}
+          onPress={() => handleVersePress(item.verseNumber)}
           activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel={`Verse ${item.verseNumber}${
@@ -67,7 +80,7 @@ export function BibleTab() {
         </TouchableOpacity>
       );
     },
-    [selectedVerse, currentlyPlayingVerse, setSelectedVerse],
+    [selectedVerse, currentlyPlayingVerse, handleVersePress],
   );
 
   return (
@@ -79,14 +92,20 @@ export function BibleTab() {
       initialScrollIndex={initialIndex > 0 ? initialIndex : undefined}
       onScrollToIndexFailed={handleScrollToIndexFailed}
       contentContainerStyle={styles.content}
+      style={styles.list}
       showsVerticalScrollIndicator={false}
     />
   );
 }
 
 const styles = StyleSheet.create({
+  list: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
   content: {
     paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.background,
   },
   row: {
     flexDirection: 'row',
@@ -96,6 +115,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md,
     borderLeftWidth: 3,
     borderLeftColor: 'transparent',
+    backgroundColor: theme.colors.background,
   },
   rowSelected: {
     borderLeftColor: theme.colors.primary,

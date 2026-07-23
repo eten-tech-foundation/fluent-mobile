@@ -2,6 +2,7 @@ import { theme } from '../../theme';
 import { logger } from '../../utils/logger';
 import { BibleTab } from '../tabs/BibleTab';
 import { RecordTab } from '../tabs/RecordTab';
+import { ResourcesTab } from '../tabs/ResourcesTab';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { onSyncComplete } from '../../services/syncEvents';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -10,7 +11,7 @@ import { RootStackParamList } from '../../types/navigation/types';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
 import { DraftingHeader } from '../../components/layout/DraftingHeader';
 import { ChapterAssignmentData, VerseData } from '../../types/db/types';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useActiveAccountSummary } from '../../hooks/useActiveAccountSummary';
@@ -19,10 +20,7 @@ import {
   getLastActiveTab,
   setLastActiveTab,
 } from '../../utils/draftingTabState';
-import {
-  DraftingProvider,
-  // useDraftingContext,
-} from '../context/DraftingContext';
+import { DraftingProvider } from '../context/DraftingContext';
 import {
   DraftingTab,
   DraftingTabBar,
@@ -45,13 +43,24 @@ export default function DraftingScreen() {
   const [activeTab, setActiveTabState] = useState<DraftingTab>(
     () => getLastActiveTab(chapterId) ?? 'bible',
   );
+  /** True while Record tab has an in-progress take (recording/paused). */
+  const [recordCaptureActive, setRecordCaptureActive] = useState(false);
 
   const setActiveTab = useCallback(
     (tab: DraftingTab) => {
+      if (tab === activeTab) return;
+      if (recordCaptureActive && activeTab === 'record' && tab !== 'record') {
+        Alert.alert(
+          'Recording in progress',
+          'Stop or finish the current take before leaving the Record tab.',
+          [{ text: 'OK' }],
+        );
+        return;
+      }
       setActiveTabState(tab);
       setLastActiveTab(chapterId, tab);
     },
-    [chapterId],
+    [activeTab, chapterId, recordCaptureActive],
   );
 
   const [verses, setVerses] = useState<VerseData[]>([]);
@@ -70,7 +79,17 @@ export default function DraftingScreen() {
     setAccountSwitcherVisible(false);
   }, []);
 
-  const goBack = useCallback(() => navigation.goBack(), [navigation]);
+  const goBack = useCallback(() => {
+    if (recordCaptureActive) {
+      Alert.alert(
+        'Recording in progress',
+        'Stop or finish the current take before leaving.',
+        [{ text: 'OK' }],
+      );
+      return;
+    }
+    navigation.goBack();
+  }, [navigation, recordCaptureActive]);
 
   const handleAccountPress = useCallback(() => {
     setAccountSwitcherVisible(true);
@@ -162,9 +181,10 @@ export default function DraftingScreen() {
     };
   }, [chapterId]);
 
+  // Header + tab bar own safe-area insets; keep container white edge-to-edge.
   if (loading) {
     return (
-      <ScreenContainer>
+      <ScreenContainer edges={[]}>
         {renderHeader()}
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -176,7 +196,7 @@ export default function DraftingScreen() {
 
   if (!chapterData) {
     return (
-      <ScreenContainer>
+      <ScreenContainer edges={[]}>
         {renderHeader()}
         <View style={styles.centered}>
           <Text style={styles.emptyText}>No chapter data found</Text>
@@ -187,20 +207,47 @@ export default function DraftingScreen() {
   }
 
   return (
-    <ScreenContainer>
+    <ScreenContainer edges={[]}>
       <DraftingProvider verses={verses} initialVerse={initialVerse}>
         <View style={styles.screen}>
           {renderHeader()}
 
           <View style={styles.content}>
-            {activeTab === 'bible' ? (
-              <BibleTab />
-            ) : (
-              <RecordTab chapterData={chapterData} />
-            )}
+            {/*
+              Keep Record mounted (display:none when inactive) so the native
+              recording session survives Bible/Resources tab switches.
+            */}
+            <View
+              style={[
+                styles.tabPane,
+                activeTab !== 'bible' && styles.tabHidden,
+              ]}
+              pointerEvents={activeTab === 'bible' ? 'auto' : 'none'}
+            >
+              <BibleTab onOpenRecord={() => setActiveTab('record')} />
+            </View>
+            <View
+              style={[
+                styles.tabPane,
+                activeTab !== 'resources' && styles.tabHidden,
+              ]}
+              pointerEvents={activeTab === 'resources' ? 'auto' : 'none'}
+            >
+              <ResourcesTab />
+            </View>
+            <View
+              style={[
+                styles.tabPane,
+                activeTab !== 'record' && styles.tabHidden,
+              ]}
+              pointerEvents={activeTab === 'record' ? 'auto' : 'none'}
+            >
+              <RecordTab
+                chapterData={chapterData}
+                onCaptureActiveChange={setRecordCaptureActive}
+              />
+            </View>
           </View>
-
-          {/* <DraftingPlayerBar verses={verses} /> */}
 
           <DraftingTabBar activeTab={activeTab} onTabChange={setActiveTab} />
         </View>
@@ -217,6 +264,12 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  tabPane: {
+    flex: 1,
+  },
+  tabHidden: {
+    display: 'none',
   },
   centered: {
     flex: 1,
