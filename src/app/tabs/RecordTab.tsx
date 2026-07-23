@@ -398,6 +398,9 @@ export function RecordTab({
                       : verseAudio.play());
                   }}
                   onDelete={handleDelete}
+                  onSeek={ms => {
+                    void verseAudio.seek(ms);
+                  }}
                 />
               ) : null}
               <TouchableOpacity

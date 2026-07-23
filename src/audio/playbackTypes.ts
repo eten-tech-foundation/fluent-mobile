@@ -5,6 +5,8 @@ export type PlayerApi = {
   status: PlayerStatus;
   positionMs: number;
   durationMs: number;
+  /** Prepare URI for seek/play without starting playback (Review scrub). */
+  load(uri: string): Promise<void>;
   play(uri: string): Promise<void>;
   pause(): Promise<void>;
   seek(ms: number): Promise<void>;

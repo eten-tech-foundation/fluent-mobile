@@ -77,6 +77,7 @@ export function usePlaybackEngine(): UsePlaybackEngineApi {
     status,
     positionMs,
     durationMs,
+    load: uri => engine.load(uri),
     play: uri => engine.play(uri),
     pause: () => engine.pause(),
     seek: ms => engine.seek(ms),
