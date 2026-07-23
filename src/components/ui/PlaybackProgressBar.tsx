@@ -1,5 +1,12 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Easing,
+  type GestureResponderEvent,
+  type LayoutChangeEvent,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { theme } from '../../theme';
 
 type Props = {
@@ -16,6 +23,11 @@ type Props = {
    * driver so motion stays smooth; heights are decorative, not mic metering.
    */
   animate?: boolean;
+  /**
+   * Review scrub (#176). When set, tap/drag maps x → ms and calls this.
+   * Ignored while `animate` (live capture) is on.
+   */
+  onSeek?: (positionMs: number) => void;
 };
 
 /** Lovable-style decorative height: sine envelope + light phase noise (0–1). */
@@ -26,6 +38,19 @@ function barAmplitude(index: number, seedMs: number, tall: boolean): number {
   return Math.min(1, Math.max(floor, wave));
 }
 
+/** Map touch x within the waveform width to a clamped playback position. */
+export function scrubPositionMs(
+  locationX: number,
+  width: number,
+  durationMs: number,
+): number {
+  if (width <= 0 || durationMs <= 0) {
+    return 0;
+  }
+  const ratio = Math.min(1, Math.max(0, locationX / width));
+  return Math.round(ratio * durationMs);
+}
+
 /**
  * Waveform decision (#96): **static placeholder bars** keyed to playback
  * position — decorative amplitudes (not mic metering). Optional `animate`
@@ -33,6 +58,8 @@ function barAmplitude(index: number, seedMs: number, tall: boolean): number {
  * replace decorative heights later. Progress fill is real when `durationMs` /
  * `positionMs` come from the playback engine; source-audio dock passes stub
  * values on purpose.
+ *
+ * Optional `onSeek` enables Review scrubbing (#176 / #49 deferred AC).
  */
 export function PlaybackProgressBar({
   positionMs,
@@ -41,9 +68,14 @@ export function PlaybackProgressBar({
   accentColor = theme.colors.primary,
   tall = false,
   animate = false,
+  onSeek,
 }: Props) {
+  const seekable = Boolean(onSeek) && !animate && durationMs > 0;
+  const [trackWidth, setTrackWidth] = useState(0);
+  const [dragMs, setDragMs] = useState<number | null>(null);
+  const displayMs = dragMs ?? positionMs;
   const progress =
-    durationMs > 0 ? Math.min(1, Math.max(0, positionMs / durationMs)) : 0;
+    durationMs > 0 ? Math.min(1, Math.max(0, displayMs / durationMs)) : 0;
   const activeBars = Math.round(progress * barCount);
   const rowHeight = tall
     ? theme.waveform.tallHeight
@@ -115,20 +147,47 @@ export function PlaybackProgressBar({
     };
   }, [animate, barCount]);
 
+  const applySeek = (event: GestureResponderEvent) => {
+    if (!seekable || !onSeek) {
+      return;
+    }
+    const next = scrubPositionMs(
+      event.nativeEvent.locationX,
+      trackWidth,
+      durationMs,
+    );
+    setDragMs(next);
+    onSeek(next);
+  };
+
+  const endSeek = () => {
+    setDragMs(null);
+  };
+
   return (
     <View
       style={[styles.row, { height: rowHeight, gap: theme.waveform.barGap }]}
-      accessibilityRole="progressbar"
+      accessibilityRole={seekable ? 'adjustable' : 'progressbar'}
+      accessibilityLabel={seekable ? 'Draft waveform scrubber' : undefined}
       accessibilityValue={{
         min: 0,
         max: durationMs,
-        now: positionMs,
+        now: displayMs,
       }}
       testID={animate ? 'playback-progress-animated' : 'playback-progress'}
+      onLayout={(e: LayoutChangeEvent) => {
+        setTrackWidth(e.nativeEvent.layout.width);
+      }}
+      onStartShouldSetResponder={() => seekable}
+      onMoveShouldSetResponder={() => seekable}
+      onResponderGrant={applySeek}
+      onResponderMove={applySeek}
+      onResponderRelease={endSeek}
+      onResponderTerminate={endSeek}
     >
       {Array.from({ length: barCount }, (_, i) => {
         // Capture pulse uses a stable seed so timer ticks don't jump heights.
-        const amplitude = barAmplitude(i, animate ? i * 120 : positionMs, tall);
+        const amplitude = barAmplitude(i, animate ? i * 120 : displayMs, tall);
         const baseHeight = Math.round(
           Math.max(
             theme.waveform.barMinHeight,

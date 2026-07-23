@@ -90,6 +90,17 @@ export function createPlaybackEngine(deps: PlaybackEngineDeps): PlaybackEngine {
     }
   }
 
+  async function load(uri: string): Promise<void> {
+    await ensureMode();
+    // `replace` resets currentTime to 0 — only load a new take, not pause→play.
+    if (loadedUri !== uri || !player.isLoaded) {
+      player.replace({ uri });
+      await waitUntilLoaded();
+      loadedUri = uri;
+    }
+    emitPosition();
+  }
+
   return {
     get status() {
       return status;
@@ -103,15 +114,10 @@ export function createPlaybackEngine(deps: PlaybackEngineDeps): PlaybackEngine {
     getStatus() {
       return status;
     },
+    load,
     async play(uri: string) {
-      await ensureMode();
-      // `replace` resets currentTime to 0 — only load a new take, not pause→play.
-      if (loadedUri !== uri || !player.isLoaded) {
-        // Leave prior status until load succeeds so UI does not show "playing" at 0:00.
-        player.replace({ uri });
-        await waitUntilLoaded();
-        loadedUri = uri;
-      }
+      // Leave prior status until load succeeds so UI does not show "playing" at 0:00.
+      await load(uri);
       player.play();
       // Some containers (e.g. raw ADTS) report duration 0 until playback starts.
       await delayMs(100);

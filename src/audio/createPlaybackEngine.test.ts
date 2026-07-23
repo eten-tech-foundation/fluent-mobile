@@ -241,4 +241,27 @@ describe('createPlaybackEngine', () => {
     await engine.play('file:///b.m4a');
     expect(prepareAudioMode).toHaveBeenCalledTimes(1);
   });
+
+  it('load prepares URI without starting playback (Review scrub)', async () => {
+    const player = makeFakePlayer({ durationSec: 3 });
+    const engine = createPlaybackEngine({
+      player,
+      delayMs: async () => undefined,
+    });
+
+    await engine.load('file:///take.m4a');
+    expect(engine.getStatus()).toBe('idle');
+    expect(engine.durationMs).toBe(3000);
+    expect(player.calls).toContain('replace');
+    expect(player.calls).not.toContain('play');
+
+    await engine.seek(1500);
+    expect(engine.positionMs).toBe(1500);
+
+    player.calls.length = 0;
+    await engine.play('file:///take.m4a');
+    expect(player.calls).not.toContain('replace');
+    expect(player.calls).toContain('play');
+    expect(engine.positionMs).toBe(1500);
+  });
 });

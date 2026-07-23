@@ -14,6 +14,8 @@ type DraftTakeRowProps = {
   isPlaying: boolean;
   onPlayPause: () => void;
   onDelete: () => void;
+  /** Review scrub — tap/drag waveform (#176). */
+  onSeek?: (positionMs: number) => void;
 };
 
 /** Design timer: `0:13` (no leading zero on minutes). */
@@ -36,6 +38,7 @@ export function DraftTakeRow({
   isPlaying,
   onPlayPause,
   onDelete,
+  onSeek,
 }: DraftTakeRowProps) {
   const timeLabel =
     durationMs > 0
@@ -75,6 +78,7 @@ export function DraftTakeRow({
           durationMs={durationMs}
           barCount={24}
           accentColor={theme.colors.waveformActive}
+          onSeek={onSeek}
         />
       </View>
       <Text

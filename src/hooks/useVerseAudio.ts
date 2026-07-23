@@ -209,6 +209,37 @@ export function useVerseAudio({
     }
   }, [latest, playback]);
 
+  /**
+   * Review scrub (#176): seek the loaded take (loads without playing if needed).
+   * Accurate absolute seek needs a seekable container (`.m4a`); ADTS remux is #233.
+   */
+  const seek = useCallback(
+    async (ms: number) => {
+      if (!latest?.localFilePath) return;
+      try {
+        const path = latest.localFilePath;
+        const exists = await fileExists(path);
+        if (!exists) {
+          throw new Error(
+            'Take file is missing on disk. Re-record this verse.',
+          );
+        }
+        setErrorMessage(null);
+        await playback.load(path);
+        const capped =
+          typeof latest.durationMs === 'number' && latest.durationMs > 0
+            ? Math.min(Math.max(0, ms), latest.durationMs)
+            : Math.max(0, ms);
+        await playback.seek(capped);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'seek failed';
+        setErrorMessage(message);
+        dispatch({ type: 'ERROR', message });
+      }
+    },
+    [latest, playback],
+  );
+
   /** Pause draft review playback (design review control shows Pause while playing). */
   const pausePlayback = useCallback(async () => {
     try {
@@ -266,6 +297,7 @@ export function useVerseAudio({
     resume,
     stop,
     play,
+    seek,
     pausePlayback,
     deleteCurrent,
   };

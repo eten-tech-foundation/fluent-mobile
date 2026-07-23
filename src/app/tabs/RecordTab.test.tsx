@@ -21,6 +21,7 @@ const idleAudio: VerseAudioApi = {
   resume: jest.fn(),
   stop: jest.fn(),
   play: jest.fn(),
+  seek: jest.fn(),
   pausePlayback: jest.fn(),
   deleteCurrent: jest.fn(),
 };
@@ -125,6 +126,8 @@ describe('RecordTab', () => {
     expect(screen.getByTestId('source-audio-label')).toHaveTextContent(
       'No source audio',
     );
+    // Review scrub surface (#176) — waveform accepts seek gestures.
+    expect(screen.getByLabelText('Draft waveform scrubber')).toBeTruthy();
   });
 
   it('notifies captureActive during recording and clears after stop', async () => {
