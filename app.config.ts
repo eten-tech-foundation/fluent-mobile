@@ -75,6 +75,15 @@ const config: ExpoConfig = {
     ],
     './plugins/withRNScreensFragmentFactory',
     'expo-secure-store',
+    'expo-asset',
+    [
+      'expo-audio',
+      {
+        // Android RECORD_AUDIO via config plugin (recordAudioAndroid defaults true)
+        recordAudioAndroid: true,
+        enableBackgroundRecording: false,
+      },
+    ],
   ],
 };
 
