@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -169,6 +169,32 @@ export async function restoreChapterAssignmentAssignedUserIntegrity(
   });
 }
 
+/**
+ * Add `user_projects.user_id` FK to `users(id)` (#103).
+ * Orphan membership rows (unknown user or project) are dropped so the copy
+ * succeeds with foreign keys enabled.
+ */
+export async function restoreUserProjectsUserIntegrity(
+  db: SqlExecutor,
+): Promise<void> {
+  await rebuildTable(db, {
+    tableName: 'user_projects',
+    createSql: `CREATE TABLE user_projects_new (
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      PRIMARY KEY (user_id, project_id)
+    )`,
+    copySql: `INSERT INTO user_projects_new (user_id, project_id)
+    SELECT up.user_id, up.project_id
+    FROM user_projects up
+    INNER JOIN users u ON u.id = up.user_id
+    INNER JOIN projects p ON p.id = up.project_id`,
+    indexes: [
+      'CREATE INDEX IF NOT EXISTS idx_up_user ON user_projects(user_id)',
+    ],
+  });
+}
+
 /** Ordered schema migrations. Version 1 = current CREATE IF NOT EXISTS baseline. */
 export const migrations: Migration[] = [
   {
@@ -185,6 +211,11 @@ export const migrations: Migration[] = [
     version: 3,
     name: 'chapter_assignment_assigned_user_integrity',
     up: restoreChapterAssignmentAssignedUserIntegrity,
+  },
+  {
+    version: 4,
+    name: 'user_projects_user_integrity',
+    up: restoreUserProjectsUserIntegrity,
   },
 ];
 

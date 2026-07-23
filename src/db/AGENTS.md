@@ -30,7 +30,7 @@ Agents: UI reads here after sync; writes happen only in the repository. See [`.c
 
 - `runMigrations(db)` applies steps with `version > PRAGMA user_version`, once each, in a transaction.
 - Use `rebuildTable()` for SQLite FK/default/type changes (#99 / #103).
-- Current schema version: see `CURRENT_SCHEMA_VERSION` in `migrations.ts` (v3 = `chapter_assignments` assigned-user FK + `idx_ca_assigned_user`).
+- Current schema version: see `CURRENT_SCHEMA_VERSION` in `migrations.ts` (v3 = `chapter_assignments` assigned-user FK + `idx_ca_assigned_user`; v4 = `user_projects.user_id` FK).
 
 ## Recordings linkage
 
