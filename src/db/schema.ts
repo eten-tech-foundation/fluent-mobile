@@ -102,7 +102,7 @@ export const createTableQueries: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_rec_pending    ON recordings(sync_status) WHERE sync_status != 'uploaded';`,
 
   `CREATE TABLE IF NOT EXISTS user_projects (
-  user_id    INTEGER NOT NULL,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   PRIMARY KEY (user_id, project_id)
 );`,

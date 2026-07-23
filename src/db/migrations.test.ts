@@ -7,6 +7,7 @@ import {
   Migration,
   rebuildTable,
   restoreChapterAssignmentAssignedUserIntegrity,
+  restoreUserProjectsUserIntegrity,
   runMigrations,
   setUserVersion,
 } from './migrations';
@@ -112,6 +113,34 @@ function createFakeDb(initialVersion = 0) {
         defaults: new Map(),
       });
     }
+  };
+
+  const ensureProjects = (ids: number[] = [100]) => {
+    if (tables.has('projects')) {
+      return;
+    }
+    tables.set('projects', {
+      columns: new Set(['id', 'name']),
+      rows: ids.map(id => ({ id, name: `Project ${id}` })),
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+  };
+
+  /** Old-shape membership table: no user_id FK (pre-#103). */
+  const ensureOldUserProjects = () => {
+    if (tables.has('user_projects')) {
+      return;
+    }
+    tables.set('user_projects', {
+      columns: new Set(['user_id', 'project_id']),
+      rows: [
+        { user_id: 5, project_id: 100 },
+        { user_id: 999, project_id: 100 },
+      ],
+      foreignKeys: new Map([['project_id', 'projects']]),
+      defaults: new Map(),
+    });
   };
 
   const parseCreateTable = (sql: string): void => {
@@ -238,38 +267,60 @@ function createFakeDb(initialVersion = 0) {
       }
 
       const insertSelectJoinUsers = sql.match(
-        /^INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*SELECT[\s\S]+FROM\s+(\w+)\s+\w+\s+LEFT\s+JOIN\s+users/i,
+        /^INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*SELECT[\s\S]+FROM\s+(\w+)\s+\w+\s+(LEFT|INNER)\s+JOIN\s+users/i,
       );
       if (insertSelectJoinUsers) {
-        const [, dest, destCols, src] = insertSelectJoinUsers;
+        const [, dest, destCols, src, joinType] = insertSelectJoinUsers;
         const source = tables.get(src);
         const target = tables.get(dest);
         const users = tables.get('users');
+        const projects = tables.get('projects');
         if (!source || !target) {
           throw new Error('missing table for copy');
         }
         const cols = destCols.split(',').map(c => c.trim());
         const userIds = new Set((users?.rows ?? []).map(r => r.id));
-        target.rows = source.rows.map(row => {
-          const next: Row = {};
-          for (const col of cols) {
-            let value = (row[col] as string | number | null) ?? null;
-            if (col === 'assigned_user_id' && value !== null) {
-              value = userIds.has(value) ? value : null;
+        const projectIds = new Set((projects?.rows ?? []).map(r => r.id));
+        const requiresProject =
+          /INNER\s+JOIN\s+projects/i.test(sql) && cols.includes('project_id');
+        const isInner = joinType.toUpperCase() === 'INNER';
+
+        target.rows = source.rows
+          .map(row => {
+            const next: Row = {};
+            for (const col of cols) {
+              let value = (row[col] as string | number | null) ?? null;
+              if (col === 'assigned_user_id' && value !== null) {
+                value = userIds.has(value) ? value : null;
+              }
+              if (col === 'status' && (value === null || value === undefined)) {
+                value = 'not_started';
+              }
+              if (
+                (col === 'total_verses' || col === 'completed_verses') &&
+                (value === null || value === undefined)
+              ) {
+                value = 0;
+              }
+              next[col] = value;
             }
-            if (col === 'status' && (value === null || value === undefined)) {
-              value = 'not_started';
+            return next;
+          })
+          .filter(row => {
+            if (isInner && cols.includes('user_id')) {
+              const uid = row.user_id;
+              if (uid === null || uid === undefined || !userIds.has(uid)) {
+                return false;
+              }
             }
-            if (
-              (col === 'total_verses' || col === 'completed_verses') &&
-              (value === null || value === undefined)
-            ) {
-              value = 0;
+            if (requiresProject) {
+              const pid = row.project_id;
+              if (pid === null || pid === undefined || !projectIds.has(pid)) {
+                return false;
+              }
             }
-            next[col] = value;
-          }
-          return next;
-        });
+            return true;
+          });
         return emptyResult();
       }
 
@@ -347,6 +398,11 @@ function createFakeDb(initialVersion = 0) {
         return emptyResult(tables.get('chapter_assignments')!.rows);
       }
 
+      if (/^SELECT\s+\*\s+FROM\s+user_projects/i.test(sql)) {
+        ensureOldUserProjects();
+        return emptyResult(tables.get('user_projects')!.rows);
+      }
+
       // Baseline CREATE statements may include whitespace quirks; ignore unknown DDL in fake.
       if (/^CREATE\s+/i.test(sql) || sql.length === 0) {
         return emptyResult();
@@ -364,7 +420,9 @@ function createFakeDb(initialVersion = 0) {
     _tables: tables,
     _indexes: indexes,
     _seedOldChapterAssignments: ensureChapterAssignmentsOldShape,
+    _seedOldUserProjects: ensureOldUserProjects,
     _seedUsers: ensureUsers,
+    _seedProjects: ensureProjects,
     _seedAssignmentParents: ensureAssignmentParents,
   };
 
@@ -372,7 +430,9 @@ function createFakeDb(initialVersion = 0) {
     _tables: Map<string, FakeTable>;
     _indexes: Set<string>;
     _seedOldChapterAssignments: () => void;
+    _seedOldUserProjects: () => void;
     _seedUsers: (ids?: number[]) => void;
+    _seedProjects: (ids?: number[]) => void;
     _seedAssignmentParents: () => void;
   };
 }
@@ -472,7 +532,7 @@ describe('migrations framework', () => {
     expect(db._tables.get('chapter_assignments')!.defaults.get('status')).toBe(
       'not_started',
     );
-    await expect(getUserVersion(db)).resolves.toBe(3);
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
   });
 
   it('nulls orphan assigned_user_id values during the integrity rebuild', async () => {
@@ -510,6 +570,75 @@ describe('migrations framework', () => {
          VALUES (3, 10, 1, 1, 3, 5, 'not_started', '2024-01-02')`,
       ),
     ).resolves.toBeDefined();
+  });
+
+  it('upgrades an old-shape user_projects table without losing valid rows', async () => {
+    const db = createFakeDb(3);
+    db._seedUsers([5]);
+    db._seedProjects([100]);
+    db._seedOldUserProjects();
+
+    const before = await db.execute('SELECT * FROM user_projects');
+    expect(before.rows).toHaveLength(2);
+    expect(
+      db._tables.get('user_projects')!.foreignKeys.get('user_id'),
+    ).toBeUndefined();
+
+    await runMigrations(db);
+
+    const after = db._tables.get('user_projects')!;
+    expect(after.rows).toHaveLength(1);
+    expect(after.rows[0].user_id).toBe(5);
+    expect(after.rows[0].project_id).toBe(100);
+    expect(after.foreignKeys.get('user_id')).toBe('users');
+    expect(after.foreignKeys.get('project_id')).toBe('projects');
+    expect(db._indexes.has('idx_up_user')).toBe(true);
+    await expect(getUserVersion(db)).resolves.toBe(4);
+  });
+
+  it('drops orphan user_projects rows during the integrity rebuild', async () => {
+    const db = createFakeDb(3);
+    db._seedUsers([5]);
+    db._seedProjects([100]);
+    db._seedOldUserProjects();
+
+    await restoreUserProjectsUserIntegrity(db);
+
+    const rows = db._tables.get('user_projects')!.rows;
+    expect(rows).toHaveLength(1);
+    expect(rows[0].user_id).toBe(5);
+    expect(rows.some(r => r.user_id === 999)).toBe(false);
+  });
+
+  it('rejects INSERT that violates user_projects.user_id FK after rebuild', async () => {
+    const db = createFakeDb(3);
+    db._seedUsers([5]);
+    db._seedProjects([100, 101]);
+    db._seedOldUserProjects();
+
+    await restoreUserProjectsUserIntegrity(db);
+
+    await expect(
+      db.execute(
+        `INSERT INTO user_projects (user_id, project_id) VALUES (999, 100)`,
+      ),
+    ).rejects.toThrow(/FOREIGN KEY constraint failed/);
+
+    await expect(
+      db.execute(
+        `INSERT INTO user_projects (user_id, project_id) VALUES (5, 101)`,
+      ),
+    ).resolves.toBeDefined();
+  });
+
+  it('baseline createTableQueries includes user_projects.user_id FK', () => {
+    const userProjectsSql = createTableQueries.find(q =>
+      q.includes('CREATE TABLE IF NOT EXISTS user_projects'),
+    );
+    expect(userProjectsSql).toBeDefined();
+    expect(userProjectsSql).toMatch(
+      /user_id\s+INTEGER\s+NOT\s+NULL\s+REFERENCES\s+users\s*\(\s*id\s*\)/i,
+    );
   });
 
   it('addColumnIfMissing is a no-op when the column already exists', async () => {
