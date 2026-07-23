@@ -344,6 +344,7 @@ export async function syncBibleTexts(updatedAfter?: string) {
       });
 
       let totalTextsInserted = 0;
+      const db = getDatabase();
 
       for (const [bibleId, chapters] of bibleGroups) {
         log.info('Syncing chapters for bible', {
@@ -355,16 +356,47 @@ export async function syncBibleTexts(updatedAfter?: string) {
           const chunk = chapters.slice(i, i + BIBLE_TEXT_CHUNK_SIZE);
           const chunkIndex = Math.floor(i / BIBLE_TEXT_CHUNK_SIZE);
 
+          // Root cause (#177): incremental `updatedAfter` can return empty payloads
+          // for newly assigned chapters whose verses were never inserted locally.
+          // Force a full chapter fetch when any chapter in the chunk has 0 verses.
+          let cursor = updatedAfter;
+          if (updatedAfter) {
+            for (const chapter of chunk) {
+              const countResult = await db.execute(
+                `SELECT COUNT(*) AS count FROM bible_texts
+                 WHERE bible_id = ? AND book_id = ? AND chapter_number = ?`,
+                [bibleId, chapter.bookId, chapter.chapterNumber],
+              );
+              const count = Number(
+                (countResult.rows?.[0] as { count?: number } | undefined)
+                  ?.count ?? 0,
+              );
+              if (count === 0) {
+                log.warn(
+                  'Chapter missing local bible_texts; full-fetching without cursor',
+                  {
+                    bibleId,
+                    bookId: chapter.bookId,
+                    chapterNumber: chapter.chapterNumber,
+                  },
+                );
+                cursor = undefined;
+                break;
+              }
+            }
+          }
+
           log.info('Fetching chunk', {
             bibleId,
             chunkIndex,
             chunkSize: chunk.length,
+            incremental: Boolean(cursor),
           });
 
           const response = await FluentAPI.getBibleTexts(
             bibleId,
             chunk,
-            updatedAfter,
+            cursor,
           );
 
           const books: ApiBook[] = response.data;
@@ -402,7 +434,6 @@ export async function syncBibleTexts(updatedAfter?: string) {
         }
       }
 
-      const db = getDatabase();
       const result = await db.execute(
         'SELECT COUNT(DISTINCT bible_id) as count FROM bible_texts',
       );
