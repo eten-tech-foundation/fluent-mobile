@@ -11,6 +11,10 @@ import {
   buildVerseAudioFormData,
   verseAudioUploadPath,
 } from './verseAudioFormData';
+import {
+  resetFileSystemMock,
+  writeAsStringAsync,
+} from '../test/mocks/expo-file-system';
 
 const successBody = {
   id: 9,
@@ -49,7 +53,7 @@ describe('verseAudioFormData helpers', () => {
     expect(verseAudioUploadPath(12, 3401)).toBe('/verse-audio/12/3401');
   });
 
-  it('appends file and optional durationSeconds', () => {
+  it('appends file and optional durationSeconds', async () => {
     const append = jest.fn();
     const g = globalThis as GlobalWithFormData;
     const OriginalFormData = g.FormData;
@@ -57,7 +61,7 @@ describe('verseAudioFormData helpers', () => {
 
     try {
       const blob = { __blob: true } as unknown as Blob;
-      buildVerseAudioFormData({ file: blob, durationSeconds: 12.5 });
+      await buildVerseAudioFormData({ file: blob, durationSeconds: 12.5 });
       expect(append).toHaveBeenCalledWith('file', blob);
       expect(append).toHaveBeenCalledWith('durationSeconds', '12.5');
     } finally {
@@ -65,20 +69,35 @@ describe('verseAudioFormData helpers', () => {
     }
   });
 
-  it('accepts React Native uri file parts and omits duration when unset', () => {
+  it('reads uri file parts into an Expo bytes-part before append', async () => {
+    resetFileSystemMock();
+    const uri = 'file:///mock-document/recordings/a.m4a';
+    // ASCII "hi" as base64 — Expo fetch rejects raw `{ uri }` FormData parts,
+    // and RN Blob rejects ArrayBufferView.
+    await writeAsStringAsync(uri, 'aGk=');
+
     const append = jest.fn();
     const g = globalThis as GlobalWithFormData;
     const OriginalFormData = g.FormData;
     g.FormData = jest.fn(() => ({ append })) as unknown as typeof g.FormData;
 
     try {
-      const file = {
-        uri: 'file:///data/recordings/a.m4a',
-        name: 'a.m4a',
-        type: 'audio/mp4',
-      };
-      buildVerseAudioFormData({ file });
-      expect(append).toHaveBeenCalledWith('file', file);
+      await buildVerseAudioFormData({
+        file: {
+          uri,
+          name: 'a.m4a',
+          type: 'audio/mp4',
+        },
+      });
+      expect(append).toHaveBeenCalledWith(
+        'file',
+        expect.objectContaining({
+          name: 'a.m4a',
+          type: 'audio/mp4',
+          bytes: expect.any(Function),
+        }),
+        'a.m4a',
+      );
       expect(append).not.toHaveBeenCalledWith(
         'durationSeconds',
         expect.anything(),
@@ -108,12 +127,28 @@ describe('parseApiErrorBody (verse-audio 503 shape)', () => {
 describe('FluentAPI.uploadVerseAudio', () => {
   const fetchMock = jest.fn();
   const sampleFile = {
-    uri: 'file:///x.m4a',
+    uri: 'file:///mock-document/x.m4a',
     name: 'x.m4a',
     type: 'audio/mp4',
   };
 
-  beforeEach(() => {
+  type GlobalWithFormData = typeof globalThis & {
+    FormData: new () => { append: jest.Mock };
+  };
+
+  let OriginalFormData: GlobalWithFormData['FormData'];
+
+  beforeEach(async () => {
+    resetFileSystemMock();
+    await writeAsStringAsync(sampleFile.uri, 'aGk=');
+
+    // Jest's FormData requires real Blobs; production uses Expo bytes-parts.
+    const g = globalThis as GlobalWithFormData;
+    OriginalFormData = g.FormData;
+    g.FormData = class MockFormData {
+      append = jest.fn();
+    } as unknown as GlobalWithFormData['FormData'];
+
     fetchMock.mockReset();
     jest
       .spyOn(globalThis, 'fetch')
@@ -122,6 +157,7 @@ describe('FluentAPI.uploadVerseAudio', () => {
   });
 
   afterEach(() => {
+    (globalThis as GlobalWithFormData).FormData = OriginalFormData;
     jest.restoreAllMocks();
     authToken.set(null);
   });
@@ -145,7 +181,9 @@ describe('FluentAPI.uploadVerseAudio', () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('http://localhost:9999/verse-audio/12/3401');
     expect(init.method).toBe('PUT');
-    expect(init.body).toBeInstanceOf(FormData);
+    expect(init.body).toEqual(
+      expect.objectContaining({ append: expect.any(Function) }),
+    );
     const headers = init.headers as Record<string, string>;
     expect(headers.Authorization).toBe('Bearer session-token');
     expect(headers['Content-Type']).toBeUndefined();

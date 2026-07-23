@@ -65,9 +65,10 @@ async function signInRequest(
 async function uploadVerseAudioRequest(
   params: UploadVerseAudioParams,
 ): Promise<VerseAudioResponse> {
+  const formData = await buildVerseAudioFormData(params);
   const raw = await authedMultipartRequest<unknown>(
     verseAudioUploadPath(params.projectUnitId, params.bibleTextId),
-    buildVerseAudioFormData(params),
+    formData,
     { method: 'PUT' },
   );
   return parseVerseAudioResponse(raw);

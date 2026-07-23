@@ -11,6 +11,12 @@ const directories = new Set<string>();
 export const documentDirectory = 'file:///mock-document/';
 export const cacheDirectory = 'file:///mock-cache/';
 
+/** Mirrors `expo-file-system/legacy` EncodingType. */
+export const EncodingType = {
+  UTF8: 'utf8',
+  Base64: 'base64',
+} as const;
+
 export function resetFileSystemMock(): void {
   files.clear();
   directories.clear();

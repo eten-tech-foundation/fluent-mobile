@@ -52,7 +52,8 @@ export function usePlaybackEngine(): UsePlaybackEngineApi {
       setStatus('idle');
       return;
     }
-    if (nativeStatus.playing) {
+    // Don't let a late status tick override an explicit engine pause.
+    if (nativeStatus.playing && status !== 'paused') {
       setStatus('playing');
     }
     // Do not map !playing → paused here. After `replace`, the player is briefly
@@ -63,6 +64,7 @@ export function usePlaybackEngine(): UsePlaybackEngineApi {
     nativeStatus.duration,
     nativeStatus.playing,
     nativeStatus.didJustFinish,
+    status,
   ]);
 
   useEffect(() => {
