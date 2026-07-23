@@ -9,6 +9,7 @@ import { logger } from './src/utils/logger';
 import { initializeDatabase } from './src/db/index';
 import { syncAllData } from './src/services/sync';
 import { restoreSession, signOut } from './src/services/authSession';
+import { clearOrphanedPausedTakes } from './src/services/pausedTakes';
 import AppNavigator from './src/navigation/AppNavigator';
 import { onAuthSessionExpired } from './src/services/syncEvents';
 import {
@@ -49,6 +50,10 @@ function App() {
     const initApp = async () => {
       try {
         await initializeDatabase();
+        const removed = await clearOrphanedPausedTakes();
+        if (removed > 0) {
+          log.info('Cleared orphaned paused takes on launch', { removed });
+        }
         const session = await restoreSession();
         setIsAuthenticated(session.authenticated);
         setDbReady(true);
