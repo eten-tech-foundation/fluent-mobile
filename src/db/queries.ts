@@ -23,7 +23,7 @@ const BIBLE_TEXTS_MATCH_CA = `
 `;
 
 /** Recordings are keyed by bible_text_id; join verses for the chapter assignment. */
-const RECORDINGS_JOIN_CA = `
+export const RECORDINGS_JOIN_CA = `
   LEFT JOIN bible_texts bt_r
     ON bt_r.bible_id = ca.bible_id
     AND bt_r.book_id = ca.book_id
