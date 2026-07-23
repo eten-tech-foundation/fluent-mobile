@@ -49,6 +49,20 @@ export function buildHeaders(
   };
 }
 
+/**
+ * Auth headers for multipart uploads. Omits `Content-Type` so the runtime
+ * can set `multipart/form-data` with the correct boundary.
+ */
+export function buildMultipartAuthHeaders(
+  extra?: Record<string, string>,
+): Record<string, string> {
+  const token = authToken.get();
+  return {
+    ...(token && { Authorization: `Bearer ${token}` }),
+    ...extra,
+  };
+}
+
 export async function parseJsonResponse<T>(res: Response): Promise<T> {
   const body = await res.text();
   if (!body.trim()) {
@@ -193,6 +207,28 @@ export async function authedRequest<T>(
     {
       ...options,
       headers: { ...buildHeaders(), ...options?.headers },
+    },
+    true,
+    'API error',
+  ) as Promise<T>;
+}
+
+/** Authenticated multipart POST/PUT — do not set JSON Content-Type. */
+export async function authedMultipartRequest<T>(
+  endpoint: string,
+  body: FormData,
+  options?: Omit<RequestInit, 'body'>,
+): Promise<T> {
+  return executeRequest<T>(
+    endpoint,
+    {
+      method: 'POST',
+      ...options,
+      body,
+      headers: {
+        ...buildMultipartAuthHeaders(),
+        ...options?.headers,
+      },
     },
     true,
     'API error',

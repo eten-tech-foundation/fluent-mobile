@@ -7,9 +7,9 @@ alwaysApply: true
 
 ## Data flow
 
-1. **Launch:** `App.tsx` → `initializeDatabase()` → `syncAllData(email)`
+1. **Launch:** `App.tsx` → `initializeDatabase()` → `restoreSession()` → navigator. Sync runs **post-login** / via sync hooks (`syncAllData` / `syncAllUsers`), not as a required cold-start step.
 2. **Sync:** `sync.ts` calls `FluentAPI`, writes via `repository.ts`, updates KV in `storage.ts`
-3. **UI:** screens call `queries.ts` only for reads
+3. **UI:** screens/hooks call `queries.ts` for reads (prefer hooks over importing queries in screens)
 
 ## Layer boundaries
 
@@ -42,7 +42,7 @@ alwaysApply: true
 
 ## Adding a screen
 
-1. Component in `src/app/tabs/`
+1. Prefer a component in `src/app/screens/` for stack routes (or `src/app/tabs/` for nested drafting/list surfaces)
 2. Route in `AppNavigator.tsx`
 3. Params in `src/types/navigation/types.ts`
 
@@ -54,7 +54,7 @@ alwaysApply: true
 
 ## Navigation stack
 
-`Projects` → `Chapters` (project) → `VerseDetail` (chapter). Pass IDs via route params; load detail in screen `useEffect`.
+Authenticated stack includes Home → project chapters (`ViewProject`) → drafting (`DraftingScreen` / VerseDetail). Pass IDs via route params; load detail in screen `useEffect` / hooks. Sync and Settings are stack destinations.
 
 ## Native (Expo CNG, Android-only)
 
