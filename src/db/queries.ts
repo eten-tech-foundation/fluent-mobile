@@ -517,3 +517,26 @@ export async function getRecordedVerseNumbers(
     return new Set();
   }
 }
+
+/** Resolve `bible_texts.id` for a verse — required for recording persistence. */
+export async function getBibleTextId(
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+  verseNumber: number,
+): Promise<number | null> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT id FROM bible_texts
+       WHERE bible_id = ? AND book_id = ? AND chapter_number = ? AND verse_number = ?
+       LIMIT 1`,
+      [bibleId, bookId, chapterNumber, verseNumber],
+    );
+    const row = (result?.rows as unknown as { id: number }[])?.[0];
+    return row?.id ?? null;
+  } catch (error) {
+    log.error('Error resolving bible_text id', { error });
+    return null;
+  }
+}
