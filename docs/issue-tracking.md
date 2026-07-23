@@ -57,11 +57,11 @@ See [`.cursor/commands/create-pr-branch.md`](../.cursor/commands/create-pr-branc
 
 - **Base branch:** `main`
 - **Title:** `[#NNN]: Short description` (or `#NNN: Short description`) — match existing PR style in this repo
-- **Body:** link the issue under Details:
-  - `Closes #NNN` when the PR **completes** the issue (auto-closes on merge to `main`)
+- **Body:** **required** — fill [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md) (TLDR, Reviewer checklist, Details, Technical changes, Testing, How to verify, Follow-ups). Prefer `/generate-pr-description` or `/create-pr`. Do not ship a short Summary/Test plan substitute.
+  - Under Details: `Closes #NNN` when the PR **completes** the issue (auto-closes on merge to `main`)
   - For related work that must stay open, say “Part of #NNN” in prose, or link manually in the PR sidebar — do not use a closing keyword
 - After opening a PR, set Project 4 Status to **`In PR Review`** (if not already)
-- **Template:** [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md) — generate with `/generate-pr-description` or `/create-pr`
+- **Template source of truth:** [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md) — also required by [delivery.mdc](../.cursor/rules/delivery.mdc); generate with `/generate-pr-description` or `/create-pr`
 
 ### Closing keywords
 

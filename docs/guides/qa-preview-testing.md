@@ -95,4 +95,8 @@ If the app looks unchanged:
 2. Share this guide with QA: `docs/guides/qa-preview-testing.md`
 3. Preview APKs use the EAS `preview` profile (internal distribution, `preview` channel — **not** `developmentClient`).
 
+### Nightly builds (optional)
+
+Separate from PR previews: GitHub Actions can publish a **nightly Android APK** (EAS profile `nightly`, development API). Install from the Slack message or the Actions job summary — **not** from a PR comment. Nightlies are **binary only** (no over-the-air update). See [`.github/README.md`](../../.github/README.md).
+
 Technical details: [`.github/README.md`](../../.github/README.md) · [`.eas/README.md`](../../.eas/README.md)

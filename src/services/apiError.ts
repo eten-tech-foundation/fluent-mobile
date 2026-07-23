@@ -17,6 +17,15 @@ export function parseApiErrorBody(body: string): ParsedApiErrorBody {
     if (typeof parsed.message === 'string') {
       return { message: parsed.message, code };
     }
+    // fluent-api verse-audio 503: `{ error, details }`
+    if (typeof parsed.error === 'string') {
+      const details =
+        typeof parsed.details === 'string' ? parsed.details : undefined;
+      return {
+        message: details ? `${parsed.error}: ${details}` : parsed.error,
+        code,
+      };
+    }
   } catch {
     // fall through to raw body
   }

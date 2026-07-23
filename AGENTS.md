@@ -51,7 +51,7 @@ On feature PRs with heavy agent co-authorship, reviewers should prioritize **sco
 
 ## Related
 
-- Delivery / branch / PR process: [`.cursor/rules/delivery.mdc`](.cursor/rules/delivery.mdc)
+- Delivery / branch / PR process: [`.cursor/rules/delivery.mdc`](.cursor/rules/delivery.mdc) — **PR bodies must use** [`.cursor/templates/pr-template.md`](.cursor/templates/pr-template.md)
 - Issue tracking (Project 4 Fluent Mobile Board): [docs/issue-tracking.md](docs/issue-tracking.md)
 - CI command order: [`.cursor/rules/commands.mdc`](.cursor/rules/commands.mdc)
 - CI inventory: [docs/ci.md](docs/ci.md)

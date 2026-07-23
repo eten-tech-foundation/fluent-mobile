@@ -128,7 +128,8 @@ Fluent Mobile is **Android-only** for now. Generated PR descriptions must not in
 
 ## Template source
 
-Always read the current [`.cursor/templates/pr-template.md`](../templates/pr-template.md) — do not duplicate template content in this command file.
+**Always** read the current [`.cursor/templates/pr-template.md`](../templates/pr-template.md) — do not duplicate template content in this command file. Filling this template is mandatory for agent-opened PRs ([delivery.mdc](../rules/delivery.mdc)), including when generating a body for manual paste.
+
 
 ## Usage
 

@@ -13,10 +13,30 @@ Every change — including infra, CI, docs, Dependabot follow-ups, and `expo ins
 
 1. **Ticket on Project 4** — GitHub Issue `#NNN` **on** the [Fluent Mobile Board](https://github.com/orgs/eten-tech-foundation/projects/4/views/9) (org project #4, view 9). Ask if missing. See [docs/issue-tracking.md](../../docs/issue-tracking.md). The repo Issues list is not the triage board. (Not Linear.)
 2. **Feature branch** — `{author}/{type}/{issue-number}-{slug}` (see `/create-pr-branch`)
-3. **Pull request** — title `[#NNN]: Description`; body `Closes #NNN` under Details when the PR completes the issue; set Project 4 Status to **In PR Review**
+3. **Pull request** — title `[#NNN]: Description`; body filled from the PR template (below); include `Closes #NNN` under Details when the PR completes the issue; set Project 4 Status to **In PR Review**
 4. **Human merge** — agents open PRs and push **feature branches only**; never merge on GitHub unless the user explicitly asks for a Dependabot squash merge in that session
 
 Allowed on `main` locally: `git checkout main`, `git pull`, read-only validation after merges. **Not allowed:** `git push origin main`, commits on `main`, or opening PRs with `main` as the head branch.
+
+## PR body (mandatory)
+
+**Every** agent-opened PR body — whether via `/create-pr`, `gh pr create`, or any other path — **must** be filled from [`.cursor/templates/pr-template.md`](../templates/pr-template.md).
+
+Do **not** substitute a short “Summary / Test plan” or ad-hoc bullet list. Load the template and pre-fill:
+
+| Section | Required content |
+| ------- | ---------------- |
+| **TLDR** | 2–4 sentences: what / why / impact |
+| **Reviewer checklist** | Leave items unchecked unless verified |
+| **Details** | `Closes #NNN` on its own line when the PR completes the issue; short summary; type-of-change checkboxes |
+| **Technical changes** | Key files as `` `path` `` bullets |
+| **Testing** | What gates ran (`format:check`, `lint`, `typecheck`, `npm test -- --ci`) or waiver |
+| **How to verify** | Numbered steps + **Expected** |
+| **Follow-ups** | Deferred AC → linked issues (ticket-level waiver); otherwise say none |
+
+Prefer `/create-pr` or `/generate-pr-description` so the template is not skipped. Keep under ~400 lines; no nested fenced code blocks inside the PR body.
+
+This repo’s template **wins** over generic personal or org-wide PR body shapes when they conflict.
 
 ## Dependabot exception (merge only)
 
@@ -26,4 +46,4 @@ Agent-authored fixes (expo doctor CI, lockfile repair, conflict resolution) stil
 
 ## Before delivery
 
-Run gates from [commands.mdc](./commands.mdc). Also apply delivery judgment from root [`AGENTS.md`](../../AGENTS.md) (AC, scope, abstraction, human QA) — Cursor pointer: [agent-guardrails.mdc](./agent-guardrails.mdc). Use `/create-pr` when the user wants a PR opened.
+Run gates from [commands.mdc](./commands.mdc). Also apply delivery judgment from root [`AGENTS.md`](../../AGENTS.md) (AC, scope, abstraction, human QA) — Cursor pointer: [agent-guardrails.mdc](./agent-guardrails.mdc). Use `/create-pr` when the user wants a PR opened (template still required if opening the PR another way).

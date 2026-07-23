@@ -34,7 +34,7 @@ Keep `.cursor/rules/*.mdc` in sync with onboarding — short pointers only; avoi
 
 ## PR template
 
-[.cursor/templates/pr-template.md](../templates/pr-template.md) — update if required PR sections or verification steps change.
+[.cursor/templates/pr-template.md](../templates/pr-template.md) — update if required PR sections or verification steps change. Agents must fill this template on every PR ([delivery.mdc](./delivery.mdc)).
 
 ## Nested hot-path notes
 
