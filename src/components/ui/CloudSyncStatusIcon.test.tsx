@@ -42,6 +42,8 @@ jest.mock('lucide-react-native', () => {
 const ALL_STATUSES: SyncStatus[] = [
   'online_synced',
   'online_syncing',
+  'online_uploading',
+  'online_failed',
   'online_needs_sync',
   'online_pending',
   'offline_synced',

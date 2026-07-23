@@ -31,9 +31,13 @@ describe('PageHeaderSyncButton', () => {
       <PageHeaderSyncButton syncStatus="online_synced" onPress={onPress} />,
     );
 
-    expect(screen.getByLabelText('Synced. Open Sync page.')).toBeTruthy();
+    expect(
+      screen.getByLabelText('Online · all synced. Open Sync page.'),
+    ).toBeTruthy();
 
-    fireEvent.press(screen.getByLabelText('Synced. Open Sync page.'));
+    fireEvent.press(
+      screen.getByLabelText('Online · all synced. Open Sync page.'),
+    );
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 });
