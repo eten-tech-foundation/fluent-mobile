@@ -24,10 +24,12 @@ log.info('message', { context });
 ## Environment
 
 ```typescript
-import { API_BASE_URL } from '../config/apiBaseUrl';
+import { getApiBaseUrl } from '../config/apiBaseUrl';
+
+const baseUrl = getApiBaseUrl();
 ```
 
-`src/config/apiBaseUrl.ts` requires a non-empty `EXPO_PUBLIC_API_BASE_URL` (set in `.env`; see `.env.example`). Never commit `.env`.
+`src/config/apiBaseUrl.ts` requires a non-empty `EXPO_PUBLIC_API_BASE_URL` (set in `.env`; see `.env.example`). Never commit `.env`. There is **no** named `API_BASE_URL` export from this module.
 
 ## TypeScript
 
@@ -38,8 +40,9 @@ import { API_BASE_URL } from '../config/apiBaseUrl';
 ## React Native
 
 - Functional components + hooks.
-- Shared layout: `src/app/appStyles.ts`.
-- Icons: `@react-native-vector-icons/ionicons`.
+- **Styling:** use `theme` from `src/theme` for new UI (colors, spacing, radius, typography). Do **not** add new hardcoded hex values in new StyleSheets.
+- `src/app/appStyles.ts` is **legacy** shared styles — reuse existing keys if needed, but prefer tokens for anything new; migrate to `theme` when touching a file.
+- Icons: `@react-native-vector-icons/ionicons` and/or `lucide-react-native` (match neighbors).
 - SVG: default import as component (e.g. `FluentLogo`).
 
 ## Prettier (`.prettierrc.cjs`)
