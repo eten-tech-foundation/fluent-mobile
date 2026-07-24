@@ -45,6 +45,7 @@ export interface ApiProject {
   isActive?: boolean;
   status?: string;
   updatedAt?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ApiDataResponse<T> {

@@ -90,6 +90,7 @@ export default function PrepareForOfflineScreen() {
   } else {
     body = (
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Issue 51 adds the resource summary and Download action below this chapter selection; that Download action must call setPrepareOfflineDownloadStarted for the selected project. */}
         <ChapterSelectionAccordion
           title={accordionTitle}
           expanded={accordionExpanded}
