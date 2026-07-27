@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 6;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -169,6 +169,56 @@ export async function restoreChapterAssignmentAssignedUserIntegrity(
   });
 }
 
+/**
+ * Add `user_projects.user_id` FK to `users(id)` (#103).
+ * Orphan membership rows (unknown user or project) are dropped so the copy
+ * succeeds with foreign keys enabled.
+ */
+export async function restoreUserProjectsUserIntegrity(
+  db: SqlExecutor,
+): Promise<void> {
+  await rebuildTable(db, {
+    tableName: 'user_projects',
+    createSql: `CREATE TABLE user_projects_new (
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      PRIMARY KEY (user_id, project_id)
+    )`,
+    copySql: `INSERT INTO user_projects_new (user_id, project_id)
+    SELECT up.user_id, up.project_id
+    FROM user_projects up
+    INNER JOIN users u ON u.id = up.user_id
+    INNER JOIN projects p ON p.id = up.project_id`,
+    indexes: [
+      'CREATE INDEX IF NOT EXISTS idx_up_user ON user_projects(user_id)',
+    ],
+  });
+}
+
+/**
+ * Attribute recordings to the capturing account (#105).
+ * Existing rows stay nullable; new captures set `recorded_by_user_id`.
+ */
+export async function addRecordingsRecordedByUser(
+  db: SqlExecutor,
+): Promise<void> {
+  // Mid-version fixtures may lack `recordings`; production always has it after v1.
+  const info = await db.execute('PRAGMA table_info(recordings)');
+  if (!info.rows.length) {
+    return;
+  }
+  await addColumnIfMissing(
+    db,
+    'recordings',
+    'recorded_by_user_id',
+    'INTEGER REFERENCES users(id)',
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_rec_verse_user
+     ON recordings(bible_text_id, recorded_by_user_id, is_latest)`,
+  );
+}
+
 async function applyProjectMetadataColumn(db: SqlExecutor): Promise<void> {
   await addColumnIfMissing(db, 'projects', 'metadata', 'TEXT');
 }
@@ -194,6 +244,16 @@ export const migrations: Migration[] = [
     version: 4,
     name: 'chapter_assignment_assigned_user_integrity',
     up: restoreChapterAssignmentAssignedUserIntegrity,
+  },
+  {
+    version: 5,
+    name: 'user_projects_user_integrity',
+    up: restoreUserProjectsUserIntegrity,
+  },
+  {
+    version: 6,
+    name: 'recordings_recorded_by_user',
+    up: addRecordingsRecordedByUser,
   },
 ];
 

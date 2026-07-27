@@ -256,6 +256,8 @@ export type RecordingSyncStatus =
 export interface Recording {
   id: string;
   bibleTextId: number;
+  /** Active-user id at capture time (#105); null for pre-attribution rows. */
+  recordedByUserId?: number | null;
   localFilePath: string;
   blobKey?: string | null;
   durationMs?: number | null;
@@ -271,6 +273,7 @@ export interface Recording {
 export interface RecordingRow {
   id: string;
   bible_text_id: number;
+  recorded_by_user_id: number | null;
   local_file_path: string;
   blob_key: string | null;
   duration_ms: number | null;
@@ -296,6 +299,8 @@ export interface PendingRecording {
   chapterNumber: number;
   /** Null when no chapter assignment maps this verse's chapter. */
   projectUnitId: number | null;
+  /** Capture-time owner; upload prefers this account's token (#105). */
+  recordedByUserId: number | null;
 }
 
 export const CHAPTER_ASSIGNMENT_STATUS = {
