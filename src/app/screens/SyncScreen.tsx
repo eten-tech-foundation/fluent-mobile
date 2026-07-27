@@ -9,6 +9,7 @@ import {
   loadPendingUploadCount,
   usePendingUploads,
 } from '../../hooks/usePendingUploads';
+import { useRetryFailedUploads } from '../../hooks/useRetryFailedUploads';
 import { SettingsToggleRow } from '../../components/ui/SettingsListRow';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { UploadProgressBar } from '../../components/ui/UploadProgressBar';
@@ -16,10 +17,12 @@ import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
 import { SyncStatusIndicator } from '../../components/ui/SyncStatusIndicator';
 import { CloudSyncStatusIcon } from '../../components/ui/CloudSyncStatusIcon';
 import { SyncActionControls } from '../../components/ui/SyncActionControls';
+import { formatSyncStatusLabel } from '../../utils/syncStatusState';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 // TODO(#150): status/uploadedChapters/totalChapters/nextRetryAt are mock
-// state until the upload orchestrator owns them.
+// state until the upload orchestrator owns them. Live uploadProgress from
+// #101 session events overrides the mock counts while a pass is in flight.
 export default function SyncScreen() {
   const navigation = useNavigation();
 
@@ -33,7 +36,14 @@ export default function SyncScreen() {
 
   const { isOnline, isWifi } = useConnectivity();
   const { uploadOverCellular, setUploadOverCellular } = usePreferences();
-  const { hasPendingUploads } = usePendingUploads(refreshKey);
+  const {
+    hasPendingUploads,
+    hasFailedUploads,
+    failedCount,
+    isUploading,
+    uploadProgress,
+  } = usePendingUploads(refreshKey);
+  const { retryFailedUploads, isRetrying, lastError } = useRetryFailedUploads();
   const effectivelyOnline = isOnline && (isWifi || uploadOverCellular);
   const cellularBlocked = isOnline && !isWifi && !uploadOverCellular;
 
@@ -64,14 +74,33 @@ export default function SyncScreen() {
     }
   }, [status, cellularBlocked]);
 
-  const runSyncNow = useCallback(() => {
+  useEffect(() => {
+    if (isUploading || isRetrying) {
+      setStatus('syncing');
+    }
+  }, [isUploading, isRetrying]);
+
+  /**
+   * Lovable Sync page "Sync Now" — also the #101 retry affordance.
+   * Re-runs the recording upload worker; metadata sync still runs alongside.
+   */
+  const runSyncNow = useCallback(async () => {
     if (cellularBlocked) {
       return;
     }
-    // TODO(#150): invoke upload-engine Sync Now (clears pause window).
-    triggerSync();
     setStatus('syncing');
-  }, [cellularBlocked, triggerSync]);
+    // Fire-and-forget metadata sync (existing Sync Now behavior).
+    void triggerSync();
+    // #101: re-run upload worker for pending/failed takes (Lovable Sync Now).
+    const result = await retryFailedUploads();
+    setRefreshKey(key => key + 1);
+    if (result && result.failed === 0) {
+      const remaining = await loadPendingUploadCount();
+      setStatus(remaining > 0 ? 'pending' : 'uploadComplete');
+    } else if (!isUploading) {
+      setStatus('pending');
+    }
+  }, [cellularBlocked, triggerSync, retryFailedUploads, isUploading]);
 
   // TODO(#150): invoke upload-engine pause.
   const handlePause = useCallback(() => {
@@ -80,13 +109,16 @@ export default function SyncScreen() {
 
   // TODO(#150): invoke upload-engine resume (distinct from Sync Now pause-window clear).
   const handleResume = useCallback(() => {
-    runSyncNow();
+    void runSyncNow();
   }, [runSyncNow]);
 
   // TODO(#150): invoke upload-engine cancel / clear pause window.
   const handleCancel = useCallback(() => {
     setStatus('pending');
   }, []);
+
+  const progressUploaded = uploadProgress?.completed ?? uploadedChapters;
+  const progressTotal = uploadProgress?.total ?? totalChapters;
 
   return (
     <ScreenContainer edges={['bottom']}>
@@ -97,16 +129,30 @@ export default function SyncScreen() {
             status={status}
             isOnline={effectivelyOnline}
             hasPendingUploads={hasPendingUploads}
+            hasFailedUploads={hasFailedUploads}
+            isUploading={isUploading || isRetrying}
           />
 
-          {renderStatusLine(status, effectivelyOnline, hasPendingUploads)}
+          {renderStatusLine(
+            status,
+            effectivelyOnline,
+            hasPendingUploads,
+            hasFailedUploads,
+            failedCount,
+            isUploading || isRetrying,
+          )}
+          {lastError ? (
+            <Text style={styles.errorText} testID="sync-retry-error">
+              {lastError}
+            </Text>
+          ) : null}
         </View>
 
         <View style={styles.uploadSection}>
           {renderSecondaryContent(
             status,
-            uploadedChapters,
-            totalChapters,
+            progressUploaded,
+            progressTotal,
             nextRetryAt,
           )}
         </View>
@@ -116,13 +162,15 @@ export default function SyncScreen() {
             onPause={handlePause}
             onResume={handleResume}
             onCancel={handleCancel}
-            onSyncNow={runSyncNow}
+            onSyncNow={() => {
+              void runSyncNow();
+            }}
             syncNowDisabled={cellularBlocked}
-            busy={isSyncing}
+            busy={isSyncing || isRetrying || isUploading}
           />
         </View>
         {/*
-          TODO: render the already-drafted downloads queue section here
+          TODO: render the already-drafted downloads void section here
           once its component is available. Per #149, it renders below
           the action controls, and both this section and the
           "Upload complete" state can be visible simultaneously.
@@ -140,22 +188,36 @@ export default function SyncScreen() {
   );
 }
 
-// Shown for every state except 'syncing', which gets its own "Syncing..."
-// wording per the mockups. Otherwise it's the same connectivity+pending
-// text regardless of whether the page happens to be paused, pending, or
-// showing a completion label below — that's the fix for the gap where
-// uploadComplete/allComplete never showed this line at all.
+/**
+ * Status copy mirrors Lovable Sync page (`tmp/lovable-ux/page-sync.json` /
+ * `xT` map in lovable.js): Syncing… / Online · upload pending / etc.
+ * Failed uploads reuse pending chrome with a failure detail + Sync Now retry.
+ */
 function renderStatusLine(
   status: SyncPageStatus,
   isOnline: boolean,
   hasPendingUploads: boolean,
+  hasFailedUploads: boolean,
+  failedCount: number,
+  isUploading: boolean,
 ) {
-  if (status === 'syncing') {
+  if (status === 'syncing' || isUploading) {
     return (
       <>
-        <Text style={styles.statusTitle}>Syncing...</Text>
+        <Text style={styles.statusTitle}>Syncing…</Text>
         <Text style={styles.statusSubtitle}>
           Uploading your recordings to Fluent.
+        </Text>
+      </>
+    );
+  }
+
+  if (hasFailedUploads && isOnline) {
+    return (
+      <>
+        <Text style={styles.statusTitle}>Online · upload pending</Text>
+        <Text style={styles.statusSubtitle}>
+          {formatSyncStatusLabel('online_failed', { failedCount })}
         </Text>
       </>
     );
@@ -338,6 +400,12 @@ const styles = StyleSheet.create({
   statusSubtitle: {
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.mutedForeground,
+    textAlign: 'center',
+  },
+  errorText: {
+    marginTop: theme.spacing.sm,
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.destructive,
     textAlign: 'center',
   },
   retryText: {

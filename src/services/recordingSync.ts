@@ -16,6 +16,7 @@ import {
   blobKeyFromVerseAudioResponse,
   outcomeFromVerseAudioFailure,
 } from './verseAudioContract';
+import { emitUploadSessionEvent } from './syncEvents';
 import {
   setChapterUploadWorker,
   type ChapterUploadWorker,
@@ -226,25 +227,47 @@ async function runUploadPass(
     chapter: options.chapter ?? null,
   });
 
+  const total = pending.length;
+  // Per-recording lifecycle events so UI can refresh without a manual bump.
+  // Chapter-scoped orchestrator sessions also emit; listeners treat both as refresh signals.
+  emitUploadSessionEvent({ type: 'start', totalChapters: total });
+
   let uploaded = 0;
   let failed = 0;
+  let completed = 0;
 
-  for (const recording of pending) {
-    throwIfAborted(options.signal);
-    const result = await uploadOneRecording(recording, {
-      signal: options.signal,
-      delay,
-      maxAttempts,
-    });
-    if (result === 'uploaded') {
-      uploaded += 1;
-    } else {
-      failed += 1;
+  try {
+    for (const recording of pending) {
+      throwIfAborted(options.signal);
+      const result = await uploadOneRecording(recording, {
+        signal: options.signal,
+        delay,
+        maxAttempts,
+      });
+      if (result === 'uploaded') {
+        uploaded += 1;
+      } else {
+        failed += 1;
+      }
+      completed += 1;
+      emitUploadSessionEvent({
+        type: 'progress',
+        completedChapters: completed,
+        totalChapters: total,
+      });
     }
-  }
 
-  log.info('Recording upload pass complete', { uploaded, failed });
-  return { uploaded, failed };
+    emitUploadSessionEvent({ type: 'complete' });
+    log.info('Recording upload pass complete', { uploaded, failed });
+    return { uploaded, failed };
+  } catch (error) {
+    if (isAbortError(error) || options.signal?.aborted) {
+      emitUploadSessionEvent({ type: 'cancelled' });
+    } else {
+      emitUploadSessionEvent({ type: 'idle' });
+    }
+    throw error;
+  }
 }
 
 /**
