@@ -39,6 +39,7 @@ const sampleProjects: ProjectSummary[] = [
     target_language_name: 'Baka',
     chapterCount: 16,
     syncState: 'unsynced',
+    connectivityProfile: null,
   },
   {
     id: 2,
@@ -46,6 +47,7 @@ const sampleProjects: ProjectSummary[] = [
     target_language_name: 'Baka',
     chapterCount: 50,
     syncState: 'none',
+    connectivityProfile: null,
   },
 ];
 

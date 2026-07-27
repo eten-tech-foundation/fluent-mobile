@@ -268,6 +268,21 @@ const GLYPHS: Record<
       animated={options?.animated}
     />
   ),
+  online_uploading: (size, options) => (
+    <CloudSyncingGlyph
+      size={size}
+      cloudColor={options?.cloudColor}
+      animated={options?.animated}
+    />
+  ),
+  online_failed: (size, options) => (
+    <CloudUploadGlyph
+      size={size}
+      cloudColor={options?.cloudColor ?? CLOUD_COLOR}
+      arrowColor={theme.colors.destructive}
+      animated={false}
+    />
+  ),
   online_needs_sync: (size, options) => (
     <CloudNeedsSyncGlyph size={size} cloudColor={options?.cloudColor} />
   ),

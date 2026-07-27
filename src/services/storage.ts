@@ -179,6 +179,37 @@ export function setUserLastSyncedAt(userId: string, timestamp: string) {
   log.info('Per-user last synced timestamp updated', { userId, timestamp });
 }
 
+const prepareOfflineDismissedKey = (userId: string, projectId: number) =>
+  `${userId}:${projectId}:prepareOfflineDismissed`;
+
+const prepareOfflineDownloadStartedKey = (userId: string, projectId: number) =>
+  `${userId}:${projectId}:prepareOfflineDownloadStarted`;
+
+export function getPrepareOfflineDownloadStarted(
+  userId: string,
+  projectId: number,
+): boolean {
+  return (
+    kvStorage.getItemSync(
+      prepareOfflineDownloadStartedKey(userId, projectId),
+    ) === 'true'
+  );
+}
+
+export function setPrepareOfflineDismissed(userId: string, projectId: number) {
+  kvStorage.setItemSync(prepareOfflineDismissedKey(userId, projectId), 'true');
+}
+
+export function setPrepareOfflineDownloadStarted(
+  userId: string,
+  projectId: number,
+) {
+  kvStorage.setItemSync(
+    prepareOfflineDownloadStartedKey(userId, projectId),
+    'true',
+  );
+}
+
 /** End of user pause window (ms since epoch), or null if not paused. */
 export function getSyncPausedUntilMs(): number | null {
   const raw = kvStorage.getItemSync(KV_KEYS.SYNC_PAUSED_UNTIL);

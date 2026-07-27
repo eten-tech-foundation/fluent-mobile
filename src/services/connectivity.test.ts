@@ -49,6 +49,7 @@ describe('connectivity', () => {
     await expect(getConnectivitySnapshot()).resolves.toEqual({
       isOnline: true,
       isWifi: true,
+      isCellular: false,
     });
   });
 
@@ -61,6 +62,7 @@ describe('connectivity', () => {
     await expect(getConnectivitySnapshot()).resolves.toEqual({
       isOnline: true,
       isWifi: false,
+      isCellular: true,
     });
   });
 
@@ -82,13 +84,13 @@ describe('connectivity', () => {
     const unsubscribe = subscribeToConnectivity(listener);
 
     await waitFor(() => {
-      expect(listener).toHaveBeenCalledWith(true, true);
+      expect(listener).toHaveBeenCalledWith(true, true, false);
     });
 
     handlers[0]?.({ isConnected: true, type: 'cellular' });
 
     await waitFor(() => {
-      expect(listener).toHaveBeenCalledWith(true, false);
+      expect(listener).toHaveBeenCalledWith(true, false, true);
     });
 
     unsubscribe();
