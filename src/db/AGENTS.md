@@ -30,4 +30,10 @@ Agents: UI reads here after sync; writes happen only in the repository. See [`.c
 
 - `runMigrations(db)` applies steps with `version > PRAGMA user_version`, once each, in a transaction.
 - Use `rebuildTable()` for SQLite FK/default/type changes (#99 / #103).
-- Current schema version: see `CURRENT_SCHEMA_VERSION` in `migrations.ts`.
+- Current schema version: see `CURRENT_SCHEMA_VERSION` in `migrations.ts` (v3 = `chapter_assignments` assigned-user FK + `idx_ca_assigned_user`).
+
+## Recordings linkage
+
+- Canonical link is `recordings.bible_text_id → bible_texts.id` (not `chapter_assignment_id`).
+- Chapter aggregates join assignments → chapter `bible_texts` → latest recordings (`RECORDINGS_JOIN_CA` in `queries.ts`).
+- Per-user attribution on recordings is #105 — do not add it here.
