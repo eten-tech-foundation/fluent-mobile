@@ -17,5 +17,6 @@ export function mapApiProject(api: ApiProject): Project {
     isActive: api.isActive,
     status: api.status,
     updatedAt: api.updatedAt,
+    metadata: api.metadata,
   };
 }

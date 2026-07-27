@@ -53,7 +53,12 @@ describe('useSyncStatus cellular gate', () => {
   });
 
   it('treats cellular as offline for sync chrome when uploadOverCellular is off', async () => {
-    mockUseConnectivity.mockReturnValue({ isOnline: true, isWifi: false });
+    mockUseConnectivity.mockReturnValue({
+      isOnline: true,
+      isWifi: false,
+      isCellular: true,
+      hasResolved: true,
+    });
     mockUsePreferences.mockReturnValue({
       uploadOverCellular: false,
       preferences: { uploadOverCellular: false },
@@ -73,7 +78,12 @@ describe('useSyncStatus cellular gate', () => {
   });
 
   it('allows cellular when uploadOverCellular is on', async () => {
-    mockUseConnectivity.mockReturnValue({ isOnline: true, isWifi: false });
+    mockUseConnectivity.mockReturnValue({
+      isOnline: true,
+      isWifi: false,
+      isCellular: true,
+      hasResolved: true,
+    });
     mockUsePreferences.mockReturnValue({
       uploadOverCellular: true,
       preferences: { uploadOverCellular: true },

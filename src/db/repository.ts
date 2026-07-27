@@ -215,10 +215,13 @@ export async function insertProjects(data: DBTypes.Project[]) {
 
       if (!sourceLangId || !targetLangId) continue;
 
+      const metadataJson = project.metadata
+        ? JSON.stringify(project.metadata)
+        : null;
       await tx.execute(
         `INSERT OR IGNORE INTO projects
-        (id, name, source_language_id, target_language_id, is_active, status, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        (id, name, source_language_id, target_language_id, is_active, status, updated_at, metadata)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           project.id,
           project.name,
@@ -227,12 +230,13 @@ export async function insertProjects(data: DBTypes.Project[]) {
           project.isActive ? 1 : 0,
           project.status ?? 'not_assigned',
           project.updatedAt ?? new Date().toISOString(),
+          metadataJson,
         ],
       );
       await tx.execute(
         `UPDATE projects SET
           name = ?, source_language_id = ?, target_language_id = ?,
-          is_active = ?, status = ?, updated_at = ?
+          is_active = ?, status = ?, updated_at = ?, metadata = ?
         WHERE id = ?`,
         [
           project.name,
@@ -241,6 +245,7 @@ export async function insertProjects(data: DBTypes.Project[]) {
           project.isActive ? 1 : 0,
           project.status ?? 'not_assigned',
           project.updatedAt ?? new Date().toISOString(),
+          metadataJson,
           project.id,
         ],
       );

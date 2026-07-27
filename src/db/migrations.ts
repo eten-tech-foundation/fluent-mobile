@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -117,6 +117,10 @@ async function applyVerseProgressColumns(db: SqlExecutor): Promise<void> {
   );
 }
 
+async function applyProjectMetadataColumn(db: SqlExecutor): Promise<void> {
+  await addColumnIfMissing(db, 'projects', 'metadata', 'TEXT');
+}
+
 /** Ordered schema migrations. Version 1 = current CREATE IF NOT EXISTS baseline. */
 export const migrations: Migration[] = [
   {
@@ -128,6 +132,11 @@ export const migrations: Migration[] = [
     version: 2,
     name: 'chapter_assignment_verse_progress',
     up: applyVerseProgressColumns,
+  },
+  {
+    version: 3,
+    name: 'project_metadata_column',
+    up: applyProjectMetadataColumn,
   },
 ];
 

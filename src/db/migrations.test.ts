@@ -221,7 +221,7 @@ describe('migrations framework', () => {
   it('applies all migrations from version 0 and sets user_version', async () => {
     const db = createFakeDb(0);
     await runMigrations(db);
-    await expect(getUserVersion(db)).resolves.toBe(2);
+    await expect(getUserVersion(db)).resolves.toBe(3);
   });
 
   it('is idempotent on a second run', async () => {
@@ -301,7 +301,30 @@ describe('migrations framework', () => {
     expect(after.rows).toHaveLength(1);
     expect(after.rows[0].id).toBe(1);
     expect(after.rows[0].status).toBe('in_progress');
-    await expect(getUserVersion(db)).resolves.toBe(2);
+    await expect(getUserVersion(db)).resolves.toBe(3);
+  });
+
+  it('upgrades an old-shape projects table by adding the metadata column', async () => {
+    const db = createFakeDb(0);
+    db._tables.set('projects', {
+      columns: new Set([
+        'id',
+        'name',
+        'source_language_id',
+        'target_language_id',
+        'is_active',
+        'status',
+        'updated_at',
+      ]),
+      rows: [],
+    });
+
+    expect(await columnExists(db, 'projects', 'metadata')).toBe(false);
+
+    await runMigrations(db);
+
+    expect(await columnExists(db, 'projects', 'metadata')).toBe(true);
+    await expect(getUserVersion(db)).resolves.toBe(3);
   });
 
   it('addColumnIfMissing is a no-op when the column already exists', async () => {
