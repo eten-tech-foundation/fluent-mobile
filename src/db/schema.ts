@@ -35,7 +35,8 @@ export const createTableQueries: string[] = [
       target_language_id INTEGER NOT NULL REFERENCES languages(id),
       is_active          INTEGER NOT NULL DEFAULT 1,
       status             TEXT NOT NULL DEFAULT 'not_assigned',
-      updated_at         TEXT NOT NULL
+      updated_at         TEXT NOT NULL,
+      metadata           TEXT
     );`,
 
   `CREATE TABLE IF NOT EXISTS project_units (

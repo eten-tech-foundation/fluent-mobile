@@ -472,7 +472,7 @@ describe('migrations framework', () => {
     expect(db._tables.get('chapter_assignments')!.defaults.get('status')).toBe(
       'not_started',
     );
-    await expect(getUserVersion(db)).resolves.toBe(3);
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
   });
 
   it('nulls orphan assigned_user_id values during the integrity rebuild', async () => {
@@ -510,6 +510,31 @@ describe('migrations framework', () => {
          VALUES (3, 10, 1, 1, 3, 5, 'not_started', '2024-01-02')`,
       ),
     ).resolves.toBeDefined();
+  });
+
+  it('upgrades an old-shape projects table by adding the metadata column', async () => {
+    const db = createFakeDb(0);
+    db._tables.set('projects', {
+      columns: new Set([
+        'id',
+        'name',
+        'source_language_id',
+        'target_language_id',
+        'is_active',
+        'status',
+        'updated_at',
+      ]),
+      rows: [],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+
+    expect(await columnExists(db, 'projects', 'metadata')).toBe(false);
+
+    await runMigrations(db);
+
+    expect(await columnExists(db, 'projects', 'metadata')).toBe(true);
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
   });
 
   it('addColumnIfMissing is a no-op when the column already exists', async () => {
