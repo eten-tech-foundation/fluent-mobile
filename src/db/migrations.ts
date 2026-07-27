@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 5;
+export const CURRENT_SCHEMA_VERSION = 6;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -219,6 +219,10 @@ export async function addRecordingsRecordedByUser(
   );
 }
 
+async function applyProjectMetadataColumn(db: SqlExecutor): Promise<void> {
+  await addColumnIfMissing(db, 'projects', 'metadata', 'TEXT');
+}
+
 /** Ordered schema migrations. Version 1 = current CREATE IF NOT EXISTS baseline. */
 export const migrations: Migration[] = [
   {
@@ -233,16 +237,21 @@ export const migrations: Migration[] = [
   },
   {
     version: 3,
+    name: 'project_metadata_column',
+    up: applyProjectMetadataColumn,
+  },
+  {
+    version: 4,
     name: 'chapter_assignment_assigned_user_integrity',
     up: restoreChapterAssignmentAssignedUserIntegrity,
   },
   {
-    version: 4,
+    version: 5,
     name: 'user_projects_user_integrity',
     up: restoreUserProjectsUserIntegrity,
   },
   {
-    version: 5,
+    version: 6,
     name: 'recordings_recorded_by_user',
     up: addRecordingsRecordedByUser,
   },

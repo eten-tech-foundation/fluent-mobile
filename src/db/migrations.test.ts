@@ -572,12 +572,37 @@ describe('migrations framework', () => {
     ).resolves.toBeDefined();
   });
 
+  it('upgrades an old-shape projects table by adding the metadata column', async () => {
+    const db = createFakeDb(0);
+    db._tables.set('projects', {
+      columns: new Set([
+        'id',
+        'name',
+        'source_language_id',
+        'target_language_id',
+        'is_active',
+        'status',
+        'updated_at',
+      ]),
+      rows: [],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+
+    expect(await columnExists(db, 'projects', 'metadata')).toBe(false);
+
+    await runMigrations(db);
+
+    expect(await columnExists(db, 'projects', 'metadata')).toBe(true);
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
+  });
+
   it('upgrades an old-shape user_projects table without losing valid rows', async () => {
-    const db = createFakeDb(3);
+    const db = createFakeDb(4);
     db._seedUsers([5]);
     db._seedProjects([100]);
     db._seedOldUserProjects();
-    // Pre-v5 recordings shape so migration v5 can ADD COLUMN (#105).
+    // Pre-v6 recordings shape so migration v6 can ADD COLUMN (#105).
     db._tables.set('recordings', {
       columns: new Set([
         'id',
@@ -740,8 +765,8 @@ describe('recordings attribution migration (#105)', () => {
     expect(recordingsSql).toContain('REFERENCES users(id)');
   });
 
-  it('adds recorded_by_user_id when upgrading from v4', async () => {
-    const old = createFakeDb(4);
+  it('adds recorded_by_user_id when upgrading from v5', async () => {
+    const old = createFakeDb(5);
     old._tables.set('recordings', {
       columns: new Set([
         'id',
