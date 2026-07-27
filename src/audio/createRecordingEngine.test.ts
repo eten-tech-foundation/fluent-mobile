@@ -43,6 +43,7 @@ function makeFakeRecorder(): EngineRecorder & {
     },
     record() {
       state.calls.push('record');
+      state._time = 1.25;
     },
     pause() {
       state.calls.push('pause');

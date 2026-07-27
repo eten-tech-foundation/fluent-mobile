@@ -696,5 +696,6 @@ export {
   getLatestRecordingForVerse,
   getTakesForVerse,
   deleteRecordingTake,
+  selectRecordingTake,
 } from './recordingsRepository';
 export type { AddRecordingTakeInput } from './recordingsRepository';

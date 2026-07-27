@@ -1,18 +1,21 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Pause, Play, Trash2 } from 'lucide-react-native';
+import { Circle, CircleCheck, Pause, Play, Trash2 } from 'lucide-react-native';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import { PlaybackProgressBar } from './PlaybackProgressBar';
 import { RecordCircleButton } from './RecordCircleButton';
 
 type DraftTakeRowProps = {
+  id: string;
   takeNumber: number;
-  /** Live engine position (ms). */
+  /** Live engine position (ms) — only meaningful while this take is loaded/playing. */
   positionMs: number;
-  /** Engine duration, or DB fallback from capture (ms). */
+  /** Engine duration while loaded, or DB fallback from capture (ms). */
   durationMs: number;
   isPlaying: boolean;
+  isSelected: boolean;
   onPlayPause: () => void;
+  onSelect: () => void;
   onDelete: () => void;
 };
 
@@ -25,16 +28,21 @@ function formatDuration(ms: number): string {
 }
 
 /**
- * Latest-take row for Record has-draft (Lovable: select / play / waveform / delete).
- * Time + progress are wired to real take playback (`useVerseAudio` → engine).
- * Multi-take list selection stays deferred until more than one take is shown.
+ * Compact take-card row for the Review take list (#71).
+ * Selection indicator (li:circle / li:circle-check) marks the active draft
+ * (`is_latest`); selected card gets a highlighted border. Time + progress are
+ * only live for whichever take is currently loaded into the playback engine
+ * (see `playingTakeId` in `useVerseAudio`) — otherwise this shows the take's
+ * stored duration at 0:00.
  */
 export function DraftTakeRow({
   takeNumber,
   positionMs,
   durationMs,
   isPlaying,
+  isSelected,
   onPlayPause,
+  onSelect,
   onDelete,
 }: DraftTakeRowProps) {
   const timeLabel =
@@ -43,8 +51,34 @@ export function DraftTakeRow({
       : formatDuration(positionMs);
 
   return (
-    <View style={styles.row} testID="record-take-row">
-      <View style={styles.selectedDot} accessibilityLabel="Selected take" />
+    <View
+      style={[styles.row, isSelected && styles.rowSelected]}
+      testID="record-take-row"
+    >
+      <TouchableOpacity
+        onPress={onSelect}
+        accessibilityRole="button"
+        accessibilityLabel={
+          isSelected ? 'Selected take' : 'Select this take as active draft'
+        }
+        accessibilityState={{ selected: isSelected }}
+        hitSlop={8}
+        testID="record-take-select"
+      >
+        {isSelected ? (
+          <CircleCheck
+            size={iconSizes.chevron}
+            color={theme.colors.primary}
+            strokeWidth={listIconStrokeWidth}
+          />
+        ) : (
+          <Circle
+            size={iconSizes.chevron}
+            color={theme.colors.mutedForeground}
+            strokeWidth={listIconStrokeWidth}
+          />
+        )}
+      </TouchableOpacity>
       <Text style={styles.takeLabel} testID="record-take-badge">
         Take {takeNumber}
       </Text>
@@ -112,12 +146,11 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.radius.md,
     backgroundColor: theme.colors.cardBackground,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
-  selectedDot: {
-    width: 8,
-    height: 8,
-    borderRadius: theme.radius.full,
-    backgroundColor: theme.colors.primary,
+  rowSelected: {
+    borderColor: theme.colors.primary,
   },
   takeLabel: {
     fontSize: theme.typography.sizes.sm,

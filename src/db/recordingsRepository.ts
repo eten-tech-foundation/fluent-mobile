@@ -177,6 +177,43 @@ export async function getTakesForVerse(
   return rows.map(mapRecordingRow);
 }
 
+export async function selectRecordingTake(id: string): Promise<void> {
+  const db = getDatabase();
+  const now = new Date().toISOString();
+
+  await db.transaction(async (tx: Transaction) => {
+    const existing = await tx.execute(
+      `SELECT bible_text_id, recorded_by_user_id, is_latest
+       FROM recordings WHERE id = ?`,
+      [id],
+    );
+    const row = existing.rows?.[0] as
+      | {
+          bible_text_id: number;
+          recorded_by_user_id: number | null;
+          is_latest: number;
+        }
+      | undefined;
+    if (!row || row.is_latest === 1) {
+      return;
+    }
+
+    const owner = recordedByClause(row.recorded_by_user_id);
+
+    await tx.execute(
+      `UPDATE recordings SET is_latest = 0, updated_at = ?
+       WHERE bible_text_id = ? AND is_latest = 1 AND ${owner.sql}`,
+      [now, row.bible_text_id, ...owner.params],
+    );
+    await tx.execute(
+      `UPDATE recordings SET is_latest = 1, updated_at = ? WHERE id = ?`,
+      [now, id],
+    );
+  });
+
+  log.info('Recording take selected', { id });
+}
+
 /**
  * Delete a take by id. If it was latest, promote the highest remaining
  * `take_number` for that verse + owner (or leave none latest if empty).

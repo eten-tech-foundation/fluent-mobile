@@ -3,10 +3,12 @@ import * as FileSystem from 'expo-file-system/legacy';
 import {
   addRecordingTake,
   deleteRecordingTake,
-  getLatestRecordingForVerse,
+  getTakesForVerse,
+  selectRecordingTake,
 } from '../db/repository';
 import type { Recording } from '../types/db/types';
 import {
+  deleteFile,
   ensureRecordingsDir,
   fileExists,
   fileSize,
@@ -26,8 +28,9 @@ export type VerseAudioPersistDeps = {
     tempUri: string;
     durationMs: number;
   }) => Promise<{ id: string; localFilePath: string }>;
-  loadLatest?: (bibleTextId: number) => Promise<Recording | null>;
+  loadTakes?: (bibleTextId: number) => Promise<Recording[]>;
   deleteTake?: (id: string) => Promise<void>;
+  selectTake?: (id: string) => Promise<void>;
 };
 
 export type UseVerseAudioArgs = {
@@ -62,8 +65,9 @@ async function defaultPersistTake(args: {
 export function useVerseAudio({
   bibleTextId,
   persistTake = defaultPersistTake,
-  loadLatest = getLatestRecordingForVerse,
-  deleteTake = deleteRecordingTake,
+  loadTakes = getTakesForVerse,
+  deleteTake: deleteTakeFn = deleteRecordingTake,
+  selectTake: selectTakeFn = selectRecordingTake,
 }: UseVerseAudioArgs) {
   const recording = useRecordingEngine();
   const playback = usePlaybackEngine();
@@ -71,26 +75,28 @@ export function useVerseAudio({
     verseAudioReducer,
     'idle' as VerseAudioState,
   );
-  const [latest, setLatest] = useState<Recording | null>(null);
+  const [takes, setTakes] = useState<Recording[]>([]);
+  const [playingTakeId, setPlayingTakeId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  /** Stable verse id for the in-flight take — stop must not no-op if lookup clears. */
   const captureBibleTextIdRef = useRef<number | null>(null);
+
+  const selectedTake = takes.find(t => t.isLatest) ?? null;
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (bibleTextId === null) {
-        setLatest(null);
+        setTakes([]);
         dispatch({ type: 'REHYDRATE', hasTake: false });
         return;
       }
       try {
-        const row = await loadLatest(bibleTextId);
+        const rows = await loadTakes(bibleTextId);
         if (cancelled) return;
-        setLatest(row);
-        dispatch({ type: 'REHYDRATE', hasTake: Boolean(row) });
+        setTakes(rows);
+        dispatch({ type: 'REHYDRATE', hasTake: rows.length > 0 });
       } catch (error) {
-        log.error('Failed to load latest take', { error });
+        log.error('Failed to load takes', { error });
         if (!cancelled) {
           dispatch({
             type: 'ERROR',
@@ -102,7 +108,7 @@ export function useVerseAudio({
     return () => {
       cancelled = true;
     };
-  }, [bibleTextId, loadLatest]);
+  }, [bibleTextId, loadTakes]);
 
   const start = useCallback(async () => {
     if (bibleTextId === null) return;
@@ -114,6 +120,7 @@ export function useVerseAudio({
       } catch {
         // Ignore — recorder start below is what matters.
       }
+      setPlayingTakeId(null);
       captureBibleTextIdRef.current = bibleTextId;
       await recording.start();
       dispatch({ type: 'START' });
@@ -152,29 +159,11 @@ export function useVerseAudio({
     const id = captureBibleTextIdRef.current ?? bibleTextId;
     if (id === null) return;
     try {
-      // Release the native mic first so captureActive / navigation guards only
-      // clear after Android no longer considers us recording.
       const { uri, durationMs } = await recording.stop();
       dispatch({ type: 'STOP' });
-      const saved = await persistTake({
-        bibleTextId: id,
-        tempUri: uri,
-        durationMs,
-      });
-      const row =
-        (await loadLatest(id)) ??
-        ({
-          id: saved.id,
-          bibleTextId: id,
-          localFilePath: saved.localFilePath,
-          takeNumber: 1,
-          isLatest: true,
-          syncStatus: 'pending',
-          durationMs,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        } satisfies Recording);
-      setLatest(row);
+      await persistTake({ bibleTextId: id, tempUri: uri, durationMs });
+      const rows = await loadTakes(id);
+      setTakes(rows);
       captureBibleTextIdRef.current = null;
       dispatch({ type: 'SAVED' });
     } catch (error) {
@@ -183,33 +172,38 @@ export function useVerseAudio({
       setErrorMessage(message);
       dispatch({ type: 'ERROR', message });
     }
-  }, [bibleTextId, loadLatest, persistTake, recording]);
+  }, [bibleTextId, loadTakes, persistTake, recording]);
 
-  const play = useCallback(async () => {
-    if (!latest?.localFilePath) return;
-    try {
-      const path = latest.localFilePath;
-      const exists = await fileExists(path);
-      if (!exists) {
-        throw new Error('Take file is missing on disk. Re-record this verse.');
+  const playTake = useCallback(
+    async (take: Recording) => {
+      try {
+        const path = take.localFilePath;
+        const exists = await fileExists(path);
+        if (!exists) {
+          throw new Error(
+            'Take file is missing on disk. Re-record this verse.',
+          );
+        }
+        const size = await fileSize(path);
+        if (size === undefined || size <= 0) {
+          throw new Error(
+            'Take file is empty (0 bytes). Re-record this verse.',
+          );
+        }
+        setErrorMessage(null);
+        await playback.play(path);
+        setPlayingTakeId(take.id);
+        dispatch({ type: 'PLAY' });
+      } catch (error) {
+        setPlayingTakeId(null);
+        const message = error instanceof Error ? error.message : 'play failed';
+        setErrorMessage(message);
+        dispatch({ type: 'ERROR', message });
       }
-      const size = await fileSize(path);
-      if (size === undefined || size <= 0) {
-        throw new Error('Take file is empty (0 bytes). Re-record this verse.');
-      }
-      setErrorMessage(null);
-      // Dispatch PLAY only after the engine confirms load + non-zero duration
-      // so the take row never shows "playing" stuck at 0:00.
-      await playback.play(path);
-      dispatch({ type: 'PLAY' });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'play failed';
-      setErrorMessage(message);
-      dispatch({ type: 'ERROR', message });
-    }
-  }, [latest, playback]);
+    },
+    [playback],
+  );
 
-  /** Pause draft review playback (design review control shows Pause while playing). */
   const pausePlayback = useCallback(async () => {
     try {
       await playback.pause();
@@ -228,45 +222,73 @@ export function useVerseAudio({
   useEffect(() => {
     if (state === 'playing' && playback.status === 'idle') {
       dispatch({ type: 'PLAYBACK_END' });
+      setPlayingTakeId(null);
     }
   }, [state, playback.status]);
 
-  const deleteCurrent = useCallback(async () => {
-    try {
-      await playback.stop();
-      if (latest) {
-        await deleteTake(latest.id);
+  const deleteTake = useCallback(
+    async (id: string) => {
+      try {
+        const target = takes.find(t => t.id === id);
+        if (playingTakeId === id) {
+          await playback.stop();
+          setPlayingTakeId(null);
+        }
+        await deleteTakeFn(id);
+        if (target?.localFilePath) {
+          await deleteFile(target.localFilePath).catch(() => {
+            // best-effort — DB row is already gone, don't block the UI on a stray file
+          });
+        }
+        const rows = bibleTextId !== null ? await loadTakes(bibleTextId) : [];
+        setTakes(rows);
+        dispatch(
+          rows.length > 0
+            ? { type: 'REHYDRATE', hasTake: true }
+            : { type: 'DELETE' },
+        );
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'delete failed';
+        setErrorMessage(message);
+        dispatch({ type: 'ERROR', message });
       }
-      setLatest(null);
-      dispatch({ type: 'DELETE' });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'delete failed';
-      setErrorMessage(message);
-      dispatch({ type: 'ERROR', message });
-    }
-  }, [deleteTake, latest, playback]);
+    },
+    [bibleTextId, loadTakes, playback, playingTakeId, takes, deleteTakeFn],
+  );
 
-  // Prefer live player duration; fall back to DB duration from capture so the
-  // take row can show a real length before/without a successful play().
-  const storedDurationMs =
-    typeof latest?.durationMs === 'number' && latest.durationMs > 0
-      ? latest.durationMs
-      : 0;
-  const durationMs =
-    playback.durationMs > 0 ? playback.durationMs : storedDurationMs;
+  const selectTake = useCallback(
+    async (id: string) => {
+      try {
+        await selectTakeFn(id);
+        if (bibleTextId !== null) {
+          setTakes(await loadTakes(bibleTextId));
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'select failed';
+        setErrorMessage(message);
+        dispatch({ type: 'ERROR', message });
+      }
+    },
+    [bibleTextId, loadTakes, selectTakeFn],
+  );
 
   return {
     state,
-    latest,
+    takes,
+    selectedTake,
+    playingTakeId,
     errorMessage,
     positionMs: playback.positionMs,
-    durationMs,
+    durationMs: playback.durationMs,
     start,
     pause,
     resume,
     stop,
-    play,
+    playTake,
     pausePlayback,
-    deleteCurrent,
+    selectTake,
+    deleteTake,
   };
 }
