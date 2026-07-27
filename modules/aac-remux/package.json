@@ -1,0 +1,10 @@
+{
+  "name": "aac-remux",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lossless ADTS AAC → seekable M4A remux via Android MediaMuxer",
+  "main": "src/index.ts",
+  "peerDependencies": {
+    "expo": "*"
+  }
+}

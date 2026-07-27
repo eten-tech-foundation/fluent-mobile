@@ -12,6 +12,7 @@ import {
   fileSize,
   recordingPath,
 } from '../utils/audioStorage';
+import { getRemuxNativeModule } from '../audio/aacRemux';
 import { ensureSeekableTakeUri } from '../audio/ensureSeekableTakeUri';
 import { logger } from '../utils/logger';
 import { usePlaybackEngine } from './usePlaybackEngine';
@@ -44,7 +45,11 @@ async function defaultPersistTake(args: {
     .toString(36)
     .slice(2, 10)}`;
   const dest = recordingPath(id);
-  const seekableUri = await ensureSeekableTakeUri(args.tempUri);
+  // Inject native MediaMuxer remux when linked (#233); ADTS stays playable if missing.
+  const seekableUri = await ensureSeekableTakeUri(
+    args.tempUri,
+    getRemuxNativeModule(),
+  );
   await FileSystem.copyAsync({ from: seekableUri, to: dest });
   await addRecordingTake({
     id,
@@ -211,7 +216,8 @@ export function useVerseAudio({
 
   /**
    * Review scrub (#176): seek the loaded take (loads without playing if needed).
-   * Accurate absolute seek needs a seekable container (`.m4a`); ADTS remux is #233.
+   * Accurate absolute seek needs a seekable container (`.m4a`); ADTS takes are
+   * remuxed via {@link getRemuxNativeModule} on commit (#233).
    */
   const seek = useCallback(
     async (ms: number) => {
