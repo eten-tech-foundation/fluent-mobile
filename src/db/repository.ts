@@ -555,6 +555,7 @@ export async function getPendingRecordings(chapter?: {
        r.bible_text_id AS bible_text_id,
        r.local_file_path AS local_file_path,
        r.duration_ms AS duration_ms,
+       r.recorded_by_user_id AS recorded_by_user_id,
        bt.book_id AS book_id,
        bt.chapter_number AS chapter_number,
        (
@@ -583,6 +584,11 @@ export async function getPendingRecordings(chapter?: {
         ? null
         : Number(projectUnitRaw);
     const durationRaw = row.duration_ms;
+    const recordedByRaw = row.recorded_by_user_id;
+    const recordedByUserId =
+      recordedByRaw === null || recordedByRaw === undefined
+        ? null
+        : Number(recordedByRaw);
     return {
       id: String(row.id),
       bibleTextId: Number(row.bible_text_id),
@@ -596,6 +602,10 @@ export async function getPendingRecordings(chapter?: {
       projectUnitId:
         projectUnitId !== null && Number.isFinite(projectUnitId)
           ? projectUnitId
+          : null,
+      recordedByUserId:
+        recordedByUserId !== null && Number.isFinite(recordedByUserId)
+          ? recordedByUserId
           : null,
     };
   });

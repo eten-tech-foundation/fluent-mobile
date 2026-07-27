@@ -12,6 +12,7 @@ import { logger } from '../utils/logger';
 import { FluentAPI } from './api';
 import { isAuthError } from './authError';
 import { authToken } from './authToken';
+import { getCredentials } from './keychain';
 import {
   blobKeyFromVerseAudioResponse,
   outcomeFromVerseAudioFailure,
@@ -83,15 +84,42 @@ async function assertLocalFileExists(localFilePath: string): Promise<void> {
   }
 }
 
+/**
+ * Prefer the capture-time owner's stored token so upload attribution stays
+ * stable even if another account is active (#105). Falls back to the pass token.
+ */
+export async function resolveUploadTokenForRecording(
+  recording: PendingRecording,
+  fallbackToken: string,
+): Promise<string> {
+  if (
+    recording.recordedByUserId === null ||
+    !Number.isFinite(recording.recordedByUserId)
+  ) {
+    return fallbackToken;
+  }
+  const creds = await getCredentials(String(recording.recordedByUserId));
+  if (creds?.token) {
+    return creds.token;
+  }
+  log.warn('Owner credentials missing; using active pass token', {
+    recordingId: recording.id,
+    recordedByUserId: recording.recordedByUserId,
+  });
+  return fallbackToken;
+}
+
 async function uploadOneRecording(
   recording: PendingRecording,
   options: {
     signal?: AbortSignal;
     delay: (ms: number) => Promise<void>;
     maxAttempts: number;
+    /** Token for this recording (owner preferred). */
+    token: string;
   },
 ): Promise<'uploaded' | 'failed'> {
-  const { signal, delay, maxAttempts } = options;
+  const { signal, delay, maxAttempts, token } = options;
 
   throwIfAborted(signal);
 
@@ -113,6 +141,7 @@ async function uploadOneRecording(
     return 'failed';
   }
 
+  authToken.set(token);
   await setRecordingSyncStatus(recording.id, 'uploading');
 
   let lastMessage = 'Upload failed';
@@ -146,6 +175,7 @@ async function uploadOneRecording(
       log.info('Recording uploaded', {
         recordingId: recording.id,
         blobKey,
+        recordedByUserId: recording.recordedByUserId,
       });
       // Abort after a successful put still counts as uploaded (server has bytes).
       throwIfAborted(signal);
@@ -231,10 +261,12 @@ async function runUploadPass(
 
   for (const recording of pending) {
     throwIfAborted(options.signal);
+    const uploadToken = await resolveUploadTokenForRecording(recording, token);
     const result = await uploadOneRecording(recording, {
       signal: options.signal,
       delay,
       maxAttempts,
+      token: uploadToken,
     });
     if (result === 'uploaded') {
       uploaded += 1;
@@ -250,6 +282,9 @@ async function runUploadPass(
 /**
  * Upload latest pending recordings (optionally filtered to one chapter).
  * Single-flight: overlapping calls share the in-flight promise.
+ *
+ * Attribution (#105): each recording uploads under its `recorded_by_user_id`
+ * token when credentials exist; otherwise the pass `token` is used.
  */
 export async function syncPendingRecordings(
   token: string,

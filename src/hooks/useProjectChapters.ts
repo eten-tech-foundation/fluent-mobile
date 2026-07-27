@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getProjectChapters } from '../db/queries';
 import { ProjectChapter } from '../types/db/types';
+import { parseUserId } from '../utils/parseUserId';
 import { logger } from '../utils/logger';
 
 const log = logger.create('useProjectChapters');
@@ -14,7 +15,12 @@ export function useProjectChapters(projectId: number) {
   const loadChapters = useCallback(async () => {
     try {
       setError(null);
-      setChapters(await getProjectChapters(projectId));
+      const userId = parseUserId();
+      if (userId === null) {
+        setChapters([]);
+        return;
+      }
+      setChapters(await getProjectChapters(projectId, userId));
     } catch (err) {
       log.error('Error loading project chapters:', { error: err, projectId });
       setError(err);

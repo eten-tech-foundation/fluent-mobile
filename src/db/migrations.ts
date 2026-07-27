@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -195,6 +195,30 @@ export async function restoreUserProjectsUserIntegrity(
   });
 }
 
+/**
+ * Attribute recordings to the capturing account (#105).
+ * Existing rows stay nullable; new captures set `recorded_by_user_id`.
+ */
+export async function addRecordingsRecordedByUser(
+  db: SqlExecutor,
+): Promise<void> {
+  // Mid-version fixtures may lack `recordings`; production always has it after v1.
+  const info = await db.execute('PRAGMA table_info(recordings)');
+  if (!info.rows.length) {
+    return;
+  }
+  await addColumnIfMissing(
+    db,
+    'recordings',
+    'recorded_by_user_id',
+    'INTEGER REFERENCES users(id)',
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_rec_verse_user
+     ON recordings(bible_text_id, recorded_by_user_id, is_latest)`,
+  );
+}
+
 /** Ordered schema migrations. Version 1 = current CREATE IF NOT EXISTS baseline. */
 export const migrations: Migration[] = [
   {
@@ -216,6 +240,11 @@ export const migrations: Migration[] = [
     version: 4,
     name: 'user_projects_user_integrity',
     up: restoreUserProjectsUserIntegrity,
+  },
+  {
+    version: 5,
+    name: 'recordings_recorded_by_user',
+    up: addRecordingsRecordedByUser,
   },
 ];
 
