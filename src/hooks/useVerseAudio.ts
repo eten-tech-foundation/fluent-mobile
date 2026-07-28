@@ -21,6 +21,7 @@ import { useRecordingEngine } from './useRecordingEngine';
 import { verseAudioReducer, type VerseAudioState } from './verseAudioReducer';
 
 const log = logger.create('useVerseAudio');
+const MAX_TAKES = 5;
 
 export type VerseAudioPersistDeps = {
   persistTake?: (args: {
@@ -49,11 +50,13 @@ async function defaultPersistTake(args: {
   const dest = recordingPath(id);
   const seekableUri = await ensureSeekableTakeUri(args.tempUri);
   await FileSystem.copyAsync({ from: seekableUri, to: dest });
+  const fileSizeBytes = await fileSize(dest);
   await addRecordingTake({
     id,
     bibleTextId: args.bibleTextId,
     localFilePath: dest,
     durationMs: args.durationMs,
+    fileSizeBytes,
   });
   return { id, localFilePath: dest };
 }
@@ -81,6 +84,7 @@ export function useVerseAudio({
   const captureBibleTextIdRef = useRef<number | null>(null);
 
   const selectedTake = takes.find(t => t.isLatest) ?? null;
+  const canRecordNewTake = takes.length < MAX_TAKES;
 
   useEffect(() => {
     let cancelled = false;
@@ -112,6 +116,13 @@ export function useVerseAudio({
 
   const start = useCallback(async () => {
     if (bibleTextId === null) return;
+
+    if (!canRecordNewTake) {
+      setErrorMessage(
+        'Maximum of 5 takes reached. Delete a take before recording another.',
+      );
+      return;
+    }
     try {
       // Stop review playback first so re-record from `playing` can transition
       // and so audio mode is free for the mic (see createRecordingEngine).
@@ -131,7 +142,7 @@ export function useVerseAudio({
       setErrorMessage(message);
       dispatch({ type: 'ERROR', message });
     }
-  }, [bibleTextId, playback, recording]);
+  }, [bibleTextId, canRecordNewTake, playback, recording]);
 
   const pause = useCallback(async () => {
     try {
@@ -278,6 +289,7 @@ export function useVerseAudio({
     state,
     takes,
     selectedTake,
+    canRecordNewTake,
     playingTakeId,
     errorMessage,
     positionMs: playback.positionMs,

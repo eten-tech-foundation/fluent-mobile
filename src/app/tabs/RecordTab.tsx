@@ -304,7 +304,7 @@ export function RecordTab({
                 onPress={() => {
                   void handleStart();
                 }}
-                disabled={recordDisabled}
+                disabled={recordDisabled || !verseAudio.canRecordNewTake}
                 accessibilityLabel={`Record ${reference}`}
                 testID="record-start-button"
               >
@@ -429,12 +429,13 @@ export function RecordTab({
               <TouchableOpacity
                 style={[
                   styles.newTakeButton,
-                  recordDisabled && styles.disabled,
+                  (recordDisabled || !verseAudio.canRecordNewTake) &&
+                    styles.disabled,
                 ]}
                 onPress={() => {
                   void handleRecordNewTake();
                 }}
-                disabled={recordDisabled}
+                disabled={recordDisabled || !verseAudio.canRecordNewTake}
                 accessibilityRole="button"
                 accessibilityLabel="Record new take"
                 testID="record-new-take-button"
