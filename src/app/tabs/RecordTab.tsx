@@ -158,15 +158,9 @@ export function RecordTab({
     await verseAudio.stop();
   }
 
-  async function handleRecordNewTake() {
-    if (!(await ensureMic())) return;
-    setElapsedMs(0);
-    await verseAudio.start();
-  }
-
   /**
    * Non-selected take: delete immediately, no prompt.
-   * Selected take: confirm first — deleting it hands off is_latest to the
+   * Selected take: confirm first — deleting it hands off is_selected to the
    * next-highest take_number (recordingsRepository#deleteRecordingTake), or
    * returns the unit to Idle if it was the last one.
    */
@@ -402,7 +396,6 @@ export function RecordTab({
                       isLoaded && verseAudio.state === 'playing';
                     return (
                       <DraftTakeRow
-                        id={take.id}
                         takeNumber={take.takeNumber}
                         isSelected={isSelected}
                         isPlaying={isThisPlaying}
@@ -433,7 +426,7 @@ export function RecordTab({
                     styles.disabled,
                 ]}
                 onPress={() => {
-                  void handleRecordNewTake();
+                  void handleStart();
                 }}
                 disabled={recordDisabled || !verseAudio.canRecordNewTake}
                 accessibilityRole="button"

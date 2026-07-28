@@ -541,7 +541,12 @@ export async function userHasLocalChapterAssignments(
   return Number(result.rows?.[0]?.count ?? 0) > 0;
 }
 
-/** Latest recordings not yet uploaded (`is_latest = 1 AND sync_status != 'uploaded'`). */
+/**
+ * Selected recordings not yet uploaded (`is_selected = 1 AND sync_status != 'uploaded'`).
+ *
+ * TODO(#71 follow-up): only the selected take per verse is upload-eligible.
+ * All audio recoridngs takes needs to be uploaded.
+ */
 export async function getPendingRecordings(chapter?: {
   bookId: number;
   chapterNumber: number;
@@ -574,7 +579,7 @@ export async function getPendingRecordings(chapter?: {
        ) AS project_unit_id
      FROM recordings r
      JOIN bible_texts bt ON bt.id = r.bible_text_id
-     WHERE r.is_latest = 1
+     WHERE r.is_selected = 1
        AND r.sync_status != 'uploaded'
        ${chapterFilter}
      ORDER BY bt.book_id, bt.chapter_number, r.bible_text_id`,

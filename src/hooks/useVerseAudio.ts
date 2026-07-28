@@ -83,7 +83,7 @@ export function useVerseAudio({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const captureBibleTextIdRef = useRef<number | null>(null);
 
-  const selectedTake = takes.find(t => t.isLatest) ?? null;
+  const selectedTake = takes.find(t => t.isSelected) ?? null;
   const canRecordNewTake = takes.length < MAX_TAKES;
 
   useEffect(() => {

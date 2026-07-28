@@ -6,7 +6,6 @@ import { PlaybackProgressBar } from './PlaybackProgressBar';
 import { RecordCircleButton } from './RecordCircleButton';
 
 type DraftTakeRowProps = {
-  id: string;
   takeNumber: number;
   /** Live engine position (ms) — only meaningful while this take is loaded/playing. */
   positionMs: number;
@@ -30,7 +29,7 @@ function formatDuration(ms: number): string {
 /**
  * Compact take-card row for the Review take list (#71).
  * Selection indicator (li:circle / li:circle-check) marks the active draft
- * (`is_latest`); selected card gets a highlighted border. Time + progress are
+ * (`is_selected`); selected card gets a highlighted border. Time + progress are
  * only live for whichever take is currently loaded into the playback engine
  * (see `playingTakeId` in `useVerseAudio`) — otherwise this shows the take's
  * stored duration at 0:00.

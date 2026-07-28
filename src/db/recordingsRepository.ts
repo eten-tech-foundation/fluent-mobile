@@ -45,7 +45,7 @@ function mapRecordingRow(row: RecordingRow): Recording {
     durationMs: row.duration_ms,
     fileSizeBytes: row.file_size_bytes,
     takeNumber: row.take_number,
-    isLatest: row.is_latest === 1,
+    isSelected: row.is_selected === 1,
     syncStatus: row.sync_status,
     uploadError: row.upload_error,
     createdAt: row.created_at,
@@ -80,8 +80,8 @@ export type AddRecordingTakeInput = {
 };
 
 /**
- * Insert a new take for a verse: clear prior `is_latest` for this user, bump
- * per-user `take_number`, insert with `is_latest = 1` in one transaction.
+ * Insert a new take for a verse: clear prior `is_selected` for this user, bump
+ * per-user `take_number`, insert with `is_selected = 1` in one transaction.
  *
  * Linkage is verse-based (`bible_text_id`) — see #98 / #99. Shared-device
  * scoping is `(bible_text_id, recorded_by_user_id)` (#105).
@@ -98,8 +98,8 @@ export async function addRecordingTake(
 
   await db.transaction(async (tx: Transaction) => {
     await tx.execute(
-      `UPDATE recordings SET is_latest = 0, updated_at = ?
-       WHERE bible_text_id = ? AND is_latest = 1 AND ${owner.sql}`,
+      `UPDATE recordings SET is_selected = 0, updated_at = ?
+       WHERE bible_text_id = ? AND is_selected = 1 AND ${owner.sql}`,
       [now, input.bibleTextId, ...owner.params],
     );
 
@@ -117,7 +117,7 @@ export async function addRecordingTake(
     await tx.execute(
       `INSERT INTO recordings (
          id, bible_text_id, recorded_by_user_id, local_file_path, duration_ms,
-         file_size_bytes, take_number, is_latest, sync_status, created_at,
+         file_size_bytes, take_number, is_selected, sync_status, created_at,
          updated_at
        ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
       [
@@ -152,7 +152,7 @@ export async function getLatestRecordingForVerse(
   const owner = recordedByClause(ownerId);
   const result = await db.execute(
     `SELECT * FROM recordings
-     WHERE bible_text_id = ? AND is_latest = 1 AND ${owner.sql}
+     WHERE bible_text_id = ? AND is_selected = 1 AND ${owner.sql}
      LIMIT 1`,
     [bibleTextId, ...owner.params],
   );
@@ -177,13 +177,21 @@ export async function getTakesForVerse(
   return rows.map(mapRecordingRow);
 }
 
+/**
+ * Mark an existing take as the active draft (`is_selected`), e.g. picking an
+ * earlier take over the most recently recorded one. Clears `is_selected` for
+ * every other take on that verse + owner, then sets it on `id`.
+ *
+ * No-ops (without error) if `id` doesn't exist or is already latest, so a
+ * stale card tap racing `deleteRecordingTake` can't throw.
+ */
 export async function selectRecordingTake(id: string): Promise<void> {
   const db = getDatabase();
   const now = new Date().toISOString();
 
   await db.transaction(async (tx: Transaction) => {
     const existing = await tx.execute(
-      `SELECT bible_text_id, recorded_by_user_id, is_latest
+      `SELECT bible_text_id, recorded_by_user_id, is_selected
        FROM recordings WHERE id = ?`,
       [id],
     );
@@ -191,22 +199,22 @@ export async function selectRecordingTake(id: string): Promise<void> {
       | {
           bible_text_id: number;
           recorded_by_user_id: number | null;
-          is_latest: number;
+          is_selected: number;
         }
       | undefined;
-    if (!row || row.is_latest === 1) {
+    if (!row || row.is_selected === 1) {
       return;
     }
 
     const owner = recordedByClause(row.recorded_by_user_id);
 
     await tx.execute(
-      `UPDATE recordings SET is_latest = 0, updated_at = ?
-       WHERE bible_text_id = ? AND is_latest = 1 AND ${owner.sql}`,
+      `UPDATE recordings SET is_selected = 0, updated_at = ?
+       WHERE bible_text_id = ? AND is_selected = 1 AND ${owner.sql}`,
       [now, row.bible_text_id, ...owner.params],
     );
     await tx.execute(
-      `UPDATE recordings SET is_latest = 1, updated_at = ? WHERE id = ?`,
+      `UPDATE recordings SET is_selected = 1, updated_at = ? WHERE id = ?`,
       [now, id],
     );
   });
@@ -215,7 +223,7 @@ export async function selectRecordingTake(id: string): Promise<void> {
 }
 
 /**
- * Delete a take by id. If it was latest, promote the highest remaining
+ * Delete a take by id. If it was selected , promote the highest remaining
  * `take_number` for that verse + owner (or leave none latest if empty).
  */
 export async function deleteRecordingTake(id: string): Promise<void> {
@@ -224,7 +232,7 @@ export async function deleteRecordingTake(id: string): Promise<void> {
 
   await db.transaction(async (tx: Transaction) => {
     const existing = await tx.execute(
-      `SELECT bible_text_id, recorded_by_user_id, is_latest
+      `SELECT bible_text_id, recorded_by_user_id, is_selected
        FROM recordings WHERE id = ?`,
       [id],
     );
@@ -232,20 +240,20 @@ export async function deleteRecordingTake(id: string): Promise<void> {
       | {
           bible_text_id: number;
           recorded_by_user_id: number | null;
-          is_latest: number;
+          is_selected: number;
         }
       | undefined;
     if (!row) {
       return;
     }
 
-    const wasLatest = row.is_latest === 1;
+    const wasSelected = row.is_selected === 1;
     const bibleTextId = row.bible_text_id;
     const owner = recordedByClause(row.recorded_by_user_id);
 
     await tx.execute(`DELETE FROM recordings WHERE id = ?`, [id]);
 
-    if (!wasLatest) {
+    if (!wasSelected) {
       return;
     }
 
@@ -259,7 +267,7 @@ export async function deleteRecordingTake(id: string): Promise<void> {
     const priorId = (prior.rows?.[0] as { id?: string } | undefined)?.id;
     if (priorId) {
       await tx.execute(
-        `UPDATE recordings SET is_latest = 1, updated_at = ? WHERE id = ?`,
+        `UPDATE recordings SET is_selected = 1, updated_at = ? WHERE id = ?`,
         [now, priorId],
       );
     }

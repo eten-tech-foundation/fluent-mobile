@@ -83,6 +83,8 @@ export const createTableQueries: string[] = [
    * Recordings link to a verse via `bible_text_id` (canonical; see #98 / #99).
    * Do not join recordings on `chapter_assignment_id` — that column is not used.
    * `recorded_by_user_id` attributes the take to the active account (#105).
+   * `is_selected` marks the take chosen as the active draft (#71) — it is not
+   * necessarily the most recently recorded take; see recordingsRepository.
    */
   `CREATE TABLE IF NOT EXISTS recordings (
       id                    TEXT PRIMARY KEY,
@@ -93,15 +95,15 @@ export const createTableQueries: string[] = [
       duration_ms           INTEGER,
       file_size_bytes       INTEGER,
       take_number           INTEGER NOT NULL DEFAULT 1,
-      is_latest             INTEGER NOT NULL DEFAULT 1,
+      is_selected           INTEGER NOT NULL DEFAULT 1,
       sync_status           TEXT NOT NULL DEFAULT 'pending',
       upload_error          TEXT,
       created_at            TEXT NOT NULL,
       updated_at            TEXT NOT NULL
     );`,
 
-  `CREATE INDEX IF NOT EXISTS idx_rec_verse      ON recordings(bible_text_id, is_latest);`,
-  `CREATE INDEX IF NOT EXISTS idx_rec_verse_user ON recordings(bible_text_id, recorded_by_user_id, is_latest);`,
+  `CREATE INDEX IF NOT EXISTS idx_rec_verse      ON recordings(bible_text_id, is_selected);`,
+  `CREATE INDEX IF NOT EXISTS idx_rec_verse_user ON recordings(bible_text_id, recorded_by_user_id, is_selected);`,
   `CREATE INDEX IF NOT EXISTS idx_rec_pending    ON recordings(sync_status) WHERE sync_status != 'uploaded';`,
 
   `CREATE TABLE IF NOT EXISTS user_projects (

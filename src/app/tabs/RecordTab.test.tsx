@@ -31,7 +31,7 @@ function makeTake(overrides: Partial<Recording> = {}): Recording {
     bibleTextId: 42,
     localFilePath: 'file:///take.m4a',
     takeNumber: 1,
-    isLatest: true,
+    isSelected: true,
     durationMs: 13000,
     syncStatus: 'pending',
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -44,6 +44,7 @@ const idleAudio: VerseAudioApi = {
   state: 'idle',
   takes: [],
   selectedTake: null,
+  canRecordNewTake: true,
   playingTakeId: null,
   errorMessage: null,
   positionMs: 0,
@@ -154,8 +155,8 @@ describe('RecordTab', () => {
   });
 
   it('renders one card per take, in list order, with only the latest marked selected', () => {
-    const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isLatest: false });
-    const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isLatest: true });
+    const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isSelected: false });
+    const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isSelected: true });
     mockUseVerseAudio.mockReturnValue({
       ...idleAudio,
       state: 'recorded',
@@ -177,8 +178,8 @@ describe('RecordTab', () => {
   });
 
   it('selecting an unselected take calls selectTake with its id', () => {
-    const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isLatest: false });
-    const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isLatest: true });
+    const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isSelected: false });
+    const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isSelected: true });
     mockUseVerseAudio.mockReturnValue({
       ...idleAudio,
       state: 'recorded',
@@ -193,8 +194,8 @@ describe('RecordTab', () => {
   });
 
   it('deletes a non-selected take immediately, with no confirmation prompt', () => {
-    const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isLatest: false });
-    const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isLatest: true });
+    const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isSelected: false });
+    const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isSelected: true });
     mockUseVerseAudio.mockReturnValue({
       ...idleAudio,
       state: 'recorded',
@@ -212,8 +213,8 @@ describe('RecordTab', () => {
   });
 
   it('confirms before deleting the selected take, and only deletes on confirm', () => {
-    const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isLatest: false });
-    const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isLatest: true });
+    const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isSelected: false });
+    const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isSelected: true });
     mockUseVerseAudio.mockReturnValue({
       ...idleAudio,
       state: 'recorded',
@@ -241,8 +242,8 @@ describe('RecordTab', () => {
   });
 
   it('plays the tapped take and pauses when the same playing take is tapped again', () => {
-    const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isLatest: false });
-    const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isLatest: true });
+    const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isSelected: false });
+    const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isSelected: true });
     mockUseVerseAudio.mockReturnValue({
       ...idleAudio,
       state: 'recorded',
@@ -251,7 +252,7 @@ describe('RecordTab', () => {
       playingTakeId: null,
     });
 
-    renderTab();
+    const { rerender } = renderTab();
 
     const playButtons = screen.getAllByTestId('record-play-button');
     fireEvent.press(playButtons[0]!); // play take 1
@@ -265,7 +266,11 @@ describe('RecordTab', () => {
       selectedTake: take2,
       playingTakeId: 'rec_1',
     });
-    renderTab();
+    rerender(
+      <DraftingProvider verses={verses} initialVerse={3}>
+        <RecordTab chapterData={chapterData} />
+      </DraftingProvider>,
+    );
 
     const playButtonsAfter = screen.getAllByTestId('record-play-button');
     fireEvent.press(playButtonsAfter[0]!); // tap the same (now playing) take
