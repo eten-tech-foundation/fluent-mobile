@@ -4,6 +4,8 @@ Quick map for Cursor agents, other coding tools, and new contributors. Verified 
 
 **Delivery judgment** (acceptance criteria, scope, abstraction budget, human device QA): root [`AGENTS.md`](../AGENTS.md).
 
+**Any AI tool (not only Cursor):** start at [`CLAUDE.md`](../CLAUDE.md). Board mutations: [`guides/project-board.md`](guides/project-board.md). New deps: [`guides/expo-first-dependencies.md`](guides/expo-first-dependencies.md).
+
 ## What this project is
 
 **Fluent Mobile** is an offline-first React Native companion app for Bible translation recording workflows. **Android-only permanently** — no iOS app. On launch it initializes a local SQLite database and restores the auth session, then shows the navigator. After login (or when the user triggers sync), it syncs Fluent API data into SQLite so translators can browse **projects → chapters → drafting** (Bible / Resources / Record). Recording UI is still largely stubbed; persistence to the `recordings` table is not fully wired yet.

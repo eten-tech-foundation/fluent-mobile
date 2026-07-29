@@ -11,7 +11,7 @@ alwaysApply: true
 
 Every change — including infra, CI, docs, Dependabot follow-ups, and `expo install --fix` — goes through:
 
-1. **Ticket on Project 4** — GitHub Issue `#NNN` **on** the [Fluent Mobile Board](https://github.com/orgs/eten-tech-foundation/projects/4/views/9) (org project #4, view 9). Ask if missing. See [docs/issue-tracking.md](../../docs/issue-tracking.md). The repo Issues list is not the triage board. (Not Linear.)
+1. **Ticket on Project 4** — GitHub Issue `#NNN` **on** the [Fluent Mobile Board](https://github.com/orgs/eten-tech-foundation/projects/4/views/9) (org project #4, view 9). Ask if missing. See [docs/issue-tracking.md](../../docs/issue-tracking.md). The repo Issues list is not the triage board. (Not Linear.) Board Status/Priority edits: [docs/guides/project-board.md](../../docs/guides/project-board.md) and [project-board.mdc](./project-board.mdc) — do not sweep Product or `Dev Ready` lanes without named approval.
 2. **Feature branch** — `{author}/{type}/{issue-number}-{slug}` (see `/create-pr-branch`)
 3. **Pull request** — title `[#NNN]: Description`; body filled from the PR template (below); include `Closes #NNN` under Details when the PR completes the issue; set Project 4 Status to **In PR Review**
 4. **Human merge** — agents open PRs and push **feature branches only**; never merge on GitHub unless the user explicitly asks for a Dependabot squash merge in that session
