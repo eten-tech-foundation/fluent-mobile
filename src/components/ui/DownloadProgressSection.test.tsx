@@ -189,6 +189,6 @@ describe('DownloadProgressSection', () => {
     expect(getByTestId('download-progress-section')).toBeTruthy();
     expect(getByText('Matthew — Audio')).toBeTruthy();
     expect(getByText('42%')).toBeTruthy();
-    expect(getByText('1 items remaining')).toBeTruthy();
+    expect(getByText('1 item remaining')).toBeTruthy();
   });
 });

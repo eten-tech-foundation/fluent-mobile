@@ -25,6 +25,8 @@ export function DownloadProgressSection({
   }
 
   const remaining = Math.max(0, snapshot.totalCount - snapshot.completedCount);
+  const remainingLabel =
+    remaining === 1 ? '1 item remaining' : `${remaining} items remaining`;
   const percent = Math.round(snapshot.aggregateProgress * 100);
 
   return (
@@ -47,7 +49,7 @@ export function DownloadProgressSection({
         />
       </View>
 
-      <Text style={styles.countLabel}>{remaining} items remaining</Text>
+      <Text style={styles.countLabel}>{remainingLabel}</Text>
 
       <View style={styles.itemList}>
         {activeItems.map(item => (
