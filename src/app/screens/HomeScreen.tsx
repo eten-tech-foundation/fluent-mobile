@@ -55,7 +55,6 @@ export default function HomeScreen({
   const [activeTab, setActiveTab] = useState<HomeTab>('myWork');
   const [refreshKey, setRefreshKey] = useState(0);
   const [settingsVisible, setSettingsVisible] = useState(false);
-  const [settingsAnchor, setSettingsAnchor] = useState({ top: 56, left: 16 });
   const [isNewUserLoading, setIsNewUserLoading] = useState(
     () => route.params?.newUserLoading === true,
   );
@@ -256,7 +255,6 @@ export default function HomeScreen({
   ]);
 
   const handleSettingsPress = () => {
-    setSettingsAnchor({ top: 56, left: 16 });
     setSettingsVisible(true);
   };
 
@@ -311,7 +309,6 @@ export default function HomeScreen({
       <UserSettingsMenu
         visible={settingsVisible}
         onClose={() => setSettingsVisible(false)}
-        anchor={settingsAnchor}
         onSignOut={onSignOut}
         onUserSwitched={handleUserSwitched}
       />

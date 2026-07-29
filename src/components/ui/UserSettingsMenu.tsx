@@ -66,9 +66,16 @@ export function UserSettingsMenu({
   const scrimOpacity = useRef(new Animated.Value(0)).current;
   const [isMounted, setIsMounted] = useState(visible);
 
+  const isMountedRef = useRef(isMounted);
+
   useEffect(() => {
+    const wasMounted = isMountedRef.current;
+
     if (visible) {
       setIsMounted(true);
+      isMountedRef.current = true;
+      if (wasMounted) return;
+
       translateX.setValue(-panelWidth);
       scrimOpacity.setValue(0);
       Animated.parallel([
@@ -83,7 +90,7 @@ export function UserSettingsMenu({
           useNativeDriver: true,
         }),
       ]).start();
-    } else if (isMounted) {
+    } else if (wasMounted) {
       Animated.parallel([
         Animated.timing(translateX, {
           toValue: -panelWidth,
@@ -96,10 +103,13 @@ export function UserSettingsMenu({
           useNativeDriver: true,
         }),
       ]).start(({ finished }) => {
-        if (finished) setIsMounted(false);
+        if (finished) {
+          setIsMounted(false);
+          isMountedRef.current = false;
+        }
       });
     }
-  }, [visible, panelWidth, isMounted, translateX, scrimOpacity]);
+  }, [visible, panelWidth, translateX, scrimOpacity]);
 
   const panGesture = Gesture.Pan()
     .activeOffsetX(-10)
@@ -371,11 +381,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     backgroundColor: theme.colors.cardBackground,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
+    ...theme.shadows.elevated,
   },
   panelContent: {
     paddingTop: 24,
