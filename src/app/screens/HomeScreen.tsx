@@ -76,6 +76,7 @@ export default function HomeScreen({
   const hasResolvedRef = useRef(hasResolved);
   const uploadOverCellularRef = useRef(uploadOverCellular);
   const prepareOfflinePromptShownThisAppOpenRef = useRef(false);
+  const isSettlingRef = useRef(false);
 
   const evaluateRef = useRef<(() => Promise<void>) | undefined>(undefined);
   const appStateRef = useRef(AppState.currentState);
@@ -100,11 +101,13 @@ export default function HomeScreen({
   const handleSyncComplete = useCallback(() => {
     setIsNewUserLoading(false);
     setIsSyncingLocal(false);
+    void evaluateRef.current?.();
   }, []);
 
   const isSyncingGlobal = useGlobalSyncStatus(() => {
     setIsNewUserLoading(false);
     setRefreshKey(key => key + 1);
+    void evaluateRef.current?.();
   });
   const { isSyncing, triggerSync } = useSync({
     onSyncComplete: handleSyncComplete,
@@ -122,10 +125,16 @@ export default function HomeScreen({
   const autoRepairSyncAttempted = useRef(false);
 
   useEffect(() => {
+    isSettlingRef.current =
+      isNewUserLoading || postLoginSyncActive || isSyncingLocal || isSyncing;
+  }, [isNewUserLoading, postLoginSyncActive, isSyncingLocal, isSyncing]);
+
+  useEffect(() => {
     const unsubscribeComplete = onSyncComplete(() => {
       setIsNewUserLoading(false);
       setIsSyncingLocal(false);
       setRefreshKey(key => key + 1);
+      void evaluateRef.current?.();
     });
     const unsubscribeStart = onSyncStart(() => {
       setIsSyncingLocal(true);
@@ -163,6 +172,7 @@ export default function HomeScreen({
   useEffect(() => {
     const evaluate = async () => {
       if (!isFocusedRef.current || !hasResolvedRef.current) return;
+      if (isSettlingRef.current) return;
 
       const eligibleConnection =
         connectivityIsOnlineRef.current &&
