@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,10 @@ import {
   Alert,
   StyleSheet,
   ActivityIndicator,
+  Animated,
+  useWindowDimensions,
 } from 'react-native';
+import { theme } from '../../theme';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
@@ -21,10 +24,16 @@ import {
   switchToDeviceAccount,
 } from '../../services/accountSession';
 import { useDeviceAccounts } from '../../hooks/useDeviceAccounts';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { logger } from '../../utils/logger';
 
 const MENU_ICON_COLOR = '#333';
 const MENU_ICON_ACTIVE = '#1a6ef5';
+
+const OPEN_ANIM_DURATION = 250;
+const CLOSE_ANIM_DURATION = 200;
+const SWIPE_CLOSE_RATIO = 0.3;
+const SWIPE_VELOCITY_THRESHOLD = 800;
 
 const log = logger.create('UserSettingsMenu');
 
@@ -33,7 +42,6 @@ type Nav = StackNavigationProp<RootStackParamList>;
 interface UserSettingsMenuProps {
   visible: boolean;
   onClose: () => void;
-  anchor: { top: number; left: number };
   onSignOut?: () => void;
   onUserSwitched?: () => void;
 }
@@ -41,13 +49,88 @@ interface UserSettingsMenuProps {
 export function UserSettingsMenu({
   visible,
   onClose,
-  anchor,
   onSignOut,
   onUserSwitched,
 }: UserSettingsMenuProps) {
   const navigation = useNavigation<Nav>();
   const { accounts, hasAccountLimit, loading } = useDeviceAccounts(visible);
   const [switchingUserId, setSwitchingUserId] = useState<string | null>(null);
+  const { width: windowWidth } = useWindowDimensions();
+
+  const panelWidth = useMemo(
+    () => Math.min(320, windowWidth * 0.82),
+    [windowWidth],
+  );
+
+  const translateX = useRef(new Animated.Value(-panelWidth)).current;
+  const scrimOpacity = useRef(new Animated.Value(0)).current;
+  const [isMounted, setIsMounted] = useState(visible);
+
+  useEffect(() => {
+    if (visible) {
+      setIsMounted(true);
+      translateX.setValue(-panelWidth);
+      scrimOpacity.setValue(0);
+      Animated.parallel([
+        Animated.timing(translateX, {
+          toValue: 0,
+          duration: OPEN_ANIM_DURATION,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scrimOpacity, {
+          toValue: 1,
+          duration: OPEN_ANIM_DURATION,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else if (isMounted) {
+      Animated.parallel([
+        Animated.timing(translateX, {
+          toValue: -panelWidth,
+          duration: CLOSE_ANIM_DURATION,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scrimOpacity, {
+          toValue: 0,
+          duration: CLOSE_ANIM_DURATION,
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) setIsMounted(false);
+      });
+    }
+  }, [visible, panelWidth, isMounted, translateX, scrimOpacity]);
+
+  const panGesture = Gesture.Pan()
+    .activeOffsetX(-10)
+    .failOffsetY([-15, 15])
+    .onUpdate(event => {
+      const next = Math.min(0, event.translationX);
+      translateX.setValue(next);
+      scrimOpacity.setValue(1 - Math.min(1, Math.abs(next) / panelWidth));
+    })
+    .onEnd(event => {
+      const shouldClose =
+        event.translationX < -panelWidth * SWIPE_CLOSE_RATIO ||
+        event.velocityX < -SWIPE_VELOCITY_THRESHOLD;
+
+      if (shouldClose) {
+        onClose();
+      } else {
+        Animated.parallel([
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 4,
+          }),
+          Animated.timing(scrimOpacity, {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }
+    });
 
   const handleOpenSettings = () => {
     onClose();
@@ -106,153 +189,200 @@ export function UserSettingsMenu({
   return (
     <Modal
       transparent
-      visible={visible}
-      animationType="fade"
+      visible={isMounted}
+      animationType="none"
       onRequestClose={onClose}
     >
-      <Pressable style={appStyles.modalOverlay} onPress={onClose}>
-        <View
-          style={[appStyles.dropdown, { top: anchor.top, left: anchor.left }]}
+      <View style={styles.container}>
+        <Animated.View
+          style={[StyleSheet.absoluteFill, { opacity: scrimOpacity }]}
+          pointerEvents={visible ? 'auto' : 'none'}
         >
-          <TouchableOpacity
-            style={appStyles.menuItem}
-            onPress={handleOpenSettings}
-            activeOpacity={0.7}
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={onClose}
             accessibilityRole="button"
+            accessibilityLabel="Close menu"
+          />
+        </Animated.View>
+
+        <GestureDetector gesture={panGesture}>
+          <Animated.View
+            style={[
+              styles.panel,
+              { width: panelWidth, transform: [{ translateX }] },
+            ]}
           >
-            <Ionicons
-              name="settings-outline"
-              size={18}
-              color={MENU_ICON_COLOR}
-            />
-            <Text style={appStyles.menuItemText}>More Settings</Text>
-          </TouchableOpacity>
+            <View style={styles.panelContent}>
+              <TouchableOpacity
+                style={appStyles.menuItem}
+                onPress={handleOpenSettings}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name="settings-outline"
+                  size={18}
+                  color={MENU_ICON_COLOR}
+                />
+                <Text style={appStyles.menuItemText}>More Settings</Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            style={appStyles.menuItem}
-            onPress={handleOpenPrivacy}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            testID="settings-menu-privacy-policy"
-          >
-            <Ionicons
-              name="document-text-outline"
-              size={18}
-              color={MENU_ICON_COLOR}
-            />
-            <Text style={appStyles.menuItemText}>Privacy Policy</Text>
-          </TouchableOpacity>
+              <View style={[appStyles.menuDivider, styles.panelDivider]} />
 
-          <TouchableOpacity
-            style={appStyles.menuItem}
-            onPress={handleOpenTerms}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            testID="settings-menu-terms-of-use"
-          >
-            <Ionicons
-              name="shield-checkmark-outline"
-              size={18}
-              color={MENU_ICON_COLOR}
-            />
-            <Text style={appStyles.menuItemText}>Terms of Use</Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={appStyles.menuItem}
+                onPress={handleOpenPrivacy}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                testID="settings-menu-privacy-policy"
+              >
+                <Ionicons
+                  name="document-text-outline"
+                  size={18}
+                  color={MENU_ICON_COLOR}
+                />
+                <Text style={appStyles.menuItemText}>Privacy Policy</Text>
+              </TouchableOpacity>
 
-          <View style={appStyles.menuDivider} />
-          <Text style={appStyles.menuSectionLabel}>Accounts</Text>
+              <TouchableOpacity
+                style={appStyles.menuItem}
+                onPress={handleOpenTerms}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                testID="settings-menu-terms-of-use"
+              >
+                <Ionicons
+                  name="shield-checkmark-outline"
+                  size={18}
+                  color={MENU_ICON_COLOR}
+                />
+                <Text style={appStyles.menuItemText}>Terms of Use</Text>
+              </TouchableOpacity>
 
-          {loading ? (
-            <View
-              style={styles.loadingRow}
-              testID="settings-menu-accounts-loading"
-            >
-              <ActivityIndicator size="small" color={MENU_ICON_ACTIVE} />
-            </View>
-          ) : (
-            accounts.map(account => {
-              // Mockup (#193) labels accounts by email; fall back to displayName.
-              const accountLabel = account.email || account.displayName;
-              return (
+              <View style={[appStyles.menuDivider, styles.panelDivider]} />
+              <Text style={appStyles.menuSectionLabel}>Accounts</Text>
+
+              {loading ? (
+                <View
+                  style={styles.loadingRow}
+                  testID="settings-menu-accounts-loading"
+                >
+                  <ActivityIndicator size="small" color={MENU_ICON_ACTIVE} />
+                </View>
+              ) : (
+                accounts.map(account => {
+                  // Mockup (#193) labels accounts by email; fall back to displayName.
+                  const accountLabel = account.email || account.displayName;
+                  return (
+                    <TouchableOpacity
+                      key={account.userId}
+                      style={appStyles.menuItem}
+                      onPress={() => {
+                        void handleSwitchUser(account.userId);
+                      }}
+                      activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Switch to ${accountLabel}`}
+                      accessibilityState={{ selected: account.isActive }}
+                      disabled={switchingUserId !== null}
+                      testID={`settings-menu-account-${account.userId}`}
+                    >
+                      <Ionicons
+                        name={
+                          account.isActive
+                            ? 'checkmark-circle'
+                            : 'person-outline'
+                        }
+                        size={18}
+                        color={
+                          account.isActive ? MENU_ICON_ACTIVE : MENU_ICON_COLOR
+                        }
+                        testID={
+                          account.isActive
+                            ? `settings-menu-active-${account.userId}`
+                            : `settings-menu-inactive-${account.userId}`
+                        }
+                      />
+                      <Text
+                        style={[
+                          appStyles.menuItemText,
+                          account.isActive && appStyles.menuItemActive,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {accountLabel}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+
+              {hasAccountLimit ? (
+                <Text
+                  style={styles.limitText}
+                  testID="settings-menu-account-limit"
+                >
+                  You&apos;ve reached the 3-account limit.
+                </Text>
+              ) : (
                 <TouchableOpacity
-                  key={account.userId}
                   style={appStyles.menuItem}
-                  onPress={() => {
-                    void handleSwitchUser(account.userId);
-                  }}
+                  onPress={handleAddUser}
                   activeOpacity={0.7}
                   accessibilityRole="button"
-                  accessibilityLabel={`Switch to ${accountLabel}`}
-                  accessibilityState={{ selected: account.isActive }}
-                  disabled={switchingUserId !== null}
-                  testID={`settings-menu-account-${account.userId}`}
+                  accessibilityLabel="Add User"
+                  testID="settings-menu-add-user"
                 >
-                  <Ionicons
-                    name={
-                      account.isActive ? 'checkmark-circle' : 'person-outline'
-                    }
-                    size={18}
-                    color={
-                      account.isActive ? MENU_ICON_ACTIVE : MENU_ICON_COLOR
-                    }
-                    testID={
-                      account.isActive
-                        ? `settings-menu-active-${account.userId}`
-                        : `settings-menu-inactive-${account.userId}`
-                    }
-                  />
-                  <Text
-                    style={[
-                      appStyles.menuItemText,
-                      account.isActive && appStyles.menuItemActive,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {accountLabel}
-                  </Text>
+                  <UserPlus size={18} color={MENU_ICON_COLOR} />
+                  <Text style={appStyles.menuItemText}>Add User</Text>
                 </TouchableOpacity>
-              );
-            })
-          )}
+              )}
+            </View>
 
-          {hasAccountLimit ? (
-            <Text style={styles.limitText} testID="settings-menu-account-limit">
-              You&apos;ve reached the 3-account limit.
-            </Text>
-          ) : (
+            <View style={[appStyles.menuDivider, styles.panelDivider]} />
             <TouchableOpacity
               style={appStyles.menuItem}
-              onPress={handleAddUser}
+              onPress={() => {
+                void handleSignOut();
+              }}
               activeOpacity={0.7}
               accessibilityRole="button"
-              accessibilityLabel="Add User"
-              testID="settings-menu-add-user"
             >
-              <UserPlus size={18} color={MENU_ICON_COLOR} />
-              <Text style={appStyles.menuItemText}>Add User</Text>
+              <Ionicons name="log-out-outline" size={18} color="#d32f2f" />
+              <Text style={[appStyles.menuItemText, appStyles.menuItemDanger]}>
+                Sign Out
+              </Text>
             </TouchableOpacity>
-          )}
-
-          <View style={appStyles.menuDivider} />
-          <TouchableOpacity
-            style={appStyles.menuItem}
-            onPress={() => {
-              void handleSignOut();
-            }}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-          >
-            <Ionicons name="log-out-outline" size={18} color="#d32f2f" />
-            <Text style={[appStyles.menuItemText, appStyles.menuItemDanger]}>
-              Sign Out
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </Pressable>
+          </Animated.View>
+        </GestureDetector>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  panel: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: theme.colors.cardBackground,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+  },
+  panelContent: {
+    paddingTop: 24,
+  },
+  panelDivider: {
+    backgroundColor: theme.colors.border,
+  },
   loadingRow: {
     minHeight: 44,
     alignItems: 'center',

@@ -3,6 +3,22 @@ import { Alert } from 'react-native';
 import { UserSettingsMenu } from './UserSettingsMenu';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 
+jest.mock('react-native-gesture-handler', () => {
+  const actualReact = jest.requireActual('react');
+  const chainable = () => {
+    const gesture: Record<string, unknown> = {};
+    ['activeOffsetX', 'failOffsetY', 'onUpdate', 'onEnd'].forEach(method => {
+      gesture[method] = () => gesture;
+    });
+    return gesture;
+  };
+  return {
+    GestureDetector: ({ children }: { children: React.ReactNode }) =>
+      actualReact.createElement(actualReact.Fragment, null, children),
+    Gesture: { Pan: chainable },
+  };
+});
+
 const mockNavigate = jest.fn();
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate }),
@@ -71,7 +87,6 @@ describe('UserSettingsMenu', () => {
   const onClose = jest.fn();
   const onUserSwitched = jest.fn();
   const onSignOut = jest.fn();
-  const anchor = { top: 0, left: 0 };
 
   beforeEach(() => {
     jest.resetAllMocks();
@@ -86,7 +101,6 @@ describe('UserSettingsMenu', () => {
       <UserSettingsMenu
         visible
         onClose={onClose}
-        anchor={anchor}
         onSignOut={onSignOut}
         onUserSwitched={onUserSwitched}
       />,
