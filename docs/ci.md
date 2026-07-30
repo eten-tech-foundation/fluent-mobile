@@ -22,14 +22,15 @@ npm run typecheck
 npm test -- --ci
 ```
 
-After dependency / Dependabot work, also:
+After dependency / Dependabot work (and before claiming PR-ready), also:
 
 ```bash
 npm ci
 npm run doctor
+npx expo install --check
 ```
 
-See [`.cursor/rules/commands.mdc`](../.cursor/rules/commands.mdc).
+If either reports SDK patch drift, `npx expo install --fix` on a ticketed branch. First-clone copy lives in the [README](../README.md) (Step 6). See [`.cursor/rules/commands.mdc`](../.cursor/rules/commands.mdc).
 
 ## What is required today
 
