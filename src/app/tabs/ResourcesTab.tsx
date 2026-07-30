@@ -1,46 +1,227 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { BookOpen } from 'lucide-react-native';
-import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import {
+  BookOpen,
+  Images,
+  MessageCircleQuestionMark,
+  type LucideIcon,
+} from 'lucide-react-native';
+import { useDraftingContext } from '../context/DraftingContext';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { ResourceSectionAccordion } from '../../components/ui/ResourceSectionAccordion';
+import { RESOURCES_EMPTY_MESSAGE } from '../../constants/messages';
+import { ResourceSectionId } from '../../types/resources/types';
+import {
+  getMockResourcesForUnit,
+  unitHasAnyResources,
+} from './resources/mockResourceData';
+import {
+  getResourcesTabUiState,
+  setResourcesTabUiState,
+} from '../../utils/resourcesTabUiState';
+import { theme } from '../../theme';
+
+type ResourcesTabProps = {
+  chapterId: number;
+  chapterName: string;
+};
+
+const SECTION_META: {
+  id: ResourceSectionId;
+  label: string;
+  Icon: LucideIcon;
+}[] = [
+  {
+    id: 'translationNotes',
+    label: 'Translation Notes',
+    Icon: BookOpen,
+  },
+  {
+    id: 'translationQuestions',
+    label: 'Translation Questions',
+    Icon: MessageCircleQuestionMark,
+  },
+  {
+    id: 'imagesMaps',
+    label: 'Images & Maps',
+    Icon: Images,
+  },
+];
 
 /**
- * Drafting Resources tab chrome (Lovable third tab). Download/content
- * wiring is out of scope — placeholder keeps tab parity with the prototype.
+ * Resources tab host (#188): unit-synced shell, empty state, accordion stubs.
+ * Section bodies (#189–#191) mount into these slots later.
  */
-export function ResourcesTab() {
+export function ResourcesTab({ chapterId, chapterName }: ResourcesTabProps) {
+  const { selectedVerse } = useDraftingContext();
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollOffsetRef = useRef(0);
+  const openIdsRef = useRef<Set<string>>(new Set());
+
+  const resources = useMemo(
+    () => getMockResourcesForUnit(chapterId, selectedVerse, chapterName),
+    [chapterId, selectedVerse, chapterName],
+  );
+  const hasContent = unitHasAnyResources(resources);
+
+  const [openAccordionIds, setOpenAccordionIds] = useState<Set<string>>(
+    () => getResourcesTabUiState(chapterId, selectedVerse).openAccordionIds,
+  );
+
+  openIdsRef.current = openAccordionIds;
+
+  // Restore scroll + accordion state when the active unit changes.
+  useEffect(() => {
+    const saved = getResourcesTabUiState(chapterId, selectedVerse);
+    openIdsRef.current = saved.openAccordionIds;
+    setOpenAccordionIds(saved.openAccordionIds);
+    scrollOffsetRef.current = saved.scrollOffset;
+    scrollRef.current?.scrollTo({
+      y: saved.scrollOffset,
+      animated: false,
+    });
+  }, [chapterId, selectedVerse]);
+
+  const persistUiState = useCallback(
+    (nextOpenIds: Set<string>, scrollOffset: number) => {
+      setResourcesTabUiState(chapterId, selectedVerse, {
+        openAccordionIds: nextOpenIds,
+        scrollOffset,
+      });
+    },
+    [chapterId, selectedVerse],
+  );
+
+  const handleToggle = useCallback(
+    (sectionId: ResourceSectionId) => {
+      setOpenAccordionIds(prev => {
+        const next = new Set(prev);
+        if (next.has(sectionId)) {
+          next.delete(sectionId);
+        } else {
+          next.add(sectionId);
+        }
+        openIdsRef.current = next;
+        persistUiState(next, scrollOffsetRef.current);
+        return next;
+      });
+    },
+    [persistUiState],
+  );
+
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const offset = event.nativeEvent.contentOffset.y;
+      scrollOffsetRef.current = offset;
+      persistUiState(openIdsRef.current, offset);
+    },
+    [persistUiState],
+  );
+
+  if (!hasContent) {
+    return (
+      <View style={styles.emptyHost} testID="resources-tab">
+        <EmptyState message={RESOURCES_EMPTY_MESSAGE} />
+      </View>
+    );
+  }
+
+  const visibleSections = SECTION_META.filter(section =>
+    resources.sections.includes(section.id),
+  );
+
   return (
-    <View style={styles.container} testID="resources-tab">
-      <BookOpen
-        size={iconSizes.phaseIconGlyph}
-        color={theme.colors.mutedForeground}
-        strokeWidth={listIconStrokeWidth}
-      />
-      <Text style={styles.title}>Resources</Text>
-      <Text style={styles.body}>
-        Translation resources for this chapter will show up here.
-      </Text>
-    </View>
+    <ScrollView
+      ref={scrollRef}
+      style={styles.scroll}
+      contentContainerStyle={styles.content}
+      testID="resources-tab"
+      onScroll={handleScroll}
+      scrollEventThrottle={16}
+      keyboardShouldPersistTaps="handled"
+    >
+      <View
+        style={styles.header}
+        testID={`resources-unit-${chapterId}-${selectedVerse}`}
+      >
+        <Text style={styles.reference}>{resources.referenceLabel}</Text>
+        {resources.passageTitle ? (
+          <Text style={styles.passageTitle}>{resources.passageTitle}</Text>
+        ) : null}
+      </View>
+
+      <View style={styles.sections}>
+        {visibleSections.map(({ id, label, Icon }) => (
+          <ResourceSectionAccordion
+            key={`${selectedVerse}-${id}`}
+            label={label}
+            Icon={Icon}
+            expanded={openAccordionIds.has(id)}
+            onToggle={() => handleToggle(id)}
+            testID={`resources-section-${id}`}
+          >
+            <Text style={styles.stubBody}>
+              Content for this section will appear here.
+            </Text>
+          </ResourceSectionAccordion>
+        ))}
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  emptyHost: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: theme.spacing.xxl,
-    gap: theme.spacing.md,
     backgroundColor: theme.colors.background,
   },
-  title: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.foreground,
+  scroll: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
   },
-  body: {
+  content: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.xxl,
+    paddingBottom: theme.spacing.xxl,
+    gap: theme.spacing.xl,
+  },
+  header: {
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+  },
+  reference: {
+    fontSize: theme.typography.sizes.xl,
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.foreground,
+    textAlign: 'center',
+  },
+  passageTitle: {
     fontSize: theme.typography.sizes.sm,
+    fontStyle: 'italic',
     color: theme.colors.mutedForeground,
     textAlign: 'center',
+    lineHeight: theme.typography.lineHeights.normal,
+  },
+  sections: {
+    gap: theme.spacing.sm,
+  },
+  stubBody: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.mutedForeground,
     lineHeight: theme.typography.lineHeights.normal,
   },
 });
