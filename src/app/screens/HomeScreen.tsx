@@ -55,7 +55,6 @@ export default function HomeScreen({
   const [activeTab, setActiveTab] = useState<HomeTab>('myWork');
   const [refreshKey, setRefreshKey] = useState(0);
   const [settingsVisible, setSettingsVisible] = useState(false);
-  const [settingsAnchor, setSettingsAnchor] = useState({ top: 56, left: 16 });
   const [isNewUserLoading, setIsNewUserLoading] = useState(
     () => route.params?.newUserLoading === true,
   );
@@ -77,6 +76,7 @@ export default function HomeScreen({
   const hasResolvedRef = useRef(hasResolved);
   const uploadOverCellularRef = useRef(uploadOverCellular);
   const prepareOfflinePromptShownThisAppOpenRef = useRef(false);
+  const isSettlingRef = useRef(false);
 
   const evaluateRef = useRef<(() => Promise<void>) | undefined>(undefined);
   const appStateRef = useRef(AppState.currentState);
@@ -101,11 +101,13 @@ export default function HomeScreen({
   const handleSyncComplete = useCallback(() => {
     setIsNewUserLoading(false);
     setIsSyncingLocal(false);
+    void evaluateRef.current?.();
   }, []);
 
   const isSyncingGlobal = useGlobalSyncStatus(() => {
     setIsNewUserLoading(false);
     setRefreshKey(key => key + 1);
+    void evaluateRef.current?.();
   });
   const { isSyncing, triggerSync } = useSync({
     onSyncComplete: handleSyncComplete,
@@ -123,10 +125,16 @@ export default function HomeScreen({
   const autoRepairSyncAttempted = useRef(false);
 
   useEffect(() => {
+    isSettlingRef.current =
+      isNewUserLoading || postLoginSyncActive || isSyncingLocal || isSyncing;
+  }, [isNewUserLoading, postLoginSyncActive, isSyncingLocal, isSyncing]);
+
+  useEffect(() => {
     const unsubscribeComplete = onSyncComplete(() => {
       setIsNewUserLoading(false);
       setIsSyncingLocal(false);
       setRefreshKey(key => key + 1);
+      void evaluateRef.current?.();
     });
     const unsubscribeStart = onSyncStart(() => {
       setIsSyncingLocal(true);
@@ -164,6 +172,7 @@ export default function HomeScreen({
   useEffect(() => {
     const evaluate = async () => {
       if (!isFocusedRef.current || !hasResolvedRef.current) return;
+      if (isSettlingRef.current) return;
 
       const eligibleConnection =
         connectivityIsOnlineRef.current &&
@@ -256,7 +265,6 @@ export default function HomeScreen({
   ]);
 
   const handleSettingsPress = () => {
-    setSettingsAnchor({ top: 56, left: 16 });
     setSettingsVisible(true);
   };
 
@@ -311,7 +319,6 @@ export default function HomeScreen({
       <UserSettingsMenu
         visible={settingsVisible}
         onClose={() => setSettingsVisible(false)}
-        anchor={settingsAnchor}
         onSignOut={onSignOut}
         onUserSwitched={handleUserSwitched}
       />

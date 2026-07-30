@@ -6,6 +6,7 @@ import {
   getUserVersion,
   Migration,
   rebuildTable,
+  renameRecordingsIsLatestToIsSelected,
   restoreChapterAssignmentAssignedUserIntegrity,
   restoreUserProjectsUserIntegrity,
   runMigrations,
@@ -34,8 +35,9 @@ function emptyResult(rows: Row[] = []): QueryResult {
 /**
  * Minimal SQLite stand-in for migration unit tests (no native op-sqlite).
  * Supports: PRAGMA user_version, PRAGMA table_info, CREATE TABLE,
- * ALTER TABLE ADD COLUMN, INSERT…SELECT (incl. LEFT JOIN users), INSERT VALUES,
- * SELECT, DROP, RENAME, indexes, and basic FK checks on INSERT VALUES.
+ * ALTER TABLE ADD COLUMN, ALTER TABLE RENAME COLUMN, INSERT…SELECT
+ * (incl. LEFT JOIN users), INSERT VALUES, SELECT, DROP, RENAME, indexes,
+ * and basic FK checks on INSERT VALUES.
  */
 function createFakeDb(initialVersion = 0) {
   let userVersion = initialVersion;
@@ -244,6 +246,39 @@ function createFakeDb(initialVersion = 0) {
       );
       if (createIndex) {
         indexes.add(createIndex[1]);
+        return emptyResult();
+      }
+
+      const renameColumn = sql.match(
+        /^ALTER\s+TABLE\s+(\w+)\s+RENAME\s+COLUMN\s+(\w+)\s+TO\s+(\w+)/i,
+      );
+      if (renameColumn) {
+        const [, tableName, fromCol, toCol] = renameColumn;
+        const table = tables.get(tableName);
+        if (!table) {
+          throw new Error(`no such table: ${tableName}`);
+        }
+        if (!table.columns.has(fromCol)) {
+          throw new Error(`no such column: ${fromCol}`);
+        }
+        table.columns.delete(fromCol);
+        table.columns.add(toCol);
+        for (const row of table.rows) {
+          if (fromCol in row) {
+            row[toCol] = row[fromCol];
+            delete row[fromCol];
+          }
+        }
+        const fk = table.foreignKeys.get(fromCol);
+        if (fk) {
+          table.foreignKeys.delete(fromCol);
+          table.foreignKeys.set(toCol, fk);
+        }
+        const dflt = table.defaults.get(fromCol);
+        if (dflt) {
+          table.defaults.delete(fromCol);
+          table.defaults.set(toCol, dflt);
+        }
         return emptyResult();
       }
 
@@ -641,6 +676,9 @@ describe('migrations framework', () => {
     expect(await columnExists(db, 'recordings', 'recorded_by_user_id')).toBe(
       true,
     );
+    // v7 (this migration) should also have renamed is_latest -> is_selected.
+    expect(await columnExists(db, 'recordings', 'is_latest')).toBe(false);
+    expect(await columnExists(db, 'recordings', 'is_selected')).toBe(true);
     await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
   });
 
@@ -793,5 +831,75 @@ describe('recordings attribution migration (#105)', () => {
     );
     expect(old._indexes.has('idx_rec_verse_user')).toBe(true);
     await expect(getUserVersion(old)).resolves.toBe(CURRENT_SCHEMA_VERSION);
+  });
+});
+
+describe('recordings is_selected rename migration (#71)', () => {
+  it('baseline schema uses is_selected, not is_latest', () => {
+    const recordingsSql = createTableQueries.find(q =>
+      q.includes('CREATE TABLE IF NOT EXISTS recordings'),
+    );
+    expect(recordingsSql).toBeDefined();
+    expect(recordingsSql).toContain('is_selected');
+    expect(recordingsSql).not.toContain('is_latest');
+  });
+
+  it('renames is_latest to is_selected when upgrading from v6, preserving row values', async () => {
+    const db = createFakeDb(6);
+    db._tables.set('recordings', {
+      columns: new Set([
+        'id',
+        'bible_text_id',
+        'recorded_by_user_id',
+        'local_file_path',
+        'blob_key',
+        'duration_ms',
+        'file_size_bytes',
+        'take_number',
+        'is_latest',
+        'sync_status',
+        'upload_error',
+        'created_at',
+        'updated_at',
+      ]),
+      rows: [
+        { id: 'rec_1', bible_text_id: 10, is_latest: 0, take_number: 1 },
+        { id: 'rec_2', bible_text_id: 10, is_latest: 1, take_number: 2 },
+      ],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+
+    await runMigrations(db);
+
+    expect(await columnExists(db, 'recordings', 'is_latest')).toBe(false);
+    expect(await columnExists(db, 'recordings', 'is_selected')).toBe(true);
+    const rows = db._tables.get('recordings')!.rows;
+    expect(rows.find(r => r.id === 'rec_1')?.is_selected).toBe(0);
+    expect(rows.find(r => r.id === 'rec_2')?.is_selected).toBe(1);
+    expect(rows.every(r => !('is_latest' in r))).toBe(true);
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
+  });
+
+  it('is a no-op when the column is already renamed', async () => {
+    const db = createFakeDb(6);
+    db._tables.set('recordings', {
+      columns: new Set(['id', 'bible_text_id', 'is_selected', 'take_number']),
+      rows: [{ id: 'rec_1', bible_text_id: 10, is_selected: 1 }],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+
+    await expect(
+      renameRecordingsIsLatestToIsSelected(db),
+    ).resolves.not.toThrow();
+    expect(await columnExists(db, 'recordings', 'is_selected')).toBe(true);
+  });
+
+  it('is a no-op when there is no recordings table (mid-version fixtures)', async () => {
+    const db = createFakeDb(6);
+    await expect(
+      renameRecordingsIsLatestToIsSelected(db),
+    ).resolves.not.toThrow();
   });
 });

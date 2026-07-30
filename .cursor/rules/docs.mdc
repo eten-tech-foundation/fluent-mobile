@@ -16,13 +16,21 @@ alwaysApply: false
 ## Issue tracking & CI
 
 - [docs/issue-tracking.md](../../docs/issue-tracking.md) — Project 4 Fluent Mobile Board, branch naming, PR linking (`Closes #NNN`)
+- [docs/guides/project-board.md](../../docs/guides/project-board.md) — board mutation hard rules (agents)
+- [docs/guides/expo-first-dependencies.md](../../docs/guides/expo-first-dependencies.md) — Expo-first package preference
 - [docs/ci.md](../../docs/ci.md) — workflow inventory + future required-check guardrail
 
-Update these when tracker policy or CI workflows change.
+Update these when tracker policy, board rules, Expo-deps policy, or CI workflows change.
 
-## Cursor rules
+## Cursor rules + cross-tool entrypoints
 
 Keep `.cursor/rules/*.mdc` in sync with onboarding — short pointers only; avoid duplicating full onboarding content.
+
+Cross-tool agents (Claude Code, Copilot, etc.) must still find the same contracts via:
+
+- [CLAUDE.md](../../CLAUDE.md)
+- [AGENTS.md](../../AGENTS.md)
+- [`.github/copilot-instructions.md`](../../.github/copilot-instructions.md)
 
 ## README
 

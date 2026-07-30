@@ -263,7 +263,7 @@ export interface Recording {
   durationMs?: number | null;
   fileSizeBytes?: number | null;
   takeNumber: number;
-  isLatest: boolean;
+  isSelected: boolean;
   syncStatus: RecordingSyncStatus;
   uploadError?: string | null;
   createdAt: string;
@@ -279,7 +279,7 @@ export interface RecordingRow {
   duration_ms: number | null;
   file_size_bytes: number | null;
   take_number: number;
-  is_latest: number;
+  is_selected: number;
   sync_status: RecordingSyncStatus;
   upload_error: string | null;
   created_at: string;
