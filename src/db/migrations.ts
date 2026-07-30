@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 6;
+export const CURRENT_SCHEMA_VERSION = 7;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -223,6 +223,45 @@ async function applyProjectMetadataColumn(db: SqlExecutor): Promise<void> {
   await addColumnIfMissing(db, 'projects', 'metadata', 'TEXT');
 }
 
+/**
+ * Rename `recordings.is_latest` → `is_selected` (#71).
+ * After #71, the flag marks the take chosen as the active draft, which is
+ * not necessarily the most recently recorded take
+ * */
+export async function renameRecordingsIsLatestToIsSelected(
+  db: SqlExecutor,
+): Promise<void> {
+  const info = await db.execute('PRAGMA table_info(recordings)');
+  if (!info.rows.length) {
+    return;
+  }
+  const hasOldColumn = info.rows.some(
+    row => (row as { name?: string }).name === 'is_latest',
+  );
+  const hasNewColumn = info.rows.some(
+    row => (row as { name?: string }).name === 'is_selected',
+  );
+  if (hasNewColumn || !hasOldColumn) {
+    return;
+  }
+  await db.execute(
+    'ALTER TABLE recordings RENAME COLUMN is_latest TO is_selected',
+  );
+
+  await db.execute('DROP INDEX IF EXISTS idx_rec_verse');
+  await db.execute('DROP INDEX IF EXISTS idx_rec_verse_user');
+
+  await db.execute(`
+  CREATE INDEX IF NOT EXISTS idx_rec_verse
+  ON recordings(bible_text_id, is_selected)
+`);
+
+  await db.execute(`
+  CREATE INDEX IF NOT EXISTS idx_rec_verse_user
+  ON recordings(bible_text_id, recorded_by_user_id, is_selected)
+`);
+}
+
 /** Ordered schema migrations. Version 1 = current CREATE IF NOT EXISTS baseline. */
 export const migrations: Migration[] = [
   {
@@ -254,6 +293,11 @@ export const migrations: Migration[] = [
     version: 6,
     name: 'recordings_recorded_by_user',
     up: addRecordingsRecordedByUser,
+  },
+  {
+    version: 7,
+    name: 'recordings_is_selected_rename',
+    up: renameRecordingsIsLatestToIsSelected,
   },
 ];
 

@@ -8,9 +8,14 @@ Cross-tool source of truth for **delivery judgment** (any coding agent, IDE assi
 
 | Start here | Purpose |
 |------------|---------|
+| [CLAUDE.md](CLAUDE.md) | Cross-tool entrypoint (Claude Code, Copilot, non-Cursor agents) |
 | [docs/AGENT_ONBOARDING.md](docs/AGENT_ONBOARDING.md) | Setup, architecture map, common tasks |
-| [`.cursor/rules/`](.cursor/rules/) | Cursor-injected rules (architecture, delivery, Android-only, etc.) |
+| [docs/guides/project-board.md](docs/guides/project-board.md) | Project 4 board mutation hard rules |
+| [docs/guides/expo-first-dependencies.md](docs/guides/expo-first-dependencies.md) | Prefer Expo SDK packages when available |
+| [`.cursor/rules/`](.cursor/rules/) | Always-on + topic rules (plain Markdown — readable by any tool) |
 | This file (`AGENTS.md`) | AC, scope, abstraction, and human QA gates |
+
+`.cursor/rules/*.mdc` are **not** Cursor-only secrets: any agent should open them. Cursor auto-injects a subset; Claude Code / Copilot should follow [CLAUDE.md](CLAUDE.md) and [`.github/copilot-instructions.md`](.github/copilot-instructions.md).
 
 ## Gates
 
@@ -53,6 +58,8 @@ On feature PRs with heavy agent co-authorship, reviewers should prioritize **sco
 
 - Delivery / branch / PR process: [`.cursor/rules/delivery.mdc`](.cursor/rules/delivery.mdc) — **PR bodies must use** [`.cursor/templates/pr-template.md`](.cursor/templates/pr-template.md)
 - Issue tracking (Project 4 Fluent Mobile Board): [docs/issue-tracking.md](docs/issue-tracking.md)
+- Board mutation rules: [docs/guides/project-board.md](docs/guides/project-board.md) · [`.cursor/rules/project-board.mdc`](.cursor/rules/project-board.mdc)
+- Expo-first deps: [docs/guides/expo-first-dependencies.md](docs/guides/expo-first-dependencies.md) · [`.cursor/rules/expo-first-dependencies.mdc`](.cursor/rules/expo-first-dependencies.mdc)
 - CI command order: [`.cursor/rules/commands.mdc`](.cursor/rules/commands.mdc)
 - CI inventory: [docs/ci.md](docs/ci.md)
 - PR body template: [`.cursor/templates/pr-template.md`](.cursor/templates/pr-template.md)

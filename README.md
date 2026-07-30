@@ -164,6 +164,15 @@ cd fluent-mobile
 npm install
 ```
 
+Before opening a PR (and after dependency changes), run the same Expo health checks CI runs in Quality Gates — these are already available via the Expo CLI after `npm install`; no extra packages required:
+
+```bash
+npm run doctor              # expo-doctor
+npx expo install --check    # SDK-aligned dependency versions
+```
+
+If either reports patch drift (e.g. Expo published a newer `expo@~56.0.x` than the lockfile), fix with `npx expo install --fix` on a ticketed branch, merge that bump first, then update other open PRs from `main`. See [docs/ci.md](docs/ci.md).
+
 Generate the native Android project (required before first run):
 
 ```bash
