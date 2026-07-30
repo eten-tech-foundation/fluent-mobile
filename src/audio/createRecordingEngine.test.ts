@@ -43,6 +43,7 @@ function makeFakeRecorder(): EngineRecorder & {
     },
     record() {
       state.calls.push('record');
+      state._time = 1.25;
     },
     pause() {
       state.calls.push('pause');
@@ -50,7 +51,7 @@ function makeFakeRecorder(): EngineRecorder & {
     async stop() {
       state.calls.push('stop');
       state._uri = 'file:///mock-recording.m4a';
-      state._time = 1.25;
+      state._time = 0;
     },
   };
   return fake;

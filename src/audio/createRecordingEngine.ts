@@ -100,15 +100,15 @@ export function createRecordingEngine(
       if (status !== 'recording' && status !== 'paused') {
         throw new Error('Cannot stop recorder while idle');
       }
+
+      const durationMs = Math.max(0, Math.round(recorder.currentTime * 1000));
+
       let uri: string | null = null;
-      let durationMs = 0;
+
       try {
         await recorder.stop();
-        durationMs = Math.max(0, Math.round(recorder.currentTime * 1000));
         uri = recorder.uri;
       } finally {
-        // Native MediaRecorder is released inside expo-audio stop; clear our
-        // prepared flag and drop allowsRecording so the OS mic session ends.
         prepared = false;
         setStatus('idle');
         await releaseMode();

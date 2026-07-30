@@ -43,6 +43,7 @@ const BIBLE_TEXTS_MATCH_CA = `
 
 /** Recordings are keyed by bible_text_id; join verses for the chapter assignment.
  * Bound `recorded_by_user_id = ?` scopes aggregates to the active account (#105).
+ * `is_selected` marks the take chosen as the active draft (#71).
  */
 export const RECORDINGS_JOIN_CA = `
   LEFT JOIN bible_texts bt_r
@@ -50,15 +51,15 @@ export const RECORDINGS_JOIN_CA = `
     AND bt_r.book_id = ca.book_id
     AND bt_r.chapter_number = ca.chapter_number
   LEFT JOIN recordings r ON r.bible_text_id = bt_r.id
-    AND r.is_latest = 1
+    AND r.is_selected = 1
     AND r.recorded_by_user_id = ?`;
 
 const RECORDING_AGGREGATES = `
-  COUNT(DISTINCT CASE WHEN r.id IS NOT NULL AND r.is_latest = 1 THEN r.id END) AS recording_count,
+  COUNT(DISTINCT CASE WHEN r.id IS NOT NULL AND r.is_selected = 1 THEN r.id END) AS recording_count,
   COUNT(DISTINCT CASE
-    WHEN r.id IS NOT NULL AND r.is_latest = 1 AND r.sync_status != 'uploaded' THEN r.id
+    WHEN r.id IS NOT NULL AND r.is_selected = 1 AND r.sync_status != 'uploaded' THEN r.id
   END) AS pending_count,
-  MAX(CASE WHEN r.is_latest = 1 THEN r.updated_at END) AS last_recording_activity`;
+  MAX(CASE WHEN r.is_selected = 1 THEN r.updated_at END) AS last_recording_activity`;
 
 function isUserRow(row: unknown): row is DBTypes.UserRow {
   if (!row || typeof row !== 'object') return false;
@@ -435,14 +436,14 @@ export async function getMyWorkChapters(
   }
 }
 
-/** Latest recordings not yet uploaded to the Fluent server. */
+/** Selected recordings not yet uploaded to the Fluent server. */
 export async function getPendingUploadCount(): Promise<number> {
   const db = getDatabase();
   try {
     const result = await db.execute(
       `SELECT COUNT(*) AS count
        FROM recordings
-       WHERE is_latest = 1 AND sync_status != 'uploaded';`,
+       WHERE is_selected = 1 AND sync_status != 'uploaded';`,
     );
     return Number(result.rows?.[0]?.count) || 0;
   } catch (error) {
@@ -451,14 +452,14 @@ export async function getPendingUploadCount(): Promise<number> {
   }
 }
 
-/** Latest recordings whose last upload attempt failed. */
+/** Selected recordings whose last upload attempt failed. */
 export async function getFailedUploadCount(): Promise<number> {
   const db = getDatabase();
   try {
     const result = await db.execute(
       `SELECT COUNT(*) AS count
        FROM recordings
-       WHERE is_latest = 1 AND sync_status = 'failed'`,
+       WHERE is_selected = 1 AND sync_status = 'failed'`,
     );
     return Number(result.rows?.[0]?.count) || 0;
   } catch (error) {
@@ -473,7 +474,7 @@ export type PendingUploadChapter = {
 };
 
 /**
- * Distinct chapters with at least one latest non-uploaded recording.
+ * Distinct chapters with at least one selected, non-uploaded recording.
  * Upload engine (#150) processes work per chapter, not per verse.
  */
 export async function getPendingUploadChapters(): Promise<
@@ -485,7 +486,7 @@ export async function getPendingUploadChapters(): Promise<
       `SELECT DISTINCT bt.book_id AS book_id, bt.chapter_number AS chapter_number
        FROM recordings r
        JOIN bible_texts bt ON bt.id = r.bible_text_id
-       WHERE r.is_latest = 1 AND r.sync_status != 'uploaded'
+       WHERE r.is_selected = 1 AND r.sync_status != 'uploaded'
        ORDER BY bt.book_id, bt.chapter_number`,
     );
     const rows = result.rows ?? [];
@@ -548,7 +549,7 @@ export async function getRecordedVerseNumbers(
        WHERE bt.bible_id = ?
          AND bt.book_id = ?
          AND bt.chapter_number = ?
-         AND r.is_latest = 1`,
+         AND r.is_selected = 1`,
       [bibleId, bookId, chapterNumber],
     );
 
