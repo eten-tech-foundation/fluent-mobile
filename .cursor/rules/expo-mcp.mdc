@@ -1,5 +1,5 @@
 ---
-description: Use Expo MCP for SDK 56, CNG, EAS, and config plugin work
+description: Use Expo MCP for SDK 57, CNG, EAS, and config plugin work
 alwaysApply: false
 tags:
   - expo
@@ -21,7 +21,7 @@ After auth, prefer **Expo MCP** (`search_documentation`, `read_documentation`, E
 
 | Task | MCP topics |
 |------|------------|
-| Dependencies | `npx expo install`, SDK 56 version matrix |
+| Dependencies | `npx expo install`, SDK 57 version matrix |
 | App config | `app.config.ts`, plugins, `expo-build-properties` |
 | CNG / prebuild | `expo prebuild --clean --platform android` (Android-only) |
 | EAS | `eas.json` profiles, build status, logs |
