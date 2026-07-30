@@ -52,8 +52,10 @@ export function createPlaybackEngine(deps: PlaybackEngineDeps): PlaybackEngine {
   let modeReady = false;
   /** URI last successfully loaded via `replace` — skip replace on same-URI resume. */
   let loadedUri: string | null = null;
-  /** In-flight `replace` + load wait, so concurrent same-URI loads share one. */
+  /** Most recently queued `replace` + load wait, shared by same-URI callers. */
   let pendingLoad: { uri: string; promise: Promise<void> } | null = null;
+  /** Tail of the load queue — one player, so `replace` calls must not overlap. */
+  let loadQueue: Promise<void> = Promise.resolve();
 
   function setStatus(next: PlayerStatus): void {
     status = next;
@@ -92,29 +94,41 @@ export function createPlaybackEngine(deps: PlaybackEngineDeps): PlaybackEngine {
     }
   }
 
+  /**
+   * Prepare `uri` in the player, at most one `replace` at a time.
+   *
+   * A scrub can fire load() again while the first is still preparing. Sharing
+   * the in-flight load for the same URI avoids a second `replace` resetting
+   * currentTime and dropping the seek the caller just made. A *different* URI
+   * still has to queue: overlapping loads poll one shared `isLoaded`, so the
+   * loser would otherwise record its own URI as loaded while the player holds
+   * the other one.
+   */
   async function load(uri: string): Promise<void> {
     await ensureMode();
-    // A scrub can fire load() again while the first is still preparing; a second
-    // `replace` would reset currentTime and drop the seek the caller just made.
     if (pendingLoad?.uri === uri) {
       await pendingLoad.promise;
       emitPosition();
       return;
     }
-    // `replace` resets currentTime to 0 — only load a new take, not pause→play.
-    if (loadedUri !== uri || !player.isLoaded) {
-      const promise = (async () => {
-        player.replace({ uri });
-        await waitUntilLoaded();
-        loadedUri = uri;
-      })();
-      pendingLoad = { uri, promise };
-      try {
-        await promise;
-      } finally {
-        if (pendingLoad?.promise === promise) {
-          pendingLoad = null;
-        }
+    const promise = loadQueue.then(async () => {
+      // `replace` resets currentTime to 0 — only load a new take, not pause→play.
+      // Re-checked here: an earlier queued load may have prepared this URI.
+      if (loadedUri === uri && player.isLoaded) {
+        return;
+      }
+      player.replace({ uri });
+      await waitUntilLoaded();
+      loadedUri = uri;
+    });
+    // A failed load must not wedge the queue for the next take.
+    loadQueue = promise.catch(() => undefined);
+    pendingLoad = { uri, promise };
+    try {
+      await promise;
+    } finally {
+      if (pendingLoad?.promise === promise) {
+        pendingLoad = null;
       }
     }
     emitPosition();

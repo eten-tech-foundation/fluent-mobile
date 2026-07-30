@@ -8,6 +8,10 @@ function makeFakePlayer(options?: {
   durationSec?: number;
 }): EnginePlayer & {
   calls: string[];
+  /** Source last handed to `replace` — the player's real loaded take. */
+  loadedSource: string | null;
+  /** `replace` calls made while a previous source was still preparing. */
+  overlappedReplaces: number;
 } {
   const unloadPolls = options?.unloadPolls ?? 0;
   const durationSec = options?.durationSec ?? 2.5;
@@ -17,12 +21,23 @@ function makeFakePlayer(options?: {
     duration: 0,
     playing: false,
     remainingUnloadPolls: 0,
+    overlappedReplaces: 0,
     calls: [] as string[],
   };
 
-  const player: EnginePlayer & { calls: string[] } = {
+  const player: EnginePlayer & {
+    calls: string[];
+    loadedSource: string | null;
+    overlappedReplaces: number;
+  } = {
     get calls() {
       return state.calls;
+    },
+    get loadedSource() {
+      return state.uri;
+    },
+    get overlappedReplaces() {
+      return state.overlappedReplaces;
     },
     get playing() {
       return state.playing;
@@ -46,6 +61,11 @@ function makeFakePlayer(options?: {
     },
     replace(source: string | { uri: string } | null) {
       state.calls.push('replace');
+      // One native player: swapping the source mid-prepare means the previous
+      // load is now polling `isLoaded` for someone else's file.
+      if (state.remainingUnloadPolls > 0) {
+        state.overlappedReplaces += 1;
+      }
       const uri =
         typeof source === 'string'
           ? source
@@ -284,5 +304,35 @@ describe('createPlaybackEngine', () => {
     await engine.load('file:///take.m4a');
     expect(player.calls.filter(c => c === 'replace')).toHaveLength(1);
     expect(engine.positionMs).toBe(1500);
+  });
+
+  it('queues concurrent loads of different URIs and settles on the last', async () => {
+    const player = makeFakePlayer({ unloadPolls: 3, durationSec: 3 });
+    const engine = createPlaybackEngine({
+      player,
+      delayMs: async () => undefined,
+    });
+
+    await Promise.all([
+      engine.load('file:///take-a.m4a'),
+      engine.load('file:///take-b.m4a'),
+    ]);
+
+    // B must wait for A to finish preparing, or A's poll loop would resolve
+    // against B's file and record A as the loaded URI.
+    expect(player.overlappedReplaces).toBe(0);
+    expect(player.calls.filter(c => c === 'replace')).toHaveLength(2);
+    expect(player.loadedSource).toBe('file:///take-b.m4a');
+
+    // The engine must agree with the player: B is loaded, so playing B does
+    // not replace, and playing A does.
+    player.calls.length = 0;
+    await engine.play('file:///take-b.m4a');
+    expect(player.calls).not.toContain('replace');
+
+    player.calls.length = 0;
+    await engine.play('file:///take-a.m4a');
+    expect(player.calls).toContain('replace');
+    expect(player.loadedSource).toBe('file:///take-a.m4a');
   });
 });
