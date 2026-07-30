@@ -20,6 +20,14 @@ For open PRs awaiting review, prefer **`In PR Review`**. For merged/completed wo
 
 Do **not** use org Project 7 (“Fluent Mobile App”) as the primary tracker unless the team explicitly migrates.
 
+### Agent board mutations (mandatory)
+
+Agents must follow [guides/project-board.md](guides/project-board.md) before changing Project 4 Status or Priority:
+
+- Do **not** move `Dev Ready` cards to `Backlog` / `Sprint Shaping` to sequence work — use Priority inside `Dev Ready`, or ask.
+- Do **not** edit `In Progress (Product)` (or other Product-owned columns) unless the tech lead explicitly names those issues.
+- Broad board sweeps require a proposed change set and explicit approval.
+
 ## Where to file work
 
 1. Create a **GitHub Issue** in `eten-tech-foundation/fluent-mobile` (needed for `#NNN`, branch names, and `Closes #NNN`).
@@ -78,5 +86,8 @@ Use [GitHub closing keywords](https://docs.github.com/en/issues/tracking-your-wo
 
 ## Related
 
+- [guides/project-board.md](guides/project-board.md) — board mutation hard rules for agents
+- [guides/expo-first-dependencies.md](guides/expo-first-dependencies.md) — prefer Expo packages
 - [docs/ci.md](ci.md) — CI workflows and required-check guardrails
 - [docs/AGENT_ONBOARDING.md](AGENT_ONBOARDING.md) — setup and architecture map
+- [CLAUDE.md](../CLAUDE.md) — cross-tool agent entrypoint
