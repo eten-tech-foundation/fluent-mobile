@@ -1,10 +1,6 @@
 import { requireOptionalNativeModule } from 'expo';
 import type { RemuxNativeModule } from './ensureSeekableTakeUri';
 
-type AacRemuxNativeModule = {
-  remuxAacToM4a: (inputUri: string, outputUri: string) => Promise<string>;
-};
-
 /**
  * Optional binding to the local `AacRemux` Expo module (Android MediaMuxer).
  * Returns `null` when the native module is not linked (Jest, Expo Go, or a
@@ -12,8 +8,7 @@ type AacRemuxNativeModule = {
  */
 export function getRemuxNativeModule(): RemuxNativeModule | null {
   try {
-    const native =
-      requireOptionalNativeModule<AacRemuxNativeModule>('AacRemux');
+    const native = requireOptionalNativeModule<RemuxNativeModule>('AacRemux');
     if (!native?.remuxAacToM4a) {
       return null;
     }

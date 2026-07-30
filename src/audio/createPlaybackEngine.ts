@@ -52,6 +52,8 @@ export function createPlaybackEngine(deps: PlaybackEngineDeps): PlaybackEngine {
   let modeReady = false;
   /** URI last successfully loaded via `replace` — skip replace on same-URI resume. */
   let loadedUri: string | null = null;
+  /** In-flight `replace` + load wait, so concurrent same-URI loads share one. */
+  let pendingLoad: { uri: string; promise: Promise<void> } | null = null;
 
   function setStatus(next: PlayerStatus): void {
     status = next;
@@ -92,11 +94,28 @@ export function createPlaybackEngine(deps: PlaybackEngineDeps): PlaybackEngine {
 
   async function load(uri: string): Promise<void> {
     await ensureMode();
+    // A scrub can fire load() again while the first is still preparing; a second
+    // `replace` would reset currentTime and drop the seek the caller just made.
+    if (pendingLoad?.uri === uri) {
+      await pendingLoad.promise;
+      emitPosition();
+      return;
+    }
     // `replace` resets currentTime to 0 — only load a new take, not pause→play.
     if (loadedUri !== uri || !player.isLoaded) {
-      player.replace({ uri });
-      await waitUntilLoaded();
-      loadedUri = uri;
+      const promise = (async () => {
+        player.replace({ uri });
+        await waitUntilLoaded();
+        loadedUri = uri;
+      })();
+      pendingLoad = { uri, promise };
+      try {
+        await promise;
+      } finally {
+        if (pendingLoad?.promise === promise) {
+          pendingLoad = null;
+        }
+      }
     }
     emitPosition();
   }

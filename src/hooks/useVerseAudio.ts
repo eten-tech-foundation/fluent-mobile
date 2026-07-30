@@ -85,6 +85,12 @@ export function useVerseAudio({
   );
   const [takes, setTakes] = useState<Recording[]>([]);
   const [playingTakeId, setPlayingTakeId] = useState<string | null>(null);
+  /**
+   * Take currently prepared in the player. Outlives `playingTakeId` (which
+   * clears at the natural end of playback) so a finished take stays scrubbable
+   * until it is stopped, deleted, or the verse changes (#176).
+   */
+  const [loadedTakeId, setLoadedTakeId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const captureBibleTextIdRef = useRef<number | null>(null);
 
@@ -93,6 +99,7 @@ export function useVerseAudio({
 
   useEffect(() => {
     let cancelled = false;
+    setLoadedTakeId(null);
     (async () => {
       if (bibleTextId === null) {
         setTakes([]);
@@ -137,6 +144,7 @@ export function useVerseAudio({
         // Ignore — recorder start below is what matters.
       }
       setPlayingTakeId(null);
+      setLoadedTakeId(null);
       captureBibleTextIdRef.current = bibleTextId;
       await recording.start();
       dispatch({ type: 'START' });
@@ -209,9 +217,11 @@ export function useVerseAudio({
         setErrorMessage(null);
         await playback.play(path);
         setPlayingTakeId(take.id);
+        setLoadedTakeId(take.id);
         dispatch({ type: 'PLAY' });
       } catch (error) {
         setPlayingTakeId(null);
+        setLoadedTakeId(null);
         const message = error instanceof Error ? error.message : 'play failed';
         setErrorMessage(message);
         dispatch({ type: 'ERROR', message });
@@ -222,15 +232,15 @@ export function useVerseAudio({
 
   /**
    * Review scrub (#176): seek the loaded take (loads without playing if needed).
-   * Prefer the take currently in the player (`playingTakeId`), else the selected
+   * Prefer the take currently in the player (`loadedTakeId`), else the selected
    * draft. Accurate absolute seek needs a seekable container (`.m4a`); ADTS
    * takes are remuxed via {@link getRemuxNativeModule} on commit (#233).
    */
   const seek = useCallback(
     async (ms: number) => {
       const take =
-        (playingTakeId != null
-          ? takes.find(t => t.id === playingTakeId)
+        (loadedTakeId !== null
+          ? takes.find(t => t.id === loadedTakeId)
           : null) ?? selectedTake;
       if (!take?.localFilePath) return;
       try {
@@ -244,6 +254,7 @@ export function useVerseAudio({
         setErrorMessage(null);
         await playback.load(path);
         setPlayingTakeId(take.id);
+        setLoadedTakeId(take.id);
         const capped =
           typeof take.durationMs === 'number' && take.durationMs > 0
             ? Math.min(Math.max(0, ms), take.durationMs)
@@ -255,7 +266,7 @@ export function useVerseAudio({
         dispatch({ type: 'ERROR', message });
       }
     },
-    [playback, playingTakeId, selectedTake, takes],
+    [loadedTakeId, playback, selectedTake, takes],
   );
 
   /** Pause draft review playback (design review control shows Pause while playing). */
@@ -285,9 +296,11 @@ export function useVerseAudio({
     async (id: string) => {
       try {
         const target = takes.find(t => t.id === id);
-        if (playingTakeId === id) {
+        // The player still holds this file even after playback ended.
+        if (loadedTakeId === id) {
           await playback.stop();
           setPlayingTakeId(null);
+          setLoadedTakeId(null);
         }
         await deleteTakeFn(id);
         if (target?.localFilePath) {
@@ -309,7 +322,7 @@ export function useVerseAudio({
         dispatch({ type: 'ERROR', message });
       }
     },
-    [bibleTextId, loadTakes, playback, playingTakeId, takes, deleteTakeFn],
+    [bibleTextId, loadTakes, loadedTakeId, playback, takes, deleteTakeFn],
   );
 
   const selectTake = useCallback(
@@ -335,6 +348,7 @@ export function useVerseAudio({
     selectedTake,
     canRecordNewTake,
     playingTakeId,
+    loadedTakeId,
     errorMessage,
     positionMs: playback.positionMs,
     durationMs: playback.durationMs,

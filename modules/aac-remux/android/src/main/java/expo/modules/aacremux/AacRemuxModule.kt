@@ -40,6 +40,7 @@ class AacRemuxModule : Module() {
     var muxer: MediaMuxer? = null
     var muxerStarted = false
     var remuxError: Exception? = null
+    var cleanupError: Exception? = null
     try {
       extractor.setDataSource(srcPath)
 
@@ -106,7 +107,6 @@ class AacRemuxModule : Module() {
     } catch (e: Exception) {
       remuxError = CodedException("Failed to remux AAC to M4A: ${e.message}")
     } finally {
-      var cleanupError: Exception? = null
       if (muxerStarted) {
         try {
           muxer?.stop()
@@ -131,14 +131,16 @@ class AacRemuxModule : Module() {
         extractor.release()
       } catch (_: Exception) {
       }
+    }
 
-      val failure = remuxError ?: cleanupError
-      if (failure != null) {
-        File(dstPath).delete()
-        when (failure) {
-          is CodedException -> throw failure
-          else -> throw CodedException(failure.message ?: "Remux failed")
-        }
+    // Throwing from `finally` would swallow anything the try block raised that
+    // the catches above miss (e.g. an Error), so report the failure afterwards.
+    val failure = remuxError ?: cleanupError
+    if (failure != null) {
+      File(dstPath).delete()
+      when (failure) {
+        is CodedException -> throw failure
+        else -> throw CodedException(failure.message ?: "Remux failed")
       }
     }
   }

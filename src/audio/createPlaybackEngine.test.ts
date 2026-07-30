@@ -264,4 +264,25 @@ describe('createPlaybackEngine', () => {
     expect(player.calls).toContain('play');
     expect(engine.positionMs).toBe(1500);
   });
+
+  it('shares one replace across concurrent loads of the same URI', async () => {
+    const player = makeFakePlayer({ unloadPolls: 3, durationSec: 3 });
+    const engine = createPlaybackEngine({
+      player,
+      delayMs: async () => undefined,
+    });
+
+    // Scrubbing fires load() again while the first is still preparing.
+    await Promise.all([
+      engine.load('file:///take.m4a'),
+      engine.load('file:///take.m4a'),
+    ]);
+    expect(player.calls.filter(c => c === 'replace')).toHaveLength(1);
+
+    // A duplicate load after the seek must not replace (and reset) the take.
+    await engine.seek(1500);
+    await engine.load('file:///take.m4a');
+    expect(player.calls.filter(c => c === 'replace')).toHaveLength(1);
+    expect(engine.positionMs).toBe(1500);
+  });
 });

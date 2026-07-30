@@ -394,6 +394,9 @@ export function RecordTab({
                     const isLoaded = verseAudio.playingTakeId === take.id;
                     const isThisPlaying =
                       isLoaded && verseAudio.state === 'playing';
+                    // Playback clears playingTakeId when a take reaches its end,
+                    // but the take stays in the player and stays scrubbable.
+                    const isSeekable = verseAudio.loadedTakeId === take.id;
                     return (
                       <DraftTakeRow
                         takeNumber={take.takeNumber}
@@ -415,7 +418,7 @@ export function RecordTab({
                         }}
                         onDelete={() => handleDeleteTake(take)}
                         onSeek={
-                          isLoaded
+                          isSeekable
                             ? ms => {
                                 void verseAudio.seek(ms);
                               }
