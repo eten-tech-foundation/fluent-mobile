@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  FlatList,
   Linking,
   Platform,
   StyleSheet,
@@ -30,6 +31,7 @@ import { SourceTextAccordion } from '../../components/ui/SourceTextAccordion';
 import { SourceAudioPlayerBar } from '../../components/layout/SourceAudioPlayerBar';
 import { RootStackParamList } from '../../types/navigation/types';
 import { ChapterAssignmentData } from '../../types/db/types';
+import type { Recording } from '../../types/db/types';
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -47,19 +49,14 @@ function formatDuration(ms: number): string {
 
 type RecordTabProps = {
   chapterData: ChapterAssignmentData;
-  /**
-   * Notifies DraftingScreen when an in-progress capture should block tab
-   * switches (recording/paused). Keep Record mounted while hidden so the
-   * native session survives tab switches — unmounting tears down expo-audio's
-   * recorder.
-   */
   onCaptureActiveChange?: (active: boolean) => void;
 };
 
 /**
  * Record tab — draft capture / review for the selected drafting verse.
- * Visual states follow docs/design/record-tab/01–04 + Lovable chrome.
- * Built on useVerseAudio (#97); kill-safe ADTS multi-segment pause is #176/#170.
+ * Built on useVerseAudio (#97). Multi-take Review list is #71 — takes are
+ * ordered by take_number ASC; exclusive playback is enforced by the single
+ * playback engine inside useVerseAudio (tracked via playingTakeId).
  */
 export function RecordTab({
   chapterData,
@@ -77,12 +74,10 @@ export function RecordTab({
   const nextDisabled = verseIndex < 0 || verseIndex >= verses.length - 1;
   const selected = verses.find(v => v.verseNumber === selectedVerse);
   const reference = `${chapterName}:${selectedVerse}`;
-  const takeNumber = verseAudio.latest?.takeNumber;
-  const hasTake = Boolean(verseAudio.latest);
+  const hasTake = verseAudio.takes.length > 0;
 
   useEffect(() => {
     let cancelled = false;
-    // Clear immediately so we never keep the previous verse's id while lookup runs.
     setBibleTextId(null);
     (async () => {
       const id = await getBibleTextId(
@@ -107,7 +102,6 @@ export function RecordTab({
       setElapsedMs(Date.now() - tickStartedAt);
     }, 200);
     return () => clearInterval(id);
-    // Only re-arm when entering recording — not on every elapsed tick.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
   }, [verseAudio.state]);
 
@@ -164,23 +158,28 @@ export function RecordTab({
     await verseAudio.stop();
   }
 
-  async function handleReRecord() {
-    if (!(await ensureMic())) return;
-    setElapsedMs(0);
-    await verseAudio.start();
-  }
-
-  function handleDelete() {
+  /**
+   * Non-selected take: delete immediately, no prompt.
+   * Selected take: confirm first — deleting it hands off is_selected to the
+   * next-highest take_number (recordingsRepository#deleteRecordingTake), or
+   * returns the unit to Idle if it was the last one.
+   */
+  function handleDeleteTake(take: Recording) {
+    const isSelected = take.id === verseAudio.selectedTake?.id;
+    if (!isSelected) {
+      void verseAudio.deleteTake(take.id);
+      return;
+    }
     Alert.alert(
-      'Delete draft?',
-      'This removes the draft recording for this verse.',
+      'Delete selected take?',
+      `Take ${take.takeNumber} is currently selected as the active draft. Deleting it will select another take, or return to Idle if none remain.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            void verseAudio.deleteCurrent();
+            void verseAudio.deleteTake(take.id);
           },
         },
       ],
@@ -199,8 +198,6 @@ export function RecordTab({
     setSelectedVerse(next);
   }
 
-  // error + no take → idle chrome; error after a saved take → keep review so
-  // a failed play/delete doesn't look like the draft vanished.
   const showIdle =
     verseAudio.state === 'idle' || (verseAudio.state === 'error' && !hasTake);
   const isRecording = verseAudio.state === 'recording';
@@ -212,7 +209,6 @@ export function RecordTab({
     verseAudio.state === 'saving' ||
     (verseAudio.state === 'error' && hasTake);
   const showSourceAudio = showIdle || showReview;
-  const isPlaying = verseAudio.state === 'playing';
 
   return (
     <View style={styles.container} testID="record-tab">
@@ -302,7 +298,7 @@ export function RecordTab({
                 onPress={() => {
                   void handleStart();
                 }}
-                disabled={recordDisabled}
+                disabled={recordDisabled || !verseAudio.canRecordNewTake}
                 accessibilityLabel={`Record ${reference}`}
                 testID="record-start-button"
               >
@@ -386,29 +382,53 @@ export function RecordTab({
 
           {showReview ? (
             <View style={styles.reviewGroup}>
-              {typeof takeNumber === 'number' && takeNumber > 0 ? (
-                <DraftTakeRow
-                  takeNumber={takeNumber}
-                  positionMs={verseAudio.positionMs}
-                  durationMs={verseAudio.durationMs}
-                  isPlaying={isPlaying}
-                  onPlayPause={() => {
-                    void (isPlaying
-                      ? verseAudio.pausePlayback()
-                      : verseAudio.play());
+              {hasTake ? (
+                <FlatList
+                  testID="record-take-list"
+                  data={verseAudio.takes}
+                  keyExtractor={take => take.id}
+                  style={styles.takeList}
+                  contentContainerStyle={styles.takeListContent}
+                  renderItem={({ item: take }) => {
+                    const isSelected = take.id === verseAudio.selectedTake?.id;
+                    const isLoaded = verseAudio.playingTakeId === take.id;
+                    const isThisPlaying =
+                      isLoaded && verseAudio.state === 'playing';
+                    return (
+                      <DraftTakeRow
+                        takeNumber={take.takeNumber}
+                        isSelected={isSelected}
+                        isPlaying={isThisPlaying}
+                        positionMs={isLoaded ? verseAudio.positionMs : 0}
+                        durationMs={
+                          isLoaded && verseAudio.durationMs > 0
+                            ? verseAudio.durationMs
+                            : take.durationMs ?? 0
+                        }
+                        onPlayPause={() => {
+                          void (isThisPlaying
+                            ? verseAudio.pausePlayback()
+                            : verseAudio.playTake(take));
+                        }}
+                        onSelect={() => {
+                          void verseAudio.selectTake(take.id);
+                        }}
+                        onDelete={() => handleDeleteTake(take)}
+                      />
+                    );
                   }}
-                  onDelete={handleDelete}
                 />
               ) : null}
               <TouchableOpacity
                 style={[
                   styles.newTakeButton,
-                  recordDisabled && styles.disabled,
+                  (recordDisabled || !verseAudio.canRecordNewTake) &&
+                    styles.disabled,
                 ]}
                 onPress={() => {
-                  void handleReRecord();
+                  void handleStart();
                 }}
-                disabled={recordDisabled}
+                disabled={recordDisabled || !verseAudio.canRecordNewTake}
                 accessibilityRole="button"
                 accessibilityLabel="Record new take"
                 testID="record-new-take-button"
@@ -512,6 +532,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: theme.spacing.lg,
     width: '100%',
+  },
+  takeList: {
+    width: '100%',
+    maxHeight: theme.waveform.tallHeight * 3,
+  },
+  takeListContent: {
+    gap: theme.spacing.sm,
   },
   newTakeButton: {
     flexDirection: 'row',

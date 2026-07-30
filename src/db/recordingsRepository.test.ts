@@ -45,14 +45,14 @@ async function mockExecute(
 ): Promise<ExecuteResult> {
   const normalized = sql.replace(/\s+/g, ' ').trim();
 
-  if (normalized.startsWith('UPDATE recordings SET is_latest = 0')) {
+  if (normalized.startsWith('UPDATE recordings SET is_selected = 0')) {
     const bibleTextId = params[1] as number;
     const updatedAt = params[0] as string;
     rows = rows.map(r =>
       r.bible_text_id === bibleTextId &&
-      r.is_latest === 1 &&
+      r.is_selected === 1 &&
       matchesOwner(r, normalized, params, 2)
-        ? { ...r, is_latest: 0, updated_at: updatedAt }
+        ? { ...r, is_selected: 0, updated_at: updatedAt }
         : r,
     );
     return { rows: [] };
@@ -103,7 +103,7 @@ async function mockExecute(
       duration_ms: durationMs,
       file_size_bytes: fileSizeBytes,
       take_number: takeNumber,
-      is_latest: 1,
+      is_selected: 1,
       sync_status: syncStatus,
       upload_error: null,
       created_at: createdAt,
@@ -114,14 +114,14 @@ async function mockExecute(
 
   if (
     normalized.includes(
-      'SELECT * FROM recordings WHERE bible_text_id = ? AND is_latest = 1',
+      'SELECT * FROM recordings WHERE bible_text_id = ? AND is_selected = 1',
     )
   ) {
     const bibleTextId = params[0] as number;
     const match = rows.find(
       r =>
         r.bible_text_id === bibleTextId &&
-        r.is_latest === 1 &&
+        r.is_selected === 1 &&
         matchesOwner(r, normalized, params, 1),
     );
     return { rows: match ? [clone(match)] : [] };
@@ -146,7 +146,7 @@ async function mockExecute(
 
   if (
     normalized.startsWith(
-      'SELECT bible_text_id, recorded_by_user_id, is_latest FROM recordings WHERE id = ?',
+      'SELECT bible_text_id, recorded_by_user_id, is_selected FROM recordings WHERE id = ?',
     )
   ) {
     const id = params[0] as string;
@@ -157,7 +157,7 @@ async function mockExecute(
             {
               bible_text_id: match.bible_text_id,
               recorded_by_user_id: match.recorded_by_user_id,
-              is_latest: match.is_latest,
+              is_selected: match.is_selected,
             },
           ]
         : [],
@@ -185,11 +185,11 @@ async function mockExecute(
     return { rows: match ? [{ id: match.id }] : [] };
   }
 
-  if (normalized.startsWith('UPDATE recordings SET is_latest = 1')) {
+  if (normalized.startsWith('UPDATE recordings SET is_selected = 1')) {
     const updatedAt = params[0] as string;
     const id = params[1] as string;
     rows = rows.map(r =>
-      r.id === id ? { ...r, is_latest: 1, updated_at: updatedAt } : r,
+      r.id === id ? { ...r, is_selected: 1, updated_at: updatedAt } : r,
     );
     return { rows: [] };
   }
@@ -217,6 +217,7 @@ import {
   deleteRecordingTake,
   getLatestRecordingForVerse,
   getTakesForVerse,
+  selectRecordingTake,
 } from './recordingsRepository';
 
 describe('recordingsRepository multi-take', () => {
@@ -224,7 +225,7 @@ describe('recordingsRepository multi-take', () => {
     resetRecordingsDbMock();
   });
 
-  it('bumps take_number and flips is_latest in one transaction', async () => {
+  it('bumps take_number and flips is_selected in one transaction', async () => {
     const id1 = await addRecordingTake({
       bibleTextId: 10,
       localFilePath: 'file:///a.m4a',
@@ -242,8 +243,8 @@ describe('recordingsRepository multi-take', () => {
     const takes = await getTakesForVerse(10);
     expect(takes).toHaveLength(2);
     expect(takes.map(t => t.takeNumber)).toEqual([1, 2]);
-    expect(takes.filter(t => t.isLatest)).toHaveLength(1);
-    expect(takes.find(t => t.isLatest)?.id).toBe('take-2');
+    expect(takes.filter(t => t.isSelected)).toHaveLength(1);
+    expect(takes.find(t => t.isSelected)?.id).toBe('take-2');
     expect(takes.every(t => t.recordedByUserId === 1)).toBe(true);
 
     const latest = await getLatestRecordingForVerse(10);
@@ -262,7 +263,7 @@ describe('recordingsRepository multi-take', () => {
     expect(__getRecordingRows()[0].recorded_by_user_id).toBe(42);
   });
 
-  it('keeps separate latest takes per user on the same verse', async () => {
+  it('keeps separate selected takes per user on the same verse', async () => {
     __setMockActiveUserId('1');
     await addRecordingTake({
       bibleTextId: 5,
@@ -282,12 +283,12 @@ describe('recordingsRepository multi-take', () => {
     expect(latestUser2?.id).toBe('u2');
     expect(
       __getRecordingRows().filter(
-        r => r.bible_text_id === 5 && r.is_latest === 1,
+        r => r.bible_text_id === 5 && r.is_selected === 1,
       ),
     ).toHaveLength(2);
   });
 
-  it('keeps exactly one is_latest per bible_text_id for the active user', async () => {
+  it('keeps exactly one is_selected per bible_text_id for the active user', async () => {
     await addRecordingTake({
       bibleTextId: 1,
       localFilePath: 'file:///1.m4a',
@@ -303,16 +304,16 @@ describe('recordingsRepository multi-take', () => {
       localFilePath: 'file:///3.m4a',
       id: 'c',
     });
-    const latestCount = __getRecordingRows().filter(
+    const selectedCount = __getRecordingRows().filter(
       r =>
         r.bible_text_id === 1 &&
         r.recorded_by_user_id === 1 &&
-        r.is_latest === 1,
+        r.is_selected === 1,
     );
-    expect(latestCount).toHaveLength(1);
+    expect(selectedCount).toHaveLength(1);
   });
 
-  it('promotes previous take when deleting the latest', async () => {
+  it('promotes previous take when deleting the selected take', async () => {
     await addRecordingTake({
       bibleTextId: 7,
       localFilePath: 'file:///x.m4a',
@@ -327,10 +328,10 @@ describe('recordingsRepository multi-take', () => {
     await deleteRecordingTake('new');
     const latest = await getLatestRecordingForVerse(7);
     expect(latest?.id).toBe('old');
-    expect(latest?.isLatest).toBe(true);
+    expect(latest?.isSelected).toBe(true);
   });
 
-  it('clears latest when deleting the only take', async () => {
+  it('clears selection when deleting the only take', async () => {
     await addRecordingTake({
       bibleTextId: 3,
       localFilePath: 'file:///only.m4a',
@@ -339,5 +340,35 @@ describe('recordingsRepository multi-take', () => {
     await deleteRecordingTake('only');
     await expect(getLatestRecordingForVerse(3)).resolves.toBeNull();
     expect(await getTakesForVerse(3)).toEqual([]);
+  });
+
+  it('selects a non-selected take and clears the previous selection', async () => {
+    await addRecordingTake({
+      bibleTextId: 20,
+      localFilePath: 'file:///t1.m4a',
+      id: 't1',
+    });
+    await addRecordingTake({
+      bibleTextId: 20,
+      localFilePath: 'file:///t2.m4a',
+      id: 't2',
+    });
+    // t2 is selected after the second insert; select t1 instead.
+    await selectRecordingTake('t1');
+
+    const takes = await getTakesForVerse(20);
+    expect(takes.find(t => t.id === 't1')?.isSelected).toBe(true);
+    expect(takes.find(t => t.id === 't2')?.isSelected).toBe(false);
+  });
+
+  it('selecting the already-selected take is a no-op', async () => {
+    await addRecordingTake({
+      bibleTextId: 21,
+      localFilePath: 'file:///only.m4a',
+      id: 'only',
+    });
+    await selectRecordingTake('only');
+    const takes = await getTakesForVerse(21);
+    expect(takes.find(t => t.id === 'only')?.isSelected).toBe(true);
   });
 });
