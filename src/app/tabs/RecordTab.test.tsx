@@ -309,6 +309,30 @@ describe('RecordTab', () => {
     expect(idleAudio.seek).toHaveBeenCalledWith(6500);
   });
 
+  it('scrubs the selected take before it has ever been played', () => {
+    const take = makeTake({ durationMs: 13000 });
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      state: 'recorded',
+      takes: [take],
+      selectedTake: take,
+      // Freshly recorded: nothing is in the player yet.
+      playingTakeId: null,
+      loadedTakeId: null,
+    });
+
+    renderTab();
+
+    const scrubber = screen.getByLabelText('Draft waveform scrubber');
+    fireEvent(scrubber, 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
+    });
+    fireEvent(scrubber, 'responderGrant', {
+      nativeEvent: { locationX: 50 },
+    });
+    expect(idleAudio.seek).toHaveBeenCalledWith(6500);
+  });
+
   it('notifies captureActive during recording and clears after stop', async () => {
     const onCaptureActiveChange = jest.fn();
 

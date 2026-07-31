@@ -116,6 +116,7 @@ export function DraftTakeRow({
       </View>
       <Text
         style={styles.time}
+        numberOfLines={1}
         testID="record-take-time"
         accessibilityLabel={`Take time ${timeLabel}`}
       >
@@ -163,6 +164,11 @@ const styles = StyleSheet.create({
   },
   waveform: {
     flex: 1,
+    // The row is tight (select + label + play + timer + delete): the waveform
+    // takes the leftovers and must stay inside them, never over the timer.
+    flexShrink: 1,
+    minWidth: 0,
+    overflow: 'hidden',
     minHeight: 28,
   },
   time: {
@@ -170,6 +176,7 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     color: theme.colors.mutedForeground,
     minWidth: 64,
+    flexShrink: 0,
     textAlign: 'right',
   },
   deleteHit: {

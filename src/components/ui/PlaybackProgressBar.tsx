@@ -51,6 +51,33 @@ export function scrubPositionMs(
   return Math.round(ratio * durationMs);
 }
 
+/** Minimum bars kept when the row is too narrow for the requested count. */
+const MIN_FITTED_BARS = 6;
+
+/** Minimum spacing between scrub seeks while dragging. */
+const SEEK_SAMPLE_MS = 80;
+
+/**
+ * Bars are `minWidth` capsules separated by `barGap`, so a requested count can
+ * exceed the row and paint over its neighbours (take rows put the timer right
+ * of the waveform). Drop bars until the row fits its measured width.
+ */
+export function fittedBarCount(
+  requestedCount: number,
+  width: number,
+  barWidth: number,
+  gap: number,
+): number {
+  if (width <= 0) {
+    return requestedCount;
+  }
+  const fits = Math.floor((width + gap) / (barWidth + gap));
+  return Math.max(
+    Math.min(MIN_FITTED_BARS, requestedCount),
+    Math.min(requestedCount, fits),
+  );
+}
+
 /**
  * Waveform decision (#96): **static placeholder bars** keyed to playback
  * position — decorative amplitudes (not mic metering). Optional `animate`
@@ -72,11 +99,19 @@ export function PlaybackProgressBar({
 }: Props) {
   const seekable = Boolean(onSeek) && !animate && durationMs > 0;
   const [trackWidth, setTrackWidth] = useState(0);
+  /** Same measurement, read by the gesture without waiting for a re-render. */
+  const trackWidthRef = useRef(0);
   const [dragMs, setDragMs] = useState<number | null>(null);
   const displayMs = dragMs ?? positionMs;
   const progress =
     durationMs > 0 ? Math.min(1, Math.max(0, displayMs / durationMs)) : 0;
-  const activeBars = Math.round(progress * barCount);
+  const renderedBarCount = fittedBarCount(
+    barCount,
+    trackWidth,
+    theme.waveform.barMinWidth,
+    theme.waveform.barGap,
+  );
+  const activeBars = Math.round(progress * renderedBarCount);
   const rowHeight = tall
     ? theme.waveform.tallHeight
     : theme.waveform.dockHeight;
@@ -84,9 +119,9 @@ export function PlaybackProgressBar({
   // One Animated.Value per bar — kept across elapsedMs re-renders so the
   // capture loop is not restarted by the duration timer.
   const scalesRef = useRef<Animated.Value[]>([]);
-  if (scalesRef.current.length !== barCount) {
+  if (scalesRef.current.length !== renderedBarCount) {
     scalesRef.current = Array.from(
-      { length: barCount },
+      { length: renderedBarCount },
       () => new Animated.Value(0.3),
     );
   }
@@ -145,22 +180,40 @@ export function PlaybackProgressBar({
         anim.stop();
       });
     };
-  }, [animate, barCount]);
+  }, [animate, renderedBarCount]);
 
-  const applySeek = (event: GestureResponderEvent) => {
+  const lastSeekAtRef = useRef(0);
+  const pendingSeekMsRef = useRef<number | null>(null);
+
+  const applySeek = (event: GestureResponderEvent, immediate: boolean) => {
     if (!seekable || !onSeek) {
       return;
     }
     const next = scrubPositionMs(
       event.nativeEvent.locationX,
-      trackWidth,
+      trackWidthRef.current,
       durationMs,
     );
     setDragMs(next);
+    pendingSeekMsRef.current = next;
+    // A drag emits a move per touch frame; each seek is a native player call,
+    // so only sample them. The release below always seeks to the final spot.
+    const now = Date.now();
+    if (!immediate && now - lastSeekAtRef.current < SEEK_SAMPLE_MS) {
+      return;
+    }
+    lastSeekAtRef.current = now;
+    pendingSeekMsRef.current = null;
     onSeek(next);
   };
 
   const endSeek = () => {
+    const pending = pendingSeekMsRef.current;
+    pendingSeekMsRef.current = null;
+    if (pending !== null && seekable && onSeek) {
+      lastSeekAtRef.current = Date.now();
+      onSeek(pending);
+    }
     setDragMs(null);
   };
 
@@ -176,16 +229,20 @@ export function PlaybackProgressBar({
       }}
       testID={animate ? 'playback-progress-animated' : 'playback-progress'}
       onLayout={(e: LayoutChangeEvent) => {
-        setTrackWidth(e.nativeEvent.layout.width);
+        const next = Math.round(e.nativeEvent.layout.width);
+        trackWidthRef.current = e.nativeEvent.layout.width;
+        // Only re-render on a real width change — a layout handler that always
+        // sets state re-enters the layout pass on every commit.
+        setTrackWidth(prev => (prev === next ? prev : next));
       }}
       onStartShouldSetResponder={() => seekable}
       onMoveShouldSetResponder={() => seekable}
-      onResponderGrant={applySeek}
-      onResponderMove={applySeek}
+      onResponderGrant={e => applySeek(e, true)}
+      onResponderMove={e => applySeek(e, false)}
       onResponderRelease={endSeek}
       onResponderTerminate={endSeek}
     >
-      {Array.from({ length: barCount }, (_, i) => {
+      {Array.from({ length: renderedBarCount }, (_, i) => {
         // Capture pulse uses a stable seed so timer ticks don't jump heights.
         const amplitude = barAmplitude(i, animate ? i * 120 : displayMs, tall);
         const baseHeight = Math.round(
@@ -235,6 +292,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    // Bars are measured-fit below, but clip until the first layout arrives so
+    // they can never paint over a sibling (e.g. the take-row timer).
+    overflow: 'hidden',
   },
   /** Lovable: `flex-1 rounded-full` capsule bars. */
   bar: {

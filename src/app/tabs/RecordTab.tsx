@@ -396,7 +396,11 @@ export function RecordTab({
                       isLoaded && verseAudio.state === 'playing';
                     // Playback clears playingTakeId when a take reaches its end,
                     // but the take stays in the player and stays scrubbable.
-                    const isSeekable = verseAudio.loadedTakeId === take.id;
+                    // With nothing loaded yet, the selected draft still scrubs:
+                    // `seek` loads it without playing (#176).
+                    const isSeekable =
+                      verseAudio.loadedTakeId === take.id ||
+                      (verseAudio.loadedTakeId === null && isSelected);
                     return (
                       <DraftTakeRow
                         takeNumber={take.takeNumber}
