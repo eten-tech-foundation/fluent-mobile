@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -118,16 +118,13 @@ export function PlaybackProgressBar({
 
   // One Animated.Value per bar — kept across elapsedMs re-renders so the
   // capture loop is not restarted by the duration timer.
-  const scalesRef = useRef<Animated.Value[]>([]);
-  if (scalesRef.current.length !== renderedBarCount) {
-    scalesRef.current = Array.from(
-      { length: renderedBarCount },
-      () => new Animated.Value(0.3),
-    );
-  }
+  const scales = useMemo(
+    () =>
+      Array.from({ length: renderedBarCount }, () => new Animated.Value(0.3)),
+    [renderedBarCount],
+  );
 
   useEffect(() => {
-    const scales = scalesRef.current;
     if (!animate) {
       scales.forEach(scale => {
         scale.stopAnimation();
@@ -180,7 +177,7 @@ export function PlaybackProgressBar({
         anim.stop();
       });
     };
-  }, [animate, renderedBarCount]);
+  }, [animate, scales]);
 
   const lastSeekAtRef = useRef(0);
   const pendingSeekMsRef = useRef<number | null>(null);
@@ -263,7 +260,7 @@ export function PlaybackProgressBar({
                   height: baseHeight,
                   backgroundColor: accentColor,
                   opacity: 1,
-                  transform: [{ scaleY: scalesRef.current[i]! }],
+                  transform: [{ scaleY: scales[i]! }],
                 },
               ]}
             />
