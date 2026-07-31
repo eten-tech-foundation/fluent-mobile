@@ -2,7 +2,7 @@
 
 **Android-only** — there is no iOS app.
 
-**Expo SDK 56** (React Native 0.85) with **CNG** (Continuous Native Generation): the `android/` folder is **not committed**. It is generated locally via `expo prebuild --platform android` from `app.config.ts` and config plugins.
+**Expo SDK 57** (React Native 0.86) with **CNG** (Continuous Native Generation): the `android/` folder is **not committed**. It is generated locally via `expo prebuild --platform android` from `app.config.ts` and config plugins.
 
 **Custom dev client — not Expo Go.** This app uses native modules (`expo-dev-client`, `op-sqlite`, keychain, etc.) and must run in a **development build** you compile locally (`npm run android`) or install from EAS. It will **not** work in the Expo Go app from the Play Store.
 

@@ -1,10 +1,10 @@
 # Dependabot PR handling process
 
-Repeatable process for safely managing Dependabot PRs in **Fluent Mobile**. Priority: keep the app stable on **Expo SDK 56 (RN 0.85) with Expo CNG**.
+Repeatable process for safely managing Dependabot PRs in **Fluent Mobile**. Priority: keep the app stable on **Expo SDK 57 (RN 0.86) with Expo CNG**.
 
 ## Core principles
 
-1. **Stability first**: Never merge updates that break Expo SDK 56 / RN 0.85 compatibility or native module ABI.
+1. **Stability first**: Never merge updates that break Expo SDK 57 / RN 0.86 compatibility or native module ABI.
 2. **Automated validation**: Always run the CI gate locally before merge (see [`.cursor/rules/commands.mdc`](../../.cursor/rules/commands.mdc)).
 3. **Verified authors**: Only process PRs from `app/dependabot` or `dependabot[bot]`.
 4. **Targeted merges**: Prefer squash merges into `main` via **Dependabot PRs only** — agent-authored fixes use a separate ticketed PR ([delivery.mdc](../../.cursor/rules/delivery.mdc)).
@@ -33,13 +33,13 @@ Renovate/Dependabot do not understand Expo’s SDK pin matrix — this repo uses
 1. `npx expo install --check` — list mismatches
 2. If SDK patch drift only: `npx expo install --fix` on the PR branch, push, re-run doctor
 3. If duplicate native modules: `npm why <pkg>`, `npm dedupe`, or targeted `overrides` (see Expo FYI)
-4. If the bump is incompatible with SDK 56: close the PR or defer to an SDK upgrade ticket
+4. If the bump is incompatible with SDK 57: close the PR or defer to an SDK upgrade ticket
 
 ## Categorization
 
 | Category | Action | Example |
 |----------|--------|---------|
-| **RN line upgrade** | Close and plan separately | `react-native` `>=0.85`, coordinated `@react-native/*` |
+| **RN line upgrade** | Close and plan separately | `react-native` `>=0.87`, coordinated `@react-native/*` |
 | **Safe updates** | Validate and merge | Patch/minor dev tools, ESLint, Prettier, Jest plugins |
 | **Risky updates** | Full validation + Android smoke test | `react`, navigation libs, `@op-engineering/op-sqlite`, UI/native modules |
 
@@ -52,7 +52,7 @@ gh pr view <PR_NUMBER> --json author,title,body
 ```
 
 - If author is NOT Dependabot → **stop**.
-- If it is an RN line upgrade (`>=0.85`) → close with a comment; track in a dedicated ticket.
+- If it is an RN line upgrade (`>=0.87`) → close with a comment; track in a dedicated ticket.
 
 ### 2. Local checkout and install
 
@@ -161,19 +161,19 @@ If CI fails on `npm ci` with lockfile errors after several Dependabot merges:
 3. Open a small fix PR; merge after CI passes
 4. Enforce **one merge + rebase** going forward
 
-### Pinned versions (Expo SDK 56 / RN 0.85.3)
+### Pinned versions (Expo SDK 57 / RN 0.86.2)
 
 These are exact pins in `package.json` — Dependabot is configured to avoid most drift, but verify after any manual conflict resolution:
 
 | Package | Pin |
 |---------|-----|
 | `react` | `19.2.3` |
-| `react-native` | `0.85.3` |
+| `react-native` | `0.86.2` |
 | `react-test-renderer` | `19.2.3` |
-| `@react-native/jest-preset` | `^0.85.3` |
-| `@react-native/typescript-config` | `0.85.3` |
+| `@react-native/jest-preset` | `0.86.2` |
+| `@react-native/typescript-config` | `0.86.2` |
 
-Use the [RN upgrade helper](https://react-native-community.github.io/upgrade-helper/?from=0.85.3&to=0.85.3) when aligning versions during an RN upgrade ticket.
+Use the [RN upgrade helper](https://react-native-community.github.io/upgrade-helper/?from=0.86.2&to=0.86.2) when aligning versions during an RN upgrade ticket.
 
 ## Automating with Cursor
 
