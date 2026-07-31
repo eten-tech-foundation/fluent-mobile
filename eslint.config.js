@@ -125,4 +125,12 @@ export default [
       'no-restricted-syntax': 'off',
     },
   },
+  {
+    // GitHub Actions / Node scripts — env secrets and console logging are intentional
+    files: ['.github/scripts/**/*.{js,cjs,mjs}'],
+    rules: {
+      'no-console': 'off',
+      'no-restricted-syntax': 'off',
+    },
+  },
 ];

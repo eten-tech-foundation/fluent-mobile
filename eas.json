@@ -23,10 +23,8 @@
     "preview": {
       "extends": "base",
       "distribution": "internal",
-      "channel": "preview",
       "env": {
         "EAS_USE_CACHE": "1",
-        "EAS_UPDATE_CHANNEL": "preview",
         "EXPO_PUBLIC_API_BASE_URL": "https://dev.api.fluent.bible"
       },
       "android": {
