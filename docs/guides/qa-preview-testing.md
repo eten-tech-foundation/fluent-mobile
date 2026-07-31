@@ -1,29 +1,26 @@
 # How to test a Fluent Mobile PR preview (Android)
 
-Plain-language guide for QA and reviewers. **No developer tools** — just an Android phone and the GitHub PR comment.
+Plain-language guide for QA and reviewers. **No developer tools** — just an Android phone and the GitHub **PR or issue** comment.
 
-## Quick start (2 steps)
+## Quick start
 
-Every preview PR comment from GitHub Actions has **two steps**. Use them in order:
-
-| Step | What to do | Link in PR comment |
-|------|------------|-------------------|
-| **1** | Install **Fluent** on your phone (one-time per app version) | **Install Fluent** |
-| **2** | Open **Fluent** from your home screen to load the preview | _(no link — open the app)_ |
+1. Open the bot comment on the **pull request** or the **linked GitHub issue**.
+2. Tap **Install Fluent** (or scan the QR code).
+3. Open **Fluent** from your home screen and test.
 
 **Do not use Expo Go** from the Play Store — it will not work.
 
-The preview app is an **internal APK** (like a pre-release build). It is **not** a developer build that connects to Metro or localhost.
+The preview is a **standalone internal APK** for that PR (no over-the-air update). Each labeled PR gets its own build so multiple QA previews can exist at once. On one phone you can only have one Fluent install — reinstall when switching PRs.
+
+When the preview is ready, the ticket usually moves to **In QA** on the Fluent Mobile Board.
 
 ---
 
-## Step 1 — Install Fluent (first time only)
+## Install Fluent
 
-Skip this if **Fluent** is already on your phone and previews have worked before.
-
-1. On your **Android phone**, open the pull request on GitHub.
-2. Find the bot comment (starts with **“Test this PR on your Android phone”** or **“Fluent preview app ready”**).
-3. Tap **Install Fluent** (or scan the install QR code on native-preview comments).
+1. On your **Android phone**, open the pull request **or** the linked issue on GitHub.
+2. Find the bot comment (starts with **“Fluent preview app ready”**).
+3. Tap **Install Fluent** (or scan the install QR code).
 4. Sign in to [expo.dev](https://expo.dev) if asked — ask your team lead for an invite if needed.
 5. Tap **Download** or **Install** on the build page.
 6. If Android blocks the install:
@@ -31,21 +28,14 @@ Skip this if **Fluent** is already on your phone and previews have worked before
    - Allow your **browser** or **Files** app to install APKs
 7. Open **Fluent** from your home screen.
 8. The app should open normally (sign-in / home) — **not** a Metro dev launcher and **not** Expo Go.
+9. Sign in and test the PR.
 
-**First preview on a new version?** The workflow may build this install app for you automatically (~15 minutes). Refresh the PR comment when GitHub Actions finishes.
+Builds often take ~10–15 minutes. Refresh the bot comment when GitHub Actions finishes.
 
----
+If the app looks wrong after installing a different PR’s preview:
 
-## Step 2 — Open this PR’s preview
-
-1. Open **Fluent** from your home screen (use Wi‑Fi if possible).
-2. Wait for the preview update to download (often under a minute after Step 1).
-3. Sign in and test the PR.
-
-If the app looks unchanged:
-
-1. Fully close Fluent (swipe it away from recent apps).
-2. Reopen Fluent and wait on the home/splash screen.
+1. Uninstall Fluent (or install over it from the new **Install Fluent** link).
+2. Fully close Fluent (swipe it away from recent apps) and reopen.
 
 ---
 
@@ -53,25 +43,8 @@ If the app looks unchanged:
 
 | App | Works? |
 |-----|--------|
-| **Fluent** (from **Install Fluent** link in PR) | ✅ Yes |
+| **Fluent** (from **Install Fluent** link) | ✅ Yes |
 | **Expo Go** (Play Store) | ❌ No |
-
----
-
-## Two kinds of preview comments
-
-### 📲 “Test this PR on your Android phone” (most PRs)
-
-- **Step 1** installs the Fluent preview app (or reuses an existing install).
-- **Step 2** opens Fluent — the app pulls a small over-the-air (OTA) update from the `preview` channel.
-- Usually ready in a few minutes (longer the very first time if the install app had to be built).
-
-### ✅ “Fluent preview app ready” (native changes)
-
-- The PR changed something that needs a **new full app install**.
-- Use the **Install Fluent** link (or QR) in that comment.
-- Open Fluent and test — the APK already includes this PR’s native changes.
-- Later **JS-only** PRs can use OTA again until the app version changes.
 
 ---
 
@@ -79,24 +52,27 @@ If the app looks unchanged:
 
 | Problem | What to try |
 |--------|-------------|
-| I don’t have Fluent yet | Use **Step 1 — Install Fluent** in the PR comment first. |
-| App shows Metro / localhost / dev launcher | Wrong build type installed. Reinstall from the latest **Install Fluent** link on the PR (old dev-client APK). |
+| I don’t have Fluent yet | Tap **Install Fluent** in the bot comment. |
+| App shows Metro / localhost / dev launcher | Wrong build type. Reinstall from the latest **Install Fluent** link (old dev-client APK). |
 | Phone offers **Expo Go** | Cancel. Install **Fluent** from the **Install Fluent** link. |
-| “Unable to load update” | Your Fluent app may be the wrong version. Tap **Install Fluent** in the comment again (or wait for a **native preview** comment on the PR). |
-| Install blocked | Allow **Install unknown apps** for your browser (Step 1). |
-| No bot comment on PR | Ask a developer to add the **`preview-build`** label. |
+| Testing the wrong PR | Install again from that PR’s (or issue’s) latest bot comment. |
+| Install blocked | Allow **Install unknown apps** for your browser. |
+| No bot comment on PR or issue | Ask a developer to add the **`preview-build`** label (and ensure the PR has `Closes #NNN`). |
 | expo.dev asks me to log in | Request access to the Fluent project from your team lead. |
 
 ---
 
 ## For developers
 
-1. Add the **`preview-build`** label to the PR.
-2. Share this guide with QA: `docs/guides/qa-preview-testing.md`
-3. Preview APKs use the EAS `preview` profile (internal distribution, `preview` channel — **not** `developmentClient`).
+1. Link the ticket in the PR body (`Closes #NNN`).
+2. Add the **`preview-build`** label to the PR.
+3. Workflow starts a **fresh Android preview APK** (binary only — no OTA), comments on the **PR and linked issue**, and moves the ticket to **In QA** when Status was `In PR Review` or `In Progress (Dev)`.
+4. Share this guide with QA: `docs/guides/qa-preview-testing.md`
+5. Preview APKs use the EAS `preview` profile (internal distribution, Updates disabled — **not** `developmentClient`).
+6. Optional repo secret `PROJECT_BOARD_TOKEN` enables Project 4 Status updates (issue comments work without it).
 
 ### Nightly builds (optional)
 
-Separate from PR previews: GitHub Actions can publish a **nightly Android APK** (EAS profile `nightly`, development API). Install from the Slack message or the Actions job summary — **not** from a PR comment. Nightlies are **binary only** (no over-the-air update). See [`.github/README.md`](../../.github/README.md).
+Separate from PR previews: GitHub Actions can publish a **nightly Android APK** (EAS profile `nightly`, development API). Install from the Slack message or the Actions job summary — **not** from a PR comment. Nightlies are **binary only**. See [`.github/README.md`](../../.github/README.md).
 
 Technical details: [`.github/README.md`](../../.github/README.md) · [`.eas/README.md`](../../.eas/README.md)

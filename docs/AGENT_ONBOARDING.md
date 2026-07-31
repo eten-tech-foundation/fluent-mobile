@@ -1,6 +1,6 @@
 # Agent onboarding — Fluent Mobile
 
-Quick map for Cursor agents, other coding tools, and new contributors. Verified against Expo SDK 56 + CNG (Android-only).
+Quick map for Cursor agents, other coding tools, and new contributors. Verified against Expo SDK 57 + CNG (Android-only).
 
 **Delivery judgment** (acceptance criteria, scope, abstraction budget, human device QA): root [`AGENTS.md`](../AGENTS.md).
 
@@ -14,7 +14,7 @@ Quick map for Cursor agents, other coding tools, and new contributors. Verified 
 
 | Area | Choice |
 |------|--------|
-| Framework | Expo SDK **56**, React Native **0.85**, React **19.2.3** |
+| Framework | Expo SDK **57**, React Native **0.86**, React **19.2.3** |
 | Native | **CNG, Android-only** — `android/` generated via `npm run prebuild` (`--platform android`; not committed) |
 | Language | TypeScript ~6.0 |
 | Package manager | **npm** (`package-lock.json`) |
@@ -98,7 +98,7 @@ Run from repo root after `npm install`:
 
 ## Production release (Android)
 
-Tag-driven production releases — no iOS. PR previews use OTA on the `preview` channel (see below).
+Tag-driven production releases — no iOS. PR previews are binary Android APKs (see below).
 
 1. Merge release changes to `main`.
 2. Tag and push: `git tag v1.0.1 && git push origin v1.0.1`
@@ -112,12 +112,12 @@ Setup and troubleshooting: [`.eas/README.md`](../.eas/README.md).
 1. Add the **`preview-build`** label to the PR (uses latest git tag, or `app.config.ts` version if none).
 2. Workflow and build resolution:
    - **`runtimeVersion`:** `app.config.ts` sets **`runtimeVersion: { policy: 'appVersion' }`**.
-   - **`preview-build.yml`:** [`.github/workflows/preview-build.yml`](../.github/workflows/preview-build.yml) publishes a preview OTA (JS-only) or starts an Android EAS `preview` internal APK (native/config); uses [`.github/scripts/eas-resolve-android-build.sh`](../.github/scripts/eas-resolve-android-build.sh) for fingerprint match, in-progress poll, and reuse.
+   - **`preview-build.yml`:** [`.github/workflows/preview-build.yml`](../.github/workflows/preview-build.yml) starts a **fresh** Android EAS `preview` internal APK for that PR (binary only — no OTA); uses [`.github/scripts/eas-resolve-android-build.sh`](../.github/scripts/eas-resolve-android-build.sh) with `FORCE_NEW_BUILD=true`.
    - **`.fingerprintignore`:** excludes `docs/**/*` and `.github/**/*` (among other non-native paths) from EAS build fingerprint hashing.
    - **`eas.json` / production skip:** `preview` and `development` set **`EAS_USE_CACHE: "1"`**; `production` sets **`EAS_SAVE_CACHE: "1"`** and **`EAS_RESTORE_CACHE: "0"`** (save cache only, no restore). [`.eas/workflows/create-production-builds.yml`](../.eas/workflows/create-production-builds.yml) skips rebuild when fingerprint matches (`if: !needs.get_android_build.outputs.build_id`).
 3. The bot comment links to **[`docs/guides/qa-preview-testing.md`](guides/qa-preview-testing.md)** for non-technical testers (Fluent preview app — **not Expo Go** or Metro dev builds).
 
-Requires `EXPO_TOKEN` in GitHub repository secrets. Preview builds use `eas.json` profile `preview` (internal distribution, channel `preview` — no `developmentClient`; `EXPO_PUBLIC_API_BASE_URL=https://dev.api.fluent.bible`). Local `.env` keeps emulator localhost; `dev.app.fluent.bible` is the web app, not the mobile API host. Local/engineering builds use profile `development` (`developmentClient: true`).
+Requires `EXPO_TOKEN` in GitHub repository secrets. Preview builds use `eas.json` profile `preview` (internal distribution, Expo Updates **disabled** — no `developmentClient`; `EXPO_PUBLIC_API_BASE_URL=https://dev.api.fluent.bible`). Local `.env` keeps emulator localhost; `dev.app.fluent.bible` is the web app, not the mobile API host. Local/engineering builds use profile `development` (`developmentClient: true`).
 
 ## Architecture and data flow
 

@@ -100,7 +100,7 @@ Use **npm** only in PR text and test steps. Do not reference pnpm or yarn.
 
 ## Framework notes
 
-- **Expo SDK 56** + **CNG** (RN **0.85**, React **19.2.3**), **Android-only**
+- **Expo SDK 57** + **CNG** (RN **0.86**, React **19.2.3**), **Android-only**
 - PR CI: lint, test, typecheck, `expo-doctor`, `expo install --check` (see [docs/ci.md](../../docs/ci.md)); native compile via EAS preview label
 - EAS project ID: `b0919574-f268-4768-b3bd-7cfa5172bbab`
 
