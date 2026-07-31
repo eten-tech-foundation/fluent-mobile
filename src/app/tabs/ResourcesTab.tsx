@@ -69,7 +69,6 @@ export function ResourcesTab({ chapterId, chapterName }: ResourcesTabProps) {
   const { selectedVerse } = useDraftingContext();
   const scrollRef = useRef<ScrollView>(null);
   const scrollOffsetRef = useRef(0);
-  const openIdsRef = useRef<Set<string>>(new Set());
 
   const resources = useMemo(
     () => getMockResourcesForUnit(chapterId, selectedVerse, chapterName),
@@ -80,8 +79,7 @@ export function ResourcesTab({ chapterId, chapterName }: ResourcesTabProps) {
   const [openAccordionIds, setOpenAccordionIds] = useState<Set<string>>(
     () => getResourcesTabUiState(chapterId, selectedVerse).openAccordionIds,
   );
-
-  openIdsRef.current = openAccordionIds;
+  const openIdsRef = useRef(openAccordionIds);
 
   // Restore scroll + accordion state when the active unit changes.
   useEffect(() => {
@@ -107,19 +105,17 @@ export function ResourcesTab({ chapterId, chapterName }: ResourcesTabProps) {
 
   const handleToggle = useCallback(
     (sectionId: ResourceSectionId) => {
-      setOpenAccordionIds(prev => {
-        const next = new Set(prev);
-        if (next.has(sectionId)) {
-          next.delete(sectionId);
-        } else {
-          next.add(sectionId);
-        }
-        openIdsRef.current = next;
-        persistUiState(next, scrollOffsetRef.current);
-        return next;
-      });
+      const next = new Set(openAccordionIds);
+      if (next.has(sectionId)) {
+        next.delete(sectionId);
+      } else {
+        next.add(sectionId);
+      }
+      setOpenAccordionIds(next);
+      openIdsRef.current = next;
+      persistUiState(next, scrollOffsetRef.current);
     },
-    [persistUiState],
+    [openAccordionIds, persistUiState],
   );
 
   const handleScroll = useCallback(
