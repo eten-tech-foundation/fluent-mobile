@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Fluent Mobile — project overview
 
-Offline-first **Expo SDK 56** (React Native **0.85**, React **19.2.3**) companion for Bible translation recording. **Android-only permanently** — no iOS app (see [android-only.mdc](./android-only.mdc)). Uses **CNG** — native `android/` is generated via `expo prebuild --platform android`, not committed. Syncs Fluent API data into local SQLite (`op-sqlite`); UI reads from DB after sync.
+Offline-first **Expo SDK 57** (React Native **0.86**, React **19.2.3**) companion for Bible translation recording. **Android-only permanently** — no iOS app (see [android-only.mdc](./android-only.mdc)). Uses **CNG** — native `android/` is generated via `expo prebuild --platform android`, not committed. Syncs Fluent API data into local SQLite (`op-sqlite`); UI reads from DB after sync.
 
 ## Key paths
 
