@@ -9,7 +9,7 @@ This repo runs GitHub Actions on pushes and pull requests. This doc maps what ru
 | `lint.yml` | `Lint & Format` | ESLint + Prettier (`format:check`) |
 | `test.yml` | `Unit Tests` | Jest (`npm test -- --ci`) |
 | `quality-gates.yml` | `TypeScript`, `expo-doctor`, `expo install --check` | Typecheck + Expo SDK / native-module alignment |
-| `preview-build.yml` | Preview OTA / Android EAS | On-demand when PR has label `preview-build` |
+| `preview-build.yml` | Android EAS preview APK | On-demand when PR has label `preview-build` — binary only (no OTA); comments PR **and** linked issues; best-effort Project 4 → `In QA` |
 | `nightly-preview.yml` | Nightly Android APK | Scheduled binary-only internal APK (dev API); also `workflow_dispatch` |
 | `eas-build.yml` | Tag → version sync | Production release path on `v*` tags |
 
@@ -40,7 +40,8 @@ Branch protection / required status checks may change over time. Treat the table
 
 ## Preview / native compile
 
-- JS-only preview OTA vs native Android APK is decided by `preview-build.yml` + [`.github/scripts/eas-resolve-android-build.sh`](../.github/scripts/eas-resolve-android-build.sh)
+- Preview APKs: `preview-build.yml` + [`.github/scripts/eas-resolve-android-build.sh`](../.github/scripts/eas-resolve-android-build.sh) with `FORCE_NEW_BUILD=true` (no fingerprint reuse; no OTA)
+- After a successful preview comment, [`.github/scripts/preview-notify-linked-issues.js`](../.github/scripts/preview-notify-linked-issues.js) upserts the same body on linked issues and may move Project 4 Status to `In QA` (optional `PROJECT_BOARD_TOKEN`)
 - Human QA steps: [guides/qa-preview-testing.md](guides/qa-preview-testing.md)
 - Nightly internal APK (no OTA): `nightly-preview.yml` + EAS profile `nightly` — see [`.github/README.md`](../.github/README.md)
 - Production: tag `v*` → `eas-build.yml` + [`.eas/README.md`](../.eas/README.md)

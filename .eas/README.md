@@ -50,8 +50,10 @@ Monitor:
 
 Add the **`preview-build`** label to a pull request. GitHub Actions (`.github/workflows/preview-build.yml`) will:
 
-- **JS-only changes** → find or build a matching **Install Fluent** preview APK, then publish an OTA to the `preview` channel (PR comment: install + open app — not Expo Go)
-- **Native changes** (`app.config.ts` plugins, `eas.json`, `plugins/`) → start an Android `preview` internal APK on EAS (no `developmentClient`; channel `preview`)
+- Start a **fresh Android `preview` internal APK** for that PR commit (binary only — no `eas update` / shared OTA channel)
+- Post the same install comment on the **PR and linked issue**; best-effort move Project 4 Status to **`In QA`** (from `In PR Review` / `In Progress (Dev)`). Optional secret: `PROJECT_BOARD_TOKEN`.
+
+Each labeled PR forces a new build so multiple QA APKs can exist at once. Preview profile has Expo Updates **disabled** (same idea as nightly).
 
 **QA testers:** [`docs/guides/qa-preview-testing.md`](../docs/guides/qa-preview-testing.md)
 
@@ -64,7 +66,7 @@ GitHub Actions [`.github/workflows/nightly-preview.yml`](../.github/workflows/ni
 - Bakes `EXPO_PUBLIC_API_BASE_URL=https://dev.api.fluent.bible`
 - **No Updates channel** and **no `eas update`** — what you install is what you run
 - Does **not** require the Expo GitHub App (uses `EXPO_TOKEN`, same as PR preview)
-- Distinct from PR `preview` (which may OTA to channel `preview`)
+- Distinct from PR `preview` (also binary-only APKs; no shared OTA channel)
 
 See [`.github/README.md`](../.github/README.md) for secrets and skip / force behavior.
 

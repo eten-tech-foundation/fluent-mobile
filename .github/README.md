@@ -10,10 +10,10 @@ Workflows for Fluent Mobile (**Android-only**).
 | `test.yml` | push, PR | Jest unit tests |
 | `quality-gates.yml` | push, PR | TypeScript, `expo-doctor`, `expo install --check` |
 | `eas-build.yml` | push tag `v*` | Sync `APP_VERSION_FALLBACK` in `app.config.ts` with tag; hand off to EAS |
-| `preview-build.yml` | PR label `preview-build` | Android preview OTA or native APK for QA |
+| `preview-build.yml` | PR label `preview-build` | Fresh Android preview APK for QA (binary only — no OTA) |
 | `nightly-preview.yml` | cron (06:00 UTC) + `workflow_dispatch` | Nightly **binary-only** Android internal APK (dev API) |
 
-Native Android compile is **not** run on every PR. Use the **`preview-build`** label for EAS preview APKs (native/config changes) and tag releases for production builds.
+Native Android compile is **not** run on every PR. Use the **`preview-build`** label for a fresh EAS preview APK when ready for QA, and tag releases for production builds.
 
 ## Release flow
 
@@ -30,19 +30,19 @@ See [`.eas/README.md`](../.eas/README.md) for Expo GitHub app and Play Store set
 ## PR preview (QA)
 
 1. Create a `preview-build` label on the repo (if missing).
-2. Add the label to a PR when ready for QA.
-3. Workflow posts a comment with **Install Fluent** + open-the-app steps (JS-only OTA on `preview` channel), or an Android **preview APK** (native changes).
+2. Add the label to a PR when ready for QA (PR should reference its ticket with `Closes #NNN`).
+3. Workflow starts a **fresh Android preview APK** (binary only — no OTA / `eas update`), posts the same install comment on the **PR** and each **linked GitHub issue**, and best-effort moves Project 4 cards from `In PR Review` / `In Progress (Dev)` → **`In QA`**.
 
 **QA guide (non-technical):** [`docs/guides/qa-preview-testing.md`](../docs/guides/qa-preview-testing.md)
 
-Requires `EXPO_TOKEN` in repository secrets. For JS-only PRs, `.github/scripts/eas-resolve-android-build.sh` **reuses** a matching EAS preview APK (fingerprint) or starts one — avoiding duplicate compiles. `eas.json` enables **`EAS_USE_CACHE`** (ccache) on all profiles. Preview profile is internal distribution on channel `preview` (not `developmentClient`).
+Requires `EXPO_TOKEN` in repository secrets. Optional: `PROJECT_BOARD_TOKEN` (PAT with org **project** write) so Status updates on Project 4 succeed — without it, issue comments still post but the board move may be skipped. Each labeled PR forces a new EAS build (`FORCE_NEW_BUILD`) so concurrent QA previews are not collapsed by fingerprint reuse. `eas.json` profile `preview` is internal distribution with Expo Updates **disabled** (same idea as nightly). `EAS_USE_CACHE` (ccache) stays enabled on non-production profiles.
 
 ## Nightly preview (internal APK)
 
 Scheduled (and manually dispatchable) workflow [`.github/workflows/nightly-preview.yml`](workflows/nightly-preview.yml):
 
 - Always starts a **new** EAS Android build with profile **`nightly`** (internal APK, baked `https://dev.api.fluent.bible`).
-- **No OTA** (`eas update` is not used). Expo Updates stay disabled for `nightly` so the APK cannot pull PR `preview` channel updates.
+- **No OTA** (`eas update` is not used). Expo Updates stay disabled for `nightly` so the APK is self-contained.
 - Skips when `main` HEAD matches the last successful nightly unless `force_build` is set.
 - Posts a GitHub Actions job summary and optional Slack notification.
 
@@ -50,8 +50,9 @@ Scheduled (and manually dispatchable) workflow [`.github/workflows/nightly-previ
 
 | Secret | Purpose |
 |--------|---------|
-| `EXPO_TOKEN` | EAS CLI auth (same as PR preview) |
-| `SLACK_WEBHOOK_URL` | Incoming webhook for success / failure / skip notices |
+| `EXPO_TOKEN` | EAS CLI auth (required for PR preview + nightly) |
+| `PROJECT_BOARD_TOKEN` | Optional PAT for Project 4 Status → `In QA` after preview (issue comments work without it) |
+| `SLACK_WEBHOOK_URL` | Incoming webhook for nightly success / failure / skip notices |
 
 Does **not** require the Expo GitHub App — only `EXPO_TOKEN`. Manual run: **Actions → Nightly Preview → Run workflow** (available after this workflow exists on `main`).
 
