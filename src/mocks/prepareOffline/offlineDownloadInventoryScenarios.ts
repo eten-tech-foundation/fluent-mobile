@@ -66,7 +66,7 @@ export const PREPARE_OFFLINE_MOCK_SCENARIO_LABELS: Record<
  * Options: fresh | tier1 | tier1-tier2 | tier1-tier2-tier3-pending | all | mixed
  */
 export const DEFAULT_PREPARE_OFFLINE_MOCK_INVENTORY_SCENARIO: PrepareOfflineMockInventoryScenario =
-  'mixed';
+  'fresh';
 
 /** Fixed mid-download state — cumulative: Tier 1 complete, Tier 2 partial, Tier 3 pending. */
 export const MOCK_PREPARE_OFFLINE_MIXED_INVENTORY: Record<
