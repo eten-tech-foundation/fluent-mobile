@@ -7,14 +7,16 @@ interface SelectionCheckboxProps {
   selected: boolean;
   /** Show checkmark for partial selection (select-all indeterminate). */
   showCheck?: boolean;
+  testID?: string;
 }
 
 export function SelectionCheckbox({
   selected,
   showCheck = selected,
+  testID,
 }: SelectionCheckboxProps) {
   return (
-    <View style={[styles.box, selected && styles.boxSelected]}>
+    <View testID={testID} style={[styles.box, selected && styles.boxSelected]}>
       {showCheck ? (
         <Check
           size={12}
