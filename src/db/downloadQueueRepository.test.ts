@@ -1,0 +1,437 @@
+type Row = {
+  id: string;
+  project_id: number;
+  tier: number;
+  kind: string;
+  resource_name: string;
+  label: string;
+  status: 'queued' | 'downloading' | 'completed' | 'failed';
+  progress: number;
+  bytes_total: number | null;
+  local_file_path: string | null;
+  queue_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+let rows: Row[] = [];
+
+function clone(row: Row): Row {
+  return { ...row };
+}
+
+export function resetDownloadQueueDbMock(): void {
+  rows = [];
+}
+
+export function __getDownloadQueueRows(): Row[] {
+  return rows.map(clone);
+}
+
+type ExecuteResult = { rows: unknown[] };
+
+async function mockExecute(
+  sql: string,
+  params: unknown[] = [],
+): Promise<ExecuteResult> {
+  const normalized = sql.replace(/\s+/g, ' ').trim();
+
+  if (normalized.startsWith('SELECT MAX(queue_order)')) {
+    const max = rows.reduce((m, r) => Math.max(m, r.queue_order), 0);
+    return { rows: [{ max_order: max || null }] };
+  }
+
+  if (normalized.startsWith('INSERT INTO download_queue')) {
+    const [
+      id,
+      projectId,
+      tier,
+      kind,
+      resourceName,
+      label,
+      bytesTotal,
+      queueOrder,
+      createdAt,
+      updatedAt,
+    ] = params as [
+      string,
+      number,
+      number,
+      string,
+      string,
+      string,
+      number | null,
+      number,
+      string,
+      string,
+    ];
+    rows.push({
+      id,
+      project_id: projectId,
+      tier,
+      kind,
+      resource_name: resourceName,
+      label,
+      status: 'queued',
+      progress: 0,
+      bytes_total: bytesTotal,
+      local_file_path: null,
+      queue_order: queueOrder,
+      created_at: createdAt,
+      updated_at: updatedAt,
+    });
+    return { rows: [] };
+  }
+
+  if (
+    normalized.startsWith(
+      "UPDATE download_queue SET progress = ?, status = 'downloading'",
+    )
+  ) {
+    const [progress, updatedAt, id] = params as [number, string, string];
+    rows = rows.map(r =>
+      r.id === id
+        ? { ...r, progress, status: 'downloading', updated_at: updatedAt }
+        : r,
+    );
+    return { rows: [] };
+  }
+
+  if (normalized.startsWith("UPDATE download_queue SET status = 'completed'")) {
+    const [localFilePath, bytesTotal, updatedAt, id] = params as [
+      string,
+      number | null,
+      string,
+      string,
+    ];
+    rows = rows.map(r =>
+      r.id === id
+        ? {
+            ...r,
+            status: 'completed',
+            progress: 1,
+            local_file_path: localFilePath,
+            bytes_total: bytesTotal ?? r.bytes_total,
+            updated_at: updatedAt,
+          }
+        : r,
+    );
+    return { rows: [] };
+  }
+
+  if (normalized.startsWith("UPDATE download_queue SET status = 'failed'")) {
+    const [updatedAt, id] = params as [string, string];
+    rows = rows.map(r =>
+      r.id === id ? { ...r, status: 'failed', updated_at: updatedAt } : r,
+    );
+    return { rows: [] };
+  }
+
+  if (normalized.startsWith('DELETE FROM download_queue WHERE id = ?')) {
+    const id = params[0] as string;
+    rows = rows.filter(r => r.id !== id);
+    return { rows: [] };
+  }
+
+  if (
+    normalized.startsWith(
+      "SELECT * FROM download_queue WHERE status != 'completed'",
+    )
+  ) {
+    return {
+      rows: rows
+        .filter(r => r.status !== 'completed')
+        .sort((a, b) => a.queue_order - b.queue_order)
+        .map(clone),
+    };
+  }
+
+  if (normalized.startsWith('SELECT COUNT(*) AS total')) {
+    const total = rows.length;
+    const completed = rows.filter(r => r.status === 'completed').length;
+    return { rows: [{ total, completed }] };
+  }
+
+  if (
+    normalized.startsWith('SELECT * FROM download_queue WHERE project_id = ?')
+  ) {
+    const projectId = params[0] as number;
+    return {
+      rows: rows
+        .filter(r => r.project_id === projectId && r.status === 'completed')
+        .sort((a, b) => a.resource_name.localeCompare(b.resource_name))
+        .map(clone),
+    };
+  }
+
+  throw new Error(`Unhandled SQL in download_queue mock: ${normalized}`);
+}
+
+jest.mock('./db', () => ({
+  getDatabase: () => ({
+    execute: mockExecute,
+    transaction: async (
+      fn: (tx: { execute: typeof mockExecute }) => Promise<void>,
+    ) => {
+      await fn({ execute: mockExecute });
+    },
+  }),
+}));
+
+import {
+  deleteDownloadItem,
+  enqueueDownloadItems,
+  getDownloadedResourcesByProject,
+  getDownloadQueueSnapshot,
+  markDownloadItemCompleted,
+  markDownloadItemFailed,
+  updateDownloadItemProgress,
+} from './downloadQueueRepository';
+
+describe('downloadQueueRepository', () => {
+  beforeEach(() => {
+    resetDownloadQueueDbMock();
+  });
+
+  it('enqueues items in tier order regardless of input array order', async () => {
+    const ids = await enqueueDownloadItems([
+      {
+        projectId: 1,
+        tier: 2,
+        kind: 'text',
+        resourceName: 'Translation Notes',
+        label: 'Translation Notes — Text',
+      },
+      {
+        projectId: 1,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Source Bible — Audio',
+      },
+    ]);
+
+    expect(ids).toHaveLength(2);
+    const stored = __getDownloadQueueRows().sort(
+      (a, b) => a.queue_order - b.queue_order,
+    );
+    expect(stored[0].resource_name).toBe('Source Bible');
+    expect(stored[0].tier).toBe(1);
+    expect(stored[1].resource_name).toBe('Translation Notes');
+    expect(stored[1].tier).toBe(2);
+    expect(stored[0].status).toBe('queued');
+    expect(stored[0].progress).toBe(0);
+  });
+
+  it('continues queue_order across multiple enqueue calls rather than restarting', async () => {
+    await enqueueDownloadItems([
+      {
+        projectId: 1,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Source Bible — Audio',
+      },
+    ]);
+    await enqueueDownloadItems([
+      {
+        projectId: 1,
+        tier: 2,
+        kind: 'text',
+        resourceName: 'Translation Words',
+        label: 'Translation Words — Text',
+      },
+    ]);
+
+    const stored = __getDownloadQueueRows().sort(
+      (a, b) => a.queue_order - b.queue_order,
+    );
+    expect(stored[0].queue_order).toBeLessThan(stored[1].queue_order);
+  });
+
+  it('returns an empty array without touching the db when given no items', async () => {
+    const ids = await enqueueDownloadItems([]);
+    expect(ids).toEqual([]);
+    expect(__getDownloadQueueRows()).toHaveLength(0);
+  });
+
+  it('updates progress and flips status to downloading', async () => {
+    const [id] = await enqueueDownloadItems([
+      {
+        projectId: 1,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Source Bible — Audio',
+      },
+    ]);
+
+    await updateDownloadItemProgress(id, 0.42);
+
+    const row = __getDownloadQueueRows().find(r => r.id === id);
+    expect(row?.progress).toBe(0.42);
+    expect(row?.status).toBe('downloading');
+  });
+
+  it('marks an item completed, sets progress to 1, and stores the file path', async () => {
+    const [id] = await enqueueDownloadItems([
+      {
+        projectId: 1,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Source Bible — Audio',
+      },
+    ]);
+
+    await markDownloadItemCompleted(id, 'file:///downloads/1/x.mp3', 12345);
+
+    const row = __getDownloadQueueRows().find(r => r.id === id);
+    expect(row?.status).toBe('completed');
+    expect(row?.progress).toBe(1);
+    expect(row?.local_file_path).toBe('file:///downloads/1/x.mp3');
+    expect(row?.bytes_total).toBe(12345);
+  });
+
+  it('marks an item failed without altering progress', async () => {
+    const [id] = await enqueueDownloadItems([
+      {
+        projectId: 1,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Source Bible — Audio',
+      },
+    ]);
+    await updateDownloadItemProgress(id, 0.5);
+
+    await markDownloadItemFailed(id);
+
+    const row = __getDownloadQueueRows().find(r => r.id === id);
+    expect(row?.status).toBe('failed');
+    expect(row?.progress).toBe(0.5);
+  });
+
+  it('deletes a queue row', async () => {
+    const [id] = await enqueueDownloadItems([
+      {
+        projectId: 1,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Source Bible — Audio',
+      },
+    ]);
+
+    await deleteDownloadItem(id);
+
+    expect(__getDownloadQueueRows()).toHaveLength(0);
+  });
+
+  it('snapshot excludes completed items but counts them toward completedCount/totalCount', async () => {
+    const [id1, id2] = await enqueueDownloadItems([
+      {
+        projectId: 1,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Source Bible — Audio',
+      },
+      {
+        projectId: 1,
+        tier: 2,
+        kind: 'text',
+        resourceName: 'Translation Notes',
+        label: 'Translation Notes — Text',
+      },
+    ]);
+    await markDownloadItemCompleted(id1, 'file:///a.mp3');
+    await updateDownloadItemProgress(id2, 0.3);
+
+    const snapshot = await getDownloadQueueSnapshot();
+
+    expect(snapshot.totalCount).toBe(2);
+    expect(snapshot.completedCount).toBe(1);
+    expect(snapshot.items).toHaveLength(1);
+    expect(snapshot.items[0].id).toBe(id2);
+    expect(snapshot.items[0].status).toBe('downloading');
+    expect(snapshot.primaryProjectId).toBe(1);
+  });
+
+  it('snapshot aggregateProgress reflects completed + in-progress fractional credit', async () => {
+    const [id1, id2] = await enqueueDownloadItems([
+      {
+        projectId: 1,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Source Bible — Audio',
+      },
+      {
+        projectId: 1,
+        tier: 2,
+        kind: 'text',
+        resourceName: 'Translation Notes',
+        label: 'Translation Notes — Text',
+      },
+    ]);
+    await markDownloadItemCompleted(id1, 'file:///a.mp3');
+    await updateDownloadItemProgress(id2, 0.5);
+
+    const snapshot = await getDownloadQueueSnapshot();
+
+    // 1 completed (full credit) + 1 at 0.5 progress, across 2 total items.
+    expect(snapshot.aggregateProgress).toBeCloseTo(0.75, 5);
+  });
+
+  it('snapshot returns zeroed defaults for an empty queue', async () => {
+    const snapshot = await getDownloadQueueSnapshot();
+
+    expect(snapshot.items).toEqual([]);
+    expect(snapshot.totalCount).toBe(0);
+    expect(snapshot.completedCount).toBe(0);
+    expect(snapshot.aggregateProgress).toBe(0);
+    expect(snapshot.primaryProjectId).toBeUndefined();
+  });
+
+  it('getDownloadedResourcesByProject only returns completed items for that project', async () => {
+    const [id1] = await enqueueDownloadItems([
+      {
+        projectId: 1,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Source Bible — Audio',
+      },
+    ]);
+    const [id2] = await enqueueDownloadItems([
+      {
+        projectId: 1,
+        tier: 2,
+        kind: 'text',
+        resourceName: 'Translation Notes',
+        label: 'Translation Notes — Text',
+      },
+    ]);
+    const [id3] = await enqueueDownloadItems([
+      {
+        projectId: 2,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Source Bible — Audio',
+      },
+    ]);
+
+    await markDownloadItemCompleted(id1, 'file:///p1-a.mp3');
+    // id2 left queued/incomplete for project 1.
+    await markDownloadItemCompleted(id3, 'file:///p2-a.mp3');
+
+    const project1Downloaded = await getDownloadedResourcesByProject(1);
+
+    expect(project1Downloaded).toHaveLength(1);
+    expect(project1Downloaded[0].id).toBe(id1);
+    expect(project1Downloaded.some(r => r.id === id2)).toBe(false);
+    expect(project1Downloaded.some(r => r.id === id3)).toBe(false);
+  });
+});

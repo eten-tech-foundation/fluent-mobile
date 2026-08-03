@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 7;
+export const CURRENT_SCHEMA_VERSION = 8;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -262,6 +262,32 @@ export async function renameRecordingsIsLatestToIsSelected(
 `);
 }
 
+async function applyDownloadQueueTable(db: SqlExecutor): Promise<void> {
+  await db.execute(
+    `CREATE TABLE IF NOT EXISTS download_queue (
+      id              TEXT PRIMARY KEY,
+      project_id      INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      tier            INTEGER NOT NULL,
+      kind            TEXT NOT NULL,
+      resource_name   TEXT NOT NULL,
+      label           TEXT NOT NULL,
+      status          TEXT NOT NULL DEFAULT 'queued',
+      progress        REAL NOT NULL DEFAULT 0,
+      bytes_total     INTEGER,
+      local_file_path TEXT,
+      queue_order     INTEGER NOT NULL,
+      created_at      TEXT NOT NULL,
+      updated_at      TEXT NOT NULL
+    )`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_dq_project ON download_queue(project_id)`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_dq_status ON download_queue(status)`,
+  );
+}
+
 /** Ordered schema migrations. Version 1 = current CREATE IF NOT EXISTS baseline. */
 export const migrations: Migration[] = [
   {
@@ -298,6 +324,11 @@ export const migrations: Migration[] = [
     version: 7,
     name: 'recordings_is_selected_rename',
     up: renameRecordingsIsLatestToIsSelected,
+  },
+  {
+    version: 8,
+    name: 'download_queue_table',
+    up: applyDownloadQueueTable,
   },
 ];
 

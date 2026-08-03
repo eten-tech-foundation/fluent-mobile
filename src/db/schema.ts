@@ -113,4 +113,23 @@ export const createTableQueries: string[] = [
 );`,
 
   `CREATE INDEX IF NOT EXISTS idx_up_user ON user_projects(user_id);`,
+
+  `CREATE TABLE IF NOT EXISTS download_queue (
+    id              TEXT PRIMARY KEY,
+    project_id      INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    tier            INTEGER NOT NULL,
+    kind            TEXT NOT NULL,
+    resource_name   TEXT NOT NULL,
+    label           TEXT NOT NULL,
+    status          TEXT NOT NULL DEFAULT 'queued',
+    progress        REAL NOT NULL DEFAULT 0,
+    bytes_total     INTEGER,
+    local_file_path TEXT,
+    queue_order     INTEGER NOT NULL,
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL
+  );`,
+
+  `CREATE INDEX IF NOT EXISTS idx_dq_project ON download_queue(project_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_dq_status ON download_queue(status);`,
 ];

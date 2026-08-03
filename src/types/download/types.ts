@@ -7,6 +7,8 @@ export interface DownloadQueueItem {
   progress: number;
   status: 'queued' | 'downloading' | 'completed' | 'failed';
   projectId?: number;
+  bytesTotal?: number;
+  localFilePath?: string;
 }
 
 export interface DownloadQueueSnapshot {

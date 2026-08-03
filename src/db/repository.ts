@@ -704,3 +704,15 @@ export {
   selectRecordingTake,
 } from './recordingsRepository';
 export type { AddRecordingTakeInput } from './recordingsRepository';
+
+export {
+  enqueueDownloadItems,
+  updateDownloadItemProgress,
+  markDownloadItemCompleted,
+  markDownloadItemFailed,
+  deleteDownloadItem,
+  getDownloadQueueSnapshot,
+  getDownloadedResourcesByProject,
+} from './downloadQueueRepository';
+
+export type { EnqueueDownloadItemInput } from './downloadQueueRepository';
