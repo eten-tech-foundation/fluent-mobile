@@ -17,14 +17,21 @@ import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
 import { SyncStatusIndicator } from '../../components/ui/SyncStatusIndicator';
 import { CloudSyncStatusIcon } from '../../components/ui/CloudSyncStatusIcon';
 import { SyncActionControls } from '../../components/ui/SyncActionControls';
+import { DownloadProgressSection } from '../../components/ui/DownloadProgressSection';
+import { useDownloadQueue } from '../../hooks/useDownloadQueue';
 import { formatSyncStatusLabel } from '../../utils/syncStatusState';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../../types/navigation/types';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+
+type SyncScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Sync'>;
 
 // TODO(#150): status/uploadedChapters/totalChapters/nextRetryAt are mock
 // state until the upload orchestrator owns them. Live uploadProgress from
 // #101 session events overrides the mock counts while a pass is in flight.
 export default function SyncScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<SyncScreenNavigationProp>();
+  const { snapshot, hasDownloads } = useDownloadQueue();
 
   const [totalChapters] = useState(17);
   const [uploadedChapters] = useState(14);
@@ -169,12 +176,18 @@ export default function SyncScreen() {
             busy={isSyncing || isRetrying || isUploading}
           />
         </View>
-        {/*
-          TODO: render the already-drafted downloads void section here
-          once its component is available. Per #149, it renders below
-          the action controls, and both this section and the
-          "Upload complete" state can be visible simultaneously.
-        */}
+        {hasDownloads ? (
+          <DownloadProgressSection
+            snapshot={snapshot}
+            onManageDownloads={() => {
+              const params =
+                snapshot.primaryProjectId !== undefined
+                  ? { projectId: snapshot.primaryProjectId }
+                  : undefined;
+              navigation.navigate('PrepareForOffline', params);
+            }}
+          />
+        ) : null}
         <View style={styles.cellularSection}>
           <SettingsToggleRow
             title="Upload/Download over cellular"
