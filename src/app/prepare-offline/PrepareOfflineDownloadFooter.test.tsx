@@ -56,6 +56,22 @@ describe('PrepareOfflineDownloadFooter', () => {
     expect(onDownload).toHaveBeenCalledTimes(1);
   });
 
+  it('does not call onDownload when the download button is disabled', () => {
+    const onDownload = jest.fn();
+    render(
+      <PrepareOfflineDownloadFooter
+        {...defaultProps}
+        canDownload={false}
+        onDownload={onDownload}
+      />,
+    );
+
+    const button = screen.getByTestId('prepare-offline-download-button');
+    expect(button.props.accessibilityState?.disabled).toBe(true);
+    fireEvent.press(button);
+    expect(onDownload).not.toHaveBeenCalled();
+  });
+
   it('shows started placeholder after download begins', () => {
     render(
       <PrepareOfflineDownloadFooter
@@ -66,6 +82,11 @@ describe('PrepareOfflineDownloadFooter', () => {
     );
 
     expect(screen.getByTestId('prepare-offline-download-started')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Download started. Pause, resume, and cancel controls are coming soon.',
+      ),
+    ).toBeTruthy();
     expect(screen.queryByTestId('prepare-offline-download-button')).toBeNull();
     expect(
       screen.queryByTestId('prepare-offline-download-complete'),

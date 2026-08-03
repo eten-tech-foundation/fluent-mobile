@@ -152,7 +152,7 @@ describe('PrepareOfflineResourcesSection', () => {
     );
 
     const summary = screen.getByTestId('prepare-offline-resource-summary');
-    expect(within(summary).getByText('Reference images')).toBeTruthy();
+    expect(within(summary).getByText('Reference Images')).toBeTruthy();
   });
 
   it('locks completed tier 2 items in customize instead of showing a toggle', () => {

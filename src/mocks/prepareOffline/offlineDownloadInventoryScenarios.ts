@@ -66,7 +66,7 @@ export const PREPARE_OFFLINE_MOCK_SCENARIO_LABELS: Record<
  * Options: fresh | tier1 | tier1-tier2 | tier1-tier2-tier3-pending | all | mixed
  */
 export const DEFAULT_PREPARE_OFFLINE_MOCK_INVENTORY_SCENARIO: PrepareOfflineMockInventoryScenario =
-  'fresh';
+  'mixed';
 
 /** Fixed mid-download state — cumulative: Tier 1 complete, Tier 2 partial, Tier 3 pending. */
 export const MOCK_PREPARE_OFFLINE_MIXED_INVENTORY: Record<
@@ -81,9 +81,9 @@ export const MOCK_PREPARE_OFFLINE_MIXED_INVENTORY: Record<
   [manifestEntryToResourceId(2, 'Translation Notes', 'audio')]: 'selected',
   [manifestEntryToResourceId(3, 'Bible Commentary', 'text')]: 'selected',
   [manifestEntryToResourceId(3, 'Bible Commentary', 'audio')]: 'selected',
-  [manifestEntryToResourceId(3, 'Reference images', 'text')]: 'selected',
-  [manifestEntryToResourceId(3, 'Alternate translations', 'text')]: 'selected',
-  [manifestEntryToResourceId(3, 'Alternate translations', 'audio')]: 'selected',
+  [manifestEntryToResourceId(3, 'Reference Images', 'text')]: 'selected',
+  [manifestEntryToResourceId(3, 'Alternate Translations', 'text')]: 'selected',
+  [manifestEntryToResourceId(3, 'Alternate Translations', 'audio')]: 'selected',
 };
 
 function tierItemIds(tier: PrepareOfflineResourceTier): string[] {

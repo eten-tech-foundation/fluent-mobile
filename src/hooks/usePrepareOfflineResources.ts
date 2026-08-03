@@ -39,6 +39,8 @@ export function usePrepareOfflineResources({
 
   const {
     manifest,
+    loading: manifestLoading,
+    error: manifestError,
     inventoryVersion,
     getResourceStatus,
     clearSessionInventory,
@@ -154,6 +156,8 @@ export function usePrepareOfflineResources({
     canDownload,
     downloadButtonLabel,
     downloadStarted,
+    manifestLoading,
+    manifestError,
     isItemSelected,
     toggleItemSelected,
     handleDownload,

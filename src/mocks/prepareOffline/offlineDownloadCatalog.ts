@@ -97,7 +97,7 @@ export const MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST: PrepareOfflineResourceManif
     {
       resourceKey: 'reference-images',
       tier: 3,
-      groupName: 'Reference images',
+      groupName: 'Reference Images',
       kind: 'text',
       scope: 'project',
       unitBytes: 6 * MB,
@@ -105,7 +105,7 @@ export const MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST: PrepareOfflineResourceManif
     {
       resourceKey: 'alternate-translations',
       tier: 3,
-      groupName: 'Alternate translations',
+      groupName: 'Alternate Translations',
       kind: 'text',
       scope: 'project',
       unitBytes: 8 * MB,
@@ -113,7 +113,7 @@ export const MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST: PrepareOfflineResourceManif
     {
       resourceKey: 'alternate-translations',
       tier: 3,
-      groupName: 'Alternate translations',
+      groupName: 'Alternate Translations',
       kind: 'audio',
       scope: 'project',
       unitBytes: 16 * MB,

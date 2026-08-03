@@ -1,8 +1,7 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { PrepareOfflineCatalog } from '../../types/prepareOffline/types';
 import { theme } from '../../theme';
-import { configurePrepareOfflineLayoutAnimation } from './configurePrepareOfflineLayoutAnimation';
 import { CustomizeDownloadAccordion } from './CustomizeDownloadAccordion';
 import { PrepareOfflineResourceSummary } from './PrepareOfflineResourceSummary';
 
@@ -21,11 +20,6 @@ export function PrepareOfflineResourcesSection({
 }: PrepareOfflineResourcesSectionProps) {
   const [customizeExpanded, setCustomizeExpanded] = useState(false);
 
-  const handleToggleCustomize = useCallback(() => {
-    configurePrepareOfflineLayoutAnimation();
-    setCustomizeExpanded(prev => !prev);
-  }, []);
-
   if (catalog.items.length === 0) {
     return null;
   }
@@ -39,7 +33,7 @@ export function PrepareOfflineResourcesSection({
       <CustomizeDownloadAccordion
         catalog={catalog}
         expanded={customizeExpanded}
-        onToggleExpanded={handleToggleCustomize}
+        onToggleExpanded={() => setCustomizeExpanded(prev => !prev)}
         isItemSelected={isItemSelected}
         onToggleItem={onToggleItem}
       />

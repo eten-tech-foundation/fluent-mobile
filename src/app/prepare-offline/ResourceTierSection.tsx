@@ -89,28 +89,33 @@ export function CustomizeDownloadGroupList({
 
   return (
     <View style={styles.section} testID="customize-download-group-list">
-      {groups.map((group, index) => {
-        const tier = group.items[0]?.tier;
-        if (!tier) {
-          return null;
-        }
+      {(() => {
+        const renderedTierHeaders = new Set<PrepareOfflineResourceTier>();
 
-        const previousTier =
-          index > 0 ? groups[index - 1]?.items[0]?.tier : undefined;
-        const showTierHeader = tier !== previousTier;
+        return groups.map((group, index) => {
+          const tier = group.items[0]?.tier;
+          if (!tier) {
+            return null;
+          }
 
-        return (
-          <React.Fragment key={group.groupName}>
-            {index > 0 ? <ResourceGroupDivider /> : null}
-            {showTierHeader ? <ResourceTierHeader tier={tier} /> : null}
-            <ResourceCustomizeGroup
-              group={group}
-              isItemSelected={isItemSelected}
-              onToggleItem={onToggleItem}
-            />
-          </React.Fragment>
-        );
-      })}
+          const showTierHeader = !renderedTierHeaders.has(tier);
+          if (showTierHeader) {
+            renderedTierHeaders.add(tier);
+          }
+
+          return (
+            <React.Fragment key={group.groupName}>
+              {index > 0 ? <ResourceGroupDivider /> : null}
+              {showTierHeader ? <ResourceTierHeader tier={tier} /> : null}
+              <ResourceCustomizeGroup
+                group={group}
+                isItemSelected={isItemSelected}
+                onToggleItem={onToggleItem}
+              />
+            </React.Fragment>
+          );
+        });
+      })()}
     </View>
   );
 }

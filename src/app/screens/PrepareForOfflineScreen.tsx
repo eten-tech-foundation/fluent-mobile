@@ -67,6 +67,8 @@ export default function PrepareForOfflineScreen() {
     canDownload,
     downloadButtonLabel,
     downloadStarted,
+    manifestLoading,
+    manifestError,
     isItemSelected,
     toggleItemSelected,
     handleDownload,
@@ -85,7 +87,12 @@ export default function PrepareForOfflineScreen() {
     setPickedProjectId(project.id);
   }, []);
 
-  const showDownloadFooter = catalog.items.length > 0 && !loading && !error;
+  const showDownloadFooter =
+    catalog.items.length > 0 &&
+    !loading &&
+    !error &&
+    !manifestLoading &&
+    !manifestError;
 
   let body: React.ReactNode;
 

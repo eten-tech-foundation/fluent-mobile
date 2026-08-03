@@ -17,18 +17,13 @@ function computeManifestBytes(
   entry: PrepareOfflineResourceManifestEntry,
   selectedChapters: PrepareOfflineChapterRow[],
 ): number {
-  switch (entry.scope) {
-    case 'project':
-      return entry.unitBytes;
-    case 'chapter':
-      return entry.unitBytes * selectedChapters.length;
-    case 'book': {
-      const bookIds = new Set(selectedChapters.map(ch => ch.bookId));
-      return entry.unitBytes * bookIds.size;
-    }
-    default:
-      return entry.unitBytes;
-  }
+  const bookIds = new Set(selectedChapters.map(ch => ch.bookId));
+  return computeManifestBytesForScope(
+    entry.scope,
+    entry.unitBytes,
+    selectedChapters.length,
+    bookIds.size,
+  );
 }
 
 function groupItemsByName(

@@ -50,7 +50,7 @@ export function PrepareOfflineDownloadFooter({
           style={styles.startedHint}
           testID="prepare-offline-download-started"
         >
-          Download started — pause and cancel controls coming in #52.
+          Download started. Pause, resume, and cancel controls are coming soon.
         </Text>
       ) : (
         <TouchableOpacity

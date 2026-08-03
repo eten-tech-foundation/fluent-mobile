@@ -30,8 +30,6 @@ export interface PrepareOfflineResourceItem {
   label: string;
   bytes: number;
   status: PrepareOfflineResourceStatus;
-  bookId?: number;
-  chapterId?: number;
 }
 
 export interface PrepareOfflineResourceGroup {

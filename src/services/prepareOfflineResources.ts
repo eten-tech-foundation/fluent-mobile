@@ -6,6 +6,10 @@
  *
  * Today: async "fetch" resolves to mock data in `__DEV__`.
  * #201: replace internals with FluentAPI + SQLite inventory without changing callers.
+ *
+ * Bundle note: mock modules are imported statically but all call sites are
+ * guarded by `__DEV__`; production runtime never executes mock code. #201 removes
+ * mock imports entirely when FluentAPI replaces this layer.
  */
 import {
   clearMockPrepareOfflineRuntimeInventory,

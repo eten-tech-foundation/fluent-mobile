@@ -3,7 +3,7 @@ const MB = KB * 1024;
 
 /** Human-readable byte size for download labels (e.g. `8 MB`, `136 MB`). */
 export function formatByteSize(bytes: number): string {
-  if (bytes <= 0) {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
     return '0 B';
   }
 

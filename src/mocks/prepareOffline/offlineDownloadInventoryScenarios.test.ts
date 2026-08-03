@@ -1,10 +1,14 @@
 import {
   buildMockInventoryForScenario,
   getDefaultDeselectedItemIdsForScenario,
+  MOCK_PREPARE_OFFLINE_MIXED_INVENTORY,
   normalizeCumulativeTierInventory,
   PREPARE_OFFLINE_MOCK_INVENTORY_SCENARIOS,
 } from './offlineDownloadInventoryScenarios';
-import { manifestEntryToResourceId } from './offlineDownloadCatalog';
+import {
+  manifestEntryToResourceId,
+  MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST,
+} from './offlineDownloadCatalog';
 
 describe('prepareOffline mock inventory scenarios', () => {
   it('defines cumulative tier scenarios only (no invalid edge cases)', () => {
@@ -74,6 +78,12 @@ describe('prepareOffline mock inventory scenarios', () => {
     expect(inventory[tier1Text]).toBe('completed');
     expect(inventory[tier2WordsAudio]).toBe('downloading');
     expect(inventory[tier3Text]).toBe('selected');
+  });
+
+  it('covers every manifest resource in the mixed inventory preset', () => {
+    expect(Object.keys(MOCK_PREPARE_OFFLINE_MIXED_INVENTORY).length).toBe(
+      MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST.length,
+    );
   });
 
   it('downgrades higher-tier on-device status when lower tiers are incomplete', () => {

@@ -75,8 +75,8 @@ describe('prepareOfflineCatalog', () => {
       'Translation Words',
       'Translation Notes',
       'Bible Commentary',
-      'Reference images',
-      'Alternate translations',
+      'Reference Images',
+      'Alternate Translations',
     ]);
 
     const tier1 = catalog.items.filter(item => item.tier === 1);

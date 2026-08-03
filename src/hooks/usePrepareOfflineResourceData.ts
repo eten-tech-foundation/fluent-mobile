@@ -67,7 +67,7 @@ export function usePrepareOfflineResourceData(projectId: number | null) {
   const getResourceStatus = useCallback(
     (resourceId: string) =>
       getPrepareOfflineResourceStatus(projectId ?? 0, resourceId),
-    [projectId, inventoryVersion],
+    [projectId],
   );
 
   return {
