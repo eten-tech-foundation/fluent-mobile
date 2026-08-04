@@ -249,7 +249,7 @@ export default function DraftingScreen() {
               ]}
               pointerEvents={activeTab === 'resources' ? 'auto' : 'none'}
             >
-              <ResourcesTab />
+              <ResourcesTab chapterId={chapterId} chapterName={chapterName} />
             </View>
             <View
               style={[
