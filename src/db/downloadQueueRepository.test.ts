@@ -100,16 +100,17 @@ async function mockExecute(
   }
 
   if (
-    normalized.startsWith(
-      'UPDATE download_queue SET progress = ?, updated_at = ?',
-    )
+    normalized ===
+    "UPDATE download_queue SET progress = ?, updated_at = ? WHERE id = ? AND status = 'downloading'"
   ) {
     const [progress, updatedAt, id] = params as [number, string, string];
+
     rows = rows.map(r =>
       r.id === id && r.status === 'downloading'
         ? { ...r, progress, updated_at: updatedAt }
         : r,
     );
+
     return { rows: [] };
   }
 
@@ -553,7 +554,7 @@ describe('downloadQueueRepository', () => {
     await updateDownloadItemProgress(id, 0.9);
 
     const row = __getDownloadQueueRows().find(r => r.id === id);
-    expect(row?.status).toBe('paused');
+    expect(row?.progress).toBe(0);
   });
 
   it('does not apply a stale progress update after the item is cancelled', async () => {
@@ -572,7 +573,7 @@ describe('downloadQueueRepository', () => {
     await updateDownloadItemProgress(id, 0.9);
 
     const row = __getDownloadQueueRows().find(r => r.id === id);
-    expect(row?.status).toBe('cancelled');
+    expect(row?.progress).toBe(0);
   });
 
   it('allows progress to apply again once a failed item is explicitly reactivated for retry', async () => {
@@ -587,9 +588,10 @@ describe('downloadQueueRepository', () => {
     ]);
     await markDownloadItemFailed(id);
     await updateDownloadItemProgress(id, 0.5); // should be ignored — still 'failed'
-    expect(__getDownloadQueueRows().find(r => r.id === id)?.status).toBe(
-      'failed',
-    );
+    const failedRow = __getDownloadQueueRows().find(r => r.id === id);
+
+    expect(failedRow?.status).toBe('failed');
+    expect(failedRow?.progress).toBe(0);
 
     await markDownloadItemDownloading(id);
     await updateDownloadItemProgress(id, 0.5); // now applies
