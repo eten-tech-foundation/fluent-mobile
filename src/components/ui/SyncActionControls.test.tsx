@@ -99,6 +99,57 @@ describe('SyncActionControls', () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps Pause and Cancel enabled while busy during syncing', () => {
+    const { getByTestId } = renderControls({
+      status: 'syncing',
+      busy: true,
+    });
+
+    expect(getByTestId('sync-action-pause').props.accessibilityState).toEqual(
+      expect.objectContaining({ disabled: false }),
+    );
+    expect(getByTestId('sync-action-cancel').props.accessibilityState).toEqual(
+      expect.objectContaining({ disabled: false }),
+    );
+  });
+
+  it('disables Resume and Cancel while controlPending in paused state', () => {
+    const { getByTestId } = renderControls({
+      status: 'paused',
+      controlPending: true,
+    });
+
+    expect(getByTestId('sync-action-resume').props.accessibilityState).toEqual(
+      expect.objectContaining({ disabled: true }),
+    );
+    expect(getByTestId('sync-action-cancel').props.accessibilityState).toEqual(
+      expect.objectContaining({ disabled: true }),
+    );
+  });
+
+  it('enables Resume in paused state when only metadata sync is busy', () => {
+    const { getByTestId } = renderControls({
+      status: 'paused',
+      busy: true,
+      controlPending: false,
+    });
+
+    expect(getByTestId('sync-action-resume').props.accessibilityState).toEqual(
+      expect.objectContaining({ disabled: false }),
+    );
+  });
+
+  it('disables Sync Now while busy in pending state', () => {
+    const { getByTestId } = renderControls({
+      status: 'pending',
+      busy: true,
+    });
+
+    expect(
+      getByTestId('sync-action-sync-now').props.accessibilityState,
+    ).toEqual(expect.objectContaining({ disabled: true }));
+  });
+
   it('does not call onSyncNow when Sync Now is disabled', () => {
     const { getByTestId } = renderControls({
       status: 'pending',

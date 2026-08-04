@@ -21,7 +21,10 @@ export interface SyncActionControlsProps {
   onCancel: () => void;
   onSyncNow: () => void;
   syncNowDisabled?: boolean;
+  /** Blocks Sync Now / Resume — e.g. control in flight or upload active. */
   busy?: boolean;
+  /** Orchestrator pause/cancel/resume/syncNow call still in flight. */
+  controlPending?: boolean;
 }
 
 export function SyncActionControls({
@@ -32,8 +35,12 @@ export function SyncActionControls({
   onSyncNow,
   syncNowDisabled = false,
   busy = false,
+  controlPending = false,
 }: SyncActionControlsProps) {
-  const disabled = busy;
+  /** Blocks starting another upload pass (Sync Now / Resume). */
+  const startDisabled = busy;
+  /** While pause/cancel/resume handler awaits orchestrator — avoid double-tap races. */
+  const interruptDisabled = controlPending;
 
   switch (status) {
     case 'syncing':
@@ -43,7 +50,6 @@ export function SyncActionControls({
             label="Pause"
             Icon={Pause}
             variant="secondary"
-            disabled={disabled}
             onPress={onPause}
             testID="sync-action-pause"
           />
@@ -51,7 +57,6 @@ export function SyncActionControls({
             label="Cancel"
             Icon={X}
             variant="secondary"
-            disabled={disabled}
             onPress={onCancel}
             testID="sync-action-cancel"
           />
@@ -69,7 +74,7 @@ export function SyncActionControls({
               label="Resume"
               Icon={Play}
               variant="secondary"
-              disabled={disabled || syncNowDisabled}
+              disabled={syncNowDisabled || interruptDisabled}
               onPress={onResume}
               testID="sync-action-resume"
             />
@@ -77,7 +82,7 @@ export function SyncActionControls({
               label="Cancel"
               Icon={X}
               variant="secondary"
-              disabled={disabled}
+              disabled={interruptDisabled}
               onPress={onCancel}
               testID="sync-action-cancel"
             />
@@ -87,7 +92,7 @@ export function SyncActionControls({
             Icon={Play}
             variant="primary"
             fullWidth
-            disabled={disabled || syncNowDisabled}
+            disabled={syncNowDisabled || interruptDisabled}
             onPress={onSyncNow}
             testID="sync-action-sync-now"
           />
@@ -113,7 +118,7 @@ export function SyncActionControls({
             Icon={Play}
             variant="primary"
             fullWidth
-            disabled={disabled || syncNowDisabled}
+            disabled={startDisabled || syncNowDisabled}
             onPress={onSyncNow}
             testID="sync-action-sync-now"
           />

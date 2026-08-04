@@ -1,15 +1,11 @@
 import { theme } from '../../theme';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useSync } from '../../hooks/useSync';
-import { SyncPageStatus } from '../../types/sync/types';
 import { useNavigation } from '@react-navigation/native';
 import { usePreferences } from '../../hooks/usePreferences';
 import { useConnectivity } from '../../hooks/useConnectivity';
-import {
-  loadPendingUploadCount,
-  usePendingUploads,
-} from '../../hooks/usePendingUploads';
-import { useRetryFailedUploads } from '../../hooks/useRetryFailedUploads';
+import { usePendingUploads } from '../../hooks/usePendingUploads';
+import { useUploadSessionState } from '../../hooks/useUploadSessionState';
 import { SettingsToggleRow } from '../../components/ui/SettingsListRow';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { UploadProgressBar } from '../../components/ui/UploadProgressBar';
@@ -22,24 +18,16 @@ import { useDownloadQueue } from '../../hooks/useDownloadQueue';
 import { formatSyncStatusLabel } from '../../utils/syncStatusState';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types/navigation/types';
+import { SyncPageStatus } from '../../types/sync/types';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 type SyncScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Sync'>;
 
-// TODO(#150): status/uploadedChapters/totalChapters/nextRetryAt are mock
-// state until the upload orchestrator owns them. Live uploadProgress from
-// #101 session events overrides the mock counts while a pass is in flight.
 export default function SyncScreen() {
   const navigation = useNavigation<SyncScreenNavigationProp>();
   const { snapshot, hasDownloads } = useDownloadQueue();
 
-  const [totalChapters] = useState(17);
-  const [uploadedChapters] = useState(14);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [nextRetryAt] = useState<Date | undefined>(
-    new Date(Date.now() + 23 * 60 * 60 * 1000),
-  );
-  const [status, setStatus] = useState<SyncPageStatus>('pending');
 
   const { isOnline, isWifi } = useConnectivity();
   const { uploadOverCellular, setUploadOverCellular } = usePreferences();
@@ -47,85 +35,70 @@ export default function SyncScreen() {
     hasPendingUploads,
     hasFailedUploads,
     failedCount,
+    pendingChapterCount,
     isUploading,
     uploadProgress,
   } = usePendingUploads(refreshKey);
-  const { retryFailedUploads, isRetrying, lastError } = useRetryFailedUploads();
+  const {
+    pageStatus,
+    progressUploaded,
+    progressTotal,
+    nextRetryAt,
+    sessionError,
+    isControlPending,
+    pause,
+    cancel,
+    syncNowUploads,
+  } = useUploadSessionState({
+    hasPendingUploads,
+    hasFailedUploads,
+    uploadProgress,
+  });
+
   const effectivelyOnline = isOnline && (isWifi || uploadOverCellular);
   const cellularBlocked = isOnline && !isWifi && !uploadOverCellular;
 
-  // Once the real sync finishes, re-check the pending count directly
-  // (rather than relying on hasPendingUploads above, which only refetches
-  // when refreshKey changes and could be stale for a tick) and transition
-  // to 'uploadComplete' if nothing's left, or back to 'pending' if some
-  // remain (e.g. partial failure, cellular gate).
-  //
-  // NOTE: 'allComplete' is NOT reachable from here. Per #149 it requires
-  // "no downloads pending" too, and there's no download-queue signal to
-  // check yet (that section is still a TODO). It'll stay dead code until
-  // that integration exists.
   const { triggerSync, isSyncing } = useSync({
-    onSyncComplete: async () => {
+    onSyncComplete: () => {
       setRefreshKey(key => key + 1);
-      const count = await loadPendingUploadCount();
-      setStatus(count > 0 ? 'pending' : 'uploadComplete');
-    },
-    onError: () => {
-      setStatus('pending');
     },
   });
 
-  useEffect(() => {
-    if (status === 'syncing' && cellularBlocked) {
-      setStatus('paused');
-    }
-  }, [status, cellularBlocked]);
-
-  useEffect(() => {
-    if (isUploading || isRetrying) {
-      setStatus('syncing');
-    }
-  }, [isUploading, isRetrying]);
-
-  /**
-   * Lovable Sync page "Sync Now" — also the #101 retry affordance.
-   * Re-runs the recording upload worker; metadata sync still runs alongside.
-   */
   const runSyncNow = useCallback(async () => {
     if (cellularBlocked) {
       return;
     }
-    setStatus('syncing');
-    // Fire-and-forget metadata sync (existing Sync Now behavior).
+
     void triggerSync();
-    // #101: re-run upload worker for pending/failed takes (Lovable Sync Now).
-    const result = await retryFailedUploads();
+    await syncNowUploads();
     setRefreshKey(key => key + 1);
-    if (result && result.failed === 0) {
-      const remaining = await loadPendingUploadCount();
-      setStatus(remaining > 0 ? 'pending' : 'uploadComplete');
-    } else if (!isUploading) {
-      setStatus('pending');
-    }
-  }, [cellularBlocked, triggerSync, retryFailedUploads, isUploading]);
+  }, [cellularBlocked, triggerSync, syncNowUploads]);
 
-  // TODO(#150): invoke upload-engine pause.
-  const handlePause = useCallback(() => {
-    setStatus('paused');
-  }, []);
+  const handlePause = useCallback(async () => {
+    await pause();
+  }, [pause]);
 
-  // TODO(#150): invoke upload-engine resume (distinct from Sync Now pause-window clear).
-  const handleResume = useCallback(() => {
-    void runSyncNow();
+  const handleResume = useCallback(async () => {
+    await runSyncNow();
   }, [runSyncNow]);
 
-  // TODO(#150): invoke upload-engine cancel / clear pause window.
-  const handleCancel = useCallback(() => {
-    setStatus('pending');
-  }, []);
+  const handleCancel = useCallback(async () => {
+    await cancel();
+    setRefreshKey(key => key + 1);
+  }, [cancel]);
 
-  const progressUploaded = uploadProgress?.completed ?? uploadedChapters;
-  const progressTotal = uploadProgress?.total ?? totalChapters;
+  const status = pageStatus;
+  /** Show pause/cancel while uploading; prefer paused once user pauses. */
+  const controlStatus: SyncPageStatus =
+    status === 'paused'
+      ? 'paused'
+      : isUploading || status === 'syncing'
+      ? 'syncing'
+      : status;
+  const startBusy =
+    controlStatus === 'paused'
+      ? false
+      : isControlPending || isUploading || isSyncing;
 
   return (
     <ScreenContainer edges={['bottom']}>
@@ -137,7 +110,7 @@ export default function SyncScreen() {
             isOnline={effectivelyOnline}
             hasPendingUploads={hasPendingUploads}
             hasFailedUploads={hasFailedUploads}
-            isUploading={isUploading || isRetrying}
+            isUploading={isUploading}
           />
 
           {renderStatusLine(
@@ -146,11 +119,11 @@ export default function SyncScreen() {
             hasPendingUploads,
             hasFailedUploads,
             failedCount,
-            isUploading || isRetrying,
+            isUploading,
           )}
-          {lastError ? (
+          {sessionError ? (
             <Text style={styles.errorText} testID="sync-retry-error">
-              {lastError}
+              {sessionError}
             </Text>
           ) : null}
         </View>
@@ -161,19 +134,30 @@ export default function SyncScreen() {
             progressUploaded,
             progressTotal,
             nextRetryAt,
+            isUploading,
+            pendingChapterCount,
+            hasPendingUploads,
+            hasFailedUploads,
           )}
         </View>
         <View style={styles.controlsSection}>
           <SyncActionControls
-            status={status}
-            onPause={handlePause}
-            onResume={handleResume}
-            onCancel={handleCancel}
+            status={controlStatus}
+            onPause={() => {
+              void handlePause();
+            }}
+            onResume={() => {
+              void handleResume();
+            }}
+            onCancel={() => {
+              void handleCancel();
+            }}
             onSyncNow={() => {
               void runSyncNow();
             }}
             syncNowDisabled={cellularBlocked}
-            busy={isSyncing || isRetrying || isUploading}
+            busy={startBusy}
+            controlPending={isControlPending}
           />
         </View>
         {hasDownloads ? (
@@ -271,8 +255,6 @@ function renderStatusLine(
   );
 }
 
-// Small version of the same crossed-cloud icon used in the main indicator
-// (see SyncStatusIndicator's offline+nothing-pending note).
 function CantReachFluentPill({
   hasPendingUploads,
 }: {
@@ -291,14 +273,15 @@ function CantReachFluentPill({
   );
 }
 
-// State-specific content shown below the status line. 'pending' has
-// nothing extra — the status line above already says everything #149
-// asks for in that state.
 function renderSecondaryContent(
   status: SyncPageStatus,
   uploadedChapters: number,
   totalChapters: number,
   nextRetryAt: Date | undefined,
+  isUploading: boolean,
+  pendingChapterCount: number,
+  hasPendingUploads: boolean,
+  hasFailedUploads: boolean,
 ) {
   switch (status) {
     case 'syncing':
@@ -323,10 +306,17 @@ function renderSecondaryContent(
       );
 
     case 'pending':
+      if (!hasPendingUploads && !hasFailedUploads) {
+        return null;
+      }
       return (
         <UploadProgressBar
-          uploadedChapters={uploadedChapters}
-          totalChapters={totalChapters}
+          uploadedChapters={isUploading ? uploadedChapters : 0}
+          totalChapters={
+            isUploading && totalChapters > 0
+              ? totalChapters
+              : pendingChapterCount
+          }
         />
       );
 
