@@ -2,7 +2,7 @@ import type { ExpoConfig } from 'expo/config';
 
 const EAS_PROJECT_ID = 'b0919574-f268-4768-b3bd-7cfa5172bbab';
 
-// Bumped by release/preview CI before EAS builds; OTA may set APP_VERSION on the runner
+// Bumped by release/preview CI before EAS builds
 const APP_VERSION_FALLBACK = '1.0.0';
 
 function resolveAppVersion(): string {
@@ -17,11 +17,9 @@ const appVersion = resolveAppVersion();
 
 const buildProfile = process.env.EAS_BUILD_PROFILE;
 const usesCleartextTraffic = buildProfile !== 'production';
-// OTA updates apply to EAS preview/production only. Local, development, and
-// nightly builds keep updates disabled (nightly ships a self-contained APK).
-// Checking u.expo.dev on launch crashes when no bundle exists.
-const updatesEnabled =
-  buildProfile === 'preview' || buildProfile === 'production';
+// Expo Updates only for production. Preview / nightly / development ship
+// self-contained APKs so concurrent QA builds are not overwritten by a shared channel.
+const updatesEnabled = buildProfile === 'production';
 
 const config: ExpoConfig = {
   name: 'Fluent',
@@ -36,9 +34,6 @@ const config: ExpoConfig = {
   updates: {
     url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
     enabled: updatesEnabled,
-    ...(buildProfile === 'preview'
-      ? { requestHeaders: { 'expo-channel-name': 'preview' } }
-      : {}),
   },
   runtimeVersion: {
     policy: 'appVersion',
