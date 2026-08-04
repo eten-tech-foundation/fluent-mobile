@@ -2,7 +2,9 @@ import { getDatabase } from './db';
 import { logger } from '../utils/logger';
 import type { Transaction } from '@op-engineering/op-sqlite';
 import type {
+  DownloadedProjectInventory,
   DownloadQueueItem,
+  DownloadQueueStatus,
   DownloadQueueSnapshot,
   DownloadTier,
 } from '../types/download/types';
@@ -16,10 +18,13 @@ type DownloadQueueRow = {
   kind: string;
   resource_name: string;
   label: string;
-  status: DownloadQueueItem['status'];
+  source_url: string | null;
+  file_ext: string | null;
+  status: DownloadQueueStatus;
   progress: number;
   bytes_total: number | null;
   local_file_path: string | null;
+  resume_data: string | null;
   queue_order: number;
 };
 
@@ -33,12 +38,17 @@ function mapRow(row: DownloadQueueRow): DownloadQueueItem {
   return {
     id: row.id,
     tier: row.tier as DownloadTier,
+    kind: row.kind as DownloadQueueItem['kind'],
+    resourceName: row.resource_name,
     label: row.label,
     progress: row.progress,
     status: row.status,
     projectId: row.project_id,
+    sourceUrl: row.source_url ?? undefined,
+    fileExt: row.file_ext ?? undefined,
     bytesTotal: row.bytes_total ?? undefined,
     localFilePath: row.local_file_path ?? undefined,
+    resumeData: row.resume_data ?? undefined,
   };
 }
 
@@ -48,6 +58,8 @@ export type EnqueueDownloadItemInput = {
   kind: 'text' | 'audio';
   resourceName: string;
   label: string;
+  sourceUrl?: string;
+  fileExt?: string;
   bytesTotal?: number;
 };
 
@@ -77,10 +89,10 @@ export async function enqueueDownloadItems(
 
       const result = await tx.execute(
         `INSERT INTO download_queue (
-           id, project_id, tier, kind, resource_name, label, status,
-           progress, bytes_total, local_file_path, queue_order,
+           id, project_id, tier, kind, resource_name, label, source_url,
+           file_ext, status, progress, bytes_total, local_file_path, resume_data, queue_order,
            created_at, updated_at
-         ) VALUES (?, ?, ?, ?, ?, ?, 'queued', 0, ?, NULL, ?, ?, ?)
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'queued', 0, ?, NULL, NULL, ?, ?, ?)
          ON CONFLICT DO NOTHING`,
         [
           id,
@@ -89,6 +101,8 @@ export async function enqueueDownloadItems(
           item.kind,
           item.resourceName,
           item.label,
+          item.sourceUrl ?? null,
+          item.fileExt ?? null,
           item.bytesTotal ?? null,
           nextOrder,
           now,
@@ -115,8 +129,36 @@ export async function updateDownloadItemProgress(
   await db.execute(
     `UPDATE download_queue
      SET progress = ?, status = 'downloading', updated_at = ?
-     WHERE id = ? AND status IN ('queued', 'downloading')`,
+     WHERE id = ? AND status IN ('queued', 'downloading', 'paused', 'cancelled')`,
     [progress, now, id],
+  );
+}
+
+export async function markDownloadItemPaused(
+  id: string,
+  resumeData?: string,
+): Promise<void> {
+  const db = getDatabase();
+  const now = new Date().toISOString();
+  await db.execute(
+    `UPDATE download_queue
+     SET status = 'paused', resume_data = COALESCE(?, resume_data), updated_at = ?
+     WHERE id = ? AND status IN ('queued', 'downloading', 'paused')`,
+    [resumeData ?? null, now, id],
+  );
+}
+
+export async function markDownloadItemCancelled(
+  id: string,
+  resumeData?: string,
+): Promise<void> {
+  const db = getDatabase();
+  const now = new Date().toISOString();
+  await db.execute(
+    `UPDATE download_queue
+     SET status = 'cancelled', resume_data = COALESCE(?, resume_data), updated_at = ?
+     WHERE id = ? AND status != 'completed'`,
+    [resumeData ?? null, now, id],
   );
 }
 
@@ -130,7 +172,7 @@ export async function markDownloadItemCompleted(
   await db.execute(
     `UPDATE download_queue
      SET status = 'completed', progress = 1, local_file_path = ?,
-         bytes_total = COALESCE(?, bytes_total), updated_at = ?
+         bytes_total = COALESCE(?, bytes_total), resume_data = NULL, updated_at = ?
      WHERE id = ?`,
     [localFilePath, bytesTotal ?? null, now, id],
   );
@@ -143,6 +185,24 @@ export async function markDownloadItemFailed(id: string): Promise<void> {
     `UPDATE download_queue SET status = 'failed', updated_at = ? WHERE id = ?`,
     [now, id],
   );
+}
+
+export async function getResumableDownloadItems(
+  includeCancelled = false,
+): Promise<DownloadQueueItem[]> {
+  const db = getDatabase();
+  const statuses = includeCancelled
+    ? ['queued', 'downloading', 'paused', 'cancelled', 'failed']
+    : ['queued', 'downloading', 'paused', 'failed'];
+  const placeholders = statuses.map(() => '?').join(', ');
+  const result = await db.execute(
+    `SELECT * FROM download_queue
+     WHERE status IN (${placeholders})
+     ORDER BY queue_order ASC`,
+    statuses,
+  );
+  const rows = (result.rows ?? []) as unknown as DownloadQueueRow[];
+  return rows.map(mapRow);
 }
 
 export async function deleteDownloadItem(id: string): Promise<void> {
@@ -201,4 +261,33 @@ export async function getDownloadedResourcesByProject(
   );
   const rows = (result.rows ?? []) as unknown as DownloadQueueRow[];
   return rows.map(mapRow);
+}
+
+export async function getDownloadedResourcesInventory(): Promise<
+  DownloadedProjectInventory[]
+> {
+  const db = getDatabase();
+  const result = await db.execute(
+    `SELECT * FROM download_queue
+     WHERE status = 'completed'
+     ORDER BY project_id, resource_name`,
+  );
+  const rows = (result.rows ?? []) as unknown as DownloadQueueRow[];
+  const byProject = new Map<number, DownloadQueueItem[]>();
+
+  for (const row of rows) {
+    const item = mapRow(row);
+    const projectId = item.projectId;
+    if (projectId === undefined) continue;
+    byProject.set(projectId, [...(byProject.get(projectId) ?? []), item]);
+  }
+
+  return [...byProject.entries()].map(([projectId, resources]) => ({
+    projectId,
+    resources,
+    totalBytes: resources.reduce(
+      (sum, resource) => sum + (resource.bytesTotal ?? 0),
+      0,
+    ),
+  }));
 }

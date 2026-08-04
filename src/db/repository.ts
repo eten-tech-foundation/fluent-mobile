@@ -708,11 +708,15 @@ export type { AddRecordingTakeInput } from './recordingsRepository';
 export {
   enqueueDownloadItems,
   updateDownloadItemProgress,
+  markDownloadItemPaused,
+  markDownloadItemCancelled,
   markDownloadItemCompleted,
   markDownloadItemFailed,
   deleteDownloadItem,
+  getResumableDownloadItems,
   getDownloadQueueSnapshot,
   getDownloadedResourcesByProject,
+  getDownloadedResourcesInventory,
 } from './downloadQueueRepository';
 
 export type { EnqueueDownloadItemInput } from './downloadQueueRepository';

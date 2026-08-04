@@ -3,11 +3,13 @@ import type {
   DownloadQueueItem,
   DownloadQueueSnapshot,
 } from '../types/download/types';
-import { getDownloadQueueSnapshot } from '../db/repository';
 import {
-  DownloadQueueWorker,
-  type ResourceResolver,
-} from '../services/downloadQueueWorker';
+  getDownloadQueueSnapshot,
+  getResumableDownloadItems,
+} from '../db/repository';
+import { DownloadQueueWorker } from '../services/downloadQueueWorker';
+import { getConnectivitySnapshot } from '../services/connectivity';
+import { queuedResourceResolver } from '../services/downloadResourceResolver';
 import { logger } from '../utils/logger';
 import {
   getActiveUserId,
@@ -187,24 +189,10 @@ function hasActiveDownloads(snapshot: DownloadQueueSnapshot): boolean {
   return snapshot.items.some(item => item.status !== 'completed');
 }
 
-/**
- * TODO(#201 blocker): stub resolver. The real byte source (direct Aquifer
- * call, matching fluent-web's embedded-key pattern, vs. a new fluent-api
- * proxy endpoint) is still an open decision — see #51/#201 "Open questions".
- * Throws deliberately so a real download attempted before that's resolved
- * fails loudly instead of silently no-op'ing.
- */
-const stubResolver: ResourceResolver = async item => {
-  throw new Error(
-    `No resource resolver configured yet (item ${item.id}). ` +
-      'Download source (Aquifer vs fluent-api) is still an open decision — see #201.',
-  );
-};
-
 // Single worker instance for the app's lifetime, mirroring other cross-screen
 // service singletons (e.g. authToken) rather than recreating in-memory queue
 // state per hook consumer.
-const worker = new DownloadQueueWorker(stubResolver);
+const worker = new DownloadQueueWorker(queuedResourceResolver);
 
 export function useDownloadQueue() {
   const [snapshot, setSnapshot] = useState<DownloadQueueSnapshot>(
@@ -273,7 +261,25 @@ export function useDownloadQueue() {
   }, [refresh]);
 
   const resume = useCallback(async () => {
-    await worker.resume();
+    if (worker.getState() === 'paused') {
+      await worker.resume();
+      await refresh();
+      return;
+    }
+
+    const snapshot = await getConnectivitySnapshot();
+    if (!snapshot.isOnline || !snapshot.isWifi) {
+      log.info('Download resume skipped until Wi-Fi is available', {
+        isOnline: snapshot.isOnline,
+        isWifi: snapshot.isWifi,
+        isCellular: snapshot.isCellular,
+      });
+      await refresh();
+      return;
+    }
+
+    const items = await getResumableDownloadItems(true);
+    await worker.start(items);
     await refresh();
   }, [refresh]);
 

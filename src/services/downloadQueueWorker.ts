@@ -2,8 +2,10 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { logger } from '../utils/logger';
 import { downloadResourcePath, ensureDownloadsDir } from './downloadStorage';
 import {
+  markDownloadItemCancelled,
   markDownloadItemCompleted,
   markDownloadItemFailed,
+  markDownloadItemPaused,
   updateDownloadItemProgress,
 } from '../db/downloadQueueRepository';
 import type { DownloadQueueItem } from '../types/download/types';
@@ -24,6 +26,37 @@ type ActiveDownload = {
   itemId: string;
   resumable: FileSystem.DownloadResumable;
 };
+
+type SavedDownloadState = {
+  url?: string;
+  fileUri?: string;
+  options?: FileSystem.DownloadOptions;
+  resumeData?: string;
+};
+
+type DownloadPauseState = Awaited<
+  ReturnType<FileSystem.DownloadResumable['pauseAsync']>
+>;
+
+function serializeDownloadState(
+  state: DownloadPauseState | undefined,
+): string | undefined {
+  return state ? JSON.stringify(state) : undefined;
+}
+
+function parseDownloadState(
+  value: string | undefined,
+): SavedDownloadState | undefined {
+  if (!value) {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(value) as SavedDownloadState;
+    return parsed && typeof parsed === 'object' ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export class DownloadQueueWorker {
   private state: WorkerSessionState = 'idle';
@@ -56,7 +89,11 @@ export class DownloadQueueWorker {
     const previousState = this.state;
     this.state = 'paused';
     try {
-      await this.active.resumable.pauseAsync();
+      const pauseState = await this.active.resumable.pauseAsync();
+      await markDownloadItemPaused(
+        this.active.itemId,
+        serializeDownloadState(pauseState),
+      );
     } catch (error) {
       log.error('Failed to pause active download', { error });
       // The native transfer may still be running — don't report a paused
@@ -107,9 +144,14 @@ export class DownloadQueueWorker {
     this.state = 'cancelled';
     if (this.active) {
       try {
-        await this.active.resumable.pauseAsync();
+        const pauseState = await this.active.resumable.pauseAsync();
+        await markDownloadItemCancelled(
+          this.active.itemId,
+          serializeDownloadState(pauseState),
+        );
       } catch (error) {
         log.error('Failed to pause on cancel', { error });
+        await markDownloadItemCancelled(this.active.itemId);
       }
     }
     this.active = null;
@@ -127,14 +169,18 @@ export class DownloadQueueWorker {
     }
 
     try {
+      const saved = parseDownloadState(next.resumeData);
       const { url, ext } = await this.resolver(next);
       await ensureDownloadsDir(next.projectId ?? 0);
-      const destPath = downloadResourcePath(next.projectId ?? 0, next.id, ext);
+      const destPath =
+        saved?.fileUri ??
+        next.localFilePath ??
+        downloadResourcePath(next.projectId ?? 0, next.id, ext);
 
       const resumable = FileSystem.createDownloadResumable(
-        url,
+        saved?.url ?? url,
         destPath,
-        {},
+        saved?.options ?? {},
         progress => {
           const { totalBytesWritten, totalBytesExpectedToWrite } = progress;
           if (totalBytesExpectedToWrite > 0) {
@@ -149,15 +195,25 @@ export class DownloadQueueWorker {
             });
           }
         },
+        saved?.resumeData,
       );
 
       this.active = { itemId: next.id, resumable };
-      const result = await resumable.downloadAsync();
+      const shouldResume = Boolean(saved?.resumeData);
+      const result = shouldResume
+        ? await resumable.resumeAsync()
+        : await resumable.downloadAsync();
+      if ((this.state as WorkerSessionState) === 'cancelled') {
+        return;
+      }
       if (result) {
         await this.handleItemComplete(next.id, result.uri);
       }
     } catch (error) {
       log.error('Failed to download item', { error, itemId: next.id });
+      if ((this.state as WorkerSessionState) === 'cancelled') {
+        return;
+      }
       try {
         await markDownloadItemFailed(next.id);
       } catch (innerError) {

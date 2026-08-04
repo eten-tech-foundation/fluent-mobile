@@ -271,10 +271,13 @@ async function applyDownloadQueueTable(db: SqlExecutor): Promise<void> {
       kind            TEXT NOT NULL,
       resource_name   TEXT NOT NULL,
       label           TEXT NOT NULL,
+      source_url      TEXT,
+      file_ext        TEXT,
       status          TEXT NOT NULL DEFAULT 'queued',
       progress        REAL NOT NULL DEFAULT 0,
       bytes_total     INTEGER,
       local_file_path TEXT,
+      resume_data     TEXT,
       queue_order     INTEGER NOT NULL,
       created_at      TEXT NOT NULL,
       updated_at      TEXT NOT NULL
@@ -291,6 +294,9 @@ async function applyDownloadQueueTable(db: SqlExecutor): Promise<void> {
      ON download_queue(project_id, kind, resource_name)
      WHERE status != 'completed'`,
   );
+  await addColumnIfMissing(db, 'download_queue', 'source_url', 'TEXT');
+  await addColumnIfMissing(db, 'download_queue', 'file_ext', 'TEXT');
+  await addColumnIfMissing(db, 'download_queue', 'resume_data', 'TEXT');
 }
 
 /** Ordered schema migrations. Version 1 = current CREATE IF NOT EXISTS baseline. */

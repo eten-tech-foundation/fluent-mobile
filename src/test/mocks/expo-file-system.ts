@@ -134,19 +134,34 @@ export type DownloadProgressCallback = (progress: {
 
 export type DownloadResumable = {
   downloadAsync: () => Promise<{ uri: string } | undefined>;
-  pauseAsync: () => Promise<void>;
+  pauseAsync: () => Promise<DownloadPauseState>;
   resumeAsync: () => Promise<{ uri: string } | undefined>;
+  savable: () => DownloadPauseState;
+};
+
+export type DownloadPauseState = {
+  url: string;
+  fileUri: string;
+  options?: unknown;
+  resumeData?: string;
 };
 
 const DEFAULT_MOCK_CONTENT = 'mock-downloaded-bytes';
 
 export function createDownloadResumable(
-  _url: string,
+  url: string,
   fileUri: string,
-  _options?: unknown,
+  options?: unknown,
   onProgress?: DownloadProgressCallback,
+  resumeData?: string,
 ): DownloadResumable {
   const resolvedUri = resolveUri(fileUri);
+  const savable = (): DownloadPauseState => ({
+    url,
+    fileUri: resolvedUri,
+    options,
+    resumeData,
+  });
   return {
     downloadAsync: async () => {
       onProgress?.({
@@ -156,10 +171,11 @@ export function createDownloadResumable(
       files.set(resolvedUri, DEFAULT_MOCK_CONTENT);
       return { uri: resolvedUri };
     },
-    pauseAsync: async () => {},
+    pauseAsync: async () => savable(),
     resumeAsync: async () => {
       files.set(resolvedUri, DEFAULT_MOCK_CONTENT);
       return { uri: resolvedUri };
     },
+    savable,
   };
 }

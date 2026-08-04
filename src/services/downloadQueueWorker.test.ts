@@ -18,13 +18,19 @@ jest.mock('./downloadStorage', () => ({
 
 const mockMarkDownloadItemCompleted = jest.fn().mockResolvedValue(undefined);
 const mockMarkDownloadItemFailed = jest.fn().mockResolvedValue(undefined);
+const mockMarkDownloadItemPaused = jest.fn().mockResolvedValue(undefined);
+const mockMarkDownloadItemCancelled = jest.fn().mockResolvedValue(undefined);
 const mockUpdateDownloadItemProgress = jest.fn().mockResolvedValue(undefined);
 
 jest.mock('../db/downloadQueueRepository', () => ({
+  markDownloadItemCancelled: (...args: unknown[]) =>
+    mockMarkDownloadItemCancelled(...args),
   markDownloadItemCompleted: (...args: unknown[]) =>
     mockMarkDownloadItemCompleted(...args),
   markDownloadItemFailed: (...args: unknown[]) =>
     mockMarkDownloadItemFailed(...args),
+  markDownloadItemPaused: (...args: unknown[]) =>
+    mockMarkDownloadItemPaused(...args),
   updateDownloadItemProgress: (...args: unknown[]) =>
     mockUpdateDownloadItemProgress(...args),
 }));
@@ -54,7 +60,12 @@ function spyResumable(overrides: Record<string, unknown> = {}) {
           await FileSystem.writeAsStringAsync(dest, 'mock-bytes');
           return { uri: dest };
         }),
-        pauseAsync: jest.fn().mockResolvedValue(undefined),
+        pauseAsync: jest.fn().mockResolvedValue({
+          url: 'https://example.com/x.mp3',
+          fileUri: dest,
+          options: {},
+          resumeData: 'resume-token',
+        }),
         resumeAsync: jest.fn().mockImplementation(async () => {
           await FileSystem.writeAsStringAsync(dest, 'mock-bytes');
           return { uri: dest };
@@ -225,6 +236,10 @@ describe('DownloadQueueWorker', () => {
       await worker.pause();
 
       expect(pauseAsync).toHaveBeenCalled();
+      expect(mockMarkDownloadItemPaused).toHaveBeenCalledWith(
+        'item-1',
+        undefined,
+      );
       expect(worker.getState()).toBe('paused');
 
       resolveDownload({ uri: 'file:///docs/downloads/1/item-1.mp3' });
@@ -304,6 +319,10 @@ describe('DownloadQueueWorker', () => {
       await worker.cancel();
 
       expect(pauseAsync).toHaveBeenCalled();
+      expect(mockMarkDownloadItemCancelled).toHaveBeenCalledWith(
+        'item-1',
+        undefined,
+      );
       expect(worker.getState()).toBe('cancelled');
       expect(mockMarkDownloadItemFailed).not.toHaveBeenCalled();
     });
@@ -337,5 +356,45 @@ describe('DownloadQueueWorker', () => {
 
       expect(resolver).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('restores a paused item using persisted resume data', async () => {
+    const resumeAsync = jest.fn().mockImplementation(async () => {
+      await FileSystem.writeAsStringAsync(
+        'file:///docs/downloads/1/item-1.mp3',
+        'mock-bytes',
+      );
+      return { uri: 'file:///docs/downloads/1/item-1.mp3' };
+    });
+    const createSpy = spyResumable({
+      downloadAsync: jest.fn(),
+      resumeAsync,
+    });
+    const resolver = jest
+      .fn()
+      .mockResolvedValue({ url: 'https://example.com/x.mp3', ext: 'mp3' });
+    const resumeData = JSON.stringify({
+      url: 'https://example.com/x.mp3',
+      fileUri: 'file:///docs/downloads/1/item-1.mp3',
+      options: {},
+      resumeData: 'resume-token',
+    });
+
+    const worker = new DownloadQueueWorker(resolver);
+    await worker.start([makeItem({ status: 'paused', resumeData })]);
+
+    expect(createSpy).toHaveBeenCalledWith(
+      'https://example.com/x.mp3',
+      'file:///docs/downloads/1/item-1.mp3',
+      {},
+      expect.any(Function),
+      'resume-token',
+    );
+    expect(resumeAsync).toHaveBeenCalled();
+    expect(mockMarkDownloadItemCompleted).toHaveBeenCalledWith(
+      'item-1',
+      'file:///docs/downloads/1/item-1.mp3',
+      expect.any(Number),
+    );
   });
 });

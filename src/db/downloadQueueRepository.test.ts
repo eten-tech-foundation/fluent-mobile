@@ -5,10 +5,19 @@ type Row = {
   kind: string;
   resource_name: string;
   label: string;
-  status: 'queued' | 'downloading' | 'completed' | 'failed';
+  source_url: string | null;
+  file_ext: string | null;
+  status:
+    | 'queued'
+    | 'downloading'
+    | 'paused'
+    | 'cancelled'
+    | 'completed'
+    | 'failed';
   progress: number;
   bytes_total: number | null;
   local_file_path: string | null;
+  resume_data: string | null;
   queue_order: number;
   created_at: string;
   updated_at: string;
@@ -49,6 +58,8 @@ async function mockExecute(
       kind,
       resourceName,
       label,
+      sourceUrl,
+      fileExt,
       bytesTotal,
       queueOrder,
       createdAt,
@@ -60,6 +71,8 @@ async function mockExecute(
       string,
       string,
       string,
+      string | null,
+      string | null,
       number | null,
       number,
       string,
@@ -72,10 +85,13 @@ async function mockExecute(
       kind,
       resource_name: resourceName,
       label,
+      source_url: sourceUrl,
+      file_ext: fileExt,
       status: 'queued',
       progress: 0,
       bytes_total: bytesTotal,
       local_file_path: null,
+      resume_data: null,
       queue_order: queueOrder,
       created_at: createdAt,
       updated_at: updatedAt,
@@ -96,6 +112,48 @@ async function mockExecute(
     );
     return { rows: [] };
   }
+
+  if (normalized.startsWith("UPDATE download_queue SET status = 'paused'")) {
+    const [resumeData, updatedAt, id] = params as [
+      string | null,
+      string,
+      string,
+    ];
+    rows = rows.map(r =>
+      r.id === id &&
+      (r.status === 'queued' ||
+        r.status === 'downloading' ||
+        r.status === 'paused')
+        ? {
+            ...r,
+            status: 'paused',
+            resume_data: resumeData ?? r.resume_data,
+            updated_at: updatedAt,
+          }
+        : r,
+    );
+    return { rows: [] };
+  }
+
+  if (normalized.startsWith("UPDATE download_queue SET status = 'cancelled'")) {
+    const [resumeData, updatedAt, id] = params as [
+      string | null,
+      string,
+      string,
+    ];
+    rows = rows.map(r =>
+      r.id === id && r.status !== 'completed'
+        ? {
+            ...r,
+            status: 'cancelled',
+            resume_data: resumeData ?? r.resume_data,
+            updated_at: updatedAt,
+          }
+        : r,
+    );
+    return { rows: [] };
+  }
+
   if (normalized.startsWith("UPDATE download_queue SET status = 'completed'")) {
     const [localFilePath, bytesTotal, updatedAt, id] = params as [
       string,
@@ -111,6 +169,7 @@ async function mockExecute(
             progress: 1,
             local_file_path: localFilePath,
             bytes_total: bytesTotal ?? r.bytes_total,
+            resume_data: null,
             updated_at: updatedAt,
           }
         : r,
@@ -145,6 +204,16 @@ async function mockExecute(
     };
   }
 
+  if (normalized.startsWith('SELECT * FROM download_queue WHERE status IN')) {
+    const statuses = new Set(params as Row['status'][]);
+    return {
+      rows: rows
+        .filter(r => statuses.has(r.status))
+        .sort((a, b) => a.queue_order - b.queue_order)
+        .map(clone),
+    };
+  }
+
   if (normalized.startsWith('SELECT COUNT(*) AS total')) {
     const total = rows.length;
     const completed = rows.filter(r => r.status === 'completed').length;
@@ -159,6 +228,19 @@ async function mockExecute(
       rows: rows
         .filter(r => r.project_id === projectId && r.status === 'completed')
         .sort((a, b) => a.resource_name.localeCompare(b.resource_name))
+        .map(clone),
+    };
+  }
+
+  if (
+    normalized.startsWith(
+      "SELECT * FROM download_queue WHERE status = 'completed'",
+    )
+  ) {
+    return {
+      rows: rows
+        .filter(r => r.status === 'completed')
+        .sort((a, b) => a.project_id - b.project_id)
         .map(clone),
     };
   }
@@ -180,10 +262,14 @@ jest.mock('./db', () => ({
 import {
   deleteDownloadItem,
   enqueueDownloadItems,
+  getDownloadedResourcesInventory,
   getDownloadedResourcesByProject,
   getDownloadQueueSnapshot,
+  getResumableDownloadItems,
   markDownloadItemCompleted,
+  markDownloadItemCancelled,
   markDownloadItemFailed,
+  markDownloadItemPaused,
   updateDownloadItemProgress,
 } from './downloadQueueRepository';
 
@@ -270,6 +356,84 @@ describe('downloadQueueRepository', () => {
     const row = __getDownloadQueueRows().find(r => r.id === id);
     expect(row?.progress).toBe(0.42);
     expect(row?.status).toBe('downloading');
+  });
+
+  it('stores resource source metadata for the worker resolver', async () => {
+    const [id] = await enqueueDownloadItems([
+      {
+        projectId: 1,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Source Bible — Audio',
+        sourceUrl: 'https://example.com/source.mp3',
+        fileExt: 'mp3',
+      },
+    ]);
+
+    const row = __getDownloadQueueRows().find(r => r.id === id);
+    expect(row?.source_url).toBe('https://example.com/source.mp3');
+    expect(row?.file_ext).toBe('mp3');
+  });
+
+  it('persists paused and cancelled state with resumable metadata', async () => {
+    const [pausedId, cancelledId] = await enqueueDownloadItems([
+      {
+        projectId: 1,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Source Bible — Audio',
+      },
+      {
+        projectId: 1,
+        tier: 2,
+        kind: 'text',
+        resourceName: 'Translation Notes',
+        label: 'Translation Notes — Text',
+      },
+    ]);
+
+    await markDownloadItemPaused(pausedId, '{"resumeData":"paused"}');
+    await markDownloadItemCancelled(cancelledId, '{"resumeData":"cancelled"}');
+
+    const rows = __getDownloadQueueRows();
+    expect(rows.find(r => r.id === pausedId)?.status).toBe('paused');
+    expect(rows.find(r => r.id === pausedId)?.resume_data).toBe(
+      '{"resumeData":"paused"}',
+    );
+    expect(rows.find(r => r.id === cancelledId)?.status).toBe('cancelled');
+    expect(rows.find(r => r.id === cancelledId)?.resume_data).toBe(
+      '{"resumeData":"cancelled"}',
+    );
+  });
+
+  it('returns resumable queue items in queue order', async () => {
+    const [id1, id2] = await enqueueDownloadItems([
+      {
+        projectId: 1,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Source Bible — Audio',
+      },
+      {
+        projectId: 1,
+        tier: 2,
+        kind: 'text',
+        resourceName: 'Translation Notes',
+        label: 'Translation Notes — Text',
+      },
+    ]);
+    await markDownloadItemPaused(id1, '{"resumeData":"paused"}');
+    await markDownloadItemCancelled(id2, '{"resumeData":"cancelled"}');
+
+    const withoutCancelled = await getResumableDownloadItems();
+    const withCancelled = await getResumableDownloadItems(true);
+
+    expect(withoutCancelled.map(item => item.id)).toEqual([id1]);
+    expect(withCancelled.map(item => item.id)).toEqual([id1, id2]);
+    expect(withCancelled[0].resumeData).toBe('{"resumeData":"paused"}');
   });
 
   it('marks an item completed, sets progress to 1, and stores the file path', async () => {
@@ -432,6 +596,45 @@ describe('downloadQueueRepository', () => {
     expect(project1Downloaded[0].id).toBe(id1);
     expect(project1Downloaded.some(r => r.id === id2)).toBe(false);
     expect(project1Downloaded.some(r => r.id === id3)).toBe(false);
+  });
+
+  it('groups completed inventory by project with byte totals', async () => {
+    const [id1] = await enqueueDownloadItems([
+      {
+        projectId: 1,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Source Bible — Audio',
+      },
+    ]);
+    const [id2] = await enqueueDownloadItems([
+      {
+        projectId: 2,
+        tier: 1,
+        kind: 'text',
+        resourceName: 'Translation Notes',
+        label: 'Translation Notes — Text',
+      },
+    ]);
+
+    await markDownloadItemCompleted(id1, 'file:///p1-a.mp3', 100);
+    await markDownloadItemCompleted(id2, 'file:///p2-a.txt', 250);
+
+    const inventory = await getDownloadedResourcesInventory();
+
+    expect(inventory).toEqual([
+      expect.objectContaining({
+        projectId: 1,
+        totalBytes: 100,
+        resources: [expect.objectContaining({ id: id1 })],
+      }),
+      expect.objectContaining({
+        projectId: 2,
+        totalBytes: 250,
+        resources: [expect.objectContaining({ id: id2 })],
+      }),
+    ]);
   });
 
   it('does not revive a completed item if a stale progress update arrives late', async () => {
