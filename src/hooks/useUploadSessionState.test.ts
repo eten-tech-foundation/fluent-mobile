@@ -98,19 +98,12 @@ describe('useUploadSessionState', () => {
   });
 
   it('refreshes snapshot when upload session events fire', async () => {
-    mockGetUploadSessionSnapshot
-      .mockReturnValueOnce({
-        phase: 'idle',
-        completedChapters: 0,
-        totalChapters: 0,
-        pausedUntilMs: null,
-      })
-      .mockReturnValue({
-        phase: 'syncing',
-        completedChapters: 0,
-        totalChapters: 2,
-        pausedUntilMs: null,
-      });
+    mockGetUploadSessionSnapshot.mockReturnValue({
+      phase: 'idle',
+      completedChapters: 0,
+      totalChapters: 0,
+      pausedUntilMs: null,
+    });
 
     const { result } = renderHook(() =>
       useUploadSessionState({
@@ -120,6 +113,17 @@ describe('useUploadSessionState', () => {
       }),
     );
 
+    await waitFor(() => {
+      expect(result.current.progressTotal).toBe(0);
+    });
+
+    mockGetUploadSessionSnapshot.mockReturnValue({
+      phase: 'syncing',
+      completedChapters: 0,
+      totalChapters: 2,
+      pausedUntilMs: null,
+    });
+
     act(() => {
       emitUploadSessionEvent({ type: 'start', totalChapters: 2 });
     });
@@ -128,6 +132,29 @@ describe('useUploadSessionState', () => {
       expect(result.current.pageStatus).toBe('syncing');
       expect(result.current.progressTotal).toBe(2);
     });
+  });
+
+  it('clears optimistic syncing phase when syncNow completes to idle snapshot', async () => {
+    mockGetUploadSessionSnapshot.mockReturnValue({
+      phase: 'idle',
+      completedChapters: 0,
+      totalChapters: 0,
+      pausedUntilMs: null,
+    });
+
+    const { result } = renderHook(() =>
+      useUploadSessionState({
+        hasPendingUploads: true,
+        hasFailedUploads: false,
+        uploadProgress: null,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.syncNowUploads();
+    });
+
+    expect(result.current.pageStatus).toBe('pending');
   });
 
   it('pause calls pauseUploadSession', async () => {

@@ -15,6 +15,7 @@ const mockSyncNowUploads = jest.fn();
 
 let mockPageStatus = 'pending';
 let mockCellularBlocked = false;
+let mockIsSyncing = false;
 const mockPause = jest.fn();
 const mockCancel = jest.fn();
 const mockResumeUploads = jest.fn();
@@ -55,7 +56,7 @@ jest.mock('../../hooks/useSync', () => ({
     });
     return {
       triggerSync: mockTriggerSync,
-      isSyncing: false,
+      isSyncing: mockIsSyncing,
     };
   }),
 }));
@@ -139,6 +140,7 @@ describe('SyncScreen', () => {
     jest.clearAllMocks();
     mockPageStatus = 'pending';
     mockCellularBlocked = false;
+    mockIsSyncing = false;
     mockPause.mockResolvedValue(undefined);
     mockCancel.mockResolvedValue(undefined);
     mockResumeUploads.mockResolvedValue(undefined);
@@ -187,6 +189,31 @@ describe('SyncScreen', () => {
     await waitFor(() => {
       expect(mockSyncNowFromHook).toHaveBeenCalledTimes(1);
       expect(mockTriggerSync).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('calls syncNowUploads but not triggerSync on Resume when metadata sync is in flight', async () => {
+    mockPageStatus = 'paused';
+    mockIsSyncing = true;
+    render(<SyncScreen />);
+
+    fireEvent.press(screen.getByTestId('sync-action-resume'));
+
+    await waitFor(() => {
+      expect(mockSyncNowFromHook).toHaveBeenCalledTimes(1);
+      expect(mockTriggerSync).not.toHaveBeenCalled();
+    });
+  });
+
+  it('still calls syncNowUploads when Sync Now is pressed during metadata sync', async () => {
+    mockIsSyncing = true;
+    render(<SyncScreen />);
+
+    fireEvent.press(screen.getByTestId('sync-action-sync-now'));
+
+    await waitFor(() => {
+      expect(mockSyncNowFromHook).toHaveBeenCalledTimes(1);
+      expect(mockTriggerSync).not.toHaveBeenCalled();
     });
   });
 

@@ -104,6 +104,7 @@ export function useUploadSessionState({
       try {
         await action();
         refreshSnapshot();
+        setOptimisticPhase(null);
       } catch (error) {
         setOptimisticPhase(null);
         const message =

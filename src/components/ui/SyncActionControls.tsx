@@ -21,9 +21,9 @@ export interface SyncActionControlsProps {
   onCancel: () => void;
   onSyncNow: () => void;
   syncNowDisabled?: boolean;
-  /** Blocks Sync Now / Resume — e.g. control in flight or upload active. */
+  /** Blocks Sync Now in the pending state (e.g. upload or metadata sync active). */
   busy?: boolean;
-  /** Orchestrator pause/cancel/resume/syncNow call still in flight. */
+  /** Blocks pause/cancel/resume/syncNow while an orchestrator control call is in flight. */
   controlPending?: boolean;
 }
 
@@ -37,9 +37,9 @@ export function SyncActionControls({
   busy = false,
   controlPending = false,
 }: SyncActionControlsProps) {
-  /** Blocks starting another upload pass (Sync Now / Resume). */
+  /** Applies `busy` to Sync Now in the pending state only. */
   const startDisabled = busy;
-  /** While pause/cancel/resume handler awaits orchestrator — avoid double-tap races. */
+  /** While pause/cancel/resume/syncNow handler awaits orchestrator — avoid double-tap races. */
   const interruptDisabled = controlPending;
 
   switch (status) {

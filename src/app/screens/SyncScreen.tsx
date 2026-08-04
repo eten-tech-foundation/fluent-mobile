@@ -69,10 +69,12 @@ export default function SyncScreen() {
       return;
     }
 
-    void triggerSync();
+    if (!isSyncing) {
+      void triggerSync();
+    }
     await syncNowUploads();
     setRefreshKey(key => key + 1);
-  }, [cellularBlocked, triggerSync, syncNowUploads]);
+  }, [cellularBlocked, isSyncing, triggerSync, syncNowUploads]);
 
   const handlePause = useCallback(async () => {
     await pause();
@@ -96,9 +98,7 @@ export default function SyncScreen() {
       ? 'syncing'
       : status;
   const startBusy =
-    controlStatus === 'paused'
-      ? false
-      : isControlPending || isUploading || isSyncing;
+    controlStatus === 'paused' ? false : isControlPending || isUploading;
 
   return (
     <ScreenContainer edges={['bottom']}>
