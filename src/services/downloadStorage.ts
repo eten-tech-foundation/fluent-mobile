@@ -1,5 +1,15 @@
 import * as FileSystem from 'expo-file-system/legacy';
 
+const SAFE_SEGMENT = /^[A-Za-z0-9_-]+$/;
+
+function assertSafePathSegment(value: string, label: string): void {
+  if (!SAFE_SEGMENT.test(value)) {
+    throw new Error(
+      `Unsafe ${label} for download path: ${JSON.stringify(value)}`,
+    );
+  }
+}
+
 function downloadsProjectDir(projectId: number): string {
   const root = FileSystem.documentDirectory;
   if (!root) {
@@ -21,6 +31,8 @@ export function downloadResourcePath(
   resourceId: string,
   ext: string,
 ): string {
+  assertSafePathSegment(resourceId, 'resourceId');
+  assertSafePathSegment(ext, 'ext');
   return `${downloadsProjectDir(projectId)}${resourceId}.${ext}`;
 }
 

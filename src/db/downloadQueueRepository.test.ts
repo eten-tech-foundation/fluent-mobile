@@ -28,7 +28,7 @@ export function __getDownloadQueueRows(): Row[] {
   return rows.map(clone);
 }
 
-type ExecuteResult = { rows: unknown[] };
+type ExecuteResult = { rows: unknown[]; rowsAffected?: number };
 
 async function mockExecute(
   sql: string,
@@ -80,23 +80,22 @@ async function mockExecute(
       created_at: createdAt,
       updated_at: updatedAt,
     });
-    return { rows: [] };
+    return { rows: [], rowsAffected: 1 };
   }
 
   if (
-    normalized.startsWith(
-      "UPDATE download_queue SET progress = ?, status = 'downloading'",
-    )
-  ) {
-    const [progress, updatedAt, id] = params as [number, string, string];
-    rows = rows.map(r =>
-      r.id === id
-        ? { ...r, progress, status: 'downloading', updated_at: updatedAt }
-        : r,
-    );
-    return { rows: [] };
-  }
-
+  normalized.startsWith(
+    "UPDATE download_queue SET progress = ?, status = 'downloading'",
+  )
+) {
+  const [progress, updatedAt, id] = params as [number, string, string];
+  rows = rows.map(r =>
+    r.id === id && (r.status === 'queued' || r.status === 'downloading')
+      ? { ...r, progress, status: 'downloading', updated_at: updatedAt }
+      : r,
+  );
+  return { rows: [] };
+}
   if (normalized.startsWith("UPDATE download_queue SET status = 'completed'")) {
     const [localFilePath, bytesTotal, updatedAt, id] = params as [
       string,
@@ -433,5 +432,24 @@ describe('downloadQueueRepository', () => {
     expect(project1Downloaded[0].id).toBe(id1);
     expect(project1Downloaded.some(r => r.id === id2)).toBe(false);
     expect(project1Downloaded.some(r => r.id === id3)).toBe(false);
+  });
+
+  it('does not revive a completed item if a stale progress update arrives late', async () => {
+    const [id] = await enqueueDownloadItems([
+      {
+        projectId: 1,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Source Bible — Audio',
+      },
+    ]);
+
+    await markDownloadItemCompleted(id, 'file:///a.mp3');
+    await updateDownloadItemProgress(id, 0.95);
+
+    const row = __getDownloadQueueRows().find(r => r.id === id);
+    expect(row?.status).toBe('completed');
+    expect(row?.progress).toBe(1);
   });
 });

@@ -74,13 +74,14 @@ export async function enqueueDownloadItems(
 
     for (const item of sorted) {
       const id = newDownloadQueueId();
-      ids.push(id);
-      await tx.execute(
+
+      const result = await tx.execute(
         `INSERT INTO download_queue (
            id, project_id, tier, kind, resource_name, label, status,
            progress, bytes_total, local_file_path, queue_order,
            created_at, updated_at
-         ) VALUES (?, ?, ?, ?, ?, ?, 'queued', 0, ?, NULL, ?, ?, ?)`,
+         ) VALUES (?, ?, ?, ?, ?, ?, 'queued', 0, ?, NULL, ?, ?, ?)
+         ON CONFLICT DO NOTHING`,
         [
           id,
           item.projectId,
@@ -94,7 +95,10 @@ export async function enqueueDownloadItems(
           now,
         ],
       );
-      nextOrder += 1;
+      if (result.rowsAffected > 0) {
+        ids.push(id);
+        nextOrder += 1;
+      }
     }
   });
 
@@ -111,7 +115,7 @@ export async function updateDownloadItemProgress(
   await db.execute(
     `UPDATE download_queue
      SET progress = ?, status = 'downloading', updated_at = ?
-     WHERE id = ?`,
+     WHERE id = ? AND status IN ('queued', 'downloading')`,
     [progress, now, id],
   );
 }

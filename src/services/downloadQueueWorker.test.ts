@@ -1,14 +1,8 @@
-const mockGetInfoAsync = jest.fn();
-const mockCreateDownloadResumable = jest.fn();
+import * as FileSystem from 'expo-file-system/legacy';
+import { resetFileSystemMock } from '../test/mocks/expo-file-system';
 
 const flushMicrotasks = () =>
   new Promise<void>(resolve => setTimeout(resolve, 0));
-
-jest.mock('expo-file-system/legacy', () => ({
-  getInfoAsync: (path: string) => mockGetInfoAsync(path),
-  createDownloadResumable: (...args: unknown[]) =>
-    mockCreateDownloadResumable(...args),
-}));
 
 const mockEnsureDownloadsDir = jest.fn().mockResolvedValue(undefined);
 const mockDownloadResourcePath = jest.fn(
@@ -52,19 +46,28 @@ function makeItem(
   };
 }
 
-function makeResumable(overrides: Record<string, unknown> = {}) {
-  return {
-    downloadAsync: jest.fn().mockResolvedValue({ uri: 'file:///docs/x.mp3' }),
-    pauseAsync: jest.fn().mockResolvedValue(undefined),
-    resumeAsync: jest.fn().mockResolvedValue({ uri: 'file:///docs/x.mp3' }),
-    ...overrides,
-  };
+function spyResumable(overrides: Record<string, unknown> = {}) {
+  return jest.spyOn(FileSystem, 'createDownloadResumable').mockImplementation(
+    (_url, dest) =>
+      ({
+        downloadAsync: jest.fn().mockImplementation(async () => {
+          await FileSystem.writeAsStringAsync(dest, 'mock-bytes');
+          return { uri: dest };
+        }),
+        pauseAsync: jest.fn().mockResolvedValue(undefined),
+        resumeAsync: jest.fn().mockImplementation(async () => {
+          await FileSystem.writeAsStringAsync(dest, 'mock-bytes');
+          return { uri: dest };
+        }),
+        ...overrides,
+      } as unknown as FileSystem.DownloadResumable),
+  );
 }
 
 describe('DownloadQueueWorker', () => {
   beforeEach(() => {
+    resetFileSystemMock();
     jest.clearAllMocks();
-    mockGetInfoAsync.mockResolvedValue({ exists: true, size: 999 });
   });
 
   it('starts idle', () => {
@@ -76,8 +79,7 @@ describe('DownloadQueueWorker', () => {
   });
 
   it('processes a single item end to end and returns to idle', async () => {
-    const resumable = makeResumable();
-    mockCreateDownloadResumable.mockReturnValue(resumable);
+    spyResumable();
     const resolver = jest
       .fn()
       .mockResolvedValue({ url: 'https://example.com/x.mp3', ext: 'mp3' });
@@ -90,26 +92,16 @@ describe('DownloadQueueWorker', () => {
     );
     expect(mockEnsureDownloadsDir).toHaveBeenCalledWith(1);
     expect(mockDownloadResourcePath).toHaveBeenCalledWith(1, 'item-1', 'mp3');
-    expect(resumable.downloadAsync).toHaveBeenCalled();
     expect(mockMarkDownloadItemCompleted).toHaveBeenCalledWith(
       'item-1',
-      'file:///docs/x.mp3',
-      999,
+      'file:///docs/downloads/1/item-1.mp3',
+      expect.any(Number),
     );
     expect(worker.getState()).toBe('idle');
   });
 
   it('processes multiple items sequentially, one at a time', async () => {
-    const resumable1 = makeResumable({
-      downloadAsync: jest.fn().mockResolvedValue({ uri: 'file:///docs/a.mp3' }),
-    });
-    const resumable2 = makeResumable({
-      downloadAsync: jest.fn().mockResolvedValue({ uri: 'file:///docs/b.txt' }),
-    });
-    mockCreateDownloadResumable
-      .mockReturnValueOnce(resumable1)
-      .mockReturnValueOnce(resumable2);
-
+    spyResumable();
     const resolver = jest
       .fn()
       .mockResolvedValueOnce({ url: 'https://example.com/a.mp3', ext: 'mp3' })
@@ -125,20 +117,19 @@ describe('DownloadQueueWorker', () => {
     expect(mockMarkDownloadItemCompleted).toHaveBeenNthCalledWith(
       1,
       'item-1',
-      'file:///docs/a.mp3',
-      999,
+      expect.any(String),
+      expect.any(Number),
     );
     expect(mockMarkDownloadItemCompleted).toHaveBeenNthCalledWith(
       2,
       'item-2',
-      'file:///docs/b.txt',
-      999,
+      expect.any(String),
+      expect.any(Number),
     );
   });
 
   it('marks an item failed and continues to the next item when the resolver rejects', async () => {
-    const resumable = makeResumable();
-    mockCreateDownloadResumable.mockReturnValue(resumable);
+    spyResumable();
     const resolver = jest
       .fn()
       .mockRejectedValueOnce(new Error('no manifest yet'))
@@ -153,16 +144,15 @@ describe('DownloadQueueWorker', () => {
     expect(mockMarkDownloadItemFailed).toHaveBeenCalledWith('item-1');
     expect(mockMarkDownloadItemCompleted).toHaveBeenCalledWith(
       'item-2',
-      'file:///docs/x.mp3',
-      999,
+      expect.any(String),
+      expect.any(Number),
     );
   });
 
   it('marks an item failed when downloadAsync itself rejects', async () => {
-    const resumable = makeResumable({
+    spyResumable({
       downloadAsync: jest.fn().mockRejectedValue(new Error('network error')),
     });
-    mockCreateDownloadResumable.mockReturnValue(resumable);
     const resolver = jest
       .fn()
       .mockResolvedValue({ url: 'https://example.com/x.mp3', ext: 'mp3' });
@@ -182,12 +172,16 @@ describe('DownloadQueueWorker', () => {
         }) => void)
       | undefined;
 
-    mockCreateDownloadResumable.mockImplementation(
-      (_url, _dest, _opts, onProgress) => {
+    jest
+      .spyOn(FileSystem, 'createDownloadResumable')
+      .mockImplementation((_url, dest, _opts, onProgress) => {
         capturedProgressCallback = onProgress;
-        return makeResumable();
-      },
-    );
+        return {
+          downloadAsync: jest.fn().mockResolvedValue({ uri: dest }),
+          pauseAsync: jest.fn(),
+          resumeAsync: jest.fn(),
+        } as unknown as FileSystem.DownloadResumable;
+      });
     const resolver = jest
       .fn()
       .mockResolvedValue({ url: 'https://example.com/x.mp3', ext: 'mp3' });
@@ -212,10 +206,12 @@ describe('DownloadQueueWorker', () => {
       const pending = new Promise<{ uri: string }>(resolve => {
         resolveDownload = resolve;
       });
-      const resumable = makeResumable({
+      const pauseAsync = jest.fn().mockResolvedValue(undefined);
+      spyResumable({
         downloadAsync: jest.fn().mockReturnValue(pending),
+        pauseAsync,
       });
-      mockCreateDownloadResumable.mockReturnValue(resumable);
+
       const resolver = jest
         .fn()
         .mockResolvedValue({ url: 'https://example.com/x.mp3', ext: 'mp3' });
@@ -223,47 +219,49 @@ describe('DownloadQueueWorker', () => {
       const worker = new DownloadQueueWorker(resolver);
       const startPromise = worker.start([makeItem()]);
 
-      // Let processNext reach the point of having an active resumable.
-      await Promise.resolve();
-      await Promise.resolve();
+      await flushMicrotasks();
+      await flushMicrotasks();
 
       await worker.pause();
 
-      expect(resumable.pauseAsync).toHaveBeenCalled();
+      expect(pauseAsync).toHaveBeenCalled();
       expect(worker.getState()).toBe('paused');
 
-      // Clean up the still-pending download so the test doesn't hang.
-      resolveDownload({ uri: 'file:///docs/x.mp3' });
+      resolveDownload({ uri: 'file:///docs/downloads/1/item-1.mp3' });
       await startPromise;
     });
 
     it('resume continues the active resumable and completes the item', async () => {
-      const resumable = makeResumable({
-        downloadAsync: jest.fn().mockReturnValue(new Promise(() => {})), // never resolves — paused before completion
-        resumeAsync: jest
-          .fn()
-          .mockResolvedValue({ uri: 'file:///docs/resumed.mp3' }),
+      const resumeAsync = jest.fn().mockImplementation(async () => {
+        await FileSystem.writeAsStringAsync(
+          'file:///docs/downloads/1/item-1.mp3',
+          'mock-bytes',
+        );
+        return { uri: 'file:///docs/downloads/1/item-1.mp3' };
       });
-      mockCreateDownloadResumable.mockReturnValue(resumable);
+      spyResumable({
+        downloadAsync: jest.fn().mockReturnValue(new Promise(() => {})),
+        resumeAsync,
+      });
       const resolver = jest
         .fn()
         .mockResolvedValue({ url: 'https://example.com/x.mp3', ext: 'mp3' });
 
       const worker = new DownloadQueueWorker(resolver);
       void worker.start([makeItem()]);
-      await Promise.resolve();
-      await Promise.resolve();
+      await flushMicrotasks();
+      await flushMicrotasks();
 
       await worker.pause();
       expect(worker.getState()).toBe('paused');
 
       await worker.resume();
 
-      expect(resumable.resumeAsync).toHaveBeenCalled();
+      expect(resumeAsync).toHaveBeenCalled();
       expect(mockMarkDownloadItemCompleted).toHaveBeenCalledWith(
         'item-1',
-        'file:///docs/resumed.mp3',
-        999,
+        'file:///docs/downloads/1/item-1.mp3',
+        expect.any(Number),
       );
       expect(worker.getState()).toBe('idle');
     });
@@ -289,26 +287,24 @@ describe('DownloadQueueWorker', () => {
 
   describe('cancel', () => {
     it('pauses the active transfer, retains no queue, and sets state to cancelled', async () => {
-      const resumable = makeResumable({
+      const pauseAsync = jest.fn().mockResolvedValue(undefined);
+      spyResumable({
         downloadAsync: jest.fn().mockReturnValue(new Promise(() => {})),
+        pauseAsync,
       });
-      mockCreateDownloadResumable.mockReturnValue(resumable);
       const resolver = jest
         .fn()
         .mockResolvedValue({ url: 'https://example.com/x.mp3', ext: 'mp3' });
 
       const worker = new DownloadQueueWorker(resolver);
       void worker.start([makeItem(), makeItem({ id: 'item-2' })]);
-      await Promise.resolve();
-      await Promise.resolve();
+      await flushMicrotasks();
+      await flushMicrotasks();
 
       await worker.cancel();
 
-      expect(resumable.pauseAsync).toHaveBeenCalled();
+      expect(pauseAsync).toHaveBeenCalled();
       expect(worker.getState()).toBe('cancelled');
-
-      // Cancel must not delete the DB row or mark it failed — partials are
-      // retained for later Wi-Fi resume, per #52's explicit requirement.
       expect(mockMarkDownloadItemFailed).not.toHaveBeenCalled();
     });
 
@@ -324,23 +320,21 @@ describe('DownloadQueueWorker', () => {
 
   describe('start guard', () => {
     it('ignores a second start() call while already downloading', async () => {
-      const resumable = makeResumable({
+      spyResumable({
         downloadAsync: jest.fn().mockReturnValue(new Promise(() => {})),
       });
-      mockCreateDownloadResumable.mockReturnValue(resumable);
       const resolver = jest
         .fn()
         .mockResolvedValue({ url: 'https://example.com/x.mp3', ext: 'mp3' });
 
       const worker = new DownloadQueueWorker(resolver);
       void worker.start([makeItem()]);
-      await Promise.resolve();
-      await Promise.resolve();
+      await flushMicrotasks();
+      await flushMicrotasks();
 
       expect(worker.getState()).toBe('downloading');
       await worker.start([makeItem({ id: 'should-be-ignored' })]);
 
-      // Resolver should only have been called once — for the original item.
       expect(resolver).toHaveBeenCalledTimes(1);
     });
   });

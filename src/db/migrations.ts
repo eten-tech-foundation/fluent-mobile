@@ -286,6 +286,11 @@ async function applyDownloadQueueTable(db: SqlExecutor): Promise<void> {
   await db.execute(
     `CREATE INDEX IF NOT EXISTS idx_dq_status ON download_queue(status)`,
   );
+  await db.execute(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_dq_active_resource
+     ON download_queue(project_id, kind, resource_name)
+     WHERE status != 'completed'`,
+  );
 }
 
 /** Ordered schema migrations. Version 1 = current CREATE IF NOT EXISTS baseline. */

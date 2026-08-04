@@ -40,8 +40,8 @@ export class DownloadQueueWorker {
   }
 
   async start(items: DownloadQueueItem[]): Promise<void> {
-    if (this.state === 'downloading') {
-      log.info('start() called while already downloading; ignoring');
+    if (this.state === 'downloading' || this.state === 'paused') {
+      log.info('start() called while downloading or paused; ignoring');
       return;
     }
     this.queue = [...items];
@@ -53,11 +53,15 @@ export class DownloadQueueWorker {
     if (this.state !== 'downloading' || !this.active) {
       return;
     }
+    const previousState = this.state;
     this.state = 'paused';
     try {
       await this.active.resumable.pauseAsync();
     } catch (error) {
       log.error('Failed to pause active download', { error });
+      // The native transfer may still be running — don't report a paused
+      // state that doesn't reflect reality.
+      this.state = previousState;
     }
   }
 
@@ -65,20 +69,37 @@ export class DownloadQueueWorker {
     if (this.state !== 'paused' || !this.active) {
       return;
     }
+    const { itemId, resumable } = this.active;
     this.state = 'downloading';
     try {
-      const result = await this.active.resumable.resumeAsync();
+      const result = await resumable.resumeAsync();
+
+      // A concurrent cancel() may have run while resumeAsync() was in
+      // flight — don't restart queue processing on top of a cancelled
+      // session. Cast needed: TS narrows `this.state` to 'downloading'
+      // after the assignment above and doesn't account for cancel()
+      // mutating it asynchronously from a different method.
+      if ((this.state as WorkerSessionState) === 'cancelled') {
+        return;
+      }
+
       if (result) {
-        await this.handleItemComplete(this.active.itemId, result.uri);
+        await this.handleItemComplete(itemId, result.uri);
       }
     } catch (error) {
-      log.error('Failed to resume download', {
-        error,
-        itemId: this.active.itemId,
-      });
-      await markDownloadItemFailed(this.active.itemId);
-      this.active = null;
-      await this.processNext();
+      log.error('Failed to resume download', { error, itemId });
+      try {
+        await markDownloadItemFailed(itemId);
+      } catch (innerError) {
+        log.error('Failed to mark item failed after resume error', {
+          error: innerError,
+          itemId,
+        });
+      }
+      if ((this.state as WorkerSessionState) !== 'cancelled') {
+        this.active = null;
+        await this.processNext();
+      }
     }
   }
 
@@ -117,10 +138,15 @@ export class DownloadQueueWorker {
         progress => {
           const { totalBytesWritten, totalBytesExpectedToWrite } = progress;
           if (totalBytesExpectedToWrite > 0) {
-            void updateDownloadItemProgress(
+            updateDownloadItemProgress(
               next.id,
               totalBytesWritten / totalBytesExpectedToWrite,
-            );
+            ).catch(error => {
+              log.error('Failed to persist download progress', {
+                error,
+                itemId: next.id,
+              });
+            });
           }
         },
       );
@@ -132,7 +158,14 @@ export class DownloadQueueWorker {
       }
     } catch (error) {
       log.error('Failed to download item', { error, itemId: next.id });
-      await markDownloadItemFailed(next.id);
+      try {
+        await markDownloadItemFailed(next.id);
+      } catch (innerError) {
+        log.error('Failed to mark item failed after download error', {
+          error: innerError,
+          itemId: next.id,
+        });
+      }
       this.active = null;
       await this.processNext();
     }
