@@ -57,14 +57,14 @@ If the app looks wrong after installing a different PR’s preview:
 | Phone offers **Expo Go** | Cancel. Install **Fluent** from the **Install Fluent** link. |
 | Testing the wrong PR | Install again from that PR’s (or issue’s) latest bot comment. |
 | Install blocked | Allow **Install unknown apps** for your browser. |
-| No bot comment on PR or issue | Ask a developer to add the **`preview-build`** label (and ensure the PR has `Closes #NNN`). |
+| No bot comment on PR or issue | Ask a developer to add the **`preview-build`** label (and ensure the PR has `Refs #NNN`). |
 | expo.dev asks me to log in | Request access to the Fluent project from your team lead. |
 
 ---
 
 ## For developers
 
-1. Link the ticket in the PR body (`Closes #NNN`).
+1. Link the ticket in the PR body (`Refs #NNN` — never `Closes` / `Fixes` / `Resolves`).
 2. Add the **`preview-build`** label to the PR.
 3. Workflow starts a **fresh Android preview APK** (binary only — no OTA), comments on the **PR and linked issue**, and moves the ticket to **In QA** when Status was `In PR Review` or `In Progress (Dev)`.
 4. Share this guide with QA: `docs/guides/qa-preview-testing.md`

@@ -16,7 +16,7 @@ The [repo Issues list](https://github.com/eten-tech-foundation/fluent-mobile/iss
 
 `Backlog` · `In Progress (Product)` · `Product Ready` · `Sprint Shaping` · `Dev Ready` · `In Progress (Dev)` · `In PR Review` · `In QA` · `Passed QA` · `To Deploy` · `Done`
 
-For open PRs awaiting review, prefer **`In PR Review`**. For merged/completed work, set **`Done`**.
+For open PRs awaiting review, prefer **`In PR Review`**. After merge (or when ready for QA), set **`In QA`**. Set **`Done`** only after QA completes — never auto-close issues on PR merge.
 
 Do **not** use org Project 7 (“Fluent Mobile App”) as the primary tracker unless the team explicitly migrates.
 
@@ -30,7 +30,7 @@ Agents must follow [guides/project-board.md](guides/project-board.md) before cha
 
 ## Where to file work
 
-1. Create a **GitHub Issue** in `eten-tech-foundation/fluent-mobile` (needed for `#NNN`, branch names, and `Closes #NNN`).
+1. Create a **GitHub Issue** in `eten-tech-foundation/fluent-mobile` (needed for `#NNN`, branch names, and `Refs #NNN`).
 2. **Add the issue to Project 4** and set Status on the Fluent Mobile Board (view 9).
 3. Assign the owner on the issue.
 
@@ -66,16 +66,18 @@ See [`.cursor/commands/create-pr-branch.md`](../.cursor/commands/create-pr-branc
 - **Base branch:** `main`
 - **Title:** `[#NNN]: Short description` (or `#NNN: Short description`) — match existing PR style in this repo
 - **Body:** **required** — fill [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md) (TLDR, Reviewer checklist, Details, Technical changes, Testing, How to verify, Follow-ups). Prefer `/generate-pr-description` or `/create-pr`. Do not ship a short Summary/Test plan substitute.
-  - Under Details: `Closes #NNN` when the PR **completes** the issue (auto-closes on merge to `main`)
-  - For related work that must stay open, say “Part of #NNN” in prose, or link manually in the PR sidebar — do not use a closing keyword
+  - Under Details: `Refs #NNN` on its own line (links the issue without closing it)
+  - Do **not** use GitHub closing keywords (`Closes`, `Fixes`, `Resolves`) — merged PRs must not auto-close issues
+  - For related / stacked work that is not the full ticket, say “Part of #NNN” in prose, or link manually in the PR sidebar
 - After opening a PR, set Project 4 Status to **`In PR Review`** (if not already)
+- After merge (or when ready for QA), set Project 4 Status to **`In QA`** — leave the GitHub issue **open**
 - **Template source of truth:** [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md) — also required by [delivery.mdc](../.cursor/rules/delivery.mdc); generate with `/generate-pr-description` or `/create-pr`
 
-### Closing keywords
+### Linking without auto-close
 
-Use [GitHub closing keywords](https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue) (`Closes`, `Fixes`, `Resolves`) when the PR finishes the issue.
+Use `Refs #NNN` (or sidebar linking) so GitHub [does not auto-close](https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue) the issue on merge.
 
-`Refs #NNN` is **not** a GitHub closing keyword — it will not auto-close. Prefer `Closes #NNN` for completed work. After merge, confirm Project 4 Status is **`Done`**.
+Never use `Closes`, `Fixes`, or `Resolves` in PR bodies for ticketed work. Issues stay open until QA finishes; humans set **`Done`** (and may close the issue) after **Passed QA** / release process — not on merge alone.
 
 ## Agents / delivery
 
