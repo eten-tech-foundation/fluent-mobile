@@ -37,7 +37,7 @@ Do **not** “helpfully” reorder neighboring cards.
 
 ## Linking keywords and stacked PRs
 
-Do **not** use GitHub closing keywords (`Closes`, `Fixes`, `Resolves`) — they auto-close issues on merge to `main`. Always use **`Refs #NNN`** (or “Part of #NNN” for stacked/partial work). After merge, move the card to **`In QA`**. See [docs/issue-tracking.md](../issue-tracking.md). (Historical: issue #274 required `Closes` on `main`-targeting PRs; superseded by #300.)
+Do **not** use GitHub closing keywords (`Closes`, `Fixes`, `Resolves`) — they auto-close issues on merge to `main`. Always use **`Refs #NNN`** for the ticket this PR implements, or **`Part of #NNN`** for stacked/partial work. After merge of a `Refs`-linked PR (or when ready for QA), move the card to **`In QA`**. Preview-build automation follows the same rule: it comments / moves **In QA** for `Refs #NNN` (and legacy closing keywords), and does **not** treat `Part of #NNN` as a linked ticket. See [docs/issue-tracking.md](../issue-tracking.md). (Historical: issue #274 required `Closes` on `main`-targeting PRs; superseded by #300.)
 
 ## Related
 

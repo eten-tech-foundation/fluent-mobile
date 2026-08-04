@@ -79,6 +79,8 @@ Use `Refs #NNN` (or sidebar linking) so GitHub [does not auto-close](https://doc
 
 Never use `Closes`, `Fixes`, or `Resolves` in PR bodies for ticketed work. Issues stay open until QA finishes; humans set **`Done`** (and may close the issue) after **Passed QA** / release process — not on merge alone.
 
+Put `Refs #NNN` on its **own line** under Details (see the PR template). Preview-build notification ([`.github/scripts/preview-notify-linked-issues.js`](../.github/scripts/preview-notify-linked-issues.js)) treats that form as the linked ticket for install comments and Project 4 → **In QA**. `Part of #NNN` is ignored by that script (stacked/partial work stays out of automatic QA handoff).
+
 ## Agents / delivery
 
 - Never push commits to `main` — feature branch + PR only ([delivery.mdc](../.cursor/rules/delivery.mdc))
