@@ -37,10 +37,36 @@ const DEV_PREVIEW_SCENARIOS: Record<string, DownloadQueueSnapshot> = {
   // Scenario 1 — design mockup: 81% on first item, rest queued.
   scenario1: {
     items: [
-      { id: '1', tier: 1, label: 'Source Bible', progress: 0.81, status: 'downloading', projectId: 1 },
-      { id: '2', tier: 1, label: 'Source Bible', progress: 0, status: 'queued', projectId: 1 },
-      { id: '3', tier: 2, label: 'Translation Notes — Mark', progress: 0, status: 'queued' },
-      { id: '4', tier: 2, label: 'Translation Words — Luke', progress: 0, status: 'queued' },
+      {
+        id: '1',
+        tier: 1,
+        label: 'Source Bible',
+        progress: 0.81,
+        status: 'downloading',
+        projectId: 1,
+      },
+      {
+        id: '2',
+        tier: 1,
+        label: 'Source Bible',
+        progress: 0,
+        status: 'queued',
+        projectId: 1,
+      },
+      {
+        id: '3',
+        tier: 2,
+        label: 'Translation Notes — Mark',
+        progress: 0,
+        status: 'queued',
+      },
+      {
+        id: '4',
+        tier: 2,
+        label: 'Translation Words — Luke',
+        progress: 0,
+        status: 'queued',
+      },
     ],
     completedCount: 0,
     totalCount: 4,
@@ -51,11 +77,43 @@ const DEV_PREVIEW_SCENARIOS: Record<string, DownloadQueueSnapshot> = {
   // Scenario 2 — mixed progress: 67%, 33%, 12%, 0% (+ 1 completed).
   scenario2: {
     items: [
-      { id: '1', tier: 1, label: 'Source Bible', progress: 1, status: 'completed', projectId: 1 },
-      { id: '2', tier: 1, label: 'Source Bible', progress: 0.67, status: 'downloading', projectId: 1 },
-      { id: '3', tier: 2, label: 'Translation Notes — Mark', progress: 0.33, status: 'downloading' },
-      { id: '4', tier: 2, label: 'Translation Words — Luke', progress: 0.12, status: 'downloading' },
-      { id: '5', tier: 2, label: 'Matthew — Audio', progress: 0, status: 'queued' },
+      {
+        id: '1',
+        tier: 1,
+        label: 'Source Bible',
+        progress: 1,
+        status: 'completed',
+        projectId: 1,
+      },
+      {
+        id: '2',
+        tier: 1,
+        label: 'Source Bible',
+        progress: 0.67,
+        status: 'downloading',
+        projectId: 1,
+      },
+      {
+        id: '3',
+        tier: 2,
+        label: 'Translation Notes — Mark',
+        progress: 0.33,
+        status: 'downloading',
+      },
+      {
+        id: '4',
+        tier: 2,
+        label: 'Translation Words — Luke',
+        progress: 0.12,
+        status: 'downloading',
+      },
+      {
+        id: '5',
+        tier: 2,
+        label: 'Matthew — Audio',
+        progress: 0,
+        status: 'queued',
+      },
     ],
     completedCount: 1,
     totalCount: 5,
@@ -66,10 +124,36 @@ const DEV_PREVIEW_SCENARIOS: Record<string, DownloadQueueSnapshot> = {
   // Scenario 3 — nearly complete: first three 100%, last 85%.
   scenario3: {
     items: [
-      { id: '1', tier: 1, label: 'Source Bible', progress: 1, status: 'downloading', projectId: 1 },
-      { id: '2', tier: 1, label: 'Source Bible', progress: 1, status: 'downloading', projectId: 1 },
-      { id: '3', tier: 2, label: 'Translation Notes — Mark', progress: 1, status: 'downloading' },
-      { id: '4', tier: 2, label: 'Translation Words — Luke', progress: 0.85, status: 'downloading' },
+      {
+        id: '1',
+        tier: 1,
+        label: 'Source Bible',
+        progress: 1,
+        status: 'downloading',
+        projectId: 1,
+      },
+      {
+        id: '2',
+        tier: 1,
+        label: 'Source Bible',
+        progress: 1,
+        status: 'downloading',
+        projectId: 1,
+      },
+      {
+        id: '3',
+        tier: 2,
+        label: 'Translation Notes — Mark',
+        progress: 1,
+        status: 'downloading',
+      },
+      {
+        id: '4',
+        tier: 2,
+        label: 'Translation Words — Luke',
+        progress: 0.85,
+        status: 'downloading',
+      },
     ],
     completedCount: 0,
     totalCount: 4,
@@ -80,7 +164,14 @@ const DEV_PREVIEW_SCENARIOS: Record<string, DownloadQueueSnapshot> = {
   // Scenario 4 — single item: verifies "1 item remaining" copy.
   scenario4: {
     items: [
-      { id: '1', tier: 1, label: 'Source Bible', progress: 0.42, status: 'downloading', projectId: 1 },
+      {
+        id: '1',
+        tier: 1,
+        label: 'Source Bible',
+        progress: 0.42,
+        status: 'downloading',
+        projectId: 1,
+      },
     ],
     completedCount: 0,
     totalCount: 1,

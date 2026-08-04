@@ -84,18 +84,18 @@ async function mockExecute(
   }
 
   if (
-  normalized.startsWith(
-    "UPDATE download_queue SET progress = ?, status = 'downloading'",
-  )
-) {
-  const [progress, updatedAt, id] = params as [number, string, string];
-  rows = rows.map(r =>
-    r.id === id && (r.status === 'queued' || r.status === 'downloading')
-      ? { ...r, progress, status: 'downloading', updated_at: updatedAt }
-      : r,
-  );
-  return { rows: [] };
-}
+    normalized.startsWith(
+      "UPDATE download_queue SET progress = ?, status = 'downloading'",
+    )
+  ) {
+    const [progress, updatedAt, id] = params as [number, string, string];
+    rows = rows.map(r =>
+      r.id === id && (r.status === 'queued' || r.status === 'downloading')
+        ? { ...r, progress, status: 'downloading', updated_at: updatedAt }
+        : r,
+    );
+    return { rows: [] };
+  }
   if (normalized.startsWith("UPDATE download_queue SET status = 'completed'")) {
     const [localFilePath, bytesTotal, updatedAt, id] = params as [
       string,
