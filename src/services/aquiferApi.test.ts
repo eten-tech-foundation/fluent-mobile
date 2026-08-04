@@ -32,13 +32,17 @@ describe('AquiferAPI', () => {
 
     await AquiferAPI.getLanguages();
 
-    expect(fetchMock).toHaveBeenCalledWith('https://aquifer.test/languages', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': 'key-123',
-      },
-    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://aquifer.test/languages',
+      expect.objectContaining({
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': 'key-123',
+        },
+        signal: expect.any(AbortSignal),
+      }),
+    );
   });
 
   it('builds resource search query params', async () => {

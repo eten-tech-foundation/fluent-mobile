@@ -1,4 +1,6 @@
 import * as FileSystem from 'expo-file-system/legacy';
+import { DownloadQueueWorker } from './downloadQueueWorker';
+import type { DownloadQueueItem } from '../types/download/types';
 import { resetFileSystemMock } from '../test/mocks/expo-file-system';
 
 const flushMicrotasks = () =>
@@ -20,23 +22,28 @@ const mockMarkDownloadItemCompleted = jest.fn().mockResolvedValue(undefined);
 const mockMarkDownloadItemFailed = jest.fn().mockResolvedValue(undefined);
 const mockMarkDownloadItemPaused = jest.fn().mockResolvedValue(undefined);
 const mockMarkDownloadItemCancelled = jest.fn().mockResolvedValue(undefined);
+const mockMarkDownloadItemDownloading = jest.fn().mockResolvedValue(undefined);
 const mockUpdateDownloadItemProgress = jest.fn().mockResolvedValue(undefined);
 
 jest.mock('../db/downloadQueueRepository', () => ({
   markDownloadItemCancelled: (...args: unknown[]) =>
     mockMarkDownloadItemCancelled(...args),
+
   markDownloadItemCompleted: (...args: unknown[]) =>
     mockMarkDownloadItemCompleted(...args),
+
   markDownloadItemFailed: (...args: unknown[]) =>
     mockMarkDownloadItemFailed(...args),
+
   markDownloadItemPaused: (...args: unknown[]) =>
     mockMarkDownloadItemPaused(...args),
+
+  markDownloadItemDownloading: (...args: unknown[]) =>
+    mockMarkDownloadItemDownloading(...args),
+
   updateDownloadItemProgress: (...args: unknown[]) =>
     mockUpdateDownloadItemProgress(...args),
 }));
-
-import { DownloadQueueWorker } from './downloadQueueWorker';
-import type { DownloadQueueItem } from '../types/download/types';
 
 function makeItem(
   overrides: Partial<DownloadQueueItem> = {},
@@ -217,7 +224,12 @@ describe('DownloadQueueWorker', () => {
       const pending = new Promise<{ uri: string }>(resolve => {
         resolveDownload = resolve;
       });
-      const pauseAsync = jest.fn().mockResolvedValue(undefined);
+      const pauseAsync = jest.fn().mockResolvedValue({
+        url: 'https://example.com/x.mp3',
+        fileUri: 'file:///docs/downloads/1/item-1.mp3',
+        options: {},
+        resumeData: 'resume-token',
+      });
       spyResumable({
         downloadAsync: jest.fn().mockReturnValue(pending),
         pauseAsync,
@@ -238,7 +250,7 @@ describe('DownloadQueueWorker', () => {
       expect(pauseAsync).toHaveBeenCalled();
       expect(mockMarkDownloadItemPaused).toHaveBeenCalledWith(
         'item-1',
-        undefined,
+        expect.stringContaining('resume-token'),
       );
       expect(worker.getState()).toBe('paused');
 
@@ -302,7 +314,12 @@ describe('DownloadQueueWorker', () => {
 
   describe('cancel', () => {
     it('pauses the active transfer, retains no queue, and sets state to cancelled', async () => {
-      const pauseAsync = jest.fn().mockResolvedValue(undefined);
+      const pauseAsync = jest.fn().mockResolvedValue({
+        url: 'https://example.com/x.mp3',
+        fileUri: 'file:///docs/downloads/1/item-1.mp3',
+        options: {},
+        resumeData: 'resume-token',
+      });
       spyResumable({
         downloadAsync: jest.fn().mockReturnValue(new Promise(() => {})),
         pauseAsync,
@@ -321,12 +338,11 @@ describe('DownloadQueueWorker', () => {
       expect(pauseAsync).toHaveBeenCalled();
       expect(mockMarkDownloadItemCancelled).toHaveBeenCalledWith(
         'item-1',
-        undefined,
+        expect.stringContaining('resume-token'),
       );
       expect(worker.getState()).toBe('cancelled');
       expect(mockMarkDownloadItemFailed).not.toHaveBeenCalled();
     });
-
     it('cancel with nothing active still transitions state and clears the queue', async () => {
       const worker = new DownloadQueueWorker(async () => ({
         url: 'https://example.com/x.mp3',

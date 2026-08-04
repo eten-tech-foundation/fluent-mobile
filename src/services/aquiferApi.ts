@@ -28,11 +28,24 @@ function appendParams(
   }
 }
 
+const AQUIFER_REQUEST_TIMEOUT_MS = 30_000;
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
 async function aquiferRequest<T>(endpoint: string): Promise<T> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    AQUIFER_REQUEST_TIMEOUT_MS,
+  );
+
   try {
     const response = await fetch(`${getAquiferApiBaseUrl()}${endpoint}`, {
       method: 'GET',
       headers: aquiferHeaders(),
+      signal: controller.signal,
     });
 
     if (!response.ok) {
@@ -45,7 +58,12 @@ async function aquiferRequest<T>(endpoint: string): Promise<T> {
     if (error instanceof Error && error.name === 'ApiError') {
       throw error;
     }
+    if (isAbortError(error)) {
+      throw createNetworkApiError(new Error('Aquifer request timed out'));
+    }
     throw createNetworkApiError(error);
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 

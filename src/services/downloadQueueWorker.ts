@@ -9,6 +9,7 @@ import {
   updateDownloadItemProgress,
 } from '../db/downloadQueueRepository';
 import type { DownloadQueueItem } from '../types/download/types';
+import { markDownloadItemDownloading } from '../db/downloadQueueRepository';
 
 const log = logger.create('DownloadQueueWorker');
 
@@ -109,6 +110,7 @@ export class DownloadQueueWorker {
     const { itemId, resumable } = this.active;
     this.state = 'downloading';
     try {
+      await markDownloadItemDownloading(itemId);
       const result = await resumable.resumeAsync();
 
       // A concurrent cancel() may have run while resumeAsync() was in
@@ -199,6 +201,7 @@ export class DownloadQueueWorker {
       );
 
       this.active = { itemId: next.id, resumable };
+      await markDownloadItemDownloading(next.id);
       const shouldResume = Boolean(saved?.resumeData);
       const result = shouldResume
         ? await resumable.resumeAsync()

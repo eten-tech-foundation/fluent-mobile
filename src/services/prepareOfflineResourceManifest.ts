@@ -259,20 +259,39 @@ async function resourceSearchItemsForRange(params: {
   range: ChapterRange;
 }): Promise<PrepareOfflineResourceManifestItem[]> {
   const { config, languageCode, range } = params;
-  const response = await AquiferAPI.searchResources({
-    bookCode: range.bookCode,
-    startChapter: range.startChapter,
-    endChapter: range.endChapter,
-    startVerse: 1,
-    endVerse: 200,
-    languageCode,
-    resourceCollectionCode: config.collectionCode,
-    resourceType: config.resourceType,
-    limit: 100,
-  });
+  const allItems: AquiferResourceSearchItem[] = [];
+  let offset = 0;
+  const limit = 100;
+
+  while (true) {
+    const response = await AquiferAPI.searchResources({
+      bookCode: range.bookCode,
+      startChapter: range.startChapter,
+      endChapter: range.endChapter,
+      startVerse: 1,
+      endVerse: 200,
+      languageCode,
+      resourceCollectionCode: config.collectionCode,
+      resourceType: config.resourceType,
+      limit,
+      offset,
+    });
+
+    allItems.push(...response.items);
+
+    const nextOffset = offset + response.returnedItemCount;
+    if (
+      response.returnedItemCount === 0 ||
+      nextOffset >= response.totalItemCount ||
+      nextOffset <= offset
+    ) {
+      break;
+    }
+    offset = nextOffset;
+  }
 
   const details = await Promise.all(
-    response.items.map(async item => ({
+    allItems.map(async item => ({
       item,
       details: await AquiferAPI.getResourceDetails(item.id),
     })),

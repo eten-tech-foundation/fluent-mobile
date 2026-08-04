@@ -120,6 +120,17 @@ export async function enqueueDownloadItems(
   return ids;
 }
 
+export async function markDownloadItemDownloading(id: string): Promise<void> {
+  const db = getDatabase();
+  const now = new Date().toISOString();
+  await db.execute(
+    `UPDATE download_queue
+     SET status = 'downloading', updated_at = ?
+     WHERE id = ? AND status != 'completed'`,
+    [now, id],
+  );
+}
+
 export async function updateDownloadItemProgress(
   id: string,
   progress: number,
@@ -128,8 +139,8 @@ export async function updateDownloadItemProgress(
   const now = new Date().toISOString();
   await db.execute(
     `UPDATE download_queue
-     SET progress = ?, status = 'downloading', updated_at = ?
-     WHERE id = ? AND status IN ('queued', 'downloading', 'paused', 'cancelled')`,
+     SET progress = ?, updated_at = ?
+     WHERE id = ? AND status = 'downloading'`,
     [progress, now, id],
   );
 }

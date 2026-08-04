@@ -101,13 +101,25 @@ async function mockExecute(
 
   if (
     normalized.startsWith(
-      "UPDATE download_queue SET progress = ?, status = 'downloading'",
+      'UPDATE download_queue SET progress = ?, updated_at = ?',
     )
   ) {
     const [progress, updatedAt, id] = params as [number, string, string];
     rows = rows.map(r =>
-      r.id === id && (r.status === 'queued' || r.status === 'downloading')
-        ? { ...r, progress, status: 'downloading', updated_at: updatedAt }
+      r.id === id && r.status === 'downloading'
+        ? { ...r, progress, updated_at: updatedAt }
+        : r,
+    );
+    return { rows: [] };
+  }
+
+  if (
+    normalized.startsWith("UPDATE download_queue SET status = 'downloading'")
+  ) {
+    const [updatedAt, id] = params as [string, string];
+    rows = rows.map(r =>
+      r.id === id && r.status !== 'completed'
+        ? { ...r, status: 'downloading', updated_at: updatedAt }
         : r,
     );
     return { rows: [] };
@@ -271,6 +283,7 @@ import {
   markDownloadItemFailed,
   markDownloadItemPaused,
   updateDownloadItemProgress,
+  markDownloadItemDownloading,
 } from './downloadQueueRepository';
 
 describe('downloadQueueRepository', () => {
@@ -351,6 +364,7 @@ describe('downloadQueueRepository', () => {
       },
     ]);
 
+    await markDownloadItemDownloading(id);
     await updateDownloadItemProgress(id, 0.42);
 
     const row = __getDownloadQueueRows().find(r => r.id === id);
@@ -466,6 +480,7 @@ describe('downloadQueueRepository', () => {
         label: 'Source Bible — Audio',
       },
     ]);
+    await markDownloadItemDownloading(id);
     await updateDownloadItemProgress(id, 0.5);
 
     await markDownloadItemFailed(id);
@@ -509,6 +524,7 @@ describe('downloadQueueRepository', () => {
       },
     ]);
     await markDownloadItemCompleted(id1, 'file:///a.mp3');
+    await markDownloadItemDownloading(id2);
     await updateDownloadItemProgress(id2, 0.3);
 
     const snapshot = await getDownloadQueueSnapshot();
@@ -519,6 +535,68 @@ describe('downloadQueueRepository', () => {
     expect(snapshot.items[0].id).toBe(id2);
     expect(snapshot.items[0].status).toBe('downloading');
     expect(snapshot.primaryProjectId).toBe(1);
+  });
+
+  it('does not apply a stale progress update after the item is paused', async () => {
+    const [id] = await enqueueDownloadItems([
+      {
+        projectId: 1,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Source Bible — Audio',
+      },
+    ]);
+    await markDownloadItemDownloading(id);
+    await markDownloadItemPaused(id, 'resume-token');
+
+    await updateDownloadItemProgress(id, 0.9);
+
+    const row = __getDownloadQueueRows().find(r => r.id === id);
+    expect(row?.status).toBe('paused');
+  });
+
+  it('does not apply a stale progress update after the item is cancelled', async () => {
+    const [id] = await enqueueDownloadItems([
+      {
+        projectId: 1,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Source Bible — Audio',
+      },
+    ]);
+    await markDownloadItemDownloading(id);
+    await markDownloadItemCancelled(id, 'resume-token');
+
+    await updateDownloadItemProgress(id, 0.9);
+
+    const row = __getDownloadQueueRows().find(r => r.id === id);
+    expect(row?.status).toBe('cancelled');
+  });
+
+  it('allows progress to apply again once a failed item is explicitly reactivated for retry', async () => {
+    const [id] = await enqueueDownloadItems([
+      {
+        projectId: 1,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Source Bible — Audio',
+      },
+    ]);
+    await markDownloadItemFailed(id);
+    await updateDownloadItemProgress(id, 0.5); // should be ignored — still 'failed'
+    expect(__getDownloadQueueRows().find(r => r.id === id)?.status).toBe(
+      'failed',
+    );
+
+    await markDownloadItemDownloading(id);
+    await updateDownloadItemProgress(id, 0.5); // now applies
+
+    const row = __getDownloadQueueRows().find(r => r.id === id);
+    expect(row?.status).toBe('downloading');
+    expect(row?.progress).toBe(0.5);
   });
 
   it('snapshot aggregateProgress reflects completed + in-progress fractional credit', async () => {
@@ -539,6 +617,7 @@ describe('downloadQueueRepository', () => {
       },
     ]);
     await markDownloadItemCompleted(id1, 'file:///a.mp3');
+    await markDownloadItemDownloading(id2);
     await updateDownloadItemProgress(id2, 0.5);
 
     const snapshot = await getDownloadQueueSnapshot();
