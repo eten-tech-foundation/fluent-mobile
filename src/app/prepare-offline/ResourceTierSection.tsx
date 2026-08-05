@@ -92,12 +92,15 @@ export function CustomizeDownloadGroupList({
       {(() => {
         const renderedTierHeaders = new Set<PrepareOfflineResourceTier>();
 
-        return groups.map((group, index) => {
+        let hasRenderedGroup = false;
+        return groups.map(group => {
           const tier = group.items[0]?.tier;
           if (!tier) {
             return null;
           }
 
+          const showDivider = hasRenderedGroup;
+          hasRenderedGroup = true;
           const showTierHeader = !renderedTierHeaders.has(tier);
           if (showTierHeader) {
             renderedTierHeaders.add(tier);
@@ -105,7 +108,7 @@ export function CustomizeDownloadGroupList({
 
           return (
             <React.Fragment key={group.groupName}>
-              {index > 0 ? <ResourceGroupDivider /> : null}
+              {showDivider ? <ResourceGroupDivider /> : null}
               {showTierHeader ? <ResourceTierHeader tier={tier} /> : null}
               <ResourceCustomizeGroup
                 group={group}
