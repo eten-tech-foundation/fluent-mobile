@@ -67,9 +67,7 @@ describe('ResourceItemRow', () => {
   });
 
   it('shows completed check in summary for tier 1 rows already on device', () => {
-    render(
-      <ResourceItemRow item={baseItem} mode="summary" showTierLock />,
-    );
+    render(<ResourceItemRow item={baseItem} mode="summary" showTierLock />);
 
     expect(screen.getByTestId('resource-status-completed')).toBeTruthy();
     expect(screen.queryByTestId('resource-summary-tier-lock')).toBeNull();
