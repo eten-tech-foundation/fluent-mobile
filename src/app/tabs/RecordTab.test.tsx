@@ -46,6 +46,7 @@ const idleAudio: VerseAudioApi = {
   selectedTake: null,
   canRecordNewTake: true,
   playingTakeId: null,
+  loadedTakeId: null,
   errorMessage: null,
   positionMs: 0,
   durationMs: 0,
@@ -54,6 +55,7 @@ const idleAudio: VerseAudioApi = {
   resume: jest.fn(),
   stop: jest.fn(),
   playTake: jest.fn(),
+  seek: jest.fn(),
   pausePlayback: jest.fn(),
   selectTake: jest.fn(),
   deleteTake: jest.fn(),
@@ -265,6 +267,7 @@ describe('RecordTab', () => {
       takes: [take1, take2],
       selectedTake: take2,
       playingTakeId: 'rec_1',
+      loadedTakeId: 'rec_1',
     });
     rerender(
       <DraftingProvider verses={verses} initialVerse={3}>
@@ -278,6 +281,56 @@ describe('RecordTab', () => {
     // Tapping a different, non-loaded take's play button still calls playTake.
     fireEvent.press(playButtonsAfter[1]!);
     expect(idleAudio.playTake).toHaveBeenCalledWith(take2);
+    // Review scrub surface (#176) — only the loaded take's waveform is seekable.
+    expect(screen.getByLabelText('Draft waveform scrubber')).toBeTruthy();
+  });
+
+  it('keeps the loaded take scrubbable after playback reaches the end', () => {
+    const take = makeTake();
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      state: 'recorded',
+      takes: [take],
+      selectedTake: take,
+      // Natural end clears playingTakeId; the take is still in the player.
+      playingTakeId: null,
+      loadedTakeId: 'rec_1',
+    });
+
+    renderTab();
+
+    const scrubber = screen.getByLabelText('Draft waveform scrubber');
+    fireEvent(scrubber, 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
+    });
+    fireEvent(scrubber, 'responderGrant', {
+      nativeEvent: { locationX: 50 },
+    });
+    expect(idleAudio.seek).toHaveBeenCalledWith(6500);
+  });
+
+  it('scrubs the selected take before it has ever been played', () => {
+    const take = makeTake({ durationMs: 13000 });
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      state: 'recorded',
+      takes: [take],
+      selectedTake: take,
+      // Freshly recorded: nothing is in the player yet.
+      playingTakeId: null,
+      loadedTakeId: null,
+    });
+
+    renderTab();
+
+    const scrubber = screen.getByLabelText('Draft waveform scrubber');
+    fireEvent(scrubber, 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
+    });
+    fireEvent(scrubber, 'responderGrant', {
+      nativeEvent: { locationX: 50 },
+    });
+    expect(idleAudio.seek).toHaveBeenCalledWith(6500);
   });
 
   it('notifies captureActive during recording and clears after stop', async () => {
