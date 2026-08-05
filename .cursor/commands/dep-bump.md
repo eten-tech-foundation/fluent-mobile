@@ -1,7 +1,7 @@
 # /dep-bump — change a dependency the Expo way
 
 You are adding, upgrading, aligning, or removing a dependency in **fluent-mobile**.
-Naive `npm install <pkg>@latest` is often **wrong** here: this is an Expo SDK **56**
+Naive `npm install <pkg>@latest` is often **wrong** here: this is an Expo SDK **57**
 CNG app (Android-only, custom dev client — not Expo Go). Two health checks must stay
 green after dependency work:
 
@@ -14,7 +14,7 @@ Proceed autonomously and report what you did; only stop at hard gates below.
 
 ## Critical facts
 
-- **Use `npx expo install <pkg>`** for anything Expo knows about (resolves SDK 56–compatible versions). Use plain `npm install` only for pure-JS packages Expo has no opinion on — then still re-run the checks.
+- **Use `npx expo install <pkg>`** for anything Expo knows about (resolves SDK 57–compatible versions). Use plain `npm install` only for pure-JS packages Expo has no opinion on — then still re-run the checks.
 - **`npm run prebuild` is destructive** (`expo prebuild --clean --platform android`). Run it only when the change adds/removes a **native** module or config plugin. Pure-JS deps do not need it. **Never** pass `--platform ios` or omit the platform.
 - Package manager is **npm** only (`package-lock.json`). Do not use yarn/pnpm.
 - Agent-authored lockfile / doctor fixes still need a **ticketed PR** — never push to `main` ([delivery.mdc](../rules/delivery.mdc)).

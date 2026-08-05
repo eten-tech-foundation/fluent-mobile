@@ -41,6 +41,9 @@ export function usePlaybackEngine(): UsePlaybackEngineApi {
     [player],
   );
 
+  // The pause guard reads `status` through the updater instead of the dependency
+  // list: an effect that both writes and depends on its own state re-runs on
+  // every update it makes.
   useEffect(() => {
     setPositionMs(Math.max(0, Math.round(nativeStatus.currentTime * 1000)));
     const nextDuration = Math.max(0, Math.round(nativeStatus.duration * 1000));
@@ -53,8 +56,8 @@ export function usePlaybackEngine(): UsePlaybackEngineApi {
       return;
     }
     // Don't let a late status tick override an explicit engine pause.
-    if (nativeStatus.playing && status !== 'paused') {
-      setStatus('playing');
+    if (nativeStatus.playing) {
+      setStatus(prev => (prev === 'paused' ? prev : 'playing'));
     }
     // Do not map !playing → paused here. After `replace`, the player is briefly
     // unloaded/not playing; flipping to paused races PLAYBACK_END and freezes
@@ -64,7 +67,6 @@ export function usePlaybackEngine(): UsePlaybackEngineApi {
     nativeStatus.duration,
     nativeStatus.playing,
     nativeStatus.didJustFinish,
-    status,
   ]);
 
   useEffect(() => {
@@ -77,6 +79,7 @@ export function usePlaybackEngine(): UsePlaybackEngineApi {
     status,
     positionMs,
     durationMs,
+    load: uri => engine.load(uri),
     play: uri => engine.play(uri),
     pause: () => engine.pause(),
     seek: ms => engine.seek(ms),

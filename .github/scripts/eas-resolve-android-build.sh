@@ -6,8 +6,9 @@
 #   PROFILE          — eas.json build profile (required)
 #   MESSAGE          — eas build message (required)
 #   BAKE_VERSION     — optional APP_VERSION_FALLBACK to bake before fingerprint
-#   RUNTIME_VERSION  — optional runtime match fallback (js-only QA install)
+#   RUNTIME_VERSION  — optional runtime match fallback (legacy QA install)
 #   ALLOW_RUNTIME_MATCH — "true" to reuse by runtime when fingerprint differs
+#   FORCE_NEW_BUILD  — "true" to always start a new build (skip fingerprint reuse)
 #   WAIT_FOR_BUILD   — "true" to pass --wait when starting a new build
 #   POLL_IN_PROGRESS — "true" to wait for matching in-progress builds
 
@@ -25,6 +26,7 @@ MESSAGE="${MESSAGE:?MESSAGE is required}"
 BAKE_VERSION="${BAKE_VERSION:-}"
 RUNTIME_VERSION="${RUNTIME_VERSION:-}"
 ALLOW_RUNTIME_MATCH="${ALLOW_RUNTIME_MATCH:-false}"
+FORCE_NEW_BUILD="${FORCE_NEW_BUILD:-false}"
 WAIT_FOR_BUILD="${WAIT_FOR_BUILD:-true}"
 POLL_IN_PROGRESS="${POLL_IN_PROGRESS:-true}"
 MAX_WAIT_IN_PROGRESS_SEC="${MAX_WAIT_IN_PROGRESS_SEC:-1800}"
@@ -75,36 +77,40 @@ match_build() {
 BUILD_ID=""
 INSTALL_SOURCE=""
 
-if [ "${POLL_IN_PROGRESS}" = "true" ]; then
-  IN_PROGRESS_JSON=$(list_builds "in-progress" || echo "[]")
-  IP_BUILD_ID=$(match_build "${IN_PROGRESS_JSON}")
-  if [ -n "${IP_BUILD_ID}" ]; then
-    echo "⏳ Matching build already in progress: ${IP_BUILD_ID}"
-    deadline=$((SECONDS + MAX_WAIT_IN_PROGRESS_SEC))
-    while [ "${SECONDS}" -lt "${deadline}" ]; do
-      status=$(list_builds "in-progress" | jq -r --arg id "${IP_BUILD_ID}" '.[] | select(.id == $id) | .status' | head -n 1)
-      finished=$(list_builds "finished" | jq -r --arg id "${IP_BUILD_ID}" '.[] | select(.id == $id) | .id' | head -n 1)
-      if [ -n "${finished}" ]; then
-        BUILD_ID="${IP_BUILD_ID}"
-        INSTALL_SOURCE="waited"
-        echo "✅ In-progress build finished: ${BUILD_ID}"
-        break
-      fi
-      if [ "${status}" = "ERRORED" ] || [ "${status}" = "CANCELED" ]; then
-        echo "In-progress build ${status}; will start a new one if needed"
-        break
-      fi
-      sleep 30
-    done
+if [ "${FORCE_NEW_BUILD}" = "true" ]; then
+  echo "FORCE_NEW_BUILD=true — skipping fingerprint reuse / in-progress poll"
+else
+  if [ "${POLL_IN_PROGRESS}" = "true" ]; then
+    IN_PROGRESS_JSON=$(list_builds "in-progress" || echo "[]")
+    IP_BUILD_ID=$(match_build "${IN_PROGRESS_JSON}")
+    if [ -n "${IP_BUILD_ID}" ]; then
+      echo "⏳ Matching build already in progress: ${IP_BUILD_ID}"
+      deadline=$((SECONDS + MAX_WAIT_IN_PROGRESS_SEC))
+      while [ "${SECONDS}" -lt "${deadline}" ]; do
+        status=$(list_builds "in-progress" | jq -r --arg id "${IP_BUILD_ID}" '.[] | select(.id == $id) | .status' | head -n 1)
+        finished=$(list_builds "finished" | jq -r --arg id "${IP_BUILD_ID}" '.[] | select(.id == $id) | .id' | head -n 1)
+        if [ -n "${finished}" ]; then
+          BUILD_ID="${IP_BUILD_ID}"
+          INSTALL_SOURCE="waited"
+          echo "✅ In-progress build finished: ${BUILD_ID}"
+          break
+        fi
+        if [ "${status}" = "ERRORED" ] || [ "${status}" = "CANCELED" ]; then
+          echo "In-progress build ${status}; will start a new one if needed"
+          break
+        fi
+        sleep 30
+      done
+    fi
   fi
-fi
 
-if [ -z "${BUILD_ID}" ]; then
-  FINISHED_JSON=$(list_builds "finished" || echo "[]")
-  BUILD_ID=$(match_build "${FINISHED_JSON}")
-  if [ -n "${BUILD_ID}" ]; then
-    INSTALL_SOURCE="existing"
-    echo "✅ Reusing finished build: ${BUILD_ID}"
+  if [ -z "${BUILD_ID}" ]; then
+    FINISHED_JSON=$(list_builds "finished" || echo "[]")
+    BUILD_ID=$(match_build "${FINISHED_JSON}")
+    if [ -n "${BUILD_ID}" ]; then
+      INSTALL_SOURCE="existing"
+      echo "✅ Reusing finished build: ${BUILD_ID}"
+    fi
   fi
 fi
 

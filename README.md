@@ -2,7 +2,7 @@
 
 **Android-only** — there is no iOS app.
 
-**Expo SDK 56** (React Native 0.85) with **CNG** (Continuous Native Generation): the `android/` folder is **not committed**. It is generated locally via `expo prebuild --platform android` from `app.config.ts` and config plugins.
+**Expo SDK 57** (React Native 0.86) with **CNG** (Continuous Native Generation): the `android/` folder is **not committed**. It is generated locally via `expo prebuild --platform android` from `app.config.ts` and config plugins.
 
 **Custom dev client — not Expo Go.** This app uses native modules (`expo-dev-client`, `op-sqlite`, keychain, etc.) and must run in a **development build** you compile locally (`npm run android`) or install from EAS. It will **not** work in the Expo Go app from the Play Store.
 
@@ -354,8 +354,8 @@ One-time setup (Expo GitHub app, Play credentials, workflow permissions): see [`
 
 ## PR preview (QA)
 
-Add the **`preview-build`** label to a pull request to publish a preview OTA update (JS-only changes) or start an Android EAS preview APK (native/config changes). Requires `EXPO_TOKEN` in GitHub Actions secrets.
+Add the **`preview-build`** label to a pull request to start a **fresh Android preview APK** (binary only — no OTA). Requires `EXPO_TOKEN` in GitHub Actions secrets.
 
-**QA / non-technical testers:** [How to test a PR preview](docs/guides/qa-preview-testing.md) — install the **Fluent preview APK**, then open the app (not Expo Go or Metro dev builds).
+**QA / non-technical testers:** [How to test a PR preview](docs/guides/qa-preview-testing.md) — install the **Fluent preview APK** and open the app (not Expo Go or Metro dev builds).
 
 **Developers:** [`.github/README.md`](.github/README.md) · [`.eas/README.md`](.eas/README.md)

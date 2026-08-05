@@ -1,6 +1,6 @@
 # Expo-first dependencies (Fluent Mobile)
 
-Fluent Mobile is an **Expo SDK 56** app (CNG, Android-only). For **new** dependencies and APIs, prefer **Expo-maintained** packages and modules when Expo provides a supported option.
+Fluent Mobile is an **Expo SDK 57** app (CNG, Android-only). For **new** dependencies and APIs, prefer **Expo-maintained** packages and modules when Expo provides a supported option.
 
 This is policy for agents and humans — **not** a mandate to rewrite existing stacks in the same PR.
 
