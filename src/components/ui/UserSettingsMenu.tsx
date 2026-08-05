@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   View,
   Text,
@@ -10,6 +16,7 @@ import {
   ActivityIndicator,
   Animated,
   useWindowDimensions,
+  ScrollView,
 } from 'react-native';
 import { theme } from '../../theme';
 import { useNavigation } from '@react-navigation/native';
@@ -24,7 +31,12 @@ import {
   switchToDeviceAccount,
 } from '../../services/accountSession';
 import { useDeviceAccounts } from '../../hooks/useDeviceAccounts';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import {
+  GestureDetector,
+  Gesture,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { logger } from '../../utils/logger';
 
 const MENU_ICON_COLOR = '#333';
@@ -56,10 +68,19 @@ export function UserSettingsMenu({
   const { accounts, hasAccountLimit, loading } = useDeviceAccounts(visible);
   const [switchingUserId, setSwitchingUserId] = useState<string | null>(null);
   const { width: windowWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   const panelWidth = useMemo(
     () => Math.min(320, windowWidth * 0.82),
     [windowWidth],
+  );
+
+  const panelInsetStyle = useMemo(
+    () => ({
+      paddingTop: insets.top,
+      paddingBottom: insets.bottom,
+    }),
+    [insets.top, insets.bottom],
   );
 
   const translateX = useRef(new Animated.Value(-panelWidth)).current;
@@ -67,9 +88,12 @@ export function UserSettingsMenu({
   const [isMounted, setIsMounted] = useState(visible);
 
   const isMountedRef = useRef(isMounted);
+  const animationGenerationRef = useRef(0);
 
   useEffect(() => {
     const wasMounted = isMountedRef.current;
+    animationGenerationRef.current += 1;
+    const generation = animationGenerationRef.current;
 
     if (visible) {
       setIsMounted(true);
@@ -78,18 +102,6 @@ export function UserSettingsMenu({
 
       translateX.setValue(-panelWidth);
       scrimOpacity.setValue(0);
-      Animated.parallel([
-        Animated.timing(translateX, {
-          toValue: 0,
-          duration: OPEN_ANIM_DURATION,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scrimOpacity, {
-          toValue: 1,
-          duration: OPEN_ANIM_DURATION,
-          useNativeDriver: true,
-        }),
-      ]).start();
     } else if (wasMounted) {
       Animated.parallel([
         Animated.timing(translateX, {
@@ -103,13 +115,28 @@ export function UserSettingsMenu({
           useNativeDriver: true,
         }),
       ]).start(({ finished }) => {
-        if (finished) {
+        if (finished && animationGenerationRef.current === generation) {
           setIsMounted(false);
           isMountedRef.current = false;
         }
       });
     }
   }, [visible, panelWidth, translateX, scrimOpacity]);
+
+  const handleModalShow = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(translateX, {
+        toValue: 0,
+        duration: OPEN_ANIM_DURATION,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scrimOpacity, {
+        toValue: 1,
+        duration: OPEN_ANIM_DURATION,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [translateX, scrimOpacity]);
 
   const panGesture = Gesture.Pan()
     .activeOffsetX(-10)
@@ -202,8 +229,9 @@ export function UserSettingsMenu({
       visible={isMounted}
       animationType="none"
       onRequestClose={onClose}
+      onShow={handleModalShow}
     >
-      <View style={styles.container}>
+      <GestureHandlerRootView style={styles.container}>
         <Animated.View
           style={[StyleSheet.absoluteFill, { opacity: scrimOpacity }]}
           pointerEvents={visible ? 'auto' : 'none'}
@@ -220,10 +248,15 @@ export function UserSettingsMenu({
           <Animated.View
             style={[
               styles.panel,
+              panelInsetStyle,
               { width: panelWidth, transform: [{ translateX }] },
             ]}
           >
-            <View style={styles.panelContent}>
+            <ScrollView
+              style={styles.scrollArea}
+              contentContainerStyle={styles.panelContent}
+              showsVerticalScrollIndicator={false}
+            >
               <TouchableOpacity
                 style={appStyles.menuItem}
                 onPress={handleOpenSettings}
@@ -348,25 +381,27 @@ export function UserSettingsMenu({
                   <Text style={appStyles.menuItemText}>Add User</Text>
                 </TouchableOpacity>
               )}
-            </View>
 
-            <View style={[appStyles.menuDivider, styles.panelDivider]} />
-            <TouchableOpacity
-              style={appStyles.menuItem}
-              onPress={() => {
-                void handleSignOut();
-              }}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-            >
-              <Ionicons name="log-out-outline" size={18} color="#d32f2f" />
-              <Text style={[appStyles.menuItemText, appStyles.menuItemDanger]}>
-                Sign Out
-              </Text>
-            </TouchableOpacity>
+              <View style={[appStyles.menuDivider, styles.panelDivider]} />
+              <TouchableOpacity
+                style={appStyles.menuItem}
+                onPress={() => {
+                  void handleSignOut();
+                }}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+              >
+                <Ionicons name="log-out-outline" size={18} color="#d32f2f" />
+                <Text
+                  style={[appStyles.menuItemText, appStyles.menuItemDanger]}
+                >
+                  Sign Out
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
           </Animated.View>
         </GestureDetector>
-      </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
@@ -382,6 +417,9 @@ const styles = StyleSheet.create({
     left: 0,
     backgroundColor: theme.colors.cardBackground,
     ...theme.shadows.elevated,
+  },
+  scrollArea: {
+    flex: 1,
   },
   panelContent: {
     paddingTop: 24,
