@@ -4,6 +4,7 @@ import {
   computePendingBytes,
   computeTotalBytes,
   computeManifestBytesForScope,
+  filterPrepareOfflineCatalogByTiers,
   getEffectiveItems,
   isItemCustomizeLocked,
   isItemIncluded,
@@ -72,16 +73,46 @@ describe('prepareOfflineCatalog', () => {
     expect(catalog.items.length).toBeGreaterThan(0);
     expect(catalog.groups.map(g => g.groupName)).toEqual([
       'Source Bible',
-      'Translation Words',
       'Translation Notes',
+      'Translation Words',
+      'Translation Questions',
       'Bible Commentary',
       'Reference Images',
       'Alternate Translations',
     ]);
 
     const tier1 = catalog.items.filter(item => item.tier === 1);
-    expect(tier1).toHaveLength(2);
-    expect(tier1.every(item => item.groupName === 'Source Bible')).toBe(true);
+    expect(tier1).toHaveLength(4);
+    expect(tier1.map(item => item.groupName).sort()).toEqual([
+      'Source Bible',
+      'Source Bible',
+      'Translation Notes',
+      'Translation Notes',
+    ]);
+  });
+
+  it('filterPrepareOfflineCatalogByTiers keeps only matching tiers', () => {
+    const catalog = buildTestCatalog({
+      chapters,
+      selectedIds: new Set([1]),
+    });
+
+    const tier1Only = filterPrepareOfflineCatalogByTiers(catalog, [1]);
+    expect(tier1Only.items.every(item => item.tier === 1)).toBe(true);
+    expect(tier1Only.groups.map(group => group.groupName)).toEqual([
+      'Source Bible',
+      'Translation Notes',
+    ]);
+
+    const customize = filterPrepareOfflineCatalogByTiers(catalog, [2, 3]);
+    expect(customize.items.every(item => item.tier >= 2)).toBe(true);
+    expect(customize.groups.map(group => group.groupName)).toEqual([
+      'Translation Words',
+      'Translation Questions',
+      'Bible Commentary',
+      'Reference Images',
+      'Alternate Translations',
+    ]);
   });
 
   it('locks tier 1 from deselection', () => {
@@ -151,12 +182,17 @@ describe('prepareOfflineCatalog', () => {
 
     const total = computeTotalBytes(catalog, new Set());
     const sourceBible = 8 * MB + 136 * MB;
-    const translationWords = 10 * MB + 32 * MB;
     const translationNotes = 18 * MB + 48 * MB;
+    const translationWords = 10 * MB + 32 * MB;
+    const translationQuestions = 6 * MB + 14 * MB;
     const tier3 = 12 * MB + 24 * MB + 6 * MB + 8 * MB + 16 * MB;
 
     expect(total).toBe(
-      sourceBible + translationWords + translationNotes + tier3,
+      sourceBible +
+        translationNotes +
+        translationWords +
+        translationQuestions +
+        tier3,
     );
   });
 
@@ -167,18 +203,18 @@ describe('prepareOfflineCatalog', () => {
       chapters,
       selectedIds: new Set([1]),
     });
-    const notesTextId = 'tier-2-translation-notes-text';
+    const questionsTextId = 'tier-2-translation-questions-text';
 
-    const deselected = new Set([notesTextId]);
-    const withoutNotesText = computeTotalBytes(catalog, deselected);
+    const deselected = new Set([questionsTextId]);
+    const withoutQuestionsText = computeTotalBytes(catalog, deselected);
 
-    expect(withoutNotesText).toBe(
-      computeTotalBytes(catalog, new Set()) - 18 * MB,
+    expect(withoutQuestionsText).toBe(
+      computeTotalBytes(catalog, new Set()) - 6 * MB,
     );
     expect(isItemIncluded(catalog.items[0], deselected)).toBe(true);
     expect(
       isItemIncluded(
-        catalog.items.find(item => item.id === notesTextId)!,
+        catalog.items.find(item => item.id === questionsTextId)!,
         deselected,
       ),
     ).toBe(false);
@@ -193,7 +229,7 @@ describe('prepareOfflineCatalog', () => {
     });
 
     const pending = computePendingBytes(catalog, new Set());
-    const completedBytes = 8 * MB + 136 * MB + 10 * MB;
+    const completedBytes = 8 * MB + 136 * MB + 18 * MB + 48 * MB + 10 * MB;
     const allBytes = computeTotalBytes(catalog, new Set());
 
     expect(pending).toBe(allBytes - completedBytes);
@@ -206,18 +242,18 @@ describe('prepareOfflineCatalog', () => {
       chapters,
       selectedIds: new Set([1]),
     });
-    const notesAudioId = 'tier-2-translation-notes-audio';
+    const questionsAudioId = 'tier-2-translation-questions-audio';
 
     const pendingAll = computePendingBytes(catalog, new Set());
     const pendingDeselected = computePendingBytes(
       catalog,
-      new Set([notesAudioId]),
+      new Set([questionsAudioId]),
     );
 
-    expect(pendingDeselected).toBe(pendingAll - 48 * MB);
-    expect(getEffectiveItems(catalog, new Set([notesAudioId]))).toHaveLength(
-      catalog.items.length - 1,
-    );
+    expect(pendingDeselected).toBe(pendingAll - 14 * MB);
+    expect(
+      getEffectiveItems(catalog, new Set([questionsAudioId])),
+    ).toHaveLength(catalog.items.length - 1);
   });
 
   it('buildEffectiveCatalog omits deselected tier 2/3 from summary groups', () => {
@@ -230,8 +266,8 @@ describe('prepareOfflineCatalog', () => {
     const deselected = new Set([
       'tier-2-translation-words-text',
       'tier-2-translation-words-audio',
-      'tier-2-translation-notes-text',
-      'tier-2-translation-notes-audio',
+      'tier-2-translation-questions-text',
+      'tier-2-translation-questions-audio',
       'tier-3-bible-commentary-text',
       'tier-3-bible-commentary-audio',
       'tier-3-reference-images-text',
@@ -243,9 +279,12 @@ describe('prepareOfflineCatalog', () => {
 
     expect(effective.groups.map(group => group.groupName)).toEqual([
       'Source Bible',
+      'Translation Notes',
     ]);
-    expect(effective.items).toHaveLength(2);
-    expect(computeTotalBytes(effective, new Set())).toBe(8 * MB + 136 * MB);
+    expect(effective.items).toHaveLength(4);
+    expect(computeTotalBytes(effective, new Set())).toBe(
+      8 * MB + 136 * MB + 18 * MB + 48 * MB,
+    );
     expect(computePendingBytes(effective, new Set())).toBe(0);
   });
 
@@ -260,10 +299,10 @@ describe('prepareOfflineCatalog', () => {
     });
 
     const notesTextOne = oneChapter.items.find(
-      item => item.id === 'tier-2-translation-notes-text',
+      item => item.id === 'tier-1-translation-notes-text',
     )!;
     const notesTextTwo = twoChapters.items.find(
-      item => item.id === 'tier-2-translation-notes-text',
+      item => item.id === 'tier-1-translation-notes-text',
     )!;
     const wordsTextOne = oneChapter.items.find(
       item => item.id === 'tier-2-translation-words-text',
@@ -301,7 +340,8 @@ describe('prepareOfflineCatalog', () => {
     );
     expect(sorted[0].groupName).toBe('Source Bible');
     expect(sorted[0].kind).toBe('text');
-    expect(sorted[2].groupName).toBe('Translation Words');
-    expect(sorted[4].groupName).toBe('Translation Notes');
+    expect(sorted[2].groupName).toBe('Translation Notes');
+    expect(sorted[4].groupName).toBe('Translation Words');
+    expect(sorted[6].groupName).toBe('Translation Questions');
   });
 });

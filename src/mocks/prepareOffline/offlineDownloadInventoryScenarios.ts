@@ -47,7 +47,7 @@ export const PREPARE_OFFLINE_MOCK_SCENARIO_LABELS: Record<
   string
 > = {
   fresh: 'Fresh device — nothing on device yet',
-  tier1: 'Tier 1 on device only (Source Bible)',
+  tier1: 'Tier 1 on device only (Source Bible + Translation Notes)',
   'tier1-tier2': 'Tier 1 + Tier 2 on device (Tier 3 excluded from package)',
   'tier1-tier2-tier3-pending':
     'Tier 1 + 2 on device, Tier 3 pending in package (~66 MB left)',
@@ -75,10 +75,12 @@ export const MOCK_PREPARE_OFFLINE_MIXED_INVENTORY: Record<
 > = {
   [manifestEntryToResourceId(1, 'Source Bible', 'text')]: 'completed',
   [manifestEntryToResourceId(1, 'Source Bible', 'audio')]: 'completed',
+  [manifestEntryToResourceId(1, 'Translation Notes', 'text')]: 'completed',
+  [manifestEntryToResourceId(1, 'Translation Notes', 'audio')]: 'completed',
   [manifestEntryToResourceId(2, 'Translation Words', 'text')]: 'completed',
   [manifestEntryToResourceId(2, 'Translation Words', 'audio')]: 'downloading',
-  [manifestEntryToResourceId(2, 'Translation Notes', 'text')]: 'selected',
-  [manifestEntryToResourceId(2, 'Translation Notes', 'audio')]: 'selected',
+  [manifestEntryToResourceId(2, 'Translation Questions', 'text')]: 'selected',
+  [manifestEntryToResourceId(2, 'Translation Questions', 'audio')]: 'selected',
   [manifestEntryToResourceId(3, 'Bible Commentary', 'text')]: 'selected',
   [manifestEntryToResourceId(3, 'Bible Commentary', 'audio')]: 'selected',
   [manifestEntryToResourceId(3, 'Reference Images', 'text')]: 'selected',

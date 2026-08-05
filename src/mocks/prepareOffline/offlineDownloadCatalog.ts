@@ -26,7 +26,9 @@ const MB = 1024 * 1024;
  * returning `PrepareOfflineResourceManifestEntry[]` (see `types/prepareOffline/types.ts`).
  *
  * Visual QA (1 chapter selected) matches product mockup sizes:
- * Source Bible 8/136 MB, Translation Words 10/32 MB, Tier 3 ~66 MB → ~318 MB total.
+ * Tier 1 Source Bible 8/136 MB + Translation Notes 18/48 MB;
+ * Tier 2 Translation Words 10/32 MB + Translation Questions 6/14 MB;
+ * Tier 3 ~66 MB → ~338 MB total.
  */
 export const MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST: PrepareOfflineResourceManifestEntry[] =
   [
@@ -47,6 +49,22 @@ export const MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST: PrepareOfflineResourceManif
       unitBytes: 136 * MB,
     },
     {
+      resourceKey: 'translation-notes',
+      tier: 1,
+      groupName: 'Translation Notes',
+      kind: 'text',
+      scope: 'chapter',
+      unitBytes: 18 * MB,
+    },
+    {
+      resourceKey: 'translation-notes',
+      tier: 1,
+      groupName: 'Translation Notes',
+      kind: 'audio',
+      scope: 'chapter',
+      unitBytes: 48 * MB,
+    },
+    {
       resourceKey: 'translation-words',
       tier: 2,
       groupName: 'Translation Words',
@@ -63,20 +81,20 @@ export const MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST: PrepareOfflineResourceManif
       unitBytes: 32 * MB,
     },
     {
-      resourceKey: 'translation-notes',
+      resourceKey: 'translation-questions',
       tier: 2,
-      groupName: 'Translation Notes',
+      groupName: 'Translation Questions',
       kind: 'text',
       scope: 'chapter',
-      unitBytes: 18 * MB,
+      unitBytes: 6 * MB,
     },
     {
-      resourceKey: 'translation-notes',
+      resourceKey: 'translation-questions',
       tier: 2,
-      groupName: 'Translation Notes',
+      groupName: 'Translation Questions',
       kind: 'audio',
       scope: 'chapter',
-      unitBytes: 48 * MB,
+      unitBytes: 14 * MB,
     },
     {
       resourceKey: 'bible-commentary',

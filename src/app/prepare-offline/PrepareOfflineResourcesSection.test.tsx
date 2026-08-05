@@ -54,7 +54,6 @@ describe('PrepareOfflineResourcesSection', () => {
 
   const defaultProps = {
     catalog,
-    summaryCatalog: catalog,
     isItemSelected: () => true,
     onToggleItem: jest.fn(),
   };
@@ -63,34 +62,46 @@ describe('PrepareOfflineResourcesSection', () => {
     jest.clearAllMocks();
   });
 
-  it('shows summary by default with customize collapsed', () => {
+  it('shows tier 1 summary by default with customize collapsed', () => {
     render(<PrepareOfflineResourcesSection {...defaultProps} />);
 
     expect(screen.getByText('RESOURCES TO DOWNLOAD')).toBeTruthy();
     expect(screen.getByTestId('prepare-offline-resource-summary')).toBeTruthy();
+    expect(screen.getByTestId('resource-tier-1')).toBeTruthy();
+    expect(screen.getByText('TIER 1 — REQUIRED')).toBeTruthy();
+    expect(screen.getByText('Source Bible')).toBeTruthy();
+    expect(screen.getByText('Translation Notes')).toBeTruthy();
+    expect(screen.queryByText('Translation Words')).toBeNull();
     expect(screen.getByText('Customize download')).toBeTruthy();
     expect(screen.queryByTestId('resource-tier-2')).toBeNull();
     expect(screen.queryByTestId('prepare-offline-download-button')).toBeNull();
   });
 
-  it('shows full-bleed dividers between resource groups in the summary', () => {
+  it('shows full-bleed dividers between tier 1 resource groups in the summary', () => {
     render(<PrepareOfflineResourcesSection {...defaultProps} />);
 
     const summary = screen.getByTestId('prepare-offline-resource-summary');
-    const dividers = within(summary).getAllByTestId('resource-group-divider');
+    const tier1Groups = catalog.groups.filter(
+      group => group.items[0]?.tier === 1,
+    );
+    const dividers = within(summary).queryAllByTestId('resource-group-divider');
 
-    expect(dividers.length).toBe(catalog.groups.length - 1);
+    expect(dividers.length).toBe(Math.max(0, tier1Groups.length - 1));
   });
 
-  it('expands customize panel with tier sections', () => {
+  it('expands customize panel with tier 2 and 3 sections only', () => {
     render(<PrepareOfflineResourcesSection {...defaultProps} />);
 
     fireEvent.press(screen.getByText('Customize download'));
 
-    expect(screen.getByTestId('resource-tier-1')).toBeTruthy();
+    const accordion = screen.getByTestId('customize-download-accordion');
+
+    expect(screen.queryByTestId('resource-tier-1')).toBeTruthy();
     expect(screen.getByTestId('resource-tier-2')).toBeTruthy();
     expect(screen.getByTestId('resource-tier-3')).toBeTruthy();
-    expect(screen.getByText('TIER 1 — REQUIRED')).toBeTruthy();
+    expect(within(accordion).getByText('Translation Words')).toBeTruthy();
+    expect(within(accordion).getByText('Translation Questions')).toBeTruthy();
+    expect(within(accordion).queryByText('Translation Notes')).toBeNull();
   });
 
   it('shows full-bleed dividers between resource groups in customize', () => {
@@ -99,60 +110,27 @@ describe('PrepareOfflineResourcesSection', () => {
     fireEvent.press(screen.getByText('Customize download'));
 
     const accordion = screen.getByTestId('customize-download-accordion');
+    const customizeGroups = catalog.groups.filter(
+      group => (group.items[0]?.tier ?? 0) >= 2,
+    );
     const dividers = within(accordion).getAllByTestId('resource-group-divider');
 
-    expect(dividers.length).toBe(catalog.groups.length - 1);
+    expect(dividers.length).toBe(customizeGroups.length - 1);
   });
 
-  it('hides deselected groups from the read-only summary', () => {
-    const summaryCatalog = buildSectionCatalog();
-    const tier1Only = {
-      ...summaryCatalog,
-      items: summaryCatalog.items.filter(item => item.tier === 1),
-      groups: summaryCatalog.groups.filter(
-        group => group.groupName === 'Source Bible',
-      ),
-    };
-
+  it('always shows tier 1 in the summary regardless of deselect state', () => {
     render(
       <PrepareOfflineResourcesSection
         {...defaultProps}
-        summaryCatalog={tier1Only}
-      />,
-    );
-
-    expect(screen.getByText('Source Bible')).toBeTruthy();
-    expect(screen.queryByText('Translation Words')).toBeNull();
-    expect(screen.queryByText('Translation Notes')).toBeNull();
-  });
-
-  it('updates the summary live while customize is expanded', () => {
-    const tier1Only = {
-      ...catalog,
-      items: catalog.items.filter(item => item.tier === 1),
-      groups: catalog.groups.filter(
-        group => group.groupName === 'Source Bible',
-      ),
-    };
-
-    const { rerender } = render(
-      <PrepareOfflineResourcesSection
-        {...defaultProps}
-        summaryCatalog={tier1Only}
-      />,
-    );
-
-    fireEvent.press(screen.getByText('Customize download'));
-
-    rerender(
-      <PrepareOfflineResourcesSection
-        {...defaultProps}
-        summaryCatalog={catalog}
+        isItemSelected={itemId => !itemId.includes('tier-3')}
       />,
     );
 
     const summary = screen.getByTestId('prepare-offline-resource-summary');
-    expect(within(summary).getByText('Reference Images')).toBeTruthy();
+    expect(within(summary).getByText('Source Bible')).toBeTruthy();
+    expect(within(summary).getByText('Translation Notes')).toBeTruthy();
+    expect(within(summary).queryByText('Translation Words')).toBeNull();
+    expect(within(summary).queryByText('Reference Images')).toBeNull();
   });
 
   it('locks completed tier 2 items in customize instead of showing a toggle', () => {

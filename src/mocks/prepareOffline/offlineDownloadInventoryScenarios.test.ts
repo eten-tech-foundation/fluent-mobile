@@ -105,11 +105,23 @@ describe('prepareOffline mock inventory scenarios', () => {
   it('allows tier 2 downloading only when tier 1 is fully completed', () => {
     const tier1Text = manifestEntryToResourceId(1, 'Source Bible', 'text');
     const tier1Audio = manifestEntryToResourceId(1, 'Source Bible', 'audio');
+    const tier1NotesText = manifestEntryToResourceId(
+      1,
+      'Translation Notes',
+      'text',
+    );
+    const tier1NotesAudio = manifestEntryToResourceId(
+      1,
+      'Translation Notes',
+      'audio',
+    );
     const tier2Text = manifestEntryToResourceId(2, 'Translation Words', 'text');
 
     const valid = normalizeCumulativeTierInventory({
       [tier1Text]: 'completed',
       [tier1Audio]: 'completed',
+      [tier1NotesText]: 'completed',
+      [tier1NotesAudio]: 'completed',
       [tier2Text]: 'downloading',
     });
 

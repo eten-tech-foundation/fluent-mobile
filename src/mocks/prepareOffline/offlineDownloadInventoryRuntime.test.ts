@@ -44,7 +44,7 @@ describe('prepareOffline mock inventory', () => {
     expect(
       getMockPrepareOfflineResourceStatus(
         1,
-        manifestEntryToResourceId(2, 'Translation Notes', 'text'),
+        manifestEntryToResourceId(2, 'Translation Questions', 'text'),
       ),
     ).toBe('selected');
   });
@@ -57,7 +57,7 @@ describe('prepareOffline mock inventory', () => {
       manifestEntryToResourceId(1, 'Source Bible', 'text'),
       manifestEntryToResourceId(1, 'Source Bible', 'audio'),
       manifestEntryToResourceId(2, 'Translation Words', 'audio'),
-      manifestEntryToResourceId(2, 'Translation Notes', 'text'),
+      manifestEntryToResourceId(2, 'Translation Questions', 'text'),
     ];
 
     simulateMockPrepareOfflineDownload(5, ids);

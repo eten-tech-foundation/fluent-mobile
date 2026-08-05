@@ -55,11 +55,13 @@ export function CustomizeDownloadAccordion({
 
       {expanded ? (
         <View style={styles.body}>
-          <CustomizeDownloadGroupList
-            groups={catalog.groups}
-            isItemSelected={isItemSelected}
-            onToggleItem={onToggleItem}
-          />
+          <View style={styles.innerCard}>
+            <CustomizeDownloadGroupList
+              groups={catalog.groups}
+              isItemSelected={isItemSelected}
+              onToggleItem={onToggleItem}
+            />
+          </View>
         </View>
       ) : null}
     </View>
@@ -88,7 +90,14 @@ const styles = StyleSheet.create({
     color: theme.colors.foreground,
   },
   body: {
-    gap: theme.spacing.sm,
     paddingBottom: theme.spacing.md,
+  },
+  innerCard: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
 });

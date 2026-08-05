@@ -75,6 +75,20 @@ export function getEffectiveItems(
   return catalog.items.filter(item => isItemIncluded(item, deselectedItemIds));
 }
 
+/** Subset of catalog items matching the given tiers (preserves group order). */
+export function filterPrepareOfflineCatalogByTiers(
+  catalog: PrepareOfflineCatalog,
+  tiers: PrepareOfflineResourceTier[],
+): PrepareOfflineCatalog {
+  const tierSet = new Set<PrepareOfflineResourceTier>(tiers);
+  const items = catalog.items.filter(item => tierSet.has(item.tier));
+
+  return {
+    items,
+    groups: groupItemsByName(items),
+  };
+}
+
 /** Catalog filtered by customize deselects — used for the read-only summary. */
 export function buildEffectiveCatalog(
   catalog: PrepareOfflineCatalog,

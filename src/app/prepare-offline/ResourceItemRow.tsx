@@ -127,7 +127,16 @@ export function ResourceItemRow({
 
       {mode === 'summary' ? (
         <View style={styles.leadingIconWrap}>
-          <StatusIcon status={item.status} />
+          {showTierLock && item.status !== 'completed' ? (
+            <Lock
+              size={iconSizes.chapterSync}
+              color={theme.colors.mutedForeground}
+              strokeWidth={listIconStrokeWidth}
+              testID="resource-summary-tier-lock"
+            />
+          ) : (
+            <StatusIcon status={item.status} />
+          )}
         </View>
       ) : null}
 

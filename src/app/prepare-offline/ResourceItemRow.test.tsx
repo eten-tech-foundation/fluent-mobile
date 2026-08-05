@@ -15,8 +15,10 @@ jest.mock('lucide-react-native', () => {
       }),
     Download: (props: { testID?: string }) =>
       MockReact.createElement(View, { testID: props.testID }),
-    Lock: () =>
-      MockReact.createElement(View, { testID: 'resource-customize-tier-lock' }),
+    Lock: (props: { testID?: string }) =>
+      MockReact.createElement(View, {
+        testID: props.testID ?? 'resource-customize-tier-lock',
+      }),
     Check: MockIcon,
   };
 });
@@ -49,6 +51,28 @@ describe('ResourceItemRow', () => {
     );
 
     expect(screen.getByTestId('resource-status-pending')).toBeTruthy();
+  });
+
+  it('shows tier lock in summary for tier 1 rows not yet on device', () => {
+    render(
+      <ResourceItemRow
+        item={{ ...baseItem, status: 'selected' }}
+        mode="summary"
+        showTierLock
+      />,
+    );
+
+    expect(screen.getByTestId('resource-summary-tier-lock')).toBeTruthy();
+    expect(screen.queryByTestId('resource-status-pending')).toBeNull();
+  });
+
+  it('shows completed check in summary for tier 1 rows already on device', () => {
+    render(
+      <ResourceItemRow item={baseItem} mode="summary" showTierLock />,
+    );
+
+    expect(screen.getByTestId('resource-status-completed')).toBeTruthy();
+    expect(screen.queryByTestId('resource-summary-tier-lock')).toBeNull();
   });
 
   it('shows downloading status icon before the label in summary mode', () => {

@@ -4,6 +4,7 @@ import { PrepareOfflineCatalog } from '../../types/prepareOffline/types';
 import { theme } from '../../theme';
 import { ResourceGroupDivider } from './ResourceGroupDivider';
 import { ResourceItemRow } from './ResourceItemRow';
+import { ResourceTierHeader } from './ResourceTierSection';
 
 interface PrepareOfflineResourceSummaryProps {
   catalog: PrepareOfflineCatalog;
@@ -18,13 +19,19 @@ export function PrepareOfflineResourceSummary({
 
   return (
     <View style={styles.card} testID="prepare-offline-resource-summary">
+      <ResourceTierHeader tier={1} />
       {catalog.groups.map((group, index) => (
         <React.Fragment key={group.groupName}>
           {index > 0 ? <ResourceGroupDivider /> : null}
           <View style={styles.group}>
             <Text style={styles.groupName}>{group.groupName}</Text>
             {group.items.map(item => (
-              <ResourceItemRow key={item.id} item={item} mode="summary" />
+              <ResourceItemRow
+                key={item.id}
+                item={item}
+                mode="summary"
+                showTierLock
+              />
             ))}
           </View>
         </React.Fragment>

@@ -14,7 +14,7 @@ jest.mock('lucide-react-native', () => {
 
 describe('PrepareOfflineDownloadFooter', () => {
   const defaultProps = {
-    totalBytes: 318 * 1024 * 1024,
+    totalBytes: 338 * 1024 * 1024,
     pendingBytes: 164 * 1024 * 1024,
     canDownload: true,
     downloadButtonLabel: 'Download 164 MB',

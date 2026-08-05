@@ -61,7 +61,6 @@ export default function PrepareForOfflineScreen() {
 
   const {
     catalog,
-    effectiveCatalog,
     totalBytes,
     pendingBytes,
     canDownload,
@@ -139,7 +138,6 @@ export default function PrepareForOfflineScreen() {
         />
         <PrepareOfflineResourcesSection
           catalog={catalog}
-          summaryCatalog={effectiveCatalog}
           isItemSelected={isItemSelected}
           onToggleItem={toggleItemSelected}
         />

@@ -133,11 +133,11 @@ describe('usePrepareOfflineResources', () => {
     const initialTotal = result.current.totalBytes;
 
     act(() => {
-      result.current.toggleItemSelected('tier-2-translation-notes-text');
+      result.current.toggleItemSelected('tier-2-translation-questions-text');
     });
 
-    expect(result.current.pendingBytes).toBe(initialPending - 18 * MB);
-    expect(result.current.totalBytes).toBe(initialTotal - 18 * MB);
+    expect(result.current.pendingBytes).toBe(initialPending - 6 * MB);
+    expect(result.current.totalBytes).toBe(initialTotal - 6 * MB);
   });
 
   it('resets deselected items when project changes', async () => {
