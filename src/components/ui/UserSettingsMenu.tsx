@@ -90,6 +90,23 @@ export function UserSettingsMenu({
   const isMountedRef = useRef(isMounted);
   const animationGenerationRef = useRef(0);
 
+  const startOpeningAnimation = useCallback(() => {
+    translateX.stopAnimation();
+    scrimOpacity.stopAnimation();
+    Animated.parallel([
+      Animated.timing(translateX, {
+        toValue: 0,
+        duration: OPEN_ANIM_DURATION,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scrimOpacity, {
+        toValue: 1,
+        duration: OPEN_ANIM_DURATION,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [translateX, scrimOpacity]);
+
   useEffect(() => {
     const wasMounted = isMountedRef.current;
     animationGenerationRef.current += 1;
@@ -98,7 +115,10 @@ export function UserSettingsMenu({
     if (visible) {
       setIsMounted(true);
       isMountedRef.current = true;
-      if (wasMounted) return;
+      if (wasMounted) {
+        startOpeningAnimation();
+        return;
+      }
 
       translateX.setValue(-panelWidth);
       scrimOpacity.setValue(0);
@@ -121,22 +141,7 @@ export function UserSettingsMenu({
         }
       });
     }
-  }, [visible, panelWidth, translateX, scrimOpacity]);
-
-  const handleModalShow = useCallback(() => {
-    Animated.parallel([
-      Animated.timing(translateX, {
-        toValue: 0,
-        duration: OPEN_ANIM_DURATION,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scrimOpacity, {
-        toValue: 1,
-        duration: OPEN_ANIM_DURATION,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [translateX, scrimOpacity]);
+  }, [visible, panelWidth, startOpeningAnimation, translateX, scrimOpacity]);
 
   const panGesture = Gesture.Pan()
     .activeOffsetX(-10)
@@ -229,7 +234,7 @@ export function UserSettingsMenu({
       visible={isMounted}
       animationType="none"
       onRequestClose={onClose}
-      onShow={handleModalShow}
+      onShow={startOpeningAnimation}
     >
       <GestureHandlerRootView style={styles.container}>
         <Animated.View
