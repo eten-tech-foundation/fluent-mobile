@@ -25,6 +25,12 @@ export function resetFileSystemMock(): void {
 }
 
 function normalizePath(path: string): string {
+  const schemeMatch = path.match(/^([a-zA-Z][a-zA-Z0-9+.-]*:\/\/)(.*)$/);
+  if (schemeMatch) {
+    const [, scheme, rest] = schemeMatch;
+    const collapsedRest = rest.replace(/\/+/g, '/').replace(/\/$/, '');
+    return `${scheme}${collapsedRest}`;
+  }
   return path.replace(/\/+/g, '/').replace(/\/$/, '') || '/';
 }
 
@@ -119,4 +125,57 @@ resetFileSystemMock();
 /** Test-only helper to inspect stored files. */
 export function __getFileSystemSnapshot(): ReadonlyMap<string, string> {
   return files;
+}
+
+export type DownloadProgressCallback = (progress: {
+  totalBytesWritten: number;
+  totalBytesExpectedToWrite: number;
+}) => void;
+
+export type DownloadResumable = {
+  downloadAsync: () => Promise<{ uri: string } | undefined>;
+  pauseAsync: () => Promise<DownloadPauseState>;
+  resumeAsync: () => Promise<{ uri: string } | undefined>;
+  savable: () => DownloadPauseState;
+};
+
+export type DownloadPauseState = {
+  url: string;
+  fileUri: string;
+  options?: unknown;
+  resumeData?: string;
+};
+
+const DEFAULT_MOCK_CONTENT = 'mock-downloaded-bytes';
+
+export function createDownloadResumable(
+  url: string,
+  fileUri: string,
+  options?: unknown,
+  onProgress?: DownloadProgressCallback,
+  resumeData?: string,
+): DownloadResumable {
+  const resolvedUri = resolveUri(fileUri);
+  const savable = (): DownloadPauseState => ({
+    url,
+    fileUri: resolvedUri,
+    options,
+    resumeData,
+  });
+  return {
+    downloadAsync: async () => {
+      onProgress?.({
+        totalBytesWritten: DEFAULT_MOCK_CONTENT.length,
+        totalBytesExpectedToWrite: DEFAULT_MOCK_CONTENT.length,
+      });
+      files.set(resolvedUri, DEFAULT_MOCK_CONTENT);
+      return { uri: resolvedUri };
+    },
+    pauseAsync: async () => savable(),
+    resumeAsync: async () => {
+      files.set(resolvedUri, DEFAULT_MOCK_CONTENT);
+      return { uri: resolvedUri };
+    },
+    savable,
+  };
 }

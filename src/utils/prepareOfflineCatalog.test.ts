@@ -25,6 +25,7 @@ function chapter(id: number): PrepareOfflineChapterRow {
   return {
     id,
     bookId: 1,
+    bookCode: 'GEN',
     bookName: 'Genesis',
     chapterNumber: id,
     assignedUserId: null,

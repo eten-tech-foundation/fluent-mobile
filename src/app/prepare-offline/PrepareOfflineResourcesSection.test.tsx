@@ -33,6 +33,7 @@ const chapters = [
   {
     id: 1,
     bookId: 10,
+    bookCode: 'GEN',
     bookName: 'Genesis',
     chapterNumber: 1,
     assignedUserId: 42,
