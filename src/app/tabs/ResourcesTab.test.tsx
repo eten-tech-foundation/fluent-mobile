@@ -1,6 +1,11 @@
 import React from 'react';
 import { Button, View } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import { ResourcesTab } from './ResourcesTab';
 import {
   DraftingProvider,
@@ -13,6 +18,13 @@ import {
   clearMockPrepareOfflineRuntimeInventory,
   setPrepareOfflineMockInventoryScenario,
 } from '../../mocks/prepareOffline';
+import { getDownloadedResourcesByProject } from '../../db/downloadQueueRepository';
+
+jest.mock('../../db/downloadQueueRepository', () => ({
+  getDownloadedResourcesByProject: jest.fn(async () => []),
+}));
+
+const downloadedRows = getDownloadedResourcesByProject as jest.Mock;
 
 const verses: VerseData[] = [1, 2, 3].map(verseNumber => ({
   bibleId: 1,
@@ -68,6 +80,19 @@ describe('ResourcesTab', () => {
     clearResourcesTabUiState();
     clearMockPrepareOfflineRuntimeInventory();
     setPrepareOfflineMockInventoryScenario('fresh');
+    downloadedRows.mockResolvedValue([]);
+  });
+
+  it('shows a section persisted as completed in download_queue', async () => {
+    downloadedRows.mockResolvedValue([
+      { status: 'completed', resourceName: 'Reference Images', kind: 'text' },
+    ]);
+    renderResources(1);
+
+    await waitFor(() => {
+      expect(screen.getByText('Images & Maps')).toBeTruthy();
+    });
+    expect(screen.queryByText('Translation Notes')).toBeNull();
   });
 
   it('shows the empty message when nothing is inventoried (fresh)', () => {

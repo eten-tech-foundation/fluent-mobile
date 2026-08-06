@@ -43,11 +43,18 @@ export function isResourcesSectionInventoried(
   return getStatus(gate.resourceId) === 'completed';
 }
 
+/**
+ * Sections on device: prepare-offline status plus any sections whose
+ * `download_queue` rows are already persisted as completed (#201).
+ */
 export function getInventoriedResourceSections(
   getStatus: (resourceId: string) => PrepareOfflineResourceStatus,
+  downloadedSections: ResourceSectionId[] = [],
 ): ResourceSectionId[] {
   return RESOURCES_SECTION_INVENTORY_GATES.filter(
-    gate => getStatus(gate.resourceId) === 'completed',
+    gate =>
+      getStatus(gate.resourceId) === 'completed' ||
+      downloadedSections.includes(gate.sectionId),
   ).map(gate => gate.sectionId);
 }
 
@@ -55,8 +62,12 @@ export function buildUnitResourcesAvailability(params: {
   chapterName: string;
   verseNumber: number;
   getStatus: (resourceId: string) => PrepareOfflineResourceStatus;
+  downloadedSections?: ResourceSectionId[];
 }): UnitResourcesAvailability {
-  const sections = getInventoriedResourceSections(params.getStatus);
+  const sections = getInventoriedResourceSections(
+    params.getStatus,
+    params.downloadedSections,
+  );
   return {
     referenceLabel: `${params.chapterName}:${params.verseNumber}`,
     passageTitle:

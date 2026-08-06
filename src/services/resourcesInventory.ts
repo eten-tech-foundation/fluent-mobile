@@ -31,35 +31,38 @@ export function subscribeResourcesInventory(
 }
 
 /**
- * Optional #201 queue check: completed download_queue rows for a section's
- * catalog groupName. Prefer prepare-offline status for gating today; queue is
- * a secondary signal when workers have persisted completions.
+ * Sections whose #201 `download_queue` rows are persisted as completed.
+ *
+ * This is the durable on-device signal: `getPrepareOfflineResourceStatus()` is
+ * mock-backed in dev and has no production inventory yet, so a shipped build
+ * would otherwise hide every section after a successful download.
  */
+export async function getDownloadedResourceSections(
+  projectId: number,
+): Promise<ResourceSectionId[]> {
+  try {
+    const rows = await getDownloadedResourcesByProject(projectId);
+    return RESOURCES_SECTION_INVENTORY_GATES.filter(gate =>
+      rows.some(
+        row =>
+          row.status === 'completed' &&
+          row.resourceName === gate.groupName &&
+          row.kind === 'text',
+      ),
+    ).map(gate => gate.sectionId);
+  } catch (error) {
+    log.warn('download_queue inventory lookup failed', {
+      projectId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return [];
+  }
+}
+
 export async function isResourcesSectionDownloadedInQueue(
   projectId: number,
   sectionId: ResourceSectionId,
 ): Promise<boolean> {
-  const gate = RESOURCES_SECTION_INVENTORY_GATES.find(
-    entry => entry.sectionId === sectionId,
-  );
-  if (!gate) {
-    return false;
-  }
-
-  try {
-    const rows = await getDownloadedResourcesByProject(projectId);
-    return rows.some(
-      row =>
-        row.status === 'completed' &&
-        row.resourceName === gate.groupName &&
-        row.kind === 'text',
-    );
-  } catch (error) {
-    log.warn('download_queue inventory lookup failed', {
-      projectId,
-      sectionId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return false;
-  }
+  const sections = await getDownloadedResourceSections(projectId);
+  return sections.includes(sectionId);
 }

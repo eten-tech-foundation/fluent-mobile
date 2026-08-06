@@ -78,6 +78,22 @@ describe('resourcesSectionInventory', () => {
     ]);
   });
 
+  it('includes sections persisted as completed in download_queue', () => {
+    const getStatus = statusMap({});
+    expect(getInventoriedResourceSections(getStatus, ['imagesMaps'])).toEqual([
+      'imagesMaps',
+    ]);
+  });
+
+  it('does not duplicate a section present in both inventory sources', () => {
+    const getStatus = statusMap({
+      [manifestEntryToResourceId(1, 'Translation Notes', 'text')]: 'completed',
+    });
+    expect(
+      getInventoriedResourceSections(getStatus, ['translationNotes']),
+    ).toEqual(['translationNotes']);
+  });
+
   it('builds unit availability labels from chapter + verse', () => {
     const getStatus = statusMap({
       [manifestEntryToResourceId(1, 'Translation Notes', 'text')]: 'completed',

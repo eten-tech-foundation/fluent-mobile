@@ -12,9 +12,8 @@ export function useUnitResourcesAvailability(params: {
   chapterName: string;
   verseNumber: number;
 }): UnitResourcesAvailability {
-  const { getResourceStatus, inventoryVersion } = useResourcesInventory(
-    params.projectId,
-  );
+  const { getResourceStatus, downloadedSections, inventoryVersion } =
+    useResourcesInventory(params.projectId);
 
   return useMemo(
     () =>
@@ -22,6 +21,7 @@ export function useUnitResourcesAvailability(params: {
         chapterName: params.chapterName,
         verseNumber: params.verseNumber,
         getStatus: getResourceStatus,
+        downloadedSections,
       }),
     // inventoryVersion invalidates when Prepare Offline inventory changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -29,6 +29,7 @@ export function useUnitResourcesAvailability(params: {
       params.chapterName,
       params.verseNumber,
       getResourceStatus,
+      downloadedSections,
       inventoryVersion,
     ],
   );
