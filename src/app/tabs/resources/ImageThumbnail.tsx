@@ -39,7 +39,7 @@ export function ImageThumbnail({
             onLoadError={() => setImageFailed(true)}
             onPress={() => onOpenFullscreen(item)}
           />
-        )}{' '}
+        )}
         <TouchableOpacity
           style={styles.maximizeButton}
           onPress={() => onOpenFullscreen(item)}
