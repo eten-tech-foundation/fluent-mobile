@@ -146,6 +146,7 @@ export function usePrepareOfflineSelection(
 
   return {
     books,
+    chapters,
     loading,
     error,
     selectedIds,
