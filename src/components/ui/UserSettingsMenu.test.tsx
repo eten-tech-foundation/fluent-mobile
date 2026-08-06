@@ -16,8 +16,19 @@ jest.mock('react-native-gesture-handler', () => {
     GestureDetector: ({ children }: { children: React.ReactNode }) =>
       actualReact.createElement(actualReact.Fragment, null, children),
     Gesture: { Pan: chainable },
+    GestureHandlerRootView: ({
+      children,
+      ...props
+    }: {
+      children: React.ReactNode;
+    }) =>
+      actualReact.createElement(require('react-native').View, props, children),
   };
 });
+
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
 
 const mockNavigate = jest.fn();
 jest.mock('@react-navigation/native', () => ({
@@ -232,5 +243,40 @@ describe('UserSettingsMenu', () => {
     await waitFor(() => {
       expect(onSignOut).toHaveBeenCalled();
     });
+  });
+
+  it('stays mounted through a rapid close-then-reopen', () => {
+    jest.useFakeTimers();
+    const { rerender, queryByText } = render(
+      <UserSettingsMenu
+        visible
+        onClose={onClose}
+        onSignOut={onSignOut}
+        onUserSwitched={onUserSwitched}
+      />,
+    );
+
+    rerender(
+      <UserSettingsMenu
+        visible={false}
+        onClose={onClose}
+        onSignOut={onSignOut}
+        onUserSwitched={onUserSwitched}
+      />,
+    );
+    rerender(
+      <UserSettingsMenu
+        visible
+        onClose={onClose}
+        onSignOut={onSignOut}
+        onUserSwitched={onUserSwitched}
+      />,
+    );
+
+    jest.advanceTimersByTime(500);
+
+    expect(queryByText('Accounts')).toBeTruthy();
+
+    jest.useRealTimers();
   });
 });
