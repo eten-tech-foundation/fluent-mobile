@@ -3,7 +3,11 @@ import {
   unitHasAnyResources,
 } from './mockResourceData';
 
-describe('getMockResourcesForUnit', () => {
+/**
+ * Legacy verse-% helpers — kept until #189–#191 content mocks are retired.
+ * Section visibility for ResourcesTab is inventory-gated (#192).
+ */
+describe('getMockResourcesForUnit (deprecated)', () => {
   it('returns empty sections for verses divisible by 3', () => {
     const resources = getMockResourcesForUnit(1, 3, 'Mark 14');
     expect(resources.sections).toEqual([]);
