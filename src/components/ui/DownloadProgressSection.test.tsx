@@ -1,5 +1,30 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
+
+jest.mock('../../services/storage', () => ({
+  getActiveUserId: () => '',
+  setPrepareOfflineDownloadStarted: jest.fn(),
+}));
+
+jest.mock('../../db/repository', () => ({
+  getDownloadQueueSnapshot: jest.fn().mockResolvedValue({
+    items: [],
+    completedCount: 0,
+    totalCount: 0,
+    aggregateProgress: 0,
+  }),
+}));
+
+jest.mock('../../services/downloadQueueWorker', () => ({
+  DownloadQueueWorker: jest.fn().mockImplementation(() => ({
+    start: jest.fn(),
+    pause: jest.fn(),
+    resume: jest.fn(),
+    cancel: jest.fn(),
+    getState: jest.fn().mockReturnValue('idle'),
+  })),
+}));
+
 import { DownloadProgressSection } from './DownloadProgressSection';
 import type { DownloadQueueSnapshot } from '../../types/download/types';
 import { EMPTY_DOWNLOAD_SNAPSHOT } from '../../hooks/useDownloadQueue';

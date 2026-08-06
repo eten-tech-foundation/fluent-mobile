@@ -6,6 +6,12 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import PrepareForOfflineScreen from './PrepareForOfflineScreen';
+import { setPrepareOfflineDownloadStarted } from '../../services/storage';
+import { enqueuePrepareOfflineDownload } from '../../services/prepareOfflineDownload';
+import {
+  resetMockPrepareOfflineInventory,
+  setPrepareOfflineMockInventoryScenario,
+} from '../../mocks/prepareOffline';
 
 const mockNavigate = jest.fn();
 const mockGoBack = jest.fn();
@@ -39,6 +45,14 @@ jest.mock('../../hooks/usePrepareOfflineSelection', () => ({
   usePrepareOfflineSelection: jest.fn(),
 }));
 
+jest.mock('../../services/storage', () => ({
+  setPrepareOfflineDownloadStarted: jest.fn(),
+}));
+
+jest.mock('../../services/prepareOfflineDownload', () => ({
+  enqueuePrepareOfflineDownload: jest.fn(),
+}));
+
 jest.mock('../../utils/parseUserId', () => ({
   parseUserId: () => 42,
 }));
@@ -65,6 +79,10 @@ jest.mock('lucide-react-native', () => {
     ChevronUp: MockIcon,
     ChevronDown: MockIcon,
     Check: MockIcon,
+    SlidersHorizontal: MockIcon,
+    CircleCheck: MockIcon,
+    Download: MockIcon,
+    Lock: MockIcon,
   };
 });
 
@@ -83,15 +101,19 @@ const { usePrepareOfflineSelection } = jest.requireMock(
 describe('PrepareForOfflineScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    resetMockPrepareOfflineInventory();
+    setPrepareOfflineMockInventoryScenario('fresh');
     usePrepareOfflineSelection.mockImplementation(
       (projectId: number | null) => {
         if (!projectId) {
           return {
             books: [],
+            chapters: [],
             loading: false,
             error: null,
             selectedIds: new Set(),
             selectedCount: 0,
+            isAssignedUser: false,
             accordionExpanded: true,
             setAccordionExpanded: jest.fn(),
             expandedBookIds: new Set(),
@@ -120,10 +142,20 @@ describe('PrepareForOfflineScreen', () => {
               ],
             },
           ],
+          chapters: [
+            {
+              id: 100,
+              bookId: 1,
+              bookName: 'Genesis',
+              chapterNumber: 1,
+              assignedUserId: 42,
+            },
+          ],
           loading: false,
           error: null,
           selectedIds: new Set([100]),
           selectedCount: 1,
+          isAssignedUser: true,
           accordionExpanded: true,
           setAccordionExpanded: jest.fn(),
           expandedBookIds: new Set([1]),
@@ -150,7 +182,7 @@ describe('PrepareForOfflineScreen', () => {
     expect(screen.getByText('Luke')).toBeTruthy();
   });
 
-  it('shows chapter accordion after selecting a project', async () => {
+  it('shows chapter accordion and resources section after selecting a project', async () => {
     render(<PrepareForOfflineScreen />);
 
     fireEvent.press(screen.getByText('Luke'));
@@ -159,5 +191,48 @@ describe('PrepareForOfflineScreen', () => {
       expect(screen.getByText('Assigned chapters (1)')).toBeTruthy();
     });
     expect(screen.getByText('Genesis')).toBeTruthy();
+    expect(screen.getByText('RESOURCES TO DOWNLOAD')).toBeTruthy();
+    expect(screen.getByTestId('prepare-offline-download-button')).toBeTruthy();
+  });
+
+  it('starts download via storage and enqueue when Download is pressed', async () => {
+    render(<PrepareForOfflineScreen />);
+
+    fireEvent.press(screen.getByText('Luke'));
+
+    await waitFor(() => {
+      const button = screen.getByTestId('prepare-offline-download-button');
+      expect(button.props.accessibilityState?.disabled).toBe(false);
+    });
+
+    fireEvent.press(screen.getByTestId('prepare-offline-download-button'));
+
+    await waitFor(() => {
+      expect(setPrepareOfflineDownloadStarted).toHaveBeenCalledWith('42', 5);
+    });
+    expect(enqueuePrepareOfflineDownload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 42,
+        projectId: 5,
+        items: expect.any(Array),
+      }),
+    );
+  });
+
+  it('keeps download footer visible while customize panel is expanded', async () => {
+    render(<PrepareForOfflineScreen />);
+
+    fireEvent.press(screen.getByText('Luke'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('prepare-offline-download-footer'),
+      ).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByText('Customize download'));
+
+    expect(screen.getByTestId('prepare-offline-download-footer')).toBeTruthy();
+    expect(screen.getByTestId('prepare-offline-download-button')).toBeTruthy();
   });
 });

@@ -13,11 +13,14 @@ import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { usePrepareOfflineSelection } from '../../hooks/usePrepareOfflineSelection';
+import { usePrepareOfflineResources } from '../../hooks/usePrepareOfflineResources';
 import { ProjectSummary } from '../../types/db/types';
 import { RootStackParamList } from '../../types/navigation/types';
 import { parseUserId } from '../../utils/parseUserId';
 import { theme } from '../../theme';
 import { ChapterSelectionAccordion } from '../prepare-offline/ChapterSelectionAccordion';
+import { PrepareOfflineDownloadFooter } from '../prepare-offline/PrepareOfflineDownloadFooter';
+import { PrepareOfflineResourcesSection } from '../prepare-offline/PrepareOfflineResourcesSection';
 import { ProjectPickerStep } from '../prepare-offline/ProjectPickerStep';
 
 type Nav = StackNavigationProp<RootStackParamList, 'PrepareForOffline'>;
@@ -39,9 +42,12 @@ export default function PrepareForOfflineScreen() {
 
   const {
     books,
+    chapters,
     loading,
     error,
     selectedIds,
+    selectedCount,
+    isAssignedUser,
     accordionExpanded,
     setAccordionExpanded,
     expandedBookIds,
@@ -53,11 +59,39 @@ export default function PrepareForOfflineScreen() {
     retry,
   } = usePrepareOfflineSelection(projectId, userId);
 
+  const {
+    catalog,
+    totalBytes,
+    pendingBytes,
+    canDownload,
+    downloadButtonLabel,
+    downloadStarted,
+    manifestLoading,
+    manifestError,
+    isItemSelected,
+    toggleItemSelected,
+    handleDownload,
+  } = usePrepareOfflineResources({
+    projectId,
+    userId,
+    chapters,
+    selectedIds,
+    selectedCount,
+    isAssignedUser,
+  });
+
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
 
   const handleSelectProject = useCallback((project: ProjectSummary) => {
     setPickedProjectId(project.id);
   }, []);
+
+  const showDownloadFooter =
+    catalog.items.length > 0 &&
+    !loading &&
+    !error &&
+    !manifestLoading &&
+    !manifestError;
 
   let body: React.ReactNode;
 
@@ -90,7 +124,6 @@ export default function PrepareForOfflineScreen() {
   } else {
     body = (
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Issue 51 adds the resource summary and Download action below this chapter selection; that Download action must call setPrepareOfflineDownloadStarted for the selected project. */}
         <ChapterSelectionAccordion
           title={accordionTitle}
           expanded={accordionExpanded}
@@ -103,6 +136,21 @@ export default function PrepareForOfflineScreen() {
           onToggleBook={toggleBook}
           isBookFullySelected={isBookFullySelected}
         />
+        <PrepareOfflineResourcesSection
+          catalog={catalog}
+          isItemSelected={isItemSelected}
+          onToggleItem={toggleItemSelected}
+        />
+        {showDownloadFooter ? (
+          <PrepareOfflineDownloadFooter
+            totalBytes={totalBytes}
+            pendingBytes={pendingBytes}
+            canDownload={canDownload}
+            downloadButtonLabel={downloadButtonLabel}
+            downloadStarted={downloadStarted}
+            onDownload={handleDownload}
+          />
+        ) : null}
       </ScrollView>
     );
   }
