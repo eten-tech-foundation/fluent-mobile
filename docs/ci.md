@@ -41,7 +41,7 @@ Branch protection / required status checks may change over time. Treat the table
 ## Preview / native compile
 
 - Preview APKs: `preview-build.yml` + [`.github/scripts/eas-resolve-android-build.sh`](../.github/scripts/eas-resolve-android-build.sh) with `FORCE_NEW_BUILD=true` (no fingerprint reuse; no OTA)
-- After a successful preview comment, [`.github/scripts/preview-notify-linked-issues.js`](../.github/scripts/preview-notify-linked-issues.js) upserts the same body on linked issues and may move Project 4 Status to `In QA` (optional `PROJECT_BOARD_TOKEN`)
+- After a successful preview comment, [`.github/scripts/preview-notify-linked-issues.cjs`](../.github/scripts/preview-notify-linked-issues.cjs) upserts the same body on issues linked via `Refs #NNN` (or legacy closing keywords; not `Part of #NNN`) and may move Project 4 Status to `In QA` (optional `PROJECT_BOARD_TOKEN`)
 - Human QA steps: [guides/qa-preview-testing.md](guides/qa-preview-testing.md)
 - Nightly internal APK (no OTA): `nightly-preview.yml` + EAS profile `nightly` — see [`.github/README.md`](../.github/README.md)
 - Production: tag `v*` → `eas-build.yml` + [`.eas/README.md`](../.eas/README.md)

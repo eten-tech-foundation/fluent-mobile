@@ -63,7 +63,7 @@ Pre-fill:
 
 **From GitHub issue:**
 
-- TLDR, Details, `Closes #NNN` when the PR completes the issue
+- TLDR, Details, `Refs #NNN` (never `Closes` / `Fixes` / `Resolves`)
 
 **From branch analysis:**
 
@@ -84,7 +84,7 @@ Keep output under ~400 lines; no nested fenced code blocks inside the PR body.
 
 - Detect issue number from branch: `…/173-…` or leading `173-…`
 - Fetch with `gh issue view NNN --repo eten-tech-foundation/fluent-mobile`
-- Body must include `Closes #NNN` on its own line under Details when the PR completes the issue
+- Body must include `Refs #NNN` on its own line under Details (non-closing — issues stay open for QA)
 
 ## GitHub (`gh`)
 
