@@ -28,6 +28,7 @@ import {
   getMockResourcesForUnit,
   unitHasAnyResources,
 } from './resources/mockResourceData';
+import { TranslationQuestionsSection } from './resources/TranslationQuestionsSection';
 import {
   getResourcesTabUiState,
   setResourcesTabUiState,
@@ -62,8 +63,8 @@ const SECTION_META: {
 ];
 
 /**
- * Resources tab host (#188): unit-synced shell, empty state, accordion stubs.
- * Section bodies (#189–#191) mount into these slots later.
+ * Resources tab host (#188): unit-synced shell, empty state, accordion slots.
+ * TQ body: #190. Notes / Images stubs remain until #189 / #191.
  */
 export function ResourcesTab({ chapterId, chapterName }: ResourcesTabProps) {
   const { selectedVerse } = useDraftingContext();
@@ -160,20 +161,31 @@ export function ResourcesTab({ chapterId, chapterName }: ResourcesTabProps) {
       </View>
 
       <View style={styles.sections}>
-        {visibleSections.map(({ id, label, Icon }) => (
-          <ResourceSectionAccordion
-            key={`${selectedVerse}-${id}`}
-            label={label}
-            Icon={Icon}
-            expanded={openAccordionIds.has(id)}
-            onToggle={() => handleToggle(id)}
-            testID={`resources-section-${id}`}
-          >
-            <Text style={styles.stubBody}>
-              Content for this section will appear here.
-            </Text>
-          </ResourceSectionAccordion>
-        ))}
+        {visibleSections.map(({ id, label, Icon }) => {
+          const expanded = openAccordionIds.has(id);
+          return (
+            <ResourceSectionAccordion
+              key={`${selectedVerse}-${id}`}
+              label={label}
+              Icon={Icon}
+              expanded={expanded}
+              onToggle={() => handleToggle(id)}
+              testID={`resources-section-${id}`}
+            >
+              {id === 'translationQuestions' ? (
+                <TranslationQuestionsSection
+                  chapterId={chapterId}
+                  verseNumber={selectedVerse}
+                  sectionExpanded={expanded}
+                />
+              ) : (
+                <Text style={styles.stubBody}>
+                  Content for this section will appear here.
+                </Text>
+              )}
+            </ResourceSectionAccordion>
+          );
+        })}
       </View>
     </ScrollView>
   );

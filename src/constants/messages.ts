@@ -9,6 +9,9 @@ export const PROJECT_CHAPTERS_EMPTY_MESSAGE =
 
 export const RESOURCES_EMPTY_MESSAGE = 'No resources available for this verse';
 
+export const TRANSLATION_QUESTIONS_LOAD_ERROR =
+  'Unable to load Translation Questions.';
+
 export const LOGOUT_UNSYNCED_TITLE = 'Unsynced work on device';
 export const LOGOUT_UNSYNCED_MESSAGE =
   'You have recordings that have not been uploaded. Log out anyway?';
