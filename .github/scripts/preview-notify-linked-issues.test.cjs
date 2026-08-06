@@ -1,4 +1,7 @@
-const notifyLinkedIssues = require('./preview-notify-linked-issues.js');
+const { execFileSync } = require('child_process');
+const path = require('path');
+
+const notifyLinkedIssues = require('./preview-notify-linked-issues.cjs');
 const {
   collectLinkedIssueNumbersFromText,
   resolveLinkedIssueNumbers,
@@ -105,7 +108,11 @@ describe('collectLinkedIssueNumbersFromText', () => {
 
   it('does not match bare [#NNN] title brackets alone', () => {
     expect(
-      collectLinkedIssueNumbersFromText('[#188]: Shell only', 'No link line.', 281),
+      collectLinkedIssueNumbersFromText(
+        '[#188]: Shell only',
+        'No link line.',
+        281,
+      ),
     ).toEqual([]);
   });
 });
@@ -303,6 +310,24 @@ describe('notifyLinkedIssues preview comments + In QA', () => {
     expect(core.info).toHaveBeenCalledWith(
       'No linked issues on this PR — skipping ticket comments / board move',
     );
+  });
+});
+
+// Jest transpiles to CJS, so it cannot see that the root `"type": "module"`
+// would make a `.js` copy of this script load as ESM — `require()` from the
+// preview-build workflow would then yield `{}` instead of the function.
+describe('workflow require() contract', () => {
+  it('exports a callable function when required by plain Node', () => {
+    const scriptPath = path.join(__dirname, 'preview-notify-linked-issues.cjs');
+    const exported = execFileSync(
+      process.execPath,
+      [
+        '-e',
+        `process.stdout.write(typeof require(${JSON.stringify(scriptPath)}))`,
+      ],
+      { encoding: 'utf8' },
+    );
+    expect(exported).toBe('function');
   });
 });
 
