@@ -8,16 +8,6 @@ import {
   resetMockPrepareOfflineInventory,
   setPrepareOfflineMockInventoryScenario,
 } from '../mocks/prepareOffline';
-import { setPrepareOfflineDownloadStarted } from '../services/storage';
-import { enqueuePrepareOfflineDownload } from '../services/prepareOfflineDownload';
-
-jest.mock('../services/storage', () => ({
-  setPrepareOfflineDownloadStarted: jest.fn(),
-}));
-
-jest.mock('../services/prepareOfflineDownload', () => ({
-  enqueuePrepareOfflineDownload: jest.fn(),
-}));
 
 const MB = 1024 * 1024;
 
@@ -80,6 +70,7 @@ describe('usePrepareOfflineResources', () => {
     expect(result.current.canDownload).toBe(true);
     expect(result.current.pendingBytes).toBeGreaterThan(0);
     expect(result.current.downloadButtonLabel).toMatch(/^Download /);
+    expect(result.current.selectedItems.length).toBeGreaterThan(0);
   });
 
   it('enables download for unassigned users after selecting a chapter', async () => {
@@ -183,35 +174,6 @@ describe('usePrepareOfflineResources', () => {
     expect(result.current.isItemSelected('tier-3-bible-commentary-text')).toBe(
       true,
     );
-  });
-
-  it('starts download via storage and enqueue stub', async () => {
-    const { result } = renderHook(() =>
-      usePrepareOfflineResources({
-        projectId: 5,
-        userId: 42,
-        chapters: [chapter(1)],
-        selectedIds: new Set([1]),
-        selectedCount: 1,
-        isAssignedUser: true,
-      }),
-    );
-
-    await waitForCatalogItems(result);
-
-    act(() => {
-      result.current.handleDownload();
-    });
-
-    expect(setPrepareOfflineDownloadStarted).toHaveBeenCalledWith('42', 5);
-    expect(enqueuePrepareOfflineDownload).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: 42,
-        projectId: 5,
-        items: expect.any(Array),
-      }),
-    );
-    expect(result.current.downloadStarted).toBe(true);
   });
 
   it('deselects tier 3 by default in tier1-tier2 mock scenario', async () => {

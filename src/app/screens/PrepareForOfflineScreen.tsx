@@ -14,6 +14,7 @@ import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { usePrepareOfflineSelection } from '../../hooks/usePrepareOfflineSelection';
 import { usePrepareOfflineResources } from '../../hooks/usePrepareOfflineResources';
+import { usePrepareOfflineDownload } from '../../hooks/usePrepareOfflineDownload';
 import { ProjectSummary } from '../../types/db/types';
 import { RootStackParamList } from '../../types/navigation/types';
 import { parseUserId } from '../../utils/parseUserId';
@@ -62,15 +63,12 @@ export default function PrepareForOfflineScreen() {
   const {
     catalog,
     totalBytes,
-    pendingBytes,
+    selectedItems,
     canDownload,
-    downloadButtonLabel,
-    downloadStarted,
     manifestLoading,
     manifestError,
     isItemSelected,
     toggleItemSelected,
-    handleDownload,
   } = usePrepareOfflineResources({
     projectId,
     userId,
@@ -78,6 +76,24 @@ export default function PrepareForOfflineScreen() {
     selectedIds,
     selectedCount,
     isAssignedUser,
+  });
+
+  const {
+    session,
+    busy,
+    catalogWithProgress,
+    downloadButtonLabel,
+    canDownload: canDownloadNow,
+    handleDownload,
+    pause,
+    resume,
+    cancel,
+  } = usePrepareOfflineDownload({
+    projectId,
+    userId,
+    catalog,
+    selectedItems,
+    canDownload,
   });
 
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
@@ -137,18 +153,21 @@ export default function PrepareForOfflineScreen() {
           isBookFullySelected={isBookFullySelected}
         />
         <PrepareOfflineResourcesSection
-          catalog={catalog}
+          catalog={catalogWithProgress}
           isItemSelected={isItemSelected}
           onToggleItem={toggleItemSelected}
         />
         {showDownloadFooter ? (
           <PrepareOfflineDownloadFooter
             totalBytes={totalBytes}
-            pendingBytes={pendingBytes}
-            canDownload={canDownload}
+            canDownload={canDownloadNow}
             downloadButtonLabel={downloadButtonLabel}
-            downloadStarted={downloadStarted}
-            onDownload={handleDownload}
+            session={session}
+            busy={busy}
+            onDownload={() => void handleDownload()}
+            onPause={() => void pause()}
+            onResume={() => void resume()}
+            onCancel={() => void cancel()}
           />
         ) : null}
       </ScrollView>

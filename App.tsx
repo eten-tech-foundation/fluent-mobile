@@ -20,6 +20,10 @@ import {
   startUploadOrchestrator,
   stopUploadOrchestrator,
 } from './src/services/uploadOrchestrator';
+import {
+  startDownloadQueueAutoResume,
+  stopDownloadQueueAutoResume,
+} from './src/services/downloadQueueAutoResume';
 import { registerRecordingUploadWorker } from './src/services/recordingSync';
 import { queryClient } from './src/services/queryClient';
 import { appStyles } from './src/app/appStyles';
@@ -87,8 +91,10 @@ function App() {
     }
 
     startUploadOrchestrator();
+    const stopAutoResume = startDownloadQueueAutoResume();
     return () => {
       stopUploadOrchestrator();
+      stopDownloadQueueAutoResume(stopAutoResume);
     };
   }, [dbReady, isAuthenticated]);
 

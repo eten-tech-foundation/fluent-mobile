@@ -26,6 +26,8 @@ export type ResourceResolver = (
 type ActiveDownload = {
   itemId: string;
   resumable: FileSystem.DownloadResumable;
+  /** Set when pauseAsync succeeds — reused on cancel to avoid double-pause. */
+  savedPauseState?: string;
 };
 
 type SavedDownloadState = {
@@ -91,10 +93,11 @@ export class DownloadQueueWorker {
     this.state = 'paused';
     try {
       const pauseState = await this.active.resumable.pauseAsync();
-      await markDownloadItemPaused(
-        this.active.itemId,
-        serializeDownloadState(pauseState),
-      );
+      const serialized = serializeDownloadState(pauseState);
+      if (serialized) {
+        this.active.savedPauseState = serialized;
+      }
+      await markDownloadItemPaused(this.active.itemId, serialized);
     } catch (error) {
       log.error('Failed to pause active download', { error });
       // The native transfer may still be running — don't report a paused
@@ -143,21 +146,35 @@ export class DownloadQueueWorker {
   }
 
   async cancel(): Promise<void> {
+    const wasPaused = this.state === 'paused';
+    const active = this.active;
+
     this.state = 'cancelled';
-    if (this.active) {
-      try {
-        const pauseState = await this.active.resumable.pauseAsync();
-        await markDownloadItemCancelled(
-          this.active.itemId,
-          serializeDownloadState(pauseState),
-        );
-      } catch (error) {
-        log.error('Failed to pause on cancel', { error });
-        await markDownloadItemCancelled(this.active.itemId);
+    this.queue = [];
+
+    if (active) {
+      const { itemId, resumable, savedPauseState } = active;
+
+      if (wasPaused) {
+        // Already paused — do not call pauseAsync again (native throws
+        // "No download object available"). Resume data was persisted on pause.
+        await markDownloadItemCancelled(itemId, savedPauseState);
+      } else {
+        try {
+          const pauseState = await resumable.pauseAsync();
+          await markDownloadItemCancelled(
+            itemId,
+            serializeDownloadState(pauseState),
+          );
+        } catch (error) {
+          log.error('Failed to pause on cancel', { error, itemId });
+          await markDownloadItemCancelled(itemId, savedPauseState);
+        }
       }
     }
+
     this.active = null;
-    this.queue = [];
+    this.state = 'idle';
   }
 
   private async processNext(): Promise<void> {
