@@ -8,6 +8,7 @@ import {
 import { formatByteSize } from '../../utils/formatByteSize';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import { SelectionCheckbox } from './SelectionCheckbox';
+import { ResourceDownloadProgressRing } from './ResourceDownloadProgressRing';
 
 interface ResourceItemRowProps {
   item: PrepareOfflineResourceItem;
@@ -44,19 +45,11 @@ function StatusIcon({ status }: { status: PrepareOfflineResourceStatus }) {
     );
   }
 
-  if (
-    status === 'downloading' ||
-    status === 'selected' ||
-    status === 'available'
-  ) {
+  if (status === 'selected' || status === 'available') {
     return (
       <Download
         size={iconSizes.chapterSync}
-        color={
-          status === 'downloading'
-            ? theme.colors.syncDownloading
-            : theme.colors.mutedForeground
-        }
+        color={theme.colors.mutedForeground}
         strokeWidth={listIconStrokeWidth}
         testID={statusTestId(status)}
       />
@@ -111,6 +104,8 @@ export function ResourceItemRow({
   onToggle,
 }: ResourceItemRowProps) {
   const showToggle = mode === 'customize';
+  const isDownloading = item.status === 'downloading';
+  const displayBytes = item.bytes;
 
   const rowContent = (
     <>
@@ -127,21 +122,31 @@ export function ResourceItemRow({
 
       {mode === 'summary' ? (
         <View style={styles.leadingIconWrap}>
-          {showTierLock && item.status !== 'completed' ? (
+          {showTierLock && item.status !== 'completed' && !isDownloading ? (
             <Lock
               size={iconSizes.chapterSync}
               color={theme.colors.mutedForeground}
               strokeWidth={listIconStrokeWidth}
               testID="resource-summary-tier-lock"
             />
-          ) : (
+          ) : !isDownloading ? (
             <StatusIcon status={item.status} />
+          ) : (
+            <View style={styles.statusSpacer} />
           )}
         </View>
       ) : null}
 
       <Text style={styles.label}>{item.label}</Text>
-      <Text style={styles.size}>{formatByteSize(item.bytes)}</Text>
+
+      <View style={styles.trailingWrap}>
+        {isDownloading ? (
+          <ResourceDownloadProgressRing progress={item.progress ?? 0} />
+        ) : null}
+        <Text style={styles.size} testID={`resource-row-size-${item.id}`}>
+          {formatByteSize(displayBytes)}
+        </Text>
+      </View>
     </>
   );
 
@@ -182,10 +187,15 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.foreground,
   },
+  trailingWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
   size: {
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.mutedForeground,
-    minWidth: 56,
+    minWidth: 48,
     textAlign: 'right',
   },
   statusSpacer: {

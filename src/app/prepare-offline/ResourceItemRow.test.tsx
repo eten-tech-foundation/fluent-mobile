@@ -23,6 +23,18 @@ jest.mock('lucide-react-native', () => {
   };
 });
 
+jest.mock('./ResourceDownloadProgressRing', () => {
+  const MockReact = require('react');
+  const { View } = require('react-native');
+  return {
+    ResourceDownloadProgressRing: ({ progress }: { progress: number }) =>
+      MockReact.createElement(View, {
+        testID: 'resource-download-progress-ring',
+        accessibilityValue: { now: progress },
+      }),
+  };
+});
+
 const baseItem: PrepareOfflineResourceItem = {
   id: 'tier-1-source-bible-text',
   tier: 1,
@@ -73,15 +85,19 @@ describe('ResourceItemRow', () => {
     expect(screen.queryByTestId('resource-summary-tier-lock')).toBeNull();
   });
 
-  it('shows downloading status icon before the label in summary mode', () => {
+  it('shows progress ring while downloading in summary mode', () => {
     render(
       <ResourceItemRow
-        item={{ ...baseItem, status: 'downloading' }}
+        item={{ ...baseItem, status: 'downloading', progress: 0.67 }}
         mode="summary"
       />,
     );
 
-    expect(screen.getByTestId('resource-status-downloading')).toBeTruthy();
+    expect(screen.getByTestId('resource-download-progress-ring')).toBeTruthy();
+    expect(
+      screen.getByTestId('resource-download-progress-ring').props
+        .accessibilityValue?.now,
+    ).toBe(0.67);
   });
 
   it('shows tier lock in customize for required tier 1 rows', () => {
@@ -141,5 +157,30 @@ describe('ResourceItemRow', () => {
     expect(
       screen.getByTestId('resource-row-tier-2-translation-words-audio'),
     ).toBeTruthy();
+  });
+
+  it('shows full catalog size even when partial progress is saved on a row', () => {
+    render(
+      <ResourceItemRow
+        item={{
+          ...baseItem,
+          id: 'tier-3-bible-commentary-audio',
+          tier: 3,
+          kind: 'audio',
+          groupName: 'Bible Commentary',
+          label: 'Audio',
+          bytes: 24 * 1024 * 1024,
+          status: 'selected',
+          progress: 0.5,
+        }}
+        mode="customize"
+        selected
+        onToggle={jest.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByTestId('resource-row-size-tier-3-bible-commentary-audio'),
+    ).toHaveTextContent('24 MB');
   });
 });

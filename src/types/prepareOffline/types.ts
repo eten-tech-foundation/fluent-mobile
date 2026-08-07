@@ -65,6 +65,8 @@ export interface PrepareOfflineResourceItem {
   label: string;
   bytes: number;
   status: PrepareOfflineResourceStatus;
+  /** 0–1 while status is `downloading`. */
+  progress?: number;
 }
 
 export interface PrepareOfflineResourceGroup {
