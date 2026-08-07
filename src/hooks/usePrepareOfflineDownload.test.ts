@@ -300,6 +300,44 @@ describe('usePrepareOfflineDownload', () => {
     });
   });
 
+  it('ignores concurrent pause invocations while one is in flight', async () => {
+    let resolvePause: () => void = () => undefined;
+    mockPause.mockImplementation(
+      () =>
+        new Promise<void>(resolve => {
+          resolvePause = resolve;
+        }),
+    );
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+      }),
+    );
+
+    act(() => {
+      void result.current.pause();
+      void result.current.pause();
+    });
+
+    await waitFor(() => {
+      expect(result.current.busy).toBe(true);
+    });
+    expect(mockPause).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolvePause();
+    });
+
+    await waitFor(() => {
+      expect(result.current.busy).toBe(false);
+    });
+  });
+
   it('transitions to complete when session started and all selected items finish', async () => {
     const { getDownloadedResourcesByProject } =
       jest.requireMock('../db/repository');

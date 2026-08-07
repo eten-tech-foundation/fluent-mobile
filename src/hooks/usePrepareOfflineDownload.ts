@@ -113,15 +113,31 @@ export function usePrepareOfflineDownload({
   >([]);
   const sessionKeyRef = useRef<string | null>(null);
   const userCancelledRef = useRef(false);
+  const sessionActionInFlightRef = useRef(false);
 
   const sessionKey =
     projectId !== null ? `${projectId}:${userId ?? 'none'}` : null;
+
+  const releaseSessionAction = useCallback(() => {
+    sessionActionInFlightRef.current = false;
+    setBusy(false);
+  }, []);
+
+  const tryAcquireSessionAction = useCallback((): boolean => {
+    if (sessionActionInFlightRef.current || busy) {
+      return false;
+    }
+    sessionActionInFlightRef.current = true;
+    setBusy(true);
+    return true;
+  }, [busy]);
 
   useEffect(() => {
     if (sessionKeyRef.current !== sessionKey) {
       setSessionStarted(false);
       setForceIdle(false);
       userCancelledRef.current = false;
+      sessionActionInFlightRef.current = false;
       sessionKeyRef.current = sessionKey;
     }
   }, [sessionKey]);
@@ -265,26 +281,25 @@ export function usePrepareOfflineDownload({
       return;
     }
 
-    if (busy) {
+    if (!tryAcquireSessionAction()) {
       return;
     }
 
-    const resumable = await getResumableDownloadItems(true);
-    const existingProjectItems = resumable.filter(
-      item => item.projectId === projectId,
-    );
-
-    if (!canDownloadNow && existingProjectItems.length === 0) {
-      return;
-    }
-
-    setForceIdle(false);
-    userCancelledRef.current = false;
-    setSessionStarted(true);
-    setPrepareOfflineDownloadStarted(String(userId), projectId);
-
-    setBusy(true);
     try {
+      const resumable = await getResumableDownloadItems(true);
+      const existingProjectItems = resumable.filter(
+        item => item.projectId === projectId,
+      );
+
+      if (!canDownloadNow && existingProjectItems.length === 0) {
+        return;
+      }
+
+      setForceIdle(false);
+      userCancelledRef.current = false;
+      setSessionStarted(true);
+      setPrepareOfflineDownloadStarted(String(userId), projectId);
+
       if (canDownload) {
         await enqueuePrepareOfflineDownload({
           userId,
@@ -306,52 +321,50 @@ export function usePrepareOfflineDownload({
         await start(projectItems);
       }
     } finally {
-      setBusy(false);
+      releaseSessionAction();
     }
   }, [
-    busy,
     canDownload,
     canDownloadNow,
     catalog.items,
     projectId,
     refresh,
+    releaseSessionAction,
     selectedItems,
     start,
+    tryAcquireSessionAction,
     userId,
   ]);
 
   const handlePause = useCallback(async () => {
-    if (busy) {
+    if (!tryAcquireSessionAction()) {
       return;
     }
-    setBusy(true);
     try {
       log.info('Prepare offline download paused', { projectId });
       await pause();
     } finally {
-      setBusy(false);
+      releaseSessionAction();
     }
-  }, [busy, pause, projectId]);
+  }, [pause, projectId, releaseSessionAction, tryAcquireSessionAction]);
 
   const handleResume = useCallback(async () => {
-    if (busy) {
+    if (!tryAcquireSessionAction()) {
       return;
     }
-    setBusy(true);
     try {
       log.info('Prepare offline download resumed', { projectId });
       setForceIdle(false);
       await resume();
     } finally {
-      setBusy(false);
+      releaseSessionAction();
     }
-  }, [busy, projectId, resume]);
+  }, [projectId, releaseSessionAction, resume, tryAcquireSessionAction]);
 
   const handleCancel = useCallback(async () => {
-    if (busy) {
+    if (!tryAcquireSessionAction()) {
       return;
     }
-    setBusy(true);
     try {
       log.info('Prepare offline download cancelled', { projectId });
       await cancel();
@@ -362,9 +375,15 @@ export function usePrepareOfflineDownload({
       userCancelledRef.current = true;
       setForceIdle(true);
     } finally {
-      setBusy(false);
+      releaseSessionAction();
     }
-  }, [busy, cancel, projectId, refresh]);
+  }, [
+    cancel,
+    projectId,
+    refresh,
+    releaseSessionAction,
+    tryAcquireSessionAction,
+  ]);
 
   return {
     session,
