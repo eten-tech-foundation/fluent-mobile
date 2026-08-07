@@ -13,7 +13,7 @@ This guide is for **any** coding agent (Cursor, Claude Code, Copilot, etc.). Boa
 | `Dev Ready` | Eng can code | Product/engineering already approved this for implementation. **Do not** move these cards to `Backlog` or `Sprint Shaping` to “sequence” or “clean up” the board. |
 | `In Progress (Dev)` | Assignee | Actively coding. |
 | `In PR Review` | Reviewers | Open PR exists (or should). Prefer this over leaving a card in `Dev Ready` once a PR is up. |
-| `In QA` / `Passed QA` / `To Deploy` / `Done` | QA / release | Follow human process; agents set `Done` only when closing completed work with evidence (and usually after merge). |
+| `In QA` / `Passed QA` / `To Deploy` / `Done` | QA / release | Follow human process. After merge, agents set **`In QA`** (not `Done`). Do **not** auto-close issues. Agents set `Done` only when a human/QA process asks, or when closing obsolete/duplicate work with an approved change set. |
 
 ## Hard rules
 
@@ -30,13 +30,14 @@ When implementing the **assigned** ticket only:
 
 - Add the new issue to Project 4 if missing.
 - Set that issue to `In Progress (Dev)` while coding (optional) and **`In PR Review`** when the PR is open.
-- Set **`Done`** after merge when the issue is completed and `Closes #NNN` did not auto-close, or when closing a completed epic with evidence.
+- Set **`In QA`** after merge (or when ready for QA). Leave the GitHub issue open — never use closing keywords in the PR.
+- Set **`Done`** only after QA completes (human/QA process), or when closing obsolete/duplicate work with an approved change set and evidence.
 
 Do **not** “helpfully” reorder neighboring cards.
 
-## Closing keywords and stacked PRs
+## Linking keywords and stacked PRs
 
-GitHub auto-closes only when a PR with `Closes #NNN` merges into **`main`**. Stacked PRs whose base is a feature branch must use **`Part of #NNN`** until the final PR targets `main`. See [docs/issue-tracking.md](../issue-tracking.md) and issue #274.
+Do **not** use GitHub closing keywords (`Closes`, `Fixes`, `Resolves`) — they auto-close issues on merge to `main`. Always use **`Refs #NNN`** for the ticket this PR implements, or **`Part of #NNN`** for stacked/partial work. After merge of a `Refs`-linked PR (or when ready for QA), move the card to **`In QA`**. Preview-build automation follows the same rule: it comments / moves **In QA** for `Refs #NNN` (and legacy closing keywords), and does **not** treat `Part of #NNN` as a linked ticket. See [docs/issue-tracking.md](../issue-tracking.md). (Historical: issue #274 required `Closes` on `main`-targeting PRs; superseded by #300.)
 
 ## Related
 

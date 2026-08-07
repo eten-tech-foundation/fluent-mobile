@@ -13,8 +13,8 @@ Every change — including infra, CI, docs, Dependabot follow-ups, and `expo ins
 
 1. **Ticket on Project 4** — GitHub Issue `#NNN` **on** the [Fluent Mobile Board](https://github.com/orgs/eten-tech-foundation/projects/4/views/9) (org project #4, view 9). Ask if missing. See [docs/issue-tracking.md](../../docs/issue-tracking.md). The repo Issues list is not the triage board. (Not Linear.) Board Status/Priority edits: [docs/guides/project-board.md](../../docs/guides/project-board.md) and [project-board.mdc](./project-board.mdc) — do not sweep Product or `Dev Ready` lanes without named approval.
 2. **Feature branch** — `{author}/{type}/{issue-number}-{slug}` (see `/create-pr-branch`)
-3. **Pull request** — title `[#NNN]: Description`; body filled from the PR template (below); include `Closes #NNN` under Details when the PR completes the issue; set Project 4 Status to **In PR Review**
-4. **Human merge** — agents open PRs and push **feature branches only**; never merge on GitHub unless the user explicitly asks for a Dependabot squash merge in that session
+3. **Pull request** — title `[#NNN]: Description`; body filled from the PR template (below); include `Refs #NNN` under Details (never `Closes` / `Fixes` / `Resolves`); set Project 4 Status to **In PR Review**
+4. **Human merge** — agents open PRs and push **feature branches only**; never merge on GitHub unless the user explicitly asks for a Dependabot squash merge in that session. After merge, set Project 4 Status to **In QA** (issues stay open for QA — do not auto-close)
 
 Allowed on `main` locally: `git checkout main`, `git pull`, read-only validation after merges. **Not allowed:** `git push origin main`, commits on `main`, or opening PRs with `main` as the head branch.
 
@@ -28,7 +28,7 @@ Do **not** substitute a short “Summary / Test plan” or ad-hoc bullet list. L
 | ------- | ---------------- |
 | **TLDR** | 2–4 sentences: what / why / impact |
 | **Reviewer checklist** | Leave items unchecked unless verified |
-| **Details** | `Closes #NNN` on its own line when the PR completes the issue; short summary; type-of-change checkboxes |
+| **Details** | `Refs #NNN` on its own line (non-closing link); short summary; type-of-change checkboxes |
 | **Technical changes** | Key files as `` `path` `` bullets |
 | **Testing** | What gates ran (`format:check`, `lint`, `typecheck`, `npm test -- --ci`) or waiver |
 | **How to verify** | Numbered steps + **Expected** |

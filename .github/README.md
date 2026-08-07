@@ -30,8 +30,8 @@ See [`.eas/README.md`](../.eas/README.md) for Expo GitHub app and Play Store set
 ## PR preview (QA)
 
 1. Create a `preview-build` label on the repo (if missing).
-2. Add the label to a PR when ready for QA (PR should reference its ticket with `Closes #NNN`).
-3. Workflow starts a **fresh Android preview APK** (binary only — no OTA / `eas update`), posts the same install comment on the **PR** and each **linked GitHub issue**, and best-effort moves Project 4 cards from `In PR Review` / `In Progress (Dev)` → **`In QA`**.
+2. Add the label to a PR when ready for QA (PR should reference its ticket with `Refs #NNN` on its own Details line — not `Part of #NNN`).
+3. Workflow starts a **fresh Android preview APK** (binary only — no OTA / `eas update`), posts the same install comment on the **PR** and each **linked GitHub issue** (`Refs` / legacy closing keywords via [`.github/scripts/preview-notify-linked-issues.cjs`](scripts/preview-notify-linked-issues.cjs)), and best-effort moves Project 4 cards from `In PR Review` / `In Progress (Dev)` → **`In QA`**.
 
 **QA guide (non-technical):** [`docs/guides/qa-preview-testing.md`](../docs/guides/qa-preview-testing.md)
 

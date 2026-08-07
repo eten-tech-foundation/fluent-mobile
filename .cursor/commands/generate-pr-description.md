@@ -67,7 +67,7 @@ gh issue view <N> --repo eten-tech-foundation/fluent-mobile --json title,body   
 1. Load template from `.cursor/templates/pr-template.md`
 2. **Synthesize PR title** (mandatory — see above)
 3. Detect branch type: `feature/`, `fix/`, `chore/` → suggest change type checkbox
-4. Fetch GitHub issue when issue number present (`Closes #NNN` in Details)
+4. Fetch GitHub issue when issue number present (`Refs #NNN` in Details)
 5. Pre-fill Technical Changes and Testing from diff + [docs/AGENT_ONBOARDING.md](../../docs/AGENT_ONBOARDING.md) gates
 
 ## Output format
@@ -107,7 +107,7 @@ gh issue view <N> --repo eten-tech-foundation/fluent-mobile --json title,body   
 
 ## Ticket patterns
 
-- GitHub issues: `[#123]` / `#123` in PR title; `Closes #123` under Details when the PR completes the issue
+- GitHub issues: `[#123]` / `#123` in PR title; `Refs #123` under Details (never closing keywords)
 
 ## Quality checklist (pre-fill reminders)
 

@@ -206,5 +206,5 @@ jobs:
               body: body
             });
 
-            const notifyLinkedIssues = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/preview-notify-linked-issues.js`);
+            const notifyLinkedIssues = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/preview-notify-linked-issues.cjs`);
             await notifyLinkedIssues({ github, context, core, getOctokit, body, commentMarkers });

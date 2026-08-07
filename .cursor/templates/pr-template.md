@@ -4,7 +4,7 @@
 
 ### Reviewer checklist
 
-- [ ] GitHub issue linked in Details (`Closes #NNN` when this PR completes it)
+- [ ] GitHub issue linked in Details (`Refs #NNN` — do **not** use `Closes` / `Fixes` / `Resolves`)
 - [ ] How to verify steps completed or valid waiver noted below
 - [ ] Acceptance criteria met, **or** unmet AC waived **in the issue** with linked follow-up (see `AGENTS.md`)
 - [ ] Scope limited to this issue — no adjacent tickets implemented/stubbed without approval
@@ -12,7 +12,7 @@
 
 ### Details
 
-Closes #<!-- issue number this PR completes -->
+Refs #<!-- issue number this PR implements -->
 
 <!-- Short summary. For fixes: root cause + solution. -->
 

@@ -4,6 +4,11 @@
  *
  * Soft-fails: preview success must not fail if issue/board side effects fail.
  *
+ * Linked tickets are resolved from PR title/body via `Refs #NNN` (preferred)
+ * and legacy closing keywords (`Closes` / `Fixes` / `Resolves`). `Part of #NNN`
+ * is intentionally ignored so stacked/partial work does not get preview
+ * comments or an In QA board move.
+ *
  * Env (optional):
  *   PROJECT_BOARD_TOKEN — PAT with org project write (preferred for Project 4)
  *   FLUENT_PROJECT_ID — Projects V2 node id (default: Fluent Project 4)
@@ -18,7 +23,7 @@
  * @param {string[]} args.commentMarkers — substrings that identify prior bot preview comments
  * @param {typeof import('@actions/github').getOctokit} [args.getOctokit]
  */
-module.exports = async function notifyLinkedIssues({
+async function notifyLinkedIssues({
   github,
   context,
   core,
@@ -78,25 +83,75 @@ module.exports = async function notifyLinkedIssues({
   } catch (error) {
     core.warning(`Could not update Project 4 Status: ${error.message}`);
   }
-};
+}
 
-const CLOSING_KEYWORD_RE =
-  /(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s*#(\d+)/gi;
+/**
+ * Preferred non-closing link (`Refs #NNN`) plus legacy GitHub closing keywords.
+ * Does not match `Part of #NNN`.
+ */
+const LINKED_ISSUE_RE =
+  /(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?|refs)\s*:?\s*#(\d+)/gi;
+
+/**
+ * Stacked / partial work — must not trigger preview ticket comments or In QA.
+ * Exported for regression tests only.
+ */
+const PART_OF_ISSUE_RE = /\bpart\s+of\s*:?\s*#(\d+)/gi;
+
+/**
+ * Collect issue numbers from PR title + body text.
+ * Includes `Refs #NNN` and closing keywords; excludes `Part of #NNN`.
+ *
+ * @param {string} title
+ * @param {string | null | undefined} body
+ * @param {number} prNumber — excluded so the PR is never treated as a ticket
+ * @returns {number[]}
+ */
+function collectLinkedIssueNumbersFromText(title, body, prNumber) {
+  const numbers = new Set();
+  const text = `${title}\n${body || ''}`;
+
+  for (const match of text.matchAll(LINKED_ISSUE_RE)) {
+    numbers.add(Number(match[1]));
+  }
+
+  // Never treat the PR itself as a ticket (same number space)
+  numbers.delete(prNumber);
+  return [...numbers].sort((a, b) => a - b);
+}
+
+/**
+ * True when the number appears only as `Part of #NNN` (or not as a linked
+ * Refs/closing keyword). Used in tests to document the Part of contract.
+ *
+ * @param {string} title
+ * @param {string | null | undefined} body
+ * @param {number} issueNumber
+ */
+function isPartOfOnlyReference(title, body, issueNumber) {
+  const text = `${title}\n${body || ''}`;
+  const linked = new Set();
+  for (const match of text.matchAll(LINKED_ISSUE_RE)) {
+    linked.add(Number(match[1]));
+  }
+  if (linked.has(issueNumber)) return false;
+
+  for (const match of text.matchAll(PART_OF_ISSUE_RE)) {
+    if (Number(match[1]) === issueNumber) return true;
+  }
+  return false;
+}
 
 async function resolveLinkedIssueNumbers(github, owner, repo, prNumber) {
-  const numbers = new Set();
-
   const { data: pr } = await github.rest.pulls.get({
     owner,
     repo,
     pull_number: prNumber,
   });
 
-  for (const match of `${pr.title}\n${pr.body || ''}`.matchAll(
-    CLOSING_KEYWORD_RE,
-  )) {
-    numbers.add(Number(match[1]));
-  }
+  const numbers = new Set(
+    collectLinkedIssueNumbersFromText(pr.title, pr.body, prNumber),
+  );
 
   try {
     const result = await github.graphql(
@@ -305,3 +360,13 @@ async function findProjectItem(github, projectId, owner, repo, issueNumber) {
     statusName: match.fieldValueByName?.name || '',
   };
 }
+
+module.exports = notifyLinkedIssues;
+module.exports.collectLinkedIssueNumbersFromText =
+  collectLinkedIssueNumbersFromText;
+module.exports.resolveLinkedIssueNumbers = resolveLinkedIssueNumbers;
+module.exports.isPartOfOnlyReference = isPartOfOnlyReference;
+module.exports.LINKED_ISSUE_RE = LINKED_ISSUE_RE;
+module.exports.PART_OF_ISSUE_RE = PART_OF_ISSUE_RE;
+module.exports.ALLOWED_FROM_STATUS_NAMES = ALLOWED_FROM_STATUS_NAMES;
+module.exports.moveIssuesToInQa = moveIssuesToInQa;
