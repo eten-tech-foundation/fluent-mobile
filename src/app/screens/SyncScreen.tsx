@@ -46,6 +46,7 @@ export default function SyncScreen() {
     nextRetryAt,
     sessionError,
     isControlPending,
+    isStartControlPending,
     pause,
     cancel,
     syncNowUploads,
@@ -98,7 +99,7 @@ export default function SyncScreen() {
       ? 'syncing'
       : status;
   const startBusy =
-    controlStatus === 'paused' ? false : isControlPending || isUploading;
+    controlStatus === 'paused' ? false : isStartControlPending || isUploading;
 
   return (
     <ScreenContainer edges={['bottom']}>

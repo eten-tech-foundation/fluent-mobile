@@ -113,6 +113,20 @@ describe('SyncActionControls', () => {
     );
   });
 
+  it('disables Pause and Cancel while controlPending in syncing state', () => {
+    const { getByTestId } = renderControls({
+      status: 'syncing',
+      controlPending: true,
+    });
+
+    expect(getByTestId('sync-action-pause').props.accessibilityState).toEqual(
+      expect.objectContaining({ disabled: true }),
+    );
+    expect(getByTestId('sync-action-cancel').props.accessibilityState).toEqual(
+      expect.objectContaining({ disabled: true }),
+    );
+  });
+
   it('disables Resume and Cancel while controlPending in paused state', () => {
     const { getByTestId } = renderControls({
       status: 'paused',

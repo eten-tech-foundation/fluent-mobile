@@ -223,4 +223,70 @@ describe('useUploadSessionState', () => {
     expect(result.current.sessionError).toBe('orchestrator down');
     expect(result.current.isControlPending).toBe(false);
   });
+
+  it('sets isControlPending only for pause/cancel, not during syncNow', async () => {
+    let resolveSyncNow: (() => void) | undefined;
+    mockSyncNowUploads.mockImplementation(
+      () =>
+        new Promise<void>(resolve => {
+          resolveSyncNow = resolve;
+        }),
+    );
+
+    const { result } = renderHook(() =>
+      useUploadSessionState({
+        hasPendingUploads: true,
+        hasFailedUploads: false,
+        uploadProgress: null,
+      }),
+    );
+
+    let syncPromise!: Promise<void>;
+    act(() => {
+      syncPromise = result.current.syncNowUploads();
+    });
+
+    expect(result.current.isControlPending).toBe(false);
+    expect(result.current.isStartControlPending).toBe(true);
+
+    await act(async () => {
+      resolveSyncNow?.();
+      await syncPromise;
+    });
+
+    expect(result.current.isStartControlPending).toBe(false);
+  });
+
+  it('sets isControlPending while pause is in flight', async () => {
+    let resolvePause: (() => void) | undefined;
+    mockPauseUploadSession.mockImplementation(
+      () =>
+        new Promise<void>(resolve => {
+          resolvePause = resolve;
+        }),
+    );
+
+    const { result } = renderHook(() =>
+      useUploadSessionState({
+        hasPendingUploads: true,
+        hasFailedUploads: false,
+        uploadProgress: null,
+      }),
+    );
+
+    let pausePromise!: Promise<void>;
+    act(() => {
+      pausePromise = result.current.pause();
+    });
+
+    expect(result.current.isControlPending).toBe(true);
+    expect(result.current.isStartControlPending).toBe(false);
+
+    await act(async () => {
+      resolvePause?.();
+      await pausePromise;
+    });
+
+    expect(result.current.isControlPending).toBe(false);
+  });
 });

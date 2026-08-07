@@ -50,6 +50,7 @@ export function SyncActionControls({
             label="Pause"
             Icon={Pause}
             variant="secondary"
+            disabled={interruptDisabled}
             onPress={onPause}
             testID="sync-action-pause"
           />
@@ -57,6 +58,7 @@ export function SyncActionControls({
             label="Cancel"
             Icon={X}
             variant="secondary"
+            disabled={interruptDisabled}
             onPress={onCancel}
             testID="sync-action-cancel"
           />

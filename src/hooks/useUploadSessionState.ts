@@ -40,6 +40,7 @@ export interface UseUploadSessionStateResult {
   nextRetryAt: Date | undefined;
   sessionError: string | null;
   isControlPending: boolean;
+  isStartControlPending: boolean;
   pause: () => Promise<void>;
   cancel: () => Promise<void>;
   resumeUploads: () => Promise<void>;
@@ -55,6 +56,7 @@ export function useUploadSessionState({
     useState<UploadOrchestratorSnapshot>(readSnapshot);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [isControlPending, setIsControlPending] = useState(false);
+  const [isStartControlPending, setIsStartControlPending] = useState(false);
   const [optimisticPhase, setOptimisticPhase] = useState<UploadPhase | null>(
     null,
   );
@@ -93,7 +95,7 @@ export function useUploadSessionState({
       ? new Date(snapshot.pausedUntilMs)
       : undefined;
 
-  const runControl = useCallback(
+  const runInterruptControl = useCallback(
     async (
       action: () => Promise<void>,
       phaseAfterClick: UploadPhase | null,
@@ -117,21 +119,46 @@ export function useUploadSessionState({
     [refreshSnapshot],
   );
 
+  /** Sync Now / Resume — do not block Pause/Cancel for the full upload session. */
+  const runStartControl = useCallback(
+    async (
+      action: () => Promise<void>,
+      phaseAfterClick: UploadPhase | null,
+    ) => {
+      setOptimisticPhase(phaseAfterClick);
+      setIsStartControlPending(true);
+      setSessionError(null);
+      try {
+        await action();
+        refreshSnapshot();
+        setOptimisticPhase(null);
+      } catch (error) {
+        setOptimisticPhase(null);
+        const message =
+          error instanceof Error ? error.message : 'Upload control failed';
+        setSessionError(message);
+      } finally {
+        setIsStartControlPending(false);
+      }
+    },
+    [refreshSnapshot],
+  );
+
   const pause = useCallback(
-    () => runControl(pauseUploadSession, 'paused'),
-    [runControl],
+    () => runInterruptControl(pauseUploadSession, 'paused'),
+    [runInterruptControl],
   );
   const cancel = useCallback(
-    () => runControl(cancelUploadSession, 'idle'),
-    [runControl],
+    () => runInterruptControl(cancelUploadSession, 'idle'),
+    [runInterruptControl],
   );
   const resumeUploads = useCallback(
-    () => runControl(syncNowUploads, 'syncing'),
-    [runControl],
+    () => runStartControl(syncNowUploads, 'syncing'),
+    [runStartControl],
   );
   const syncNow = useCallback(
-    () => runControl(syncNowUploads, 'syncing'),
-    [runControl],
+    () => runStartControl(syncNowUploads, 'syncing'),
+    [runStartControl],
   );
 
   return {
@@ -141,6 +168,7 @@ export function useUploadSessionState({
     nextRetryAt,
     sessionError,
     isControlPending,
+    isStartControlPending,
     pause,
     cancel,
     resumeUploads,

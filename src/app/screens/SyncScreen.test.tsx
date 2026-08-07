@@ -80,6 +80,7 @@ jest.mock('../../hooks/useUploadSessionState', () => ({
     nextRetryAt: undefined,
     sessionError: null,
     isControlPending: false,
+    isStartControlPending: false,
     pause: mockPause,
     cancel: mockCancel,
     resumeUploads: mockResumeUploads,
