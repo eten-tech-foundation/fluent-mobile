@@ -212,6 +212,32 @@ describe('usePrepareOfflineDownload', () => {
     ).toHaveBeenCalledWith(1);
   });
 
+  it('stays idle when worker is paused for a different project', () => {
+    mockWorkerState = 'paused';
+    mockSnapshot.items = [
+      {
+        id: 'tier-1-source-bible-text',
+        tier: 1,
+        label: 'Text',
+        progress: 0.5,
+        status: 'paused',
+        projectId: 99,
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+      }),
+    );
+
+    expect(result.current.session).toBe('idle');
+  });
+
   it('stays idle with queued rows when worker is idle (no fake pause controls)', () => {
     mockWorkerState = 'idle';
     mockSnapshot.items = [

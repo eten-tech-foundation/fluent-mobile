@@ -49,8 +49,9 @@ export async function enqueuePrepareOfflineDownload(
     if (__DEV__) {
       const tierOrderedIds = input.items.map(item => item.id);
       simulatePrepareOfflineDownloadProgress(input.projectId, tierOrderedIds);
+      return [];
     }
 
-    return [];
+    throw error;
   }
 }

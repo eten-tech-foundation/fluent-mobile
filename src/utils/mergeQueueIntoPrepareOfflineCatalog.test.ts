@@ -40,6 +40,25 @@ describe('mergeQueueIntoPrepareOfflineCatalog', () => {
     expect(item.progress).toBe(0.42);
   });
 
+  it('overlays paused status and progress', () => {
+    const queueItems: DownloadQueueItem[] = [
+      {
+        id: baseItem.id,
+        tier: 1,
+        label: 'Text',
+        progress: 0.42,
+        status: 'paused',
+        projectId: 1,
+      },
+    ];
+
+    const merged = mergeQueueIntoPrepareOfflineCatalog(catalog, queueItems, 1);
+    const item = merged.items[0];
+
+    expect(item.status).toBe('paused');
+    expect(item.progress).toBe(0.42);
+  });
+
   it('overlays completed status from queue', () => {
     const queueItems: DownloadQueueItem[] = [
       {

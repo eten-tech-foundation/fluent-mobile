@@ -78,4 +78,36 @@ describe('downloadQueueAutoResume', () => {
     expect(mockGetResumable).not.toHaveBeenCalled();
     expect(mockWorkerStart).not.toHaveBeenCalled();
   });
+
+  it('does not start worker after unsubscribe while resumable fetch is pending', async () => {
+    let resolveResumable: (value: unknown[]) => void = () => undefined;
+    mockGetResumable.mockImplementation(
+      () =>
+        new Promise<unknown[]>(resolve => {
+          resolveResumable = resolve;
+        }),
+    );
+
+    const stop = startDownloadQueueAutoResume();
+    const listener = mockSubscribe.mock.calls[0][0];
+
+    void listener(true, true, false);
+    stop();
+
+    resolveResumable([
+      {
+        id: 'tier-1-source-bible-text',
+        tier: 1,
+        label: 'Text',
+        progress: 0.5,
+        status: 'cancelled',
+        projectId: 1,
+      },
+    ]);
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(mockWorkerStart).not.toHaveBeenCalled();
+  });
 });

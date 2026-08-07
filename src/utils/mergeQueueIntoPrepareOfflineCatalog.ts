@@ -19,10 +19,14 @@ function overlayStatusFromQueue(
         status: 'downloading',
         progress: queueItem.progress,
       };
+    case 'paused':
+      return {
+        status: 'paused',
+        progress: queueItem.progress,
+      };
     case 'completed':
       return { status: 'completed' };
     case 'queued':
-    case 'paused':
     case 'cancelled':
     case 'failed': {
       const partialProgress =

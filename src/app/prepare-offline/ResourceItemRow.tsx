@@ -105,6 +105,8 @@ export function ResourceItemRow({
 }: ResourceItemRowProps) {
   const showToggle = mode === 'customize';
   const isDownloading = item.status === 'downloading';
+  const isPaused = item.status === 'paused';
+  const showProgressRing = isDownloading || isPaused;
   const displayBytes = item.bytes;
 
   const rowContent = (
@@ -122,14 +124,14 @@ export function ResourceItemRow({
 
       {mode === 'summary' ? (
         <View style={styles.leadingIconWrap}>
-          {showTierLock && item.status !== 'completed' && !isDownloading ? (
+          {showTierLock && item.status !== 'completed' ? (
             <Lock
               size={iconSizes.chapterSync}
               color={theme.colors.mutedForeground}
               strokeWidth={listIconStrokeWidth}
               testID="resource-summary-tier-lock"
             />
-          ) : !isDownloading ? (
+          ) : !showProgressRing ? (
             <StatusIcon status={item.status} />
           ) : (
             <View style={styles.statusSpacer} />
@@ -140,8 +142,11 @@ export function ResourceItemRow({
       <Text style={styles.label}>{item.label}</Text>
 
       <View style={styles.trailingWrap}>
-        {isDownloading ? (
-          <ResourceDownloadProgressRing progress={item.progress ?? 0} />
+        {showProgressRing ? (
+          <ResourceDownloadProgressRing
+            progress={item.progress ?? 0}
+            animate={isDownloading}
+          />
         ) : null}
         <Text style={styles.size} testID={`resource-row-size-${item.id}`}>
           {formatByteSize(displayBytes)}

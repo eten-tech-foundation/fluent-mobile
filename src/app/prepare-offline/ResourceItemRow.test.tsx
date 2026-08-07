@@ -90,6 +90,23 @@ describe('ResourceItemRow', () => {
       <ResourceItemRow
         item={{ ...baseItem, status: 'downloading', progress: 0.67 }}
         mode="summary"
+        showTierLock
+      />,
+    );
+
+    expect(screen.getByTestId('resource-summary-tier-lock')).toBeTruthy();
+    expect(screen.getByTestId('resource-download-progress-ring')).toBeTruthy();
+    expect(
+      screen.getByTestId('resource-download-progress-ring').props
+        .accessibilityValue?.now,
+    ).toBe(0.67);
+  });
+
+  it('shows static progress ring while paused in summary mode', () => {
+    render(
+      <ResourceItemRow
+        item={{ ...baseItem, status: 'paused', progress: 0.42 }}
+        mode="summary"
       />,
     );
 
@@ -97,7 +114,7 @@ describe('ResourceItemRow', () => {
     expect(
       screen.getByTestId('resource-download-progress-ring').props
         .accessibilityValue?.now,
-    ).toBe(0.67);
+    ).toBe(0.42);
   });
 
   it('shows tier lock in customize for required tier 1 rows', () => {

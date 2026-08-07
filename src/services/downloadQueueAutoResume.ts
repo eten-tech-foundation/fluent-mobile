@@ -6,9 +6,11 @@ import { logger } from '../utils/logger';
 const log = logger.create('downloadQueueAutoResume');
 
 export function startDownloadQueueAutoResume(): () => void {
-  return subscribeToConnectivity((isOnline, isWifi) => {
+  let disposed = false;
+
+  const unsubscribe = subscribeToConnectivity((isOnline, isWifi) => {
     void (async () => {
-      if (!isOnline || !isWifi) {
+      if (disposed || !isOnline || !isWifi) {
         return;
       }
 
@@ -21,6 +23,10 @@ export function startDownloadQueueAutoResume(): () => void {
 
       try {
         const items = await getResumableDownloadItems(true);
+        if (disposed) {
+          return;
+        }
+
         const resumable = items.filter(item =>
           ['queued', 'paused', 'cancelled', 'failed'].includes(item.status),
         );
@@ -38,6 +44,11 @@ export function startDownloadQueueAutoResume(): () => void {
       }
     })();
   });
+
+  return () => {
+    disposed = true;
+    unsubscribe();
+  };
 }
 
 export function stopDownloadQueueAutoResume(unsubscribe: (() => void) | null) {

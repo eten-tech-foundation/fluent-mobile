@@ -11,6 +11,8 @@ import {
 
 interface ResourceDownloadProgressRingProps {
   progress: number;
+  /** When false, ring is static (e.g. paused row). Defaults to true. */
+  animate?: boolean;
 }
 
 const SIZE = iconSizes.chapterProgress;
@@ -22,10 +24,16 @@ const ICON_SIZE = 10;
 
 export function ResourceDownloadProgressRing({
   progress,
+  animate = true,
 }: ResourceDownloadProgressRingProps) {
   const bounce = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (!animate) {
+      bounce.setValue(0);
+      return;
+    }
+
     const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(bounce, {
@@ -45,9 +53,11 @@ export function ResourceDownloadProgressRing({
     return () => {
       animation.stop();
     };
-  }, [bounce]);
+  }, [animate, bounce]);
 
-  const clampedProgress = Math.max(0, Math.min(1, progress));
+  const clampedProgress = Number.isFinite(progress)
+    ? Math.max(0, Math.min(1, progress))
+    : 0;
   const strokeDashoffset = CIRCUMFERENCE * (1 - clampedProgress);
 
   return (

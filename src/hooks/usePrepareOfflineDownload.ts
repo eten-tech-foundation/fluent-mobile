@@ -62,17 +62,25 @@ function deriveSession(
     return 'complete';
   }
 
-  if (workerState === 'paused') {
+  const projectHasPaused = projectItems.some(item => item.status === 'paused');
+  const projectHasDownloading = projectItems.some(
+    item => item.status === 'downloading',
+  );
+  const projectHasActiveWork = projectItems.some(item =>
+    ['downloading', 'paused', 'queued'].includes(item.status),
+  );
+
+  if (projectHasPaused) {
     return 'paused';
   }
 
-  if (projectItems.some(item => item.status === 'paused')) {
+  if (workerState === 'paused' && projectHasActiveWork) {
     return 'paused';
   }
 
   if (
-    workerState === 'downloading' ||
-    projectItems.some(item => item.status === 'downloading')
+    projectHasDownloading ||
+    (workerState === 'downloading' && projectHasActiveWork)
   ) {
     return 'downloading';
   }
@@ -124,9 +132,20 @@ export function usePrepareOfflineDownload({
       return;
     }
 
-    void getDownloadedResourcesByProject(projectId).then(
-      setCompletedQueueItems,
-    );
+    let cancelled = false;
+    getDownloadedResourcesByProject(projectId)
+      .then(items => {
+        if (!cancelled) {
+          setCompletedQueueItems(items);
+        }
+      })
+      .catch(error => {
+        log.error('Failed to load downloaded resources', { error, projectId });
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [projectId, snapshot]);
 
   const allQueueItems = useMemo(
