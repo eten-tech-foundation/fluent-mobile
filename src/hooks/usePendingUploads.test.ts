@@ -5,9 +5,14 @@ import { emitUploadSessionEvent } from '../services/syncEvents';
 jest.mock('../db/queries', () => ({
   getPendingUploadCount: jest.fn(),
   getFailedUploadCount: jest.fn(),
+  getPendingUploadChapters: jest.fn(),
 }));
 
-import { getFailedUploadCount, getPendingUploadCount } from '../db/queries';
+import {
+  getFailedUploadCount,
+  getPendingUploadChapters,
+  getPendingUploadCount,
+} from '../db/queries';
 
 const mockGetPendingUploadCount = getPendingUploadCount as jest.MockedFunction<
   typeof getPendingUploadCount
@@ -15,12 +20,17 @@ const mockGetPendingUploadCount = getPendingUploadCount as jest.MockedFunction<
 const mockGetFailedUploadCount = getFailedUploadCount as jest.MockedFunction<
   typeof getFailedUploadCount
 >;
+const mockGetPendingUploadChapters =
+  getPendingUploadChapters as jest.MockedFunction<
+    typeof getPendingUploadChapters
+  >;
 
 describe('usePendingUploads', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     mockGetPendingUploadCount.mockResolvedValue(0);
     mockGetFailedUploadCount.mockResolvedValue(0);
+    mockGetPendingUploadChapters.mockResolvedValue([]);
   });
 
   it('loadPendingUploadCount returns the query count', async () => {
@@ -36,10 +46,14 @@ describe('usePendingUploads', () => {
   it('exposes pending and failed counts from the queries', async () => {
     mockGetPendingUploadCount.mockResolvedValue(2);
     mockGetFailedUploadCount.mockResolvedValue(1);
+    mockGetPendingUploadChapters.mockResolvedValue([
+      { bookId: 1, chapterNumber: 1 },
+    ]);
     const { result } = renderHook(() => usePendingUploads(0));
 
     await waitFor(() => {
       expect(result.current.pendingCount).toBe(2);
+      expect(result.current.pendingChapterCount).toBe(1);
       expect(result.current.hasPendingUploads).toBe(true);
       expect(result.current.failedCount).toBe(1);
       expect(result.current.hasFailedUploads).toBe(true);

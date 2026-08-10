@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
-import { getFailedUploadCount, getPendingUploadCount } from '../db/queries';
+import {
+  getFailedUploadCount,
+  getPendingUploadChapters,
+  getPendingUploadCount,
+} from '../db/queries';
 import {
   onUploadSessionEvent,
   type UploadSessionEvent,
@@ -47,6 +51,7 @@ function progressFromEvent(event: UploadSessionEvent): UploadProgress | null {
 
 export function usePendingUploads(refreshKey = 0) {
   const [pendingCount, setPendingCount] = useState(0);
+  const [pendingChapterCount, setPendingChapterCount] = useState(0);
   const [failedCount, setFailedCount] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(
@@ -80,10 +85,15 @@ export function usePendingUploads(refreshKey = 0) {
   useEffect(() => {
     let cancelled = false;
 
-    Promise.all([loadPendingUploadCount(), loadFailedUploadCount()])
-      .then(([pending, failed]) => {
+    Promise.all([
+      loadPendingUploadCount(),
+      loadFailedUploadCount(),
+      getPendingUploadChapters(),
+    ])
+      .then(([pending, failed, chapters]) => {
         if (!cancelled) {
           setPendingCount(pending);
+          setPendingChapterCount(chapters.length);
           setFailedCount(failed);
         }
       })
@@ -98,6 +108,7 @@ export function usePendingUploads(refreshKey = 0) {
 
   return {
     pendingCount,
+    pendingChapterCount,
     failedCount,
     hasPendingUploads: pendingCount > 0,
     hasFailedUploads: failedCount > 0,
