@@ -120,10 +120,14 @@ describe('PrepareOfflineResourcesSection', () => {
   });
 
   it('always shows tier 1 in the summary regardless of deselect state', () => {
+    const tier1ItemIds = catalog.items
+      .filter(item => item.tier === 1)
+      .map(item => item.id);
+
     render(
       <PrepareOfflineResourcesSection
         {...defaultProps}
-        isItemSelected={itemId => !itemId.includes('tier-3')}
+        isItemSelected={itemId => !tier1ItemIds.includes(itemId)}
       />,
     );
 
