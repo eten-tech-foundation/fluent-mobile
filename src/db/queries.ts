@@ -552,6 +552,7 @@ export async function getRecordedVerseNumbers(
   chapterNumber: number,
 ): Promise<Set<number>> {
   const db = getDatabase();
+  const userId = parseUserId();
   try {
     const result = await db.execute(
       `SELECT bt.verse_number
@@ -560,8 +561,11 @@ export async function getRecordedVerseNumbers(
        WHERE bt.bible_id = ?
          AND bt.book_id = ?
          AND bt.chapter_number = ?
-         AND r.is_selected = 1`,
-      [bibleId, bookId, chapterNumber],
+         AND r.is_selected = 1
+         AND r.recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}`,
+      userId === null
+        ? [bibleId, bookId, chapterNumber]
+        : [bibleId, bookId, chapterNumber, userId],
     );
 
     const rows = (result?.rows as unknown as { verse_number: number }[]) || [];
