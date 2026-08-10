@@ -191,6 +191,7 @@ export async function getTakesForVerse(
 export async function selectRecordingTake(id: string): Promise<void> {
   const db = getDatabase();
   const now = new Date().toISOString();
+  let applied = false;
 
   await db.transaction(async (tx: Transaction) => {
     const existing = await tx.execute(
@@ -233,9 +234,12 @@ export async function selectRecordingTake(id: string): Promise<void> {
       `UPDATE recordings SET is_selected = 1, updated_at = ? WHERE id = ?`,
       [now, id],
     );
+    applied = true;
   });
 
-  log.info('Recording take selected', { id });
+  if (applied) {
+    log.info('Recording take selected', { id });
+  }
 }
 
 /**
@@ -250,6 +254,7 @@ export async function selectRecordingTake(id: string): Promise<void> {
 export async function deleteRecordingTake(id: string): Promise<void> {
   const db = getDatabase();
   const now = new Date().toISOString();
+  let applied = false;
 
   await db.transaction(async (tx: Transaction) => {
     const existing = await tx.execute(
@@ -286,6 +291,7 @@ export async function deleteRecordingTake(id: string): Promise<void> {
     const owner = recordedByClause(row.recorded_by_user_id);
 
     await tx.execute(`DELETE FROM recordings WHERE id = ?`, [id]);
+    applied = true;
 
     if (!wasSelected) {
       return;
@@ -307,5 +313,7 @@ export async function deleteRecordingTake(id: string): Promise<void> {
     }
   });
 
-  log.info('Recording take deleted', { id });
+  if (applied) {
+    log.info('Recording take deleted', { id });
+  }
 }

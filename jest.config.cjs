@@ -13,7 +13,5 @@ module.exports = {
   '^expo-secure-store$': '<rootDir>/src/test/mocks/expo-secure-store.ts',
   '^expo-file-system$': '<rootDir>/src/test/mocks/expo-file-system.ts',
   '^expo-audio$': '<rootDir>/src/test/mocks/expo-audio.ts',
-  '^@op-engineering/op-sqlite$':
-    '<rootDir>/src/test/mocks/op-sqlite.ts',
   },
 };
