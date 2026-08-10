@@ -99,6 +99,11 @@ jest.mock('../src/services/uploadOrchestrator', () => ({
   setChapterUploadWorker: jest.fn(),
 }));
 
+jest.mock('../src/services/downloadQueueAutoResume', () => ({
+  startDownloadQueueAutoResume: jest.fn(() => jest.fn()),
+  stopDownloadQueueAutoResume: jest.fn(),
+}));
+
 jest.mock('../src/services/recordingSync', () => ({
   registerRecordingUploadWorker: jest.fn(),
 }));
