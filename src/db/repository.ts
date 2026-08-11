@@ -700,10 +700,16 @@ export {
   addRecordingTake,
   getLatestRecordingForVerse,
   getTakesForVerse,
+  getAllTakesForVerse,
+  verseHasMultipleRecorders,
   deleteRecordingTake,
   selectRecordingTake,
+  setCanonicalTake,
 } from './recordingsRepository';
-export type { AddRecordingTakeInput } from './recordingsRepository';
+export type {
+  AddRecordingTakeInput,
+  RecordingWithOwner,
+} from './recordingsRepository';
 
 export {
   enqueueDownloadItems,

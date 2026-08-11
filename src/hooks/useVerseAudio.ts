@@ -3,10 +3,13 @@ import * as FileSystem from 'expo-file-system/legacy';
 import {
   addRecordingTake,
   deleteRecordingTake,
+  getAllTakesForVerse,
   getTakesForVerse,
   selectRecordingTake,
+  setCanonicalTake,
+  verseHasMultipleRecorders,
 } from '../db/repository';
-import type { Recording } from '../types/db/types';
+import type { Recording, RecordingWithOwner } from '../types/db/types';
 import {
   deleteFile,
   ensureRecordingsDir,
@@ -31,8 +34,11 @@ export type VerseAudioPersistDeps = {
     durationMs: number;
   }) => Promise<{ id: string; localFilePath: string }>;
   loadTakes?: (bibleTextId: number) => Promise<Recording[]>;
+  loadAllTakes?: (bibleTextId: number) => Promise<RecordingWithOwner[]>;
+  checkMultipleRecorders?: (bibleTextId: number) => Promise<boolean>;
   deleteTake?: (id: string) => Promise<void>;
   selectTake?: (id: string) => Promise<void>;
+  designateCanonical?: (id: string) => Promise<void>;
 };
 
 export type UseVerseAudioArgs = {
@@ -74,8 +80,11 @@ export function useVerseAudio({
   bibleTextId,
   persistTake = defaultPersistTake,
   loadTakes = getTakesForVerse,
+  loadAllTakes = getAllTakesForVerse,
+  checkMultipleRecorders = verseHasMultipleRecorders,
   deleteTake: deleteTakeFn = deleteRecordingTake,
   selectTake: selectTakeFn = selectRecordingTake,
+  designateCanonical: designateCanonicalFn = setCanonicalTake,
 }: UseVerseAudioArgs) {
   const recording = useRecordingEngine();
   const playback = usePlaybackEngine();
@@ -84,6 +93,8 @@ export function useVerseAudio({
     'idle' as VerseAudioState,
   );
   const [takes, setTakes] = useState<Recording[]>([]);
+  const [allTakes, setAllTakes] = useState<RecordingWithOwner[]>([]);
+  const [hasMultipleRecorders, setHasMultipleRecorders] = useState(false);
   const [playingTakeId, setPlayingTakeId] = useState<string | null>(null);
   /**
    * Take currently prepared in the player. Outlives `playingTakeId` (which
@@ -96,6 +107,23 @@ export function useVerseAudio({
 
   const selectedTake = takes.find(t => t.isSelected) ?? null;
   const canRecordNewTake = takes.length < MAX_TAKES;
+  const ownCanonicalTakeId = takes.find(t => t.isCanonical)?.id ?? null;
+
+  const refreshAllTakes = useCallback(
+    async (id: number) => {
+      try {
+        const [rows, multi] = await Promise.all([
+          loadAllTakes(id),
+          checkMultipleRecorders(id),
+        ]);
+        setAllTakes(rows);
+        setHasMultipleRecorders(multi);
+      } catch (error) {
+        log.error('Failed to load all takes', { error });
+      }
+    },
+    [loadAllTakes, checkMultipleRecorders],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -103,6 +131,8 @@ export function useVerseAudio({
     (async () => {
       if (bibleTextId === null) {
         setTakes([]);
+        setAllTakes([]);
+        setHasMultipleRecorders(false);
         dispatch({ type: 'REHYDRATE', hasTake: false });
         return;
       }
@@ -111,6 +141,7 @@ export function useVerseAudio({
         if (cancelled) return;
         setTakes(rows);
         dispatch({ type: 'REHYDRATE', hasTake: rows.length > 0 });
+        await refreshAllTakes(bibleTextId);
       } catch (error) {
         log.error('Failed to load takes', { error });
         if (!cancelled) {
@@ -124,7 +155,7 @@ export function useVerseAudio({
     return () => {
       cancelled = true;
     };
-  }, [bibleTextId, loadTakes]);
+  }, [bibleTextId, loadTakes, refreshAllTakes]);
 
   const start = useCallback(async () => {
     if (bibleTextId === null) return;
@@ -188,6 +219,7 @@ export function useVerseAudio({
       await persistTake({ bibleTextId: id, tempUri: uri, durationMs });
       const rows = await loadTakes(id);
       setTakes(rows);
+      await refreshAllTakes(id);
       captureBibleTextIdRef.current = null;
       dispatch({ type: 'SAVED' });
     } catch (error) {
@@ -196,7 +228,7 @@ export function useVerseAudio({
       setErrorMessage(message);
       dispatch({ type: 'ERROR', message });
     }
-  }, [bibleTextId, loadTakes, persistTake, recording]);
+  }, [bibleTextId, loadTakes, persistTake, recording, refreshAllTakes]);
 
   const playTake = useCallback(
     async (take: Recording) => {
@@ -310,6 +342,9 @@ export function useVerseAudio({
         }
         const rows = bibleTextId !== null ? await loadTakes(bibleTextId) : [];
         setTakes(rows);
+        if (bibleTextId !== null) {
+          await refreshAllTakes(bibleTextId);
+        }
         dispatch(
           rows.length > 0
             ? { type: 'REHYDRATE', hasTake: true }
@@ -322,7 +357,15 @@ export function useVerseAudio({
         dispatch({ type: 'ERROR', message });
       }
     },
-    [bibleTextId, loadTakes, loadedTakeId, playback, takes, deleteTakeFn],
+    [
+      bibleTextId,
+      loadTakes,
+      loadedTakeId,
+      playback,
+      takes,
+      deleteTakeFn,
+      refreshAllTakes,
+    ],
   );
 
   const selectTake = useCallback(
@@ -342,9 +385,33 @@ export function useVerseAudio({
     [bibleTextId, loadTakes, selectTakeFn],
   );
 
+  /** Designate canonical from All Takes (#279) — any account may call this. */
+  const setCanonical = useCallback(
+    async (id: string) => {
+      try {
+        await designateCanonicalFn(id);
+        if (bibleTextId !== null) {
+          await refreshAllTakes(bibleTextId);
+          // Own take list also carries `isCanonical` for the My Takes
+          // read-only indicator — refresh it too.
+          setTakes(await loadTakes(bibleTextId));
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'canonical select failed';
+        setErrorMessage(message);
+        dispatch({ type: 'ERROR', message });
+      }
+    },
+    [bibleTextId, designateCanonicalFn, loadTakes, refreshAllTakes],
+  );
+
   return {
     state,
     takes,
+    allTakes,
+    hasMultipleRecorders,
+    ownCanonicalTakeId,
     selectedTake,
     canRecordNewTake,
     playingTakeId,
@@ -361,5 +428,6 @@ export function useVerseAudio({
     pausePlayback,
     selectTake,
     deleteTake,
+    setCanonical,
   };
 }

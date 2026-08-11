@@ -18,6 +18,8 @@ type DraftTakeRowProps = {
   onDelete: () => void;
   /** Review scrub — tap/drag waveform (#176). */
   onSeek?: (positionMs: number) => void;
+  leadingIndicator?: 'selection' | 'canonicalReadOnly' | 'none';
+  isCanonical?: boolean;
 };
 
 /** Design timer: `0:13` (no leading zero on minutes). */
@@ -46,6 +48,8 @@ export function DraftTakeRow({
   onSelect,
   onDelete,
   onSeek,
+  leadingIndicator = 'selection',
+  isCanonical = false,
 }: DraftTakeRowProps) {
   const timeLabel =
     durationMs > 0
@@ -54,33 +58,51 @@ export function DraftTakeRow({
 
   return (
     <View
-      style={[styles.row, isSelected && styles.rowSelected]}
+      style={[
+        styles.row,
+        leadingIndicator === 'selection' && isSelected && styles.rowSelected,
+      ]}
       testID="record-take-row"
     >
-      <TouchableOpacity
-        onPress={onSelect}
-        accessibilityRole="button"
-        accessibilityLabel={
-          isSelected ? 'Selected take' : 'Select this take as active draft'
-        }
-        accessibilityState={{ selected: isSelected }}
-        hitSlop={8}
-        testID="record-take-select"
-      >
-        {isSelected ? (
+      {leadingIndicator === 'selection' ? (
+        <TouchableOpacity
+          onPress={onSelect}
+          accessibilityRole="button"
+          accessibilityLabel={
+            isSelected ? 'Selected take' : 'Select this take as active draft'
+          }
+          accessibilityState={{ selected: isSelected }}
+          hitSlop={8}
+          testID="record-take-select"
+        >
+          {isSelected ? (
+            <CircleCheck
+              size={iconSizes.chevron}
+              color={theme.colors.primary}
+              strokeWidth={listIconStrokeWidth}
+            />
+          ) : (
+            <Circle
+              size={iconSizes.chevron}
+              color={theme.colors.mutedForeground}
+              strokeWidth={listIconStrokeWidth}
+            />
+          )}
+        </TouchableOpacity>
+      ) : leadingIndicator === 'canonicalReadOnly' && isCanonical ? (
+        <View
+          accessibilityLabel="Canonical take"
+          testID="record-take-canonical-readonly"
+        >
           <CircleCheck
             size={iconSizes.chevron}
             color={theme.colors.primary}
             strokeWidth={listIconStrokeWidth}
           />
-        ) : (
-          <Circle
-            size={iconSizes.chevron}
-            color={theme.colors.mutedForeground}
-            strokeWidth={listIconStrokeWidth}
-          />
-        )}
-      </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.leadingSpacer} testID="record-take-no-indicator" />
+      )}
       <Text style={styles.takeLabel} testID="record-take-badge">
         Take {takeNumber}
       </Text>
@@ -155,6 +177,9 @@ const styles = StyleSheet.create({
   },
   rowSelected: {
     borderColor: theme.colors.primary,
+  },
+  leadingSpacer: {
+    width: iconSizes.chevron,
   },
   takeLabel: {
     fontSize: theme.typography.sizes.sm,
