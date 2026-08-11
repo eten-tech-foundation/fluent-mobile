@@ -3,6 +3,7 @@ import { logger } from '../utils/logger';
 import type {
   Recording,
   RecordingRow,
+  RecordingWithOwner,
   RecordingSyncStatus,
 } from '../types/db/types';
 import { Transaction } from '@op-engineering/op-sqlite';
@@ -53,10 +54,6 @@ function mapRecordingRow(row: RecordingRow): Recording {
     updatedAt: row.updated_at,
   };
 }
-
-export type RecordingWithOwner = Recording & {
-  ownerDisplayName: string;
-};
 
 type OwnerJoinRow = RecordingRow & {
   first_name: string | null;

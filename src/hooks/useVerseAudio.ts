@@ -104,6 +104,7 @@ export function useVerseAudio({
   const [loadedTakeId, setLoadedTakeId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const captureBibleTextIdRef = useRef<number | null>(null);
+  const allTakesRequestIdRef = useRef(0);
 
   const selectedTake = takes.find(t => t.isSelected) ?? null;
   const canRecordNewTake = takes.length < MAX_TAKES;
@@ -111,11 +112,15 @@ export function useVerseAudio({
 
   const refreshAllTakes = useCallback(
     async (id: number) => {
+      const requestId = ++allTakesRequestIdRef.current;
       try {
         const [rows, multi] = await Promise.all([
           loadAllTakes(id),
           checkMultipleRecorders(id),
         ]);
+        if (requestId !== allTakesRequestIdRef.current) {
+          return;
+        }
         setAllTakes(rows);
         setHasMultipleRecorders(multi);
       } catch (error) {
@@ -130,6 +135,7 @@ export function useVerseAudio({
     setLoadedTakeId(null);
     (async () => {
       if (bibleTextId === null) {
+        allTakesRequestIdRef.current += 1;
         setTakes([]);
         setAllTakes([]);
         setHasMultipleRecorders(false);

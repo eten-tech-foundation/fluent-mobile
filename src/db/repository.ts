@@ -706,10 +706,7 @@ export {
   selectRecordingTake,
   setCanonicalTake,
 } from './recordingsRepository';
-export type {
-  AddRecordingTakeInput,
-  RecordingWithOwner,
-} from './recordingsRepository';
+export type { AddRecordingTakeInput } from './recordingsRepository';
 
 export {
   enqueueDownloadItems,

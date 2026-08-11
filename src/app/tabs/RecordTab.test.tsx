@@ -566,5 +566,48 @@ describe('RecordTab', () => {
 
       expect(idleAudio.setCanonical).toHaveBeenCalledWith('rec_2');
     });
+
+    it('shows the toggle and All Takes list even when the active account has no personal take yet', () => {
+      // Active account's own hook state stays 'idle' (nothing recorded by
+      // them), but teammates already have takes for this unit — the review
+      // screen (toggle + take list + Record New Take) must still render
+      // instead of the big idle record-button screen.
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'idle',
+        takes: [],
+        selectedTake: null,
+        hasMultipleRecorders: true,
+        allTakes: [
+          makeOwnedTake({
+            id: 'rec_1',
+            recordedByUserId: 2,
+            ownerDisplayName: 'Maria Santos',
+          }),
+          makeOwnedTake({
+            id: 'rec_2',
+            recordedByUserId: 3,
+            ownerDisplayName: 'John Doe',
+          }),
+        ],
+      });
+
+      renderTab();
+
+      // Not stuck on the idle record-button screen.
+      expect(screen.queryByTestId('record-start-button')).toBeNull();
+      expect(screen.getByTestId('take-view-toggle')).toBeTruthy();
+      // My Takes is empty (nothing of the active account's own) but Record
+      // New Take is still offered so they can add their first take.
+      expect(screen.queryByTestId('record-take-row')).toBeNull();
+      expect(screen.getByTestId('record-new-take-button')).toBeTruthy();
+
+      fireEvent.press(screen.getByTestId('take-view-all'));
+      const headers = screen.getAllByTestId('take-group-header-name');
+      expect(headers).toHaveLength(2);
+      expect(headers[0]).toHaveTextContent('Maria Santos');
+      expect(headers[1]).toHaveTextContent('John Doe');
+      expect(screen.getAllByTestId('shared-take-row')).toHaveLength(2);
+    });
   });
 });

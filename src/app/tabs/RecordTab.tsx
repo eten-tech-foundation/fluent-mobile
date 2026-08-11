@@ -104,6 +104,7 @@ export function RecordTab({
   const selected = verses.find(v => v.verseNumber === selectedVerse);
   const reference = `${chapterName}:${selectedVerse}`;
   const hasTake = verseAudio.takes.length > 0;
+  const hasAnyTake = hasTake || verseAudio.allTakes.length > 0;
 
   useEffect(() => {
     setTakeView('mine');
@@ -238,7 +239,8 @@ export function RecordTab({
   }
 
   const showIdle =
-    verseAudio.state === 'idle' || (verseAudio.state === 'error' && !hasTake);
+    (verseAudio.state === 'idle' && !hasAnyTake) ||
+    (verseAudio.state === 'error' && !hasAnyTake);
   const isRecording = verseAudio.state === 'recording';
   const isPaused = verseAudio.state === 'paused';
   const showCapture = isRecording || isPaused;
@@ -246,7 +248,8 @@ export function RecordTab({
     verseAudio.state === 'recorded' ||
     verseAudio.state === 'playing' ||
     verseAudio.state === 'saving' ||
-    (verseAudio.state === 'error' && hasTake);
+    (verseAudio.state === 'error' && hasAnyTake) ||
+    (verseAudio.state === 'idle' && hasAnyTake);
   const showSourceAudio = showIdle || showReview;
 
   return (
