@@ -308,7 +308,50 @@ export function RecordTab({
         </TouchableOpacity>
       </View>
 
-      <View style={styles.main}>
+      {verseAudio.hasMultipleRecorders ? (
+        <View style={styles.takeViewToggle} testID="take-view-toggle">
+          <TouchableOpacity
+            style={[
+              styles.toggleOption,
+              takeView === 'mine' && styles.toggleOptionActive,
+            ]}
+            onPress={() => setTakeView('mine')}
+            accessibilityRole="button"
+            accessibilityState={{ selected: takeView === 'mine' }}
+            testID="take-view-mine"
+          >
+            <Text
+              style={[
+                styles.toggleLabel,
+                takeView === 'mine' && styles.toggleLabelActive,
+              ]}
+            >
+              My Takes
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.toggleOption,
+              takeView === 'all' && styles.toggleOptionActive,
+            ]}
+            onPress={() => setTakeView('all')}
+            accessibilityRole="button"
+            accessibilityState={{ selected: takeView === 'all' }}
+            testID="take-view-all"
+          >
+            <Text
+              style={[
+                styles.toggleLabel,
+                takeView === 'all' && styles.toggleLabelActive,
+              ]}
+            >
+              All Takes
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      <View style={[styles.main, showReview && styles.mainTopAligned]}>
         {showCapture ? (
           <View style={styles.waveformWrap} testID="record-waveform">
             <PlaybackProgressBar
@@ -424,49 +467,6 @@ export function RecordTab({
 
           {showReview ? (
             <View style={styles.reviewGroup}>
-              {verseAudio.hasMultipleRecorders ? (
-                <View style={styles.takeViewToggle} testID="take-view-toggle">
-                  <TouchableOpacity
-                    style={[
-                      styles.toggleOption,
-                      takeView === 'mine' && styles.toggleOptionActive,
-                    ]}
-                    onPress={() => setTakeView('mine')}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: takeView === 'mine' }}
-                    testID="take-view-mine"
-                  >
-                    <Text
-                      style={[
-                        styles.toggleLabel,
-                        takeView === 'mine' && styles.toggleLabelActive,
-                      ]}
-                    >
-                      My Takes
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.toggleOption,
-                      takeView === 'all' && styles.toggleOptionActive,
-                    ]}
-                    onPress={() => setTakeView('all')}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: takeView === 'all' }}
-                    testID="take-view-all"
-                  >
-                    <Text
-                      style={[
-                        styles.toggleLabel,
-                        takeView === 'all' && styles.toggleLabelActive,
-                      ]}
-                    >
-                      All Takes
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              ) : null}
-
               {takeView === 'mine' ? (
                 hasTake ? (
                   <FlatList
@@ -636,6 +636,10 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md,
     justifyContent: 'center',
   },
+  mainTopAligned: {
+    justifyContent: 'flex-start',
+    paddingTop: theme.spacing.md,
+  },
   waveformWrap: {
     minHeight: theme.waveform.tallHeight,
     width: '100%',
@@ -688,6 +692,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.cardBackground,
     padding: theme.spacing.xs,
     gap: theme.spacing.xs,
+    alignSelf: 'center',
+    marginTop: theme.spacing.md,
   },
   toggleOption: {
     paddingHorizontal: theme.spacing.lg,
@@ -709,7 +715,7 @@ const styles = StyleSheet.create({
   },
   takeList: {
     width: '100%',
-    maxHeight: theme.waveform.tallHeight * 3,
+    maxHeight: theme.waveform.tallHeight * 3.5,
   },
   takeListContent: {
     gap: theme.spacing.sm,

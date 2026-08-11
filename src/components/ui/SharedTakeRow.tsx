@@ -38,9 +38,6 @@ export function SharedTakeRow({
 
   return (
     <View style={styles.row} testID="shared-take-row">
-      <Text style={styles.takeLabel} testID="shared-take-badge">
-        Take {takeNumber}
-      </Text>
       <RecordCircleButton
         variant="play"
         size={theme.recordControlSizes.secondary}
@@ -62,22 +59,29 @@ export function SharedTakeRow({
           />
         )}
       </RecordCircleButton>
-      <View style={styles.waveform}>
-        <PlaybackProgressBar
-          positionMs={positionMs}
-          durationMs={durationMs}
-          barCount={24}
-          accentColor={theme.colors.waveformActive}
-        />
+      <View style={styles.middleColumn}>
+        <View style={styles.topRow}>
+          <Text style={styles.takeLabel} testID="shared-take-badge">
+            Take {takeNumber}
+          </Text>
+          <Text
+            style={styles.time}
+            numberOfLines={1}
+            testID="shared-take-time"
+            accessibilityLabel={`Take time ${timeLabel}`}
+          >
+            {timeLabel}
+          </Text>
+        </View>
+        <View style={styles.waveform}>
+          <PlaybackProgressBar
+            positionMs={positionMs}
+            durationMs={durationMs}
+            barCount={24}
+            accentColor={theme.colors.waveformActive}
+          />
+        </View>
       </View>
-      <Text
-        style={styles.time}
-        numberOfLines={1}
-        testID="shared-take-time"
-        accessibilityLabel={`Take time ${timeLabel}`}
-      >
-        {timeLabel}
-      </Text>
       <TouchableOpacity
         onPress={onDesignateCanonical}
         accessibilityRole="button"
@@ -117,24 +121,30 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     backgroundColor: theme.colors.cardBackground,
   },
+  middleColumn: {
+    flex: 1,
+    minWidth: 0,
+    gap: theme.spacing.xs,
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   takeLabel: {
     fontSize: theme.typography.sizes.sm,
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.foreground,
-    minWidth: 52,
   },
   waveform: {
-    flex: 1,
-    flexShrink: 1,
-    minWidth: 0,
-    overflow: 'hidden',
+    width: '100%',
     minHeight: 28,
+    overflow: 'hidden',
   },
   time: {
     fontSize: theme.typography.sizes.xs,
     fontVariant: ['tabular-nums'],
     color: theme.colors.mutedForeground,
-    minWidth: 64,
     flexShrink: 0,
     textAlign: 'right',
   },
