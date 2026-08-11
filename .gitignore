@@ -61,3 +61,6 @@ expo-env.d.ts
 
 # TypeScript
 *.tsbuildinfo
+
+# PR demo video takes (pr-demo-video skill) — never commit recordings
+.playwright-mcp/

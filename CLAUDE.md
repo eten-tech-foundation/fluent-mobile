@@ -11,6 +11,10 @@ This file is the **entrypoint for non-Cursor agents** (Claude Code, Codex, Copil
 5. [`docs/guides/expo-first-dependencies.md`](docs/guides/expo-first-dependencies.md) — prefer Expo packages
 6. [`.cursor/rules/`](.cursor/rules/) — always-on + topic rules (`delivery`, `architecture`, `android-only`, `project-board`, `expo-first-dependencies`, …)
 
+## Agent skills
+
+- **PR demo videos** (`pr-demo-video`): record Playwright screencasts for PRs. Cursor: [`.cursor/skills/pr-demo-video/`](.cursor/skills/pr-demo-video/). Claude Code: [`.claude/skills/pr-demo-video/`](.claude/skills/pr-demo-video/). Needs `playwright` + `ffmpeg` only when recording.
+
 ## Precedence
 
 **This repository’s** `docs/`, `AGENTS.md`, and `.cursor/rules/` win over org-wide / umbrella agent playbooks. See [`.cursor/rules/rule-precedence.mdc`](.cursor/rules/rule-precedence.mdc).

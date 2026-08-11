@@ -54,6 +54,7 @@ Quick map for Cursor agents, other coding tools, and new contributors. Verified 
 | [`.github/workflows/`](../.github/workflows/) | CI + tag version sync (`eas-build.yml`) |
 | [`.github/dependabot.yml`](../.github/dependabot.yml) | Weekly dependency PRs (npm + GitHub Actions) |
 | [`.cursor/rules/`](../.cursor/rules/) | Cursor agent rules |
+| [`.cursor/skills/pr-demo-video/`](../.cursor/skills/pr-demo-video/) | PR demo screencast skill (Cursor); Claude Code twin: [`.claude/skills/pr-demo-video/`](../.claude/skills/pr-demo-video/) |
 | [`docs/guides/dependabot-process.md`](guides/dependabot-process.md) | Safe Dependabot merge process |
 | [`docs/guides/local-development-workflow.md`](guides/local-development-workflow.md) | Hosted dev + local Docker API paths |
 | [`docs/guides/recordings-sync-contract.md`](guides/recordings-sync-contract.md) | Verse audio upload contract (#102 / fluent-api #224) |

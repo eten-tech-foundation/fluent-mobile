@@ -32,6 +32,11 @@ Cross-tool agents (Claude Code, Copilot, etc.) must still find the same contract
 - [AGENTS.md](../../AGENTS.md)
 - [`.github/copilot-instructions.md`](../../.github/copilot-instructions.md)
 
+Project agent skills (keep Cursor + Claude twins in sync when adding/updating):
+
+- [`.cursor/skills/`](../skills/) — Cursor Agent skills
+- [`.claude/skills/`](../../.claude/skills/) — Claude Code skills (same content when dual-tool)
+
 ## README
 
 [README.md](../../README.md) — human-focused setup (Android emulator, env vars). Link to `docs/AGENT_ONBOARDING.md` for agents; do not duplicate full architecture there.
