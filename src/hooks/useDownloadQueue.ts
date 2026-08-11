@@ -7,9 +7,9 @@ import {
   getDownloadQueueSnapshot,
   getResumableDownloadItems,
 } from '../db/repository';
-import { DownloadQueueWorker } from '../services/downloadQueueWorker';
+import type { WorkerSessionState } from '../services/downloadQueueWorker';
+import { getSharedDownloadQueueWorker } from '../services/downloadQueueWorkerSingleton';
 import { getConnectivitySnapshot } from '../services/connectivity';
-import { queuedResourceResolver } from '../services/downloadResourceResolver';
 import { logger } from '../utils/logger';
 import {
   getActiveUserId,
@@ -192,12 +192,16 @@ function hasActiveDownloads(snapshot: DownloadQueueSnapshot): boolean {
 // Single worker instance for the app's lifetime, mirroring other cross-screen
 // service singletons (e.g. authToken) rather than recreating in-memory queue
 // state per hook consumer.
-const worker = new DownloadQueueWorker(queuedResourceResolver);
+const worker = getSharedDownloadQueueWorker();
+
+export { getSharedDownloadQueueWorker } from '../services/downloadQueueWorkerSingleton';
 
 export function useDownloadQueue() {
   const [snapshot, setSnapshot] = useState<DownloadQueueSnapshot>(
     EMPTY_DOWNLOAD_SNAPSHOT,
   );
+  const [workerSessionState, setWorkerSessionState] =
+    useState<WorkerSessionState>(() => worker.getState());
 
   const refresh = useCallback(async () => {
     if (__DEV__ && DEV_PREVIEW_DOWNLOAD_QUEUE) {
@@ -207,6 +211,7 @@ export function useDownloadQueue() {
     try {
       const next = await getDownloadQueueSnapshot();
       setSnapshot(next);
+      setWorkerSessionState(worker.getState());
     } catch (error) {
       log.error('Failed to load download queue snapshot', { error });
     }
@@ -216,23 +221,24 @@ export function useDownloadQueue() {
     void refresh();
   }, [refresh]);
 
-  // Poll while a download is actively in flight so progress isn't frozen
-  // between action-triggered refreshes (start/pause/resume/cancel). Stops
-  // automatically once nothing is `downloading`.
+  // Poll while the worker or queue reports an active transfer so progress and
+  // footer controls update during long-running start() (not only after it returns).
   useEffect(() => {
-    const isActivelyDownloading = snapshot.items.some(
-      item => item.status === 'downloading',
-    );
-    if (!isActivelyDownloading) {
+    const shouldPoll =
+      workerSessionState === 'downloading' ||
+      workerSessionState === 'paused' ||
+      snapshot.items.some(item => item.status === 'downloading');
+
+    if (!shouldPoll) {
       return;
     }
 
     const intervalId = setInterval(() => {
       void refresh();
-    }, 1000);
+    }, 500);
 
     return () => clearInterval(intervalId);
-  }, [snapshot, refresh]);
+  }, [snapshot, workerSessionState, refresh]);
 
   const start = useCallback(
     async (items: DownloadQueueItem[]) => {
@@ -249,7 +255,13 @@ export function useDownloadQueue() {
           setPrepareOfflineDownloadStarted(userId, projectId);
         }
       }
-      await worker.start(items);
+
+      // Do not await the full queue — worker runs sequentially in the background
+      // so UI can refresh progress and expose pause/cancel while downloading.
+      void worker.start(items).finally(() => {
+        void refresh();
+      });
+
       await refresh();
     },
     [refresh],
@@ -262,7 +274,9 @@ export function useDownloadQueue() {
 
   const resume = useCallback(async () => {
     if (worker.getState() === 'paused') {
-      await worker.resume();
+      void worker.resume().finally(() => {
+        void refresh();
+      });
       await refresh();
       return;
     }
@@ -279,7 +293,9 @@ export function useDownloadQueue() {
     }
 
     const items = await getResumableDownloadItems(true);
-    await worker.start(items);
+    void worker.start(items).finally(() => {
+      void refresh();
+    });
     await refresh();
   }, [refresh]);
 
@@ -290,5 +306,14 @@ export function useDownloadQueue() {
 
   const hasDownloads = hasActiveDownloads(snapshot);
 
-  return { snapshot, hasDownloads, start, pause, resume, cancel, refresh };
+  return {
+    snapshot,
+    hasDownloads,
+    workerSessionState,
+    start,
+    pause,
+    resume,
+    cancel,
+    refresh,
+  };
 }

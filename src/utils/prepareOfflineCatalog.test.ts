@@ -2,10 +2,12 @@ import {
   buildPrepareOfflineCatalog,
   buildEffectiveCatalog,
   computePendingBytes,
+  computeRemainingBytes,
   computeTotalBytes,
   computeManifestBytesForScope,
   filterPrepareOfflineCatalogByTiers,
   getEffectiveItems,
+  getRemainingBytesForItem,
   isItemCustomizeLocked,
   isItemIncluded,
   isTierLocked,
@@ -255,6 +257,61 @@ describe('prepareOfflineCatalog', () => {
     expect(
       getEffectiveItems(catalog, new Set([questionsAudioId])),
     ).toHaveLength(catalog.items.length - 1);
+  });
+
+  it('computeRemainingBytes uses full catalog bytes for non-completed items', () => {
+    const remaining = computeRemainingBytes([
+      {
+        id: 'tier-1-source-bible-text',
+        tier: 1,
+        kind: 'text',
+        groupName: 'Source Bible',
+        label: 'Text',
+        bytes: 100,
+        status: 'downloading',
+        progress: 0.25,
+      },
+      {
+        id: 'tier-1-source-bible-audio',
+        tier: 1,
+        kind: 'audio',
+        groupName: 'Source Bible',
+        label: 'Audio',
+        bytes: 200,
+        status: 'selected',
+      },
+    ]);
+
+    expect(remaining).toBe(100 + 200);
+  });
+
+  it('getRemainingBytesForItem returns zero for completed rows', () => {
+    expect(
+      getRemainingBytesForItem({
+        id: 'tier-3-bible-commentary-text',
+        tier: 3,
+        kind: 'text',
+        groupName: 'Bible Commentary',
+        label: 'Text',
+        bytes: 12 * 1024 * 1024,
+        status: 'completed',
+      }),
+    ).toBe(0);
+  });
+
+  it('getRemainingBytesForItem returns full catalog bytes for non-completed rows', () => {
+    expect(
+      getRemainingBytesForItem({
+        id: 'tier-3-bible-commentary-audio',
+        tier: 3,
+        kind: 'audio',
+        groupName: 'Bible Commentary',
+        label: 'Audio',
+        bytes: 24 * 1024 * 1024,
+        status: 'selected',
+        progress: 0.5,
+      }),
+    ).toBe(24 * 1024 * 1024);
   });
 
   it('buildEffectiveCatalog omits deselected tier 2/3 from summary groups', () => {

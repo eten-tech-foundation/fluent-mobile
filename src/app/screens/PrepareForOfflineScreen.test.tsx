@@ -6,12 +6,12 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import PrepareForOfflineScreen from './PrepareForOfflineScreen';
-import { setPrepareOfflineDownloadStarted } from '../../services/storage';
-import { enqueuePrepareOfflineDownload } from '../../services/prepareOfflineDownload';
 import {
   resetMockPrepareOfflineInventory,
   setPrepareOfflineMockInventoryScenario,
 } from '../../mocks/prepareOffline';
+
+const mockHandleDownload = jest.fn();
 
 const mockNavigate = jest.fn();
 const mockGoBack = jest.fn();
@@ -45,12 +45,18 @@ jest.mock('../../hooks/usePrepareOfflineSelection', () => ({
   usePrepareOfflineSelection: jest.fn(),
 }));
 
-jest.mock('../../services/storage', () => ({
-  setPrepareOfflineDownloadStarted: jest.fn(),
-}));
-
-jest.mock('../../services/prepareOfflineDownload', () => ({
-  enqueuePrepareOfflineDownload: jest.fn(),
+jest.mock('../../hooks/usePrepareOfflineDownload', () => ({
+  usePrepareOfflineDownload: jest.fn(({ catalog }: { catalog: unknown }) => ({
+    session: 'idle',
+    busy: false,
+    catalogWithProgress: catalog,
+    downloadButtonLabel: 'Download 18 MB',
+    canDownload: true,
+    handleDownload: mockHandleDownload,
+    pause: jest.fn(),
+    resume: jest.fn(),
+    cancel: jest.fn(),
+  })),
 }));
 
 jest.mock('../../utils/parseUserId', () => ({
@@ -195,7 +201,7 @@ describe('PrepareForOfflineScreen', () => {
     expect(screen.getByTestId('prepare-offline-download-button')).toBeTruthy();
   });
 
-  it('starts download via storage and enqueue when Download is pressed', async () => {
+  it('calls handleDownload when Download is pressed', async () => {
     render(<PrepareForOfflineScreen />);
 
     fireEvent.press(screen.getByText('Luke'));
@@ -208,15 +214,8 @@ describe('PrepareForOfflineScreen', () => {
     fireEvent.press(screen.getByTestId('prepare-offline-download-button'));
 
     await waitFor(() => {
-      expect(setPrepareOfflineDownloadStarted).toHaveBeenCalledWith('42', 5);
+      expect(mockHandleDownload).toHaveBeenCalled();
     });
-    expect(enqueuePrepareOfflineDownload).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: 42,
-        projectId: 5,
-        items: expect.any(Array),
-      }),
-    );
   });
 
   it('keeps download footer visible while customize panel is expanded', async () => {

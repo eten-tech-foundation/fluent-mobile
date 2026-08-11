@@ -1,28 +1,48 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { CircleCheck, Download } from 'lucide-react-native';
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
+import {
+  CircleCheck,
+  Download,
+  Pause,
+  Play,
+  X,
+  type LucideIcon,
+} from 'lucide-react-native';
 import { formatByteSize } from '../../utils/formatByteSize';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
+import type { PrepareOfflineDownloadSession } from '../../hooks/usePrepareOfflineDownload';
 
 interface PrepareOfflineDownloadFooterProps {
   totalBytes: number;
-  pendingBytes: number;
   canDownload: boolean;
   downloadButtonLabel: string;
-  downloadStarted: boolean;
+  session: PrepareOfflineDownloadSession;
+  busy?: boolean;
   onDownload: () => void;
+  onPause: () => void;
+  onResume: () => void;
+  onCancel: () => void;
 }
 
 export function PrepareOfflineDownloadFooter({
   totalBytes,
-  pendingBytes,
   canDownload,
   downloadButtonLabel,
-  downloadStarted,
+  session,
+  busy = false,
   onDownload,
+  onPause,
+  onResume,
+  onCancel,
 }: PrepareOfflineDownloadFooterProps) {
-  const downloadComplete = downloadStarted && pendingBytes === 0;
-  const downloadInProgress = downloadStarted && pendingBytes > 0;
+  const disabled = busy;
 
   return (
     <View style={styles.footer} testID="prepare-offline-download-footer">
@@ -33,7 +53,7 @@ export function PrepareOfflineDownloadFooter({
         </Text>
       </View>
 
-      {downloadComplete ? (
+      {session === 'complete' ? (
         <View
           style={styles.completeRow}
           testID="prepare-offline-download-complete"
@@ -45,13 +65,47 @@ export function PrepareOfflineDownloadFooter({
           />
           <Text style={styles.completeText}>Download complete</Text>
         </View>
-      ) : downloadInProgress ? (
-        <Text
-          style={styles.startedHint}
-          testID="prepare-offline-download-started"
+      ) : session === 'downloading' ? (
+        <View
+          style={styles.controlsColumn}
+          testID="prepare-offline-download-controls-downloading"
         >
-          Download started. Pause, resume, and cancel controls are coming soon.
-        </Text>
+          <FooterActionButton
+            label="Pause"
+            Icon={Pause}
+            disabled={disabled}
+            onPress={onPause}
+            testID="prepare-offline-download-pause"
+          />
+          <FooterActionButton
+            label="Cancel"
+            Icon={X}
+            disabled={disabled}
+            onPress={onCancel}
+            testID="prepare-offline-download-cancel"
+          />
+        </View>
+      ) : session === 'paused' ? (
+        <View
+          style={styles.controlsColumn}
+          testID="prepare-offline-download-controls-paused"
+        >
+          <FooterActionButton
+            label="Resume"
+            Icon={Play}
+            variant="primary"
+            disabled={disabled}
+            onPress={onResume}
+            testID="prepare-offline-download-resume"
+          />
+          <FooterActionButton
+            label="Cancel"
+            Icon={X}
+            disabled={disabled}
+            onPress={onCancel}
+            testID="prepare-offline-download-cancel"
+          />
+        </View>
       ) : (
         <TouchableOpacity
           style={[
@@ -59,9 +113,9 @@ export function PrepareOfflineDownloadFooter({
             !canDownload && styles.downloadButtonDisabled,
           ]}
           onPress={onDownload}
-          disabled={!canDownload}
+          disabled={!canDownload || disabled}
           accessibilityRole="button"
-          accessibilityState={{ disabled: !canDownload }}
+          accessibilityState={{ disabled: !canDownload || disabled }}
           testID="prepare-offline-download-button"
         >
           <Download
@@ -84,6 +138,58 @@ export function PrepareOfflineDownloadFooter({
         </TouchableOpacity>
       )}
     </View>
+  );
+}
+
+interface FooterActionButtonProps {
+  label: string;
+  Icon: LucideIcon;
+  variant?: 'primary' | 'secondary';
+  disabled?: boolean;
+  onPress: () => void;
+  testID?: string;
+  style?: StyleProp<ViewStyle>;
+}
+
+function FooterActionButton({
+  label,
+  Icon,
+  variant = 'secondary',
+  disabled,
+  onPress,
+  testID,
+}: FooterActionButtonProps) {
+  const isPrimary = variant === 'primary';
+  const iconColor = disabled
+    ? theme.colors.mutedForeground
+    : isPrimary
+    ? theme.colors.primaryForeground
+    : theme.colors.foreground;
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
+      testID={testID}
+      style={[
+        styles.controlButton,
+        isPrimary && styles.controlButtonPrimary,
+        disabled && styles.controlButtonDisabled,
+      ]}
+    >
+      <Icon size={18} color={iconColor} strokeWidth={listIconStrokeWidth} />
+      <Text
+        style={[
+          styles.controlButtonLabel,
+          isPrimary && styles.controlButtonLabelPrimary,
+          disabled && styles.controlButtonLabelDisabled,
+        ]}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
   );
 }
 
@@ -116,7 +222,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: theme.spacing.xs,
     paddingVertical: theme.spacing.sm,
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.radius.md,
     backgroundColor: theme.colors.primary,
     borderWidth: 1,
     borderColor: theme.colors.primary,
@@ -132,11 +238,39 @@ const styles = StyleSheet.create({
   downloadButtonLabelDisabled: {
     color: theme.colors.mutedForeground,
   },
-  startedHint: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.mutedForeground,
-    textAlign: 'center',
+  controlsColumn: {
+    width: '100%',
+    gap: theme.spacing.sm,
+  },
+  controlButton: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
     paddingVertical: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.cardBackground,
+  },
+  controlButtonPrimary: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  controlButtonDisabled: {
+    opacity: 0.5,
+  },
+  controlButtonLabel: {
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.foreground,
+  },
+  controlButtonLabelPrimary: {
+    color: theme.colors.primaryForeground,
+  },
+  controlButtonLabelDisabled: {
+    color: theme.colors.mutedForeground,
   },
   completeRow: {
     flexDirection: 'row',

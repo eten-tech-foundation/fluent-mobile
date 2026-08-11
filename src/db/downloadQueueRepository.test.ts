@@ -148,6 +148,21 @@ async function mockExecute(
     return { rows: [] };
   }
 
+  if (
+    normalized.includes('project_id = ?') &&
+    normalized.includes("status IN ('downloading', 'paused')") &&
+    normalized.startsWith("UPDATE download_queue SET status = 'cancelled'")
+  ) {
+    const [updatedAt, projectId] = params as [string, number];
+    rows = rows.map(r =>
+      r.project_id === projectId &&
+      (r.status === 'downloading' || r.status === 'paused')
+        ? { ...r, status: 'cancelled', updated_at: updatedAt }
+        : r,
+    );
+    return { rows: [] };
+  }
+
   if (normalized.startsWith("UPDATE download_queue SET status = 'cancelled'")) {
     const [resumeData, updatedAt, id] = params as [
       string | null,
@@ -281,6 +296,7 @@ import {
   getResumableDownloadItems,
   markDownloadItemCompleted,
   markDownloadItemCancelled,
+  cancelProjectDownloadTransfers,
   markDownloadItemFailed,
   markDownloadItemPaused,
   updateDownloadItemProgress,
@@ -421,6 +437,42 @@ describe('downloadQueueRepository', () => {
     expect(rows.find(r => r.id === cancelledId)?.resume_data).toBe(
       '{"resumeData":"cancelled"}',
     );
+  });
+
+  it('cancelProjectDownloadTransfers marks downloading and paused rows cancelled', async () => {
+    const [downloadingId, pausedId, queuedId] = await enqueueDownloadItems([
+      {
+        projectId: 7,
+        tier: 1,
+        kind: 'text',
+        resourceName: 'Source Bible',
+        label: 'Text',
+      },
+      {
+        projectId: 7,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Audio',
+      },
+      {
+        projectId: 7,
+        tier: 2,
+        kind: 'text',
+        resourceName: 'Translation Words',
+        label: 'Words Text',
+      },
+    ]);
+
+    await markDownloadItemDownloading(downloadingId);
+    await markDownloadItemPaused(pausedId, '{"resumeData":"paused"}');
+
+    await cancelProjectDownloadTransfers(7);
+
+    const rows = __getDownloadQueueRows();
+    expect(rows.find(r => r.id === downloadingId)?.status).toBe('cancelled');
+    expect(rows.find(r => r.id === pausedId)?.status).toBe('cancelled');
+    expect(rows.find(r => r.id === queuedId)?.status).toBe('queued');
   });
 
   it('returns resumable queue items in queue order', async () => {
