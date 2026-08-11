@@ -135,4 +135,27 @@ describe('validatePrBody', () => {
       true,
     );
   });
+
+  it('fails when required fields exist only inside an HTML comment', () => {
+    const body = `<!--
+### TLDR
+
+Looks filled but this entire block is commented out for reviewers.
+
+### Details
+
+Refs #317
+
+### How to verify
+
+1. npm run format:check && npm run lint && npm run typecheck && npm test -- --ci
+-->
+`;
+    const result = validatePrBody({ body, author: 'B3RN153' });
+    expect(result.ok).toBe(false);
+    expect(result.errors.some((e) => /no author content/i.test(e))).toBe(true);
+    expect(result.errors.some((e) => /TLDR/i.test(e))).toBe(true);
+    expect(result.errors.some((e) => /Refs/i.test(e))).toBe(true);
+    expect(result.errors.some((e) => /How to verify/i.test(e))).toBe(true);
+  });
 });

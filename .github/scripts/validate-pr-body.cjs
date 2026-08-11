@@ -135,6 +135,8 @@ function validatePrBody(input) {
   }
 
   const withoutBot = stripCodeRabbitSummary(raw);
+  // Normalized author content — required-field checks must use this, not raw,
+  // so HTML-comment-only "fake" TLDR / Refs / How to verify do not pass.
   const body = stripHtmlComments(withoutBot).trim();
 
   if (!body) {
@@ -143,7 +145,7 @@ function validatePrBody(input) {
     );
   }
 
-  const tldr = extractSection(raw, 'TLDR');
+  const tldr = extractSection(body, 'TLDR');
   if (tldr === null) {
     errors.push('Missing `### TLDR` section.');
   } else if (isPlaceholderOrEmpty(tldr)) {
@@ -152,13 +154,13 @@ function validatePrBody(input) {
     );
   }
 
-  if (!hasRefsIssueLink(raw)) {
+  if (!hasRefsIssueLink(body)) {
     errors.push(
       'Missing `Refs #NNN` on its own line (do not use Closes/Fixes/Resolves).',
     );
   }
 
-  const howToVerify = extractSection(raw, 'How to verify');
+  const howToVerify = extractSection(body, 'How to verify');
   if (howToVerify === null) {
     errors.push('Missing `### How to verify` section.');
   } else if (isPlaceholderOrEmpty(howToVerify)) {
@@ -168,9 +170,8 @@ function validatePrBody(input) {
   }
 
   // Catch CodeRabbit-only bodies that happen to lack our headings entirely
-  const authorOnly = stripHtmlComments(withoutBot).trim();
   if (
-    authorOnly.length > 0 &&
+    body.length > 0 &&
     /summary by coderabbit/i.test(raw) &&
     tldr === null &&
     howToVerify === null

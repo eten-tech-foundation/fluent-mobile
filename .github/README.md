@@ -6,7 +6,7 @@ Workflows for Fluent Mobile (**Android-only**).
 
 | File | Trigger | Purpose |
 |------|---------|---------|
-| `pr-description.yml` | PR opened/edited/sync | Require filled PR template (`TLDR`, `Refs #NNN`, How to verify); Dependabot exempt |
+| `pr-description.yml` | PR activity (`opened` / `edited` / `synchronize` / `reopened` / `ready_for_review`) | Require filled PR template (`TLDR`, `Refs #NNN`, How to verify); Dependabot exempt |
 | `lint.yml` | push, PR | ESLint + Prettier |
 | `test.yml` | push, PR | Jest unit tests |
 | `quality-gates.yml` | push, PR | TypeScript, `expo-doctor`, `expo install --check` |
