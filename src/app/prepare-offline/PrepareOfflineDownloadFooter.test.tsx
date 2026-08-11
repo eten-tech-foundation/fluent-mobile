@@ -9,24 +9,29 @@ jest.mock('lucide-react-native', () => {
   return {
     CircleCheck: MockIcon,
     Download: MockIcon,
+    Pause: MockIcon,
+    Play: MockIcon,
+    X: MockIcon,
   };
 });
 
 describe('PrepareOfflineDownloadFooter', () => {
   const defaultProps = {
     totalBytes: 338 * 1024 * 1024,
-    pendingBytes: 164 * 1024 * 1024,
     canDownload: true,
     downloadButtonLabel: 'Download 164 MB',
-    downloadStarted: false,
+    session: 'idle' as const,
     onDownload: jest.fn(),
+    onPause: jest.fn(),
+    onResume: jest.fn(),
+    onCancel: jest.fn(),
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('updates total row and download label', () => {
+  it('updates total row and download label in idle session', () => {
     render(
       <PrepareOfflineDownloadFooter
         {...defaultProps}
@@ -72,41 +77,57 @@ describe('PrepareOfflineDownloadFooter', () => {
     expect(onDownload).not.toHaveBeenCalled();
   });
 
-  it('shows started placeholder after download begins', () => {
+  it('shows pause and cancel controls while downloading', () => {
+    render(
+      <PrepareOfflineDownloadFooter {...defaultProps} session="downloading" />,
+    );
+
+    expect(
+      screen.getByTestId('prepare-offline-download-controls-downloading'),
+    ).toBeTruthy();
+    expect(screen.getByTestId('prepare-offline-download-pause')).toBeTruthy();
+    expect(screen.getByTestId('prepare-offline-download-cancel')).toBeTruthy();
+    expect(screen.queryByTestId('prepare-offline-download-button')).toBeNull();
+    expect(screen.getByTestId('prepare-offline-total-bytes')).toHaveTextContent(
+      '338 MB',
+    );
+    expect(screen.queryByTestId('prepare-offline-remaining-bytes')).toBeNull();
+  });
+
+  it('shows resume and cancel controls while paused', () => {
+    render(<PrepareOfflineDownloadFooter {...defaultProps} session="paused" />);
+
+    expect(
+      screen.getByTestId('prepare-offline-download-controls-paused'),
+    ).toBeTruthy();
+    expect(screen.getByTestId('prepare-offline-download-resume')).toBeTruthy();
+    expect(screen.getByTestId('prepare-offline-download-cancel')).toBeTruthy();
+  });
+
+  it('disables controls while busy', () => {
     render(
       <PrepareOfflineDownloadFooter
         {...defaultProps}
-        downloadStarted
-        pendingBytes={164 * 1024 * 1024}
+        session="downloading"
+        busy
       />,
     );
 
-    expect(screen.getByTestId('prepare-offline-download-started')).toBeTruthy();
     expect(
-      screen.getByText(
-        'Download started. Pause, resume, and cancel controls are coming soon.',
-      ),
-    ).toBeTruthy();
-    expect(screen.queryByTestId('prepare-offline-download-button')).toBeNull();
-    expect(
-      screen.queryByTestId('prepare-offline-download-complete'),
-    ).toBeNull();
+      screen.getByTestId('prepare-offline-download-pause').props
+        .accessibilityState?.disabled,
+    ).toBe(true);
   });
 
-  it('shows complete feedback when the simulated download finishes', () => {
+  it('shows complete feedback when session is complete', () => {
     render(
-      <PrepareOfflineDownloadFooter
-        {...defaultProps}
-        downloadStarted
-        pendingBytes={0}
-      />,
+      <PrepareOfflineDownloadFooter {...defaultProps} session="complete" />,
     );
 
     expect(
       screen.getByTestId('prepare-offline-download-complete'),
     ).toBeTruthy();
     expect(screen.getByText('Download complete')).toBeTruthy();
-    expect(screen.queryByTestId('prepare-offline-download-started')).toBeNull();
     expect(screen.queryByTestId('prepare-offline-download-button')).toBeNull();
   });
 });
