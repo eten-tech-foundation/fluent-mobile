@@ -137,6 +137,6 @@ export const createTableQueries: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_dq_project ON download_queue(project_id);`,
   `CREATE INDEX IF NOT EXISTS idx_dq_status ON download_queue(status);`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_dq_active_resource
-    ON download_queue(project_id, kind, resource_name)
+    ON download_queue(user_id, project_id, kind, resource_name)
     WHERE status != 'completed';`,
 ];

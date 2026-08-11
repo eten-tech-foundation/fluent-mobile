@@ -9,7 +9,10 @@ import type {
 } from '../types/prepareOffline/types';
 import { logger } from '../utils/logger';
 import { getVerifiedDownloadedResourcesInventory } from './downloadInventory';
-import { deleteDownloadResourceFile } from './downloadStorage';
+import {
+  deleteDownloadResourceFile,
+  assertDeletableDownloadPath,
+} from './downloadStorage';
 import { getActiveUserId } from './storage';
 
 const log = logger.create('PrepareOfflineStorage');
@@ -165,12 +168,26 @@ export async function deleteSelectedDownloadResources(
 
     try {
       if (resource.localFilePath) {
-        await deleteDownloadResourceFile(
-          resource.projectId,
-          resource.localFilePath,
-        );
+        assertDeletableDownloadPath(resource.projectId, resource.localFilePath);
       }
+
       await deleteDownloadItem(resource.id);
+
+      if (resource.localFilePath) {
+        try {
+          await deleteDownloadResourceFile(
+            resource.projectId,
+            resource.localFilePath,
+          );
+        } catch (fileError) {
+          log.warn('Queue row removed but file delete failed', {
+            projectId: resource.projectId,
+            resourceId: resource.id,
+            error: fileError,
+          });
+        }
+      }
+
       deletedIds.push(resource.id);
 
       log.info('Deleted offline resource', {

@@ -18,6 +18,9 @@ import {
   getDeviceStorageSummary,
   getOtherProjectsStorageInventory,
 } from '../services/prepareOfflineStorageManagement';
+import { logger } from '../utils/logger';
+
+const log = logger.create('usePrepareOfflineStorageManagement');
 
 const EMPTY_SUMMARY: DeviceStorageSummary = {
   availableBytes: null,
@@ -37,6 +40,7 @@ export function usePrepareOfflineStorageManagement(
   const [expandedProjectIds, setExpandedProjectIds] = useState<Set<number>>(
     () => new Set(),
   );
+  const reloadGenerationRef = useRef(0);
 
   const resourceById = useMemo(() => {
     const map = new Map<string, StorageInventoryResource>();
@@ -72,11 +76,19 @@ export function usePrepareOfflineStorageManagement(
       return;
     }
 
+    const generation = reloadGenerationRef.current + 1;
+    reloadGenerationRef.current = generation;
+
     try {
       const [nextSummary, nextGroups] = await Promise.all([
         getDeviceStorageSummary(),
         getOtherProjectsStorageInventory(projectId),
       ]);
+
+      if (reloadGenerationRef.current !== generation) {
+        return;
+      }
+
       setSummary(nextSummary);
       setGroups(nextGroups);
       setSelectedIds(previous => {
@@ -87,8 +99,22 @@ export function usePrepareOfflineStorageManagement(
         );
         return new Set([...previous].filter(id => validIds.has(id)));
       });
+    } catch (error) {
+      if (reloadGenerationRef.current !== generation) {
+        return;
+      }
+
+      log.error('Failed to reload device storage inventory', {
+        error,
+        projectId,
+      });
+      setSummary(EMPTY_SUMMARY);
+      setGroups([]);
+      setSelectedIds(new Set());
     } finally {
-      setInitialLoaded(true);
+      if (reloadGenerationRef.current === generation) {
+        setInitialLoaded(true);
+      }
     }
   }, [projectId]);
 

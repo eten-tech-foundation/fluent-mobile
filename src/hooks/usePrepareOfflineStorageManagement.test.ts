@@ -245,4 +245,82 @@ describe('usePrepareOfflineStorageManagement', () => {
     expect(result.current.selectedIds.size).toBe(0);
     expect(result.current.hasSelection).toBe(false);
   });
+
+  it('ignores stale reload results when a newer reload finishes first', async () => {
+    let resolveFirstSummary:
+      | ((value: typeof summaryFixture) => void)
+      | undefined;
+    let resolveSecondSummary:
+      | ((value: typeof summaryFixture) => void)
+      | undefined;
+    let firstInventoryCall = 0;
+
+    mockGetDeviceStorageSummary
+      .mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            resolveFirstSummary = resolve;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            resolveSecondSummary = resolve;
+          }),
+      );
+
+    mockGetOtherProjectsStorageInventory.mockImplementation(async () => {
+      firstInventoryCall += 1;
+      if (firstInventoryCall === 1) {
+        return new Promise(() => undefined);
+      }
+      return [];
+    });
+
+    const { result } = renderHook(() => usePrepareOfflineStorageManagement(1));
+
+    await act(async () => {
+      const firstReload = result.current.reload();
+      const secondReload = result.current.reload();
+
+      resolveSecondSummary?.(summaryFixture);
+      await secondReload;
+
+      resolveFirstSummary?.({
+        ...summaryFixture,
+        fluentUsedBytes: 999,
+      });
+      await firstReload;
+    });
+
+    expect(result.current.summary.fluentUsedBytes).toBe(350);
+    expect(result.current.groups).toEqual([]);
+  });
+
+  it('clears inventory and avoids unhandled rejection when reload fails', async () => {
+    const { result } = renderHook(() => usePrepareOfflineStorageManagement(1));
+
+    await waitFor(() => {
+      expect(result.current.initialLoaded).toBe(true);
+    });
+
+    mockGetDeviceStorageSummary.mockRejectedValueOnce(
+      new Error('disk stats unavailable'),
+    );
+    mockGetOtherProjectsStorageInventory.mockRejectedValueOnce(
+      new Error('disk stats unavailable'),
+    );
+
+    await act(async () => {
+      await result.current.reload();
+    });
+
+    expect(result.current.initialLoaded).toBe(true);
+    expect(result.current.summary).toEqual({
+      availableBytes: null,
+      totalDeviceBytes: null,
+      fluentUsedBytes: 0,
+    });
+    expect(result.current.groups).toEqual([]);
+  });
 });

@@ -157,13 +157,13 @@ export function usePrepareOfflineDownload({
   }, [sessionKey]);
 
   useEffect(() => {
-    if (projectId === null) {
+    if (projectId === null || userId === null) {
       setCompletedQueueItems([]);
       return;
     }
 
     let cancelled = false;
-    getDownloadedResourcesByProject(projectId)
+    getDownloadedResourcesByProject(projectId, userId)
       .then(items => {
         if (!cancelled) {
           setCompletedQueueItems(items);
@@ -176,7 +176,7 @@ export function usePrepareOfflineDownload({
     return () => {
       cancelled = true;
     };
-  }, [projectId, snapshot]);
+  }, [projectId, snapshot, userId]);
 
   const allQueueItems = useMemo(
     () => [...snapshot.items, ...completedQueueItems],
@@ -442,7 +442,8 @@ export function usePrepareOfflineDownload({
 
       if (
         projectItems.length > 0 &&
-        pendingSessionActionRef.current !== 'cancel'
+        pendingSessionActionRef.current !== 'cancel' &&
+        pendingSessionActionRef.current !== 'pause'
       ) {
         await start(projectItems);
       }

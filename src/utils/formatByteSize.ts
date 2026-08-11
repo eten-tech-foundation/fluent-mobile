@@ -45,13 +45,13 @@ export function formatAvailableDeviceStorage(
   availableBytes: number | null,
   totalBytes: number | null,
 ): string {
-  if (availableBytes != null && totalBytes != null) {
+  if (availableBytes !== null && totalBytes !== null) {
     return `${formatStorageCapacity(availableBytes)} of ${formatStorageCapacity(
       totalBytes,
     )}`;
   }
 
-  if (availableBytes != null) {
+  if (availableBytes !== null) {
     return formatStorageCapacity(availableBytes);
   }
 

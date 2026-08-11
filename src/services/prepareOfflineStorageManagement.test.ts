@@ -220,7 +220,7 @@ describe('prepareOfflineStorageManagement', () => {
       expect(mockDeleteDownloadItem).toHaveBeenCalledWith('orphan');
     });
 
-    it('records failures when queue delete throws', async () => {
+    it('records failures when queue delete throws without removing the file first', async () => {
       const path = `${FileSystem.documentDirectory}downloads/2/bad.mp3`;
       await FileSystem.writeAsStringAsync(path, 'bytes');
       mockDeleteDownloadItem.mockRejectedValueOnce(new Error('db locked'));
@@ -243,6 +243,7 @@ describe('prepareOfflineStorageManagement', () => {
 
       expect(result.deletedIds).toEqual([]);
       expect(result.failed).toEqual([{ id: 'bad', reason: 'db locked' }]);
+      expect((await FileSystem.getInfoAsync(path)).exists).toBe(true);
     });
 
     it('rejects file paths outside the project downloads sandbox', async () => {

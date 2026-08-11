@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 9;
+export const CURRENT_SCHEMA_VERSION = 10;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -311,6 +311,17 @@ async function addDownloadQueueUserId(db: SqlExecutor): Promise<void> {
   );
 }
 
+async function scopeDownloadQueueActiveResourceIndex(
+  db: SqlExecutor,
+): Promise<void> {
+  await db.execute(`DROP INDEX IF EXISTS idx_dq_active_resource`);
+  await db.execute(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_dq_active_resource
+     ON download_queue(user_id, project_id, kind, resource_name)
+     WHERE status != 'completed'`,
+  );
+}
+
 /** Ordered schema migrations. Version 1 = current CREATE IF NOT EXISTS baseline. */
 export const migrations: Migration[] = [
   {
@@ -357,6 +368,11 @@ export const migrations: Migration[] = [
     version: 9,
     name: 'download_queue_user_id',
     up: addDownloadQueueUserId,
+  },
+  {
+    version: 10,
+    name: 'download_queue_user_scoped_active_index',
+    up: scopeDownloadQueueActiveResourceIndex,
   },
 ];
 

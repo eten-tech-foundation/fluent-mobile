@@ -282,13 +282,14 @@ export async function getDownloadQueueSnapshot(): Promise<DownloadQueueSnapshot>
 
 export async function getDownloadedResourcesByProject(
   projectId: number,
+  userId: number,
 ): Promise<DownloadQueueItem[]> {
   const db = getDatabase();
   const result = await db.execute(
     `SELECT * FROM download_queue
-     WHERE project_id = ? AND status = 'completed'
+     WHERE project_id = ? AND status = 'completed' AND user_id = ?
      ORDER BY resource_name`,
-    [projectId],
+    [projectId, userId],
   );
   const rows = (result.rows ?? []) as unknown as DownloadQueueRow[];
   return rows.map(mapRow);

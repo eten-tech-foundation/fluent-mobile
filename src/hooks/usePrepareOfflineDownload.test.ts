@@ -228,6 +228,68 @@ describe('usePrepareOfflineDownload', () => {
     expect(mockCancel).toHaveBeenCalled();
   });
 
+  it('runs a pause tapped during kickoff after enqueue finishes without starting the worker', async () => {
+    const { getResumableDownloadItems } = jest.requireMock('../db/repository');
+    let resolveFirstFetch: ((items: unknown[]) => void) | undefined;
+
+    getResumableDownloadItems.mockImplementation(() => {
+      if (resolveFirstFetch) {
+        return Promise.resolve([
+          {
+            id: 'tier-1-source-bible-text',
+            tier: 1,
+            label: 'Text',
+            progress: 0,
+            status: 'queued',
+            projectId: 1,
+          },
+        ]);
+      }
+
+      return new Promise(resolve => {
+        resolveFirstFetch = resolve;
+      });
+    });
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+      }),
+    );
+
+    let downloadPromise!: Promise<void>;
+    act(() => {
+      downloadPromise = result.current.handleDownload();
+    });
+
+    expect(result.current.session).toBe('downloading');
+
+    await act(async () => {
+      await result.current.pause();
+    });
+
+    await act(async () => {
+      resolveFirstFetch?.([
+        {
+          id: 'tier-1-source-bible-text',
+          tier: 1,
+          label: 'Text',
+          progress: 0,
+          status: 'queued',
+          projectId: 1,
+        },
+      ]);
+      await downloadPromise;
+    });
+
+    expect(mockStart).not.toHaveBeenCalled();
+    expect(mockPause).toHaveBeenCalled();
+  });
+
   it('transitions to downloading after handleDownload', async () => {
     mockWorkerState = 'downloading';
     mockSnapshot.items = [
