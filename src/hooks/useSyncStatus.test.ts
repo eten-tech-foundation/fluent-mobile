@@ -40,6 +40,7 @@ describe('useSyncStatus cellular gate', () => {
     jest.resetAllMocks();
     mockUsePendingUploads.mockReturnValue({
       pendingCount: 0,
+      pendingChapterCount: 0,
       failedCount: 0,
       hasPendingUploads: false,
       hasFailedUploads: false,

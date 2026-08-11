@@ -53,6 +53,8 @@ function mapRow(row: DownloadQueueRow): DownloadQueueItem {
 }
 
 export type EnqueueDownloadItemInput = {
+  /** Stable catalog resource id (e.g. tier-1-source-bible-text). */
+  id?: string;
   projectId: number;
   tier: DownloadTier;
   kind: 'text' | 'audio';
@@ -85,7 +87,7 @@ export async function enqueueDownloadItems(
     const sorted = [...items].sort((a, b) => a.tier - b.tier);
 
     for (const item of sorted) {
-      const id = newDownloadQueueId();
+      const id = item.id ?? newDownloadQueueId();
 
       const result = await tx.execute(
         `INSERT INTO download_queue (
@@ -170,6 +172,20 @@ export async function markDownloadItemCancelled(
      SET status = 'cancelled', resume_data = COALESCE(?, resume_data), updated_at = ?
      WHERE id = ? AND status != 'completed'`,
     [resumeData ?? null, now, id],
+  );
+}
+
+/** Persist cancel for in-flight project rows when the worker lost its active handle. */
+export async function cancelProjectDownloadTransfers(
+  projectId: number,
+): Promise<void> {
+  const db = getDatabase();
+  const now = new Date().toISOString();
+  await db.execute(
+    `UPDATE download_queue
+     SET status = 'cancelled', updated_at = ?
+     WHERE project_id = ? AND status IN ('downloading', 'paused')`,
+    [now, projectId],
   );
 }
 

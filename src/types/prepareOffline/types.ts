@@ -55,7 +55,8 @@ export type PrepareOfflineResourceStatus =
   | 'completed'
   | 'selected'
   | 'available'
-  | 'downloading';
+  | 'downloading'
+  | 'paused';
 
 export interface PrepareOfflineResourceItem {
   id: string;
@@ -65,6 +66,8 @@ export interface PrepareOfflineResourceItem {
   label: string;
   bytes: number;
   status: PrepareOfflineResourceStatus;
+  /** Partial progress (0–1) while queued, downloading, paused, cancelled, or failed. */
+  progress?: number;
 }
 
 export interface PrepareOfflineResourceGroup {

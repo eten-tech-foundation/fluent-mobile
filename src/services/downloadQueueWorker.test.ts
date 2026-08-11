@@ -340,16 +340,50 @@ describe('DownloadQueueWorker', () => {
         'item-1',
         expect.stringContaining('resume-token'),
       );
-      expect(worker.getState()).toBe('cancelled');
+      expect(worker.getState()).toBe('idle');
       expect(mockMarkDownloadItemFailed).not.toHaveBeenCalled();
     });
+
+    it('cancel after pause reuses saved pause state without calling pauseAsync again', async () => {
+      const pauseAsync = jest.fn().mockResolvedValue({
+        url: 'https://example.com/x.mp3',
+        fileUri: 'file:///docs/downloads/1/item-1.mp3',
+        options: {},
+        resumeData: 'resume-token',
+      });
+      spyResumable({
+        downloadAsync: jest.fn().mockReturnValue(new Promise(() => {})),
+        pauseAsync,
+      });
+      const resolver = jest
+        .fn()
+        .mockResolvedValue({ url: 'https://example.com/x.mp3', ext: 'mp3' });
+
+      const worker = new DownloadQueueWorker(resolver);
+      void worker.start([makeItem()]);
+      await flushMicrotasks();
+      await flushMicrotasks();
+
+      await worker.pause();
+      expect(pauseAsync).toHaveBeenCalledTimes(1);
+
+      await worker.cancel();
+
+      expect(pauseAsync).toHaveBeenCalledTimes(1);
+      expect(mockMarkDownloadItemCancelled).toHaveBeenCalledWith(
+        'item-1',
+        expect.stringContaining('resume-token'),
+      );
+      expect(worker.getState()).toBe('idle');
+    });
+
     it('cancel with nothing active still transitions state and clears the queue', async () => {
       const worker = new DownloadQueueWorker(async () => ({
         url: 'https://example.com/x.mp3',
         ext: 'mp3',
       }));
       await worker.cancel();
-      expect(worker.getState()).toBe('cancelled');
+      expect(worker.getState()).toBe('idle');
     });
   });
 
