@@ -68,6 +68,8 @@ See [`.cursor/commands/create-pr-branch.md`](../.cursor/commands/create-pr-branc
 - **Body:** **required** — fill [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md) / [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md) (same content: TLDR, Reviewer checklist, Details, Technical changes, Testing, How to verify, Follow-ups). The **`PR Description`** check fails empty / CodeRabbit-only bodies. Prefer `/generate-pr-description` or `/create-pr`. Do not ship a short Summary/Test plan substitute.
   - Under Details: `Refs #NNN` on its own line (links the issue without closing it)
   - Do **not** use GitHub closing keywords (`Closes`, `Fixes`, `Resolves`) — merged PRs must not auto-close issues
+  - **Assignee:** agents must assign the PR to the author (`--assignee @me`)
+  - **Development sidebar:** closing keywords are the only API-friendly way to auto-populate GitHub’s “linked issues” widget; we refuse those keywords, so link `#NNN` manually in the PR sidebar when the widget is empty (or ask a human). `Refs #NNN` still cross-references the issue in timelines.
   - For related / stacked work that is not the full ticket, say “Part of #NNN” in prose, or link manually in the PR sidebar
 - After opening a PR, set Project 4 Status to **`In PR Review`** (if not already)
 - After merge (or when ready for QA), set Project 4 Status to **`In QA`** — leave the GitHub issue **open**
