@@ -1,6 +1,7 @@
 type Row = {
   id: string;
   project_id: number;
+  user_id: number | null;
   tier: number;
   kind: string;
   resource_name: string;
@@ -54,6 +55,7 @@ async function mockExecute(
     const [
       id,
       projectId,
+      userId,
       tier,
       kind,
       resourceName,
@@ -66,6 +68,7 @@ async function mockExecute(
       updatedAt,
     ] = params as [
       string,
+      number,
       number,
       number,
       string,
@@ -81,6 +84,7 @@ async function mockExecute(
     rows.push({
       id,
       project_id: projectId,
+      user_id: userId,
       tier,
       kind,
       resource_name: resourceName,
@@ -262,6 +266,20 @@ async function mockExecute(
 
   if (
     normalized.startsWith(
+      "SELECT * FROM download_queue WHERE status = 'completed' AND user_id = ?",
+    )
+  ) {
+    const userId = params[0] as number;
+    return {
+      rows: rows
+        .filter(r => r.status === 'completed' && r.user_id === userId)
+        .sort((a, b) => a.project_id - b.project_id)
+        .map(clone),
+    };
+  }
+
+  if (
+    normalized.startsWith(
       "SELECT * FROM download_queue WHERE status = 'completed'",
     )
   ) {
@@ -303,6 +321,8 @@ import {
   markDownloadItemDownloading,
 } from './downloadQueueRepository';
 
+const TEST_USER_ID = 7;
+
 describe('downloadQueueRepository', () => {
   beforeEach(() => {
     resetDownloadQueueDbMock();
@@ -312,6 +332,7 @@ describe('downloadQueueRepository', () => {
     const ids = await enqueueDownloadItems([
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 2,
         kind: 'text',
         resourceName: 'Translation Notes',
@@ -319,6 +340,7 @@ describe('downloadQueueRepository', () => {
       },
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 1,
         kind: 'audio',
         resourceName: 'Source Bible',
@@ -342,6 +364,7 @@ describe('downloadQueueRepository', () => {
     await enqueueDownloadItems([
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 1,
         kind: 'audio',
         resourceName: 'Source Bible',
@@ -351,6 +374,7 @@ describe('downloadQueueRepository', () => {
     await enqueueDownloadItems([
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 2,
         kind: 'text',
         resourceName: 'Translation Words',
@@ -374,6 +398,7 @@ describe('downloadQueueRepository', () => {
     const [id] = await enqueueDownloadItems([
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 1,
         kind: 'audio',
         resourceName: 'Source Bible',
@@ -393,6 +418,7 @@ describe('downloadQueueRepository', () => {
     const [id] = await enqueueDownloadItems([
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 1,
         kind: 'audio',
         resourceName: 'Source Bible',
@@ -411,6 +437,7 @@ describe('downloadQueueRepository', () => {
     const [pausedId, cancelledId] = await enqueueDownloadItems([
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 1,
         kind: 'audio',
         resourceName: 'Source Bible',
@@ -418,6 +445,7 @@ describe('downloadQueueRepository', () => {
       },
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 2,
         kind: 'text',
         resourceName: 'Translation Notes',
@@ -443,6 +471,7 @@ describe('downloadQueueRepository', () => {
     const [downloadingId, pausedId, queuedId] = await enqueueDownloadItems([
       {
         projectId: 7,
+        userId: TEST_USER_ID,
         tier: 1,
         kind: 'text',
         resourceName: 'Source Bible',
@@ -450,6 +479,7 @@ describe('downloadQueueRepository', () => {
       },
       {
         projectId: 7,
+        userId: TEST_USER_ID,
         tier: 1,
         kind: 'audio',
         resourceName: 'Source Bible',
@@ -457,6 +487,7 @@ describe('downloadQueueRepository', () => {
       },
       {
         projectId: 7,
+        userId: TEST_USER_ID,
         tier: 2,
         kind: 'text',
         resourceName: 'Translation Words',
@@ -479,6 +510,7 @@ describe('downloadQueueRepository', () => {
     const [id1, id2] = await enqueueDownloadItems([
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 1,
         kind: 'audio',
         resourceName: 'Source Bible',
@@ -486,6 +518,7 @@ describe('downloadQueueRepository', () => {
       },
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 2,
         kind: 'text',
         resourceName: 'Translation Notes',
@@ -507,6 +540,7 @@ describe('downloadQueueRepository', () => {
     const [id] = await enqueueDownloadItems([
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 1,
         kind: 'audio',
         resourceName: 'Source Bible',
@@ -527,6 +561,7 @@ describe('downloadQueueRepository', () => {
     const [id] = await enqueueDownloadItems([
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 1,
         kind: 'audio',
         resourceName: 'Source Bible',
@@ -547,6 +582,7 @@ describe('downloadQueueRepository', () => {
     const [id] = await enqueueDownloadItems([
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 1,
         kind: 'audio',
         resourceName: 'Source Bible',
@@ -563,6 +599,7 @@ describe('downloadQueueRepository', () => {
     const [id1, id2] = await enqueueDownloadItems([
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 1,
         kind: 'audio',
         resourceName: 'Source Bible',
@@ -570,6 +607,7 @@ describe('downloadQueueRepository', () => {
       },
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 2,
         kind: 'text',
         resourceName: 'Translation Notes',
@@ -594,6 +632,7 @@ describe('downloadQueueRepository', () => {
     const [id] = await enqueueDownloadItems([
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 1,
         kind: 'audio',
         resourceName: 'Source Bible',
@@ -613,6 +652,7 @@ describe('downloadQueueRepository', () => {
     const [id] = await enqueueDownloadItems([
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 1,
         kind: 'audio',
         resourceName: 'Source Bible',
@@ -632,6 +672,7 @@ describe('downloadQueueRepository', () => {
     const [id] = await enqueueDownloadItems([
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 1,
         kind: 'audio',
         resourceName: 'Source Bible',
@@ -657,6 +698,7 @@ describe('downloadQueueRepository', () => {
     const [id1, id2] = await enqueueDownloadItems([
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 1,
         kind: 'audio',
         resourceName: 'Source Bible',
@@ -664,6 +706,7 @@ describe('downloadQueueRepository', () => {
       },
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 2,
         kind: 'text',
         resourceName: 'Translation Notes',
@@ -694,6 +737,7 @@ describe('downloadQueueRepository', () => {
     const [id1] = await enqueueDownloadItems([
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 1,
         kind: 'audio',
         resourceName: 'Source Bible',
@@ -703,6 +747,7 @@ describe('downloadQueueRepository', () => {
     const [id2] = await enqueueDownloadItems([
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 2,
         kind: 'text',
         resourceName: 'Translation Notes',
@@ -712,6 +757,7 @@ describe('downloadQueueRepository', () => {
     const [id3] = await enqueueDownloadItems([
       {
         projectId: 2,
+        userId: TEST_USER_ID,
         tier: 1,
         kind: 'audio',
         resourceName: 'Source Bible',
@@ -735,6 +781,7 @@ describe('downloadQueueRepository', () => {
     const [id1] = await enqueueDownloadItems([
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 1,
         kind: 'audio',
         resourceName: 'Source Bible',
@@ -744,6 +791,7 @@ describe('downloadQueueRepository', () => {
     const [id2] = await enqueueDownloadItems([
       {
         projectId: 2,
+        userId: TEST_USER_ID,
         tier: 1,
         kind: 'text',
         resourceName: 'Translation Notes',
@@ -754,7 +802,7 @@ describe('downloadQueueRepository', () => {
     await markDownloadItemCompleted(id1, 'file:///p1-a.mp3', 100);
     await markDownloadItemCompleted(id2, 'file:///p2-a.txt', 250);
 
-    const inventory = await getDownloadedResourcesInventory();
+    const inventory = await getDownloadedResourcesInventory(TEST_USER_ID);
 
     expect(inventory).toEqual([
       expect.objectContaining({
@@ -774,6 +822,7 @@ describe('downloadQueueRepository', () => {
     const [id] = await enqueueDownloadItems([
       {
         projectId: 1,
+        userId: TEST_USER_ID,
         tier: 1,
         kind: 'audio',
         resourceName: 'Source Bible',

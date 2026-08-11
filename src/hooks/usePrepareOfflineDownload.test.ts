@@ -110,6 +110,124 @@ describe('usePrepareOfflineDownload', () => {
     expect(result.current.session).toBe('idle');
   });
 
+  it('shows downloading session immediately when handleDownload starts', async () => {
+    const { getResumableDownloadItems } = jest.requireMock('../db/repository');
+    let resolveFirstFetch: ((items: unknown[]) => void) | undefined;
+
+    getResumableDownloadItems.mockImplementation(() => {
+      if (resolveFirstFetch) {
+        return Promise.resolve([
+          {
+            id: 'tier-1-source-bible-text',
+            tier: 1,
+            label: 'Text',
+            progress: 0,
+            status: 'queued',
+            projectId: 1,
+          },
+        ]);
+      }
+
+      return new Promise(resolve => {
+        resolveFirstFetch = resolve;
+      });
+    });
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+      }),
+    );
+
+    let downloadPromise!: Promise<void>;
+    act(() => {
+      downloadPromise = result.current.handleDownload();
+    });
+
+    expect(result.current.session).toBe('downloading');
+    expect(result.current.busy).toBe(false);
+
+    await act(async () => {
+      resolveFirstFetch?.([
+        {
+          id: 'tier-1-source-bible-text',
+          tier: 1,
+          label: 'Text',
+          progress: 0,
+          status: 'queued',
+          projectId: 1,
+        },
+      ]);
+      await downloadPromise;
+    });
+  });
+
+  it('runs a cancel tapped during kickoff after enqueue finishes without starting the worker', async () => {
+    const { getResumableDownloadItems } = jest.requireMock('../db/repository');
+    let resolveFirstFetch: ((items: unknown[]) => void) | undefined;
+
+    getResumableDownloadItems.mockImplementation(() => {
+      if (resolveFirstFetch) {
+        return Promise.resolve([
+          {
+            id: 'tier-1-source-bible-text',
+            tier: 1,
+            label: 'Text',
+            progress: 0,
+            status: 'queued',
+            projectId: 1,
+          },
+        ]);
+      }
+
+      return new Promise(resolve => {
+        resolveFirstFetch = resolve;
+      });
+    });
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+      }),
+    );
+
+    let downloadPromise!: Promise<void>;
+    act(() => {
+      downloadPromise = result.current.handleDownload();
+    });
+
+    expect(result.current.session).toBe('downloading');
+
+    await act(async () => {
+      await result.current.cancel();
+    });
+
+    await act(async () => {
+      resolveFirstFetch?.([
+        {
+          id: 'tier-1-source-bible-text',
+          tier: 1,
+          label: 'Text',
+          progress: 0,
+          status: 'queued',
+          projectId: 1,
+        },
+      ]);
+      await downloadPromise;
+    });
+
+    expect(mockStart).not.toHaveBeenCalled();
+    expect(mockCancel).toHaveBeenCalled();
+  });
+
   it('transitions to downloading after handleDownload', async () => {
     mockWorkerState = 'downloading';
     mockSnapshot.items = [
@@ -373,6 +491,7 @@ describe('usePrepareOfflineDownload', () => {
     await waitFor(() => {
       expect(result.current.session).toBe('complete');
     });
+    expect(result.current.inventoryRefreshSignal).toBe('1');
   });
 
   it('restores complete session on mount when download started and all items are on device', async () => {
@@ -412,6 +531,74 @@ describe('usePrepareOfflineDownload', () => {
     await waitFor(() => {
       expect(result.current.session).toBe('complete');
     });
+  });
+
+  it('keeps inventoryRefreshSignal stable while queue progress updates', async () => {
+    const multiItemCatalog: PrepareOfflineCatalog = {
+      items: [
+        catalog.items[0],
+        {
+          id: 'tier-1-source-bible-audio',
+          tier: 1,
+          kind: 'audio',
+          groupName: 'Source Bible',
+          label: 'Audio',
+          bytes: 2048,
+          status: 'selected',
+        },
+      ],
+      groups: [],
+    };
+
+    mockWorkerState = 'downloading';
+    mockSnapshot = {
+      items: [
+        {
+          id: 'tier-1-source-bible-text',
+          tier: 1,
+          label: 'Text',
+          progress: 0.25,
+          status: 'downloading',
+          projectId: 1,
+        },
+        {
+          id: 'tier-1-source-bible-audio',
+          tier: 1,
+          label: 'Audio',
+          progress: 0,
+          status: 'queued',
+          projectId: 1,
+        },
+      ],
+      completedCount: 0,
+      totalCount: 2,
+      aggregateProgress: 0.125,
+    };
+
+    const { result, rerender } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog: multiItemCatalog,
+        selectedItems: multiItemCatalog.items,
+        canDownload: true,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.session).toBe('downloading');
+    });
+    expect(result.current.inventoryRefreshSignal).toBe('0');
+
+    mockSnapshot = {
+      ...mockSnapshot,
+      completedCount: 1,
+      aggregateProgress: 0.5,
+    };
+    rerender(undefined);
+
+    expect(result.current.session).toBe('downloading');
+    expect(result.current.inventoryRefreshSignal).toBe('0');
   });
 
   it('uses full catalog size for download button label after cancel', async () => {

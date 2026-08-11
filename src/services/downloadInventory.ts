@@ -3,6 +3,7 @@ import type {
   DownloadedProjectInventory,
   DownloadQueueItem,
 } from '../types/download/types';
+import { getActiveUserId } from './storage';
 import { fileSize } from './downloadStorage';
 
 async function refreshResourceSize(
@@ -23,7 +24,12 @@ async function refreshResourceSize(
 export async function getVerifiedDownloadedResourcesInventory(): Promise<
   DownloadedProjectInventory[]
 > {
-  const inventory = await getDownloadedResourcesInventory();
+  const userId = Number(getActiveUserId());
+  if (!Number.isFinite(userId) || userId <= 0) {
+    return [];
+  }
+
+  const inventory = await getDownloadedResourcesInventory(userId);
   const verified: DownloadedProjectInventory[] = [];
 
   for (const project of inventory) {

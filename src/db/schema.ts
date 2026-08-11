@@ -117,6 +117,7 @@ export const createTableQueries: string[] = [
   `CREATE TABLE IF NOT EXISTS download_queue (
     id              TEXT PRIMARY KEY,
     project_id      INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE,
     tier            INTEGER NOT NULL,
     kind            TEXT NOT NULL,
     resource_name   TEXT NOT NULL,

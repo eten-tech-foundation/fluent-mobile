@@ -83,7 +83,7 @@ export const MOCK_PREPARE_OFFLINE_MIXED_INVENTORY: Record<
   [manifestEntryToResourceId(2, 'Translation Questions', 'audio')]: 'selected',
   [manifestEntryToResourceId(3, 'Bible Commentary', 'text')]: 'selected',
   [manifestEntryToResourceId(3, 'Bible Commentary', 'audio')]: 'selected',
-  [manifestEntryToResourceId(3, 'Reference Images', 'text')]: 'selected',
+  [manifestEntryToResourceId(3, 'Reference Images', 'image')]: 'selected',
   [manifestEntryToResourceId(3, 'Alternate Translations', 'text')]: 'selected',
   [manifestEntryToResourceId(3, 'Alternate Translations', 'audio')]: 'selected',
 };

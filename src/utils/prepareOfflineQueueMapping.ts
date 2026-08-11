@@ -15,25 +15,30 @@ function queueKindForResource(
 export function prepareOfflineItemToEnqueueInput(
   item: PrepareOfflineResourceItem,
   projectId: number,
+  userId: number,
 ): EnqueueDownloadItemInput {
-  const { sourceUrl, fileExt } = getMockDownloadSource(item.kind);
+  const { sourceUrl, fileExt, bytesTotal } = getMockDownloadSource(item.kind);
 
   return {
     id: item.id,
     projectId,
+    userId,
     tier: item.tier,
     kind: queueKindForResource(item.kind),
     resourceName: item.groupName,
     label: item.label,
     sourceUrl: __DEV__ ? sourceUrl : undefined,
     fileExt: __DEV__ ? fileExt : undefined,
-    bytesTotal: item.bytes,
+    bytesTotal: __DEV__ ? bytesTotal : item.bytes,
   };
 }
 
 export function prepareOfflineItemsToEnqueueInputs(
   items: PrepareOfflineResourceItem[],
   projectId: number,
+  userId: number,
 ): EnqueueDownloadItemInput[] {
-  return items.map(item => prepareOfflineItemToEnqueueInput(item, projectId));
+  return items.map(item =>
+    prepareOfflineItemToEnqueueInput(item, projectId, userId),
+  );
 }

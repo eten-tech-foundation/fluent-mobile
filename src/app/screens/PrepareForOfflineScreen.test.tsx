@@ -22,7 +22,21 @@ jest.mock('@react-navigation/native', () => ({
     goBack: mockGoBack,
   }),
   useRoute: () => ({ params: undefined }),
+  useFocusEffect: (callback: () => void) => {
+    callback();
+  },
 }));
+
+jest.mock('../prepare-offline/ManageDeviceStorageSection', () => {
+  const MockReact = require('react');
+  const { View } = require('react-native');
+  return {
+    ManageDeviceStorageSection: () =>
+      MockReact.createElement(View, {
+        testID: 'manage-device-storage-section',
+      }),
+  };
+});
 
 jest.mock('../../hooks/useProjectsSummary', () => ({
   useProjectsSummary: jest.fn(() => ({
@@ -199,6 +213,18 @@ describe('PrepareForOfflineScreen', () => {
     expect(screen.getByText('Genesis')).toBeTruthy();
     expect(screen.getByText('RESOURCES TO DOWNLOAD')).toBeTruthy();
     expect(screen.getByTestId('prepare-offline-download-button')).toBeTruthy();
+  });
+
+  it('shows manage device storage section after selecting a project', async () => {
+    render(<PrepareForOfflineScreen />);
+
+    expect(screen.queryByTestId('manage-device-storage-section')).toBeNull();
+
+    fireEvent.press(screen.getByText('Luke'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('manage-device-storage-section')).toBeTruthy();
+    });
   });
 
   it('calls handleDownload when Download is pressed', async () => {

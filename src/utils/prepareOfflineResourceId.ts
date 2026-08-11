@@ -13,6 +13,33 @@ export function manifestEntryToResourceId(
   return `tier-${tier}-${slug}-${kind}`;
 }
 
+/** Queue + catalog id scoped per project (download_queue primary key). */
+export function scopedPrepareOfflineResourceId(
+  projectId: number,
+  tier: PrepareOfflineResourceTier,
+  groupName: string,
+  kind: PrepareOfflineResourceKind,
+): string {
+  return `${projectId}-${manifestEntryToResourceId(tier, groupName, kind)}`;
+}
+
+/** Mock inventory keys omit the project prefix. */
+export function unscopedPrepareOfflineResourceId(
+  projectId: number,
+  scopedResourceId: string,
+): string {
+  const prefix = `${projectId}-`;
+  return scopedResourceId.startsWith(prefix)
+    ? scopedResourceId.slice(prefix.length)
+    : scopedResourceId;
+}
+
 export function kindLabel(kind: PrepareOfflineResourceKind): string {
-  return kind === 'text' ? 'Text' : 'Audio';
+  if (kind === 'text') {
+    return 'Text';
+  }
+  if (kind === 'image') {
+    return 'Image';
+  }
+  return 'Audio';
 }

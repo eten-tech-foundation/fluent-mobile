@@ -31,6 +31,11 @@ export {
   type PrepareOfflineMockInventoryScenario,
 } from './offlineDownloadInventoryScenarios';
 export {
+  DEV_MOCK_FILE_BYTES,
+  getMockDownloadBytesForKind,
+  getMockDownloadSource,
+} from './mockDownloadSources';
+export {
   getMockPrepareOfflineResourceStatus,
   getPrepareOfflineMockInventoryScenario,
   setMockPrepareOfflineResourceStatus,
