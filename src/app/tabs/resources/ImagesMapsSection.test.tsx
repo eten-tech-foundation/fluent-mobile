@@ -17,9 +17,12 @@ jest.mock('react-native-gesture-handler', () => {
     [
       'onUpdate',
       'onEnd',
+      'onTouchesMove',
       'activeOffsetX',
       'failOffsetY',
       'maxPointers',
+      'manualActivation',
+      'numberOfTaps',
     ].forEach(method => {
       gesture[method] = () => gesture;
     });

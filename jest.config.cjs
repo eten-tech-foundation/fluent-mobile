@@ -1,6 +1,10 @@
 module.exports = {
   preset: 'jest-expo',
-  setupFiles: ['<rootDir>/jest.env.cjs', '<rootDir>/jest.setup.expo-fs.cjs'],
+  setupFiles: [
+    '<rootDir>/jest.env.cjs',
+    '<rootDir>/jest.setup.expo-fs.cjs',
+    '<rootDir>/jest.setup.reanimated.cjs',
+  ],
   testPathIgnorePatterns: ['/node_modules/', '/android/', '/ios/'],
   // `.cjs` is not in Jest's default testMatch; CI/workflow scripts under
   // .github must stay CommonJS because the root package.json is "type": "module".

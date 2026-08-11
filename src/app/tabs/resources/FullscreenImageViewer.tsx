@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -32,7 +32,7 @@ export function FullscreenImageViewer({
   onClose,
 }: FullscreenImageViewerProps) {
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
@@ -40,6 +40,11 @@ export function FullscreenImageViewer({
   }, [item?.id]);
 
   const visible = item !== null;
+  const headerStyle = useMemo(
+    () => [styles.header, { paddingTop: insets.top + theme.spacing.sm }],
+    [insets.top],
+  );
+  const zoomStyle = useMemo(() => [styles.zoomHost, { width }], [width]);
 
   return (
     <Modal
@@ -50,9 +55,7 @@ export function FullscreenImageViewer({
       statusBarTranslucent
     >
       <GestureHandlerRootView style={styles.root}>
-        <View
-          style={[styles.header, { paddingTop: insets.top + theme.spacing.sm }]}
-        >
+        <View style={headerStyle}>
           <View style={styles.headerText}>
             <Text style={styles.title} numberOfLines={1}>
               {item?.title ?? ''}
@@ -85,8 +88,9 @@ export function FullscreenImageViewer({
               key={item.id}
               uri={item.uri}
               accessibilityLabel={item.title}
-              style={{ width, height: height * 0.7 }}
+              style={zoomStyle}
               contentFit="contain"
+              hostBackgroundColor={theme.colors.foreground}
               testID="images-maps-fullscreen-zoom"
               onLoadError={() => setImageFailed(true)}
             />
@@ -129,11 +133,14 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  },
+  zoomHost: {
+    flex: 1,
   },
   placeholder: {
     fontSize: theme.typography.sizes.md,
     color: theme.colors.mutedForeground,
+    textAlign: 'center',
+    marginTop: theme.spacing.xxl,
   },
 });

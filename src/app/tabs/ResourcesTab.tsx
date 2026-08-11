@@ -165,7 +165,7 @@ export function ResourcesTab({ chapterId, chapterName }: ResourcesTabProps) {
           const expanded = openAccordionIds.has(id);
           return (
             <ResourceSectionAccordion
-              key={`${selectedVerse}-${id}`}
+              key={`${chapterId}-${selectedVerse}-${id}`}
               label={label}
               Icon={Icon}
               expanded={expanded}

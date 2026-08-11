@@ -21,7 +21,15 @@ jest.mock('react-native-gesture-handler', () => {
   const actualReact = jest.requireActual('react');
   const chainable = () => {
     const gesture: Record<string, unknown> = {};
-    ['onUpdate', 'onEnd', 'activeOffsetX', 'failOffsetY'].forEach(method => {
+    [
+      'onUpdate',
+      'onEnd',
+      'onTouchesMove',
+      'activeOffsetX',
+      'failOffsetY',
+      'manualActivation',
+      'numberOfTaps',
+    ].forEach(method => {
       gesture[method] = () => gesture;
     });
     return gesture;
