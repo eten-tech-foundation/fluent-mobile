@@ -17,7 +17,7 @@ Workflows for Fluent Mobile (**Android-only**).
 ## PR template + CODEOWNERS
 
 - [`.github/PULL_REQUEST_TEMPLATE.md`](PULL_REQUEST_TEMPLATE.md) — GitHub UI pre-fill (keep synced with `.cursor/templates/pr-template.md`)
-- [`.github/CODEOWNERS`](CODEOWNERS) — auto-requests review from `@mattrace-gloo`
+- [`.github/CODEOWNERS`](CODEOWNERS) — auto-requests review from `@mattrace-gloo`, `@B3RN153`, `@JonathanSeehagen`
 - Validator: [`scripts/validate-pr-body.cjs`](scripts/validate-pr-body.cjs) (job name **`PR Description`**)
 
 Make **`PR Description`** a required status check on `main`, and enable **Require review from Code Owners** — see [docs/ci.md](../docs/ci.md).

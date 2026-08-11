@@ -43,7 +43,7 @@ On `main`, keep these rules enabled (Settings → Branches → Branch protection
 
 1. **Require a pull request before merging**
 2. **Require approvals** (at least 1)
-3. **Require review from Code Owners** (uses [`.github/CODEOWNERS`](../.github/CODEOWNERS) — default `@mattrace-gloo`)
+3. **Require review from Code Owners** (uses [`.github/CODEOWNERS`](../.github/CODEOWNERS) — `@mattrace-gloo`, `@B3RN153`, `@JonathanSeehagen`)
 4. **Require status checks to pass** — include at least:
    - `PR Description`
    - `Lint & Format`
