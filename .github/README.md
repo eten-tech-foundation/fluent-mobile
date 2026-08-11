@@ -6,12 +6,21 @@ Workflows for Fluent Mobile (**Android-only**).
 
 | File | Trigger | Purpose |
 |------|---------|---------|
+| `pr-description.yml` | PR opened/edited/sync | Require filled PR template (`TLDR`, `Refs #NNN`, How to verify); Dependabot exempt |
 | `lint.yml` | push, PR | ESLint + Prettier |
 | `test.yml` | push, PR | Jest unit tests |
 | `quality-gates.yml` | push, PR | TypeScript, `expo-doctor`, `expo install --check` |
 | `eas-build.yml` | push tag `v*` | Sync `APP_VERSION_FALLBACK` in `app.config.ts` with tag; hand off to EAS |
 | `preview-build.yml` | PR label `preview-build` | Fresh Android preview APK for QA (binary only — no OTA) |
 | `nightly-preview.yml` | cron (06:00 UTC) + `workflow_dispatch` | Nightly **binary-only** Android internal APK (dev API) |
+
+## PR template + CODEOWNERS
+
+- [`.github/PULL_REQUEST_TEMPLATE.md`](PULL_REQUEST_TEMPLATE.md) — GitHub UI pre-fill (keep synced with `.cursor/templates/pr-template.md`)
+- [`.github/CODEOWNERS`](CODEOWNERS) — auto-requests review from `@mattrace-gloo`
+- Validator: [`scripts/validate-pr-body.cjs`](scripts/validate-pr-body.cjs) (job name **`PR Description`**)
+
+Make **`PR Description`** a required status check on `main`, and enable **Require review from Code Owners** — see [docs/ci.md](../docs/ci.md).
 
 Native Android compile is **not** run on every PR. Use the **`preview-build`** label for a fresh EAS preview APK when ready for QA, and tag releases for production builds.
 

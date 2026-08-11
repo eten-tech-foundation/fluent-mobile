@@ -1,0 +1,4 @@
+# Default reviewers for all changes (auto-requested on PR open).
+# Requires write access + branch protection "Require review from Code Owners"
+# for reviews to be mandatory rather than optional requests.
+* @mattrace-gloo
