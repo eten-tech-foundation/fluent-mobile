@@ -15,6 +15,12 @@ describe('formatByteSize', () => {
   it('formats megabytes for typical download totals', () => {
     expect(formatByteSize(318 * 1024 * 1024)).toBe('318 MB');
   });
+
+  it('keeps one decimal for fractional megabytes (e.g. storage sums)', () => {
+    expect(formatByteSize(8.5 * 1024 * 1024)).toBe('8.5 MB');
+    expect(formatByteSize(17 * 1024 * 1024)).toBe('17 MB');
+    expect(formatByteSize(25.5 * 1024 * 1024)).toBe('25.5 MB');
+  });
 });
 
 describe('formatStorageCapacity', () => {

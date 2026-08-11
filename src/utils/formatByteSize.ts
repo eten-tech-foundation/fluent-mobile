@@ -17,7 +17,7 @@ export function formatByteSize(bytes: number): string {
   }
 
   const mb = bytes / MB;
-  if (mb >= 10 || Math.abs(mb - Math.round(mb)) < 0.05) {
+  if (Math.abs(mb - Math.round(mb)) < 0.05) {
     return `${Math.round(mb)} MB`;
   }
 
