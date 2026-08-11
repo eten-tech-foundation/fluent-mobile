@@ -15,7 +15,9 @@
  *   `simulateMockPrepareOfflineDownload()` here to mimic the #201 worker
  *   (tier-ordered progress ~2.5s per item).
  * - `usePrepareOfflineResources.ts` — subscribes via `subscribeMockPrepareOfflineInventory`
- *   so the UI rebuilds when simulation advances status.
+ *   so the UI rebuilds when simulation advances status. Remounting resets package
+ *   checkboxes only; runtime inventory overrides are kept so Resources can gate
+ *   on completed downloads in the same app session.
  *
  * **Layers:** scenario base → per-project runtime overrides → cumulative tier normalize
  * (from offlineDownloadInventoryScenarios.ts) on every read.

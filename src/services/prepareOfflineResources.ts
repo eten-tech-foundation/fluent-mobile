@@ -68,7 +68,11 @@ export function subscribePrepareOfflineInventory(
   return () => {};
 }
 
-/** Reset runtime inventory overrides when project/user session changes. */
+/**
+ * Clear runtime inventory overrides (tests / explicit reset).
+ * Do not call on Prepare Offline remount — completed downloads must survive
+ * navigation so Resources can read the same in-session inventory.
+ */
 export function clearPrepareOfflineSessionInventory(): void {
   if (__DEV__) {
     clearMockPrepareOfflineRuntimeInventory();

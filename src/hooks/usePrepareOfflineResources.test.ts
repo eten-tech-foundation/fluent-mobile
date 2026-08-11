@@ -6,7 +6,9 @@ import {
 import { PrepareOfflineChapterRow } from '../types/prepareOffline/types';
 import {
   resetMockPrepareOfflineInventory,
+  setMockPrepareOfflineResourceStatus,
   setPrepareOfflineMockInventoryScenario,
+  getMockPrepareOfflineResourceStatus,
 } from '../mocks/prepareOffline';
 import { setPrepareOfflineDownloadStarted } from '../services/storage';
 import { enqueuePrepareOfflineDownload } from '../services/prepareOfflineDownload';
@@ -183,6 +185,48 @@ describe('usePrepareOfflineResources', () => {
     expect(result.current.isItemSelected('tier-3-bible-commentary-text')).toBe(
       true,
     );
+  });
+
+  it('preserves completed inventory after Prepare Offline remount', async () => {
+    setPrepareOfflineMockInventoryScenario('fresh');
+    const notesId = 'tier-1-translation-notes-text';
+
+    const { result, unmount } = renderHook(() =>
+      usePrepareOfflineResources({
+        projectId: 374,
+        userId: 42,
+        chapters: [chapter(1)],
+        selectedIds: new Set([1]),
+        selectedCount: 1,
+        isAssignedUser: true,
+      }),
+    );
+
+    await waitForCatalogItems(result);
+
+    act(() => {
+      setMockPrepareOfflineResourceStatus(374, notesId, 'completed');
+    });
+
+    expect(getMockPrepareOfflineResourceStatus(374, notesId)).toBe('completed');
+
+    unmount();
+
+    const remounted = renderHook(() =>
+      usePrepareOfflineResources({
+        projectId: 374,
+        userId: 42,
+        chapters: [chapter(1)],
+        selectedIds: new Set([1]),
+        selectedCount: 1,
+        isAssignedUser: true,
+      }),
+    );
+
+    await waitForCatalogItems(remounted.result);
+
+    expect(getMockPrepareOfflineResourceStatus(374, notesId)).toBe('completed');
+    remounted.unmount();
   });
 
   it('starts download via storage and enqueue stub', async () => {
