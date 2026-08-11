@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePrepareOfflineResourceData } from './usePrepareOfflineResourceData';
-import { enqueuePrepareOfflineDownload } from '../services/prepareOfflineDownload';
-import { setPrepareOfflineDownloadStarted } from '../services/storage';
 import { PrepareOfflineChapterRow } from '../types/prepareOffline/types';
 import { formatByteSize } from '../utils/formatByteSize';
 import {
@@ -11,7 +9,6 @@ import {
   computeTotalBytes,
   getEffectiveItems,
   isItemCustomizeLocked,
-  sortItemsForPrepareOfflineDownload,
 } from '../utils/prepareOfflineCatalog';
 
 export interface UsePrepareOfflineResourcesInput {
@@ -34,7 +31,6 @@ export function usePrepareOfflineResources({
   const [deselectedItemIds, setDeselectedItemIds] = useState<Set<string>>(
     new Set(),
   );
-  const [downloadStarted, setDownloadStarted] = useState(false);
   const sessionKeyRef = useRef<string | null>(null);
 
   const {
@@ -55,7 +51,6 @@ export function usePrepareOfflineResources({
   useEffect(() => {
     if (sessionKeyRef.current !== sessionKey) {
       setDeselectedItemIds(getDefaultPackageDeselects());
-      setDownloadStarted(false);
       sessionKeyRef.current = sessionKey;
     }
   }, [sessionKey, getDefaultPackageDeselects]);
@@ -134,33 +129,18 @@ export function usePrepareOfflineResources({
     [catalog.items],
   );
 
-  const handleDownload = useCallback(() => {
-    if (!canDownload || projectId === null || userId === null) {
-      return;
-    }
-
-    setPrepareOfflineDownloadStarted(String(userId), projectId);
-    enqueuePrepareOfflineDownload({
-      userId,
-      projectId,
-      items: sortItemsForPrepareOfflineDownload(selectedItems, catalog.items),
-    });
-    setDownloadStarted(true);
-  }, [canDownload, catalog.items, projectId, selectedItems, userId]);
-
   return {
     catalog,
     effectiveCatalog,
     deselectedItemIds,
     totalBytes,
     pendingBytes,
+    selectedItems,
     canDownload,
     downloadButtonLabel,
-    downloadStarted,
     manifestLoading,
     manifestError,
     isItemSelected,
     toggleItemSelected,
-    handleDownload,
   };
 }

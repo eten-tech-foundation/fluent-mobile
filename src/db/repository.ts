@@ -710,6 +710,7 @@ export {
   updateDownloadItemProgress,
   markDownloadItemPaused,
   markDownloadItemCancelled,
+  cancelProjectDownloadTransfers,
   markDownloadItemCompleted,
   markDownloadItemFailed,
   deleteDownloadItem,

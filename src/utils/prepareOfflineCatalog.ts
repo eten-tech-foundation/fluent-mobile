@@ -115,9 +115,25 @@ export function computePendingBytes(
   catalog: PrepareOfflineCatalog,
   deselectedItemIds: Set<string>,
 ): number {
-  return getEffectiveItems(catalog, deselectedItemIds)
-    .filter(item => item.status !== 'completed')
-    .reduce((sum, item) => sum + item.bytes, 0);
+  return computeRemainingBytes(getEffectiveItems(catalog, deselectedItemIds));
+}
+
+/** Pending bytes for one catalog row (full catalog size; not adjusted for partial download). */
+export function getRemainingBytesForItem(
+  item: PrepareOfflineResourceItem,
+): number {
+  if (item.status === 'completed') {
+    return 0;
+  }
+
+  return item.bytes;
+}
+
+/** Sum of pending bytes for a set of items (excludes completed; no partial-progress adjustment). */
+export function computeRemainingBytes(
+  items: PrepareOfflineResourceItem[],
+): number {
+  return items.reduce((sum, item) => sum + getRemainingBytesForItem(item), 0);
 }
 
 /** Pure catalog builder — manifest and status come from prepareOfflineResources service. */

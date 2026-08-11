@@ -2,6 +2,26 @@
 
 Records how open Dependabot PRs were resolved in a given branch so the team can close or merge PRs consistently.
 
+## Batch: `main` (2026-08-11)
+
+Resolved: 2026-08-11 (triage + close pass; SDK alignment via #314)
+
+| PR | Title / scope | Change applied |
+|----|---------------|----------------|
+| #308 | react group (`react` / `react-test-renderer` 19.2.3 → 19.2.8) | **Closed** — Expo SDK 57 / RN 0.86 React pin; doctor/install-check red; needs dedicated ticket + Android smoke |
+| #309 | navigation group (`@react-navigation/native` / `stack` patches) | **Closed** — risky navigation; Android smoke required; dedicated ticket |
+| #310 | testing group (Jest 29→30, RTL 13→14) | **Closed** — major tooling; CI red; needs migration ticket |
+| #311 | dev-tools group (Babel 8, ESLint 10, Prettier 3, TS 7) | **Closed** — stacked majors; CI red; dedicated tooling ticket |
+| #312 | `babel-preset-expo` 57.0.5 → 57.0.6 | **Deferred / left open** — safe Expo patch, blocked by SDK patch drift on `main` until #314 lands |
+
+**Action:** Closed #308–#311 with technical comments. Left #312 open with deferral comment. Opened #314 + PR to run `npx expo install --fix` (Expo SDK 57 patch alignment) so Quality Gates can go green; after merge, rebase #312 then squash-merge.
+
+**Left open (Dependabot):** #312 (blocked on #314).
+
+**Verification run:** Rebased all open bots; required checks failed expo-doctor / expo install --check with patch mismatches (`expo`, `expo-asset`, `expo-build-properties`, `expo-constants`, `expo-dev-client`, `expo-updates`, `jest-expo`). No Dependabot merges this pass. No Android smoke (N/A for closes).
+
+---
+
 ## Batch: `main` (2026-07-20)
 
 Resolved: 2026-07-20 (finish pass + close pass same day)
