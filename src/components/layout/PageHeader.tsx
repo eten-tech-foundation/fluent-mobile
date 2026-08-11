@@ -19,37 +19,46 @@ export function PageHeader({ title, leftIcon, rightIcon }: PageHeaderProps) {
         barStyle="light-content"
         backgroundColor={theme.colors.primary}
       />
-      <View style={styles.leftSlot}>{leftIcon}</View>
+      {/*
+        Absolute center content must live in this inner row. RN positions
+        absolute children against the border box (ignoring padding), so
+        overlaying the padded header centers title/logo into the status-bar inset.
+      */}
+      <View style={styles.contentRow}>
+        <View style={styles.leftSlot}>{leftIcon}</View>
 
-      <View style={styles.rightSlot}>{rightIcon}</View>
+        <View style={styles.rightSlot}>{rightIcon}</View>
 
-      {title ? (
-        <View style={styles.centerOverlay} pointerEvents="none">
-          <Text style={styles.title} numberOfLines={1}>
-            {title}
-          </Text>
-        </View>
-      ) : (
-        <View style={styles.centerOverlay} pointerEvents="none">
-          <FluentLogoWhite
-            width={logoSize.width}
-            height={logoSize.height}
-            style={styles.logo}
-          />
-        </View>
-      )}
+        {title ? (
+          <View style={styles.centerOverlay} pointerEvents="none">
+            <Text style={styles.title} numberOfLines={1}>
+              {title}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.centerOverlay} pointerEvents="none">
+            <FluentLogoWhite
+              width={logoSize.width}
+              height={logoSize.height}
+              style={styles.logo}
+            />
+          </View>
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: headerLayout.paddingHorizontal,
+  },
+  contentRow: {
     position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: headerLayout.paddingHorizontal,
     minHeight: headerLayout.minHeight,
   },
   leftSlot: {

@@ -51,45 +51,52 @@ export function DraftingHeader({
         backgroundColor={theme.colors.background}
         translucent={false}
       />
-      <View style={styles.sideSlot}>
-        <TouchableOpacity
-          onPress={onBack}
-          hitSlop={touchHitSlop}
-          style={styles.backButton}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          activeOpacity={0.7}
-        >
-          <ChevronLeft
-            size={iconSizes.header}
-            color={theme.colors.foreground}
-            strokeWidth={listIconStrokeWidth}
-          />
-        </TouchableOpacity>
-      </View>
+      {/*
+        Absolute title must live in this inner row. RN positions absolute
+        children against the border box (ignoring padding), so overlaying the
+        padded header itself centers the title into the status-bar inset.
+      */}
+      <View style={styles.contentRow}>
+        <View style={styles.sideSlot}>
+          <TouchableOpacity
+            onPress={onBack}
+            hitSlop={touchHitSlop}
+            style={styles.backButton}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            activeOpacity={0.7}
+          >
+            <ChevronLeft
+              size={iconSizes.header}
+              color={theme.colors.foreground}
+              strokeWidth={listIconStrokeWidth}
+            />
+          </TouchableOpacity>
+        </View>
 
-      <View style={styles.centerOverlay} pointerEvents="none">
-        <Text style={styles.title} numberOfLines={1}>
-          {title}
-        </Text>
-      </View>
+        <View style={styles.centerOverlay} pointerEvents="none">
+          <Text style={styles.title} numberOfLines={1}>
+            {title}
+          </Text>
+        </View>
 
-      <View style={styles.rightActions}>
-        {syncStatus && onSyncPress ? (
-          <PageHeaderSyncButton
-            syncStatus={syncStatus}
-            onPress={onSyncPress}
-            cloudColor={theme.colors.foreground}
-          />
-        ) : null}
-        {showAccountIndicator && onAccountPress ? (
-          <AccountInitialsButton
-            firstName={accountFirstName}
-            lastName={accountLastName}
-            email={accountEmail}
-            onPress={onAccountPress}
-          />
-        ) : null}
+        <View style={styles.rightActions}>
+          {syncStatus && onSyncPress ? (
+            <PageHeaderSyncButton
+              syncStatus={syncStatus}
+              onPress={onSyncPress}
+              cloudColor={theme.colors.foreground}
+            />
+          ) : null}
+          {showAccountIndicator && onAccountPress ? (
+            <AccountInitialsButton
+              firstName={accountFirstName}
+              lastName={accountLastName}
+              email={accountEmail}
+              onPress={onAccountPress}
+            />
+          ) : null}
+        </View>
       </View>
     </View>
   );
@@ -97,15 +104,17 @@ export function DraftingHeader({
 
 const styles = StyleSheet.create({
   header: {
+    paddingHorizontal: headerLayout.paddingHorizontal,
+    backgroundColor: theme.colors.background,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border,
+  },
+  contentRow: {
     position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: headerLayout.paddingHorizontal,
     minHeight: headerLayout.minHeight,
-    backgroundColor: theme.colors.background,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border,
   },
   sideSlot: {
     width: headerLayout.sideSlot,
