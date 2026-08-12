@@ -123,12 +123,10 @@ function collectIdsFromRows(rows: unknown[], key = 'id'): Set<number> {
 async function loadChapterAssignmentParentContext(
   tx: Transaction,
 ): Promise<ChapterAssignmentParentContext> {
-  const [projects, bibles, books, units] = await Promise.all([
-    tx.execute('SELECT id FROM projects'),
-    tx.execute('SELECT id FROM bibles'),
-    tx.execute('SELECT id FROM books'),
-    tx.execute('SELECT id, project_id FROM project_units'),
-  ]);
+  const projects = await tx.execute('SELECT id FROM projects');
+  const bibles = await tx.execute('SELECT id FROM bibles');
+  const books = await tx.execute('SELECT id FROM books');
+  const units = await tx.execute('SELECT id, project_id FROM project_units');
 
   const knownProjectUnitIds = new Set<number>();
   const projectUnitToProjectId = new Map<number, number>();
@@ -448,7 +446,7 @@ export async function insertChapterAssignmentSyncData(
   await db.transaction(async (tx: Transaction) => {
     const knownUserIds = await loadKnownUserIds(tx, assigneeIds);
     const parentContext = await loadChapterAssignmentParentContext(tx);
-    const unitsMap = resolveProjectUnitsForSync(
+    const unitsMapForFilter = resolveProjectUnitsForSync(
       assignments,
       parentContext.knownProjectIds,
       parentContext.projectUnitToProjectId,
@@ -456,7 +454,12 @@ export async function insertChapterAssignmentSyncData(
     const validAssignments = filterAssignmentsWithValidParents(
       assignments,
       parentContext,
-      unitsMap,
+      unitsMapForFilter,
+    );
+    const unitsMap = resolveProjectUnitsForSync(
+      validAssignments,
+      parentContext.knownProjectIds,
+      parentContext.projectUnitToProjectId,
     );
     const skippedCount = assignments.length - validAssignments.length;
 

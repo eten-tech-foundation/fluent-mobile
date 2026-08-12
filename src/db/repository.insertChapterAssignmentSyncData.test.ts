@@ -332,6 +332,23 @@ describe('insertChapterAssignmentSyncData', () => {
     expect(db.table('chapter_assignments')).toHaveLength(0);
   });
 
+  it('does not upsert project unit when assignment is filtered out', async () => {
+    const db = createSyncTestDb();
+    setDatabase(db as never);
+    db.seed({
+      projects: [{ id: 100, name: 'P' }],
+      bibles: [{ id: 4, language_id: 1, name: 'B', abbreviation: 'B' }],
+      books: [{ id: 12, code: 'GEN', eng_display_name: 'Genesis' }],
+    });
+
+    await insertChapterAssignmentSyncData([
+      validAssignment({ chapterAssignmentId: 10, bibleId: 999 }),
+    ]);
+
+    expect(db.table('project_units')).toHaveLength(0);
+    expect(db.table('chapter_assignments')).toHaveLength(0);
+  });
+
   it('inserts assignment when FK parents exist', async () => {
     const db = createSyncTestDb();
     setDatabase(db as never);
