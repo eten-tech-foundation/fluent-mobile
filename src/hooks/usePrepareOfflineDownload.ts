@@ -32,6 +32,8 @@ export type PrepareOfflineDownloadSession =
   | 'paused'
   | 'complete';
 
+type PendingSessionAction = 'pause' | 'resume' | 'cancel';
+
 export interface UsePrepareOfflineDownloadInput {
   projectId: number | null;
   userId: number | null;
@@ -106,6 +108,7 @@ export function usePrepareOfflineDownload({
   } = useDownloadQueue();
 
   const [busy, setBusy] = useState(false);
+  const [downloadKickoff, setDownloadKickoff] = useState(false);
   const [sessionStarted, setSessionStarted] = useState(false);
   const [forceIdle, setForceIdle] = useState(false);
   const [completedQueueItems, setCompletedQueueItems] = useState<
@@ -114,9 +117,15 @@ export function usePrepareOfflineDownload({
   const sessionKeyRef = useRef<string | null>(null);
   const userCancelledRef = useRef(false);
   const sessionActionInFlightRef = useRef(false);
+  const downloadInFlightRef = useRef(false);
+  const pendingSessionActionRef = useRef<PendingSessionAction | null>(null);
 
   const sessionKey =
     projectId !== null ? `${projectId}:${userId ?? 'none'}` : null;
+
+  const [inventoryRefreshGeneration, setInventoryRefreshGeneration] =
+    useState(0);
+  const previousSessionRef = useRef<PrepareOfflineDownloadSession>('idle');
 
   const releaseSessionAction = useCallback(() => {
     sessionActionInFlightRef.current = false;
@@ -138,18 +147,23 @@ export function usePrepareOfflineDownload({
       setForceIdle(false);
       userCancelledRef.current = false;
       sessionActionInFlightRef.current = false;
+      setInventoryRefreshGeneration(0);
+      previousSessionRef.current = 'idle';
+      setDownloadKickoff(false);
+      downloadInFlightRef.current = false;
+      pendingSessionActionRef.current = null;
       sessionKeyRef.current = sessionKey;
     }
   }, [sessionKey]);
 
   useEffect(() => {
-    if (projectId === null) {
+    if (projectId === null || userId === null) {
       setCompletedQueueItems([]);
       return;
     }
 
     let cancelled = false;
-    getDownloadedResourcesByProject(projectId)
+    getDownloadedResourcesByProject(projectId, userId)
       .then(items => {
         if (!cancelled) {
           setCompletedQueueItems(items);
@@ -162,7 +176,7 @@ export function usePrepareOfflineDownload({
     return () => {
       cancelled = true;
     };
-  }, [projectId, snapshot]);
+  }, [projectId, snapshot, userId]);
 
   const allQueueItems = useMemo(
     () => [...snapshot.items, ...completedQueueItems],
@@ -222,7 +236,7 @@ export function usePrepareOfflineDownload({
     }
   }, [projectId, userId, snapshot.items, selectedComplete]);
 
-  const session = useMemo(
+  const derivedSession = useMemo(
     () =>
       deriveSession(
         workerSessionState,
@@ -241,6 +255,29 @@ export function usePrepareOfflineDownload({
       forceIdle,
     ],
   );
+
+  const session = useMemo((): PrepareOfflineDownloadSession => {
+    if (downloadKickoff) {
+      return 'downloading';
+    }
+    return derivedSession;
+  }, [downloadKickoff, derivedSession]);
+
+  useEffect(() => {
+    const previousSession = previousSessionRef.current;
+    previousSessionRef.current = session;
+
+    const wasTransferring =
+      previousSession === 'downloading' || previousSession === 'paused';
+    const downloadSettled =
+      session === 'complete' || (wasTransferring && session === 'idle');
+
+    if (downloadSettled && previousSession !== session) {
+      setInventoryRefreshGeneration(generation => generation + 1);
+    }
+  }, [session]);
+
+  const inventoryRefreshSignal = String(inventoryRefreshGeneration);
 
   const pendingBytes = useMemo(
     () => computeRemainingBytes(mergedSelectedItems),
@@ -276,15 +313,101 @@ export function usePrepareOfflineDownload({
   const canDownloadNow =
     (canDownload && pendingBytes > 0) || hasResumableQueueWork;
 
-  const handleDownload = useCallback(async () => {
-    if (projectId === null || userId === null) {
+  const handlePause = useCallback(async () => {
+    if (downloadInFlightRef.current) {
+      pendingSessionActionRef.current = 'pause';
       return;
     }
 
     if (!tryAcquireSessionAction()) {
       return;
     }
+    try {
+      log.info('Prepare offline download paused', { projectId });
+      await pause();
+    } finally {
+      releaseSessionAction();
+    }
+  }, [pause, projectId, releaseSessionAction, tryAcquireSessionAction]);
 
+  const handleResume = useCallback(async () => {
+    if (downloadInFlightRef.current) {
+      pendingSessionActionRef.current = 'resume';
+      return;
+    }
+
+    if (!tryAcquireSessionAction()) {
+      return;
+    }
+    try {
+      log.info('Prepare offline download resumed', { projectId });
+      setForceIdle(false);
+      await resume();
+    } finally {
+      releaseSessionAction();
+    }
+  }, [projectId, releaseSessionAction, resume, tryAcquireSessionAction]);
+
+  const handleCancel = useCallback(async () => {
+    if (downloadInFlightRef.current) {
+      pendingSessionActionRef.current = 'cancel';
+      return;
+    }
+
+    if (!tryAcquireSessionAction()) {
+      return;
+    }
+    try {
+      log.info('Prepare offline download cancelled', { projectId });
+      await cancel();
+      if (projectId !== null) {
+        await cancelProjectDownloadTransfers(projectId);
+      }
+      await refresh();
+      userCancelledRef.current = true;
+      setForceIdle(true);
+    } finally {
+      releaseSessionAction();
+    }
+  }, [
+    cancel,
+    projectId,
+    refresh,
+    releaseSessionAction,
+    tryAcquireSessionAction,
+  ]);
+
+  const flushPendingSessionAction = useCallback(async () => {
+    const pending = pendingSessionActionRef.current;
+    pendingSessionActionRef.current = null;
+    if (!pending) {
+      return;
+    }
+
+    if (pending === 'pause') {
+      await handlePause();
+      return;
+    }
+
+    if (pending === 'resume') {
+      await handleResume();
+      return;
+    }
+
+    await handleCancel();
+  }, [handleCancel, handlePause, handleResume]);
+
+  const handleDownload = useCallback(async () => {
+    if (projectId === null || userId === null) {
+      return;
+    }
+
+    if (downloadInFlightRef.current) {
+      return;
+    }
+
+    downloadInFlightRef.current = true;
+    setDownloadKickoff(true);
     try {
       const resumable = await getResumableDownloadItems(true);
       const existingProjectItems = resumable.filter(
@@ -317,72 +440,28 @@ export function usePrepareOfflineDownload({
         item => item.projectId === projectId,
       );
 
-      if (projectItems.length > 0) {
+      if (
+        projectItems.length > 0 &&
+        pendingSessionActionRef.current !== 'cancel' &&
+        pendingSessionActionRef.current !== 'pause'
+      ) {
         await start(projectItems);
       }
     } finally {
-      releaseSessionAction();
+      downloadInFlightRef.current = false;
+      setDownloadKickoff(false);
+      await flushPendingSessionAction();
     }
   }, [
     canDownload,
     canDownloadNow,
     catalog.items,
+    flushPendingSessionAction,
     projectId,
     refresh,
-    releaseSessionAction,
     selectedItems,
     start,
-    tryAcquireSessionAction,
     userId,
-  ]);
-
-  const handlePause = useCallback(async () => {
-    if (!tryAcquireSessionAction()) {
-      return;
-    }
-    try {
-      log.info('Prepare offline download paused', { projectId });
-      await pause();
-    } finally {
-      releaseSessionAction();
-    }
-  }, [pause, projectId, releaseSessionAction, tryAcquireSessionAction]);
-
-  const handleResume = useCallback(async () => {
-    if (!tryAcquireSessionAction()) {
-      return;
-    }
-    try {
-      log.info('Prepare offline download resumed', { projectId });
-      setForceIdle(false);
-      await resume();
-    } finally {
-      releaseSessionAction();
-    }
-  }, [projectId, releaseSessionAction, resume, tryAcquireSessionAction]);
-
-  const handleCancel = useCallback(async () => {
-    if (!tryAcquireSessionAction()) {
-      return;
-    }
-    try {
-      log.info('Prepare offline download cancelled', { projectId });
-      await cancel();
-      if (projectId !== null) {
-        await cancelProjectDownloadTransfers(projectId);
-      }
-      await refresh();
-      userCancelledRef.current = true;
-      setForceIdle(true);
-    } finally {
-      releaseSessionAction();
-    }
-  }, [
-    cancel,
-    projectId,
-    refresh,
-    releaseSessionAction,
-    tryAcquireSessionAction,
   ]);
 
   return {
@@ -391,6 +470,7 @@ export function usePrepareOfflineDownload({
     catalogWithProgress,
     downloadButtonLabel,
     canDownload: canDownloadNow,
+    inventoryRefreshSignal,
     handleDownload,
     pause: handlePause,
     resume: handleResume,

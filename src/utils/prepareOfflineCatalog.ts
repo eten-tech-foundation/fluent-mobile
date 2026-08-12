@@ -10,7 +10,7 @@ import {
 } from '../types/prepareOffline/types';
 import {
   kindLabel,
-  manifestEntryToResourceId,
+  scopedPrepareOfflineResourceId,
 } from './prepareOfflineResourceId';
 
 function computeManifestBytes(
@@ -138,6 +138,7 @@ export function computeRemainingBytes(
 
 /** Pure catalog builder — manifest and status come from prepareOfflineResources service. */
 export function buildPrepareOfflineCatalog({
+  projectId,
   manifest,
   getResourceStatus,
   chapters,
@@ -149,7 +150,8 @@ export function buildPrepareOfflineCatalog({
   }
 
   const items: PrepareOfflineResourceItem[] = manifest.map(entry => {
-    const id = manifestEntryToResourceId(
+    const id = scopedPrepareOfflineResourceId(
+      projectId,
       entry.tier,
       entry.groupName,
       entry.kind,

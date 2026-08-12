@@ -3,17 +3,20 @@ import {
   kindLabel,
   manifestEntryToResourceId,
 } from '../../utils/prepareOfflineResourceId';
+import { DEV_MOCK_FILE_BYTES } from './mockDownloadSources';
 
 export { kindLabel, manifestEntryToResourceId };
-
-const MB = 1024 * 1024;
 
 /**
  * Prepare for Offline — mock offline download catalog (#51 dev QA).
  *
  * **Role:** Static catalog of everything that *can* be downloaded for a project —
- * resource names, tiers (1/2/3), text/audio kinds, byte sizes, and scope
+ * resource names, tiers (1/2/3), text/audio/image kinds, byte sizes, and scope
  * (chapter | book | project). Stand-in for a future FluentAPI manifest (#201).
+ *
+ * **Byte sizes:** `unitBytes` per kind match `DEV_MOCK_FILE_BYTES` in
+ * `mockDownloadSources.ts` (one fixture URL per kind). Totals reflect real
+ * on-device storage after download, not the product mockup (~338 MB).
  *
  * **Works with:**
  * - `offlineDownloadInventoryScenarios.ts` — uses `MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST` and
@@ -24,11 +27,6 @@ const MB = 1024 * 1024;
  *
  * **Production replacement:** `FluentAPI.getPrepareOfflineManifest(projectId)`
  * returning `PrepareOfflineResourceManifestEntry[]` (see `types/prepareOffline/types.ts`).
- *
- * Visual QA (1 chapter selected) matches product mockup sizes:
- * Tier 1 Source Bible 8/136 MB + Translation Notes 18/48 MB;
- * Tier 2 Translation Words 10/32 MB + Translation Questions 6/14 MB;
- * Tier 3 ~66 MB → ~338 MB total.
  */
 export const MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST: PrepareOfflineResourceManifestEntry[] =
   [
@@ -38,7 +36,7 @@ export const MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST: PrepareOfflineResourceManif
       groupName: 'Source Bible',
       kind: 'text',
       scope: 'chapter',
-      unitBytes: 8 * MB,
+      unitBytes: DEV_MOCK_FILE_BYTES.text,
     },
     {
       resourceKey: 'source-bible',
@@ -46,7 +44,7 @@ export const MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST: PrepareOfflineResourceManif
       groupName: 'Source Bible',
       kind: 'audio',
       scope: 'chapter',
-      unitBytes: 136 * MB,
+      unitBytes: DEV_MOCK_FILE_BYTES.audio,
     },
     {
       resourceKey: 'translation-notes',
@@ -54,7 +52,7 @@ export const MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST: PrepareOfflineResourceManif
       groupName: 'Translation Notes',
       kind: 'text',
       scope: 'chapter',
-      unitBytes: 18 * MB,
+      unitBytes: DEV_MOCK_FILE_BYTES.text,
     },
     {
       resourceKey: 'translation-notes',
@@ -62,7 +60,7 @@ export const MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST: PrepareOfflineResourceManif
       groupName: 'Translation Notes',
       kind: 'audio',
       scope: 'chapter',
-      unitBytes: 48 * MB,
+      unitBytes: DEV_MOCK_FILE_BYTES.audio,
     },
     {
       resourceKey: 'translation-words',
@@ -70,7 +68,7 @@ export const MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST: PrepareOfflineResourceManif
       groupName: 'Translation Words',
       kind: 'text',
       scope: 'project',
-      unitBytes: 10 * MB,
+      unitBytes: DEV_MOCK_FILE_BYTES.text,
     },
     {
       resourceKey: 'translation-words',
@@ -78,7 +76,7 @@ export const MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST: PrepareOfflineResourceManif
       groupName: 'Translation Words',
       kind: 'audio',
       scope: 'project',
-      unitBytes: 32 * MB,
+      unitBytes: DEV_MOCK_FILE_BYTES.audio,
     },
     {
       resourceKey: 'translation-questions',
@@ -86,7 +84,7 @@ export const MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST: PrepareOfflineResourceManif
       groupName: 'Translation Questions',
       kind: 'text',
       scope: 'chapter',
-      unitBytes: 6 * MB,
+      unitBytes: DEV_MOCK_FILE_BYTES.text,
     },
     {
       resourceKey: 'translation-questions',
@@ -94,7 +92,7 @@ export const MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST: PrepareOfflineResourceManif
       groupName: 'Translation Questions',
       kind: 'audio',
       scope: 'chapter',
-      unitBytes: 14 * MB,
+      unitBytes: DEV_MOCK_FILE_BYTES.audio,
     },
     {
       resourceKey: 'bible-commentary',
@@ -102,7 +100,7 @@ export const MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST: PrepareOfflineResourceManif
       groupName: 'Bible Commentary',
       kind: 'text',
       scope: 'project',
-      unitBytes: 12 * MB,
+      unitBytes: DEV_MOCK_FILE_BYTES.text,
     },
     {
       resourceKey: 'bible-commentary',
@@ -110,15 +108,15 @@ export const MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST: PrepareOfflineResourceManif
       groupName: 'Bible Commentary',
       kind: 'audio',
       scope: 'project',
-      unitBytes: 24 * MB,
+      unitBytes: DEV_MOCK_FILE_BYTES.audio,
     },
     {
       resourceKey: 'reference-images',
       tier: 3,
       groupName: 'Reference Images',
-      kind: 'text',
+      kind: 'image',
       scope: 'project',
-      unitBytes: 6 * MB,
+      unitBytes: DEV_MOCK_FILE_BYTES.image,
     },
     {
       resourceKey: 'alternate-translations',
@@ -126,7 +124,7 @@ export const MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST: PrepareOfflineResourceManif
       groupName: 'Alternate Translations',
       kind: 'text',
       scope: 'project',
-      unitBytes: 8 * MB,
+      unitBytes: DEV_MOCK_FILE_BYTES.text,
     },
     {
       resourceKey: 'alternate-translations',
@@ -134,6 +132,6 @@ export const MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST: PrepareOfflineResourceManif
       groupName: 'Alternate Translations',
       kind: 'audio',
       scope: 'project',
-      unitBytes: 16 * MB,
+      unitBytes: DEV_MOCK_FILE_BYTES.audio,
     },
   ];
