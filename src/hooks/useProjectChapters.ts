@@ -1,3 +1,4 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { useState, useEffect, useCallback } from 'react';
 import { getProjectChapters } from '../db/queries';
 import { ProjectChapter } from '../types/db/types';
@@ -43,6 +44,12 @@ export function useProjectChapters(projectId: number) {
       setRefreshing(false);
     }
   }, [loadChapters]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+  );
 
   const retry = useCallback(async () => {
     setLoading(true);

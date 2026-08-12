@@ -1,3 +1,4 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { useState, useEffect, useCallback } from 'react';
 import { getProjectsWithSummary } from '../db/queries';
 import { ProjectSummary } from '../types/db/types';
@@ -38,6 +39,12 @@ export function useProjectsSummary(refreshKey = 0) {
       setRefreshing(false);
     }
   }, [loadProjects]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+  );
 
   return { projects, loading, refreshing, refresh };
 }

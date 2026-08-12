@@ -1,11 +1,12 @@
 import { logger } from '../../utils/logger';
 import { VerseData } from '../../types/db/types';
-import { getRecordedVerseNumbersForChapter } from '../../db/repository';
+import { getRecordedVerseNumbers } from '../../db/queries';
 import React, {
   createContext,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
@@ -13,7 +14,6 @@ const log = logger.create('DraftingContext');
 
 interface DraftingContextValue {
   selectedVerse: number;
-
   setSelectedVerse: (verseNumber: number) => void;
   verses: VerseData[];
   /**
@@ -52,25 +52,35 @@ export function DraftingProvider({
   const [recordedVerseNumbers, setRecordedVerseNumbers] = useState<Set<number>>(
     new Set(),
   );
+  const recordedVersesRequestIdRef = useRef(0);
 
   const chapterKey = verses[0]
     ? `${verses[0].bibleId}:${verses[0].bookId}:${verses[0].chapterNumber}`
     : null;
 
   const refreshRecordedVerses = React.useCallback(async () => {
+    const requestId = ++recordedVersesRequestIdRef.current;
     const first = verses[0];
     if (!first) {
-      setRecordedVerseNumbers(new Set());
+      if (requestId === recordedVersesRequestIdRef.current) {
+        setRecordedVerseNumbers(new Set());
+      }
       return;
     }
     try {
-      const nums = await getRecordedVerseNumbersForChapter(
+      const nums = await getRecordedVerseNumbers(
         first.bibleId,
         first.bookId,
         first.chapterNumber,
       );
-      setRecordedVerseNumbers(new Set(nums));
+      if (requestId !== recordedVersesRequestIdRef.current) {
+        return;
+      }
+      setRecordedVerseNumbers(nums);
     } catch (error) {
+      if (requestId !== recordedVersesRequestIdRef.current) {
+        return;
+      }
       log.error('Failed to load recorded verse numbers', { error });
     }
   }, [verses]);

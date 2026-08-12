@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { getMyWorkChapters } from '../db/queries';
 import { MyWorkChapter } from '../types/db/types';
 import { parseUserId } from '../utils/parseUserId';
@@ -39,6 +40,12 @@ export function useMyWorkChapters(refreshKey = 0) {
       setRefreshing(false);
     }
   }, [loadChapters]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+  );
 
   return { chapters, loading, refreshing, refresh };
 }
