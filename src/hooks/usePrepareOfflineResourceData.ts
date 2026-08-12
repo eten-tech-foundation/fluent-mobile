@@ -77,6 +77,7 @@ export function usePrepareOfflineResourceData(projectId: number | null) {
     inventoryVersion,
     getResourceStatus,
     clearSessionInventory: clearPrepareOfflineSessionInventory,
-    getDefaultPackageDeselects: getDefaultPrepareOfflinePackageDeselects,
+    getDefaultPackageDeselects: () =>
+      getDefaultPrepareOfflinePackageDeselects(projectId),
   };
 }

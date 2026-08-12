@@ -25,6 +25,7 @@ import {
   PrepareOfflineResourceStatus,
 } from '../types/prepareOffline/types';
 import { logger } from '../utils/logger';
+import { unscopedPrepareOfflineResourceId } from '../utils/prepareOfflineResourceId';
 
 const log = logger.create('prepareOfflineResources');
 
@@ -51,7 +52,10 @@ export function getPrepareOfflineResourceStatus(
   resourceId: string,
 ): PrepareOfflineResourceStatus {
   if (__DEV__) {
-    return getMockPrepareOfflineResourceStatus(projectId, resourceId);
+    return getMockPrepareOfflineResourceStatus(
+      projectId,
+      unscopedPrepareOfflineResourceId(projectId, resourceId),
+    );
   }
 
   return 'selected';
@@ -76,11 +80,17 @@ export function clearPrepareOfflineSessionInventory(): void {
 }
 
 /** Tier 2/3 ids deselected by default for the active dev scenario package. */
-export function getDefaultPrepareOfflinePackageDeselects(): Set<string> {
+export function getDefaultPrepareOfflinePackageDeselects(
+  projectId: number | null = null,
+): Set<string> {
   if (__DEV__) {
-    return getDefaultDeselectedItemIdsForScenario(
+    const ids = getDefaultDeselectedItemIdsForScenario(
       getPrepareOfflineMockInventoryScenario(),
     );
+    if (projectId === null) {
+      return ids;
+    }
+    return new Set([...ids].map(id => `${projectId}-${id}`));
   }
 
   return new Set();

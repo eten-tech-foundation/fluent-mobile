@@ -22,6 +22,7 @@ import { theme } from '../../theme';
 import { ChapterSelectionAccordion } from '../prepare-offline/ChapterSelectionAccordion';
 import { PrepareOfflineDownloadFooter } from '../prepare-offline/PrepareOfflineDownloadFooter';
 import { PrepareOfflineResourcesSection } from '../prepare-offline/PrepareOfflineResourcesSection';
+import { ManageDeviceStorageSection } from '../prepare-offline/ManageDeviceStorageSection';
 import { ProjectPickerStep } from '../prepare-offline/ProjectPickerStep';
 
 type Nav = StackNavigationProp<RootStackParamList, 'PrepareForOffline'>;
@@ -84,6 +85,7 @@ export default function PrepareForOfflineScreen() {
     catalogWithProgress,
     downloadButtonLabel,
     canDownload: canDownloadNow,
+    inventoryRefreshSignal,
     handleDownload,
     pause,
     resume,
@@ -108,6 +110,20 @@ export default function PrepareForOfflineScreen() {
     !error &&
     !manifestLoading &&
     !manifestError;
+
+  const showStorageSection =
+    projectId !== null && projectId !== undefined && !loading && !error;
+
+  const storageSection =
+    showStorageSection && projectId !== null && projectId !== undefined ? (
+      <ManageDeviceStorageSection
+        projectId={projectId}
+        inventoryRefreshSignal={inventoryRefreshSignal}
+        downloadInProgress={
+          busy || session === 'downloading' || session === 'paused'
+        }
+      />
+    ) : null;
 
   let body: React.ReactNode;
 
@@ -136,7 +152,12 @@ export default function PrepareForOfflineScreen() {
       </View>
     );
   } else if (books.length === 0) {
-    body = <EmptyState message="No chapters available for this project." />;
+    body = (
+      <ScrollView contentContainerStyle={styles.content}>
+        <EmptyState message="No chapters available for this project." />
+        {storageSection}
+      </ScrollView>
+    );
   } else {
     body = (
       <ScrollView contentContainerStyle={styles.content}>
@@ -170,6 +191,7 @@ export default function PrepareForOfflineScreen() {
             onCancel={() => void cancel()}
           />
         ) : null}
+        {storageSection}
       </ScrollView>
     );
   }

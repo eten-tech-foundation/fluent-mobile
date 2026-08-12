@@ -28,6 +28,7 @@ export async function enqueuePrepareOfflineDownload(
   const enqueueInputs = prepareOfflineItemsToEnqueueInputs(
     input.items,
     input.projectId,
+    input.userId,
   );
 
   try {
