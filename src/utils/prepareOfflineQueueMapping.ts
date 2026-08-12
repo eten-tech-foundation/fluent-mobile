@@ -27,9 +27,9 @@ export function prepareOfflineItemToEnqueueInput(
     kind: queueKindForResource(item.kind),
     resourceName: item.groupName,
     label: item.label,
-    sourceUrl: __DEV__ ? sourceUrl : undefined,
-    fileExt: __DEV__ ? fileExt : undefined,
-    bytesTotal: __DEV__ ? bytesTotal : item.bytes,
+    sourceUrl,
+    fileExt,
+    bytesTotal,
   };
 }
 
