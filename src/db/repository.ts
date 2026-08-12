@@ -103,6 +103,119 @@ async function loadKnownUserIds(
   return known;
 }
 
+export type ChapterAssignmentParentContext = {
+  knownProjectIds: ReadonlySet<number>;
+  knownBibleIds: ReadonlySet<number>;
+  knownBookIds: ReadonlySet<number>;
+  knownProjectUnitIds: ReadonlySet<number>;
+  projectUnitToProjectId: ReadonlyMap<number, number>;
+};
+
+function collectIdsFromRows(rows: unknown[], key = 'id'): Set<number> {
+  const ids = new Set<number>();
+  for (const row of rows) {
+    const id = Number((row as Record<string, number>)[key]);
+    if (Number.isFinite(id) && id > 0) ids.add(id);
+  }
+  return ids;
+}
+
+async function loadChapterAssignmentParentContext(
+  tx: Transaction,
+): Promise<ChapterAssignmentParentContext> {
+  const [projects, bibles, books, units] = await Promise.all([
+    tx.execute('SELECT id FROM projects'),
+    tx.execute('SELECT id FROM bibles'),
+    tx.execute('SELECT id FROM books'),
+    tx.execute('SELECT id, project_id FROM project_units'),
+  ]);
+
+  const knownProjectUnitIds = new Set<number>();
+  const projectUnitToProjectId = new Map<number, number>();
+  for (const row of units.rows) {
+    const id = Number((row as { id: number }).id);
+    const projectId = Number((row as { project_id: number }).project_id);
+    if (!Number.isFinite(id) || id <= 0) continue;
+    knownProjectUnitIds.add(id);
+    if (Number.isFinite(projectId) && projectId > 0) {
+      projectUnitToProjectId.set(id, projectId);
+    }
+  }
+
+  return {
+    knownProjectIds: collectIdsFromRows(projects.rows),
+    knownBibleIds: collectIdsFromRows(bibles.rows),
+    knownBookIds: collectIdsFromRows(books.rows),
+    knownProjectUnitIds,
+    projectUnitToProjectId,
+  };
+}
+
+/** Resolve project_units to upsert before chapter assignment inserts (#234). */
+export function resolveProjectUnitsForSync(
+  assignments: DBTypes.ChapterAssignment[],
+  knownProjectIds: ReadonlySet<number>,
+  projectUnitToProjectId: ReadonlyMap<number, number>,
+): Map<number, { id: number; projectId: number }> {
+  const unitsMap = new Map<number, { id: number; projectId: number }>();
+
+  for (const assignment of assignments) {
+    if (!assignment.projectUnitId) continue;
+    if (unitsMap.has(assignment.projectUnitId)) continue;
+
+    const resolvedProjectId =
+      assignment.projectId && knownProjectIds.has(assignment.projectId)
+        ? assignment.projectId
+        : projectUnitToProjectId.get(assignment.projectUnitId);
+
+    if (!resolvedProjectId || !knownProjectIds.has(resolvedProjectId)) {
+      continue;
+    }
+
+    unitsMap.set(assignment.projectUnitId, {
+      id: assignment.projectUnitId,
+      projectId: resolvedProjectId,
+    });
+  }
+
+  return unitsMap;
+}
+
+/** Keep only assignments whose FK parents exist or will be upserted (#234). */
+export function filterAssignmentsWithValidParents(
+  assignments: DBTypes.ChapterAssignment[],
+  parentContext: ChapterAssignmentParentContext,
+  unitsToUpsert: ReadonlyMap<number, { id: number; projectId: number }>,
+): DBTypes.ChapterAssignment[] {
+  const validProjectUnitIds = new Set([
+    ...parentContext.knownProjectUnitIds,
+    ...unitsToUpsert.keys(),
+  ]);
+
+  return assignments.filter(assignment => {
+    if (!assignment?.chapterAssignmentId) return false;
+    if (
+      !assignment.projectUnitId ||
+      !validProjectUnitIds.has(assignment.projectUnitId)
+    ) {
+      return false;
+    }
+    if (
+      !assignment.bibleId ||
+      !parentContext.knownBibleIds.has(assignment.bibleId)
+    ) {
+      return false;
+    }
+    if (
+      !assignment.bookId ||
+      !parentContext.knownBookIds.has(assignment.bookId)
+    ) {
+      return false;
+    }
+    return true;
+  });
+}
+
 function collectAssigneeIds(
   assignments: DBTypes.ChapterAssignment[],
 ): number[] {
@@ -330,17 +443,31 @@ export async function insertChapterAssignmentSyncData(
   assignments: DBTypes.ChapterAssignment[],
 ) {
   const db = getDatabase();
-  const unitsMap = getUniqueProjectUnits(assignments);
   const assigneeIds = collectAssigneeIds(assignments);
-
-  log.info('insertChapterAssignmentSyncData', {
-    assignmentsCount: assignments.length,
-    unitsMapSize: unitsMap.size,
-    distinctAssignees: assigneeIds.length,
-  });
 
   await db.transaction(async (tx: Transaction) => {
     const knownUserIds = await loadKnownUserIds(tx, assigneeIds);
+    const parentContext = await loadChapterAssignmentParentContext(tx);
+    const unitsMap = resolveProjectUnitsForSync(
+      assignments,
+      parentContext.knownProjectIds,
+      parentContext.projectUnitToProjectId,
+    );
+    const validAssignments = filterAssignmentsWithValidParents(
+      assignments,
+      parentContext,
+      unitsMap,
+    );
+    const skippedCount = assignments.length - validAssignments.length;
+
+    log.info('insertChapterAssignmentSyncData', {
+      assignmentsCount: assignments.length,
+      insertCount: validAssignments.length,
+      skippedCount,
+      unitsMapSize: unitsMap.size,
+      distinctAssignees: assigneeIds.length,
+    });
+
     const orphanedAssignees = assigneeIds.filter(id => !knownUserIds.has(id));
     if (orphanedAssignees.length > 0) {
       log.info('Nulling assigned_user_id for users not in local users table', {
@@ -349,10 +476,19 @@ export async function insertChapterAssignmentSyncData(
       });
     }
 
+    if (skippedCount > 0) {
+      log.info('Skipping chapter assignments with missing FK parents', {
+        skippedCount,
+        knownProjects: parentContext.knownProjectIds.size,
+        knownBibles: parentContext.knownBibleIds.size,
+        knownBooks: parentContext.knownBookIds.size,
+      });
+    }
+
     for (const unit of unitsMap.values()) {
       await insertProjectUnitTx(tx, unit);
     }
-    for (const assignment of assignments) {
+    for (const assignment of validAssignments) {
       await insertChapterAssignmentTx(tx, assignment, knownUserIds);
     }
   });
