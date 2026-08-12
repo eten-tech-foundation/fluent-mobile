@@ -9,11 +9,11 @@ import {
 import { Image } from 'expo-image';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { theme } from '../../../theme';
 
 const MIN_SCALE = 1;
@@ -157,7 +157,7 @@ export function ZoomableImage({
     ? Gesture.Tap()
         .numberOfTaps(1)
         .onEnd(() => {
-          runOnJS(onPress)();
+          scheduleOnRN(onPress);
         })
     : null;
 
