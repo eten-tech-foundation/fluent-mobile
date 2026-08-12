@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePrepareOfflineResourceData } from './usePrepareOfflineResourceData';
 import { PrepareOfflineChapterRow } from '../types/prepareOffline/types';
-import { formatByteSize } from '../utils/formatByteSize';
 import {
   buildPrepareOfflineCatalog,
   buildEffectiveCatalog,
@@ -57,13 +56,24 @@ export function usePrepareOfflineResources({
 
   const catalog = useMemo(() => {
     void inventoryVersion;
+    if (projectId === null) {
+      return { items: [], groups: [] };
+    }
     return buildPrepareOfflineCatalog({
+      projectId,
       manifest,
       getResourceStatus,
       chapters,
       selectedIds,
     });
-  }, [manifest, getResourceStatus, chapters, selectedIds, inventoryVersion]);
+  }, [
+    projectId,
+    manifest,
+    getResourceStatus,
+    chapters,
+    selectedIds,
+    inventoryVersion,
+  ]);
 
   const effectiveCatalog = useMemo(
     () => buildEffectiveCatalog(catalog, deselectedItemIds),
@@ -96,13 +106,6 @@ export function usePrepareOfflineResources({
 
     return pendingBytes > 0;
   }, [catalog.items.length, isAssignedUser, pendingBytes, selectedCount]);
-
-  const downloadButtonLabel =
-    pendingBytes > 0
-      ? `Download ${formatByteSize(pendingBytes)}`
-      : totalBytes > 0
-      ? 'All on device'
-      : `Download ${formatByteSize(0)}`;
 
   const isItemSelected = useCallback(
     (itemId: string) => !deselectedItemIds.has(itemId),
@@ -137,7 +140,6 @@ export function usePrepareOfflineResources({
     pendingBytes,
     selectedItems,
     canDownload,
-    downloadButtonLabel,
     manifestLoading,
     manifestError,
     isItemSelected,

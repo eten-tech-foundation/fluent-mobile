@@ -39,20 +39,22 @@ export function subscribeResourcesInventory(
  */
 export async function getDownloadedResourceSections(
   projectId: number,
+  userId: number,
 ): Promise<ResourceSectionId[]> {
   try {
-    const rows = await getDownloadedResourcesByProject(projectId);
+    const rows = await getDownloadedResourcesByProject(projectId, userId);
     return RESOURCES_SECTION_INVENTORY_GATES.filter(gate =>
       rows.some(
         row =>
           row.status === 'completed' &&
           row.resourceName === gate.groupName &&
-          row.kind === 'text',
+          row.kind === gate.kind,
       ),
     ).map(gate => gate.sectionId);
   } catch (error) {
     log.warn('download_queue inventory lookup failed', {
       projectId,
+      userId,
       error: error instanceof Error ? error.message : String(error),
     });
     return [];
@@ -61,8 +63,9 @@ export async function getDownloadedResourceSections(
 
 export async function isResourcesSectionDownloadedInQueue(
   projectId: number,
+  userId: number,
   sectionId: ResourceSectionId,
 ): Promise<boolean> {
-  const sections = await getDownloadedResourceSections(projectId);
+  const sections = await getDownloadedResourceSections(projectId, userId);
   return sections.includes(sectionId);
 }

@@ -16,17 +16,20 @@ export const RESOURCES_SECTION_INVENTORY_GATES: ResourcesSectionInventoryGate[] 
     {
       sectionId: 'translationNotes',
       groupName: 'Translation Notes',
+      kind: 'text',
       resourceId: manifestEntryToResourceId(1, 'Translation Notes', 'text'),
     },
     {
       sectionId: 'translationQuestions',
       groupName: 'Translation Questions',
+      kind: 'text',
       resourceId: manifestEntryToResourceId(2, 'Translation Questions', 'text'),
     },
     {
       sectionId: 'imagesMaps',
       groupName: 'Reference Images',
-      resourceId: manifestEntryToResourceId(3, 'Reference Images', 'text'),
+      kind: 'image',
+      resourceId: manifestEntryToResourceId(3, 'Reference Images', 'image'),
     },
   ];
 

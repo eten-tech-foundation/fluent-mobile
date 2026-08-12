@@ -23,6 +23,7 @@ jest.mock('../db/downloadQueueRepository', () => ({
 
 describe('resourcesInventory', () => {
   const projectId = 42;
+  const userId = 7;
 
   beforeEach(() => {
     clearMockPrepareOfflineRuntimeInventory();
@@ -48,23 +49,29 @@ describe('resourcesInventory', () => {
 
   it('checks download_queue for completed section rows', async () => {
     await expect(
-      isResourcesSectionDownloadedInQueue(projectId, 'translationNotes'),
+      isResourcesSectionDownloadedInQueue(
+        projectId,
+        userId,
+        'translationNotes',
+      ),
     ).resolves.toBe(true);
     await expect(
-      isResourcesSectionDownloadedInQueue(projectId, 'imagesMaps'),
+      isResourcesSectionDownloadedInQueue(projectId, userId, 'imagesMaps'),
     ).resolves.toBe(false);
   });
 
   it('maps persisted download_queue completions to sections', async () => {
-    await expect(getDownloadedResourceSections(projectId)).resolves.toEqual([
-      'translationNotes',
-    ]);
+    await expect(
+      getDownloadedResourceSections(projectId, userId),
+    ).resolves.toEqual(['translationNotes']);
   });
 
   it('returns no sections when the queue lookup fails', async () => {
     (getDownloadedResourcesByProject as jest.Mock).mockRejectedValueOnce(
       new Error('database not initialized'),
     );
-    await expect(getDownloadedResourceSections(projectId)).resolves.toEqual([]);
+    await expect(
+      getDownloadedResourceSections(projectId, userId),
+    ).resolves.toEqual([]);
   });
 });

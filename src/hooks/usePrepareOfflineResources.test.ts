@@ -9,9 +9,14 @@ import {
   setMockPrepareOfflineResourceStatus,
   setPrepareOfflineMockInventoryScenario,
   getMockPrepareOfflineResourceStatus,
+  DEV_MOCK_FILE_BYTES,
 } from '../mocks/prepareOffline';
+import { scopedPrepareOfflineResourceId } from '../utils/prepareOfflineResourceId';
 
-const MB = 1024 * 1024;
+const TIER3_MOCK_TOTAL =
+  2 * DEV_MOCK_FILE_BYTES.text +
+  2 * DEV_MOCK_FILE_BYTES.audio +
+  DEV_MOCK_FILE_BYTES.image;
 
 function chapter(id: number): PrepareOfflineChapterRow {
   return {
@@ -71,7 +76,6 @@ describe('usePrepareOfflineResources', () => {
 
     expect(result.current.canDownload).toBe(true);
     expect(result.current.pendingBytes).toBeGreaterThan(0);
-    expect(result.current.downloadButtonLabel).toMatch(/^Download /);
     expect(result.current.selectedItems.length).toBeGreaterThan(0);
   });
 
@@ -127,11 +131,17 @@ describe('usePrepareOfflineResources', () => {
     const initialTotal = result.current.totalBytes;
 
     act(() => {
-      result.current.toggleItemSelected('tier-2-translation-questions-text');
+      result.current.toggleItemSelected(
+        scopedPrepareOfflineResourceId(99, 2, 'Translation Questions', 'text'),
+      );
     });
 
-    expect(result.current.pendingBytes).toBe(initialPending - 6 * MB);
-    expect(result.current.totalBytes).toBe(initialTotal - 6 * MB);
+    expect(result.current.pendingBytes).toBe(
+      initialPending - DEV_MOCK_FILE_BYTES.text,
+    );
+    expect(result.current.totalBytes).toBe(
+      initialTotal - DEV_MOCK_FILE_BYTES.text,
+    );
   });
 
   it('resets deselected items when project changes', async () => {
@@ -155,12 +165,16 @@ describe('usePrepareOfflineResources', () => {
     await waitForCatalogItems(result);
 
     act(() => {
-      result.current.toggleItemSelected('tier-3-bible-commentary-text');
+      result.current.toggleItemSelected(
+        scopedPrepareOfflineResourceId(1, 3, 'Bible Commentary', 'text'),
+      );
     });
 
-    expect(result.current.isItemSelected('tier-3-bible-commentary-text')).toBe(
-      false,
-    );
+    expect(
+      result.current.isItemSelected(
+        scopedPrepareOfflineResourceId(1, 3, 'Bible Commentary', 'text'),
+      ),
+    ).toBe(false);
 
     rerender({
       projectId: 2,
@@ -173,9 +187,11 @@ describe('usePrepareOfflineResources', () => {
 
     await waitForCatalogItems(result);
 
-    expect(result.current.isItemSelected('tier-3-bible-commentary-text')).toBe(
-      true,
-    );
+    expect(
+      result.current.isItemSelected(
+        scopedPrepareOfflineResourceId(2, 3, 'Bible Commentary', 'text'),
+      ),
+    ).toBe(true);
   });
 
   it('preserves completed inventory after Prepare Offline remount', async () => {
@@ -236,9 +252,11 @@ describe('usePrepareOfflineResources', () => {
 
     await waitForCatalogItems(result);
 
-    expect(result.current.isItemSelected('tier-3-bible-commentary-text')).toBe(
-      false,
-    );
+    expect(
+      result.current.isItemSelected(
+        scopedPrepareOfflineResourceId(88, 3, 'Bible Commentary', 'text'),
+      ),
+    ).toBe(false);
     expect(
       result.current.effectiveCatalog.groups.some(
         group => group.groupName === 'Bible Commentary',
@@ -262,9 +280,11 @@ describe('usePrepareOfflineResources', () => {
 
     await waitForCatalogItems(result);
 
-    expect(result.current.isItemSelected('tier-3-bible-commentary-text')).toBe(
-      true,
-    );
-    expect(result.current.pendingBytes).toBe(66 * MB);
+    expect(
+      result.current.isItemSelected(
+        scopedPrepareOfflineResourceId(77, 3, 'Bible Commentary', 'text'),
+      ),
+    ).toBe(true);
+    expect(result.current.pendingBytes).toBe(TIER3_MOCK_TOTAL);
   });
 });

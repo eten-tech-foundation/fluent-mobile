@@ -14,7 +14,10 @@ const NO_SECTIONS: ResourceSectionId[] = [];
  * Does not fetch manifests or call Aquifer — local status and persisted
  * `download_queue` completions only.
  */
-export function useResourcesInventory(projectId: number | null) {
+export function useResourcesInventory(
+  projectId: number | null,
+  userId: number | null,
+) {
   const [inventoryVersion, setInventoryVersion] = useState(0);
   const [downloadedSections, setDownloadedSections] =
     useState<ResourceSectionId[]>(NO_SECTIONS);
@@ -26,13 +29,13 @@ export function useResourcesInventory(projectId: number | null) {
   }, []);
 
   useEffect(() => {
-    if (projectId === null) {
+    if (projectId === null || userId === null) {
       setDownloadedSections(NO_SECTIONS);
       return;
     }
 
     let active = true;
-    void getDownloadedResourceSections(projectId).then(sections => {
+    void getDownloadedResourceSections(projectId, userId).then(sections => {
       if (active) {
         setDownloadedSections(sections);
       }
@@ -41,7 +44,7 @@ export function useResourcesInventory(projectId: number | null) {
     return () => {
       active = false;
     };
-  }, [projectId, inventoryVersion]);
+  }, [projectId, userId, inventoryVersion]);
 
   const getResourceStatus = useCallback(
     (resourceId: string): PrepareOfflineResourceStatus => {

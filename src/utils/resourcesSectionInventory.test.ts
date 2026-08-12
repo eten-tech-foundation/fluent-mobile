@@ -19,11 +19,13 @@ describe('resourcesSectionInventory', () => {
       {
         sectionId: 'translationNotes',
         groupName: 'Translation Notes',
+        kind: 'text',
         resourceId: manifestEntryToResourceId(1, 'Translation Notes', 'text'),
       },
       {
         sectionId: 'translationQuestions',
         groupName: 'Translation Questions',
+        kind: 'text',
         resourceId: manifestEntryToResourceId(
           2,
           'Translation Questions',
@@ -33,7 +35,8 @@ describe('resourcesSectionInventory', () => {
       {
         sectionId: 'imagesMaps',
         groupName: 'Reference Images',
-        resourceId: manifestEntryToResourceId(3, 'Reference Images', 'text'),
+        kind: 'image',
+        resourceId: manifestEntryToResourceId(3, 'Reference Images', 'image'),
       },
     ]);
   });
@@ -71,7 +74,7 @@ describe('resourcesSectionInventory', () => {
       [manifestEntryToResourceId(1, 'Translation Notes', 'text')]: 'completed',
       [manifestEntryToResourceId(2, 'Translation Questions', 'text')]:
         'downloading',
-      [manifestEntryToResourceId(3, 'Reference Images', 'text')]: 'selected',
+      [manifestEntryToResourceId(3, 'Reference Images', 'image')]: 'selected',
     });
     expect(getInventoriedResourceSections(getStatus)).toEqual([
       'translationNotes',

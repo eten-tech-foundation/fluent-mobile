@@ -15,8 +15,9 @@ Complements team PR conventions (title `[#NNN]: Description`, verification gates
 3. **Analyze branch** — commits, files changed, change type
 4. **Generate title** — `[#NNN]: Title` from issue + branch
 5. **Fill template** — [`.cursor/templates/pr-template.md`](../templates/pr-template.md)
-6. **Reviewers / labels** — use team defaults if configured below; otherwise omit or ask user
-7. **Create draft PR** — via `gh pr create`
+6. **Assignee** — always assign the PR author (`--assignee @me`)
+7. **Reviewers / labels** — CODEOWNERS auto-requests on `main`; omit manual reviewers unless asked
+8. **Create draft PR** — via `gh pr create`
 
 ## Pre-flight (fluent-mobile)
 
@@ -88,11 +89,24 @@ Keep output under ~400 lines; no nested fenced code blocks inside the PR body.
 
 ## GitHub (`gh`)
 
+Always create with the author assigned. Body must include `Refs #NNN` (never closing keywords).
+
 ```bash
-gh pr create --draft --title "[#NNN]: Title" --body-file /tmp/pr-body.md
+gh pr create --draft \
+  --title "[#NNN]: Title" \
+  --body-file /tmp/pr-body.md \
+  --assignee @me
 ```
 
-**Reviewers / labels:** omit if unknown; tell the user to add them in GitHub.
+If the PR already exists without an assignee:
+
+```bash
+gh pr edit --add-assignee @me
+```
+
+**Issue link (Development sidebar):** `Refs #NNN` in the body is the required non-closing reference (issues stay open for QA). GitHub’s Development “linked issues” UI is only auto-populated by closing keywords (`Closes` / `Fixes` / `Resolves`) or a **manual** sidebar link — there is no public API to create that link without also auto-closing on merge. Do **not** use closing keywords. After `gh pr create`, if the Development sidebar is empty, link issue `#NNN` once in the GitHub UI (or ask the user to).
+
+**Reviewers / labels:** CODEOWNERS handles review requests after the file is on `main`. Omit `--reviewer` unless the user asks.
 
 ## Package manager
 
@@ -116,10 +130,12 @@ Type `/create-pr` in Cursor chat.
 
 **After creation:**
 
-1. Review auto-filled body (confirm AC / Scope / device-QA checkboxes match reality per [`AGENTS.md`](../../AGENTS.md))
-2. Add screenshots if UI changed
-3. Confirm reviewers/labels
-4. Mark ready for review only when CI gates **and** delivery guardrails pass. Do not merge unless user explicitly asks.
+1. Confirm assignee is the author (`gh pr view --json assignees`)
+2. Review auto-filled body (confirm AC / Scope / device-QA checkboxes match reality per [`AGENTS.md`](../../AGENTS.md))
+3. If the PR Development sidebar has no linked issue, link `#NNN` manually in the GitHub UI (non-closing — see GitHub section above)
+4. Add screenshots if UI changed
+5. Confirm CODEOWNERS / reviewers
+6. Mark ready for review only when CI gates **and** delivery guardrails pass. Do not merge unless user explicitly asks.
 
 ## Related commands
 

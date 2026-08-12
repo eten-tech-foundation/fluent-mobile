@@ -30,6 +30,7 @@ import {
   getChapterAssignmentById,
   getRecordedVerseNumbers,
 } from '../../db/queries';
+import { parseUserId } from '../../utils/parseUserId';
 
 const log = logger.create('DraftingScreen');
 
@@ -38,6 +39,7 @@ type Route = RouteProp<RootStackParamList, 'VerseDetail'>;
 
 export default function DraftingScreen() {
   const navigation = useNavigation<Nav>();
+  const userId = parseUserId();
   const { chapterId, chapterName } = useRoute<Route>().params;
 
   const [activeTab, setActiveTabState] = useState<DraftingTab>(
@@ -253,6 +255,7 @@ export default function DraftingScreen() {
                 chapterId={chapterId}
                 chapterName={chapterName}
                 projectId={chapterData?.projectId ?? null}
+                userId={userId}
               />
             </View>
             <View

@@ -62,7 +62,11 @@ function VerseSwitcher() {
   );
 }
 
-function renderResources(initialVerse: number, projectId: number | null = 7) {
+function renderResources(
+  initialVerse: number,
+  projectId: number | null = 7,
+  userId: number | null = 42,
+) {
   return render(
     <DraftingProvider verses={verses} initialVerse={initialVerse}>
       <VerseSwitcher />
@@ -70,6 +74,7 @@ function renderResources(initialVerse: number, projectId: number | null = 7) {
         chapterId={99}
         chapterName="Mark 14"
         projectId={projectId}
+        userId={userId}
       />
     </DraftingProvider>,
   );
@@ -85,7 +90,7 @@ describe('ResourcesTab', () => {
 
   it('shows a section persisted as completed in download_queue', async () => {
     downloadedRows.mockResolvedValue([
-      { status: 'completed', resourceName: 'Reference Images', kind: 'text' },
+      { status: 'completed', resourceName: 'Reference Images', kind: 'image' },
     ]);
     renderResources(1);
 

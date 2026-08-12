@@ -8,7 +8,9 @@ Quick map for Cursor agents, other coding tools, and new contributors. Verified 
 
 ## What this project is
 
-**Fluent Mobile** is an offline-first React Native companion app for Bible translation recording workflows. **Android-only permanently** — no iOS app. On launch it initializes a local SQLite database and restores the auth session, then shows the navigator. After login (or when the user triggers sync), it syncs Fluent API data into SQLite so translators can browse **projects → chapters → drafting** (Bible / Resources / Record). Recording UI is still largely stubbed; persistence to the `recordings` table is not fully wired yet.
+**Fluent Mobile** is an offline-first React Native companion app for Bible translation recording workflows. **Android-only permanently** — no iOS app. On launch it initializes a local SQLite database and restores the auth session, then shows the navigator. After login (or when the user triggers sync), it syncs Fluent API data into SQLite so translators can browse **projects → chapters → drafting** (Bible / Resources / Record). The **Record** tab captures verse audio, persists takes to the `recordings` table, and uploads pending takes via `recordingSync` + `uploadOrchestrator` (see **Repository layout** and [recordings-sync-contract.md](guides/recordings-sync-contract.md)).
+
+Recording follow-up: wire source audio dock to real fetch + playback ([#235](https://github.com/eten-tech-foundation/fluent-mobile/issues/235)) — playback in `SourceAudioPlayerBar` is still a stub on `main`.
 
 ## Tech stack
 
@@ -42,7 +44,10 @@ Quick map for Cursor agents, other coding tools, and new contributors. Verified 
 | [`src/services/api.ts`](../src/services/api.ts) | HTTP client (`FluentAPI`) — see [api-client-standard.md](guides/api-client-standard.md) |
 | [`src/services/sync.ts`](../src/services/sync.ts) | Sync orchestration, retries, KV counts |
 | [`src/services/storage.ts`](../src/services/storage.ts) | KV sync state (`op-sqlite` Storage) |
+| [`src/services/recordingSync.ts`](../src/services/recordingSync.ts) | Verse audio upload worker (#100) |
+| [`src/services/uploadOrchestrator.ts`](../src/services/uploadOrchestrator.ts) | Upload session trigger, pause, cancel, cellular gate |
 | [`src/db/`](../src/db/) | Schema, init, `repository` (writes), `queries` (reads), singleton |
+| [`src/db/recordingsRepository.ts`](../src/db/recordingsRepository.ts) | Recording take CRUD + sync status |
 | [`src/types/`](../src/types/) | API, DB, navigation, env types |
 | [`src/hooks/`](../src/hooks/) | Screen data/sync/auth hooks (SQLite-first lists) |
 | [`src/utils/logger.ts`](../src/utils/logger.ts) | Tagged logging |
@@ -86,7 +91,7 @@ Run from repo root after `npm install`:
 | `npm run format:check` | Prettier on `src/**/*.{ts,tsx}` |
 | `npm run format` | Prettier write (broader glob than `format:check`) |
 | `npm run typecheck` | TypeScript check (`tsc --noEmit`) |
-| `npm test -- --ci` | Jest (18 suites) |
+| `npm test -- --ci` | Jest + Testing Library (colocated `src/**/*.test.*`; see Testing strategy) |
 | `npm run prebuild` | Regenerate `android/` from `app.config.ts` (`--platform android`) |
 | `npm run android` | Build + run dev client on Android |
 
@@ -189,10 +194,10 @@ Keep changes **small and scoped** — avoid drive-by refactors.
 
 - **Unit:** Jest + Testing Library; mocks for native modules in [`__tests__/App.test.tsx`](../__tests__/App.test.tsx).
 - **Expo mocks:** [`src/test/mocks/`](../src/test/mocks/) — global `moduleNameMapper` in `jest.config.cjs` for `expo-secure-store`, `expo-file-system`, `expo-audio`.
-- **Colocated:** `src/utils/logger.test.ts`, `src/services/fluent-api.test.ts`.
+- **Colocated:** `src/**/*.test.ts(x)` — e.g. `src/utils/logger.test.ts`, `src/services/recordingSync.test.ts`.
 - **Live API test:** `fluent-api.test.ts` is **skipped by default**; opt in with `RUN_LIVE_API_TESTS=1 npm test -- fluent-api.test.ts`.
 - **No E2E** in this repo yet.
-- **Gap:** `src/db/` currently has little/no unit coverage — prefer adding tests when changing queries/repository.
+- **Gap:** `src/db/` has partial unit coverage — prefer adding tests when changing queries/repository.
 
 When adding features: mock `op-sqlite`, navigation, and sync in screen tests following existing patterns. Reset shared Expo mocks in `beforeEach` when mutating secure-store/file-system state.
 
@@ -224,7 +229,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 - [x] Dependabot reviewers: `eten-tech-foundation/fluent-admin`
 - [x] Mock or gate `fluent-api.test.ts` for offline CI
 - [ ] Align `format:check` glob with `format` or document intentionally narrow check
-- [ ] Wire `recordings` table to actual audio capture/upload
+- [ ] Wire source audio dock to real fetch + playback (#235)
 
 ## Related docs
 

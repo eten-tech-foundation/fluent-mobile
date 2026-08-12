@@ -30,6 +30,8 @@ type ResourcesTabProps = {
   chapterName: string;
   /** Fluent project id for Prepare Offline inventory gating (#192). */
   projectId: number | null;
+  /** Active user id for download_queue inventory rows (#53/#201). */
+  userId: number | null;
 };
 
 const SECTION_META: {
@@ -62,6 +64,7 @@ export function ResourcesTab({
   chapterId,
   chapterName,
   projectId,
+  userId,
 }: ResourcesTabProps) {
   const { selectedVerse } = useDraftingContext();
   const scrollRef = useRef<ScrollView>(null);
@@ -69,6 +72,7 @@ export function ResourcesTab({
 
   const resources = useUnitResourcesAvailability({
     projectId,
+    userId,
     chapterName,
     verseNumber: selectedVerse,
   });

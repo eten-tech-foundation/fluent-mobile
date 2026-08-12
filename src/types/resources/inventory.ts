@@ -1,3 +1,4 @@
+import { PrepareOfflineResourceKind } from '../prepareOffline/types';
 import { ResourceSectionId } from './types';
 
 /**
@@ -15,5 +16,6 @@ export interface UnitResourcesAvailability {
 export interface ResourcesSectionInventoryGate {
   sectionId: ResourceSectionId;
   groupName: string;
+  kind: PrepareOfflineResourceKind;
   resourceId: string;
 }

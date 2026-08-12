@@ -9,11 +9,12 @@ import { UnitResourcesAvailability } from '../types/resources/inventory';
  */
 export function useUnitResourcesAvailability(params: {
   projectId: number | null;
+  userId: number | null;
   chapterName: string;
   verseNumber: number;
 }): UnitResourcesAvailability {
   const { getResourceStatus, downloadedSections, inventoryVersion } =
-    useResourcesInventory(params.projectId);
+    useResourcesInventory(params.projectId, params.userId);
 
   return useMemo(
     () =>

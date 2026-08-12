@@ -136,10 +136,6 @@ export function simulateMockPrepareOfflineDownload(
   projectId: number,
   resourceIdsInTierOrder: string[],
 ): void {
-  if (!__DEV__) {
-    return;
-  }
-
   stopMockDownloadSimulation();
 
   const pendingIds = resourceIdsInTierOrder.filter(
