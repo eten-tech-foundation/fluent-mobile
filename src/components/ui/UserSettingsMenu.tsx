@@ -143,7 +143,11 @@ export function UserSettingsMenu({
     }
   }, [visible, panelWidth, startOpeningAnimation, translateX, scrimOpacity]);
 
+  // Keep pan callbacks on the JS thread. With Reanimated installed, RNGH
+  // workletizes gesture handlers by default; RN Animated.Value cannot cross
+  // that boundary ("Cannot copy value of type 'AnimatedValue'").
   const panGesture = Gesture.Pan()
+    .runOnJS(true)
     .activeOffsetX(-10)
     .failOffsetY([-15, 15])
     .onUpdate(event => {

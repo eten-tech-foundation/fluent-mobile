@@ -3,13 +3,23 @@ import { Alert } from 'react-native';
 import { UserSettingsMenu } from './UserSettingsMenu';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 
+const mockPanRunOnJS = jest.fn();
+
 jest.mock('react-native-gesture-handler', () => {
   const actualReact = jest.requireActual('react');
   const chainable = () => {
     const gesture: Record<string, unknown> = {};
-    ['activeOffsetX', 'failOffsetY', 'onUpdate', 'onEnd'].forEach(method => {
-      gesture[method] = () => gesture;
-    });
+    ['runOnJS', 'activeOffsetX', 'failOffsetY', 'onUpdate', 'onEnd'].forEach(
+      method => {
+        gesture[method] =
+          method === 'runOnJS'
+            ? (...args: unknown[]) => {
+                mockPanRunOnJS(...args);
+                return gesture;
+              }
+            : () => gesture;
+      },
+    );
     return gesture;
   };
   return {
@@ -117,6 +127,11 @@ describe('UserSettingsMenu', () => {
       />,
     );
   }
+
+  it('keeps drawer pan callbacks on the JS thread for RN Animated', () => {
+    renderMenu();
+    expect(mockPanRunOnJS).toHaveBeenCalledWith(true);
+  });
 
   it('groups accounts under Accounts with Add User below the list', () => {
     const { getByText, getByTestId, queryByText } = renderMenu();
