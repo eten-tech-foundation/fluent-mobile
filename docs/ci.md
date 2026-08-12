@@ -6,6 +6,7 @@ This repo runs GitHub Actions on pushes and pull requests. This doc maps what ru
 
 | Workflow | Jobs (check name) | Purpose |
 | -------- | ----------------- | ------- |
+| `pr-description.yml` | `PR Description` | Requires filled PR template (`### TLDR`, `Refs #NNN`, `### How to verify`); skips Dependabot |
 | `lint.yml` | `Lint & Format` | ESLint + Prettier (`format:check`) |
 | `test.yml` | `Unit Tests` | Jest (`npm test -- --ci`) |
 | `quality-gates.yml` | `TypeScript`, `expo-doctor`, `expo install --check` | Typecheck + Expo SDK / native-module alignment |
@@ -34,9 +35,24 @@ If either reports SDK patch drift, `npx expo install --fix` on a ticketed branch
 
 ## What is required today
 
-Branch protection / required status checks may change over time. Treat the table above as the **workflow inventory**. Before marking a PR ready, assume lint, test, typecheck, and Expo health jobs must be green unless a maintainer says otherwise.
+Branch protection / required status checks may change over time. Treat the table above as the **workflow inventory**. Before marking a PR ready, assume lint, test, typecheck, Expo health, and **PR Description** jobs must be green unless a maintainer says otherwise.
 
-**This Phase 1 docs change does not alter branch protection or add new required checks.**
+### Branch protection (maintainers)
+
+On `main`, keep these rules enabled (Settings → Branches → Branch protection rules):
+
+1. **Require a pull request before merging**
+2. **Require approvals** (at least 1)
+3. **Require review from Code Owners** (uses [`.github/CODEOWNERS`](../.github/CODEOWNERS) — `@mattrace-gloo`, `@B3RN153`, `@JonathanSeehagen`)
+4. **Require status checks to pass** — include at least:
+   - `PR Description`
+   - `Lint & Format`
+   - `Unit Tests`
+   - `TypeScript` (and Expo health jobs when treated as required)
+
+The `PR Description` check must post on every PR (no workflow-level `paths:` filter) so required-check waiting never deadlocks — see guardrail below.
+
+PR template for the GitHub UI: [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md) (keep in sync with [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md)).
 
 ## Preview / native compile
 

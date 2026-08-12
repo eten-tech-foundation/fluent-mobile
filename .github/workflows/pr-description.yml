@@ -1,0 +1,23 @@
+name: PR Description
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+# Permissions: read PR metadata only (body/author via github.event).
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  pr-description:
+    name: PR Description
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Validate PR body
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: node .github/scripts/validate-pr-body.cjs
