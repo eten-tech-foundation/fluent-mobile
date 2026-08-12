@@ -701,6 +701,7 @@ export {
   getLatestRecordingForVerse,
   getTakesForVerse,
   getAllTakesForVerse,
+  getRecordedVerseNumbersForChapter,
   verseHasMultipleRecorders,
   deleteRecordingTake,
   selectRecordingTake,

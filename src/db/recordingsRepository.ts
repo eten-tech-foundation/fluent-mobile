@@ -405,3 +405,30 @@ export async function deleteRecordingTake(id: string): Promise<void> {
     log.info('Recording take deleted', { id });
   }
 }
+
+export async function getRecordedVerseNumbersForChapter(
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+  recordedByUserId?: number | null,
+): Promise<number[]> {
+  const db = getDatabase();
+  const ownerId = resolveRecordedByUserId(recordedByUserId);
+  const ownerSql =
+    ownerId === null
+      ? 'r.recorded_by_user_id IS NULL'
+      : '(r.recorded_by_user_id = ? OR r.recorded_by_user_id IS NULL)';
+  const ownerParams = ownerId === null ? [] : [ownerId];
+
+  const result = await db.execute(
+    `SELECT DISTINCT bt.verse_number AS verse_number
+     FROM bible_texts bt
+     INNER JOIN recordings r ON r.bible_text_id = bt.id
+     WHERE bt.bible_id = ? AND bt.book_id = ? AND bt.chapter_number = ?
+       AND r.is_selected = 1
+       AND ${ownerSql}`,
+    [bibleId, bookId, chapterNumber, ...ownerParams],
+  );
+  const rows = (result.rows ?? []) as unknown as { verse_number: number }[];
+  return rows.map(row => Number(row.verse_number));
+}

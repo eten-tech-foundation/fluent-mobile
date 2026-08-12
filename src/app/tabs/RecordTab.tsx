@@ -91,7 +91,8 @@ export function RecordTab({
   onCaptureActiveChange,
 }: RecordTabProps) {
   const { chapterName } = useRoute<Route>().params;
-  const { verses, selectedVerse, setSelectedVerse } = useDraftingContext();
+  const { verses, selectedVerse, setSelectedVerse, refreshRecordedVerses } =
+    useDraftingContext();
   const [bibleTextId, setBibleTextId] = useState<number | null>(null);
   const [sourceExpanded, setSourceExpanded] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -109,6 +110,11 @@ export function RecordTab({
   useEffect(() => {
     setTakeView('mine');
   }, [bibleTextId]);
+
+  useEffect(() => {
+    void refreshRecordedVerses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only takes should trigger this
+  }, [verseAudio.takes]);
 
   useEffect(() => {
     if (!verseAudio.hasMultipleRecorders && takeView === 'all') {
