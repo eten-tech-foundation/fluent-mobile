@@ -73,7 +73,7 @@ describe('prepareOfflineQueueMapping', () => {
     expect(items.every(item => item.userId === TEST_USER_ID)).toBe(true);
   });
 
-  it('includes dev mock sourceUrl and fileExt', () => {
+  it('includes mock sourceUrl and fileExt', () => {
     const input = prepareOfflineItemToEnqueueInput(baseItem, 1, TEST_USER_ID);
 
     expect(input.sourceUrl).toEqual(expect.any(String));

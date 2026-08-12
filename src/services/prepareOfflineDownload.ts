@@ -40,19 +40,15 @@ export async function enqueuePrepareOfflineDownload(
     return ids;
   } catch (error) {
     log.error(
-      'Failed to enqueue prepare offline download; falling back to dev mock',
+      'Failed to enqueue prepare offline download; falling back to mock simulation',
       {
         error,
         projectId: input.projectId,
       },
     );
 
-    if (__DEV__) {
-      const tierOrderedIds = input.items.map(item => item.id);
-      simulatePrepareOfflineDownloadProgress(input.projectId, tierOrderedIds);
-      return [];
-    }
-
-    throw error;
+    const tierOrderedIds = input.items.map(item => item.id);
+    simulatePrepareOfflineDownloadProgress(input.projectId, tierOrderedIds);
+    return [];
   }
 }

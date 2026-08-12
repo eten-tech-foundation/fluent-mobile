@@ -1,11 +1,9 @@
 /**
- * Prepare for Offline — dev-only download URLs (#52 wiring until manifest API).
+ * Prepare for Offline — mock download URLs until manifest API (#201).
  *
  * **Security:** URLs are hardcoded public test fixtures (not user/API input).
- * Used only when `__DEV__` is true; production returns empty `sourceUrl`.
  * Files land in the app sandbox (`downloadStorage.ts`) and are not executed.
- * Review any URL change in PR — prefer team-owned fixtures if external hosts
- * are a concern. Replaced in production by per-resource `sourceUrl` from manifest.
+ * Replaced when per-resource `sourceUrl` comes from FluentAPI manifest.
  *
  * `DEV_MOCK_FILE_BYTES` must match the on-disk size of each fixture URL so
  * catalog totals align with Manage Device Storage after download.
@@ -50,19 +48,11 @@ const DEV_MOCK_SOURCES: Record<PrepareOfflineResourceKind, MockDownloadSource> =
 export function getMockDownloadBytesForKind(
   kind: PrepareOfflineResourceKind,
 ): number {
-  if (__DEV__) {
-    return DEV_MOCK_FILE_BYTES[kind];
-  }
-
-  return 0;
+  return DEV_MOCK_FILE_BYTES[kind];
 }
 
 export function getMockDownloadSource(
   kind: PrepareOfflineResourceKind,
 ): MockDownloadSource {
-  if (__DEV__) {
-    return DEV_MOCK_SOURCES[kind];
-  }
-
-  return { sourceUrl: '', fileExt: 'bin', bytesTotal: 0 };
+  return DEV_MOCK_SOURCES[kind];
 }
