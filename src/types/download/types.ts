@@ -17,6 +17,7 @@ export interface DownloadQueueItem {
   progress: number;
   status: DownloadQueueStatus;
   projectId?: number;
+  userId?: number;
   sourceUrl?: string;
   fileExt?: string;
   bytesTotal?: number;
