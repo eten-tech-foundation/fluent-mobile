@@ -44,6 +44,34 @@ export async function deleteFile(path: string): Promise<void> {
   await FileSystem.deleteAsync(path, { idempotent: true });
 }
 
+/** Reject paths outside the app's per-project downloads sandbox before delete. */
+export function assertDeletableDownloadPath(
+  projectId: number,
+  localFilePath: string,
+): void {
+  const root = FileSystem.documentDirectory;
+  if (!root) {
+    throw new Error('FileSystem.documentDirectory is unavailable');
+  }
+
+  if (localFilePath.includes('..')) {
+    throw new Error('Unsafe path segment in download path');
+  }
+
+  const expectedPrefix = `${root}downloads/${projectId}/`;
+  if (!localFilePath.startsWith(expectedPrefix)) {
+    throw new Error('Download path is outside the project sandbox');
+  }
+}
+
+export async function deleteDownloadResourceFile(
+  projectId: number,
+  localFilePath: string,
+): Promise<void> {
+  assertDeletableDownloadPath(projectId, localFilePath);
+  await deleteFile(localFilePath);
+}
+
 export async function fileSize(path: string): Promise<number | undefined> {
   const info = await FileSystem.getInfoAsync(path);
   return info.exists ? info.size : undefined;

@@ -120,6 +120,18 @@ export async function moveAsync(options: {
   await deleteAsync(options.from);
 }
 
+/** Default mock free space for storage summary tests (#53). */
+export const MOCK_FREE_DISK_BYTES = 8 * 1024 * 1024 * 1024;
+export const MOCK_TOTAL_DISK_BYTES = 64 * 1024 * 1024 * 1024;
+
+export async function getFreeDiskStorageAsync(): Promise<number> {
+  return MOCK_FREE_DISK_BYTES;
+}
+
+export async function getTotalDiskCapacityAsync(): Promise<number> {
+  return MOCK_TOTAL_DISK_BYTES;
+}
+
 resetFileSystemMock();
 
 /** Test-only helper to inspect stored files. */

@@ -101,3 +101,38 @@ export async function getPrepareOfflineProjectContext(
     throw error;
   }
 }
+
+/** Project display names for storage-management accordions (#53). */
+export async function getProjectNamesByIds(
+  projectIds: number[],
+): Promise<Map<number, string>> {
+  if (projectIds.length === 0) {
+    return new Map();
+  }
+
+  const db = getDatabase();
+  const uniqueIds = [...new Set(projectIds.map(id => Number(id)))];
+  const placeholders = uniqueIds.map(() => '?').join(', ');
+
+  try {
+    const result = await db.execute(
+      `SELECT id, name FROM projects WHERE id IN (${placeholders})`,
+      uniqueIds,
+    );
+    const rows =
+      (result?.rows as unknown as Array<{ id: number; name: string }>) || [];
+    const names = new Map<number, string>();
+    for (const row of rows) {
+      if (row?.id && row.name) {
+        names.set(row.id, row.name);
+      }
+    }
+    return names;
+  } catch (error) {
+    log.error('Error fetching project names for storage inventory', {
+      error,
+      projectIds: uniqueIds,
+    });
+    throw error;
+  }
+}

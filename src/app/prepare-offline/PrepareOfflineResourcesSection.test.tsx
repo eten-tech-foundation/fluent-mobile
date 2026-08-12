@@ -42,6 +42,7 @@ const chapters = [
 
 function buildSectionCatalog(projectId = 1) {
   return buildPrepareOfflineCatalog({
+    projectId,
     manifest: MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST,
     getResourceStatus: (resourceId: string) =>
       getPrepareOfflineResourceStatus(projectId, resourceId),
@@ -153,7 +154,7 @@ describe('PrepareOfflineResourcesSection', () => {
 
     const accordion = screen.getByTestId('customize-download-accordion');
     const wordsTextRow = within(accordion).getByTestId(
-      'resource-row-tier-2-translation-words-text',
+      'resource-row-1-tier-2-translation-words-text',
     );
     fireEvent.press(wordsTextRow);
     fireEvent.press(wordsTextRow);
