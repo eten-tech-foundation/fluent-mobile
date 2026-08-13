@@ -37,7 +37,6 @@ describe('AquiferAPI', () => {
       expect.objectContaining({
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
           'api-key': 'key-123',
         },
         signal: expect.any(AbortSignal),

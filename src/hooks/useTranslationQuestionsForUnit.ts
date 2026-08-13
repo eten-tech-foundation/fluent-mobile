@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { TRANSLATION_QUESTIONS_LOAD_ERROR } from '../constants/messages';
-import { loadTranslationQuestionsForUnit } from '../mocks/resources/translationQuestionsMock';
+import {
+  loadTranslationQuestionsForUnit,
+  type LoadTranslationQuestionsParams,
+} from '../services/translationQuestions';
 import { TranslationQuestionItem } from '../types/resources/translationQuestions';
 import { logger } from '../utils/logger';
 
@@ -12,21 +15,28 @@ export type TranslationQuestionsLoadState =
   | { status: 'error'; message: string };
 
 type TrackedLoadState = {
-  chapterId: number;
+  bookCode: string;
+  chapterNumber: number;
   verseNumber: number;
   value: TranslationQuestionsLoadState;
 };
 
+export type UseTranslationQuestionsForUnitParams =
+  LoadTranslationQuestionsParams;
+
 /**
  * Section-scoped TQ loader (#190). Failures stay local — do not block Notes / Images.
  * Ignores stale responses when the active unit changes mid-load.
+ * Loads real Aquifer uW TQ (interim until fluent-api#273).
  */
 export function useTranslationQuestionsForUnit(
-  chapterId: number,
-  verseNumber: number,
+  params: UseTranslationQuestionsForUnitParams,
 ) {
+  const { bookCode, chapterNumber, verseNumber, languageCode } = params;
+
   const [tracked, setTracked] = useState<TrackedLoadState>({
-    chapterId,
+    bookCode,
+    chapterNumber,
     verseNumber,
     value: { status: 'loading' },
   });
@@ -35,20 +45,24 @@ export function useTranslationQuestionsForUnit(
   const load = useCallback(async () => {
     const requestId = ++requestIdRef.current;
     setTracked({
-      chapterId,
+      bookCode,
+      chapterNumber,
       verseNumber,
       value: { status: 'loading' },
     });
     try {
-      const questions = await loadTranslationQuestionsForUnit(
-        chapterId,
+      const questions = await loadTranslationQuestionsForUnit({
+        bookCode,
+        chapterNumber,
         verseNumber,
-      );
+        languageCode,
+      });
       if (requestId !== requestIdRef.current) {
         return;
       }
       setTracked({
-        chapterId,
+        bookCode,
+        chapterNumber,
         verseNumber,
         value: { status: 'ready', questions },
       });
@@ -57,12 +71,14 @@ export function useTranslationQuestionsForUnit(
         return;
       }
       log.warn('Translation Questions load failed', {
-        chapterId,
+        bookCode,
+        chapterNumber,
         verseNumber,
         error: error instanceof Error ? error.message : String(error),
       });
       setTracked({
-        chapterId,
+        bookCode,
+        chapterNumber,
         verseNumber,
         value: {
           status: 'error',
@@ -70,7 +86,7 @@ export function useTranslationQuestionsForUnit(
         },
       });
     }
-  }, [chapterId, verseNumber]);
+  }, [bookCode, chapterNumber, verseNumber, languageCode]);
 
   useEffect(() => {
     void load();
@@ -81,7 +97,9 @@ export function useTranslationQuestionsForUnit(
   }, [load]);
 
   const state: TranslationQuestionsLoadState =
-    tracked.chapterId === chapterId && tracked.verseNumber === verseNumber
+    tracked.bookCode === bookCode &&
+    tracked.chapterNumber === chapterNumber &&
+    tracked.verseNumber === verseNumber
       ? tracked.value
       : { status: 'loading' };
 

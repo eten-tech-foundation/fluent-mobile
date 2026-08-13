@@ -11,8 +11,9 @@ import type {
 import { createApiError, createNetworkApiError } from './apiError';
 
 function aquiferHeaders(): Record<string, string> {
+  // Match fluent-web: api-key only. Aquifer rejects some GETs when
+  // Content-Type: application/json is set (HTTP 400 "One or more errors occurred!").
   return {
-    'Content-Type': 'application/json',
     'api-key': getAquiferApiKey(),
   };
 }

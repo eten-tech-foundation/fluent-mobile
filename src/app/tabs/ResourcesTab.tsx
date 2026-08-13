@@ -38,6 +38,9 @@ import { theme } from '../../theme';
 type ResourcesTabProps = {
   chapterId: number;
   chapterName: string;
+  /** USFM book code for Aquifer resource lookup (e.g. MRK). */
+  bookCode: string;
+  chapterNumber: number;
 };
 
 const SECTION_META: {
@@ -64,9 +67,14 @@ const SECTION_META: {
 
 /**
  * Resources tab host (#188): unit-synced shell, empty state, accordion slots.
- * TQ body: #190. Notes / Images stubs remain until #189 / #191.
+ * TQ body: #190 (Aquifer-backed). Notes / Images stubs remain until #189 / #191.
  */
-export function ResourcesTab({ chapterId, chapterName }: ResourcesTabProps) {
+export function ResourcesTab({
+  chapterId,
+  chapterName,
+  bookCode,
+  chapterNumber,
+}: ResourcesTabProps) {
   const { selectedVerse } = useDraftingContext();
   const scrollRef = useRef<ScrollView>(null);
   const scrollOffsetRef = useRef(0);
@@ -174,7 +182,8 @@ export function ResourcesTab({ chapterId, chapterName }: ResourcesTabProps) {
             >
               {id === 'translationQuestions' ? (
                 <TranslationQuestionsSection
-                  chapterId={chapterId}
+                  bookCode={bookCode}
+                  chapterNumber={chapterNumber}
                   verseNumber={selectedVerse}
                   sectionExpanded={expanded}
                 />

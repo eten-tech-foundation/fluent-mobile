@@ -1,12 +1,16 @@
 import {
   getMockTranslationQuestions,
-  loadTranslationQuestionsForUnit,
   setMockTranslationQuestionsLoadFailure,
 } from './translationQuestionsMock';
+import {
+  loadTranslationQuestionsForUnit,
+  setTranslationQuestionsLoadFailureForTests,
+} from '../../services/translationQuestions';
 
 describe('translationQuestionsMock', () => {
   afterEach(() => {
     setMockTranslationQuestionsLoadFailure(false);
+    setTranslationQuestionsLoadFailureForTests(false);
   });
 
   it('returns no questions when the shell hides the TQ section', () => {
@@ -21,10 +25,14 @@ describe('translationQuestionsMock', () => {
     expect(questions.some(q => q.answer.trim().length === 0)).toBe(true);
   });
 
-  it('throws when failure injection is enabled', async () => {
+  it('failure injection alias enables the Aquifer loader throw path', async () => {
     setMockTranslationQuestionsLoadFailure(true);
-    await expect(loadTranslationQuestionsForUnit(99, 2)).rejects.toThrow(
-      /Failed to load Translation Questions/,
-    );
+    await expect(
+      loadTranslationQuestionsForUnit({
+        bookCode: 'MRK',
+        chapterNumber: 14,
+        verseNumber: 2,
+      }),
+    ).rejects.toThrow(/Failed to load Translation Questions/);
   });
 });

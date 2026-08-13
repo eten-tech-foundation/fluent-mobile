@@ -2,19 +2,16 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { useTranslationQuestionsForUnit } from './useTranslationQuestionsForUnit';
 import {
   loadTranslationQuestionsForUnit,
-  setMockTranslationQuestionsLoadFailure,
-} from '../mocks/resources/translationQuestionsMock';
+  setTranslationQuestionsLoadFailureForTests,
+} from '../services/translationQuestions';
 import { TRANSLATION_QUESTIONS_LOAD_ERROR } from '../constants/messages';
+import { getMockTranslationQuestions } from '../mocks/resources/translationQuestionsMock';
 
-jest.mock('../mocks/resources/translationQuestionsMock', () => {
-  const actual = jest.requireActual(
-    '../mocks/resources/translationQuestionsMock',
-  );
+jest.mock('../services/translationQuestions', () => {
+  const actual = jest.requireActual('../services/translationQuestions');
   return {
     ...actual,
-    loadTranslationQuestionsForUnit: jest.fn(
-      actual.loadTranslationQuestionsForUnit,
-    ),
+    loadTranslationQuestionsForUnit: jest.fn(),
   };
 });
 
@@ -24,16 +21,20 @@ const mockLoad = loadTranslationQuestionsForUnit as jest.MockedFunction<
 
 describe('useTranslationQuestionsForUnit', () => {
   afterEach(() => {
-    setMockTranslationQuestionsLoadFailure(false);
+    setTranslationQuestionsLoadFailureForTests(false);
     mockLoad.mockReset();
-    mockLoad.mockImplementation(
-      jest.requireActual('../mocks/resources/translationQuestionsMock')
-        .loadTranslationQuestionsForUnit,
-    );
   });
 
-  it('loads mock questions for units that have TQ content', async () => {
-    const { result } = renderHook(() => useTranslationQuestionsForUnit(10, 2));
+  it('loads questions for units that have TQ content', async () => {
+    mockLoad.mockResolvedValue(getMockTranslationQuestions(10, 2));
+
+    const { result } = renderHook(() =>
+      useTranslationQuestionsForUnit({
+        bookCode: 'MRK',
+        chapterNumber: 14,
+        verseNumber: 2,
+      }),
+    );
 
     await waitFor(() => {
       expect(result.current.state.status).toBe('ready');
@@ -43,11 +44,25 @@ describe('useTranslationQuestionsForUnit', () => {
       throw new Error('expected ready state');
     }
     expect(result.current.state.questions.length).toBeGreaterThan(0);
+    expect(mockLoad).toHaveBeenCalledWith({
+      bookCode: 'MRK',
+      chapterNumber: 14,
+      verseNumber: 2,
+      languageCode: undefined,
+    });
   });
 
   it('exposes an error state that retry can clear', async () => {
-    setMockTranslationQuestionsLoadFailure(true);
-    const { result } = renderHook(() => useTranslationQuestionsForUnit(10, 2));
+    mockLoad.mockRejectedValueOnce(new Error('boom'));
+    mockLoad.mockResolvedValueOnce(getMockTranslationQuestions(10, 2));
+
+    const { result } = renderHook(() =>
+      useTranslationQuestionsForUnit({
+        bookCode: 'MRK',
+        chapterNumber: 14,
+        verseNumber: 2,
+      }),
+    );
 
     await waitFor(() => {
       expect(result.current.state.status).toBe('error');
@@ -58,7 +73,6 @@ describe('useTranslationQuestionsForUnit', () => {
     }
     expect(result.current.state.message).toBe(TRANSLATION_QUESTIONS_LOAD_ERROR);
 
-    setMockTranslationQuestionsLoadFailure(false);
     await act(async () => {
       await result.current.retry();
     });
@@ -69,15 +83,30 @@ describe('useTranslationQuestionsForUnit', () => {
   });
 
   it('does not show the previous unit while the next load is still pending', async () => {
+    mockLoad.mockResolvedValue(getMockTranslationQuestions(10, 2));
+
     const { result, rerender } = renderHook(
       ({
-        chapterId,
+        bookCode,
+        chapterNumber,
         verseNumber,
       }: {
-        chapterId: number;
+        bookCode: string;
+        chapterNumber: number;
         verseNumber: number;
-      }) => useTranslationQuestionsForUnit(chapterId, verseNumber),
-      { initialProps: { chapterId: 10, verseNumber: 2 } },
+      }) =>
+        useTranslationQuestionsForUnit({
+          bookCode,
+          chapterNumber,
+          verseNumber,
+        }),
+      {
+        initialProps: {
+          bookCode: 'MRK',
+          chapterNumber: 14,
+          verseNumber: 2,
+        },
+      },
     );
 
     await waitFor(() => {
@@ -99,7 +128,7 @@ describe('useTranslationQuestionsForUnit', () => {
     });
     mockLoad.mockReturnValueOnce(pendingLoad);
 
-    rerender({ chapterId: 10, verseNumber: 1 });
+    rerender({ bookCode: 'MRK', chapterNumber: 14, verseNumber: 1 });
 
     expect(result.current.state.status).toBe('loading');
 

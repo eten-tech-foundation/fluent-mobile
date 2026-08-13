@@ -12,7 +12,8 @@ import { TRANSLATION_QUESTIONS_LOAD_ERROR } from '../../../constants/messages';
 import { theme } from '../../../theme';
 
 type TranslationQuestionsSectionProps = {
-  chapterId: number;
+  bookCode: string;
+  chapterNumber: number;
   verseNumber: number;
   /** Reset nested open state when the parent section collapses or unit changes. */
   sectionExpanded: boolean;
@@ -23,21 +24,23 @@ type TranslationQuestionsSectionProps = {
  * Nested Q→A accordions; section-scoped error + Retry.
  */
 export function TranslationQuestionsSection({
-  chapterId,
+  bookCode,
+  chapterNumber,
   verseNumber,
   sectionExpanded,
 }: TranslationQuestionsSectionProps) {
-  const { state, retry } = useTranslationQuestionsForUnit(
-    chapterId,
+  const { state, retry } = useTranslationQuestionsForUnit({
+    bookCode,
+    chapterNumber,
     verseNumber,
-  );
+  });
   const [openQuestionIds, setOpenQuestionIds] = useState<Set<string>>(
     () => new Set(),
   );
 
   useEffect(() => {
     setOpenQuestionIds(new Set());
-  }, [chapterId, verseNumber]);
+  }, [bookCode, chapterNumber, verseNumber]);
 
   useEffect(() => {
     if (!sectionExpanded) {

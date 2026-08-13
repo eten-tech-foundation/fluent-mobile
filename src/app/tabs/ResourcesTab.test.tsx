@@ -15,7 +15,23 @@ import {
 import { RESOURCES_EMPTY_MESSAGE } from '../../constants/messages';
 import { clearResourcesTabUiState } from '../../utils/resourcesTabUiState';
 import { VerseData } from '../../types/db/types';
-import { setMockTranslationQuestionsLoadFailure } from '../../mocks/resources/translationQuestionsMock';
+import { getMockTranslationQuestions } from '../../mocks/resources/translationQuestionsMock';
+import {
+  loadTranslationQuestionsForUnit,
+  setTranslationQuestionsLoadFailureForTests,
+} from '../../services/translationQuestions';
+
+jest.mock('../../services/translationQuestions', () => {
+  const actual = jest.requireActual('../../services/translationQuestions');
+  return {
+    ...actual,
+    loadTranslationQuestionsForUnit: jest.fn(),
+  };
+});
+
+const mockLoad = loadTranslationQuestionsForUnit as jest.MockedFunction<
+  typeof loadTranslationQuestionsForUnit
+>;
 
 const verses: VerseData[] = [1, 2, 3].map(verseNumber => ({
   bibleId: 1,
@@ -57,7 +73,12 @@ function renderResources(initialVerse: number) {
   return render(
     <DraftingProvider verses={verses} initialVerse={initialVerse}>
       <VerseSwitcher />
-      <ResourcesTab chapterId={99} chapterName="Mark 14" />
+      <ResourcesTab
+        chapterId={99}
+        chapterName="Mark 14"
+        bookCode="MRK"
+        chapterNumber={14}
+      />
     </DraftingProvider>,
   );
 }
@@ -65,11 +86,15 @@ function renderResources(initialVerse: number) {
 describe('ResourcesTab', () => {
   beforeEach(() => {
     clearResourcesTabUiState();
-    setMockTranslationQuestionsLoadFailure(false);
+    setTranslationQuestionsLoadFailureForTests(false);
+    mockLoad.mockImplementation(async ({ verseNumber }) =>
+      getMockTranslationQuestions(99, verseNumber),
+    );
   });
 
   afterEach(() => {
-    setMockTranslationQuestionsLoadFailure(false);
+    setTranslationQuestionsLoadFailureForTests(false);
+    mockLoad.mockReset();
   });
 
   it('shows the empty message when the unit has no resources', () => {
@@ -156,7 +181,7 @@ describe('ResourcesTab', () => {
   });
 
   it('keeps Notes and Images visible when TQ load fails', async () => {
-    setMockTranslationQuestionsLoadFailure(true);
+    mockLoad.mockRejectedValue(new Error('boom'));
     renderResources(2);
 
     expect(screen.getByText('Translation Notes')).toBeTruthy();
@@ -174,7 +199,7 @@ describe('ResourcesTab', () => {
     expect(screen.getByText('Translation Notes')).toBeTruthy();
     expect(screen.getByText('Images & Maps')).toBeTruthy();
 
-    setMockTranslationQuestionsLoadFailure(false);
+    mockLoad.mockResolvedValue(getMockTranslationQuestions(99, 2));
     await act(async () => {
       fireEvent.press(screen.getByTestId('translation-questions-retry'));
     });
