@@ -13,6 +13,6 @@ Canonical policy: [docs/guides/project-board.md](../../docs/guides/project-board
 - **Do not** edit Status or Priority on `In Progress (Product)` (or other Product-owned columns) unless the tech lead **explicitly lists** those issue numbers.
 - **No board sweeps** without a proposed change set + explicit approval. Ambiguous = no.
 - **Do not merge PRs** unless explicitly asked (Dependabot process is the standing exception when requested).
-- For the **assigned** ticket only: add to Project 4 if missing; set `In PR Review` when the PR opens; set **`In QA`** after merge (or when ready for QA) — never auto-close the issue; do **not** set `Done` until QA completes (human/QA process).
+- For the **assigned** ticket only: add to Project 4 if missing; set `In PR Review` when the PR opens; if **Needs QA**, add `preview-build` and expect **`In QA` before merge** ([docs/guides/qa-process.md](../../docs/guides/qa-process.md)) — never auto-close the issue; do **not** set `Done` until QA completes (human/QA process). Do not merge QA-required PRs until QA passes that PR’s preview.
 
-Tracker overview: [docs/issue-tracking.md](../../docs/issue-tracking.md). Delivery: [delivery.mdc](./delivery.mdc).
+Tracker overview: [docs/issue-tracking.md](../../docs/issue-tracking.md). QA process: [docs/guides/qa-process.md](../../docs/guides/qa-process.md). Delivery: [delivery.mdc](./delivery.mdc).

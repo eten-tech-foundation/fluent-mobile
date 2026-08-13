@@ -8,6 +8,8 @@
 - [ ] How to verify steps completed or valid waiver noted below
 - [ ] Acceptance criteria met, **or** unmet AC waived **in the issue** with linked follow-up (see `AGENTS.md`)
 - [ ] Scope limited to this issue — no adjacent tickets implemented/stubbed without approval
+- [ ] **Needs QA?** decided (see `docs/guides/qa-process.md`) — if yes: `preview-build` label added
+- [ ] If QA-required: QA passed **this PR’s** preview build before merge (do **not** check until QA confirms)
 - [ ] Android device tested when required (native / mic / camera / filesystem / permissions) — do **not** check unless verified on a device
 
 ### Details
@@ -15,6 +17,11 @@
 Refs #<!-- issue number this PR implements -->
 
 <!-- Short summary. For fixes: root cause + solution. -->
+
+**Needs QA?**
+
+- [ ] No — engineering-only (docs, CI, refactor, logging, etc.)
+- [ ] Yes — UI / native / mic / camera / filesystem / sync / device verification (`preview-build` required)
 
 **Type of change:**
 
