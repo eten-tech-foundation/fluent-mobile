@@ -14,7 +14,7 @@ Before you begin, make sure you have the following installed:
 
 - [Node.js 24](https://nodejs.org/en/) — `>= 24.14.0` (see `package.json` engines)
 - [Android Studio](https://developer.android.com/studio) — Android SDK, emulator, and JDK 17
-- **npm** — package manager for this repo (not yarn/pnpm)
+- **npm** — package manager for this repo (`package-lock.json`). `yarn` in this directory is forwarded to npm; do not use pnpm.
 
 ---
 
@@ -239,8 +239,10 @@ Requires an [Expo access token](https://expo.dev/settings/access-tokens) and acc
 
 ## Troubleshooting
 
-**Accidentally ran `yarn` or `pnpm` (bootsplash / semver / PnP errors)**
-This repo uses **npm only** (`package-lock.json`). Muscle memory from other projects can run `yarn install` and leave Yarn PnP files (`.pnp.cjs`) that break `expo start`. `preinstall` blocks `yarn install` / `pnpm install`; if you already ran the wrong tool, reset and reinstall:
+**Typed `yarn` by habit / bootsplash / semver / PnP errors**
+This repo uses **npm only** (`package-lock.json`). A project shim (`.yarnrc` / `.yarnrc.yml` → `scripts/package-manager.cjs`) forwards `yarn`, `yarn install`, `yarn add`, `yarn start`, `yarn android`, etc. to npm so Yarn does not write `yarn.lock` or PnP files. (`packageManager` is intentionally unset so Corepack does not block `yarn` before the shim.)
+
+`preinstall` still blocks **pnpm** (and Yarn if the shim is skipped) with a command map. If you already generated PnP artifacts, reset and reinstall:
 
 ```bash
 rm -rf .pnp.cjs .pnp.loader.mjs .pnp.js yarn.lock pnpm-lock.yaml .yarn node_modules
