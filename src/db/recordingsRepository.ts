@@ -182,12 +182,16 @@ export async function getTakesForVerse(
  * earlier take over the most recently recorded one. Clears `is_selected` for
  * every other take on that verse + owner, then sets it on `id`.
  *
- * No-ops (without error) if `id` doesn't exist or is already latest, so a
- * stale card tap racing `deleteRecordingTake` can't throw.
+ * No-ops (without error) if `id` doesn't exist, is already latest, or is
+ * owned by a different user than the active account (#259) — so a stale
+ * card tap racing `deleteRecordingTake`, or a cross-account id leak, can't
+ * throw. Unattributed rows (`recorded_by_user_id = NULL`) are treated as
+ * unowned and may be acted on by any active user.
  */
 export async function selectRecordingTake(id: string): Promise<void> {
   const db = getDatabase();
   const now = new Date().toISOString();
+  let applied = false;
 
   await db.transaction(async (tx: Transaction) => {
     const existing = await tx.execute(
@@ -206,6 +210,19 @@ export async function selectRecordingTake(id: string): Promise<void> {
       return;
     }
 
+    const activeUserId = resolveRecordedByUserId();
+    if (
+      row.recorded_by_user_id !== null &&
+      row.recorded_by_user_id !== activeUserId
+    ) {
+      log.warn('Ignored select on take owned by another user', {
+        id,
+        recordedByUserId: row.recorded_by_user_id,
+        activeUserId,
+      });
+      return;
+    }
+
     const owner = recordedByClause(row.recorded_by_user_id);
 
     await tx.execute(
@@ -217,18 +234,27 @@ export async function selectRecordingTake(id: string): Promise<void> {
       `UPDATE recordings SET is_selected = 1, updated_at = ? WHERE id = ?`,
       [now, id],
     );
+    applied = true;
   });
 
-  log.info('Recording take selected', { id });
+  if (applied) {
+    log.info('Recording take selected', { id });
+  }
 }
 
 /**
- * Delete a take by id. If it was selected , promote the highest remaining
+ * Delete a take by id. If it was selected, promote the highest remaining
  * `take_number` for that verse + owner (or leave none latest if empty).
+ *
+ * No-ops (without error) if `id` doesn't exist or is owned by a different
+ * user than the active account (#259). Unattributed rows
+ * (`recorded_by_user_id = NULL`) are treated as unowned and may be deleted
+ * by any active user.
  */
 export async function deleteRecordingTake(id: string): Promise<void> {
   const db = getDatabase();
   const now = new Date().toISOString();
+  let applied = false;
 
   await db.transaction(async (tx: Transaction) => {
     const existing = await tx.execute(
@@ -247,11 +273,25 @@ export async function deleteRecordingTake(id: string): Promise<void> {
       return;
     }
 
+    const activeUserId = resolveRecordedByUserId();
+    if (
+      row.recorded_by_user_id !== null &&
+      row.recorded_by_user_id !== activeUserId
+    ) {
+      log.warn('Ignored delete on take owned by another user', {
+        id,
+        recordedByUserId: row.recorded_by_user_id,
+        activeUserId,
+      });
+      return;
+    }
+
     const wasSelected = row.is_selected === 1;
     const bibleTextId = row.bible_text_id;
     const owner = recordedByClause(row.recorded_by_user_id);
 
     await tx.execute(`DELETE FROM recordings WHERE id = ?`, [id]);
+    applied = true;
 
     if (!wasSelected) {
       return;
@@ -273,5 +313,7 @@ export async function deleteRecordingTake(id: string): Promise<void> {
     }
   });
 
-  log.info('Recording take deleted', { id });
+  if (applied) {
+    log.info('Recording take deleted', { id });
+  }
 }
