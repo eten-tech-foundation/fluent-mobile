@@ -64,6 +64,22 @@ function loadScriptNames(cwd) {
 }
 
 /**
+ * npm run / start / test treat flags after the command as npm's own unless `--`
+ * separates them. Yarn forwarded extra args to the script. Do not double `--`.
+ * @param {string[]} extra
+ * @returns {string[]}
+ */
+function withNpmScriptPassthrough(extra) {
+  if (extra.length === 0) {
+    return [];
+  }
+  if (extra[0] === '--') {
+    return extra;
+  }
+  return ['--', ...extra];
+}
+
+/**
  * @param {string[]} yarnArgs
  * @param {Set<string>} scriptNames
  * @returns {{ kind: 'npm', args: string[] } | { kind: 'npx', args: string[] } | { kind: 'help' } | { kind: 'version' }}
@@ -105,7 +121,13 @@ function translateYarnArgs(yarnArgs, scriptNames) {
     return { kind: 'npm', args: ['uninstall', ...rest] };
   }
   if (first === 'run' || first === 'run-script') {
-    return { kind: 'npm', args: ['run', ...rest] };
+    if (rest.length === 0) {
+      return { kind: 'npm', args: ['run'] };
+    }
+    return {
+      kind: 'npm',
+      args: ['run', rest[0], ...withNpmScriptPassthrough(rest.slice(1))],
+    };
   }
   if (first === 'dlx') {
     return { kind: 'npx', args: rest };
@@ -118,16 +140,22 @@ function translateYarnArgs(yarnArgs, scriptNames) {
   }
 
   if (first === 'start' || first === 'test') {
-    return { kind: 'npm', args: [first, ...rest] };
+    return { kind: 'npm', args: [first, ...withNpmScriptPassthrough(rest)] };
   }
   if (scriptNames.has(first)) {
-    return { kind: 'npm', args: ['run', first, ...rest] };
+    return {
+      kind: 'npm',
+      args: ['run', first, ...withNpmScriptPassthrough(rest)],
+    };
   }
   if (NPM_BINS.has(first)) {
     return { kind: 'npm', args: [first, ...rest] };
   }
 
-  return { kind: 'npm', args: ['run', first, ...rest] };
+  return {
+    kind: 'npm',
+    args: ['run', first, ...withNpmScriptPassthrough(rest)],
+  };
 }
 
 /**

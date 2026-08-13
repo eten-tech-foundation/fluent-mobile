@@ -81,7 +81,7 @@ describe('translateYarnArgs', () => {
     });
     expect(translateYarnArgs(['test', '--ci'], SCRIPTS)).toEqual({
       kind: 'npm',
-      args: ['test', '--ci'],
+      args: ['test', '--', '--ci'],
     });
     expect(translateYarnArgs(['android'], SCRIPTS)).toEqual({
       kind: 'npm',
@@ -90,6 +90,23 @@ describe('translateYarnArgs', () => {
     expect(translateYarnArgs(['run', 'lint'], SCRIPTS)).toEqual({
       kind: 'npm',
       args: ['run', 'lint'],
+    });
+  });
+
+  it('passes extra script args through npm --', () => {
+    expect(translateYarnArgs(['android', '--device'], SCRIPTS)).toEqual({
+      kind: 'npm',
+      args: ['run', 'android', '--', '--device'],
+    });
+    expect(translateYarnArgs(['start', '--offline'], SCRIPTS)).toEqual({
+      kind: 'npm',
+      args: ['start', '--', '--offline'],
+    });
+    expect(
+      translateYarnArgs(['run', 'android', '--', '--device'], SCRIPTS),
+    ).toEqual({
+      kind: 'npm',
+      args: ['run', 'android', '--', '--device'],
     });
   });
 
