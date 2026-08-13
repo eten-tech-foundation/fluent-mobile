@@ -124,6 +124,24 @@ function renderResources(initialVerse: number) {
   );
 }
 
+/** Wait until in-flight Images & Maps loads have applied to React state. */
+async function waitForImagesMapsSettled(minCalls = 1) {
+  await waitFor(() => {
+    expect(mockLoad.mock.calls.length).toBeGreaterThanOrEqual(minCalls);
+  });
+  await act(async () => {
+    await Promise.all(
+      mockLoad.mock.results
+        .filter(result => result.type === 'return')
+        .map(result =>
+          Promise.resolve(result.value as Promise<unknown>).catch(
+            () => undefined,
+          ),
+        ),
+    );
+  });
+}
+
 describe('ResourcesTab', () => {
   beforeEach(() => {
     clearResourcesTabUiState();
@@ -138,14 +156,16 @@ describe('ResourcesTab', () => {
     mockLoad.mockReset();
   });
 
-  it('shows the empty message when the unit has no resources', () => {
+  it('shows the empty message when the unit has no resources', async () => {
     renderResources(3);
+    await waitForImagesMapsSettled();
     expect(screen.getByText(RESOURCES_EMPTY_MESSAGE)).toBeTruthy();
     expect(screen.queryByText('Translation Notes')).toBeNull();
   });
 
-  it('shows Images & Maps at the bottom when items exist', () => {
+  it('shows Images & Maps at the bottom when items exist', async () => {
     renderResources(2);
+    await waitForImagesMapsSettled();
     expect(screen.getByText('Mark 14:2')).toBeTruthy();
     expect(screen.getByText('Translation Notes')).toBeTruthy();
     expect(screen.getByText('Translation Questions')).toBeTruthy();
@@ -153,28 +173,71 @@ describe('ResourcesTab', () => {
     expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
   });
 
-  it('hides Images & Maps when none are available for the unit', () => {
+  it('hides Images & Maps when none are available for the unit', async () => {
     renderResources(1);
+    await waitForImagesMapsSettled();
     expect(screen.getByText('Translation Notes')).toBeTruthy();
     expect(screen.queryByText('Images & Maps')).toBeNull();
   });
 
-  it('updates immediately when the selected verse changes', () => {
+  it('hides Images & Maps after Aquifer returns no items for the unit', async () => {
+    mockLoad.mockImplementation(async () => []);
     renderResources(2);
+
+    expect(screen.getByText('Translation Notes')).toBeTruthy();
+    expect(screen.getByText('Translation Questions')).toBeTruthy();
+
+    await waitForImagesMapsSettled();
+    expect(screen.queryByTestId('resources-section-imagesMaps')).toBeNull();
+    expect(screen.getByText('Translation Notes')).toBeTruthy();
+  });
+
+  it('keeps Images & Maps visible while loading, then shows items', async () => {
+    let resolveLoad!: (
+      items: Awaited<ReturnType<typeof loadImagesMapsForUnit>>,
+    ) => void;
+    mockLoad.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolveLoad = resolve;
+        }),
+    );
+
+    renderResources(2);
+
+    expect(screen.getByText('Images & Maps')).toBeTruthy();
+
+    await act(async () => {
+      resolveLoad(getMockImagesMaps(99, 2));
+    });
+
+    fireEvent.press(screen.getByTestId('resources-section-imagesMaps-toggle'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('images-maps-list')).toBeTruthy();
+    });
+  });
+
+  it('updates immediately when the selected verse changes', async () => {
+    renderResources(2);
+    await waitForImagesMapsSettled(1);
     expect(screen.getByText('Translation Notes')).toBeTruthy();
 
     fireEvent.press(screen.getByTestId('select-verse-3'));
+    await waitForImagesMapsSettled(2);
     expect(screen.getByText(RESOURCES_EMPTY_MESSAGE)).toBeTruthy();
     expect(screen.queryByText('Translation Notes')).toBeNull();
 
     fireEvent.press(screen.getByTestId('select-verse-1'));
+    await waitForImagesMapsSettled(3);
     expect(screen.getByText('Mark 14:1')).toBeTruthy();
     expect(screen.getByText('Translation Notes')).toBeTruthy();
     expect(screen.queryByText('Translation Questions')).toBeNull();
   });
 
-  it('restores open accordion state when returning to a unit', () => {
+  it('restores open accordion state when returning to a unit', async () => {
     renderResources(2);
+    await waitForImagesMapsSettled(1);
 
     fireEvent.press(
       screen.getByTestId('resources-section-translationNotes-toggle'),
@@ -184,11 +247,13 @@ describe('ResourcesTab', () => {
     ).toBeTruthy();
 
     fireEvent.press(screen.getByTestId('select-verse-1'));
+    await waitForImagesMapsSettled(2);
     expect(
       screen.queryByText('Content for this section will appear here.'),
     ).toBeNull();
 
     fireEvent.press(screen.getByTestId('select-verse-2'));
+    await waitForImagesMapsSettled(3);
     expect(
       screen.getByText('Content for this section will appear here.'),
     ).toBeTruthy();
@@ -196,24 +261,28 @@ describe('ResourcesTab', () => {
 
   it('keeps Images & Maps collapsed by default and shows items after expand', async () => {
     renderResources(2);
+    await waitForImagesMapsSettled();
 
     expect(screen.queryByTestId('images-maps-list')).toBeNull();
 
     fireEvent.press(screen.getByTestId('resources-section-imagesMaps-toggle'));
 
-    await waitFor(() => {
-      expect(screen.getByTestId('images-maps-list')).toBeTruthy();
-    });
+    expect(screen.getByTestId('images-maps-list')).toBeTruthy();
     expect(screen.getByText('Jerusalem region map')).toBeTruthy();
   });
 
   it('keeps Notes and Questions visible when Images & Maps load fails', async () => {
-    mockLoad.mockRejectedValue(new Error('boom'));
+    mockLoad.mockImplementation(async () => {
+      throw new Error('boom');
+    });
     renderResources(2);
+
+    await waitFor(() => {
+      expect(screen.getByText('Images & Maps')).toBeTruthy();
+    });
 
     expect(screen.getByText('Translation Notes')).toBeTruthy();
     expect(screen.getByText('Translation Questions')).toBeTruthy();
-    expect(screen.getByText('Images & Maps')).toBeTruthy();
 
     fireEvent.press(screen.getByTestId('resources-section-imagesMaps-toggle'));
 
@@ -224,7 +293,7 @@ describe('ResourcesTab', () => {
     expect(screen.getByText('Translation Notes')).toBeTruthy();
     expect(screen.getByText('Translation Questions')).toBeTruthy();
 
-    mockLoad.mockResolvedValue(getMockImagesMaps(99, 2));
+    mockLoad.mockImplementation(async () => getMockImagesMaps(99, 2));
     await act(async () => {
       fireEvent.press(screen.getByTestId('images-maps-retry'));
     });

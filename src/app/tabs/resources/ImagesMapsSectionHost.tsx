@@ -1,9 +1,9 @@
 import React from 'react';
+import type { ImagesMapsLoadState } from '../../../hooks/useImagesMapsForUnit';
 
 type ImagesMapsSectionHostProps = {
-  bookCode: string;
-  chapterNumber: number;
-  verseNumber: number;
+  state: ImagesMapsLoadState;
+  retry: () => void;
 };
 
 /**

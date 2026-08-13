@@ -1,20 +1,7 @@
 import React from 'react';
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ImagesMapsSection } from './ImagesMapsSection';
-import {
-  IMAGES_MAPS_EMPTY_MESSAGE,
-  IMAGES_MAPS_LOAD_ERROR,
-} from '../../../constants/messages';
-import {
-  loadImagesMapsForUnit,
-  setImagesMapsLoadFailureForTests,
-} from '../../../services/imagesMaps';
+import { IMAGES_MAPS_LOAD_ERROR } from '../../../constants/messages';
 import { getMockImagesMaps } from '../../../mocks/resources/imagesMapsMock';
 
 jest.mock('react-native-gesture-handler', () => {
@@ -59,66 +46,52 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
-jest.mock('../../../services/imagesMaps', () => {
-  const actual = jest.requireActual('../../../services/imagesMaps');
-  return {
-    ...actual,
-    loadImagesMapsForUnit: jest.fn(),
-  };
-});
-
-const mockLoad = loadImagesMapsForUnit as jest.MockedFunction<
-  typeof loadImagesMapsForUnit
->;
-
 describe('ImagesMapsSection', () => {
-  beforeEach(() => {
-    mockLoad.mockImplementation(async ({ verseNumber }) =>
-      getMockImagesMaps(99, verseNumber),
-    );
-  });
-
-  afterEach(() => {
-    setImagesMapsLoadFailureForTests(false);
-    mockLoad.mockReset();
-  });
-
-  it('shows an empty message when no images are available', async () => {
-    render(
-      <ImagesMapsSection bookCode="MRK" chapterNumber={1} verseNumber={1} />,
+  it('renders nothing when ready with no items (parent hides accordion)', () => {
+    const { toJSON } = render(
+      <ImagesMapsSection
+        state={{ status: 'ready', items: [] }}
+        retry={() => undefined}
+      />,
     );
 
-    await waitFor(() => {
-      expect(screen.queryByTestId('images-maps-loading')).toBeNull();
-    });
-    expect(screen.getByTestId('images-maps-empty')).toBeTruthy();
-    expect(screen.getByText(IMAGES_MAPS_EMPTY_MESSAGE)).toBeTruthy();
+    expect(toJSON()).toBeNull();
     expect(screen.queryByTestId('images-maps-list')).toBeNull();
-    expect(screen.queryByTestId('images-maps-error')).toBeNull();
+    expect(screen.queryByTestId('images-maps-empty')).toBeNull();
   });
 
-  it('shows titles, captions, and attribution for mock items', async () => {
+  it('shows a loading spinner while items are loading', () => {
     render(
-      <ImagesMapsSection bookCode="MRK" chapterNumber={1} verseNumber={2} />,
+      <ImagesMapsSection
+        state={{ status: 'loading' }}
+        retry={() => undefined}
+      />,
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('images-maps-list')).toBeTruthy();
-    });
+    expect(screen.getByTestId('images-maps-loading')).toBeTruthy();
+  });
 
+  it('shows titles, captions, and attribution for items', () => {
+    render(
+      <ImagesMapsSection
+        state={{ status: 'ready', items: getMockImagesMaps(99, 2) }}
+        retry={() => undefined}
+      />,
+    );
+
+    expect(screen.getByTestId('images-maps-list')).toBeTruthy();
     expect(screen.getByText('Jerusalem region map')).toBeTruthy();
     expect(screen.getByText('Overview of surrounding towns')).toBeTruthy();
     expect(screen.getByText('Aquifer / Bible Journey Maps')).toBeTruthy();
   });
 
-  it('opens fullscreen when maximize is pressed', async () => {
+  it('opens fullscreen when maximize is pressed', () => {
     render(
-      <ImagesMapsSection bookCode="MRK" chapterNumber={1} verseNumber={2} />,
+      <ImagesMapsSection
+        state={{ status: 'ready', items: getMockImagesMaps(99, 2) }}
+        retry={() => undefined}
+      />,
     );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('images-maps-list')).toBeTruthy();
-    });
 
     fireEvent.press(screen.getByTestId('images-maps-maximize-img-99-2-1'));
 
@@ -127,25 +100,28 @@ describe('ImagesMapsSection', () => {
     expect(screen.queryByTestId('images-maps-fullscreen')).toBeNull();
   });
 
-  it('shows section-scoped error and recovers on Retry', async () => {
-    mockLoad.mockRejectedValueOnce(new Error('boom'));
-    mockLoad.mockResolvedValueOnce(getMockImagesMaps(99, 2));
-
-    render(
-      <ImagesMapsSection bookCode="MRK" chapterNumber={1} verseNumber={2} />,
+  it('shows section-scoped error and recovers on Retry', () => {
+    const retry = jest.fn();
+    const { rerender } = render(
+      <ImagesMapsSection
+        state={{ status: 'error', message: IMAGES_MAPS_LOAD_ERROR }}
+        retry={retry}
+      />,
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('images-maps-error')).toBeTruthy();
-    });
+    expect(screen.getByTestId('images-maps-error')).toBeTruthy();
     expect(screen.getByText(IMAGES_MAPS_LOAD_ERROR)).toBeTruthy();
 
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('images-maps-retry'));
-    });
+    fireEvent.press(screen.getByTestId('images-maps-retry'));
+    expect(retry).toHaveBeenCalledTimes(1);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('images-maps-list')).toBeTruthy();
-    });
+    rerender(
+      <ImagesMapsSection
+        state={{ status: 'ready', items: getMockImagesMaps(99, 2) }}
+        retry={retry}
+      />,
+    );
+
+    expect(screen.getByTestId('images-maps-list')).toBeTruthy();
   });
 });

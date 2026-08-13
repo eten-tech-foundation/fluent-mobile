@@ -8,34 +8,22 @@ import {
 } from 'react-native';
 import { ImageThumbnail } from './ImageThumbnail';
 import { FullscreenImageViewer } from './FullscreenImageViewer';
-import { useImagesMapsForUnit } from '../../../hooks/useImagesMapsForUnit';
-import {
-  IMAGES_MAPS_EMPTY_MESSAGE,
-  IMAGES_MAPS_LOAD_ERROR,
-} from '../../../constants/messages';
+import type { ImagesMapsLoadState } from '../../../hooks/useImagesMapsForUnit';
+import { IMAGES_MAPS_LOAD_ERROR } from '../../../constants/messages';
 import { ImagesMapsItem } from '../../../types/resources/imagesMaps';
 import { theme } from '../../../theme';
 
 type ImagesMapsSectionProps = {
-  bookCode: string;
-  chapterNumber: number;
-  verseNumber: number;
+  state: ImagesMapsLoadState;
+  retry: () => void;
 };
 
 /**
  * Images & Maps body for the Resources tab (#191).
  * Thumbnails with caption/attribution, pinch-zoom, fullscreen maximize.
+ * Empty availability is handled by the parent (hide the accordion slot).
  */
-export function ImagesMapsSection({
-  bookCode,
-  chapterNumber,
-  verseNumber,
-}: ImagesMapsSectionProps) {
-  const { state, retry } = useImagesMapsForUnit({
-    bookCode,
-    chapterNumber,
-    verseNumber,
-  });
+export function ImagesMapsSection({ state, retry }: ImagesMapsSectionProps) {
   const [fullscreenItem, setFullscreenItem] = useState<ImagesMapsItem | null>(
     null,
   );
@@ -65,11 +53,7 @@ export function ImagesMapsSection({
   }
 
   if (state.items.length === 0) {
-    return (
-      <View style={styles.centered} testID="images-maps-empty">
-        <Text style={styles.emptyMessage}>{IMAGES_MAPS_EMPTY_MESSAGE}</Text>
-      </View>
-    );
+    return null;
   }
 
   return (
@@ -104,11 +88,6 @@ const styles = StyleSheet.create({
   errorMessage: {
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.foreground,
-    textAlign: 'center',
-  },
-  emptyMessage: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.mutedForeground,
     textAlign: 'center',
   },
   retryLink: {

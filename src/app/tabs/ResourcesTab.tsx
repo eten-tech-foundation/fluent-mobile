@@ -29,6 +29,7 @@ import {
   unitHasAnyResources,
 } from './resources/mockResourceData';
 import { ImagesMapsSectionHost } from './resources/ImagesMapsSectionHost';
+import { useImagesMapsForUnit } from '../../hooks/useImagesMapsForUnit';
 import {
   getResourcesTabUiState,
   setResourcesTabUiState,
@@ -84,6 +85,14 @@ export function ResourcesTab({
     [chapterId, selectedVerse, chapterName],
   );
   const hasContent = unitHasAnyResources(resources);
+
+  // Lifted so we can hide the accordion when Aquifer returns 0 items (#191 AC).
+  const { state: imagesMapsState, retry: retryImagesMaps } =
+    useImagesMapsForUnit({
+      bookCode,
+      chapterNumber,
+      verseNumber: selectedVerse,
+    });
 
   const [openAccordionIds, setOpenAccordionIds] = useState<Set<string>>(
     () => getResourcesTabUiState(chapterId, selectedVerse).openAccordionIds,
@@ -144,9 +153,21 @@ export function ResourcesTab({
     );
   }
 
-  const visibleSections = SECTION_META.filter(section =>
-    resources.sections.includes(section.id),
-  );
+  const visibleSections = SECTION_META.filter(section => {
+    if (!resources.sections.includes(section.id)) {
+      return false;
+    }
+    // Hide Images & Maps only when load finished with nothing to show.
+    // Keep visible while loading or on error (error + Retry must still show).
+    if (
+      section.id === 'imagesMaps' &&
+      imagesMapsState.status === 'ready' &&
+      imagesMapsState.items.length === 0
+    ) {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <ScrollView
@@ -182,9 +203,8 @@ export function ResourcesTab({
             >
               {id === 'imagesMaps' ? (
                 <ImagesMapsSectionHost
-                  bookCode={bookCode}
-                  chapterNumber={chapterNumber}
-                  verseNumber={selectedVerse}
+                  state={imagesMapsState}
+                  retry={retryImagesMaps}
                 />
               ) : (
                 <Text style={styles.stubBody}>
