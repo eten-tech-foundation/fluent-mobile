@@ -59,13 +59,13 @@ Examples:
 | `issue-number` | GitHub issue number (digits only in the branch segment) |
 | `slug` | 3–6 meaningful words from the issue title |
 
-See [`.cursor/commands/create-pr-branch.md`](../.cursor/commands/create-pr-branch.md).
+See [`.claude/commands/create-pr-branch.md`](../.claude/commands/create-pr-branch.md) (Cursor shim: `/create-pr-branch`). For the full issue → implement → PR loop, use `/start-issue`.
 
 ## Pull requests
 
 - **Base branch:** `main`
 - **Title:** `[#NNN]: Short description` (or `#NNN: Short description`) — match existing PR style in this repo
-- **Body:** **required** — fill [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md) / [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md) (same content: TLDR, Reviewer checklist, Details, Technical changes, Testing, How to verify, Follow-ups). The **`PR Description`** check fails empty / CodeRabbit-only bodies. Prefer `/generate-pr-description` or `/create-pr`. Do not ship a short Summary/Test plan substitute.
+- **Body:** **required** — fill [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md) / [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md) (same content: TLDR, Reviewer checklist, Details, Technical changes, Testing, How to verify, Follow-ups). The **`PR Description`** check fails empty / CodeRabbit-only bodies. Prefer `/start-issue` (full loop) or `/generate-pr-description` / `/create-pr` (`/open-pr` is an alias). Do not ship a short Summary/Test plan substitute.
   - Under Details: `Refs #NNN` on its own line (links the issue without closing it)
   - Do **not** use GitHub closing keywords (`Closes`, `Fixes`, `Resolves`) — merged PRs must not auto-close issues
   - **Assignee:** agents must assign the PR to the author (`--assignee @me`)
@@ -74,6 +74,18 @@ See [`.cursor/commands/create-pr-branch.md`](../.cursor/commands/create-pr-branc
 - After opening a PR, set Project 4 Status to **`In PR Review`** (if not already)
 - After merge (or when ready for QA), set Project 4 Status to **`In QA`** — leave the GitHub issue **open**
 - **Template source of truth:** [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md) — also required by [delivery.mdc](../.cursor/rules/delivery.mdc); generate with `/generate-pr-description` or `/create-pr`
+
+### Agent command: `/start-issue`
+
+End-to-end agent loop for one issue (Cursor `/` palette or “run `/start-issue NNN`”):
+
+1. Claim the GitHub issue (assign `@me`; add to Project 4 if missing)
+2. Set Status to **`In Progress (Dev)`** (never Product-owned columns — see [guides/project-board.md](guides/project-board.md))
+3. Cut `{author}/{type}/{NNN}-{slug}` from `main` (reuses `/create-pr-branch` naming)
+4. Plan-gate when scope is large/ambiguous, then implement to AC
+5. Chain `/create-pr`: draft PR, `Refs #NNN`, **In PR Review**, watch CI to green
+
+Canonical instructions: [`.claude/commands/start-issue.md`](../.claude/commands/start-issue.md). Delivery-only (commits already on a branch): `/create-pr` / `/open-pr`.
 
 ### Linking without auto-close
 
