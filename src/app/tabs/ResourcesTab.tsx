@@ -28,7 +28,7 @@ import {
   getMockResourcesForUnit,
   unitHasAnyResources,
 } from './resources/mockResourceData';
-import { ImagesMapsSection } from './resources/ImagesMapsSection';
+import { ImagesMapsSectionHost } from './resources/ImagesMapsSectionHost';
 import {
   getResourcesTabUiState,
   setResourcesTabUiState,
@@ -181,7 +181,7 @@ export function ResourcesTab({
               testID={`resources-section-${id}`}
             >
               {id === 'imagesMaps' ? (
-                <ImagesMapsSection
+                <ImagesMapsSectionHost
                   bookCode={bookCode}
                   chapterNumber={chapterNumber}
                   verseNumber={selectedVerse}
