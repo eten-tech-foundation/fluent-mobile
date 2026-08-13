@@ -136,15 +136,25 @@ and pre-fill:
 | ------- | ---------------- |
 | **TLDR** | 2–4 sentences: what / why / impact |
 | **Reviewer checklist** | Leave items unchecked unless verified ([AGENTS.md](../../AGENTS.md)) |
-| **Details** | `Refs #NNN` on its own line; short summary; type-of-change checkboxes |
+| **Details** | `Refs #NNN` on its own line; short summary; **Needs QA?** Yes/No; type-of-change checkboxes |
 | **Technical changes** | Key files as `` `path` `` bullets |
 | **Testing** | What gates ran (`format:check`, `lint`, `typecheck`, `npm test -- --ci`) |
 | **How to verify** | Numbered steps + **Expected** |
 | **Follow-ups** | Deferred AC → linked issues; otherwise say none |
 
-Do **not** auto-check **Acceptance criteria**, **Scope**, or **Android device
-tested** unless verified. Do **not** auto-check device QA for native / mic /
-camera / filesystem / permissions changes.
+**Needs QA? / preview gate** ([docs/guides/qa-process.md](../../docs/guides/qa-process.md)):
+
+1. Decide **Needs QA?** and check **No** or **Yes** in the PR body.
+2. If **Yes**: remind the author to add the **`preview-build`** label (do not
+   merge until QA passes that PR’s preview). Leave “QA passed this PR’s
+   preview” and the Android device checkbox **unchecked** until a human
+   confirms.
+3. If **No**: check engineering-only; skip preview/QA merge gate.
+
+Do **not** auto-check **Acceptance criteria**, **Scope**, **Needs QA?
+preview-passed**, or **Android device tested** unless verified. Do **not**
+auto-check device QA for native / mic / camera / filesystem / permissions
+changes.
 
 Keep under ~400 lines; no nested fenced code blocks inside the PR body.
 

@@ -9,8 +9,8 @@
 - [ ] Acceptance criteria met, **or** unmet AC waived **in the issue** with linked follow-up (see `AGENTS.md`)
 - [ ] Scope limited to this issue — no adjacent tickets implemented/stubbed without approval
 - [ ] **Needs QA?** decided (see `docs/guides/qa-process.md`) — if yes: `preview-build` label added
-- [ ] If QA-required: QA passed **this PR’s** preview build before merge (do **not** check until QA confirms)
-- [ ] Android device tested when required (native / mic / camera / filesystem / permissions) — do **not** check unless verified on a device
+- [ ] If QA-required: QA passed **this PR’s** preview build before merge (do **not** check until QA confirms; this is the device-QA gate when Needs QA? is Yes)
+- [ ] Android device tested when required **and** Needs QA? is No — do **not** check unless verified on a device
 
 ### Details
 

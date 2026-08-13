@@ -50,6 +50,9 @@ review   label
     |______|
     |
     v
+Passed QA
+    |
+    v
 Eligible to merge
 ```
 
