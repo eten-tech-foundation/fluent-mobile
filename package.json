@@ -4,9 +4,8 @@
   "private": true,
   "type": "module",
   "main": "index.js",
-  "packageManager": "npm@10.9.8",
   "scripts": {
-    "preinstall": "npx only-allow npm",
+    "preinstall": "node ./scripts/package-manager.cjs --enforce",
     "android": "expo run:android",
     "lint": "eslint .",
     "start": "expo start",

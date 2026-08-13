@@ -103,8 +103,12 @@ export default function DraftingScreen() {
   }, [navigation]);
 
   const handleAccountPress = useCallback(() => {
+    if (recordCaptureActive) {
+      alertRecordingInProgress();
+      return;
+    }
     setAccountSwitcherVisible(true);
-  }, []);
+  }, [alertRecordingInProgress, recordCaptureActive]);
 
   // CHANGED: was `triggerSync`. Tapping the icon now navigates to the
   // Sync page instead of kicking off a sync directly (per #38 / #149).
