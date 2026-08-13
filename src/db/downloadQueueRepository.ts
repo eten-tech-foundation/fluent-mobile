@@ -14,6 +14,7 @@ const log = logger.create('DownloadQueueRepo');
 type DownloadQueueRow = {
   id: string;
   project_id: number;
+  user_id: number | null;
   tier: number;
   kind: string;
   resource_name: string;
@@ -44,6 +45,7 @@ function mapRow(row: DownloadQueueRow): DownloadQueueItem {
     progress: row.progress,
     status: row.status,
     projectId: row.project_id,
+    userId: row.user_id ?? undefined,
     sourceUrl: row.source_url ?? undefined,
     fileExt: row.file_ext ?? undefined,
     bytesTotal: row.bytes_total ?? undefined,
@@ -56,6 +58,7 @@ export type EnqueueDownloadItemInput = {
   /** Stable catalog resource id (e.g. tier-1-source-bible-text). */
   id?: string;
   projectId: number;
+  userId: number;
   tier: DownloadTier;
   kind: 'text' | 'audio';
   resourceName: string;
@@ -91,14 +94,15 @@ export async function enqueueDownloadItems(
 
       const result = await tx.execute(
         `INSERT INTO download_queue (
-           id, project_id, tier, kind, resource_name, label, source_url,
+           id, project_id, user_id, tier, kind, resource_name, label, source_url,
            file_ext, status, progress, bytes_total, local_file_path, resume_data, queue_order,
            created_at, updated_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'queued', 0, ?, NULL, NULL, ?, ?, ?)
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued', 0, ?, NULL, NULL, ?, ?, ?)
          ON CONFLICT DO NOTHING`,
         [
           id,
           item.projectId,
+          item.userId,
           item.tier,
           item.kind,
           item.resourceName,
@@ -278,26 +282,28 @@ export async function getDownloadQueueSnapshot(): Promise<DownloadQueueSnapshot>
 
 export async function getDownloadedResourcesByProject(
   projectId: number,
+  userId: number,
 ): Promise<DownloadQueueItem[]> {
   const db = getDatabase();
   const result = await db.execute(
     `SELECT * FROM download_queue
-     WHERE project_id = ? AND status = 'completed'
+     WHERE project_id = ? AND status = 'completed' AND user_id = ?
      ORDER BY resource_name`,
-    [projectId],
+    [projectId, userId],
   );
   const rows = (result.rows ?? []) as unknown as DownloadQueueRow[];
   return rows.map(mapRow);
 }
 
-export async function getDownloadedResourcesInventory(): Promise<
-  DownloadedProjectInventory[]
-> {
+export async function getDownloadedResourcesInventory(
+  userId: number,
+): Promise<DownloadedProjectInventory[]> {
   const db = getDatabase();
   const result = await db.execute(
     `SELECT * FROM download_queue
-     WHERE status = 'completed'
+     WHERE status = 'completed' AND user_id = ?
      ORDER BY project_id, resource_name`,
+    [userId],
   );
   const rows = (result.rows ?? []) as unknown as DownloadQueueRow[];
   const byProject = new Map<number, DownloadQueueItem[]>();

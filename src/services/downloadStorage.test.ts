@@ -1,6 +1,8 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { resetFileSystemMock } from '../test/mocks/expo-file-system';
 import {
+  assertDeletableDownloadPath,
+  deleteDownloadResourceFile,
   deleteFile,
   downloadResourceFile,
   downloadResourcePath,
@@ -100,6 +102,33 @@ describe('downloadStorage', () => {
       await expect(
         deleteFile(`${FileSystem.documentDirectory}downloads/1/missing.mp3`),
       ).resolves.not.toThrow();
+    });
+  });
+
+  describe('assertDeletableDownloadPath / deleteDownloadResourceFile', () => {
+    it('allows paths under the project downloads directory', () => {
+      const path = `${FileSystem.documentDirectory}downloads/42/resource.mp3`;
+      expect(() => assertDeletableDownloadPath(42, path)).not.toThrow();
+    });
+
+    it('rejects paths outside the project sandbox', () => {
+      expect(() =>
+        assertDeletableDownloadPath(2, 'file:///etc/passwd'),
+      ).toThrow(/outside the project sandbox/);
+    });
+
+    it('rejects path traversal segments', () => {
+      const path = `${FileSystem.documentDirectory}downloads/2/../1/evil.mp3`;
+      expect(() => assertDeletableDownloadPath(2, path)).toThrow(
+        /Unsafe path segment/,
+      );
+    });
+
+    it('deleteDownloadResourceFile removes a sandboxed file', async () => {
+      const path = `${FileSystem.documentDirectory}downloads/3/x.mp3`;
+      await FileSystem.writeAsStringAsync(path, 'bytes');
+      await deleteDownloadResourceFile(3, path);
+      await expect(fileExists(path)).resolves.toBe(false);
     });
   });
 

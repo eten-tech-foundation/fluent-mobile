@@ -119,6 +119,7 @@ export const createTableQueries: string[] = [
   `CREATE TABLE IF NOT EXISTS download_queue (
     id              TEXT PRIMARY KEY,
     project_id      INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE,
     tier            INTEGER NOT NULL,
     kind            TEXT NOT NULL,
     resource_name   TEXT NOT NULL,
@@ -138,6 +139,6 @@ export const createTableQueries: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_dq_project ON download_queue(project_id);`,
   `CREATE INDEX IF NOT EXISTS idx_dq_status ON download_queue(status);`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_dq_active_resource
-    ON download_queue(project_id, kind, resource_name)
+    ON download_queue(user_id, project_id, kind, resource_name)
     WHERE status != 'completed';`,
 ];
