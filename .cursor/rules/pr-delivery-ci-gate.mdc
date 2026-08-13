@@ -1,0 +1,28 @@
+---
+description: PR open/push delivery — not done until CI is green
+alwaysApply: true
+---
+
+# PR delivery gate (CI)
+
+When committing, opening a PR, pushing commits meant for review, handing off,
+or saying a PR task is **done**:
+
+1. Run **CI-parity local checks** first — `npm run format:check`, `npm run lint`,
+   `npm run typecheck`, `npm test -- --ci` (see [commands.mdc](./commands.mdc)).
+   Fix before commit.
+2. Invoke the repo **`code-reviewer`** agent (`.claude/agents/code-reviewer.md`)
+   on the **working diff** (before commit). Fix **all** findings before commit
+   (Blocking, Should-fix, Nit — every severity), then commit → push. Only skip a
+   finding with an explicit per-item human waiver in the PR body. Do not hand
+   off or merge while any finding remains unfixed without that waiver.
+3. After `gh pr create` / push: **watch CI** (`gh pr checks --watch` or
+   equivalent) until required checks finish.
+4. On failure: fix, push, re-watch. Do not hand off as complete while checks
+   are red or still running.
+5. Only report “done” when required CI is green (or you explicitly document an
+   out-of-scope base-branch blocker).
+
+Canonical flow: `.claude/commands/create-pr.md` (local checks + review before
+commit + CI wait). `/open-pr` is an alias. Human merges — agents do not merge;
+do not merge over unfixed review findings.

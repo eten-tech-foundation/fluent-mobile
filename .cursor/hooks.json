@@ -5,6 +5,12 @@
       {
         "command": ".cursor/hooks/session-env-check.sh"
       }
+    ],
+    "preToolUse": [
+      {
+        "command": "node .cursor/hooks/architecture-guard.mjs",
+        "matcher": "Write|StrReplace"
+      }
     ]
   }
 }
