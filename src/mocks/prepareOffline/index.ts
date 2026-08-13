@@ -11,7 +11,7 @@
  *
  * Data flow: catalog + inventory (status) → `prepareOfflineCatalog.ts` → UI.
  *
- * Gate: `prepareOfflineResources.ts` service (`__DEV__` → mock modules below).
+ * Consumed via `prepareOfflineResources.ts` until FluentAPI manifest lands.
  */
 export {
   MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST,
@@ -30,6 +30,11 @@ export {
   isPrepareOfflineMockInventoryScenario,
   type PrepareOfflineMockInventoryScenario,
 } from './offlineDownloadInventoryScenarios';
+export {
+  DEV_MOCK_FILE_BYTES,
+  getMockDownloadBytesForKind,
+  getMockDownloadSource,
+} from './mockDownloadSources';
 export {
   getMockPrepareOfflineResourceStatus,
   getPrepareOfflineMockInventoryScenario,

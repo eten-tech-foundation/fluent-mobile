@@ -13,8 +13,10 @@ import {
   isTierLocked,
   sortItemsForPrepareOfflineDownload,
 } from './prepareOfflineCatalog';
+import { scopedPrepareOfflineResourceId } from './prepareOfflineResourceId';
 import {
   MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST,
+  DEV_MOCK_FILE_BYTES,
   resetMockPrepareOfflineInventory,
   setPrepareOfflineMockInventoryScenario,
 } from '../mocks/prepareOffline';
@@ -22,6 +24,14 @@ import { getPrepareOfflineResourceStatus } from '../services/prepareOfflineResou
 import { PrepareOfflineChapterRow } from '../types/prepareOffline/types';
 
 const MB = 1024 * 1024;
+
+const ONE_CHAPTER_MOCK_TOTAL =
+  6 * DEV_MOCK_FILE_BYTES.text +
+  6 * DEV_MOCK_FILE_BYTES.audio +
+  DEV_MOCK_FILE_BYTES.image;
+
+const TIER1_ONE_CHAPTER_TOTAL =
+  2 * DEV_MOCK_FILE_BYTES.text + 2 * DEV_MOCK_FILE_BYTES.audio;
 
 function chapter(id: number): PrepareOfflineChapterRow {
   return {
@@ -42,6 +52,7 @@ function buildTestCatalog(options: {
   const projectId = options.projectId ?? 1;
 
   return buildPrepareOfflineCatalog({
+    projectId,
     manifest: MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST,
     getResourceStatus: (resourceId: string) =>
       getPrepareOfflineResourceStatus(projectId, resourceId),
@@ -49,6 +60,17 @@ function buildTestCatalog(options: {
     selectedIds: options.selectedIds,
   });
 }
+
+function catalogResourceId(
+  projectId: number,
+  tier: 1 | 2 | 3,
+  groupName: string,
+  kind: 'text' | 'audio' | 'image',
+): string {
+  return scopedPrepareOfflineResourceId(projectId, tier, groupName, kind);
+}
+
+const PID = 1;
 
 describe('prepareOfflineCatalog', () => {
   const chapters = [chapter(1), chapter(2)];
@@ -126,7 +148,7 @@ describe('prepareOfflineCatalog', () => {
 
   it('locks completed but not downloading items from customize toggles', () => {
     const completedItem = {
-      id: 'tier-2-translation-words-text',
+      id: catalogResourceId(PID, 2, 'Translation Words', 'text'),
       tier: 2 as const,
       kind: 'text' as const,
       groupName: 'Translation Words',
@@ -147,7 +169,7 @@ describe('prepareOfflineCatalog', () => {
 
   it('allows deselecting a downloading item from the effective download set', () => {
     const downloadingItem = {
-      id: 'tier-2-translation-words-audio',
+      id: catalogResourceId(PID, 2, 'Translation Words', 'audio'),
       tier: 2 as const,
       kind: 'audio' as const,
       groupName: 'Translation Words',
@@ -163,7 +185,7 @@ describe('prepareOfflineCatalog', () => {
 
   it('always includes locked items in the effective download set', () => {
     const completedItem = {
-      id: 'tier-2-translation-words-text',
+      id: catalogResourceId(PID, 2, 'Translation Words', 'text'),
       tier: 2 as const,
       kind: 'text' as const,
       groupName: 'Translation Words',
@@ -184,19 +206,8 @@ describe('prepareOfflineCatalog', () => {
     });
 
     const total = computeTotalBytes(catalog, new Set());
-    const sourceBible = 8 * MB + 136 * MB;
-    const translationNotes = 18 * MB + 48 * MB;
-    const translationWords = 10 * MB + 32 * MB;
-    const translationQuestions = 6 * MB + 14 * MB;
-    const tier3 = 12 * MB + 24 * MB + 6 * MB + 8 * MB + 16 * MB;
 
-    expect(total).toBe(
-      sourceBible +
-        translationNotes +
-        translationWords +
-        translationQuestions +
-        tier3,
-    );
+    expect(total).toBe(ONE_CHAPTER_MOCK_TOTAL);
   });
 
   it('subtracts deselected tier 2/3 items from totals', () => {
@@ -206,13 +217,18 @@ describe('prepareOfflineCatalog', () => {
       chapters,
       selectedIds: new Set([1]),
     });
-    const questionsTextId = 'tier-2-translation-questions-text';
+    const questionsTextId = catalogResourceId(
+      PID,
+      2,
+      'Translation Questions',
+      'text',
+    );
 
     const deselected = new Set([questionsTextId]);
     const withoutQuestionsText = computeTotalBytes(catalog, deselected);
 
     expect(withoutQuestionsText).toBe(
-      computeTotalBytes(catalog, new Set()) - 6 * MB,
+      computeTotalBytes(catalog, new Set()) - DEV_MOCK_FILE_BYTES.text,
     );
     expect(isItemIncluded(catalog.items[0], deselected)).toBe(true);
     expect(
@@ -232,7 +248,8 @@ describe('prepareOfflineCatalog', () => {
     });
 
     const pending = computePendingBytes(catalog, new Set());
-    const completedBytes = 8 * MB + 136 * MB + 18 * MB + 48 * MB + 10 * MB;
+    const completedBytes =
+      3 * DEV_MOCK_FILE_BYTES.text + 2 * DEV_MOCK_FILE_BYTES.audio;
     const allBytes = computeTotalBytes(catalog, new Set());
 
     expect(pending).toBe(allBytes - completedBytes);
@@ -245,7 +262,12 @@ describe('prepareOfflineCatalog', () => {
       chapters,
       selectedIds: new Set([1]),
     });
-    const questionsAudioId = 'tier-2-translation-questions-audio';
+    const questionsAudioId = catalogResourceId(
+      PID,
+      2,
+      'Translation Questions',
+      'audio',
+    );
 
     const pendingAll = computePendingBytes(catalog, new Set());
     const pendingDeselected = computePendingBytes(
@@ -253,7 +275,7 @@ describe('prepareOfflineCatalog', () => {
       new Set([questionsAudioId]),
     );
 
-    expect(pendingDeselected).toBe(pendingAll - 14 * MB);
+    expect(pendingDeselected).toBe(pendingAll - DEV_MOCK_FILE_BYTES.audio);
     expect(
       getEffectiveItems(catalog, new Set([questionsAudioId])),
     ).toHaveLength(catalog.items.length - 1);
@@ -262,7 +284,7 @@ describe('prepareOfflineCatalog', () => {
   it('computeRemainingBytes uses full catalog bytes for non-completed items', () => {
     const remaining = computeRemainingBytes([
       {
-        id: 'tier-1-source-bible-text',
+        id: catalogResourceId(PID, 1, 'Source Bible', 'text'),
         tier: 1,
         kind: 'text',
         groupName: 'Source Bible',
@@ -272,7 +294,7 @@ describe('prepareOfflineCatalog', () => {
         progress: 0.25,
       },
       {
-        id: 'tier-1-source-bible-audio',
+        id: catalogResourceId(PID, 1, 'Source Bible', 'audio'),
         tier: 1,
         kind: 'audio',
         groupName: 'Source Bible',
@@ -288,7 +310,7 @@ describe('prepareOfflineCatalog', () => {
   it('getRemainingBytesForItem returns zero for completed rows', () => {
     expect(
       getRemainingBytesForItem({
-        id: 'tier-3-bible-commentary-text',
+        id: catalogResourceId(PID, 3, 'Bible Commentary', 'text'),
         tier: 3,
         kind: 'text',
         groupName: 'Bible Commentary',
@@ -302,7 +324,7 @@ describe('prepareOfflineCatalog', () => {
   it('getRemainingBytesForItem returns full catalog bytes for non-completed rows', () => {
     expect(
       getRemainingBytesForItem({
-        id: 'tier-3-bible-commentary-audio',
+        id: catalogResourceId(PID, 3, 'Bible Commentary', 'audio'),
         tier: 3,
         kind: 'audio',
         groupName: 'Bible Commentary',
@@ -322,15 +344,15 @@ describe('prepareOfflineCatalog', () => {
       selectedIds: new Set([1]),
     });
     const deselected = new Set([
-      'tier-2-translation-words-text',
-      'tier-2-translation-words-audio',
-      'tier-2-translation-questions-text',
-      'tier-2-translation-questions-audio',
-      'tier-3-bible-commentary-text',
-      'tier-3-bible-commentary-audio',
-      'tier-3-reference-images-text',
-      'tier-3-alternate-translations-text',
-      'tier-3-alternate-translations-audio',
+      catalogResourceId(PID, 2, 'Translation Words', 'text'),
+      catalogResourceId(PID, 2, 'Translation Words', 'audio'),
+      catalogResourceId(PID, 2, 'Translation Questions', 'text'),
+      catalogResourceId(PID, 2, 'Translation Questions', 'audio'),
+      catalogResourceId(PID, 3, 'Bible Commentary', 'text'),
+      catalogResourceId(PID, 3, 'Bible Commentary', 'audio'),
+      catalogResourceId(PID, 3, 'Reference Images', 'image'),
+      catalogResourceId(PID, 3, 'Alternate Translations', 'text'),
+      catalogResourceId(PID, 3, 'Alternate Translations', 'audio'),
     ]);
 
     const effective = buildEffectiveCatalog(catalog, deselected);
@@ -341,7 +363,7 @@ describe('prepareOfflineCatalog', () => {
     ]);
     expect(effective.items).toHaveLength(4);
     expect(computeTotalBytes(effective, new Set())).toBe(
-      8 * MB + 136 * MB + 18 * MB + 48 * MB,
+      TIER1_ONE_CHAPTER_TOTAL,
     );
     expect(computePendingBytes(effective, new Set())).toBe(0);
   });
@@ -357,22 +379,26 @@ describe('prepareOfflineCatalog', () => {
     });
 
     const notesTextOne = oneChapter.items.find(
-      item => item.id === 'tier-1-translation-notes-text',
+      item =>
+        item.id === catalogResourceId(PID, 1, 'Translation Notes', 'text'),
     )!;
     const notesTextTwo = twoChapters.items.find(
-      item => item.id === 'tier-1-translation-notes-text',
+      item =>
+        item.id === catalogResourceId(PID, 1, 'Translation Notes', 'text'),
     )!;
     const wordsTextOne = oneChapter.items.find(
-      item => item.id === 'tier-2-translation-words-text',
+      item =>
+        item.id === catalogResourceId(PID, 2, 'Translation Words', 'text'),
     )!;
     const wordsTextTwo = twoChapters.items.find(
-      item => item.id === 'tier-2-translation-words-text',
+      item =>
+        item.id === catalogResourceId(PID, 2, 'Translation Words', 'text'),
     )!;
 
-    expect(notesTextOne.bytes).toBe(18 * MB);
-    expect(notesTextTwo.bytes).toBe(36 * MB);
-    expect(wordsTextOne.bytes).toBe(10 * MB);
-    expect(wordsTextTwo.bytes).toBe(10 * MB);
+    expect(notesTextOne.bytes).toBe(DEV_MOCK_FILE_BYTES.text);
+    expect(notesTextTwo.bytes).toBe(2 * DEV_MOCK_FILE_BYTES.text);
+    expect(wordsTextOne.bytes).toBe(DEV_MOCK_FILE_BYTES.text);
+    expect(wordsTextTwo.bytes).toBe(DEV_MOCK_FILE_BYTES.text);
   });
 
   it('computeManifestBytesForScope applies chapter, book, and project rules', () => {

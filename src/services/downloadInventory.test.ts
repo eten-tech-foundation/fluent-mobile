@@ -3,8 +3,13 @@ import { resetFileSystemMock } from '../test/mocks/expo-file-system';
 
 const mockGetDownloadedResourcesInventory = jest.fn();
 
+jest.mock('./storage', () => ({
+  getActiveUserId: () => '42',
+}));
+
 jest.mock('../db/repository', () => ({
-  getDownloadedResourcesInventory: () => mockGetDownloadedResourcesInventory(),
+  getDownloadedResourcesInventory: (userId: number) =>
+    mockGetDownloadedResourcesInventory(userId),
 }));
 
 import { getVerifiedDownloadedResourcesInventory } from './downloadInventory';
@@ -50,6 +55,7 @@ describe('downloadInventory', () => {
 
     const inventory = await getVerifiedDownloadedResourcesInventory();
 
+    expect(mockGetDownloadedResourcesInventory).toHaveBeenCalledWith(42);
     expect(inventory).toEqual([
       {
         projectId: 1,

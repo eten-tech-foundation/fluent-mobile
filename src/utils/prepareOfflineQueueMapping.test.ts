@@ -2,6 +2,7 @@ import {
   prepareOfflineItemToEnqueueInput,
   prepareOfflineItemsToEnqueueInputs,
 } from './prepareOfflineQueueMapping';
+import { DEV_MOCK_FILE_BYTES } from '../mocks/prepareOffline/mockDownloadSources';
 import { PrepareOfflineResourceItem } from '../types/prepareOffline/types';
 
 const baseItem: PrepareOfflineResourceItem = {
@@ -14,22 +15,26 @@ const baseItem: PrepareOfflineResourceItem = {
   status: 'selected',
 };
 
+const TEST_USER_ID = 7;
+
 describe('prepareOfflineQueueMapping', () => {
   it('uses stable catalog id as queue primary key', () => {
-    const input = prepareOfflineItemToEnqueueInput(baseItem, 42);
+    const input = prepareOfflineItemToEnqueueInput(baseItem, 42, TEST_USER_ID);
 
     expect(input.id).toBe('tier-1-source-bible-text');
     expect(input.projectId).toBe(42);
+    expect(input.userId).toBe(TEST_USER_ID);
     expect(input.tier).toBe(1);
     expect(input.resourceName).toBe('Source Bible');
     expect(input.label).toBe('Text');
-    expect(input.bytesTotal).toBe(baseItem.bytes);
+    expect(input.bytesTotal).toBe(DEV_MOCK_FILE_BYTES.text);
   });
 
   it('maps audio and image kinds to queue fields', () => {
     const audio = prepareOfflineItemToEnqueueInput(
       { ...baseItem, id: 'tier-1-source-bible-audio', kind: 'audio' },
       1,
+      TEST_USER_ID,
     );
     const image = prepareOfflineItemToEnqueueInput(
       {
@@ -40,6 +45,7 @@ describe('prepareOfflineQueueMapping', () => {
         groupName: 'Reference Images',
       },
       1,
+      TEST_USER_ID,
     );
 
     expect(audio.kind).toBe('audio');
@@ -59,14 +65,16 @@ describe('prepareOfflineQueueMapping', () => {
         },
       ],
       5,
+      TEST_USER_ID,
     );
 
     expect(items.map(item => item.tier)).toEqual([1, 2]);
     expect(items.every(item => item.projectId === 5)).toBe(true);
+    expect(items.every(item => item.userId === TEST_USER_ID)).toBe(true);
   });
 
-  it('includes dev mock sourceUrl and fileExt', () => {
-    const input = prepareOfflineItemToEnqueueInput(baseItem, 1);
+  it('includes mock sourceUrl and fileExt', () => {
+    const input = prepareOfflineItemToEnqueueInput(baseItem, 1, TEST_USER_ID);
 
     expect(input.sourceUrl).toEqual(expect.any(String));
     expect(input.fileExt).toEqual(expect.any(String));

@@ -81,6 +81,7 @@ export interface PrepareOfflineCatalog {
 }
 
 export interface BuildPrepareOfflineCatalogInput {
+  projectId: number;
   manifest: PrepareOfflineResourceManifestEntry[];
   getResourceStatus: (resourceId: string) => PrepareOfflineResourceStatus;
   chapters: PrepareOfflineChapterRow[];
@@ -107,4 +108,38 @@ export interface PrepareOfflineResourceManifestEntry {
 export interface PrepareOfflineResourceInventoryEntry {
   resourceId: string;
   status: PrepareOfflineResourceStatus;
+}
+
+/** Device-wide storage summary for Manage Device Storage (#53). */
+export interface DeviceStorageSummary {
+  /** Null when the OS free-space API is unavailable. */
+  availableBytes: number | null;
+  /** Null when total capacity API is unavailable. */
+  totalDeviceBytes: number | null;
+  fluentUsedBytes: number;
+}
+
+/** One deletable downloaded resource row in storage management UI. */
+export interface StorageInventoryResource {
+  id: string;
+  projectId: number;
+  userId?: number;
+  label: string;
+  resourceName: string;
+  kind: 'text' | 'audio' | 'image';
+  bytes: number;
+  localFilePath?: string;
+}
+
+/** Downloaded resources grouped for another project's accordion (#53). */
+export interface OtherProjectStorageGroup {
+  projectId: number;
+  projectName: string;
+  totalBytes: number;
+  resources: StorageInventoryResource[];
+}
+
+export interface DeleteDownloadResourcesResult {
+  deletedIds: string[];
+  failed: Array<{ id: string; reason: string }>;
 }
