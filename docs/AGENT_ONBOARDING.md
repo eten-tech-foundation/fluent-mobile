@@ -19,7 +19,7 @@ Recording follow-up: wire source audio dock to real fetch + playback ([#235](htt
 | Framework | Expo SDK **57**, React Native **0.86**, React **19.2.3** |
 | Native | **CNG, Android-only** — `android/` generated via `npm run prebuild` (`--platform android`; not committed) |
 | Language | TypeScript ~6.0 |
-| Package manager | **npm** (`package-lock.json`) |
+| Package manager | **npm** (`package-lock.json`). `yarn` in-repo is shimmed to npm; pnpm is blocked. |
 | Node | `>= 24.14.0` (README: Node 24) |
 | Local DB | `@op-engineering/op-sqlite` |
 | Navigation | `@react-navigation/stack` |
