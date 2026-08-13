@@ -35,6 +35,7 @@ jest.mock('lucide-react-native', () => {
     Mic: MockIcon,
     UserCheck: MockIcon,
     ChevronRight: MockIcon,
+    User: MockIcon,  
   };
 });
 
@@ -55,6 +56,7 @@ const sampleChapter: MyWorkChapter = {
   chapterNumber: 4,
   workflowStage: 'draft',
   syncState: 'synced',
+  ownershipState: 'unassigned',
   completedVerses: 3,
   totalVerses: 5,
   downloadedVerses: 5,
@@ -70,6 +72,7 @@ const notStartedChapter: MyWorkChapter = {
   chapterNumber: 16,
   workflowStage: 'not_started',
   syncState: 'none',
+  ownershipState: 'unassigned',
   completedVerses: 0,
   totalVerses: 5,
   downloadedVerses: 0,

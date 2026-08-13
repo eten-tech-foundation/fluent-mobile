@@ -9,6 +9,7 @@ import { ChapterCloudSyncIndicator } from './ChapterSyncIndicator';
 import { ListCard } from './ListCard';
 import { PhaseStatusIcon } from './PhaseStatusIcon';
 import { WorkflowBadge } from './WorkflowBadge';
+import { ChapterOwnershipIndicator } from './ChapterOwnershipIndicator';
 
 interface ProjectChapterRowProps {
   chapter: ProjectChapter;
@@ -44,6 +45,10 @@ export function ProjectChapterRow({
               size={iconSizes.projectSync}
             />
           ) : null}
+          <ChapterOwnershipIndicator
+            ownershipState={chapter.ownershipState}
+            size={iconSizes.projectSync}
+          />
         </View>
 
         <View style={styles.metaRow}>
