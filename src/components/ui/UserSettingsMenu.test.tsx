@@ -12,7 +12,6 @@ const mockPush = jest.fn();
 const mockCloseDrawer = jest.fn();
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn(), back: jest.fn() }),
-  useNavigation: () => ({ closeDrawer: mockCloseDrawer }),
 }));
 
 const mockGetActiveUserId = jest.fn();
@@ -91,6 +90,7 @@ describe('UserSettingsMenu', () => {
       <UserSettingsMenu
         onSignOut={onSignOut}
         onUserSwitched={onUserSwitched}
+        onRequestClose={mockCloseDrawer}
       />,
     );
   }

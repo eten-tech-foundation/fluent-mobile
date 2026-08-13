@@ -5,10 +5,18 @@ import { useAuthSession } from '../../navigation/AuthSessionProvider';
 import { UserSettingsMenu } from '../../components/ui/UserSettingsMenu';
 import { theme } from '../../theme';
 
-function SettingsDrawerContent() {
+function SettingsDrawerContent({
+  navigation,
+}: {
+  navigation: { closeDrawer: () => void };
+}) {
   const { signOut, notifyUserSwitched } = useAuthSession();
   return (
-    <UserSettingsMenu onSignOut={signOut} onUserSwitched={notifyUserSwitched} />
+    <UserSettingsMenu
+      onSignOut={signOut}
+      onUserSwitched={notifyUserSwitched}
+      onRequestClose={() => navigation.closeDrawer()}
+    />
   );
 }
 
@@ -18,7 +26,7 @@ export default function AppDrawerLayout() {
 
   return (
     <Drawer
-      drawerContent={() => <SettingsDrawerContent />}
+      drawerContent={props => <SettingsDrawerContent {...props} />}
       screenOptions={{
         headerShown: false,
         drawerType: 'front',

@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
-import { useRouter, useNavigation } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { UserPlus } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,11 +31,9 @@ const log = logger.create('UserSettingsMenu');
 interface UserSettingsMenuProps {
   onSignOut?: () => void;
   onUserSwitched?: () => void;
+  /** From Expo Router Drawer `drawerContent` props — closes the settings drawer. */
+  onRequestClose: () => void;
 }
-
-type DrawerNavigation = {
-  closeDrawer: () => void;
-};
 
 /**
  * Authenticated settings / accounts panel rendered as Expo Router Drawer content.
@@ -43,15 +41,15 @@ type DrawerNavigation = {
 export function UserSettingsMenu({
   onSignOut,
   onUserSwitched,
+  onRequestClose,
 }: UserSettingsMenuProps) {
   const router = useRouter();
-  const navigation = useNavigation<DrawerNavigation>();
   const insets = useSafeAreaInsets();
   const { accounts, hasAccountLimit, loading } = useDeviceAccounts(true);
   const [switchingUserId, setSwitchingUserId] = useState<string | null>(null);
 
   const closeDrawer = () => {
-    navigation.closeDrawer();
+    onRequestClose();
   };
 
   const handleOpenSettings = () => {
