@@ -79,10 +79,13 @@ function withNpmScriptPassthrough(extra) {
   return ['--', ...extra];
 }
 
+const FROZEN_INSTALL_FLAGS = new Set(['--frozen-lockfile', '--immutable']);
+const NPM_CI_PASSTHROUGH_FLAGS = new Set(['--ignore-scripts']);
+
 /**
  * @param {string[]} yarnArgs
  * @param {Set<string>} scriptNames
- * @returns {{ kind: 'npm', args: string[] } | { kind: 'npx', args: string[] } | { kind: 'help' } | { kind: 'version' }}
+ * @returns {{ kind: 'npm', args: string[] } | { kind: 'npx', args: string[] } | { kind: 'help' } | { kind: 'version' } | { kind: 'reject', message: string }}
  */
 function translateYarnArgs(yarnArgs, scriptNames) {
   const args = yarnArgs.filter(a => a !== '');
@@ -105,11 +108,29 @@ function translateYarnArgs(yarnArgs, scriptNames) {
   const rest = args.slice(1);
 
   if (first === 'install' || first === 'i') {
-    const frozen = rest.some(
-      a => a === '--frozen-lockfile' || a === '--immutable',
-    );
+    const frozen = rest.some(a => FROZEN_INSTALL_FLAGS.has(a));
     if (frozen) {
-      return { kind: 'npm', args: ['ci'] };
+      const ciArgs = ['ci'];
+      const unsupported = [];
+      for (const flag of rest) {
+        if (FROZEN_INSTALL_FLAGS.has(flag)) {
+          continue;
+        }
+        if (NPM_CI_PASSTHROUGH_FLAGS.has(flag)) {
+          ciArgs.push(flag);
+          continue;
+        }
+        unsupported.push(flag);
+      }
+      if (unsupported.length > 0) {
+        return {
+          kind: 'reject',
+          message: `Unsupported Yarn install flags for npm ci: ${unsupported.join(
+            ' ',
+          )}`,
+        };
+      }
+      return { kind: 'npm', args: ciArgs };
     }
     return { kind: 'npm', args: ['install', ...rest] };
   }
@@ -232,6 +253,46 @@ function npmCliBin(bin, platform) {
 }
 
 /**
+ * Quote one argv token for cmd.exe so metacharacters cannot break out of the
+ * argument. Used only inside a single /s /c command string.
+ * @param {string} arg
+ * @returns {string}
+ */
+function quoteForCmd(arg) {
+  const value = String(arg);
+  if (value.length === 0) {
+    return '""';
+  }
+  if (!/[\s"&|<>^()%!@]/.test(value)) {
+    return value;
+  }
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
+/**
+ * Spawn npm/npx without `shell: true`. On Windows, `.cmd` shims must go through
+ * cmd.exe; `/d /s /c` plus windowsVerbatimArguments keeps argv boundaries.
+ * @param {typeof spawnSync} spawn
+ * @param {'npm' | 'npx'} bin
+ * @param {string[]} args
+ * @param {object} options
+ * @param {string} platform
+ */
+function spawnNpmCli(spawn, bin, args, options, platform) {
+  const file = npmCliBin(bin, platform);
+  if (platform !== 'win32') {
+    return spawn(file, args, { ...options, shell: false });
+  }
+  const comspec = options.env?.ComSpec || process.env.ComSpec || 'cmd.exe';
+  const commandLine = [file, ...args].map(quoteForCmd).join(' ');
+  return spawn(comspec, ['/d', '/s', '/c', `"${commandLine}"`], {
+    ...options,
+    shell: false,
+    windowsVerbatimArguments: true,
+  });
+}
+
+/**
  * Yarn may exec this file with node (`argv[1]` is this script) or as the
  * executable (`argv[0]` is this script).
  * @param {string[]} argv
@@ -273,12 +334,23 @@ function runForward(yarnArgs, options = {}) {
     console.error(NPM_ONLY_HINT);
     return 0;
   }
+  if (translated.kind === 'reject') {
+    console.error(`\n${NPM_ONLY_HINT}\n`);
+    console.error(`${translated.message}\n`);
+    return 1;
+  }
   if (translated.kind === 'version') {
-    const result = spawn(npmCliBin('npm', platform), ['--version'], {
-      encoding: 'utf8',
-      cwd,
-      env: childEnv,
-    });
+    const result = spawnNpmCli(
+      spawn,
+      'npm',
+      ['--version'],
+      {
+        encoding: 'utf8',
+        cwd,
+        env: childEnv,
+      },
+      platform,
+    );
     const version = String(result.stdout || '').trim();
     if (version) {
       console.log(version);
@@ -290,11 +362,17 @@ function runForward(yarnArgs, options = {}) {
   const bin = translated.kind === 'npx' ? 'npx' : 'npm';
   const args = translated.args;
   console.error(`[fluent-mobile] npm-only — running: ${bin} ${args.join(' ')}`);
-  const result = spawn(npmCliBin(bin, platform), args, {
-    stdio: 'inherit',
-    cwd,
-    env: childEnv,
-  });
+  const result = spawnNpmCli(
+    spawn,
+    bin,
+    args,
+    {
+      stdio: 'inherit',
+      cwd,
+      env: childEnv,
+    },
+    platform,
+  );
   return result.status ?? 1;
 }
 

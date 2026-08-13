@@ -74,6 +74,24 @@ describe('translateYarnArgs', () => {
     });
   });
 
+  it('keeps --ignore-scripts on frozen install and rejects other flags', () => {
+    expect(
+      translateYarnArgs(
+        ['install', '--frozen-lockfile', '--ignore-scripts'],
+        SCRIPTS,
+      ),
+    ).toEqual({
+      kind: 'npm',
+      args: ['ci', '--ignore-scripts'],
+    });
+    expect(
+      translateYarnArgs(['install', '--immutable', '--offline'], SCRIPTS),
+    ).toEqual({
+      kind: 'reject',
+      message: 'Unsupported Yarn install flags for npm ci: --offline',
+    });
+  });
+
   it('maps start/test and package scripts', () => {
     expect(translateYarnArgs(['start'], SCRIPTS)).toEqual({
       kind: 'npm',
@@ -197,9 +215,31 @@ describe('envForNpmChild / npmCliBin / runForward', () => {
       ['start'],
       expect.objectContaining({
         env: { PATH: '/usr/bin' },
+        shell: false,
       }),
     );
-    expect(spawn.mock.calls[0][2].shell).toBeUndefined();
+    errorSpy.mockRestore();
+  });
+
+  it('spawns npm.cmd via cmd.exe on Windows without a shell', () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const spawn = jest.fn(() => ({ status: 0 }));
+    const comspec = String.raw`C:\Windows\System32\cmd.exe`;
+    const status = runForward(['android', '--device'], {
+      cwd: path.join(__dirname, '..'),
+      spawn,
+      platform: 'win32',
+      env: { PATH: 'C:\\Windows', ComSpec: comspec },
+    });
+    expect(status).toBe(0);
+    expect(spawn).toHaveBeenCalledWith(
+      comspec,
+      ['/d', '/s', '/c', '"npm.cmd run android -- --device"'],
+      expect.objectContaining({
+        shell: false,
+        windowsVerbatimArguments: true,
+      }),
+    );
     errorSpy.mockRestore();
   });
 });
