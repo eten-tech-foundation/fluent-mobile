@@ -22,7 +22,6 @@
     "@react-native-vector-icons/ionicons": "^12.4.2",
     "@react-navigation/drawer": "^7.13.8",
     "@react-navigation/native": "^7.3.8",
-    "@react-navigation/routers": "^7.6.4",
     "@tanstack/react-query": "^5.101.4",
     "babel-preset-expo": "~57.0.6",
     "expo": "~57.0.14",

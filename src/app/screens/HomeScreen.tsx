@@ -36,18 +36,22 @@ import {
 } from '../../db/queries';
 import { hrefs } from '../../navigation/hrefs';
 import { parseOptionalBoolean } from '../../navigation/routeParams';
-import { DrawerActions } from '../../navigation/drawerActions';
 
 interface HomeScreenProps {
   postLoginSyncActive?: boolean;
 }
+
+/** Drawer helpers on the `(app)` layout — not available on the nested stack nav. */
+type AppDrawerNavigation = {
+  openDrawer: () => void;
+};
 
 export default function HomeScreen({
   postLoginSyncActive = false,
 }: HomeScreenProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const navigation = useNavigation();
+  const navigation = useNavigation<AppDrawerNavigation>('/(app)');
   const params = useLocalSearchParams<{ newUserLoading?: string }>();
   const [activeTab, setActiveTab] = useState<HomeTab>('myWork');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -261,7 +265,7 @@ export default function HomeScreen({
   ]);
 
   const handleSettingsPress = () => {
-    navigation.dispatch(DrawerActions.openDrawer());
+    navigation.openDrawer();
   };
 
   // CHANGED: was `triggerSync()`. Tapping the icon now navigates to the

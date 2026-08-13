@@ -9,17 +9,10 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 
 const mockPush = jest.fn();
-const mockDispatch = jest.fn();
+const mockCloseDrawer = jest.fn();
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn(), back: jest.fn() }),
-  useNavigation: () => ({ dispatch: mockDispatch }),
-}));
-
-jest.mock('../../navigation/drawerActions', () => ({
-  DrawerActions: {
-    closeDrawer: () => ({ type: 'CLOSE_DRAWER' }),
-    openDrawer: () => ({ type: 'OPEN_DRAWER' }),
-  },
+  useNavigation: () => ({ closeDrawer: mockCloseDrawer }),
 }));
 
 const mockGetActiveUserId = jest.fn();
@@ -159,7 +152,7 @@ describe('UserSettingsMenu', () => {
     const { getByTestId } = renderMenu();
     fireEvent.press(getByTestId('settings-menu-add-user'));
 
-    expect(mockDispatch).toHaveBeenCalledWith({ type: 'CLOSE_DRAWER' });
+    expect(mockCloseDrawer).toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith(hrefs.addUser);
   });
 
@@ -182,7 +175,7 @@ describe('UserSettingsMenu', () => {
     fireEvent.press(getByText('active@example.com'));
 
     expect(mockSwitchToDeviceAccount).not.toHaveBeenCalled();
-    expect(mockDispatch).toHaveBeenCalledWith({ type: 'CLOSE_DRAWER' });
+    expect(mockCloseDrawer).toHaveBeenCalled();
   });
 
   it('switches successfully when the target user has a valid session', async () => {
@@ -193,7 +186,7 @@ describe('UserSettingsMenu', () => {
 
     await waitFor(() => {
       expect(mockSwitchToDeviceAccount).toHaveBeenCalledWith('other-2');
-      expect(mockDispatch).toHaveBeenCalledWith({ type: 'CLOSE_DRAWER' });
+      expect(mockCloseDrawer).toHaveBeenCalled();
       expect(onUserSwitched).toHaveBeenCalled();
     });
   });

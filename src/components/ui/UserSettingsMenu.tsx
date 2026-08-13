@@ -15,7 +15,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../theme';
 import { appStyles } from '../../app/appStyles';
 import { hrefs } from '../../navigation/hrefs';
-import { DrawerActions } from '../../navigation/drawerActions';
 import { getActiveUserId } from '../../services/storage';
 import {
   signOutCurrentDeviceAccount,
@@ -34,6 +33,10 @@ interface UserSettingsMenuProps {
   onUserSwitched?: () => void;
 }
 
+type DrawerNavigation = {
+  closeDrawer: () => void;
+};
+
 /**
  * Authenticated settings / accounts panel rendered as Expo Router Drawer content.
  */
@@ -42,13 +45,13 @@ export function UserSettingsMenu({
   onUserSwitched,
 }: UserSettingsMenuProps) {
   const router = useRouter();
-  const navigation = useNavigation();
+  const navigation = useNavigation<DrawerNavigation>();
   const insets = useSafeAreaInsets();
   const { accounts, hasAccountLimit, loading } = useDeviceAccounts(true);
   const [switchingUserId, setSwitchingUserId] = useState<string | null>(null);
 
   const closeDrawer = () => {
-    navigation.dispatch(DrawerActions.closeDrawer());
+    navigation.closeDrawer();
   };
 
   const handleOpenSettings = () => {
