@@ -10,15 +10,15 @@ const ALL_SECTIONS: ResourceSectionId[] = [
 ];
 
 /**
- * Deterministic mock resources for a drafting unit.
+ * Deterministic mock shell for Resources tab stubs (#188 / #190 / #191).
  *
  * Pattern (by verse number):
- * - `% 3 === 0` → empty (tab-wide empty state)
- * - `% 3 === 1` → Translation Notes only
- * - `% 3 === 2` → all three section stubs
+ * - `% 3 === 0` → no stub sections (TN may still appear from live Aquifer #189)
+ * - `% 3 === 1` → Translation Notes slot only (live Aquifer fills body)
+ * - `% 3 === 2` → all three section stubs (TQ / Images until #190 / #191)
  *
- * Sync / no loading gate — replace with local queries when #189+ / #192 land.
- * Do not call FluentAPI from this module (API has no resource content endpoints).
+ * Translation Notes visibility is driven by Aquifer load state in ResourcesTab,
+ * not by this mock alone.
  */
 export function getMockResourcesForUnit(
   _chapterId: number,
@@ -37,14 +37,12 @@ export function getMockResourcesForUnit(
   if (pattern === 1) {
     return {
       referenceLabel: `${chapterName}:${verseNumber}`,
-      passageTitle: 'Sample notes for this verse',
       sections: ['translationNotes'],
     };
   }
 
   return {
     referenceLabel: `${chapterName}:${verseNumber}`,
-    passageTitle: 'Sample passage resources',
     sections: [...ALL_SECTIONS],
   };
 }
