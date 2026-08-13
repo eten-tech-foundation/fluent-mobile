@@ -10,6 +10,8 @@ export const PROJECT_CHAPTERS_EMPTY_MESSAGE =
 export const RESOURCES_EMPTY_MESSAGE = 'No resources available for this verse';
 
 export const IMAGES_MAPS_LOAD_ERROR = 'Unable to load Images & Maps.';
+export const IMAGES_MAPS_EMPTY_MESSAGE =
+  'No images or maps available for this passage.';
 
 export const LOGOUT_UNSYNCED_TITLE = 'Unsynced work on device';
 export const LOGOUT_UNSYNCED_MESSAGE =

@@ -77,7 +77,7 @@ describe('loadImagesMapsForUnit', () => {
     getResourceDetails.mockReset();
   });
 
-  it('returns [] when Aquifer has no images for the unit', async () => {
+  it('returns [] when Aquifer has no images for the verse or chapter', async () => {
     searchResources.mockResolvedValue({
       totalItemCount: 0,
       returnedItemCount: 0,
@@ -92,6 +92,75 @@ describe('loadImagesMapsForUnit', () => {
         verseNumber: 1,
       }),
     ).resolves.toEqual([]);
+    expect(searchResources).toHaveBeenCalledTimes(2);
+    expect(searchResources).toHaveBeenNthCalledWith(1, {
+      bookCode: 'MRK',
+      startChapter: 1,
+      endChapter: 1,
+      startVerse: 1,
+      endVerse: 1,
+      languageCode: 'eng',
+      resourceType: 'Images',
+      limit: 100,
+    });
+    expect(searchResources).toHaveBeenNthCalledWith(2, {
+      bookCode: 'MRK',
+      startChapter: 1,
+      endChapter: 1,
+      startVerse: 1,
+      endVerse: 200,
+      languageCode: 'eng',
+      resourceType: 'Images',
+      limit: 100,
+    });
+  });
+
+  it('falls back to chapter-wide Images when the verse has none', async () => {
+    searchResources
+      .mockResolvedValueOnce({
+        totalItemCount: 0,
+        returnedItemCount: 0,
+        offset: 0,
+        items: [],
+      })
+      .mockResolvedValueOnce({
+        totalItemCount: 1,
+        returnedItemCount: 1,
+        offset: 0,
+        items: [
+          {
+            id: 279999,
+            name: 'Locations in the Book of Mark',
+            localizedName: 'Locations in the Book of Mark',
+            mediaType: 'Image',
+            languageCode: 'eng',
+            grouping: {
+              type: 'Images',
+              name: 'Maps (FIA)',
+              collectionTitle: 'Maps (FIA)',
+              collectionCode: 'FIAMaps',
+            },
+          },
+        ],
+      });
+    getResourceDetails.mockResolvedValue(sampleDetails);
+
+    await expect(
+      loadImagesMapsForUnit({
+        bookCode: 'GEN',
+        chapterNumber: 5,
+        verseNumber: 5,
+      }),
+    ).resolves.toEqual([
+      {
+        id: 'img-aquifer-279999',
+        title: 'Locations in the Book of Mark',
+        caption: 'Maps (FIA)',
+        attribution: 'Biblica Inc.',
+        uri: 'https://cdn.aquifer.bible/example.png',
+      },
+    ]);
+    expect(searchResources).toHaveBeenCalledTimes(2);
   });
 
   it('searches Aquifer Images and maps resource details', async () => {
@@ -133,6 +202,7 @@ describe('loadImagesMapsForUnit', () => {
       },
     ]);
 
+    expect(searchResources).toHaveBeenCalledTimes(1);
     expect(searchResources).toHaveBeenCalledWith({
       bookCode: 'MRK',
       startChapter: 1,

@@ -1,8 +1,13 @@
-import type { AquiferResourceDetails } from '../types/api/aquifer';
+import type {
+  AquiferResourceDetails,
+  AquiferResourceSearchResponse,
+} from '../types/api/aquifer';
 import type { ImagesMapsItem } from '../types/resources/imagesMaps';
 import { AquiferAPI } from './aquiferApi';
 
 const DEFAULT_IMAGES_LANGUAGE_CODE = 'eng';
+/** Aquifer end-verse sentinel used for chapter-wide image search. */
+const CHAPTER_END_VERSE = 200;
 
 export type LoadImagesMapsParams = {
   bookCode: string;
@@ -85,8 +90,29 @@ export function parseAquiferImagesMapsItem(
   };
 }
 
+async function searchImages(params: {
+  bookCode: string;
+  chapterNumber: number;
+  startVerse: number;
+  endVerse: number;
+  languageCode: string;
+}): Promise<AquiferResourceSearchResponse> {
+  return AquiferAPI.searchResources({
+    bookCode: params.bookCode,
+    startChapter: params.chapterNumber,
+    endChapter: params.chapterNumber,
+    startVerse: params.startVerse,
+    endVerse: params.endVerse,
+    languageCode: params.languageCode,
+    resourceType: 'Images',
+    limit: 100,
+  });
+}
+
 /**
  * Load Images & Maps for a drafting unit from Aquifer.
+ * Prefer verse-scoped hits; fall back to chapter-wide search because Aquifer
+ * often associates Images to chapter/passage ranges (not every verse).
  * Interim until fluent-api#273 proxies these payloads.
  */
 export async function loadImagesMapsForUnit(
@@ -104,16 +130,23 @@ export async function loadImagesMapsForUnit(
   const languageCode =
     params.languageCode?.trim() || DEFAULT_IMAGES_LANGUAGE_CODE;
 
-  const search = await AquiferAPI.searchResources({
+  let search = await searchImages({
     bookCode,
-    startChapter: params.chapterNumber,
-    endChapter: params.chapterNumber,
+    chapterNumber: params.chapterNumber,
     startVerse: params.verseNumber,
     endVerse: params.verseNumber,
     languageCode,
-    resourceType: 'Images',
-    limit: 100,
   });
+
+  if (!search.items.length) {
+    search = await searchImages({
+      bookCode,
+      chapterNumber: params.chapterNumber,
+      startVerse: 1,
+      endVerse: CHAPTER_END_VERSE,
+      languageCode,
+    });
+  }
 
   if (!search.items.length) {
     return [];

@@ -7,7 +7,10 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { ImagesMapsSection } from './ImagesMapsSection';
-import { IMAGES_MAPS_LOAD_ERROR } from '../../../constants/messages';
+import {
+  IMAGES_MAPS_EMPTY_MESSAGE,
+  IMAGES_MAPS_LOAD_ERROR,
+} from '../../../constants/messages';
 import {
   loadImagesMapsForUnit,
   setImagesMapsLoadFailureForTests,
@@ -80,7 +83,7 @@ describe('ImagesMapsSection', () => {
     mockLoad.mockReset();
   });
 
-  it('hides content when no images are available', async () => {
+  it('shows an empty message when no images are available', async () => {
     render(
       <ImagesMapsSection bookCode="MRK" chapterNumber={1} verseNumber={1} />,
     );
@@ -88,6 +91,8 @@ describe('ImagesMapsSection', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('images-maps-loading')).toBeNull();
     });
+    expect(screen.getByTestId('images-maps-empty')).toBeTruthy();
+    expect(screen.getByText(IMAGES_MAPS_EMPTY_MESSAGE)).toBeTruthy();
     expect(screen.queryByTestId('images-maps-list')).toBeNull();
     expect(screen.queryByTestId('images-maps-error')).toBeNull();
   });

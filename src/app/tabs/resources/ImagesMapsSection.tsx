@@ -9,7 +9,10 @@ import {
 import { ImageThumbnail } from './ImageThumbnail';
 import { FullscreenImageViewer } from './FullscreenImageViewer';
 import { useImagesMapsForUnit } from '../../../hooks/useImagesMapsForUnit';
-import { IMAGES_MAPS_LOAD_ERROR } from '../../../constants/messages';
+import {
+  IMAGES_MAPS_EMPTY_MESSAGE,
+  IMAGES_MAPS_LOAD_ERROR,
+} from '../../../constants/messages';
 import { ImagesMapsItem } from '../../../types/resources/imagesMaps';
 import { theme } from '../../../theme';
 
@@ -62,7 +65,11 @@ export function ImagesMapsSection({
   }
 
   if (state.items.length === 0) {
-    return null;
+    return (
+      <View style={styles.centered} testID="images-maps-empty">
+        <Text style={styles.emptyMessage}>{IMAGES_MAPS_EMPTY_MESSAGE}</Text>
+      </View>
+    );
   }
 
   return (
@@ -97,6 +104,11 @@ const styles = StyleSheet.create({
   errorMessage: {
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.foreground,
+    textAlign: 'center',
+  },
+  emptyMessage: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.mutedForeground,
     textAlign: 'center',
   },
   retryLink: {
