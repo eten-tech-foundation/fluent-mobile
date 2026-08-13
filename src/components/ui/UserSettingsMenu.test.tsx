@@ -2,37 +2,24 @@ import React from 'react';
 import { Alert } from 'react-native';
 import { UserSettingsMenu } from './UserSettingsMenu';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
-
-jest.mock('react-native-gesture-handler', () => {
-  const actualReact = jest.requireActual('react');
-  const chainable = () => {
-    const gesture: Record<string, unknown> = {};
-    ['activeOffsetX', 'failOffsetY', 'onUpdate', 'onEnd'].forEach(method => {
-      gesture[method] = () => gesture;
-    });
-    return gesture;
-  };
-  return {
-    GestureDetector: ({ children }: { children: React.ReactNode }) =>
-      actualReact.createElement(actualReact.Fragment, null, children),
-    Gesture: { Pan: chainable },
-    GestureHandlerRootView: ({
-      children,
-      ...props
-    }: {
-      children: React.ReactNode;
-    }) =>
-      actualReact.createElement(require('react-native').View, props, children),
-  };
-});
+import { hrefs } from '../../navigation/hrefs';
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
-const mockNavigate = jest.fn();
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({ navigate: mockNavigate }),
+const mockPush = jest.fn();
+const mockDispatch = jest.fn();
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ push: mockPush, replace: jest.fn(), back: jest.fn() }),
+  useNavigation: () => ({ dispatch: mockDispatch }),
+}));
+
+jest.mock('../../navigation/drawerActions', () => ({
+  DrawerActions: {
+    closeDrawer: () => ({ type: 'CLOSE_DRAWER' }),
+    openDrawer: () => ({ type: 'OPEN_DRAWER' }),
+  },
 }));
 
 const mockGetActiveUserId = jest.fn();
@@ -95,7 +82,6 @@ function setDeviceAccountsResult(
 }
 
 describe('UserSettingsMenu', () => {
-  const onClose = jest.fn();
   const onUserSwitched = jest.fn();
   const onSignOut = jest.fn();
 
@@ -110,8 +96,6 @@ describe('UserSettingsMenu', () => {
   function renderMenu() {
     return render(
       <UserSettingsMenu
-        visible
-        onClose={onClose}
         onSignOut={onSignOut}
         onUserSwitched={onUserSwitched}
       />,
@@ -171,12 +155,25 @@ describe('UserSettingsMenu', () => {
     expect(queryByTestId('settings-menu-add-user')).toBeNull();
   });
 
-  it('navigates to AddUser when Add User is pressed', () => {
+  it('navigates to Add User via href when Add User is pressed', () => {
     const { getByTestId } = renderMenu();
     fireEvent.press(getByTestId('settings-menu-add-user'));
 
-    expect(onClose).toHaveBeenCalled();
-    expect(mockNavigate).toHaveBeenCalledWith('AddUser');
+    expect(mockDispatch).toHaveBeenCalledWith({ type: 'CLOSE_DRAWER' });
+    expect(mockPush).toHaveBeenCalledWith(hrefs.addUser);
+  });
+
+  it('navigates to settings / privacy / terms via app hrefs', () => {
+    const { getByText, getByTestId } = renderMenu();
+
+    fireEvent.press(getByText('More Settings'));
+    expect(mockPush).toHaveBeenCalledWith(hrefs.settings);
+
+    fireEvent.press(getByTestId('settings-menu-privacy-policy'));
+    expect(mockPush).toHaveBeenCalledWith(hrefs.privacyPolicyApp);
+
+    fireEvent.press(getByTestId('settings-menu-terms-of-use'));
+    expect(mockPush).toHaveBeenCalledWith(hrefs.termsOfUseApp);
   });
 
   it('does nothing when tapping the already-active user', async () => {
@@ -185,7 +182,7 @@ describe('UserSettingsMenu', () => {
     fireEvent.press(getByText('active@example.com'));
 
     expect(mockSwitchToDeviceAccount).not.toHaveBeenCalled();
-    expect(onClose).toHaveBeenCalled();
+    expect(mockDispatch).toHaveBeenCalledWith({ type: 'CLOSE_DRAWER' });
   });
 
   it('switches successfully when the target user has a valid session', async () => {
@@ -196,7 +193,7 @@ describe('UserSettingsMenu', () => {
 
     await waitFor(() => {
       expect(mockSwitchToDeviceAccount).toHaveBeenCalledWith('other-2');
-      expect(onClose).toHaveBeenCalled();
+      expect(mockDispatch).toHaveBeenCalledWith({ type: 'CLOSE_DRAWER' });
       expect(onUserSwitched).toHaveBeenCalled();
     });
   });
@@ -243,40 +240,5 @@ describe('UserSettingsMenu', () => {
     await waitFor(() => {
       expect(onSignOut).toHaveBeenCalled();
     });
-  });
-
-  it('stays mounted through a rapid close-then-reopen', () => {
-    jest.useFakeTimers();
-    const { rerender, queryByText } = render(
-      <UserSettingsMenu
-        visible
-        onClose={onClose}
-        onSignOut={onSignOut}
-        onUserSwitched={onUserSwitched}
-      />,
-    );
-
-    rerender(
-      <UserSettingsMenu
-        visible={false}
-        onClose={onClose}
-        onSignOut={onSignOut}
-        onUserSwitched={onUserSwitched}
-      />,
-    );
-    rerender(
-      <UserSettingsMenu
-        visible
-        onClose={onClose}
-        onSignOut={onSignOut}
-        onUserSwitched={onUserSwitched}
-      />,
-    );
-
-    jest.advanceTimersByTime(500);
-
-    expect(queryByText('Accounts')).toBeTruthy();
-
-    jest.useRealTimers();
   });
 });

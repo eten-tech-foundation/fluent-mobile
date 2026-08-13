@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   Modal,
@@ -15,14 +14,12 @@ import { authToken } from '../../services/authToken';
 import { Check, UserPlus, X } from 'lucide-react-native';
 import { getCredentials } from '../../services/keychain';
 import { switchActiveUser } from '../../services/storage';
-import { RootStackParamList } from '../../types/navigation/types';
+import { hrefs } from '../../navigation/hrefs';
 import { useDeviceAccounts } from '../../hooks/useDeviceAccounts';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { logger } from '../../utils/logger';
 
 const log = logger.create('AccountSwitcherPanel');
-
-type Nav = StackNavigationProp<RootStackParamList>;
 
 interface AccountSwitcherPanelProps {
   visible: boolean;
@@ -33,7 +30,7 @@ export function AccountSwitcherPanel({
   visible,
   onClose,
 }: AccountSwitcherPanelProps) {
-  const navigation = useNavigation<Nav>();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { accounts, hasAccountLimit, loading } = useDeviceAccounts(visible);
   const [switchingUserId, setSwitchingUserId] = useState<string | null>(null);
@@ -48,8 +45,8 @@ export function AccountSwitcherPanel({
 
   const handleOpenAddAccount = useCallback(() => {
     onClose();
-    navigation.navigate('AddUser');
-  }, [navigation, onClose]);
+    router.push(hrefs.addUser);
+  }, [router, onClose]);
 
   const handleSwitchAccount = useCallback(
     async (userId: string) => {
@@ -67,10 +64,7 @@ export function AccountSwitcherPanel({
         switchActiveUser(userId);
 
         onClose();
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Home', params: { newUserLoading: false } }],
-        });
+        router.replace(hrefs.home({ newUserLoading: false }));
       } catch (error) {
         log.error('Account switch failed', { userId, error });
         setSwitchError(
@@ -80,7 +74,7 @@ export function AccountSwitcherPanel({
         setSwitchingUserId(null);
       }
     },
-    [switchingUserId, onClose, navigation],
+    [switchingUserId, onClose, router],
   );
 
   return (

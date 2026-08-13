@@ -9,10 +9,12 @@ Offline-first **Expo SDK 57** (React Native **0.86**, React **19.2.3**) companio
 
 ## Key paths
 
-- Entry: `App.tsx` → `initializeDatabase()` → `restoreSession()` → `AppNavigator` (sync post-login / via hooks)
+- Entry: `index.js` → Expo Router `src/routes/` + `AuthSessionProvider` (DB init, session restore; sync post-login / via hooks)
+- Routes: `src/routes/` (auth + app groups; settings Drawer)
 - App config: `app.config.ts` (EAS project ID, plugins, package id)
 - Stack screens: `src/app/screens/` (Home, Settings, Sync, Drafting, PrepareForOffline)
 - Nested UI: `src/app/tabs/` (ProjectsTab, MyWorkTab, BibleTab, RecordTab, auth/legal)
+- Navigation helpers: `src/navigation/` (auth session, hrefs, auth gate)
 - Theme: `src/theme/` (canonical tokens for new UI)
 - API: `src/services/api.ts` (`FluentAPI`)
 - Sync: `src/services/sync.ts`

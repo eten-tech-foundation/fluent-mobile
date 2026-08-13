@@ -3,7 +3,7 @@ description: TypeScript and React Native style conventions
 alwaysApply: false
 globs:
   - "src/**/*.{ts,tsx}"
-  - "App.tsx"
+  - "index.js"
 ---
 
 # Code style

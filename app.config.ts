@@ -53,6 +53,13 @@ const config: ExpoConfig = {
   },
   plugins: [
     [
+      'expo-router',
+      {
+        // Keep existing `src/app/` screens/tabs; routes live in `src/routes/`.
+        root: './src/routes',
+      },
+    ],
+    [
       'expo-build-properties',
       {
         android: {
@@ -87,6 +94,9 @@ const config: ExpoConfig = {
       },
     ],
   ],
+  experiments: {
+    typedRoutes: true,
+  },
 };
 
 export default config;

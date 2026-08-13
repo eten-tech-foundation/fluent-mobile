@@ -6,8 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
@@ -16,8 +15,8 @@ import { usePrepareOfflineSelection } from '../../hooks/usePrepareOfflineSelecti
 import { usePrepareOfflineResources } from '../../hooks/usePrepareOfflineResources';
 import { usePrepareOfflineDownload } from '../../hooks/usePrepareOfflineDownload';
 import { ProjectSummary } from '../../types/db/types';
-import { RootStackParamList } from '../../types/navigation/types';
 import { parseUserId } from '../../utils/parseUserId';
+import { parseOptionalNumber } from '../../navigation/routeParams';
 import { theme } from '../../theme';
 import { ChapterSelectionAccordion } from '../prepare-offline/ChapterSelectionAccordion';
 import { PrepareOfflineDownloadFooter } from '../prepare-offline/PrepareOfflineDownloadFooter';
@@ -25,15 +24,12 @@ import { PrepareOfflineResourcesSection } from '../prepare-offline/PrepareOfflin
 import { ManageDeviceStorageSection } from '../prepare-offline/ManageDeviceStorageSection';
 import { ProjectPickerStep } from '../prepare-offline/ProjectPickerStep';
 
-type Nav = StackNavigationProp<RootStackParamList, 'PrepareForOffline'>;
-type Route = RouteProp<RootStackParamList, 'PrepareForOffline'>;
-
 const INSTRUCTION = 'Download project resources to work without a connection.';
 
 export default function PrepareForOfflineScreen() {
-  const navigation = useNavigation<Nav>();
-  const route = useRoute<Route>();
-  const routeProjectId = route.params?.projectId;
+  const router = useRouter();
+  const rawParams = useLocalSearchParams<{ projectId?: string }>();
+  const routeProjectId = parseOptionalNumber(rawParams.projectId);
 
   const [pickedProjectId, setPickedProjectId] = useState<number | null>(
     routeProjectId ?? null,
@@ -98,7 +94,7 @@ export default function PrepareForOfflineScreen() {
     canDownload,
   });
 
-  const goBack = useCallback(() => navigation.goBack(), [navigation]);
+  const goBack = useCallback(() => router.back(), [router]);
 
   const handleSelectProject = useCallback((project: ProjectSummary) => {
     setPickedProjectId(project.id);

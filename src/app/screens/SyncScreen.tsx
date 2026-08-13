@@ -1,7 +1,7 @@
 import { theme } from '../../theme';
 import { useCallback, useState } from 'react';
 import { useSync } from '../../hooks/useSync';
-import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { usePreferences } from '../../hooks/usePreferences';
 import { useConnectivity } from '../../hooks/useConnectivity';
 import { usePendingUploads } from '../../hooks/usePendingUploads';
@@ -16,15 +16,12 @@ import { SyncActionControls } from '../../components/ui/SyncActionControls';
 import { DownloadProgressSection } from '../../components/ui/DownloadProgressSection';
 import { useDownloadQueue } from '../../hooks/useDownloadQueue';
 import { formatSyncStatusLabel } from '../../utils/syncStatusState';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../../types/navigation/types';
+import { hrefs } from '../../navigation/hrefs';
 import { SyncPageStatus } from '../../types/sync/types';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-type SyncScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Sync'>;
-
 export default function SyncScreen() {
-  const navigation = useNavigation<SyncScreenNavigationProp>();
+  const router = useRouter();
   const { snapshot, hasDownloads } = useDownloadQueue();
 
   const [refreshKey, setRefreshKey] = useState(0);
@@ -103,7 +100,7 @@ export default function SyncScreen() {
 
   return (
     <ScreenContainer edges={['bottom']}>
-      <StackScreenHeader title="Sync" onBack={() => navigation.goBack()} />
+      <StackScreenHeader title="Sync" onBack={() => router.back()} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <View style={styles.statusSection}>
           <SyncStatusIndicator
@@ -165,11 +162,13 @@ export default function SyncScreen() {
           <DownloadProgressSection
             snapshot={snapshot}
             onManageDownloads={() => {
-              const params =
-                snapshot.primaryProjectId !== undefined
-                  ? { projectId: snapshot.primaryProjectId }
-                  : undefined;
-              navigation.navigate('PrepareForOffline', params);
+              router.push(
+                hrefs.prepareForOffline(
+                  snapshot.primaryProjectId !== undefined
+                    ? { projectId: snapshot.primaryProjectId }
+                    : undefined,
+                ),
+              );
             }}
           />
         ) : null}

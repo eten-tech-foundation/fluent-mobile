@@ -12,17 +12,19 @@ import { QueryClientTestWrapper } from '../../test/queryClientWrapper';
 const renderForgotPasswordScreen = () =>
   render(<ForgotPasswordScreen />, { wrapper: QueryClientTestWrapper });
 
-const mockNavigate = jest.fn();
-const mockGoBack = jest.fn();
+const mockReplace = jest.fn();
+const mockBack = jest.fn();
 
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({
-    navigate: mockNavigate,
-    goBack: mockGoBack,
+jest.mock('expo-router', () => ({
+  useRouter: () => ({
+    replace: mockReplace,
+    back: mockBack,
+    canGoBack: () => false,
   }),
-  useRoute: () => ({
-    params: { initialEmail: 't@fluent.local' },
+  useLocalSearchParams: () => ({
+    initialEmail: 't@fluent.local',
   }),
+  useSegments: () => ['(auth)', 'forgot-password'],
 }));
 
 jest.mock('../../services/api', () => ({

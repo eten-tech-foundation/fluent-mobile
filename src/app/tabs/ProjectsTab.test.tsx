@@ -3,9 +3,9 @@ import { render, screen } from '@testing-library/react-native';
 import { ProjectsTab } from './ProjectsTab';
 import { ProjectSummary } from '../../types/db/types';
 
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({
-    navigate: jest.fn(),
+jest.mock('expo-router', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
   }),
 }));
 

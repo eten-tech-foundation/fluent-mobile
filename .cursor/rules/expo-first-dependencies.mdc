@@ -10,6 +10,6 @@ Canonical policy: [docs/guides/expo-first-dependencies.md](../../docs/guides/exp
 ## Quick rules
 
 - Prefer **Expo-maintained** modules (`expo-*`) when Expo covers the need; install with **`npx expo install`**.
-- **Navigation:** Expo recommends **Expo Router** for Expo apps. This repo uses React Navigation today — **do not** migrate without a ticket; **do not** add a second navigation library; prefer Expo Router only when a ticket asks for new nav architecture.
+- **Navigation:** This repo uses **Expo Router** (`src/routes/`). Do **not** add a second navigation library; use `hrefs` / `useRouter` / Expo Router layouts. Prefer Expo Router exports over standalone `@react-navigation/*` when both exist.
 - After native/Expo bumps: `npm run doctor` (and `npx expo install --fix` if needed).
 - Query **Expo MCP** before inventing APIs ([expo-mcp.mdc](./expo-mcp.mdc)). Android-only forever ([android-only.mdc](./android-only.mdc)).

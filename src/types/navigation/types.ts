@@ -1,3 +1,8 @@
+/**
+ * Legacy React Navigation stack param names (pre–Expo Router).
+ * Prefer `hrefs` from `src/navigation/hrefs.ts` and Expo Router typed routes.
+ * Kept as documentation of serializable param shapes for route screens.
+ */
 export type RootStackParamList = {
   Login: undefined;
   AddUser: undefined;

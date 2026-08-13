@@ -1,16 +1,13 @@
 import React from 'react';
 import { FlatList, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { useRouter } from 'expo-router';
 import { MY_WORK_EMPTY_MESSAGE } from '../../constants/messages';
 import { useMyWorkChapters } from '../../hooks/useMyWorkChapters';
-import { RootStackParamList } from '../../types/navigation/types';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { MyWorkRow } from '../../components/ui/MyWorkRow';
+import { hrefs } from '../../navigation/hrefs';
 import { theme } from '../../theme';
-
-type Nav = StackNavigationProp<RootStackParamList, 'Home'>;
 
 interface MyWorkTabProps {
   refreshKey?: number;
@@ -21,7 +18,7 @@ export function MyWorkTab({
   refreshKey = 0,
   isSyncing = false,
 }: MyWorkTabProps) {
-  const navigation = useNavigation<Nav>();
+  const router = useRouter();
   const { chapters, loading, refreshing, refresh } =
     useMyWorkChapters(refreshKey);
 
@@ -45,12 +42,14 @@ export function MyWorkTab({
           chapter={item}
           isSyncing={isSyncing}
           onPress={() =>
-            navigation.navigate('VerseDetail', {
-              chapterId: item.id,
-              chapterName: item.displayLabel,
-              projectName: item.projectName,
-              language: item.targetLanguageName,
-            })
+            router.push(
+              hrefs.verseDetail({
+                chapterId: item.id,
+                chapterName: item.displayLabel,
+                projectName: item.projectName,
+                language: item.targetLanguageName,
+              }),
+            )
           }
         />
       )}

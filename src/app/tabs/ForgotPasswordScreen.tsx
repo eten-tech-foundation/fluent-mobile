@@ -11,19 +11,20 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { useLocalSearchParams, useRouter, useSegments } from 'expo-router';
 import { useForgotPassword } from '../../hooks/useForgotPassword';
-import { RootStackParamList } from '../../types/navigation/types';
+import { hrefs } from '../../navigation/hrefs';
+import { parseOptionalString } from '../../navigation/routeParams';
 import { theme } from '../../theme';
 import { AuthFormError } from '../../components/ui/AuthFormError';
 import { authFormStyles as styles } from './authFormStyles';
 
-type ForgotPasswordRoute = RouteProp<RootStackParamList, 'ForgotPassword'>;
-
 export default function ForgotPasswordScreen() {
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
-  const route = useRoute<ForgotPasswordRoute>();
+  const router = useRouter();
+  const segments = useSegments();
+  const inAppGroup = segments.some(segment => segment === '(app)');
+  const rawParams = useLocalSearchParams<{ initialEmail?: string }>();
+  const initialEmail = parseOptionalString(rawParams.initialEmail) ?? '';
   const {
     view,
     email,
@@ -33,9 +34,22 @@ export default function ForgotPasswordScreen() {
     isSending,
     sendResetEmail,
     resetToForm,
-  } = useForgotPassword(route.params?.initialEmail ?? '');
+  } = useForgotPassword(initialEmail);
 
   const hasError = Boolean(fieldError || globalError);
+
+  const handleBackToLogin = () => {
+    if (inAppGroup) {
+      // Authenticated Add User flow — stay in the app group.
+      if (router.canGoBack()) {
+        router.back();
+        return;
+      }
+      router.replace(hrefs.addUser);
+      return;
+    }
+    router.replace(hrefs.login);
+  };
 
   return (
     <KeyboardAvoidingView
@@ -119,7 +133,7 @@ export default function ForgotPasswordScreen() {
 
               <TouchableOpacity
                 style={styles.subSecondaryLink}
-                onPress={() => navigation.goBack()}
+                onPress={handleBackToLogin}
                 accessibilityRole="button"
                 accessibilityLabel="Back to login"
                 testID="forgot-password-back-link"
@@ -158,7 +172,7 @@ export default function ForgotPasswordScreen() {
 
               <TouchableOpacity
                 style={styles.subSecondaryLink}
-                onPress={() => navigation.navigate('Login')}
+                onPress={handleBackToLogin}
                 accessibilityRole="button"
                 accessibilityLabel="Back to login"
                 testID="forgot-password-sent-back-link"

@@ -5,15 +5,13 @@ import { RecordTab } from '../tabs/RecordTab';
 import { ResourcesTab } from '../tabs/ResourcesTab';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { onSyncComplete } from '../../services/syncEvents';
-import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useCallback, useEffect, useState } from 'react';
-import { RootStackParamList } from '../../types/navigation/types';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
 import { DraftingHeader } from '../../components/layout/DraftingHeader';
 import { ChapterAssignmentData, VerseData } from '../../types/db/types';
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useActiveAccountSummary } from '../../hooks/useActiveAccountSummary';
 import { AccountSwitcherPanel } from '../../components/ui/AccountSwitcherPanel';
 import {
@@ -30,15 +28,23 @@ import {
   getChapterAssignmentById,
   getRecordedVerseNumbers,
 } from '../../db/queries';
+import { hrefs } from '../../navigation/hrefs';
+import {
+  parseRequiredNumber,
+  parseRequiredString,
+} from '../../navigation/routeParams';
 
 const log = logger.create('DraftingScreen');
 
-type Nav = StackNavigationProp<RootStackParamList, 'VerseDetail'>;
-type Route = RouteProp<RootStackParamList, 'VerseDetail'>;
-
 export default function DraftingScreen() {
-  const navigation = useNavigation<Nav>();
-  const { chapterId, chapterName } = useRoute<Route>().params;
+  const router = useRouter();
+  const navigation = useNavigation();
+  const rawParams = useLocalSearchParams<{
+    chapterId?: string;
+    chapterName?: string;
+  }>();
+  const chapterId = parseRequiredNumber(rawParams.chapterId, 'chapterId');
+  const chapterName = parseRequiredString(rawParams.chapterName, 'chapterName');
 
   const [activeTab, setActiveTabState] = useState<DraftingTab>(
     () => getLastActiveTab(chapterId) ?? 'bible',
@@ -99,8 +105,8 @@ export default function DraftingScreen() {
   }, [alertRecordingInProgress, navigation, recordCaptureActive]);
 
   const goBack = useCallback(() => {
-    navigation.goBack();
-  }, [navigation]);
+    router.back();
+  }, [router]);
 
   const handleAccountPress = useCallback(() => {
     if (recordCaptureActive) {
@@ -118,8 +124,8 @@ export default function DraftingScreen() {
       alertRecordingInProgress();
       return;
     }
-    navigation.navigate('Sync');
-  }, [alertRecordingInProgress, navigation, recordCaptureActive]);
+    router.push(hrefs.sync);
+  }, [alertRecordingInProgress, router, recordCaptureActive]);
 
   const renderHeader = () => (
     <DraftingHeader

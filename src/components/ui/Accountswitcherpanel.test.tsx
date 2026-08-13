@@ -2,13 +2,13 @@ import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { AccountSwitcherPanel } from './AccountSwitcherPanel';
 
-const mockNavigate = jest.fn();
-const mockReset = jest.fn();
+const mockPush = jest.fn();
+const mockReplace = jest.fn();
 
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({
-    navigate: mockNavigate,
-    reset: mockReset,
+jest.mock('expo-router', () => ({
+  useRouter: () => ({
+    push: mockPush,
+    replace: mockReplace,
   }),
 }));
 
@@ -143,9 +143,9 @@ describe('AccountSwitcherPanel', () => {
       expect(mockAuthTokenSet).toHaveBeenCalledWith('valid-token');
       expect(mockSwitchActiveUser).toHaveBeenCalledWith('other-2');
       expect(onClose).toHaveBeenCalled();
-      expect(mockReset).toHaveBeenCalledWith({
-        index: 0,
-        routes: [{ name: 'Home', params: { newUserLoading: false } }],
+      expect(mockReplace).toHaveBeenCalledWith({
+        pathname: '/(app)/(stack)',
+        params: { newUserLoading: 'false' },
       });
     });
   });
@@ -165,7 +165,7 @@ describe('AccountSwitcherPanel', () => {
     expect(mockSwitchActiveUser).not.toHaveBeenCalled();
     expect(mockAuthTokenSet).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
-    expect(mockReset).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 
   it('shows an error when the stored session is corrupted (no token field)', async () => {
@@ -212,7 +212,7 @@ describe('AccountSwitcherPanel', () => {
     fireEvent.press(getByTestId('account-switcher-add-account'));
 
     expect(onClose).toHaveBeenCalled();
-    expect(mockNavigate).toHaveBeenCalledWith('AddUser');
+    expect(mockPush).toHaveBeenCalledWith('/(app)/(stack)/add-user');
   });
 
   it('shows the account limit message instead of Add Account when at the cap', () => {

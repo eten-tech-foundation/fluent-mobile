@@ -2,9 +2,9 @@ import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import PrivacyPolicyPage from './PrivacyPolicyPage';
 
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({
-    goBack: jest.fn(),
+jest.mock('expo-router', () => ({
+  useRouter: () => ({
+    back: jest.fn(),
   }),
 }));
 

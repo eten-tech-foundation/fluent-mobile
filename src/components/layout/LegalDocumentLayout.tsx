@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import {
   theme,
@@ -27,13 +27,13 @@ export function LegalDocumentLayout({
   testID,
   children,
 }: LegalDocumentLayoutProps) {
-  const navigation = useNavigation();
+  const router = useRouter();
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={() => router.back()}
           hitSlop={touchHitSlop}
           accessibilityRole="button"
           accessibilityLabel="Go back"
