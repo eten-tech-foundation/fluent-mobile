@@ -1,9 +1,12 @@
+/**
+ * Deterministic Images & Maps fixtures for unit tests (#191).
+ * Production loads Aquifer via `services/imagesMaps`.
+ */
 import { ImagesMapsItem } from '../../types/resources/imagesMaps';
 
+export { setImagesMapsLoadFailureForTests as setMockImagesMapsLoadFailure } from '../../services/imagesMaps';
+
 /**
- * Deterministic mock Images & Maps payloads (#191).
- * Aquifer / fluent-api proxy not available yet — replace in #192.
- *
  * Aligns with `getMockResourcesForUnit`: items only when verse % 3 === 2.
  */
 export function getMockImagesMaps(
@@ -35,27 +38,4 @@ export function getMockImagesMaps(
       uri: `https://picsum.photos/seed/fluent-plain-${chapterId}-${verseNumber}/640/480`,
     },
   ];
-}
-
-/** Test-only failure injection for section-scoped error/retry. */
-let mockLoadShouldFail = false;
-
-export function setMockImagesMapsLoadFailure(shouldFail: boolean) {
-  mockLoadShouldFail = shouldFail;
-}
-
-/**
- * Async loader for Images & Maps. No network API — mock metadata only until
- * Aquifer/fluent-api exists. Image URIs themselves may still resolve remotely
- * until #192 enforces local-only inventory reads.
- */
-export async function loadImagesMapsForUnit(
-  chapterId: number,
-  verseNumber: number,
-): Promise<ImagesMapsItem[]> {
-  await Promise.resolve();
-  if (mockLoadShouldFail) {
-    throw new Error('Failed to load Images & Maps');
-  }
-  return getMockImagesMaps(chapterId, verseNumber);
 }

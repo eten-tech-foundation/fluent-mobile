@@ -15,7 +15,11 @@ import {
 import { RESOURCES_EMPTY_MESSAGE } from '../../constants/messages';
 import { clearResourcesTabUiState } from '../../utils/resourcesTabUiState';
 import { VerseData } from '../../types/db/types';
-import { setMockImagesMapsLoadFailure } from '../../mocks/resources/imagesMapsMock';
+import {
+  loadImagesMapsForUnit,
+  setImagesMapsLoadFailureForTests,
+} from '../../services/imagesMaps';
+import { getMockImagesMaps } from '../../mocks/resources/imagesMapsMock';
 
 jest.mock('react-native-gesture-handler', () => {
   const actualReact = jest.requireActual('react');
@@ -58,6 +62,18 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
+jest.mock('../../services/imagesMaps', () => {
+  const actual = jest.requireActual('../../services/imagesMaps');
+  return {
+    ...actual,
+    loadImagesMapsForUnit: jest.fn(),
+  };
+});
+
+const mockLoad = loadImagesMapsForUnit as jest.MockedFunction<
+  typeof loadImagesMapsForUnit
+>;
+
 const verses: VerseData[] = [1, 2, 3].map(verseNumber => ({
   bibleId: 1,
   bookId: 41,
@@ -98,7 +114,12 @@ function renderResources(initialVerse: number) {
   return render(
     <DraftingProvider verses={verses} initialVerse={initialVerse}>
       <VerseSwitcher />
-      <ResourcesTab chapterId={99} chapterName="Mark 14" />
+      <ResourcesTab
+        chapterId={99}
+        chapterName="Mark 14"
+        bookCode="MRK"
+        chapterNumber={14}
+      />
     </DraftingProvider>,
   );
 }
@@ -106,11 +127,15 @@ function renderResources(initialVerse: number) {
 describe('ResourcesTab', () => {
   beforeEach(() => {
     clearResourcesTabUiState();
-    setMockImagesMapsLoadFailure(false);
+    setImagesMapsLoadFailureForTests(false);
+    mockLoad.mockImplementation(async ({ verseNumber }) =>
+      getMockImagesMaps(99, verseNumber),
+    );
   });
 
   afterEach(() => {
-    setMockImagesMapsLoadFailure(false);
+    setImagesMapsLoadFailureForTests(false);
+    mockLoad.mockReset();
   });
 
   it('shows the empty message when the unit has no resources', () => {
@@ -183,7 +208,7 @@ describe('ResourcesTab', () => {
   });
 
   it('keeps Notes and Questions visible when Images & Maps load fails', async () => {
-    setMockImagesMapsLoadFailure(true);
+    mockLoad.mockRejectedValue(new Error('boom'));
     renderResources(2);
 
     expect(screen.getByText('Translation Notes')).toBeTruthy();
@@ -199,7 +224,7 @@ describe('ResourcesTab', () => {
     expect(screen.getByText('Translation Notes')).toBeTruthy();
     expect(screen.getByText('Translation Questions')).toBeTruthy();
 
-    setMockImagesMapsLoadFailure(false);
+    mockLoad.mockResolvedValue(getMockImagesMaps(99, 2));
     await act(async () => {
       fireEvent.press(screen.getByTestId('images-maps-retry'));
     });

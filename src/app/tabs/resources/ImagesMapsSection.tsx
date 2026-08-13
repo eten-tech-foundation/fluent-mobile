@@ -14,7 +14,8 @@ import { ImagesMapsItem } from '../../../types/resources/imagesMaps';
 import { theme } from '../../../theme';
 
 type ImagesMapsSectionProps = {
-  chapterId: number;
+  bookCode: string;
+  chapterNumber: number;
   verseNumber: number;
 };
 
@@ -23,10 +24,15 @@ type ImagesMapsSectionProps = {
  * Thumbnails with caption/attribution, pinch-zoom, fullscreen maximize.
  */
 export function ImagesMapsSection({
-  chapterId,
+  bookCode,
+  chapterNumber,
   verseNumber,
 }: ImagesMapsSectionProps) {
-  const { state, retry } = useImagesMapsForUnit(chapterId, verseNumber);
+  const { state, retry } = useImagesMapsForUnit({
+    bookCode,
+    chapterNumber,
+    verseNumber,
+  });
   const [fullscreenItem, setFullscreenItem] = useState<ImagesMapsItem | null>(
     null,
   );
