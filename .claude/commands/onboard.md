@@ -6,6 +6,18 @@ machine without the developer's go-ahead.
 
 **Android-only permanently** — never suggest iOS, CocoaPods, or `expo run:ios`.
 
+## Before Step 1 — Expo MCP auth
+
+Authenticate Expo MCP **before Step 1** and before any Expo-related command,
+including `npm run prebuild`, `npm run doctor`, `npx expo`, and EAS:
+
+```
+CallMcpTool server=user-expo-mcp toolName=mcp_auth arguments={}
+```
+
+Do not run those commands until auth succeeds. Non-Expo setup (`nvm`, `npm install`,
+`.env`) can stay in the existing Step 1 order after this gate.
+
 ## Step 1 — Fresh-clone sequence
 
 Native `android/` is gitignored (CNG). Generate it before the first Android run.
@@ -47,6 +59,9 @@ Offer fixes only after the developer agrees. Safe non-destructive fixes:
 - Missing `android/` → `npm run prebuild`
 
 ## Step 3 — Sanity commands
+
+Confirm Expo MCP auth (same `mcp_auth` gate) before `npm run doctor` or other
+Expo commands.
 
 ```bash
 npm run lint

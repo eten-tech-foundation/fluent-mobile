@@ -79,7 +79,8 @@ git status --porcelain
 git branch --show-current
 ```
 
-Warn on uncommitted changes unless the user wants them included.
+Warn on uncommitted changes unless the user wants them included. **Do not push**
+uncommitted repairs.
 
 ### 3b. Convention review (**hard-block** on any unfixed finding)
 
@@ -90,8 +91,12 @@ push**. Launch the repo **`code-reviewer`** agent
 
 - Fix **every** finding **before pushing** — **Blocking**, **Should-fix**,
   **Nit**. Severity only orders the work; it does **not** make a finding optional.
+- After each repair: **commit** it, then re-run local checks (step 3:
+  `format:check`, lint, typecheck, tests) **and** `code-reviewer`. Repeat until
+  both are clean. `git push` does not include uncommitted changes — never push
+  uncommitted repairs.
 - If any finding remains **unfixed and not explicitly waived**: **STOP**, fix,
-  re-run local checks (step 3), and re-run `code-reviewer`.
+  commit, re-run local checks (step 3), and re-run `code-reviewer`.
 - The only escape is an **explicit per-item human waiver** documented in the PR
   body (what was waived, why, who approved). Do not invent waivers; do not
   batch-waive an entire severity.
@@ -102,8 +107,9 @@ this hard gate.
 
 ### 4. Push the branch
 
-Feature branch only — **never** `git push origin main`
-([delivery.mdc](../../.cursor/rules/delivery.mdc)):
+Confirm the working tree has no uncommitted repairs (`git status --porcelain`
+clean for files you intend to ship). Feature branch only — **never**
+`git push origin main` ([delivery.mdc](../../.cursor/rules/delivery.mdc)):
 
 ```bash
 git push -u origin HEAD
@@ -111,15 +117,17 @@ git push -u origin HEAD
 
 ### 5. Create the draft PR
 
-Detect issue number from the branch (`…/173-…` or leading `173-…`). Fetch with:
+Detect a valid GitHub issue number from the branch (`…/173-…` or leading
+`173-…`). If none is found: **STOP** and request an issue number. Do not open a
+PR without `#NNN`. Fetch with:
 
 ```bash
 gh issue view NNN --repo eten-tech-foundation/fluent-mobile --json number,title,body
 ```
 
 **Title:** `[#NNN]: Title text` from the issue title (strip `[Mobile App]`-style
-prefixes; sentence case after the colon). Fallback without an issue: derive from
-the branch slug.
+prefixes; sentence case after the colon). Do **not** fall back to the branch
+slug.
 
 **Body:** Load [`.cursor/templates/pr-template.md`](../../.cursor/templates/pr-template.md)
 and pre-fill:
@@ -172,12 +180,13 @@ Flag high-impact paths in the body when present: `package.json`,
 Best-effort: warn and continue on failure — never fail the PR over it.
 
 1. Parse `Refs #NNN` from the PR body (fall back to `NNN` in the branch name).
-   If none, skip.
+   The issue number is required (step 5); do not skip tracking.
 2. Do **not** move Product-owned columns (`In Progress (Product)`,
    `Product Ready`, `Sprint Shaping`).
-3. Set Status to **`In PR Review`**. Resolve the option **by name** when
-   possible. Verified: project `PVT_kwDOB8vK1s4A34c5`, Status field
-   `PVTSSF_lADOB8vK1s4A34c5zgs8akY`, In PR Review `19224fda`.
+3. If the assigned issue is missing from Project 4, **add it**, then set Status
+   to **`In PR Review`**. Resolve the option **by name** when possible. Verified:
+   project `PVT_kwDOB8vK1s4A34c5`, Status field `PVTSSF_lADOB8vK1s4A34c5zgs8akY`,
+   In PR Review `19224fda`.
 
 ```bash
 ISSUE=<NNN>
@@ -200,7 +209,23 @@ ITEM_ID=$(gh api graphql -f query='
   }' -F n=$ISSUE \
   --jq '.data.repository.issue.projectItems.nodes[] | select(.project.number == 4) | .id')
 
-if [ -z "$ITEM_ID" ]; then echo "WARN: issue #$ISSUE not on Project 4; skipping."; else
+if [ -z "$ITEM_ID" ]; then
+  gh project item-add 4 --owner eten-tech-foundation \
+    --url "https://github.com/eten-tech-foundation/fluent-mobile/issues/$ISSUE"
+  ITEM_ID=$(gh api graphql -f query='
+    query($n: Int!) {
+      repository(owner: "eten-tech-foundation", name: "fluent-mobile") {
+        issue(number: $n) {
+          projectItems(first: 10) {
+            nodes { id project { number } }
+          }
+        }
+      }
+    }' -F n=$ISSUE \
+    --jq '.data.repository.issue.projectItems.nodes[] | select(.project.number == 4) | .id')
+fi
+
+if [ -z "$ITEM_ID" ]; then echo "WARN: issue #$ISSUE still not on Project 4; skipping."; else
   gh api graphql -f query='
     mutation($item: ID!) {
       updateProjectV2ItemFieldValue(input: {
@@ -221,8 +246,10 @@ Opening the PR is **not** the finish line.
 
 1. Watch required checks: `gh pr checks --watch`.
 2. If any required check **fails**, treat it as your job: read the failing log,
-   fix, push, and re-watch. Loop until green (or blocked on an out-of-scope
-   base-branch issue — then say so explicitly and do not claim success).
+   fix, **commit** the repair, re-run `format:check`, lint, typecheck, tests,
+   and `code-reviewer`, then push (never push uncommitted repairs) and re-watch.
+   Loop until green (or blocked on an out-of-scope base-branch issue — then say
+   so explicitly and do not claim success).
 3. Only then proceed to the Report step.
 
 Do **not** tell the user the PR work is “done” while CI is red or still running,

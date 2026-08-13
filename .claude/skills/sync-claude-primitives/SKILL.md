@@ -43,6 +43,8 @@ These describe the app. When they disagree with reality, *they* are wrong.
 - `.claude/agents/*.md`
 - `.claude/commands/*.md`
 - Root `CLAUDE.md` and `AGENTS.md`
+- `.github/copilot-instructions.md` — audit against the same agent contracts as
+  `CLAUDE.md` / `AGENTS.md` so Copilot guidance stays aligned
 - `docs/*.md` and `docs/guides/*.md`
 - Nested `src/**/AGENTS.md`
 - Convention / onboarding scripts: `scripts/*architecture*`, `scripts/*claude*`,
@@ -145,11 +147,17 @@ selection.
    user named an issue). Do not invent a branch off `main` without a ticket.
 2. Launch an **execution subagent** given ONLY the approved findings. It applies
    each edit precisely and reports back.
-3. Update `.claude/.config-sync-state.json` with the new `HEAD` SHA, timestamp,
-   `lastRunBy` (`git config user.name`), and a one-line note.
-4. Sanity-check: `git diff` matches the approved set; run
+3. Sanity-check **before** writing the state file: `git diff` matches the
+   approved set. For **every** change (not only scripts/config), run:
    `npm run format:check`, `npm run lint`, `npm run typecheck`,
-   `npm test -- --ci` if scripts or config files were touched.
+   `npm test -- --ci`.
+4. Only after validation passes, update `.claude/.config-sync-state.json` with
+   timestamp, `lastRunBy` (`git config user.name`), a one-line note, and
+   `lastSyncedSha` set to the **source HEAD** whose approved changes passed
+   validation. Treat this state-file edit as an explicit workflow-generated
+   change **excluded** from the approved-findings comparison. Do **not** write
+   the state file if validation failed — failed runs must not mark the tree as
+   synced.
 5. Chain into `/create-pr` (`.claude/commands/create-pr.md`). Include
    `Refs #<issue>` — never closing keywords.
 

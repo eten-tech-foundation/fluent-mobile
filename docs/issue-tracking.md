@@ -64,7 +64,7 @@ See [`.claude/commands/create-pr-branch.md`](../.claude/commands/create-pr-branc
 ## Pull requests
 
 - **Base branch:** `main`
-- **Title:** `[#NNN]: Short description` (or `#NNN: Short description`) — match existing PR style in this repo
+- **Title:** `[#NNN]: Short description`
 - **Body:** **required** — fill [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md) / [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md) (same content: TLDR, Reviewer checklist, Details, Technical changes, Testing, How to verify, Follow-ups). The **`PR Description`** check fails empty / CodeRabbit-only bodies. Prefer `/start-issue` (full loop) or `/generate-pr-description` / `/create-pr` (`/open-pr` is an alias). Do not ship a short Summary/Test plan substitute.
   - Under Details: `Refs #NNN` on its own line (links the issue without closing it)
   - Do **not** use GitHub closing keywords (`Closes`, `Fixes`, `Resolves`) — merged PRs must not auto-close issues

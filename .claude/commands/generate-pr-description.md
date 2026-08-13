@@ -2,7 +2,7 @@
 
 ## Overview
 
-Generates a formatted PR description using [`.cursor/templates/pr-template.md`](../../.cursor/templates/pr-template.md) for copy-paste into GitHub. Run `/generate-pr-description` in Cursor chat.
+Generates a formatted PR description using [`.cursor/templates/pr-template.md`](../../.cursor/templates/pr-template.md) for copy-paste into GitHub. Supported in **Claude Code** and **Cursor** (`/generate-pr-description`).
 
 **No GitHub CLI required** for this command — text output only.
 
@@ -28,7 +28,6 @@ Every run **must** output a suggested title before the description block. Do not
 | Source | Title ID | Example |
 |--------|----------|---------|
 | GitHub issue in branch (`…/173-…` or `38-…`) | `#173` | `[#173]: Adopt Phase 1 agent/process docs` |
-| No ticket | descriptive prefix | `Chore: Add Cursor AI rules` |
 
 **Tracker:** Project 4 Fluent Mobile Board ([docs/issue-tracking.md](../../docs/issue-tracking.md)).
 
@@ -43,7 +42,9 @@ Every run **must** output a suggested title before the description block. Do not
    - Strip prefixes like `[Mobile App]`
    - Sentence case (first word capitalized; proper nouns unchanged)
    - Keep concise (~60 chars after colon); trim filler ("Implement", "Add support for") only if redundant with issue scope
-4. **Fallback** when no issue: derive from branch slug after issue segment (`cloud-sync-status-icon` → `Cloud sync status icon`) or top commit subject (strip `#38:` prefix)
+4. **Every change needs a GitHub issue number.** If none can be identified from
+   the branch or user message: **STOP** and request an issue number. Do not
+   generate a PR title (no “No ticket” / descriptive-prefix fallback).
 5. **Never** output a generic title like "Update files" or only the issue number with no description
 
 ### Title examples (this repo)
@@ -75,7 +76,7 @@ gh issue view <N> --repo eten-tech-foundation/fluent-mobile --json title,body   
 ```
 📋 **PR Title (copy this)**
 
-#38: Build cloud sync status icon
+[#38]: Build cloud sync status icon
 
 **Branch:** 38-cloud-sync-status-icon · **Suggested type:** ✨ New feature
 
@@ -115,7 +116,7 @@ Tell reviewer these were run or should be run:
 
 - `npm run format:check`
 - `npm run lint`
-- `npx tsc --noEmit`
+- `npm run typecheck`
 - `npm test -- --ci`
 
 Use **npm** in all instructions (not pnpm/yarn).

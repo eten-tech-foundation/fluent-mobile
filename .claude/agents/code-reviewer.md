@@ -96,7 +96,7 @@ Output findings grouped by severity, most severe first:
 
 Each finding MUST be one tight entry:
 
-```
+```text
 - `path/to/File.tsx:42` — [rule name] Problem in one sentence. Fix: <concrete change>.
 ```
 

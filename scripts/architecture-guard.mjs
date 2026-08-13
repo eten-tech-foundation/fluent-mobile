@@ -11,9 +11,11 @@ const allow = (agentMessage) => {
   if (agentMessage) {
     process.stdout.write(
       JSON.stringify({
-        permission: 'allow',
-        agent_message: agentMessage,
-        hookSpecificOutput: { additionalContext: agentMessage },
+        hookSpecificOutput: {
+          hookEventName: 'PreToolUse',
+          permissionDecision: 'allow',
+          additionalContext: agentMessage,
+        },
       }),
     );
   }

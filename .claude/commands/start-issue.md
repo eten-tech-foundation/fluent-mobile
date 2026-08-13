@@ -125,28 +125,58 @@ IDs (eten-tech-foundation project #4):
 
 ```bash
 ISSUE=$CHOSEN
+CURSOR=""
+ITEM_ID=""
 
-ITEM_ID=$(gh api graphql -f query='
-  query($n: Int!) {
-    repository(owner: "eten-tech-foundation", name: "fluent-mobile") {
-      issue(number: $n) {
-        projectItems(first: 10) {
-          nodes {
-            id
-            project { number }
-            fieldValueByName(name: "Status") {
-              ... on ProjectV2ItemFieldSingleSelectValue { name }
+while :; do
+  if [ -z "$CURSOR" ]; then
+    PAGE=$(gh api graphql -f query='
+      query($n: Int!) {
+        repository(owner: "eten-tech-foundation", name: "fluent-mobile") {
+          issue(number: $n) {
+            projectItems(first: 20) {
+              pageInfo { hasNextPage endCursor }
+              nodes {
+                id
+                project { number }
+                fieldValueByName(name: "Status") {
+                  ... on ProjectV2ItemFieldSingleSelectValue { name }
+                }
+              }
             }
           }
         }
-      }
-    }
-  }' -F n=$ISSUE \
-  --jq '.data.repository.issue.projectItems.nodes[] | select(.project.number == 4)')
+      }' -F n=$ISSUE)
+  else
+    PAGE=$(gh api graphql -f query='
+      query($n: Int!, $c: String!) {
+        repository(owner: "eten-tech-foundation", name: "fluent-mobile") {
+          issue(number: $n) {
+            projectItems(first: 20, after: $c) {
+              pageInfo { hasNextPage endCursor }
+              nodes {
+                id
+                project { number }
+                fieldValueByName(name: "Status") {
+                  ... on ProjectV2ItemFieldSingleSelectValue { name }
+                }
+              }
+            }
+          }
+        }
+      }' -F n=$ISSUE -f c="$CURSOR")
+  fi
+
+  ITEM_ID=$(printf '%s' "$PAGE" | jq -r '[.data.repository.issue.projectItems.nodes[] | select(.project.number == 4) | .id] | first // empty')
+  [ -n "$ITEM_ID" ] && break
+  HAS=$(printf '%s' "$PAGE" | jq -r '.data.repository.issue.projectItems.pageInfo.hasNextPage')
+  CURSOR=$(printf '%s' "$PAGE" | jq -r '.data.repository.issue.projectItems.pageInfo.endCursor // empty')
+  [ "$HAS" = "true" ] && [ -n "$CURSOR" ] || break
+done
 
 # If missing from Project 4: gh project item-add 4 --owner eten-tech-foundation \
 #   --url https://github.com/eten-tech-foundation/fluent-mobile/issues/$ISSUE
-# then re-query ITEM_ID.
+# then re-query ITEM_ID (same paginated GraphQL + jq scalar `.id`).
 
 # If Status is In Progress (Product) | Product Ready | Sprint Shaping → STOP.
 # Else set Status to In Progress (Dev) (option db53740f).

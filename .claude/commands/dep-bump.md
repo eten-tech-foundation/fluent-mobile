@@ -43,7 +43,9 @@ npx expo install --check
 npm run doctor
 ```
 
-If doctor reports SDK patch drift, `npx expo install --fix` and re-run doctor.
+If doctor reports SDK patch drift, `npx expo install --fix`, then re-run **both**
+`npx expo install --check` and `npm run doctor`. Do not proceed until both are
+clean.
 
 ### 4. Native regen (only if needed)
 

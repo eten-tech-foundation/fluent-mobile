@@ -17,11 +17,20 @@ Run the full queue without per-PR confirmation. Stop only on blockers (failed CI
 
 ## Queue loop
 
-1. List open bots: `gh pr list --search "author:app/dependabot state:open" --json number,title,mergeable,mergeStateStatus,statusCheckRollup,files`
+Approved Dependabot authors only: `app/dependabot` and `dependabot[bot]`. Target
+branch must be `main` (`baseRefName` == `"main"`). Drop any other author or base.
+
+1. List open bots targeting `main`: `gh pr list --search "author:app/dependabot state:open base:main" --json number,title,author,baseRefName,mergeable,mergeStateStatus,statusCheckRollup,files`
+   Then keep only PRs whose author is `app/dependabot` or `dependabot[bot]` **and**
+   whose `baseRefName` is `main`.
 2. Triage: safe / risky / skip / RN upgrade / workflow-only
 3. `@dependabot rebase` on conflicting, stale, or post-merge bots (skip bots with fresh `IN_PROGRESS` CI)
-4. Pick **oldest safe PR** with Lint, Test (incl. Expo Doctor), and Build all `SUCCESS`
-5. Approve and squash-merge **one** PR
+4. Pick **oldest safe PR** only when **Lint & Format**, **Unit Tests**, and
+   **Quality Gates** (TypeScript, Expo Doctor, `expo install --check`) are all
+   `SUCCESS`.
+5. Before approve: `format:check`, `lint`, `typecheck`, `npm test -- --ci`, Expo
+   Doctor when applicable, and those required build checks must be green. Then
+   squash-merge **one** PR.
 6. Wait for `main` CI green; rebase all remaining bots in parallel
 7. Log batch in `docs/guides/dependabot-resolution-log.md`
 

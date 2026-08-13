@@ -241,5 +241,5 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 - Cursor rules: [`.cursor/rules/`](../.cursor/rules/) — **Android-only:** [android-only.mdc](../.cursor/rules/android-only.mdc)
 - Dependabot: [guides/dependabot-process.md](guides/dependabot-process.md) — use with `.cursor/rules/dependabot-workflow.mdc`
 - PR template: [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md)
-- Slash commands: `/start-issue`, `/onboard`, `/dep-bump`, `/create-pr-branch`, `/create-pr` (`/open-pr` alias), `/handle-dependabot` (canonical: [`.claude/commands/`](../.claude/commands/); Cursor shims: [`.cursor/commands/`](../.cursor/commands/))
+- Slash commands: `/start-issue`, `/onboard`, `/dep-bump`, `/create-pr-branch`, `/create-pr` (`/open-pr` alias), `/generate-pr-description`, `/handle-dependabot` (canonical: [`.claude/commands/`](../.claude/commands/); Cursor shims: [`.cursor/commands/`](../.cursor/commands/))
 - Hot-path notes: [src/services/AGENTS.md](../src/services/AGENTS.md), [src/db/AGENTS.md](../src/db/AGENTS.md)

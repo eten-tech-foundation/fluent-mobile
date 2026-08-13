@@ -32,6 +32,10 @@ example instead of inventing boilerplate.
   sync, SVG, icons — follow it when testing root flow).
 - There is no MSW. Mocking is per-file via `jest.mock(...)` plus
   `jest.mocked(...)` typed handles.
+- For **service endpoint unit tests**, mock global `fetch` (see
+  `src/services/httpClient.test.ts`: `jest.spyOn(globalThis, 'fetch')`) and
+  **restore** the mock after each test (`jest.restoreAllMocks()` in `afterEach`).
+  Follow neighboring `src/services/*.test.ts` patterns.
 - Live API test `src/services/fluent-api.test.ts` is **skipped by default**;
   do not copy that pattern for unit tests. Opt-in is
   `RUN_LIVE_API_TESTS=1 npm test -- fluent-api.test.ts`.
