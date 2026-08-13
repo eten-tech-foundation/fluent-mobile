@@ -1,7 +1,7 @@
 import { boolParam } from './routeParams';
 
 /**
- * Typed href builders matching the previous RootStackParamList destinations.
+ * Typed href builders for Expo Router destinations.
  * Pathnames follow `src/routes` file layout.
  */
 export const hrefs = {

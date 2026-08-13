@@ -33,7 +33,7 @@ const baseUrl = getApiBaseUrl();
 
 ## TypeScript
 
-- Types under `src/types/api/`, `src/types/db/`, `src/types/navigation/`.
+- Types under `src/types/api/`, `src/types/db/`, etc. Route hrefs/params: `src/navigation/hrefs.ts`, `routeParams.ts`.
 - Avoid `any` (warned by ESLint); use `unknown` + narrowing for errors.
 - Prefer `interface` for DB/API shapes where the file already does.
 

@@ -1,6 +1,5 @@
 /**
  * Helpers for Expo Router search params (always string | string[]).
- * Mirrors the previous RootStackParamList shapes with serializable values.
  */
 
 export type SearchParamValue = string | string[] | undefined;

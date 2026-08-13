@@ -185,7 +185,7 @@ Auth: email/password via `FluentAPI.signIn`; authenticated API calls use `Author
 
 - **Logging:** `const log = logger.create('ComponentName')` — no raw `console` (ESLint); exception: `src/utils/logger.ts`, tests.
 - **Env:** `EXPO_PUBLIC_API_BASE_URL` in `.env`; read via `getApiBaseUrl()` from `src/config/apiBaseUrl.ts` — never commit `.env`. ESLint blocks direct `process.env` reads and legacy imports (`@env`, `react-native-fs`, `react-native-keychain`, Simform waveform) outside the config layer.
-- **Types:** API shapes in `src/types/api/`, DB in `src/types/db/`, navigation in `src/types/navigation/`.
+- **Types:** API shapes in `src/types/api/`, DB in `src/types/db/`. Route hrefs/params in `src/navigation/hrefs.ts` / `routeParams.ts`.
 - **Prettier:** single quotes, trailing commas, `arrowParens: 'avoid'`.
 - **Styles:** **`src/theme` (`theme` object) is canonical for new UI.** Do not add new hardcoded hex colors in new StyleSheets. [`src/app/appStyles.ts`](../src/app/appStyles.ts) is legacy shared styles — migrate callers to tokens when you touch them; do not expand it with new hex.
 - **SVG:** import as React components (Metro SVG transformer).
