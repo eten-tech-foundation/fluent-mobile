@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useDrawerStatus } from 'expo-router/drawer';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { UserPlus } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,9 +23,6 @@ import {
 } from '../../services/accountSession';
 import { useDeviceAccounts } from '../../hooks/useDeviceAccounts';
 import { logger } from '../../utils/logger';
-
-const MENU_ICON_COLOR = '#333';
-const MENU_ICON_ACTIVE = '#1a6ef5';
 
 const log = logger.create('UserSettingsMenu');
 
@@ -45,8 +43,16 @@ export function UserSettingsMenu({
 }: UserSettingsMenuProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { accounts, hasAccountLimit, loading } = useDeviceAccounts(true);
+  const drawerStatus = useDrawerStatus();
+  const { accounts, hasAccountLimit, loading, reload } =
+    useDeviceAccounts(true);
   const [switchingUserId, setSwitchingUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (drawerStatus === 'open') {
+      void reload();
+    }
+  }, [drawerStatus, reload]);
 
   const closeDrawer = () => {
     onRequestClose();
@@ -98,12 +104,20 @@ export function UserSettingsMenu({
 
   const handleSignOut = async () => {
     closeDrawer();
-    const result = await signOutCurrentDeviceAccount();
-    if (result.kind === 'switched') {
-      onUserSwitched?.();
-      return;
+    try {
+      const result = await signOutCurrentDeviceAccount();
+      if (result.kind === 'switched') {
+        onUserSwitched?.();
+        return;
+      }
+      onSignOut?.();
+    } catch (error) {
+      log.error('Sign out failed', { error });
+      Alert.alert(
+        'Sign Out Failed',
+        "Couldn't sign out of this account. Please try again.",
+      );
     }
-    onSignOut?.();
   };
 
   return (
@@ -125,7 +139,11 @@ export function UserSettingsMenu({
           activeOpacity={0.7}
           accessibilityRole="button"
         >
-          <Ionicons name="settings-outline" size={18} color={MENU_ICON_COLOR} />
+          <Ionicons
+            name="settings-outline"
+            size={18}
+            color={theme.colors.foreground}
+          />
           <Text style={appStyles.menuItemText}>More Settings</Text>
         </TouchableOpacity>
 
@@ -141,7 +159,7 @@ export function UserSettingsMenu({
           <Ionicons
             name="document-text-outline"
             size={18}
-            color={MENU_ICON_COLOR}
+            color={theme.colors.foreground}
           />
           <Text style={appStyles.menuItemText}>Privacy Policy</Text>
         </TouchableOpacity>
@@ -156,7 +174,7 @@ export function UserSettingsMenu({
           <Ionicons
             name="shield-checkmark-outline"
             size={18}
-            color={MENU_ICON_COLOR}
+            color={theme.colors.foreground}
           />
           <Text style={appStyles.menuItemText}>Terms of Use</Text>
         </TouchableOpacity>
@@ -169,7 +187,7 @@ export function UserSettingsMenu({
             style={styles.loadingRow}
             testID="settings-menu-accounts-loading"
           >
-            <ActivityIndicator size="small" color={MENU_ICON_ACTIVE} />
+            <ActivityIndicator size="small" color={theme.colors.primary} />
           </View>
         ) : (
           accounts.map(account => {
@@ -193,7 +211,11 @@ export function UserSettingsMenu({
                     account.isActive ? 'checkmark-circle' : 'person-outline'
                   }
                   size={18}
-                  color={account.isActive ? MENU_ICON_ACTIVE : MENU_ICON_COLOR}
+                  color={
+                    account.isActive
+                      ? theme.colors.primary
+                      : theme.colors.foreground
+                  }
                   testID={
                     account.isActive
                       ? `settings-menu-active-${account.userId}`
@@ -227,7 +249,7 @@ export function UserSettingsMenu({
             accessibilityLabel="Add User"
             testID="settings-menu-add-user"
           >
-            <UserPlus size={18} color={MENU_ICON_COLOR} />
+            <UserPlus size={18} color={theme.colors.foreground} />
             <Text style={appStyles.menuItemText}>Add User</Text>
           </TouchableOpacity>
         )}
@@ -241,7 +263,11 @@ export function UserSettingsMenu({
           activeOpacity={0.7}
           accessibilityRole="button"
         >
-          <Ionicons name="log-out-outline" size={18} color="#d32f2f" />
+          <Ionicons
+            name="log-out-outline"
+            size={18}
+            color={theme.colors.destructive}
+          />
           <Text style={[appStyles.menuItemText, appStyles.menuItemDanger]}>
             Sign Out
           </Text>

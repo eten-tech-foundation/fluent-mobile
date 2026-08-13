@@ -40,6 +40,10 @@ function RootNavigator() {
     inAppGroup,
   });
 
+  if (decision.action === 'wait') {
+    return null;
+  }
+
   if (decision.action === 'redirect') {
     return <Redirect href={decision.href} />;
   }

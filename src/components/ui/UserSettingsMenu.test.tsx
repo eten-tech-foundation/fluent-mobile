@@ -10,8 +10,12 @@ jest.mock('react-native-safe-area-context', () => ({
 
 const mockPush = jest.fn();
 const mockCloseDrawer = jest.fn();
+let mockDrawerStatus: 'open' | 'closed' = 'closed';
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn(), back: jest.fn() }),
+}));
+jest.mock('expo-router/drawer', () => ({
+  useDrawerStatus: () => mockDrawerStatus,
 }));
 
 const mockGetActiveUserId = jest.fn();
@@ -55,6 +59,8 @@ const otherAccount = {
   isActive: false,
 };
 
+const mockReload = jest.fn();
+
 function setDeviceAccountsResult(
   overrides: Partial<{
     accounts: (typeof activeAccount)[];
@@ -69,7 +75,7 @@ function setDeviceAccountsResult(
     activeUserId: 'active-1',
     hasAccountLimit: overrides.hasAccountLimit ?? false,
     loading: overrides.loading ?? false,
-    reload: jest.fn(),
+    reload: mockReload,
   });
 }
 
@@ -79,6 +85,8 @@ describe('UserSettingsMenu', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    mockDrawerStatus = 'closed';
+    mockReload.mockResolvedValue(undefined);
 
     mockGetActiveUserId.mockReturnValue('active-1');
     setDeviceAccountsResult();
@@ -232,6 +240,40 @@ describe('UserSettingsMenu', () => {
 
     await waitFor(() => {
       expect(onSignOut).toHaveBeenCalled();
+    });
+  });
+
+  it('alerts when sign out fails', async () => {
+    mockSignOutCurrentDeviceAccount.mockRejectedValueOnce(new Error('boom'));
+
+    const { getByText } = renderMenu();
+    fireEvent.press(getByText('Sign Out'));
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Sign Out Failed',
+        expect.stringContaining("Couldn't sign out"),
+      );
+    });
+    expect(onSignOut).not.toHaveBeenCalled();
+    expect(onUserSwitched).not.toHaveBeenCalled();
+  });
+
+  it('reloads accounts whenever the drawer opens', async () => {
+    const { rerender } = renderMenu();
+    expect(mockReload).not.toHaveBeenCalled();
+
+    mockDrawerStatus = 'open';
+    rerender(
+      <UserSettingsMenu
+        onSignOut={onSignOut}
+        onUserSwitched={onUserSwitched}
+        onRequestClose={mockCloseDrawer}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(mockReload).toHaveBeenCalled();
     });
   });
 });

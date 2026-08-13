@@ -43,9 +43,11 @@ jest.mock('../src/services/uploadOrchestrator', () => ({
   setChapterUploadWorker: jest.fn(),
 }));
 
+const mockStartDownloadQueueAutoResume = jest.fn(() => jest.fn());
+const mockStopDownloadQueueAutoResume = jest.fn();
 jest.mock('../src/services/downloadQueueAutoResume', () => ({
-  startDownloadQueueAutoResume: jest.fn(() => jest.fn()),
-  stopDownloadQueueAutoResume: jest.fn(),
+  startDownloadQueueAutoResume: () => mockStartDownloadQueueAutoResume(),
+  stopDownloadQueueAutoResume: () => mockStopDownloadQueueAutoResume(),
 }));
 
 jest.mock('../src/services/recordingSync', () => ({
@@ -74,6 +76,7 @@ function AuthProbe() {
     signIn,
     signInAddUser,
     signOut,
+    notifyUserSwitched,
   } = useAuthSession();
 
   return (
@@ -94,6 +97,9 @@ function AuthProbe() {
       </TouchableOpacity>
       <TouchableOpacity testID="sign-out" onPress={signOut}>
         <Text>Sign out</Text>
+      </TouchableOpacity>
+      <TouchableOpacity testID="notify-switch" onPress={notifyUserSwitched}>
+        <Text>Switch user</Text>
       </TouchableOpacity>
     </>
   );
@@ -218,5 +224,51 @@ describe('AuthSessionProvider', () => {
     expect(getByTestId('auth-flag').props.children).toBe('no');
     expect(mockSignOut).toHaveBeenCalled();
     expect(mockStopUploadOrchestrator).toHaveBeenCalled();
+  });
+
+  it('renders the init error view instead of children when bootstrap fails', async () => {
+    const { initializeDatabase } = jest.requireMock('../src/db/index') as {
+      initializeDatabase: jest.Mock;
+    };
+    initializeDatabase.mockRejectedValueOnce(new Error('db boom'));
+
+    const { getByTestId, queryByTestId } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+
+    await waitFor(() => {
+      expect(getByTestId('auth-session-error')).toBeTruthy();
+    });
+    expect(queryByTestId('auth-flag')).toBeNull();
+    expect(queryByTestId('auth-session-loading')).toBeNull();
+  });
+
+  it('restarts the download queue when notifyUserSwitched bumps the epoch', async () => {
+    mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
+
+    const { getByTestId } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+
+    await waitFor(() => {
+      expect(getByTestId('auth-flag').props.children).toBe('yes');
+    });
+
+    const startsBefore = mockStartDownloadQueueAutoResume.mock.calls.length;
+
+    await act(async () => {
+      fireEvent.press(getByTestId('notify-switch'));
+    });
+
+    await waitFor(() => {
+      expect(mockStopDownloadQueueAutoResume).toHaveBeenCalled();
+      expect(mockStartDownloadQueueAutoResume.mock.calls.length).toBeGreaterThan(
+        startsBefore,
+      );
+    });
   });
 });

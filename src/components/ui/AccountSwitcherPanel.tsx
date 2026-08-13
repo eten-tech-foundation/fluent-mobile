@@ -15,6 +15,7 @@ import { Check, UserPlus, X } from 'lucide-react-native';
 import { getCredentials } from '../../services/keychain';
 import { switchActiveUser } from '../../services/storage';
 import { hrefs } from '../../navigation/hrefs';
+import { useAuthSession } from '../../navigation/AuthSessionProvider';
 import { useDeviceAccounts } from '../../hooks/useDeviceAccounts';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { logger } from '../../utils/logger';
@@ -31,6 +32,7 @@ export function AccountSwitcherPanel({
   onClose,
 }: AccountSwitcherPanelProps) {
   const router = useRouter();
+  const { notifyUserSwitched } = useAuthSession();
   const insets = useSafeAreaInsets();
   const { accounts, hasAccountLimit, loading } = useDeviceAccounts(visible);
   const [switchingUserId, setSwitchingUserId] = useState<string | null>(null);
@@ -62,8 +64,13 @@ export function AccountSwitcherPanel({
 
         authToken.set(creds.token);
         switchActiveUser(userId);
+        notifyUserSwitched();
 
         onClose();
+        // Clear nested account-scoped screens before landing on home.
+        if (router.canDismiss()) {
+          router.dismissAll();
+        }
         router.replace(hrefs.home({ newUserLoading: false }));
       } catch (error) {
         log.error('Account switch failed', { userId, error });
@@ -74,7 +81,7 @@ export function AccountSwitcherPanel({
         setSwitchingUserId(null);
       }
     },
-    [switchingUserId, onClose, router],
+    [switchingUserId, onClose, router, notifyUserSwitched],
   );
 
   return (

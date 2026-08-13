@@ -4,11 +4,22 @@ import { AccountSwitcherPanel } from './AccountSwitcherPanel';
 
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
+const mockDismissAll = jest.fn();
+const mockCanDismiss = jest.fn(() => false);
+const mockNotifyUserSwitched = jest.fn();
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({
     push: mockPush,
     replace: mockReplace,
+    dismissAll: mockDismissAll,
+    canDismiss: mockCanDismiss,
+  }),
+}));
+
+jest.mock('../../navigation/AuthSessionProvider', () => ({
+  useAuthSession: () => ({
+    notifyUserSwitched: mockNotifyUserSwitched,
   }),
 }));
 
@@ -142,11 +153,28 @@ describe('AccountSwitcherPanel', () => {
       expect(mockGetCredentials).toHaveBeenCalledWith('other-2');
       expect(mockAuthTokenSet).toHaveBeenCalledWith('valid-token');
       expect(mockSwitchActiveUser).toHaveBeenCalledWith('other-2');
+      expect(mockNotifyUserSwitched).toHaveBeenCalled();
       expect(onClose).toHaveBeenCalled();
       expect(mockReplace).toHaveBeenCalledWith({
         pathname: '/(app)/(stack)',
         params: { newUserLoading: 'false' },
       });
+    });
+  });
+
+  it('clears the nested stack with dismissAll when the stack can dismiss', async () => {
+    mockCanDismiss.mockReturnValueOnce(true);
+    mockGetCredentials.mockResolvedValueOnce({ token: 'valid-token' });
+
+    const { getByTestId } = render(
+      <AccountSwitcherPanel visible onClose={onClose} />,
+    );
+
+    fireEvent.press(getByTestId('account-switcher-row-other-2'));
+
+    await waitFor(() => {
+      expect(mockDismissAll).toHaveBeenCalled();
+      expect(mockReplace).toHaveBeenCalled();
     });
   });
 

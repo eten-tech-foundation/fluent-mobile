@@ -116,7 +116,8 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       stopUploadOrchestrator();
       stopDownloadQueueAutoResume(stopAutoResume);
     };
-  }, [isLoading, isAuthenticated]);
+    // userSwitchEpoch: stop/restart so pending downloads cannot resume for the previous account
+  }, [isLoading, isAuthenticated, userSwitchEpoch]);
 
   useEffect(() => {
     if (isLoading) {
@@ -188,16 +189,14 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
 
   return (
     <AuthSessionContext.Provider value={value}>
-      {isLoading ? (
+      {error ? (
+        <View style={appStyles.containerAppInit} testID="auth-session-error">
+          <Text style={appStyles.errorTextAppInit}>Error: {error}</Text>
+        </View>
+      ) : isLoading ? (
         <View style={appStyles.containerAppInit} testID="auth-session-loading">
-          {error ? (
-            <Text style={appStyles.errorTextAppInit}>Error: {error}</Text>
-          ) : (
-            <>
-              <ActivityIndicator size="large" color={theme.colors.primary} />
-              <Text style={appStyles.loadingTextAppInit}>Initializing...</Text>
-            </>
-          )}
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={appStyles.loadingTextAppInit}>Initializing...</Text>
         </View>
       ) : (
         children

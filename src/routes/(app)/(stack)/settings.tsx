@@ -3,6 +3,8 @@ import SettingsScreen from '../../../app/screens/SettingsScreen';
 import { useAuthSession } from '../../../navigation/AuthSessionProvider';
 
 export default function SettingsRoute() {
-  const { signOut } = useAuthSession();
-  return <SettingsScreen onSignOut={signOut} />;
+  const { signOut, notifyUserSwitched } = useAuthSession();
+  return (
+    <SettingsScreen onSignOut={signOut} onUserSwitched={notifyUserSwitched} />
+  );
 }

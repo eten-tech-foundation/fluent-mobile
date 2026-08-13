@@ -28,9 +28,13 @@ const log = logger.create('SettingsScreen');
 
 interface SettingsScreenProps {
   onSignOut?: () => void;
+  onUserSwitched?: () => void;
 }
 
-export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
+export default function SettingsScreen({
+  onSignOut,
+  onUserSwitched,
+}: SettingsScreenProps) {
   const router = useRouter();
   const { uploadOverCellular, setUploadOverCellular } = usePreferences();
   const [atAccountLimit, setAtAccountLimit] = useState(
@@ -53,6 +57,7 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
   const performLogOut = async () => {
     const result = await signOutCurrentDeviceAccount();
     if (result.kind === 'switched') {
+      onUserSwitched?.();
       router.back();
       return;
     }
