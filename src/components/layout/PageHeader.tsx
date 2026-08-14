@@ -1,8 +1,8 @@
 import React from 'react';
-import { StatusBar, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import FluentLogoWhite from '../../assets/icons/fluent-logo-white.svg';
 import { theme, logoSize, headerLayout } from '../../theme';
-import { useHeaderSafeAreaPadding } from './useHeaderSafeAreaPadding';
+import { AppHeader } from './AppHeader';
 
 interface PageHeaderProps {
   title?: string;
@@ -11,48 +11,31 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({ title, leftIcon, rightIcon }: PageHeaderProps) {
-  const headerPadding = useHeaderSafeAreaPadding();
-
   return (
-    <View style={[styles.container, headerPadding]}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor={theme.colors.primary}
-      />
-      <View style={styles.row}>
-        <View style={styles.leftSlot}>{leftIcon}</View>
-
-        <View style={styles.center} pointerEvents="none">
-          {title ? (
-            <Text style={styles.title} numberOfLines={1}>
-              {title}
-            </Text>
-          ) : (
-            <FluentLogoWhite
-              width={logoSize.width}
-              height={logoSize.height}
-              style={styles.logo}
-            />
-          )}
-        </View>
-
-        <View style={styles.rightSlot}>{rightIcon}</View>
-      </View>
-    </View>
+    <AppHeader
+      tone="primary"
+      border="none"
+      titleAlign="center"
+      left={<View style={styles.leftSlot}>{leftIcon}</View>}
+      right={<View style={styles.rightSlot}>{rightIcon}</View>}
+      center={
+        title ? (
+          <Text style={styles.title} numberOfLines={1}>
+            {title}
+          </Text>
+        ) : (
+          <FluentLogoWhite
+            width={logoSize.width}
+            height={logoSize.height}
+            style={styles.logo}
+          />
+        )
+      }
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: headerLayout.paddingHorizontal,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: headerLayout.minHeight,
-  },
   leftSlot: {
     width: headerLayout.sideSlot,
     height: headerLayout.sideSlot,
@@ -66,11 +49,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   logo: {
     marginVertical: logoSize.marginVertical,
   },
@@ -78,5 +56,6 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.lg,
     fontWeight: theme.typography.weights.bold,
     color: theme.colors.primaryForeground,
+    includeFontPadding: false,
   },
 });

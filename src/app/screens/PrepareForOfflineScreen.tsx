@@ -7,6 +7,7 @@ import {
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
@@ -28,6 +29,7 @@ const INSTRUCTION = 'Download project resources to work without a connection.';
 
 export default function PrepareForOfflineScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const rawParams = useLocalSearchParams<{ projectId?: string }>();
   const routeProjectId = parseOptionalNumber(rawParams.projectId);
 
@@ -96,6 +98,11 @@ export default function PrepareForOfflineScreen() {
 
   const goBack = useCallback(() => router.back(), [router]);
 
+  const scrollContentStyle = [
+    styles.content,
+    { paddingBottom: theme.spacing.xxl + insets.bottom },
+  ];
+
   const handleSelectProject = useCallback((project: ProjectSummary) => {
     setPickedProjectId(project.id);
   }, []);
@@ -125,7 +132,7 @@ export default function PrepareForOfflineScreen() {
 
   if (!projectId) {
     body = (
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={scrollContentStyle}>
         <ProjectPickerStep onSelectProject={handleSelectProject} />
       </ScrollView>
     );
@@ -149,14 +156,14 @@ export default function PrepareForOfflineScreen() {
     );
   } else if (books.length === 0) {
     body = (
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={scrollContentStyle}>
         <EmptyState message="No chapters available for this project." />
         {storageSection}
       </ScrollView>
     );
   } else {
     body = (
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={scrollContentStyle}>
         <ChapterSelectionAccordion
           title={accordionTitle}
           expanded={accordionExpanded}

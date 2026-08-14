@@ -210,7 +210,7 @@ export default function DraftingScreen() {
   // Header + tab bar own safe-area insets; keep container white edge-to-edge.
   if (loading) {
     return (
-      <ScreenContainer edges={[]}>
+      <ScreenContainer>
         {renderHeader()}
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -222,7 +222,7 @@ export default function DraftingScreen() {
 
   if (!chapterData) {
     return (
-      <ScreenContainer edges={[]}>
+      <ScreenContainer>
         {renderHeader()}
         <View style={styles.centered}>
           <Text style={styles.emptyText}>No chapter data found</Text>
@@ -233,7 +233,7 @@ export default function DraftingScreen() {
   }
 
   return (
-    <ScreenContainer edges={[]}>
+    <ScreenContainer>
       <DraftingProvider verses={verses} initialVerse={initialVerse}>
         <View style={styles.screen}>
           {renderHeader()}

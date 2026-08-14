@@ -34,10 +34,7 @@ describe('getAuthGateDecision', () => {
       { action: 'redirect', href: APP_HOME_HREF },
     ],
     [{ ...base, inAuthGroup: true }, { action: 'allow' }],
-    [
-      { ...base, isAuthenticated: true, inAppGroup: true },
-      { action: 'allow' },
-    ],
+    [{ ...base, isAuthenticated: true, inAppGroup: true }, { action: 'allow' }],
     [base, { action: 'allow' }],
   ])('%#', (input, expected) => {
     expect(getAuthGateDecision(input)).toEqual(expected);

@@ -1,6 +1,7 @@
 import React from 'react';
 import { FlatList, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MY_WORK_EMPTY_MESSAGE } from '../../constants/messages';
 import { useMyWorkChapters } from '../../hooks/useMyWorkChapters';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -19,6 +20,7 @@ export function MyWorkTab({
   isSyncing = false,
 }: MyWorkTabProps) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { chapters, loading, refreshing, refresh } =
     useMyWorkChapters(refreshKey);
 
@@ -34,7 +36,10 @@ export function MyWorkTab({
     <FlatList
       data={chapters}
       keyExtractor={item => String(item.id)}
-      contentContainerStyle={styles.listContent}
+      contentContainerStyle={[
+        styles.listContent,
+        { paddingBottom: theme.spacing.lg + insets.bottom },
+      ]}
       refreshing={refreshing}
       onRefresh={refresh}
       renderItem={({ item }) => (

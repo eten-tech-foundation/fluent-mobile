@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -27,6 +28,7 @@ import { ProjectChapter } from '../../types/db/types';
 
 export default function ViewProject() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const rawParams = useLocalSearchParams<{
     projectId?: string;
     projectName?: string;
@@ -106,7 +108,10 @@ export default function ViewProject() {
           <FlatList
             data={chapters}
             keyExtractor={item => String(item.id)}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingBottom: theme.spacing.lg + insets.bottom },
+            ]}
             refreshing={refreshing}
             onRefresh={refresh}
             renderItem={renderChapter}
@@ -117,7 +122,7 @@ export default function ViewProject() {
   }
 
   return (
-    <ScreenContainer edges={['bottom']}>
+    <ScreenContainer>
       <View style={styles.screen}>{body}</View>
     </ScreenContainer>
   );

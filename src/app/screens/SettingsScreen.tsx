@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HardDrive, LogOut, Trash2, UserPlus } from 'lucide-react-native';
 import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
@@ -28,6 +29,7 @@ import { logger } from '../../utils/logger';
 const log = logger.create('SettingsScreen');
 
 export default function SettingsScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { signOut: onSignOut, notifyUserSwitched: onUserSwitched } =
     useAuthSession();
@@ -109,10 +111,16 @@ export default function SettingsScreen() {
   const iconColor = theme.colors.foreground;
 
   return (
-    <ScreenContainer edges={['bottom']}>
+    <ScreenContainer>
       <View style={styles.screen}>
         <StackScreenHeader title="Settings" onBack={goBack} />
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: theme.spacing.lg + insets.bottom },
+          ]}
+        >
+          {' '}
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Offline</Text>
             <View style={styles.cardGroup}>
@@ -153,7 +161,6 @@ export default function SettingsScreen() {
               </View>
             </View>
           </View>
-
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Account</Text>
             <View style={styles.sectionCard}>

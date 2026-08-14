@@ -1,6 +1,7 @@
 import React from 'react';
 import { FlatList, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PROJECTS_EMPTY_MESSAGE } from '../../constants/messages';
 import { useProjectsSummary } from '../../hooks/useProjectsSummary';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -15,6 +16,7 @@ interface ProjectsTabProps {
 
 export function ProjectsTab({ refreshKey = 0 }: ProjectsTabProps) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { projects, loading, refreshing, refresh } =
     useProjectsSummary(refreshKey);
 
@@ -30,7 +32,10 @@ export function ProjectsTab({ refreshKey = 0 }: ProjectsTabProps) {
     <FlatList
       data={projects}
       keyExtractor={item => String(item.id)}
-      contentContainerStyle={styles.listContent}
+      contentContainerStyle={[
+        styles.listContent,
+        { paddingBottom: theme.spacing.lg + insets.bottom },
+      ]}
       refreshing={refreshing}
       onRefresh={refresh}
       renderItem={({ item }) => (

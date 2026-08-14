@@ -19,9 +19,11 @@ import { formatSyncStatusLabel } from '../../utils/syncStatusState';
 import { hrefs } from '../../navigation/hrefs';
 import { SyncPageStatus } from '../../types/sync/types';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SyncScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { snapshot, hasDownloads } = useDownloadQueue();
 
   const [refreshKey, setRefreshKey] = useState(0);
@@ -99,9 +101,16 @@ export default function SyncScreen() {
     controlStatus === 'paused' ? false : isStartControlPending || isUploading;
 
   return (
-    <ScreenContainer edges={['bottom']}>
+    <ScreenContainer>
       <StackScreenHeader title="Sync" onBack={() => router.back()} />
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: theme.spacing.lg + insets.bottom },
+        ]}
+      >
+        {' '}
         <View style={styles.statusSection}>
           <SyncStatusIndicator
             status={status}
@@ -125,7 +134,6 @@ export default function SyncScreen() {
             </Text>
           ) : null}
         </View>
-
         <View style={styles.uploadSection}>
           {renderSecondaryContent(
             status,
