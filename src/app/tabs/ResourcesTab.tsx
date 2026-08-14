@@ -26,7 +26,7 @@ import { RESOURCES_EMPTY_MESSAGE } from '../../constants/messages';
 import { useTranslationNotesForUnit } from '../../hooks/useTranslationNotesForUnit';
 import { ResourceSectionId } from '../../types/resources/types';
 import { getMockResourcesForUnit } from './resources/mockResourceData';
-import { TranslationNotesSection } from './resources/TranslationNotesSection';
+import { TranslationNotesSectionHost } from './resources/TranslationNotesSectionHost';
 import {
   getResourcesTabUiState,
   setResourcesTabUiState,
@@ -90,10 +90,12 @@ export function ResourcesTab({
 
   // Live Aquifer TN (#189): show while loading/error, or when notes exist.
   // Do not gate on #188 mock emptiness alone — verse % 3 === 0 still loads Aquifer.
+  // Guard notesState so a stale HMR/partial hook result cannot crash on `.status`.
   const showTranslationNotes =
-    notesState.status === 'loading' ||
-    notesState.status === 'error' ||
-    (notesState.status === 'ready' && notesState.notes.length > 0);
+    notesState !== undefined &&
+    (notesState.status === 'loading' ||
+      notesState.status === 'error' ||
+      (notesState.status === 'ready' && notesState.notes.length > 0));
 
   const [openAccordionIds, setOpenAccordionIds] = useState<Set<string>>(
     () => getResourcesTabUiState(chapterId, selectedVerse).openAccordionIds,
@@ -194,7 +196,7 @@ export function ResourcesTab({
               testID={`resources-section-${id}`}
             >
               {id === 'translationNotes' ? (
-                <TranslationNotesSection
+                <TranslationNotesSectionHost
                   state={notesState}
                   retry={retryNotes}
                   sectionExpanded={expanded}

@@ -115,4 +115,19 @@ describe('TranslationNotesSection', () => {
       expect(screen.getByTestId('translation-notes-list')).toBeTruthy();
     });
   });
+
+  it('treats a missing load state as loading instead of crashing', () => {
+    render(
+      <TranslationNotesSection
+        state={undefined}
+        retry={() => undefined}
+        sectionExpanded
+        bookCode="MRK"
+        chapterNumber={14}
+        verseNumber={1}
+      />,
+    );
+
+    expect(screen.getByTestId('translation-notes-loading')).toBeTruthy();
+  });
 });

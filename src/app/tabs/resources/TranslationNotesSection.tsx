@@ -12,7 +12,7 @@ import { TRANSLATION_NOTES_LOAD_ERROR } from '../../../constants/messages';
 import { theme } from '../../../theme';
 
 type TranslationNotesSectionProps = {
-  state: TranslationNotesLoadState;
+  state: TranslationNotesLoadState | undefined;
   retry: () => void;
   /** Reset nested open state when the parent section collapses or unit changes. */
   sectionExpanded: boolean;
@@ -57,7 +57,7 @@ export function TranslationNotesSection({
     });
   }, []);
 
-  if (state.status === 'loading') {
+  if (!state || state.status === 'loading') {
     return (
       <View style={styles.centered} testID="translation-notes-loading">
         <ActivityIndicator color={theme.colors.primary} />
@@ -81,7 +81,7 @@ export function TranslationNotesSection({
     );
   }
 
-  if (state.notes.length === 0) {
+  if (state.status !== 'ready' || state.notes.length === 0) {
     return null;
   }
 

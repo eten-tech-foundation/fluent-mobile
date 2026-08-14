@@ -5,6 +5,7 @@ import {
   setTranslationNotesLoadFailureForTests,
 } from './translationNotes';
 import { AquiferAPI } from './aquiferApi';
+import { ApiError } from './apiError';
 
 jest.mock('./aquiferApi', () => ({
   AquiferAPI: {
@@ -105,6 +106,37 @@ describe('loadTranslationNotesForUnit', () => {
         verseNumber: 1,
       }),
     ).resolves.toEqual([]);
+  });
+
+  it('returns [] when Aquifer search payload omits items', async () => {
+    searchResources.mockResolvedValue({} as never);
+
+    await expect(
+      loadTranslationNotesForUnit({
+        bookCode: 'MRK',
+        chapterNumber: 14,
+        verseNumber: 1,
+      }),
+    ).resolves.toEqual([]);
+    expect(getResourceDetails).not.toHaveBeenCalled();
+  });
+
+  it('propagates Aquifer ApiError so the section can show retry', async () => {
+    searchResources.mockRejectedValue(
+      new ApiError(0, 'Aquifer request returned no response'),
+    );
+
+    await expect(
+      loadTranslationNotesForUnit({
+        bookCode: 'MRK',
+        chapterNumber: 14,
+        verseNumber: 2,
+      }),
+    ).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 0,
+      message: expect.stringMatching(/no response/i),
+    });
   });
 
   it('searches Aquifer and parses resource details', async () => {

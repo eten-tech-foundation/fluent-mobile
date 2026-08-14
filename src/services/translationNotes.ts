@@ -110,12 +110,15 @@ export async function loadTranslationNotesForUnit(
     limit: 50,
   });
 
-  if (!search.items.length) {
+  // Aquifer can return 200 with an empty/`{}` body (parsed as `{}`) or omit
+  // `items` on unexpected payloads — treat as no notes, not a crash.
+  const items = Array.isArray(search?.items) ? search.items : [];
+  if (items.length === 0) {
     return [];
   }
 
   const detailsList = await Promise.all(
-    search.items.map(item => AquiferAPI.getResourceDetails(item.id)),
+    items.map(item => AquiferAPI.getResourceDetails(item.id)),
   );
 
   return detailsList.flatMap(parseAquiferTranslationNotes);
