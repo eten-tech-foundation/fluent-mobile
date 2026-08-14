@@ -16,10 +16,15 @@ import { theme } from '../../theme';
 import { useLogin } from '../../hooks/useLogin';
 import { AuthFormError } from '../../components/ui/AuthFormError';
 import { hrefs } from '../../navigation/hrefs';
+import { useAuthSession } from '../../navigation/AuthSessionProvider';
 import { authFormStyles as styles } from './authFormStyles';
 
 interface LoginScreenProps {
-  onLoginSuccess: (email: string) => void;
+  /**
+   * Override post-login handling. Defaults to cold `signIn` from auth session.
+   * Pass explicitly for Add User (`signInAddUser` + navigate home).
+   */
+  onLoginSuccess?: (email: string) => void;
   /**
    * Which route group legal / forgot-password links should target.
    * Use `app` when LoginScreen is shown as Add User (authenticated stack).
@@ -28,9 +33,11 @@ interface LoginScreenProps {
 }
 
 export default function LoginScreen({
-  onLoginSuccess,
+  onLoginSuccess: onLoginSuccessProp,
   legalLinksGroup = 'auth',
 }: LoginScreenProps) {
+  const { signIn } = useAuthSession();
+  const onLoginSuccess = onLoginSuccessProp ?? signIn;
   const router = useRouter();
   const {
     email,

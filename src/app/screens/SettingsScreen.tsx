@@ -21,21 +21,16 @@ import { getKnownUserIds, MAX_DEVICE_ACCOUNTS } from '../../services/storage';
 import { loadPendingUploadCount } from '../../hooks/usePendingUploads';
 import { usePreferences } from '../../hooks/usePreferences';
 import { hrefs } from '../../navigation/hrefs';
+import { useAuthSession } from '../../navigation/AuthSessionProvider';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import { logger } from '../../utils/logger';
 
 const log = logger.create('SettingsScreen');
 
-interface SettingsScreenProps {
-  onSignOut?: () => void;
-  onUserSwitched?: () => void;
-}
-
-export default function SettingsScreen({
-  onSignOut,
-  onUserSwitched,
-}: SettingsScreenProps) {
+export default function SettingsScreen() {
   const router = useRouter();
+  const { signOut: onSignOut, notifyUserSwitched: onUserSwitched } =
+    useAuthSession();
   const { uploadOverCellular, setUploadOverCellular } = usePreferences();
   const [atAccountLimit, setAtAccountLimit] = useState(
     () => getKnownUserIds().length >= MAX_DEVICE_ACCOUNTS,
@@ -47,7 +42,13 @@ export default function SettingsScreen({
     }, []),
   );
 
-  const goBack = useCallback(() => router.back(), [router]);
+  const goBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace(hrefs.home());
+  }, [router]);
 
   const handleAddUser = useCallback(() => {
     if (atAccountLimit) return;
@@ -57,11 +58,11 @@ export default function SettingsScreen({
   const performLogOut = async () => {
     const result = await signOutCurrentDeviceAccount();
     if (result.kind === 'switched') {
-      onUserSwitched?.();
+      onUserSwitched();
       router.back();
       return;
     }
-    onSignOut?.();
+    onSignOut();
   };
 
   const handleLogOut = async () => {

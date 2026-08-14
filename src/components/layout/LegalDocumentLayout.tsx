@@ -15,6 +15,7 @@ import {
   listIconStrokeWidth,
   touchHitSlop,
 } from '../../theme';
+import { hrefs } from '../../navigation/hrefs';
 
 interface LegalDocumentLayoutProps {
   title: string;
@@ -33,7 +34,13 @@ export function LegalDocumentLayout({
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+              return;
+            }
+            router.replace(hrefs.home());
+          }}
           hitSlop={touchHitSlop}
           accessibilityRole="button"
           accessibilityLabel="Go back"

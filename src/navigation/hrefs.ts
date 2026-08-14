@@ -26,7 +26,7 @@ export const hrefs = {
           : undefined,
     } as const;
   },
-  settings: '/(app)/(stack)/settings' as const,
+  settings: '/(app)/settings' as const,
   sync: '/(app)/(stack)/sync' as const,
   prepareForOffline: (params?: {
     projectId?: number;
@@ -73,8 +73,8 @@ export const hrefs = {
       },
     } as const),
   addUser: '/(app)/(stack)/add-user' as const,
-  privacyPolicyApp: '/(app)/(stack)/privacy-policy' as const,
-  termsOfUseApp: '/(app)/(stack)/terms-of-use' as const,
+  privacyPolicyApp: '/(app)/privacy-policy' as const,
+  termsOfUseApp: '/(app)/terms-of-use' as const,
   forgotPasswordApp: (params?: { initialEmail?: string }) =>
     ({
       pathname: '/(app)/(stack)/forgot-password' as const,

@@ -36,19 +36,18 @@ import {
 } from '../../db/queries';
 import { hrefs } from '../../navigation/hrefs';
 import { parseOptionalBoolean } from '../../navigation/routeParams';
-
-interface HomeScreenProps {
-  postLoginSyncActive?: boolean;
-}
+import { useAuthSession } from '../../navigation/AuthSessionProvider';
 
 /** Drawer helpers on the `(app)` layout — not available on the nested stack nav. */
 type AppDrawerNavigation = {
   openDrawer: () => void;
 };
 
-export default function HomeScreen({
-  postLoginSyncActive = false,
-}: HomeScreenProps) {
+function HomeScreenBody({
+  postLoginSyncActive,
+}: {
+  postLoginSyncActive: boolean;
+}) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const navigation = useNavigation<AppDrawerNavigation>('/(app)');
@@ -312,6 +311,16 @@ export default function HomeScreen({
         )}
       </View>
     </ScreenContainer>
+  );
+}
+
+export default function HomeScreen() {
+  const { postLoginSyncActive, userSwitchEpoch } = useAuthSession();
+  return (
+    <HomeScreenBody
+      key={userSwitchEpoch}
+      postLoginSyncActive={postLoginSyncActive}
+    />
   );
 }
 

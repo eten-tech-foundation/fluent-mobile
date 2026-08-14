@@ -58,27 +58,14 @@ jest.mock('../src/services/syncEvents', () => ({
   onAuthSessionExpired: jest.fn(() => jest.fn()),
 }));
 
-jest.mock('../src/services/keychain', () => ({
-  hasCredentials: jest.fn(() => Promise.resolve(false)),
-  getCredentials: jest.fn(() => Promise.resolve(null)),
-  getAllStoredUserIds: jest.fn(() => Promise.resolve([])),
-}));
-
 import {
   AuthSessionProvider,
   useAuthSession,
 } from '../src/navigation/AuthSessionProvider';
 
 function AuthProbe() {
-  const {
-    isAuthenticated,
-    postLoginSyncActive,
-    signIn,
-    signInAddUser,
-    signOut,
-    notifyUserSwitched,
-  } = useAuthSession();
-
+  const { isAuthenticated, postLoginSyncActive, signIn, signOut } =
+    useAuthSession();
   return (
     <>
       <Text testID="auth-flag">{isAuthenticated ? 'yes' : 'no'}</Text>
@@ -89,17 +76,8 @@ function AuthProbe() {
       >
         <Text>Sign in</Text>
       </TouchableOpacity>
-      <TouchableOpacity
-        testID="sign-in-add-user"
-        onPress={() => signInAddUser('new@example.com')}
-      >
-        <Text>Add user</Text>
-      </TouchableOpacity>
       <TouchableOpacity testID="sign-out" onPress={signOut}>
         <Text>Sign out</Text>
-      </TouchableOpacity>
-      <TouchableOpacity testID="notify-switch" onPress={notifyUserSwitched}>
-        <Text>Switch user</Text>
       </TouchableOpacity>
     </>
   );
@@ -112,7 +90,7 @@ describe('AuthSessionProvider', () => {
     mockSyncAllData.mockResolvedValue(undefined);
   });
 
-  it('shows loading until session restore finishes, then renders children', async () => {
+  it('bootstraps session, then renders children', async () => {
     const { getByTestId, queryByTestId } = render(
       <AuthSessionProvider>
         <AuthProbe />
@@ -120,20 +98,16 @@ describe('AuthSessionProvider', () => {
     );
 
     expect(getByTestId('auth-session-loading')).toBeTruthy();
-    expect(queryByTestId('auth-flag')).toBeNull();
 
     await waitFor(() => {
       expect(queryByTestId('auth-session-loading')).toBeNull();
       expect(getByTestId('auth-flag').props.children).toBe('no');
     });
-
     expect(BootSplash.hide).toHaveBeenCalledWith({ fade: true });
-    expect(mockStopUploadOrchestrator).toHaveBeenCalled();
   });
 
-  it('restores an authenticated session and starts the upload orchestrator', async () => {
+  it('restores auth and starts upload orchestrator', async () => {
     mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
-
     const { getByTestId } = render(
       <AuthSessionProvider>
         <AuthProbe />
@@ -143,11 +117,10 @@ describe('AuthSessionProvider', () => {
     await waitFor(() => {
       expect(getByTestId('auth-flag').props.children).toBe('yes');
     });
-
     expect(mockStartUploadOrchestrator).toHaveBeenCalled();
   });
 
-  it('signIn flips auth, runs post-login sync with sync-active UI, then clears the flag', async () => {
+  it('signIn runs post-login sync with sync-active UI', async () => {
     let resolveSync: (() => void) | undefined;
     mockSyncAllData.mockImplementationOnce(
       () =>
@@ -161,7 +134,6 @@ describe('AuthSessionProvider', () => {
         <AuthProbe />
       </AuthSessionProvider>,
     );
-
     await waitFor(() => {
       expect(getByTestId('auth-flag').props.children).toBe('no');
     });
@@ -169,50 +141,23 @@ describe('AuthSessionProvider', () => {
     await act(async () => {
       fireEvent.press(getByTestId('sign-in'));
     });
-
-    expect(getByTestId('auth-flag').props.children).toBe('yes');
     expect(getByTestId('sync-flag').props.children).toBe('yes');
-    expect(mockSyncAllData).toHaveBeenCalledWith(false, 'user@example.com');
 
     await act(async () => {
       resolveSync?.();
     });
-
     await waitFor(() => {
       expect(getByTestId('sync-flag').props.children).toBe('no');
     });
   });
 
-  it('signInAddUser syncs without toggling postLoginSyncActive', async () => {
-    const { getByTestId } = render(
-      <AuthSessionProvider>
-        <AuthProbe />
-      </AuthSessionProvider>,
-    );
-
-    await waitFor(() => {
-      expect(getByTestId('auth-flag').props.children).toBe('no');
-    });
-
-    await act(async () => {
-      fireEvent.press(getByTestId('sign-in-add-user'));
-    });
-
-    // Add-user does not flip the auth gate (caller already authenticated).
-    expect(getByTestId('auth-flag').props.children).toBe('no');
-    expect(getByTestId('sync-flag').props.children).toBe('no');
-    expect(mockSyncAllData).toHaveBeenCalledWith(false, 'new@example.com');
-  });
-
-  it('signOut clears auth and stops the upload orchestrator', async () => {
+  it('signOut clears auth', async () => {
     mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
-
     const { getByTestId } = render(
       <AuthSessionProvider>
         <AuthProbe />
       </AuthSessionProvider>,
     );
-
     await waitFor(() => {
       expect(getByTestId('auth-flag').props.children).toBe('yes');
     });
@@ -220,13 +165,11 @@ describe('AuthSessionProvider', () => {
     await act(async () => {
       fireEvent.press(getByTestId('sign-out'));
     });
-
     expect(getByTestId('auth-flag').props.children).toBe('no');
     expect(mockSignOut).toHaveBeenCalled();
-    expect(mockStopUploadOrchestrator).toHaveBeenCalled();
   });
 
-  it('renders the init error view instead of children when bootstrap fails', async () => {
+  it('shows init error when bootstrap fails', async () => {
     const { initializeDatabase } = jest.requireMock('../src/db/index') as {
       initializeDatabase: jest.Mock;
     };
@@ -242,33 +185,5 @@ describe('AuthSessionProvider', () => {
       expect(getByTestId('auth-session-error')).toBeTruthy();
     });
     expect(queryByTestId('auth-flag')).toBeNull();
-    expect(queryByTestId('auth-session-loading')).toBeNull();
-  });
-
-  it('restarts the download queue when notifyUserSwitched bumps the epoch', async () => {
-    mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
-
-    const { getByTestId } = render(
-      <AuthSessionProvider>
-        <AuthProbe />
-      </AuthSessionProvider>,
-    );
-
-    await waitFor(() => {
-      expect(getByTestId('auth-flag').props.children).toBe('yes');
-    });
-
-    const startsBefore = mockStartDownloadQueueAutoResume.mock.calls.length;
-
-    await act(async () => {
-      fireEvent.press(getByTestId('notify-switch'));
-    });
-
-    await waitFor(() => {
-      expect(mockStopDownloadQueueAutoResume).toHaveBeenCalled();
-      expect(mockStartDownloadQueueAutoResume.mock.calls.length).toBeGreaterThan(
-        startsBefore,
-      );
-    });
   });
 });

@@ -8,6 +8,7 @@ import {
   ThemeProvider,
   DefaultTheme,
 } from 'expo-router';
+import { NavigationBar } from 'expo-navigation-bar';
 import { queryClient } from '../services/queryClient';
 import { appStyles } from '../app/appStyles';
 import { theme } from '../theme';
@@ -66,6 +67,8 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={appStyles.appRoot}>
         <ThemeProvider value={navigationTheme}>
+          {/* Edge-to-edge: transparent system bars; dark icons on light chrome. */}
+          <NavigationBar style="dark" />
           <AuthSessionProvider>
             <RootNavigator />
           </AuthSessionProvider>

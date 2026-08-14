@@ -6,9 +6,7 @@ import {
   getAuthGateDecision,
 } from '../navigation/authGate';
 
-/**
- * `/` entry — send users to the correct group after session restore.
- */
+/** `/` entry — wait for session, then send users to the correct group. */
 export default function Index() {
   const { isAuthenticated, isLoading } = useAuthSession();
   const decision = getAuthGateDecision({
@@ -17,11 +15,6 @@ export default function Index() {
     inAuthGroup: false,
     inAppGroup: false,
   });
-
-  if (decision.action === 'wait') {
-    return null;
-  }
-
-  // Root index is neither auth nor app group — gate returns allow; pick destination by auth.
+  if (decision.action === 'wait') return null;
   return <Redirect href={isAuthenticated ? APP_HOME_HREF : AUTH_LOGIN_HREF} />;
 }

@@ -3,20 +3,78 @@ import { Alert } from 'react-native';
 import { UserSettingsMenu } from './UserSettingsMenu';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { hrefs } from '../../navigation/hrefs';
+import type { DrawerContentComponentProps } from 'expo-router/drawer';
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
 const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 const mockCloseDrawer = jest.fn();
 let mockDrawerStatus: 'open' | 'closed' = 'closed';
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn(), back: jest.fn() }),
 }));
-jest.mock('expo-router/drawer', () => ({
-  useDrawerStatus: () => mockDrawerStatus,
-}));
+jest.mock('expo-router/drawer', () => {
+  const React = require('react');
+  const { Pressable, Text, View } = require('react-native');
+  return {
+    useDrawerStatus: () => mockDrawerStatus,
+    DrawerContentScrollView: ({
+      children,
+      testID,
+    }: {
+      children: React.ReactNode;
+      testID?: string;
+    }) => <View testID={testID}>{children}</View>,
+    DrawerItem: ({
+      label,
+      onPress,
+      testID,
+      accessibilityLabel,
+      icon,
+      focused,
+      activeTintColor,
+      activeBackgroundColor,
+    }: {
+      label: string;
+      onPress: () => void;
+      testID?: string;
+      accessibilityLabel?: string;
+      focused?: boolean;
+      activeTintColor?: string;
+      activeBackgroundColor?: string;
+      icon?: (props: {
+        color: string;
+        size: number;
+        focused: boolean;
+      }) => React.ReactNode;
+    }) => (
+      <Pressable
+        testID={testID}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityState={{ selected: !!focused }}
+        // Surface focused styling props for assertions (RN Pressable ignores unknowns).
+        {...{
+          activeTintColor,
+          activeBackgroundColor:
+            activeBackgroundColor === undefined
+              ? 'DEFAULT_ALPHA_PRIMARY'
+              : activeBackgroundColor,
+        }}
+        onPress={onPress}
+      >
+        {icon?.({
+          color: focused ? '#1a6ef5' : '#333',
+          size: 18,
+          focused: !!focused,
+        })}
+        <Text>{label}</Text>
+      </Pressable>
+    ),
+  };
+});
 
 const mockGetActiveUserId = jest.fn();
 jest.mock('../../services/storage', () => ({
@@ -79,6 +137,27 @@ function setDeviceAccountsResult(
   });
 }
 
+const drawerProps = {
+  state: {
+    routes: [
+      { key: 'stack', name: '(stack)' },
+      { key: 'settings', name: 'settings' },
+      { key: 'privacy', name: 'privacy-policy' },
+      { key: 'terms', name: 'terms-of-use' },
+    ],
+    index: 0,
+    key: 'drawer',
+    routeNames: ['(stack)', 'settings', 'privacy-policy', 'terms-of-use'],
+    type: 'drawer',
+    stale: false,
+  } as unknown as DrawerContentComponentProps['state'],
+  navigation: {
+    closeDrawer: mockCloseDrawer,
+    navigate: mockNavigate,
+  } as unknown as DrawerContentComponentProps['navigation'],
+  descriptors: {} as DrawerContentComponentProps['descriptors'],
+};
+
 describe('UserSettingsMenu', () => {
   const onUserSwitched = jest.fn();
   const onSignOut = jest.fn();
@@ -96,22 +175,55 @@ describe('UserSettingsMenu', () => {
   function renderMenu() {
     return render(
       <UserSettingsMenu
+        {...drawerProps}
         onSignOut={onSignOut}
         onUserSwitched={onUserSwitched}
-        onRequestClose={mockCloseDrawer}
       />,
     );
   }
 
-  it('groups accounts under Accounts with Add User below the list', () => {
-    const { getByText, getByTestId, queryByText } = renderMenu();
+  it('renders More Settings, legal divider, then Privacy/Terms before accounts', () => {
+    const { getByTestId, getByText, queryByText, toJSON } = renderMenu();
 
+    expect(getByTestId('settings-menu-more-settings')).toBeTruthy();
+    expect(getByTestId('settings-menu-legal-divider')).toBeTruthy();
+    expect(getByTestId('settings-menu-privacy-policy')).toBeTruthy();
+    expect(getByTestId('settings-menu-terms-of-use')).toBeTruthy();
+    expect(getByText('More Settings')).toBeTruthy();
+    expect(getByText('Privacy Policy')).toBeTruthy();
+    expect(getByText('Terms of Use')).toBeTruthy();
     expect(getByText('Accounts')).toBeTruthy();
     expect(getByText('active@example.com')).toBeTruthy();
     expect(getByText('other@example.com')).toBeTruthy();
     expect(getByTestId('settings-menu-add-user')).toBeTruthy();
-    expect(getByText('Add User')).toBeTruthy();
+    expect(getByTestId('settings-menu-sign-out')).toBeTruthy();
     expect(queryByText('Switch User')).toBeNull();
+
+    const tree = JSON.stringify(toJSON());
+    expect(tree.indexOf('More Settings')).toBeLessThan(
+      tree.indexOf('settings-menu-legal-divider'),
+    );
+    expect(tree.indexOf('settings-menu-legal-divider')).toBeLessThan(
+      tree.indexOf('Privacy Policy'),
+    );
+    expect(tree.indexOf('Privacy Policy')).toBeLessThan(
+      tree.indexOf('Terms of Use'),
+    );
+    expect(tree.indexOf('Terms of Use')).toBeLessThan(tree.indexOf('Accounts'));
+    expect(tree.indexOf('Accounts')).toBeLessThan(tree.indexOf('Sign Out'));
+  });
+
+  it('navigates to drawer routes when More Settings / legal items are pressed', () => {
+    const { getByTestId } = renderMenu();
+
+    fireEvent.press(getByTestId('settings-menu-more-settings'));
+    expect(mockNavigate).toHaveBeenCalledWith('settings');
+
+    fireEvent.press(getByTestId('settings-menu-privacy-policy'));
+    expect(mockNavigate).toHaveBeenCalledWith('privacy-policy');
+
+    fireEvent.press(getByTestId('settings-menu-terms-of-use'));
+    expect(mockNavigate).toHaveBeenCalledWith('terms-of-use');
   });
 
   it('uses leading checkmark for active and person icon for inactive (design mock)', () => {
@@ -121,17 +233,17 @@ describe('UserSettingsMenu', () => {
     expect(getByTestId('settings-menu-inactive-other-2')).toBeTruthy();
   });
 
-  it('keeps Add User out of the top group (after Privacy / Terms)', () => {
-    const { getByText, getByTestId } = renderMenu();
-    const privacy = getByTestId('settings-menu-privacy-policy');
-    const terms = getByTestId('settings-menu-terms-of-use');
-    const addUser = getByTestId('settings-menu-add-user');
-    const accountsLabel = getByText('Accounts');
+  it('applies DrawerItem focused styling to the active account', () => {
+    const { getByTestId } = renderMenu();
+    const active = getByTestId('settings-menu-account-active-1');
+    const inactive = getByTestId('settings-menu-account-other-2');
 
-    expect(privacy).toBeTruthy();
-    expect(terms).toBeTruthy();
-    expect(accountsLabel).toBeTruthy();
-    expect(addUser).toBeTruthy();
+    expect(active.props.accessibilityState).toEqual({ selected: true });
+    // Omit activeBackgroundColor so DrawerItem uses Color(primary).alpha(0.12).
+    expect(active.props.activeBackgroundColor).toBe('DEFAULT_ALPHA_PRIMARY');
+    expect(active.props.activeTintColor).toBe('#0B50D0');
+
+    expect(inactive.props.accessibilityState).toEqual({ selected: false });
   });
 
   it('shows the 3-account limit message instead of Add User when capped', () => {
@@ -162,19 +274,6 @@ describe('UserSettingsMenu', () => {
 
     expect(mockCloseDrawer).toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith(hrefs.addUser);
-  });
-
-  it('navigates to settings / privacy / terms via app hrefs', () => {
-    const { getByText, getByTestId } = renderMenu();
-
-    fireEvent.press(getByText('More Settings'));
-    expect(mockPush).toHaveBeenCalledWith(hrefs.settings);
-
-    fireEvent.press(getByTestId('settings-menu-privacy-policy'));
-    expect(mockPush).toHaveBeenCalledWith(hrefs.privacyPolicyApp);
-
-    fireEvent.press(getByTestId('settings-menu-terms-of-use'));
-    expect(mockPush).toHaveBeenCalledWith(hrefs.termsOfUseApp);
   });
 
   it('does nothing when tapping the already-active user', async () => {
@@ -266,9 +365,9 @@ describe('UserSettingsMenu', () => {
     mockDrawerStatus = 'open';
     rerender(
       <UserSettingsMenu
+        {...drawerProps}
         onSignOut={onSignOut}
         onUserSwitched={onUserSwitched}
-        onRequestClose={mockCloseDrawer}
       />,
     );
 

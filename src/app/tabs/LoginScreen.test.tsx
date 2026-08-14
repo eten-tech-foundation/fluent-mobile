@@ -23,6 +23,20 @@ jest.mock('expo-router', () => ({
   }),
 }));
 
+jest.mock('../../navigation/AuthSessionProvider', () => ({
+  useAuthSession: () => ({
+    signIn: jest.fn(),
+    signInAddUser: jest.fn(),
+    signOut: jest.fn(),
+    notifyUserSwitched: jest.fn(),
+    isAuthenticated: false,
+    isLoading: false,
+    postLoginSyncActive: false,
+    error: null,
+    userSwitchEpoch: 0,
+  }),
+}));
+
 jest.mock('../../services/api', () => ({
   FluentAPI: {
     signIn: jest.fn(),
