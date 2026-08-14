@@ -18,6 +18,7 @@ import {
 import { logger } from '../utils/logger';
 import { getDatabase } from '../db/db';
 import { ApiBook, ApiVerse } from '../types/api/types';
+import { getConnectivitySnapshot } from './connectivity';
 import { unwrapApiListResponse } from '../types/api/responses';
 import {
   setUserSync,
@@ -695,4 +696,32 @@ export async function syncAllData(isIncremental = false, email?: string) {
 export async function switchUser(userId: string): Promise<void> {
   log.info('Switching to user', { userId });
   emitSyncComplete();
+}
+
+const lastMetadataRefreshAt = new Map<number, number>();
+const METADATA_REFRESH_COOLDOWN_MS = 60_000;
+
+export async function refreshChapterMetadataIfOnline(
+  userId: number,
+): Promise<void> {
+  const last = lastMetadataRefreshAt.get(userId);
+  if (last && Date.now() - last < METADATA_REFRESH_COOLDOWN_MS) {
+    return;
+  }
+
+  const { isOnline } = await getConnectivitySnapshot();
+  if (!isOnline) return;
+
+  lastMetadataRefreshAt.set(userId, Date.now());
+
+  try {
+    const userIdStr = String(userId);
+    const cursor = getUserLastSyncedAt(userIdStr) || undefined;
+    await syncChapterAssignmentsForUser(userId, cursor);
+  } catch (error) {
+    log.warn('Chapter metadata refresh failed (non-blocking)', {
+      userId,
+      error: getErrorMessage(error),
+    });
+  }
 }
