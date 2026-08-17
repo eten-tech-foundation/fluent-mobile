@@ -1,0 +1,48 @@
+---
+description: Cursor bridge to shared Claude Code agent docs in this repo
+alwaysApply: true
+---
+
+# Fluent Mobile agent instructions (Cursor)
+
+**Canonical source:** `CLAUDE.md` — stack, layout, conventions, PR workflow, and
+agent scoping. Always-on Cursor rules in `.cursor/rules/*.mdc` remain the
+injected contract; do not duplicate them here.
+
+**Reuse (do not duplicate):**
+
+- Skills: `.claude/skills/*/SKILL.md`
+- Commands / workflows: `.claude/commands/*.md`
+- Review agents: `.claude/agents/*.md`
+- PR template: `.cursor/templates/pr-template.md` (use with
+  `/generate-pr-description` or `/create-pr`; GitHub UI mirror
+  `.github/PULL_REQUEST_TEMPLATE.md`) — **one format only**
+
+**Agent models:** repo agents under `.claude/agents/` use `model: inherit` so
+Cursor Auto / the session model apply (do not pin model aliases). The PR
+delivery gate still requires running `code-reviewer` before handoff.
+
+When a task matches a skill description, read that `SKILL.md` first. To run a
+command, read and follow `.claude/commands/<name>.md` directly — every command
+works this way in Cursor and any other agent tool, not only Claude Code.
+
+**Discovery contract:** the globs above are the contract — any skill, command,
+or agent added under `.claude/` is automatically in scope for Cursor and other
+agent tools, with no per-item registration step.
+
+**Repo workflow:** PRs target `main`. Track work in **GitHub Issues** on
+Project 4 (`Refs #NNN` in the PR body — never closing keywords). See
+`docs/issue-tracking.md`.
+
+**Global IDE user rules:** if they conflict with this repo, prefer `CLAUDE.md`,
+`.cursor/rules/`, and this file.
+
+**Cursor-only:** session env + architecture-guard hooks in `.cursor/hooks.json`
+(warn-only; never deny tools).
+
+**Cursor command shims (optional):** a `.cursor/commands/*.md` file only makes a
+command appear in Cursor's `/` palette — it is **not** required for the command
+to work (read the canonical `.claude/commands/<name>.md` directly per the
+discovery contract above). When a shim exists it points at
+`.claude/commands/*.md`; edit the `.claude` file as the single source of truth
+and never duplicate logic into the shim.

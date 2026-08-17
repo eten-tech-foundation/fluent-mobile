@@ -57,6 +57,10 @@ Short pointers next to code (keep thin; link to full guides):
 
 Warn-only Cursor `sessionStart` hook: [`.cursor/hooks.json`](../hooks.json) + [`.cursor/hooks/session-env-check.sh`](../hooks/session-env-check.sh). Never deny tools.
 
+Warn-only architecture guard (`fetch(` / raw SQL in `src/app/` and `src/components/`): [`.cursor/hooks/architecture-guard.mjs`](../hooks/architecture-guard.mjs) + [`scripts/architecture-guard.mjs`](../../scripts/architecture-guard.mjs). Never deny tools.
+
+Canonical slash commands live in [`.claude/commands/`](../../.claude/commands/); Cursor `/` files are thin shims. Do not duplicate command lists without updating onboarding + `commands.mdc`.
+
 ## Style
 
 - Short, scannable sections and tables
