@@ -231,6 +231,15 @@ describe('resolveProjectUnitsForSync', () => {
     expect(units.get(10)).toEqual({ id: 10, projectId: 100 });
   });
 
+  it('falls back to local project_units when payload projectId is invalid', () => {
+    const units = resolveProjectUnitsForSync(
+      [validAssignment({ projectId: 999 })],
+      baseContext().knownProjectIds,
+      baseContext().projectUnitToProjectId,
+    );
+    expect(units.get(10)).toEqual({ id: 10, projectId: 100 });
+  });
+
   it('skips units when project is not local', () => {
     const units = resolveProjectUnitsForSync(
       [validAssignment({ projectId: 999 })],
@@ -386,5 +395,24 @@ describe('insertChapterAssignmentSyncData', () => {
 
     expect(db.table('project_units')).toHaveLength(1);
     expect(db.table('chapter_assignments')).toHaveLength(1);
+  });
+
+  it('inserts valid rows and skips orphan rows in the same batch', async () => {
+    const db = createSyncTestDb();
+    setDatabase(db as never);
+    db.seed({
+      projects: [{ id: 100, name: 'P' }],
+      bibles: [{ id: 4, language_id: 1, name: 'B', abbreviation: 'B' }],
+      books: [{ id: 12, code: 'GEN', eng_display_name: 'Genesis' }],
+      project_units: [{ id: 10, project_id: 100, status: 'not_started' }],
+    });
+
+    await insertChapterAssignmentSyncData([
+      validAssignment({ chapterAssignmentId: 1 }),
+      validAssignment({ chapterAssignmentId: 2, bibleId: 999 }),
+    ]);
+
+    expect(db.table('chapter_assignments')).toHaveLength(1);
+    expect(db.table('chapter_assignments')[0].id).toBe(1);
   });
 });

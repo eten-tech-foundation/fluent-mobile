@@ -82,4 +82,17 @@ describe('mapApiChapterAssignment', () => {
 
     expect(mapped.projectId).toBe(42);
   });
+
+  it('defaults projectId to 0 when camelCase and snake_case are absent', () => {
+    const mapped = mapApiChapterAssignment({
+      chapterAssignmentId: 14,
+      projectUnitId: 2,
+      bibleId: 4,
+      bookId: 12,
+      chapterNumber: 1,
+      status: 'not_started',
+    } as unknown as Parameters<typeof mapApiChapterAssignment>[0]);
+
+    expect(mapped.projectId).toBe(0);
+  });
 });
