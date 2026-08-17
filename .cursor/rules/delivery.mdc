@@ -12,8 +12,8 @@ alwaysApply: true
 Every change — including infra, CI, docs, Dependabot follow-ups, and `expo install --fix` — goes through:
 
 1. **Ticket on Project 4** — GitHub Issue `#NNN` **on** the [Fluent Mobile Board](https://github.com/orgs/eten-tech-foundation/projects/4/views/9) (org project #4, view 9). Ask if missing. See [docs/issue-tracking.md](../../docs/issue-tracking.md). The repo Issues list is not the triage board. (Not Linear.) Board Status/Priority edits: [docs/guides/project-board.md](../../docs/guides/project-board.md) and [project-board.mdc](./project-board.mdc) — do not sweep Product or `Dev Ready` lanes without named approval.
-2. **Feature branch** — `{author}/{type}/{issue-number}-{slug}` (see `/create-pr-branch`)
-3. **Pull request** — title `[#NNN]: Description`; body filled from the PR template (below); include `Refs #NNN` under Details (never `Closes` / `Fixes` / `Resolves`); **assign the PR to the author** (`gh pr create --assignee @me` or `gh pr edit --add-assignee @me`); set Project 4 Status to **In PR Review**. Manually link the issue in the PR Development sidebar when needed (GitHub has no non-closing link API — do not use closing keywords).
+2. **Feature branch** — `{author}/{type}/{issue-number}-{slug}` (see `/create-pr-branch`, or `/start-issue` for the full loop)
+3. **Pull request** — title `[#NNN]: Description`; body filled from the PR template (below); include `Refs #NNN` under Details (never `Closes` / `Fixes` / `Resolves`); **assign the PR to the author** (`gh pr create --assignee @me` or `gh pr edit --add-assignee @me`); set Project 4 Status to **In PR Review**. Manually link the issue in the PR Development sidebar when needed (GitHub has no non-closing link API — do not use closing keywords). `/start-issue` chains to `/create-pr` (`/open-pr` is an alias) which automates the draft PR, board move, and CI watch.
 4. **Human merge** — agents open PRs and push **feature branches only**; never merge on GitHub unless the user explicitly asks for a Dependabot squash merge in that session. After merge, set Project 4 Status to **In QA** (issues stay open for QA — do not auto-close)
 
 Allowed on `main` locally: `git checkout main`, `git pull`, read-only validation after merges. **Not allowed:** `git push origin main`, commits on `main`, or opening PRs with `main` as the head branch.
@@ -34,7 +34,7 @@ Do **not** substitute a short “Summary / Test plan” or ad-hoc bullet list. L
 | **How to verify** | Numbered steps + **Expected** |
 | **Follow-ups** | Deferred AC → linked issues (ticket-level waiver); otherwise say none |
 
-Prefer `/create-pr` or `/generate-pr-description` so the template is not skipped. Keep under ~400 lines; no nested fenced code blocks inside the PR body.
+Prefer `/start-issue` (full loop) or `/create-pr` / `/generate-pr-description` so the template is not skipped. Keep under ~400 lines; no nested fenced code blocks inside the PR body.
 
 This repo’s template **wins** over generic personal or org-wide PR body shapes when they conflict.
 
@@ -46,4 +46,4 @@ Agent-authored fixes (expo doctor CI, lockfile repair, conflict resolution) stil
 
 ## Before delivery
 
-Run gates from [commands.mdc](./commands.mdc). Also apply delivery judgment from root [`AGENTS.md`](../../AGENTS.md) (AC, scope, abstraction, human QA) — Cursor pointer: [agent-guardrails.mdc](./agent-guardrails.mdc). Use `/create-pr` when the user wants a PR opened (template still required if opening the PR another way).
+Run gates from [commands.mdc](./commands.mdc). Also apply delivery judgment from root [`AGENTS.md`](../../AGENTS.md) (AC, scope, abstraction, human QA) — Cursor pointer: [agent-guardrails.mdc](./agent-guardrails.mdc). Use `/start-issue` for issue → branch → implement → PR, or `/create-pr` when the branch already has commits (template still required if opening the PR another way). See [pr-delivery-ci-gate.mdc](./pr-delivery-ci-gate.mdc).

@@ -19,7 +19,7 @@ Recording follow-up: wire source audio dock to real fetch + playback ([#235](htt
 | Framework | Expo SDK **57**, React Native **0.86**, React **19.2.3** |
 | Native | **CNG, Android-only** — `android/` generated via `npm run prebuild` (`--platform android`; not committed) |
 | Language | TypeScript ~6.0 |
-| Package manager | **npm** (`package-lock.json`) |
+| Package manager | **npm** (`package-lock.json`). `yarn` in-repo is shimmed to npm; pnpm is blocked. |
 | Node | `>= 24.14.0` (README: Node 24) |
 | Local DB | `@op-engineering/op-sqlite` |
 | Navigation | `@react-navigation/stack` |
@@ -62,7 +62,8 @@ Recording follow-up: wire source audio dock to real fetch + playback ([#235](htt
 | [`docs/guides/dependabot-process.md`](guides/dependabot-process.md) | Safe Dependabot merge process |
 | [`docs/guides/local-development-workflow.md`](guides/local-development-workflow.md) | Hosted dev + local Docker API paths |
 | [`docs/guides/recordings-sync-contract.md`](guides/recordings-sync-contract.md) | Verse audio upload contract (#102 / fluent-api #224) |
-| [`.cursor/commands/`](../.cursor/commands/) | Slash commands (`/create-pr`, etc.) |
+| [`.claude/commands/`](../.claude/commands/) | Canonical slash commands (`/start-issue`, `/create-pr`, …) |
+| [`.cursor/commands/`](../.cursor/commands/) | Cursor `/` palette shims (point at `.claude/commands/`) |
 
 ## Setup
 
@@ -210,7 +211,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 | New API endpoint | `FluentAPI` in `api.ts`, then `sync.ts` step + `repository.ts` |
 | New table / column | `schema.ts` → prefer versioned migrations (`#110`) → repository inserts → queries → types |
 | Manual re-sync | Sync page / header sync → `useSync` / `syncAllUsers` |
-| PR workflow | `/create-pr-branch`, `/generate-pr-description`, `/create-pr` (see `.cursor/commands/`) |
+| PR workflow | `/start-issue` (full loop), `/create-pr-branch`, `/generate-pr-description`, `/create-pr` (alias `/open-pr`) — canonical: `.claude/commands/` |
 
 ## Risk areas (change carefully)
 
@@ -240,5 +241,5 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 - Cursor rules: [`.cursor/rules/`](../.cursor/rules/) — **Android-only:** [android-only.mdc](../.cursor/rules/android-only.mdc)
 - Dependabot: [guides/dependabot-process.md](guides/dependabot-process.md) — use with `.cursor/rules/dependabot-workflow.mdc`
 - PR template: [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md)
-- Slash commands: `/onboard`, `/dep-bump`, `/create-pr-branch`, `/create-pr`, `/handle-dependabot` (see [`.cursor/commands/`](../.cursor/commands/))
+- Slash commands: `/start-issue`, `/onboard`, `/dep-bump`, `/create-pr-branch`, `/create-pr` (`/open-pr` alias), `/generate-pr-description`, `/handle-dependabot` (canonical: [`.claude/commands/`](../.claude/commands/); Cursor shims: [`.cursor/commands/`](../.cursor/commands/))
 - Hot-path notes: [src/services/AGENTS.md](../src/services/AGENTS.md), [src/db/AGENTS.md](../src/db/AGENTS.md)
