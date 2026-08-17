@@ -567,11 +567,14 @@ describe('RecordTab', () => {
       expect(idleAudio.setCanonical).toHaveBeenCalledWith('rec_2');
     });
 
-    it('shows the toggle and All Takes list even when the active account has no personal take yet', () => {
+    it('shows the toggle and idle record button when the active account has no personal take yet, and switches to All Takes on tap', () => {
       // Active account's own hook state stays 'idle' (nothing recorded by
-      // them), but teammates already have takes for this unit — the review
-      // screen (toggle + take list + Record New Take) must still render
-      // instead of the big idle record-button screen.
+      // them), but teammates already have takes for this unit. Per #71/#279,
+      // My Takes' idle/review state is governed by the active account's own
+      // takes only — zero own takes means the idle record button, same as
+      // the single-account case. The idle circle is the entry point to
+      // record a first take; there's no separate "Record New Take" button
+      // while idle.
       mockUseVerseAudio.mockReturnValue({
         ...idleAudio,
         state: 'idle',
@@ -594,13 +597,12 @@ describe('RecordTab', () => {
 
       renderTab();
 
-      // Not stuck on the idle record-button screen.
-      expect(screen.queryByTestId('record-start-button')).toBeNull();
+      // Toggle is visible — other accounts have takes for this unit.
       expect(screen.getByTestId('take-view-toggle')).toBeTruthy();
-      // My Takes is empty (nothing of the active account's own) but Record
-      // New Take is still offered so they can add their first take.
+      // My Takes shows the idle record button, not a take list or Record New Take.
+      expect(screen.getByTestId('record-start-button')).toBeTruthy();
       expect(screen.queryByTestId('record-take-row')).toBeNull();
-      expect(screen.getByTestId('record-new-take-button')).toBeTruthy();
+      expect(screen.queryByTestId('record-new-take-button')).toBeNull();
 
       fireEvent.press(screen.getByTestId('take-view-all'));
       const headers = screen.getAllByTestId('take-group-header-name');
