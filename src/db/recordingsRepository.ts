@@ -219,17 +219,21 @@ export async function getAllTakesForVerse(
 
 export async function verseHasMultipleRecorders(
   bibleTextId: number,
+  recordedByUserId?: number | null,
 ): Promise<boolean> {
   const db = getDatabase();
+  const ownerId = resolveRecordedByUserId(recordedByUserId);
+  const owner = recordedByClause(ownerId);
   const result = await db.execute(
-    `SELECT COUNT(DISTINCT COALESCE(recorded_by_user_id, -1)) AS cnt
-     FROM recordings WHERE bible_text_id = ?`,
-    [bibleTextId],
+    `SELECT COUNT(*) AS cnt
+     FROM recordings
+     WHERE bible_text_id = ? AND NOT (${owner.sql})`,
+    [bibleTextId, ...owner.params],
   );
   const cnt = Number(
     (result.rows?.[0] as { cnt?: number } | undefined)?.cnt ?? 0,
   );
-  return cnt > 1;
+  return cnt > 0;
 }
 
 export async function setCanonicalTake(id: string): Promise<void> {

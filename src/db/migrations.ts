@@ -385,18 +385,18 @@ export const migrations: Migration[] = [
   },
   {
     version: 9,
-    name: 'recordings_canonical_column',
-    up: addRecordingsCanonicalColumn,
-  },
-  {
-    version: 10,
     name: 'download_queue_user_id',
     up: addDownloadQueueUserId,
   },
   {
-    version: 11,
+    version: 10,
     name: 'download_queue_user_scoped_active_index',
     up: scopeDownloadQueueActiveResourceIndex,
+  },
+  {
+    version: 11,
+    name: 'recordings_canonical_column',
+    up: addRecordingsCanonicalColumn,
   },
 ];
 

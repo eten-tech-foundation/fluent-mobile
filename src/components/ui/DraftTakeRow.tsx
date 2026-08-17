@@ -92,17 +92,6 @@ export function DraftTakeRow({
             />
           )}
         </TouchableOpacity>
-      ) : leadingIndicator === 'canonicalReadOnly' && isCanonical ? (
-        <View
-          accessibilityLabel="Canonical take"
-          testID="record-take-canonical-readonly"
-        >
-          <CircleCheck
-            size={iconSizes.chevron}
-            color={theme.colors.primary}
-            strokeWidth={listIconStrokeWidth}
-          />
-        </View>
       ) : (
         <View style={styles.leadingSpacer} testID="record-take-no-indicator" />
       )}
@@ -151,6 +140,18 @@ export function DraftTakeRow({
           />
         </View>
       </View>
+      {leadingIndicator === 'canonicalReadOnly' && isCanonical ? (
+        <View
+          accessibilityLabel="Canonical take"
+          testID="record-take-canonical-readonly"
+        >
+          <CircleCheck
+            size={iconSizes.chevron}
+            color={theme.colors.primary}
+            strokeWidth={listIconStrokeWidth}
+          />
+        </View>
+      ) : null}
       <TouchableOpacity
         onPress={onDelete}
         accessibilityRole="button"
