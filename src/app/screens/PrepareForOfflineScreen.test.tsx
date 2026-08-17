@@ -61,13 +61,7 @@ jest.mock('../../hooks/usePrepareOfflineSelection', () => ({
 
 jest.mock('../../hooks/usePrepareOfflineDownload', () => ({
   usePrepareOfflineDownload: jest.fn(
-    ({
-      catalog,
-      canDownload,
-    }: {
-      catalog: unknown;
-      canDownload: boolean;
-    }) => ({
+    ({ catalog, canDownload }: { catalog: unknown; canDownload: boolean }) => ({
       session: 'idle',
       busy: false,
       catalogWithProgress: catalog,
