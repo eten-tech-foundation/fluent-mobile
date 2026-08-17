@@ -60,17 +60,26 @@ jest.mock('../../hooks/usePrepareOfflineSelection', () => ({
 }));
 
 jest.mock('../../hooks/usePrepareOfflineDownload', () => ({
-  usePrepareOfflineDownload: jest.fn(({ catalog }: { catalog: unknown }) => ({
-    session: 'idle',
-    busy: false,
-    catalogWithProgress: catalog,
-    downloadButtonLabel: 'Download 18 MB',
-    canDownload: true,
-    handleDownload: mockHandleDownload,
-    pause: jest.fn(),
-    resume: jest.fn(),
-    cancel: jest.fn(),
-  })),
+  usePrepareOfflineDownload: jest.fn(
+    ({
+      catalog,
+      canDownload,
+    }: {
+      catalog: unknown;
+      canDownload: boolean;
+    }) => ({
+      session: 'idle',
+      busy: false,
+      catalogWithProgress: catalog,
+      downloadButtonLabel: canDownload ? 'Download 18 MB' : 'Download 0 B',
+      canDownload,
+      inventoryRefreshSignal: '0',
+      handleDownload: mockHandleDownload,
+      pause: jest.fn(),
+      resume: jest.fn(),
+      cancel: jest.fn(),
+    }),
+  ),
 }));
 
 jest.mock('../../utils/parseUserId', () => ({
@@ -242,6 +251,61 @@ describe('PrepareForOfflineScreen', () => {
     await waitFor(() => {
       expect(mockHandleDownload).toHaveBeenCalled();
     });
+  });
+
+  it('shows disabled download button for unassigned users with no chapter selection', async () => {
+    usePrepareOfflineSelection.mockImplementation(() => ({
+      books: [
+        {
+          bookId: 1,
+          bookName: 'Genesis',
+          chapters: [
+            {
+              id: 100,
+              bookId: 1,
+              bookName: 'Genesis',
+              chapterNumber: 1,
+              assignedUserId: null,
+            },
+          ],
+        },
+      ],
+      chapters: [
+        {
+          id: 100,
+          bookId: 1,
+          bookName: 'Genesis',
+          chapterNumber: 1,
+          assignedUserId: null,
+        },
+      ],
+      loading: false,
+      error: null,
+      selectedIds: new Set<number>(),
+      selectedCount: 0,
+      isAssignedUser: false,
+      accordionExpanded: true,
+      setAccordionExpanded: jest.fn(),
+      expandedBookIds: new Set([1]),
+      toggleBookExpanded: jest.fn(),
+      accordionTitle: 'Selected chapters (0)',
+      toggleChapter: jest.fn(),
+      toggleBook: jest.fn(),
+      isBookFullySelected: () => false,
+      retry: jest.fn(),
+    }));
+
+    render(<PrepareForOfflineScreen />);
+
+    fireEvent.press(screen.getByText('Luke'));
+
+    await waitFor(() => {
+      const button = screen.getByTestId('prepare-offline-download-button');
+      expect(button.props.accessibilityState?.disabled).toBe(true);
+    });
+
+    expect(screen.queryByText('RESOURCES TO DOWNLOAD')).toBeNull();
+    expect(mockHandleDownload).not.toHaveBeenCalled();
   });
 
   it('keeps download footer visible while customize panel is expanded', async () => {

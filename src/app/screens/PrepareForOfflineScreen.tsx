@@ -105,11 +105,7 @@ export default function PrepareForOfflineScreen() {
   }, []);
 
   const showDownloadFooter =
-    catalog.items.length > 0 &&
-    !loading &&
-    !error &&
-    !manifestLoading &&
-    !manifestError;
+    !loading && !error && !manifestLoading && !manifestError;
 
   const showStorageSection =
     projectId !== null && projectId !== undefined && !loading && !error;
