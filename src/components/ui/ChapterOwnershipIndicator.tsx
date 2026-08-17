@@ -1,8 +1,8 @@
 import React from 'react';
 import { iconSizes } from '../../theme';
 import { StyleSheet, View } from 'react-native';
+import { ChapterOwnershipState } from '../../types/db/types';
 import { ChapterOwnershipIcon } from './ChapterOwnershipIcon';
-import { ChapterOwnershipState } from '../../utils/chapterOwnershipState';
 
 interface ChapterOwnershipIndicatorProps {
   ownershipState: ChapterOwnershipState;

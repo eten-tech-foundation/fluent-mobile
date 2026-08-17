@@ -1,5 +1,3 @@
-import { ChapterOwnershipState } from '../../utils/chapterOwnershipState';
-
 export interface Bible {
   id: number;
   languageId: number;
@@ -31,6 +29,8 @@ export interface Project {
 export type ProjectSyncState = 'none' | 'synced' | 'unsynced';
 
 export type ChapterSyncState = 'none' | 'synced' | 'deviceOnly';
+
+export type ChapterOwnershipState = 'unassigned' | 'mine' | 'other';
 
 export type WorkflowBadgeStage =
   | 'not_started'

@@ -1,4 +1,4 @@
-export type ChapterOwnershipState = 'unassigned' | 'mine' | 'other';
+import { ChapterOwnershipState } from '../types/db/types';
 
 export function deriveChapterOwnershipState(
   assignedUserId: number | null | undefined,

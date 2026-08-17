@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   title: {
-    flex: 1,
+    flexShrink: 1,
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.foreground,
