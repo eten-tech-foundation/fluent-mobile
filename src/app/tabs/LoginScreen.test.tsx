@@ -17,9 +17,23 @@ const renderLoginScreen = () =>
 
 let onLoginSuccess: jest.Mock;
 
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({
-    navigate: jest.fn(),
+jest.mock('expo-router', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+  }),
+}));
+
+jest.mock('../../navigation/AuthSessionProvider', () => ({
+  useAuthSession: () => ({
+    signIn: jest.fn(),
+    signInAddUser: jest.fn(),
+    signOut: jest.fn(),
+    notifyUserSwitched: jest.fn(),
+    isAuthenticated: false,
+    isLoading: false,
+    postLoginSyncActive: false,
+    error: null,
+    userSwitchEpoch: 0,
   }),
 }));
 

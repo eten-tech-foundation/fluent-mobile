@@ -2,13 +2,24 @@ import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { AccountSwitcherPanel } from './AccountSwitcherPanel';
 
-const mockNavigate = jest.fn();
-const mockReset = jest.fn();
+const mockPush = jest.fn();
+const mockReplace = jest.fn();
+const mockDismissAll = jest.fn();
+const mockCanDismiss = jest.fn(() => false);
+const mockNotifyUserSwitched = jest.fn();
 
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({
-    navigate: mockNavigate,
-    reset: mockReset,
+jest.mock('expo-router', () => ({
+  useRouter: () => ({
+    push: mockPush,
+    replace: mockReplace,
+    dismissAll: mockDismissAll,
+    canDismiss: mockCanDismiss,
+  }),
+}));
+
+jest.mock('../../navigation/AuthSessionProvider', () => ({
+  useAuthSession: () => ({
+    notifyUserSwitched: mockNotifyUserSwitched,
   }),
 }));
 
@@ -142,11 +153,28 @@ describe('AccountSwitcherPanel', () => {
       expect(mockGetCredentials).toHaveBeenCalledWith('other-2');
       expect(mockAuthTokenSet).toHaveBeenCalledWith('valid-token');
       expect(mockSwitchActiveUser).toHaveBeenCalledWith('other-2');
+      expect(mockNotifyUserSwitched).toHaveBeenCalled();
       expect(onClose).toHaveBeenCalled();
-      expect(mockReset).toHaveBeenCalledWith({
-        index: 0,
-        routes: [{ name: 'Home', params: { newUserLoading: false } }],
+      expect(mockReplace).toHaveBeenCalledWith({
+        pathname: '/(app)/(stack)',
+        params: { newUserLoading: 'false' },
       });
+    });
+  });
+
+  it('clears the nested stack with dismissAll when the stack can dismiss', async () => {
+    mockCanDismiss.mockReturnValueOnce(true);
+    mockGetCredentials.mockResolvedValueOnce({ token: 'valid-token' });
+
+    const { getByTestId } = render(
+      <AccountSwitcherPanel visible onClose={onClose} />,
+    );
+
+    fireEvent.press(getByTestId('account-switcher-row-other-2'));
+
+    await waitFor(() => {
+      expect(mockDismissAll).toHaveBeenCalled();
+      expect(mockReplace).toHaveBeenCalled();
     });
   });
 
@@ -165,7 +193,7 @@ describe('AccountSwitcherPanel', () => {
     expect(mockSwitchActiveUser).not.toHaveBeenCalled();
     expect(mockAuthTokenSet).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
-    expect(mockReset).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 
   it('shows an error when the stored session is corrupted (no token field)', async () => {
@@ -212,7 +240,7 @@ describe('AccountSwitcherPanel', () => {
     fireEvent.press(getByTestId('account-switcher-add-account'));
 
     expect(onClose).toHaveBeenCalled();
-    expect(mockNavigate).toHaveBeenCalledWith('AddUser');
+    expect(mockPush).toHaveBeenCalledWith('/(app)/(stack)/add-user');
   });
 
   it('shows the account limit message instead of Add Account when at the cap', () => {

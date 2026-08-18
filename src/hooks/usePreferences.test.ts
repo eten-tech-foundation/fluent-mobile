@@ -6,7 +6,7 @@ import {
 } from '../services/userPreferences';
 import { kvStorage } from '../services/storage';
 
-jest.mock('@react-navigation/native', () => ({
+jest.mock('expo-router', () => ({
   useFocusEffect: jest.fn(),
 }));
 
