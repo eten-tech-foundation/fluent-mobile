@@ -18,7 +18,9 @@ import {
   KV_KEYS,
   setUserSync,
   switchActiveUser,
+  clearReauthRequired,
 } from './storage';
+import { emitAuthReauthResolved } from './syncEvents';
 
 const log = logger.create('AuthSession');
 
@@ -110,6 +112,12 @@ export function signOut(): void {
   clearUserSession();
 }
 
+/** Clears the soft-reauth flag and notifies UI listeners (Home banner, Settings). */
+export function resolveReauthForUser(userId: string): void {
+  clearReauthRequired(userId);
+  emitAuthReauthResolved(userId);
+}
+
 /** Persists credentials and sets the in-memory token after a successful sign-in. */
 export async function beginLoginSession(
   token: string,
@@ -127,6 +135,7 @@ export async function beginLoginSession(
   const userId = String(user.id);
   await saveCredentials(token, userId);
   setUserSync(userId, email);
+  resolveReauthForUser(userId);
   await clearTempCredentials();
 
   log.info('Login session persisted before sync', { userId, email });

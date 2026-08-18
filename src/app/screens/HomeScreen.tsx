@@ -37,6 +37,8 @@ import {
   getProjectsWithSummary,
   isUserAssignedToProject,
 } from '../../db/queries';
+import { ReauthBanner } from '../../components/ui/ReauthBanner';
+import { useReauthRequired } from '../../hooks/useReauthRequired';
 
 interface HomeScreenProps {
   onSignOut?: () => void;
@@ -264,14 +266,23 @@ export default function HomeScreen({
     hasResolved,
   ]);
 
+  const { reauthRequired, refreshReauthRequired } = useReauthRequired({
+    refreshOnFocus: true,
+  });
+
+  const handleReauthPress = useCallback(() => {
+    navigation.navigate('Reauth');
+  }, [navigation]);
+
   const handleSettingsPress = () => {
     setSettingsVisible(true);
   };
 
   const handleUserSwitched = useCallback(() => {
     autoRepairSyncAttempted.current = false;
+    refreshReauthRequired();
     setRefreshKey(key => key + 1);
-  }, []);
+  }, [refreshReauthRequired]);
 
   // CHANGED: was `triggerSync()`. Tapping the icon now navigates to the
   // Sync page instead of kicking off a sync directly (per #38 / #149).
@@ -299,34 +310,42 @@ export default function HomeScreen({
 
   return (
     <ScreenContainer>
-      <PageHeader
-        leftIcon={<SettingsButton onPress={handleSettingsPress} />}
-        rightIcon={
-          <PageHeaderSyncButton
-            syncStatus={syncStatus}
-            onPress={handleSyncPress}
-          />
-        }
-      />
-      <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
-      <View style={styles.content}>
-        {activeTab === 'myWork' ? (
-          <MyWorkTab refreshKey={refreshKey} isSyncing={myWorkIsSyncing} />
-        ) : (
-          <ProjectsTab refreshKey={refreshKey} />
-        )}
+      <View style={styles.screen}>
+        <PageHeader
+          leftIcon={<SettingsButton onPress={handleSettingsPress} />}
+          rightIcon={
+            <PageHeaderSyncButton
+              syncStatus={syncStatus}
+              onPress={handleSyncPress}
+            />
+          }
+        />
+        <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
+        <View style={styles.content}>
+          {activeTab === 'myWork' ? (
+            <MyWorkTab refreshKey={refreshKey} isSyncing={myWorkIsSyncing} />
+          ) : (
+            <ProjectsTab refreshKey={refreshKey} />
+          )}
+        </View>
+        {reauthRequired ? (
+          <ReauthBanner onSignInAgain={handleReauthPress} />
+        ) : null}
+        <UserSettingsMenu
+          visible={settingsVisible}
+          onClose={() => setSettingsVisible(false)}
+          onSignOut={onSignOut}
+          onUserSwitched={handleUserSwitched}
+        />
       </View>
-      <UserSettingsMenu
-        visible={settingsVisible}
-        onClose={() => setSettingsVisible(false)}
-        onSignOut={onSignOut}
-        onUserSwitched={handleUserSwitched}
-      />
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
   content: {
     flex: 1,
     backgroundColor: theme.colors.background,

@@ -9,8 +9,11 @@ import { isValidEmail } from '../utils/validateEmail';
 
 const log = logger.create('useLogin');
 
-export function useLogin(onLoginSuccess: (email: string) => void) {
-  const [email, setEmail] = useState('');
+export function useLogin(
+  onLoginSuccess: (email: string) => void,
+  options?: { initialEmail?: string },
+) {
+  const [email, setEmail] = useState(options?.initialEmail ?? '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{

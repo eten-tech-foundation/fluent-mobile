@@ -1,4 +1,11 @@
-import { emitAuthSessionExpired, onAuthSessionExpired } from './syncEvents';
+import {
+  emitAuthSessionExpired,
+  emitAuthReauthRequired,
+  emitAuthReauthResolved,
+  onAuthSessionExpired,
+  onAuthReauthRequired,
+  onAuthReauthResolved,
+} from './syncEvents';
 
 describe('syncEvents auth session expired', () => {
   it('notifies listeners when the session expires', () => {
@@ -37,5 +44,37 @@ describe('syncEvents auth session expired', () => {
     unsubFirst();
     unsubSecond();
     unsubThird();
+  });
+});
+
+describe('syncEvents auth reauth required', () => {
+  it('notifies listeners with the user id', () => {
+    const listener = jest.fn();
+    const unsubscribe = onAuthReauthRequired(listener);
+
+    emitAuthReauthRequired('42');
+
+    expect(listener).toHaveBeenCalledWith('42');
+
+    unsubscribe();
+    emitAuthReauthRequired('42');
+
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('syncEvents auth reauth resolved', () => {
+  it('notifies listeners when reauth is cleared', () => {
+    const listener = jest.fn();
+    const unsubscribe = onAuthReauthResolved(listener);
+
+    emitAuthReauthResolved('42');
+
+    expect(listener).toHaveBeenCalledWith('42');
+
+    unsubscribe();
+    emitAuthReauthResolved('42');
+
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 });

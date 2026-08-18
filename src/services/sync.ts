@@ -35,6 +35,7 @@ import {
   getKnownUserIds,
   getUserLastSyncedAt,
   setUserLastSyncedAt,
+  setReauthRequired,
 } from '../services/storage';
 import { getLocalProjectIds } from '../db/repository';
 import {
@@ -42,12 +43,11 @@ import {
   getCredentials,
   getTempCredentials,
   saveCredentials,
-  clearCredentials,
 } from './keychain';
 import {
   emitSyncComplete,
   emitSyncStart,
-  emitAuthSessionExpired,
+  emitAuthReauthRequired,
 } from './syncEvents';
 import { authToken } from './authToken';
 
@@ -61,10 +61,16 @@ function getErrorMessage(error: unknown): string {
 }
 
 async function handleSyncAuthFailure(userId: string): Promise<void> {
-  await clearCredentials(userId);
+  setReauthRequired(userId);
   if (userId === getActiveUserId()) {
-    authToken.set(null);
-    emitAuthSessionExpired();
+    emitAuthReauthRequired(userId);
+  }
+}
+
+async function restoreActiveUserAuthToken(activeUserId: string): Promise<void> {
+  const creds = await getCredentials(activeUserId);
+  if (creds?.token) {
+    authToken.set(creds.token);
   }
 }
 
@@ -565,10 +571,9 @@ export async function syncAllUsers(): Promise<void> {
       setUserLastSyncedAt(userId, userSyncCompletedAt);
     }
 
-    const restoredCreds = currentActiveUserId
-      ? await getCredentials(currentActiveUserId)
-      : null;
-    authToken.set(restoredCreds?.token ?? null);
+    if (currentActiveUserId) {
+      await restoreActiveUserAuthToken(currentActiveUserId);
+    }
 
     if (activeUserSyncOk) {
       const now = new Date().toISOString();
@@ -588,10 +593,9 @@ export async function syncAllUsers(): Promise<void> {
       throw firstNonAuthSyncError;
     }
   } catch (error) {
-    const restoredCreds = currentActiveUserId
-      ? await getCredentials(currentActiveUserId)
-      : null;
-    authToken.set(restoredCreds?.token ?? null);
+    if (currentActiveUserId) {
+      await restoreActiveUserAuthToken(currentActiveUserId);
+    }
     log.error('Sync all users failed', { error: getErrorMessage(error) });
     throw error;
   } finally {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,14 +17,28 @@ import { RootStackParamList } from '../../types/navigation/types';
 import { theme } from '../../theme';
 import { useLogin } from '../../hooks/useLogin';
 import { AuthFormError } from '../../components/ui/AuthFormError';
+import { REAUTH_SUBMIT_BUTTON } from '../../constants/messages';
 import { authFormStyles as styles } from './authFormStyles';
 
 interface LoginScreenProps {
   onLoginSuccess: (email: string) => void;
+  initialEmail?: string;
+  title?: string;
+  subtitle?: string;
+  /** Password-only re-sign-in (session refresh); locks email and hides legal/footer links. */
+  variant?: 'default' | 'reauth';
 }
 
-export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
+export default function LoginScreen({
+  onLoginSuccess,
+  initialEmail = '',
+  title = 'Welcome',
+  subtitle = 'Log in to continue to Fluent.',
+  variant = 'default',
+}: LoginScreenProps) {
+  const isReauth = variant === 'reauth';
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const passwordInputRef = useRef<TextInput>(null);
   const {
     email,
     setEmail,
@@ -36,10 +50,33 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     globalError,
     isSubmitting,
     handleLogin,
-  } = useLogin(onLoginSuccess);
+  } = useLogin(onLoginSuccess, { initialEmail });
+
+  useEffect(() => {
+    if (!isReauth) {
+      return;
+    }
+    const focusTimer = setTimeout(() => {
+      passwordInputRef.current?.focus();
+      passwordInputRef.current?.setNativeProps({
+        selection: { start: 0, end: 0 },
+      });
+    }, 150);
+    return () => clearTimeout(focusTimer);
+  }, [isReauth]);
+
+  const focusPasswordAtStart = () => {
+    if (!isReauth) {
+      return;
+    }
+    passwordInputRef.current?.setNativeProps({
+      selection: { start: 0, end: 0 },
+    });
+  };
 
   const hasEmailError = Boolean(fieldErrors.email || globalError);
   const hasPasswordError = Boolean(fieldErrors.password || globalError);
+  const showEmailLabel = isReauth || email.length > 0;
 
   return (
     <KeyboardAvoidingView
@@ -51,7 +88,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.card}>
+        <View style={[styles.card, isReauth && styles.cardCompact]}>
           <Image
             accessibilityLabel="Fluent logo"
             source={require('../../assets/icons/Fluent-Blue-Icon-720.png')}
@@ -61,12 +98,12 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
           <View style={styles.wrapper}>
             <Text style={styles.title} accessibilityRole="header">
-              Welcome
+              {title}
             </Text>
-            <Text style={styles.subtitle}>Log in to continue to Fluent.</Text>
+            <Text style={styles.subtitle}>{subtitle}</Text>
 
             <View style={styles.fieldContainer}>
-              {email.length > 0 && (
+              {showEmailLabel ? (
                 <Text
                   style={[
                     styles.floatingLabel,
@@ -75,17 +112,24 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 >
                   Email address*
                 </Text>
-              )}
+              ) : null}
               <TextInput
-                style={[styles.input, hasEmailError && styles.inputErrorBorder]}
-                placeholder={email.length > 0 ? '' : 'Email address*'}
+                style={[
+                  styles.input,
+                  hasEmailError && styles.inputErrorBorder,
+                  isReauth && styles.inputDisabled,
+                ]}
+                placeholder={showEmailLabel ? '' : 'Email address*'}
                 placeholderTextColor={theme.colors.mutedForeground}
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
                 keyboardType="email-address"
-                editable={!isSubmitting}
+                editable={!isReauth && !isSubmitting}
+                showSoftInputOnFocus={!isReauth}
+                selection={isReauth ? { start: 0, end: 0 } : undefined}
                 accessibilityLabel="Email address"
+                accessibilityState={{ disabled: isReauth }}
                 testID="login-email-input"
               />
               <AuthFormError
@@ -107,6 +151,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               )}
               <View style={styles.passwordWrapper}>
                 <TextInput
+                  ref={passwordInputRef}
                   style={[
                     styles.passwordInput,
                     hasPasswordError && styles.inputErrorBorder,
@@ -118,6 +163,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   autoCapitalize="none"
                   secureTextEntry={!showPassword}
                   editable={!isSubmitting}
+                  onFocus={focusPasswordAtStart}
                   accessibilityLabel="Password"
                   testID="login-password-input"
                 />
@@ -148,20 +194,22 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               />
             </View>
 
-            <TouchableOpacity
-              style={styles.linkButton}
-              onPress={() =>
-                navigation.navigate('ForgotPassword', {
-                  initialEmail: email.trim() || undefined,
-                })
-              }
-              disabled={isSubmitting}
-              accessibilityRole="button"
-              accessibilityLabel="Forgot password"
-              testID="login-forgot-password-link"
-            >
-              <Text style={styles.linkText}>Forgot password?</Text>
-            </TouchableOpacity>
+            {!isReauth ? (
+              <TouchableOpacity
+                style={styles.linkButton}
+                onPress={() =>
+                  navigation.navigate('ForgotPassword', {
+                    initialEmail: email.trim() || undefined,
+                  })
+                }
+                disabled={isSubmitting}
+                accessibilityRole="button"
+                accessibilityLabel="Forgot password"
+                testID="login-forgot-password-link"
+              >
+                <Text style={styles.linkText}>Forgot password?</Text>
+              </TouchableOpacity>
+            ) : null}
 
             <TouchableOpacity
               style={[
@@ -172,7 +220,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               disabled={isSubmitting}
               activeOpacity={0.8}
               accessibilityRole="button"
-              accessibilityLabel="Continue"
+              accessibilityLabel={isReauth ? REAUTH_SUBMIT_BUTTON : 'Continue'}
               accessibilityState={{
                 disabled: isSubmitting,
                 busy: isSubmitting,
@@ -182,33 +230,37 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               {isSubmitting ? (
                 <ActivityIndicator color={theme.colors.primaryForeground} />
               ) : (
-                <Text style={styles.primaryButtonText}>Continue</Text>
+                <Text style={styles.primaryButtonText}>
+                  {isReauth ? REAUTH_SUBMIT_BUTTON : 'Continue'}
+                </Text>
               )}
             </TouchableOpacity>
           </View>
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              By continuing, you agree to the{' '}
-              <Text
-                style={styles.footerLink}
-                accessibilityRole="link"
-                onPress={() => navigation.navigate('PrivacyPolicy')}
-                testID="login-privacy-link"
-              >
-                Privacy Policy
-              </Text>{' '}
-              and{' '}
-              <Text
-                style={styles.footerLink}
-                accessibilityRole="link"
-                onPress={() => navigation.navigate('TermsOfUse')}
-                testID="login-terms-link"
-              >
-                Terms.
+          {!isReauth ? (
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>
+                By continuing, you agree to the{' '}
+                <Text
+                  style={styles.footerLink}
+                  accessibilityRole="link"
+                  onPress={() => navigation.navigate('PrivacyPolicy')}
+                  testID="login-privacy-link"
+                >
+                  Privacy Policy
+                </Text>{' '}
+                and{' '}
+                <Text
+                  style={styles.footerLink}
+                  accessibilityRole="link"
+                  onPress={() => navigation.navigate('TermsOfUse')}
+                  testID="login-terms-link"
+                >
+                  Terms.
+                </Text>
               </Text>
-            </Text>
-          </View>
+            </View>
+          ) : null}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

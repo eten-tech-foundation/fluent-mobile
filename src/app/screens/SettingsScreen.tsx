@@ -3,7 +3,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { HardDrive, LogOut, Trash2, UserPlus } from 'lucide-react-native';
+import {
+  HardDrive,
+  LogOut,
+  Trash2,
+  UserPlus,
+  AlertCircle,
+} from 'lucide-react-native';
 import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import {
@@ -16,12 +22,15 @@ import {
   LOGOUT_UNSYNCED_CONFIRM,
   LOGOUT_UNSYNCED_MESSAGE,
   LOGOUT_UNSYNCED_TITLE,
+  REAUTH_PROMPT_TITLE,
+  REAUTH_PROMPT_SUBTITLE,
 } from '../../constants/messages';
 import { signOutCurrentDeviceAccount } from '../../services/accountSession';
 import { clearAllPausedTakes } from '../../services/pausedTakes';
 import { getKnownUserIds, MAX_DEVICE_ACCOUNTS } from '../../services/storage';
 import { loadPendingUploadCount } from '../../hooks/usePendingUploads';
 import { usePreferences } from '../../hooks/usePreferences';
+import { useReauthRequired } from '../../hooks/useReauthRequired';
 import { RootStackParamList } from '../../types/navigation/types';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import { logger } from '../../utils/logger';
@@ -37,6 +46,7 @@ interface SettingsScreenProps {
 export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
   const navigation = useNavigation<Nav>();
   const { uploadOverCellular, setUploadOverCellular } = usePreferences();
+  const { reauthRequired } = useReauthRequired({ refreshOnFocus: true });
   const [atAccountLimit, setAtAccountLimit] = useState(
     () => getKnownUserIds().length >= MAX_DEVICE_ACCOUNTS,
   );
@@ -111,6 +121,26 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
       <View style={styles.screen}>
         <StackScreenHeader title="Settings" onBack={goBack} />
         <ScrollView contentContainerStyle={styles.content}>
+          {reauthRequired ? (
+            <View style={styles.section}>
+              <View style={styles.cardGroup}>
+                <View style={styles.sectionCard}>
+                  <SettingsNavigationRow
+                    title={REAUTH_PROMPT_TITLE}
+                    subtitle={REAUTH_PROMPT_SUBTITLE}
+                    icon={
+                      <AlertCircle
+                        size={iconSizes.headerTab}
+                        color={theme.colors.destructive}
+                        strokeWidth={listIconStrokeWidth}
+                      />
+                    }
+                    onPress={() => navigation.navigate('Reauth')}
+                  />
+                </View>
+              </View>
+            </View>
+          ) : null}
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Offline</Text>
             <View style={styles.cardGroup}>

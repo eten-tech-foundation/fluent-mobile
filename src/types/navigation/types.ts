@@ -19,4 +19,5 @@ export type RootStackParamList = {
   PrivacyPolicy: undefined;
   TermsOfUse: undefined;
   ForgotPassword: { initialEmail?: string } | undefined;
+  Reauth: undefined;
 };

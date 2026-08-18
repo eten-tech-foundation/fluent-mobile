@@ -21,12 +21,17 @@ jest.mock('./keychain', () => ({
   clearTempCredentials: jest.fn(),
 }));
 
+jest.mock('./syncEvents', () => ({
+  emitAuthReauthResolved: jest.fn(),
+}));
+
 jest.mock('./storage', () => ({
   getActiveUserId: jest.fn(),
   getUserEmail: jest.fn(),
   switchActiveUser: jest.fn(),
   clearUserSession: jest.fn(),
   setUserSync: jest.fn(),
+  clearReauthRequired: jest.fn(),
   KV_KEYS: {
     ACTIVE_USER_ID: 'active_user_id',
     USER_EMAIL: 'userEmail',
@@ -56,8 +61,15 @@ import {
   KV_KEYS,
   setUserSync,
   switchActiveUser,
+  clearReauthRequired,
 } from './storage';
-import { restoreSession, signOut, beginLoginSession } from './authSession';
+import { emitAuthReauthResolved } from './syncEvents';
+import {
+  restoreSession,
+  signOut,
+  beginLoginSession,
+  resolveReauthForUser,
+} from './authSession';
 
 describe('restoreSession', () => {
   beforeEach(() => {
@@ -165,7 +177,22 @@ describe('beginLoginSession', () => {
     expect(FluentAPI.getUserByEmail).toHaveBeenCalledWith('t@fluent.local');
     expect(saveCredentials).toHaveBeenCalledWith('session-token', '42');
     expect(setUserSync).toHaveBeenCalledWith('42', 't@fluent.local');
+    expect(clearReauthRequired).toHaveBeenCalledWith('42');
+    expect(emitAuthReauthResolved).toHaveBeenCalledWith('42');
     expect(clearTempCredentials).toHaveBeenCalled();
+  });
+});
+
+describe('resolveReauthForUser', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('clears the KV flag and notifies listeners', () => {
+    resolveReauthForUser('7');
+
+    expect(clearReauthRequired).toHaveBeenCalledWith('7');
+    expect(emitAuthReauthResolved).toHaveBeenCalledWith('7');
   });
 });
 

@@ -15,7 +15,6 @@ import { syncAllData } from './src/services/sync';
 import { restoreSession, signOut } from './src/services/authSession';
 import { clearOrphanedPausedTakes } from './src/services/pausedTakes';
 import AppNavigator from './src/navigation/AppNavigator';
-import { onAuthSessionExpired } from './src/services/syncEvents';
 import {
   startUploadOrchestrator,
   stopUploadOrchestrator,
@@ -53,15 +52,6 @@ function App() {
     signOut();
     setIsAuthenticated(false);
   };
-
-  useEffect(() => {
-    return onAuthSessionExpired(() => {
-      log.info('Session expired — returning to login');
-      stopUploadOrchestrator();
-      signOut();
-      setIsAuthenticated(false);
-    });
-  }, []);
 
   useEffect(() => {
     const initApp = async () => {

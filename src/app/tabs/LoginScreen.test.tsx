@@ -91,4 +91,20 @@ describe('LoginScreen', () => {
     expect(await screen.findByText('Invalid credentials')).toBeTruthy();
     expect(onLoginSuccess).not.toHaveBeenCalled();
   });
+
+  it('hides forgot-password and legal footer in reauth variant', () => {
+    render(
+      <LoginScreen
+        onLoginSuccess={onLoginSuccess}
+        initialEmail="t@fluent.local"
+        variant="reauth"
+      />,
+      { wrapper: QueryClientTestWrapper },
+    );
+
+    expect(screen.queryByTestId('login-forgot-password-link')).toBeNull();
+    expect(screen.queryByTestId('login-privacy-link')).toBeNull();
+    expect(screen.queryByTestId('login-terms-link')).toBeNull();
+    expect(screen.getByText('Sign in again')).toBeTruthy();
+  });
 });

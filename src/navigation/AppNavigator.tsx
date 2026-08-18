@@ -10,6 +10,7 @@ import SyncScreen from '../app/screens/SyncScreen';
 import ForgotPasswordScreen from '../app/tabs/ForgotPasswordScreen';
 import PrivacyPolicyScreen from '../app/tabs/PrivacyPolicyPage';
 import TermsOfUseScreen from '../app/tabs/TermsOfUsePage';
+import ReauthScreen from '../app/screens/ReauthScreen';
 import DraftingScreen from '../app/screens/DraftingScreen';
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -62,6 +63,7 @@ export default function AppNavigator({
           />
           <Stack.Screen name="Sync" component={SyncScreen} />
           <Stack.Screen name="Chapters" component={ViewProject} />
+          <Stack.Screen name="Reauth" component={ReauthScreen} />
           <Stack.Screen name="VerseDetail" component={DraftingScreen} />
           <Stack.Screen name="AddUser">
             {({ navigation }) => (

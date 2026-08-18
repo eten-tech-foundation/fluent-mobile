@@ -131,6 +131,27 @@ export function setUserEmail(userId: string, email: string) {
   kvStorage.setItemSync(`${userId}:email`, email);
 }
 
+const reauthRequiredKey = (userId: string) => `${userId}:reauth_required`;
+
+export function setReauthRequired(userId: string): void {
+  kvStorage.setItemSync(reauthRequiredKey(userId), 'true');
+  log.info('Reauth required flag set', { userId });
+}
+
+export function clearReauthRequired(userId: string): void {
+  kvStorage.removeItemSync(reauthRequiredKey(userId));
+  log.info('Reauth required flag cleared', { userId });
+}
+
+export function isReauthRequired(userId: string): boolean {
+  return kvStorage.getItemSync(reauthRequiredKey(userId)) === 'true';
+}
+
+export function isReauthRequiredForActiveUser(): boolean {
+  const userId = getActiveUserId();
+  return userId ? isReauthRequired(userId) : false;
+}
+
 export function getUserIdSync(): string {
   return getActiveUserId();
 }

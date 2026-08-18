@@ -17,6 +17,7 @@ import {
   getLastSyncedAt,
   getUserIdSync,
   setSyncError,
+  setReauthRequired,
 } from './storage';
 
 jest.mock('./authToken', () => ({
@@ -74,6 +75,8 @@ jest.mock('./storage', () => ({
   setSyncError: jest.fn(),
   clearSyncError: jest.fn(),
   clearAllSyncErrors: jest.fn(),
+  setReauthRequired: jest.fn(),
+  isReauthRequired: jest.fn(),
 }));
 
 jest.mock('../db/repository', () => ({
@@ -112,7 +115,7 @@ jest.mock('../db/db', () => ({
 describe('syncAllData auth handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(syncEvents, 'emitAuthSessionExpired');
+    jest.spyOn(syncEvents, 'emitAuthReauthRequired');
     jest.spyOn(syncEvents, 'emitSyncStart').mockImplementation(() => {});
     jest.spyOn(syncEvents, 'emitSyncComplete').mockImplementation(() => {});
 
@@ -133,20 +136,21 @@ describe('syncAllData auth handling', () => {
     jest.restoreAllMocks();
   });
 
-  it('emits auth session expired when incremental sync has no stored token', async () => {
+  it('sets reauth required when incremental sync has no stored token', async () => {
     (getCredentials as jest.Mock).mockResolvedValue(null);
 
     await expect(syncAllData(true)).rejects.toThrow(
       'No session token. Please sign in again.',
     );
 
-    expect(clearCredentials).toHaveBeenCalledWith('2');
-    expect(authToken.set).toHaveBeenCalledWith(null);
-    expect(syncEvents.emitAuthSessionExpired).toHaveBeenCalled();
+    expect(clearCredentials).not.toHaveBeenCalled();
+    expect(setReauthRequired).toHaveBeenCalledWith('2');
+    expect(authToken.set).not.toHaveBeenCalledWith(null);
+    expect(syncEvents.emitAuthReauthRequired).toHaveBeenCalledWith('2');
     expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
   });
 
-  it('clears credentials for the syncing user when project sync returns 401', async () => {
+  it('sets reauth required for the syncing user when project sync returns 401', async () => {
     (getCredentials as jest.Mock).mockResolvedValue({ token: 'revoked-token' });
     (getActiveUserId as jest.Mock).mockReturnValue('1');
     (getUserIdSync as jest.Mock).mockReturnValue('2');
@@ -156,11 +160,12 @@ describe('syncAllData auth handling', () => {
 
     await expect(syncAllData(true)).rejects.toThrow(AuthError);
 
-    expect(clearCredentials).toHaveBeenCalledWith('2');
-    expect(clearCredentials).not.toHaveBeenCalledWith('1');
+    expect(clearCredentials).not.toHaveBeenCalled();
+    expect(setReauthRequired).toHaveBeenCalledWith('2');
+    expect(setReauthRequired).not.toHaveBeenCalledWith('1');
   });
 
-  it('clears credentials and emits auth session expired when project sync returns 401', async () => {
+  it('sets reauth required and emits soft reauth when active user project sync returns 401', async () => {
     (getCredentials as jest.Mock).mockResolvedValue({ token: 'revoked-token' });
     (FluentAPI.getUserProjects as jest.Mock).mockRejectedValue(
       new AuthError('Invalid or revoked session token'),
@@ -169,14 +174,27 @@ describe('syncAllData auth handling', () => {
     await expect(syncAllData(true)).rejects.toThrow(AuthError);
 
     expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
-    expect(clearCredentials).toHaveBeenCalledWith('2');
-    expect(authToken.set).toHaveBeenCalledWith(null);
-    expect(syncEvents.emitAuthSessionExpired).toHaveBeenCalled();
+    expect(clearCredentials).not.toHaveBeenCalled();
+    expect(setReauthRequired).toHaveBeenCalledWith('2');
+    expect(authToken.set).not.toHaveBeenCalledWith(null);
+    expect(syncEvents.emitAuthReauthRequired).toHaveBeenCalledWith('2');
     expect(setSyncError).toHaveBeenCalledWith(
       'sync_error_projects',
       'Invalid or revoked session token',
     );
     expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
+  });
+
+  it('does not set reauth required when project sync fails with a non-auth error', async () => {
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'valid-token' });
+    (FluentAPI.getUserProjects as jest.Mock).mockRejectedValue(
+      new Error('Network timeout'),
+    );
+
+    await expect(syncAllData(true)).rejects.toThrow('Network timeout');
+
+    expect(setReauthRequired).not.toHaveBeenCalled();
+    expect(syncEvents.emitAuthReauthRequired).not.toHaveBeenCalled();
   });
 
   it('emits sync complete when incremental sync fails', async () => {
@@ -247,7 +265,7 @@ describe('syncAllData auth handling', () => {
 describe('syncAllUsers auth handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(syncEvents, 'emitAuthSessionExpired');
+    jest.spyOn(syncEvents, 'emitAuthReauthRequired');
     jest.spyOn(syncEvents, 'emitSyncStart').mockImplementation(() => {});
     jest.spyOn(syncEvents, 'emitSyncComplete').mockImplementation(() => {});
 
@@ -286,21 +304,22 @@ describe('syncAllUsers auth handling', () => {
     expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
   });
 
-  it('emits auth session expired when the active user has no stored token', async () => {
+  it('sets reauth required when the active user has no stored token', async () => {
     (getCredentials as jest.Mock).mockResolvedValue(null);
 
     await expect(syncAllUsers()).rejects.toThrow(
       'No session token. Please sign in again.',
     );
 
-    expect(clearCredentials).toHaveBeenCalledWith('2');
-    expect(authToken.set).toHaveBeenCalledWith(null);
-    expect(syncEvents.emitAuthSessionExpired).toHaveBeenCalled();
+    expect(clearCredentials).not.toHaveBeenCalled();
+    expect(setReauthRequired).toHaveBeenCalledWith('2');
+    expect(authToken.set).not.toHaveBeenCalledWith(null);
+    expect(syncEvents.emitAuthReauthRequired).toHaveBeenCalledWith('2');
     expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
     expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
   });
 
-  it('clears stale credentials for non-active users but continues syncing', async () => {
+  it('marks non-active users for reauth but continues syncing', async () => {
     (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
       userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
     );
@@ -315,9 +334,10 @@ describe('syncAllUsers auth handling', () => {
 
     await syncAllUsers();
 
-    expect(clearCredentials).toHaveBeenCalledWith('1');
-    expect(clearCredentials).not.toHaveBeenCalledWith('2');
-    expect(syncEvents.emitAuthSessionExpired).not.toHaveBeenCalled();
+    expect(clearCredentials).not.toHaveBeenCalled();
+    expect(setReauthRequired).toHaveBeenCalledWith('1');
+    expect(setReauthRequired).not.toHaveBeenCalledWith('2');
+    expect(syncEvents.emitAuthReauthRequired).not.toHaveBeenCalled();
     expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(2);
     expect(authToken.set).toHaveBeenLastCalledWith('user-2-token');
   });

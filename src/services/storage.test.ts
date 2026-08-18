@@ -29,6 +29,10 @@ import {
   setUserEmail,
   setUserSync,
   switchActiveUser,
+  setReauthRequired,
+  clearReauthRequired,
+  isReauthRequired,
+  isReauthRequiredForActiveUser,
 } from './storage';
 
 describe('storage (KV wrapper)', () => {
@@ -149,6 +153,23 @@ describe('storage (KV wrapper)', () => {
 
       expect(getActiveUserId()).toBe('3');
       expect(mockKv.get(KV_KEYS.USER_EMAIL)).toBe('');
+    });
+  });
+
+  describe('reauth required flag', () => {
+    it('round-trips per-user reauth state', () => {
+      expect(isReauthRequired('7')).toBe(false);
+      setReauthRequired('7');
+      expect(isReauthRequired('7')).toBe(true);
+      clearReauthRequired('7');
+      expect(isReauthRequired('7')).toBe(false);
+    });
+
+    it('reflects the active user reauth state', () => {
+      setUserSync('3', 'three@example.com');
+      expect(isReauthRequiredForActiveUser()).toBe(false);
+      setReauthRequired('3');
+      expect(isReauthRequiredForActiveUser()).toBe(true);
     });
   });
 
