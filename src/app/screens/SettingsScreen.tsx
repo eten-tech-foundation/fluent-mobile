@@ -61,7 +61,7 @@ export default function SettingsScreen() {
     const result = await signOutCurrentDeviceAccount();
     if (result.kind === 'switched') {
       onUserSwitched();
-      router.back();
+      goBack();
       return;
     }
     onSignOut();
