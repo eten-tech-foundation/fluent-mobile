@@ -18,6 +18,8 @@ import {
   getUserIdSync,
   setSyncError,
   setReauthRequired,
+  registerKnownUser,
+  setUserSync,
 } from './storage';
 
 jest.mock('./authToken', () => ({
@@ -69,6 +71,7 @@ jest.mock('./storage', () => ({
   getUserLastSyncedAt: jest.fn(),
   setUserLastSyncedAt: jest.fn(),
   setUserSync: jest.fn(),
+  registerKnownUser: jest.fn(),
   setSyncCount: jest.fn(),
   setLastSyncedAt: jest.fn(),
   setLastAssignmentSyncAt: jest.fn(),
@@ -226,6 +229,26 @@ describe('syncAllData auth handling', () => {
     );
   });
 
+  it('registers a new user without switching active user during add-account sync', async () => {
+    (getActiveUserId as jest.Mock).mockReturnValue('245');
+    (FluentAPI.getUserByEmail as jest.Mock).mockResolvedValue({
+      id: 247,
+      email: 'b@example.com',
+    });
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'b-token' });
+    (getUserLastSyncedAt as jest.Mock).mockReturnValue('');
+    (getLastAssignmentSyncAt as jest.Mock).mockReturnValue(
+      '2026-06-01T00:00:00.000Z',
+    );
+    userHasLocalChapterAssignments.mockResolvedValue(true);
+
+    await syncAllData(false, 'b@example.com');
+
+    expect(registerKnownUser).toHaveBeenCalledWith('247', 'b@example.com');
+    expect(setUserSync).not.toHaveBeenCalled();
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(247, 'b-token');
+  });
+
   it('forces full assignment sync for a new user on a shared device despite peer-checker rows', async () => {
     (FluentAPI.getUserByEmail as jest.Mock).mockResolvedValue({
       id: 2,
@@ -249,7 +272,7 @@ describe('syncAllData auth handling', () => {
       2,
       undefined,
       undefined,
-      undefined,
+      'new-user-token',
     );
   });
 

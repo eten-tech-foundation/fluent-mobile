@@ -21,6 +21,7 @@ import { ApiBook, ApiVerse } from '../types/api/types';
 import { unwrapApiListResponse } from '../types/api/responses';
 import {
   setUserSync,
+  registerKnownUser,
   setSyncCount,
   setLastSyncedAt,
   getLastSyncedAt,
@@ -131,9 +132,16 @@ export async function syncUser(email?: string) {
       if (!user?.id) throw new Error('Invalid user response');
 
       await insertUser(user);
-      setUserSync(String(user.id), userEmail);
-
       const userIdStr = String(user.id);
+      const activeUserId = getActiveUserId();
+      const shouldSwitchActiveUser =
+        activeUserId === '' || activeUserId === userIdStr;
+      if (shouldSwitchActiveUser) {
+        setUserSync(userIdStr, userEmail);
+      } else {
+        registerKnownUser(userIdStr, userEmail);
+      }
+
       const existingCreds = await getCredentials(userIdStr);
       if (existingCreds?.token) {
         await clearTempCredentials();
@@ -616,6 +624,12 @@ export async function syncAllData(isIncremental = false, email?: string) {
     } else {
       const user = await syncUser(email);
       userId = user.id;
+      const userIdStr = String(userId);
+      const creds = await getCredentials(userIdStr);
+      if (!creds?.token) {
+        throw new AuthError('No session token for synced user.');
+      }
+      sessionToken = creds.token;
     }
 
     const localProjectIdsBefore = isIncremental

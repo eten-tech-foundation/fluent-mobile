@@ -123,6 +123,12 @@ export function addKnownUserId(userId: string) {
   }
 }
 
+/** Registers a device account without changing the active session pointer. */
+export function registerKnownUser(userId: string, userEmail: string) {
+  addKnownUserId(userId);
+  setUserEmail(userId, userEmail);
+}
+
 export function getUserEmail(userId: string): string {
   return kvStorage.getItemSync(`${userId}:email`) ?? '';
 }

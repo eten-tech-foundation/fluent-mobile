@@ -68,6 +68,7 @@ export default function AppNavigator({
           <Stack.Screen name="AddUser">
             {({ navigation }) => (
               <LoginScreen
+                variant="addAccount"
                 onLoginSuccess={(email: string) => {
                   navigation.navigate('Home', { newUserLoading: true });
                   onAddUserLoginSuccess(email);

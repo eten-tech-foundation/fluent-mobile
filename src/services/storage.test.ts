@@ -25,6 +25,7 @@ import {
   getUserEmailSync,
   KV_KEYS,
   MAX_DEVICE_ACCOUNTS,
+  registerKnownUser,
   setActiveUserId,
   setUserEmail,
   setUserSync,
@@ -115,6 +116,19 @@ describe('storage (KV wrapper)', () => {
       mockKv.set(KV_KEYS.USER_EMAIL, 'legacy@example.com');
 
       expect(getUserEmailSync()).toBe('legacy@example.com');
+    });
+  });
+
+  describe('registerKnownUser', () => {
+    it('adds the user and email without changing the active user pointer', () => {
+      setUserSync('1', 'one@example.com');
+      registerKnownUser('2', 'two@example.com');
+
+      expect(getActiveUserId()).toBe('1');
+      expect(getKnownUserIds()).toEqual(['1', '2']);
+      expect(getUserEmail('2')).toBe('two@example.com');
+      expect(mockKv.get(KV_KEYS.USER_ID)).toBe('1');
+      expect(mockKv.get(KV_KEYS.USER_EMAIL)).toBe('one@example.com');
     });
   });
 

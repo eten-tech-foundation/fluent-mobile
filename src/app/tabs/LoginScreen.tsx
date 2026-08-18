@@ -26,7 +26,7 @@ interface LoginScreenProps {
   title?: string;
   subtitle?: string;
   /** Password-only re-sign-in (session refresh); locks email and hides legal/footer links. */
-  variant?: 'default' | 'reauth';
+  variant?: 'default' | 'reauth' | 'addAccount';
 }
 
 export default function LoginScreen({
@@ -37,6 +37,12 @@ export default function LoginScreen({
   variant = 'default',
 }: LoginScreenProps) {
   const isReauth = variant === 'reauth';
+  const sessionMode =
+    variant === 'addAccount'
+      ? 'addAccount'
+      : variant === 'reauth'
+      ? 'reauth'
+      : 'login';
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const passwordInputRef = useRef<TextInput>(null);
   const {
@@ -50,7 +56,7 @@ export default function LoginScreen({
     globalError,
     isSubmitting,
     handleLogin,
-  } = useLogin(onLoginSuccess, { initialEmail });
+  } = useLogin(onLoginSuccess, { initialEmail, sessionMode });
 
   useEffect(() => {
     if (!isReauth) {

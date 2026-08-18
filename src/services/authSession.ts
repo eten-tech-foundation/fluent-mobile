@@ -16,6 +16,7 @@ import {
   getUserEmail,
   kvStorage,
   KV_KEYS,
+  registerKnownUser,
   setUserSync,
   switchActiveUser,
   clearReauthRequired,
@@ -76,23 +77,11 @@ async function tryRestoreFromTempCredentials(): Promise<SessionRestoreResult> {
 /** Restores an in-memory session from secure storage and KV active user. */
 export async function restoreSession(): Promise<SessionRestoreResult> {
   const activeUserId = getActiveUserId();
-  const knownUserIds = (await getAllStoredUserIds()) ?? [];
 
   if (activeUserId) {
     const activeResult = await tryRestoreUser(activeUserId);
     if (activeResult.authenticated) {
       return activeResult;
-    }
-  }
-
-  for (const userId of knownUserIds) {
-    if (userId === activeUserId) {
-      continue;
-    }
-    const restored = await tryRestoreUser(userId);
-    if (restored.authenticated) {
-      switchActiveUser(userId);
-      return restored;
     }
   }
 
@@ -139,4 +128,22 @@ export async function beginLoginSession(
   await clearTempCredentials();
 
   log.info('Login session persisted before sync', { userId, email });
+}
+
+/** Persists a new device account without changing the active in-memory session. */
+export async function beginAddAccountSession(
+  token: string,
+  email: string,
+): Promise<string> {
+  const user = await FluentAPI.getUserByEmail(email, token);
+  if (!user?.id) {
+    throw new Error('Invalid user response');
+  }
+
+  const userId = String(user.id);
+  await saveCredentials(token, userId);
+  registerKnownUser(userId, email);
+  resolveReauthForUser(userId);
+
+  return userId;
 }

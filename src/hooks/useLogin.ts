@@ -1,7 +1,10 @@
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { FluentAPI } from '../services/api';
-import { beginLoginSession } from '../services/authSession';
+import {
+  beginAddAccountSession,
+  beginLoginSession,
+} from '../services/authSession';
 import { queryKeys } from '../services/queryKeys';
 import { logger } from '../utils/logger';
 import { isApiError } from '../services/apiError';
@@ -9,10 +12,13 @@ import { isValidEmail } from '../utils/validateEmail';
 
 const log = logger.create('useLogin');
 
+export type LoginSessionMode = 'login' | 'addAccount' | 'reauth';
+
 export function useLogin(
   onLoginSuccess: (email: string) => void,
-  options?: { initialEmail?: string },
+  options?: { initialEmail?: string; sessionMode?: LoginSessionMode },
 ) {
+  const sessionMode = options?.sessionMode ?? 'login';
   const [email, setEmail] = useState(options?.initialEmail ?? '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -32,7 +38,11 @@ export function useLogin(
       password: string;
     }) => FluentAPI.signIn(trimmedEmail, trimmedPassword),
     onSuccess: async response => {
-      await beginLoginSession(response.token, response.user.email);
+      if (sessionMode === 'addAccount') {
+        await beginAddAccountSession(response.token, response.user.email);
+      } else {
+        await beginLoginSession(response.token, response.user.email);
+      }
       onLoginSuccess(response.user.email);
     },
     onError: error => {

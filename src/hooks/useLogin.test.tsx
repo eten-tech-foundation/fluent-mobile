@@ -6,11 +6,15 @@ jest.mock('../services/api', () => ({
 
 jest.mock('../services/authSession', () => ({
   beginLoginSession: jest.fn(() => Promise.resolve()),
+  beginAddAccountSession: jest.fn(() => Promise.resolve('247')),
 }));
 
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { FluentAPI } from '../services/api';
-import { beginLoginSession } from '../services/authSession';
+import {
+  beginAddAccountSession,
+  beginLoginSession,
+} from '../services/authSession';
 import { useLogin } from './useLogin';
 import { QueryClientTestWrapper } from '../test/queryClientWrapper';
 
@@ -49,6 +53,39 @@ describe('useLogin', () => {
       'session-token',
       't@fluent.local',
     );
+  });
+
+  it('uses beginAddAccountSession when sessionMode is addAccount', async () => {
+    jest.mocked(FluentAPI.signIn).mockResolvedValue({
+      token: 'session-token',
+      user: { email: 'b@example.com' },
+    });
+
+    const { result } = renderHook(
+      () => useLogin(onLoginSuccess, { sessionMode: 'addAccount' }),
+      {
+        wrapper: QueryClientTestWrapper,
+      },
+    );
+
+    act(() => {
+      result.current.setEmail('b@example.com');
+      result.current.setPassword('secret');
+    });
+
+    act(() => {
+      result.current.handleLogin();
+    });
+
+    await waitFor(() => {
+      expect(onLoginSuccess).toHaveBeenCalledWith('b@example.com');
+    });
+
+    expect(beginAddAccountSession).toHaveBeenCalledWith(
+      'session-token',
+      'b@example.com',
+    );
+    expect(beginLoginSession).not.toHaveBeenCalled();
   });
 
   it('surfaces API errors from the mutation', async () => {

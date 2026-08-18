@@ -31,6 +31,7 @@ jest.mock('./storage', () => ({
   switchActiveUser: jest.fn(),
   clearUserSession: jest.fn(),
   setUserSync: jest.fn(),
+  registerKnownUser: jest.fn(),
   clearReauthRequired: jest.fn(),
   KV_KEYS: {
     ACTIVE_USER_ID: 'active_user_id',
@@ -60,6 +61,7 @@ import {
   kvStorage,
   KV_KEYS,
   setUserSync,
+  registerKnownUser,
   switchActiveUser,
   clearReauthRequired,
 } from './storage';
@@ -68,6 +70,7 @@ import {
   restoreSession,
   signOut,
   beginLoginSession,
+  beginAddAccountSession,
   resolveReauthForUser,
 } from './authSession';
 
@@ -92,8 +95,8 @@ describe('restoreSession', () => {
     expect(switchActiveUser).not.toHaveBeenCalled();
   });
 
-  it('falls back to the first known user with credentials', async () => {
-    jest.mocked(getActiveUserId).mockReturnValue('');
+  it('does not authenticate as another known user when active credentials are missing', async () => {
+    jest.mocked(getActiveUserId).mockReturnValue('1');
     jest.mocked(getAllStoredUserIds).mockResolvedValue(['1', '2']);
     jest
       .mocked(hasCredentials)
@@ -105,11 +108,25 @@ describe('restoreSession', () => {
       );
 
     await expect(restoreSession()).resolves.toEqual({
-      authenticated: true,
-      userId: '2',
+      authenticated: false,
     });
-    expect(switchActiveUser).toHaveBeenCalledWith('2');
-    expect(authToken.set).toHaveBeenCalledWith('user-2-token');
+    expect(switchActiveUser).not.toHaveBeenCalled();
+    expect(authToken.set).toHaveBeenCalledWith(null);
+  });
+
+  it('does not fall back to another known user when active user id is empty', async () => {
+    jest.mocked(getActiveUserId).mockReturnValue('');
+    jest.mocked(getAllStoredUserIds).mockResolvedValue(['2']);
+    jest
+      .mocked(hasCredentials)
+      .mockImplementation(async userId => userId === '2');
+    jest.mocked(getCredentials).mockResolvedValue({ token: 'user-2-token' });
+
+    await expect(restoreSession()).resolves.toEqual({
+      authenticated: false,
+    });
+    expect(switchActiveUser).not.toHaveBeenCalled();
+    expect(authToken.set).toHaveBeenCalledWith(null);
   });
 
   it('clears orphan temp credentials instead of opening a session without a user', async () => {
@@ -180,6 +197,37 @@ describe('beginLoginSession', () => {
     expect(clearReauthRequired).toHaveBeenCalledWith('42');
     expect(emitAuthReauthResolved).toHaveBeenCalledWith('42');
     expect(clearTempCredentials).toHaveBeenCalled();
+  });
+});
+
+describe('beginAddAccountSession', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('persists credentials without changing auth token or active user', async () => {
+    jest.mocked(getActiveUserId).mockReturnValue('245');
+    jest.mocked(FluentAPI.getUserByEmail).mockResolvedValue({
+      id: 247,
+      email: 'b@example.com',
+    });
+
+    await expect(
+      beginAddAccountSession('b-token', 'b@example.com'),
+    ).resolves.toBe('247');
+
+    expect(saveCredentials).toHaveBeenCalledWith('b-token', '247');
+    expect(FluentAPI.getUserByEmail).toHaveBeenCalledWith(
+      'b@example.com',
+      'b-token',
+    );
+    expect(registerKnownUser).toHaveBeenCalledWith('247', 'b@example.com');
+    expect(clearReauthRequired).toHaveBeenCalledWith('247');
+    expect(emitAuthReauthResolved).toHaveBeenCalledWith('247');
+    expect(saveTempCredentials).not.toHaveBeenCalled();
+    expect(authToken.set).not.toHaveBeenCalled();
+    expect(setUserSync).not.toHaveBeenCalled();
+    expect(kvStorage.setItemSync).not.toHaveBeenCalled();
   });
 });
 
