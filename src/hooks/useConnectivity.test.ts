@@ -5,7 +5,7 @@ import {
 } from '../services/connectivity';
 import { useConnectivity } from './useConnectivity';
 
-jest.mock('@react-navigation/native', () => ({
+jest.mock('expo-router', () => ({
   useFocusEffect: (callback: () => void | (() => void)) => {
     const React = require('react');
     React.useEffect(() => callback(), [callback]);

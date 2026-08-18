@@ -22,7 +22,7 @@ Recording follow-up: wire source audio dock to real fetch + playback ([#235](htt
 | Package manager | **npm** (`package-lock.json`). `yarn` in-repo is shimmed to npm; pnpm is blocked. |
 | Node | `>= 24.14.0` (README: Node 24) |
 | Local DB | `@op-engineering/op-sqlite` |
-| Navigation | `@react-navigation/stack` |
+| Navigation | **Expo Router** (`expo-router`, file-based routes in `src/routes/`) |
 | Server state (installed) | `@tanstack/react-query` (minimal use today) |
 | Env | `EXPO_PUBLIC_API_BASE_URL` in `.env` (Expo public env) |
 | EAS | Project `b0919574-f268-4768-b3bd-7cfa5172bbab`, profiles in `eas.json` |
@@ -35,12 +35,13 @@ Recording follow-up: wire source audio dock to real fetch + playback ([#235](htt
 
 | Path | Purpose |
 |------|---------|
-| [`App.tsx`](../App.tsx) | Root: DB init + session restore, then navigator; sync runs post-login |
-| [`src/app/screens/`](../src/app/screens/) | Stack screens: Home, Settings, Sync, Drafting, PrepareForOffline |
+| [`index.js`](../index.js) | Entry: gesture-handler + `expo-router/entry` |
+| [`src/routes/`](../src/routes/) | Expo Router layouts/routes (auth + app groups, drawer) |
+| [`src/app/screens/`](../src/app/screens/) | Screen components: Home, Settings, Sync, Drafting, PrepareForOffline |
 | [`src/app/tabs/`](../src/app/tabs/) | Nested surfaces: ProjectsTab, MyWorkTab, BibleTab, RecordTab, auth/legal |
 | [`src/components/`](../src/components/) | Shared `layout/` + `ui/` |
 | [`src/theme/`](../src/theme/) | Canonical design tokens (`theme` object) for new UI |
-| [`src/navigation/`](../src/navigation/) | Stack navigator |
+| [`src/navigation/`](../src/navigation/) | Auth session provider, href helpers, auth gate |
 | [`src/services/api.ts`](../src/services/api.ts) | HTTP client (`FluentAPI`) — see [api-client-standard.md](guides/api-client-standard.md) |
 | [`src/services/sync.ts`](../src/services/sync.ts) | Sync orchestration, retries, KV counts |
 | [`src/services/storage.ts`](../src/services/storage.ts) | KV sync state (`op-sqlite` Storage) |
@@ -133,11 +134,11 @@ Requires `EXPO_TOKEN` in GitHub repository secrets. Preview builds use `eas.json
 ```mermaid
 flowchart TD
   subgraph launch [App launch]
-    App[App.tsx]
+    Entry[expo-router entry / src/routes]
     InitDB[initializeDatabase]
     Restore[restoreSession]
-    Nav[AppNavigator]
-    App --> InitDB --> Restore --> Nav
+    Gate[AuthSessionProvider + protected routes]
+    Entry --> InitDB --> Restore --> Gate
   end
 
   subgraph postLogin [Post-login / manual sync]
@@ -169,7 +170,7 @@ flowchart TD
   end
 ```
 
-**Launch (actual):** `App.tsx` → `initializeDatabase()` → `restoreSession()` → set auth + `dbReady` → `AppNavigator`. **Sync is not automatic on every cold start**; it runs after successful login (`syncAllData`) and when the user/manual sync hooks call `syncAllUsers`.
+**Launch (actual):** `index.js` → Expo Router `src/routes/_layout.tsx` → `AuthSessionProvider` (`initializeDatabase()` → `restoreSession()`) → protected `(auth)` / `(app)` groups. **Sync is not automatic on every cold start**; it runs after successful login (`syncAllData`) and when the user/manual sync hooks call `syncAllUsers`.
 
 **Layer rules (do not bypass):**
 
@@ -187,7 +188,7 @@ Auth: email/password via `FluentAPI.signIn`; authenticated API calls use `Author
 
 - **Logging:** `const log = logger.create('ComponentName')` — no raw `console` (ESLint); exception: `src/utils/logger.ts`, tests.
 - **Env:** `EXPO_PUBLIC_API_BASE_URL` in `.env`; read via `getApiBaseUrl()` from `src/config/apiBaseUrl.ts` — never commit `.env`. ESLint blocks direct `process.env` reads and legacy imports (`@env`, `react-native-fs`, `react-native-keychain`, Simform waveform) outside the config layer.
-- **Types:** API shapes in `src/types/api/`, DB in `src/types/db/`, navigation in `src/types/navigation/`.
+- **Types:** API shapes in `src/types/api/`, DB in `src/types/db/`. Route hrefs/params in `src/navigation/hrefs.ts` / `routeParams.ts`.
 - **Prettier:** single quotes, trailing commas, `arrowParens: 'avoid'`.
 - **Styles:** **`src/theme` (`theme` object) is canonical for new UI.** Do not add new hardcoded hex colors in new StyleSheets. [`src/app/appStyles.ts`](../src/app/appStyles.ts) is legacy shared styles — migrate callers to tokens when you touch them; do not expand it with new hex.
 - **SVG:** import as React components (Metro SVG transformer).
@@ -196,7 +197,7 @@ Keep changes **small and scoped** — avoid drive-by refactors.
 
 ## Testing strategy
 
-- **Unit:** Jest + Testing Library; mocks for native modules in [`__tests__/App.test.tsx`](../__tests__/App.test.tsx).
+- **Unit:** Jest + Testing Library; auth bootstrap coverage in [`__tests__/AuthSessionProvider.test.tsx`](../__tests__/AuthSessionProvider.test.tsx); gate/href helpers under `src/navigation/*.test.ts`.
 - **Expo mocks:** [`src/test/mocks/`](../src/test/mocks/) — global `moduleNameMapper` in `jest.config.cjs` for `expo-secure-store`, `expo-file-system`, `expo-audio`.
 - **Colocated:** `src/**/*.test.ts(x)` — e.g. `src/utils/logger.test.ts`, `src/services/recordingSync.test.ts`.
 - **Live API test:** `fluent-api.test.ts` is **skipped by default**; opt in with `RUN_LIVE_API_TESTS=1 npm test -- fluent-api.test.ts`.
@@ -209,7 +210,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 
 | Task | Start here |
 |------|------------|
-| New stack screen | Prefer `src/app/screens/`, register in `AppNavigator.tsx`, extend `RootStackParamList` |
+| New stack screen | Add a file under `src/routes/(app)/(stack)/` (or auth group), implement UI in `src/app/screens/` / `src/app/tabs/`, add an `hrefs` helper if needed |
 | Nested drafting/list UI | `src/app/tabs/` or `src/components/` |
 | New API endpoint | `FluentAPI` in `api.ts`, then `sync.ts` step + `repository.ts` |
 | New table / column | `schema.ts` → prefer versioned migrations (`#110`) → repository inserts → queries → types |

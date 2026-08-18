@@ -19,7 +19,8 @@ export function mapApiChapterAssignment(
   return {
     chapterAssignmentId: api.chapterAssignmentId,
     projectUnitId: api.projectUnitId,
-    projectId: api.projectId,
+    projectId:
+      api.projectId ?? (api as { project_id?: number }).project_id ?? 0,
     bibleId: api.bibleId,
     bookId: api.bookId,
     chapterNumber: api.chapterNumber,
