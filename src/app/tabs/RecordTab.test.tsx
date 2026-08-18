@@ -11,8 +11,8 @@ import { DraftingProvider } from '../context/DraftingContext';
 import type { useVerseAudio } from '../../hooks/useVerseAudio';
 import type { Recording } from '../../types/db/types';
 
-jest.mock('@react-navigation/native', () => ({
-  useRoute: () => ({ params: { chapterName: 'Mark 14' } }),
+jest.mock('expo-router', () => ({
+  useLocalSearchParams: () => ({ chapterName: 'Mark 14' }),
 }));
 
 jest.mock('../../db/queries', () => ({

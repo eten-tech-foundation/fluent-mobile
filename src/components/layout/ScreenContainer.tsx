@@ -5,22 +5,18 @@ import { theme } from '../../theme';
 
 interface ScreenContainerProps {
   children: React.ReactNode;
-  edges?: ('top' | 'bottom')[];
+  /** Top inset only — bottom chrome is padded on scroll/footer content for edge-to-edge. */
+  edges?: 'top'[];
 }
 
 export function ScreenContainer({
   children,
-  edges = ['bottom'],
+  edges = [],
 }: ScreenContainerProps) {
   const insets = useSafeAreaInsets();
   const paddingTop = edges.includes('top') ? insets.top : 0;
-  const paddingBottom = edges.includes('bottom') ? insets.bottom : 0;
 
-  return (
-    <View style={[styles.container, { paddingTop, paddingBottom }]}>
-      {children}
-    </View>
-  );
+  return <View style={[styles.container, { paddingTop }]}>{children}</View>;
 }
 
 const styles = StyleSheet.create({

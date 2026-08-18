@@ -7,28 +7,25 @@ import {
   Text,
 } from 'react-native';
 import {
-  useRoute,
+  useLocalSearchParams,
   useNavigation,
-  RouteProp,
+  useRouter,
   useIsFocused,
-} from '@react-navigation/native';
+} from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../theme';
 import { parseUserId } from '../../utils/parseUserId';
 import { usePreferences } from '../../hooks/usePreferences';
 import { useConnectivity } from '../../hooks/useConnectivity';
-import { StackNavigationProp } from '@react-navigation/stack';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { SettingsButton } from '../../components/ui/SettingsButton';
 import { PageHeaderSyncButton } from '../../components/ui/PageHeaderSyncButton';
-import { UserSettingsMenu } from '../../components/ui/UserSettingsMenu';
 import { TabBar, HomeTab } from '../../components/layout/TabBar';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { MyWorkTab } from '../tabs/MyWorkTab';
 import { ProjectsTab } from '../tabs/ProjectsTab';
 import { useSync } from '../../hooks/useSync';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
-import { RootStackParamList } from '../../types/navigation/types';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
 import { onSyncComplete, onSyncStart } from '../../services/syncEvents';
 import { getPrepareOfflineDownloadStarted } from '../../services/storage';
@@ -37,26 +34,28 @@ import {
   getProjectsWithSummary,
   isUserAssignedToProject,
 } from '../../db/queries';
+import { hrefs } from '../../navigation/hrefs';
+import { parseOptionalBoolean } from '../../navigation/routeParams';
+import { useAuthSession } from '../../navigation/AuthSessionProvider';
 
-interface HomeScreenProps {
-  onSignOut?: () => void;
-  postLoginSyncActive?: boolean;
-}
+/** Drawer helpers on the `(app)` layout — not available on the nested stack nav. */
+type AppDrawerNavigation = {
+  openDrawer: () => void;
+};
 
-type Nav = StackNavigationProp<RootStackParamList, 'Home'>;
-
-export default function HomeScreen({
-  onSignOut,
-  postLoginSyncActive = false,
-}: HomeScreenProps) {
+function HomeScreenBody({
+  postLoginSyncActive,
+}: {
+  postLoginSyncActive: boolean;
+}) {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<Nav>();
-  const route = useRoute<RouteProp<RootStackParamList, 'Home'>>();
+  const router = useRouter();
+  const navigation = useNavigation<AppDrawerNavigation>('/(app)');
+  const params = useLocalSearchParams<{ newUserLoading?: string }>();
   const [activeTab, setActiveTab] = useState<HomeTab>('myWork');
   const [refreshKey, setRefreshKey] = useState(0);
-  const [settingsVisible, setSettingsVisible] = useState(false);
   const [isNewUserLoading, setIsNewUserLoading] = useState(
-    () => route.params?.newUserLoading === true,
+    () => parseOptionalBoolean(params.newUserLoading) === true,
   );
   const [isSyncingLocal, setIsSyncingLocal] = useState(false);
   const {
@@ -213,7 +212,7 @@ export default function HomeScreen({
             !getPrepareOfflineDownloadStarted(String(userId), project.id)
           ) {
             prepareOfflinePromptShownThisAppOpenRef.current = true;
-            navigation.navigate('PrepareForOffline');
+            router.push(hrefs.prepareForOffline());
             return;
           }
         }
@@ -238,7 +237,7 @@ export default function HomeScreen({
     }
 
     return () => subscription.remove();
-  }, [navigation]);
+  }, [router]);
 
   useEffect(() => {
     if (!hasResolved) return;
@@ -265,19 +264,14 @@ export default function HomeScreen({
   ]);
 
   const handleSettingsPress = () => {
-    setSettingsVisible(true);
+    navigation.openDrawer();
   };
-
-  const handleUserSwitched = useCallback(() => {
-    autoRepairSyncAttempted.current = false;
-    setRefreshKey(key => key + 1);
-  }, []);
 
   // CHANGED: was `triggerSync()`. Tapping the icon now navigates to the
   // Sync page instead of kicking off a sync directly (per #38 / #149).
   const handleSyncPress = useCallback(() => {
-    navigation.navigate('Sync');
-  }, [navigation]);
+    router.push(hrefs.sync);
+  }, [router]);
 
   const showLoading =
     isNewUserLoading ||
@@ -316,13 +310,17 @@ export default function HomeScreen({
           <ProjectsTab refreshKey={refreshKey} />
         )}
       </View>
-      <UserSettingsMenu
-        visible={settingsVisible}
-        onClose={() => setSettingsVisible(false)}
-        onSignOut={onSignOut}
-        onUserSwitched={handleUserSwitched}
-      />
     </ScreenContainer>
+  );
+}
+
+export default function HomeScreen() {
+  const { postLoginSyncActive, userSwitchEpoch } = useAuthSession();
+  return (
+    <HomeScreenBody
+      key={userSwitchEpoch}
+      postLoginSyncActive={postLoginSyncActive}
+    />
   );
 }
 
