@@ -80,7 +80,7 @@ export function coalesceAssignedUserId(
   assignedUserId: number | null | undefined,
   knownUserIds: ReadonlySet<number>,
 ): number | null {
-  if (assignedUserId == null) return null;
+  if (assignedUserId === null || assignedUserId === undefined) return null;
   return knownUserIds.has(assignedUserId) ? assignedUserId : null;
 }
 
