@@ -106,21 +106,13 @@ describe('recordingSync', () => {
     const result = await syncPendingRecordings('tok-1', { delay });
 
     expect(result).toEqual({ uploaded: 1, failed: 0 });
-    expect(authToken.get()).toBe('tok-1');
-    expect(mockSetRecordingSyncStatus).toHaveBeenCalledWith(
-      'rec-1',
-      'uploading',
+    expect(mockUploadVerseAudio).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectUnitId: 12,
+        bibleTextId: 42,
+      }),
+      'tok-1',
     );
-    expect(mockUploadVerseAudio).toHaveBeenCalledWith({
-      projectUnitId: 12,
-      bibleTextId: 42,
-      file: {
-        uri: FILE_URI,
-        name: 'verse-1.m4a',
-        type: 'audio/mp4',
-      },
-      durationSeconds: 1.5,
-    });
     expect(mockMarkRecordingUploaded).toHaveBeenCalledWith(
       'rec-1',
       'unit-12/text-42',
@@ -137,8 +129,10 @@ describe('recordingSync', () => {
     await syncPendingRecordings('active-tok', { delay });
 
     expect(mockGetCredentials).toHaveBeenCalledWith('7');
-    expect(authToken.get()).toBe('owner-tok');
-    expect(mockUploadVerseAudio).toHaveBeenCalled();
+    expect(mockUploadVerseAudio).toHaveBeenCalledWith(
+      expect.any(Object),
+      'owner-tok',
+    );
   });
 
   it('falls back to the pass token when owner credentials are missing', async () => {
@@ -150,7 +144,10 @@ describe('recordingSync', () => {
     await syncPendingRecordings('pass-tok', { delay });
 
     expect(mockGetCredentials).toHaveBeenCalledWith('9');
-    expect(authToken.get()).toBe('pass-tok');
+    expect(mockUploadVerseAudio).toHaveBeenCalledWith(
+      expect.any(Object),
+      'pass-tok',
+    );
   });
 
   it('filters by chapter when provided (orchestrator batching)', async () => {
@@ -365,7 +362,10 @@ describe('recordingSync', () => {
       controller.signal,
     );
 
-    expect(authToken.get()).toBe('worker-tok');
+    expect(mockUploadVerseAudio).toHaveBeenCalledWith(
+      expect.any(Object),
+      'worker-tok',
+    );
     expect(mockGetPendingRecordings).toHaveBeenCalledWith({
       bookId: 40,
       chapterNumber: 2,

@@ -142,7 +142,6 @@ async function uploadOneRecording(
     return 'failed';
   }
 
-  authToken.set(token);
   await setRecordingSyncStatus(recording.id, 'uploading');
 
   let lastMessage = 'Upload failed';
@@ -159,16 +158,19 @@ async function uploadOneRecording(
           ? recording.durationMs / 1000
           : undefined;
 
-      const response = await FluentAPI.uploadVerseAudio({
-        projectUnitId: recording.projectUnitId,
-        bibleTextId: recording.bibleTextId,
-        file: {
-          uri: recording.localFilePath,
-          name: fileNameFromPath(recording.localFilePath),
-          type: contentTypeFromPath(recording.localFilePath),
+      const response = await FluentAPI.uploadVerseAudio(
+        {
+          projectUnitId: recording.projectUnitId,
+          bibleTextId: recording.bibleTextId,
+          file: {
+            uri: recording.localFilePath,
+            name: fileNameFromPath(recording.localFilePath),
+            type: contentTypeFromPath(recording.localFilePath),
+          },
+          ...(durationSeconds !== undefined ? { durationSeconds } : {}),
         },
-        ...(durationSeconds !== undefined ? { durationSeconds } : {}),
-      });
+        token,
+      );
 
       const blobKey = blobKeyFromVerseAudioResponse(response);
       await markRecordingUploaded(recording.id, blobKey);
@@ -246,7 +248,6 @@ async function runUploadPass(
 ): Promise<UploadResult> {
   // Fail fast if API base URL is missing (never use @env).
   getApiBaseUrl();
-  authToken.set(token);
 
   const delay = options.delay ?? defaultDelay;
   const maxAttempts = options.maxAttempts ?? MAX_UPLOAD_ATTEMPTS;

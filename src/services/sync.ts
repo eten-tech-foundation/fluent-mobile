@@ -49,7 +49,6 @@ import {
   emitSyncStart,
   emitAuthReauthRequired,
 } from './syncEvents';
-import { authToken } from './authToken';
 
 const log = logger.create('SyncService');
 
@@ -64,13 +63,6 @@ async function handleSyncAuthFailure(userId: string): Promise<void> {
   setReauthRequired(userId);
   if (userId === getActiveUserId()) {
     emitAuthReauthRequired(userId);
-  }
-}
-
-async function restoreActiveUserAuthToken(activeUserId: string): Promise<void> {
-  const creds = await getCredentials(activeUserId);
-  if (creds?.token) {
-    authToken.set(creds.token);
   }
 }
 
@@ -187,14 +179,14 @@ export async function syncMasterData() {
   );
 }
 
-export async function syncProjects(userId: number) {
+export async function syncProjects(userId: number, sessionToken?: string) {
   return retrySyncStep(
     'Project sync',
     KV_KEYS.SYNC_ERROR_PROJECTS,
     async () => {
       log.info('Syncing projects...', { userId });
 
-      const response = await FluentAPI.getUserProjects(userId);
+      const response = await FluentAPI.getUserProjects(userId, sessionToken);
       const raw = unwrapApiListResponse(response);
       const projects = (Array.isArray(raw) ? raw : []).map(mapApiProject);
 
@@ -234,6 +226,7 @@ export async function syncChapterAssignments(
   userId: number,
   updatedAfter?: string,
   excludeProjectIds?: number[],
+  sessionToken?: string,
 ) {
   return retrySyncStep(
     'Chapter assignment sync',
@@ -249,6 +242,7 @@ export async function syncChapterAssignments(
         userId,
         updatedAfter,
         excludeProjectIds,
+        sessionToken,
       );
 
       const raw = unwrapApiListResponse(response);
@@ -284,12 +278,15 @@ export async function syncChapterAssignments(
   );
 }
 
-async function syncUserChapterWork(userId: number) {
+async function syncUserChapterWork(userId: number, sessionToken?: string) {
   return retrySyncStep(
     'User chapter work sync',
     KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS,
     async () => {
-      const response = await FluentAPI.getUserChapterAssignments(userId);
+      const response = await FluentAPI.getUserChapterAssignments(
+        userId,
+        sessionToken,
+      );
       const assigned = response.assignedChapters ?? [];
       const peerCheck = response.peerCheckChapters ?? [];
       const mapped = [...assigned, ...peerCheck].map(mapApiChapterAssignment);
@@ -305,12 +302,13 @@ async function syncUserChapterWork(userId: number) {
 async function syncChapterAssignmentsForUser(
   userId: number,
   updatedAfter?: string,
+  sessionToken?: string,
 ): Promise<{ didFullSync: boolean }> {
   const userIdStr = String(userId);
 
   const runFullProjectAssignments = async () => {
-    await syncChapterAssignments(userId);
-    await syncUserChapterWork(userId);
+    await syncChapterAssignments(userId, undefined, undefined, sessionToken);
+    await syncUserChapterWork(userId, sessionToken);
   };
 
   if (!getUserLastSyncedAt(userIdStr)) {
@@ -334,8 +332,8 @@ async function syncChapterAssignmentsForUser(
     return { didFullSync: true };
   }
 
-  await syncChapterAssignments(userId, updatedAfter);
-  await syncUserChapterWork(userId);
+  await syncChapterAssignments(userId, updatedAfter, undefined, sessionToken);
+  await syncUserChapterWork(userId, sessionToken);
   return { didFullSync: !updatedAfter };
 }
 
@@ -515,17 +513,17 @@ export async function syncAllUsers(): Promise<void> {
       }
 
       log.info('Syncing user', { userId });
-      authToken.set(creds.token);
       const userIdNum = Number(userId);
       const userLastSyncedAt = getUserLastSyncedAt(userId) || undefined;
       const hasUserProjects = await userHasLocalProjects(userIdNum);
       const assignmentCursor = hasUserProjects ? userLastSyncedAt : undefined;
 
       try {
-        await syncProjects(userIdNum);
+        await syncProjects(userIdNum, creds.token);
         const { didFullSync } = await syncChapterAssignmentsForUser(
           userIdNum,
           assignmentCursor,
+          creds.token,
         );
         if (didFullSync) {
           anyUserDidFullAssignmentSync = true;
@@ -571,10 +569,6 @@ export async function syncAllUsers(): Promise<void> {
       setUserLastSyncedAt(userId, userSyncCompletedAt);
     }
 
-    if (currentActiveUserId) {
-      await restoreActiveUserAuthToken(currentActiveUserId);
-    }
-
     if (activeUserSyncOk) {
       const now = new Date().toISOString();
       setLastSyncedAt(now);
@@ -593,9 +587,6 @@ export async function syncAllUsers(): Promise<void> {
       throw firstNonAuthSyncError;
     }
   } catch (error) {
-    if (currentActiveUserId) {
-      await restoreActiveUserAuthToken(currentActiveUserId);
-    }
     log.error('Sync all users failed', { error: getErrorMessage(error) });
     throw error;
   } finally {
@@ -610,6 +601,7 @@ export async function syncAllData(isIncremental = false, email?: string) {
 
   try {
     let userId: number;
+    let sessionToken: string | undefined;
     if (isIncremental) {
       const existingUserIdStr = getUserIdSync();
       if (!existingUserIdStr) throw new Error('No user ID found');
@@ -620,7 +612,7 @@ export async function syncAllData(isIncremental = false, email?: string) {
         await handleSyncAuthFailure(existingUserIdStr);
         throw new AuthError('No session token. Please sign in again.');
       }
-      authToken.set(creds.token);
+      sessionToken = creds.token;
     } else {
       const user = await syncUser(email);
       userId = user.id;
@@ -635,18 +627,19 @@ export async function syncAllData(isIncremental = false, email?: string) {
     const userAssignmentCursor = getUserLastSyncedAt(userIdStr) || undefined;
 
     await syncMasterData();
-    await syncProjects(userId);
+    await syncProjects(userId, sessionToken);
 
     if (isIncremental) {
       const assignmentCursor = userAssignmentCursor ?? lastSyncedAt;
       const { didFullSync } = await syncChapterAssignmentsForUser(
         userId,
         assignmentCursor,
+        sessionToken,
       );
       await syncBibleTexts(didFullSync ? undefined : assignmentCursor);
     } else if (localProjectIdsBefore.length === 0) {
-      await syncChapterAssignments(userId);
-      await syncUserChapterWork(userId);
+      await syncChapterAssignments(userId, undefined, undefined, sessionToken);
+      await syncUserChapterWork(userId, sessionToken);
       await syncBibleTexts();
     } else {
       // Omit excludeProjectIds on re-login: the API can return [] when every
@@ -654,6 +647,7 @@ export async function syncAllData(isIncremental = false, email?: string) {
       const { didFullSync } = await syncChapterAssignmentsForUser(
         userId,
         userAssignmentCursor,
+        sessionToken,
       );
       await syncBibleTexts(didFullSync ? undefined : userAssignmentCursor);
     }

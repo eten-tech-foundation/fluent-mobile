@@ -174,6 +174,7 @@ describe('syncAllData auth handling', () => {
     await expect(syncAllData(true)).rejects.toThrow(AuthError);
 
     expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2, 'revoked-token');
     expect(clearCredentials).not.toHaveBeenCalled();
     expect(setReauthRequired).toHaveBeenCalledWith('2');
     expect(authToken.set).not.toHaveBeenCalledWith(null);
@@ -221,6 +222,7 @@ describe('syncAllData auth handling', () => {
       2,
       undefined,
       undefined,
+      'valid-token',
     );
   });
 
@@ -245,6 +247,7 @@ describe('syncAllData auth handling', () => {
 
     expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
       2,
+      undefined,
       undefined,
       undefined,
     );
@@ -296,9 +299,9 @@ describe('syncAllUsers auth handling', () => {
     await syncAllUsers();
 
     expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(2);
-    expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(1);
-    expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2);
-    expect(authToken.set).toHaveBeenLastCalledWith('user-2-token');
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(1, 'user-1-token');
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2, 'user-2-token');
+    expect(authToken.set).not.toHaveBeenCalled();
     expect(setUserLastSyncedAt).toHaveBeenCalledWith('1', expect.any(String));
     expect(setUserLastSyncedAt).toHaveBeenCalledWith('2', expect.any(String));
     expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
@@ -339,7 +342,7 @@ describe('syncAllUsers auth handling', () => {
     expect(setReauthRequired).not.toHaveBeenCalledWith('2');
     expect(syncEvents.emitAuthReauthRequired).not.toHaveBeenCalled();
     expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(2);
-    expect(authToken.set).toHaveBeenLastCalledWith('user-2-token');
+    expect(authToken.set).not.toHaveBeenCalled();
   });
 
   it('runs full bible text sync when any user had a full assignment sync', async () => {
@@ -375,11 +378,13 @@ describe('syncAllUsers auth handling', () => {
       1,
       undefined,
       undefined,
+      'user-1-token',
     );
     expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
       2,
       undefined,
       undefined,
+      'user-2-token',
     );
   });
 
@@ -398,6 +403,7 @@ describe('syncAllUsers auth handling', () => {
       2,
       undefined,
       undefined,
+      'user-2-token',
     );
   });
 
