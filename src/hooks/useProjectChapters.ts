@@ -16,23 +16,57 @@ export function useProjectChapters(projectId: number) {
   const [error, setError] = useState<unknown>(null);
   const refreshGenerationRef = useRef(0);
 
-  const loadChapters = useCallback(async () => {
-    try {
-      setError(null);
-      const userId = parseUserId();
-      if (userId === null) {
+  const loadChapters = useCallback(
+    async (generation?: number) => {
+      try {
+        setError(null);
+
+        const userId = parseUserId();
+        if (userId === null) {
+          if (
+            generation === undefined ||
+            refreshGenerationRef.current === generation
+          ) {
+            setChapters([]);
+          }
+          return;
+        }
+
+        const nextChapters = await getProjectChapters(projectId, userId);
+
+        if (
+          generation !== undefined &&
+          refreshGenerationRef.current !== generation
+        ) {
+          return;
+        }
+
+        setChapters(nextChapters);
+      } catch (err) {
+        if (
+          generation !== undefined &&
+          refreshGenerationRef.current !== generation
+        ) {
+          return;
+        }
+
+        log.error('Error loading project chapters:', {
+          error: err,
+          projectId,
+        });
+        setError(err);
         setChapters([]);
-        return;
+      } finally {
+        if (
+          generation === undefined ||
+          refreshGenerationRef.current === generation
+        ) {
+          setLoading(false);
+        }
       }
-      setChapters(await getProjectChapters(projectId, userId));
-    } catch (err) {
-      log.error('Error loading project chapters:', { error: err, projectId });
-      setError(err);
-      setChapters([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId]);
+    },
+    [projectId],
+  );
 
   useEffect(() => {
     setLoading(true);
@@ -53,7 +87,7 @@ export function useProjectChapters(projectId: number) {
 
       refreshChapterMetadataIfOnline(Number(activeUserId)).then(() => {
         if (refreshGenerationRef.current !== generation) return;
-        void loadChapters();
+        void loadChapters(generation);
       });
 
       return () => {
@@ -61,6 +95,7 @@ export function useProjectChapters(projectId: number) {
       };
     }, [loadChapters]),
   );
+
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
