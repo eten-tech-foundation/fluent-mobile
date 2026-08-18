@@ -116,13 +116,16 @@ Setup and troubleshooting: [`.eas/README.md`](../.eas/README.md).
 
 ## PR preview (Android QA)
 
-1. Add the **`preview-build`** label to the PR (uses latest git tag, or `app.config.ts` version if none).
+Process and merge gate: [`docs/guides/qa-process.md`](guides/qa-process.md). Install steps: [`docs/guides/qa-preview-testing.md`](guides/qa-preview-testing.md).
+
+1. Add the **`preview-build`** label to the PR when it **Needs QA** (uses latest git tag, or `app.config.ts` version if none).
 2. Workflow and build resolution:
    - **`runtimeVersion`:** `app.config.ts` sets **`runtimeVersion: { policy: 'appVersion' }`**.
    - **`preview-build.yml`:** [`.github/workflows/preview-build.yml`](../.github/workflows/preview-build.yml) starts a **fresh** Android EAS `preview` internal APK for that PR (binary only — no OTA); uses [`.github/scripts/eas-resolve-android-build.sh`](../.github/scripts/eas-resolve-android-build.sh) with `FORCE_NEW_BUILD=true`.
    - **`.fingerprintignore`:** excludes `docs/**/*` and `.github/**/*` (among other non-native paths) from EAS build fingerprint hashing.
    - **`eas.json` / production skip:** `preview` and `development` set **`EAS_USE_CACHE: "1"`**; `production` sets **`EAS_SAVE_CACHE: "1"`** and **`EAS_RESTORE_CACHE: "0"`** (save cache only, no restore). [`.eas/workflows/create-production-builds.yml`](../.eas/workflows/create-production-builds.yml) skips rebuild when fingerprint matches (`if: !needs.get_android_build.outputs.build_id`).
-3. The bot comment links to **[`docs/guides/qa-preview-testing.md`](guides/qa-preview-testing.md)** for non-technical testers (Fluent preview app — **not Expo Go** or Metro dev builds).
+3. The bot comments on the PR and linked issue; Project 4 may move to **`In QA` before merge**. QA-required PRs are **not mergeable** until QA passes that preview.
+4. Re-request after fixes: remove and re-add the `preview-build` label.
 
 Requires `EXPO_TOKEN` in GitHub repository secrets. Preview builds use `eas.json` profile `preview` (internal distribution, Expo Updates **disabled** — no `developmentClient`; `EXPO_PUBLIC_API_BASE_URL=https://dev.api.fluent.bible`). Local `.env` keeps emulator localhost; `dev.app.fluent.bible` is the web app, not the mobile API host. Local/engineering builds use profile `development` (`developmentClient: true`).
 
@@ -238,6 +241,8 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 - Human setup: [README.md](../README.md)
 - Agent delivery guardrails: [`AGENTS.md`](../AGENTS.md)
 - Issue tracking (Project 4 Fluent Mobile Board): [issue-tracking.md](issue-tracking.md)
+- QA process / pre-merge preview gate: [guides/qa-process.md](guides/qa-process.md)
+- QA install how-to: [guides/qa-preview-testing.md](guides/qa-preview-testing.md)
 - CI inventory: [ci.md](ci.md)
 - Cursor rules: [`.cursor/rules/`](../.cursor/rules/) — **Android-only:** [android-only.mdc](../.cursor/rules/android-only.mdc)
 - Dependabot: [guides/dependabot-process.md](guides/dependabot-process.md) — use with `.cursor/rules/dependabot-workflow.mdc`
