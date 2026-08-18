@@ -13,7 +13,7 @@ export function useMyWorkChapters(refreshKey = 0) {
   const [chapters, setChapters] = useState<MyWorkChapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const hasFocusedBefore = useRef(false);
+  const refreshGenerationRef = useRef(0);
 
   const loadChapters = useCallback(async () => {
     const userId = parseUserId();
@@ -35,28 +35,28 @@ export function useMyWorkChapters(refreshKey = 0) {
     loadChapters().finally(() => setLoading(false));
   }, [loadChapters, refreshKey]);
 
-  // #273: on re-focus (not initial mount — that's covered by the effect
-  // above, and immediately post-login data is already fresh from the login
-  // sync), pull latest assignment/stage metadata in the background and
-  // re-read the cache. Uses getActiveUserId (not parseUserId) — the two can
-  // drift on shared/multi-account devices, and calling the API with a
-  // userId that doesn't match the live bearer token 403s (see #291).
+  // #273: pull latest assignment/stage metadata in the background on chapter
+  // list open, then re-read the cache. Uses getActiveUserId (not parseUserId)
+  // because the two can drift on shared/multi-account devices, and calling the
+  // API with a userId that doesn't match the live bearer token 403s (see #291).
   useFocusEffect(
     useCallback(() => {
-      if (!hasFocusedBefore.current) {
-        hasFocusedBefore.current = true;
-        return;
-      }
-
       const activeUserId = getActiveUserId();
       if (!activeUserId) return;
 
+      refreshGenerationRef.current += 1;
+      const generation = refreshGenerationRef.current;
+
       refreshChapterMetadataIfOnline(Number(activeUserId)).then(() => {
+        if (refreshGenerationRef.current !== generation) return;
         void loadChapters();
       });
+
+      return () => {
+        refreshGenerationRef.current += 1;
+      };
     }, [loadChapters]),
   );
-
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {

@@ -220,7 +220,7 @@ export async function syncChapterAssignments(
   userId: number,
   updatedAfter?: string,
   excludeProjectIds?: number[],
-) {
+): Promise<{ syncedAt?: string }> {
   return retrySyncStep(
     'Chapter assignment sync',
     KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS,
@@ -237,6 +237,12 @@ export async function syncChapterAssignments(
         excludeProjectIds,
       );
 
+      const syncedAt =
+        response !== null &&
+        typeof response === 'object' &&
+        !Array.isArray(response)
+          ? response.syncedAt
+          : undefined;
       const raw = unwrapApiListResponse(response);
       const allAssignments = (Array.isArray(raw) ? raw : []).map(
         mapApiChapterAssignment,
@@ -265,6 +271,8 @@ export async function syncChapterAssignments(
       } else {
         log.info('No chapter assignment changes');
       }
+
+      return { syncedAt };
     },
     String(userId),
   );
@@ -291,12 +299,13 @@ async function syncUserChapterWork(userId: number) {
 async function syncChapterAssignmentsForUser(
   userId: number,
   updatedAfter?: string,
-): Promise<{ didFullSync: boolean }> {
+): Promise<{ didFullSync: boolean; syncedAt?: string }> {
   const userIdStr = String(userId);
 
   const runFullProjectAssignments = async () => {
-    await syncChapterAssignments(userId);
+    const { syncedAt } = await syncChapterAssignments(userId);
     await syncUserChapterWork(userId);
+    return { syncedAt };
   };
 
   if (!getUserLastSyncedAt(userIdStr)) {
@@ -304,8 +313,8 @@ async function syncChapterAssignmentsForUser(
       'Forcing full chapter assignment sync — user has no per-user sync cursor',
       { userId },
     );
-    await runFullProjectAssignments();
-    return { didFullSync: true };
+    const { syncedAt } = await runFullProjectAssignments();
+    return { didFullSync: true, syncedAt };
   }
 
   if (
@@ -316,13 +325,13 @@ async function syncChapterAssignmentsForUser(
       'Forcing full chapter assignment sync — local assignments incomplete',
       { userId },
     );
-    await runFullProjectAssignments();
-    return { didFullSync: true };
+    const { syncedAt } = await runFullProjectAssignments();
+    return { didFullSync: true, syncedAt };
   }
 
-  await syncChapterAssignments(userId, updatedAfter);
+  const { syncedAt } = await syncChapterAssignments(userId, updatedAfter);
   await syncUserChapterWork(userId);
-  return { didFullSync: !updatedAfter };
+  return { didFullSync: !updatedAfter, syncedAt };
 }
 
 export async function syncBibleTexts(updatedAfter?: string) {
@@ -698,30 +707,37 @@ export async function switchUser(userId: string): Promise<void> {
   emitSyncComplete();
 }
 
-const lastMetadataRefreshAt = new Map<number, number>();
-const METADATA_REFRESH_COOLDOWN_MS = 60_000;
+const inFlightMetadataRefresh = new Map<number, Promise<void>>();
 
 export async function refreshChapterMetadataIfOnline(
   userId: number,
 ): Promise<void> {
-  const last = lastMetadataRefreshAt.get(userId);
-  if (last && Date.now() - last < METADATA_REFRESH_COOLDOWN_MS) {
-    return;
+  const existing = inFlightMetadataRefresh.get(userId);
+  if (existing) {
+    return existing;
   }
 
-  const { isOnline } = await getConnectivitySnapshot();
-  if (!isOnline) return;
+  const refreshPromise = (async () => {
+    try {
+      const { isOnline } = await getConnectivitySnapshot();
+      if (!isOnline) return;
 
-  lastMetadataRefreshAt.set(userId, Date.now());
+      const userIdStr = String(userId);
+      const cursor = getUserLastSyncedAt(userIdStr) || undefined;
+      const { syncedAt } = await syncChapterAssignmentsForUser(userId, cursor);
+      if (syncedAt) {
+        setUserLastSyncedAt(userIdStr, syncedAt);
+      }
+    } catch (error) {
+      log.warn('Chapter metadata refresh failed (non-blocking)', {
+        userId,
+        error: getErrorMessage(error),
+      });
+    } finally {
+      inFlightMetadataRefresh.delete(userId);
+    }
+  })();
 
-  try {
-    const userIdStr = String(userId);
-    const cursor = getUserLastSyncedAt(userIdStr) || undefined;
-    await syncChapterAssignmentsForUser(userId, cursor);
-  } catch (error) {
-    log.warn('Chapter metadata refresh failed (non-blocking)', {
-      userId,
-      error: getErrorMessage(error),
-    });
-  }
+  inFlightMetadataRefresh.set(userId, refreshPromise);
+  return refreshPromise;
 }
