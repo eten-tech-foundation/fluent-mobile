@@ -23,7 +23,7 @@ This file is the **entrypoint for non-Cursor agents** (Claude Code, Codex, Copil
 - Never push or merge to `main`; ticketed branch + PR; PR body from [`.cursor/templates/pr-template.md`](.cursor/templates/pr-template.md). Full loop: `/start-issue NNN` (chains to `/create-pr`). Delivery-only: `/create-pr` (`/open-pr` alias).
 - Do not reorganize Project 4 (`Dev Ready` / Product columns) without an approved change set
 - Prefer Expo SDK modules; do not rip out React Navigation without a ticket
-- Mic / camera / filesystem / native modules → human Android device QA on that PR’s `preview-build` **before merge** ([docs/guides/qa-process.md](docs/guides/qa-process.md))
+- Needs QA per [docs/guides/qa-process.md](docs/guides/qa-process.md) → human Android device QA on that PR’s `preview-build` **before merge**
 
 ## Package manager / Node
 

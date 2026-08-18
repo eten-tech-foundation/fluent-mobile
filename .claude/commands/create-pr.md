@@ -145,16 +145,15 @@ and pre-fill:
 **Needs QA? / preview gate** ([docs/guides/qa-process.md](../../docs/guides/qa-process.md)):
 
 1. Decide **Needs QA?** and check **No** or **Yes** in the PR body.
-2. If **Yes**: remind the author to add the **`preview-build`** label (do not
-   merge until QA passes that PR’s preview). Leave “QA passed this PR’s
-   preview” and the Android device checkbox **unchecked** until a human
-   confirms.
+2. If **Yes**: leave “QA passed this PR’s preview” **unchecked** until a
+   human confirms. After `gh pr create` (below), **add** the
+   **`preview-build`** label and **verify** it is on the PR. **STOP** if
+   the label is missing — the isolated preview will not start. Do not
+   merge until QA passes that PR’s preview.
 3. If **No**: check engineering-only; skip preview/QA merge gate.
 
-Do **not** auto-check **Acceptance criteria**, **Scope**, **Needs QA?
-preview-passed**, or **Android device tested** unless verified. Do **not**
-auto-check device QA for native / mic / camera / filesystem / permissions
-changes.
+Do **not** auto-check **Acceptance criteria**, **Scope**, or **Needs QA?
+preview-passed** unless verified.
 
 Keep under ~400 lines; no nested fenced code blocks inside the PR body.
 
@@ -172,6 +171,19 @@ If the PR already exists without an assignee:
 gh pr edit --add-assignee @me
 ```
 
+**`preview-build` label (QA-required — hard gate):** If **Needs QA?** is
+**Yes**, add the label immediately and confirm it is present. **STOP** if
+it is missing.
+
+```bash
+# Only when Needs QA? is Yes
+gh pr edit --add-label preview-build
+if ! gh pr view --json labels --jq '.labels[].name' | grep -qx preview-build; then
+  echo "STOP: Needs QA? Yes but preview-build label is missing."
+  exit 1
+fi
+```
+
 **Issue link (Development sidebar):** `Refs #NNN` is the required non-closing
 reference. GitHub’s Development widget is only auto-populated by closing
 keywords or a **manual** sidebar link. Do **not** use closing keywords. After
@@ -179,7 +191,8 @@ create, if the sidebar is empty, link `#NNN` once in the GitHub UI (or ask the
 user to).
 
 **Reviewers / labels:** CODEOWNERS handles review requests after the file is on
-`main`. Omit `--reviewer` unless the user asks.
+`main`. Omit `--reviewer` unless the user asks. Do **not** skip
+`preview-build` when **Needs QA?** is **Yes** (hard gate above).
 
 Flag high-impact paths in the body when present: `package.json`,
 `package-lock.json`, `app.config.ts`, `plugins/`, `eas.json`, `src/db/schema.ts`

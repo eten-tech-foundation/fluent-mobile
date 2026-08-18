@@ -10,7 +10,6 @@
 - [ ] Scope limited to this issue — no adjacent tickets implemented/stubbed without approval
 - [ ] **Needs QA?** decided (see `docs/guides/qa-process.md`) — if yes: `preview-build` label added
 - [ ] If QA-required: QA passed **this PR’s** preview build before merge (do **not** check until QA confirms; this is the device-QA gate when Needs QA? is Yes)
-- [ ] Android device tested when required **and** Needs QA? is No — do **not** check unless verified on a device
 
 ### Details
 
@@ -21,7 +20,7 @@ Refs #<!-- issue number this PR implements -->
 **Needs QA?**
 
 - [ ] No — engineering-only (docs, CI, refactor, logging, etc.)
-- [ ] Yes — UI / native / mic / camera / filesystem / sync / device verification (`preview-build` required)
+- [ ] Yes — see Needs QA? in `docs/guides/qa-process.md` (`preview-build` required)
 
 **Type of change:**
 
