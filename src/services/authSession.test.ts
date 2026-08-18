@@ -5,17 +5,28 @@ jest.mock('./authToken', () => ({
   },
 }));
 
+jest.mock('./api', () => ({
+  FluentAPI: {
+    getUserByEmail: jest.fn(),
+  },
+}));
+
 jest.mock('./keychain', () => ({
   hasCredentials: jest.fn(),
   getCredentials: jest.fn(),
+  getTempCredentials: jest.fn().mockResolvedValue(null),
   getAllStoredUserIds: jest.fn(),
   saveTempCredentials: jest.fn(),
+  saveCredentials: jest.fn(),
+  clearTempCredentials: jest.fn(),
 }));
 
 jest.mock('./storage', () => ({
   getActiveUserId: jest.fn(),
+  getUserEmail: jest.fn(),
   switchActiveUser: jest.fn(),
   clearUserSession: jest.fn(),
+  setUserSync: jest.fn(),
   KV_KEYS: {
     ACTIVE_USER_ID: 'active_user_id',
     USER_EMAIL: 'userEmail',
@@ -23,14 +34,19 @@ jest.mock('./storage', () => ({
   kvStorage: {
     removeItemSync: jest.fn(),
     setItemSync: jest.fn(),
+    getItemSync: jest.fn(),
   },
 }));
 
+import { FluentAPI } from './api';
 import { authToken } from './authToken';
 import {
+  clearTempCredentials,
   getAllStoredUserIds,
   getCredentials,
+  getTempCredentials,
   hasCredentials,
+  saveCredentials,
   saveTempCredentials,
 } from './keychain';
 import {
@@ -38,6 +54,7 @@ import {
   getActiveUserId,
   kvStorage,
   KV_KEYS,
+  setUserSync,
   switchActiveUser,
 } from './storage';
 import { restoreSession, signOut, beginLoginSession } from './authSession';
@@ -45,10 +62,13 @@ import { restoreSession, signOut, beginLoginSession } from './authSession';
 describe('restoreSession', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.mocked(getTempCredentials).mockResolvedValue(null);
+    jest.mocked(kvStorage.getItemSync).mockReturnValue(undefined);
   });
 
   it('restores the active user when credentials exist', async () => {
     jest.mocked(getActiveUserId).mockReturnValue('2');
+    jest.mocked(getAllStoredUserIds).mockResolvedValue(['2']);
     jest.mocked(hasCredentials).mockResolvedValue(true);
     jest.mocked(getCredentials).mockResolvedValue({ token: 'active-token' });
 
@@ -80,6 +100,37 @@ describe('restoreSession', () => {
     expect(authToken.set).toHaveBeenCalledWith('user-2-token');
   });
 
+  it('clears orphan temp credentials instead of opening a session without a user', async () => {
+    jest.mocked(getActiveUserId).mockReturnValue('');
+    jest.mocked(getAllStoredUserIds).mockResolvedValue([]);
+    jest.mocked(getTempCredentials).mockResolvedValue({ token: 'temp-token' });
+    jest
+      .mocked(kvStorage.getItemSync)
+      .mockImplementation(key =>
+        key === KV_KEYS.USER_EMAIL ? 't@fluent.local' : undefined,
+      );
+
+    await expect(restoreSession()).resolves.toEqual({
+      authenticated: false,
+    });
+    expect(clearTempCredentials).toHaveBeenCalled();
+    expect(kvStorage.removeItemSync).toHaveBeenCalledWith(KV_KEYS.USER_EMAIL);
+    expect(authToken.set).toHaveBeenCalledWith(null);
+  });
+
+  it('restores persisted credentials after login before sync when sync never ran', async () => {
+    jest.mocked(getActiveUserId).mockReturnValue('42');
+    jest.mocked(getAllStoredUserIds).mockResolvedValue(['42']);
+    jest.mocked(hasCredentials).mockResolvedValue(true);
+    jest.mocked(getCredentials).mockResolvedValue({ token: 'persisted-token' });
+
+    await expect(restoreSession()).resolves.toEqual({
+      authenticated: true,
+      userId: '42',
+    });
+    expect(authToken.set).toHaveBeenCalledWith('persisted-token');
+  });
+
   it('returns unauthenticated when no credentials are available', async () => {
     jest.mocked(getActiveUserId).mockReturnValue('9');
     jest.mocked(getAllStoredUserIds).mockResolvedValue(['9']);
@@ -97,7 +148,12 @@ describe('beginLoginSession', () => {
     jest.clearAllMocks();
   });
 
-  it('stores temp credentials, sets the token, and records the email', async () => {
+  it('persists credentials and KV active user before post-login sync', async () => {
+    jest.mocked(FluentAPI.getUserByEmail).mockResolvedValue({
+      id: 42,
+      email: 't@fluent.local',
+    });
+
     await beginLoginSession('session-token', 't@fluent.local');
 
     expect(saveTempCredentials).toHaveBeenCalledWith('session-token');
@@ -106,6 +162,10 @@ describe('beginLoginSession', () => {
       KV_KEYS.USER_EMAIL,
       't@fluent.local',
     );
+    expect(FluentAPI.getUserByEmail).toHaveBeenCalledWith('t@fluent.local');
+    expect(saveCredentials).toHaveBeenCalledWith('session-token', '42');
+    expect(setUserSync).toHaveBeenCalledWith('42', 't@fluent.local');
+    expect(clearTempCredentials).toHaveBeenCalled();
   });
 });
 

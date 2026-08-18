@@ -135,11 +135,20 @@ export async function syncUser(email?: string) {
       await insertUser(user);
       setUserSync(String(user.id), userEmail);
 
-      const tempCreds = await getTempCredentials();
-      if (tempCreds?.token) {
-        await saveCredentials(tempCreds.token, String(user.id));
+      const userIdStr = String(user.id);
+      const existingCreds = await getCredentials(userIdStr);
+      if (existingCreds?.token) {
         await clearTempCredentials();
-        log.info('Token migrated from temp to userId', { userId: user.id });
+        log.info('User credentials already persisted at login', {
+          userId: user.id,
+        });
+      } else {
+        const tempCreds = await getTempCredentials();
+        if (tempCreds?.token) {
+          await saveCredentials(tempCreds.token, userIdStr);
+          await clearTempCredentials();
+          log.info('Token migrated from temp to userId', { userId: user.id });
+        }
       }
 
       log.info('User synced', { email: userEmail });
