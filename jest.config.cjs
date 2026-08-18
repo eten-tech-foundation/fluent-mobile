@@ -10,8 +10,8 @@ module.exports = {
     '**/?(*.)+(spec|test).cjs',
   ],
   moduleNameMapper: {
-    '^expo-secure-store$': '<rootDir>/src/test/mocks/expo-secure-store.ts',
-    '^expo-file-system$': '<rootDir>/src/test/mocks/expo-file-system.ts',
-    '^expo-audio$': '<rootDir>/src/test/mocks/expo-audio.ts',
+  '^expo-secure-store$': '<rootDir>/src/test/mocks/expo-secure-store.ts',
+  '^expo-file-system$': '<rootDir>/src/test/mocks/expo-file-system.ts',
+  '^expo-audio$': '<rootDir>/src/test/mocks/expo-audio.ts',
   },
 };

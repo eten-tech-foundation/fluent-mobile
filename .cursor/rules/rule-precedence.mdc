@@ -23,7 +23,7 @@ When an umbrella rule and a **fluent-mobile** rule disagree, **fluent-mobile win
 |-------|--------|
 | Architecture | [architecture.mdc](./architecture.mdc) |
 | Commands / CI gates | [commands.mdc](./commands.mdc) |
-| Git / PR / tickets | [delivery.mdc](./delivery.mdc), `/create-pr-branch`, `/create-pr` |
+| Git / PR / tickets | [delivery.mdc](./delivery.mdc), `/start-issue`, `/create-pr-branch`, `/create-pr` |
 | Dependabot | [dependabot-workflow.mdc](./dependabot-workflow.mdc) |
 | Android / Expo | [android-only.mdc](./android-only.mdc), [expo-mcp.mdc](./expo-mcp.mdc) |
 | Testing | [testing.mdc](./testing.mdc) |

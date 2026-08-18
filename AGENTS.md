@@ -56,7 +56,7 @@ On feature PRs with heavy agent co-authorship, reviewers should prioritize **sco
 
 ## Related
 
-- Delivery / branch / PR process: [`.cursor/rules/delivery.mdc`](.cursor/rules/delivery.mdc) — **PR bodies must use** [`.cursor/templates/pr-template.md`](.cursor/templates/pr-template.md)
+- Delivery / branch / PR process: [`.cursor/rules/delivery.mdc`](.cursor/rules/delivery.mdc) — **PR bodies must use** [`.cursor/templates/pr-template.md`](.cursor/templates/pr-template.md). Full loop: `/start-issue`; delivery-only: `/create-pr` (`.claude/commands/`).
 - Issue tracking (Project 4 Fluent Mobile Board): [docs/issue-tracking.md](docs/issue-tracking.md)
 - Board mutation rules: [docs/guides/project-board.md](docs/guides/project-board.md) · [`.cursor/rules/project-board.mdc`](.cursor/rules/project-board.mdc)
 - Expo-first deps: [docs/guides/expo-first-dependencies.md](docs/guides/expo-first-dependencies.md) · [`.cursor/rules/expo-first-dependencies.mdc`](.cursor/rules/expo-first-dependencies.mdc)
