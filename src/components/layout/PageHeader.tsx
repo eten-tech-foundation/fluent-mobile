@@ -1,8 +1,8 @@
 import React from 'react';
-import { StatusBar, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import FluentLogoWhite from '../../assets/icons/fluent-logo-white.svg';
 import { theme, logoSize, headerLayout } from '../../theme';
-import { useHeaderSafeAreaPadding } from './useHeaderSafeAreaPadding';
+import { AppHeader } from './AppHeader';
 
 interface PageHeaderProps {
   title?: string;
@@ -11,64 +11,41 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({ title, leftIcon, rightIcon }: PageHeaderProps) {
-  const headerPadding = useHeaderSafeAreaPadding();
-
   return (
-    <View style={[styles.container, headerPadding]}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor={theme.colors.primary}
-      />
-      <View style={styles.leftSlot}>{leftIcon}</View>
-
-      <View style={styles.rightSlot}>{rightIcon}</View>
-
-      {title ? (
-        <View style={styles.centerOverlay} pointerEvents="none">
+    <AppHeader
+      tone="primary"
+      border="none"
+      titleAlign="center"
+      left={<View style={styles.leftSlot}>{leftIcon}</View>}
+      right={<View style={styles.rightSlot}>{rightIcon}</View>}
+      center={
+        title ? (
           <Text style={styles.title} numberOfLines={1}>
             {title}
           </Text>
-        </View>
-      ) : (
-        <View style={styles.centerOverlay} pointerEvents="none">
+        ) : (
           <FluentLogoWhite
             width={logoSize.width}
             height={logoSize.height}
             style={styles.logo}
           />
-        </View>
-      )}
-    </View>
+        )
+      }
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    position: 'relative',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: headerLayout.paddingHorizontal,
-    minHeight: headerLayout.minHeight,
-  },
   leftSlot: {
     width: headerLayout.sideSlot,
     height: headerLayout.sideSlot,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: -theme.spacing.sm,
-    zIndex: 1,
   },
   rightSlot: {
     width: headerLayout.sideSlot,
     height: headerLayout.sideSlot,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1,
-  },
-  centerOverlay: {
-    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -79,5 +56,6 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.lg,
     fontWeight: theme.typography.weights.bold,
     color: theme.colors.primaryForeground,
+    includeFontPadding: false,
   },
 });

@@ -1,8 +1,7 @@
 import React, { useCallback, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HardDrive, LogOut, Trash2, UserPlus } from 'lucide-react-native';
 import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
@@ -22,20 +21,18 @@ import { clearAllPausedTakes } from '../../services/pausedTakes';
 import { getKnownUserIds, MAX_DEVICE_ACCOUNTS } from '../../services/storage';
 import { loadPendingUploadCount } from '../../hooks/usePendingUploads';
 import { usePreferences } from '../../hooks/usePreferences';
-import { RootStackParamList } from '../../types/navigation/types';
+import { hrefs } from '../../navigation/hrefs';
+import { useAuthSession } from '../../navigation/AuthSessionProvider';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import { logger } from '../../utils/logger';
 
 const log = logger.create('SettingsScreen');
 
-type Nav = StackNavigationProp<RootStackParamList, 'Settings'>;
-
-interface SettingsScreenProps {
-  onSignOut?: () => void;
-}
-
-export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
-  const navigation = useNavigation<Nav>();
+export default function SettingsScreen() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { signOut: onSignOut, notifyUserSwitched: onUserSwitched } =
+    useAuthSession();
   const { uploadOverCellular, setUploadOverCellular } = usePreferences();
   const [atAccountLimit, setAtAccountLimit] = useState(
     () => getKnownUserIds().length >= MAX_DEVICE_ACCOUNTS,
@@ -47,20 +44,27 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
     }, []),
   );
 
-  const goBack = useCallback(() => navigation.goBack(), [navigation]);
+  const goBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace(hrefs.home());
+  }, [router]);
 
   const handleAddUser = useCallback(() => {
     if (atAccountLimit) return;
-    navigation.navigate('AddUser');
-  }, [navigation, atAccountLimit]);
+    router.push(hrefs.addUser);
+  }, [router, atAccountLimit]);
 
   const performLogOut = async () => {
     const result = await signOutCurrentDeviceAccount();
     if (result.kind === 'switched') {
-      navigation.goBack();
+      onUserSwitched();
+      goBack();
       return;
     }
-    onSignOut?.();
+    onSignOut();
   };
 
   const handleLogOut = async () => {
@@ -107,10 +111,16 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
   const iconColor = theme.colors.foreground;
 
   return (
-    <ScreenContainer edges={['bottom']}>
+    <ScreenContainer>
       <View style={styles.screen}>
         <StackScreenHeader title="Settings" onBack={goBack} />
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: theme.spacing.lg + insets.bottom },
+          ]}
+        >
+          {' '}
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Offline</Text>
             <View style={styles.cardGroup}>
@@ -125,7 +135,7 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
                       strokeWidth={listIconStrokeWidth}
                     />
                   }
-                  onPress={() => navigation.navigate('PrepareForOffline')}
+                  onPress={() => router.push(hrefs.prepareForOffline())}
                 />
               </View>
               <View style={styles.sectionCard}>
@@ -151,7 +161,6 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
               </View>
             </View>
           </View>
-
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Account</Text>
             <View style={styles.sectionCard}>

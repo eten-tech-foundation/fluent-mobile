@@ -53,6 +53,27 @@ const config: ExpoConfig = {
   },
   plugins: [
     [
+      'expo-router',
+      {
+        // Keep existing `src/app/` screens/tabs; routes live in `src/routes/`.
+        root: './src/routes',
+      },
+    ],
+    // Edge-to-edge is mandatory on Android 16+ (already on via RN). Control
+    // nav-bar button contrast via expo-navigation-bar — not deprecated
+    // `androidNavigationBar` / opaque bar colors.
+    [
+      'expo-navigation-bar',
+      {
+        // Fully transparent bar so app chrome shows through (no contrast scrim).
+        enforceContrast: false,
+        // Dark icons for our light backgrounds (see plugin windowLightNavigationBar).
+        style: 'dark',
+      },
+    ],
+    'expo-status-bar',
+    'expo-system-ui',
+    [
       'expo-build-properties',
       {
         android: {
@@ -87,6 +108,9 @@ const config: ExpoConfig = {
       },
     ],
   ],
+  experiments: {
+    typedRoutes: true,
+  },
 };
 
 export default config;

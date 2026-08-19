@@ -68,6 +68,8 @@ export const colors = {
   syncStatusPending: '#E48F06',
   syncStatusOffline: '#A0A0A0',
   destructive: '#DC2626',
+  /** Drawer / modal scrim over app content. */
+  drawerOverlay: 'rgba(10, 18, 40, 0.44)',
   /** Record button + live-recording waveform (drafting Record tab). */
   recordAccent: '#DC2626',
   /** Progress / paused waveform fill (Lovable `--waveform-active`). */
