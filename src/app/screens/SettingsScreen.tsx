@@ -120,7 +120,6 @@ export default function SettingsScreen() {
             { paddingBottom: theme.spacing.lg + insets.bottom },
           ]}
         >
-          {' '}
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Offline</Text>
             <View style={styles.cardGroup}>

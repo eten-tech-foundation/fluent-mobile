@@ -1,8 +1,8 @@
-import { useFocusEffect } from '@react-navigation/native';
 import { useState, useEffect, useCallback } from 'react';
 import { getProjectChapters } from '../db/queries';
 import { ProjectChapter } from '../types/db/types';
 import { parseUserId } from '../utils/parseUserId';
+import { useFocusEffect } from 'expo-router';
 import { logger } from '../utils/logger';
 
 const log = logger.create('useProjectChapters');

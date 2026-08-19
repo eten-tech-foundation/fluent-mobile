@@ -321,9 +321,15 @@ export function RecordTab({
               styles.toggleOption,
               takeView === 'mine' && styles.toggleOptionActive,
             ]}
-            onPress={() => setTakeView('mine')}
+            onPress={() => {
+              if (!showCapture) setTakeView('mine');
+            }}
+            disabled={showCapture}
             accessibilityRole="button"
-            accessibilityState={{ selected: takeView === 'mine' }}
+            accessibilityState={{
+              selected: takeView === 'mine',
+              disabled: showCapture,
+            }}
             testID="take-view-mine"
           >
             <Text
@@ -340,15 +346,22 @@ export function RecordTab({
               styles.toggleOption,
               takeView === 'all' && styles.toggleOptionActive,
             ]}
-            onPress={() => setTakeView('all')}
+            onPress={() => {
+              if (!showCapture) setTakeView('all');
+            }}
+            disabled={showCapture}
             accessibilityRole="button"
-            accessibilityState={{ selected: takeView === 'all' }}
+            accessibilityState={{
+              selected: takeView === 'all',
+              disabled: showCapture,
+            }}
             testID="take-view-all"
           >
             <Text
               style={[
                 styles.toggleLabel,
                 takeView === 'all' && styles.toggleLabelActive,
+                showCapture && styles.dim,
               ]}
             >
               All Takes
