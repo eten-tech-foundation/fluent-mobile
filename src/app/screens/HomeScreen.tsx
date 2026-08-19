@@ -7,28 +7,25 @@ import {
   Text,
 } from 'react-native';
 import {
-  useRoute,
+  useLocalSearchParams,
   useNavigation,
-  RouteProp,
+  useRouter,
   useIsFocused,
-} from '@react-navigation/native';
+} from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../theme';
 import { parseUserId } from '../../utils/parseUserId';
 import { usePreferences } from '../../hooks/usePreferences';
 import { useConnectivity } from '../../hooks/useConnectivity';
-import { StackNavigationProp } from '@react-navigation/stack';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { SettingsButton } from '../../components/ui/SettingsButton';
 import { PageHeaderSyncButton } from '../../components/ui/PageHeaderSyncButton';
-import { UserSettingsMenu } from '../../components/ui/UserSettingsMenu';
 import { TabBar, HomeTab } from '../../components/layout/TabBar';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { MyWorkTab } from '../tabs/MyWorkTab';
 import { ProjectsTab } from '../tabs/ProjectsTab';
 import { useSync } from '../../hooks/useSync';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
-import { RootStackParamList } from '../../types/navigation/types';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
 import { onSyncComplete, onSyncStart } from '../../services/syncEvents';
 import { getPrepareOfflineDownloadStarted } from '../../services/storage';
@@ -39,26 +36,30 @@ import {
 } from '../../db/queries';
 import { ReauthBanner } from '../../components/ui/ReauthBanner';
 import { useReauthRequired } from '../../hooks/useReauthRequired';
+import { hrefs } from '../../navigation/hrefs';
+import { parseOptionalBoolean } from '../../navigation/routeParams';
+import { useAuthSession } from '../../navigation/AuthSessionProvider';
 
-interface HomeScreenProps {
-  onSignOut?: () => void;
-  postLoginSyncActive?: boolean;
-}
+/** Drawer helpers on the `(app)` layout — not available on the nested stack nav. */
+type AppDrawerNavigation = {
+  openDrawer: () => void;
+};
 
-type Nav = StackNavigationProp<RootStackParamList, 'Home'>;
-
-export default function HomeScreen({
-  onSignOut,
-  postLoginSyncActive = false,
-}: HomeScreenProps) {
+function HomeScreenBody({
+  postLoginSyncActive,
+  userSwitchEpoch,
+}: {
+  postLoginSyncActive: boolean;
+  userSwitchEpoch: number;
+}) {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<Nav>();
-  const route = useRoute<RouteProp<RootStackParamList, 'Home'>>();
+  const router = useRouter();
+  const navigation = useNavigation<AppDrawerNavigation>('/(app)');
+  const params = useLocalSearchParams<{ newUserLoading?: string }>();
   const [activeTab, setActiveTab] = useState<HomeTab>('myWork');
   const [refreshKey, setRefreshKey] = useState(0);
-  const [settingsVisible, setSettingsVisible] = useState(false);
   const [isNewUserLoading, setIsNewUserLoading] = useState(
-    () => route.params?.newUserLoading === true,
+    () => parseOptionalBoolean(params.newUserLoading) === true,
   );
   const [isSyncingLocal, setIsSyncingLocal] = useState(false);
   const {
@@ -215,7 +216,7 @@ export default function HomeScreen({
             !getPrepareOfflineDownloadStarted(String(userId), project.id)
           ) {
             prepareOfflinePromptShownThisAppOpenRef.current = true;
-            navigation.navigate('PrepareForOffline');
+            router.push(hrefs.prepareForOffline());
             return;
           }
         }
@@ -240,7 +241,7 @@ export default function HomeScreen({
     }
 
     return () => subscription.remove();
-  }, [navigation]);
+  }, [router]);
 
   useEffect(() => {
     if (!hasResolved) return;
@@ -270,25 +271,25 @@ export default function HomeScreen({
     refreshOnFocus: true,
   });
 
-  const handleReauthPress = useCallback(() => {
-    navigation.navigate('Reauth');
-  }, [navigation]);
-
-  const handleSettingsPress = () => {
-    setSettingsVisible(true);
-  };
-
-  const handleUserSwitched = useCallback(() => {
+  useEffect(() => {
     autoRepairSyncAttempted.current = false;
     refreshReauthRequired();
     setRefreshKey(key => key + 1);
-  }, [refreshReauthRequired]);
+  }, [userSwitchEpoch, refreshReauthRequired]);
+
+  const handleReauthPress = useCallback(() => {
+    router.push(hrefs.reauth);
+  }, [router]);
+
+  const handleSettingsPress = () => {
+    navigation.openDrawer();
+  };
 
   // CHANGED: was `triggerSync()`. Tapping the icon now navigates to the
   // Sync page instead of kicking off a sync directly (per #38 / #149).
   const handleSyncPress = useCallback(() => {
-    navigation.navigate('Sync');
-  }, [navigation]);
+    router.push(hrefs.sync);
+  }, [router]);
 
   const showLoading =
     isNewUserLoading ||
@@ -310,42 +311,42 @@ export default function HomeScreen({
 
   return (
     <ScreenContainer>
-      <View style={styles.screen}>
-        <PageHeader
-          leftIcon={<SettingsButton onPress={handleSettingsPress} />}
-          rightIcon={
-            <PageHeaderSyncButton
-              syncStatus={syncStatus}
-              onPress={handleSyncPress}
-            />
-          }
-        />
-        <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
-        <View style={styles.content}>
-          {activeTab === 'myWork' ? (
-            <MyWorkTab refreshKey={refreshKey} isSyncing={myWorkIsSyncing} />
-          ) : (
-            <ProjectsTab refreshKey={refreshKey} />
-          )}
-        </View>
-        {reauthRequired ? (
-          <ReauthBanner onSignInAgain={handleReauthPress} />
-        ) : null}
-        <UserSettingsMenu
-          visible={settingsVisible}
-          onClose={() => setSettingsVisible(false)}
-          onSignOut={onSignOut}
-          onUserSwitched={handleUserSwitched}
-        />
+      <PageHeader
+        leftIcon={<SettingsButton onPress={handleSettingsPress} />}
+        rightIcon={
+          <PageHeaderSyncButton
+            syncStatus={syncStatus}
+            onPress={handleSyncPress}
+          />
+        }
+      />
+      <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
+      <View style={styles.content}>
+        {activeTab === 'myWork' ? (
+          <MyWorkTab refreshKey={refreshKey} isSyncing={myWorkIsSyncing} />
+        ) : (
+          <ProjectsTab refreshKey={refreshKey} />
+        )}
       </View>
+      {reauthRequired ? (
+        <ReauthBanner onSignInAgain={handleReauthPress} />
+      ) : null}
     </ScreenContainer>
   );
 }
 
+export default function HomeScreen() {
+  const { postLoginSyncActive, userSwitchEpoch } = useAuthSession();
+  return (
+    <HomeScreenBody
+      key={userSwitchEpoch}
+      postLoginSyncActive={postLoginSyncActive}
+      userSwitchEpoch={userSwitchEpoch}
+    />
+  );
+}
+
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
   content: {
     flex: 1,
     backgroundColor: theme.colors.background,

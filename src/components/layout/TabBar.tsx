@@ -15,6 +15,8 @@ const TABS: { id: HomeTab; label: string; Icon: LucideIcon }[] = [
   { id: 'myWork', label: 'My Work', Icon: ListChecks },
 ];
 
+const TAB_INDICATOR = 2;
+
 export function TabBar({ activeTab, onTabChange }: TabBarProps) {
   return (
     <View style={styles.container}>
@@ -58,8 +60,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: theme.spacing.sm,
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: 2,
+    // Bottom indicator sits inside the box — pad extra below so content stays centered.
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.md + TAB_INDICATOR,
+    borderBottomWidth: TAB_INDICATOR,
     borderBottomColor: 'transparent',
   },
   activeTab: {
@@ -68,5 +72,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: theme.typography.sizes.sm,
     fontWeight: theme.typography.weights.medium,
+    includeFontPadding: false,
   },
 });

@@ -11,18 +11,27 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../../types/navigation/types';
+import { useRouter } from 'expo-router';
 import { ApiUser } from '../../types/api/responses';
 import { theme } from '../../theme';
 import { useLogin } from '../../hooks/useLogin';
 import { AuthFormError } from '../../components/ui/AuthFormError';
 import { REAUTH_SUBMIT_BUTTON } from '../../constants/messages';
+import { hrefs } from '../../navigation/hrefs';
+import { useAuthSession } from '../../navigation/AuthSessionProvider';
 import { authFormStyles as styles } from './authFormStyles';
 
 interface LoginScreenProps {
-  onLoginSuccess: (email: string, preloadedUser?: ApiUser) => void;
+  /**
+   * Override post-login handling. Defaults to cold `signIn` from auth session.
+   * Pass explicitly for Add User (`signInAddUser` + navigate home) or reauth.
+   */
+  onLoginSuccess?: (email: string, preloadedUser?: ApiUser) => void;
+  /**
+   * Which route group legal / forgot-password links should target.
+   * Use `app` when LoginScreen is shown as Add User (authenticated stack).
+   */
+  legalLinksGroup?: 'auth' | 'app';
   initialEmail?: string;
   title?: string;
   subtitle?: string;
@@ -31,7 +40,8 @@ interface LoginScreenProps {
 }
 
 export default function LoginScreen({
-  onLoginSuccess,
+  onLoginSuccess: onLoginSuccessProp,
+  legalLinksGroup = 'auth',
   initialEmail = '',
   title = 'Welcome',
   subtitle = 'Log in to continue to Fluent.',
@@ -44,7 +54,9 @@ export default function LoginScreen({
       : variant === 'reauth'
       ? 'reauth'
       : 'login';
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const { signIn } = useAuthSession();
+  const onLoginSuccess = onLoginSuccessProp ?? signIn;
+  const router = useRouter();
   const passwordInputRef = useRef<TextInput>(null);
   const {
     email,
@@ -84,6 +96,15 @@ export default function LoginScreen({
   const hasEmailError = Boolean(fieldErrors.email || globalError);
   const hasPasswordError = Boolean(fieldErrors.password || globalError);
   const showEmailLabel = isReauth || email.length > 0;
+
+  const forgotHref =
+    legalLinksGroup === 'app' ? hrefs.forgotPasswordApp : hrefs.forgotPassword;
+  const privacyHref =
+    legalLinksGroup === 'app'
+      ? hrefs.privacyPolicyApp
+      : hrefs.privacyPolicyAuth;
+  const termsHref =
+    legalLinksGroup === 'app' ? hrefs.termsOfUseApp : hrefs.termsOfUseAuth;
 
   return (
     <KeyboardAvoidingView
@@ -205,9 +226,11 @@ export default function LoginScreen({
               <TouchableOpacity
                 style={styles.linkButton}
                 onPress={() =>
-                  navigation.navigate('ForgotPassword', {
-                    initialEmail: email.trim() || undefined,
-                  })
+                  router.push(
+                    forgotHref({
+                      initialEmail: email.trim() || undefined,
+                    }),
+                  )
                 }
                 disabled={isSubmitting}
                 accessibilityRole="button"
@@ -251,7 +274,7 @@ export default function LoginScreen({
                 <Text
                   style={styles.footerLink}
                   accessibilityRole="link"
-                  onPress={() => navigation.navigate('PrivacyPolicy')}
+                  onPress={() => router.push(privacyHref)}
                   testID="login-privacy-link"
                 >
                   Privacy Policy
@@ -260,7 +283,7 @@ export default function LoginScreen({
                 <Text
                   style={styles.footerLink}
                   accessibilityRole="link"
-                  onPress={() => navigation.navigate('TermsOfUse')}
+                  onPress={() => router.push(termsHref)}
                   testID="login-terms-link"
                 >
                   Terms.
