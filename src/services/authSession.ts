@@ -65,14 +65,17 @@ async function tryRestoreFromTempCredentials(): Promise<SessionRestoreResult> {
     if (getUserEmail(userId) !== legacyEmail) {
       continue;
     }
-    const restored = await tryRestoreUser(userId);
-    if (restored.authenticated) {
-      if (userId !== getActiveUserId()) {
-        switchActiveUser(userId);
-      }
-      await clearTempCredentials();
-      return restored;
+    log.info('Restoring session from temp credentials', {
+      userId,
+      legacyEmail,
+    });
+    authToken.set(tempCreds.token);
+    await saveCredentials(tempCreds.token, userId);
+    if (userId !== getActiveUserId()) {
+      switchActiveUser(userId);
     }
+    await clearTempCredentials();
+    return { authenticated: true, userId };
   }
 
   log.info('Clearing orphan temp credentials without persisted user');
@@ -83,6 +86,11 @@ async function tryRestoreFromTempCredentials(): Promise<SessionRestoreResult> {
 
 /** Restores an in-memory session from secure storage and KV active user. */
 export async function restoreSession(): Promise<SessionRestoreResult> {
+  const tempResult = await tryRestoreFromTempCredentials();
+  if (tempResult.authenticated) {
+    return tempResult;
+  }
+
   const activeUserId = getActiveUserId();
 
   if (activeUserId) {
@@ -90,11 +98,6 @@ export async function restoreSession(): Promise<SessionRestoreResult> {
     if (activeResult.authenticated) {
       return activeResult;
     }
-  }
-
-  const tempResult = await tryRestoreFromTempCredentials();
-  if (tempResult.authenticated) {
-    return tempResult;
   }
 
   authToken.set(null);

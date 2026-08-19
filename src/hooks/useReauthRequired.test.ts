@@ -1,7 +1,8 @@
+let focusEffectCallback: (() => void | (() => void)) | undefined;
+
 jest.mock('expo-router', () => ({
   useFocusEffect: (callback: () => void | (() => void)) => {
-    const React = require('react');
-    React.useEffect(() => callback(), [callback]);
+    focusEffectCallback = callback;
   },
 }));
 
@@ -27,6 +28,7 @@ describe('useReauthRequired', () => {
   let reauthResolvedListener: (userId: string) => void;
 
   beforeEach(() => {
+    focusEffectCallback = undefined;
     jest.clearAllMocks();
     jest.mocked(isReauthRequiredForActiveUser).mockReturnValue(false);
     jest.mocked(onAuthReauthRequired).mockImplementation(listener => {
@@ -72,9 +74,11 @@ describe('useReauthRequired', () => {
       useReauthRequired({ refreshOnFocus: true }),
     );
 
+    expect(focusEffectCallback).toBeDefined();
+
     act(() => {
       jest.mocked(isReauthRequiredForActiveUser).mockReturnValue(true);
-      result.current.refreshReauthRequired();
+      focusEffectCallback?.();
     });
 
     expect(result.current.reauthRequired).toBe(true);

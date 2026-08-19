@@ -58,6 +58,7 @@ import {
 import {
   clearUserSession,
   getActiveUserId,
+  getUserEmail,
   kvStorage,
   KV_KEYS,
   setUserSync,
@@ -180,6 +181,30 @@ describe('restoreSession', () => {
       userId: '42',
     });
     expect(authToken.set).toHaveBeenCalledWith('persisted-token');
+  });
+
+  it('restores with the temp token when permanent credentials are stale', async () => {
+    jest.mocked(getActiveUserId).mockReturnValue('42');
+    jest.mocked(getAllStoredUserIds).mockResolvedValue(['42']);
+    jest.mocked(getTempCredentials).mockResolvedValue({
+      token: 'fresh-temp-token',
+    });
+    jest
+      .mocked(kvStorage.getItemSync)
+      .mockImplementation(key =>
+        key === KV_KEYS.USER_EMAIL ? 't@fluent.local' : undefined,
+      );
+    jest.mocked(getUserEmail).mockReturnValue('t@fluent.local');
+
+    await expect(restoreSession()).resolves.toEqual({
+      authenticated: true,
+      userId: '42',
+    });
+
+    expect(authToken.set).toHaveBeenCalledWith('fresh-temp-token');
+    expect(saveCredentials).toHaveBeenCalledWith('fresh-temp-token', '42');
+    expect(clearTempCredentials).toHaveBeenCalled();
+    expect(authToken.set).not.toHaveBeenCalledWith('stale-permanent-token');
   });
 
   it('returns unauthenticated when no credentials are available', async () => {

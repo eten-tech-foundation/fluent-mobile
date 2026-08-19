@@ -13,11 +13,12 @@ import { FluentAPI } from './api';
 import { isAuthError } from './authError';
 import { authToken } from './authToken';
 import { getCredentials } from './keychain';
+import { getActiveUserId, setReauthRequired } from './storage';
 import {
   blobKeyFromVerseAudioResponse,
   outcomeFromVerseAudioFailure,
 } from './verseAudioContract';
-import { emitUploadSessionEvent } from './syncEvents';
+import { emitAuthReauthRequired, emitUploadSessionEvent } from './syncEvents';
 import {
   setChapterUploadWorker,
   type ChapterUploadWorker,
@@ -85,6 +86,18 @@ async function assertLocalFileExists(localFilePath: string): Promise<void> {
   }
 }
 
+async function handleUploadAuthFailure(userId: string): Promise<void> {
+  setReauthRequired(userId);
+  if (userId === getActiveUserId()) {
+    emitAuthReauthRequired(userId);
+  }
+}
+
+export type UploadTokenResolution = {
+  token: string;
+  userId: string | null;
+};
+
 /**
  * Prefer the capture-time owner's stored token so upload attribution stays
  * stable even if another account is active (#105). Falls back to the pass token.
@@ -92,22 +105,23 @@ async function assertLocalFileExists(localFilePath: string): Promise<void> {
 export async function resolveUploadTokenForRecording(
   recording: PendingRecording,
   fallbackToken: string,
-): Promise<string> {
+): Promise<UploadTokenResolution> {
   if (
     recording.recordedByUserId === null ||
     !Number.isFinite(recording.recordedByUserId)
   ) {
-    return fallbackToken;
+    return { token: fallbackToken, userId: getActiveUserId() || null };
   }
-  const creds = await getCredentials(String(recording.recordedByUserId));
+  const userId = String(recording.recordedByUserId);
+  const creds = await getCredentials(userId);
   if (creds?.token) {
-    return creds.token;
+    return { token: creds.token, userId };
   }
   log.warn('Owner credentials missing; using active pass token', {
     recordingId: recording.id,
     recordedByUserId: recording.recordedByUserId,
   });
-  return fallbackToken;
+  return { token: fallbackToken, userId: getActiveUserId() || null };
 }
 
 async function uploadOneRecording(
@@ -118,9 +132,11 @@ async function uploadOneRecording(
     maxAttempts: number;
     /** Token for this recording (owner preferred). */
     token: string;
+    /** User id that owns the upload token (for auth failure handling). */
+    tokenUserId: string | null;
   },
 ): Promise<'uploaded' | 'failed'> {
-  const { signal, delay, maxAttempts, token } = options;
+  const { signal, delay, maxAttempts, token, tokenUserId } = options;
 
   throwIfAborted(signal);
 
@@ -194,8 +210,12 @@ async function uploadOneRecording(
 
       if (isAuthError(error)) {
         await setRecordingSyncStatus(recording.id, 'pending');
+        if (tokenUserId) {
+          await handleUploadAuthFailure(tokenUserId);
+        }
         log.error('Recording upload auth failure', {
           recordingId: recording.id,
+          tokenUserId,
           error: error.message,
         });
         throw error;
@@ -270,15 +290,14 @@ async function runUploadPass(
   try {
     for (const recording of pending) {
       throwIfAborted(options.signal);
-      const uploadToken = await resolveUploadTokenForRecording(
-        recording,
-        token,
-      );
+      const { token: uploadToken, userId: tokenUserId } =
+        await resolveUploadTokenForRecording(recording, token);
       const result = await uploadOneRecording(recording, {
         signal: options.signal,
         delay,
         maxAttempts,
         token: uploadToken,
+        tokenUserId,
       });
       if (result === 'uploaded') {
         uploaded += 1;

@@ -61,7 +61,7 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-async function handleSyncAuthFailure(userId: string): Promise<void> {
+export async function handleSyncAuthFailure(userId: string): Promise<void> {
   setReauthRequired(userId);
   if (userId === getActiveUserId()) {
     emitAuthReauthRequired(userId);
@@ -129,7 +129,13 @@ export async function syncUser(email?: string, preloadedUser?: ApiUser) {
       const userEmail = email ?? getUserEmailSync();
       if (!userEmail) throw new Error('No email found');
 
-      const user = preloadedUser ?? (await FluentAPI.getUserByEmail(userEmail));
+      const tempCreds = await getTempCredentials();
+      if (!preloadedUser && tempCreds?.token) {
+        log.info('User lookup using temp credentials token', { userEmail });
+      }
+      const user =
+        preloadedUser ??
+        (await FluentAPI.getUserByEmail(userEmail, tempCreds?.token));
       if (!user?.id) throw new Error('Invalid user response');
 
       await insertUser(user);
@@ -149,13 +155,10 @@ export async function syncUser(email?: string, preloadedUser?: ApiUser) {
         log.info('User credentials already persisted at login', {
           userId: user.id,
         });
-      } else {
-        const tempCreds = await getTempCredentials();
-        if (tempCreds?.token) {
-          await saveCredentials(tempCreds.token, userIdStr);
-          await clearTempCredentials();
-          log.info('Token migrated from temp to userId', { userId: user.id });
-        }
+      } else if (tempCreds?.token) {
+        await saveCredentials(tempCreds.token, userIdStr);
+        await clearTempCredentials();
+        log.info('Token migrated from temp to userId', { userId: user.id });
       }
 
       log.info('User synced', { email: userEmail });
@@ -632,6 +635,7 @@ export async function syncAllData(
       const userIdStr = String(userId);
       const creds = await getCredentials(userIdStr);
       if (!creds?.token) {
+        await handleSyncAuthFailure(userIdStr);
         throw new AuthError('No session token for synced user.');
       }
       sessionToken = creds.token;

@@ -153,6 +153,23 @@ describe('syncAllData auth handling', () => {
     expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
   });
 
+  it('sets reauth required when full sync has no stored token after user sync', async () => {
+    (getTempCredentials as jest.Mock).mockResolvedValue(null);
+    (getCredentials as jest.Mock).mockResolvedValue(null);
+    (FluentAPI.getUserByEmail as jest.Mock).mockResolvedValue({
+      id: 2,
+      email: 'user2@test.com',
+    });
+
+    await expect(syncAllData(false, 'user2@test.com')).rejects.toThrow(
+      'No session token for synced user.',
+    );
+
+    expect(setReauthRequired).toHaveBeenCalledWith('2');
+    expect(syncEvents.emitAuthReauthRequired).toHaveBeenCalledWith('2');
+    expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
+  });
+
   it('sets reauth required for the syncing user when project sync returns 401', async () => {
     (getCredentials as jest.Mock).mockResolvedValue({ token: 'revoked-token' });
     (getActiveUserId as jest.Mock).mockReturnValue('1');
@@ -293,6 +310,10 @@ describe('syncAllData auth handling', () => {
 
     await syncAllData(false, 'user2@test.com');
 
+    expect(FluentAPI.getUserByEmail).toHaveBeenCalledWith(
+      'user2@test.com',
+      'new-user-token',
+    );
     expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
       2,
       undefined,

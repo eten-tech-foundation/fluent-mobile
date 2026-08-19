@@ -21,6 +21,10 @@ const mockMarkRecordingFailed = jest.fn();
 const mockUploadVerseAudio = jest.fn();
 const mockSetChapterUploadWorker = jest.fn();
 const mockGetCredentials = jest.fn();
+const mockGetActiveUserId = jest.fn();
+const mockSetReauthRequired = jest.fn();
+const mockEmitAuthReauthRequired = jest.fn();
+const mockEmitUploadSessionEvent = jest.fn();
 
 jest.mock('../db/repository', () => ({
   getPendingRecordings: (...args: unknown[]) =>
@@ -45,6 +49,18 @@ jest.mock('./uploadOrchestrator', () => ({
 
 jest.mock('./keychain', () => ({
   getCredentials: (...args: unknown[]) => mockGetCredentials(...args),
+}));
+
+jest.mock('./storage', () => ({
+  getActiveUserId: (...args: unknown[]) => mockGetActiveUserId(...args),
+  setReauthRequired: (...args: unknown[]) => mockSetReauthRequired(...args),
+}));
+
+jest.mock('./syncEvents', () => ({
+  emitUploadSessionEvent: (...args: unknown[]) =>
+    mockEmitUploadSessionEvent(...args),
+  emitAuthReauthRequired: (...args: unknown[]) =>
+    mockEmitAuthReauthRequired(...args),
 }));
 
 const FILE_URI = 'file:///mock-document/recordings/verse-1.m4a';
@@ -96,6 +112,7 @@ describe('recordingSync', () => {
     mockMarkRecordingFailed.mockResolvedValue(undefined);
     mockUploadVerseAudio.mockResolvedValue(successResponse());
     mockGetCredentials.mockResolvedValue(null);
+    mockGetActiveUserId.mockReturnValue('2');
   });
 
   afterEach(() => {
@@ -261,6 +278,25 @@ describe('recordingSync', () => {
     ).rejects.toBeInstanceOf(AuthError);
 
     expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+    expect(mockSetRecordingSyncStatus).toHaveBeenCalledWith('rec-1', 'pending');
+    expect(mockSetReauthRequired).toHaveBeenCalledWith('2');
+    expect(mockEmitAuthReauthRequired).toHaveBeenCalledWith('2');
+  });
+
+  it('marks the recording owner for reauth when owner token upload returns 401', async () => {
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ recordedByUserId: 7 }),
+    ]);
+    mockGetCredentials.mockResolvedValue({ token: 'owner-tok' });
+    mockGetActiveUserId.mockReturnValue('2');
+    mockUploadVerseAudio.mockRejectedValue(new AuthError('session expired'));
+
+    await expect(
+      syncPendingRecordings('active-tok', { delay }),
+    ).rejects.toBeInstanceOf(AuthError);
+
+    expect(mockSetReauthRequired).toHaveBeenCalledWith('7');
+    expect(mockEmitAuthReauthRequired).not.toHaveBeenCalled();
     expect(mockSetRecordingSyncStatus).toHaveBeenCalledWith('rec-1', 'pending');
   });
 
