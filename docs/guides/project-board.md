@@ -13,7 +13,8 @@ This guide is for **any** coding agent (Cursor, Claude Code, Copilot, etc.). Boa
 | `Dev Ready` | Eng can code | Product/engineering already approved this for implementation. **Do not** move these cards to `Backlog` or `Sprint Shaping` to “sequence” or “clean up” the board. |
 | `In Progress (Dev)` | Assignee | Actively coding. |
 | `In PR Review` | Reviewers | Open PR exists (or should). Prefer this over leaving a card in `Dev Ready` once a PR is up. |
-| `In QA` / `Passed QA` / `To Deploy` / `Done` | QA / release | Follow human process. After merge, agents set **`In QA`** (not `Done`). Do **not** auto-close issues. Agents set `Done` only when a human/QA process asks, or when closing obsolete/duplicate work with an approved change set. |
+| `In QA` | QA | **Pre-merge** for QA-required PRs once `preview-build` is ready (automation may move here from `In PR Review` / `In Progress (Dev)`). Testers install **that PR’s** preview — see [qa-process.md](qa-process.md). |
+| `Passed QA` / `To Deploy` / `Done` | QA / release | Humans set **`Passed QA`** after the PR preview passes → then merge is eligible. `To Deploy` / `Done` follow release process. Do **not** auto-close issues. Agents set `Done` only when a human/QA process asks, or when closing obsolete/duplicate work with an approved change set. |
 
 ## Hard rules
 
@@ -30,16 +31,18 @@ When implementing the **assigned** ticket only:
 
 - Add the new issue to Project 4 if missing.
 - Set that issue to `In Progress (Dev)` while coding (optional) and **`In PR Review`** when the PR is open.
-- Set **`In QA`** after merge (or when ready for QA). Leave the GitHub issue open — never use closing keywords in the PR.
-- Set **`Done`** only after QA completes (human/QA process), or when closing obsolete/duplicate work with an approved change set and evidence.
+- If the PR **Needs QA** ([qa-process.md](qa-process.md)): ensure `preview-build` is added; Status → **`In QA` before merge** when the preview is ready (automation may do this). Agents must **not** merge QA-required PRs until QA passes that preview.
+- Engineering-only PRs: no preview/`In QA` gate for merge.
+- Set **`Done`** only after QA/release completes (human/QA process), or when closing obsolete/duplicate work with an approved change set and evidence. Leave the GitHub issue open — never use closing keywords in the PR.
 
 Do **not** “helpfully” reorder neighboring cards.
 
 ## Linking keywords and stacked PRs
 
-Do **not** use GitHub closing keywords (`Closes`, `Fixes`, `Resolves`) — they auto-close issues on merge to `main`. Always use **`Refs #NNN`** for the ticket this PR implements, or **`Part of #NNN`** for stacked/partial work. After merge of a `Refs`-linked PR (or when ready for QA), move the card to **`In QA`**. Preview-build automation follows the same rule: it comments / moves **In QA** for `Refs #NNN` (and legacy closing keywords), and does **not** treat `Part of #NNN` as a linked ticket. See [docs/issue-tracking.md](../issue-tracking.md). (Historical: issue #274 required `Closes` on `main`-targeting PRs; superseded by #300.)
+Do **not** use GitHub closing keywords (`Closes`, `Fixes`, `Resolves`) — they auto-close issues on merge to `main`. Always use **`Refs #NNN`** for the ticket this PR implements, or **`Part of #NNN`** for stacked/partial work. For QA-required work, preview-build automation comments / moves **In QA** (pre-merge) for `Refs #NNN` (and legacy closing keywords), and does **not** treat `Part of #NNN` as a linked ticket. See [docs/issue-tracking.md](../issue-tracking.md) and [qa-process.md](qa-process.md). (Historical: issue #274 required `Closes` on `main`-targeting PRs; superseded by #300.)
 
 ## Related
 
+- QA process / merge gate: [qa-process.md](qa-process.md)
 - Delivery / never push `main`: [`.cursor/rules/delivery.mdc`](../../.cursor/rules/delivery.mdc)
 - Cursor always-on pointer: [`.cursor/rules/project-board.mdc`](../../.cursor/rules/project-board.mdc)
