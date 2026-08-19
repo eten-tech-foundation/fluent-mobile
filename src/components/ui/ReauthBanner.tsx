@@ -1,5 +1,6 @@
 import React from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AlertCircle } from 'lucide-react-native';
 import { SettingsNavigationRow } from './SettingsListRow';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
@@ -13,9 +14,14 @@ interface ReauthBannerProps {
 }
 
 export function ReauthBanner({ onSignInAgain }: ReauthBannerProps) {
+  const insets = useSafeAreaInsets();
+
   return (
     <View
-      style={styles.container}
+      style={[
+        styles.container,
+        { bottom: theme.spacing.lg + insets.bottom },
+      ]}
       testID="reauth-banner"
       pointerEvents="box-none"
     >
@@ -42,7 +48,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: theme.spacing.lg,
     right: theme.spacing.lg,
-    bottom: theme.spacing.xxl,
     zIndex: 10,
   },
   card: {

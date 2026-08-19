@@ -278,7 +278,7 @@ function HomeScreenBody({
   }, [userSwitchEpoch, refreshReauthRequired]);
 
   const handleReauthPress = useCallback(() => {
-    router.push(hrefs.reauth);
+    router.push(hrefs.reauth({ returnTo: 'home' }));
   }, [router]);
 
   const handleSettingsPress = () => {

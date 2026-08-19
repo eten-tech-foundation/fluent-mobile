@@ -73,7 +73,11 @@ export const hrefs = {
       },
     } as const),
   addUser: '/(app)/(stack)/add-user' as const,
-  reauth: '/(app)/(stack)/reauth' as const,
+  reauth: (params?: { returnTo?: 'home' | 'settings' }) =>
+    ({
+      pathname: '/(app)/(stack)/reauth' as const,
+      params: params?.returnTo ? { returnTo: params.returnTo } : undefined,
+    }) as const,
   privacyPolicyApp: '/(app)/privacy-policy' as const,
   termsOfUseApp: '/(app)/terms-of-use' as const,
   forgotPasswordApp: (params?: { initialEmail?: string }) =>

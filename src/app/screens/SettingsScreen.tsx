@@ -55,10 +55,6 @@ export default function SettingsScreen() {
   );
 
   const goBack = useCallback(() => {
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
     router.replace(hrefs.home());
   }, [router]);
 
@@ -144,7 +140,9 @@ export default function SettingsScreen() {
                         strokeWidth={listIconStrokeWidth}
                       />
                     }
-                    onPress={() => router.push(hrefs.reauth)}
+                    onPress={() =>
+                      router.push(hrefs.reauth({ returnTo: 'settings' }))
+                    }
                   />
                 </View>
               </View>
