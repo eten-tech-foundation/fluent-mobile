@@ -18,10 +18,7 @@ export function ReauthBanner({ onSignInAgain }: ReauthBannerProps) {
 
   return (
     <View
-      style={[
-        styles.container,
-        { bottom: theme.spacing.lg + insets.bottom },
-      ]}
+      style={[styles.container, { bottom: theme.spacing.lg + insets.bottom }]}
       testID="reauth-banner"
       pointerEvents="box-none"
     >
