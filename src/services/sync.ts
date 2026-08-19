@@ -18,6 +18,7 @@ import {
 import { logger } from '../utils/logger';
 import { getDatabase } from '../db/db';
 import { ApiBook, ApiVerse } from '../types/api/types';
+import { ApiUser } from '../types/api/responses';
 import { unwrapApiListResponse } from '../types/api/responses';
 import {
   setUserSync,
@@ -120,7 +121,7 @@ async function retrySyncStep<T>(
   throw lastError;
 }
 
-export async function syncUser(email?: string) {
+export async function syncUser(email?: string, preloadedUser?: ApiUser) {
   return retrySyncStep(
     'User sync',
     KV_KEYS.SYNC_ERROR_USER,
@@ -128,7 +129,7 @@ export async function syncUser(email?: string) {
       const userEmail = email ?? getUserEmailSync();
       if (!userEmail) throw new Error('No email found');
 
-      const user = await FluentAPI.getUserByEmail(userEmail);
+      const user = preloadedUser ?? (await FluentAPI.getUserByEmail(userEmail));
       if (!user?.id) throw new Error('Invalid user response');
 
       await insertUser(user);
@@ -602,7 +603,11 @@ export async function syncAllUsers(): Promise<void> {
   }
 }
 
-export async function syncAllData(isIncremental = false, email?: string) {
+export async function syncAllData(
+  isIncremental = false,
+  email?: string,
+  preloadedUser?: ApiUser,
+) {
   log.info('Starting sync...', { isIncremental });
   clearAllSyncErrors();
   emitSyncStart();
@@ -622,7 +627,7 @@ export async function syncAllData(isIncremental = false, email?: string) {
       }
       sessionToken = creds.token;
     } else {
-      const user = await syncUser(email);
+      const user = await syncUser(email, preloadedUser);
       userId = user.id;
       const userIdStr = String(userId);
       const creds = await getCredentials(userIdStr);

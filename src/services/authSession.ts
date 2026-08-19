@@ -1,3 +1,4 @@
+import { ApiUser } from '../types/api/responses';
 import { logger } from '../utils/logger';
 import { FluentAPI } from './api';
 import { authToken } from './authToken';
@@ -52,10 +53,16 @@ async function tryRestoreFromTempCredentials(): Promise<SessionRestoreResult> {
   }
 
   const legacyEmail = kvStorage.getItemSync(KV_KEYS.USER_EMAIL) ?? '';
+  if (!legacyEmail) {
+    log.info('Clearing temp credentials without legacy email marker');
+    await clearTempCredentials();
+    return { authenticated: false };
+  }
+
   const knownUserIds = (await getAllStoredUserIds()) ?? [];
 
   for (const userId of knownUserIds) {
-    if (legacyEmail && getUserEmail(userId) !== legacyEmail) {
+    if (getUserEmail(userId) !== legacyEmail) {
       continue;
     }
     const restored = await tryRestoreUser(userId);
@@ -111,7 +118,7 @@ export function resolveReauthForUser(userId: string): void {
 export async function beginLoginSession(
   token: string,
   email: string,
-): Promise<void> {
+): Promise<ApiUser> {
   await saveTempCredentials(token);
   authToken.set(token);
   kvStorage.setItemSync(KV_KEYS.USER_EMAIL, email);
@@ -128,13 +135,14 @@ export async function beginLoginSession(
   await clearTempCredentials();
 
   log.info('Login session persisted before sync', { userId, email });
+  return user;
 }
 
 /** Persists a new device account without changing the active in-memory session. */
 export async function beginAddAccountSession(
   token: string,
   email: string,
-): Promise<string> {
+): Promise<ApiUser> {
   const user = await FluentAPI.getUserByEmail(email, token);
   if (!user?.id) {
     throw new Error('Invalid user response');
@@ -145,5 +153,5 @@ export async function beginAddAccountSession(
   registerKnownUser(userId, email);
   resolveReauthForUser(userId);
 
-  return userId;
+  return user;
 }

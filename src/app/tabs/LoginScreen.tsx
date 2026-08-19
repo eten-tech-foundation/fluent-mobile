@@ -14,6 +14,7 @@ import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types/navigation/types';
+import { ApiUser } from '../../types/api/responses';
 import { theme } from '../../theme';
 import { useLogin } from '../../hooks/useLogin';
 import { AuthFormError } from '../../components/ui/AuthFormError';
@@ -21,7 +22,7 @@ import { REAUTH_SUBMIT_BUTTON } from '../../constants/messages';
 import { authFormStyles as styles } from './authFormStyles';
 
 interface LoginScreenProps {
-  onLoginSuccess: (email: string) => void;
+  onLoginSuccess: (email: string, preloadedUser?: ApiUser) => void;
   initialEmail?: string;
   title?: string;
   subtitle?: string;

@@ -15,6 +15,7 @@ import { syncAllData } from './src/services/sync';
 import { restoreSession, signOut } from './src/services/authSession';
 import { clearOrphanedPausedTakes } from './src/services/pausedTakes';
 import AppNavigator from './src/navigation/AppNavigator';
+import { ApiUser } from './src/types/api/responses';
 import {
   startUploadOrchestrator,
   stopUploadOrchestrator,
@@ -98,8 +99,12 @@ function App() {
     });
   }, [dbReady]);
 
-  const runPostLoginSync = (email: string, onComplete?: () => void) => {
-    syncAllData(false, email)
+  const runPostLoginSync = (
+    email: string,
+    preloadedUser?: ApiUser,
+    onComplete?: () => void,
+  ) => {
+    syncAllData(false, email, preloadedUser)
       .catch(e => {
         log.error('Post-login sync failed:', { error: e });
       })
@@ -108,14 +113,17 @@ function App() {
       });
   };
 
-  const handleLoginSuccess = (email: string) => {
+  const handleLoginSuccess = (email: string, preloadedUser?: ApiUser) => {
     setIsAuthenticated(true);
     setPostLoginSyncActive(true);
-    runPostLoginSync(email, () => setPostLoginSyncActive(false));
+    runPostLoginSync(email, preloadedUser, () => setPostLoginSyncActive(false));
   };
 
-  const handleAddUserLoginSuccess = (email: string) => {
-    runPostLoginSync(email);
+  const handleAddUserLoginSuccess = (
+    email: string,
+    preloadedUser?: ApiUser,
+  ) => {
+    runPostLoginSync(email, preloadedUser);
   };
 
   return (

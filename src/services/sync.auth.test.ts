@@ -250,6 +250,31 @@ describe('syncAllData auth handling', () => {
   });
 
   it('forces full assignment sync for a new user on a shared device despite peer-checker rows', async () => {
+    const preloadedUser = { id: 2, email: 'user2@test.com' };
+    (getTempCredentials as jest.Mock).mockResolvedValue({
+      token: 'new-user-token',
+    });
+    (getCredentials as jest.Mock).mockResolvedValue({
+      token: 'new-user-token',
+    });
+    (getUserLastSyncedAt as jest.Mock).mockReturnValue('');
+    (getLastAssignmentSyncAt as jest.Mock).mockReturnValue(
+      '2026-06-01T00:00:00.000Z',
+    );
+    userHasLocalChapterAssignments.mockResolvedValue(true);
+
+    await syncAllData(false, 'user2@test.com', preloadedUser);
+
+    expect(FluentAPI.getUserByEmail).not.toHaveBeenCalled();
+    expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
+      2,
+      undefined,
+      undefined,
+      'new-user-token',
+    );
+  });
+
+  it('forces full assignment sync for a new user on a shared device despite peer-checker rows when user is fetched', async () => {
     (FluentAPI.getUserByEmail as jest.Mock).mockResolvedValue({
       id: 2,
       email: 'user2@test.com',

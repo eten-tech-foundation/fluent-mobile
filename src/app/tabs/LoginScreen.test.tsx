@@ -30,7 +30,9 @@ jest.mock('../../services/api', () => ({
 }));
 
 jest.mock('../../services/authSession', () => ({
-  beginLoginSession: jest.fn(() => Promise.resolve()),
+  beginLoginSession: jest.fn(() =>
+    Promise.resolve({ id: 42, email: 't@fluent.local' }),
+  ),
 }));
 
 describe('LoginScreen', () => {
@@ -71,7 +73,10 @@ describe('LoginScreen', () => {
       'session-token',
       't@fluent.local',
     );
-    expect(onLoginSuccess).toHaveBeenCalledWith('t@fluent.local');
+    expect(onLoginSuccess).toHaveBeenCalledWith('t@fluent.local', {
+      id: 42,
+      email: 't@fluent.local',
+    });
   });
 
   it('shows a global error when sign-in fails', async () => {

@@ -12,13 +12,14 @@ import PrivacyPolicyScreen from '../app/tabs/PrivacyPolicyPage';
 import TermsOfUseScreen from '../app/tabs/TermsOfUsePage';
 import ReauthScreen from '../app/screens/ReauthScreen';
 import DraftingScreen from '../app/screens/DraftingScreen';
+import { ApiUser } from '../types/api/responses';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
 interface AppNavigatorProps {
   isAuthenticated: boolean;
-  onLoginSuccess: (email: string) => void;
-  onAddUserLoginSuccess: (email: string) => void;
+  onLoginSuccess: (email: string, preloadedUser?: ApiUser) => void;
+  onAddUserLoginSuccess: (email: string, preloadedUser?: ApiUser) => void;
   onSignOut: () => void;
   postLoginSyncActive?: boolean;
 }
@@ -69,9 +70,9 @@ export default function AppNavigator({
             {({ navigation }) => (
               <LoginScreen
                 variant="addAccount"
-                onLoginSuccess={(email: string) => {
+                onLoginSuccess={(email: string, preloadedUser?: ApiUser) => {
                   navigation.navigate('Home', { newUserLoading: true });
-                  onAddUserLoginSuccess(email);
+                  onAddUserLoginSuccess(email, preloadedUser);
                 }}
               />
             )}

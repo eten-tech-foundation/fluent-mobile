@@ -4,7 +4,6 @@ type AuthReauthRequiredListener = (userId: string) => void;
 
 const completeListeners: SyncListener[] = [];
 const startListeners: SyncStartListener[] = [];
-const authSessionExpiredListeners: SyncListener[] = [];
 const authReauthRequiredListeners: AuthReauthRequiredListener[] = [];
 const authReauthResolvedListeners: AuthReauthRequiredListener[] = [];
 
@@ -30,18 +29,6 @@ export function onSyncStart(fn: SyncStartListener): () => void {
 
 export function emitSyncStart(isFull = false): void {
   startListeners.forEach(fn => fn(isFull));
-}
-
-export function onAuthSessionExpired(fn: SyncListener): () => void {
-  authSessionExpiredListeners.push(fn);
-  return () => {
-    const idx = authSessionExpiredListeners.indexOf(fn);
-    if (idx > -1) authSessionExpiredListeners.splice(idx, 1);
-  };
-}
-
-export function emitAuthSessionExpired(): void {
-  [...authSessionExpiredListeners].forEach(fn => fn());
 }
 
 export function onAuthReauthRequired(

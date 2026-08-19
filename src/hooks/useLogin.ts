@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
+import { ApiUser } from '../types/api/responses';
 import { FluentAPI } from '../services/api';
 import {
   beginAddAccountSession,
@@ -15,7 +16,7 @@ const log = logger.create('useLogin');
 export type LoginSessionMode = 'login' | 'addAccount' | 'reauth';
 
 export function useLogin(
-  onLoginSuccess: (email: string) => void,
+  onLoginSuccess: (email: string, preloadedUser?: ApiUser) => void,
   options?: { initialEmail?: string; sessionMode?: LoginSessionMode },
 ) {
   const sessionMode = options?.sessionMode ?? 'login';
@@ -39,11 +40,18 @@ export function useLogin(
     }) => FluentAPI.signIn(trimmedEmail, trimmedPassword),
     onSuccess: async response => {
       if (sessionMode === 'addAccount') {
-        await beginAddAccountSession(response.token, response.user.email);
+        const user = await beginAddAccountSession(
+          response.token,
+          response.user.email,
+        );
+        onLoginSuccess(response.user.email, user);
       } else {
-        await beginLoginSession(response.token, response.user.email);
+        const user = await beginLoginSession(
+          response.token,
+          response.user.email,
+        );
+        onLoginSuccess(response.user.email, user);
       }
-      onLoginSuccess(response.user.email);
     },
     onError: error => {
       const message = error instanceof Error ? error.message : String(error);

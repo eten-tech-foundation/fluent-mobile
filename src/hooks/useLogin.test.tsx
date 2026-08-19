@@ -5,8 +5,12 @@ jest.mock('../services/api', () => ({
 }));
 
 jest.mock('../services/authSession', () => ({
-  beginLoginSession: jest.fn(() => Promise.resolve()),
-  beginAddAccountSession: jest.fn(() => Promise.resolve('247')),
+  beginLoginSession: jest.fn(() =>
+    Promise.resolve({ id: 42, email: 't@fluent.local' }),
+  ),
+  beginAddAccountSession: jest.fn(() =>
+    Promise.resolve({ id: 247, email: 'b@example.com' }),
+  ),
 }));
 
 import { act, renderHook, waitFor } from '@testing-library/react-native';
@@ -45,7 +49,10 @@ describe('useLogin', () => {
     });
 
     await waitFor(() => {
-      expect(onLoginSuccess).toHaveBeenCalledWith('t@fluent.local');
+      expect(onLoginSuccess).toHaveBeenCalledWith('t@fluent.local', {
+        id: 42,
+        email: 't@fluent.local',
+      });
     });
 
     expect(FluentAPI.signIn).toHaveBeenCalledWith('t@fluent.local', 'secret');
@@ -78,7 +85,10 @@ describe('useLogin', () => {
     });
 
     await waitFor(() => {
-      expect(onLoginSuccess).toHaveBeenCalledWith('b@example.com');
+      expect(onLoginSuccess).toHaveBeenCalledWith('b@example.com', {
+        id: 247,
+        email: 'b@example.com',
+      });
     });
 
     expect(beginAddAccountSession).toHaveBeenCalledWith(

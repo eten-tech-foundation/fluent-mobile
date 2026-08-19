@@ -129,6 +129,28 @@ describe('restoreSession', () => {
     expect(authToken.set).toHaveBeenCalledWith(null);
   });
 
+  it('does not switch to another known user when temp creds exist without legacy email', async () => {
+    jest.mocked(getActiveUserId).mockReturnValue('');
+    jest.mocked(getAllStoredUserIds).mockResolvedValue(['1', '2']);
+    jest.mocked(getTempCredentials).mockResolvedValue({ token: 'temp-token' });
+    jest.mocked(kvStorage.getItemSync).mockReturnValue(undefined);
+    jest
+      .mocked(hasCredentials)
+      .mockImplementation(async userId => userId === '1' || userId === '2');
+    jest
+      .mocked(getCredentials)
+      .mockImplementation(async userId =>
+        userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
+      );
+
+    await expect(restoreSession()).resolves.toEqual({
+      authenticated: false,
+    });
+    expect(switchActiveUser).not.toHaveBeenCalled();
+    expect(clearTempCredentials).toHaveBeenCalled();
+    expect(authToken.set).toHaveBeenCalledWith(null);
+  });
+
   it('clears orphan temp credentials instead of opening a session without a user', async () => {
     jest.mocked(getActiveUserId).mockReturnValue('');
     jest.mocked(getAllStoredUserIds).mockResolvedValue([]);
@@ -183,7 +205,12 @@ describe('beginLoginSession', () => {
       email: 't@fluent.local',
     });
 
-    await beginLoginSession('session-token', 't@fluent.local');
+    await expect(
+      beginLoginSession('session-token', 't@fluent.local'),
+    ).resolves.toEqual({
+      id: 42,
+      email: 't@fluent.local',
+    });
 
     expect(saveTempCredentials).toHaveBeenCalledWith('session-token');
     expect(authToken.set).toHaveBeenCalledWith('session-token');
@@ -214,7 +241,10 @@ describe('beginAddAccountSession', () => {
 
     await expect(
       beginAddAccountSession('b-token', 'b@example.com'),
-    ).resolves.toBe('247');
+    ).resolves.toEqual({
+      id: 247,
+      email: 'b@example.com',
+    });
 
     expect(saveCredentials).toHaveBeenCalledWith('b-token', '247');
     expect(FluentAPI.getUserByEmail).toHaveBeenCalledWith(
