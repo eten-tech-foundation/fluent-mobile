@@ -16,16 +16,16 @@ Examples already on this baseline: `expo-audio`, `expo-file-system`, `expo-secur
 
 ## Navigation
 
-Expo’s documented choice for Expo apps is **[Expo Router](https://docs.expo.dev/router/introduction/)** (file-based routing on top of React Navigation). Plain **React Navigation** remains valid, especially for existing apps.
+Expo’s documented choice for Expo apps is **[Expo Router](https://docs.expo.dev/router/introduction/)** (file-based routing; React Navigation is an implementation detail under the hood).
 
-**This repo today:** `@react-navigation/native` + `@react-navigation/stack` under `src/navigation/`.
+**This repo today:** **Expo Router** (`expo-router`) with file-based routes in `src/routes/`. Screens remain under `src/app/screens/` and `src/app/tabs/`; auth/session lives in `src/navigation/AuthSessionProvider.tsx`. Drawer layout uses `expo-router/drawer` (bundled in SDK 56+ — do **not** add `@react-navigation/drawer` / `@react-navigation/native` as direct app deps).
 
 **Agent rules:**
 
-1. **Do not** introduce a second navigation framework (e.g. React Native Navigation, or a parallel router) alongside the current stack.
-2. **Do not** migrate the whole app to Expo Router without a **ticketed** effort and tech-lead approval — that is a cross-cutting change.
-3. For **new** greenfield navigation architecture or a ticket that explicitly asks for Expo Router, prefer **Expo Router** over adding more bespoke React Navigation structure.
-4. When extending today’s navigators, stay consistent with existing React Navigation patterns until a migration ticket lands.
+1. **Do not** introduce a second navigation framework (e.g. React Native Navigation, or a parallel hand-wired React Navigation stack) alongside Expo Router.
+2. Prefer Expo Router layouts (`Stack`, `Drawer`, route groups) over bespoke Modal navigators for new surfaces.
+3. Use `hrefs` from `src/navigation/hrefs.ts` and `useRouter` / `useLocalSearchParams` from `expo-router` — do not reintroduce `createStackNavigator` / `AppNavigator` / standalone `@react-navigation/*` imports in app code.
+4. Import navigation helpers from `expo-router` / `expo-router/drawer` / `expo-router/react-navigation` only (Metro rejects direct `@react-navigation/*` imports under SDK 56+).
 
 ## Other common choices
 
