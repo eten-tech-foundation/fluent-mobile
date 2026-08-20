@@ -30,3 +30,9 @@ export const OFFLINE_STORAGE_EMPTY_OTHER_PROJECTS =
 
 export const OFFLINE_STORAGE_SELECT_TO_DELETE = 'Select items to delete';
 export const OFFLINE_STORAGE_DELETE_SELECTED = 'Delete Selected';
+
+/** Record tab warning banners (issue #269). */
+export const RECORD_TAKEN_CHAPTER_WARNING =
+  'This chapter is assigned to another translator.';
+export const RECORD_AUDIO_CONFLICT_WARNING =
+  'Unresolved audio take conflict on this chapter/pericope.';

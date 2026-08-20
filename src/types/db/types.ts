@@ -164,6 +164,7 @@ export interface ChapterAssignmentData {
   bookId: number;
   chapterNumber: number;
   assignedUserId?: number;
+  peerCheckerId?: number;
   status: string;
   submittedTime?: string | null;
   updatedAt?: string;
@@ -180,6 +181,7 @@ export interface ChapterAssignmentRow {
   book_id: number;
   chapter_number: number;
   assigned_user_id?: number;
+  peer_checker_id?: number;
   status: string;
   submitted_time?: string | null;
   updated_at?: string;
