@@ -9,15 +9,17 @@ Offline-first **Expo SDK 57** (React Native **0.86**, React **19.2.3**) companio
 
 ## Key paths
 
-- Entry: `App.tsx` → `initializeDatabase()` → `restoreSession()` → `AppNavigator` (sync post-login / via hooks)
+- Entry: `index.js` → Expo Router `src/routes/` + `AuthSessionProvider` (DB init, session restore; sync post-login / via hooks)
+- Routes: `src/routes/` (auth + app groups; settings Drawer)
 - App config: `app.config.ts` (EAS project ID, plugins, package id)
 - Stack screens: `src/app/screens/` (Home, Settings, Sync, Drafting, PrepareForOffline)
 - Nested UI: `src/app/tabs/` (ProjectsTab, MyWorkTab, BibleTab, RecordTab, auth/legal)
+- Navigation helpers: `src/navigation/` (auth session, hrefs, auth gate)
 - Theme: `src/theme/` (canonical tokens for new UI)
 - API: `src/services/api.ts` (`FluentAPI`)
 - Sync: `src/services/sync.ts`
 - DB writes: `src/db/repository.ts` | reads: `src/db/queries.ts`
-- Types: `src/types/{api,db,navigation}/`
+- Types: `src/types/{api,db}/` (etc.); route hrefs/params: `src/navigation/hrefs.ts`, `routeParams.ts`
 - Env: `EXPO_PUBLIC_API_BASE_URL` in `.env` (via `getApiBaseUrl()` in `src/config/apiBaseUrl.ts`)
 - Native (generated): run `npm run prebuild` — regenerates `android/` only; do not commit `android/`
 - Releases: tag `v*` → `.github/workflows/eas-build.yml` + `.eas/workflows/create-production-builds.yml` (Android only)

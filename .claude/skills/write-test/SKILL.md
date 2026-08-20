@@ -76,8 +76,8 @@ Do **not** invent a centralized `__tests__/unit_tests/` tree.
   `@testing-library/react-native`. Wrap with `QueryClientTestWrapper` from
   `src/test/queryClientWrapper` when the hook uses react-query (see
   `useLogin.test.tsx`).
-- For navigation: mock `@react-navigation/native` (`useNavigation`, `useRoute`)
-  the way neighboring screen tests do.
+- For navigation: mock `expo-router` (`useRouter`, `useLocalSearchParams`,
+  `useNavigation`) the way neighboring screen tests do.
 - Mock `op-sqlite` / `getDatabase` the way existing `src/db/*.test.ts` files do.
   Never require a real device for unit tests.
 

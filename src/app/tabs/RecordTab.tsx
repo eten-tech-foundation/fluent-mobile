@@ -18,7 +18,7 @@ import {
   Play,
   Square,
 } from 'lucide-react-native';
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { useLocalSearchParams } from 'expo-router';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import { useDraftingContext } from '../context/DraftingContext';
 import { getBibleTextId } from '../../db/queries';
@@ -29,15 +29,13 @@ import { DraftTakeRow } from '../../components/ui/DraftTakeRow';
 import { RecordCircleButton } from '../../components/ui/RecordCircleButton';
 import { SourceTextAccordion } from '../../components/ui/SourceTextAccordion';
 import { SourceAudioPlayerBar } from '../../components/layout/SourceAudioPlayerBar';
-import { RootStackParamList } from '../../types/navigation/types';
+import { parseRequiredString } from '../../navigation/routeParams';
 import { ChapterAssignmentData } from '../../types/db/types';
 import type { Recording } from '../../types/db/types';
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
 }
-
-type Route = RouteProp<RootStackParamList, 'VerseDetail'>;
 
 /** Design timer: `0:13` (no leading zero on minutes). */
 function formatDuration(ms: number): string {
@@ -62,7 +60,8 @@ export function RecordTab({
   chapterData,
   onCaptureActiveChange,
 }: RecordTabProps) {
-  const { chapterName } = useRoute<Route>().params;
+  const rawParams = useLocalSearchParams<{ chapterName?: string }>();
+  const chapterName = parseRequiredString(rawParams.chapterName, 'chapterName');
   const { verses, selectedVerse, setSelectedVerse } = useDraftingContext();
   const [bibleTextId, setBibleTextId] = useState<number | null>(null);
   const [sourceExpanded, setSourceExpanded] = useState(false);
