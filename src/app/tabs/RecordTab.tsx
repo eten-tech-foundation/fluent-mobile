@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -218,8 +218,11 @@ export function RecordTab({
     (verseAudio.state === 'error' && hasTake);
   const showSourceAudio = showIdle || showReview;
 
-  const currentUserId = parseUserId();
-  const isTaken = isChapterTakenByOther(chapterData, currentUserId);
+  const currentUserId = useMemo(() => parseUserId(), []);
+  const isTaken = useMemo(
+    () => isChapterTakenByOther(chapterData, currentUserId),
+    [chapterData, currentUserId],
+  );
   const { hasConflict } = useChapterConflictStatus(chapterData.id);
 
   return (
