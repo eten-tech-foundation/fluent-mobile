@@ -2,6 +2,7 @@ name: Quality Gates
 
 # TypeScript + Expo health checks for PRs. No native Gradle build — native
 # compile is validated on demand via EAS preview (preview-build label) and
+# nightly APK; post-merge QA uses nightly (see docs/guides/qa-process.md).
 # production releases (tag → EAS).
 
 on:
