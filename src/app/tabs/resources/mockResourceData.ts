@@ -35,14 +35,12 @@ export function getMockResourcesForUnit(
   if (pattern === 1) {
     return {
       referenceLabel: `${chapterName}:${verseNumber}`,
-      passageTitle: 'Sample notes for this verse',
       sections: ['translationNotes'],
     };
   }
 
   return {
     referenceLabel: `${chapterName}:${verseNumber}`,
-    passageTitle: 'Sample passage resources',
     sections: [...ALL_SECTIONS],
   };
 }
