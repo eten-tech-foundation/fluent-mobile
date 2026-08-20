@@ -3,17 +3,15 @@ import { render, screen, fireEvent } from '@testing-library/react-native';
 import ViewProject from './ViewProject';
 import { ProjectChapter } from '../../types/db/types';
 
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({
-    goBack: jest.fn(),
-    navigate: jest.fn(),
+jest.mock('expo-router', () => ({
+  useRouter: () => ({
+    back: jest.fn(),
+    push: jest.fn(),
   }),
-  useRoute: () => ({
-    params: {
-      projectId: 1,
-      projectName: 'Gospel of Luke',
-      language: 'Baka',
-    },
+  useLocalSearchParams: () => ({
+    projectId: '1',
+    projectName: 'Gospel of Luke',
+    language: 'Baka',
   }),
 }));
 

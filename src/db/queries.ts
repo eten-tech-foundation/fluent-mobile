@@ -1,7 +1,8 @@
 import { getDatabase } from './db';
-import { ensureUserProjectMembership } from './repository';
 import { logger } from '../utils/logger';
 import * as DBTypes from '../types/db/types';
+import { parseUserId } from '../utils/parseUserId';
+import { ensureUserProjectMembership } from './repository';
 import { deriveChapterSyncState } from '../utils/chapterSyncState';
 import {
   formatLastActivity,
@@ -442,11 +443,14 @@ export async function getMyWorkChapters(
 /** Selected recordings not yet uploaded to the Fluent server. */
 export async function getPendingUploadCount(): Promise<number> {
   const db = getDatabase();
+  const userId = parseUserId();
   try {
     const result = await db.execute(
       `SELECT COUNT(*) AS count
        FROM recordings
-       WHERE is_selected = 1 AND sync_status != 'uploaded';`,
+       WHERE is_selected = 1 AND sync_status != 'uploaded'
+         AND recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'};`,
+      userId === null ? [] : [userId],
     );
     return Number(result.rows?.[0]?.count) || 0;
   } catch (error) {
@@ -458,11 +462,14 @@ export async function getPendingUploadCount(): Promise<number> {
 /** Selected recordings whose last upload attempt failed. */
 export async function getFailedUploadCount(): Promise<number> {
   const db = getDatabase();
+  const userId = parseUserId();
   try {
     const result = await db.execute(
       `SELECT COUNT(*) AS count
        FROM recordings
-       WHERE is_selected = 1 AND sync_status = 'failed'`,
+       WHERE is_selected = 1 AND sync_status = 'failed'
+         AND recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'};`,
+      userId === null ? [] : [userId],
     );
     return Number(result.rows?.[0]?.count) || 0;
   } catch (error) {
@@ -477,20 +484,24 @@ export type PendingUploadChapter = {
 };
 
 /**
- * Distinct chapters with at least one selected, non-uploaded recording.
- * Upload engine (#150) processes work per chapter, not per verse.
+ * Distinct chapters with at least one selected, non-uploaded recording for
+ * the active user. Upload engine (#150) processes work per chapter, not per
+ * verse.
  */
 export async function getPendingUploadChapters(): Promise<
   PendingUploadChapter[]
 > {
   const db = getDatabase();
+  const userId = parseUserId();
   try {
     const result = await db.execute(
       `SELECT DISTINCT bt.book_id AS book_id, bt.chapter_number AS chapter_number
        FROM recordings r
        JOIN bible_texts bt ON bt.id = r.bible_text_id
        WHERE r.is_selected = 1 AND r.sync_status != 'uploaded'
+         AND r.recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}
        ORDER BY bt.book_id, bt.chapter_number`,
+      userId === null ? [] : [userId],
     );
     const rows = result.rows ?? [];
     return rows.map(row => ({
@@ -544,6 +555,7 @@ export async function getRecordedVerseNumbers(
   chapterNumber: number,
 ): Promise<Set<number>> {
   const db = getDatabase();
+  const userId = parseUserId();
   try {
     const result = await db.execute(
       `SELECT bt.verse_number
@@ -552,8 +564,11 @@ export async function getRecordedVerseNumbers(
        WHERE bt.bible_id = ?
          AND bt.book_id = ?
          AND bt.chapter_number = ?
-         AND r.is_selected = 1`,
-      [bibleId, bookId, chapterNumber],
+         AND r.is_selected = 1
+         AND r.recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}`,
+      userId === null
+        ? [bibleId, bookId, chapterNumber]
+        : [bibleId, bookId, chapterNumber, userId],
     );
 
     const rows = (result?.rows as unknown as { verse_number: number }[]) || [];

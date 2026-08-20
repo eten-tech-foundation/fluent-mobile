@@ -10,6 +10,15 @@ export const PROJECT_CHAPTERS_EMPTY_MESSAGE =
 export const RESOURCES_EMPTY_MESSAGE =
   'No resources are on this device yet. Download them from Prepare for Offline.';
 
+export const IMAGES_MAPS_LOAD_ERROR = 'Unable to load Images & Maps.';
+
+export const TRANSLATION_NOTES_LOAD_ERROR = 'Unable to load Translation Notes.';
+
+export const TRANSLATION_NOTE_EMPTY_BODY = 'No note text available.';
+
+export const TRANSLATION_QUESTIONS_LOAD_ERROR =
+  'Unable to load Translation Questions.';
+
 export const LOGOUT_UNSYNCED_TITLE = 'Unsynced work on device';
 export const LOGOUT_UNSYNCED_MESSAGE =
   'You have recordings that have not been uploaded. Log out anyway?';

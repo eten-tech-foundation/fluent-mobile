@@ -5,15 +5,13 @@ import { RecordTab } from '../tabs/RecordTab';
 import { ResourcesTab } from '../tabs/ResourcesTab';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { onSyncComplete } from '../../services/syncEvents';
-import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useCallback, useEffect, useState } from 'react';
-import { RootStackParamList } from '../../types/navigation/types';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
 import { DraftingHeader } from '../../components/layout/DraftingHeader';
 import { ChapterAssignmentData, VerseData } from '../../types/db/types';
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useActiveAccountSummary } from '../../hooks/useActiveAccountSummary';
 import { AccountSwitcherPanel } from '../../components/ui/AccountSwitcherPanel';
 import {
@@ -30,17 +28,25 @@ import {
   getChapterAssignmentById,
   getRecordedVerseNumbers,
 } from '../../db/queries';
+import { hrefs } from '../../navigation/hrefs';
+import {
+  parseRequiredNumber,
+  parseRequiredString,
+} from '../../navigation/routeParams';
 import { parseUserId } from '../../utils/parseUserId';
 
 const log = logger.create('DraftingScreen');
 
-type Nav = StackNavigationProp<RootStackParamList, 'VerseDetail'>;
-type Route = RouteProp<RootStackParamList, 'VerseDetail'>;
-
 export default function DraftingScreen() {
-  const navigation = useNavigation<Nav>();
+  const router = useRouter();
+  const navigation = useNavigation();
   const userId = parseUserId();
-  const { chapterId, chapterName } = useRoute<Route>().params;
+  const rawParams = useLocalSearchParams<{
+    chapterId?: string;
+    chapterName?: string;
+  }>();
+  const chapterId = parseRequiredNumber(rawParams.chapterId, 'chapterId');
+  const chapterName = parseRequiredString(rawParams.chapterName, 'chapterName');
 
   const [activeTab, setActiveTabState] = useState<DraftingTab>(
     () => getLastActiveTab(chapterId) ?? 'bible',
@@ -101,12 +107,16 @@ export default function DraftingScreen() {
   }, [alertRecordingInProgress, navigation, recordCaptureActive]);
 
   const goBack = useCallback(() => {
-    navigation.goBack();
-  }, [navigation]);
+    router.back();
+  }, [router]);
 
   const handleAccountPress = useCallback(() => {
+    if (recordCaptureActive) {
+      alertRecordingInProgress();
+      return;
+    }
     setAccountSwitcherVisible(true);
-  }, []);
+  }, [alertRecordingInProgress, recordCaptureActive]);
 
   // CHANGED: was `triggerSync`. Tapping the icon now navigates to the
   // Sync page instead of kicking off a sync directly (per #38 / #149).
@@ -116,8 +126,8 @@ export default function DraftingScreen() {
       alertRecordingInProgress();
       return;
     }
-    navigation.navigate('Sync');
-  }, [alertRecordingInProgress, navigation, recordCaptureActive]);
+    router.push(hrefs.sync);
+  }, [alertRecordingInProgress, router, recordCaptureActive]);
 
   const renderHeader = () => (
     <DraftingHeader
@@ -202,7 +212,7 @@ export default function DraftingScreen() {
   // Header + tab bar own safe-area insets; keep container white edge-to-edge.
   if (loading) {
     return (
-      <ScreenContainer edges={[]}>
+      <ScreenContainer>
         {renderHeader()}
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -214,7 +224,7 @@ export default function DraftingScreen() {
 
   if (!chapterData) {
     return (
-      <ScreenContainer edges={[]}>
+      <ScreenContainer>
         {renderHeader()}
         <View style={styles.centered}>
           <Text style={styles.emptyText}>No chapter data found</Text>
@@ -225,7 +235,7 @@ export default function DraftingScreen() {
   }
 
   return (
-    <ScreenContainer edges={[]}>
+    <ScreenContainer>
       <DraftingProvider verses={verses} initialVerse={initialVerse}>
         <View style={styles.screen}>
           {renderHeader()}
@@ -254,8 +264,10 @@ export default function DraftingScreen() {
               <ResourcesTab
                 chapterId={chapterId}
                 chapterName={chapterName}
-                projectId={chapterData?.projectId ?? null}
+                projectId={chapterData.projectId ?? null}
                 userId={userId}
+                bookCode={chapterData.bookCode ?? ''}
+                chapterNumber={chapterData.chapterNumber}
               />
             </View>
             <View

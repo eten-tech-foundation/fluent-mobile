@@ -2,6 +2,8 @@
 
 Plain-language guide for QA and reviewers. **No developer tools** — just an Android phone and the GitHub **PR or issue** comment.
 
+**Process / merge gate (when QA is required, who owns what):** [qa-process.md](qa-process.md). This page is **how to install and test** the preview APK.
+
 ## Quick start
 
 1. Open the bot comment on the **pull request** or the **linked GitHub issue**.
@@ -12,7 +14,7 @@ Plain-language guide for QA and reviewers. **No developer tools** — just an An
 
 The preview is a **standalone internal APK** for that PR (no over-the-air update). Each labeled PR gets its own build so multiple QA previews can exist at once. On one phone you can only have one Fluent install — reinstall when switching PRs.
 
-When the preview is ready, the ticket usually moves to **In QA** on the Fluent Mobile Board.
+When the preview is ready, the ticket usually moves to **In QA** on the Fluent Mobile Board. For QA-required PRs, that happens **before merge** — see [qa-process.md](qa-process.md).
 
 ---
 
@@ -64,15 +66,18 @@ If the app looks wrong after installing a different PR’s preview:
 
 ## For developers
 
+Full process (Needs QA?, pass/fail, merge eligibility, re-request): **[qa-process.md](qa-process.md)**.
+
 1. Link the ticket in the PR body (`Refs #NNN` on its own Details line — never `Closes` / `Fixes` / `Resolves`; do not use `Part of #NNN` for the ticket you want preview comments / In QA for).
 2. Add the **`preview-build`** label to the PR.
 3. Workflow starts a **fresh Android preview APK** (binary only — no OTA), comments on the **PR and linked issue**, and moves the ticket to **In QA** when Status was `In PR Review` or `In Progress (Dev)`.
-4. Share this guide with QA: `docs/guides/qa-preview-testing.md`
-5. Preview APKs use the EAS `preview` profile (internal distribution, Updates disabled — **not** `developmentClient`).
-6. Optional repo secret `PROJECT_BOARD_TOKEN` enables Project 4 Status updates (issue comments work without it).
+4. Share this guide with QA for install steps; share [qa-process.md](qa-process.md) for the merge gate.
+5. After fixes: remove and re-add `preview-build` for a **new** isolated APK (see [qa-process.md](qa-process.md) § Re-request).
+6. Preview APKs use the EAS `preview` profile (internal distribution, Updates disabled — **not** `developmentClient`).
+7. Optional repo secret `PROJECT_BOARD_TOKEN` enables Project 4 Status updates (issue comments work without it).
 
 ### Nightly builds (optional)
 
-Separate from PR previews: GitHub Actions can publish a **nightly Android APK** (EAS profile `nightly`, development API). Install from the Slack message or the Actions job summary — **not** from a PR comment. Nightlies are **binary only**. See [`.github/README.md`](../../.github/README.md).
+Separate from PR previews: GitHub Actions can publish a **nightly Android APK** (EAS profile `nightly`, development API). Install from the Slack message or the Actions job summary — **not** from a PR comment. Nightlies are **binary only** and do **not** satisfy the PR QA merge gate. See [`.github/README.md`](../../.github/README.md).
 
 Technical details: [`.github/README.md`](../../.github/README.md) · [`.eas/README.md`](../../.eas/README.md)

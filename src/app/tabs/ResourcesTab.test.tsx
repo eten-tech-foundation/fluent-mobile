@@ -19,12 +19,93 @@ import {
   setPrepareOfflineMockInventoryScenario,
 } from '../../mocks/prepareOffline';
 import { getDownloadedResourcesByProject } from '../../db/downloadQueueRepository';
+import { getMockTranslationNotes } from '../../mocks/resources/translationNotesMock';
+import { getMockTranslationQuestions } from '../../mocks/resources/translationQuestionsMock';
+import { getMockImagesMaps } from '../../mocks/resources/imagesMapsMock';
+import { loadTranslationNotesForUnit } from '../../services/translationNotes';
+import { loadTranslationQuestionsForUnit } from '../../services/translationQuestions';
+import { loadImagesMapsForUnit } from '../../services/imagesMaps';
 
 jest.mock('../../db/downloadQueueRepository', () => ({
   getDownloadedResourcesByProject: jest.fn(async () => []),
 }));
 
+jest.mock('react-native-gesture-handler', () => {
+  const actualReact = jest.requireActual('react');
+  const chainable = () => {
+    const gesture: Record<string, unknown> = {};
+    [
+      'onUpdate',
+      'onEnd',
+      'onTouchesMove',
+      'activeOffsetX',
+      'failOffsetY',
+      'manualActivation',
+      'numberOfTaps',
+    ].forEach(method => {
+      gesture[method] = () => gesture;
+    });
+    return gesture;
+  };
+  return {
+    GestureDetector: ({ children }: { children: React.ReactNode }) =>
+      actualReact.createElement(actualReact.Fragment, null, children),
+    GestureHandlerRootView: ({
+      children,
+      ...props
+    }: {
+      children: React.ReactNode;
+    }) =>
+      actualReact.createElement(require('react-native').View, props, children),
+    Gesture: {
+      Pan: chainable,
+      Pinch: chainable,
+      Tap: chainable,
+      Simultaneous: () => chainable(),
+      Exclusive: () => chainable(),
+    },
+  };
+});
+
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+
+jest.mock('../../services/translationQuestions', () => {
+  const actual = jest.requireActual('../../services/translationQuestions');
+  return {
+    ...actual,
+    loadTranslationQuestionsForUnit: jest.fn(),
+  };
+});
+
+jest.mock('../../services/translationNotes', () => {
+  const actual = jest.requireActual('../../services/translationNotes');
+  return {
+    ...actual,
+    loadTranslationNotesForUnit: jest.fn(),
+  };
+});
+
+jest.mock('../../services/imagesMaps', () => {
+  const actual = jest.requireActual('../../services/imagesMaps');
+  return {
+    ...actual,
+    loadImagesMapsForUnit: jest.fn(),
+  };
+});
+
 const downloadedRows = getDownloadedResourcesByProject as jest.Mock;
+const mockLoadNotes = loadTranslationNotesForUnit as jest.MockedFunction<
+  typeof loadTranslationNotesForUnit
+>;
+const mockLoadQuestions =
+  loadTranslationQuestionsForUnit as jest.MockedFunction<
+    typeof loadTranslationQuestionsForUnit
+  >;
+const mockLoadImages = loadImagesMapsForUnit as jest.MockedFunction<
+  typeof loadImagesMapsForUnit
+>;
 
 const verses: VerseData[] = [1, 2, 3].map(verseNumber => ({
   bibleId: 1,
@@ -75,6 +156,8 @@ function renderResources(
         chapterName="Mark 14"
         projectId={projectId}
         userId={userId}
+        bookCode="MRK"
+        chapterNumber={14}
       />
     </DraftingProvider>,
   );
@@ -86,12 +169,28 @@ describe('ResourcesTab', () => {
     clearMockPrepareOfflineRuntimeInventory();
     setPrepareOfflineMockInventoryScenario('fresh');
     downloadedRows.mockResolvedValue([]);
+    mockLoadNotes.mockImplementation(async ({ verseNumber }) =>
+      getMockTranslationNotes(99, verseNumber),
+    );
+    mockLoadQuestions.mockImplementation(async ({ verseNumber }) =>
+      getMockTranslationQuestions(99, verseNumber),
+    );
+    mockLoadImages.mockImplementation(async ({ verseNumber }) =>
+      getMockImagesMaps(99, verseNumber),
+    );
+  });
+
+  afterEach(() => {
+    mockLoadNotes.mockReset();
+    mockLoadQuestions.mockReset();
+    mockLoadImages.mockReset();
   });
 
   it('shows a section persisted as completed in download_queue', async () => {
     downloadedRows.mockResolvedValue([
       { status: 'completed', resourceName: 'Reference Images', kind: 'image' },
     ]);
+    mockLoadImages.mockResolvedValue(getMockImagesMaps(99, 2));
     renderResources(1);
 
     await waitFor(() => {
@@ -130,12 +229,15 @@ describe('ResourcesTab', () => {
     expect(screen.queryByText('Images & Maps')).toBeNull();
   });
 
-  it('shows all sections when all tiers are inventoried', () => {
+  it('shows all sections when all tiers are inventoried', async () => {
     setPrepareOfflineMockInventoryScenario('all');
+    mockLoadImages.mockResolvedValue(getMockImagesMaps(99, 2));
     renderResources(3);
     expect(screen.getByText('Translation Notes')).toBeTruthy();
     expect(screen.getByText('Translation Questions')).toBeTruthy();
-    expect(screen.getByText('Images & Maps')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText('Images & Maps')).toBeTruthy();
+    });
   });
 
   it('updates the reference label when the selected verse changes', () => {
@@ -151,34 +253,36 @@ describe('ResourcesTab', () => {
     expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
   });
 
-  it('restores open accordion state when returning to a unit', () => {
+  it('restores open accordion state when returning to a unit', async () => {
     setPrepareOfflineMockInventoryScenario('all');
+    mockLoadImages.mockResolvedValue(getMockImagesMaps(99, 2));
     renderResources(2);
 
     fireEvent.press(
       screen.getByTestId('resources-section-translationNotes-toggle'),
     );
-    expect(
-      screen.getByText('Content for this section will appear here.'),
-    ).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByTestId('translation-notes-list')).toBeTruthy();
+    });
 
     fireEvent.press(screen.getByTestId('select-verse-1'));
-    expect(
-      screen.queryByText('Content for this section will appear here.'),
-    ).toBeNull();
+    expect(screen.queryByTestId('translation-notes-list')).toBeNull();
 
     fireEvent.press(screen.getByTestId('select-verse-2'));
-    expect(
-      screen.getByText('Content for this section will appear here.'),
-    ).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByTestId('translation-notes-list')).toBeTruthy();
+    });
   });
 
-  it('gates sections from inventory without verse-mock emptiness', () => {
+  it('gates sections from inventory without verse-mock emptiness', async () => {
     setPrepareOfflineMockInventoryScenario('all');
+    mockLoadImages.mockResolvedValue(getMockImagesMaps(99, 2));
     renderResources(3);
     // Verse 3 used to mean empty under verse % 3 mocks; inventory wins.
     expect(screen.getByText('Mark 14:3')).toBeTruthy();
-    expect(screen.getByText('Images & Maps')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText('Images & Maps')).toBeTruthy();
+    });
     expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
   });
 });
