@@ -10,7 +10,7 @@ function isTipTapLike(value: unknown): value is TipTapLike {
 
 /**
  * Flatten Aquifer TipTap JSON to plain text for mobile Resources accordions.
- * Paragraphs become newlines; nested text nodes are concatenated.
+ * Paragraphs and list items become newlines; bullets are preserved as `• `.
  */
 export function tipTapToPlainText(node: unknown): string {
   if (!isTipTapLike(node)) {
@@ -29,8 +29,20 @@ export function tipTapToPlainText(node: unknown): string {
   if (node.type === 'doc') {
     return parts.filter(Boolean).join('\n').trim();
   }
-  if (node.type === 'paragraph') {
+  if (node.type === 'paragraph' || node.type === 'heading') {
     return parts.join('').trim();
+  }
+  if (node.type === 'bulletList' || node.type === 'orderedList') {
+    return parts.filter(Boolean).join('\n');
+  }
+  if (node.type === 'listItem') {
+    const text = parts
+      .join('\n')
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean)
+      .join(' ');
+    return text ? `• ${text}` : '';
   }
   return parts.join('');
 }

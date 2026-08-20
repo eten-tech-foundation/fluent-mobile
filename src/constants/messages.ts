@@ -9,6 +9,10 @@ export const PROJECT_CHAPTERS_EMPTY_MESSAGE =
 
 export const RESOURCES_EMPTY_MESSAGE = 'No resources available for this verse';
 
+export const TRANSLATION_NOTES_LOAD_ERROR = 'Unable to load Translation Notes.';
+
+export const TRANSLATION_NOTE_EMPTY_BODY = 'No note text available.';
+
 export const TRANSLATION_QUESTIONS_LOAD_ERROR =
   'Unable to load Translation Questions.';
 

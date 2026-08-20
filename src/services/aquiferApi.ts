@@ -49,6 +49,14 @@ async function aquiferRequest<T>(endpoint: string): Promise<T> {
       signal: controller.signal,
     });
 
+    // Some RN/network failure modes resolve fetch without a Response.
+    // Guard before reading `.ok` / `.status` so callers get ApiError, not a crash.
+    if (response === undefined || response === null) {
+      throw createNetworkApiError(
+        new Error('Aquifer request returned no response'),
+      );
+    }
+
     if (!response.ok) {
       throw createApiError(response.status, await response.text());
     }

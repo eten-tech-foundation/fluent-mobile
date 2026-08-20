@@ -15,7 +15,7 @@ describe('getMockResourcesForUnit', () => {
     const resources = getMockResourcesForUnit(1, 1, 'Mark 14');
     expect(resources.sections).toEqual(['translationNotes']);
     expect(unitHasAnyResources(resources)).toBe(true);
-    expect(resources.passageTitle).toBeTruthy();
+    expect(resources.passageTitle).toBeUndefined();
   });
 
   it('returns all three sections for verses with remainder 2', () => {

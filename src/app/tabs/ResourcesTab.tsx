@@ -23,11 +23,10 @@ import { useDraftingContext } from '../context/DraftingContext';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ResourceSectionAccordion } from '../../components/ui/ResourceSectionAccordion';
 import { RESOURCES_EMPTY_MESSAGE } from '../../constants/messages';
+import { useTranslationNotesForUnit } from '../../hooks/useTranslationNotesForUnit';
 import { ResourceSectionId } from '../../types/resources/types';
-import {
-  getMockResourcesForUnit,
-  unitHasAnyResources,
-} from './resources/mockResourceData';
+import { getMockResourcesForUnit } from './resources/mockResourceData';
+import { TranslationNotesSectionHost } from './resources/TranslationNotesSectionHost';
 import { TranslationQuestionsSection } from './resources/TranslationQuestionsSection';
 import {
   getResourcesTabUiState,
@@ -67,7 +66,8 @@ const SECTION_META: {
 
 /**
  * Resources tab host (#188): unit-synced shell, empty state, accordion slots.
- * TQ body: #190 (Aquifer-backed). Notes / Images stubs remain until #189 / #191.
+ * Translation Notes (#189) and Translation Questions (#190) are Aquifer-backed.
+ * Images stub remains until #191.
  */
 export function ResourcesTab({
   chapterId,
@@ -83,14 +83,27 @@ export function ResourcesTab({
     () => getMockResourcesForUnit(chapterId, selectedVerse, chapterName),
     [chapterId, selectedVerse, chapterName],
   );
-  const hasContent = unitHasAnyResources(resources);
+
+  const { state: notesState, retry: retryNotes } = useTranslationNotesForUnit({
+    bookCode,
+    chapterNumber,
+    verseNumber: selectedVerse,
+  });
+
+  // Live Aquifer TN (#189): show while loading/error, or when notes exist.
+  // Do not gate on #188 mock emptiness alone — verse % 3 === 0 still loads Aquifer.
+  // Guard notesState so a stale HMR/partial hook result cannot crash on `.status`.
+  const showTranslationNotes =
+    notesState !== undefined &&
+    (notesState.status === 'loading' ||
+      notesState.status === 'error' ||
+      (notesState.status === 'ready' && notesState.notes.length > 0));
 
   const [openAccordionIds, setOpenAccordionIds] = useState<Set<string>>(
     () => getResourcesTabUiState(chapterId, selectedVerse).openAccordionIds,
   );
   const openIdsRef = useRef(openAccordionIds);
 
-  // Restore scroll + accordion state when the active unit changes.
   useEffect(() => {
     const saved = getResourcesTabUiState(chapterId, selectedVerse);
     openIdsRef.current = saved.openAccordionIds;
@@ -136,17 +149,21 @@ export function ResourcesTab({
     [persistUiState],
   );
 
-  if (!hasContent) {
+  const visibleSections = SECTION_META.filter(section => {
+    if (section.id === 'translationNotes') {
+      return showTranslationNotes;
+    }
+    // TQ / Images stay on the #188 mock shell until #191 (Images) or mock TQ gate.
+    return resources.sections.includes(section.id);
+  });
+
+  if (visibleSections.length === 0) {
     return (
       <View style={styles.emptyHost} testID="resources-tab">
         <EmptyState message={RESOURCES_EMPTY_MESSAGE} />
       </View>
     );
   }
-
-  const visibleSections = SECTION_META.filter(section =>
-    resources.sections.includes(section.id),
-  );
 
   return (
     <ScrollView
@@ -173,14 +190,23 @@ export function ResourcesTab({
           const expanded = openAccordionIds.has(id);
           return (
             <ResourceSectionAccordion
-              key={`${selectedVerse}-${id}`}
+              key={`${chapterId}-${selectedVerse}-${id}`}
               label={label}
               Icon={Icon}
               expanded={expanded}
               onToggle={() => handleToggle(id)}
               testID={`resources-section-${id}`}
             >
-              {id === 'translationQuestions' ? (
+              {id === 'translationNotes' ? (
+                <TranslationNotesSectionHost
+                  state={notesState}
+                  retry={retryNotes}
+                  sectionExpanded={expanded}
+                  bookCode={bookCode}
+                  chapterNumber={chapterNumber}
+                  verseNumber={selectedVerse}
+                />
+              ) : id === 'translationQuestions' ? (
                 <TranslationQuestionsSection
                   bookCode={bookCode}
                   chapterNumber={chapterNumber}
