@@ -11,8 +11,9 @@ import type {
 import { createApiError, createNetworkApiError } from './apiError';
 
 function aquiferHeaders(): Record<string, string> {
+  // Match fluent-web: api-key only. Aquifer rejects some GETs when
+  // Content-Type: application/json is set (HTTP 400 "One or more errors occurred!").
   return {
-    'Content-Type': 'application/json',
     'api-key': getAquiferApiKey(),
   };
 }
@@ -47,6 +48,14 @@ async function aquiferRequest<T>(endpoint: string): Promise<T> {
       headers: aquiferHeaders(),
       signal: controller.signal,
     });
+
+    // Some RN/network failure modes resolve fetch without a Response.
+    // Guard before reading `.ok` / `.status` so callers get ApiError, not a crash.
+    if (response === undefined || response === null) {
+      throw createNetworkApiError(
+        new Error('Aquifer request returned no response'),
+      );
+    }
 
     if (!response.ok) {
       throw createApiError(response.status, await response.text());
