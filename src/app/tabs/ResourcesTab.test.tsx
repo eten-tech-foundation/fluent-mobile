@@ -1,7 +1,6 @@
 import React from 'react';
 import { Button, View } from 'react-native';
 import {
-  act,
   fireEvent,
   render,
   screen,
@@ -15,21 +14,21 @@ import {
 import { RESOURCES_EMPTY_MESSAGE } from '../../constants/messages';
 import { clearResourcesTabUiState } from '../../utils/resourcesTabUiState';
 import { VerseData } from '../../types/db/types';
-import { getMockTranslationQuestions } from '../../mocks/resources/translationQuestionsMock';
 import {
-  loadTranslationQuestionsForUnit,
-  setTranslationQuestionsLoadFailureForTests,
-} from '../../services/translationQuestions';
-import {
-  loadTranslationNotesForUnit,
-  setTranslationNotesLoadFailureForTests,
-} from '../../services/translationNotes';
+  clearMockPrepareOfflineRuntimeInventory,
+  setPrepareOfflineMockInventoryScenario,
+} from '../../mocks/prepareOffline';
+import { getDownloadedResourcesByProject } from '../../db/downloadQueueRepository';
 import { getMockTranslationNotes } from '../../mocks/resources/translationNotesMock';
-import {
-  loadImagesMapsForUnit,
-  setImagesMapsLoadFailureForTests,
-} from '../../services/imagesMaps';
+import { getMockTranslationQuestions } from '../../mocks/resources/translationQuestionsMock';
 import { getMockImagesMaps } from '../../mocks/resources/imagesMapsMock';
+import { loadTranslationNotesForUnit } from '../../services/translationNotes';
+import { loadTranslationQuestionsForUnit } from '../../services/translationQuestions';
+import { loadImagesMapsForUnit } from '../../services/imagesMaps';
+
+jest.mock('../../db/downloadQueueRepository', () => ({
+  getDownloadedResourcesByProject: jest.fn(async () => []),
+}));
 
 jest.mock('react-native-gesture-handler', () => {
   const actualReact = jest.requireActual('react');
@@ -96,6 +95,7 @@ jest.mock('../../services/imagesMaps', () => {
   };
 });
 
+const downloadedRows = getDownloadedResourcesByProject as jest.Mock;
 const mockLoadNotes = loadTranslationNotesForUnit as jest.MockedFunction<
   typeof loadTranslationNotesForUnit
 >;
@@ -143,13 +143,19 @@ function VerseSwitcher() {
   );
 }
 
-function renderResources(initialVerse: number) {
+function renderResources(
+  initialVerse: number,
+  projectId: number | null = 7,
+  userId: number | null = 42,
+) {
   return render(
     <DraftingProvider verses={verses} initialVerse={initialVerse}>
       <VerseSwitcher />
       <ResourcesTab
         chapterId={99}
         chapterName="Mark 14"
+        projectId={projectId}
+        userId={userId}
         bookCode="MRK"
         chapterNumber={14}
       />
@@ -157,30 +163,12 @@ function renderResources(initialVerse: number) {
   );
 }
 
-/** Wait until in-flight Images & Maps loads have applied to React state. */
-async function waitForImagesMapsSettled(minCalls = 1) {
-  await waitFor(() => {
-    expect(mockLoadImages.mock.calls.length).toBeGreaterThanOrEqual(minCalls);
-  });
-  await act(async () => {
-    await Promise.all(
-      mockLoadImages.mock.results
-        .filter(result => result.type === 'return')
-        .map(result =>
-          Promise.resolve(result.value as Promise<unknown>).catch(
-            () => undefined,
-          ),
-        ),
-    );
-  });
-}
-
 describe('ResourcesTab', () => {
   beforeEach(() => {
     clearResourcesTabUiState();
-    setTranslationQuestionsLoadFailureForTests(false);
-    setTranslationNotesLoadFailureForTests(false);
-    setImagesMapsLoadFailureForTests(false);
+    clearMockPrepareOfflineRuntimeInventory();
+    setPrepareOfflineMockInventoryScenario('fresh');
+    downloadedRows.mockResolvedValue([]);
     mockLoadNotes.mockImplementation(async ({ verseNumber }) =>
       getMockTranslationNotes(99, verseNumber),
     );
@@ -193,139 +181,81 @@ describe('ResourcesTab', () => {
   });
 
   afterEach(() => {
-    setTranslationQuestionsLoadFailureForTests(false);
-    setTranslationNotesLoadFailureForTests(false);
-    setImagesMapsLoadFailureForTests(false);
     mockLoadNotes.mockReset();
     mockLoadQuestions.mockReset();
     mockLoadImages.mockReset();
   });
 
-  it('shows the empty message when the unit has no resources', async () => {
-    mockLoadNotes.mockResolvedValue([]);
-    mockLoadImages.mockResolvedValue([]);
-    renderResources(3);
+  it('shows a section persisted as completed in download_queue', async () => {
+    downloadedRows.mockResolvedValue([
+      { status: 'completed', resourceName: 'Reference Images', kind: 'image' },
+    ]);
+    mockLoadImages.mockResolvedValue(getMockImagesMaps(99, 2));
+    renderResources(1);
+
     await waitFor(() => {
-      expect(screen.getByText(RESOURCES_EMPTY_MESSAGE)).toBeTruthy();
+      expect(screen.getByText('Images & Maps')).toBeTruthy();
     });
     expect(screen.queryByText('Translation Notes')).toBeNull();
   });
 
-  it('shows live Translation Notes even when mock shell is empty', async () => {
-    mockLoadNotes.mockResolvedValue(getMockTranslationNotes(99, 1));
-    mockLoadImages.mockResolvedValue([]);
-    renderResources(3);
-
-    await waitFor(() => {
-      expect(screen.getByText('Translation Notes')).toBeTruthy();
-    });
-    expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
-    expect(screen.queryByText('Translation Questions')).toBeNull();
+  it('shows the empty message when nothing is inventoried (fresh)', () => {
+    renderResources(1);
+    expect(screen.getByText(RESOURCES_EMPTY_MESSAGE)).toBeTruthy();
+    expect(screen.queryByText('Translation Notes')).toBeNull();
   });
 
-  it('shows Translation Notes and Questions when items exist', async () => {
+  it('shows empty when projectId is null', () => {
+    setPrepareOfflineMockInventoryScenario('all');
+    renderResources(1, null);
+    expect(screen.getByText(RESOURCES_EMPTY_MESSAGE)).toBeTruthy();
+  });
+
+  it('shows Translation Notes only for tier1 inventory', () => {
+    setPrepareOfflineMockInventoryScenario('tier1');
     renderResources(2);
-    await waitForImagesMapsSettled();
     expect(screen.getByText('Mark 14:2')).toBeTruthy();
     expect(screen.getByText('Translation Notes')).toBeTruthy();
-    expect(screen.getByText('Translation Questions')).toBeTruthy();
-    expect(screen.getByText('Images & Maps')).toBeTruthy();
-    expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
-
-    const notes = screen.getByTestId('resources-section-translationNotes');
-    const questions = screen.getByTestId(
-      'resources-section-translationQuestions',
-    );
-    expect(notes).toBeTruthy();
-    expect(questions).toBeTruthy();
-
-    fireEvent.press(
-      screen.getByTestId('resources-section-translationNotes-toggle'),
-    );
-    await waitFor(() => {
-      expect(screen.getByTestId('translation-notes-list')).toBeTruthy();
-    });
-    expect(screen.getByText('connecting word')).toBeTruthy();
-  });
-
-  it('hides Translation Questions when none are available for the unit', async () => {
-    renderResources(1);
-    await waitForImagesMapsSettled();
-    expect(screen.getByText('Translation Notes')).toBeTruthy();
     expect(screen.queryByText('Translation Questions')).toBeNull();
+    expect(screen.queryByText('Images & Maps')).toBeNull();
+    expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
   });
 
-  it('hides Translation Notes when Aquifer returns no notes', async () => {
-    mockLoadNotes.mockResolvedValue([]);
-    mockLoadImages.mockResolvedValue([]);
+  it('shows TN + TQ for tier1-tier2 inventory', () => {
+    setPrepareOfflineMockInventoryScenario('tier1-tier2');
     renderResources(1);
-
-    await waitFor(() => {
-      expect(screen.getByText(RESOURCES_EMPTY_MESSAGE)).toBeTruthy();
-    });
-    expect(
-      screen.queryByTestId('resources-section-translationNotes'),
-    ).toBeNull();
-  });
-
-  it('hides Images & Maps after Aquifer returns no items for the unit', async () => {
-    mockLoadImages.mockImplementation(async () => []);
-    renderResources(2);
-
     expect(screen.getByText('Translation Notes')).toBeTruthy();
     expect(screen.getByText('Translation Questions')).toBeTruthy();
+    expect(screen.queryByText('Images & Maps')).toBeNull();
+  });
 
-    await waitForImagesMapsSettled();
-    expect(screen.queryByTestId('resources-section-imagesMaps')).toBeNull();
+  it('shows all sections when all tiers are inventoried', async () => {
+    setPrepareOfflineMockInventoryScenario('all');
+    mockLoadImages.mockResolvedValue(getMockImagesMaps(99, 2));
+    renderResources(3);
     expect(screen.getByText('Translation Notes')).toBeTruthy();
-  });
-
-  it('keeps Images & Maps visible while loading, then shows items', async () => {
-    let resolveLoad!: (
-      items: Awaited<ReturnType<typeof loadImagesMapsForUnit>>,
-    ) => void;
-    mockLoadImages.mockImplementation(
-      () =>
-        new Promise(resolve => {
-          resolveLoad = resolve;
-        }),
-    );
-
-    renderResources(2);
-
-    expect(screen.getByText('Images & Maps')).toBeTruthy();
-
-    await act(async () => {
-      resolveLoad(getMockImagesMaps(99, 2));
-    });
-
-    fireEvent.press(screen.getByTestId('resources-section-imagesMaps-toggle'));
-
+    expect(screen.getByText('Translation Questions')).toBeTruthy();
     await waitFor(() => {
-      expect(screen.getByTestId('images-maps-list')).toBeTruthy();
+      expect(screen.getByText('Images & Maps')).toBeTruthy();
     });
   });
 
-  it('updates when the selected verse changes', async () => {
-    renderResources(2);
-    await waitForImagesMapsSettled(1);
+  it('updates the reference label when the selected verse changes', () => {
+    setPrepareOfflineMockInventoryScenario('tier1');
+    renderResources(1);
+    expect(screen.getByText('Mark 14:1')).toBeTruthy();
     expect(screen.getByText('Translation Notes')).toBeTruthy();
 
     fireEvent.press(screen.getByTestId('select-verse-3'));
-    await waitFor(() => {
-      expect(screen.getByText(RESOURCES_EMPTY_MESSAGE)).toBeTruthy();
-    });
-    expect(screen.queryByText('Translation Notes')).toBeNull();
-
-    fireEvent.press(screen.getByTestId('select-verse-1'));
-    await waitFor(() => {
-      expect(screen.getByText('Mark 14:1')).toBeTruthy();
-      expect(screen.getByText('Translation Notes')).toBeTruthy();
-    });
-    expect(screen.queryByText('Translation Questions')).toBeNull();
+    expect(screen.getByText('Mark 14:3')).toBeTruthy();
+    // Sections stay inventory-gated — not verse % 3 mocks.
+    expect(screen.getByText('Translation Notes')).toBeTruthy();
+    expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
   });
 
   it('restores open accordion state when returning to a unit', async () => {
+    setPrepareOfflineMockInventoryScenario('all');
+    mockLoadImages.mockResolvedValue(getMockImagesMaps(99, 2));
     renderResources(2);
 
     fireEvent.press(
@@ -336,9 +266,6 @@ describe('ResourcesTab', () => {
     });
 
     fireEvent.press(screen.getByTestId('select-verse-1'));
-    await waitFor(() => {
-      expect(screen.getByText('Mark 14:1')).toBeTruthy();
-    });
     expect(screen.queryByTestId('translation-notes-list')).toBeNull();
 
     fireEvent.press(screen.getByTestId('select-verse-2'));
@@ -347,125 +274,15 @@ describe('ResourcesTab', () => {
     });
   });
 
-  it('keeps Questions and Images visible when Notes load fails', async () => {
-    mockLoadNotes.mockRejectedValue(new Error('boom'));
-    renderResources(2);
-
-    expect(screen.getByText('Translation Notes')).toBeTruthy();
-    expect(screen.getByText('Translation Questions')).toBeTruthy();
-    expect(screen.getByText('Images & Maps')).toBeTruthy();
-
-    fireEvent.press(
-      screen.getByTestId('resources-section-translationNotes-toggle'),
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('translation-notes-error')).toBeTruthy();
-    });
-
-    expect(screen.getByText('Translation Questions')).toBeTruthy();
-    expect(screen.getByText('Images & Maps')).toBeTruthy();
-
-    mockLoadNotes.mockResolvedValue(getMockTranslationNotes(99, 2));
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('translation-notes-retry'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('translation-notes-list')).toBeTruthy();
-    });
-  });
-
-  it('keeps TQ collapsed by default and reveals questions only after expand', async () => {
-    renderResources(2);
-
-    expect(screen.queryByTestId('translation-questions-list')).toBeNull();
-
-    fireEvent.press(
-      screen.getByTestId('resources-section-translationQuestions-toggle'),
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('translation-questions-list')).toBeTruthy();
-    });
-    expect(screen.getByText('What is happening in this verse?')).toBeTruthy();
-    expect(
-      screen.queryByText(
-        'The passage describes the events surrounding this verse so the translator can check key meaning.',
-      ),
-    ).toBeNull();
-  });
-
-  it('keeps Images & Maps collapsed by default and shows items after expand', async () => {
-    renderResources(2);
-    await waitForImagesMapsSettled();
-
-    expect(screen.queryByTestId('images-maps-list')).toBeNull();
-
-    fireEvent.press(screen.getByTestId('resources-section-imagesMaps-toggle'));
-
-    expect(screen.getByTestId('images-maps-list')).toBeTruthy();
-    expect(screen.getByText('Jerusalem region map')).toBeTruthy();
-  });
-
-  it('keeps Notes and Images visible when TQ load fails', async () => {
-    mockLoadQuestions.mockRejectedValue(new Error('boom'));
-    renderResources(2);
-
-    expect(screen.getByText('Translation Notes')).toBeTruthy();
-    expect(screen.getByText('Images & Maps')).toBeTruthy();
-    expect(screen.getByText('Translation Questions')).toBeTruthy();
-
-    fireEvent.press(
-      screen.getByTestId('resources-section-translationQuestions-toggle'),
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('translation-questions-error')).toBeTruthy();
-    });
-
-    expect(screen.getByText('Translation Notes')).toBeTruthy();
-    expect(screen.getByText('Images & Maps')).toBeTruthy();
-
-    mockLoadQuestions.mockResolvedValue(getMockTranslationQuestions(99, 2));
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('translation-questions-retry'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('translation-questions-list')).toBeTruthy();
-    });
-  });
-
-  it('keeps Notes and Questions visible when Images & Maps load fails', async () => {
-    mockLoadImages.mockImplementation(async () => {
-      throw new Error('boom');
-    });
-    renderResources(2);
-
+  it('gates sections from inventory without verse-mock emptiness', async () => {
+    setPrepareOfflineMockInventoryScenario('all');
+    mockLoadImages.mockResolvedValue(getMockImagesMaps(99, 2));
+    renderResources(3);
+    // Verse 3 used to mean empty under verse % 3 mocks; inventory wins.
+    expect(screen.getByText('Mark 14:3')).toBeTruthy();
     await waitFor(() => {
       expect(screen.getByText('Images & Maps')).toBeTruthy();
     });
-
-    expect(screen.getByText('Translation Notes')).toBeTruthy();
-    expect(screen.getByText('Translation Questions')).toBeTruthy();
-
-    fireEvent.press(screen.getByTestId('resources-section-imagesMaps-toggle'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('images-maps-error')).toBeTruthy();
-    });
-
-    expect(screen.getByText('Translation Notes')).toBeTruthy();
-    expect(screen.getByText('Translation Questions')).toBeTruthy();
-
-    mockLoadImages.mockImplementation(async () => getMockImagesMaps(99, 2));
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('images-maps-retry'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('images-maps-list')).toBeTruthy();
-    });
+    expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
   });
 });

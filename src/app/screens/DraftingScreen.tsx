@@ -33,12 +33,14 @@ import {
   parseRequiredNumber,
   parseRequiredString,
 } from '../../navigation/routeParams';
+import { parseUserId } from '../../utils/parseUserId';
 
 const log = logger.create('DraftingScreen');
 
 export default function DraftingScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  const userId = parseUserId();
   const rawParams = useLocalSearchParams<{
     chapterId?: string;
     chapterName?: string;
@@ -262,6 +264,8 @@ export default function DraftingScreen() {
               <ResourcesTab
                 chapterId={chapterId}
                 chapterName={chapterName}
+                projectId={chapterData.projectId ?? null}
+                userId={userId}
                 bookCode={chapterData.bookCode ?? ''}
                 chapterNumber={chapterData.chapterNumber}
               />

@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -24,12 +18,12 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ResourceSectionAccordion } from '../../components/ui/ResourceSectionAccordion';
 import { RESOURCES_EMPTY_MESSAGE } from '../../constants/messages';
 import { useTranslationNotesForUnit } from '../../hooks/useTranslationNotesForUnit';
+import { useImagesMapsForUnit } from '../../hooks/useImagesMapsForUnit';
+import { useUnitResourcesAvailability } from '../../hooks/useUnitResourcesAvailability';
 import { ResourceSectionId } from '../../types/resources/types';
-import { getMockResourcesForUnit } from './resources/mockResourceData';
 import { ImagesMapsSectionHost } from './resources/ImagesMapsSectionHost';
 import { TranslationNotesSectionHost } from './resources/TranslationNotesSectionHost';
 import { TranslationQuestionsSection } from './resources/TranslationQuestionsSection';
-import { useImagesMapsForUnit } from '../../hooks/useImagesMapsForUnit';
 import {
   getResourcesTabUiState,
   setResourcesTabUiState,
@@ -39,6 +33,10 @@ import { theme } from '../../theme';
 type ResourcesTabProps = {
   chapterId: number;
   chapterName: string;
+  /** Fluent project id for Prepare Offline inventory gating (#192). */
+  projectId: number | null;
+  /** Active user id for download_queue inventory rows (#53/#201). */
+  userId: number | null;
   /** USFM book code for Aquifer resource lookup (e.g. MRK). */
   bookCode: string;
   chapterNumber: number;
@@ -67,13 +65,15 @@ const SECTION_META: {
 ];
 
 /**
- * Resources tab host (#188): unit-synced shell, empty state, accordion slots.
- * Translation Notes (#189), Translation Questions (#190), and Images & Maps (#191)
- * are Aquifer-backed.
+ * Resources tab host (#188 + #192): Prepare Offline inventory gates which
+ * sections appear. Translation Notes (#189), Translation Questions (#190), and
+ * Images & Maps (#191) fill Aquifer-backed bodies when inventoried.
  */
 export function ResourcesTab({
   chapterId,
   chapterName,
+  projectId,
+  userId,
   bookCode,
   chapterNumber,
 }: ResourcesTabProps) {
@@ -81,10 +81,12 @@ export function ResourcesTab({
   const scrollRef = useRef<ScrollView>(null);
   const scrollOffsetRef = useRef(0);
 
-  const resources = useMemo(
-    () => getMockResourcesForUnit(chapterId, selectedVerse, chapterName),
-    [chapterId, selectedVerse, chapterName],
-  );
+  const resources = useUnitResourcesAvailability({
+    projectId,
+    userId,
+    chapterName,
+    verseNumber: selectedVerse,
+  });
 
   const { state: notesState, retry: retryNotes } = useTranslationNotesForUnit({
     bookCode,
@@ -92,16 +94,6 @@ export function ResourcesTab({
     verseNumber: selectedVerse,
   });
 
-  // Live Aquifer TN (#189): show while loading/error, or when notes exist.
-  // Do not gate on #188 mock emptiness alone — verse % 3 === 0 still loads Aquifer.
-  // Guard notesState so a stale HMR/partial hook result cannot crash on `.status`.
-  const showTranslationNotes =
-    notesState !== undefined &&
-    (notesState.status === 'loading' ||
-      notesState.status === 'error' ||
-      (notesState.status === 'ready' && notesState.notes.length > 0));
-
-  // Lifted so we can hide the accordion when Aquifer returns 0 items (#191 AC).
   const { state: imagesMapsState, retry: retryImagesMaps } =
     useImagesMapsForUnit({
       bookCode,
@@ -160,9 +152,10 @@ export function ResourcesTab({
   );
 
   const visibleSections = SECTION_META.filter(section => {
-    if (section.id === 'translationNotes') {
-      return showTranslationNotes;
+    if (!resources.sections.includes(section.id)) {
+      return false;
     }
+    // Hide Images & Maps only when load finished with nothing to show.
     if (
       section.id === 'imagesMaps' &&
       imagesMapsState.status === 'ready' &&
@@ -170,8 +163,7 @@ export function ResourcesTab({
     ) {
       return false;
     }
-    // TQ stays on the #188 mock shell gate; Images stay visible while loading/error.
-    return resources.sections.includes(section.id);
+    return true;
   });
 
   if (visibleSections.length === 0) {
