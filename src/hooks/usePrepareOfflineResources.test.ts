@@ -194,6 +194,56 @@ describe('usePrepareOfflineResources', () => {
     ).toBe(true);
   });
 
+  it('resets deselected items when account changes on the same project', async () => {
+    setPrepareOfflineMockInventoryScenario('fresh');
+
+    const { result, rerender } = renderHook(
+      (props: UsePrepareOfflineResourcesInput) =>
+        usePrepareOfflineResources(props),
+      {
+        initialProps: {
+          projectId: 1,
+          userId: 42,
+          chapters: [chapter(1)],
+          selectedIds: new Set([1]),
+          selectedCount: 1,
+          isAssignedUser: true,
+        },
+      },
+    );
+
+    await waitForCatalogItems(result);
+
+    act(() => {
+      result.current.toggleItemSelected(
+        scopedPrepareOfflineResourceId(1, 3, 'Bible Commentary', 'text'),
+      );
+    });
+
+    expect(
+      result.current.isItemSelected(
+        scopedPrepareOfflineResourceId(1, 3, 'Bible Commentary', 'text'),
+      ),
+    ).toBe(false);
+
+    rerender({
+      projectId: 1,
+      userId: 99,
+      chapters: [chapter(1)],
+      selectedIds: new Set([1]),
+      selectedCount: 1,
+      isAssignedUser: true,
+    });
+
+    await waitForCatalogItems(result);
+
+    expect(
+      result.current.isItemSelected(
+        scopedPrepareOfflineResourceId(1, 3, 'Bible Commentary', 'text'),
+      ),
+    ).toBe(true);
+  });
+
   it('preserves completed inventory after Prepare Offline remount', async () => {
     setPrepareOfflineMockInventoryScenario('fresh');
     const notesId = 'tier-1-translation-notes-text';

@@ -44,9 +44,10 @@ export function usePrepareOfflineResources({
   const sessionKey =
     projectId !== null ? `${projectId}:${userId ?? 'none'}` : null;
 
-  // Reset package UI state when project/user changes or the screen remounts.
-  // Do not clear mock/on-device inventory here — remounting Prepare Offline was
-  // wiping completed downloads and leaving Resources empty (#305 QA).
+  // Reset package UI state when project or account changes (sessionKey includes
+  // userId). Do not clear mock/on-device inventory here — remounting Prepare
+  // Offline was wiping completed downloads and leaving Resources empty (#305 QA).
+  // Durable Resources gating uses download_queue keyed by projectId+userId.
   useEffect(() => {
     if (sessionKeyRef.current !== sessionKey) {
       setDeselectedItemIds(getDefaultPackageDeselects());

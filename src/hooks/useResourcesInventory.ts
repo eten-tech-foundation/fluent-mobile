@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   getDownloadedResourceSections,
   getResourcesInventoryStatus,
@@ -9,10 +9,24 @@ import { ResourceSectionId } from '../types/resources/types';
 
 const NO_SECTIONS: ResourceSectionId[] = [];
 
+function inventoryIdentityKey(
+  projectId: number | null,
+  userId: number | null,
+): string | null {
+  if (projectId === null || userId === null) {
+    return null;
+  }
+  return `${projectId}:${userId}`;
+}
+
 /**
  * Subscribe to Prepare Offline inventory for Resources gating (#192).
  * Does not fetch manifests or call Aquifer — local status and persisted
  * `download_queue` completions only.
+ *
+ * Section availability is bound to the active project + account. On identity
+ * change, previously loaded sections are cleared until the matching lookup
+ * resolves so a same-device account switch cannot leak the prior user's gates.
  */
 export function useResourcesInventory(
   projectId: number | null,
@@ -21,6 +35,9 @@ export function useResourcesInventory(
   const [inventoryVersion, setInventoryVersion] = useState(0);
   const [downloadedSections, setDownloadedSections] =
     useState<ResourceSectionId[]>(NO_SECTIONS);
+  const identityKeyRef = useRef<string | null>(
+    inventoryIdentityKey(projectId, userId),
+  );
 
   useEffect(() => {
     return subscribeResourcesInventory(() => {
@@ -29,14 +46,24 @@ export function useResourcesInventory(
   }, []);
 
   useEffect(() => {
-    if (projectId === null || userId === null) {
+    const nextKey = inventoryIdentityKey(projectId, userId);
+
+    if (nextKey === null) {
+      identityKeyRef.current = null;
       setDownloadedSections(NO_SECTIONS);
       return;
     }
 
+    // Drop prior identity's sections immediately; do not wait for the new
+    // download_queue lookup (avoids cross-account / cross-project bleed).
+    if (identityKeyRef.current !== nextKey) {
+      identityKeyRef.current = nextKey;
+      setDownloadedSections(NO_SECTIONS);
+    }
+
     let active = true;
-    void getDownloadedResourceSections(projectId, userId).then(sections => {
-      if (active) {
+    void getDownloadedResourceSections(projectId!, userId!).then(sections => {
+      if (active && identityKeyRef.current === nextKey) {
         setDownloadedSections(sections);
       }
     });
