@@ -80,6 +80,20 @@ describe('hasRefsIssueLink', () => {
   });
 });
 
+describe('hasRefsNoneWaiver', () => {
+  const { hasRefsNoneWaiver } = require('./validate-pr-body.cjs');
+
+  it('matches Refs: none on its own line', () => {
+    expect(hasRefsNoneWaiver('Refs: none\n')).toBe(true);
+    expect(hasRefsNoneWaiver('Refs none')).toBe(true);
+  });
+
+  it('does not match Refs #NNN or Refs: none of these', () => {
+    expect(hasRefsNoneWaiver('Refs #317')).toBe(false);
+    expect(hasRefsNoneWaiver('Refs: none of these')).toBe(false);
+  });
+});
+
 describe('extractSection / stripCodeRabbitSummary', () => {
   it('extracts TLDR prose', () => {
     expect(extractSection(FILLED_BODY, 'TLDR')).toMatch(/Cross-account/);
@@ -157,5 +171,40 @@ Refs #317
     expect(result.errors.some((e) => /TLDR/i.test(e))).toBe(true);
     expect(result.errors.some((e) => /Refs/i.test(e))).toBe(true);
     expect(result.errors.some((e) => /How to verify/i.test(e))).toBe(true);
+  });
+
+  it('passes Refs: none for explicit no-ticket chore PRs', () => {
+    const body = `### TLDR
+
+Post-merge QA handoff: merge on engineer approval; QA tests nightly.
+
+### Details
+
+Refs: none
+
+Process-only chore — no Project 4 ticket.
+
+**Needs QA?**
+
+- [x] No — engineering-only (docs, CI, refactor, logging, etc.)
+- [ ] Yes — see Needs QA? in \`docs/guides/qa-process.md\`
+
+**Type of change:**
+
+- [x] Maintenance / refactor
+
+### How to verify
+
+1. npm run format:check && npm run lint && npm run typecheck && npm test -- --ci
+
+**Expected:** CI green; QA handoff script unit tests pass.
+
+### Follow-ups
+
+- None
+`;
+    expect(validatePrBody({ body, author: 'mattrace-gloo' })).toEqual({
+      ok: true,
+    });
   });
 });

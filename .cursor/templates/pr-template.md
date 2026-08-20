@@ -4,23 +4,22 @@
 
 ### Reviewer checklist
 
-- [ ] GitHub issue linked in Details (`Refs #NNN` — do **not** use `Closes` / `Fixes` / `Resolves`)
+- [ ] GitHub issue linked in Details (`Refs #NNN` — do **not** use `Closes` / `Fixes` / `Resolves`; use `Refs: none` only for explicit no-ticket chores)
 - [ ] How to verify steps completed or valid waiver noted below
 - [ ] Acceptance criteria met, **or** unmet AC waived **in the issue** with linked follow-up (see `AGENTS.md`)
 - [ ] Scope limited to this issue — no adjacent tickets implemented/stubbed without approval
-- [ ] **Needs QA?** decided (see `docs/guides/qa-process.md`) — if yes: `preview-build` label added
-- [ ] If QA-required: QA passed **this PR’s** preview build before merge (do **not** check until QA confirms; this is the device-QA gate when Needs QA? is Yes)
+- [ ] **Needs QA?** decided (see `docs/guides/qa-process.md`)
 
 ### Details
 
-Refs #<!-- issue number this PR implements -->
+Refs #<!-- issue number this PR implements — or `Refs: none` for no-ticket chores -->
 
 <!-- Short summary. For fixes: root cause + solution. -->
 
 **Needs QA?**
 
 - [ ] No — engineering-only (docs, CI, refactor, logging, etc.)
-- [ ] Yes — see Needs QA? in `docs/guides/qa-process.md` (`preview-build` required)
+- [ ] Yes — post-merge nightly QA (see `docs/guides/qa-process.md`)
 
 **Type of change:**
 
@@ -49,6 +48,4 @@ Refs #<!-- issue number this PR implements -->
 
 ### Follow-ups
 
-<!-- Deferred AC must link follow-up issues (ticket-level waiver; see AGENTS.md). -->
-
-- [ ] <!-- e.g. #NNN — deferred AC description -->
+<!-- Deferred AC → linked issues; otherwise "None". -->
