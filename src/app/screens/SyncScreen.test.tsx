@@ -8,6 +8,7 @@ import {
 import SyncScreen from './SyncScreen';
 
 const mockGoBack = jest.fn();
+const mockPush = jest.fn();
 const mockTriggerSync = jest.fn();
 const mockPauseUploadSession = jest.fn();
 const mockCancelUploadSession = jest.fn();
@@ -21,10 +22,10 @@ const mockCancel = jest.fn();
 const mockResumeUploads = jest.fn();
 const mockSyncNowFromHook = jest.fn();
 
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({
-    goBack: mockGoBack,
-    navigate: jest.fn(),
+jest.mock('expo-router', () => ({
+  useRouter: () => ({
+    back: mockGoBack,
+    push: mockPush,
   }),
 }));
 

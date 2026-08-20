@@ -51,11 +51,11 @@ Monitor:
 Add the **`preview-build`** label to a pull request. GitHub Actions (`.github/workflows/preview-build.yml`) will:
 
 - Start a **fresh Android `preview` internal APK** for that PR commit (binary only — no `eas update` / shared OTA channel)
-- Post the same install comment on the **PR and linked issue**; best-effort move Project 4 Status to **`In QA`** (from `In PR Review` / `In Progress (Dev)`). Optional secret: `PROJECT_BOARD_TOKEN`.
+- Post the same install comment on the **PR and linked issue**; best-effort move Project 4 Status to **`In QA`** (from `In PR Review` / `In Progress (Dev)`) **before merge**. Optional secret: `PROJECT_BOARD_TOKEN`.
 
-Each labeled PR forces a new build so multiple QA APKs can exist at once. Preview profile has Expo Updates **disabled** (same idea as nightly).
+Each labeled PR forces a new build so multiple QA APKs can exist at once. Preview profile has Expo Updates **disabled** (same idea as nightly). Re-request after fixes: remove and re-add the label. **QA-required PRs are not mergeable until QA passes that preview** — [docs/guides/qa-process.md](../docs/guides/qa-process.md).
 
-**QA testers:** [`docs/guides/qa-preview-testing.md`](../docs/guides/qa-preview-testing.md)
+**Install how-to:** [`docs/guides/qa-preview-testing.md`](../docs/guides/qa-preview-testing.md)
 
 Uses the latest git tag for runtime version when available; otherwise falls back to `app.config.ts` / `package.json` version (no tag required for first preview). Requires `EXPO_TOKEN` in GitHub Actions secrets.
 

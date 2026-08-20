@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -18,26 +18,35 @@ import { PROJECT_CHAPTERS_EMPTY_MESSAGE } from '../../constants/messages';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
 import { useProjectChapters } from '../../hooks/useProjectChapters';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
+import { hrefs } from '../../navigation/hrefs';
+import {
+  parseRequiredNumber,
+  parseRequiredString,
+} from '../../navigation/routeParams';
 import { theme } from '../../theme';
 import { ProjectChapter } from '../../types/db/types';
-import { RootStackParamList } from '../../types/navigation/types';
-
-type Nav = StackNavigationProp<RootStackParamList, 'Chapters'>;
-type Route = RouteProp<RootStackParamList, 'Chapters'>;
 
 export default function ViewProject() {
-  const navigation = useNavigation<Nav>();
-  const { projectId, projectName, language } = useRoute<Route>().params;
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const rawParams = useLocalSearchParams<{
+    projectId?: string;
+    projectName?: string;
+    language?: string;
+  }>();
+  const projectId = parseRequiredNumber(rawParams.projectId, 'projectId');
+  const projectName = parseRequiredString(rawParams.projectName, 'projectName');
+  const language = parseRequiredString(rawParams.language, 'language');
   const { chapters, loading, refreshing, error, refresh, retry, reload } =
     useProjectChapters(projectId);
 
   const isSyncing = useGlobalSyncStatus(reload);
   const { status: syncStatus } = useSyncStatus({ isSyncing });
-  const goBack = useCallback(() => navigation.goBack(), [navigation]);
+  const goBack = useCallback(() => router.back(), [router]);
 
   const handleSyncPress = useCallback(() => {
-    navigation.navigate('Sync');
-  }, [navigation]);
+    router.push(hrefs.sync);
+  }, [router]);
 
   const renderChapter: ListRenderItem<ProjectChapter> = useCallback(
     ({ item }) => (
@@ -45,16 +54,18 @@ export default function ViewProject() {
         chapter={item}
         isSyncing={isSyncing}
         onPress={() =>
-          navigation.navigate('VerseDetail', {
-            chapterId: item.id,
-            chapterName: item.displayLabel,
-            projectName,
-            language,
-          })
+          router.push(
+            hrefs.verseDetail({
+              chapterId: item.id,
+              chapterName: item.displayLabel,
+              projectName,
+              language,
+            }),
+          )
         }
       />
     ),
-    [navigation, projectName, language, isSyncing],
+    [router, projectName, language, isSyncing],
   );
 
   const header = (
@@ -97,7 +108,10 @@ export default function ViewProject() {
           <FlatList
             data={chapters}
             keyExtractor={item => String(item.id)}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingBottom: theme.spacing.lg + insets.bottom },
+            ]}
             refreshing={refreshing}
             onRefresh={refresh}
             renderItem={renderChapter}
@@ -108,7 +122,7 @@ export default function ViewProject() {
   }
 
   return (
-    <ScreenContainer edges={['bottom']}>
+    <ScreenContainer>
       <View style={styles.screen}>{body}</View>
     </ScreenContainer>
   );

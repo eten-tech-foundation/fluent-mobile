@@ -16,7 +16,7 @@ The [repo Issues list](https://github.com/eten-tech-foundation/fluent-mobile/iss
 
 `Backlog` · `In Progress (Product)` · `Product Ready` · `Sprint Shaping` · `Dev Ready` · `In Progress (Dev)` · `In PR Review` · `In QA` · `Passed QA` · `To Deploy` · `Done`
 
-For open PRs awaiting review, prefer **`In PR Review`**. After merge (or when ready for QA), set **`In QA`**. Set **`Done`** only after QA completes — never auto-close issues on PR merge.
+For open PRs awaiting review, prefer **`In PR Review`**. For **QA-required** PRs, add `preview-build` and move to **`In QA` before merge** (preview automation does this when possible); humans set **`Passed QA`**, then merge. Engineering-only PRs skip that gate. Set **`Done`** only after QA/release completes — never auto-close issues on PR merge. Canonical process: [guides/qa-process.md](guides/qa-process.md).
 
 Do **not** use org Project 7 (“Fluent Mobile App”) as the primary tracker unless the team explicitly migrates.
 
@@ -59,29 +59,42 @@ Examples:
 | `issue-number` | GitHub issue number (digits only in the branch segment) |
 | `slug` | 3–6 meaningful words from the issue title |
 
-See [`.cursor/commands/create-pr-branch.md`](../.cursor/commands/create-pr-branch.md).
+See [`.claude/commands/create-pr-branch.md`](../.claude/commands/create-pr-branch.md) (Cursor shim: `/create-pr-branch`). For the full issue → implement → PR loop, use `/start-issue`.
 
 ## Pull requests
 
 - **Base branch:** `main`
-- **Title:** `[#NNN]: Short description` (or `#NNN: Short description`) — match existing PR style in this repo
-- **Body:** **required** — fill [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md) / [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md) (same content: TLDR, Reviewer checklist, Details, Technical changes, Testing, How to verify, Follow-ups). The **`PR Description`** check fails empty / CodeRabbit-only bodies. Prefer `/generate-pr-description` or `/create-pr`. Do not ship a short Summary/Test plan substitute.
+- **Title:** `[#NNN]: Short description`
+- **Body:** **required** — fill [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md) / [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md) (same content: TLDR, Reviewer checklist, Details, Technical changes, Testing, How to verify, Follow-ups). The **`PR Description`** check fails empty / CodeRabbit-only bodies. Prefer `/start-issue` (full loop) or `/generate-pr-description` / `/create-pr` (`/open-pr` is an alias). Do not ship a short Summary/Test plan substitute.
   - Under Details: `Refs #NNN` on its own line (links the issue without closing it)
   - Do **not** use GitHub closing keywords (`Closes`, `Fixes`, `Resolves`) — merged PRs must not auto-close issues
   - **Assignee:** agents must assign the PR to the author (`--assignee @me`)
   - **Development sidebar:** closing keywords are the only API-friendly way to auto-populate GitHub’s “linked issues” widget; we refuse those keywords, so link `#NNN` manually in the PR sidebar when the widget is empty (or ask a human). `Refs #NNN` still cross-references the issue in timelines.
   - For related / stacked work that is not the full ticket, say “Part of #NNN” in prose, or link manually in the PR sidebar
 - After opening a PR, set Project 4 Status to **`In PR Review`** (if not already)
-- After merge (or when ready for QA), set Project 4 Status to **`In QA`** — leave the GitHub issue **open**
+- If the PR **Needs QA** ([guides/qa-process.md](guides/qa-process.md)): add `preview-build`; Status → **`In QA`** when the preview is ready (**pre-merge**). Do **not** merge until QA passes that PR’s preview (`Passed QA`). Leave the GitHub issue **open**
+- Engineering-only PRs: merge after review + CI; no preview/QA gate
 - **Template source of truth:** [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md) — also required by [delivery.mdc](../.cursor/rules/delivery.mdc); generate with `/generate-pr-description` or `/create-pr`
+
+### Agent command: `/start-issue`
+
+End-to-end agent loop for one issue (Cursor `/` palette or “run `/start-issue NNN`”):
+
+1. Claim the GitHub issue (assign `@me`; add to Project 4 if missing)
+2. Set Status to **`In Progress (Dev)`** (never Product-owned columns — see [guides/project-board.md](guides/project-board.md))
+3. Cut `{author}/{type}/{NNN}-{slug}` from `main` (reuses `/create-pr-branch` naming)
+4. Plan-gate when scope is large/ambiguous, then implement to AC
+5. Chain `/create-pr`: draft PR, `Refs #NNN`, **In PR Review**, watch CI to green
+
+Canonical instructions: [`.claude/commands/start-issue.md`](../.claude/commands/start-issue.md). Delivery-only (commits already on a branch): `/create-pr` / `/open-pr`.
 
 ### Linking without auto-close
 
 Use `Refs #NNN` (or sidebar linking) so GitHub [does not auto-close](https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue) the issue on merge.
 
-Never use `Closes`, `Fixes`, or `Resolves` in PR bodies for ticketed work. Issues stay open until QA finishes; humans set **`Done`** (and may close the issue) after **Passed QA** / release process — not on merge alone.
+Never use `Closes`, `Fixes`, or `Resolves` in PR bodies for ticketed work. Issues stay open until QA finishes; humans set **`Done`** (and may close the issue) after **Passed QA** / release process — not on merge alone. **QA-required PRs are not mergeable until QA passes that PR’s preview build** ([guides/qa-process.md](guides/qa-process.md)).
 
-Put `Refs #NNN` on its **own line** under Details (see the PR template). Preview-build notification ([`.github/scripts/preview-notify-linked-issues.cjs`](../.github/scripts/preview-notify-linked-issues.cjs)) treats that form as the linked ticket for install comments and Project 4 → **In QA**. `Part of #NNN` is ignored by that script (stacked/partial work stays out of automatic QA handoff).
+Put `Refs #NNN` on its **own line** under Details (see the PR template). Preview-build notification ([`.github/scripts/preview-notify-linked-issues.cjs`](../.github/scripts/preview-notify-linked-issues.cjs)) treats that form as the linked ticket for install comments and Project 4 → **In QA** (pre-merge for QA-required work). `Part of #NNN` is ignored by that script (stacked/partial work stays out of automatic QA handoff).
 
 ## Agents / delivery
 
@@ -89,9 +102,12 @@ Put `Refs #NNN` on its **own line** under Details (see the PR template). Preview
 - Done means acceptance criteria, not green CI alone ([AGENTS.md](../AGENTS.md))
 - Triage and column moves: Project 4 Fluent Mobile Board — not the bare Issues index
 - Dependabot PRs: follow [guides/dependabot-process.md](guides/dependabot-process.md)
+- QA process / merge gate: [guides/qa-process.md](guides/qa-process.md)
 
 ## Related
 
+- [guides/qa-process.md](guides/qa-process.md) — Needs QA?, preview loop, pre-merge merge gate
+- [guides/qa-preview-testing.md](guides/qa-preview-testing.md) — install/how-to for PR previews
 - [guides/project-board.md](guides/project-board.md) — board mutation hard rules for agents
 - [guides/expo-first-dependencies.md](guides/expo-first-dependencies.md) — prefer Expo packages
 - [docs/ci.md](ci.md) — CI workflows and required-check guardrails

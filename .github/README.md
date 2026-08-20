@@ -38,11 +38,15 @@ See [`.eas/README.md`](../.eas/README.md) for Expo GitHub app and Play Store set
 
 ## PR preview (QA)
 
+Canonical process (Needs QA?, pass/fail, **pre-merge** merge gate): [`docs/guides/qa-process.md`](../docs/guides/qa-process.md).
+
 1. Create a `preview-build` label on the repo (if missing).
 2. Add the label to a PR when ready for QA (PR should reference its ticket with `Refs #NNN` on its own Details line — not `Part of #NNN`).
-3. Workflow starts a **fresh Android preview APK** (binary only — no OTA / `eas update`), posts the same install comment on the **PR** and each **linked GitHub issue** (`Refs` / legacy closing keywords via [`.github/scripts/preview-notify-linked-issues.cjs`](scripts/preview-notify-linked-issues.cjs)), and best-effort moves Project 4 cards from `In PR Review` / `In Progress (Dev)` → **`In QA`**.
+3. Workflow starts a **fresh Android preview APK** (binary only — no OTA / `eas update`), posts the same install comment on the **PR** and each **linked GitHub issue** (`Refs` / legacy closing keywords via [`.github/scripts/preview-notify-linked-issues.cjs`](scripts/preview-notify-linked-issues.cjs)), and best-effort moves Project 4 cards from `In PR Review` / `In Progress (Dev)` → **`In QA`** (**before merge**).
+4. **Re-request after fixes:** remove the `preview-build` label, then re-add it (workflow triggers on `labeled` only; always `FORCE_NEW_BUILD`).
+5. **Merge gate:** QA-required PRs are not mergeable until QA passes that PR’s preview — currently **manual** (no required status check yet).
 
-**QA guide (non-technical):** [`docs/guides/qa-preview-testing.md`](../docs/guides/qa-preview-testing.md)
+**Install guide (non-technical):** [`docs/guides/qa-preview-testing.md`](../docs/guides/qa-preview-testing.md)
 
 Requires `EXPO_TOKEN` in repository secrets. Optional: `PROJECT_BOARD_TOKEN` (PAT with org **project** write) so Status updates on Project 4 succeed — without it, issue comments still post but the board move may be skipped. Each labeled PR forces a new EAS build (`FORCE_NEW_BUILD`) so concurrent QA previews are not collapsed by fingerprint reuse. `eas.json` profile `preview` is internal distribution with Expo Updates **disabled** (same idea as nightly). `EAS_USE_CACHE` (ccache) stays enabled on non-production profiles.
 
