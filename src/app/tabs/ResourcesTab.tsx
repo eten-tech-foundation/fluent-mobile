@@ -27,6 +27,7 @@ import { useTranslationNotesForUnit } from '../../hooks/useTranslationNotesForUn
 import { ResourceSectionId } from '../../types/resources/types';
 import { getMockResourcesForUnit } from './resources/mockResourceData';
 import { TranslationNotesSectionHost } from './resources/TranslationNotesSectionHost';
+import { TranslationQuestionsSection } from './resources/TranslationQuestionsSection';
 import {
   getResourcesTabUiState,
   setResourcesTabUiState,
@@ -65,7 +66,8 @@ const SECTION_META: {
 
 /**
  * Resources tab host (#188): unit-synced shell, empty state, accordion slots.
- * Translation Notes body: #189 (live Aquifer). Questions / Images stubs until #190 / #191.
+ * Translation Notes (#189) and Translation Questions (#190) are Aquifer-backed.
+ * Images stub remains until #191.
  */
 export function ResourcesTab({
   chapterId,
@@ -151,7 +153,7 @@ export function ResourcesTab({
     if (section.id === 'translationNotes') {
       return showTranslationNotes;
     }
-    // TQ / Images stay on the #188 mock shell until #190 / #191.
+    // TQ / Images stay on the #188 mock shell until #191 (Images) or mock TQ gate.
     return resources.sections.includes(section.id);
   });
 
@@ -203,6 +205,13 @@ export function ResourcesTab({
                   bookCode={bookCode}
                   chapterNumber={chapterNumber}
                   verseNumber={selectedVerse}
+                />
+              ) : id === 'translationQuestions' ? (
+                <TranslationQuestionsSection
+                  bookCode={bookCode}
+                  chapterNumber={chapterNumber}
+                  verseNumber={selectedVerse}
+                  sectionExpanded={expanded}
                 />
               ) : (
                 <Text style={styles.stubBody}>

@@ -15,11 +15,24 @@ import {
 import { RESOURCES_EMPTY_MESSAGE } from '../../constants/messages';
 import { clearResourcesTabUiState } from '../../utils/resourcesTabUiState';
 import { VerseData } from '../../types/db/types';
+import { getMockTranslationQuestions } from '../../mocks/resources/translationQuestionsMock';
+import {
+  loadTranslationQuestionsForUnit,
+  setTranslationQuestionsLoadFailureForTests,
+} from '../../services/translationQuestions';
 import {
   loadTranslationNotesForUnit,
   setTranslationNotesLoadFailureForTests,
 } from '../../services/translationNotes';
 import { getMockTranslationNotes } from '../../mocks/resources/translationNotesMock';
+
+jest.mock('../../services/translationQuestions', () => {
+  const actual = jest.requireActual('../../services/translationQuestions');
+  return {
+    ...actual,
+    loadTranslationQuestionsForUnit: jest.fn(),
+  };
+});
 
 jest.mock('../../services/translationNotes', () => {
   const actual = jest.requireActual('../../services/translationNotes');
@@ -29,9 +42,13 @@ jest.mock('../../services/translationNotes', () => {
   };
 });
 
-const mockLoad = loadTranslationNotesForUnit as jest.MockedFunction<
+const mockLoadNotes = loadTranslationNotesForUnit as jest.MockedFunction<
   typeof loadTranslationNotesForUnit
 >;
+const mockLoadQuestions =
+  loadTranslationQuestionsForUnit as jest.MockedFunction<
+    typeof loadTranslationQuestionsForUnit
+  >;
 
 const verses: VerseData[] = [1, 2, 3].map(verseNumber => ({
   bibleId: 1,
@@ -86,18 +103,25 @@ function renderResources(initialVerse: number) {
 describe('ResourcesTab', () => {
   beforeEach(() => {
     clearResourcesTabUiState();
+    setTranslationQuestionsLoadFailureForTests(false);
     setTranslationNotesLoadFailureForTests(false);
-    mockLoad.mockImplementation(async ({ verseNumber }) =>
+    mockLoadNotes.mockImplementation(async ({ verseNumber }) =>
       getMockTranslationNotes(99, verseNumber),
+    );
+    mockLoadQuestions.mockImplementation(async ({ verseNumber }) =>
+      getMockTranslationQuestions(99, verseNumber),
     );
   });
 
   afterEach(() => {
-    mockLoad.mockReset();
+    setTranslationQuestionsLoadFailureForTests(false);
+    setTranslationNotesLoadFailureForTests(false);
+    mockLoadNotes.mockReset();
+    mockLoadQuestions.mockReset();
   });
 
   it('shows the empty message when the unit has no resources', async () => {
-    mockLoad.mockResolvedValue([]);
+    mockLoadNotes.mockResolvedValue([]);
     renderResources(3);
     await waitFor(() => {
       expect(screen.getByText(RESOURCES_EMPTY_MESSAGE)).toBeTruthy();
@@ -106,7 +130,7 @@ describe('ResourcesTab', () => {
   });
 
   it('shows live Translation Notes even when mock shell is empty', async () => {
-    mockLoad.mockResolvedValue(getMockTranslationNotes(99, 1));
+    mockLoadNotes.mockResolvedValue(getMockTranslationNotes(99, 1));
     renderResources(3);
 
     await waitFor(() => {
@@ -116,13 +140,20 @@ describe('ResourcesTab', () => {
     expect(screen.queryByText('Translation Questions')).toBeNull();
   });
 
-  it('shows Translation Notes at the top when items exist', async () => {
+  it('shows Translation Notes and Questions when items exist', async () => {
     renderResources(2);
     expect(screen.getByText('Mark 14:2')).toBeTruthy();
     expect(screen.getByText('Translation Notes')).toBeTruthy();
     expect(screen.getByText('Translation Questions')).toBeTruthy();
     expect(screen.getByText('Images & Maps')).toBeTruthy();
     expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
+
+    const notes = screen.getByTestId('resources-section-translationNotes');
+    const questions = screen.getByTestId(
+      'resources-section-translationQuestions',
+    );
+    expect(notes).toBeTruthy();
+    expect(questions).toBeTruthy();
 
     fireEvent.press(
       screen.getByTestId('resources-section-translationNotes-toggle'),
@@ -133,8 +164,14 @@ describe('ResourcesTab', () => {
     expect(screen.getByText('connecting word')).toBeTruthy();
   });
 
+  it('hides Translation Questions when none are available for the unit', () => {
+    renderResources(1);
+    expect(screen.getByText('Translation Notes')).toBeTruthy();
+    expect(screen.queryByText('Translation Questions')).toBeNull();
+  });
+
   it('hides Translation Notes when Aquifer returns no notes', async () => {
-    mockLoad.mockResolvedValue([]);
+    mockLoadNotes.mockResolvedValue([]);
     renderResources(1);
 
     await waitFor(() => {
@@ -186,7 +223,7 @@ describe('ResourcesTab', () => {
   });
 
   it('keeps Questions and Images visible when Notes load fails', async () => {
-    mockLoad.mockRejectedValue(new Error('boom'));
+    mockLoadNotes.mockRejectedValue(new Error('boom'));
     renderResources(2);
 
     expect(screen.getByText('Translation Notes')).toBeTruthy();
@@ -204,13 +241,62 @@ describe('ResourcesTab', () => {
     expect(screen.getByText('Translation Questions')).toBeTruthy();
     expect(screen.getByText('Images & Maps')).toBeTruthy();
 
-    mockLoad.mockResolvedValue(getMockTranslationNotes(99, 2));
+    mockLoadNotes.mockResolvedValue(getMockTranslationNotes(99, 2));
     await act(async () => {
       fireEvent.press(screen.getByTestId('translation-notes-retry'));
     });
 
     await waitFor(() => {
       expect(screen.getByTestId('translation-notes-list')).toBeTruthy();
+    });
+  });
+
+  it('keeps TQ collapsed by default and reveals questions only after expand', async () => {
+    renderResources(2);
+
+    expect(screen.queryByTestId('translation-questions-list')).toBeNull();
+
+    fireEvent.press(
+      screen.getByTestId('resources-section-translationQuestions-toggle'),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('translation-questions-list')).toBeTruthy();
+    });
+    expect(screen.getByText('What is happening in this verse?')).toBeTruthy();
+    expect(
+      screen.queryByText(
+        'The passage describes the events surrounding this verse so the translator can check key meaning.',
+      ),
+    ).toBeNull();
+  });
+
+  it('keeps Notes and Images visible when TQ load fails', async () => {
+    mockLoadQuestions.mockRejectedValue(new Error('boom'));
+    renderResources(2);
+
+    expect(screen.getByText('Translation Notes')).toBeTruthy();
+    expect(screen.getByText('Images & Maps')).toBeTruthy();
+    expect(screen.getByText('Translation Questions')).toBeTruthy();
+
+    fireEvent.press(
+      screen.getByTestId('resources-section-translationQuestions-toggle'),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('translation-questions-error')).toBeTruthy();
+    });
+
+    expect(screen.getByText('Translation Notes')).toBeTruthy();
+    expect(screen.getByText('Images & Maps')).toBeTruthy();
+
+    mockLoadQuestions.mockResolvedValue(getMockTranslationQuestions(99, 2));
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('translation-questions-retry'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('translation-questions-list')).toBeTruthy();
     });
   });
 });
