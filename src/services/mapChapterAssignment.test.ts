@@ -68,4 +68,31 @@ describe('mapApiChapterAssignment', () => {
     expect(mapped.assignedUserId).toBe(241);
     expect(mapped.peerCheckerId).toBe(99);
   });
+
+  it('maps snake_case project_id when camelCase is absent', () => {
+    const mapped = mapApiChapterAssignment({
+      chapterAssignmentId: 13,
+      projectUnitId: 2,
+      bibleId: 4,
+      bookId: 12,
+      chapterNumber: 1,
+      status: 'not_started',
+      project_id: 42,
+    } as unknown as Parameters<typeof mapApiChapterAssignment>[0]);
+
+    expect(mapped.projectId).toBe(42);
+  });
+
+  it('defaults projectId to 0 when camelCase and snake_case are absent', () => {
+    const mapped = mapApiChapterAssignment({
+      chapterAssignmentId: 14,
+      projectUnitId: 2,
+      bibleId: 4,
+      bookId: 12,
+      chapterNumber: 1,
+      status: 'not_started',
+    } as unknown as Parameters<typeof mapApiChapterAssignment>[0]);
+
+    expect(mapped.projectId).toBe(0);
+  });
 });

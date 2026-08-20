@@ -8,6 +8,8 @@ config.transformer = {
   // Required for react-native-worklets / Reanimated 4 on Expo.
   // Default inlineRequires:false breaks Worklets init (installUnpackers
   // reads __initData.code of undefined → redbox at startup).
+  // Also reduces eager require of Resources section bodies (helps avoid
+  // stale HMR "unknown module" crashes on named exports).
   // See https://docs.swmansion.com/react-native-worklets/docs/guides/troubleshooting
   getTransformOptions: async () => ({
     transform: {

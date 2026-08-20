@@ -94,4 +94,36 @@ describe('AquiferAPI', () => {
     expect(url).toContain('BookCode=GEN');
     expect(url).toContain('shouldReturnAudioData=true');
   });
+
+  it('throws ApiError instead of crashing when fetch resolves undefined', async () => {
+    fetchMock.mockResolvedValue(undefined);
+
+    await expect(AquiferAPI.getLanguages()).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 0,
+      message: expect.stringMatching(/no response/i),
+    });
+  });
+
+  it('throws ApiError with HTTP status when Aquifer returns an error response', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 401,
+      text: async () => JSON.stringify({ message: 'Invalid api-key' }),
+    });
+
+    await expect(
+      AquiferAPI.searchResources({
+        bookCode: 'MRK',
+        startChapter: 1,
+        endChapter: 1,
+        languageCode: 'eng',
+        resourceCollectionCode: 'UWTranslationNotes',
+      }),
+    ).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 401,
+      message: 'Invalid api-key',
+    });
+  });
 });

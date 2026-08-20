@@ -23,12 +23,12 @@ import { useDraftingContext } from '../context/DraftingContext';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ResourceSectionAccordion } from '../../components/ui/ResourceSectionAccordion';
 import { RESOURCES_EMPTY_MESSAGE } from '../../constants/messages';
+import { useTranslationNotesForUnit } from '../../hooks/useTranslationNotesForUnit';
 import { ResourceSectionId } from '../../types/resources/types';
-import {
-  getMockResourcesForUnit,
-  unitHasAnyResources,
-} from './resources/mockResourceData';
+import { getMockResourcesForUnit } from './resources/mockResourceData';
 import { ImagesMapsSectionHost } from './resources/ImagesMapsSectionHost';
+import { TranslationNotesSectionHost } from './resources/TranslationNotesSectionHost';
+import { TranslationQuestionsSection } from './resources/TranslationQuestionsSection';
 import { useImagesMapsForUnit } from '../../hooks/useImagesMapsForUnit';
 import {
   getResourcesTabUiState,
@@ -68,7 +68,8 @@ const SECTION_META: {
 
 /**
  * Resources tab host (#188): unit-synced shell, empty state, accordion slots.
- * Images & Maps body: #191 (live Aquifer). Notes / Questions stubs remain until #189 / #190.
+ * Translation Notes (#189), Translation Questions (#190), and Images & Maps (#191)
+ * are Aquifer-backed.
  */
 export function ResourcesTab({
   chapterId,
@@ -84,7 +85,21 @@ export function ResourcesTab({
     () => getMockResourcesForUnit(chapterId, selectedVerse, chapterName),
     [chapterId, selectedVerse, chapterName],
   );
-  const hasContent = unitHasAnyResources(resources);
+
+  const { state: notesState, retry: retryNotes } = useTranslationNotesForUnit({
+    bookCode,
+    chapterNumber,
+    verseNumber: selectedVerse,
+  });
+
+  // Live Aquifer TN (#189): show while loading/error, or when notes exist.
+  // Do not gate on #188 mock emptiness alone — verse % 3 === 0 still loads Aquifer.
+  // Guard notesState so a stale HMR/partial hook result cannot crash on `.status`.
+  const showTranslationNotes =
+    notesState !== undefined &&
+    (notesState.status === 'loading' ||
+      notesState.status === 'error' ||
+      (notesState.status === 'ready' && notesState.notes.length > 0));
 
   // Lifted so we can hide the accordion when Aquifer returns 0 items (#191 AC).
   const { state: imagesMapsState, retry: retryImagesMaps } =
@@ -99,7 +114,6 @@ export function ResourcesTab({
   );
   const openIdsRef = useRef(openAccordionIds);
 
-  // Restore scroll + accordion state when the active unit changes.
   useEffect(() => {
     const saved = getResourcesTabUiState(chapterId, selectedVerse);
     openIdsRef.current = saved.openAccordionIds;
@@ -145,20 +159,10 @@ export function ResourcesTab({
     [persistUiState],
   );
 
-  if (!hasContent) {
-    return (
-      <View style={styles.emptyHost} testID="resources-tab">
-        <EmptyState message={RESOURCES_EMPTY_MESSAGE} />
-      </View>
-    );
-  }
-
   const visibleSections = SECTION_META.filter(section => {
-    if (!resources.sections.includes(section.id)) {
-      return false;
+    if (section.id === 'translationNotes') {
+      return showTranslationNotes;
     }
-    // Hide Images & Maps only when load finished with nothing to show.
-    // Keep visible while loading or on error (error + Retry must still show).
     if (
       section.id === 'imagesMaps' &&
       imagesMapsState.status === 'ready' &&
@@ -166,8 +170,17 @@ export function ResourcesTab({
     ) {
       return false;
     }
-    return true;
+    // TQ stays on the #188 mock shell gate; Images stay visible while loading/error.
+    return resources.sections.includes(section.id);
   });
+
+  if (visibleSections.length === 0) {
+    return (
+      <View style={styles.emptyHost} testID="resources-tab">
+        <EmptyState message={RESOURCES_EMPTY_MESSAGE} />
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -201,7 +214,23 @@ export function ResourcesTab({
               onToggle={() => handleToggle(id)}
               testID={`resources-section-${id}`}
             >
-              {id === 'imagesMaps' ? (
+              {id === 'translationNotes' ? (
+                <TranslationNotesSectionHost
+                  state={notesState}
+                  retry={retryNotes}
+                  sectionExpanded={expanded}
+                  bookCode={bookCode}
+                  chapterNumber={chapterNumber}
+                  verseNumber={selectedVerse}
+                />
+              ) : id === 'translationQuestions' ? (
+                <TranslationQuestionsSection
+                  bookCode={bookCode}
+                  chapterNumber={chapterNumber}
+                  verseNumber={selectedVerse}
+                  sectionExpanded={expanded}
+                />
+              ) : id === 'imagesMaps' ? (
                 <ImagesMapsSectionHost
                   state={imagesMapsState}
                   retry={retryImagesMaps}

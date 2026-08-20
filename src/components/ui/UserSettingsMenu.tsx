@@ -1,218 +1,134 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
-  Modal,
-  Pressable,
   Alert,
   StyleSheet,
   ActivityIndicator,
-  Animated,
-  useWindowDimensions,
-  ScrollView,
+  StatusBar,
+  type TextStyle,
+  type ViewStyle,
 } from 'react-native';
-import { theme } from '../../theme';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { useRouter } from 'expo-router';
+import {
+  DrawerContentScrollView,
+  DrawerItem,
+  useDrawerStatus,
+  type DrawerContentComponentProps,
+} from 'expo-router/drawer';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { UserPlus } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { theme } from '../../theme';
 import { appStyles } from '../../app/appStyles';
-import { RootStackParamList } from '../../types/navigation/types';
+import { hrefs } from '../../navigation/hrefs';
 import { getActiveUserId } from '../../services/storage';
 import {
   signOutCurrentDeviceAccount,
   switchToDeviceAccount,
 } from '../../services/accountSession';
 import { useDeviceAccounts } from '../../hooks/useDeviceAccounts';
-import {
-  GestureDetector,
-  Gesture,
-  GestureHandlerRootView,
-} from 'react-native-gesture-handler';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { logger } from '../../utils/logger';
-
-const MENU_ICON_COLOR = '#333';
-const MENU_ICON_ACTIVE = '#1a6ef5';
-
-const OPEN_ANIM_DURATION = 250;
-const CLOSE_ANIM_DURATION = 200;
-const SWIPE_CLOSE_RATIO = 0.3;
-const SWIPE_VELOCITY_THRESHOLD = 800;
 
 const log = logger.create('UserSettingsMenu');
 
-type Nav = StackNavigationProp<RootStackParamList>;
+/** Match legacy `appStyles.menuItem` icon size (not DrawerItem’s default 24). */
+export const DRAWER_MENU_ICON_SIZE = 18;
 
-interface UserSettingsMenuProps {
-  visible: boolean;
-  onClose: () => void;
+/** Drawer route names rendered manually (hidden from DrawerItemList). */
+const DRAWER_ROUTE_SETTINGS = 'settings';
+const DRAWER_ROUTE_PRIVACY = 'privacy-policy';
+const DRAWER_ROUTE_TERMS = 'terms-of-use';
+
+/**
+ * Outer DrawerItem container: kill default pill radius / horizontal margins so
+ * rows match the old flat `appStyles.menuItem` look. Inner padding stays on
+ * DrawerItem’s wrapper (16 / 11).
+ */
+export const drawerMenuItemStyle: ViewStyle = {
+  marginHorizontal: 0,
+  marginVertical: 0,
+  borderRadius: 0,
+};
+
+/**
+ * Account rows: compact margins, but leave `borderRadius` unset so DrawerItem’s
+ * default pill (56) applies with the focused primary wash.
+ */
+export const drawerAccountItemStyle: ViewStyle = {
+  marginHorizontal: 0,
+  marginVertical: 0,
+};
+
+export const drawerMenuLabelStyle: TextStyle = {
+  fontSize: 14,
+  fontWeight: theme.typography.weights.regular,
+  lineHeight: theme.typography.lineHeights.tight,
+};
+
+export const drawerMenuActiveLabelStyle: TextStyle = {
+  fontWeight: theme.typography.weights.semibold,
+};
+
+interface UserSettingsMenuProps extends DrawerContentComponentProps {
   onSignOut?: () => void;
   onUserSwitched?: () => void;
 }
 
+/**
+ * Expo Router drawer content: More Settings, then a separator, then Privacy /
+ * Terms as manual `DrawerItem`s (so we can insert a mid-list divider). Account
+ * actions are not file routes. Compact legacy menu look; Sign Out stays pinned
+ * above the bottom safe-area inset.
+ */
 export function UserSettingsMenu({
-  visible,
-  onClose,
   onSignOut,
   onUserSwitched,
+  ...drawerProps
 }: UserSettingsMenuProps) {
-  const navigation = useNavigation<Nav>();
-  const { accounts, hasAccountLimit, loading } = useDeviceAccounts(visible);
-  const [switchingUserId, setSwitchingUserId] = useState<string | null>(null);
-  const { width: windowWidth } = useWindowDimensions();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
-
-  const panelWidth = useMemo(
-    () => Math.min(320, windowWidth * 0.82),
-    [windowWidth],
-  );
-
-  const panelInsetStyle = useMemo(
-    () => ({
-      paddingTop: insets.top,
-      paddingBottom: insets.bottom,
-    }),
-    [insets.top, insets.bottom],
-  );
-
-  const translateX = useRef(new Animated.Value(-panelWidth)).current;
-  const scrimOpacity = useRef(new Animated.Value(0)).current;
-  const [isMounted, setIsMounted] = useState(visible);
-
-  const isMountedRef = useRef(isMounted);
-  const animationGenerationRef = useRef(0);
-
-  const startOpeningAnimation = useCallback(() => {
-    translateX.stopAnimation();
-    scrimOpacity.stopAnimation();
-    Animated.parallel([
-      Animated.timing(translateX, {
-        toValue: 0,
-        duration: OPEN_ANIM_DURATION,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scrimOpacity, {
-        toValue: 1,
-        duration: OPEN_ANIM_DURATION,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [translateX, scrimOpacity]);
+  const drawerStatus = useDrawerStatus();
+  const { accounts, hasAccountLimit, loading, reload } =
+    useDeviceAccounts(true);
+  const [switchingUserId, setSwitchingUserId] = useState<string | null>(null);
+  const focusedRouteName =
+    drawerProps.state.routes[drawerProps.state.index]?.name;
 
   useEffect(() => {
-    const wasMounted = isMountedRef.current;
-    animationGenerationRef.current += 1;
-    const generation = animationGenerationRef.current;
-
-    if (visible) {
-      setIsMounted(true);
-      isMountedRef.current = true;
-      if (wasMounted) {
-        startOpeningAnimation();
-        return;
-      }
-
-      translateX.setValue(-panelWidth);
-      scrimOpacity.setValue(0);
-    } else if (wasMounted) {
-      Animated.parallel([
-        Animated.timing(translateX, {
-          toValue: -panelWidth,
-          duration: CLOSE_ANIM_DURATION,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scrimOpacity, {
-          toValue: 0,
-          duration: CLOSE_ANIM_DURATION,
-          useNativeDriver: true,
-        }),
-      ]).start(({ finished }) => {
-        if (finished && animationGenerationRef.current === generation) {
-          setIsMounted(false);
-          isMountedRef.current = false;
-        }
-      });
+    if (drawerStatus === 'open') {
+      void reload();
     }
-  }, [visible, panelWidth, startOpeningAnimation, translateX, scrimOpacity]);
+  }, [drawerStatus, reload]);
 
-  // Keep pan callbacks on the JS thread. With Reanimated installed, RNGH
-  // workletizes gesture handlers by default; RN Animated.Value cannot cross
-  // that boundary ("Cannot copy value of type 'AnimatedValue'").
-  const panGesture = Gesture.Pan()
-    .runOnJS(true)
-    .activeOffsetX(-10)
-    .failOffsetY([-15, 15])
-    .onUpdate(event => {
-      const next = Math.min(0, event.translationX);
-      translateX.setValue(next);
-      scrimOpacity.setValue(1 - Math.min(1, Math.abs(next) / panelWidth));
-    })
-    .onEnd(event => {
-      const shouldClose =
-        event.translationX < -panelWidth * SWIPE_CLOSE_RATIO ||
-        event.velocityX < -SWIPE_VELOCITY_THRESHOLD;
+  const closeDrawer = () => {
+    drawerProps.navigation.closeDrawer();
+  };
 
-      if (shouldClose) {
-        onClose();
-      } else {
-        Animated.parallel([
-          Animated.spring(translateX, {
-            toValue: 0,
-            useNativeDriver: true,
-            bounciness: 4,
-          }),
-          Animated.timing(scrimOpacity, {
-            toValue: 1,
-            duration: 150,
-            useNativeDriver: true,
-          }),
-        ]).start();
-      }
-    });
-
-  const handleOpenSettings = () => {
-    onClose();
-    navigation.navigate('Settings');
+  const navigateDrawerRoute = (routeName: string) => {
+    drawerProps.navigation.navigate(routeName as never);
   };
 
   const handleAddUser = () => {
     if (hasAccountLimit) return;
-    onClose();
-    navigation.navigate('AddUser');
-  };
-
-  const handleOpenPrivacy = () => {
-    onClose();
-    navigation.navigate('PrivacyPolicy');
-  };
-
-  const handleOpenTerms = () => {
-    onClose();
-    navigation.navigate('TermsOfUse');
+    closeDrawer();
+    router.push(hrefs.addUser);
   };
 
   const handleSwitchUser = async (userId: string) => {
     if (userId === getActiveUserId() || switchingUserId) {
-      onClose();
+      closeDrawer();
       return;
     }
 
     setSwitchingUserId(userId);
     try {
       await switchToDeviceAccount(userId);
-      onClose();
+      closeDrawer();
       onUserSwitched?.();
     } catch (error) {
       log.error('Account switch failed', { userId, error });
-      onClose();
+      closeDrawer();
       Alert.alert(
         'Switch Failed',
         "Couldn't switch to that account. Its saved session may be corrupted — try adding it again.",
@@ -223,215 +139,244 @@ export function UserSettingsMenu({
   };
 
   const handleSignOut = async () => {
-    onClose();
-    const result = await signOutCurrentDeviceAccount();
-    if (result.kind === 'switched') {
-      onUserSwitched?.();
-      return;
+    closeDrawer();
+    try {
+      const result = await signOutCurrentDeviceAccount();
+      if (result.kind === 'switched') {
+        onUserSwitched?.();
+        return;
+      }
+      onSignOut?.();
+    } catch (error) {
+      log.error('Sign out failed', { error });
+      Alert.alert(
+        'Sign Out Failed',
+        "Couldn't sign out of this account. Please try again.",
+      );
     }
-    onSignOut?.();
   };
 
   return (
-    <Modal
-      transparent
-      visible={isMounted}
-      animationType="none"
-      onRequestClose={onClose}
-      onShow={startOpeningAnimation}
-    >
-      <GestureHandlerRootView style={styles.container}>
-        <Animated.View
-          style={[StyleSheet.absoluteFill, { opacity: scrimOpacity }]}
-          pointerEvents={visible ? 'auto' : 'none'}
+    <>
+      {drawerStatus === 'open' ? (
+        <StatusBar
+          barStyle="dark-content"
+          backgroundColor={theme.colors.cardBackground}
+        />
+      ) : null}
+      <View style={styles.root} testID="settings-drawer-content">
+        <DrawerContentScrollView
+          {...drawerProps}
+          style={styles.scroll}
+          // Override default bottom inset — Sign Out footer owns safe-area padding.
+          contentContainerStyle={styles.scrollContent}
         >
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={onClose}
-            accessibilityRole="button"
-            accessibilityLabel="Close menu"
-          />
-        </Animated.View>
-
-        <GestureDetector gesture={panGesture}>
-          <Animated.View
-            style={[
-              styles.panel,
-              panelInsetStyle,
-              { width: panelWidth, transform: [{ translateX }] },
+          <DrawerItem
+            label="More Settings"
+            focused={focusedRouteName === DRAWER_ROUTE_SETTINGS}
+            activeTintColor={theme.colors.primary}
+            inactiveTintColor={theme.colors.foreground}
+            activeBackgroundColor="transparent"
+            inactiveBackgroundColor="transparent"
+            style={drawerMenuItemStyle}
+            labelStyle={[
+              drawerMenuLabelStyle,
+              focusedRouteName === DRAWER_ROUTE_SETTINGS &&
+                drawerMenuActiveLabelStyle,
             ]}
-          >
-            <ScrollView
-              style={styles.scrollArea}
-              contentContainerStyle={styles.panelContent}
-              showsVerticalScrollIndicator={false}
+            onPress={() => {
+              navigateDrawerRoute(DRAWER_ROUTE_SETTINGS);
+            }}
+            icon={({ color }) => (
+              <Ionicons
+                name="settings-outline"
+                size={DRAWER_MENU_ICON_SIZE}
+                color={color}
+              />
+            )}
+            accessibilityLabel="More Settings"
+            testID="settings-menu-more-settings"
+          />
+
+          <View
+            style={[appStyles.menuDivider, styles.panelDivider]}
+            testID="settings-menu-legal-divider"
+          />
+
+          <DrawerItem
+            label="Privacy Policy"
+            focused={focusedRouteName === DRAWER_ROUTE_PRIVACY}
+            activeTintColor={theme.colors.primary}
+            inactiveTintColor={theme.colors.foreground}
+            activeBackgroundColor="transparent"
+            inactiveBackgroundColor="transparent"
+            style={drawerMenuItemStyle}
+            labelStyle={[
+              drawerMenuLabelStyle,
+              focusedRouteName === DRAWER_ROUTE_PRIVACY &&
+                drawerMenuActiveLabelStyle,
+            ]}
+            onPress={() => {
+              navigateDrawerRoute(DRAWER_ROUTE_PRIVACY);
+            }}
+            icon={({ color }) => (
+              <Ionicons
+                name="document-text-outline"
+                size={DRAWER_MENU_ICON_SIZE}
+                color={color}
+              />
+            )}
+            accessibilityLabel="Privacy Policy"
+            testID="settings-menu-privacy-policy"
+          />
+
+          <DrawerItem
+            label="Terms of Use"
+            focused={focusedRouteName === DRAWER_ROUTE_TERMS}
+            activeTintColor={theme.colors.primary}
+            inactiveTintColor={theme.colors.foreground}
+            activeBackgroundColor="transparent"
+            inactiveBackgroundColor="transparent"
+            style={drawerMenuItemStyle}
+            labelStyle={[
+              drawerMenuLabelStyle,
+              focusedRouteName === DRAWER_ROUTE_TERMS &&
+                drawerMenuActiveLabelStyle,
+            ]}
+            onPress={() => {
+              navigateDrawerRoute(DRAWER_ROUTE_TERMS);
+            }}
+            icon={({ color }) => (
+              <Ionicons
+                name="shield-checkmark-outline"
+                size={DRAWER_MENU_ICON_SIZE}
+                color={color}
+              />
+            )}
+            accessibilityLabel="Terms of Use"
+            testID="settings-menu-terms-of-use"
+          />
+
+          <View style={[appStyles.menuDivider, styles.panelDivider]} />
+          <Text style={appStyles.menuSectionLabel}>Accounts</Text>
+
+          {loading ? (
+            <View
+              style={styles.loadingRow}
+              testID="settings-menu-accounts-loading"
             >
-              <TouchableOpacity
-                style={appStyles.menuItem}
-                onPress={handleOpenSettings}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-              >
-                <Ionicons
-                  name="settings-outline"
-                  size={18}
-                  color={MENU_ICON_COLOR}
+              <ActivityIndicator size="small" color={theme.colors.primary} />
+            </View>
+          ) : (
+            accounts.map(account => {
+              const accountLabel = account.email || account.displayName;
+              return (
+                <DrawerItem
+                  key={account.userId}
+                  label={accountLabel}
+                  focused={account.isActive}
+                  activeTintColor={theme.colors.primary}
+                  inactiveTintColor={theme.colors.foreground}
+                  // Omit activeBackgroundColor → DrawerItem default
+                  // Color(activeTintColor).alpha(0.12) pill wash when focused.
+                  inactiveBackgroundColor="transparent"
+                  style={drawerAccountItemStyle}
+                  labelStyle={[
+                    drawerMenuLabelStyle,
+                    account.isActive && drawerMenuActiveLabelStyle,
+                  ]}
+                  onPress={() => {
+                    void handleSwitchUser(account.userId);
+                  }}
+                  icon={({ color }) => (
+                    <Ionicons
+                      name={
+                        account.isActive ? 'checkmark-circle' : 'person-outline'
+                      }
+                      size={DRAWER_MENU_ICON_SIZE}
+                      color={color}
+                      testID={
+                        account.isActive
+                          ? `settings-menu-active-${account.userId}`
+                          : `settings-menu-inactive-${account.userId}`
+                      }
+                    />
+                  )}
+                  accessibilityLabel={`Switch to ${accountLabel}`}
+                  testID={`settings-menu-account-${account.userId}`}
                 />
-                <Text style={appStyles.menuItemText}>More Settings</Text>
-              </TouchableOpacity>
+              );
+            })
+          )}
 
-              <View style={[appStyles.menuDivider, styles.panelDivider]} />
-
-              <TouchableOpacity
-                style={appStyles.menuItem}
-                onPress={handleOpenPrivacy}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                testID="settings-menu-privacy-policy"
-              >
-                <Ionicons
-                  name="document-text-outline"
-                  size={18}
-                  color={MENU_ICON_COLOR}
-                />
-                <Text style={appStyles.menuItemText}>Privacy Policy</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={appStyles.menuItem}
-                onPress={handleOpenTerms}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                testID="settings-menu-terms-of-use"
-              >
-                <Ionicons
-                  name="shield-checkmark-outline"
-                  size={18}
-                  color={MENU_ICON_COLOR}
-                />
-                <Text style={appStyles.menuItemText}>Terms of Use</Text>
-              </TouchableOpacity>
-
-              <View style={[appStyles.menuDivider, styles.panelDivider]} />
-              <Text style={appStyles.menuSectionLabel}>Accounts</Text>
-
-              {loading ? (
-                <View
-                  style={styles.loadingRow}
-                  testID="settings-menu-accounts-loading"
-                >
-                  <ActivityIndicator size="small" color={MENU_ICON_ACTIVE} />
-                </View>
-              ) : (
-                accounts.map(account => {
-                  // Mockup (#193) labels accounts by email; fall back to displayName.
-                  const accountLabel = account.email || account.displayName;
-                  return (
-                    <TouchableOpacity
-                      key={account.userId}
-                      style={appStyles.menuItem}
-                      onPress={() => {
-                        void handleSwitchUser(account.userId);
-                      }}
-                      activeOpacity={0.7}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Switch to ${accountLabel}`}
-                      accessibilityState={{ selected: account.isActive }}
-                      disabled={switchingUserId !== null}
-                      testID={`settings-menu-account-${account.userId}`}
-                    >
-                      <Ionicons
-                        name={
-                          account.isActive
-                            ? 'checkmark-circle'
-                            : 'person-outline'
-                        }
-                        size={18}
-                        color={
-                          account.isActive ? MENU_ICON_ACTIVE : MENU_ICON_COLOR
-                        }
-                        testID={
-                          account.isActive
-                            ? `settings-menu-active-${account.userId}`
-                            : `settings-menu-inactive-${account.userId}`
-                        }
-                      />
-                      <Text
-                        style={[
-                          appStyles.menuItemText,
-                          account.isActive && appStyles.menuItemActive,
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {accountLabel}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })
+          {hasAccountLimit ? (
+            <Text style={styles.limitText} testID="settings-menu-account-limit">
+              You&apos;ve reached the 3-account limit.
+            </Text>
+          ) : (
+            <DrawerItem
+              label="Add User"
+              inactiveTintColor={theme.colors.foreground}
+              activeBackgroundColor="transparent"
+              inactiveBackgroundColor="transparent"
+              style={drawerMenuItemStyle}
+              labelStyle={drawerMenuLabelStyle}
+              onPress={handleAddUser}
+              icon={({ color }) => (
+                <UserPlus size={DRAWER_MENU_ICON_SIZE} color={color} />
               )}
+              accessibilityLabel="Add User"
+              testID="settings-menu-add-user"
+            />
+          )}
+        </DrawerContentScrollView>
 
-              {hasAccountLimit ? (
-                <Text
-                  style={styles.limitText}
-                  testID="settings-menu-account-limit"
-                >
-                  You&apos;ve reached the 3-account limit.
-                </Text>
-              ) : (
-                <TouchableOpacity
-                  style={appStyles.menuItem}
-                  onPress={handleAddUser}
-                  activeOpacity={0.7}
-                  accessibilityRole="button"
-                  accessibilityLabel="Add User"
-                  testID="settings-menu-add-user"
-                >
-                  <UserPlus size={18} color={MENU_ICON_COLOR} />
-                  <Text style={appStyles.menuItemText}>Add User</Text>
-                </TouchableOpacity>
-              )}
-
-              <View style={[appStyles.menuDivider, styles.panelDivider]} />
-              <TouchableOpacity
-                style={appStyles.menuItem}
-                onPress={() => {
-                  void handleSignOut();
-                }}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-              >
-                <Ionicons name="log-out-outline" size={18} color="#d32f2f" />
-                <Text
-                  style={[appStyles.menuItemText, appStyles.menuItemDanger]}
-                >
-                  Sign Out
-                </Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </Animated.View>
-        </GestureDetector>
-      </GestureHandlerRootView>
-    </Modal>
+        <View
+          style={[
+            styles.footer,
+            { paddingBottom: Math.max(insets.bottom, theme.spacing.xs) },
+          ]}
+        >
+          <View style={[appStyles.menuDivider, styles.panelDivider]} />
+          <DrawerItem
+            label="Sign Out"
+            inactiveTintColor={theme.colors.destructive}
+            activeBackgroundColor="transparent"
+            inactiveBackgroundColor="transparent"
+            style={drawerMenuItemStyle}
+            labelStyle={[drawerMenuLabelStyle, appStyles.menuItemDanger]}
+            onPress={() => {
+              void handleSignOut();
+            }}
+            icon={({ color }) => (
+              <Ionicons
+                name="log-out-outline"
+                size={DRAWER_MENU_ICON_SIZE}
+                color={color}
+              />
+            )}
+            accessibilityLabel="Sign Out"
+            testID="settings-menu-sign-out"
+          />
+        </View>
+      </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-  },
-  panel: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
     backgroundColor: theme.colors.cardBackground,
-    ...theme.shadows.elevated,
   },
-  scrollArea: {
+  scroll: {
     flex: 1,
   },
-  panelContent: {
-    paddingTop: 24,
+  scrollContent: {
+    paddingBottom: theme.spacing.sm,
+  },
+  footer: {
+    backgroundColor: theme.colors.cardBackground,
   },
   panelDivider: {
     backgroundColor: theme.colors.border,
@@ -440,13 +385,13 @@ const styles = StyleSheet.create({
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
+    paddingVertical: theme.spacing.sm,
   },
   limitText: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm + theme.spacing.xs,
     fontSize: 13,
-    color: '#999',
+    color: theme.colors.mutedForeground,
     textAlign: 'center',
   },
 });

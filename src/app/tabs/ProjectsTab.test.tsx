@@ -3,10 +3,14 @@ import { render, screen } from '@testing-library/react-native';
 import { ProjectsTab } from './ProjectsTab';
 import { ProjectSummary } from '../../types/db/types';
 
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({
-    navigate: jest.fn(),
+jest.mock('expo-router', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
   }),
+}));
+
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
 jest.mock('lucide-react-native', () => {
