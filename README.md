@@ -354,10 +354,10 @@ git push origin v1.0.1
 
 One-time setup (Expo GitHub app, Play credentials, workflow permissions): see [`.eas/README.md`](.eas/README.md).
 
-## PR preview (QA)
+## QA (nightly) + optional PR preview
 
-Add the **`preview-build`** label to a pull request to start a **fresh Android preview APK** (binary only — no OTA). Requires `EXPO_TOKEN` in GitHub Actions secrets.
+**QA / non-technical testers:** [How to test Fluent builds](docs/guides/qa-preview-testing.md) — install the **nightly** Fluent APK (not Expo Go or Metro). Process: [QA process](docs/guides/qa-process.md).
 
-**QA / non-technical testers:** [How to test a PR preview](docs/guides/qa-preview-testing.md) — install the **Fluent preview APK** and open the app (not Expo Go or Metro dev builds).
+**Optional debug:** add the **`preview-build`** label to a PR for an isolated preview APK (binary only — no OTA). Requires `EXPO_TOKEN` in GitHub Actions secrets.
 
 **Developers:** [`.github/README.md`](.github/README.md) · [`.eas/README.md`](.eas/README.md)
