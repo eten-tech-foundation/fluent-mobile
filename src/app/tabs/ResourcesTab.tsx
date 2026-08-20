@@ -23,11 +23,10 @@ import { useDraftingContext } from '../context/DraftingContext';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ResourceSectionAccordion } from '../../components/ui/ResourceSectionAccordion';
 import { RESOURCES_EMPTY_MESSAGE } from '../../constants/messages';
+import { useTranslationNotesForUnit } from '../../hooks/useTranslationNotesForUnit';
 import { ResourceSectionId } from '../../types/resources/types';
-import {
-  getMockResourcesForUnit,
-  unitHasAnyResources,
-} from './resources/mockResourceData';
+import { getMockResourcesForUnit } from './resources/mockResourceData';
+import { TranslationNotesSectionHost } from './resources/TranslationNotesSectionHost';
 import {
   getResourcesTabUiState,
   setResourcesTabUiState,
@@ -37,6 +36,9 @@ import { theme } from '../../theme';
 type ResourcesTabProps = {
   chapterId: number;
   chapterName: string;
+  /** USFM book code for Aquifer resource lookup (e.g. MRK). */
+  bookCode: string;
+  chapterNumber: number;
 };
 
 const SECTION_META: {
@@ -62,10 +64,15 @@ const SECTION_META: {
 ];
 
 /**
- * Resources tab host (#188): unit-synced shell, empty state, accordion stubs.
- * Section bodies (#189–#191) mount into these slots later.
+ * Resources tab host (#188): unit-synced shell, empty state, accordion slots.
+ * Translation Notes body: #189 (live Aquifer). Questions / Images stubs until #190 / #191.
  */
-export function ResourcesTab({ chapterId, chapterName }: ResourcesTabProps) {
+export function ResourcesTab({
+  chapterId,
+  chapterName,
+  bookCode,
+  chapterNumber,
+}: ResourcesTabProps) {
   const { selectedVerse } = useDraftingContext();
   const scrollRef = useRef<ScrollView>(null);
   const scrollOffsetRef = useRef(0);
@@ -74,14 +81,27 @@ export function ResourcesTab({ chapterId, chapterName }: ResourcesTabProps) {
     () => getMockResourcesForUnit(chapterId, selectedVerse, chapterName),
     [chapterId, selectedVerse, chapterName],
   );
-  const hasContent = unitHasAnyResources(resources);
+
+  const { state: notesState, retry: retryNotes } = useTranslationNotesForUnit({
+    bookCode,
+    chapterNumber,
+    verseNumber: selectedVerse,
+  });
+
+  // Live Aquifer TN (#189): show while loading/error, or when notes exist.
+  // Do not gate on #188 mock emptiness alone — verse % 3 === 0 still loads Aquifer.
+  // Guard notesState so a stale HMR/partial hook result cannot crash on `.status`.
+  const showTranslationNotes =
+    notesState !== undefined &&
+    (notesState.status === 'loading' ||
+      notesState.status === 'error' ||
+      (notesState.status === 'ready' && notesState.notes.length > 0));
 
   const [openAccordionIds, setOpenAccordionIds] = useState<Set<string>>(
     () => getResourcesTabUiState(chapterId, selectedVerse).openAccordionIds,
   );
   const openIdsRef = useRef(openAccordionIds);
 
-  // Restore scroll + accordion state when the active unit changes.
   useEffect(() => {
     const saved = getResourcesTabUiState(chapterId, selectedVerse);
     openIdsRef.current = saved.openAccordionIds;
@@ -127,17 +147,21 @@ export function ResourcesTab({ chapterId, chapterName }: ResourcesTabProps) {
     [persistUiState],
   );
 
-  if (!hasContent) {
+  const visibleSections = SECTION_META.filter(section => {
+    if (section.id === 'translationNotes') {
+      return showTranslationNotes;
+    }
+    // TQ / Images stay on the #188 mock shell until #190 / #191.
+    return resources.sections.includes(section.id);
+  });
+
+  if (visibleSections.length === 0) {
     return (
       <View style={styles.emptyHost} testID="resources-tab">
         <EmptyState message={RESOURCES_EMPTY_MESSAGE} />
       </View>
     );
   }
-
-  const visibleSections = SECTION_META.filter(section =>
-    resources.sections.includes(section.id),
-  );
 
   return (
     <ScrollView
@@ -160,20 +184,34 @@ export function ResourcesTab({ chapterId, chapterName }: ResourcesTabProps) {
       </View>
 
       <View style={styles.sections}>
-        {visibleSections.map(({ id, label, Icon }) => (
-          <ResourceSectionAccordion
-            key={`${selectedVerse}-${id}`}
-            label={label}
-            Icon={Icon}
-            expanded={openAccordionIds.has(id)}
-            onToggle={() => handleToggle(id)}
-            testID={`resources-section-${id}`}
-          >
-            <Text style={styles.stubBody}>
-              Content for this section will appear here.
-            </Text>
-          </ResourceSectionAccordion>
-        ))}
+        {visibleSections.map(({ id, label, Icon }) => {
+          const expanded = openAccordionIds.has(id);
+          return (
+            <ResourceSectionAccordion
+              key={`${chapterId}-${selectedVerse}-${id}`}
+              label={label}
+              Icon={Icon}
+              expanded={expanded}
+              onToggle={() => handleToggle(id)}
+              testID={`resources-section-${id}`}
+            >
+              {id === 'translationNotes' ? (
+                <TranslationNotesSectionHost
+                  state={notesState}
+                  retry={retryNotes}
+                  sectionExpanded={expanded}
+                  bookCode={bookCode}
+                  chapterNumber={chapterNumber}
+                  verseNumber={selectedVerse}
+                />
+              ) : (
+                <Text style={styles.stubBody}>
+                  Content for this section will appear here.
+                </Text>
+              )}
+            </ResourceSectionAccordion>
+          );
+        })}
       </View>
     </ScrollView>
   );
