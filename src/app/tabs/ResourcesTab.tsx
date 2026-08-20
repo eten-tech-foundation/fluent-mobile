@@ -26,8 +26,10 @@ import { RESOURCES_EMPTY_MESSAGE } from '../../constants/messages';
 import { useTranslationNotesForUnit } from '../../hooks/useTranslationNotesForUnit';
 import { ResourceSectionId } from '../../types/resources/types';
 import { getMockResourcesForUnit } from './resources/mockResourceData';
+import { ImagesMapsSectionHost } from './resources/ImagesMapsSectionHost';
 import { TranslationNotesSectionHost } from './resources/TranslationNotesSectionHost';
 import { TranslationQuestionsSection } from './resources/TranslationQuestionsSection';
+import { useImagesMapsForUnit } from '../../hooks/useImagesMapsForUnit';
 import {
   getResourcesTabUiState,
   setResourcesTabUiState,
@@ -66,8 +68,8 @@ const SECTION_META: {
 
 /**
  * Resources tab host (#188): unit-synced shell, empty state, accordion slots.
- * Translation Notes (#189) and Translation Questions (#190) are Aquifer-backed.
- * Images stub remains until #191.
+ * Translation Notes (#189), Translation Questions (#190), and Images & Maps (#191)
+ * are Aquifer-backed.
  */
 export function ResourcesTab({
   chapterId,
@@ -98,6 +100,14 @@ export function ResourcesTab({
     (notesState.status === 'loading' ||
       notesState.status === 'error' ||
       (notesState.status === 'ready' && notesState.notes.length > 0));
+
+  // Lifted so we can hide the accordion when Aquifer returns 0 items (#191 AC).
+  const { state: imagesMapsState, retry: retryImagesMaps } =
+    useImagesMapsForUnit({
+      bookCode,
+      chapterNumber,
+      verseNumber: selectedVerse,
+    });
 
   const [openAccordionIds, setOpenAccordionIds] = useState<Set<string>>(
     () => getResourcesTabUiState(chapterId, selectedVerse).openAccordionIds,
@@ -153,7 +163,14 @@ export function ResourcesTab({
     if (section.id === 'translationNotes') {
       return showTranslationNotes;
     }
-    // TQ / Images stay on the #188 mock shell until #191 (Images) or mock TQ gate.
+    if (
+      section.id === 'imagesMaps' &&
+      imagesMapsState.status === 'ready' &&
+      imagesMapsState.items.length === 0
+    ) {
+      return false;
+    }
+    // TQ stays on the #188 mock shell gate; Images stay visible while loading/error.
     return resources.sections.includes(section.id);
   });
 
@@ -212,6 +229,11 @@ export function ResourcesTab({
                   chapterNumber={chapterNumber}
                   verseNumber={selectedVerse}
                   sectionExpanded={expanded}
+                />
+              ) : id === 'imagesMaps' ? (
+                <ImagesMapsSectionHost
+                  state={imagesMapsState}
+                  retry={retryImagesMaps}
                 />
               ) : (
                 <Text style={styles.stubBody}>
