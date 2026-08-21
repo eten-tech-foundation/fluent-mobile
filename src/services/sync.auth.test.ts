@@ -99,6 +99,8 @@ jest.mock('../db/repository', () => ({
   userHasLocalChapterAssignments: jest.fn().mockResolvedValue(true),
   userNeedsAssigneeRepair: jest.fn().mockResolvedValue(false),
   insertUser: jest.fn().mockResolvedValue(undefined),
+  reconcileUserProjects: jest.fn().mockResolvedValue(undefined),
+  reconcileUserChapterWork: jest.fn().mockResolvedValue(undefined),
 }));
 
 const {
@@ -133,6 +135,7 @@ describe('refreshChapterMetadataIfOnline', () => {
       isWifi: true,
       isCellular: false,
     });
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'valid-token' });
     (getUserLastSyncedAt as jest.Mock).mockReturnValue(
       '2026-06-01T00:00:00.000Z',
     );
@@ -563,5 +566,24 @@ describe('syncAllUsers auth handling', () => {
 
     expect(setUserLastSyncedAt).not.toHaveBeenCalled();
     expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
+  });
+  it("sets authToken from this user's credentials, not a stale global value", async () => {
+    (getCredentials as jest.Mock).mockResolvedValue({
+      token: 'user-2-specific-token',
+    });
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(getCredentials).toHaveBeenCalledWith('2');
+    expect(authToken.set).toHaveBeenCalledWith('user-2-specific-token');
+  });
+
+  it('skips the refresh without calling the server when no credentials exist for this user', async () => {
+    (getCredentials as jest.Mock).mockResolvedValue(null);
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
+    expect(authToken.set).not.toHaveBeenCalled();
   });
 });

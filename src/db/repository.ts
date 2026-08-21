@@ -996,6 +996,17 @@ export async function reconcileUserChapterWork(
     }
   });
 }
+export async function isUserProjectMember(
+  userId: number,
+  projectId: number,
+): Promise<boolean> {
+  const db = getDatabase();
+  const result = await db.execute(
+    `SELECT COUNT(*) as count FROM user_projects WHERE user_id = ? AND project_id = ?`,
+    [userId, projectId],
+  );
+  return Number(result.rows?.[0]?.count ?? 0) > 0;
+}
 
 export {
   addRecordingTake,

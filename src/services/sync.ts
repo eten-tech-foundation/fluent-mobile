@@ -184,11 +184,12 @@ export async function syncProjects(userId: number) {
 
       const response = await FluentAPI.getUserProjects(userId);
       const raw = unwrapApiListResponse(response);
-      const projects = (Array.isArray(raw) ? raw : []).map(mapApiProject);
+      const isConfirmedShape = Array.isArray(raw);
+      const projects = (isConfirmedShape ? raw : []).map(mapApiProject);
 
       log.info('Projects fetched', {
         count: projects.length,
-        isArray: Array.isArray(raw),
+        isArray: isConfirmedShape,
       });
 
       if (projects.length > 0) {
@@ -199,10 +200,18 @@ export async function syncProjects(userId: number) {
         );
       }
 
-      await reconcileUserProjects(
-        userId,
-        projects.map(project => project.id),
-      );
+     
+      if (isConfirmedShape) {
+        await reconcileUserProjects(
+          userId,
+          projects.map(project => project.id),
+        );
+      } else {
+        log.warn(
+          'Skipping project reconciliation — unexpected response shape',
+          { userId },
+        );
+      }
 
       await ensureUserProjectMembership(userId);
       const db = getDatabase();
@@ -290,6 +299,12 @@ async function syncUserChapterWork(userId: number) {
     KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS,
     async () => {
       const response = await FluentAPI.getUserChapterAssignments(userId);
+      const isConfirmedShape =
+        response !== null &&
+        typeof response === 'object' &&
+        Array.isArray(response.assignedChapters) &&
+        Array.isArray(response.peerCheckChapters);
+
       const assigned = response.assignedChapters ?? [];
       const peerCheck = response.peerCheckChapters ?? [];
       const mapped = [...assigned, ...peerCheck].map(mapApiChapterAssignment);
@@ -298,11 +313,18 @@ async function syncUserChapterWork(userId: number) {
         await insertChapterAssignmentSyncData(mapped);
       }
 
-      await reconcileUserChapterWork(
-        userId,
-        assigned.map(a => a.chapterAssignmentId),
-        peerCheck.map(a => a.chapterAssignmentId),
-      );
+      if (isConfirmedShape) {
+        await reconcileUserChapterWork(
+          userId,
+          assigned.map(a => a.chapterAssignmentId),
+          peerCheck.map(a => a.chapterAssignmentId),
+        );
+      } else {
+        log.warn(
+          'Skipping chapter work reconciliation — unexpected response shape',
+          { userId },
+        );
+      }
     },
     String(userId),
   );

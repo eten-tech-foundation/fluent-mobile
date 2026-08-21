@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { refreshChapterMetadataIfOnline } from '../services/sync';
+import { isUserProjectMember } from '../db/repository';
 import { getProjectChapters } from '../db/queries';
 import { ProjectChapter } from '../types/db/types';
 import { parseUserId } from '../utils/parseUserId';
@@ -14,6 +15,7 @@ export function useProjectChapters(projectId: number) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [removedFromProject, setRemovedFromProject] = useState(false);
   const refreshGenerationRef = useRef(0);
 
   const loadChapters = useCallback(
@@ -73,10 +75,6 @@ export function useProjectChapters(projectId: number) {
     loadChapters();
   }, [loadChapters]);
 
-  // #273: pull latest assignment/stage metadata in the background on chapter
-  // list open, then re-read the cache. Uses getActiveUserId (not parseUserId)
-  // because the two can drift on shared/multi-account devices, and calling the
-  // API with a userId that doesn't match the live bearer token 403s (see #291).
   useFocusEffect(
     useCallback(() => {
       const activeUserId = getActiveUserId();
@@ -85,15 +83,27 @@ export function useProjectChapters(projectId: number) {
       refreshGenerationRef.current += 1;
       const generation = refreshGenerationRef.current;
 
-      refreshChapterMetadataIfOnline(Number(activeUserId)).then(() => {
+      refreshChapterMetadataIfOnline(Number(activeUserId)).then(async () => {
         if (refreshGenerationRef.current !== generation) return;
+
+        const stillMember = await isUserProjectMember(
+          Number(activeUserId),
+          projectId,
+        );
+        if (refreshGenerationRef.current !== generation) return;
+
+        if (!stillMember) {
+          setRemovedFromProject(true);
+          return;
+        }
+
         void loadChapters(generation);
       });
 
       return () => {
         refreshGenerationRef.current += 1;
       };
-    }, [loadChapters]),
+    }, [loadChapters, projectId]),
   );
 
   const refresh = useCallback(async () => {
@@ -115,6 +125,7 @@ export function useProjectChapters(projectId: number) {
     loading,
     refreshing,
     error,
+    removedFromProject,
     refresh,
     retry,
     reload: loadChapters,
