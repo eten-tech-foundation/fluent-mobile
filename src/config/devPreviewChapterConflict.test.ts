@@ -2,10 +2,21 @@ import { isDevPreviewChapterConflictEnabled } from './devPreviewChapterConflict'
 
 describe('isDevPreviewChapterConflictEnabled', () => {
   const originalDev = (globalThis as { __DEV__?: boolean }).__DEV__;
+  const originalPreviewFlag =
+    process.env.EXPO_PUBLIC_DEV_PREVIEW_CHAPTER_CONFLICT;
+
+  beforeEach(() => {
+    delete process.env.EXPO_PUBLIC_DEV_PREVIEW_CHAPTER_CONFLICT;
+  });
 
   afterEach(() => {
     (globalThis as { __DEV__?: boolean }).__DEV__ = originalDev;
-    delete process.env.EXPO_PUBLIC_DEV_PREVIEW_CHAPTER_CONFLICT;
+    if (originalPreviewFlag === undefined) {
+      delete process.env.EXPO_PUBLIC_DEV_PREVIEW_CHAPTER_CONFLICT;
+    } else {
+      process.env.EXPO_PUBLIC_DEV_PREVIEW_CHAPTER_CONFLICT =
+        originalPreviewFlag;
+    }
   });
 
   it('is false when __DEV__ is false, even with the env flag set', () => {
