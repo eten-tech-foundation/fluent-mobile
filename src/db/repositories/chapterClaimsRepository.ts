@@ -9,22 +9,15 @@ export type ChapterAssignmentForClaim = {
   assignedUserId: number | null;
 };
 
-/** Resolve the chapter_assignment row backing a bible_text_id, for claim checks. */
-export async function getChapterAssignmentForBibleText(
-  bibleTextId: number,
+export async function getChapterAssignmentById(
+  chapterAssignmentId: number,
 ): Promise<ChapterAssignmentForClaim | null> {
   const db = getDatabase();
   const result = await db.execute(
-    `SELECT ca.id AS chapter_assignment_id, ca.assigned_user_id AS assigned_user_id
-     FROM bible_texts bt
-     INNER JOIN chapter_assignments ca
-       ON ca.bible_id = bt.bible_id
-      AND ca.book_id = bt.book_id
-      AND ca.chapter_number = bt.chapter_number
-     WHERE bt.id = ?
-     ORDER BY ca.id
-     LIMIT 1`,
-    [bibleTextId],
+    `SELECT id AS chapter_assignment_id, assigned_user_id
+     FROM chapter_assignments
+     WHERE id = ?`,
+    [chapterAssignmentId],
   );
   const row = result.rows?.[0] as
     | { chapter_assignment_id: number; assigned_user_id: number | null }
@@ -40,14 +33,14 @@ export async function getChapterAssignmentForBibleText(
 }
 
 export async function claimChapterOffline(
-  bibleTextId: number,
+  chapterAssignmentId: number,
   userId: number,
 ): Promise<boolean> {
   const db = getDatabase();
-  const target = await getChapterAssignmentForBibleText(bibleTextId);
+  const target = await getChapterAssignmentById(chapterAssignmentId);
   if (!target) {
-    log.info('No chapter assignment found for bible text, skipping claim', {
-      bibleTextId,
+    log.info('No chapter assignment found for claim', {
+      chapterAssignmentId,
     });
     return false;
   }
@@ -56,25 +49,30 @@ export async function claimChapterOffline(
   }
 
   const claimedAt = new Date().toISOString();
+  let claimed = false;
   await db.transaction(async (tx: Transaction) => {
+    const updateResult = await tx.execute(
+      `UPDATE chapter_assignments
+       SET assigned_user_id = ?
+       WHERE id = ? AND assigned_user_id IS NULL`,
+      [userId, target.chapterAssignmentId],
+    );
+    if ((updateResult.rowsAffected ?? 0) !== 1) {
+      return;
+    }
     await tx.execute(
       `INSERT INTO chapter_claim_queue
         (chapter_assignment_id, user_id, claimed_at, sync_status)
        VALUES (?, ?, ?, 'pending')`,
       [target.chapterAssignmentId, userId, claimedAt],
     );
-    // Re-check inside the transaction as a race guard.
-    await tx.execute(
-      `UPDATE chapter_assignments
-       SET assigned_user_id = ?
-       WHERE id = ? AND assigned_user_id IS NULL`,
-      [userId, target.chapterAssignmentId],
-    );
+    claimed = true;
   });
-
-  log.info('Enqueued offline chapter claim', {
-    chapterAssignmentId: target.chapterAssignmentId,
-    userId,
-  });
-  return true;
+  if (claimed) {
+    log.info('Enqueued offline chapter claim', {
+      chapterAssignmentId: target.chapterAssignmentId,
+      userId,
+    });
+  }
+  return claimed;
 }
