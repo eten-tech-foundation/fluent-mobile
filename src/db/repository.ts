@@ -610,17 +610,13 @@ export async function insertBibleTexts(data: DBTypes.BibleText[]) {
   try {
     await db.transaction(async (tx: Transaction) => {
       for (const chapter of data) {
-        await tx.execute(
-          `DELETE FROM bible_texts
-           WHERE bible_id = ? AND book_id = ? AND chapter_number = ?`,
-          [chapter.bibleId, chapter.bookId, chapter.chapterNumber],
-        );
-
         for (const verse of chapter.verses) {
           await tx.execute(
             `INSERT INTO bible_texts
             (bible_id, book_id, chapter_number, verse_number, text)
-            VALUES (?, ?, ?, ?, ?)`,
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(bible_id, book_id, chapter_number, verse_number)
+            DO UPDATE SET text = excluded.text`,
             [
               verse.bible_id,
               verse.book_id,
@@ -910,8 +906,11 @@ export {
   addRecordingTake,
   getLatestRecordingForVerse,
   getTakesForVerse,
+  getAllTakesForVerse,
+  verseHasMultipleRecorders,
   deleteRecordingTake,
   selectRecordingTake,
+  setCanonicalTake,
 } from './recordingsRepository';
 export type { AddRecordingTakeInput } from './recordingsRepository';
 

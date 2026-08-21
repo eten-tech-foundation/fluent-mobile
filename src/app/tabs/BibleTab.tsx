@@ -17,8 +17,14 @@ type BibleTabProps = {
 };
 
 export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
-  const { verses, selectedVerse, setSelectedVerse, currentlyPlayingVerse } =
-    useDraftingContext();
+  const {
+    verses,
+    selectedVerse,
+    setSelectedVerse,
+    currentlyPlayingVerse,
+    recordedVerseNumbers,
+  } = useDraftingContext();
+
   const listRef = useRef<FlatList<VerseData>>(null);
 
   const initialIndex = verses.findIndex(v => v.verseNumber === selectedVerse);
@@ -41,7 +47,7 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
     ({ item }: { item: VerseData }) => {
       const isSelected = item.verseNumber === selectedVerse;
       const isPlaying = item.verseNumber === currentlyPlayingVerse;
-      const hasRecording = false;
+      const hasRecording = recordedVerseNumbers.has(item.verseNumber);
 
       return (
         <TouchableOpacity
@@ -80,7 +86,12 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
         </TouchableOpacity>
       );
     },
-    [selectedVerse, currentlyPlayingVerse, handleVersePress],
+    [
+      selectedVerse,
+      currentlyPlayingVerse,
+      recordedVerseNumbers,
+      handleVersePress,
+    ],
   );
 
   return (

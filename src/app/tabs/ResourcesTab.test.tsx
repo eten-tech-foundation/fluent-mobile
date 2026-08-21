@@ -107,6 +107,11 @@ const mockLoadImages = loadImagesMapsForUnit as jest.MockedFunction<
   typeof loadImagesMapsForUnit
 >;
 
+jest.mock('../../services/storage', () => ({
+  getActiveUserId: () => '1',
+  getUserIdSync: () => '1',
+}));
+
 const verses: VerseData[] = [1, 2, 3].map(verseNumber => ({
   bibleId: 1,
   bookId: 41,

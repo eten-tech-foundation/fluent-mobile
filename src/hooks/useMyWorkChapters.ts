@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { getMyWorkChapters } from '../db/queries';
 import { MyWorkChapter } from '../types/db/types';
 import { parseUserId } from '../utils/parseUserId';
+import { useFocusEffect } from 'expo-router';
 import { logger } from '../utils/logger';
 
 const log = logger.create('useMyWorkChapters');
@@ -39,6 +40,12 @@ export function useMyWorkChapters(refreshKey = 0) {
       setRefreshing(false);
     }
   }, [loadChapters]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+  );
 
   return { chapters, loading, refreshing, refresh };
 }

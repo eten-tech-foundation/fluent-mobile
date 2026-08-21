@@ -267,6 +267,7 @@ export interface Recording {
   fileSizeBytes?: number | null;
   takeNumber: number;
   isSelected: boolean;
+  isCanonical: boolean;
   syncStatus: RecordingSyncStatus;
   uploadError?: string | null;
   createdAt: string;
@@ -283,11 +284,16 @@ export interface RecordingRow {
   file_size_bytes: number | null;
   take_number: number;
   is_selected: number;
+  is_canonical: number;
   sync_status: RecordingSyncStatus;
   upload_error: string | null;
   created_at: string;
   updated_at: string;
 }
+
+export type RecordingWithOwner = Recording & {
+  ownerDisplayName: string;
+};
 
 /**
  * Latest non-uploaded recording row for the upload worker (#100).

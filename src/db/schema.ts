@@ -96,6 +96,7 @@ export const createTableQueries: string[] = [
       file_size_bytes       INTEGER,
       take_number           INTEGER NOT NULL DEFAULT 1,
       is_selected           INTEGER NOT NULL DEFAULT 1,
+      is_canonical          INTEGER NOT NULL DEFAULT 0,
       sync_status           TEXT NOT NULL DEFAULT 'pending',
       upload_error          TEXT,
       created_at            TEXT NOT NULL,
@@ -104,6 +105,7 @@ export const createTableQueries: string[] = [
 
   `CREATE INDEX IF NOT EXISTS idx_rec_verse      ON recordings(bible_text_id, is_selected);`,
   `CREATE INDEX IF NOT EXISTS idx_rec_verse_user ON recordings(bible_text_id, recorded_by_user_id, is_selected);`,
+  `CREATE INDEX IF NOT EXISTS idx_rec_canonical  ON recordings(bible_text_id, is_canonical);`,
   `CREATE INDEX IF NOT EXISTS idx_rec_pending    ON recordings(sync_status) WHERE sync_status != 'uploaded';`,
 
   `CREATE TABLE IF NOT EXISTS user_projects (
