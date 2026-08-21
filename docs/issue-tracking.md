@@ -16,7 +16,7 @@ The [repo Issues list](https://github.com/eten-tech-foundation/fluent-mobile/iss
 
 `Backlog` · `In Progress (Product)` · `Product Ready` · `Sprint Shaping` · `Dev Ready` · `In Progress (Dev)` · `In PR Review` · `In QA` · `Passed QA` · `To Deploy` · `Done`
 
-For open PRs awaiting review, prefer **`In PR Review`**. For **QA-required** PRs, add `preview-build` and move to **`In QA` before merge** (preview automation does this when possible); humans set **`Passed QA`**, then merge. Engineering-only PRs skip that gate. Set **`Done`** only after QA/release completes — never auto-close issues on PR merge. Canonical process: [guides/qa-process.md](guides/qa-process.md).
+For open PRs awaiting review, prefer **`In PR Review`**. For **Needs-QA** PRs, check **Needs QA? Yes**; after merge, automation moves to **`In QA`** and QA tests the **nightly**. Humans set **`Passed QA`**. Engineering-only PRs skip that handoff. Set **`Done`** only after QA/release completes — never auto-close issues on PR merge. Canonical process: [guides/qa-process.md](guides/qa-process.md).
 
 Do **not** use org Project 7 (“Fluent Mobile App”) as the primary tracker unless the team explicitly migrates.
 
@@ -72,8 +72,8 @@ See [`.claude/commands/create-pr-branch.md`](../.claude/commands/create-pr-branc
   - **Development sidebar:** closing keywords are the only API-friendly way to auto-populate GitHub’s “linked issues” widget; we refuse those keywords, so link `#NNN` manually in the PR sidebar when the widget is empty (or ask a human). `Refs #NNN` still cross-references the issue in timelines.
   - For related / stacked work that is not the full ticket, say “Part of #NNN” in prose, or link manually in the PR sidebar
 - After opening a PR, set Project 4 Status to **`In PR Review`** (if not already)
-- If the PR **Needs QA** ([guides/qa-process.md](guides/qa-process.md)): add `preview-build`; Status → **`In QA`** when the preview is ready (**pre-merge**). Do **not** merge until QA passes that PR’s preview (`Passed QA`). Leave the GitHub issue **open**
-- Engineering-only PRs: merge after review + CI; no preview/QA gate
+- If the PR **Needs QA** ([guides/qa-process.md](guides/qa-process.md)): check **Needs QA? Yes**. After merge, Status → **`In QA`** (automation). QA tests the nightly — merge is **not** blocked on QA. Leave the GitHub issue **open**
+- Engineering-only PRs: merge after review + CI; no QA handoff
 - **Template source of truth:** [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md) — also required by [delivery.mdc](../.cursor/rules/delivery.mdc); generate with `/generate-pr-description` or `/create-pr`
 
 ### Agent command: `/start-issue`
@@ -92,9 +92,9 @@ Canonical instructions: [`.claude/commands/start-issue.md`](../.claude/commands/
 
 Use `Refs #NNN` (or sidebar linking) so GitHub [does not auto-close](https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue) the issue on merge.
 
-Never use `Closes`, `Fixes`, or `Resolves` in PR bodies for ticketed work. Issues stay open until QA finishes; humans set **`Done`** (and may close the issue) after **Passed QA** / release process — not on merge alone. **QA-required PRs are not mergeable until QA passes that PR’s preview build** ([guides/qa-process.md](guides/qa-process.md)).
+Never use `Closes`, `Fixes`, or `Resolves` in PR bodies for ticketed work. Issues stay open until QA finishes; humans set **`Done`** (and may close the issue) after **Passed QA** / release process — not on merge alone. **Needs-QA work merges on engineer approval**; QA is post-merge on the nightly ([guides/qa-process.md](guides/qa-process.md)).
 
-Put `Refs #NNN` on its **own line** under Details (see the PR template). Preview-build notification ([`.github/scripts/preview-notify-linked-issues.cjs`](../.github/scripts/preview-notify-linked-issues.cjs)) treats that form as the linked ticket for install comments and Project 4 → **In QA** (pre-merge for QA-required work). `Part of #NNN` is ignored by that script (stacked/partial work stays out of automatic QA handoff).
+Put `Refs #NNN` on its **own line** under Details (see the PR template). Post-merge QA handoff ([`.github/scripts/qa-handoff-on-merge.cjs`](../.github/scripts/qa-handoff-on-merge.cjs)) treats that form as the linked ticket for handoff comments, assignee, and Project 4 → **In QA**. `Part of #NNN` is ignored (stacked/partial work stays out of automatic QA handoff). Explicit no-ticket chores may use `Refs: none`.
 
 ## Agents / delivery
 
@@ -102,12 +102,12 @@ Put `Refs #NNN` on its **own line** under Details (see the PR template). Preview
 - Done means acceptance criteria, not green CI alone ([AGENTS.md](../AGENTS.md))
 - Triage and column moves: Project 4 Fluent Mobile Board — not the bare Issues index
 - Dependabot PRs: follow [guides/dependabot-process.md](guides/dependabot-process.md)
-- QA process / merge gate: [guides/qa-process.md](guides/qa-process.md)
+- QA process / post-merge nightly: [guides/qa-process.md](guides/qa-process.md)
 
 ## Related
 
-- [guides/qa-process.md](guides/qa-process.md) — Needs QA?, preview loop, pre-merge merge gate
-- [guides/qa-preview-testing.md](guides/qa-preview-testing.md) — install/how-to for PR previews
+- [guides/qa-process.md](guides/qa-process.md) — Needs QA?, post-merge handoff, nightly QA
+- [guides/qa-preview-testing.md](guides/qa-preview-testing.md) — install/how-to for nightly (and optional PR previews)
 - [guides/project-board.md](guides/project-board.md) — board mutation hard rules for agents
 - [guides/expo-first-dependencies.md](guides/expo-first-dependencies.md) — prefer Expo packages
 - [docs/ci.md](ci.md) — CI workflows and required-check guardrails
