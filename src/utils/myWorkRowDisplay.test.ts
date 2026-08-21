@@ -8,6 +8,7 @@ const baseChapter: MyWorkChapter = {
   chapterNumber: 4,
   workflowStage: 'draft',
   syncState: 'synced',
+  ownershipState: 'unassigned',
   completedVerses: 0,
   totalVerses: 5,
   downloadedVerses: 5,

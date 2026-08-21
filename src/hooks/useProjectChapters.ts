@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { getProjectChapters } from '../db/queries';
 import { ProjectChapter } from '../types/db/types';
 import { parseUserId } from '../utils/parseUserId';
+import { useFocusEffect } from 'expo-router';
 import { logger } from '../utils/logger';
 
 const log = logger.create('useProjectChapters');
@@ -11,29 +12,44 @@ export function useProjectChapters(projectId: number) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const requestIdRef = useRef(0);
 
   const loadChapters = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     try {
       setError(null);
       const userId = parseUserId();
       if (userId === null) {
-        setChapters([]);
+        if (requestId === requestIdRef.current) {
+          setChapters([]);
+        }
         return;
       }
-      setChapters(await getProjectChapters(projectId, userId));
+      const rows = await getProjectChapters(projectId, userId);
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+      setChapters(rows);
     } catch (err) {
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
       log.error('Error loading project chapters:', { error: err, projectId });
       setError(err);
       setChapters([]);
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [projectId]);
 
-  useEffect(() => {
-    setLoading(true);
-    loadChapters();
-  }, [loadChapters]);
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      loadChapters();
+    }, [loadChapters]),
+  );
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
