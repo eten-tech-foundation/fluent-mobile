@@ -7,6 +7,7 @@ import { ChapterProgressRing } from './ChapterProgressRing';
 import { ChapterCloudSyncIndicator } from './ChapterSyncIndicator';
 import { ListCard } from './ListCard';
 import { WorkflowBadge } from './WorkflowBadge';
+import { ChapterOwnershipIndicator } from './ChapterOwnershipIndicator';
 
 interface MyWorkRowProps {
   chapter: MyWorkChapter;
@@ -32,6 +33,7 @@ export function MyWorkRow({
           {display.showCloudSync ? (
             <ChapterCloudSyncIndicator syncState={chapter.syncState} />
           ) : null}
+          <ChapterOwnershipIndicator ownershipState={chapter.ownershipState} />
         </View>
 
         <View style={styles.metaRow}>
@@ -62,7 +64,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   title: {
-    flex: 1,
+    flexShrink: 1,
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.foreground,
