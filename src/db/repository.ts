@@ -907,6 +907,11 @@ export async function userNeedsAssigneeRepair(
 }
 
 export {
+  claimChapterOffline,
+  getChapterAssignmentForBibleText,
+} from './repositories/chapterClaimsRepository';
+
+export {
   addRecordingTake,
   getLatestRecordingForVerse,
   getTakesForVerse,
