@@ -32,6 +32,7 @@ concurrency:
 permissions:
   contents: read
   actions: read
+  issues: write
 
 env:
   EAS_PROJECT_ID: 'b0919574-f268-4768-b3bd-7cfa5172bbab'
@@ -247,6 +248,32 @@ jobs:
           API_BASE_URL: ${{ steps.api-url.outputs.api_base_url }}
           FEEDBACK_URL: https://github.com/${{ github.repository }}/issues/new
         run: bash .github/scripts/notify-slack-nightly.sh
+
+      - name: Comment nightly install on recent QA handoff issues
+        if: steps.skip.outputs.should_skip != 'true' && steps.build.outputs.build_id != '' && steps.build.outputs.install_url != ''
+        continue-on-error: true
+        uses: actions/github-script@v9
+        env:
+          INSTALL_URL: ${{ steps.build.outputs.install_url }}
+          BUILD_ID: ${{ steps.build.outputs.build_id }}
+          APP_VERSION: ${{ steps.build.outputs.app_version || steps.meta.outputs.base_version }}
+          SHORT_SHA: ${{ steps.meta.outputs.short_sha }}
+          PREV_SHA: ${{ steps.skip.outputs.prev_sha }}
+          RUN_URL: ${{ steps.meta.outputs.run_url }}
+        with:
+          script: |
+            const nightlyNotifyQaIssues = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/nightly-notify-qa-issues.cjs`);
+            await nightlyNotifyQaIssues({
+              github,
+              context,
+              core,
+              installUrl: process.env.INSTALL_URL,
+              buildId: process.env.BUILD_ID || null,
+              appVersion: process.env.APP_VERSION || null,
+              shortSha: process.env.SHORT_SHA || null,
+              prevSha: process.env.PREV_SHA || null,
+              runUrl: process.env.RUN_URL || null,
+            });
 
       - name: Notify Slack (failure)
         if: failure() && steps.skip.outputs.should_skip != 'true'

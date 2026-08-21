@@ -38,10 +38,10 @@ Cross-tool agents (Claude Code, Copilot, etc.) must still find the same contract
 
 ## QA process + preview install
 
-- [docs/guides/qa-process.md](../../docs/guides/qa-process.md) — Needs QA?, ownership, pass/fail, **pre-merge** merge gate
-- [docs/guides/qa-preview-testing.md](../../docs/guides/qa-preview-testing.md) — non-technical install steps for PR previews (Fluent preview app, not Expo Go)
+- [docs/guides/qa-process.md](../../docs/guides/qa-process.md) — Needs QA?, ownership, pass/fail, **post-merge** nightly QA
+- [docs/guides/qa-preview-testing.md](../../docs/guides/qa-preview-testing.md) — non-technical install steps for nightly (and optional PR previews)
 
-Update these when preview workflow comments, install flow, or the QA merge gate change.
+Update these when preview/nightly workflow comments, install flow, or the QA handoff policy change.
 
 ## PR template
 
