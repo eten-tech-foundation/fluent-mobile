@@ -7,9 +7,12 @@ import { parseUserId } from '../utils/parseUserId';
 import { useMyWorkChapters } from './useMyWorkChapters';
 import { useProjectChapters } from './useProjectChapters';
 
+let capturedFocusCallback: (() => void | (() => void)) | null = null;
+
 jest.mock('expo-router', () => ({
   useFocusEffect: (callback: () => void | (() => void)) => {
     const React = require('react');
+    capturedFocusCallback = callback;
     React.useEffect(() => callback(), [callback]);
   },
 }));
@@ -64,6 +67,7 @@ function deferred<T>() {
 describe('chapter metadata refresh on list open', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    capturedFocusCallback = null;
     mockParseUserId.mockReturnValue(7);
     mockGetActiveUserId.mockReturnValue('7');
     mockGetMyWorkChapters.mockResolvedValue([]);
@@ -144,5 +148,36 @@ describe('chapter metadata refresh on list open', () => {
 
     // second reload should never fire — membership was revoked
     expect(mockGetProjectChapters).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears removedFromProject when membership is restored on a later refresh', async () => {
+    mockIsUserProjectMember.mockResolvedValueOnce(false);
+    const first = deferred<void>();
+    mockRefreshChapterMetadataIfOnline.mockReturnValueOnce(first.promise);
+
+    const { result } = renderHook(() => useProjectChapters(3));
+
+    await act(async () => {
+      first.resolve();
+      await first.promise;
+    });
+    await waitFor(() => expect(result.current.removedFromProject).toBe(true));
+
+    mockIsUserProjectMember.mockResolvedValueOnce(true);
+    const second = deferred<void>();
+    mockRefreshChapterMetadataIfOnline.mockReturnValueOnce(second.promise);
+
+    // Simulate a real second focus event (e.g. navigating back into the
+    // screen) rather than relying on a prop change to retrigger the effect.
+    await act(async () => {
+      capturedFocusCallback?.();
+    });
+
+    await act(async () => {
+      second.resolve();
+      await second.promise;
+    });
+
+    await waitFor(() => expect(result.current.removedFromProject).toBe(false));
   });
 });

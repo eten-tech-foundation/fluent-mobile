@@ -97,6 +97,7 @@ export function useProjectChapters(projectId: number) {
           return;
         }
 
+        setRemovedFromProject(false);
         void loadChapters(generation);
       });
 

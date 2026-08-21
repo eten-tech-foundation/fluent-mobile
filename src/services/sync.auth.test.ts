@@ -135,6 +135,7 @@ describe('refreshChapterMetadataIfOnline', () => {
       isWifi: true,
       isCellular: false,
     });
+    (getActiveUserId as jest.Mock).mockReturnValue('2');
     (getCredentials as jest.Mock).mockResolvedValue({ token: 'valid-token' });
     (getUserLastSyncedAt as jest.Mock).mockReturnValue(
       '2026-06-01T00:00:00.000Z',
@@ -210,6 +211,36 @@ describe('refreshChapterMetadataIfOnline', () => {
 
     expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
     expect(FluentAPI.getUserChapterAssignments).not.toHaveBeenCalled();
+  });
+
+  it("sets authToken from this user's credentials, not a stale global value", async () => {
+    (getCredentials as jest.Mock).mockResolvedValue({
+      token: 'user-2-specific-token',
+    });
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(getCredentials).toHaveBeenCalledWith('2');
+    expect(authToken.set).toHaveBeenCalledWith('user-2-specific-token');
+  });
+
+  it('skips the refresh without calling the server when no credentials exist for this user', async () => {
+    (getCredentials as jest.Mock).mockResolvedValue(null);
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
+    expect(authToken.set).not.toHaveBeenCalled();
+  });
+
+  it('skips the refresh without calling the server when userId is not the active user', async () => {
+    (getActiveUserId as jest.Mock).mockReturnValue('1');
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(getCredentials).not.toHaveBeenCalled();
+    expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
+    expect(authToken.set).not.toHaveBeenCalled();
   });
 });
 
@@ -566,24 +597,5 @@ describe('syncAllUsers auth handling', () => {
 
     expect(setUserLastSyncedAt).not.toHaveBeenCalled();
     expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
-  });
-  it("sets authToken from this user's credentials, not a stale global value", async () => {
-    (getCredentials as jest.Mock).mockResolvedValue({
-      token: 'user-2-specific-token',
-    });
-
-    await refreshChapterMetadataIfOnline(2);
-
-    expect(getCredentials).toHaveBeenCalledWith('2');
-    expect(authToken.set).toHaveBeenCalledWith('user-2-specific-token');
-  });
-
-  it('skips the refresh without calling the server when no credentials exist for this user', async () => {
-    (getCredentials as jest.Mock).mockResolvedValue(null);
-
-    await refreshChapterMetadataIfOnline(2);
-
-    expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
-    expect(authToken.set).not.toHaveBeenCalled();
   });
 });

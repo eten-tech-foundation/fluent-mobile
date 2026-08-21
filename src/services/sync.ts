@@ -200,7 +200,6 @@ export async function syncProjects(userId: number) {
         );
       }
 
-     
       if (isConfirmedShape) {
         await reconcileUserProjects(
           userId,
@@ -213,7 +212,9 @@ export async function syncProjects(userId: number) {
         );
       }
 
-      await ensureUserProjectMembership(userId);
+      if (!(isConfirmedShape && projects.length === 0)) {
+        await ensureUserProjectMembership(userId);
+      }
       const db = getDatabase();
       const result = await db.execute(
         'SELECT COUNT(*) as count FROM user_projects WHERE user_id = ?',
@@ -305,8 +306,8 @@ async function syncUserChapterWork(userId: number) {
         Array.isArray(response.assignedChapters) &&
         Array.isArray(response.peerCheckChapters);
 
-      const assigned = response.assignedChapters ?? [];
-      const peerCheck = response.peerCheckChapters ?? [];
+      const assigned = response?.assignedChapters ?? [];
+      const peerCheck = response?.peerCheckChapters ?? [];
       const mapped = [...assigned, ...peerCheck].map(mapApiChapterAssignment);
 
       if (mapped.length > 0) {
@@ -757,6 +758,16 @@ export async function refreshChapterMetadataIfOnline(
       if (!isOnline) return;
 
       const userIdStr = String(userId);
+
+      if (userIdStr !== getActiveUserId()) {
+        log.warn(
+          'Skipping background metadata refresh — user is no longer active',
+          {
+            userId,
+          },
+        );
+        return;
+      }
 
       const creds = await getCredentials(userIdStr);
       if (!creds?.token) {
