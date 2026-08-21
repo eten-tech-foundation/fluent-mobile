@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { refreshChapterMetadataIfOnline } from '../services/sync';
 import { getProjectChapters } from '../db/queries';
 import { ProjectChapter } from '../types/db/types';
 import { parseUserId } from '../utils/parseUserId';
 import { getActiveUserId } from '../services/storage';
-import { refreshChapterMetadataIfOnline } from '../services/sync';
+import { useFocusEffect } from 'expo-router';
 import { logger } from '../utils/logger';
 
 const log = logger.create('useProjectChapters');

@@ -14,6 +14,8 @@ import {
   userHasLocalProjects,
   userHasLocalChapterAssignments,
   userNeedsAssigneeRepair,
+  reconcileUserChapterWork,
+  reconcileUserProjects,
 } from '../db/repository';
 import { logger } from '../utils/logger';
 import { getDatabase } from '../db/db';
@@ -197,8 +199,12 @@ export async function syncProjects(userId: number) {
         );
       }
 
-      await ensureUserProjectMembership(userId);
+      await reconcileUserProjects(
+        userId,
+        projects.map(project => project.id),
+      );
 
+      await ensureUserProjectMembership(userId);
       const db = getDatabase();
       const result = await db.execute(
         'SELECT COUNT(*) as count FROM user_projects WHERE user_id = ?',
@@ -291,6 +297,12 @@ async function syncUserChapterWork(userId: number) {
       if (mapped.length > 0) {
         await insertChapterAssignmentSyncData(mapped);
       }
+
+      await reconcileUserChapterWork(
+        userId,
+        assigned.map(a => a.chapterAssignmentId),
+        peerCheck.map(a => a.chapterAssignmentId),
+      );
     },
     String(userId),
   );
@@ -723,6 +735,18 @@ export async function refreshChapterMetadataIfOnline(
       if (!isOnline) return;
 
       const userIdStr = String(userId);
+
+      const creds = await getCredentials(userIdStr);
+      if (!creds?.token) {
+        log.warn('No credentials for background metadata refresh, skipping', {
+          userId,
+        });
+        return;
+      }
+      authToken.set(creds.token);
+
+      await syncProjects(userId);
+
       const cursor = getUserLastSyncedAt(userIdStr) || undefined;
       const { syncedAt } = await syncChapterAssignmentsForUser(userId, cursor);
       if (syncedAt) {

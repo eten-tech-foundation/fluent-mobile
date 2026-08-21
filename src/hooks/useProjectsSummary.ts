@@ -1,6 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { refreshChapterMetadataIfOnline } from '../services/sync';
 import { getProjectsWithSummary } from '../db/queries';
+import { getActiveUserId } from '../services/storage';
 import { ProjectSummary } from '../types/db/types';
+import { useFocusEffect } from 'expo-router';
 import { parseUserId } from '../utils/parseUserId';
 import { logger } from '../utils/logger';
 
@@ -10,6 +13,7 @@ export function useProjectsSummary(refreshKey = 0) {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const refreshGenerationRef = useRef(0);
 
   const loadProjects = useCallback(async () => {
     const userId = parseUserId();
@@ -29,6 +33,25 @@ export function useProjectsSummary(refreshKey = 0) {
     setLoading(true);
     loadProjects().finally(() => setLoading(false));
   }, [loadProjects, refreshKey]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const activeUserId = getActiveUserId();
+      if (!activeUserId) return;
+
+      refreshGenerationRef.current += 1;
+      const generation = refreshGenerationRef.current;
+
+      refreshChapterMetadataIfOnline(Number(activeUserId)).then(() => {
+        if (refreshGenerationRef.current !== generation) return;
+        void loadProjects();
+      });
+
+      return () => {
+        refreshGenerationRef.current += 1;
+      };
+    }, [loadProjects]),
+  );
 
   const refresh = useCallback(async () => {
     setRefreshing(true);

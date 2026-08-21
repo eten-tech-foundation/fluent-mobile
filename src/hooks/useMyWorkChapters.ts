@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router';
 import { getMyWorkChapters } from '../db/queries';
 import { MyWorkChapter } from '../types/db/types';
 import { parseUserId } from '../utils/parseUserId';

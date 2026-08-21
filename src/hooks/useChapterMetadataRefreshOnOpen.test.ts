@@ -6,7 +6,7 @@ import { parseUserId } from '../utils/parseUserId';
 import { useMyWorkChapters } from './useMyWorkChapters';
 import { useProjectChapters } from './useProjectChapters';
 
-jest.mock('@react-navigation/native', () => ({
+jest.mock('expo-router', () => ({
   useFocusEffect: (callback: () => void | (() => void)) => {
     const React = require('react');
     React.useEffect(() => callback(), [callback]);
