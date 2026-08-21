@@ -83,23 +83,27 @@ export function useProjectChapters(projectId: number) {
       refreshGenerationRef.current += 1;
       const generation = refreshGenerationRef.current;
 
-      refreshChapterMetadataIfOnline(Number(activeUserId)).then(async () => {
-        if (refreshGenerationRef.current !== generation) return;
+      refreshChapterMetadataIfOnline(Number(activeUserId))
+  .then(async () => {
+    if (refreshGenerationRef.current !== generation) return;
 
-        const stillMember = await isUserProjectMember(
-          Number(activeUserId),
-          projectId,
-        );
-        if (refreshGenerationRef.current !== generation) return;
+    const stillMember = await isUserProjectMember(
+      Number(activeUserId),
+      projectId,
+    );
+    if (refreshGenerationRef.current !== generation) return;
 
-        if (!stillMember) {
-          setRemovedFromProject(true);
-          return;
-        }
+    if (!stillMember) {
+      setRemovedFromProject(true);
+      return;
+    }
 
-        setRemovedFromProject(false);
-        void loadChapters(generation);
-      });
+    setRemovedFromProject(false);
+    void loadChapters(generation);
+  })
+  .catch(err => {
+    log.error('Focus refresh failed', { error: err, projectId });
+  });
 
       return () => {
         refreshGenerationRef.current += 1;
