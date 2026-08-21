@@ -50,6 +50,14 @@ const config: ExpoConfig = {
     eas: {
       projectId: EAS_PROJECT_ID,
     },
+    // EAS project env var `AQUIFER_API_KEY` (expo.dev → Environment variables).
+    // Linked via eas.json `environment` per profile. Not EXPO_PUBLIC_ — baked into
+    // extra at config resolve / EAS Build, then read via expo-constants.
+    aquiferApiKey: process.env.AQUIFER_API_KEY?.trim() ?? '',
+    aquiferApiBaseUrl: (
+      process.env.EXPO_PUBLIC_AQUIFER_API_BASE_URL?.trim() ||
+      'https://api.aquifer.bible'
+    ).replace(/\/+$/, ''),
   },
   plugins: [
     [
@@ -98,6 +106,7 @@ const config: ExpoConfig = {
     './plugins/withRNScreensFragmentFactory',
     'expo-secure-store',
     'expo-asset',
+    'expo-image',
     [
       'expo-audio',
       {

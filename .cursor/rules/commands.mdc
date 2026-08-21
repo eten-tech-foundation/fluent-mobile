@@ -35,7 +35,9 @@ Report what ran and the outcome. If a step was skipped, say why.
 - Test: `.github/workflows/test.yml`
 - TypeScript + Expo health: `.github/workflows/quality-gates.yml` (`typecheck`, `expo-doctor`, `expo install --check`)
 - Release on tag: `.github/workflows/eas-build.yml` + `.eas/workflows/create-production-builds.yml`
-- PR preview (native compile on demand): `.github/workflows/preview-build.yml` (label `preview-build`)
+- PR preview (optional debug APK): `.github/workflows/preview-build.yml` (label `preview-build`)
+- Post-merge QA handoff: `.github/workflows/qa-handoff.yml`
+- Nightly APK: `.github/workflows/nightly-preview.yml`
 
 ## PR workflow
 
