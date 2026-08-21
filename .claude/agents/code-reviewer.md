@@ -66,11 +66,11 @@ exact `file:line`, name the rule, and give a copy-pasteable fix.
    plan). One ticket = one PR ([AGENTS.md](../../AGENTS.md)).
 
 8. **Device QA.** Changes that add native modules or mic / camera / filesystem
-   / permissions behavior (or otherwise **Needs QA**) must **flag** Android
-   device QA on that PR’s **`preview-build`** before merge (see
+   / permissions behavior (or otherwise **Needs QA**) must **flag** that the
+   PR body has **Needs QA? Yes** (see
    [docs/guides/qa-process.md](../../docs/guides/qa-process.md)). Do not treat
-   unit tests as sufficient; QA-required PRs are not mergeable until that
-   preview passes.
+   unit tests as sufficient for device behavior. Do **not** block merge on QA —
+   QA is post-merge on the nightly.
 
 9. **TypeScript.** New `any` (prefer `unknown` + narrowing). Missing types on
    exported functions where neighbors have them.

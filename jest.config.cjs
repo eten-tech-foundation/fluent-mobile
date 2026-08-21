@@ -1,6 +1,8 @@
 module.exports = {
   preset: 'jest-expo',
   setupFiles: ['<rootDir>/jest.env.cjs', '<rootDir>/jest.setup.expo-fs.cjs'],
+  // Reanimated setUpTests() needs the Jest env (Jest ≥28 → setupFilesAfterEnv).
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.reanimated.cjs'],
   testPathIgnorePatterns: ['/node_modules/', '/android/', '/ios/'],
   // `.cjs` is not in Jest's default testMatch; CI/workflow scripts under
   // .github must stay CommonJS because the root package.json is "type": "module".
@@ -10,8 +12,9 @@ module.exports = {
     '**/?(*.)+(spec|test).cjs',
   ],
   moduleNameMapper: {
-  '^expo-secure-store$': '<rootDir>/src/test/mocks/expo-secure-store.ts',
-  '^expo-file-system$': '<rootDir>/src/test/mocks/expo-file-system.ts',
-  '^expo-audio$': '<rootDir>/src/test/mocks/expo-audio.ts',
+    '^expo-secure-store$': '<rootDir>/src/test/mocks/expo-secure-store.ts',
+    '^expo-file-system$': '<rootDir>/src/test/mocks/expo-file-system.ts',
+    '^expo-audio$': '<rootDir>/src/test/mocks/expo-audio.ts',
+    '^expo-image$': '<rootDir>/src/test/mocks/expo-image.tsx',
   },
 };

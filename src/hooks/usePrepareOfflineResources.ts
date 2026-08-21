@@ -38,20 +38,22 @@ export function usePrepareOfflineResources({
     error: manifestError,
     inventoryVersion,
     getResourceStatus,
-    clearSessionInventory,
     getDefaultPackageDeselects,
   } = usePrepareOfflineResourceData(projectId);
 
   const sessionKey =
     projectId !== null ? `${projectId}:${userId ?? 'none'}` : null;
 
+  // Reset package UI state when project or account changes (sessionKey includes
+  // userId). Do not clear mock/on-device inventory here — remounting Prepare
+  // Offline was wiping completed downloads and leaving Resources empty (#305 QA).
+  // Durable Resources gating uses download_queue keyed by projectId+userId.
   useEffect(() => {
     if (sessionKeyRef.current !== sessionKey) {
-      clearSessionInventory();
       setDeselectedItemIds(getDefaultPackageDeselects());
       sessionKeyRef.current = sessionKey;
     }
-  }, [sessionKey, clearSessionInventory, getDefaultPackageDeselects]);
+  }, [sessionKey, getDefaultPackageDeselects]);
 
   const catalog = useMemo(() => {
     void inventoryVersion;
