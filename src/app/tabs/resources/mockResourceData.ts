@@ -3,6 +3,12 @@ import {
   UnitResourcesMock,
 } from '../../../types/resources/types';
 
+/**
+ * @deprecated Prefer `useUnitResourcesAvailability` (#192 inventory gating).
+ * Kept only for transitional content mocks until #189–#191 land real payloads.
+ *
+ * Deterministic mock content helpers — do not use for section visibility.
+ */
 const ALL_SECTIONS: ResourceSectionId[] = [
   'translationNotes',
   'translationQuestions',
@@ -10,15 +16,7 @@ const ALL_SECTIONS: ResourceSectionId[] = [
 ];
 
 /**
- * Deterministic mock shell for Resources tab stubs (#188 / #190 / #191).
- *
- * Pattern (by verse number):
- * - `% 3 === 0` → no stub sections (TN may still appear from live Aquifer #189)
- * - `% 3 === 1` → Translation Notes slot only (live Aquifer fills body)
- * - `% 3 === 2` → all three section stubs (TQ / Images until #190 / #191)
- *
- * Translation Notes visibility is driven by Aquifer load state in ResourcesTab,
- * not by this mock alone.
+ * @deprecated Use Prepare Offline inventory scenarios instead of verse % 3.
  */
 export function getMockResourcesForUnit(
   _chapterId: number,
@@ -47,6 +45,7 @@ export function getMockResourcesForUnit(
   };
 }
 
+/** @deprecated Prefer `availability.sections.length > 0`. */
 export function unitHasAnyResources(resources: UnitResourcesMock): boolean {
   return resources.sections.length > 0;
 }

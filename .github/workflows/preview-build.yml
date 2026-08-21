@@ -90,8 +90,6 @@ jobs:
 
       - name: 💬 Post Preview Comment
         uses: actions/github-script@v9
-        env:
-          PROJECT_BOARD_TOKEN: ${{ secrets.PROJECT_BOARD_TOKEN }}
         with:
           script: |
             const androidId = ${{ toJson(steps.native-builds.outputs.build_id) }};
@@ -206,5 +204,6 @@ jobs:
               body: body
             });
 
-            const notifyLinkedIssues = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/preview-notify-linked-issues.cjs`);
-            await notifyLinkedIssues({ github, context, core, getOctokit, body, commentMarkers });
+            // Isolated preview APK is optional for debugging only.
+            // Post-merge QA handoff (In QA + Roslin + nightly) is qa-handoff.yml.
+            // Do not mirror this comment onto issues or move Project 4 Status.
