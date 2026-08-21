@@ -13,15 +13,15 @@ import {
 
 const mockHandleDownload = jest.fn();
 
-const mockNavigate = jest.fn();
+const mockPush = jest.fn();
 const mockGoBack = jest.fn();
 
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({
-    navigate: mockNavigate,
-    goBack: mockGoBack,
+jest.mock('expo-router', () => ({
+  useRouter: () => ({
+    push: mockPush,
+    back: mockGoBack,
   }),
-  useRoute: () => ({ params: undefined }),
+  useLocalSearchParams: () => ({}),
   useFocusEffect: (callback: () => void) => {
     callback();
   },

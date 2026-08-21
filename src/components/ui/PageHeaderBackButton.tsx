@@ -1,30 +1,17 @@
 import React from 'react';
-import { TouchableOpacity } from 'react-native';
-import { ChevronLeft } from 'lucide-react-native';
-import {
-  theme,
-  iconSizes,
-  listIconStrokeWidth,
-  touchHitSlop,
-} from '../../theme';
+import { theme } from '../../theme';
+import { HeaderBackButton } from '../layout/AppHeader';
 
 interface PageHeaderBackButtonProps {
   onPress: () => void;
 }
 
+/** @deprecated Prefer HeaderBackButton — kept for existing call sites/tests. */
 export function PageHeaderBackButton({ onPress }: PageHeaderBackButtonProps) {
   return (
-    <TouchableOpacity
+    <HeaderBackButton
       onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel="Go back"
-      hitSlop={touchHitSlop}
-    >
-      <ChevronLeft
-        size={iconSizes.header}
-        color={theme.colors.primaryForeground}
-        strokeWidth={listIconStrokeWidth}
-      />
-    </TouchableOpacity>
+      color={theme.colors.primaryForeground}
+    />
   );
 }

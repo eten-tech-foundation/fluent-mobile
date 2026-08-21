@@ -160,6 +160,8 @@ export interface BibleText {
 export interface ChapterAssignmentData {
   id: number;
   projectUnitId: number;
+  /** Owning Fluent project — used for Prepare Offline / Resources inventory (#192). */
+  projectId: number | null;
   bibleId: number;
   bookId: number;
   chapterNumber: number;
@@ -176,6 +178,7 @@ export interface ChapterAssignmentData {
 export interface ChapterAssignmentRow {
   id: number;
   project_unit_id: number;
+  project_id: number | null;
   bible_id: number;
   book_id: number;
   chapter_number: number;

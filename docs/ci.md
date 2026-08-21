@@ -10,8 +10,9 @@ This repo runs GitHub Actions on pushes and pull requests. This doc maps what ru
 | `lint.yml` | `Lint & Format` | ESLint + Prettier (`format:check`) |
 | `test.yml` | `Unit Tests` | Jest (`npm test -- --ci`) |
 | `quality-gates.yml` | `TypeScript`, `expo-doctor`, `expo install --check` | Typecheck + Expo SDK / native-module alignment |
-| `preview-build.yml` | Android EAS preview APK | On-demand when PR has label `preview-build` — binary only (no OTA); comments PR **and** linked issues; best-effort Project 4 → `In QA` |
-| `nightly-preview.yml` | Nightly Android APK | Scheduled binary-only internal APK (dev API); also `workflow_dispatch` |
+| `preview-build.yml` | Android EAS preview APK | Optional label `preview-build` — binary only (no OTA); **PR comment only** (debug). Does not move Project 4 or start QA |
+| `qa-handoff.yml` | Post-merge QA handoff | On merge of Needs-QA PRs: issue comment + assign `@Roslin22` + best-effort Project 4 → `In QA` ([guides/qa-process.md](guides/qa-process.md)) |
+| `nightly-preview.yml` | Nightly Android APK | Scheduled binary-only internal APK (dev API); also `workflow_dispatch`; comments install URL on recent handoff issues |
 | `eas-build.yml` | Tag → version sync | Production release path on `v*` tags |
 
 Local mirrors (run before claiming PR-ready):
@@ -54,12 +55,14 @@ The `PR Description` check must post on every PR (no workflow-level `paths:` fil
 
 PR template for the GitHub UI: [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md) (keep in sync with [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md)).
 
-## Preview / native compile
+## Preview / nightly / QA handoff
 
-- Preview APKs: `preview-build.yml` + [`.github/scripts/eas-resolve-android-build.sh`](../.github/scripts/eas-resolve-android-build.sh) with `FORCE_NEW_BUILD=true` (no fingerprint reuse; no OTA)
-- After a successful preview comment, [`.github/scripts/preview-notify-linked-issues.cjs`](../.github/scripts/preview-notify-linked-issues.cjs) upserts the same body on issues linked via `Refs #NNN` (or legacy closing keywords; not `Part of #NNN`) and may move Project 4 Status to `In QA` (optional `PROJECT_BOARD_TOKEN`)
-- Human QA steps: [guides/qa-preview-testing.md](guides/qa-preview-testing.md)
-- Nightly internal APK (no OTA): `nightly-preview.yml` + EAS profile `nightly` — see [`.github/README.md`](../.github/README.md)
+- Optional PR APKs: `preview-build.yml` + [`.github/scripts/eas-resolve-android-build.sh`](../.github/scripts/eas-resolve-android-build.sh) with `FORCE_NEW_BUILD=true` (no fingerprint reuse; no OTA) — **PR comment only**
+- Post-merge QA: [`.github/workflows/qa-handoff.yml`](../.github/workflows/qa-handoff.yml) + [`.github/scripts/qa-handoff-on-merge.cjs`](../.github/scripts/qa-handoff-on-merge.cjs) — Needs QA? Yes → comment / assign / `In QA` for `Refs #NNN`
+- Nightly: `nightly-preview.yml` + [`.github/scripts/nightly-notify-qa-issues.cjs`](../.github/scripts/nightly-notify-qa-issues.cjs) posts install URL on recent handoff issues
+- **Process:** [guides/qa-process.md](guides/qa-process.md) (Needs QA?, post-merge nightly QA)
+- Human install steps: [guides/qa-preview-testing.md](guides/qa-preview-testing.md)
+- **Merge rule:** engineer approval + required CI — QA does **not** block merge
 - Production: tag `v*` → `eas-build.yml` + [`.eas/README.md`](../.eas/README.md)
 
 ## Future guardrail — do not brick required checks
@@ -74,6 +77,7 @@ Do **not** implement that skip pattern until the team explicitly wants required 
 
 ## Related
 
+- [guides/qa-process.md](guides/qa-process.md)
 - [issue-tracking.md](issue-tracking.md)
 - [AGENT_ONBOARDING.md](AGENT_ONBOARDING.md)
 - [guides/dependabot-process.md](guides/dependabot-process.md)

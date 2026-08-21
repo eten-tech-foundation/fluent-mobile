@@ -458,7 +458,7 @@ export const appStyles = StyleSheet.create({
     textAlign: 'center',
   },
   bulletText: { flex: 1, fontSize: 15, lineHeight: 22, color: '#172b4d' },
-  // App.tsx — keep white (not brand blue). Metro remount resets `dbReady`, so a
+  // Root layout — keep white (not brand blue). Metro remount resets loading, so a
   // blue init root flashes over white chrome; cold-start bootsplash stays blue.
   appRoot: {
     flex: 1,

@@ -31,7 +31,7 @@ Both `publicRequest` and `authedRequest` log sanitized metadata via `summarizeAp
 
 ## react-query usage
 
-- **Provider:** `QueryClientProvider` in `App.tsx` using the shared `queryClient`.
+- **Provider:** `QueryClientProvider` in `src/routes/_layout.tsx` using the shared `queryClient`.
 - **Mutations:** auth flows (`useLogin`, `useForgotPassword`) and future upload actions.
 - **Query keys:** `src/services/queryKeys.ts` — add keys here; do not inline string arrays in hooks.
 - **Retry:** `shouldRetryApiRequest()` in `queryClient.ts` aligns with `ApiError.isRetryable`. Auth errors never retry.

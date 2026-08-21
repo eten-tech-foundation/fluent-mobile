@@ -1,13 +1,17 @@
 /**
- * After a preview-build PR comment is posted, mirror it onto linked GitHub
- * issues and (best-effort) move those cards to Project 4 Status "In QA".
+ * Shared helpers for linked-issue resolution and Project 4 → In QA moves.
  *
- * Soft-fails: preview success must not fail if issue/board side effects fail.
+ * Historically called from preview-build to mirror PR comments onto issues.
+ * Post-merge QA handoff now owns issue comments / assignee / In QA via
+ * qa-handoff-on-merge.cjs; this module still exports:
+ *   - collectLinkedIssueNumbersFromText / resolveLinkedIssueNumbers
+ *   - moveIssuesToInQa (allowlist: In PR Review, In Progress (Dev))
+ *
+ * Soft-fails: callers must not fail the primary job if board side effects fail.
  *
  * Linked tickets are resolved from PR title/body via `Refs #NNN` (preferred)
  * and legacy closing keywords (`Closes` / `Fixes` / `Resolves`). `Part of #NNN`
- * is intentionally ignored so stacked/partial work does not get preview
- * comments or an In QA board move.
+ * is intentionally ignored so stacked/partial work does not get QA handoff.
  *
  * Env (optional):
  *   PROJECT_BOARD_TOKEN — PAT with org project write (preferred for Project 4)
@@ -19,8 +23,8 @@
  * @param {import('@octokit/rest').Octokit} args.github
  * @param {import('@actions/github').Context} args.context
  * @param {{ warning: Function, info: Function }} args.core
- * @param {string} args.body — same markdown posted on the PR
- * @param {string[]} args.commentMarkers — substrings that identify prior bot preview comments
+ * @param {string} args.body — markdown body (legacy notifyLinkedIssues path)
+ * @param {string[]} args.commentMarkers — substrings that identify prior bot comments
  * @param {typeof import('@actions/github').getOctokit} [args.getOctokit]
  */
 async function notifyLinkedIssues({

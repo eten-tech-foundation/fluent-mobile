@@ -11,10 +11,10 @@ alwaysApply: true
 
 Every change — including infra, CI, docs, Dependabot follow-ups, and `expo install --fix` — goes through:
 
-1. **Ticket on Project 4** — GitHub Issue `#NNN` **on** the [Fluent Mobile Board](https://github.com/orgs/eten-tech-foundation/projects/4/views/9) (org project #4, view 9). Ask if missing. See [docs/issue-tracking.md](../../docs/issue-tracking.md). The repo Issues list is not the triage board. (Not Linear.) Board Status/Priority edits: [docs/guides/project-board.md](../../docs/guides/project-board.md) and [project-board.mdc](./project-board.mdc) — do not sweep Product or `Dev Ready` lanes without named approval.
-2. **Feature branch** — `{author}/{type}/{issue-number}-{slug}` (see `/create-pr-branch`, or `/start-issue` for the full loop)
-3. **Pull request** — title `[#NNN]: Description`; body filled from the PR template (below); include `Refs #NNN` under Details (never `Closes` / `Fixes` / `Resolves`); **assign the PR to the author** (`gh pr create --assignee @me` or `gh pr edit --add-assignee @me`); set Project 4 Status to **In PR Review**. Manually link the issue in the PR Development sidebar when needed (GitHub has no non-closing link API — do not use closing keywords). `/start-issue` chains to `/create-pr` (`/open-pr` is an alias) which automates the draft PR, board move, and CI watch.
-4. **Human merge** — agents open PRs and push **feature branches only**; never merge on GitHub unless the user explicitly asks for a Dependabot squash merge in that session. After merge, set Project 4 Status to **In QA** (issues stay open for QA — do not auto-close)
+1. **Ticket on Project 4** — GitHub Issue `#NNN` **on** the [Fluent Mobile Board](https://github.com/orgs/eten-tech-foundation/projects/4/views/9) (org project #4, view 9). Ask if missing — except explicit **no-ticket chores** approved in-session (`Refs: none`). See [docs/issue-tracking.md](../../docs/issue-tracking.md). The repo Issues list is not the triage board. (Not Linear.) Board Status/Priority edits: [docs/guides/project-board.md](../../docs/guides/project-board.md) and [project-board.mdc](./project-board.mdc) — do not sweep Product or `Dev Ready` lanes without named approval.
+2. **Feature branch** — `{author}/{type}/{issue-number}-{slug}` (see `/create-pr-branch`, or `/start-issue` for the full loop); no-ticket chores may use `{author}/chore/{slug}` without an issue number
+3. **Pull request** — title `[#NNN]: Description` (or plain title for no-ticket chores); body filled from the PR template (below); include `Refs #NNN` **or** `Refs: none` under Details (never `Closes` / `Fixes` / `Resolves`); **assign the PR to the author** (`gh pr create --assignee @me` or `gh pr edit --add-assignee @me`); set Project 4 Status to **In PR Review** when there is a ticket. Manually link the issue in the PR Development sidebar when needed (GitHub has no non-closing link API — do not use closing keywords). `/start-issue` chains to `/create-pr` (`/open-pr` is an alias) which automates the draft PR, board move, and CI watch.
+4. **Human merge** — agents open PRs and push **feature branches only**; never merge on GitHub unless the user explicitly asks for a Dependabot squash merge in that session. For **Needs-QA** PRs ([docs/guides/qa-process.md](../../docs/guides/qa-process.md)): check **Needs QA? Yes**; merge when an engineer approved and CI is green — **QA is post-merge** on the nightly (`In QA` + `@Roslin22`). Optional `preview-build` is debug-only. Engineering-only PRs skip QA handoff. Issues stay open — do not auto-close
 
 Allowed on `main` locally: `git checkout main`, `git pull`, read-only validation after merges. **Not allowed:** `git push origin main`, commits on `main`, or opening PRs with `main` as the head branch.
 
@@ -28,7 +28,7 @@ Do **not** substitute a short “Summary / Test plan” or ad-hoc bullet list. L
 | ------- | ---------------- |
 | **TLDR** | 2–4 sentences: what / why / impact |
 | **Reviewer checklist** | Leave items unchecked unless verified |
-| **Details** | `Refs #NNN` on its own line (non-closing link); short summary; type-of-change checkboxes |
+| **Details** | `Refs #NNN` on its own line (non-closing link), **or** `Refs: none` for an explicit no-ticket chore; short summary; type-of-change checkboxes |
 | **Technical changes** | Key files as `` `path` `` bullets |
 | **Testing** | What gates ran (`format:check`, `lint`, `typecheck`, `npm test -- --ci`) or waiver |
 | **How to verify** | Numbered steps + **Expected** |

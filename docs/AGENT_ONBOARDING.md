@@ -22,7 +22,7 @@ Recording follow-up: wire source audio dock to real fetch + playback ([#235](htt
 | Package manager | **npm** (`package-lock.json`). `yarn` in-repo is shimmed to npm; pnpm is blocked. |
 | Node | `>= 24.14.0` (README: Node 24) |
 | Local DB | `@op-engineering/op-sqlite` |
-| Navigation | `@react-navigation/stack` |
+| Navigation | **Expo Router** (`expo-router`, file-based routes in `src/routes/`) |
 | Server state (installed) | `@tanstack/react-query` (minimal use today) |
 | Env | `EXPO_PUBLIC_API_BASE_URL` in `.env` (Expo public env) |
 | EAS | Project `b0919574-f268-4768-b3bd-7cfa5172bbab`, profiles in `eas.json` |
@@ -35,12 +35,13 @@ Recording follow-up: wire source audio dock to real fetch + playback ([#235](htt
 
 | Path | Purpose |
 |------|---------|
-| [`App.tsx`](../App.tsx) | Root: DB init + session restore, then navigator; sync runs post-login |
-| [`src/app/screens/`](../src/app/screens/) | Stack screens: Home, Settings, Sync, Drafting, PrepareForOffline |
+| [`index.js`](../index.js) | Entry: gesture-handler + `expo-router/entry` |
+| [`src/routes/`](../src/routes/) | Expo Router layouts/routes (auth + app groups, drawer) |
+| [`src/app/screens/`](../src/app/screens/) | Screen components: Home, Settings, Sync, Drafting, PrepareForOffline |
 | [`src/app/tabs/`](../src/app/tabs/) | Nested surfaces: ProjectsTab, MyWorkTab, BibleTab, RecordTab, auth/legal |
 | [`src/components/`](../src/components/) | Shared `layout/` + `ui/` |
 | [`src/theme/`](../src/theme/) | Canonical design tokens (`theme` object) for new UI |
-| [`src/navigation/`](../src/navigation/) | Stack navigator |
+| [`src/navigation/`](../src/navigation/) | Auth session provider, href helpers, auth gate |
 | [`src/services/api.ts`](../src/services/api.ts) | HTTP client (`FluentAPI`) — see [api-client-standard.md](guides/api-client-standard.md) |
 | [`src/services/sync.ts`](../src/services/sync.ts) | Sync orchestration, retries, KV counts |
 | [`src/services/storage.ts`](../src/services/storage.ts) | KV sync state (`op-sqlite` Storage) |
@@ -113,28 +114,34 @@ Tag-driven production releases — no iOS. PR previews are binary Android APKs (
 
 Setup and troubleshooting: [`.eas/README.md`](../.eas/README.md).
 
-## PR preview (Android QA)
+## PR preview + nightly QA (Android)
 
-1. Add the **`preview-build`** label to the PR (uses latest git tag, or `app.config.ts` version if none).
-2. Workflow and build resolution:
+Process: [`docs/guides/qa-process.md`](guides/qa-process.md). Install steps: [`docs/guides/qa-preview-testing.md`](guides/qa-preview-testing.md).
+
+**Default QA path:** merge Needs-QA PRs when an engineer approves → post-merge handoff → QA tests the **nightly** APK.
+
+1. Check **Needs QA? Yes** in the PR body when device QA is required (`Refs #NNN` on its own Details line).
+2. After merge, [`qa-handoff.yml`](../.github/workflows/qa-handoff.yml) comments on the issue, assigns `@Roslin22`, and may move Project 4 → **`In QA`**.
+3. [`nightly-preview.yml`](../.github/workflows/nightly-preview.yml) builds a binary-only Android APK on a schedule and comments the install URL on recent handoff issues.
+4. **Optional debug:** add the **`preview-build`** label for an isolated PR APK ([`preview-build.yml`](../.github/workflows/preview-build.yml) — **PR comment only**; does not start the QA queue). Re-request: remove and re-add the label.
+5. Build notes:
    - **`runtimeVersion`:** `app.config.ts` sets **`runtimeVersion: { policy: 'appVersion' }`**.
-   - **`preview-build.yml`:** [`.github/workflows/preview-build.yml`](../.github/workflows/preview-build.yml) starts a **fresh** Android EAS `preview` internal APK for that PR (binary only — no OTA); uses [`.github/scripts/eas-resolve-android-build.sh`](../.github/scripts/eas-resolve-android-build.sh) with `FORCE_NEW_BUILD=true`.
+   - Preview/nightly use `FORCE_NEW_BUILD` / fresh EAS binaries (no OTA).
    - **`.fingerprintignore`:** excludes `docs/**/*` and `.github/**/*` (among other non-native paths) from EAS build fingerprint hashing.
-   - **`eas.json` / production skip:** `preview` and `development` set **`EAS_USE_CACHE: "1"`**; `production` sets **`EAS_SAVE_CACHE: "1"`** and **`EAS_RESTORE_CACHE: "0"`** (save cache only, no restore). [`.eas/workflows/create-production-builds.yml`](../.eas/workflows/create-production-builds.yml) skips rebuild when fingerprint matches (`if: !needs.get_android_build.outputs.build_id`).
-3. The bot comment links to **[`docs/guides/qa-preview-testing.md`](guides/qa-preview-testing.md)** for non-technical testers (Fluent preview app — **not Expo Go** or Metro dev builds).
+   - **`eas.json` / production skip:** `preview` and `development` set **`EAS_USE_CACHE: "1"`**; `production` sets **`EAS_SAVE_CACHE: "1"`** and **`EAS_RESTORE_CACHE: "0"`**.
 
-Requires `EXPO_TOKEN` in GitHub repository secrets. Preview builds use `eas.json` profile `preview` (internal distribution, Expo Updates **disabled** — no `developmentClient`; `EXPO_PUBLIC_API_BASE_URL=https://dev.api.fluent.bible`). Local `.env` keeps emulator localhost; `dev.app.fluent.bible` is the web app, not the mobile API host. Local/engineering builds use profile `development` (`developmentClient: true`).
+Requires `EXPO_TOKEN` in GitHub repository secrets. Preview/nightly profiles are internal distribution with Expo Updates **disabled**. Local `.env` keeps emulator localhost; `dev.app.fluent.bible` is the web app, not the mobile API host. Local/engineering builds use profile `development` (`developmentClient: true`).
 
 ## Architecture and data flow
 
 ```mermaid
 flowchart TD
   subgraph launch [App launch]
-    App[App.tsx]
+    Entry[expo-router entry / src/routes]
     InitDB[initializeDatabase]
     Restore[restoreSession]
-    Nav[AppNavigator]
-    App --> InitDB --> Restore --> Nav
+    Gate[AuthSessionProvider + protected routes]
+    Entry --> InitDB --> Restore --> Gate
   end
 
   subgraph postLogin [Post-login / manual sync]
@@ -166,7 +173,7 @@ flowchart TD
   end
 ```
 
-**Launch (actual):** `App.tsx` → `initializeDatabase()` → `restoreSession()` → set auth + `dbReady` → `AppNavigator`. **Sync is not automatic on every cold start**; it runs after successful login (`syncAllData`) and when the user/manual sync hooks call `syncAllUsers`.
+**Launch (actual):** `index.js` → Expo Router `src/routes/_layout.tsx` → `AuthSessionProvider` (`initializeDatabase()` → `restoreSession()`) → protected `(auth)` / `(app)` groups. **Sync is not automatic on every cold start**; it runs after successful login (`syncAllData`) and when the user/manual sync hooks call `syncAllUsers`.
 
 **Layer rules (do not bypass):**
 
@@ -184,7 +191,7 @@ Auth: email/password via `FluentAPI.signIn`; authenticated API calls use `Author
 
 - **Logging:** `const log = logger.create('ComponentName')` — no raw `console` (ESLint); exception: `src/utils/logger.ts`, tests.
 - **Env:** `EXPO_PUBLIC_API_BASE_URL` in `.env`; read via `getApiBaseUrl()` from `src/config/apiBaseUrl.ts` — never commit `.env`. ESLint blocks direct `process.env` reads and legacy imports (`@env`, `react-native-fs`, `react-native-keychain`, Simform waveform) outside the config layer.
-- **Types:** API shapes in `src/types/api/`, DB in `src/types/db/`, navigation in `src/types/navigation/`.
+- **Types:** API shapes in `src/types/api/`, DB in `src/types/db/`. Route hrefs/params in `src/navigation/hrefs.ts` / `routeParams.ts`.
 - **Prettier:** single quotes, trailing commas, `arrowParens: 'avoid'`.
 - **Styles:** **`src/theme` (`theme` object) is canonical for new UI.** Do not add new hardcoded hex colors in new StyleSheets. [`src/app/appStyles.ts`](../src/app/appStyles.ts) is legacy shared styles — migrate callers to tokens when you touch them; do not expand it with new hex.
 - **SVG:** import as React components (Metro SVG transformer).
@@ -193,7 +200,7 @@ Keep changes **small and scoped** — avoid drive-by refactors.
 
 ## Testing strategy
 
-- **Unit:** Jest + Testing Library; mocks for native modules in [`__tests__/App.test.tsx`](../__tests__/App.test.tsx).
+- **Unit:** Jest + Testing Library; auth bootstrap coverage in [`__tests__/AuthSessionProvider.test.tsx`](../__tests__/AuthSessionProvider.test.tsx); gate/href helpers under `src/navigation/*.test.ts`.
 - **Expo mocks:** [`src/test/mocks/`](../src/test/mocks/) — global `moduleNameMapper` in `jest.config.cjs` for `expo-secure-store`, `expo-file-system`, `expo-audio`.
 - **Colocated:** `src/**/*.test.ts(x)` — e.g. `src/utils/logger.test.ts`, `src/services/recordingSync.test.ts`.
 - **Live API test:** `fluent-api.test.ts` is **skipped by default**; opt in with `RUN_LIVE_API_TESTS=1 npm test -- fluent-api.test.ts`.
@@ -206,7 +213,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 
 | Task | Start here |
 |------|------------|
-| New stack screen | Prefer `src/app/screens/`, register in `AppNavigator.tsx`, extend `RootStackParamList` |
+| New stack screen | Add a file under `src/routes/(app)/(stack)/` (or auth group), implement UI in `src/app/screens/` / `src/app/tabs/`, add an `hrefs` helper if needed |
 | Nested drafting/list UI | `src/app/tabs/` or `src/components/` |
 | New API endpoint | `FluentAPI` in `api.ts`, then `sync.ts` step + `repository.ts` |
 | New table / column | `schema.ts` → prefer versioned migrations (`#110`) → repository inserts → queries → types |
@@ -237,6 +244,8 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 - Human setup: [README.md](../README.md)
 - Agent delivery guardrails: [`AGENTS.md`](../AGENTS.md)
 - Issue tracking (Project 4 Fluent Mobile Board): [issue-tracking.md](issue-tracking.md)
+- QA process / post-merge nightly: [guides/qa-process.md](guides/qa-process.md)
+- QA install how-to: [guides/qa-preview-testing.md](guides/qa-preview-testing.md)
 - CI inventory: [ci.md](ci.md)
 - Cursor rules: [`.cursor/rules/`](../.cursor/rules/) — **Android-only:** [android-only.mdc](../.cursor/rules/android-only.mdc)
 - Dependabot: [guides/dependabot-process.md](guides/dependabot-process.md) — use with `.cursor/rules/dependabot-workflow.mdc`

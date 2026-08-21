@@ -1,26 +1,30 @@
-# How to test a Fluent Mobile PR preview (Android)
+# How to test Fluent Mobile builds (Android)
 
-Plain-language guide for QA and reviewers. **No developer tools** — just an Android phone and the GitHub **PR or issue** comment.
+Plain-language guide for QA and reviewers. **No developer tools** — just an Android phone and GitHub / Slack.
 
-## Quick start
+**Process / board handoff (when QA is required, who owns what):** [qa-process.md](qa-process.md). This page is **how to install and test** an APK.
 
-1. Open the bot comment on the **pull request** or the **linked GitHub issue**.
-2. Tap **Install Fluent** (or scan the QR code).
-3. Open **Fluent** from your home screen and test.
+**Default for QA:** install the **nightly** Fluent APK (main). Isolated PR `preview-build` APKs are **optional** for developers debugging a branch — they do not start the QA queue.
+
+## Quick start (QA — nightly)
+
+1. Open the **nightly** install comment on the **GitHub issue** (bot posts after a successful Nightly Preview), **or** use the Slack nightly notice.
+2. Tap **Install Fluent nightly** (or scan the QR code).
+3. Open **Fluent** from your home screen and test the ticket’s acceptance criteria.
+4. **Pass:** move Project 4 → **Passed QA** and leave a short comment.
+5. **Fail:** open a **new** bug issue (the feature is already on `main`).
 
 **Do not use Expo Go** from the Play Store — it will not work.
 
-The preview is a **standalone internal APK** for that PR (no over-the-air update). Each labeled PR gets its own build so multiple QA previews can exist at once. On one phone you can only have one Fluent install — reinstall when switching PRs.
-
-When the preview is ready, the ticket usually moves to **In QA** on the Fluent Mobile Board.
+Nightlies are a **standalone internal APK** for `main` (no over-the-air update). On one phone you can only have one Fluent install — reinstall when switching between nightly and an optional PR preview.
 
 ---
 
-## Install Fluent
+## Install Fluent (nightly)
 
-1. On your **Android phone**, open the pull request **or** the linked issue on GitHub.
-2. Find the bot comment (starts with **“Fluent preview app ready”**).
-3. Tap **Install Fluent** (or scan the install QR code).
+1. On your **Android phone**, open the linked **issue** on GitHub (or Slack nightly message).
+2. Find the bot comment (**“Nightly APK ready for QA”**) or Slack install link.
+3. Tap **Install Fluent nightly** (or scan the install QR code).
 4. Sign in to [expo.dev](https://expo.dev) if asked — ask your team lead for an invite if needed.
 5. Tap **Download** or **Install** on the build page.
 6. If Android blocks the install:
@@ -28,13 +32,13 @@ When the preview is ready, the ticket usually moves to **In QA** on the Fluent M
    - Allow your **browser** or **Files** app to install APKs
 7. Open **Fluent** from your home screen.
 8. The app should open normally (sign-in / home) — **not** a Metro dev launcher and **not** Expo Go.
-9. Sign in and test the PR.
+9. Sign in and test.
 
-Builds often take ~10–15 minutes. Refresh the bot comment when GitHub Actions finishes.
+Scheduled nightlies run ~**06:00 UTC**. If nothing new landed on `main`, the nightly may skip a build — wait for the next run that includes your merge.
 
-If the app looks wrong after installing a different PR’s preview:
+If the app looks wrong after installing a different APK:
 
-1. Uninstall Fluent (or install over it from the new **Install Fluent** link).
+1. Uninstall Fluent (or install over it from the new install link).
 2. Fully close Fluent (swipe it away from recent apps) and reopen.
 
 ---
@@ -43,8 +47,8 @@ If the app looks wrong after installing a different PR’s preview:
 
 | App | Works? |
 |-----|--------|
-| **Fluent** (from **Install Fluent** link) | ✅ Yes |
-| **Expo Go** (Play Store) | ❌ No |
+| **Fluent** (from **Install Fluent** / nightly link) | Yes |
+| **Expo Go** (Play Store) | No |
 
 ---
 
@@ -52,27 +56,27 @@ If the app looks wrong after installing a different PR’s preview:
 
 | Problem | What to try |
 |--------|-------------|
-| I don’t have Fluent yet | Tap **Install Fluent** in the bot comment. |
-| App shows Metro / localhost / dev launcher | Wrong build type. Reinstall from the latest **Install Fluent** link (old dev-client APK). |
-| Phone offers **Expo Go** | Cancel. Install **Fluent** from the **Install Fluent** link. |
-| Testing the wrong PR | Install again from that PR’s (or issue’s) latest bot comment. |
+| I don’t have Fluent yet | Tap **Install Fluent nightly** in the issue bot comment or Slack. |
+| App shows Metro / localhost / dev launcher | Wrong build type. Reinstall from the latest nightly (or PR preview) link. |
+| Phone offers **Expo Go** | Cancel. Install **Fluent** from the install link. |
+| Testing the wrong build | Install again from the latest nightly comment for that issue. |
 | Install blocked | Allow **Install unknown apps** for your browser. |
-| No bot comment on PR or issue | Ask a developer to add the **`preview-build`** label (and ensure the PR has `Refs #NNN` on its own Details line — `Part of #NNN` is not enough). |
+| No handoff / nightly comment on the issue | Confirm the PR had **Needs QA? Yes** and `Refs #NNN`, then ask a developer to check `qa-handoff` / nightly Actions. |
 | expo.dev asks me to log in | Request access to the Fluent project from your team lead. |
 
 ---
 
 ## For developers
 
-1. Link the ticket in the PR body (`Refs #NNN` on its own Details line — never `Closes` / `Fixes` / `Resolves`; do not use `Part of #NNN` for the ticket you want preview comments / In QA for).
-2. Add the **`preview-build`** label to the PR.
-3. Workflow starts a **fresh Android preview APK** (binary only — no OTA), comments on the **PR and linked issue**, and moves the ticket to **In QA** when Status was `In PR Review` or `In Progress (Dev)`.
-4. Share this guide with QA: `docs/guides/qa-preview-testing.md`
-5. Preview APKs use the EAS `preview` profile (internal distribution, Updates disabled — **not** `developmentClient`).
-6. Optional repo secret `PROJECT_BOARD_TOKEN` enables Project 4 Status updates (issue comments work without it).
+Full process (Needs QA?, post-merge handoff, pass/fail): **[qa-process.md](qa-process.md)**.
 
-### Nightly builds (optional)
+1. Link the ticket in the PR body (`Refs #NNN` on its own Details line — never `Closes` / `Fixes` / `Resolves`; do not use `Part of #NNN` for the ticket you want QA handoff for).
+2. Check **Needs QA? Yes** when device QA is required.
+3. After merge, [`qa-handoff.yml`](../../.github/workflows/qa-handoff.yml) comments on the issue, adds `@Roslin22`, and moves Project 4 → **In QA**.
+4. Nightly [`nightly-preview.yml`](../../.github/workflows/nightly-preview.yml) posts the install URL on recent handoff issues.
+5. Optional: add **`preview-build`** for an isolated PR APK (**PR comment only** — does not start QA). Re-request: remove and re-add the label.
+6. Preview / nightly APKs use EAS profiles with Updates disabled (binary only — **not** `developmentClient`).
 
-Separate from PR previews: GitHub Actions can publish a **nightly Android APK** (EAS profile `nightly`, development API). Install from the Slack message or the Actions job summary — **not** from a PR comment. Nightlies are **binary only**. See [`.github/README.md`](../../.github/README.md).
+### Nightly builds
 
-Technical details: [`.github/README.md`](../../.github/README.md) · [`.eas/README.md`](../../.eas/README.md)
+See [`.github/README.md`](../../.github/README.md) and [qa-process.md](qa-process.md).

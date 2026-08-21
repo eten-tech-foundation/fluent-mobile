@@ -20,9 +20,10 @@ PR ([delivery.mdc](../../.cursor/rules/delivery.mdc)).
 
 - **Base branch is `main`.** Pass `--base main` explicitly. Never push
   `origin main`. Never open a PR with `main` as the **head** branch.
-- **Title:** `[#NNN]: Title text` (sentence case after the colon).
-- **Body:** `Refs #NNN` on its own line under Details. **Never**
-  `Closes` / `Fixes` / `Resolves`.
+- **Title:** `[#NNN]: Title text` (sentence case after the colon); no-ticket
+  chores may omit the `[#NNN]:` prefix when using `Refs: none`.
+- **Body:** `Refs #NNN` **or** `Refs: none` on its own line under Details.
+  **Never** `Closes` / `Fixes` / `Resolves`.
 - **Assignee:** `--assignee @me`.
 - **Draft** by default (`gh pr create --draft`).
 - Package manager is **npm** only.
@@ -136,15 +137,22 @@ and pre-fill:
 | ------- | ---------------- |
 | **TLDR** | 2–4 sentences: what / why / impact |
 | **Reviewer checklist** | Leave items unchecked unless verified ([AGENTS.md](../../AGENTS.md)) |
-| **Details** | `Refs #NNN` on its own line; short summary; type-of-change checkboxes |
+| **Details** | `Refs #NNN` **or** `Refs: none` on its own line; short summary; **Needs QA?** Yes/No; type-of-change checkboxes |
 | **Technical changes** | Key files as `` `path` `` bullets |
 | **Testing** | What gates ran (`format:check`, `lint`, `typecheck`, `npm test -- --ci`) |
 | **How to verify** | Numbered steps + **Expected** |
 | **Follow-ups** | Deferred AC → linked issues; otherwise say none |
 
-Do **not** auto-check **Acceptance criteria**, **Scope**, or **Android device
-tested** unless verified. Do **not** auto-check device QA for native / mic /
-camera / filesystem / permissions changes.
+**Needs QA? / post-merge handoff** ([docs/guides/qa-process.md](../../docs/guides/qa-process.md)):
+
+1. Decide **Needs QA?** and check **No** or **Yes** in the PR body.
+2. If **Yes**: do **not** add `preview-build` as a hard gate (optional debug
+   only). After a human merges, `qa-handoff.yml` comments on the issue,
+   assigns `@Roslin22`, and moves Project 4 → **In QA**. QA tests the
+   **nightly** — merge is **not** blocked on QA.
+3. If **No**: check engineering-only; skip QA handoff.
+
+Do **not** auto-check **Acceptance criteria** or **Scope** unless verified.
 
 Keep under ~400 lines; no nested fenced code blocks inside the PR body.
 
@@ -162,11 +170,14 @@ If the PR already exists without an assignee:
 gh pr edit --add-assignee @me
 ```
 
+**Optional `preview-build` label (debug only):** Do **not** require it for
+Needs QA. Only add if a human asks for an isolated PR APK while debugging.
+
 **Issue link (Development sidebar):** `Refs #NNN` is the required non-closing
 reference. GitHub’s Development widget is only auto-populated by closing
 keywords or a **manual** sidebar link. Do **not** use closing keywords. After
 create, if the sidebar is empty, link `#NNN` once in the GitHub UI (or ask the
-user to).
+user to). Explicit no-ticket chores may use `Refs: none`.
 
 **Reviewers / labels:** CODEOWNERS handles review requests after the file is on
 `main`. Omit `--reviewer` unless the user asks.
@@ -178,9 +189,10 @@ Flag high-impact paths in the body when present: `package.json`,
 ### 6. Move the linked issue to **In PR Review** (Project 4)
 
 Best-effort: warn and continue on failure — never fail the PR over it.
+Skip entirely when the body has `Refs: none` (no-ticket chore).
 
 1. Parse `Refs #NNN` from the PR body (fall back to `NNN` in the branch name).
-   The issue number is required (step 5); do not skip tracking.
+   If `Refs: none`, skip this step.
 2. Do **not** move Product-owned columns (`In Progress (Product)`,
    `Product Ready`, `Sprint Shaping`).
 3. If the assigned issue is missing from Project 4, **add it**, then set Status

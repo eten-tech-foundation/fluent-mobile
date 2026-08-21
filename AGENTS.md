@@ -44,11 +44,11 @@ Build for the case in front of you.
 
 ### 4. Human-only verification
 
-If a change adds **native modules** or **mic / camera / filesystem / permissions** behavior:
+If a change adds **native modules** or **mic / camera / filesystem / permissions** behavior (or otherwise **Needs QA** per [docs/guides/qa-process.md](docs/guides/qa-process.md)):
 
-- **Android device QA is required** (unit tests and CI are not enough).
-- Keep the PR **draft** or **changes-requested** until a human records device results on the PR.
-- Agents must **flag** this requirement; do not check the device-QA box unless a human verified it.
+- Mark **Needs QA? Yes** on the PR (`Refs #NNN`). Unit tests and CI are not enough for device behavior.
+- **Merge is not blocked on QA** — engineer approval + green CI is enough. After merge, automation hands the ticket to QA (`In QA`, `@Roslin22`); QA tests the **nightly** APK.
+- Agents must **flag** Needs QA; do not claim device QA passed unless a human verified it on the nightly (or an optional PR preview used only for debugging).
 
 ### 5. Agent-authorship is a review heuristic
 
@@ -58,6 +58,7 @@ On feature PRs with heavy agent co-authorship, reviewers should prioritize **sco
 
 - Delivery / branch / PR process: [`.cursor/rules/delivery.mdc`](.cursor/rules/delivery.mdc) — **PR bodies must use** [`.cursor/templates/pr-template.md`](.cursor/templates/pr-template.md). Full loop: `/start-issue`; delivery-only: `/create-pr` (`.claude/commands/`).
 - Issue tracking (Project 4 Fluent Mobile Board): [docs/issue-tracking.md](docs/issue-tracking.md)
+- QA process / post-merge nightly: [docs/guides/qa-process.md](docs/guides/qa-process.md) · install how-to: [docs/guides/qa-preview-testing.md](docs/guides/qa-preview-testing.md)
 - Board mutation rules: [docs/guides/project-board.md](docs/guides/project-board.md) · [`.cursor/rules/project-board.mdc`](.cursor/rules/project-board.mdc)
 - Expo-first deps: [docs/guides/expo-first-dependencies.md](docs/guides/expo-first-dependencies.md) · [`.cursor/rules/expo-first-dependencies.mdc`](.cursor/rules/expo-first-dependencies.mdc)
 - CI command order: [`.cursor/rules/commands.mdc`](.cursor/rules/commands.mdc)

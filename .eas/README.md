@@ -46,16 +46,18 @@ Monitor:
 - **GitHub Actions** — `.github/workflows/eas-build.yml`
 - **EAS Dashboard** — Workflows / Builds for project `fluent-mobile`
 
-## PR preview builds
+## PR preview builds (optional debug)
 
 Add the **`preview-build`** label to a pull request. GitHub Actions (`.github/workflows/preview-build.yml`) will:
 
 - Start a **fresh Android `preview` internal APK** for that PR commit (binary only — no `eas update` / shared OTA channel)
-- Post the same install comment on the **PR and linked issue**; best-effort move Project 4 Status to **`In QA`** (from `In PR Review` / `In Progress (Dev)`). Optional secret: `PROJECT_BOARD_TOKEN`.
+- Post an install comment on the **PR only** (does **not** move Project 4 or start the QA queue)
 
-Each labeled PR forces a new build so multiple QA APKs can exist at once. Preview profile has Expo Updates **disabled** (same idea as nightly).
+Each labeled PR forces a new build so multiple debug APKs can exist at once. Preview profile has Expo Updates **disabled** (same idea as nightly). Re-request after fixes: remove and re-add the label.
 
-**QA testers:** [`docs/guides/qa-preview-testing.md`](../docs/guides/qa-preview-testing.md)
+**Default QA path** is post-merge **nightly** — [docs/guides/qa-process.md](../docs/guides/qa-process.md).
+
+**Install how-to:** [`docs/guides/qa-preview-testing.md`](../docs/guides/qa-preview-testing.md)
 
 Uses the latest git tag for runtime version when available; otherwise falls back to `app.config.ts` / `package.json` version (no tag required for first preview). Requires `EXPO_TOKEN` in GitHub Actions secrets.
 
@@ -66,7 +68,8 @@ GitHub Actions [`.github/workflows/nightly-preview.yml`](../.github/workflows/ni
 - Bakes `EXPO_PUBLIC_API_BASE_URL=https://dev.api.fluent.bible`
 - **No Updates channel** and **no `eas update`** — what you install is what you run
 - Does **not** require the Expo GitHub App (uses `EXPO_TOKEN`, same as PR preview)
-- Distinct from PR `preview` (also binary-only APKs; no shared OTA channel)
+- Comments install links on issues with a recent post-merge QA handoff
+- Distinct from optional PR `preview` (also binary-only APKs; no shared OTA channel)
 
 See [`.github/README.md`](../.github/README.md) for secrets and skip / force behavior.
 
