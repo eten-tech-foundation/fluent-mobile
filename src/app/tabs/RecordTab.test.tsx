@@ -91,6 +91,7 @@ import { parseUserId } from '../../utils/parseUserId';
 const chapterData: ChapterAssignmentData = {
   id: 1,
   projectUnitId: 1,
+  projectId: 1,
   bibleId: 1,
   bookId: 1,
   chapterNumber: 14,

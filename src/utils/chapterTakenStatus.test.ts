@@ -4,6 +4,7 @@ import { isChapterTakenByOther } from './chapterTakenStatus';
 const baseChapter: ChapterAssignmentData = {
   id: 1,
   projectUnitId: 1,
+  projectId: 1,
   bibleId: 1,
   bookId: 1,
   chapterNumber: 1,
