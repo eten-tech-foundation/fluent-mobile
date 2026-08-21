@@ -72,9 +72,10 @@ jest.mock('../../hooks/useVerseAudio', () => ({
   useVerseAudio: () => mockUseVerseAudio(),
 }));
 
-const mockUseChapterConflictStatus = jest.fn(() => ({
-  hasConflict: false,
-}));
+const mockUseChapterConflictStatus = jest.fn((chapterId: number) => {
+  void chapterId;
+  return { hasConflict: false };
+});
 
 jest.mock('../../hooks/useChapterConflictStatus', () => ({
   useChapterConflictStatus: (chapterId: number) =>
