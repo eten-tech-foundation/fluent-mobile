@@ -279,6 +279,7 @@ export default function DraftingScreen() {
             >
               <RecordTab
                 chapterData={chapterData}
+                userId={userId}
                 onCaptureActiveChange={setRecordCaptureActive}
               />
             </View>

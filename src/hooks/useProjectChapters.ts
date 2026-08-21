@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { getProjectChapters } from '../db/queries';
 import { ProjectChapter } from '../types/db/types';
 import { parseUserId } from '../utils/parseUserId';
+import { useFocusEffect } from 'expo-router';
 import { logger } from '../utils/logger';
 
 const log = logger.create('useProjectChapters');
@@ -30,10 +31,12 @@ export function useProjectChapters(projectId: number) {
     }
   }, [projectId]);
 
-  useEffect(() => {
-    setLoading(true);
-    loadChapters();
-  }, [loadChapters]);
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      loadChapters();
+    }, [loadChapters]),
+  );
 
   const refresh = useCallback(async () => {
     setRefreshing(true);

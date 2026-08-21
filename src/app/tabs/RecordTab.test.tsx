@@ -86,11 +86,15 @@ const verses = [
   },
 ];
 
-function renderTab(onCaptureActiveChange?: (active: boolean) => void) {
+function renderTab(
+  onCaptureActiveChange?: (active: boolean) => void,
+  userId: number | null = 1,
+) {
   return render(
     <DraftingProvider verses={verses} initialVerse={3}>
       <RecordTab
         chapterData={chapterData}
+        userId={userId}
         onCaptureActiveChange={onCaptureActiveChange}
       />
     </DraftingProvider>,
@@ -271,7 +275,7 @@ describe('RecordTab', () => {
     });
     rerender(
       <DraftingProvider verses={verses} initialVerse={3}>
-        <RecordTab chapterData={chapterData} />
+        <RecordTab chapterData={chapterData} userId={1} />
       </DraftingProvider>,
     );
 
@@ -358,6 +362,7 @@ describe('RecordTab', () => {
       <DraftingProvider verses={verses} initialVerse={3}>
         <RecordTab
           chapterData={chapterData}
+          userId={1}
           onCaptureActiveChange={onCaptureActiveChange}
         />
       </DraftingProvider>,

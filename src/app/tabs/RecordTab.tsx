@@ -47,6 +47,7 @@ function formatDuration(ms: number): string {
 
 type RecordTabProps = {
   chapterData: ChapterAssignmentData;
+  userId: number | null;
   onCaptureActiveChange?: (active: boolean) => void;
 };
 
@@ -58,6 +59,7 @@ type RecordTabProps = {
  */
 export function RecordTab({
   chapterData,
+  userId,
   onCaptureActiveChange,
 }: RecordTabProps) {
   const rawParams = useLocalSearchParams<{ chapterName?: string }>();
@@ -67,7 +69,7 @@ export function RecordTab({
   const [sourceExpanded, setSourceExpanded] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
 
-  const verseAudio = useVerseAudio({ bibleTextId });
+  const verseAudio = useVerseAudio({ bibleTextId, userId });
   const verseIndex = verses.findIndex(v => v.verseNumber === selectedVerse);
   const prevDisabled = verseIndex <= 0;
   const nextDisabled = verseIndex < 0 || verseIndex >= verses.length - 1;
