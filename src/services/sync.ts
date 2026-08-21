@@ -301,22 +301,22 @@ async function syncUserChapterWork(userId: number) {
     async () => {
       const response = await FluentAPI.getUserChapterAssignments(userId);
       const isConfirmedShape =
-  response !== null &&
-  typeof response === 'object' &&
-  Array.isArray(response.assignedChapters) &&
-  Array.isArray(response.peerCheckChapters);
+        response !== null &&
+        typeof response === 'object' &&
+        Array.isArray(response.assignedChapters) &&
+        Array.isArray(response.peerCheckChapters);
 
-const assigned = Array.isArray(response?.assignedChapters)
-  ? response.assignedChapters
-  : [];
-const peerCheck = Array.isArray(response?.peerCheckChapters)
-  ? response.peerCheckChapters
-  : [];
-const mapped = [...assigned, ...peerCheck].map(mapApiChapterAssignment);
+      const assigned = Array.isArray(response?.assignedChapters)
+        ? response.assignedChapters
+        : [];
+      const peerCheck = Array.isArray(response?.peerCheckChapters)
+        ? response.peerCheckChapters
+        : [];
+      const mapped = [...assigned, ...peerCheck].map(mapApiChapterAssignment);
 
-if (mapped.length > 0) {
-  await insertChapterAssignmentSyncData(mapped);
-}
+      if (mapped.length > 0) {
+        await insertChapterAssignmentSyncData(mapped);
+      }
       if (isConfirmedShape) {
         await reconcileUserChapterWork(
           userId,
