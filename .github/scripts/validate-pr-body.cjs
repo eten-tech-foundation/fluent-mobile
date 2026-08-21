@@ -3,7 +3,7 @@
  *
  * Required (human + agent PRs):
  *   - ### TLDR with non-placeholder prose
- *   - Refs #NNN (non-closing issue link)
+ *   - Refs #NNN (non-closing issue link) OR `Refs: none` for explicit no-ticket chores
  *   - ### How to verify with at least one real step or an explicit waiver
  *
  * Soft-fails templates that are empty, HTML-comment-only, or CodeRabbit-only.
@@ -86,6 +86,17 @@ function hasRefsIssueLink(text) {
 }
 
 /**
+ * Explicit no-ticket waiver for chore / infra PRs (e.g. process-only changes).
+ * Must be `Refs: none` (or `Refs none`) on its own line — not a missing Refs.
+ *
+ * @param {string} text
+ * @returns {boolean}
+ */
+function hasRefsNoneWaiver(text) {
+  return /(?:^|\n)\s*Refs\s*:?\s*none\s*$/im.test(String(text || ''));
+}
+
+/**
  * True when section text is empty or only checklist/placeholder chrome.
  * @param {string} sectionBody
  * @returns {boolean}
@@ -154,9 +165,9 @@ function validatePrBody(input) {
     );
   }
 
-  if (!hasRefsIssueLink(body)) {
+  if (!hasRefsIssueLink(body) && !hasRefsNoneWaiver(body)) {
     errors.push(
-      'Missing `Refs #NNN` on its own line (do not use Closes/Fixes/Resolves).',
+      'Missing `Refs #NNN` on its own line (or `Refs: none` for an explicit no-ticket chore). Do not use Closes/Fixes/Resolves.',
     );
   }
 
@@ -254,6 +265,7 @@ module.exports = {
   stripCodeRabbitSummary,
   extractSection,
   hasRefsIssueLink,
+  hasRefsNoneWaiver,
   isPlaceholderOrEmpty,
   parseCliArgs,
   main,

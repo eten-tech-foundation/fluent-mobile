@@ -11,8 +11,9 @@ Workflows for Fluent Mobile (**Android-only**).
 | `test.yml` | push, PR | Jest unit tests |
 | `quality-gates.yml` | push, PR | TypeScript, `expo-doctor`, `expo install --check` |
 | `eas-build.yml` | push tag `v*` | Sync `APP_VERSION_FALLBACK` in `app.config.ts` with tag; hand off to EAS |
-| `preview-build.yml` | PR label `preview-build` | Fresh Android preview APK for QA (binary only — no OTA) |
-| `nightly-preview.yml` | cron (06:00 UTC) + `workflow_dispatch` | Nightly **binary-only** Android internal APK (dev API) |
+| `preview-build.yml` | PR label `preview-build` | Optional isolated Android preview APK (**PR comment only** — debug) |
+| `qa-handoff.yml` | PR merged | Needs QA? Yes → issue handoff + assign Roslin + Project 4 `In QA` |
+| `nightly-preview.yml` | cron (06:00 UTC) + `workflow_dispatch` | Nightly **binary-only** Android internal APK (dev API); install comments on recent handoffs |
 
 ## PR template + CODEOWNERS
 
@@ -22,7 +23,7 @@ Workflows for Fluent Mobile (**Android-only**).
 
 Make **`PR Description`** a required status check on `main`, and enable **Require review from Code Owners** — see [docs/ci.md](../docs/ci.md).
 
-Native Android compile is **not** run on every PR. Use the **`preview-build`** label for a fresh EAS preview APK when ready for QA, and tag releases for production builds.
+Native Android compile is **not** run on every PR. QA uses the **nightly** APK after merge. Optionally use the **`preview-build`** label for an isolated PR APK while debugging. Tag releases for production builds.
 
 ## Release flow
 
@@ -36,19 +37,18 @@ git push origin v1.0.1
 
 See [`.eas/README.md`](../.eas/README.md) for Expo GitHub app and Play Store setup.
 
-## PR preview (QA)
+## Post-merge QA + optional PR preview
 
-Canonical process (Needs QA?, pass/fail, **pre-merge** merge gate): [`docs/guides/qa-process.md`](../docs/guides/qa-process.md).
+Canonical process (Needs QA?, post-merge nightly): [`docs/guides/qa-process.md`](../docs/guides/qa-process.md).
 
-1. Create a `preview-build` label on the repo (if missing).
-2. Add the label to a PR when ready for QA (PR should reference its ticket with `Refs #NNN` on its own Details line — not `Part of #NNN`).
-3. Workflow starts a **fresh Android preview APK** (binary only — no OTA / `eas update`), posts the same install comment on the **PR** and each **linked GitHub issue** (`Refs` / legacy closing keywords via [`.github/scripts/preview-notify-linked-issues.cjs`](scripts/preview-notify-linked-issues.cjs)), and best-effort moves Project 4 cards from `In PR Review` / `In Progress (Dev)` → **`In QA`** (**before merge**).
-4. **Re-request after fixes:** remove the `preview-build` label, then re-add it (workflow triggers on `labeled` only; always `FORCE_NEW_BUILD`).
-5. **Merge gate:** QA-required PRs are not mergeable until QA passes that PR’s preview — currently **manual** (no required status check yet).
+1. Check **Needs QA? Yes** on the PR (`Refs #NNN` on its own Details line — not `Part of #NNN`).
+2. After merge, [`qa-handoff.yml`](workflows/qa-handoff.yml) comments on linked issues, adds `@Roslin22`, and best-effort moves Project 4 → **`In QA`** ([`.github/scripts/qa-handoff-on-merge.cjs`](scripts/qa-handoff-on-merge.cjs)).
+3. Nightly builds post the install URL on recent handoff issues.
+4. **Optional debug:** add **`preview-build`** for an isolated PR APK — **PR comment only**; does **not** start the QA queue. Re-request: remove and re-add the label.
 
 **Install guide (non-technical):** [`docs/guides/qa-preview-testing.md`](../docs/guides/qa-preview-testing.md)
 
-Requires `EXPO_TOKEN` in repository secrets. Optional: `PROJECT_BOARD_TOKEN` (PAT with org **project** write) so Status updates on Project 4 succeed — without it, issue comments still post but the board move may be skipped. Each labeled PR forces a new EAS build (`FORCE_NEW_BUILD`) so concurrent QA previews are not collapsed by fingerprint reuse. `eas.json` profile `preview` is internal distribution with Expo Updates **disabled** (same idea as nightly). `EAS_USE_CACHE` (ccache) stays enabled on non-production profiles.
+Requires `EXPO_TOKEN` in repository secrets. Optional: `PROJECT_BOARD_TOKEN` (PAT with org **project** write) so Status updates on Project 4 succeed. `eas.json` profiles `preview` / `nightly` are internal distribution with Expo Updates **disabled**.
 
 ## Nightly preview (internal APK)
 
@@ -57,14 +57,14 @@ Scheduled (and manually dispatchable) workflow [`.github/workflows/nightly-previ
 - Always starts a **new** EAS Android build with profile **`nightly`** (internal APK, baked `https://dev.api.fluent.bible`).
 - **No OTA** (`eas update` is not used). Expo Updates stay disabled for `nightly` so the APK is self-contained.
 - Skips when `main` HEAD matches the last successful nightly unless `force_build` is set.
-- Posts a GitHub Actions job summary and optional Slack notification.
+- Posts a GitHub Actions job summary, optional Slack notification, and install comments on recent QA handoff issues.
 
 ### Secrets
 
 | Secret | Purpose |
 |--------|---------|
 | `EXPO_TOKEN` | EAS CLI auth (required for PR preview + nightly) |
-| `PROJECT_BOARD_TOKEN` | Optional PAT for Project 4 Status → `In QA` after preview (issue comments work without it) |
+| `PROJECT_BOARD_TOKEN` | Optional PAT for Project 4 Status → `In QA` on merge handoff |
 | `SLACK_WEBHOOK_URL` | Incoming webhook for nightly success / failure / skip notices |
 
 Does **not** require the Expo GitHub App — only `EXPO_TOKEN`. Manual run: **Actions → Nightly Preview → Run workflow** (available after this workflow exists on `main`).

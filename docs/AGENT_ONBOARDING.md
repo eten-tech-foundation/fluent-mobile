@@ -114,20 +114,23 @@ Tag-driven production releases — no iOS. PR previews are binary Android APKs (
 
 Setup and troubleshooting: [`.eas/README.md`](../.eas/README.md).
 
-## PR preview (Android QA)
+## PR preview + nightly QA (Android)
 
-Process and merge gate: [`docs/guides/qa-process.md`](guides/qa-process.md). Install steps: [`docs/guides/qa-preview-testing.md`](guides/qa-preview-testing.md).
+Process: [`docs/guides/qa-process.md`](guides/qa-process.md). Install steps: [`docs/guides/qa-preview-testing.md`](guides/qa-preview-testing.md).
 
-1. Add the **`preview-build`** label to the PR when it **Needs QA** (uses latest git tag, or `app.config.ts` version if none).
-2. Workflow and build resolution:
+**Default QA path:** merge Needs-QA PRs when an engineer approves → post-merge handoff → QA tests the **nightly** APK.
+
+1. Check **Needs QA? Yes** in the PR body when device QA is required (`Refs #NNN` on its own Details line).
+2. After merge, [`qa-handoff.yml`](../.github/workflows/qa-handoff.yml) comments on the issue, assigns `@Roslin22`, and may move Project 4 → **`In QA`**.
+3. [`nightly-preview.yml`](../.github/workflows/nightly-preview.yml) builds a binary-only Android APK on a schedule and comments the install URL on recent handoff issues.
+4. **Optional debug:** add the **`preview-build`** label for an isolated PR APK ([`preview-build.yml`](../.github/workflows/preview-build.yml) — **PR comment only**; does not start the QA queue). Re-request: remove and re-add the label.
+5. Build notes:
    - **`runtimeVersion`:** `app.config.ts` sets **`runtimeVersion: { policy: 'appVersion' }`**.
-   - **`preview-build.yml`:** [`.github/workflows/preview-build.yml`](../.github/workflows/preview-build.yml) starts a **fresh** Android EAS `preview` internal APK for that PR (binary only — no OTA); uses [`.github/scripts/eas-resolve-android-build.sh`](../.github/scripts/eas-resolve-android-build.sh) with `FORCE_NEW_BUILD=true`.
+   - Preview/nightly use `FORCE_NEW_BUILD` / fresh EAS binaries (no OTA).
    - **`.fingerprintignore`:** excludes `docs/**/*` and `.github/**/*` (among other non-native paths) from EAS build fingerprint hashing.
-   - **`eas.json` / production skip:** `preview` and `development` set **`EAS_USE_CACHE: "1"`**; `production` sets **`EAS_SAVE_CACHE: "1"`** and **`EAS_RESTORE_CACHE: "0"`** (save cache only, no restore). [`.eas/workflows/create-production-builds.yml`](../.eas/workflows/create-production-builds.yml) skips rebuild when fingerprint matches (`if: !needs.get_android_build.outputs.build_id`).
-3. The bot comments on the PR and linked issue; Project 4 may move to **`In QA` before merge**. QA-required PRs are **not mergeable** until QA passes that preview.
-4. Re-request after fixes: remove and re-add the `preview-build` label.
+   - **`eas.json` / production skip:** `preview` and `development` set **`EAS_USE_CACHE: "1"`**; `production` sets **`EAS_SAVE_CACHE: "1"`** and **`EAS_RESTORE_CACHE: "0"`**.
 
-Requires `EXPO_TOKEN` in GitHub repository secrets. Preview builds use `eas.json` profile `preview` (internal distribution, Expo Updates **disabled** — no `developmentClient`; `EXPO_PUBLIC_API_BASE_URL=https://dev.api.fluent.bible`). Local `.env` keeps emulator localhost; `dev.app.fluent.bible` is the web app, not the mobile API host. Local/engineering builds use profile `development` (`developmentClient: true`).
+Requires `EXPO_TOKEN` in GitHub repository secrets. Preview/nightly profiles are internal distribution with Expo Updates **disabled**. Local `.env` keeps emulator localhost; `dev.app.fluent.bible` is the web app, not the mobile API host. Local/engineering builds use profile `development` (`developmentClient: true`).
 
 ## Architecture and data flow
 
@@ -241,7 +244,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 - Human setup: [README.md](../README.md)
 - Agent delivery guardrails: [`AGENTS.md`](../AGENTS.md)
 - Issue tracking (Project 4 Fluent Mobile Board): [issue-tracking.md](issue-tracking.md)
-- QA process / pre-merge preview gate: [guides/qa-process.md](guides/qa-process.md)
+- QA process / post-merge nightly: [guides/qa-process.md](guides/qa-process.md)
 - QA install how-to: [guides/qa-preview-testing.md](guides/qa-preview-testing.md)
 - CI inventory: [ci.md](ci.md)
 - Cursor rules: [`.cursor/rules/`](../.cursor/rules/) — **Android-only:** [android-only.mdc](../.cursor/rules/android-only.mdc)

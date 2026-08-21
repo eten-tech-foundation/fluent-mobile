@@ -13,6 +13,7 @@
       "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
+      "environment": "development",
       "env": {
         "EAS_USE_CACHE": "1"
       },
@@ -23,6 +24,7 @@
     "preview": {
       "extends": "base",
       "distribution": "internal",
+      "environment": "preview",
       "env": {
         "EAS_USE_CACHE": "1",
         "EXPO_PUBLIC_API_BASE_URL": "https://dev.api.fluent.bible"
@@ -34,6 +36,7 @@
     "nightly": {
       "extends": "base",
       "distribution": "internal",
+      "environment": "preview",
       "env": {
         "EAS_USE_CACHE": "1",
         "EXPO_PUBLIC_API_BASE_URL": "https://dev.api.fluent.bible"
@@ -44,6 +47,7 @@
     },
     "production": {
       "extends": "base",
+      "environment": "production",
       "env": {
         "EAS_RESTORE_CACHE": "0",
         "EAS_SAVE_CACHE": "1"

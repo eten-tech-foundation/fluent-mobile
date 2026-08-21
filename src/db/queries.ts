@@ -201,6 +201,7 @@ export async function getChapterAssignmentById(
       `SELECT 
         ca.id,
         ca.project_unit_id,
+        pu.project_id,
         ca.bible_id,
         ca.book_id,
         ca.chapter_number,
@@ -213,6 +214,7 @@ export async function getChapterAssignmentById(
         bi.name as bible_name,
         bi.abbreviation as bible_abbreviation
       FROM chapter_assignments ca
+      LEFT JOIN project_units pu ON pu.id = ca.project_unit_id
       LEFT JOIN books b ON ca.book_id = b.id
       LEFT JOIN bibles bi ON ca.bible_id = bi.id
       WHERE ca.id = ?`,
@@ -227,6 +229,7 @@ export async function getChapterAssignmentById(
     return {
       id: row.id,
       projectUnitId: row.project_unit_id,
+      projectId: row.project_id,
       bibleId: row.bible_id,
       bookId: row.book_id,
       chapterNumber: row.chapter_number,
