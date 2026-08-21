@@ -69,7 +69,11 @@ export function RecordTab({
   const [sourceExpanded, setSourceExpanded] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
 
-  const verseAudio = useVerseAudio({ bibleTextId, userId });
+  const verseAudio = useVerseAudio({
+    bibleTextId,
+    chapterAssignmentId: chapterData.id,
+    userId,
+  });
   const verseIndex = verses.findIndex(v => v.verseNumber === selectedVerse);
   const prevDisabled = verseIndex <= 0;
   const nextDisabled = verseIndex < 0 || verseIndex >= verses.length - 1;

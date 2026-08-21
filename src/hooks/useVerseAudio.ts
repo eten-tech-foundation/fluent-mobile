@@ -39,6 +39,7 @@ export type VerseAudioPersistDeps = {
 
 export type UseVerseAudioArgs = {
   bibleTextId: number | null;
+  chapterAssignmentId: number | null;
   userId: number | null;
 } & VerseAudioPersistDeps;
 
@@ -75,6 +76,7 @@ async function defaultPersistTake(args: {
  */
 export function useVerseAudio({
   bibleTextId,
+  chapterAssignmentId,
   userId,
   persistTake = defaultPersistTake,
   loadTakes = getTakesForVerse,
@@ -192,10 +194,11 @@ export function useVerseAudio({
       await persistTake({ bibleTextId: id, tempUri: uri, durationMs });
 
       try {
-        const { isOnline } = await getConnectivitySnapshot();
-
-        if (!isOnline && userId !== null) {
-          await claimChapterOffline(id, userId);
+        if (userId !== null && chapterAssignmentId !== null) {
+          const { isOnline } = await getConnectivitySnapshot();
+          if (!isOnline) {
+            await claimChapterOffline(chapterAssignmentId, userId);
+          }
         }
       } catch (claimError) {
         log.error('Offline chapter claim failed', {
@@ -217,7 +220,14 @@ export function useVerseAudio({
       setErrorMessage(message);
       dispatch({ type: 'ERROR', message });
     }
-  }, [bibleTextId, loadTakes, persistTake, recording, userId]);
+  }, [
+    bibleTextId,
+    chapterAssignmentId,
+    loadTakes,
+    persistTake,
+    recording,
+    userId,
+  ]);
 
   const playTake = useCallback(
     async (take: Recording) => {
