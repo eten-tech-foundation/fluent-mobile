@@ -1,16 +1,21 @@
-import { emitAuthSessionExpired, onAuthSessionExpired } from './syncEvents';
+import {
+  emitAuthReauthRequired,
+  emitAuthReauthResolved,
+  onAuthReauthRequired,
+  onAuthReauthResolved,
+} from './syncEvents';
 
-describe('syncEvents auth session expired', () => {
-  it('notifies listeners when the session expires', () => {
+describe('syncEvents auth reauth required', () => {
+  it('notifies listeners with the user id', () => {
     const listener = jest.fn();
-    const unsubscribe = onAuthSessionExpired(listener);
+    const unsubscribe = onAuthReauthRequired(listener);
 
-    emitAuthSessionExpired();
+    emitAuthReauthRequired('42');
 
-    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledWith('42');
 
     unsubscribe();
-    emitAuthSessionExpired();
+    emitAuthReauthRequired('42');
 
     expect(listener).toHaveBeenCalledTimes(1);
   });
@@ -20,22 +25,38 @@ describe('syncEvents auth session expired', () => {
     const second = jest.fn();
     const third = jest.fn();
 
-    const unsubFirst = onAuthSessionExpired(first);
+    const unsubFirst = onAuthReauthRequired(first);
     let unsubThird = () => {};
-    const unsubSecond = onAuthSessionExpired(() => {
-      second();
+    const unsubSecond = onAuthReauthRequired(() => {
+      second('2');
       unsubThird();
     });
-    unsubThird = onAuthSessionExpired(third);
+    unsubThird = onAuthReauthRequired(third);
 
-    emitAuthSessionExpired();
+    emitAuthReauthRequired('2');
 
-    expect(first).toHaveBeenCalledTimes(1);
-    expect(second).toHaveBeenCalledTimes(1);
-    expect(third).toHaveBeenCalledTimes(1);
+    expect(first).toHaveBeenCalledWith('2');
+    expect(second).toHaveBeenCalledWith('2');
+    expect(third).toHaveBeenCalledWith('2');
 
     unsubFirst();
     unsubSecond();
     unsubThird();
+  });
+});
+
+describe('syncEvents auth reauth resolved', () => {
+  it('notifies listeners when reauth is cleared', () => {
+    const listener = jest.fn();
+    const unsubscribe = onAuthReauthResolved(listener);
+
+    emitAuthReauthResolved('42');
+
+    expect(listener).toHaveBeenCalledWith('42');
+
+    unsubscribe();
+    emitAuthReauthResolved('42');
+
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 });

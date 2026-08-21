@@ -17,7 +17,6 @@ import {
   signOut as clearAuthSession,
 } from '../services/authSession';
 import { clearOrphanedPausedTakes } from '../services/pausedTakes';
-import { onAuthSessionExpired } from '../services/syncEvents';
 import {
   startUploadOrchestrator,
   stopUploadOrchestrator,
@@ -27,6 +26,7 @@ import {
   stopDownloadQueueAutoResume,
 } from '../services/downloadQueueAutoResume';
 import { registerRecordingUploadWorker } from '../services/recordingSync';
+import { ApiUser } from '../types/api/responses';
 import { appStyles } from '../app/appStyles';
 import { theme } from '../theme';
 
@@ -40,9 +40,9 @@ export type AuthSessionContextValue = {
   postLoginSyncActive: boolean;
   error: string | null;
   /** Cold login: flip auth + run post-login sync with sync-active UI. */
-  signIn: (email: string) => void;
+  signIn: (email: string, preloadedUser?: ApiUser) => void;
   /** Add-user login: keep auth tree; sync in background (no sync-active flag). */
-  signInAddUser: (email: string) => void;
+  signInAddUser: (email: string, preloadedUser?: ApiUser) => void;
   signOut: () => void;
   /** After switching device account — bump consumers that reload local user data. */
   userSwitchEpoch: number;
@@ -71,16 +71,6 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     clearAuthSession();
     setIsAuthenticated(false);
     setPostLoginSyncActive(false);
-  }, []);
-
-  useEffect(() => {
-    return onAuthSessionExpired(() => {
-      log.info('Session expired — returning to login');
-      stopUploadOrchestrator();
-      clearAuthSession();
-      setIsAuthenticated(false);
-      setPostLoginSyncActive(false);
-    });
   }, []);
 
   useEffect(() => {
@@ -130,8 +120,8 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
   }, [isLoading]);
 
   const runPostLoginSync = useCallback(
-    (email: string, onComplete?: () => void) => {
-      syncAllData(false, email)
+    (email: string, preloadedUser?: ApiUser, onComplete?: () => void) => {
+      syncAllData(false, email, preloadedUser)
         .catch(e => {
           log.error('Post-login sync failed:', { error: e });
         })
@@ -143,17 +133,19 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
   );
 
   const signIn = useCallback(
-    (email: string) => {
+    (email: string, preloadedUser?: ApiUser) => {
       setIsAuthenticated(true);
       setPostLoginSyncActive(true);
-      runPostLoginSync(email, () => setPostLoginSyncActive(false));
+      runPostLoginSync(email, preloadedUser, () =>
+        setPostLoginSyncActive(false),
+      );
     },
     [runPostLoginSync],
   );
 
   const signInAddUser = useCallback(
-    (email: string) => {
-      runPostLoginSync(email);
+    (email: string, preloadedUser?: ApiUser) => {
+      runPostLoginSync(email, preloadedUser);
     },
     [runPostLoginSync],
   );

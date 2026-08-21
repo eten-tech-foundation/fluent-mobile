@@ -54,10 +54,6 @@ jest.mock('../src/services/recordingSync', () => ({
   registerRecordingUploadWorker: jest.fn(),
 }));
 
-jest.mock('../src/services/syncEvents', () => ({
-  onAuthSessionExpired: jest.fn(() => jest.fn()),
-}));
-
 import {
   AuthSessionProvider,
   useAuthSession,

@@ -1,9 +1,11 @@
 type SyncListener = () => void;
 type SyncStartListener = (isFull: boolean) => void;
+type AuthReauthRequiredListener = (userId: string) => void;
 
 const completeListeners: SyncListener[] = [];
 const startListeners: SyncStartListener[] = [];
-const authSessionExpiredListeners: SyncListener[] = [];
+const authReauthRequiredListeners: AuthReauthRequiredListener[] = [];
+const authReauthResolvedListeners: AuthReauthRequiredListener[] = [];
 
 export function onSyncComplete(fn: SyncListener): () => void {
   completeListeners.push(fn);
@@ -29,16 +31,32 @@ export function emitSyncStart(isFull = false): void {
   startListeners.forEach(fn => fn(isFull));
 }
 
-export function onAuthSessionExpired(fn: SyncListener): () => void {
-  authSessionExpiredListeners.push(fn);
+export function onAuthReauthRequired(
+  fn: AuthReauthRequiredListener,
+): () => void {
+  authReauthRequiredListeners.push(fn);
   return () => {
-    const idx = authSessionExpiredListeners.indexOf(fn);
-    if (idx > -1) authSessionExpiredListeners.splice(idx, 1);
+    const idx = authReauthRequiredListeners.indexOf(fn);
+    if (idx > -1) authReauthRequiredListeners.splice(idx, 1);
   };
 }
 
-export function emitAuthSessionExpired(): void {
-  [...authSessionExpiredListeners].forEach(fn => fn());
+export function emitAuthReauthRequired(userId: string): void {
+  [...authReauthRequiredListeners].forEach(fn => fn(userId));
+}
+
+export function onAuthReauthResolved(
+  fn: AuthReauthRequiredListener,
+): () => void {
+  authReauthResolvedListeners.push(fn);
+  return () => {
+    const idx = authReauthResolvedListeners.indexOf(fn);
+    if (idx > -1) authReauthResolvedListeners.splice(idx, 1);
+  };
+}
+
+export function emitAuthReauthResolved(userId: string): void {
+  [...authReauthResolvedListeners].forEach(fn => fn(userId));
 }
 
 /** Recording-upload session events (distinct from metadata sync). */
