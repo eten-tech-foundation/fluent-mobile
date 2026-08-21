@@ -56,6 +56,7 @@ Recording follow-up: wire source audio dock to real fetch + playback ([#235](htt
 | [`eas.json`](../eas.json) | EAS build/submit profiles (Android only) |
 | [`.eas/workflows/`](../.eas/workflows/) | EAS release workflows (tag-triggered production builds) |
 | [`plugins/`](../plugins/) | Custom config plugins (e.g. RNScreens fragment factory) |
+| [`modules/`](../modules/) | Local Android Expo modules (`aac-remux`, `upload-sync-foreground`) |
 | [`assets/`](../assets/) | App icon, adaptive icon, bootsplash source assets |
 | [`.github/workflows/`](../.github/workflows/) | CI + tag version sync (`eas-build.yml`) |
 | [`.github/dependabot.yml`](../.github/dependabot.yml) | Weekly dependency PRs (npm + GitHub Actions) |
@@ -229,6 +230,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 | `fluent-api.test.ts` | Skipped in CI; opt-in live network via `RUN_LIVE_API_TESTS=1` |
 | `format` vs `format:check` | Different glob scopes — CI only checks `src/**` |
 | Native folders | `android/` is gitignored CNG output — customize via `app.config.ts` + plugins. No iOS project. |
+| Upload FG service | `modules/upload-sync-foreground` posts a real Android shade notification (`setOngoing`) so uploads can continue in background. Requires `npm run prebuild` after module/plugin changes; device QA is mandatory. |
 | Dual styles | `src/theme` vs legacy `appStyles.ts` hex — new UI must use tokens |
 
 ## Open questions / TODOs
