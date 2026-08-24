@@ -31,6 +31,7 @@ import {
 } from '../db/stageAdvanceQueueRepository';
 import { resolveStageAdvanceConflictLocally } from '../db/repository';
 import { getChapterAssignmentById } from '../db/queries';
+import { getActiveUserId } from './storage';
 import { syncPendingStageAdvances } from './stageAdvanceSync';
 
 const mockSubmit = jest.mocked(FluentAPI.submitChapterAssignment);
@@ -39,12 +40,14 @@ const mockList = jest.mocked(listPendingStageAdvances);
 const mockRemove = jest.mocked(removeStageAdvanceQueueItem);
 const mockResolve = jest.mocked(resolveStageAdvanceConflictLocally);
 const mockGetLocal = jest.mocked(getChapterAssignmentById);
+const mockActiveUserId = jest.mocked(getActiveUserId);
 
 describe('syncPendingStageAdvances', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockRemove.mockResolvedValue(undefined);
     mockResolve.mockResolvedValue(undefined);
+    mockActiveUserId.mockReturnValue('42');
   });
 
   it('submits queue items in order and removes on success', async () => {
@@ -212,5 +215,60 @@ describe('syncPendingStageAdvances', () => {
 
     expect(mockSubmit).toHaveBeenCalledTimes(1);
     expect(mockResolve).toHaveBeenCalledWith(7, 'draft', null);
+  });
+
+  it('retains queue when re-pull fails after terminal reject', async () => {
+    mockList.mockResolvedValue([
+      {
+        id: 'a',
+        chapterAssignmentId: 7,
+        targetStatus: 'peer_check',
+        queueOrder: 1,
+        queuedAt: '2026-01-01T00:00:00.000Z',
+      },
+      {
+        id: 'b',
+        chapterAssignmentId: 8,
+        targetStatus: 'peer_check',
+        queueOrder: 2,
+        queuedAt: '2026-01-01T00:01:00.000Z',
+      },
+    ]);
+    mockSubmit.mockRejectedValue(new ApiError(400, 'bad transition'));
+    mockUserAssignments.mockRejectedValue(new ApiError(0, 'network'));
+
+    await syncPendingStageAdvances();
+
+    expect(mockResolve).not.toHaveBeenCalled();
+    expect(mockRemove).not.toHaveBeenCalled();
+    expect(mockSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it('shares one in-flight drain across concurrent callers', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    mockList.mockResolvedValue([
+      {
+        id: 'a',
+        chapterAssignmentId: 1,
+        targetStatus: 'peer_check',
+        queueOrder: 1,
+        queuedAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+    mockSubmit.mockImplementation(async () => {
+      await gate;
+      return {};
+    });
+
+    const first = syncPendingStageAdvances();
+    const second = syncPendingStageAdvances();
+    release();
+    await Promise.all([first, second]);
+
+    expect(mockList).toHaveBeenCalledTimes(1);
+    expect(mockSubmit).toHaveBeenCalledTimes(1);
   });
 });

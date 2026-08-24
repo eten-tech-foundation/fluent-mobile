@@ -20,6 +20,7 @@ function createHarness(options?: {
   uploadOverCellular?: boolean;
   workerDelayMs?: number;
   syncPendingStageAdvances?: () => Promise<void>;
+  worker?: ChapterUploadWorker | null;
 }) {
   let connListener: ConnListener | null = null;
   let prefListener: ((value: boolean) => void) | null = null;
@@ -34,7 +35,7 @@ function createHarness(options?: {
     { bookId: 1, chapterNumber: 2 },
   ];
 
-  const worker: ChapterUploadWorker = {
+  const defaultWorker: ChapterUploadWorker = {
     uploadChapter: async (chapter, signal) => {
       callOrder.push('audio');
       if (options?.workerDelayMs) {
@@ -57,6 +58,9 @@ function createHarness(options?: {
       uploaded.push(chapter);
     },
   };
+
+  const worker =
+    options && 'worker' in options ? options.worker ?? null : defaultWorker;
 
   const deps: UploadOrchestratorDeps = {
     subscribeToConnectivity: onChange => {
@@ -149,6 +153,49 @@ describe('uploadOrchestrator', () => {
     expect(stageSync).toHaveBeenCalled();
     expect(h.callOrder[0]).toBe('stage');
     expect(h.callOrder.slice(1)).toEqual(['audio', 'audio']);
+  });
+
+  it('drains stage advances on cellular without uploading audio', async () => {
+    const stageSync = jest.fn().mockResolvedValue(undefined);
+    const h = createHarness({
+      uploadOverCellular: false,
+      syncPendingStageAdvances: stageSync,
+    });
+    h.emitConnectivity(true, false);
+    await h.flush();
+    await h.flush();
+
+    expect(stageSync).toHaveBeenCalled();
+    expect(h.callOrder).toEqual(['stage']);
+    expect(h.uploaded).toEqual([]);
+    expect(h.orchestrator.getSnapshot().phase).toBe('waiting_wifi');
+  });
+
+  it('drains stage advances when no worker is registered', async () => {
+    const stageSync = jest.fn().mockResolvedValue(undefined);
+    const h = createHarness({
+      worker: null,
+      syncPendingStageAdvances: stageSync,
+    });
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    expect(stageSync).toHaveBeenCalled();
+    expect(h.callOrder).toEqual(['stage']);
+    expect(h.events.some(e => e.type === 'idle')).toBe(true);
+  });
+
+  it('continues audio uploads when stage sync rejects', async () => {
+    const stageSync = jest.fn().mockRejectedValue(new Error('stage boom'));
+    const h = createHarness({ syncPendingStageAdvances: stageSync });
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    expect(stageSync).toHaveBeenCalled();
+    expect(h.uploaded).toHaveLength(2);
+    expect(h.events.some(e => e.type === 'complete')).toBe(true);
   });
 
   it('auto-uploads on Wi‑Fi when pending chapters exist (online = server reachable)', async () => {

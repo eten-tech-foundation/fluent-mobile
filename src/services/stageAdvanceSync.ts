@@ -7,6 +7,7 @@ import {
 import { resolveStageAdvanceConflictLocally } from '../db/repository';
 import { isApiError } from '../types/api/errors';
 import type { ApiChapterAssignment } from '../types/api/types';
+import type { UserChapterAssignmentsResponse } from '../types/api/responses';
 import { pickLowerStageStatus } from '../utils/workflowStage';
 import { logger } from '../utils/logger';
 import { FluentAPI } from './api';
@@ -16,11 +17,10 @@ import { getActiveUserId } from './storage';
 
 const log = logger.create('StageAdvanceSync');
 
+let drainInFlight: Promise<void> | null = null;
+
 function findAssignmentInUserWork(
-  response: {
-    assignedChapters?: ApiChapterAssignment[];
-    peerCheckChapters?: ApiChapterAssignment[];
-  },
+  response: UserChapterAssignmentsResponse,
   chapterAssignmentId: number,
 ): ApiChapterAssignment | undefined {
   const all = [
@@ -32,41 +32,58 @@ function findAssignmentInUserWork(
 
 /**
  * After a terminal submit rejection, re-pull the assignment and keep the lower
- * stage silently (#257). Clears all queued advances for that assignment.
+ * stage silently (#257). Returns false when server status could not be obtained
+ * so the queue item stays for a later drain.
  */
 async function resolveRejectedStageAdvance(
   item: StageAdvanceQueueItem,
-): Promise<void> {
+): Promise<boolean> {
   const userId = Number(getActiveUserId());
+  if (!Number.isFinite(userId) || userId <= 0) {
+    log.warn(
+      'Cannot resolve stage reject without active user; queue retained',
+      {
+        chapterAssignmentId: item.chapterAssignmentId,
+      },
+    );
+    return false;
+  }
+
   let serverStatus: string | undefined;
   let serverSubmittedTime: string | null | undefined;
 
-  if (Number.isFinite(userId) && userId > 0) {
-    try {
-      const response = await FluentAPI.getUserChapterAssignments(userId);
-      const match = findAssignmentInUserWork(
-        response,
-        item.chapterAssignmentId,
-      );
-      if (match) {
-        const mapped = mapApiChapterAssignment(match);
-        serverStatus = mapped.chapterStatus;
-        serverSubmittedTime = mapped.submittedTime ?? null;
-      }
-    } catch (error) {
-      log.warn('Failed to re-pull assignment after stage reject', {
+  try {
+    const response = await FluentAPI.getUserChapterAssignments(userId);
+    const match = findAssignmentInUserWork(response, item.chapterAssignmentId);
+    if (match) {
+      const mapped = mapApiChapterAssignment(match);
+      serverStatus = mapped.chapterStatus;
+      serverSubmittedTime = mapped.submittedTime ?? null;
+    }
+  } catch (error) {
+    log.warn(
+      'Failed to re-pull assignment after stage reject; queue retained',
+      {
         chapterAssignmentId: item.chapterAssignmentId,
         error,
-      });
-    }
+      },
+    );
+    return false;
+  }
+
+  if (serverStatus === undefined) {
+    log.warn(
+      'Assignment missing from re-pull after stage reject; queue retained',
+      { chapterAssignmentId: item.chapterAssignmentId },
+    );
+    return false;
   }
 
   const local = await getChapterAssignmentById(item.chapterAssignmentId);
   const localStatus = local?.status ?? item.targetStatus;
   const resolved = pickLowerStageStatus(localStatus, serverStatus);
-  const normalizedServer = (serverStatus ?? '').trim().toLowerCase();
-  const keepServer =
-    normalizedServer.length > 0 && resolved === normalizedServer;
+  const normalizedServer = serverStatus.trim().toLowerCase();
+  const keepServer = resolved === normalizedServer;
 
   await resolveStageAdvanceConflictLocally(
     item.chapterAssignmentId,
@@ -80,13 +97,10 @@ async function resolveRejectedStageAdvance(
     serverStatus,
     resolved,
   });
+  return true;
 }
 
-/**
- * Drain the stage-advance queue in FIFO order.
- * Call before audio uploads on reconnect / Sync Now (#257).
- */
-export async function syncPendingStageAdvances(): Promise<void> {
+async function drainPendingStageAdvances(): Promise<void> {
   const pending = await listPendingStageAdvances();
   if (pending.length === 0) {
     return;
@@ -118,7 +132,17 @@ export async function syncPendingStageAdvances(): Promise<void> {
         return;
       }
       if (isApiError(error) && error.isTerminal) {
-        await resolveRejectedStageAdvance(item);
+        const resolved = await resolveRejectedStageAdvance(item);
+        if (!resolved) {
+          log.warn(
+            'Stage conflict unresolved; stopping drain with queue retained',
+            {
+              queueId: item.id,
+              chapterAssignmentId: item.chapterAssignmentId,
+            },
+          );
+          return;
+        }
         clearedAssignments.add(item.chapterAssignmentId);
         continue;
       }
@@ -130,4 +154,21 @@ export async function syncPendingStageAdvances(): Promise<void> {
       return;
     }
   }
+}
+
+/**
+ * Drain the stage-advance queue in FIFO order.
+ * Call before audio uploads on reconnect / Sync Now (#257).
+ * Re-entrant: concurrent callers share the in-flight drain.
+ */
+export async function syncPendingStageAdvances(): Promise<void> {
+  if (drainInFlight) {
+    return drainInFlight;
+  }
+
+  drainInFlight = drainPendingStageAdvances().finally(() => {
+    drainInFlight = null;
+  });
+
+  return drainInFlight;
 }

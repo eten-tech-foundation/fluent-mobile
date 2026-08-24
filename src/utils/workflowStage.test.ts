@@ -86,5 +86,16 @@ describe('workflowStage', () => {
       );
       expect(pickLowerStageStatus('draft', 'peer_check')).toBe('draft');
     });
+
+    it('keeps local status when serverStatus is undefined', () => {
+      expect(pickLowerStageStatus('peer_check', undefined)).toBe('peer_check');
+      expect(pickLowerStageStatus('community_check', undefined)).toBe(
+        'community_check',
+      );
+      expect(pickLowerStageStatus('draft', undefined)).toBe('draft');
+      expect(pickLowerStageStatus('not_started', undefined)).toBe(
+        'not_started',
+      );
+    });
   });
 });

@@ -120,18 +120,8 @@ export function createUploadOrchestrator(
       return;
     }
 
-    const gate = transportAllowsUpload(
-      isOnline,
-      isWifi,
-      deps.getUploadOverCellular(),
-    );
-    if (gate === 'offline') {
+    if (!isOnline) {
       phase = 'offline';
-      return;
-    }
-    if (gate === 'waiting_wifi') {
-      phase = 'waiting_wifi';
-      deps.emit({ type: 'waiting_wifi' });
       return;
     }
     if (reason === 'auto' && isUserPaused()) {
@@ -147,7 +137,7 @@ export function createUploadOrchestrator(
     sessionAbort = abort;
 
     const work = (async () => {
-      // Stage advances before audio uploads (#257).
+      // Stage advances when online (wifi or cellular), before audio gating (#257).
       if (deps.syncPendingStageAdvances) {
         try {
           await deps.syncPendingStageAdvances();
@@ -157,6 +147,17 @@ export function createUploadOrchestrator(
       }
 
       if (abort.signal.aborted) {
+        return;
+      }
+
+      const gate = transportAllowsUpload(
+        isOnline,
+        isWifi,
+        deps.getUploadOverCellular(),
+      );
+      if (gate === 'waiting_wifi') {
+        phase = 'waiting_wifi';
+        deps.emit({ type: 'waiting_wifi' });
         return;
       }
 
@@ -230,13 +231,7 @@ export function createUploadOrchestrator(
   const evaluateAuto = (): void => {
     evaluateChain = evaluateChain
       .then(async () => {
-        const gate = transportAllowsUpload(
-          isOnline,
-          isWifi,
-          deps.getUploadOverCellular(),
-        );
-
-        if (gate === 'offline') {
+        if (!isOnline) {
           // Offline transitions are handled immediately in onConnectivity.
           if (phase !== 'paused') {
             phase = 'offline';
@@ -253,13 +248,7 @@ export function createUploadOrchestrator(
           return;
         }
 
-        if (gate === 'waiting_wifi') {
-          phase = 'waiting_wifi';
-          deps.emit({ type: 'waiting_wifi' });
-          return;
-        }
-
-        // Do not await — keeps the evaluate chain free for later triggers.
+        // Run session even on cellular: stages drain first; audio respects wifi gate.
         void runSession('auto');
       })
       .catch(error => {
