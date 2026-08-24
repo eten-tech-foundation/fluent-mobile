@@ -288,7 +288,15 @@ export function RecordTab({
   }, [submitting]);
 
   const handleConfirmAdvance = useCallback(async () => {
-    if (!stageAdvance.destination || submitting) return;
+    if (
+      !confirmVisible ||
+      !stageAdvance.visible ||
+      stageAdvance.disabled ||
+      !stageAdvance.destination ||
+      submitting
+    ) {
+      return;
+    }
     setSubmitting(true);
     try {
       await confirmStageAdvancement({
@@ -308,7 +316,15 @@ export function RecordTab({
     } finally {
       setSubmitting(false);
     }
-  }, [chapterData.id, router, stageAdvance.destination, submitting]);
+  }, [
+    chapterData.id,
+    confirmVisible,
+    router,
+    stageAdvance.destination,
+    stageAdvance.disabled,
+    stageAdvance.visible,
+    submitting,
+  ]);
 
   return (
     <View style={styles.container} testID="record-tab">
