@@ -9,7 +9,7 @@ import {
 import { RecordTab } from './RecordTab';
 import { DraftingProvider } from '../context/DraftingContext';
 import type { useVerseAudio } from '../../hooks/useVerseAudio';
-import type { Recording } from '../../types/db/types';
+import type { Recording, ChapterAssignmentData } from '../../types/db/types';
 
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({ chapterName: 'Mark 14' }),
@@ -17,7 +17,36 @@ jest.mock('expo-router', () => ({
 
 jest.mock('../../db/queries', () => ({
   getBibleTextId: jest.fn(async () => 42),
+  countChapterRecordings: jest.fn(async () => 1),
 }));
+
+jest.mock('../../db/repository', () => ({
+  claimChapterAssignment: jest.fn(async () => undefined),
+}));
+
+jest.mock('../../services/chapterClaimSync', () => ({
+  syncChapterClaim: jest.fn(async () => ({ ok: true })),
+}));
+
+jest.mock('../../utils/parseUserId', () => ({
+  parseUserId: jest.fn(() => 99),
+}));
+
+const mockIsOnline = jest.fn(() => true);
+
+jest.mock('../../hooks/useConnectivity', () => ({
+  useConnectivity: () => ({ isOnline: mockIsOnline() }),
+}));
+
+import { countChapterRecordings } from '../../db/queries';
+import { claimChapterAssignment } from '../../db/repository';
+import { syncChapterClaim } from '../../services/chapterClaimSync';
+import { parseUserId } from '../../utils/parseUserId';
+
+const mockCountChapterRecordings = jest.mocked(countChapterRecordings);
+const mockClaimChapterAssignment = jest.mocked(claimChapterAssignment);
+const mockSyncChapterClaim = jest.mocked(syncChapterClaim);
+const mockParseUserId = jest.mocked(parseUserId);
 
 jest.mock('../../audio/micPermission', () => ({
   requestMicPermission: jest.fn(async () => 'granted'),
@@ -67,14 +96,17 @@ jest.mock('../../hooks/useVerseAudio', () => ({
   useVerseAudio: () => mockUseVerseAudio(),
 }));
 
-const chapterData = {
+const chapterData: ChapterAssignmentData = {
   id: 1,
+  projectUnitId: 10,
+  projectId: 1,
   bibleId: 1,
   bookId: 1,
   chapterNumber: 14,
+  status: 'in_progress',
   bibleName: 'BSB',
   bookName: 'Mark',
-} as never;
+};
 
 const verses = [
   {
@@ -86,12 +118,17 @@ const verses = [
   },
 ];
 
-function renderTab(onCaptureActiveChange?: (active: boolean) => void) {
+function renderTab(
+  onCaptureActiveChange?: (active: boolean) => void,
+  onChapterClaimed?: () => void,
+  chapterOverride?: typeof chapterData,
+) {
   return render(
     <DraftingProvider verses={verses} initialVerse={3}>
       <RecordTab
-        chapterData={chapterData}
+        chapterData={chapterOverride ?? chapterData}
         onCaptureActiveChange={onCaptureActiveChange}
+        onChapterClaimed={onChapterClaimed}
       />
     </DraftingProvider>,
   );
@@ -105,6 +142,9 @@ describe('RecordTab', () => {
     // test's `.not.toHaveBeenCalled()` assertion.
     jest.clearAllMocks();
     mockUseVerseAudio.mockReturnValue(idleAudio);
+    mockIsOnline.mockReturnValue(true);
+    mockCountChapterRecordings.mockResolvedValue(1);
+    mockParseUserId.mockReturnValue(99);
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 
@@ -365,6 +405,85 @@ describe('RecordTab', () => {
 
     await waitFor(() => {
       expect(onCaptureActiveChange).toHaveBeenCalledWith(false);
+    });
+  });
+
+  describe('online chapter claiming on first recording', () => {
+    const mockStop = idleAudio.stop as jest.Mock;
+
+    beforeEach(() => {
+      mockStop.mockResolvedValue(undefined);
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recording',
+        stop: mockStop,
+      });
+    });
+
+    async function pressStop() {
+      renderTab(undefined, jest.fn());
+      fireEvent.press(screen.getByTestId('record-stop-button'));
+      await waitFor(() => {
+        expect(idleAudio.stop).toHaveBeenCalled();
+      });
+    }
+
+    it('claims on first recording when unassigned and online', async () => {
+      const onChapterClaimed = jest.fn();
+      mockStop.mockResolvedValue(undefined);
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recording',
+        stop: mockStop,
+      });
+
+      render(
+        <DraftingProvider verses={verses} initialVerse={3}>
+          <RecordTab
+            chapterData={{ ...chapterData, assignedUserId: undefined }}
+            onChapterClaimed={onChapterClaimed}
+          />
+        </DraftingProvider>,
+      );
+      fireEvent.press(screen.getByTestId('record-stop-button'));
+
+      await waitFor(() => {
+        expect(mockClaimChapterAssignment).toHaveBeenCalledWith(1, 99);
+      });
+      expect(mockSyncChapterClaim).toHaveBeenCalledWith(1, 99);
+      expect(onChapterClaimed).toHaveBeenCalled();
+    });
+
+    it('does not claim when chapter already has recordings from another user', async () => {
+      mockCountChapterRecordings.mockResolvedValue(2);
+      await pressStop();
+      expect(mockClaimChapterAssignment).not.toHaveBeenCalled();
+      expect(mockSyncChapterClaim).not.toHaveBeenCalled();
+    });
+
+    it('does not claim when offline', async () => {
+      mockIsOnline.mockReturnValue(false);
+      await pressStop();
+      expect(mockClaimChapterAssignment).not.toHaveBeenCalled();
+      expect(mockSyncChapterClaim).not.toHaveBeenCalled();
+    });
+
+    it('does not claim when chapter is already assigned', async () => {
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recording',
+        stop: mockStop,
+      });
+      renderTab(undefined, undefined, {
+        ...chapterData,
+        assignedUserId: 55,
+      });
+      fireEvent.press(screen.getByTestId('record-stop-button'));
+      await waitFor(() => {
+        expect(idleAudio.stop).toHaveBeenCalled();
+      });
+      expect(mockClaimChapterAssignment).not.toHaveBeenCalled();
+      expect(mockSyncChapterClaim).not.toHaveBeenCalled();
     });
   });
 });

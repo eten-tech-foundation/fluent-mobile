@@ -845,6 +845,17 @@ export async function setRecordingSyncStatus(
   );
 }
 
+export async function claimChapterAssignment(
+  chapterAssignmentId: number,
+  userId: number,
+): Promise<void> {
+  const db = getDatabase();
+  await db.execute(
+    `UPDATE chapter_assignments SET assigned_user_id = ?, updated_at = ? WHERE id = ?`,
+    [userId, new Date().toISOString(), chapterAssignmentId],
+  );
+}
+
 export async function markRecordingUploaded(
   id: string,
   blobKey: string,

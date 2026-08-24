@@ -157,6 +157,16 @@ export default function DraftingScreen() {
     return unsubscribe;
   }, []);
 
+  const loadChapterAssignment = useCallback(async () => {
+    const assignment = await getChapterAssignmentById(chapterId);
+    setChapterData(assignment);
+    return assignment;
+  }, [chapterId]);
+
+  const handleChapterClaimed = useCallback(() => {
+    void loadChapterAssignment();
+  }, [loadChapterAssignment]);
+
   useEffect(() => {
     let ignore = false;
 
@@ -164,14 +174,11 @@ export default function DraftingScreen() {
       try {
         setLoading(true);
 
-        const assignment = await getChapterAssignmentById(chapterId);
+        const assignment = await loadChapterAssignment();
         if (ignore) return;
         if (!assignment) {
-          setChapterData(null);
           return;
         }
-
-        setChapterData(assignment);
 
         const [texts, recordedVerseNumbers] = await Promise.all([
           getBibleTexts(
@@ -207,7 +214,7 @@ export default function DraftingScreen() {
     return () => {
       ignore = true;
     };
-  }, [chapterId]);
+  }, [chapterId, loadChapterAssignment]);
 
   // Header + tab bar own safe-area insets; keep container white edge-to-edge.
   if (loading) {
@@ -280,6 +287,7 @@ export default function DraftingScreen() {
               <RecordTab
                 chapterData={chapterData}
                 onCaptureActiveChange={setRecordCaptureActive}
+                onChapterClaimed={handleChapterClaimed}
               />
             </View>
           </View>

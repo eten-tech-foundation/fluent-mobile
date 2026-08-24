@@ -21,9 +21,14 @@ import {
 import { useLocalSearchParams } from 'expo-router';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import { useDraftingContext } from '../context/DraftingContext';
-import { getBibleTextId } from '../../db/queries';
+import { countChapterRecordings, getBibleTextId } from '../../db/queries';
+import { claimChapterAssignment } from '../../db/repository';
 import { useVerseAudio } from '../../hooks/useVerseAudio';
+import { useConnectivity } from '../../hooks/useConnectivity';
 import { requestMicPermission } from '../../audio/micPermission';
+import { syncChapterClaim } from '../../services/chapterClaimSync';
+import { parseUserId } from '../../utils/parseUserId';
+import { logger } from '../../utils/logger';
 import { PlaybackProgressBar } from '../../components/ui/PlaybackProgressBar';
 import { DraftTakeRow } from '../../components/ui/DraftTakeRow';
 import { RecordCircleButton } from '../../components/ui/RecordCircleButton';
@@ -37,6 +42,8 @@ if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
 }
 
+const log = logger.create('RecordTab');
+
 /** Design timer: `0:13` (no leading zero on minutes). */
 function formatDuration(ms: number): string {
   const totalSec = Math.floor(Math.max(0, ms) / 1000);
@@ -48,6 +55,7 @@ function formatDuration(ms: number): string {
 type RecordTabProps = {
   chapterData: ChapterAssignmentData;
   onCaptureActiveChange?: (active: boolean) => void;
+  onChapterClaimed?: () => void;
 };
 
 /**
@@ -59,10 +67,12 @@ type RecordTabProps = {
 export function RecordTab({
   chapterData,
   onCaptureActiveChange,
+  onChapterClaimed,
 }: RecordTabProps) {
   const rawParams = useLocalSearchParams<{ chapterName?: string }>();
   const chapterName = parseRequiredString(rawParams.chapterName, 'chapterName');
   const { verses, selectedVerse, setSelectedVerse } = useDraftingContext();
+  const { isOnline } = useConnectivity();
   const [bibleTextId, setBibleTextId] = useState<number | null>(null);
   const [sourceExpanded, setSourceExpanded] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -154,7 +164,34 @@ export function RecordTab({
   }
 
   async function handleStop() {
+    // eslint-disable-next-line eqeqeq -- nullish check covers undefined + null (unassigned chapter)
+    const wasUnassigned = chapterData.assignedUserId == null;
     await verseAudio.stop();
+    if (!wasUnassigned || !isOnline) return;
+    const count = await countChapterRecordings(
+      chapterData.bibleId,
+      chapterData.bookId,
+      chapterData.chapterNumber,
+    );
+    if (count !== 1) return;
+    const userId = parseUserId();
+    // eslint-disable-next-line eqeqeq -- parseUserId returns null when missing
+    if (userId == null) return;
+    try {
+      await claimChapterAssignment(chapterData.id, userId);
+      void syncChapterClaim(chapterData.id, userId).catch(error => {
+        log.error('Failed to sync chapter claim to server', {
+          error,
+          chapterAssignmentId: chapterData.id,
+        });
+      });
+      onChapterClaimed?.();
+    } catch (error) {
+      log.error('Failed to claim chapter after first recording', {
+        error,
+        chapterAssignmentId: chapterData.id,
+      });
+    }
   }
 
   /**

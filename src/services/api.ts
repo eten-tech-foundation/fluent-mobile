@@ -15,6 +15,11 @@ import type {
   UploadVerseAudioParams,
   VerseAudioResponse,
 } from '../types/api/verseAudio';
+import {
+  normalizeClaimResponse,
+  type ClaimChapterAssignmentResponse,
+  type NormalizedClaimChapterAssignmentResponse,
+} from '../types/api/chapterClaim';
 import { checkServerReachable } from './connectivity';
 import {
   authedMultipartRequest,
@@ -29,6 +34,10 @@ import {
   buildVerseAudioFormData,
   verseAudioUploadPath,
 } from './verseAudioFormData';
+import { chapterClaimPath, isChapterClaimApiStubbed } from './chapterClaimApi';
+import { logger } from '../utils/logger';
+
+const log = logger.create('FluentAPI');
 
 const MOBILE_HEADERS = {
   'x-client-type': 'mobile',
@@ -72,6 +81,34 @@ async function uploadVerseAudioRequest(
     { method: 'PUT' },
   );
   return parseVerseAudioResponse(raw);
+}
+
+async function claimChapterAssignmentRequest(
+  chapterAssignmentId: number,
+  userId: number,
+): Promise<NormalizedClaimChapterAssignmentResponse> {
+  if (isChapterClaimApiStubbed()) {
+    log.warn(
+      'FluentAPI.claimChapterAssignment stubbed pending fluent-api#272',
+      {
+        chapterAssignmentId,
+        userId,
+      },
+    );
+    return {
+      chapterAssignmentId,
+      assignedUserId: userId,
+      status: 'draft',
+      hasClaimConflict: false,
+    };
+  }
+
+  const api = await authedRequest<ClaimChapterAssignmentResponse>(
+    chapterClaimPath(chapterAssignmentId),
+    { method: 'POST', headers: MOBILE_HEADERS },
+  );
+
+  return normalizeClaimResponse(api);
 }
 
 export const FluentAPI = {
@@ -149,6 +186,12 @@ export const FluentAPI = {
   uploadVerseAudio: (
     params: UploadVerseAudioParams,
   ): Promise<VerseAudioResponse> => uploadVerseAudioRequest(params),
+
+  claimChapterAssignment: (
+    chapterAssignmentId: number,
+    userId: number,
+  ): Promise<NormalizedClaimChapterAssignmentResponse> =>
+    claimChapterAssignmentRequest(chapterAssignmentId, userId),
 };
 
 export { buildHeaders, buildMultipartAuthHeaders } from './httpClient';
