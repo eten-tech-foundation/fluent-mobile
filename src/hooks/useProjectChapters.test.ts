@@ -55,14 +55,20 @@ describe('useProjectChapters', () => {
 
     let resolveStale!: (v: ProjectChapter[]) => void;
     mockGetProjectChapters.mockImplementationOnce(
-      () => new Promise<ProjectChapter[]>(resolve => { resolveStale = resolve; }),
+      () =>
+        new Promise<ProjectChapter[]>(resolve => {
+          resolveStale = resolve;
+        }),
     );
 
     const { result } = renderHook(() => useProjectChapters(100));
 
     let resolveFresh!: (v: ProjectChapter[]) => void;
     mockGetProjectChapters.mockImplementationOnce(
-      () => new Promise<ProjectChapter[]>(resolve => { resolveFresh = resolve; }),
+      () =>
+        new Promise<ProjectChapter[]>(resolve => {
+          resolveFresh = resolve;
+        }),
     );
     const reloadPromise = result.current.reload();
 
