@@ -79,6 +79,7 @@ export interface ProjectChapterRow {
   last_recording_activity?: string | null;
   recording_count: number;
   pending_count: number;
+  pending_stage_count?: number;
   total_verses: number;
   completed_verses: number;
   downloaded_verses: number;
@@ -96,6 +97,7 @@ export interface MyWorkChapterRow {
   submitted_time?: string | null;
   recording_count: number;
   pending_count: number;
+  pending_stage_count?: number;
   last_recording_activity?: string | null;
   total_verses: number;
   completed_verses: number;
@@ -123,6 +125,7 @@ export interface ProjectSummaryRow {
   chapter_count: number;
   recording_count: number;
   pending_count: number;
+  pending_stage_count?: number;
 }
 
 export interface ChapterAssignment {

@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 10;
+export const CURRENT_SCHEMA_VERSION = 11;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -322,6 +322,25 @@ async function scopeDownloadQueueActiveResourceIndex(
   );
 }
 
+async function applyStageAdvanceQueueTable(db: SqlExecutor): Promise<void> {
+  await db.execute(
+    `CREATE TABLE IF NOT EXISTS stage_advance_queue (
+      id                      TEXT PRIMARY KEY,
+      chapter_assignment_id   INTEGER NOT NULL REFERENCES chapter_assignments(id) ON DELETE CASCADE,
+      target_status           TEXT NOT NULL,
+      queue_order             INTEGER NOT NULL,
+      queued_at               TEXT NOT NULL
+    )`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_saq_order ON stage_advance_queue(queue_order)`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_saq_assignment
+     ON stage_advance_queue(chapter_assignment_id)`,
+  );
+}
+
 /** Ordered schema migrations. Version 1 = current CREATE IF NOT EXISTS baseline. */
 export const migrations: Migration[] = [
   {
@@ -373,6 +392,11 @@ export const migrations: Migration[] = [
     version: 10,
     name: 'download_queue_user_scoped_active_index',
     up: scopeDownloadQueueActiveResourceIndex,
+  },
+  {
+    version: 11,
+    name: 'stage_advance_queue_table',
+    up: applyStageAdvanceQueueTable,
   },
 ];
 

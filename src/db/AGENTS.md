@@ -10,6 +10,8 @@ Agents: UI reads here after sync; writes happen only in the repository. See [`.c
 | `db.ts` | `getDatabase()` / `setDatabase()` singleton |
 | `repository.ts` | Inserts/upserts in transactions |
 | `queries.ts` | SELECTs for UI |
+| `downloadQueueRepository.ts` | Prepare-offline download queue writes |
+| `stageAdvanceQueueRepository.ts` | Offline stage-advance queue (#257) |
 
 ## Rules
 
@@ -30,7 +32,7 @@ Agents: UI reads here after sync; writes happen only in the repository. See [`.c
 
 - `runMigrations(db)` applies steps with `version > PRAGMA user_version`, once each, in a transaction.
 - Use `rebuildTable()` for SQLite FK/default/type changes (#99 / #103).
-- Current schema version: see `CURRENT_SCHEMA_VERSION` in `migrations.ts` (v3 = `projects.metadata`; v4 = `chapter_assignments` assigned-user FK + `idx_ca_assigned_user`; v5 = `user_projects.user_id` FK; v6 = `recordings.recorded_by_user_id`; v7 = `recordings.is_latest` renamed to `is_selected`; v8 = `download_queue` table #51; v9 = `download_queue.user_id` #53; v10 = user-scoped `idx_dq_active_resource` #53).
+- Current schema version: see `CURRENT_SCHEMA_VERSION` in `migrations.ts` (v3 = `projects.metadata`; v4 = `chapter_assignments` assigned-user FK + `idx_ca_assigned_user`; v5 = `user_projects.user_id` FK; v6 = `recordings.recorded_by_user_id`; v7 = `recordings.is_latest` renamed to `is_selected`; v8 = `download_queue` table #51; v9 = `download_queue.user_id` #53; v10 = user-scoped `idx_dq_active_resource` #53; v11 = `stage_advance_queue` #257).
 
 ## Recordings linkage
 

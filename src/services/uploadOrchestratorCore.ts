@@ -29,6 +29,8 @@ export type UploadOrchestratorDeps = {
     listener: (value: boolean) => void,
   ) => () => void;
   getPendingUploadChapters: () => Promise<PendingUploadChapter[]>;
+  /** Drain stage-advance queue before audio (#257). Optional for older tests. */
+  syncPendingStageAdvances?: () => Promise<void>;
   getPausedUntilMs: () => number | null;
   setPausedUntilMs: (ms: number | null) => void;
   now: () => number;
@@ -117,14 +119,6 @@ export function createUploadOrchestrator(
     if (sessionPromise) {
       return;
     }
-    if (!deps.worker) {
-      log.info('No chapter upload worker registered; skipping session', {
-        reason,
-      });
-      phase = isUserPaused() ? 'paused' : 'idle';
-      deps.emit({ type: 'idle' });
-      return;
-    }
 
     const gate = transportAllowsUpload(
       isOnline,
@@ -149,31 +143,55 @@ export function createUploadOrchestrator(
       return;
     }
 
-    const chapters = await deps.getPendingUploadChapters();
-    if (chapters.length === 0) {
-      phase = 'idle';
-      deps.emit({ type: 'idle' });
-      return;
-    }
-
     const abort = new AbortController();
     sessionAbort = abort;
-    completedChapters = 0;
-    totalChapters = chapters.length;
-    phase = 'syncing';
-    deps.emit({ type: 'start', totalChapters: chapters.length });
-    log.info('Upload session started', {
-      reason,
-      totalChapters: chapters.length,
-    });
 
     const work = (async () => {
+      // Stage advances before audio uploads (#257).
+      if (deps.syncPendingStageAdvances) {
+        try {
+          await deps.syncPendingStageAdvances();
+        } catch (error) {
+          log.error('Pending stage advance sync failed', { error });
+        }
+      }
+
+      if (abort.signal.aborted) {
+        return;
+      }
+
+      if (!deps.worker) {
+        log.info(
+          'No chapter upload worker registered; skipping audio session',
+          { reason },
+        );
+        phase = isUserPaused() ? 'paused' : 'idle';
+        deps.emit({ type: 'idle' });
+        return;
+      }
+
+      const chapters = await deps.getPendingUploadChapters();
+      if (chapters.length === 0) {
+        phase = 'idle';
+        deps.emit({ type: 'idle' });
+        return;
+      }
+
+      completedChapters = 0;
+      totalChapters = chapters.length;
+      phase = 'syncing';
+      deps.emit({ type: 'start', totalChapters: chapters.length });
+      log.info('Upload session started', {
+        reason,
+        totalChapters: chapters.length,
+      });
+
       try {
         for (const chapter of chapters) {
           if (abort.signal.aborted) {
             return;
           }
-          await deps.worker!.uploadChapter(chapter, abort.signal);
+          await deps.worker.uploadChapter(chapter, abort.signal);
           if (abort.signal.aborted) {
             return;
           }

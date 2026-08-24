@@ -19,6 +19,7 @@ function createHarness(options?: {
   chapters?: PendingUploadChapter[];
   uploadOverCellular?: boolean;
   workerDelayMs?: number;
+  syncPendingStageAdvances?: () => Promise<void>;
 }) {
   let connListener: ConnListener | null = null;
   let prefListener: ((value: boolean) => void) | null = null;
@@ -27,6 +28,7 @@ function createHarness(options?: {
   let nowMs = 1_000_000;
   const events: UploadSessionEvent[] = [];
   const uploaded: PendingUploadChapter[] = [];
+  const callOrder: string[] = [];
   let chapters = options?.chapters ?? [
     { bookId: 1, chapterNumber: 1 },
     { bookId: 1, chapterNumber: 2 },
@@ -34,6 +36,7 @@ function createHarness(options?: {
 
   const worker: ChapterUploadWorker = {
     uploadChapter: async (chapter, signal) => {
+      callOrder.push('audio');
       if (options?.workerDelayMs) {
         await new Promise<void>((resolve, reject) => {
           const timer = setTimeout(resolve, options.workerDelayMs);
@@ -70,6 +73,12 @@ function createHarness(options?: {
       };
     },
     getPendingUploadChapters: async () => chapters,
+    syncPendingStageAdvances: options?.syncPendingStageAdvances
+      ? async () => {
+          callOrder.push('stage');
+          await options.syncPendingStageAdvances!();
+        }
+      : undefined,
     getPausedUntilMs: () => pausedUntilMs,
     setPausedUntilMs: ms => {
       pausedUntilMs = ms;
@@ -89,6 +98,7 @@ function createHarness(options?: {
     orchestrator,
     events,
     uploaded,
+    callOrder,
     setChapters: (next: PendingUploadChapter[]) => {
       chapters = next;
     },
@@ -129,6 +139,18 @@ function createHarness(options?: {
 }
 
 describe('uploadOrchestrator', () => {
+  it('drains stage advances before audio uploads', async () => {
+    const stageSync = jest.fn().mockResolvedValue(undefined);
+    const h = createHarness({ syncPendingStageAdvances: stageSync });
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    expect(stageSync).toHaveBeenCalled();
+    expect(h.callOrder[0]).toBe('stage');
+    expect(h.callOrder.slice(1)).toEqual(['audio', 'audio']);
+  });
+
   it('auto-uploads on Wi‑Fi when pending chapters exist (online = server reachable)', async () => {
     const h = createHarness();
     h.emitConnectivity(true, true);

@@ -1,7 +1,7 @@
 import { deriveProjectSyncState } from './projectSyncState';
 
 describe('deriveProjectSyncState', () => {
-  it('returns none when there are no recordings', () => {
+  it('returns none when there are no recordings and no pending stage', () => {
     expect(deriveProjectSyncState(0, 0)).toBe('none');
   });
 
@@ -10,8 +10,13 @@ describe('deriveProjectSyncState', () => {
     expect(deriveProjectSyncState(1, 1)).toBe('unsynced');
   });
 
-  it('returns synced when recordings exist and none are pending', () => {
+  it('returns unsynced when a stage advance is queued', () => {
+    expect(deriveProjectSyncState(2, 0, 1)).toBe('unsynced');
+    expect(deriveProjectSyncState(0, 0, 1)).toBe('unsynced');
+  });
+
+  it('returns synced when recordings exist and nothing is pending', () => {
     expect(deriveProjectSyncState(5, 0)).toBe('synced');
-    expect(deriveProjectSyncState(1, 0)).toBe('synced');
+    expect(deriveProjectSyncState(1, 0, 0)).toBe('synced');
   });
 });

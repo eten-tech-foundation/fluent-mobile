@@ -60,3 +60,51 @@ export function getBadgeStage(
 export function getWorkflowStageLabel(stage: WorkflowBadgeStage): string {
   return workflowStages[stage].label;
 }
+
+/** Workflow ordinal for conflict resolution (lower = earlier stage). */
+const STAGE_RANK: Record<WorkflowBadgeStage, number> = {
+  not_started: 0,
+  draft: 1,
+  peer_check: 2,
+  community_check: 3,
+  advanced_check: 4,
+  complete: 5,
+};
+
+export function getWorkflowStageRank(
+  status: string | null | undefined,
+): number {
+  const stage = getWorkflowStage(status);
+  if (!stage) {
+    return -1;
+  }
+  return STAGE_RANK[stage];
+}
+
+/**
+ * Conflict rule (#257): retain whichever stage value is lower (earlier).
+ * Returns the status string to persist locally.
+ */
+export function pickLowerStageStatus(
+  localStatus: string | null | undefined,
+  serverStatus: string | null | undefined,
+): string {
+  const localRank = getWorkflowStageRank(localStatus);
+  const serverRank = getWorkflowStageRank(serverStatus);
+  if (localRank < 0 && serverRank < 0) {
+    return (
+      normalizeStatus(serverStatus) ||
+      normalizeStatus(localStatus) ||
+      'not_started'
+    );
+  }
+  if (localRank < 0) {
+    return normalizeStatus(serverStatus);
+  }
+  if (serverRank < 0) {
+    return normalizeStatus(localStatus);
+  }
+  return localRank <= serverRank
+    ? normalizeStatus(localStatus)
+    : normalizeStatus(serverStatus);
+}

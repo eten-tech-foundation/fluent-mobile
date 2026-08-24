@@ -139,4 +139,19 @@ export const createTableQueries: string[] = [
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_dq_active_resource
     ON download_queue(user_id, project_id, kind, resource_name)
     WHERE status != 'completed';`,
+
+  /**
+   * Offline-first stage advancement queue (#257).
+   * FIFO by queue_order; drained before audio uploads on reconnect.
+   */
+  `CREATE TABLE IF NOT EXISTS stage_advance_queue (
+      id                      TEXT PRIMARY KEY,
+      chapter_assignment_id   INTEGER NOT NULL REFERENCES chapter_assignments(id) ON DELETE CASCADE,
+      target_status           TEXT NOT NULL,
+      queue_order             INTEGER NOT NULL,
+      queued_at               TEXT NOT NULL
+    );`,
+
+  `CREATE INDEX IF NOT EXISTS idx_saq_order ON stage_advance_queue(queue_order);`,
+  `CREATE INDEX IF NOT EXISTS idx_saq_assignment ON stage_advance_queue(chapter_assignment_id);`,
 ];

@@ -3,6 +3,7 @@ import {
   getWorkflowStage,
   getWorkflowStageLabel,
   isCompleteStatus,
+  pickLowerStageStatus,
 } from './workflowStage';
 
 describe('workflowStage', () => {
@@ -72,6 +73,18 @@ describe('workflowStage', () => {
       expect(getWorkflowStageLabel('community_check')).toBe('Community Check');
       expect(getWorkflowStageLabel('advanced_check')).toBe('Advanced Check');
       expect(getWorkflowStageLabel('complete')).toBe('Complete');
+    });
+  });
+
+  describe('pickLowerStageStatus', () => {
+    it('keeps the earlier workflow stage', () => {
+      expect(pickLowerStageStatus('community_check', 'peer_check')).toBe(
+        'peer_check',
+      );
+      expect(pickLowerStageStatus('peer_check', 'community_check')).toBe(
+        'peer_check',
+      );
+      expect(pickLowerStageStatus('draft', 'peer_check')).toBe('draft');
     });
   });
 });

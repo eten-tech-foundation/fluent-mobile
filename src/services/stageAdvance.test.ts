@@ -1,31 +1,35 @@
 jest.mock('./api', () => ({
   FluentAPI: {
     checkServerReachable: jest.fn(),
-    submitChapterAssignment: jest.fn(),
   },
 }));
 
 jest.mock('../db/repository', () => ({
-  updateChapterAssignmentStatusLocally: jest.fn(),
+  applyLocalStageAdvanceAndEnqueue: jest.fn(),
+}));
+
+jest.mock('./stageAdvanceSync', () => ({
+  syncPendingStageAdvances: jest.fn(),
 }));
 
 import { FluentAPI } from './api';
-import { updateChapterAssignmentStatusLocally } from '../db/repository';
+import { applyLocalStageAdvanceAndEnqueue } from '../db/repository';
 import { confirmStageAdvancement } from './stageAdvance';
+import { syncPendingStageAdvances } from './stageAdvanceSync';
 
 const mockReachable = jest.mocked(FluentAPI.checkServerReachable);
-const mockSubmit = jest.mocked(FluentAPI.submitChapterAssignment);
-const mockLocalUpdate = jest.mocked(updateChapterAssignmentStatusLocally);
+const mockApply = jest.mocked(applyLocalStageAdvanceAndEnqueue);
+const mockDrain = jest.mocked(syncPendingStageAdvances);
 
 describe('confirmStageAdvancement', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockLocalUpdate.mockResolvedValue(undefined);
+    mockApply.mockResolvedValue('saq_1');
     mockReachable.mockResolvedValue(true);
-    mockSubmit.mockResolvedValue({ chapterAssignmentId: 7 });
+    mockDrain.mockResolvedValue(undefined);
   });
 
-  it('writes local status then submits when online', async () => {
+  it('applies local+queue then drains when online', async () => {
     await confirmStageAdvancement({
       chapterAssignmentId: 7,
       destination: {
@@ -35,11 +39,11 @@ describe('confirmStageAdvancement', () => {
       },
     });
 
-    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'peer_check');
-    expect(mockSubmit).toHaveBeenCalledWith(7);
+    expect(mockApply).toHaveBeenCalledWith(7, 'peer_check');
+    expect(mockDrain).toHaveBeenCalled();
   });
 
-  it('skips submit when offline after local write', async () => {
+  it('skips drain when offline after local write', async () => {
     mockReachable.mockResolvedValue(false);
 
     await confirmStageAdvancement({
@@ -51,12 +55,12 @@ describe('confirmStageAdvancement', () => {
       },
     });
 
-    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'community_check');
-    expect(mockSubmit).not.toHaveBeenCalled();
+    expect(mockApply).toHaveBeenCalledWith(7, 'community_check');
+    expect(mockDrain).not.toHaveBeenCalled();
   });
 
-  it('does not throw when submit fails after local write', async () => {
-    mockSubmit.mockRejectedValue(new Error('network'));
+  it('does not throw when drain fails after local write', async () => {
+    mockDrain.mockRejectedValue(new Error('network'));
 
     await expect(
       confirmStageAdvancement({
@@ -69,6 +73,6 @@ describe('confirmStageAdvancement', () => {
       }),
     ).resolves.toBeUndefined();
 
-    expect(mockLocalUpdate).toHaveBeenCalled();
+    expect(mockApply).toHaveBeenCalled();
   });
 });

@@ -133,8 +133,8 @@ export const FluentAPI = {
     ),
 
   /**
-   * Advance a chapter assignment to the next workflow stage (online path).
-   * Offline queue / reconnect handling is #257.
+   * Advance a chapter assignment to the next workflow stage.
+   * Offline queue / reconnect: `stageAdvanceQueue` + `syncPendingStageAdvances` (#257).
    */
   submitChapterAssignment: (
     chapterAssignmentId: number,

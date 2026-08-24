@@ -311,8 +311,20 @@ async function insertChapterAssignmentTx(
       chapter_number = excluded.chapter_number,
       assigned_user_id = excluded.assigned_user_id,
       peer_checker_id = excluded.peer_checker_id,
-      status = excluded.status,
-      submitted_time = excluded.submitted_time,
+      status = CASE
+        WHEN EXISTS (
+          SELECT 1 FROM stage_advance_queue
+          WHERE chapter_assignment_id = chapter_assignments.id
+        ) THEN chapter_assignments.status
+        ELSE excluded.status
+      END,
+      submitted_time = CASE
+        WHEN EXISTS (
+          SELECT 1 FROM stage_advance_queue
+          WHERE chapter_assignment_id = chapter_assignments.id
+        ) THEN chapter_assignments.submitted_time
+        ELSE excluded.submitted_time
+      END,
       updated_at = excluded.updated_at,
       total_verses = MAX(chapter_assignments.total_verses, excluded.total_verses),
       completed_verses = excluded.completed_verses`,
@@ -846,16 +858,21 @@ export async function setRecordingSyncStatus(
 }
 
 /**
- * Immediately apply a local stage advance (#258). Server confirmation and
- * pending-sync queue behavior are owned by #257.
+ * Immediately apply a local stage advance (#258).
+ * Pass `submittedTime` to set an explicit value (conflict resolve);
+ * omit to stamp "now" (user-confirmed advance).
  */
 export async function updateChapterAssignmentStatusLocally(
   chapterAssignmentId: number,
-  status: 'peer_check' | 'community_check',
+  status: string,
+  options?: { submittedTime?: string | null },
 ): Promise<void> {
   const db = getDatabase();
   const updatedAt = new Date().toISOString();
-  const submittedTime = new Date().toISOString();
+  const submittedTime =
+    options && 'submittedTime' in options
+      ? options.submittedTime ?? null
+      : new Date().toISOString();
   await db.transaction(async (tx: Transaction) => {
     await tx.execute(
       `UPDATE chapter_assignments
@@ -864,6 +881,78 @@ export async function updateChapterAssignmentStatusLocally(
            updated_at = ?
        WHERE id = ?`,
       [status, submittedTime, updatedAt, chapterAssignmentId],
+    );
+  });
+}
+
+/**
+ * Local stage write + durable queue row in one transaction (#257 wipe guard).
+ * Returns the new queue id.
+ */
+export async function applyLocalStageAdvanceAndEnqueue(
+  chapterAssignmentId: number,
+  targetStatus: string,
+): Promise<string> {
+  const db = getDatabase();
+  const updatedAt = new Date().toISOString();
+  const submittedTime = new Date().toISOString();
+  const queueId = `saq_${Date.now().toString(36)}_${Math.random()
+    .toString(36)
+    .slice(2, 10)}`;
+
+  await db.transaction(async (tx: Transaction) => {
+    await tx.execute(
+      `UPDATE chapter_assignments
+       SET status = ?,
+           submitted_time = ?,
+           updated_at = ?
+       WHERE id = ?`,
+      [targetStatus, submittedTime, updatedAt, chapterAssignmentId],
+    );
+
+    const orderResult = await tx.execute(
+      `SELECT COALESCE(MAX(queue_order), 0) + 1 AS next_order
+       FROM stage_advance_queue`,
+    );
+    const queueOrder =
+      Number(
+        (orderResult.rows?.[0] as { next_order?: number } | undefined)
+          ?.next_order,
+      ) || 1;
+
+    await tx.execute(
+      `INSERT INTO stage_advance_queue
+        (id, chapter_assignment_id, target_status, queue_order, queued_at)
+       VALUES (?, ?, ?, ?, ?)`,
+      [queueId, chapterAssignmentId, targetStatus, queueOrder, submittedTime],
+    );
+  });
+
+  return queueId;
+}
+
+/**
+ * Conflict resolve (#257): set resolved status + clear queue rows atomically.
+ */
+export async function resolveStageAdvanceConflictLocally(
+  chapterAssignmentId: number,
+  status: string,
+  submittedTime: string | null,
+): Promise<void> {
+  const db = getDatabase();
+  const updatedAt = new Date().toISOString();
+  await db.transaction(async (tx: Transaction) => {
+    await tx.execute(
+      `UPDATE chapter_assignments
+       SET status = ?,
+           submitted_time = ?,
+           updated_at = ?
+       WHERE id = ?`,
+      [status, submittedTime, updatedAt, chapterAssignmentId],
+    );
+    await tx.execute(
+      `DELETE FROM stage_advance_queue WHERE chapter_assignment_id = ?`,
+      [chapterAssignmentId],
     );
   });
 }

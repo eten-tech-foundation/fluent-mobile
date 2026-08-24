@@ -60,6 +60,10 @@ const RECORDING_AGGREGATES = `
   COUNT(DISTINCT CASE
     WHEN r.id IS NOT NULL AND r.is_selected = 1 AND r.sync_status != 'uploaded' THEN r.id
   END) AS pending_count,
+  (
+    SELECT COUNT(*) FROM stage_advance_queue saq
+    WHERE saq.chapter_assignment_id = ca.id
+  ) AS pending_stage_count,
   MAX(CASE WHEN r.is_selected = 1 THEN r.updated_at END) AS last_recording_activity`;
 
 function isUserRow(row: unknown): row is DBTypes.UserRow {
@@ -96,6 +100,7 @@ function mapProjectSummaryRow(
     syncState: deriveProjectSyncState(
       Number(row.recording_count) || 0,
       Number(row.pending_count) || 0,
+      Number(row.pending_stage_count) || 0,
     ),
   };
 }
@@ -123,7 +128,14 @@ export async function getProjectsWithSummary(
         COUNT(DISTINCT CASE WHEN r.id IS NOT NULL THEN r.id END) AS recording_count,
         COUNT(DISTINCT CASE
           WHEN r.id IS NOT NULL AND r.sync_status != 'uploaded' THEN r.id
-        END) AS pending_count
+        END) AS pending_count,
+        (
+          SELECT COUNT(*)
+          FROM stage_advance_queue saq
+          INNER JOIN chapter_assignments ca_saq ON ca_saq.id = saq.chapter_assignment_id
+          INNER JOIN project_units pu_saq ON pu_saq.id = ca_saq.project_unit_id
+          WHERE pu_saq.project_id = p.id
+        ) AS pending_stage_count
       FROM projects p
       INNER JOIN user_projects up ON up.project_id = p.id
       LEFT JOIN languages sl ON p.source_language_id = sl.id
@@ -303,6 +315,7 @@ function mapChapterRowCore(
     | 'last_recording_activity'
     | 'recording_count'
     | 'pending_count'
+    | 'pending_stage_count'
     | 'total_verses'
     | 'completed_verses'
     | 'downloaded_verses'
@@ -310,6 +323,7 @@ function mapChapterRowCore(
 ) {
   const recordingCount = Number(row.recording_count) || 0;
   const pendingCount = Number(row.pending_count) || 0;
+  const pendingStageCount = Number(row.pending_stage_count) || 0;
   const activity = mapChapterActivityFields(row);
 
   return {
@@ -317,7 +331,11 @@ function mapChapterRowCore(
     displayLabel: `${row.book_name} ${row.chapter_number}`,
     bookName: row.book_name,
     chapterNumber: row.chapter_number,
-    syncState: deriveChapterSyncState(recordingCount, pendingCount),
+    syncState: deriveChapterSyncState(
+      recordingCount,
+      pendingCount,
+      pendingStageCount,
+    ),
     lastActivityAt: activity.lastActivityAt,
     lastActivityLabel: activity.lastActivityLabel,
     completedVerses: Number(row.completed_verses) || 0,

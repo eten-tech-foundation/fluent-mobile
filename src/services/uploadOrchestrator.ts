@@ -2,6 +2,7 @@ import { getPendingUploadChapters } from '../db/queries';
 import { subscribeToConnectivity } from './connectivity';
 import { emitUploadSessionEvent } from './syncEvents';
 import { getSyncPausedUntilMs, setSyncPausedUntilMs } from './storage';
+import { syncPendingStageAdvances } from './stageAdvanceSync';
 import {
   getUploadOverCellular,
   subscribeToPreference,
@@ -63,6 +64,7 @@ export function startUploadOrchestrator(
     subscribeToUploadOverCellular: listener =>
       subscribeToPreference('uploadOverCellular', listener),
     getPendingUploadChapters,
+    syncPendingStageAdvances,
     getPausedUntilMs: getSyncPausedUntilMs,
     setPausedUntilMs: setSyncPausedUntilMs,
     now: () => Date.now(),
