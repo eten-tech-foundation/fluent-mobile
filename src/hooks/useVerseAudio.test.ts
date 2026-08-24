@@ -4,6 +4,7 @@ import { useRecordingEngine } from './useRecordingEngine';
 import { usePlaybackEngine } from './usePlaybackEngine';
 import { claimChapterOffline } from '../db/repository';
 import { useVerseAudio } from './useVerseAudio';
+import { logger } from '../utils/logger';
 
 type VerseAudioResult = ReturnType<typeof useVerseAudio>;
 
@@ -66,6 +67,7 @@ async function stopAfterStart(hookResult: { current: VerseAudioResult }) {
 describe('useVerseAudio offline claim (#270)', () => {
   const persistTake = jest.fn();
   const loadTakes = jest.fn();
+  const mockTransport = jest.fn();
 
   beforeEach(() => {
     jest.resetAllMocks();
@@ -81,6 +83,11 @@ describe('useVerseAudio offline claim (#270)', () => {
       isCellular: false,
     });
     mockClaimChapterOffline.mockResolvedValue(true);
+    logger.setTransport(mockTransport);
+  });
+
+  afterEach(() => {
+    logger.reset();
   });
 
   it('claims the chapter when offline with a known user', async () => {
@@ -177,7 +184,7 @@ describe('useVerseAudio offline claim (#270)', () => {
     expect(mockClaimChapterOffline).not.toHaveBeenCalled();
   });
 
-  it('still saves the take and reaches recorded state when the claim call throws', async () => {
+  it('still saves the take and reaches recorded state when the claim call throws, and logs the failure', async () => {
     mockGetConnectivitySnapshot.mockResolvedValue({
       isOnline: false,
       isWifi: false,
@@ -202,5 +209,12 @@ describe('useVerseAudio offline claim (#270)', () => {
     );
     expect(result.current.errorMessage).toBeNull();
     await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+    expect(mockTransport).toHaveBeenCalledWith(
+      'error',
+      'useVerseAudio',
+      'Offline chapter claim failed',
+      expect.objectContaining({ message: 'db locked' }),
+    );
   });
 });
