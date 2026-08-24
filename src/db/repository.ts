@@ -856,14 +856,16 @@ export async function updateChapterAssignmentStatusLocally(
   const db = getDatabase();
   const updatedAt = new Date().toISOString();
   const submittedTime = new Date().toISOString();
-  await db.execute(
-    `UPDATE chapter_assignments
-     SET status = ?,
-         submitted_time = ?,
-         updated_at = ?
-     WHERE id = ?`,
-    [status, submittedTime, updatedAt, chapterAssignmentId],
-  );
+  await db.transaction(async (tx: Transaction) => {
+    await tx.execute(
+      `UPDATE chapter_assignments
+       SET status = ?,
+           submitted_time = ?,
+           updated_at = ?
+       WHERE id = ?`,
+      [status, submittedTime, updatedAt, chapterAssignmentId],
+    );
+  });
 }
 
 export async function markRecordingUploaded(
