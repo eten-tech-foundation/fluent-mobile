@@ -40,7 +40,9 @@ jest.mock('lucide-react-native', () => {
     CloudOff: MockIcon,
     Mic: MockIcon,
     UserCheck: MockIcon,
+    Users: MockIcon,
     UsersRound: MockIcon,
+    TriangleAlert: MockIcon,
     BadgeCheck: MockIcon,
     CircleCheck: MockIcon,
     User: MockIcon,
@@ -90,6 +92,7 @@ const sampleChapter: ProjectChapter = {
   completedVerses: 3,
   totalVerses: 5,
   downloadedVerses: 5,
+  hasConflict: false,
   lastActivityLabel: 'Apr 27, 2026',
 };
 

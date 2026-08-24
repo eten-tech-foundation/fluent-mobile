@@ -95,4 +95,33 @@ describe('mapApiChapterAssignment', () => {
 
     expect(mapped.projectId).toBe(0);
   });
+
+  it('maps hasConflict when the API provides a boolean', () => {
+    const mapped = mapApiChapterAssignment({
+      chapterAssignmentId: 15,
+      projectId: 2,
+      projectUnitId: 2,
+      bibleId: 4,
+      bookId: 12,
+      chapterNumber: 1,
+      chapterStatus: 'draft',
+      hasConflict: true,
+    });
+
+    expect(mapped.hasConflict).toBe(true);
+  });
+
+  it('omits hasConflict when the API payload does not include it', () => {
+    const mapped = mapApiChapterAssignment({
+      chapterAssignmentId: 16,
+      projectId: 2,
+      projectUnitId: 2,
+      bibleId: 4,
+      bookId: 12,
+      chapterNumber: 1,
+      status: 'draft',
+    });
+
+    expect(mapped.hasConflict).toBeUndefined();
+  });
 });

@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 11;
+export const CURRENT_SCHEMA_VERSION = 12;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -340,6 +340,20 @@ async function applyChapterClaimQueueTable(db: SqlExecutor): Promise<void> {
   );
 }
 
+/** Chapter-level unresolved audio-take conflict rollup (#260 / fluent-api#271). */
+async function addChapterAssignmentHasConflict(db: SqlExecutor): Promise<void> {
+  const info = await db.execute('PRAGMA table_info(chapter_assignments)');
+  if (!info.rows.length) {
+    return;
+  }
+  await addColumnIfMissing(
+    db,
+    'chapter_assignments',
+    'has_conflict',
+    'INTEGER NOT NULL DEFAULT 0',
+  );
+}
+
 /** Ordered schema migrations. Version 1 = current CREATE IF NOT EXISTS baseline. */
 export const migrations: Migration[] = [
   {
@@ -396,6 +410,11 @@ export const migrations: Migration[] = [
     version: 11,
     name: 'chapter_claim_queue_table',
     up: applyChapterClaimQueueTable,
+  },
+  {
+    version: 12,
+    name: 'chapter_assignment_has_conflict',
+    up: addChapterAssignmentHasConflict,
   },
 ];
 

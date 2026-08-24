@@ -302,8 +302,8 @@ async function insertChapterAssignmentTx(
     `INSERT INTO chapter_assignments
     (id, project_unit_id, bible_id, book_id, chapter_number,
      assigned_user_id, peer_checker_id, status, submitted_time, updated_at,
-     total_verses, completed_verses)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     total_verses, completed_verses, has_conflict)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       project_unit_id = excluded.project_unit_id,
       bible_id = excluded.bible_id,
@@ -315,7 +315,11 @@ async function insertChapterAssignmentTx(
       submitted_time = excluded.submitted_time,
       updated_at = excluded.updated_at,
       total_verses = MAX(chapter_assignments.total_verses, excluded.total_verses),
-      completed_verses = excluded.completed_verses`,
+      completed_verses = excluded.completed_verses,
+      has_conflict = CASE
+        WHEN ? = 1 THEN excluded.has_conflict
+        ELSE chapter_assignments.has_conflict
+      END`,
     [
       assignment.chapterAssignmentId,
       assignment.projectUnitId,
@@ -329,6 +333,8 @@ async function insertChapterAssignmentTx(
       assignment.updatedAt ?? new Date().toISOString(),
       assignment.totalVerses ?? 0,
       assignment.completedVerses ?? 0,
+      assignment.hasConflict === true ? 1 : 0,
+      typeof assignment.hasConflict === 'boolean' ? 1 : 0,
     ],
   );
 }

@@ -61,6 +61,7 @@ export const createTableQueries: string[] = [
       updated_at       TEXT NOT NULL,
       total_verses     INTEGER NOT NULL DEFAULT 0,
       completed_verses INTEGER NOT NULL DEFAULT 0,
+      has_conflict     INTEGER NOT NULL DEFAULT 0,
       UNIQUE (project_unit_id, bible_id, book_id, chapter_number)
     );`,
 
