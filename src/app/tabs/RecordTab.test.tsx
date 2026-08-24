@@ -8,6 +8,10 @@ import {
 } from '@testing-library/react-native';
 import { RecordTab } from './RecordTab';
 import { DraftingProvider } from '../context/DraftingContext';
+import {
+  RECORD_AUDIO_CONFLICT_WARNING,
+  RECORD_TAKEN_CHAPTER_WARNING,
+} from '../../constants/messages';
 import type { useVerseAudio } from '../../hooks/useVerseAudio';
 import type { Recording, ChapterAssignmentData } from '../../types/db/types';
 
@@ -29,7 +33,7 @@ jest.mock('../../services/chapterClaimSync', () => ({
 }));
 
 jest.mock('../../utils/parseUserId', () => ({
-  parseUserId: jest.fn(() => 99),
+  parseUserId: jest.fn(() => 42),
 }));
 
 const mockIsOnline = jest.fn(() => true);
@@ -96,14 +100,24 @@ jest.mock('../../hooks/useVerseAudio', () => ({
   useVerseAudio: () => mockUseVerseAudio(),
 }));
 
+const mockUseChapterConflictStatus = jest.fn((chapterId: number) => {
+  void chapterId;
+  return { hasConflict: false };
+});
+
+jest.mock('../../hooks/useChapterConflictStatus', () => ({
+  useChapterConflictStatus: (chapterId: number) =>
+    mockUseChapterConflictStatus(chapterId),
+}));
+
 const chapterData: ChapterAssignmentData = {
   id: 1,
-  projectUnitId: 10,
+  projectUnitId: 1,
   projectId: 1,
   bibleId: 1,
   bookId: 1,
   chapterNumber: 14,
-  status: 'in_progress',
+  status: 'draft',
   bibleName: 'BSB',
   bookName: 'Mark',
 };
@@ -118,20 +132,47 @@ const verses = [
   },
 ];
 
+type RenderTabOptions = {
+  chapterData?: ChapterAssignmentData;
+  onChapterClaimed?: () => void;
+};
+
 function renderTab(
   onCaptureActiveChange?: (active: boolean) => void,
-  onChapterClaimed?: () => void,
-  chapterOverride?: typeof chapterData,
+  options?: RenderTabOptions,
 ) {
   return render(
     <DraftingProvider verses={verses} initialVerse={3}>
       <RecordTab
-        chapterData={chapterOverride ?? chapterData}
+        chapterData={options?.chapterData ?? chapterData}
         onCaptureActiveChange={onCaptureActiveChange}
-        onChapterClaimed={onChapterClaimed}
+        onChapterClaimed={options?.onChapterClaimed}
       />
     </DraftingProvider>,
   );
+}
+
+function collectTestIds(node: unknown, ids: string[] = []): string[] {
+  if (!node || typeof node !== 'object') {
+    return ids;
+  }
+
+  const current = node as {
+    props?: { testID?: string };
+    children?: unknown[];
+  };
+
+  if (current.props?.testID) {
+    ids.push(current.props.testID);
+  }
+
+  if (Array.isArray(current.children)) {
+    for (const child of current.children) {
+      collectTestIds(child, ids);
+    }
+  }
+
+  return ids;
 }
 
 describe('RecordTab', () => {
@@ -144,7 +185,8 @@ describe('RecordTab', () => {
     mockUseVerseAudio.mockReturnValue(idleAudio);
     mockIsOnline.mockReturnValue(true);
     mockCountChapterRecordings.mockResolvedValue(1);
-    mockParseUserId.mockReturnValue(99);
+    mockUseChapterConflictStatus.mockReturnValue({ hasConflict: false });
+    mockParseUserId.mockReturnValue(42);
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 
@@ -408,6 +450,85 @@ describe('RecordTab', () => {
     });
   });
 
+  it('shows taken-chapter banner for an unrelated viewer and keeps record enabled', async () => {
+    renderTab(undefined, {
+      chapterData: {
+        ...chapterData,
+        assignedUserId: 99,
+        peerCheckerId: undefined,
+      },
+    });
+
+    expect(screen.getByText(RECORD_TAKEN_CHAPTER_WARNING)).toBeTruthy();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('record-start-button')).toBeEnabled();
+    });
+  });
+
+  it('hides taken-chapter banner when current user holds the Drafter slot', () => {
+    renderTab(undefined, {
+      chapterData: {
+        ...chapterData,
+        assignedUserId: 42,
+      },
+    });
+
+    expect(screen.queryByText(RECORD_TAKEN_CHAPTER_WARNING)).toBeNull();
+  });
+
+  it('hides taken-chapter banner when current user holds the Peer Checker slot', () => {
+    renderTab(undefined, {
+      chapterData: {
+        ...chapterData,
+        assignedUserId: 99,
+        peerCheckerId: 42,
+      },
+    });
+
+    expect(screen.queryByText(RECORD_TAKEN_CHAPTER_WARNING)).toBeNull();
+  });
+
+  it('shows conflict banner when hook reports a conflict', () => {
+    mockUseChapterConflictStatus.mockReturnValue({ hasConflict: true });
+
+    renderTab();
+
+    expect(screen.getByText(RECORD_AUDIO_CONFLICT_WARNING)).toBeTruthy();
+    expect(screen.getByTestId('record-verse-reference')).toBeTruthy();
+  });
+
+  it('hides conflict banner when hook reports no conflict', () => {
+    mockUseChapterConflictStatus.mockReturnValue({ hasConflict: false });
+
+    renderTab();
+
+    expect(screen.queryByText(RECORD_AUDIO_CONFLICT_WARNING)).toBeNull();
+  });
+
+  it('renders taken-chapter banner above conflict banner and verse nav', () => {
+    mockUseChapterConflictStatus.mockReturnValue({ hasConflict: true });
+
+    renderTab(undefined, {
+      chapterData: {
+        ...chapterData,
+        assignedUserId: 99,
+      },
+    });
+
+    expect(screen.getByTestId('record-taken-warning')).toBeTruthy();
+    expect(screen.getByTestId('record-conflict-warning')).toBeTruthy();
+    expect(screen.getByTestId('record-verse-reference')).toBeTruthy();
+
+    const order = collectTestIds(screen.getByTestId('record-tab'));
+    const takenIdx = order.indexOf('record-taken-warning');
+    const conflictIdx = order.indexOf('record-conflict-warning');
+    const verseIdx = order.indexOf('record-verse-reference');
+    expect(takenIdx).toBeGreaterThanOrEqual(0);
+    expect(conflictIdx).toBeGreaterThan(takenIdx);
+    expect(verseIdx).toBeGreaterThan(conflictIdx);
+  });
+
   describe('online chapter claiming on first recording', () => {
     const mockStop = idleAudio.stop as jest.Mock;
 
@@ -421,7 +542,7 @@ describe('RecordTab', () => {
     });
 
     async function pressStop() {
-      renderTab(undefined, jest.fn());
+      renderTab(undefined, { onChapterClaimed: jest.fn() });
       fireEvent.press(screen.getByTestId('record-stop-button'));
       await waitFor(() => {
         expect(idleAudio.stop).toHaveBeenCalled();
@@ -448,9 +569,9 @@ describe('RecordTab', () => {
       fireEvent.press(screen.getByTestId('record-stop-button'));
 
       await waitFor(() => {
-        expect(mockClaimChapterAssignment).toHaveBeenCalledWith(1, 99);
+        expect(mockClaimChapterAssignment).toHaveBeenCalledWith(1, 42);
       });
-      expect(mockSyncChapterClaim).toHaveBeenCalledWith(1, 99);
+      expect(mockSyncChapterClaim).toHaveBeenCalledWith(1, 42);
       expect(onChapterClaimed).toHaveBeenCalled();
     });
 
@@ -474,9 +595,11 @@ describe('RecordTab', () => {
         state: 'recording',
         stop: mockStop,
       });
-      renderTab(undefined, undefined, {
-        ...chapterData,
-        assignedUserId: 55,
+      renderTab(undefined, {
+        chapterData: {
+          ...chapterData,
+          assignedUserId: 55,
+        },
       });
       fireEvent.press(screen.getByTestId('record-stop-button'));
       await waitFor(() => {

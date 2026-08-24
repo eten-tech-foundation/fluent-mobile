@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -17,6 +17,7 @@ import {
   Pause,
   Play,
   Square,
+  TriangleAlert,
 } from 'lucide-react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
@@ -34,7 +35,15 @@ import { DraftTakeRow } from '../../components/ui/DraftTakeRow';
 import { RecordCircleButton } from '../../components/ui/RecordCircleButton';
 import { SourceTextAccordion } from '../../components/ui/SourceTextAccordion';
 import { SourceAudioPlayerBar } from '../../components/layout/SourceAudioPlayerBar';
+import { WarningBanner } from '../../components/ui/WarningBanner';
+import {
+  RECORD_AUDIO_CONFLICT_WARNING,
+  RECORD_TAKEN_CHAPTER_WARNING,
+} from '../../constants/messages';
 import { parseRequiredString } from '../../navigation/routeParams';
+import { useChapterConflictStatus } from '../../hooks/useChapterConflictStatus';
+import { isChapterTakenByOther } from '../../utils/chapterTakenStatus';
+import { parseUserId } from '../../utils/parseUserId';
 import { ChapterAssignmentData } from '../../types/db/types';
 import type { Recording } from '../../types/db/types';
 
@@ -246,8 +255,29 @@ export function RecordTab({
     (verseAudio.state === 'error' && hasTake);
   const showSourceAudio = showIdle || showReview;
 
+  const currentUserId = useMemo(() => parseUserId(), []);
+  const isTaken = useMemo(
+    () => isChapterTakenByOther(chapterData, currentUserId),
+    [chapterData, currentUserId],
+  );
+  const { hasConflict } = useChapterConflictStatus(chapterData.id);
+
   return (
     <View style={styles.container} testID="record-tab">
+      {isTaken ? (
+        <WarningBanner
+          testID="record-taken-warning"
+          message={RECORD_TAKEN_CHAPTER_WARNING}
+        />
+      ) : null}
+      {hasConflict ? (
+        <WarningBanner
+          testID="record-conflict-warning"
+          variant="amber"
+          icon={TriangleAlert}
+          message={RECORD_AUDIO_CONFLICT_WARNING}
+        />
+      ) : null}
       <View style={styles.verseNav}>
         <TouchableOpacity
           onPress={() => {
