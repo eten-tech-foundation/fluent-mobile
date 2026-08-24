@@ -43,7 +43,6 @@ import {
 import { parseRequiredString } from '../../navigation/routeParams';
 import { useChapterConflictStatus } from '../../hooks/useChapterConflictStatus';
 import { isChapterTakenByOther } from '../../utils/chapterTakenStatus';
-import { parseUserId } from '../../utils/parseUserId';
 import { ChapterAssignmentData } from '../../types/db/types';
 import type { Recording } from '../../types/db/types';
 
