@@ -14,6 +14,7 @@ import {
   MY_WORK_CHAPTER_WHERE,
 } from '../utils/myWorkChapterFilter';
 import { getBadgeStage, getWorkflowStage } from '../utils/workflowStage';
+import { deriveChapterOwnershipState } from '../utils/chapterOwnershipState';
 
 function parseConnectivityProfile(
   metadata: string | null,
@@ -205,6 +206,7 @@ export async function getChapterAssignmentById(
         ca.book_id,
         ca.chapter_number,
         ca.assigned_user_id,
+        ca.peer_checker_id,
         ca.status,
         ca.submitted_time,
         ca.updated_at,
@@ -233,6 +235,7 @@ export async function getChapterAssignmentById(
       bookId: row.book_id,
       chapterNumber: row.chapter_number,
       assignedUserId: row.assigned_user_id,
+      peerCheckerId: row.peer_checker_id,
       status: row.status,
       submittedTime: row.submitted_time ?? undefined,
       updatedAt: row.updated_at,
@@ -304,7 +307,9 @@ function mapChapterRowCore(
     | 'total_verses'
     | 'completed_verses'
     | 'downloaded_verses'
+    | 'assigned_user_id'
   >,
+  currentUserId: number,
 ) {
   const recordingCount = Number(row.recording_count) || 0;
   const pendingCount = Number(row.pending_count) || 0;
@@ -316,6 +321,10 @@ function mapChapterRowCore(
     bookName: row.book_name,
     chapterNumber: row.chapter_number,
     syncState: deriveChapterSyncState(recordingCount, pendingCount),
+    ownershipState: deriveChapterOwnershipState(
+      row.assigned_user_id,
+      currentUserId,
+    ),
     lastActivityAt: activity.lastActivityAt,
     lastActivityLabel: activity.lastActivityLabel,
     completedVerses: Number(row.completed_verses) || 0,
@@ -326,9 +335,10 @@ function mapChapterRowCore(
 
 function mapMyWorkChapterRow(
   row: DBTypes.MyWorkChapterRow,
+  currentUserId: number,
 ): DBTypes.MyWorkChapter {
   return {
-    ...mapChapterRowCore(row),
+    ...mapChapterRowCore(row, currentUserId),
     workflowStage: getBadgeStage(row.status),
     projectName: row.project_name,
     targetLanguageName: row.target_language_name,
@@ -337,9 +347,10 @@ function mapMyWorkChapterRow(
 
 function mapProjectChapterRow(
   row: DBTypes.ProjectChapterRow,
+  currentUserId: number,
 ): DBTypes.ProjectChapter {
   return {
-    ...mapChapterRowCore(row),
+    ...mapChapterRowCore(row, currentUserId),
     workflowStage: getWorkflowStage(row.status) ?? 'not_started',
   };
 }
@@ -358,6 +369,7 @@ export async function getProjectChapters(
         ca.status,
         ca.updated_at,
         ca.submitted_time,
+        ca.assigned_user_id,
         b.eng_display_name AS book_name,
         ${RECORDING_AGGREGATES},
         (
@@ -378,7 +390,7 @@ export async function getProjectChapters(
     );
 
     const rows = (result?.rows as unknown as DBTypes.ProjectChapterRow[]) || [];
-    const chapters = rows.map(mapProjectChapterRow);
+    const chapters = rows.map(row => mapProjectChapterRow(row, userId));
 
     log.info('Project chapters fetched', {
       projectId,
@@ -404,6 +416,7 @@ export async function getMyWorkChapters(
         ca.status,
         ca.updated_at,
         ca.submitted_time,
+        ca.assigned_user_id,
         b.eng_display_name AS book_name,
         p.name AS project_name,
         tl.lang_name AS target_language_name,
@@ -428,7 +441,7 @@ export async function getMyWorkChapters(
     );
 
     const rows = (result?.rows as unknown as DBTypes.MyWorkChapterRow[]) || [];
-    const chapters = rows.map(mapMyWorkChapterRow);
+    const chapters = rows.map(row => mapMyWorkChapterRow(row, userId));
 
     log.info('My work chapters fetched', { count: chapters.length });
     return chapters;
