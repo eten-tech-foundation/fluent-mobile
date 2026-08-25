@@ -117,6 +117,7 @@ The **`preview-build`** label still builds an isolated PR APK for **debugging**.
 ## Related
 
 - Install / phone steps: [qa-preview-testing.md](qa-preview-testing.md)
+- **Multi-account nightly script:** [qa-multi-account-nightly.md](qa-multi-account-nightly.md) (#375)
 - Board rules: [project-board.md](project-board.md)
 - Issue / PR linking: [../issue-tracking.md](../issue-tracking.md)
 - CI inventory: [../ci.md](../ci.md)
