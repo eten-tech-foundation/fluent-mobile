@@ -2,6 +2,7 @@ import {
   RESOURCES_SECTION_INVENTORY_GATES,
   buildUnitResourcesAvailability,
   getInventoriedResourceSections,
+  getVisibleResourceSections,
   isResourcesSectionInventoried,
 } from './resourcesSectionInventory';
 import { PrepareOfflineResourceStatus } from '../types/prepareOffline/types';
@@ -122,5 +123,35 @@ describe('resourcesSectionInventory', () => {
         getStatus: statusMap({}),
       }).passageTitle,
     ).toBeUndefined();
+  });
+
+  it('shows all sections online even without offline inventory', () => {
+    expect(
+      getVisibleResourceSections({
+        isOnline: true,
+        projectId: 349,
+        inventoriedSections: [],
+      }),
+    ).toEqual(['translationNotes', 'translationQuestions', 'imagesMaps']);
+  });
+
+  it('uses offline inventory when not online', () => {
+    expect(
+      getVisibleResourceSections({
+        isOnline: false,
+        projectId: 349,
+        inventoriedSections: ['translationNotes'],
+      }),
+    ).toEqual(['translationNotes']);
+  });
+
+  it('returns no sections when projectId is null', () => {
+    expect(
+      getVisibleResourceSections({
+        isOnline: true,
+        projectId: null,
+        inventoriedSections: ['translationNotes'],
+      }),
+    ).toEqual([]);
   });
 });
