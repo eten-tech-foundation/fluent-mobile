@@ -16,8 +16,8 @@ export const touchHitSlop = { top: 8, bottom: 8, left: 8, right: 8 } as const;
 export const iconSizes = {
   header: 24,
   headerTab: 18,
-  projectSync: 24,
-  chapterSync: 16,
+  projectSync: 18,
+  chapterSync: 24,
   chapterProgress: 22,
   chevron: 20,
   /** Phase status circle on project chapter rows (`h-12 w-12` in mock). */
