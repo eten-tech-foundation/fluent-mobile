@@ -99,6 +99,7 @@ export function useVerseAudio({
   const [loadedTakeId, setLoadedTakeId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const captureBibleTextIdRef = useRef<number | null>(null);
+  const chapterAssignedRef = useRef(false);
 
   const selectedTake = takes.find(t => t.isSelected) ?? null;
   const canRecordNewTake = takes.length < MAX_TAKES;
@@ -194,10 +195,20 @@ export function useVerseAudio({
       await persistTake({ bibleTextId: id, tempUri: uri, durationMs });
 
       try {
-        if (userId !== null && chapterAssignmentId !== null) {
+        if (
+          userId !== null &&
+          chapterAssignmentId !== null &&
+          !chapterAssignedRef.current
+        ) {
           const { isOnline } = await getConnectivitySnapshot();
           if (!isOnline) {
-            await claimChapterOffline(chapterAssignmentId, userId);
+            const claimed = await claimChapterOffline(
+              chapterAssignmentId,
+              userId,
+            );
+            if (claimed) {
+              chapterAssignedRef.current = true;
+            }
           }
         }
       } catch (claimError) {
