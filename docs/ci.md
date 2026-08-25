@@ -24,6 +24,10 @@ npm run typecheck
 npm test -- --ci
 ```
 
+### ESLint layer boundaries (#366)
+
+`eslint.config.js` fails lint when UI layers (`src/app/**`, `src/components/**`, `src/routes/**`, `src/hooks/**`) call bare `fetch(` / `globalThis.fetch` / `window.fetch`, call `getDatabase()` / `executeSql`, or import the DB singleton — and when **any** app file imports `@react-navigation/*` (use `expo-router` / `expo-router/drawer` only). Raw SQL string literals are not regex-banned (English UI copy false positives); misuse is caught via `getDatabase` / `executeSql` / DB-singleton import bans. Intentional violation fixtures under `src/app/__fixtures__/eslint-layer-boundaries/` are ignored by `npm run lint` and asserted by `scripts/eslint-layer-boundaries.test.cjs` (part of `npm test`). Wiring `scripts/architecture-guard.mjs` into CI is a separate ticket (#367).
+
 After dependency / Dependabot work (and before claiming PR-ready), also:
 
 ```bash
