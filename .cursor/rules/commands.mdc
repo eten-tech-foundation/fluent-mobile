@@ -26,7 +26,7 @@ Report what ran and the outcome. If a step was skipped, say why.
 | `npm install` | Install deps |
 | `npm start` | Metro bundler |
 | `npm run android` | Run on Android emulator/device |
-| `npm run format` | Fix Prettier (broader than `format:check`) |
+| `npm run format` | Fix Prettier (`src/**/*.{ts,tsx}` — same as `format:check`) |
 | `npm run architecture-guard` | Fail on UI `fetch(` / `getDatabase(` / `executeSql` (`--ci`) |
 | `npm run typecheck` | TypeScript check (`tsc --noEmit`) |
 | `npm run doctor` | Expo SDK / native-module alignment (`expo-doctor`) |
