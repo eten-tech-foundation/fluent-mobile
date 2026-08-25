@@ -8,6 +8,7 @@
     "preinstall": "node ./scripts/package-manager.cjs --enforce",
     "android": "expo run:android",
     "lint": "eslint .",
+    "architecture-guard": "node ./scripts/architecture-guard.mjs --ci",
     "start": "expo start",
     "prebuild": "expo prebuild --clean --platform android",
     "test": "jest",
