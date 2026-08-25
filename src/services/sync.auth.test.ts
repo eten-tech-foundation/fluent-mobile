@@ -115,6 +115,86 @@ const {
   userNeedsAssigneeRepair: jest.Mock;
 };
 
+const { reconcileUserProjects, reconcileUserChapterWork } = jest.requireMock(
+  '../db/repository',
+) as {
+  reconcileUserProjects: jest.Mock;
+  reconcileUserChapterWork: jest.Mock;
+};
+describe('syncProjects / syncUserChapterWork reconciliation shape guard', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetConnectivitySnapshot.mockResolvedValue({
+      isOnline: true,
+      isWifi: true,
+      isCellular: false,
+    });
+    (getActiveUserId as jest.Mock).mockReturnValue('2');
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'valid-token' });
+    (getUserLastSyncedAt as jest.Mock).mockReturnValue(
+      '2026-06-01T00:00:00.000Z',
+    );
+  });
+
+  it('runs project reconciliation with an empty list when the response is validly empty', async () => {
+    (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(reconcileUserProjects).toHaveBeenCalledWith(2, []);
+  });
+
+  it('skips project reconciliation when the response shape is malformed', async () => {
+    (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+      data: 'not-an-array',
+    });
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(reconcileUserProjects).not.toHaveBeenCalled();
+  });
+
+  it('runs project reconciliation with populated ids on a valid response', async () => {
+    (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+      data: [{ id: 5, name: 'Test', target_language_name: 'X' }],
+    });
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(reconcileUserProjects).toHaveBeenCalledWith(2, [5]);
+  });
+
+  it('runs chapter-work reconciliation with empty lists when the response is validly empty', async () => {
+    (FluentAPI.getUserChapterAssignments as jest.Mock).mockResolvedValue({
+      assignedChapters: [],
+      peerCheckChapters: [],
+    });
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(reconcileUserChapterWork).toHaveBeenCalledWith(2, [], []);
+  });
+
+  it('skips chapter-work reconciliation when the response shape is malformed', async () => {
+    (FluentAPI.getUserChapterAssignments as jest.Mock).mockResolvedValue({
+      assignedChapters: null,
+      peerCheckChapters: [],
+    });
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(reconcileUserChapterWork).not.toHaveBeenCalled();
+  });
+
+  it('skips chapter-work reconciliation when the response is missing entirely', async () => {
+    (FluentAPI.getUserChapterAssignments as jest.Mock).mockResolvedValue(null);
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(reconcileUserChapterWork).not.toHaveBeenCalled();
+  });
+});
+
 const mockGetConnectivitySnapshot =
   getConnectivitySnapshot as jest.MockedFunction<
     typeof getConnectivitySnapshot
