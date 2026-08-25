@@ -4,6 +4,7 @@ import {
   PlaybackProgressBar,
   fittedBarCount,
   scrubPositionMs,
+  stableTrackWidth,
 } from './PlaybackProgressBar';
 import { theme } from '../../theme';
 
@@ -26,8 +27,10 @@ describe('scrubPositionMs', () => {
 });
 
 describe('fittedBarCount', () => {
-  it('keeps the requested count before the row is measured', () => {
-    expect(fittedBarCount(24, 0, 3, 3)).toBe(24);
+  it('renders no bars before the row is measured', () => {
+    // Pre-measure 24-bar paint inflated intrinsic width and oscillated with the
+    // flex parent on device (#298). Stay empty until onLayout.
+    expect(fittedBarCount(24, 0, 3, 3)).toBe(0);
   });
 
   it('keeps the requested count when the row is wide enough', () => {
@@ -41,6 +44,27 @@ describe('fittedBarCount', () => {
 
   it('never collapses below a readable floor', () => {
     expect(fittedBarCount(24, 8, 3, 3)).toBe(6);
+  });
+});
+
+describe('stableTrackWidth', () => {
+  it('accepts the first real measurement', () => {
+    expect(stableTrackWidth(0, 60)).toBe(60);
+  });
+
+  it('ignores equal widths', () => {
+    expect(stableTrackWidth(60, 60)).toBe(60);
+  });
+
+  it('ignores ±1–2px Yoga jitter that previously looped onLayout (#298)', () => {
+    expect(stableTrackWidth(60, 58)).toBe(60);
+    expect(stableTrackWidth(60, 62)).toBe(60);
+    expect(stableTrackWidth(60, 59)).toBe(60);
+  });
+
+  it('accepts a real resize beyond the stability window', () => {
+    expect(stableTrackWidth(60, 80)).toBe(80);
+    expect(stableTrackWidth(60, 40)).toBe(40);
   });
 });
 
@@ -64,6 +88,22 @@ describe('PlaybackProgressBar', () => {
       />,
     );
     expect(screen.getByTestId('playback-progress-animated')).toBeTruthy();
+  });
+
+  it('survives alternating near-equal onLayout widths without throwing', () => {
+    // Repro sketch for #298: content-vs-constraint measure jitter used to
+    // setState → layout → setState until Maximum update depth exceeded.
+    render(
+      <PlaybackProgressBar positionMs={0} durationMs={2000} barCount={24} />,
+    );
+    const bar = screen.getByTestId('playback-progress');
+    for (let i = 0; i < 40; i += 1) {
+      const width = i % 2 === 0 ? 60 : 58;
+      fireEvent(bar, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width, height: 28 } },
+      });
+    }
+    expect(screen.getByTestId('playback-progress')).toBeTruthy();
   });
 
   it('invokes onSeek from responder grant when scrubbing is enabled', () => {

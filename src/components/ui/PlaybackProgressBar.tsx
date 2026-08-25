@@ -54,13 +54,25 @@ export function scrubPositionMs(
 /** Minimum bars kept when the row is too narrow for the requested count. */
 const MIN_FITTED_BARS = 6;
 
+/**
+ * Ignore Yoga sub-pixel / content-vs-constraint width jitter. Alternating
+ * onLayout widths (±1–2px) used to re-enter setState → layout → setState and
+ * throw "Maximum update depth exceeded" on physical Android (#298).
+ */
+export const LAYOUT_WIDTH_STABILITY_PX = 2;
+
 /** Minimum spacing between scrub seeks while dragging. */
 const SEEK_SAMPLE_MS = 80;
 
 /**
- * Bars are `minWidth` capsules separated by `barGap`, so a requested count can
+ * Bars are fixed-width capsules separated by `barGap`, so a requested count can
  * exceed the row and paint over its neighbours (take rows put the timer right
  * of the waveform). Drop bars until the row fits its measured width.
+ *
+ * Before the first layout (`width <= 0`), return 0 — do **not** render the
+ * full requested count. Painting 24×`minWidth` bars first inflates intrinsic
+ * width, then the flex parent constrains it; that measure oscillation is what
+ * drove the #298 update-depth loop on device.
  */
 export function fittedBarCount(
   requestedCount: number,
@@ -69,13 +81,27 @@ export function fittedBarCount(
   gap: number,
 ): number {
   if (width <= 0) {
-    return requestedCount;
+    return 0;
   }
   const fits = Math.floor((width + gap) / (barWidth + gap));
   return Math.max(
     Math.min(MIN_FITTED_BARS, requestedCount),
     Math.min(requestedCount, fits),
   );
+}
+
+/**
+ * Stabilize measured track width against ±1–2px layout jitter.
+ * Returns `prev` when the change is not meaningful.
+ */
+export function stableTrackWidth(prev: number, next: number): number {
+  if (prev === next) {
+    return prev;
+  }
+  if (prev > 0 && Math.abs(prev - next) <= LAYOUT_WIDTH_STABILITY_PX) {
+    return prev;
+  }
+  return next;
 }
 
 /**
@@ -227,10 +253,13 @@ export function PlaybackProgressBar({
       testID={animate ? 'playback-progress-animated' : 'playback-progress'}
       onLayout={(e: LayoutChangeEvent) => {
         const next = Math.round(e.nativeEvent.layout.width);
-        trackWidthRef.current = e.nativeEvent.layout.width;
-        // Only re-render on a real width change — a layout handler that always
-        // sets state re-enters the layout pass on every commit.
-        setTrackWidth(prev => (prev === next ? prev : next));
+        // Keep the scrub ref aligned with the hysteretic state — raw Yoga
+        // jitter must not drive seeks to a width we rejected for render (#298).
+        setTrackWidth(prev => {
+          const accepted = stableTrackWidth(prev, next);
+          trackWidthRef.current = accepted;
+          return accepted;
+        });
       }}
       onStartShouldSetResponder={() => seekable}
       onMoveShouldSetResponder={() => seekable}
@@ -288,15 +317,17 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     // Bars are measured-fit below, but clip until the first layout arrives so
     // they can never paint over a sibling (e.g. the take-row timer).
     overflow: 'hidden',
   },
-  /** Lovable: `flex-1 rounded-full` capsule bars. */
+  /**
+   * Fixed width (not flex) so changing `fittedBarCount` does not alter the
+   * row's intrinsic min-width and re-trigger onLayout with a different width.
+   */
   bar: {
-    flex: 1,
-    minWidth: theme.waveform.barMinWidth,
+    width: theme.waveform.barMinWidth,
     borderRadius: theme.radius.full,
   },
   barActive: {
