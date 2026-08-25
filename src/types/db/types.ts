@@ -30,6 +30,8 @@ export type ProjectSyncState = 'none' | 'synced' | 'unsynced';
 
 export type ChapterSyncState = 'none' | 'synced' | 'deviceOnly';
 
+export type ChapterOwnershipState = 'unassigned' | 'mine' | 'other';
+
 export type WorkflowBadgeStage =
   | 'not_started'
   | 'draft'
@@ -45,6 +47,7 @@ export interface MyWorkChapter {
   chapterNumber: number;
   workflowStage: WorkflowBadgeStage | null;
   syncState: ChapterSyncState;
+  ownershipState: ChapterOwnershipState;
   completedVerses: number;
   totalVerses: number;
   downloadedVerses: number;
@@ -61,6 +64,7 @@ export interface ProjectChapter {
   chapterNumber: number;
   workflowStage: WorkflowBadgeStage | null;
   syncState: ChapterSyncState;
+  ownershipState: ChapterOwnershipState;
   completedVerses: number;
   totalVerses: number;
   downloadedVerses: number;
@@ -82,6 +86,7 @@ export interface ProjectChapterRow {
   total_verses: number;
   completed_verses: number;
   downloaded_verses: number;
+  assigned_user_id?: number | null;
 }
 
 export interface MyWorkChapterRow {
@@ -100,6 +105,7 @@ export interface MyWorkChapterRow {
   total_verses: number;
   completed_verses: number;
   downloaded_verses: number;
+  assigned_user_id?: number | null;
 }
 
 export interface ProjectSummary extends Project {

@@ -1,29 +1,25 @@
-import type { AquiferResourceDetails } from '../types/api/aquifer';
+import type { ApiTranslationNoteItem } from '../types/api/translationResources';
 import {
   loadTranslationNotesForUnit,
-  parseAquiferTranslationNotes,
+  parseTranslationNotesItem,
   setTranslationNotesLoadFailureForTests,
 } from './translationNotes';
-import { AquiferAPI } from './aquiferApi';
+import { FluentAPI } from './api';
 import { ApiError } from './apiError';
 
-jest.mock('./aquiferApi', () => ({
-  AquiferAPI: {
-    searchResources: jest.fn(),
-    getResourceDetails: jest.fn(),
+jest.mock('./api', () => ({
+  FluentAPI: {
+    getTranslationNotes: jest.fn(),
   },
 }));
 
-const searchResources = AquiferAPI.searchResources as jest.MockedFunction<
-  typeof AquiferAPI.searchResources
->;
-const getResourceDetails = AquiferAPI.getResourceDetails as jest.MockedFunction<
-  typeof AquiferAPI.getResourceDetails
->;
+const getTranslationNotes =
+  FluentAPI.getTranslationNotes as jest.MockedFunction<
+    typeof FluentAPI.getTranslationNotes
+  >;
 
-const sampleDetails: AquiferResourceDetails = {
+const sampleItem: ApiTranslationNoteItem = {
   id: 12345,
-  referenceId: 1,
   name: 'Mark 14:2',
   localizedName: 'Mark 14:2',
   content: [
@@ -48,24 +44,13 @@ const sampleDetails: AquiferResourceDetails = {
       },
     },
   ],
-  grouping: {
-    type: 'Guide',
-    name: 'Translation Notes',
-    mediaType: 'Text',
-  },
-  language: {
-    id: 1,
-    code: 'eng',
-    displayName: 'English',
-    scriptDirection: 'LTR',
-  },
 };
 
-describe('parseAquiferTranslationNotes', () => {
+describe('parseTranslationNotesItem', () => {
   it('maps TipTap content to note title/body', () => {
-    expect(parseAquiferTranslationNotes(sampleDetails)).toEqual([
+    expect(parseTranslationNotesItem(sampleItem)).toEqual([
       {
-        id: 'tn-aquifer-12345-0',
+        id: 'tn-api-12345-0',
         title: 'Mark 14:2',
         body: 'connecting word\nThis phrase connects the current verse to the previous one.',
       },
@@ -76,31 +61,39 @@ describe('parseAquiferTranslationNotes', () => {
 describe('loadTranslationNotesForUnit', () => {
   afterEach(() => {
     setTranslationNotesLoadFailureForTests(false);
-    searchResources.mockReset();
-    getResourceDetails.mockReset();
+    getTranslationNotes.mockReset();
+  });
+
+  it('returns [] when projectId is null', async () => {
+    await expect(
+      loadTranslationNotesForUnit({
+        projectId: null,
+        bookCode: 'MRK',
+        chapterNumber: 14,
+        verseNumber: 1,
+      }),
+    ).resolves.toEqual([]);
+    expect(getTranslationNotes).not.toHaveBeenCalled();
   });
 
   it('returns [] when bookCode is missing', async () => {
     await expect(
       loadTranslationNotesForUnit({
+        projectId: 7,
         bookCode: '  ',
         chapterNumber: 14,
         verseNumber: 1,
       }),
     ).resolves.toEqual([]);
-    expect(searchResources).not.toHaveBeenCalled();
+    expect(getTranslationNotes).not.toHaveBeenCalled();
   });
 
-  it('returns [] when Aquifer has no TN for the unit', async () => {
-    searchResources.mockResolvedValue({
-      totalItemCount: 0,
-      returnedItemCount: 0,
-      offset: 0,
-      items: [],
-    });
+  it('returns [] when API has no TN for the unit', async () => {
+    getTranslationNotes.mockResolvedValue({ items: [] });
 
     await expect(
       loadTranslationNotesForUnit({
+        projectId: 7,
         bookCode: 'MRK',
         chapterNumber: 14,
         verseNumber: 1,
@@ -108,90 +101,64 @@ describe('loadTranslationNotesForUnit', () => {
     ).resolves.toEqual([]);
   });
 
-  it('returns [] when Aquifer search payload omits items', async () => {
-    searchResources.mockResolvedValue({} as never);
+  it('returns [] when API payload omits items', async () => {
+    getTranslationNotes.mockResolvedValue({} as never);
 
     await expect(
       loadTranslationNotesForUnit({
+        projectId: 7,
         bookCode: 'MRK',
         chapterNumber: 14,
         verseNumber: 1,
       }),
     ).resolves.toEqual([]);
-    expect(getResourceDetails).not.toHaveBeenCalled();
   });
 
-  it('propagates Aquifer ApiError so the section can show retry', async () => {
-    searchResources.mockRejectedValue(
-      new ApiError(0, 'Aquifer request returned no response'),
+  it('propagates ApiError so the section can show retry', async () => {
+    getTranslationNotes.mockRejectedValue(
+      new ApiError(502, 'Aquifer service is unavailable'),
     );
 
     await expect(
       loadTranslationNotesForUnit({
+        projectId: 7,
         bookCode: 'MRK',
         chapterNumber: 14,
         verseNumber: 2,
       }),
     ).rejects.toMatchObject({
       name: 'ApiError',
-      status: 0,
-      message: expect.stringMatching(/no response/i),
+      status: 502,
+      message: expect.stringMatching(/unavailable/i),
     });
   });
 
-  it('searches Aquifer and parses resource details', async () => {
-    searchResources.mockResolvedValue({
-      totalItemCount: 1,
-      returnedItemCount: 1,
-      offset: 0,
-      items: [
-        {
-          id: 12345,
-          name: 'Mark 14:2',
-          localizedName: 'Mark 14:2',
-          mediaType: 'Text',
-          languageCode: 'eng',
-          grouping: {
-            type: 'Guide',
-            name: 'Translation Notes',
-            collectionTitle: 'Translation Notes',
-            collectionCode: 'UWTranslationNotes',
-          },
-        },
-      ],
-    });
-    getResourceDetails.mockResolvedValue(sampleDetails);
+  it('calls FluentAPI and parses resource items', async () => {
+    getTranslationNotes.mockResolvedValue({ items: [sampleItem] });
 
     await expect(
       loadTranslationNotesForUnit({
+        projectId: 7,
         bookCode: 'MRK',
         chapterNumber: 14,
         verseNumber: 2,
       }),
     ).resolves.toEqual([
       {
-        id: 'tn-aquifer-12345-0',
+        id: 'tn-api-12345-0',
         title: 'Mark 14:2',
         body: 'connecting word\nThis phrase connects the current verse to the previous one.',
       },
     ]);
 
-    expect(searchResources).toHaveBeenCalledWith({
-      bookCode: 'MRK',
-      startChapter: 14,
-      endChapter: 14,
-      startVerse: 2,
-      endVerse: 2,
-      languageCode: 'eng',
-      resourceCollectionCode: 'UWTranslationNotes',
-      limit: 50,
-    });
+    expect(getTranslationNotes).toHaveBeenCalledWith(7, 'MRK', 14, 2, 'eng');
   });
 
   it('throws when failure injection is enabled', async () => {
     setTranslationNotesLoadFailureForTests(true);
     await expect(
       loadTranslationNotesForUnit({
+        projectId: 7,
         bookCode: 'MRK',
         chapterNumber: 14,
         verseNumber: 2,

@@ -37,7 +37,7 @@ type ResourcesTabProps = {
   projectId: number | null;
   /** Active user id for download_queue inventory rows (#53/#201). */
   userId: number | null;
-  /** USFM book code for Aquifer resource lookup (e.g. MRK). */
+  /** USFM book code for translation-resources lookup (e.g. MRK). */
   bookCode: string;
   chapterNumber: number;
 };
@@ -67,7 +67,8 @@ const SECTION_META: {
 /**
  * Resources tab host (#188 + #192): Prepare Offline inventory gates which
  * sections appear. Translation Notes (#189), Translation Questions (#190), and
- * Images & Maps (#191) fill Aquifer-backed bodies when inventoried.
+ * Images & Maps (#191) fill fluent-api translation-resources bodies when
+ * inventoried.
  */
 export function ResourcesTab({
   chapterId,
@@ -89,6 +90,7 @@ export function ResourcesTab({
   });
 
   const { state: notesState, retry: retryNotes } = useTranslationNotesForUnit({
+    projectId,
     bookCode,
     chapterNumber,
     verseNumber: selectedVerse,
@@ -96,6 +98,7 @@ export function ResourcesTab({
 
   const { state: imagesMapsState, retry: retryImagesMaps } =
     useImagesMapsForUnit({
+      projectId,
       bookCode,
       chapterNumber,
       verseNumber: selectedVerse,
@@ -217,6 +220,7 @@ export function ResourcesTab({
                 />
               ) : id === 'translationQuestions' ? (
                 <TranslationQuestionsSection
+                  projectId={projectId}
                   bookCode={bookCode}
                   chapterNumber={chapterNumber}
                   verseNumber={selectedVerse}
