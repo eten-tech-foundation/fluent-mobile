@@ -67,6 +67,11 @@ export const colors = {
   syncStatusSynced: '#17B26A',
   syncStatusPending: '#E48F06',
   syncStatusOffline: '#A0A0A0',
+  /** Informational warning banners (issue #269). */
+  warning: '#B45308',
+  warningIcon: '#D97706',
+  warningBackground: '#FEF5E6',
+  warningBorder: '#FAD28E',
   destructive: '#DC2626',
   /** Drawer / modal scrim over app content. */
   drawerOverlay: 'rgba(10, 18, 40, 0.44)',
