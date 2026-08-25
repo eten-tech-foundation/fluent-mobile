@@ -2,6 +2,22 @@
 
 Repeatable process for safely managing Dependabot PRs in **Fluent Mobile**. Priority: keep the app stable on **Expo SDK 57 (RN 0.86) with Expo CNG**.
 
+## One-at-a-time checklist
+
+Use this for **every** Dependabot merge (copy into PR comment or issue when triaging):
+
+- [ ] Author is `dependabot[bot]` / `app/dependabot`
+- [ ] Checkout PR branch → `npm ci`
+- [ ] **`npm run doctor`** (after any npm bump; mirrors Quality Gates expo-doctor)
+- [ ] Local CI order: `format:check` → `lint` → `typecheck` → `npm test -- --ci`
+- [ ] If doctor / `expo install --check` fails: `npx expo install --check` then `npx expo install --fix` when SDK patch drift only
+- [ ] Approve + **squash merge exactly one** lockfile PR
+- [ ] Wait for **`main` CI green** before the next merge
+- [ ] Comment **`@dependabot rebase`** on **all other open** Dependabot PRs (parallel prep)
+- [ ] Re-triage next PR when its checks are green; repeat
+
+Risky bumps (`react`, `react-native`, navigation, native modules): add Android smoke test before merge (see below).
+
 ## Core principles
 
 1. **Stability first**: Never merge updates that break Expo SDK 57 / RN 0.86 compatibility or native module ABI.
