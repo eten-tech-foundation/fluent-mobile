@@ -41,6 +41,7 @@ describe('TranslationQuestionsSection', () => {
   it('hides content when no questions are available', async () => {
     render(
       <TranslationQuestionsSection
+        projectId={7}
         bookCode="MRK"
         chapterNumber={14}
         verseNumber={1}
@@ -58,6 +59,7 @@ describe('TranslationQuestionsSection', () => {
   it('keeps answers hidden until a question accordion is expanded', async () => {
     render(
       <TranslationQuestionsSection
+        projectId={7}
         bookCode="MRK"
         chapterNumber={14}
         verseNumber={2}
@@ -93,6 +95,7 @@ describe('TranslationQuestionsSection', () => {
 
     render(
       <TranslationQuestionsSection
+        projectId={7}
         bookCode="MRK"
         chapterNumber={14}
         verseNumber={2}

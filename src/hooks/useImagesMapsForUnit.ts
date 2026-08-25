@@ -15,6 +15,7 @@ export type ImagesMapsLoadState =
   | { status: 'error'; message: string };
 
 type TrackedLoadState = {
+  projectId: number | null;
   bookCode: string;
   chapterNumber: number;
   verseNumber: number;
@@ -26,12 +27,14 @@ export type UseImagesMapsForUnitParams = LoadImagesMapsParams;
 /**
  * Section-scoped Images & Maps loader (#191). Failures stay local.
  * Ignores stale responses when the active unit changes mid-load.
- * Loads real Aquifer Images (interim until fluent-api#273).
+ * Loads via fluent-api translation-resources (fluent-api #274).
  */
 export function useImagesMapsForUnit(params: UseImagesMapsForUnitParams) {
-  const { bookCode, chapterNumber, verseNumber, languageCode } = params;
+  const { projectId, bookCode, chapterNumber, verseNumber, languageCode } =
+    params;
 
   const [tracked, setTracked] = useState<TrackedLoadState>({
+    projectId,
     bookCode,
     chapterNumber,
     verseNumber,
@@ -42,6 +45,7 @@ export function useImagesMapsForUnit(params: UseImagesMapsForUnitParams) {
   const load = useCallback(async () => {
     const requestId = ++requestIdRef.current;
     setTracked({
+      projectId,
       bookCode,
       chapterNumber,
       verseNumber,
@@ -49,6 +53,7 @@ export function useImagesMapsForUnit(params: UseImagesMapsForUnitParams) {
     });
     try {
       const items = await loadImagesMapsForUnit({
+        projectId,
         bookCode,
         chapterNumber,
         verseNumber,
@@ -58,6 +63,7 @@ export function useImagesMapsForUnit(params: UseImagesMapsForUnitParams) {
         return;
       }
       setTracked({
+        projectId,
         bookCode,
         chapterNumber,
         verseNumber,
@@ -68,12 +74,14 @@ export function useImagesMapsForUnit(params: UseImagesMapsForUnitParams) {
         return;
       }
       log.warn('Images & Maps load failed', {
+        projectId,
         bookCode,
         chapterNumber,
         verseNumber,
         error: error instanceof Error ? error.message : String(error),
       });
       setTracked({
+        projectId,
         bookCode,
         chapterNumber,
         verseNumber,
@@ -83,7 +91,7 @@ export function useImagesMapsForUnit(params: UseImagesMapsForUnitParams) {
         },
       });
     }
-  }, [bookCode, chapterNumber, verseNumber, languageCode]);
+  }, [projectId, bookCode, chapterNumber, verseNumber, languageCode]);
 
   useEffect(() => {
     void load();
@@ -94,6 +102,7 @@ export function useImagesMapsForUnit(params: UseImagesMapsForUnitParams) {
   }, [load]);
 
   const state: ImagesMapsLoadState =
+    tracked.projectId === projectId &&
     tracked.bookCode === bookCode &&
     tracked.chapterNumber === chapterNumber &&
     tracked.verseNumber === verseNumber

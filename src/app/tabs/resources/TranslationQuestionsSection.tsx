@@ -12,6 +12,7 @@ import { TRANSLATION_QUESTIONS_LOAD_ERROR } from '../../../constants/messages';
 import { theme } from '../../../theme';
 
 type TranslationQuestionsSectionProps = {
+  projectId: number | null;
   bookCode: string;
   chapterNumber: number;
   verseNumber: number;
@@ -24,12 +25,14 @@ type TranslationQuestionsSectionProps = {
  * Nested Q→A accordions; section-scoped error + Retry.
  */
 export function TranslationQuestionsSection({
+  projectId,
   bookCode,
   chapterNumber,
   verseNumber,
   sectionExpanded,
 }: TranslationQuestionsSectionProps) {
   const { state, retry } = useTranslationQuestionsForUnit({
+    projectId,
     bookCode,
     chapterNumber,
     verseNumber,
