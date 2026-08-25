@@ -6,6 +6,13 @@ import {
 import { ResourceSectionId } from '../types/resources/types';
 import { manifestEntryToResourceId } from './prepareOfflineResourceId';
 
+/** All Resources tab sections (online fluent-api path). */
+export const ALL_RESOURCE_SECTION_IDS: ResourceSectionId[] = [
+  'translationNotes',
+  'translationQuestions',
+  'imagesMaps',
+];
+
 /**
  * Maps Resources tab sections to Prepare Offline inventory resource ids (#192).
  * Uses #51 mock catalog tier membership (TN tier 1; TQ tier 2; Images tier 3).
@@ -59,6 +66,25 @@ export function getInventoriedResourceSections(
       getStatus(gate.resourceId) === 'completed' ||
       downloadedSections.includes(gate.sectionId),
   ).map(gate => gate.sectionId);
+}
+
+/**
+ * Which section slots ResourcesTab should render.
+ * Online + project → stream via fluent-api (all sections).
+ * Offline → Prepare Offline inventory only (#192).
+ */
+export function getVisibleResourceSections(params: {
+  isOnline: boolean;
+  projectId: number | null;
+  inventoriedSections: ResourceSectionId[];
+}): ResourceSectionId[] {
+  if (params.projectId === null) {
+    return [];
+  }
+  if (params.isOnline) {
+    return ALL_RESOURCE_SECTION_IDS;
+  }
+  return params.inventoriedSections;
 }
 
 export function buildUnitResourcesAvailability(params: {

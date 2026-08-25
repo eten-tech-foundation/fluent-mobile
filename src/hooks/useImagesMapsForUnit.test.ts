@@ -30,6 +30,7 @@ describe('useImagesMapsForUnit', () => {
 
     const { result } = renderHook(() =>
       useImagesMapsForUnit({
+        projectId: 7,
         bookCode: 'MRK',
         chapterNumber: 1,
         verseNumber: 2,
@@ -45,6 +46,7 @@ describe('useImagesMapsForUnit', () => {
     }
     expect(result.current.state.items.length).toBeGreaterThan(0);
     expect(mockLoad).toHaveBeenCalledWith({
+      projectId: 7,
       bookCode: 'MRK',
       chapterNumber: 1,
       verseNumber: 2,
@@ -58,6 +60,7 @@ describe('useImagesMapsForUnit', () => {
 
     const { result } = renderHook(() =>
       useImagesMapsForUnit({
+        projectId: 7,
         bookCode: 'MRK',
         chapterNumber: 1,
         verseNumber: 2,
@@ -87,21 +90,25 @@ describe('useImagesMapsForUnit', () => {
 
     const { result, rerender } = renderHook(
       ({
+        projectId,
         bookCode,
         chapterNumber,
         verseNumber,
       }: {
+        projectId: number | null;
         bookCode: string;
         chapterNumber: number;
         verseNumber: number;
       }) =>
         useImagesMapsForUnit({
+          projectId,
           bookCode,
           chapterNumber,
           verseNumber,
         }),
       {
         initialProps: {
+          projectId: 7,
           bookCode: 'MRK',
           chapterNumber: 1,
           verseNumber: 2,
@@ -128,7 +135,12 @@ describe('useImagesMapsForUnit', () => {
     });
     mockLoad.mockReturnValueOnce(pendingLoad);
 
-    rerender({ bookCode: 'MRK', chapterNumber: 1, verseNumber: 1 });
+    rerender({
+      projectId: 7,
+      bookCode: 'MRK',
+      chapterNumber: 1,
+      verseNumber: 1,
+    });
 
     expect(result.current.state.status).toBe('loading');
 

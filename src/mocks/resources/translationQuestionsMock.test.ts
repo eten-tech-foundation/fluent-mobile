@@ -29,6 +29,7 @@ describe('translationQuestionsMock', () => {
     setMockTranslationQuestionsLoadFailure(true);
     await expect(
       loadTranslationQuestionsForUnit({
+        projectId: 7,
         bookCode: 'MRK',
         chapterNumber: 14,
         verseNumber: 2,
