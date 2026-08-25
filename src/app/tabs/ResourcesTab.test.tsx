@@ -25,6 +25,7 @@ import { getMockImagesMaps } from '../../mocks/resources/imagesMapsMock';
 import { loadTranslationNotesForUnit } from '../../services/translationNotes';
 import { loadTranslationQuestionsForUnit } from '../../services/translationQuestions';
 import { loadImagesMapsForUnit } from '../../services/imagesMaps';
+import { useConnectivity } from '../../hooks/useConnectivity';
 
 jest.mock('../../db/downloadQueueRepository', () => ({
   getDownloadedResourcesByProject: jest.fn(async () => []),
@@ -95,6 +96,15 @@ jest.mock('../../services/imagesMaps', () => {
   };
 });
 
+jest.mock('../../hooks/useConnectivity', () => ({
+  useConnectivity: jest.fn(() => ({
+    isOnline: true,
+    isWifi: true,
+    isCellular: false,
+    hasResolved: true,
+  })),
+}));
+
 const downloadedRows = getDownloadedResourcesByProject as jest.Mock;
 const mockLoadNotes = loadTranslationNotesForUnit as jest.MockedFunction<
   typeof loadTranslationNotesForUnit
@@ -105,6 +115,9 @@ const mockLoadQuestions =
   >;
 const mockLoadImages = loadImagesMapsForUnit as jest.MockedFunction<
   typeof loadImagesMapsForUnit
+>;
+const mockUseConnectivity = useConnectivity as jest.MockedFunction<
+  typeof useConnectivity
 >;
 
 const verses: VerseData[] = [1, 2, 3].map(verseNumber => ({
@@ -163,12 +176,27 @@ function renderResources(
   );
 }
 
+function mockOfflineConnectivity() {
+  mockUseConnectivity.mockReturnValue({
+    isOnline: false,
+    isWifi: false,
+    isCellular: false,
+    hasResolved: true,
+  });
+}
+
 describe('ResourcesTab', () => {
   beforeEach(() => {
     clearResourcesTabUiState();
     clearMockPrepareOfflineRuntimeInventory();
     setPrepareOfflineMockInventoryScenario('fresh');
     downloadedRows.mockResolvedValue([]);
+    mockUseConnectivity.mockReturnValue({
+      isOnline: true,
+      isWifi: true,
+      isCellular: false,
+      hasResolved: true,
+    });
     mockLoadNotes.mockImplementation(async ({ verseNumber }) =>
       getMockTranslationNotes(99, verseNumber),
     );
@@ -187,6 +215,7 @@ describe('ResourcesTab', () => {
   });
 
   it('shows a section persisted as completed in download_queue', async () => {
+    mockOfflineConnectivity();
     downloadedRows.mockResolvedValue([
       { status: 'completed', resourceName: 'Reference Images', kind: 'image' },
     ]);
@@ -199,7 +228,30 @@ describe('ResourcesTab', () => {
     expect(screen.queryByText('Translation Notes')).toBeNull();
   });
 
-  it('shows the empty message when nothing is inventoried (fresh)', () => {
+  it('shows all sections online when nothing is inventoried (fresh)', async () => {
+    renderResources(1);
+    expect(screen.getByText('Translation Notes')).toBeTruthy();
+    expect(screen.getByText('Translation Questions')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText('Images & Maps')).toBeTruthy();
+    });
+    expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
+  });
+
+  it('shows the empty message offline when nothing is inventoried (fresh)', () => {
+    mockOfflineConnectivity();
+    renderResources(1);
+    expect(screen.getByText(RESOURCES_EMPTY_MESSAGE)).toBeTruthy();
+    expect(screen.queryByText('Translation Notes')).toBeNull();
+  });
+
+  it('shows the empty message while connectivity is unresolved', () => {
+    mockUseConnectivity.mockReturnValue({
+      isOnline: true,
+      isWifi: true,
+      isCellular: false,
+      hasResolved: false,
+    });
     renderResources(1);
     expect(screen.getByText(RESOURCES_EMPTY_MESSAGE)).toBeTruthy();
     expect(screen.queryByText('Translation Notes')).toBeNull();
@@ -211,7 +263,8 @@ describe('ResourcesTab', () => {
     expect(screen.getByText(RESOURCES_EMPTY_MESSAGE)).toBeTruthy();
   });
 
-  it('shows Translation Notes only for tier1 inventory', () => {
+  it('shows Translation Notes only for tier1 inventory offline', () => {
+    mockOfflineConnectivity();
     setPrepareOfflineMockInventoryScenario('tier1');
     renderResources(2);
     expect(screen.getByText('Mark 14:2')).toBeTruthy();
@@ -221,7 +274,8 @@ describe('ResourcesTab', () => {
     expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
   });
 
-  it('shows TN + TQ for tier1-tier2 inventory', () => {
+  it('shows TN + TQ for tier1-tier2 inventory offline', () => {
+    mockOfflineConnectivity();
     setPrepareOfflineMockInventoryScenario('tier1-tier2');
     renderResources(1);
     expect(screen.getByText('Translation Notes')).toBeTruthy();
@@ -248,7 +302,7 @@ describe('ResourcesTab', () => {
 
     fireEvent.press(screen.getByTestId('select-verse-3'));
     expect(screen.getByText('Mark 14:3')).toBeTruthy();
-    // Sections stay inventory-gated — not verse % 3 mocks.
+    // Online: all sections visible regardless of verse mocks.
     expect(screen.getByText('Translation Notes')).toBeTruthy();
     expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
   });
@@ -274,7 +328,8 @@ describe('ResourcesTab', () => {
     });
   });
 
-  it('gates sections from inventory without verse-mock emptiness', async () => {
+  it('gates sections from offline inventory without verse-mock emptiness', async () => {
+    mockOfflineConnectivity();
     setPrepareOfflineMockInventoryScenario('all');
     mockLoadImages.mockResolvedValue(getMockImagesMaps(99, 2));
     renderResources(3);
