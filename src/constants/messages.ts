@@ -10,7 +10,8 @@ export const PROJECT_CHAPTERS_EMPTY_MESSAGE =
 export const RESOURCES_EMPTY_MESSAGE =
   'No resources are on this device yet. Download them from Prepare for Offline.';
 
-export const IMAGES_MAPS_LOAD_ERROR = 'Unable to load Images & Maps.';
+/** Section-scoped Images & Maps failure copy (#191 / #348). */
+export const IMAGES_MAPS_LOAD_ERROR = 'Images unavailable';
 
 export const TRANSLATION_NOTES_LOAD_ERROR = 'Unable to load Translation Notes.';
 

@@ -1,5 +1,10 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import { ImagesMapsSection } from './ImagesMapsSection';
 import { IMAGES_MAPS_LOAD_ERROR } from '../../../constants/messages';
 import { getMockImagesMaps } from '../../../mocks/resources/imagesMapsMock';
@@ -46,7 +51,35 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
+/** When true, ZoomableImage immediately reports load failure (offline asset path). */
+let mockAutoFailZoomableImages = false;
+
+jest.mock('./ZoomableImage', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    ZoomableImage: ({
+      onLoadError,
+      testID,
+    }: {
+      onLoadError?: () => void;
+      testID?: string;
+    }) => {
+      React.useLayoutEffect(() => {
+        if (mockAutoFailZoomableImages) {
+          onLoadError?.();
+        }
+      }, [onLoadError]);
+      return <View testID={testID} />;
+    },
+  };
+});
+
 describe('ImagesMapsSection', () => {
+  beforeEach(() => {
+    mockAutoFailZoomableImages = false;
+  });
+
   it('renders nothing when ready with no items (parent hides accordion)', () => {
     const { toJSON } = render(
       <ImagesMapsSection
@@ -123,5 +156,24 @@ describe('ImagesMapsSection', () => {
     );
 
     expect(screen.getByTestId('images-maps-list')).toBeTruthy();
+  });
+
+  it('escalates all thumbnail load failures to error + Retry', async () => {
+    mockAutoFailZoomableImages = true;
+    const retry = jest.fn();
+    const items = getMockImagesMaps(99, 2);
+
+    render(
+      <ImagesMapsSection state={{ status: 'ready', items }} retry={retry} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('images-maps-error')).toBeTruthy();
+    });
+    expect(screen.getByText(IMAGES_MAPS_LOAD_ERROR)).toBeTruthy();
+    expect(screen.queryByTestId('images-maps-list')).toBeNull();
+
+    fireEvent.press(screen.getByTestId('images-maps-retry'));
+    expect(retry).toHaveBeenCalledTimes(1);
   });
 });
