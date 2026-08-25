@@ -89,6 +89,45 @@ describe('TranslationQuestionsSection', () => {
     ).toBeTruthy();
   });
 
+  it('resets nested expansion when only projectId changes', async () => {
+    const answer =
+      'The passage describes the events surrounding this verse so the translator can check key meaning.';
+
+    const { rerender } = render(
+      <TranslationQuestionsSection
+        projectId={7}
+        bookCode="MRK"
+        chapterNumber={14}
+        verseNumber={2}
+        sectionExpanded
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('translation-questions-list')).toBeTruthy();
+    });
+
+    fireEvent.press(
+      screen.getByTestId('translation-question-tq-99-2-1-toggle'),
+    );
+    expect(screen.getByText(answer)).toBeTruthy();
+
+    rerender(
+      <TranslationQuestionsSection
+        projectId={8}
+        bookCode="MRK"
+        chapterNumber={14}
+        verseNumber={2}
+        sectionExpanded
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('translation-questions-list')).toBeTruthy();
+    });
+    expect(screen.queryByText(answer)).toBeNull();
+  });
+
   it('shows section-scoped error and recovers on Retry', async () => {
     mockLoad.mockRejectedValueOnce(new Error('boom'));
     mockLoad.mockResolvedValueOnce(getMockTranslationQuestions(99, 2));

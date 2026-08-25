@@ -43,7 +43,7 @@ export function TranslationQuestionsSection({
 
   useEffect(() => {
     setOpenQuestionIds(new Set());
-  }, [bookCode, chapterNumber, verseNumber]);
+  }, [projectId, bookCode, chapterNumber, verseNumber]);
 
   useEffect(() => {
     if (!sectionExpanded) {
