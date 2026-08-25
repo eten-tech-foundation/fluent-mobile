@@ -664,7 +664,7 @@ describe('RecordTab', () => {
       expect(screen.getAllByTestId('shared-take-row')).toHaveLength(2);
     });
   });
-  
+
   it('shows taken-chapter banner for an unrelated viewer and keeps record enabled', async () => {
     renderTab(undefined, {
       chapterData: {
