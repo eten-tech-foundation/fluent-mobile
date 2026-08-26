@@ -27,6 +27,7 @@ type ZoomableImageProps = {
   contentFit?: 'cover' | 'contain';
   testID?: string;
   onLoadError?: () => void;
+  onLoad?: () => void;
   /** Invoked on a clean single tap (not a pinch/pan/double-tap). */
   onPress?: () => void;
   /**
@@ -63,6 +64,7 @@ export function ZoomableImage({
   contentFit = 'cover',
   testID,
   onLoadError,
+  onLoad,
   onPress,
   hostBackgroundColor = theme.colors.cardBackground,
 }: ZoomableImageProps) {
@@ -188,6 +190,7 @@ export function ZoomableImage({
             contentFit={contentFit}
             accessibilityLabel={accessibilityLabel}
             onError={onLoadError}
+            onLoad={onLoad}
             cachePolicy="memory-disk"
           />
         </Animated.View>

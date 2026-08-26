@@ -81,5 +81,5 @@ export async function loadImagesMapsForUnit(
   const items = Array.isArray(response?.items) ? response.items : [];
   return items
     .map(parseTranslationImageItem)
-    .filter((mapped): mapped is ImagesMapsItem => mapped !== null);
+    .filter((item): item is ImagesMapsItem => item !== null);
 }

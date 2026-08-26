@@ -20,6 +20,7 @@ import type {
   UploadVerseAudioParams,
   VerseAudioResponse,
 } from '../types/api/verseAudio';
+import type { SubmitChapterAssignmentResponse } from '../types/api/submitChapterAssignment';
 import { checkServerReachable } from './connectivity';
 import {
   authedMultipartRequest,
@@ -167,6 +168,18 @@ export const FluentAPI = {
       `/users/${userId}/chapter-assignments`,
       undefined,
       token,
+    ),
+
+  /**
+   * Advance a chapter assignment to the next workflow stage (online path).
+   * Offline queue / reconnect handling is #257.
+   */
+  submitChapterAssignment: (
+    chapterAssignmentId: number,
+  ): Promise<SubmitChapterAssignmentResponse> =>
+    authedRequest<SubmitChapterAssignmentResponse>(
+      `/chapter-assignments/${chapterAssignmentId}/submit`,
+      { method: 'PATCH' },
     ),
 
   getBibleTexts: (

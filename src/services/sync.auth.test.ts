@@ -7,6 +7,7 @@ import {
   getTempCredentials,
 } from './keychain';
 import { syncAllData, syncAllUsers } from './sync';
+import * as sync from './sync';
 import * as syncEvents from './syncEvents';
 import {
   getActiveUserId,
@@ -557,5 +558,11 @@ describe('syncAllUsers auth handling', () => {
 
     expect(setUserLastSyncedAt).not.toHaveBeenCalled();
     expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
+  });
+});
+
+describe('sync public API', () => {
+  it('does not export a misleading switchUser stub', () => {
+    expect(sync).not.toHaveProperty('switchUser');
   });
 });

@@ -43,6 +43,9 @@ jest.mock('../src/services/uploadOrchestrator', () => ({
   setChapterUploadWorker: jest.fn(),
 }));
 
+const mockStartUploadProgressNotification = jest.fn();
+const mockStopUploadProgressNotification = jest.fn();
+
 const mockStartDownloadQueueAutoResume = jest.fn(() => jest.fn());
 const mockStopDownloadQueueAutoResume = jest.fn();
 jest.mock('../src/services/downloadQueueAutoResume', () => ({
@@ -52,6 +55,11 @@ jest.mock('../src/services/downloadQueueAutoResume', () => ({
 
 jest.mock('../src/services/recordingSync', () => ({
   registerRecordingUploadWorker: jest.fn(),
+}));
+
+jest.mock('../src/services/uploadProgressNotification', () => ({
+  startUploadProgressNotification: () => mockStartUploadProgressNotification(),
+  stopUploadProgressNotification: () => mockStopUploadProgressNotification(),
 }));
 
 import {
@@ -114,6 +122,7 @@ describe('AuthSessionProvider', () => {
       expect(getByTestId('auth-flag').props.children).toBe('yes');
     });
     expect(mockStartUploadOrchestrator).toHaveBeenCalled();
+    expect(mockStartUploadProgressNotification).toHaveBeenCalled();
   });
 
   it('signIn runs post-login sync with sync-active UI', async () => {
@@ -163,6 +172,7 @@ describe('AuthSessionProvider', () => {
     });
     expect(getByTestId('auth-flag').props.children).toBe('no');
     expect(mockSignOut).toHaveBeenCalled();
+    expect(mockStopUploadProgressNotification).toHaveBeenCalled();
   });
 
   it('shows init error when bootstrap fails', async () => {

@@ -721,8 +721,3 @@ export async function syncAllData(
     emitSyncComplete();
   }
 }
-
-export async function switchUser(userId: string): Promise<void> {
-  log.info('Switching to user', { userId });
-  emitSyncComplete();
-}

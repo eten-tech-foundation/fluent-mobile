@@ -902,4 +902,54 @@ describe('recordings is_selected rename migration (#71)', () => {
       renameRecordingsIsLatestToIsSelected(db),
     ).resolves.not.toThrow();
   });
+  describe('chapter claim queue migration (#270)', () => {
+    it('includes chapter_claim_queue in baseline schema', () => {
+      const claimQueueSql = createTableQueries.find(q =>
+        q.includes('CREATE TABLE IF NOT EXISTS chapter_claim_queue'),
+      );
+      expect(claimQueueSql).toBeDefined();
+      expect(claimQueueSql).toContain('chapter_assignment_id');
+      expect(claimQueueSql).toContain('REFERENCES chapter_assignments(id)');
+      expect(claimQueueSql).toContain('REFERENCES users(id)');
+    });
+
+    it('creates chapter_claim_queue when upgrading from v10', async () => {
+      const db = createFakeDb(10);
+      db._seedUsers([5]);
+      db._seedAssignmentParents();
+      db._seedOldChapterAssignments();
+
+      expect(db._tables.has('chapter_claim_queue')).toBe(false);
+
+      await runMigrations(db);
+
+      expect(db._tables.has('chapter_claim_queue')).toBe(true);
+      expect(db._indexes.has('idx_ccq_chapter_assignment')).toBe(true);
+      expect(db._indexes.has('idx_ccq_status')).toBe(true);
+      await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
+    });
+
+    it('rejects INSERT that violates chapter_claim_queue FKs', async () => {
+      const db = createFakeDb(10);
+      db._seedUsers([5]);
+      db._seedAssignmentParents();
+      db._seedOldChapterAssignments();
+
+      await runMigrations(db);
+
+      await expect(
+        db.execute(
+          `INSERT INTO chapter_claim_queue (chapter_assignment_id, user_id, claimed_at, sync_status)
+         VALUES (999, 5, '2024-01-01', 'pending')`,
+        ),
+      ).rejects.toThrow(/FOREIGN KEY constraint failed/);
+
+      await expect(
+        db.execute(
+          `INSERT INTO chapter_claim_queue (chapter_assignment_id, user_id, claimed_at, sync_status)
+         VALUES (1, 5, '2024-01-01', 'pending')`,
+        ),
+      ).resolves.toBeDefined();
+    });
+  });
 });

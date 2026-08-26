@@ -20,5 +20,8 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+      - name: Architecture guard
+        run: npm run architecture-guard
+
       - name: Check Prettier
         run: npm run format:check

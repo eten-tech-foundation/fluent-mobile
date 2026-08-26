@@ -18,14 +18,23 @@ import type { Recording } from '../../types/db/types';
 
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({ chapterName: 'Mark 14' }),
+  useRouter: () => ({
+    back: jest.fn(),
+    canGoBack: () => true,
+  }),
 }));
 
 jest.mock('../../db/queries', () => ({
   getBibleTextId: jest.fn(async () => 42),
+  getRecordedVerseNumbers: jest.fn(async () => new Set([3])),
 }));
 
 jest.mock('../../audio/micPermission', () => ({
   requestMicPermission: jest.fn(async () => 'granted'),
+}));
+
+jest.mock('../../services/stageAdvance', () => ({
+  confirmStageAdvancement: jest.fn(async () => undefined),
 }));
 
 type VerseAudioApi = ReturnType<typeof useVerseAudio>;
@@ -96,6 +105,7 @@ const chapterData: ChapterAssignmentData = {
   bookId: 1,
   chapterNumber: 14,
   status: 'draft',
+  assignedUserId: 42,
   bibleName: 'BSB',
   bookName: 'Mark',
 };
@@ -112,12 +122,13 @@ const verses = [
 
 function renderTab(
   onCaptureActiveChange?: (active: boolean) => void,
-  overrides?: { chapterData?: ChapterAssignmentData },
+  overrides?: { chapterData?: ChapterAssignmentData; userId?: number | null },
 ) {
   return render(
     <DraftingProvider verses={verses} initialVerse={3}>
       <RecordTab
         chapterData={overrides?.chapterData ?? chapterData}
+        userId={overrides?.userId ?? 1}
         onCaptureActiveChange={onCaptureActiveChange}
       />
     </DraftingProvider>,
@@ -323,7 +334,7 @@ describe('RecordTab', () => {
     });
     rerender(
       <DraftingProvider verses={verses} initialVerse={3}>
-        <RecordTab chapterData={chapterData} />
+        <RecordTab chapterData={chapterData} userId={1} />
       </DraftingProvider>,
     );
 
@@ -410,6 +421,7 @@ describe('RecordTab', () => {
       <DraftingProvider verses={verses} initialVerse={3}>
         <RecordTab
           chapterData={chapterData}
+          userId={1}
           onCaptureActiveChange={onCaptureActiveChange}
         />
       </DraftingProvider>,
@@ -497,5 +509,38 @@ describe('RecordTab', () => {
     expect(takenIdx).toBeGreaterThanOrEqual(0);
     expect(conflictIdx).toBeGreaterThan(takenIdx);
     expect(verseIdx).toBeGreaterThan(conflictIdx);
+  });
+
+  it('shows stage advance CTA for assigned drafter with chapter recordings', async () => {
+    renderTab();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stage-advance-button')).toBeTruthy();
+    });
+    expect(screen.getByText('Send to Peer Check')).toBeTruthy();
+  });
+
+  it('disables stage advance CTA when chapter has a conflict', async () => {
+    mockUseChapterConflictStatus.mockReturnValue({ hasConflict: true });
+
+    renderTab();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stage-advance-button')).toBeDisabled();
+    });
+  });
+
+  it('hides stage advance CTA when current user is not the assignee', async () => {
+    renderTab(undefined, {
+      chapterData: {
+        ...chapterData,
+        assignedUserId: 99,
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('record-start-button')).toBeTruthy();
+    });
+    expect(screen.queryByTestId('stage-advance-button')).toBeNull();
   });
 });
