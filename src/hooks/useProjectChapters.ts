@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { refreshChapterMetadataIfOnline } from '../services/sync';
 import { isUserProjectMember } from '../db/repository';
 import { getProjectChapters } from '../db/queries';

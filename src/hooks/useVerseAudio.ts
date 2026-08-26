@@ -39,8 +39,8 @@ export type VerseAudioPersistDeps = {
 
 export type UseVerseAudioArgs = {
   bibleTextId: number | null;
-  chapterAssignmentId: number | null;
-  userId: number | null;
+  chapterAssignmentId?: number | null;
+  userId?: number | null;
 } & VerseAudioPersistDeps;
 
 async function defaultPersistTake(args: {
@@ -76,8 +76,8 @@ async function defaultPersistTake(args: {
  */
 export function useVerseAudio({
   bibleTextId,
-  chapterAssignmentId,
-  userId,
+  chapterAssignmentId = null,
+  userId = null,
   persistTake = defaultPersistTake,
   loadTakes = getTakesForVerse,
   deleteTake: deleteTakeFn = deleteRecordingTake,

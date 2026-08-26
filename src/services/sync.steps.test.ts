@@ -14,6 +14,7 @@ import {
   insertMasterData,
   insertProjects,
   insertUserProjects,
+  reconcileUserProjects,
   ensureUserProjectMembership,
 } from '../db/repository';
 
@@ -81,6 +82,8 @@ jest.mock('../db/repository', () => ({
   insertMasterData: jest.fn().mockResolvedValue(undefined),
   insertProjects: jest.fn().mockResolvedValue(undefined),
   insertUserProjects: jest.fn().mockResolvedValue(undefined),
+  reconcileUserProjects: jest.fn().mockResolvedValue(undefined),
+  reconcileUserChapterWork: jest.fn().mockResolvedValue(undefined),
   ensureUserProjectMembership: jest.fn().mockResolvedValue(undefined),
   insertChapterAssignmentSyncData: jest.fn().mockResolvedValue(undefined),
   insertBibleTexts: jest.fn().mockResolvedValue(undefined),
@@ -101,6 +104,7 @@ jest.mock('../db/db', () => ({
 const insertMasterDataMock = jest.mocked(insertMasterData);
 const insertProjectsMock = jest.mocked(insertProjects);
 const insertUserProjectsMock = jest.mocked(insertUserProjects);
+const reconcileUserProjectsMock = jest.mocked(reconcileUserProjects);
 const ensureUserProjectMembershipMock = jest.mocked(
   ensureUserProjectMembership,
 );
@@ -202,6 +206,7 @@ describe('sync step orchestration', () => {
         }),
       ]);
       expect(insertUserProjectsMock).toHaveBeenCalledWith(2, [7]);
+      expect(reconcileUserProjectsMock).toHaveBeenCalledWith(2, [7]);
       expect(ensureUserProjectMembershipMock).toHaveBeenCalledWith(2);
       expect(setSyncCountMock).toHaveBeenCalledWith('sync_count_projects', 1);
       expect(clearSyncErrorMock).toHaveBeenCalledWith('sync_error_projects');
