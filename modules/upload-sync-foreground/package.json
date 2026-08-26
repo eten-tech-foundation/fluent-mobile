@@ -1,0 +1,10 @@
+{
+  "name": "upload-sync-foreground",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Android dataSync foreground service for upload-progress system notifications",
+  "main": "src/index.ts",
+  "peerDependencies": {
+    "expo": "*"
+  }
+}

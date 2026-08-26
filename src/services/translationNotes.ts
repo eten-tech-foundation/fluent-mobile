@@ -1,12 +1,13 @@
-import type { AquiferResourceDetails } from '../types/api/aquifer';
+import type { ApiTranslationNoteItem } from '../types/api/translationResources';
 import type { TranslationNoteItem } from '../types/resources/translationNotes';
 import { tipTapToPlainText } from '../utils/aquiferTipTapText';
-import { AQUIFER_RESOURCE_COLLECTIONS } from './prepareOfflineResourceManifest';
-import { AquiferAPI } from './aquiferApi';
+import { FluentAPI } from './api';
 
 const DEFAULT_TN_LANGUAGE_CODE = 'eng';
 
 export type LoadTranslationNotesParams = {
+  /** Fluent project id — required for fluent-api translation-resources. */
+  projectId: number | null;
   bookCode: string;
   chapterNumber: number;
   verseNumber: number;
@@ -32,23 +33,23 @@ function isContentItemArray(value: unknown): value is TipTapContentItem[] {
 }
 
 /**
- * Parse one Aquifer TN resource detail into note items.
+ * Parse one fluent-api TN item into note items.
  * Each TipTap content block becomes a nested note; title falls back to the
  * resource localized name when a block has no leading heading text.
  */
-export function parseAquiferTranslationNotes(
-  details: AquiferResourceDetails,
+export function parseTranslationNotesItem(
+  item: ApiTranslationNoteItem,
 ): TranslationNoteItem[] {
-  if (!isContentItemArray(details.content)) {
+  if (!isContentItemArray(item.content)) {
     return [];
   }
 
-  const resourceTitle = (details.localizedName || details.name || '').trim();
-  const contentItems = details.content;
+  const resourceTitle = (item.localizedName || item.name || '').trim();
+  const contentItems = item.content;
   const notes: TranslationNoteItem[] = [];
 
-  contentItems.forEach((item, index) => {
-    const body = tipTapToPlainText(item.tiptap).trim();
+  contentItems.forEach((block, index) => {
+    const body = tipTapToPlainText(block.tiptap).trim();
     if (!body) {
       return;
     }
@@ -71,7 +72,7 @@ export function parseAquiferTranslationNotes(
         : body;
 
     notes.push({
-      id: `tn-aquifer-${details.id}-${index}`,
+      id: `tn-api-${item.id}-${index}`,
       title,
       body: noteBody || body,
     });
@@ -81,14 +82,18 @@ export function parseAquiferTranslationNotes(
 }
 
 /**
- * Load uW Translation Notes for a drafting unit from Aquifer.
- * Interim until fluent-api#273 proxies these payloads.
+ * Load uW Translation Notes for a drafting unit via fluent-api
+ * translation-resources (fluent-api #274).
  */
 export async function loadTranslationNotesForUnit(
   params: LoadTranslationNotesParams,
 ): Promise<TranslationNoteItem[]> {
   if (loadShouldFailForTests) {
     throw new Error('Failed to load Translation Notes');
+  }
+
+  if (params.projectId === null) {
+    return [];
   }
 
   const bookCode = params.bookCode.trim();
@@ -99,27 +104,14 @@ export async function loadTranslationNotesForUnit(
 
   const languageCode = params.languageCode?.trim() || DEFAULT_TN_LANGUAGE_CODE;
 
-  const search = await AquiferAPI.searchResources({
+  const response = await FluentAPI.getTranslationNotes(
+    params.projectId,
     bookCode,
-    startChapter: params.chapterNumber,
-    endChapter: params.chapterNumber,
-    startVerse: params.verseNumber,
-    endVerse: params.verseNumber,
+    params.chapterNumber,
+    params.verseNumber,
     languageCode,
-    resourceCollectionCode: AQUIFER_RESOURCE_COLLECTIONS.translationNotes,
-    limit: 50,
-  });
-
-  // Aquifer can return 200 with an empty/`{}` body (parsed as `{}`) or omit
-  // `items` on unexpected payloads — treat as no notes, not a crash.
-  const items = Array.isArray(search?.items) ? search.items : [];
-  if (items.length === 0) {
-    return [];
-  }
-
-  const detailsList = await Promise.all(
-    items.map(item => AquiferAPI.getResourceDetails(item.id)),
   );
 
-  return detailsList.flatMap(parseAquiferTranslationNotes);
+  const items = Array.isArray(response?.items) ? response.items : [];
+  return items.flatMap(parseTranslationNotesItem);
 }

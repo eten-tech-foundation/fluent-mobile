@@ -1,28 +1,24 @@
-import type { AquiferResourceDetails } from '../types/api/aquifer';
+import type { ApiTranslationQuestionItem } from '../types/api/translationResources';
 import {
   loadTranslationQuestionsForUnit,
-  parseAquiferTranslationQuestions,
+  parseTranslationQuestionsItem,
   setTranslationQuestionsLoadFailureForTests,
 } from './translationQuestions';
-import { AquiferAPI } from './aquiferApi';
+import { FluentAPI } from './api';
 
-jest.mock('./aquiferApi', () => ({
-  AquiferAPI: {
-    searchResources: jest.fn(),
-    getResourceDetails: jest.fn(),
+jest.mock('./api', () => ({
+  FluentAPI: {
+    getTranslationQuestions: jest.fn(),
   },
 }));
 
-const searchResources = AquiferAPI.searchResources as jest.MockedFunction<
-  typeof AquiferAPI.searchResources
->;
-const getResourceDetails = AquiferAPI.getResourceDetails as jest.MockedFunction<
-  typeof AquiferAPI.getResourceDetails
->;
+const getTranslationQuestions =
+  FluentAPI.getTranslationQuestions as jest.MockedFunction<
+    typeof FluentAPI.getTranslationQuestions
+  >;
 
-const sampleDetails: AquiferResourceDetails = {
+const sampleItem: ApiTranslationQuestionItem = {
   id: 175532,
-  referenceId: 1,
   name: 'Mark 14:2',
   localizedName: 'Mark 14:2',
   content: [
@@ -53,24 +49,13 @@ const sampleDetails: AquiferResourceDetails = {
       },
     },
   ],
-  grouping: {
-    type: 'Guide',
-    name: 'Translation Questions',
-    mediaType: 'Text',
-  },
-  language: {
-    id: 1,
-    code: 'eng',
-    displayName: 'English',
-    scriptDirection: 'LTR',
-  },
 };
 
-describe('parseAquiferTranslationQuestions', () => {
+describe('parseTranslationQuestionsItem', () => {
   it('maps TipTap content to question/answer pairs', () => {
-    expect(parseAquiferTranslationQuestions(sampleDetails)).toEqual([
+    expect(parseTranslationQuestionsItem(sampleItem)).toEqual([
       {
-        id: 'tq-aquifer-175532-0',
+        id: 'tq-api-175532-0',
         question: 'Why did the chief priests wait?',
         answer: 'They were worried that a riot would arise.',
       },
@@ -81,20 +66,39 @@ describe('parseAquiferTranslationQuestions', () => {
 describe('loadTranslationQuestionsForUnit', () => {
   afterEach(() => {
     setTranslationQuestionsLoadFailureForTests(false);
-    searchResources.mockReset();
-    getResourceDetails.mockReset();
+    getTranslationQuestions.mockReset();
   });
 
-  it('returns [] when Aquifer has no TQ for the unit', async () => {
-    searchResources.mockResolvedValue({
-      totalItemCount: 0,
-      returnedItemCount: 0,
-      offset: 0,
-      items: [],
-    });
+  it('returns [] when projectId is null', async () => {
+    await expect(
+      loadTranslationQuestionsForUnit({
+        projectId: null,
+        bookCode: 'MRK',
+        chapterNumber: 14,
+        verseNumber: 1,
+      }),
+    ).resolves.toEqual([]);
+    expect(getTranslationQuestions).not.toHaveBeenCalled();
+  });
+
+  it('returns [] when bookCode is missing', async () => {
+    await expect(
+      loadTranslationQuestionsForUnit({
+        projectId: 7,
+        bookCode: '',
+        chapterNumber: 14,
+        verseNumber: 1,
+      }),
+    ).resolves.toEqual([]);
+    expect(getTranslationQuestions).not.toHaveBeenCalled();
+  });
+
+  it('returns [] when API has no TQ for the unit', async () => {
+    getTranslationQuestions.mockResolvedValue({ items: [] });
 
     await expect(
       loadTranslationQuestionsForUnit({
+        projectId: 7,
         bookCode: 'MRK',
         chapterNumber: 14,
         verseNumber: 1,
@@ -102,45 +106,22 @@ describe('loadTranslationQuestionsForUnit', () => {
     ).resolves.toEqual([]);
   });
 
-  it('searches Aquifer and parses resource details', async () => {
-    searchResources.mockResolvedValue({
-      totalItemCount: 1,
-      returnedItemCount: 1,
-      offset: 0,
-      items: [
-        {
-          id: 175532,
-          name: 'Mark 14:2',
-          localizedName: 'Mark 14:2',
-          mediaType: 'Text',
-          languageCode: 'eng',
-          grouping: {
-            type: 'Guide',
-            name: 'Translation Questions',
-            collectionTitle: 'Translation Questions',
-            collectionCode: 'UWTranslationQuestions',
-          },
-        },
-      ],
-    });
-    getResourceDetails.mockResolvedValue(sampleDetails);
+  it('calls FluentAPI and parses resource items', async () => {
+    getTranslationQuestions.mockResolvedValue({ items: [sampleItem] });
 
     const questions = await loadTranslationQuestionsForUnit({
+      projectId: 7,
       bookCode: 'MRK',
       chapterNumber: 14,
       verseNumber: 2,
     });
 
-    expect(searchResources).toHaveBeenCalledWith(
-      expect.objectContaining({
-        bookCode: 'MRK',
-        startChapter: 14,
-        endChapter: 14,
-        startVerse: 2,
-        endVerse: 2,
-        languageCode: 'eng',
-        resourceCollectionCode: 'UWTranslationQuestions',
-      }),
+    expect(getTranslationQuestions).toHaveBeenCalledWith(
+      7,
+      'MRK',
+      14,
+      2,
+      'eng',
     );
     expect(questions[0]?.question).toContain('chief priests');
   });
@@ -149,6 +130,7 @@ describe('loadTranslationQuestionsForUnit', () => {
     setTranslationQuestionsLoadFailureForTests(true);
     await expect(
       loadTranslationQuestionsForUnit({
+        projectId: 7,
         bookCode: 'MRK',
         chapterNumber: 14,
         verseNumber: 2,

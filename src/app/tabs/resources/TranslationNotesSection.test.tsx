@@ -35,6 +35,7 @@ function SectionHarness({
   sectionExpanded?: boolean;
 }) {
   const { state, retry } = useTranslationNotesForUnit({
+    projectId: 7,
     bookCode: 'MRK',
     chapterNumber: 14,
     verseNumber,

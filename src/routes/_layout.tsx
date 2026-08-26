@@ -16,6 +16,7 @@ import {
   AuthSessionProvider,
   useAuthSession,
 } from '../navigation/AuthSessionProvider';
+import { useUploadSyncNotificationTap } from '../navigation/useUploadSyncNotificationTap';
 import {
   classifyRouteGroups,
   getAuthGateDecision,
@@ -29,6 +30,11 @@ const navigationTheme = {
     card: theme.colors.background,
   },
 };
+
+function UploadSyncNotificationTap() {
+  useUploadSyncNotificationTap();
+  return null;
+}
 
 function RootNavigator() {
   const { isAuthenticated, isLoading } = useAuthSession();
@@ -70,6 +76,7 @@ export default function RootLayout() {
           {/* Edge-to-edge: transparent system bars; dark icons on light chrome. */}
           <NavigationBar style="dark" />
           <AuthSessionProvider>
+            <UploadSyncNotificationTap />
             <RootNavigator />
           </AuthSessionProvider>
         </ThemeProvider>

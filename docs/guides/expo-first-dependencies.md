@@ -18,7 +18,9 @@ Examples already on this baseline: `expo-audio`, `expo-file-system`, `expo-secur
 
 Expo’s documented choice for Expo apps is **[Expo Router](https://docs.expo.dev/router/introduction/)** (file-based routing; React Navigation is an implementation detail under the hood).
 
-**This repo today:** **Expo Router** (`expo-router`) with file-based routes in `src/routes/`. Screens remain under `src/app/screens/` and `src/app/tabs/`; auth/session lives in `src/navigation/AuthSessionProvider.tsx`. Drawer layout uses `expo-router/drawer` (bundled in SDK 56+ — do **not** add `@react-navigation/drawer` / `@react-navigation/native` as direct app deps).
+**This repo today:** **Expo Router** (`expo-router`) with file-based routes in `src/routes/`. Screens remain under `src/app/screens/` and `src/app/tabs/`; auth/session lives in `src/navigation/AuthSessionProvider.tsx`. Drawer layout uses `expo-router/drawer` (bundled in SDK 56+ — do **not** add `@react-navigation/drawer` / `@react-navigation/native` / `@react-navigation/stack` as direct app deps).
+
+**Direct `@react-navigation/*` packages (audit #368):** None. Former direct deps `@react-navigation/native` and `@react-navigation/stack` were unused (no app imports; Expo Router does not require them as root dependencies on SDK 57) and were removed. Do not re-add them unless Expo docs or `expo install` require a peer for a new navigation surface — prefer `expo-router` / `expo-router/drawer` / `expo-router/react-navigation` only.
 
 **Agent rules:**
 
