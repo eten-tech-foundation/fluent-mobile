@@ -15,6 +15,9 @@ const log = logger.create('accountSession');
 
 /**
  * Activates a stored device account that has a usable session token.
+ * Updates in-memory auth token and active-user KV only (no sync).
+ * Callers should invoke notifyUserSwitched so AuthSessionProvider bumps
+ * userSwitchEpoch and scoped screens reload.
  * Throws if credentials are missing or have no token.
  */
 export async function switchToDeviceAccount(userId: string): Promise<void> {

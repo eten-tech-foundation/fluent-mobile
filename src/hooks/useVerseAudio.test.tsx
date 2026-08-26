@@ -1,4 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
+import { getConnectivitySnapshot } from '../services/connectivity';
 import { useVerseAudio } from './useVerseAudio';
 import type { Recording } from '../types/db/types';
 
@@ -59,6 +60,12 @@ jest.mock('../utils/audioStorage', () => ({
   recordingPath: jest.fn((id: string) => `/recordings/${id}.m4a`),
 }));
 
+jest.mock('../services/connectivity', () => ({
+  getConnectivitySnapshot: jest.fn(),
+}));
+
+const mockGetConnectivitySnapshot = getConnectivitySnapshot as jest.Mock;
+
 function makeTake(overrides: Partial<Recording> = {}): Recording {
   return {
     id: 'rec_1',
@@ -83,9 +90,24 @@ describe('useVerseAudio', () => {
   const deleteTake = jest.fn();
   const selectTake = jest.fn();
 
+  const verseAudioArgs = () => ({
+    bibleTextId: 42,
+    chapterAssignmentId: null,
+    userId: null,
+    loadTakes,
+    persistTake,
+    deleteTake,
+    selectTake,
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     playbackState.status = 'idle';
+    mockGetConnectivitySnapshot.mockResolvedValue({
+      isOnline: true,
+      isWifi: true,
+      isCellular: false,
+    });
     loadTakes.mockResolvedValue([]);
     persistTake.mockResolvedValue({
       id: 'rec_new',
@@ -111,15 +133,7 @@ describe('useVerseAudio', () => {
   });
 
   it('rehydrates to idle when there are no takes', async () => {
-    const { result } = renderHook(() =>
-      useVerseAudio({
-        bibleTextId: 42,
-        loadTakes,
-        persistTake,
-        deleteTake,
-        selectTake,
-      }),
-    );
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
 
     await waitFor(() => {
       expect(loadTakes).toHaveBeenCalledWith(42);
@@ -132,15 +146,7 @@ describe('useVerseAudio', () => {
     const take = makeTake();
     loadTakes.mockResolvedValue([take]);
 
-    const { result } = renderHook(() =>
-      useVerseAudio({
-        bibleTextId: 42,
-        loadTakes,
-        persistTake,
-        deleteTake,
-        selectTake,
-      }),
-    );
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
 
     await waitFor(() => {
       expect(result.current.state).toBe('recorded');
@@ -152,15 +158,7 @@ describe('useVerseAudio', () => {
   it('surfaces load failures as error state', async () => {
     loadTakes.mockRejectedValue(new Error('db down'));
 
-    const { result } = renderHook(() =>
-      useVerseAudio({
-        bibleTextId: 42,
-        loadTakes,
-        persistTake,
-        deleteTake,
-        selectTake,
-      }),
-    );
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
 
     await waitFor(() => {
       expect(result.current.state).toBe('error');
@@ -168,15 +166,7 @@ describe('useVerseAudio', () => {
   });
 
   it('starts recording and transitions idle → recording', async () => {
-    const { result } = renderHook(() =>
-      useVerseAudio({
-        bibleTextId: 42,
-        loadTakes,
-        persistTake,
-        deleteTake,
-        selectTake,
-      }),
-    );
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
 
     await waitFor(() => expect(result.current.state).toBe('idle'));
 
@@ -193,15 +183,7 @@ describe('useVerseAudio', () => {
   it('sets errorMessage when start fails', async () => {
     mockRecordingStart.mockRejectedValue(new Error('mic denied'));
 
-    const { result } = renderHook(() =>
-      useVerseAudio({
-        bibleTextId: 42,
-        loadTakes,
-        persistTake,
-        deleteTake,
-        selectTake,
-      }),
-    );
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
 
     await waitFor(() => expect(result.current.state).toBe('idle'));
 
@@ -217,15 +199,7 @@ describe('useVerseAudio', () => {
     const saved = makeTake({ id: 'rec_new', isSelected: true });
     loadTakes.mockResolvedValueOnce([]).mockResolvedValueOnce([saved]);
 
-    const { result } = renderHook(() =>
-      useVerseAudio({
-        bibleTextId: 42,
-        loadTakes,
-        persistTake,
-        deleteTake,
-        selectTake,
-      }),
-    );
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
 
     await waitFor(() => expect(result.current.state).toBe('idle'));
 
@@ -250,15 +224,7 @@ describe('useVerseAudio', () => {
     const take = makeTake();
     loadTakes.mockResolvedValue([take]);
 
-    const { result } = renderHook(() =>
-      useVerseAudio({
-        bibleTextId: 42,
-        loadTakes,
-        persistTake,
-        deleteTake,
-        selectTake,
-      }),
-    );
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
 
     await waitFor(() => expect(result.current.state).toBe('recorded'));
 
@@ -278,15 +244,7 @@ describe('useVerseAudio', () => {
     loadTakes.mockResolvedValue([take]);
     mockFileExists.mockResolvedValue(false);
 
-    const { result } = renderHook(() =>
-      useVerseAudio({
-        bibleTextId: 42,
-        loadTakes,
-        persistTake,
-        deleteTake,
-        selectTake,
-      }),
-    );
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
 
     await waitFor(() => expect(result.current.state).toBe('recorded'));
 

@@ -9,8 +9,8 @@ When committing, opening a PR, pushing commits meant for review, handing off,
 or saying a PR task is **done**:
 
 1. Run **CI-parity local checks** first — `npm run format:check`, `npm run lint`,
-   `npm run typecheck`, `npm test -- --ci` (see [commands.mdc](./commands.mdc)).
-   Fix before commit.
+   `npm run architecture-guard`, `npm run typecheck`, `npm test -- --ci` (see
+   [commands.mdc](./commands.mdc)). Fix before commit.
 2. Invoke the repo **`code-reviewer`** agent (`.claude/agents/code-reviewer.md`)
    on the **working diff** (before commit). Fix **all** findings before commit
    (Blocking, Should-fix, Nit — every severity), then commit → push. Only skip a

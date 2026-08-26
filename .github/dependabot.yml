@@ -1,4 +1,5 @@
 version: 2
+# Process: docs/guides/dependabot-process.md (one-at-a-time checklist + doctor)
 updates:
   # npm dependencies (package-lock.json)
   - package-ecosystem: 'npm'

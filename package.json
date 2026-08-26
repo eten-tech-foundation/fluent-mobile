@@ -8,11 +8,12 @@
     "preinstall": "node ./scripts/package-manager.cjs --enforce",
     "android": "expo run:android",
     "lint": "eslint .",
+    "architecture-guard": "node ./scripts/architecture-guard.mjs --ci",
     "start": "expo start",
     "prebuild": "expo prebuild --clean --platform android",
     "test": "jest",
     "typecheck": "tsc --noEmit",
-    "format": "prettier --write \"**/*.{js,ts,tsx,json,css,md}\"",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
     "doctor": "npx expo-doctor@latest"
   },

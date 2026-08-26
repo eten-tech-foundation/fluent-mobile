@@ -6,6 +6,8 @@ Plain-language guide for QA and reviewers. **No developer tools** — just an An
 
 **Default for QA:** install the **nightly** Fluent APK (main). Isolated PR `preview-build` APKs are **optional** for developers debugging a branch — they do not start the QA queue.
 
+**Multi-account regression:** use the checklist in [qa-multi-account-nightly.md](qa-multi-account-nightly.md) when testing account switcher / session / sync isolation on a shared device.
+
 ## Quick start (QA — nightly)
 
 1. Open the **nightly** install comment on the **GitHub issue** (bot posts after a successful Nightly Preview), **or** use the Slack nightly notice.
