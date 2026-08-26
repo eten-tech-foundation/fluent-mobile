@@ -17,8 +17,10 @@ import {
 import { getRemuxNativeModule } from '../audio/aacRemux';
 import { ensureSeekableTakeUri } from '../audio/ensureSeekableTakeUri';
 import { logger } from '../utils/logger';
+import { claimChapterOffline } from '../db/repository';
 import { usePlaybackEngine } from './usePlaybackEngine';
 import { useRecordingEngine } from './useRecordingEngine';
+import { getConnectivitySnapshot } from '../services/connectivity';
 import { verseAudioReducer, type VerseAudioState } from './verseAudioReducer';
 
 const log = logger.create('useVerseAudio');
@@ -37,6 +39,8 @@ export type VerseAudioPersistDeps = {
 
 export type UseVerseAudioArgs = {
   bibleTextId: number | null;
+  chapterAssignmentId: number | null;
+  userId: number | null;
 } & VerseAudioPersistDeps;
 
 async function defaultPersistTake(args: {
@@ -72,6 +76,8 @@ async function defaultPersistTake(args: {
  */
 export function useVerseAudio({
   bibleTextId,
+  chapterAssignmentId,
+  userId,
   persistTake = defaultPersistTake,
   loadTakes = getTakesForVerse,
   deleteTake: deleteTakeFn = deleteRecordingTake,
@@ -93,6 +99,7 @@ export function useVerseAudio({
   const [loadedTakeId, setLoadedTakeId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const captureBibleTextIdRef = useRef<number | null>(null);
+  const chapterAssignedRef = useRef(false);
 
   const selectedTake = takes.find(t => t.isSelected) ?? null;
   const canRecordNewTake = takes.length < MAX_TAKES;
@@ -186,6 +193,34 @@ export function useVerseAudio({
       const { uri, durationMs } = await recording.stop();
       dispatch({ type: 'STOP' });
       await persistTake({ bibleTextId: id, tempUri: uri, durationMs });
+
+      try {
+        if (
+          userId !== null &&
+          chapterAssignmentId !== null &&
+          !chapterAssignedRef.current
+        ) {
+          const { isOnline } = await getConnectivitySnapshot();
+          if (!isOnline) {
+            const claimed = await claimChapterOffline(
+              chapterAssignmentId,
+              userId,
+            );
+            if (claimed) {
+              chapterAssignedRef.current = true;
+            }
+          }
+        }
+      } catch (claimError) {
+        log.error('Offline chapter claim failed', {
+          message:
+            claimError instanceof Error
+              ? claimError.message
+              : String(claimError),
+          stack: claimError instanceof Error ? claimError.stack : undefined,
+        });
+      }
+
       const rows = await loadTakes(id);
       setTakes(rows);
       captureBibleTextIdRef.current = null;
@@ -196,7 +231,14 @@ export function useVerseAudio({
       setErrorMessage(message);
       dispatch({ type: 'ERROR', message });
     }
-  }, [bibleTextId, loadTakes, persistTake, recording]);
+  }, [
+    bibleTextId,
+    chapterAssignmentId,
+    loadTakes,
+    persistTake,
+    recording,
+    userId,
+  ]);
 
   const playTake = useCallback(
     async (take: Recording) => {
