@@ -60,7 +60,7 @@ Short pointers next to code (keep thin; link to full guides):
 
 Warn-only Cursor `sessionStart` hook: [`.cursor/hooks.json`](../hooks.json) + [`.cursor/hooks/session-env-check.sh`](../hooks/session-env-check.sh). Never deny tools.
 
-Warn-only architecture guard (`fetch(` / raw SQL in `src/app/` and `src/components/`): [`.cursor/hooks/architecture-guard.mjs`](../hooks/architecture-guard.mjs) + [`scripts/architecture-guard.mjs`](../../scripts/architecture-guard.mjs). Never deny tools.
+Architecture guard (`fetch(` / `getDatabase(` / `executeSql` in `src/app/` and `src/components/`): [`.cursor/hooks/architecture-guard.mjs`](../hooks/architecture-guard.mjs) + [`scripts/architecture-guard.mjs`](../../scripts/architecture-guard.mjs). Agent hook is **warn-only** (never denies tools); `npm run architecture-guard` (`--ci`) **fails** in Lint & Format CI. String SQL without those calls is covered by ESLint UI bans (#366).
 
 Canonical slash commands live in [`.claude/commands/`](../../.claude/commands/); Cursor `/` files are thin shims. Do not duplicate command lists without updating onboarding + `commands.mdc`.
 
