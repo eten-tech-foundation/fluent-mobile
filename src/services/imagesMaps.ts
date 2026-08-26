@@ -1,33 +1,17 @@
-import type {
-  AquiferResourceDetails,
-  AquiferResourceSearchResponse,
-} from '../types/api/aquifer';
+import type { ApiTranslationImageItem } from '../types/api/translationResources';
 import type { ImagesMapsItem } from '../types/resources/imagesMaps';
-import { AquiferAPI } from './aquiferApi';
+import { FluentAPI } from './api';
 
 const DEFAULT_IMAGES_LANGUAGE_CODE = 'eng';
-/** Aquifer end-verse sentinel used for chapter-wide image search. */
-const CHAPTER_END_VERSE = 200;
 
 export type LoadImagesMapsParams = {
+  /** Fluent project id — required for fluent-api translation-resources. */
+  projectId: number | null;
   bookCode: string;
   chapterNumber: number;
   verseNumber: number;
   /** Aquifer language for Images (defaults to English source). */
   languageCode?: string;
-};
-
-type AquiferImageContent = {
-  url?: unknown;
-};
-
-type AquiferLicenseInfo = {
-  copyright?: {
-    holder?: {
-      name?: unknown;
-    };
-  };
-  title?: unknown;
 };
 
 /** Test-only failure injection for section-scoped error/retry. */
@@ -37,83 +21,35 @@ export function setImagesMapsLoadFailureForTests(shouldFail: boolean): void {
   loadShouldFailForTests = shouldFail;
 }
 
-function contentUrl(content: unknown): string | null {
-  if (!content || typeof content !== 'object') {
-    return null;
-  }
-  const url = (content as AquiferImageContent).url;
-  return typeof url === 'string' && url.trim() ? url.trim() : null;
-}
-
-function attributionFromDetails(
-  details: AquiferResourceDetails,
-): string | undefined {
-  const license = details.grouping.licenseInfo as
-    | AquiferLicenseInfo
-    | undefined;
-  const holder = license?.copyright?.holder?.name;
-  if (typeof holder === 'string' && holder.trim()) {
-    return holder.trim();
-  }
-  const title = license?.title;
-  if (typeof title === 'string' && title.trim()) {
-    return title.trim();
-  }
-  return undefined;
-}
-
 /**
- * Map one Aquifer image resource detail into a Resources-tab item.
+ * Map one fluent-api image item into a Resources-tab item.
+ * fluent-api #274 returns title/url only (no caption/attribution); UI treats
+ * those fields as optional.
  */
-export function parseAquiferImagesMapsItem(
-  details: AquiferResourceDetails,
+export function parseTranslationImageItem(
+  item: ApiTranslationImageItem,
 ): ImagesMapsItem | null {
-  const uri = contentUrl(details.content);
+  const uri = item.url?.trim();
   if (!uri) {
     return null;
   }
 
-  const title = (details.localizedName || details.name || '').trim();
+  const title = (item.localizedName || item.title || '').trim();
   if (!title) {
     return null;
   }
 
-  const caption = details.grouping.name?.trim() || undefined;
-  const attribution = attributionFromDetails(details);
-
   return {
-    id: `img-aquifer-${details.id}`,
+    id: `img-api-${item.id}`,
     title,
-    caption,
-    attribution,
     uri,
   };
 }
 
-async function searchImages(params: {
-  bookCode: string;
-  chapterNumber: number;
-  startVerse: number;
-  endVerse: number;
-  languageCode: string;
-}): Promise<AquiferResourceSearchResponse> {
-  return AquiferAPI.searchResources({
-    bookCode: params.bookCode,
-    startChapter: params.chapterNumber,
-    endChapter: params.chapterNumber,
-    startVerse: params.startVerse,
-    endVerse: params.endVerse,
-    languageCode: params.languageCode,
-    resourceType: 'Images',
-    limit: 100,
-  });
-}
-
 /**
- * Load Images & Maps for a drafting unit from Aquifer.
- * Prefer verse-scoped hits; fall back to chapter-wide search because Aquifer
- * often associates Images to chapter/passage ranges (not every verse).
- * Interim until fluent-api#273 proxies these payloads.
+ * Load Images & Maps for a drafting unit via fluent-api translation-resources
+ * (fluent-api #274). Aquifer verse vs chapter search scope is owned by the API
+ * (client no longer falls back to chapter-wide search).
  */
 export async function loadImagesMapsForUnit(
   params: LoadImagesMapsParams,
@@ -122,41 +58,28 @@ export async function loadImagesMapsForUnit(
     throw new Error('Failed to load Images & Maps');
   }
 
+  if (params.projectId === null) {
+    return [];
+  }
+
   const bookCode = params.bookCode.trim();
   if (!bookCode) {
-    throw new Error('bookCode is required to load Images & Maps');
+    return [];
   }
 
   const languageCode =
     params.languageCode?.trim() || DEFAULT_IMAGES_LANGUAGE_CODE;
 
-  let search = await searchImages({
+  const response = await FluentAPI.getTranslationImages(
+    params.projectId,
     bookCode,
-    chapterNumber: params.chapterNumber,
-    startVerse: params.verseNumber,
-    endVerse: params.verseNumber,
+    params.chapterNumber,
+    params.verseNumber,
     languageCode,
-  });
-
-  if (!search.items.length) {
-    search = await searchImages({
-      bookCode,
-      chapterNumber: params.chapterNumber,
-      startVerse: 1,
-      endVerse: CHAPTER_END_VERSE,
-      languageCode,
-    });
-  }
-
-  if (!search.items.length) {
-    return [];
-  }
-
-  const detailsList = await Promise.all(
-    search.items.map(item => AquiferAPI.getResourceDetails(item.id)),
   );
 
-  return detailsList
-    .map(parseAquiferImagesMapsItem)
+  const items = Array.isArray(response?.items) ? response.items : [];
+  return items
+    .map(parseTranslationImageItem)
     .filter((item): item is ImagesMapsItem => item !== null);
 }

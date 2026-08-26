@@ -26,6 +26,13 @@ const handoffAntiPatternImports = {
       message: 'Use expo-audio.',
     },
   ],
+  patterns: [
+    {
+      group: ['@react-navigation', '@react-navigation/*'],
+      message:
+        'Do not import @react-navigation/* in app code. Use expo-router or expo-router/drawer only (SDK 56+ Metro rejects direct imports).',
+    },
+  ],
 };
 
 const banDirectProcessEnv = {
@@ -34,9 +41,64 @@ const banDirectProcessEnv = {
     'Read env via src/config/ (typed + validated), not process.env directly.',
 };
 
+/** UI layers: screens, components, routes, hooks (#366). */
+const uiLayerFiles = [
+  'src/app/**/*.{js,jsx,ts,tsx}',
+  'src/components/**/*.{js,jsx,ts,tsx}',
+  'src/routes/**/*.{js,jsx,ts,tsx}',
+  'src/hooks/**/*.{js,jsx,ts,tsx}',
+];
+
+const banUiFetch = {
+  selector: "CallExpression[callee.name='fetch']",
+  message:
+    'UI layer must not call fetch() — use FluentAPI in src/services/api.ts plus sync.',
+};
+
+const banUiGlobalFetch = {
+  // Catches globalThis.fetch / window.fetch; does not match NetInfo.fetch (different API).
+  selector:
+    "CallExpression[callee.type='MemberExpression'][callee.property.name='fetch'][callee.object.name=/^(globalThis|window|global)$/]",
+  message:
+    'UI layer must not call fetch() — use FluentAPI in src/services/api.ts plus sync.',
+};
+
+const banUiGetDatabase = {
+  selector: "CallExpression[callee.name='getDatabase']",
+  message:
+    'UI layer must not call getDatabase() — use src/db/queries.ts (reads) and src/db/repository.ts (writes).',
+};
+
+const banUiExecuteSql = {
+  selector:
+    "CallExpression[callee.name='executeSql'], CallExpression[callee.type='MemberExpression'][callee.property.name='executeSql']",
+  message:
+    'UI layer must not call executeSql — use src/db/queries.ts / src/db/repository.ts.',
+};
+
+const uiLayerRestrictedImports = {
+  paths: handoffAntiPatternImports.paths,
+  patterns: [
+    ...handoffAntiPatternImports.patterns,
+    {
+      group: ['**/db/db', '**/db/db.*'],
+      message:
+        'UI layer must not import the DB singleton — use src/db/queries.ts / src/db/repository.ts (prefer hooks).',
+    },
+  ],
+};
+
 export default [
   {
-    ignores: ['node_modules', 'dist', 'build', 'android', 'ios'],
+    ignores: [
+      'node_modules',
+      'dist',
+      'build',
+      'android',
+      'ios',
+      // Intentional violations — exercised by scripts/eslint-layer-boundaries.test.cjs
+      'src/app/__fixtures__/eslint-layer-boundaries/**',
+    ],
   },
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
@@ -74,6 +136,20 @@ export default [
       'prefer-const': 'warn',
       'no-var': 'warn',
       eqeqeq: 'warn',
+    },
+  },
+  {
+    files: uiLayerFiles,
+    rules: {
+      'no-restricted-imports': ['error', uiLayerRestrictedImports],
+      'no-restricted-syntax': [
+        'error',
+        banDirectProcessEnv,
+        banUiFetch,
+        banUiGlobalFetch,
+        banUiGetDatabase,
+        banUiExecuteSql,
+      ],
     },
   },
   {

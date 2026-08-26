@@ -1,5 +1,11 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { Maximize2 } from 'lucide-react-native';
 import { ZoomableImage } from './ZoomableImage';
 import { ImagesMapsItem } from '../../../types/resources/imagesMaps';
@@ -17,7 +23,18 @@ export function ImageThumbnail({
   item,
   onOpenFullscreen,
 }: ImageThumbnailProps) {
+  const [imageLoading, setImageLoading] = useState(true);
   const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setImageLoading(true);
+    setImageFailed(false);
+  }, [item.id, item.uri]);
+
+  const handleLoadError = () => {
+    setImageLoading(false);
+    setImageFailed(true);
+  };
 
   return (
     <View style={styles.card} testID={`images-maps-item-${item.id}`}>
@@ -30,15 +47,27 @@ export function ImageThumbnail({
             <Text style={styles.placeholderText}>Image unavailable</Text>
           </View>
         ) : (
-          <ZoomableImage
-            uri={item.uri}
-            accessibilityLabel={item.title}
-            style={styles.zoomHost}
-            contentFit="cover"
-            testID={`images-maps-zoom-${item.id}`}
-            onLoadError={() => setImageFailed(true)}
-            onPress={() => onOpenFullscreen(item)}
-          />
+          <>
+            <ZoomableImage
+              uri={item.uri}
+              accessibilityLabel={item.title}
+              style={styles.zoomHost}
+              contentFit="cover"
+              testID={`images-maps-zoom-${item.id}`}
+              onLoad={() => setImageLoading(false)}
+              onLoadError={handleLoadError}
+              onPress={() => onOpenFullscreen(item)}
+            />
+            {imageLoading ? (
+              <View
+                style={styles.loadingOverlay}
+                pointerEvents="none"
+                testID={`images-maps-image-loading-${item.id}`}
+              >
+                <ActivityIndicator color={theme.colors.primary} />
+              </View>
+            ) : null}
+          </>
         )}
         <TouchableOpacity
           style={styles.maximizeButton}
@@ -89,6 +118,13 @@ const styles = StyleSheet.create({
   placeholderText: {
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.mutedForeground,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.cardBackground,
+    borderRadius: theme.radius.sm,
   },
   maximizeButton: {
     position: 'absolute',

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -19,10 +19,10 @@ import {
   Square,
   TriangleAlert,
 } from 'lucide-react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import { useDraftingContext } from '../context/DraftingContext';
-import { getBibleTextId } from '../../db/queries';
+import { getBibleTextId, getRecordedVerseNumbers } from '../../db/queries';
 import { useVerseAudio } from '../../hooks/useVerseAudio';
 import { requestMicPermission } from '../../audio/micPermission';
 import { PlaybackProgressBar } from '../../components/ui/PlaybackProgressBar';
@@ -31,6 +31,7 @@ import { RecordCircleButton } from '../../components/ui/RecordCircleButton';
 import { SourceTextAccordion } from '../../components/ui/SourceTextAccordion';
 import { SourceAudioPlayerBar } from '../../components/layout/SourceAudioPlayerBar';
 import { WarningBanner } from '../../components/ui/WarningBanner';
+import { StageAdvanceConfirmSheet } from '../../components/ui/StageAdvanceConfirmSheet';
 import {
   RECORD_AUDIO_CONFLICT_WARNING,
   RECORD_TAKEN_CHAPTER_WARNING,
@@ -39,8 +40,16 @@ import { parseRequiredString } from '../../navigation/routeParams';
 import { useChapterConflictStatus } from '../../hooks/useChapterConflictStatus';
 import { isChapterTakenByOther } from '../../utils/chapterTakenStatus';
 import { parseUserId } from '../../utils/parseUserId';
+import {
+  getStageAdvanceVisibility,
+  stageAdvanceConfirmBody,
+} from '../../utils/stageAdvancement';
+import { confirmStageAdvancement } from '../../services/stageAdvance';
+import { logger } from '../../utils/logger';
 import { ChapterAssignmentData } from '../../types/db/types';
 import type { Recording } from '../../types/db/types';
+
+const log = logger.create('RecordTab');
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -71,12 +80,16 @@ export function RecordTab({
   userId,
   onCaptureActiveChange,
 }: RecordTabProps) {
+  const router = useRouter();
   const rawParams = useLocalSearchParams<{ chapterName?: string }>();
   const chapterName = parseRequiredString(rawParams.chapterName, 'chapterName');
   const { verses, selectedVerse, setSelectedVerse } = useDraftingContext();
   const [bibleTextId, setBibleTextId] = useState<number | null>(null);
   const [sourceExpanded, setSourceExpanded] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [hasChapterRecording, setHasChapterRecording] = useState(false);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const verseAudio = useVerseAudio({
     bibleTextId,
@@ -106,6 +119,28 @@ export function RecordTab({
       cancelled = true;
     };
   }, [chapterData, selectedVerse]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const recorded = await getRecordedVerseNumbers(
+        chapterData.bibleId,
+        chapterData.bookId,
+        chapterData.chapterNumber,
+      );
+      if (!cancelled) {
+        setHasChapterRecording(recorded.size > 0);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    chapterData.bibleId,
+    chapterData.bookId,
+    chapterData.chapterNumber,
+    verseAudio.state,
+  ]);
 
   useEffect(() => {
     if (verseAudio.state !== 'recording') {
@@ -230,6 +265,72 @@ export function RecordTab({
     [chapterData, currentUserId],
   );
   const { hasConflict } = useChapterConflictStatus(chapterData.id);
+  const chapterHasRecording = hasChapterRecording || hasTake;
+  const stageAdvance = useMemo(
+    () =>
+      getStageAdvanceVisibility({
+        chapterData,
+        currentUserId,
+        hasChapterRecording: chapterHasRecording,
+        hasConflict,
+      }),
+    [chapterData, currentUserId, chapterHasRecording, hasConflict],
+  );
+
+  const handleOpenAdvanceSheet = useCallback(() => {
+    if (
+      !stageAdvance.visible ||
+      stageAdvance.disabled ||
+      !stageAdvance.destination
+    ) {
+      return;
+    }
+    setConfirmVisible(true);
+  }, [stageAdvance]);
+
+  const handleCancelAdvance = useCallback(() => {
+    if (submitting) return;
+    setConfirmVisible(false);
+  }, [submitting]);
+
+  const handleConfirmAdvance = useCallback(async () => {
+    if (
+      !confirmVisible ||
+      !stageAdvance.visible ||
+      stageAdvance.disabled ||
+      !stageAdvance.destination ||
+      submitting
+    ) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await confirmStageAdvancement({
+        chapterAssignmentId: chapterData.id,
+        destination: stageAdvance.destination,
+      });
+      setConfirmVisible(false);
+      if (router.canGoBack()) {
+        router.back();
+      }
+    } catch (error) {
+      log.error('Stage advancement failed', { error });
+      Alert.alert(
+        'Could not advance stage',
+        'Something went wrong updating this chapter. Please try again.',
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }, [
+    chapterData.id,
+    confirmVisible,
+    router,
+    stageAdvance.destination,
+    stageAdvance.disabled,
+    stageAdvance.visible,
+    submitting,
+  ]);
 
   return (
     <View style={styles.container} testID="record-tab">
@@ -493,6 +594,25 @@ export function RecordTab({
           ) : null}
         </View>
 
+        {stageAdvance.visible && stageAdvance.destination && !showCapture ? (
+          <TouchableOpacity
+            style={[
+              styles.stageAdvanceButton,
+              stageAdvance.disabled && styles.disabled,
+            ]}
+            onPress={handleOpenAdvanceSheet}
+            disabled={stageAdvance.disabled}
+            accessibilityRole="button"
+            accessibilityLabel={stageAdvance.destination.buttonLabel}
+            accessibilityState={{ disabled: stageAdvance.disabled }}
+            testID="stage-advance-button"
+          >
+            <Text style={styles.stageAdvanceLabel}>
+              {stageAdvance.destination.buttonLabel}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+
         <SourceTextAccordion
           expanded={sourceExpanded}
           onToggle={() => setSourceExpanded(v => !v)}
@@ -505,6 +625,22 @@ export function RecordTab({
           verses={verses}
           selectedVerse={selectedVerse}
           sourceLabel={chapterData.bibleName ?? 'Source'}
+        />
+      ) : null}
+
+      {confirmVisible && stageAdvance.destination ? (
+        <StageAdvanceConfirmSheet
+          visible={confirmVisible}
+          chapterName={chapterName}
+          bodyText={stageAdvanceConfirmBody(
+            chapterName,
+            stageAdvance.destination.destinationLabel,
+          )}
+          submitting={submitting}
+          onCancel={handleCancelAdvance}
+          onConfirm={() => {
+            void handleConfirmAdvance();
+          }}
         />
       ) : null}
     </View>
@@ -601,6 +737,21 @@ const styles = StyleSheet.create({
     ...theme.shadows.elevated,
   },
   newTakeLabel: {
+    color: theme.colors.primaryForeground,
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.weights.semibold,
+  },
+  stageAdvanceButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    minHeight: 48,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.primary,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  stageAdvanceLabel: {
     color: theme.colors.primaryForeground,
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.weights.semibold,
