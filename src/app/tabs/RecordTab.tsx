@@ -65,6 +65,7 @@ function formatDuration(ms: number): string {
 
 type RecordTabProps = {
   chapterData: ChapterAssignmentData;
+  userId: number | null;
   onCaptureActiveChange?: (active: boolean) => void;
 };
 
@@ -76,6 +77,7 @@ type RecordTabProps = {
  */
 export function RecordTab({
   chapterData,
+  userId,
   onCaptureActiveChange,
 }: RecordTabProps) {
   const router = useRouter();
@@ -89,7 +91,11 @@ export function RecordTab({
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const verseAudio = useVerseAudio({ bibleTextId });
+  const verseAudio = useVerseAudio({
+    bibleTextId,
+    chapterAssignmentId: chapterData.id,
+    userId,
+  });
   const verseIndex = verses.findIndex(v => v.verseNumber === selectedVerse);
   const prevDisabled = verseIndex <= 0;
   const nextDisabled = verseIndex < 0 || verseIndex >= verses.length - 1;

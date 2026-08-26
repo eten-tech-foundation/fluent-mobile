@@ -15,54 +15,42 @@ export function useProjectChapters(projectId: number) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  const [removedFromProject, setRemovedFromProject] = useState(false);
+  const requestIdRef = useRef(0);
   const refreshGenerationRef = useRef(0);
+  const [removedFromProject, setRemovedFromProject] = useState(false);
 
   const loadChapters = useCallback(
-    async (generation?: number) => {
+    async (refreshGen?: number) => {
+      const requestId = ++requestIdRef.current;
       try {
         setError(null);
 
         const userId = parseUserId();
         if (userId === null) {
           if (
-            generation === undefined ||
-            refreshGenerationRef.current === generation
+            requestId === requestIdRef.current &&
+            (refreshGen === undefined || refreshGenerationRef.current === refreshGen)
           ) {
             setChapters([]);
           }
           return;
         }
 
-        const nextChapters = await getProjectChapters(projectId, userId);
+        const rows = await getProjectChapters(projectId, userId);
 
-        if (
-          generation !== undefined &&
-          refreshGenerationRef.current !== generation
-        ) {
-          return;
-        }
+        if (requestId !== requestIdRef.current) return;
+        if (refreshGen !== undefined && refreshGenerationRef.current !== refreshGen) return;
 
-        setChapters(nextChapters);
+        setChapters(rows);
       } catch (err) {
-        if (
-          generation !== undefined &&
-          refreshGenerationRef.current !== generation
-        ) {
-          return;
-        }
+        if (requestId !== requestIdRef.current) return;
+        if (refreshGen !== undefined && refreshGenerationRef.current !== refreshGen) return;
 
-        log.error('Error loading project chapters:', {
-          error: err,
-          projectId,
-        });
+        log.error('Error loading project chapters:', { error: err, projectId });
         setError(err);
         setChapters([]);
       } finally {
-        if (
-          generation === undefined ||
-          refreshGenerationRef.current === generation
-        ) {
+        if (requestId === requestIdRef.current) {
           setLoading(false);
         }
       }
@@ -70,10 +58,12 @@ export function useProjectChapters(projectId: number) {
     [projectId],
   );
 
-  useEffect(() => {
-    setLoading(true);
-    loadChapters();
-  }, [loadChapters]);
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      loadChapters();
+    }, [loadChapters]),
+  );
 
   useFocusEffect(
     useCallback(() => {
