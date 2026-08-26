@@ -92,7 +92,7 @@ Run from repo root after `npm install`:
 |---------|---------|
 | `npm run lint` | ESLint (passes; 1 warning: unused `db` in `sync.ts`) |
 | `npm run format:check` | Prettier on `src/**/*.{ts,tsx}` |
-| `npm run format` | Prettier write (broader glob than `format:check`) |
+| `npm run format` | Prettier write (same glob as `format:check`) |
 | `npm run typecheck` | TypeScript check (`tsc --noEmit`) |
 | `npm test -- --ci` | Jest + Testing Library (colocated `src/**/*.test.*`; see Testing strategy) |
 | `npm run prebuild` | Regenerate `android/` from `app.config.ts` (`--platform android`) |
@@ -228,7 +228,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 | `src/db/schema.ts` + `migrations.ts` | Baseline DDL + versioned `user_version` migrations |
 | `getDatabase()` before init | Calling `getDatabase()` before `initializeDatabase()` throws |
 | `fluent-api.test.ts` | Skipped in CI; opt-in live network via `RUN_LIVE_API_TESTS=1` |
-| `format` vs `format:check` | Different glob scopes — CI only checks `src/**` |
+| `format` vs `format:check` | Same glob (`src/**/*.{ts,tsx}`) — CI checks match `npm run format` |
 | Native folders | `android/` is gitignored CNG output — customize via `app.config.ts` + plugins. No iOS project. |
 | Upload FG service | `modules/upload-sync-foreground` posts a real Android shade notification (`setOngoing`) so uploads can continue in background. Requires `npm run prebuild` after module/plugin changes; device QA is mandatory. |
 | Dual styles | `src/theme` vs legacy `appStyles.ts` hex — new UI must use tokens |
@@ -238,7 +238,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 - [ ] Remove unused `const db = getDatabase()` in `sync.ts:24`
 - [x] Dependabot reviewers: `eten-tech-foundation/fluent-admin`
 - [x] Mock or gate `fluent-api.test.ts` for offline CI
-- [ ] Align `format:check` glob with `format` or document intentionally narrow check
+- [x] Align `format:check` glob with `format` or document intentionally narrow check
 - [ ] Wire source audio dock to real fetch + playback (#235)
 
 ## Related docs
