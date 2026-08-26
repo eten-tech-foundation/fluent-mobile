@@ -7,7 +7,7 @@ This repo runs GitHub Actions on pushes and pull requests. This doc maps what ru
 | Workflow | Jobs (check name) | Purpose |
 | -------- | ----------------- | ------- |
 | `pr-description.yml` | `PR Description` | Requires filled PR template (`### TLDR`, `Refs #NNN`, `### How to verify`); skips Dependabot |
-| `lint.yml` | `Lint & Format` | ESLint + Prettier (`format:check`) |
+| `lint.yml` | `Lint & Format` | ESLint + Prettier (`format:check`) + `architecture-guard --ci` |
 | `test.yml` | `Unit Tests` | Jest (`npm test -- --ci`) |
 | `quality-gates.yml` | `TypeScript`, `expo-doctor`, `expo install --check` | Typecheck + Expo SDK / native-module alignment |
 | `preview-build.yml` | Android EAS preview APK | Optional label `preview-build` — binary only (no OTA); **PR comment only** (debug). Does not move Project 4 or start QA |
@@ -20,13 +20,18 @@ Local mirrors (run before claiming PR-ready):
 ```bash
 npm run format:check
 npm run lint
+npm run architecture-guard
 npm run typecheck
 npm test -- --ci
 ```
 
 ### ESLint layer boundaries (#366)
 
-`eslint.config.js` fails lint when UI layers (`src/app/**`, `src/components/**`, `src/routes/**`, `src/hooks/**`) call bare `fetch(` / `globalThis.fetch` / `window.fetch`, call `getDatabase()` / `executeSql`, or import the DB singleton — and when **any** app file imports `@react-navigation/*` (use `expo-router` / `expo-router/drawer` only). Raw SQL string literals are not regex-banned (English UI copy false positives); misuse is caught via `getDatabase` / `executeSql` / DB-singleton import bans. Intentional violation fixtures under `src/app/__fixtures__/eslint-layer-boundaries/` are ignored by `npm run lint` and asserted by `scripts/eslint-layer-boundaries.test.cjs` (part of `npm test`). Wiring `scripts/architecture-guard.mjs` into CI is a separate ticket (#367).
+`eslint.config.js` fails lint when UI layers (`src/app/**`, `src/components/**`, `src/routes/**`, `src/hooks/**`) call bare `fetch(` / `globalThis.fetch` / `window.fetch`, call `getDatabase()` / `executeSql`, or import the DB singleton — and when **any** app file imports `@react-navigation/*` (use `expo-router` / `expo-router/drawer` only). Raw SQL string literals are not regex-banned (English UI copy false positives); misuse is caught via `getDatabase` / `executeSql` / DB-singleton import bans. Intentional violation fixtures under `src/app/__fixtures__/eslint-layer-boundaries/` are ignored by `npm run lint` and asserted by `scripts/eslint-layer-boundaries.test.cjs` (part of `npm test`).
+
+### Architecture guard (#367)
+
+`npm run architecture-guard` (`scripts/architecture-guard.mjs --ci`) scans `src/app` and `src/components` and **fails** on bare `fetch(`, `getDatabase(`, or `executeSql` — part of the `Lint & Format` job. Unit coverage: `scripts/architecture-guard.test.cjs`. The Cursor/Claude agent hook (`.cursor/hooks/architecture-guard.mjs` → same script without `--ci`) stays **warn-only** so Write/StrReplace are never denied; policy is documented in the script header. String SQL without those calls is not regex-scanned here (English UI copy false positives); ESLint UI bans (#366) cover broader layer rules.
 
 After dependency / Dependabot work (and before claiming PR-ready), also:
 
