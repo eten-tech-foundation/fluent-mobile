@@ -925,6 +925,8 @@ export async function userNeedsAssigneeRepair(
   return total > 0 && withRole === 0;
 }
 
+export { claimChapterOffline } from './repositories/chapterClaimsRepository';
+
 export {
   addRecordingTake,
   getLatestRecordingForVerse,
