@@ -841,6 +841,29 @@ export async function setRecordingSyncStatus(
   );
 }
 
+/**
+ * Immediately apply a local stage advance (#258). Server confirmation and
+ * pending-sync queue behavior are owned by #257.
+ */
+export async function updateChapterAssignmentStatusLocally(
+  chapterAssignmentId: number,
+  status: 'peer_check' | 'community_check',
+): Promise<void> {
+  const db = getDatabase();
+  const updatedAt = new Date().toISOString();
+  const submittedTime = new Date().toISOString();
+  await db.transaction(async (tx: Transaction) => {
+    await tx.execute(
+      `UPDATE chapter_assignments
+       SET status = ?,
+           submitted_time = ?,
+           updated_at = ?
+       WHERE id = ?`,
+      [status, submittedTime, updatedAt, chapterAssignmentId],
+    );
+  });
+}
+
 export async function markRecordingUploaded(
   id: string,
   blobKey: string,

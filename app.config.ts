@@ -104,6 +104,13 @@ const config: ExpoConfig = {
     // After bootsplash → AppTheme, keep window white (avoids Metro blue flash).
     './plugins/withAppWindowBackground',
     './plugins/withRNScreensFragmentFactory',
+    [
+      'expo-notifications',
+      {
+        color: '#0B50D0',
+        defaultChannel: 'upload-sync',
+      },
+    ],
     'expo-secure-store',
     'expo-asset',
     'expo-image',

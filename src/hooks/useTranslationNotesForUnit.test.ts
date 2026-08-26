@@ -30,6 +30,7 @@ describe('useTranslationNotesForUnit', () => {
 
     const { result } = renderHook(() =>
       useTranslationNotesForUnit({
+        projectId: 7,
         bookCode: 'MRK',
         chapterNumber: 14,
         verseNumber: 1,
@@ -45,6 +46,7 @@ describe('useTranslationNotesForUnit', () => {
     }
     expect(result.current.state.notes.length).toBeGreaterThan(0);
     expect(mockLoad).toHaveBeenCalledWith({
+      projectId: 7,
       bookCode: 'MRK',
       chapterNumber: 14,
       verseNumber: 1,
@@ -58,6 +60,7 @@ describe('useTranslationNotesForUnit', () => {
 
     const { result } = renderHook(() =>
       useTranslationNotesForUnit({
+        projectId: 7,
         bookCode: 'MRK',
         chapterNumber: 14,
         verseNumber: 1,

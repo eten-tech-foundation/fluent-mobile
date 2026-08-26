@@ -13,5 +13,10 @@
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
   ],
-  "exclude": ["**/node_modules", "**/Pods", "tmp"]
+  "exclude": [
+    "**/node_modules",
+    "**/Pods",
+    "tmp",
+    "src/app/__fixtures__/eslint-layer-boundaries"
+  ]
 }

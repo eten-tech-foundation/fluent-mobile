@@ -30,6 +30,7 @@ describe('useTranslationQuestionsForUnit', () => {
 
     const { result } = renderHook(() =>
       useTranslationQuestionsForUnit({
+        projectId: 7,
         bookCode: 'MRK',
         chapterNumber: 14,
         verseNumber: 2,
@@ -45,6 +46,7 @@ describe('useTranslationQuestionsForUnit', () => {
     }
     expect(result.current.state.questions.length).toBeGreaterThan(0);
     expect(mockLoad).toHaveBeenCalledWith({
+      projectId: 7,
       bookCode: 'MRK',
       chapterNumber: 14,
       verseNumber: 2,
@@ -58,6 +60,7 @@ describe('useTranslationQuestionsForUnit', () => {
 
     const { result } = renderHook(() =>
       useTranslationQuestionsForUnit({
+        projectId: 7,
         bookCode: 'MRK',
         chapterNumber: 14,
         verseNumber: 2,
@@ -87,21 +90,25 @@ describe('useTranslationQuestionsForUnit', () => {
 
     const { result, rerender } = renderHook(
       ({
+        projectId,
         bookCode,
         chapterNumber,
         verseNumber,
       }: {
+        projectId: number | null;
         bookCode: string;
         chapterNumber: number;
         verseNumber: number;
       }) =>
         useTranslationQuestionsForUnit({
+          projectId,
           bookCode,
           chapterNumber,
           verseNumber,
         }),
       {
         initialProps: {
+          projectId: 7,
           bookCode: 'MRK',
           chapterNumber: 14,
           verseNumber: 2,
@@ -128,7 +135,12 @@ describe('useTranslationQuestionsForUnit', () => {
     });
     mockLoad.mockReturnValueOnce(pendingLoad);
 
-    rerender({ bookCode: 'MRK', chapterNumber: 14, verseNumber: 1 });
+    rerender({
+      projectId: 7,
+      bookCode: 'MRK',
+      chapterNumber: 14,
+      verseNumber: 1,
+    });
 
     expect(result.current.state.status).toBe('loading');
 

@@ -1,70 +1,45 @@
-import type { AquiferResourceDetails } from '../types/api/aquifer';
+import type { ApiTranslationImageItem } from '../types/api/translationResources';
 import {
   loadImagesMapsForUnit,
-  parseAquiferImagesMapsItem,
+  parseTranslationImageItem,
   setImagesMapsLoadFailureForTests,
 } from './imagesMaps';
-import { AquiferAPI } from './aquiferApi';
+import { FluentAPI } from './api';
 
-jest.mock('./aquiferApi', () => ({
-  AquiferAPI: {
-    searchResources: jest.fn(),
-    getResourceDetails: jest.fn(),
+jest.mock('./api', () => ({
+  FluentAPI: {
+    getTranslationImages: jest.fn(),
   },
 }));
 
-const searchResources = AquiferAPI.searchResources as jest.MockedFunction<
-  typeof AquiferAPI.searchResources
->;
-const getResourceDetails = AquiferAPI.getResourceDetails as jest.MockedFunction<
-  typeof AquiferAPI.getResourceDetails
->;
+const getTranslationImages =
+  FluentAPI.getTranslationImages as jest.MockedFunction<
+    typeof FluentAPI.getTranslationImages
+  >;
 
-const sampleDetails: AquiferResourceDetails = {
+const sampleItem: ApiTranslationImageItem = {
   id: 279999,
-  referenceId: 186419,
-  name: 'Locations in the Book of Mark',
+  title: 'Locations in the Book of Mark',
   localizedName: 'Locations in the Book of Mark',
-  content: {
-    url: 'https://cdn.aquifer.bible/example.png',
-  },
-  grouping: {
-    type: 'Images',
-    name: 'Maps (FIA)',
-    mediaType: 'Image',
-    licenseInfo: {
-      title: 'Familiarization Maps',
-      copyright: {
-        holder: {
-          name: 'Biblica Inc.',
-        },
-      },
-    },
-  },
-  language: {
-    id: 1,
-    code: 'eng',
-    displayName: 'English',
-    scriptDirection: 'LTR',
-  },
+  url: 'https://cdn.aquifer.bible/example.png',
+  thumbnailUrl: 'https://cdn.aquifer.bible/example-thumb.png',
+  size: 1024,
 };
 
-describe('parseAquiferImagesMapsItem', () => {
-  it('maps Aquifer image details to Resources items', () => {
-    expect(parseAquiferImagesMapsItem(sampleDetails)).toEqual({
-      id: 'img-aquifer-279999',
+describe('parseTranslationImageItem', () => {
+  it('maps API image items to Resources items', () => {
+    expect(parseTranslationImageItem(sampleItem)).toEqual({
+      id: 'img-api-279999',
       title: 'Locations in the Book of Mark',
-      caption: 'Maps (FIA)',
-      attribution: 'Biblica Inc.',
       uri: 'https://cdn.aquifer.bible/example.png',
     });
   });
 
-  it('returns null when content URL is missing', () => {
+  it('returns null when URL is missing', () => {
     expect(
-      parseAquiferImagesMapsItem({
-        ...sampleDetails,
-        content: {},
+      parseTranslationImageItem({
+        ...sampleItem,
+        url: '  ',
       }),
     ).toBeNull();
   });
@@ -73,153 +48,73 @@ describe('parseAquiferImagesMapsItem', () => {
 describe('loadImagesMapsForUnit', () => {
   afterEach(() => {
     setImagesMapsLoadFailureForTests(false);
-    searchResources.mockReset();
-    getResourceDetails.mockReset();
+    getTranslationImages.mockReset();
   });
 
-  it('returns [] when Aquifer has no images for the verse or chapter', async () => {
-    searchResources.mockResolvedValue({
-      totalItemCount: 0,
-      returnedItemCount: 0,
-      offset: 0,
-      items: [],
-    });
-
+  it('returns [] when projectId is null', async () => {
     await expect(
       loadImagesMapsForUnit({
+        projectId: null,
         bookCode: 'MRK',
         chapterNumber: 1,
         verseNumber: 1,
       }),
     ).resolves.toEqual([]);
-    expect(searchResources).toHaveBeenCalledTimes(2);
-    expect(searchResources).toHaveBeenNthCalledWith(1, {
-      bookCode: 'MRK',
-      startChapter: 1,
-      endChapter: 1,
-      startVerse: 1,
-      endVerse: 1,
-      languageCode: 'eng',
-      resourceType: 'Images',
-      limit: 100,
-    });
-    expect(searchResources).toHaveBeenNthCalledWith(2, {
-      bookCode: 'MRK',
-      startChapter: 1,
-      endChapter: 1,
-      startVerse: 1,
-      endVerse: 200,
-      languageCode: 'eng',
-      resourceType: 'Images',
-      limit: 100,
-    });
+    expect(getTranslationImages).not.toHaveBeenCalled();
   });
 
-  it('falls back to chapter-wide Images when the verse has none', async () => {
-    searchResources
-      .mockResolvedValueOnce({
-        totalItemCount: 0,
-        returnedItemCount: 0,
-        offset: 0,
-        items: [],
-      })
-      .mockResolvedValueOnce({
-        totalItemCount: 1,
-        returnedItemCount: 1,
-        offset: 0,
-        items: [
-          {
-            id: 279999,
-            name: 'Locations in the Book of Mark',
-            localizedName: 'Locations in the Book of Mark',
-            mediaType: 'Image',
-            languageCode: 'eng',
-            grouping: {
-              type: 'Images',
-              name: 'Maps (FIA)',
-              collectionTitle: 'Maps (FIA)',
-              collectionCode: 'FIAMaps',
-            },
-          },
-        ],
-      });
-    getResourceDetails.mockResolvedValue(sampleDetails);
-
+  it('returns [] when bookCode is missing', async () => {
     await expect(
       loadImagesMapsForUnit({
-        bookCode: 'GEN',
-        chapterNumber: 5,
-        verseNumber: 5,
+        projectId: 7,
+        bookCode: '',
+        chapterNumber: 1,
+        verseNumber: 1,
       }),
-    ).resolves.toEqual([
-      {
-        id: 'img-aquifer-279999',
-        title: 'Locations in the Book of Mark',
-        caption: 'Maps (FIA)',
-        attribution: 'Biblica Inc.',
-        uri: 'https://cdn.aquifer.bible/example.png',
-      },
-    ]);
-    expect(searchResources).toHaveBeenCalledTimes(2);
+    ).resolves.toEqual([]);
+    expect(getTranslationImages).not.toHaveBeenCalled();
   });
 
-  it('searches Aquifer Images and maps resource details', async () => {
-    searchResources.mockResolvedValue({
-      totalItemCount: 1,
-      returnedItemCount: 1,
-      offset: 0,
-      items: [
-        {
-          id: 279999,
-          name: 'Locations in the Book of Mark',
-          localizedName: 'Locations in the Book of Mark',
-          mediaType: 'Image',
-          languageCode: 'eng',
-          grouping: {
-            type: 'Images',
-            name: 'Maps (FIA)',
-            collectionTitle: 'Maps (FIA)',
-            collectionCode: 'FIAMaps',
-          },
-        },
-      ],
-    });
-    getResourceDetails.mockResolvedValue(sampleDetails);
+  it('returns [] when API has no images for the verse', async () => {
+    getTranslationImages.mockResolvedValue({ items: [] });
 
     await expect(
       loadImagesMapsForUnit({
+        projectId: 7,
+        bookCode: 'MRK',
+        chapterNumber: 1,
+        verseNumber: 1,
+      }),
+    ).resolves.toEqual([]);
+    expect(getTranslationImages).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls FluentAPI and maps image items', async () => {
+    getTranslationImages.mockResolvedValue({ items: [sampleItem] });
+
+    await expect(
+      loadImagesMapsForUnit({
+        projectId: 7,
         bookCode: 'MRK',
         chapterNumber: 1,
         verseNumber: 1,
       }),
     ).resolves.toEqual([
       {
-        id: 'img-aquifer-279999',
+        id: 'img-api-279999',
         title: 'Locations in the Book of Mark',
-        caption: 'Maps (FIA)',
-        attribution: 'Biblica Inc.',
         uri: 'https://cdn.aquifer.bible/example.png',
       },
     ]);
 
-    expect(searchResources).toHaveBeenCalledTimes(1);
-    expect(searchResources).toHaveBeenCalledWith({
-      bookCode: 'MRK',
-      startChapter: 1,
-      endChapter: 1,
-      startVerse: 1,
-      endVerse: 1,
-      languageCode: 'eng',
-      resourceType: 'Images',
-      limit: 100,
-    });
-    expect(getResourceDetails).toHaveBeenCalledWith(279999);
+    expect(getTranslationImages).toHaveBeenCalledWith(7, 'MRK', 1, 1, 'eng');
   });
 
   it('throws when failure injection is enabled', async () => {
     setImagesMapsLoadFailureForTests(true);
     await expect(
       loadImagesMapsForUnit({
+        projectId: 7,
         bookCode: 'MRK',
         chapterNumber: 1,
         verseNumber: 1,

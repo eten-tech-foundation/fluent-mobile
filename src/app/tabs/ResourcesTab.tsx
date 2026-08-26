@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -19,6 +25,7 @@ import { ResourceSectionAccordion } from '../../components/ui/ResourceSectionAcc
 import { RESOURCES_EMPTY_MESSAGE } from '../../constants/messages';
 import { useTranslationNotesForUnit } from '../../hooks/useTranslationNotesForUnit';
 import { useImagesMapsForUnit } from '../../hooks/useImagesMapsForUnit';
+import { useConnectivity } from '../../hooks/useConnectivity';
 import { useUnitResourcesAvailability } from '../../hooks/useUnitResourcesAvailability';
 import { ResourceSectionId } from '../../types/resources/types';
 import { ImagesMapsSectionHost } from './resources/ImagesMapsSectionHost';
@@ -28,6 +35,7 @@ import {
   getResourcesTabUiState,
   setResourcesTabUiState,
 } from '../../utils/resourcesTabUiState';
+import { getVisibleResourceSections } from '../../utils/resourcesSectionInventory';
 import { theme } from '../../theme';
 
 type ResourcesTabProps = {
@@ -37,7 +45,7 @@ type ResourcesTabProps = {
   projectId: number | null;
   /** Active user id for download_queue inventory rows (#53/#201). */
   userId: number | null;
-  /** USFM book code for Aquifer resource lookup (e.g. MRK). */
+  /** USFM book code for translation-resources lookup (e.g. MRK). */
   bookCode: string;
   chapterNumber: number;
 };
@@ -65,9 +73,9 @@ const SECTION_META: {
 ];
 
 /**
- * Resources tab host (#188 + #192): Prepare Offline inventory gates which
- * sections appear. Translation Notes (#189), Translation Questions (#190), and
- * Images & Maps (#191) fill Aquifer-backed bodies when inventoried.
+ * Resources tab host (#188 + #192): offline inventory gates which sections
+ * appear on device. When online, all sections load via fluent-api
+ * translation-resources (#381).
  */
 export function ResourcesTab({
   chapterId,
@@ -78,6 +86,7 @@ export function ResourcesTab({
   chapterNumber,
 }: ResourcesTabProps) {
   const { selectedVerse } = useDraftingContext();
+  const { isOnline, hasResolved } = useConnectivity();
   const scrollRef = useRef<ScrollView>(null);
   const scrollOffsetRef = useRef(0);
 
@@ -89,6 +98,7 @@ export function ResourcesTab({
   });
 
   const { state: notesState, retry: retryNotes } = useTranslationNotesForUnit({
+    projectId,
     bookCode,
     chapterNumber,
     verseNumber: selectedVerse,
@@ -96,6 +106,7 @@ export function ResourcesTab({
 
   const { state: imagesMapsState, retry: retryImagesMaps } =
     useImagesMapsForUnit({
+      projectId,
       bookCode,
       chapterNumber,
       verseNumber: selectedVerse,
@@ -151,8 +162,18 @@ export function ResourcesTab({
     [persistUiState],
   );
 
+  const availableSectionIds = useMemo(
+    () =>
+      getVisibleResourceSections({
+        isOnline: hasResolved && isOnline,
+        projectId,
+        inventoriedSections: resources.sections,
+      }),
+    [hasResolved, isOnline, projectId, resources.sections],
+  );
+
   const visibleSections = SECTION_META.filter(section => {
-    if (!resources.sections.includes(section.id)) {
+    if (!availableSectionIds.includes(section.id)) {
       return false;
     }
     // Hide Images & Maps only when load finished with nothing to show.
@@ -217,6 +238,7 @@ export function ResourcesTab({
                 />
               ) : id === 'translationQuestions' ? (
                 <TranslationQuestionsSection
+                  projectId={projectId}
                   bookCode={bookCode}
                   chapterNumber={chapterNumber}
                   verseNumber={selectedVerse}
