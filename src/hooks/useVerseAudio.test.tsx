@@ -298,4 +298,54 @@ describe('useVerseAudio', () => {
     expect(result.current.errorMessage).toMatch(/missing on disk/i);
     expect(result.current.playingTakeId).toBeNull();
   });
+
+  it('does not overwrite the new verse takes when setCanonical resolves for a stale verse (regression)', async () => {
+    const takeA = makeTake({ id: 'rec_a', bibleTextId: 42 });
+    const takeB = makeTake({ id: 'rec_b', bibleTextId: 43 });
+
+    let resolveDesignate: () => void;
+    const designateCanonical = jest.fn(
+      () =>
+        new Promise<void>(resolve => {
+          resolveDesignate = resolve;
+        }),
+    );
+
+    loadTakes.mockImplementation((id: number) =>
+      Promise.resolve(id === 42 ? [takeA] : [takeB]),
+    );
+
+    const { result, rerender } = renderHook(
+      ({ bibleTextId }: { bibleTextId: number }) =>
+        useVerseAudio({
+          bibleTextId,
+          loadTakes,
+          persistTake,
+          deleteTake,
+          selectTake,
+          designateCanonical,
+        }),
+      { initialProps: { bibleTextId: 42 } },
+    );
+
+    await waitFor(() => expect(result.current.takes).toEqual([takeA]));
+
+    let setCanonicalPromise: Promise<void>;
+    act(() => {
+      setCanonicalPromise = result.current.setCanonical('rec_a');
+    });
+
+    // Navigate to verse B before the pending designate call resolves.
+    rerender({ bibleTextId: 43 });
+
+    await waitFor(() => expect(result.current.takes).toEqual([takeB]));
+
+    await act(async () => {
+      resolveDesignate();
+      await setCanonicalPromise;
+    });
+
+    // Stale resolution for verse A must not clobber verse B's takes.
+    expect(result.current.takes).toEqual([takeB]);
+  });
 });

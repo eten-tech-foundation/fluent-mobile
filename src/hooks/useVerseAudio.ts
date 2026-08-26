@@ -112,6 +112,7 @@ export function useVerseAudio({
   const captureBibleTextIdRef = useRef<number | null>(null);
   const allTakesRequestIdRef = useRef(0);
   const chapterAssignedRef = useRef(false);
+  const activeBibleTextIdRef = useRef<number | null>(null);
 
   const selectedTake = takes.find(t => t.isSelected) ?? null;
   const canRecordNewTake = takes.length < MAX_TAKES;
@@ -140,6 +141,7 @@ export function useVerseAudio({
   useEffect(() => {
     let cancelled = false;
     setLoadedTakeId(null);
+    activeBibleTextIdRef.current = bibleTextId;
     (async () => {
       if (bibleTextId === null) {
         allTakesRequestIdRef.current += 1;
@@ -439,11 +441,16 @@ export function useVerseAudio({
     async (id: string) => {
       try {
         await designateCanonicalFn(id);
-        if (bibleTextId !== null) {
+        if (
+          bibleTextId !== null &&
+          activeBibleTextIdRef.current === bibleTextId
+        ) {
           await refreshAllTakes(bibleTextId);
-          // Own take list also carries `isCanonical` for the My Takes
-          // read-only indicator — refresh it too.
-          setTakes(await loadTakes(bibleTextId));
+          if (activeBibleTextIdRef.current === bibleTextId) {
+            // Own take list also carries `isCanonical` for the My Takes
+            // read-only indicator — refresh it too.
+            setTakes(await loadTakes(bibleTextId));
+          }
         }
       } catch (error) {
         const message =
