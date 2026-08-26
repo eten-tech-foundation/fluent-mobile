@@ -29,7 +29,8 @@ export function useProjectChapters(projectId: number) {
         if (userId === null) {
           if (
             requestId === requestIdRef.current &&
-            (refreshGen === undefined || refreshGenerationRef.current === refreshGen)
+            (refreshGen === undefined ||
+              refreshGenerationRef.current === refreshGen)
           ) {
             setChapters([]);
           }
@@ -39,12 +40,20 @@ export function useProjectChapters(projectId: number) {
         const rows = await getProjectChapters(projectId, userId);
 
         if (requestId !== requestIdRef.current) return;
-        if (refreshGen !== undefined && refreshGenerationRef.current !== refreshGen) return;
+        if (
+          refreshGen !== undefined &&
+          refreshGenerationRef.current !== refreshGen
+        )
+          return;
 
         setChapters(rows);
       } catch (err) {
         if (requestId !== requestIdRef.current) return;
-        if (refreshGen !== undefined && refreshGenerationRef.current !== refreshGen) return;
+        if (
+          refreshGen !== undefined &&
+          refreshGenerationRef.current !== refreshGen
+        )
+          return;
 
         log.error('Error loading project chapters:', { error: err, projectId });
         setError(err);
