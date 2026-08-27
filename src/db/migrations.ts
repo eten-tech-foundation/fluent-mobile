@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 12;
+export const CURRENT_SCHEMA_VERSION = 13;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -262,6 +262,25 @@ export async function renameRecordingsIsLatestToIsSelected(
 `);
 }
 
+export async function addRecordingsCanonicalColumn(
+  db: SqlExecutor,
+): Promise<void> {
+  const info = await db.execute('PRAGMA table_info(recordings)');
+  if (!info.rows.length) {
+    return;
+  }
+  await addColumnIfMissing(
+    db,
+    'recordings',
+    'is_canonical',
+    'INTEGER NOT NULL DEFAULT 0',
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_rec_canonical
+     ON recordings(bible_text_id, is_canonical)`,
+  );
+}
+
 async function applyDownloadQueueTable(db: SqlExecutor): Promise<void> {
   await db.execute(
     `CREATE TABLE IF NOT EXISTS download_queue (
@@ -413,6 +432,11 @@ export const migrations: Migration[] = [
   },
   {
     version: 12,
+    name: 'recordings_canonical_column',
+    up: addRecordingsCanonicalColumn,
+  },
+  {
+    version: 13,
     name: 'chapter_assignment_has_conflict',
     up: addChapterAssignmentHasConflict,
   },

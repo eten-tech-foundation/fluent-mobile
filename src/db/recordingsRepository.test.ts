@@ -104,6 +104,7 @@ async function mockExecute(
       file_size_bytes: fileSizeBytes,
       take_number: takeNumber,
       is_selected: 1,
+      is_canonical: 0,
       sync_status: syncStatus,
       upload_error: null,
       created_at: createdAt,

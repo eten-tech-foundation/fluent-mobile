@@ -55,13 +55,13 @@ jobs:
 
     steps:
       - name: 📋 Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: 🏗️ Setup Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: npm
@@ -185,7 +185,7 @@ jobs:
 
       - name: 🏗️ Setup EAS
         if: steps.skip.outputs.should_skip != 'true'
-        uses: expo/expo-github-action@v9
+        uses: expo/expo-github-action@eab7a230208c952974db8c3245cfd78402c7b385 # v9
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
@@ -252,7 +252,7 @@ jobs:
       - name: Comment nightly install on recent QA handoff issues
         if: steps.skip.outputs.should_skip != 'true' && steps.build.outputs.build_id != '' && steps.build.outputs.install_url != ''
         continue-on-error: true
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           INSTALL_URL: ${{ steps.build.outputs.install_url }}
           BUILD_ID: ${{ steps.build.outputs.build_id }}

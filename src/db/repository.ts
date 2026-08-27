@@ -616,17 +616,13 @@ export async function insertBibleTexts(data: DBTypes.BibleText[]) {
   try {
     await db.transaction(async (tx: Transaction) => {
       for (const chapter of data) {
-        await tx.execute(
-          `DELETE FROM bible_texts
-           WHERE bible_id = ? AND book_id = ? AND chapter_number = ?`,
-          [chapter.bibleId, chapter.bookId, chapter.chapterNumber],
-        );
-
         for (const verse of chapter.verses) {
           await tx.execute(
             `INSERT INTO bible_texts
             (bible_id, book_id, chapter_number, verse_number, text)
-            VALUES (?, ?, ?, ?, ?)`,
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(bible_id, book_id, chapter_number, verse_number)
+            DO UPDATE SET text = excluded.text`,
             [
               verse.bible_id,
               verse.book_id,
@@ -935,14 +931,118 @@ export async function userNeedsAssigneeRepair(
   return total > 0 && withRole === 0;
 }
 
+export async function reconcileUserProjects(
+  userId: number,
+  currentProjectIds: number[],
+): Promise<void> {
+  const db = getDatabase();
+  await db.transaction(async (tx: Transaction) => {
+    let result;
+    if (currentProjectIds.length > 0) {
+      const placeholders = currentProjectIds.map(() => '?').join(',');
+      result = await tx.execute(
+        `DELETE FROM user_projects
+         WHERE user_id = ? AND project_id NOT IN (${placeholders})`,
+        [userId, ...currentProjectIds],
+      );
+    } else {
+      result = await tx.execute(`DELETE FROM user_projects WHERE user_id = ?`, [
+        userId,
+      ]);
+    }
+    if (result.rowsAffected) {
+      log.info('Reconciled stale user_projects', {
+        userId,
+        removedCount: result.rowsAffected,
+      });
+    }
+  });
+}
+
+export async function reconcileUserChapterWork(
+  userId: number,
+  currentAssignedIds: number[],
+  currentPeerCheckIds: number[],
+): Promise<void> {
+  const db = getDatabase();
+  await db.transaction(async (tx: Transaction) => {
+    if (currentAssignedIds.length > 0) {
+      const placeholders = currentAssignedIds.map(() => '?').join(',');
+      const result = await tx.execute(
+        `UPDATE chapter_assignments
+         SET assigned_user_id = NULL
+         WHERE assigned_user_id = ? AND id NOT IN (${placeholders})`,
+        [userId, ...currentAssignedIds],
+      );
+      if (result.rowsAffected) {
+        log.info('Reconciled stale assigned_user_id', {
+          userId,
+          count: result.rowsAffected,
+        });
+      }
+    } else {
+      const result = await tx.execute(
+        `UPDATE chapter_assignments SET assigned_user_id = NULL WHERE assigned_user_id = ?`,
+        [userId],
+      );
+      if (result.rowsAffected) {
+        log.info('Cleared all assigned_user_id — user has no assigned work', {
+          userId,
+          count: result.rowsAffected,
+        });
+      }
+    }
+
+    if (currentPeerCheckIds.length > 0) {
+      const placeholders = currentPeerCheckIds.map(() => '?').join(',');
+      const result = await tx.execute(
+        `UPDATE chapter_assignments
+         SET peer_checker_id = NULL
+         WHERE peer_checker_id = ? AND id NOT IN (${placeholders})`,
+        [userId, ...currentPeerCheckIds],
+      );
+      if (result.rowsAffected) {
+        log.info('Reconciled stale peer_checker_id', {
+          userId,
+          count: result.rowsAffected,
+        });
+      }
+    } else {
+      const result = await tx.execute(
+        `UPDATE chapter_assignments SET peer_checker_id = NULL WHERE peer_checker_id = ?`,
+        [userId],
+      );
+      if (result.rowsAffected) {
+        log.info('Cleared all peer_checker_id — user has no peer-check work', {
+          userId,
+          count: result.rowsAffected,
+        });
+      }
+    }
+  });
+}
+export async function isUserProjectMember(
+  userId: number,
+  projectId: number,
+): Promise<boolean> {
+  const db = getDatabase();
+  const result = await db.execute(
+    `SELECT COUNT(*) as count FROM user_projects WHERE user_id = ? AND project_id = ?`,
+    [userId, projectId],
+  );
+  return Number(result.rows?.[0]?.count ?? 0) > 0;
+}
 export { claimChapterOffline } from './repositories/chapterClaimsRepository';
 
 export {
   addRecordingTake,
   getLatestRecordingForVerse,
   getTakesForVerse,
+  getAllTakesForVerse,
+  verseHasMultipleRecorders,
   deleteRecordingTake,
   selectRecordingTake,
+  setCanonicalTake,
 } from './recordingsRepository';
 export type { AddRecordingTakeInput } from './recordingsRepository';
 
