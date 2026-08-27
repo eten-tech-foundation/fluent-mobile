@@ -233,6 +233,7 @@ describe('sync step orchestration', () => {
         2,
         '2026-06-01T00:00:00.000Z',
         undefined,
+        undefined,
       );
       expect(insertChapterAssignmentSyncDataMock).toHaveBeenCalledWith([
         expect.objectContaining({
