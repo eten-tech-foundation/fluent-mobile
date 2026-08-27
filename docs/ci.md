@@ -24,6 +24,7 @@ npm run lint
 npm run architecture-guard
 npm run typecheck
 npm test -- --ci
+ruby .github/scripts/check-action-pins.rb
 ```
 
 ### ESLint layer boundaries (#366)
