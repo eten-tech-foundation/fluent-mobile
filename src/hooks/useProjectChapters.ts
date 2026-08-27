@@ -119,6 +119,12 @@ export function useProjectChapters(projectId: number) {
     }
   }, [loadChapters]);
 
+  useFocusEffect(
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+  );
+
   const retry = useCallback(async () => {
     setLoading(true);
     await loadChapters();

@@ -14,7 +14,7 @@ import {
   RECORD_TAKEN_CHAPTER_WARNING,
 } from '../../constants/messages';
 import type { useVerseAudio } from '../../hooks/useVerseAudio';
-import type { Recording } from '../../types/db/types';
+import type { Recording, RecordingWithOwner } from '../../types/db/types';
 
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({ chapterName: 'Mark 14' }),
@@ -46,6 +46,7 @@ function makeTake(overrides: Partial<Recording> = {}): Recording {
     localFilePath: 'file:///take.m4a',
     takeNumber: 1,
     isSelected: true,
+    isCanonical: false,
     durationMs: 13000,
     syncStatus: 'pending',
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -54,9 +55,25 @@ function makeTake(overrides: Partial<Recording> = {}): Recording {
   } as Recording;
 }
 
+function makeOwnedTake(
+  overrides: Partial<RecordingWithOwner> = {},
+): RecordingWithOwner {
+  return {
+    ...makeTake(),
+    recordedByUserId: 1,
+    ownerDisplayName: 'Maria Santos',
+    ...overrides,
+  } as RecordingWithOwner;
+}
+
 const idleAudio: VerseAudioApi = {
   state: 'idle',
   takes: [],
+  // #279 — cross-account All Takes state. Defaults match the "toggle
+  // hidden, single account" case; individual tests override as needed.
+  allTakes: [],
+  hasMultipleRecorders: false,
+  ownCanonicalTakeId: null,
   selectedTake: null,
   canRecordNewTake: true,
   playingTakeId: null,
@@ -73,6 +90,7 @@ const idleAudio: VerseAudioApi = {
   pausePlayback: jest.fn(),
   selectTake: jest.fn(),
   deleteTake: jest.fn(),
+  setCanonical: jest.fn(),
 };
 
 const mockUseVerseAudio = jest.fn((): VerseAudioApi => idleAudio);
@@ -217,6 +235,8 @@ describe('RecordTab', () => {
     expect(screen.getByTestId('record-delete-button')).toBeTruthy();
     expect(screen.getByTestId('record-new-take-button')).toBeTruthy();
     expect(screen.getByText('Record New Take')).toBeTruthy();
+    // Toggle hidden — only this account has takes for the unit.
+    expect(screen.queryByTestId('take-view-toggle')).toBeNull();
   });
 
   it('renders one card per take, in list order, with only the latest marked selected', () => {
@@ -429,6 +449,231 @@ describe('RecordTab', () => {
 
     await waitFor(() => {
       expect(onCaptureActiveChange).toHaveBeenCalledWith(false);
+    });
+  });
+
+  // --- #279: Take View Toggle + All Takes ---------------------------------
+
+  describe('All Takes toggle (#279)', () => {
+    it('shows the toggle when multiple accounts have takes for the unit', () => {
+      const ownTake = makeTake({ id: 'rec_1', takeNumber: 1 });
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [ownTake],
+        selectedTake: ownTake,
+        hasMultipleRecorders: true,
+        allTakes: [
+          makeOwnedTake({
+            id: 'rec_1',
+            recordedByUserId: 1,
+            ownerDisplayName: 'Me',
+          }),
+          makeOwnedTake({
+            id: 'rec_2',
+            recordedByUserId: 2,
+            ownerDisplayName: 'John Doe',
+          }),
+        ],
+      });
+
+      renderTab();
+
+      expect(screen.getByTestId('take-view-toggle')).toBeTruthy();
+      expect(screen.getByText('My Takes')).toBeTruthy();
+      expect(screen.getByText('All Takes')).toBeTruthy();
+    });
+
+    it('hides the active-draft selection indicator in My Takes once the toggle is visible', () => {
+      const ownTake = makeTake({
+        id: 'rec_1',
+        takeNumber: 1,
+        isSelected: true,
+      });
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [ownTake],
+        selectedTake: ownTake,
+        hasMultipleRecorders: true,
+        ownCanonicalTakeId: null,
+        allTakes: [makeOwnedTake({ id: 'rec_1' })],
+      });
+
+      renderTab();
+
+      expect(screen.queryByLabelText('Selected take')).toBeNull();
+      expect(
+        screen.queryByLabelText('Select this take as active draft'),
+      ).toBeNull();
+    });
+
+    it("shows a read-only canonical mark in My Takes when the account's own take is canonical", () => {
+      const ownTake = makeTake({
+        id: 'rec_1',
+        takeNumber: 1,
+        isSelected: true,
+      });
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [ownTake],
+        selectedTake: ownTake,
+        hasMultipleRecorders: true,
+        ownCanonicalTakeId: 'rec_1',
+        allTakes: [makeOwnedTake({ id: 'rec_1' })],
+      });
+
+      renderTab();
+
+      expect(screen.getByTestId('record-take-canonical-readonly')).toBeTruthy();
+    });
+
+    it('does not show Record New Take in All Takes view', () => {
+      const ownTake = makeTake({ id: 'rec_1', takeNumber: 1 });
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [ownTake],
+        selectedTake: ownTake,
+        hasMultipleRecorders: true,
+        allTakes: [
+          makeOwnedTake({
+            id: 'rec_1',
+            recordedByUserId: 1,
+            ownerDisplayName: 'Me',
+          }),
+          makeOwnedTake({
+            id: 'rec_2',
+            recordedByUserId: 2,
+            ownerDisplayName: 'John Doe',
+          }),
+        ],
+      });
+
+      renderTab();
+      fireEvent.press(screen.getByTestId('take-view-all'));
+
+      expect(screen.queryByTestId('record-new-take-button')).toBeNull();
+    });
+
+    it('groups All Takes by owner and orders takes within a group ascending', () => {
+      const ownTake = makeTake({ id: 'rec_1', takeNumber: 1 });
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [ownTake],
+        selectedTake: ownTake,
+        hasMultipleRecorders: true,
+        allTakes: [
+          makeOwnedTake({
+            id: 'rec_1',
+            takeNumber: 1,
+            recordedByUserId: 1,
+            ownerDisplayName: 'Maria Santos',
+          }),
+          makeOwnedTake({
+            id: 'rec_2',
+            takeNumber: 1,
+            recordedByUserId: 2,
+            ownerDisplayName: 'John Doe',
+          }),
+          makeOwnedTake({
+            id: 'rec_3',
+            takeNumber: 2,
+            recordedByUserId: 2,
+            ownerDisplayName: 'John Doe',
+          }),
+        ],
+      });
+
+      renderTab();
+      fireEvent.press(screen.getByTestId('take-view-all'));
+
+      const headers = screen.getAllByTestId('take-group-header-name');
+      expect(headers[0]).toHaveTextContent('Maria Santos');
+      expect(headers[1]).toHaveTextContent('John Doe');
+
+      const badges = screen.getAllByTestId('shared-take-badge');
+      expect(badges).toHaveLength(3);
+      expect(badges[1]).toHaveTextContent('Take 1');
+      expect(badges[2]).toHaveTextContent('Take 2');
+    });
+
+    it('tapping the canonical circle in All Takes calls setCanonical with the take id', () => {
+      const ownTake = makeTake({ id: 'rec_1', takeNumber: 1 });
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [ownTake],
+        selectedTake: ownTake,
+        hasMultipleRecorders: true,
+        allTakes: [
+          makeOwnedTake({
+            id: 'rec_1',
+            recordedByUserId: 1,
+            ownerDisplayName: 'Me',
+          }),
+          makeOwnedTake({
+            id: 'rec_2',
+            recordedByUserId: 2,
+            ownerDisplayName: 'John Doe',
+          }),
+        ],
+      });
+
+      renderTab();
+      fireEvent.press(screen.getByTestId('take-view-all'));
+
+      const canonicalButtons = screen.getAllByTestId('shared-take-canonical');
+      fireEvent.press(canonicalButtons[1]!);
+
+      expect(idleAudio.setCanonical).toHaveBeenCalledWith('rec_2');
+    });
+
+    it('shows the toggle and idle record button when the active account has no personal take yet, and switches to All Takes on tap', () => {
+      // Active account's own hook state stays 'idle' (nothing recorded by
+      // them), but teammates already have takes for this unit. Per #71/#279,
+      // My Takes' idle/review state is governed by the active account's own
+      // takes only — zero own takes means the idle record button, same as
+      // the single-account case. The idle circle is the entry point to
+      // record a first take; there's no separate "Record New Take" button
+      // while idle.
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'idle',
+        takes: [],
+        selectedTake: null,
+        hasMultipleRecorders: true,
+        allTakes: [
+          makeOwnedTake({
+            id: 'rec_1',
+            recordedByUserId: 2,
+            ownerDisplayName: 'Maria Santos',
+          }),
+          makeOwnedTake({
+            id: 'rec_2',
+            recordedByUserId: 3,
+            ownerDisplayName: 'John Doe',
+          }),
+        ],
+      });
+
+      renderTab();
+
+      // Toggle is visible — other accounts have takes for this unit.
+      expect(screen.getByTestId('take-view-toggle')).toBeTruthy();
+      // My Takes shows the idle record button, not a take list or Record New Take.
+      expect(screen.getByTestId('record-start-button')).toBeTruthy();
+      expect(screen.queryByTestId('record-take-row')).toBeNull();
+      expect(screen.queryByTestId('record-new-take-button')).toBeNull();
+
+      fireEvent.press(screen.getByTestId('take-view-all'));
+      const headers = screen.getAllByTestId('take-group-header-name');
+      expect(headers).toHaveLength(2);
+      expect(headers[0]).toHaveTextContent('Maria Santos');
+      expect(headers[1]).toHaveTextContent('John Doe');
+      expect(screen.getAllByTestId('shared-take-row')).toHaveLength(2);
     });
   });
 
