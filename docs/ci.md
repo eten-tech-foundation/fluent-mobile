@@ -7,6 +7,7 @@ This repo runs GitHub Actions on pushes and pull requests. This doc maps what ru
 | Workflow | Jobs (check name) | Purpose |
 | -------- | ----------------- | ------- |
 | `pr-description.yml` | `PR Description` | Requires filled PR template (`### TLDR`, `Refs #NNN`, `### How to verify`); skips Dependabot |
+| `action-pins.yml` | `Action pins` | SHA-pin gate: every `uses:` in workflow YAML must be a 40-character commit. Runs on `pull_request_target` so the checker comes from `main`, not the PR. Local: `ruby .github/scripts/check-action-pins.rb` |
 | `lint.yml` | `Lint & Format` | ESLint + Prettier (`format:check`) + `architecture-guard --ci` |
 | `test.yml` | `Unit Tests` | Jest (`npm test -- --ci`) |
 | `quality-gates.yml` | `TypeScript`, `expo-doctor`, `expo install --check` | Typecheck + Expo SDK / native-module alignment |
@@ -51,12 +52,12 @@ If either reports SDK patch drift, `npx expo install --fix` on a ticketed branch
 
 | Layer | Setting | Value |
 | ----- | ------- | ----- |
-| **Required status checks** (legacy branch protection) | Contexts | **`PR Description` only** (`strict: true` — branch must be up to date) |
+| **Required status checks** (legacy branch protection) | Contexts | **`PR Description`** (`strict: true` — branch must be up to date). **`Action pins` is added as required after the workflow exists on `main`** (#405) — do not require it before that check can report |
 | **Ruleset `main-protection`** (default branch) | PR reviews | ≥1 approval; **code owner review required**; extra approval for unattributed changes |
 | | History | Linear history required; force-push and branch deletion blocked |
 | **Not required in GitHub** (run locally / team policy) | Status checks | `Lint & Format`, `Unit Tests`, `TypeScript`, `expo-doctor`, `expo install --check` |
 
-**Discrepancy:** Workflows in the table above still run on every PR, and local gates expect lint/test/typecheck/Expo health to be green before merge — but only **`PR Description`** is a *required* status check in GitHub branch protection today. Adding the CI job names as required checks is a maintainer follow-up (see guardrail below).
+**Discrepancy:** Workflows in the table above still run on every PR, and local gates expect lint/test/typecheck/Expo health to be green before merge — but only **`PR Description`** is a *required* status check in GitHub branch protection today. **`Action pins` becomes required after that workflow is on `main`** (#405). Adding lint/test/typecheck as required checks is a separate maintainer follow-up (see guardrail below).
 
 **PR review policy:** `.github/CODEOWNERS` — `@mattrace-gloo`, `@B3RN153`, `@JonathanSeehagen`.
 
@@ -71,6 +72,7 @@ When updating GitHub settings, target these **required status checks** in additi
 3. **Require review from Code Owners** (uses [`.github/CODEOWNERS`](../.github/CODEOWNERS))
 4. **Require status checks to pass** — include at least:
    - `PR Description`
+   - `Action pins`
    - `Lint & Format`
    - `Unit Tests`
    - `TypeScript` (and Expo health jobs when treated as required)
