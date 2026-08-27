@@ -18,6 +18,7 @@ jest.mock('lucide-react-native', () => {
     BadgeCheck: Mock,
     Check: Mock,
     CircleCheck: Mock,
+    User: Mock,
   };
 });
 
@@ -28,6 +29,7 @@ const baseChapter: ProjectChapter = {
   chapterNumber: 2,
   workflowStage: 'draft',
   syncState: 'synced',
+  ownershipState: 'other',
   completedVerses: 2,
   totalVerses: 10,
   downloadedVerses: 10,

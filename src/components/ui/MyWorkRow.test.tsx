@@ -12,6 +12,7 @@ jest.mock('lucide-react-native', () => {
     ChevronRight: Mock,
     Users: Mock,
     TriangleAlert: Mock,
+    User: Mock,
   };
 });
 
@@ -22,6 +23,7 @@ const baseChapter: MyWorkChapter = {
   chapterNumber: 1,
   workflowStage: 'draft',
   syncState: 'deviceOnly',
+  ownershipState: 'mine',
   completedVerses: 1,
   totalVerses: 10,
   downloadedVerses: 10,
