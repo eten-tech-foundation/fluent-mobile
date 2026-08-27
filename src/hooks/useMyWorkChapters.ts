@@ -5,7 +5,6 @@ import { MyWorkChapter } from '../types/db/types';
 import { parseUserId } from '../utils/parseUserId';
 import { getActiveUserId } from '../services/storage';
 import { refreshChapterMetadataIfOnline } from '../services/sync';
-import { useFocusEffect } from 'expo-router';
 import { logger } from '../utils/logger';
 
 const log = logger.create('useMyWorkChapters');
@@ -58,6 +57,7 @@ export function useMyWorkChapters(refreshKey = 0) {
       };
     }, [loadChapters]),
   );
+
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -66,12 +66,6 @@ export function useMyWorkChapters(refreshKey = 0) {
       setRefreshing(false);
     }
   }, [loadChapters]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void refresh();
-    }, [refresh]),
-  );
 
   return { chapters, loading, refreshing, refresh };
 }

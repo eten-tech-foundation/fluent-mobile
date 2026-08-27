@@ -740,11 +740,6 @@ export async function syncAllData(isIncremental = false, email?: string) {
   }
 }
 
-export async function switchUser(userId: string): Promise<void> {
-  log.info('Switching to user', { userId });
-  emitSyncComplete();
-}
-
 const inFlightMetadataRefresh = new Map<number, Promise<void>>();
 
 export async function refreshChapterMetadataIfOnline(
