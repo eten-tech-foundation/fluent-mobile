@@ -3,6 +3,11 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { BibleTab } from './BibleTab';
 import { DraftingProvider } from '../context/DraftingContext';
 
+jest.mock('../../services/storage', () => ({
+  getActiveUserId: () => '1',
+  getUserIdSync: () => '1',
+}));
+
 const verses = [
   {
     bibleId: 1,

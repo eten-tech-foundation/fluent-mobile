@@ -37,8 +37,16 @@ export default function ViewProject() {
   const projectId = parseRequiredNumber(rawParams.projectId, 'projectId');
   const projectName = parseRequiredString(rawParams.projectName, 'projectName');
   const language = parseRequiredString(rawParams.language, 'language');
-  const { chapters, loading, refreshing, error, refresh, retry, reload } =
-    useProjectChapters(projectId);
+  const {
+    chapters,
+    loading,
+    refreshing,
+    error,
+    removedFromProject,
+    refresh,
+    retry,
+    reload,
+  } = useProjectChapters(projectId);
 
   const isSyncing = useGlobalSyncStatus(reload);
   const { status: syncStatus } = useSyncStatus({ isSyncing });
@@ -95,6 +103,18 @@ export default function ViewProject() {
           <TouchableOpacity onPress={retry} accessibilityRole="button">
             <Text style={styles.retryLink}>Try again</Text>
           </TouchableOpacity>
+        </View>
+      </>
+    );
+  } else if (removedFromProject) {
+    body = (
+      <>
+        {header}
+        <View style={styles.centered}>
+          <Text style={styles.errorMessage}>
+            You have been unassigned from this project. Go to the Projects tab
+            to view your other projects.
+          </Text>
         </View>
       </>
     );
