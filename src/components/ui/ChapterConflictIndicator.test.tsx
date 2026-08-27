@@ -19,7 +19,10 @@ describe('ChapterConflictIndicator', () => {
       <ChapterConflictIndicator />,
     );
 
-    expect(getByTestId('chapter-conflict-indicator')).toBeTruthy();
+    expect(getByTestId('chapter-conflict-indicator')).toHaveProp(
+      'accessible',
+      true,
+    );
     expect(getByLabelText('Unresolved recording conflict')).toBeTruthy();
   });
 });

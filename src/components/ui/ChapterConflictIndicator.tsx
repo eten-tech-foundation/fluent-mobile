@@ -19,6 +19,7 @@ export function ChapterConflictIndicator({
   return (
     <View
       style={[styles.wrap, { width: size, height: size }]}
+      accessible
       accessibilityLabel="Unresolved recording conflict"
       accessibilityRole="image"
       testID="chapter-conflict-indicator"

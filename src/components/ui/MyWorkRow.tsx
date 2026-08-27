@@ -34,8 +34,8 @@ export function MyWorkRow({
           {display.showCloudSync ? (
             <ChapterCloudSyncIndicator syncState={chapter.syncState} />
           ) : null}
-          <ChapterOwnershipIndicator ownershipState={chapter.ownershipState} />
           {chapter.hasConflict ? <ChapterConflictIndicator /> : null}
+          <ChapterOwnershipIndicator ownershipState={chapter.ownershipState} />
         </View>
 
         <View style={styles.metaRow}>
