@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { getProjectsWithSummary } from '../db/queries';
 import { ProjectSummary } from '../types/db/types';
 import { parseUserId } from '../utils/parseUserId';
+import { useFocusEffect } from 'expo-router';
 import { logger } from '../utils/logger';
 
 const log = logger.create('useProjectsSummary');
@@ -38,6 +39,12 @@ export function useProjectsSummary(refreshKey = 0) {
       setRefreshing(false);
     }
   }, [loadProjects]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+  );
 
   return { projects, loading, refreshing, refresh };
 }
