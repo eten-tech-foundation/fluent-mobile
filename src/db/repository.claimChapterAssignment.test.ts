@@ -10,19 +10,26 @@ type ChapterAssignmentRow = {
 function createClaimTestDb(initial: ChapterAssignmentRow[]) {
   const rows = [...initial];
 
-  return {
-    execute: async (query: string, params: unknown[] = []) => {
-      const sql = query.replace(/\s+/g, ' ').trim();
-      if (sql.startsWith('UPDATE chapter_assignments SET assigned_user_id')) {
-        const [userId, updatedAt, id] = params as [number, string, number];
-        const row = rows.find(r => r.id === id);
-        if (row) {
-          row.assigned_user_id = userId;
-          row.updated_at = updatedAt;
-        }
-        return { rows: [] };
+  const execute = async (query: string, params: unknown[] = []) => {
+    const sql = query.replace(/\s+/g, ' ').trim();
+    if (sql.startsWith('UPDATE chapter_assignments SET assigned_user_id')) {
+      const [userId, updatedAt, id] = params as [number, string, number];
+      const row = rows.find(r => r.id === id);
+      if (row) {
+        row.assigned_user_id = userId;
+        row.updated_at = updatedAt;
       }
       return { rows: [] };
+    }
+    return { rows: [] };
+  };
+
+  return {
+    execute,
+    transaction: async (
+      fn: (tx: { execute: typeof execute }) => Promise<void>,
+    ) => {
+      await fn({ execute });
     },
     __rows: rows,
   };

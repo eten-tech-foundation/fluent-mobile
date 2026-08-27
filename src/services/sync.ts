@@ -691,8 +691,3 @@ export async function syncAllData(isIncremental = false, email?: string) {
     emitSyncComplete();
   }
 }
-
-export async function switchUser(userId: string): Promise<void> {
-  log.info('Switching to user', { userId });
-  emitSyncComplete();
-}

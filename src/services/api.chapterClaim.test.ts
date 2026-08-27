@@ -58,7 +58,7 @@ describe('FluentAPI.claimChapterAssignment', () => {
     jest.restoreAllMocks();
   });
 
-  it('POSTs to the claim endpoint with mobile headers and normalizes the response', async () => {
+  it('POSTs to the claim endpoint with auth headers and normalizes the response', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       text: async () =>
@@ -85,8 +85,6 @@ describe('FluentAPI.claimChapterAssignment', () => {
       expect.objectContaining({
         Authorization: 'Bearer session-token',
         'Content-Type': 'application/json',
-        'x-client-type': 'mobile',
-        'User-Agent': 'fluent-mobile',
       }),
     );
     expect(mockClaimWarn).not.toHaveBeenCalled();

@@ -23,6 +23,10 @@ import {
   stopUploadOrchestrator,
 } from '../services/uploadOrchestrator';
 import {
+  startUploadProgressNotification,
+  stopUploadProgressNotification,
+} from '../services/uploadProgressNotification';
+import {
   startDownloadQueueAutoResume,
   stopDownloadQueueAutoResume,
 } from '../services/downloadQueueAutoResume';
@@ -67,6 +71,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
   const [userSwitchEpoch, setUserSwitchEpoch] = useState(0);
 
   const signOut = useCallback(() => {
+    stopUploadProgressNotification();
     stopUploadOrchestrator();
     clearAuthSession();
     setIsAuthenticated(false);
@@ -76,6 +81,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     return onAuthSessionExpired(() => {
       log.info('Session expired — returning to login');
+      stopUploadProgressNotification();
       stopUploadOrchestrator();
       clearAuthSession();
       setIsAuthenticated(false);
@@ -106,13 +112,16 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     if (isLoading || !isAuthenticated) {
+      stopUploadProgressNotification();
       stopUploadOrchestrator();
       return;
     }
 
+    startUploadProgressNotification();
     startUploadOrchestrator();
     const stopAutoResume = startDownloadQueueAutoResume();
     return () => {
+      stopUploadProgressNotification();
       stopUploadOrchestrator();
       stopDownloadQueueAutoResume(stopAutoResume);
     };

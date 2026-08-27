@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 10;
+export const CURRENT_SCHEMA_VERSION = 11;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -322,6 +322,24 @@ async function scopeDownloadQueueActiveResourceIndex(
   );
 }
 
+async function applyChapterClaimQueueTable(db: SqlExecutor): Promise<void> {
+  await db.execute(
+    `CREATE TABLE IF NOT EXISTS chapter_claim_queue (
+      id                    INTEGER PRIMARY KEY,
+      chapter_assignment_id INTEGER NOT NULL REFERENCES chapter_assignments(id) ON DELETE CASCADE,
+      user_id               INTEGER NOT NULL REFERENCES users(id),
+      claimed_at            TEXT NOT NULL,
+      sync_status           TEXT NOT NULL DEFAULT 'pending'
+    )`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_ccq_chapter_assignment ON chapter_claim_queue(chapter_assignment_id)`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_ccq_status ON chapter_claim_queue(sync_status)`,
+  );
+}
+
 /** Ordered schema migrations. Version 1 = current CREATE IF NOT EXISTS baseline. */
 export const migrations: Migration[] = [
   {
@@ -373,6 +391,11 @@ export const migrations: Migration[] = [
     version: 10,
     name: 'download_queue_user_scoped_active_index',
     up: scopeDownloadQueueActiveResourceIndex,
+  },
+  {
+    version: 11,
+    name: 'chapter_claim_queue_table',
+    up: applyChapterClaimQueueTable,
   },
 ];
 

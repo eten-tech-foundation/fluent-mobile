@@ -139,4 +139,15 @@ export const createTableQueries: string[] = [
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_dq_active_resource
     ON download_queue(user_id, project_id, kind, resource_name)
     WHERE status != 'completed';`,
+
+  `CREATE TABLE IF NOT EXISTS chapter_claim_queue (
+      id                    INTEGER PRIMARY KEY,
+      chapter_assignment_id INTEGER NOT NULL REFERENCES chapter_assignments(id) ON DELETE CASCADE,
+      user_id               INTEGER NOT NULL REFERENCES users(id),
+      claimed_at            TEXT NOT NULL,
+      sync_status           TEXT NOT NULL DEFAULT 'pending'
+    );`,
+
+  `CREATE INDEX IF NOT EXISTS idx_ccq_chapter_assignment ON chapter_claim_queue(chapter_assignment_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_ccq_status ON chapter_claim_queue(sync_status);`,
 ];

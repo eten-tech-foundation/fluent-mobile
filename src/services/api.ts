@@ -12,6 +12,11 @@ import {
   UserProjectsResponse,
 } from '../types/api/responses';
 import type {
+  ApiTranslationImagesResponse,
+  ApiTranslationNotesResponse,
+  ApiTranslationQuestionsResponse,
+} from '../types/api/translationResources';
+import type {
   UploadVerseAudioParams,
   VerseAudioResponse,
 } from '../types/api/verseAudio';
@@ -20,6 +25,7 @@ import {
   type ClaimChapterAssignmentResponse,
   type NormalizedClaimChapterAssignmentResponse,
 } from '../types/api/chapterClaim';
+import type { SubmitChapterAssignmentResponse } from '../types/api/submitChapterAssignment';
 import { checkServerReachable } from './connectivity';
 import {
   authedMultipartRequest,
@@ -38,6 +44,20 @@ import { chapterClaimPath, isChapterClaimApiStubbed } from './chapterClaimApi';
 import { logger } from '../utils/logger';
 
 const log = logger.create('FluentAPI');
+
+function translationResourcesVersePath(
+  projectId: number,
+  kind: 'notes' | 'questions' | 'images',
+  bookCode: string,
+  chapter: number,
+  verse: number,
+  languageCode: string,
+): string {
+  const params = new URLSearchParams({ languageCode });
+  return `/projects/${projectId}/translation-resources/${kind}/${encodeURIComponent(
+    bookCode,
+  )}/${chapter}/${verse}?${params.toString()}`;
+}
 
 const MOBILE_HEADERS = {
   'x-client-type': 'mobile',
@@ -105,7 +125,7 @@ async function claimChapterAssignmentRequest(
 
   const api = await authedRequest<ClaimChapterAssignmentResponse>(
     chapterClaimPath(chapterAssignmentId),
-    { method: 'POST', headers: MOBILE_HEADERS },
+    { method: 'POST' },
   );
 
   return normalizeClaimResponse(api);
@@ -168,6 +188,18 @@ export const FluentAPI = {
       `/users/${userId}/chapter-assignments`,
     ),
 
+  /**
+   * Advance a chapter assignment to the next workflow stage (online path).
+   * Offline queue / reconnect handling is #257.
+   */
+  submitChapterAssignment: (
+    chapterAssignmentId: number,
+  ): Promise<SubmitChapterAssignmentResponse> =>
+    authedRequest<SubmitChapterAssignmentResponse>(
+      `/chapter-assignments/${chapterAssignmentId}/submit`,
+      { method: 'PATCH' },
+    ),
+
   getBibleTexts: (
     bibleId: number,
     chapters: Array<{ bookId: number; chapterNumber: number }>,
@@ -192,6 +224,70 @@ export const FluentAPI = {
     userId: number,
   ): Promise<NormalizedClaimChapterAssignmentResponse> =>
     claimChapterAssignmentRequest(chapterAssignmentId, userId),
+
+  /**
+   * Aquifer-backed Translation Notes for one verse (fluent-api #274).
+   * Empty Aquifer hits return `{ items: [] }`; upstream failure is `502`.
+   */
+  getTranslationNotes: (
+    projectId: number,
+    bookCode: string,
+    chapter: number,
+    verse: number,
+    languageCode: string,
+  ): Promise<ApiTranslationNotesResponse> =>
+    authedRequest<ApiTranslationNotesResponse>(
+      translationResourcesVersePath(
+        projectId,
+        'notes',
+        bookCode,
+        chapter,
+        verse,
+        languageCode,
+      ),
+    ),
+
+  /**
+   * Aquifer-backed Translation Questions for one verse (fluent-api #274).
+   */
+  getTranslationQuestions: (
+    projectId: number,
+    bookCode: string,
+    chapter: number,
+    verse: number,
+    languageCode: string,
+  ): Promise<ApiTranslationQuestionsResponse> =>
+    authedRequest<ApiTranslationQuestionsResponse>(
+      translationResourcesVersePath(
+        projectId,
+        'questions',
+        bookCode,
+        chapter,
+        verse,
+        languageCode,
+      ),
+    ),
+
+  /**
+   * Aquifer-backed Images & Maps for one verse (fluent-api #274).
+   */
+  getTranslationImages: (
+    projectId: number,
+    bookCode: string,
+    chapter: number,
+    verse: number,
+    languageCode: string,
+  ): Promise<ApiTranslationImagesResponse> =>
+    authedRequest<ApiTranslationImagesResponse>(
+      translationResourcesVersePath(
+        projectId,
+        'images',
+        bookCode,
+        chapter,
+        verse,
+        languageCode,
+      ),
+    ),
 };
 
 export { buildHeaders, buildMultipartAuthHeaders } from './httpClient';

@@ -850,10 +850,36 @@ export async function claimChapterAssignment(
   userId: number,
 ): Promise<void> {
   const db = getDatabase();
-  await db.execute(
-    `UPDATE chapter_assignments SET assigned_user_id = ?, updated_at = ? WHERE id = ?`,
-    [userId, new Date().toISOString(), chapterAssignmentId],
-  );
+  const updatedAt = new Date().toISOString();
+  await db.transaction(async (tx: Transaction) => {
+    await tx.execute(
+      `UPDATE chapter_assignments SET assigned_user_id = ?, updated_at = ? WHERE id = ?`,
+      [userId, updatedAt, chapterAssignmentId],
+    );
+  });
+}
+
+/**
+ * Immediately apply a local stage advance (#258). Server confirmation and
+ * pending-sync queue behavior are owned by #257.
+ */
+export async function updateChapterAssignmentStatusLocally(
+  chapterAssignmentId: number,
+  status: 'peer_check' | 'community_check',
+): Promise<void> {
+  const db = getDatabase();
+  const updatedAt = new Date().toISOString();
+  const submittedTime = new Date().toISOString();
+  await db.transaction(async (tx: Transaction) => {
+    await tx.execute(
+      `UPDATE chapter_assignments
+       SET status = ?,
+           submitted_time = ?,
+           updated_at = ?
+       WHERE id = ?`,
+      [status, submittedTime, updatedAt, chapterAssignmentId],
+    );
+  });
 }
 
 export async function markRecordingUploaded(
@@ -916,6 +942,8 @@ export async function userNeedsAssigneeRepair(
   const withRole = Number(row?.with_role ?? 0);
   return total > 0 && withRole === 0;
 }
+
+export { claimChapterOffline } from './repositories/chapterClaimsRepository';
 
 export {
   addRecordingTake,

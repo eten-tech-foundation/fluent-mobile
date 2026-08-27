@@ -1,12 +1,13 @@
-import type { AquiferResourceDetails } from '../types/api/aquifer';
+import type { ApiTranslationQuestionItem } from '../types/api/translationResources';
 import type { TranslationQuestionItem } from '../types/resources/translationQuestions';
 import { tipTapToPlainText } from '../utils/aquiferTipTapText';
-import { AQUIFER_RESOURCE_COLLECTIONS } from './prepareOfflineResourceManifest';
-import { AquiferAPI } from './aquiferApi';
+import { FluentAPI } from './api';
 
 const DEFAULT_TQ_LANGUAGE_CODE = 'eng';
 
 export type LoadTranslationQuestionsParams = {
+  /** Fluent project id — required for fluent-api translation-resources. */
+  projectId: number | null;
   bookCode: string;
   chapterNumber: number;
   verseNumber: number;
@@ -32,20 +33,20 @@ function isContentItemArray(value: unknown): value is TipTapContentItem[] {
 }
 
 /**
- * Parse one Aquifer TQ resource detail into Q/A items.
+ * Parse one fluent-api TQ item into Q/A items.
  * Matches fluent-web: first TipTap block = question, remaining = answer.
  */
-export function parseAquiferTranslationQuestions(
-  details: AquiferResourceDetails,
+export function parseTranslationQuestionsItem(
+  item: ApiTranslationQuestionItem,
 ): TranslationQuestionItem[] {
-  if (!isContentItemArray(details.content)) {
+  if (!isContentItemArray(item.content)) {
     return [];
   }
 
   const questions: TranslationQuestionItem[] = [];
 
-  details.content.forEach((item, index) => {
-    const doc = item.tiptap;
+  item.content.forEach((block, index) => {
+    const doc = block.tiptap;
     if (
       !doc ||
       typeof doc !== 'object' ||
@@ -67,12 +68,12 @@ export function parseAquiferTranslationQuestions(
 
     const answer = blocks
       .slice(1)
-      .map(block => tipTapToPlainText(block).trim())
+      .map(answerBlock => tipTapToPlainText(answerBlock).trim())
       .filter(Boolean)
       .join('\n\n');
 
     questions.push({
-      id: `tq-aquifer-${details.id}-${index}`,
+      id: `tq-api-${item.id}-${index}`,
       question,
       answer,
     });
@@ -82,8 +83,8 @@ export function parseAquiferTranslationQuestions(
 }
 
 /**
- * Load uW Translation Questions for a drafting unit from Aquifer.
- * Interim until fluent-api#273 proxies these payloads.
+ * Load uW Translation Questions for a drafting unit via fluent-api
+ * translation-resources (fluent-api #274).
  */
 export async function loadTranslationQuestionsForUnit(
   params: LoadTranslationQuestionsParams,
@@ -92,31 +93,25 @@ export async function loadTranslationQuestionsForUnit(
     throw new Error('Failed to load Translation Questions');
   }
 
+  if (params.projectId === null) {
+    return [];
+  }
+
   const bookCode = params.bookCode.trim();
   if (!bookCode) {
-    throw new Error('bookCode is required to load Translation Questions');
+    return [];
   }
 
   const languageCode = params.languageCode?.trim() || DEFAULT_TQ_LANGUAGE_CODE;
 
-  const search = await AquiferAPI.searchResources({
+  const response = await FluentAPI.getTranslationQuestions(
+    params.projectId,
     bookCode,
-    startChapter: params.chapterNumber,
-    endChapter: params.chapterNumber,
-    startVerse: params.verseNumber,
-    endVerse: params.verseNumber,
+    params.chapterNumber,
+    params.verseNumber,
     languageCode,
-    resourceCollectionCode: AQUIFER_RESOURCE_COLLECTIONS.translationQuestions,
-    limit: 50,
-  });
-
-  if (!search.items.length) {
-    return [];
-  }
-
-  const detailsList = await Promise.all(
-    search.items.map(item => AquiferAPI.getResourceDetails(item.id)),
   );
 
-  return detailsList.flatMap(parseAquiferTranslationQuestions);
+  const items = Array.isArray(response?.items) ? response.items : [];
+  return items.flatMap(parseTranslationQuestionsItem);
 }

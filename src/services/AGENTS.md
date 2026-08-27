@@ -10,6 +10,7 @@ Agents: keep this layer thin. Full contract: [docs/guides/api-client-standard.md
 - **Sync** — orchestration + retries live in `sync.ts`; persist through `src/db/repository.ts`; KV timestamps/counts in `storage.ts`.
 - **Verse audio upload** — `FluentAPI.uploadVerseAudio` + [recordings-sync-contract.md](../../docs/guides/recordings-sync-contract.md) (#102). Worker (`recordingSync.ts`, #100) must not call `fetch` directly.
 - **Recording uploads** — trigger/pause/cancel/cellular gate live in `uploadOrchestrator.ts` (+ `uploadOrchestratorCore.ts`). Register the real chapter worker via `setChapterUploadWorker` from `recordingSync.ts`. Do not conflate with metadata `syncAllData`.
+- **Upload progress notification** — `uploadProgressNotification.ts` subscribes to upload-session events and posts a persistent Android system notification via the `upload-sync-foreground` dataSync foreground service (local shade notification fallback if the service cannot start).
 - **Errors** — `ApiError` / `AuthError`; no raw response bodies in logs.
 
 ## Adding an endpoint
