@@ -177,19 +177,21 @@ If CI fails on `npm ci` with lockfile errors after several Dependabot merges:
 3. Open a small fix PR; merge after CI passes
 4. Enforce **one merge + rebase** going forward
 
-### Pinned versions (Expo SDK 57 / RN 0.86.2)
+### Pinned versions (Expo SDK 57 / RN 0.86.3)
 
 These are exact pins in `package.json` — Dependabot is configured to avoid most drift, but verify after any manual conflict resolution:
 
 | Package | Pin |
 |---------|-----|
 | `react` | `19.2.3` |
-| `react-native` | `0.86.2` |
+| `react-native` | `0.86.3` |
 | `react-test-renderer` | `19.2.3` |
-| `@react-native/jest-preset` | `0.86.2` |
-| `@react-native/typescript-config` | `0.86.2` |
+| `@react-native/jest-preset` | `0.86.3` |
+| `@react-native/typescript-config` | `0.86.3` |
 
-Use the [RN upgrade helper](https://react-native-community.github.io/upgrade-helper/?from=0.86.2&to=0.86.2) when aligning versions during an RN upgrade ticket.
+`@react-native/jest-preset` and `@react-native/typescript-config` must move with `react-native` — RN peers the jest preset at the exact patch, so a lone `react-native` bump fails `npm install` with `ERESOLVE`.
+
+Use the [RN upgrade helper](https://react-native-community.github.io/upgrade-helper/?from=0.86.3&to=0.86.3) when aligning versions during an RN upgrade ticket.
 
 ## Automating with Cursor
 
