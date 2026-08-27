@@ -87,7 +87,19 @@ updates:
       day: 'monday'
       time: '09:00'
     open-pull-requests-limit: 3
+    cooldown:
+      default-days: 7
+    groups:
+      # Batch all github-actions SHA bumps into a single weekly PR.
+      # Wildcard, not an enumerated vendor list — must cover expo/*.
+      github-actions:
+        patterns:
+          - '*'
+      github-actions-security:
+        applies-to: security-updates
+        patterns:
+          - '*'
     labels:
-      - 'github-actions'
+      - 'github_actions'
       - 'dependencies'
       - 'automated'

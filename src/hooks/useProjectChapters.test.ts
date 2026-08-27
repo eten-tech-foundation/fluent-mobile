@@ -12,6 +12,21 @@ jest.mock('../utils/parseUserId', () => ({
   parseUserId: jest.fn(),
 }));
 
+// Breaks the real import chain (services/storage -> @op-engineering/op-sqlite,
+// which is ESM and not in transformIgnorePatterns), and keeps the
+// metadata-refresh useFocusEffect a no-op for tests that aren't about it.
+jest.mock('../services/sync', () => ({
+  refreshChapterMetadataIfOnline: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('../db/repository', () => ({
+  isUserProjectMember: jest.fn().mockResolvedValue(true),
+}));
+
+jest.mock('../services/storage', () => ({
+  getActiveUserId: jest.fn().mockReturnValue(null),
+}));
+
 jest.mock('expo-router', () => {
   const { useEffect } = jest.requireActual('react');
   return {

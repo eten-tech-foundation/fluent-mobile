@@ -3,6 +3,7 @@ import { logger } from '../utils/logger';
 import type {
   Recording,
   RecordingRow,
+  RecordingWithOwner,
   RecordingSyncStatus,
 } from '../types/db/types';
 import { Transaction } from '@op-engineering/op-sqlite';
@@ -46,10 +47,33 @@ function mapRecordingRow(row: RecordingRow): Recording {
     fileSizeBytes: row.file_size_bytes,
     takeNumber: row.take_number,
     isSelected: row.is_selected === 1,
+    isCanonical: row.is_canonical === 1,
     syncStatus: row.sync_status,
     uploadError: row.upload_error,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+type OwnerJoinRow = RecordingRow & {
+  first_name: string | null;
+  last_name: string | null;
+  username: string | null;
+  email: string | null;
+};
+
+function resolveOwnerDisplayName(row: OwnerJoinRow): string {
+  if (!row.email && row.recorded_by_user_id === null) return 'Unknown';
+  const full = [row.first_name, row.last_name].filter(Boolean).join(' ').trim();
+  if (full) return full;
+  if (row.username) return row.username;
+  return row.email ?? 'Unknown';
+}
+
+function mapRecordingWithOwnerRow(row: OwnerJoinRow): RecordingWithOwner {
+  return {
+    ...mapRecordingRow(row),
+    ownerDisplayName: resolveOwnerDisplayName(row),
   };
 }
 
@@ -177,6 +201,74 @@ export async function getTakesForVerse(
   return rows.map(mapRecordingRow);
 }
 
+export async function getAllTakesForVerse(
+  bibleTextId: number,
+): Promise<RecordingWithOwner[]> {
+  const db = getDatabase();
+  const result = await db.execute(
+    `SELECT r.*, u.first_name, u.last_name, u.username, u.email
+     FROM recordings r
+     LEFT JOIN users u ON u.id = r.recorded_by_user_id
+     WHERE r.bible_text_id = ?
+     ORDER BY r.recorded_by_user_id IS NOT NULL, r.recorded_by_user_id ASC, r.take_number ASC`,
+    [bibleTextId],
+  );
+  const rows = (result.rows ?? []) as unknown as OwnerJoinRow[];
+  return rows.map(mapRecordingWithOwnerRow);
+}
+
+export async function verseHasMultipleRecorders(
+  bibleTextId: number,
+  recordedByUserId?: number | null,
+): Promise<boolean> {
+  const db = getDatabase();
+  const ownerId = resolveRecordedByUserId(recordedByUserId);
+  const owner = recordedByClause(ownerId);
+  const result = await db.execute(
+    `SELECT COUNT(*) AS cnt
+     FROM recordings
+     WHERE bible_text_id = ? AND NOT (${owner.sql})`,
+    [bibleTextId, ...owner.params],
+  );
+  const cnt = Number(
+    (result.rows?.[0] as { cnt?: number } | undefined)?.cnt ?? 0,
+  );
+  return cnt > 0;
+}
+
+export async function setCanonicalTake(id: string): Promise<void> {
+  const db = getDatabase();
+  const now = new Date().toISOString();
+  let applied = false;
+
+  await db.transaction(async (tx: Transaction) => {
+    const existing = await tx.execute(
+      `SELECT bible_text_id, is_canonical FROM recordings WHERE id = ?`,
+      [id],
+    );
+    const row = existing.rows?.[0] as
+      | { bible_text_id: number; is_canonical: number }
+      | undefined;
+    if (!row || row.is_canonical === 1) {
+      return;
+    }
+
+    await tx.execute(
+      `UPDATE recordings SET is_canonical = 0, updated_at = ?
+       WHERE bible_text_id = ? AND is_canonical = 1`,
+      [now, row.bible_text_id],
+    );
+    await tx.execute(
+      `UPDATE recordings SET is_canonical = 1, updated_at = ? WHERE id = ?`,
+      [now, id],
+    );
+    applied = true;
+  });
+
+  if (applied) {
+    log.info('Canonical take designated', { id });
+  }
+}
 /**
  * Mark an existing take as the active draft (`is_selected`), e.g. picking an
  * earlier take over the most recently recorded one. Clears `is_selected` for
