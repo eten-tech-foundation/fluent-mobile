@@ -4,6 +4,7 @@ import {
   FlatList,
   Linking,
   Platform,
+  SectionList,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -28,6 +29,8 @@ import { requestMicPermission } from '../../audio/micPermission';
 import { logger } from '../../utils/logger';
 import { PlaybackProgressBar } from '../../components/ui/PlaybackProgressBar';
 import { DraftTakeRow } from '../../components/ui/DraftTakeRow';
+import { SharedTakeRow } from '../../components/ui/SharedTakeRow';
+import { TakeGroupHeader } from '../../components/ui/TakeGroupHeader';
 import { RecordCircleButton } from '../../components/ui/RecordCircleButton';
 import { SourceTextAccordion } from '../../components/ui/SourceTextAccordion';
 import { SourceAudioPlayerBar } from '../../components/layout/SourceAudioPlayerBar';
@@ -46,7 +49,7 @@ import {
 } from '../../utils/stageAdvancement';
 import { confirmStageAdvancement } from '../../services/stageAdvance';
 import { ChapterAssignmentData } from '../../types/db/types';
-import type { Recording } from '../../types/db/types';
+import type { Recording, RecordingWithOwner } from '../../types/db/types';
 
 const log = logger.create('RecordTab');
 
@@ -62,6 +65,30 @@ function formatDuration(ms: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+type TakeSection = {
+  title: string;
+  ownerId: number | null;
+  data: RecordingWithOwner[];
+};
+
+function groupTakesByOwner(takes: RecordingWithOwner[]): TakeSection[] {
+  const sections: TakeSection[] = [];
+  for (const take of takes) {
+    const ownerId = take.recordedByUserId ?? null;
+    const last = sections[sections.length - 1];
+    if (last && last.ownerId === ownerId) {
+      last.data.push(take);
+    } else {
+      sections.push({
+        title: take.ownerDisplayName,
+        ownerId,
+        data: [take],
+      });
+    }
+  }
+  return sections;
+}
+
 type RecordTabProps = {
   chapterData: ChapterAssignmentData;
   userId: number | null;
@@ -74,6 +101,7 @@ type RecordTabProps = {
  * Built on useVerseAudio (#97). Multi-take Review list is #71 — takes are
  * ordered by take_number ASC; exclusive playback is enforced by the single
  * playback engine inside useVerseAudio (tracked via playingTakeId).
+ * Cross-account All Takes toggle + canonical designation is #279.
  */
 export function RecordTab({
   chapterData,
@@ -84,10 +112,12 @@ export function RecordTab({
   const router = useRouter();
   const rawParams = useLocalSearchParams<{ chapterName?: string }>();
   const chapterName = parseRequiredString(rawParams.chapterName, 'chapterName');
-  const { verses, selectedVerse, setSelectedVerse } = useDraftingContext();
+  const { verses, selectedVerse, setSelectedVerse, refreshRecordedVerses } =
+    useDraftingContext();
   const [bibleTextId, setBibleTextId] = useState<number | null>(null);
   const [sourceExpanded, setSourceExpanded] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [takeView, setTakeView] = useState<'mine' | 'all'>('mine');
   const [hasChapterRecording, setHasChapterRecording] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -110,6 +140,23 @@ export function RecordTab({
   const selected = verses.find(v => v.verseNumber === selectedVerse);
   const reference = `${chapterName}:${selectedVerse}`;
   const hasTake = verseAudio.takes.length > 0;
+  const hasAnyTake = hasTake || verseAudio.allTakes.length > 0;
+  const activeViewHasTakes = takeView === 'mine' ? hasTake : hasAnyTake;
+
+  useEffect(() => {
+    setTakeView('mine');
+  }, [bibleTextId]);
+
+  useEffect(() => {
+    void refreshRecordedVerses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only takes should trigger this
+  }, [verseAudio.takes]);
+
+  useEffect(() => {
+    if (!verseAudio.hasMultipleRecorders && takeView === 'all') {
+      setTakeView('mine');
+    }
+  }, [verseAudio.hasMultipleRecorders, takeView]);
 
   useEffect(() => {
     let cancelled = false;
@@ -256,7 +303,8 @@ export function RecordTab({
   }
 
   const showIdle =
-    verseAudio.state === 'idle' || (verseAudio.state === 'error' && !hasTake);
+    (verseAudio.state === 'idle' && !activeViewHasTakes) ||
+    (verseAudio.state === 'error' && !activeViewHasTakes);
   const isRecording = verseAudio.state === 'recording';
   const isPaused = verseAudio.state === 'paused';
   const showCapture = isRecording || isPaused;
@@ -264,7 +312,8 @@ export function RecordTab({
     verseAudio.state === 'recorded' ||
     verseAudio.state === 'playing' ||
     verseAudio.state === 'saving' ||
-    (verseAudio.state === 'error' && hasTake);
+    (verseAudio.state === 'error' && activeViewHasTakes) ||
+    (verseAudio.state === 'idle' && activeViewHasTakes);
   const showSourceAudio = showIdle || showReview;
 
   const currentUserId = userId;
@@ -410,7 +459,63 @@ export function RecordTab({
         </TouchableOpacity>
       </View>
 
-      <View style={styles.main}>
+      {verseAudio.hasMultipleRecorders ? (
+        <View style={styles.takeViewToggle} testID="take-view-toggle">
+          <TouchableOpacity
+            style={[
+              styles.toggleOption,
+              takeView === 'mine' && styles.toggleOptionActive,
+            ]}
+            onPress={() => {
+              if (!showCapture) setTakeView('mine');
+            }}
+            disabled={showCapture}
+            accessibilityRole="button"
+            accessibilityState={{
+              selected: takeView === 'mine',
+              disabled: showCapture,
+            }}
+            testID="take-view-mine"
+          >
+            <Text
+              style={[
+                styles.toggleLabel,
+                takeView === 'mine' && styles.toggleLabelActive,
+              ]}
+            >
+              My Takes
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.toggleOption,
+              takeView === 'all' && styles.toggleOptionActive,
+            ]}
+            onPress={() => {
+              if (!showCapture) setTakeView('all');
+            }}
+            disabled={showCapture}
+            accessibilityRole="button"
+            accessibilityState={{
+              selected: takeView === 'all',
+              disabled: showCapture,
+            }}
+            testID="take-view-all"
+          >
+            <Text
+              style={[
+                styles.toggleLabel,
+                takeView === 'all' && styles.toggleLabelActive,
+                showCapture && styles.dim,
+              ]}
+            >
+              All Takes
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      <View style={[styles.main, showReview && styles.mainTopAligned]}>
         {showCapture ? (
           <View style={styles.waveformWrap} testID="record-waveform">
             <PlaybackProgressBar
@@ -526,30 +631,85 @@ export function RecordTab({
 
           {showReview ? (
             <View style={styles.reviewGroup}>
-              {hasTake ? (
-                <FlatList
-                  testID="record-take-list"
-                  data={verseAudio.takes}
+              {takeView === 'mine' ? (
+                hasTake ? (
+                  <FlatList
+                    testID="record-take-list"
+                    data={verseAudio.takes}
+                    keyExtractor={take => take.id}
+                    style={styles.takeList}
+                    contentContainerStyle={styles.takeListContent}
+                    renderItem={({ item: take }) => {
+                      const isSelected =
+                        take.id === verseAudio.selectedTake?.id;
+                      const isLoaded = verseAudio.playingTakeId === take.id;
+                      const isThisPlaying =
+                        isLoaded && verseAudio.state === 'playing';
+                      // Playback clears playingTakeId when a take reaches its end,
+                      // but the take stays in the player and stays scrubbable.
+                      // With nothing loaded yet, the selected draft still scrubs:
+                      // `seek` loads it without playing (#176).
+                      const isSeekable =
+                        verseAudio.loadedTakeId === take.id ||
+                        (verseAudio.loadedTakeId === null && isSelected);
+                      const leadingIndicator = verseAudio.hasMultipleRecorders
+                        ? 'canonicalReadOnly'
+                        : 'selection';
+                      return (
+                        <DraftTakeRow
+                          takeNumber={take.takeNumber}
+                          isSelected={isSelected}
+                          isPlaying={isThisPlaying}
+                          leadingIndicator={leadingIndicator}
+                          isCanonical={
+                            take.id === verseAudio.ownCanonicalTakeId
+                          }
+                          positionMs={isLoaded ? verseAudio.positionMs : 0}
+                          durationMs={
+                            isLoaded && verseAudio.durationMs > 0
+                              ? verseAudio.durationMs
+                              : take.durationMs ?? 0
+                          }
+                          onPlayPause={() => {
+                            void (isThisPlaying
+                              ? verseAudio.pausePlayback()
+                              : verseAudio.playTake(take));
+                          }}
+                          onSelect={() => {
+                            void verseAudio.selectTake(take.id);
+                          }}
+                          onDelete={() => handleDeleteTake(take)}
+                          onSeek={
+                            isSeekable
+                              ? ms => {
+                                  void verseAudio.seek(ms);
+                                }
+                              : undefined
+                          }
+                        />
+                      );
+                    }}
+                  />
+                ) : null
+              ) : (
+                <SectionList
+                  testID="record-all-take-list"
+                  sections={groupTakesByOwner(verseAudio.allTakes)}
                   keyExtractor={take => take.id}
                   style={styles.takeList}
                   contentContainerStyle={styles.takeListContent}
+                  renderSectionHeader={({ section }) => (
+                    <TakeGroupHeader displayName={section.title} />
+                  )}
                   renderItem={({ item: take }) => {
-                    const isSelected = take.id === verseAudio.selectedTake?.id;
                     const isLoaded = verseAudio.playingTakeId === take.id;
                     const isThisPlaying =
                       isLoaded && verseAudio.state === 'playing';
-                    // Playback clears playingTakeId when a take reaches its end,
-                    // but the take stays in the player and stays scrubbable.
-                    // With nothing loaded yet, the selected draft still scrubs:
-                    // `seek` loads it without playing (#176).
-                    const isSeekable =
-                      verseAudio.loadedTakeId === take.id ||
-                      (verseAudio.loadedTakeId === null && isSelected);
                     return (
-                      <DraftTakeRow
+                      <SharedTakeRow
                         takeNumber={take.takeNumber}
-                        isSelected={isSelected}
                         isPlaying={isThisPlaying}
+                        isCanonical={take.isCanonical}
                         positionMs={isLoaded ? verseAudio.positionMs : 0}
                         durationMs={
                           isLoaded && verseAudio.durationMs > 0
@@ -561,43 +721,38 @@ export function RecordTab({
                             ? verseAudio.pausePlayback()
                             : verseAudio.playTake(take));
                         }}
-                        onSelect={() => {
-                          void verseAudio.selectTake(take.id);
+                        onDesignateCanonical={() => {
+                          void verseAudio.setCanonical(take.id);
                         }}
-                        onDelete={() => handleDeleteTake(take)}
-                        onSeek={
-                          isSeekable
-                            ? ms => {
-                                void verseAudio.seek(ms);
-                              }
-                            : undefined
-                        }
                       />
                     );
                   }}
                 />
+              )}
+
+              {takeView === 'mine' ? (
+                <TouchableOpacity
+                  style={[
+                    styles.newTakeButton,
+                    (recordDisabled || !verseAudio.canRecordNewTake) &&
+                      styles.disabled,
+                  ]}
+                  onPress={() => {
+                    void handleStart();
+                  }}
+                  disabled={recordDisabled || !verseAudio.canRecordNewTake}
+                  accessibilityRole="button"
+                  accessibilityLabel="Record new take"
+                  testID="record-new-take-button"
+                >
+                  <CircleDot
+                    size={iconSizes.headerTab}
+                    color={theme.colors.primaryForeground}
+                    strokeWidth={listIconStrokeWidth}
+                  />
+                  <Text style={styles.newTakeLabel}>Record New Take</Text>
+                </TouchableOpacity>
               ) : null}
-              <TouchableOpacity
-                style={[
-                  styles.newTakeButton,
-                  (recordDisabled || !verseAudio.canRecordNewTake) &&
-                    styles.disabled,
-                ]}
-                onPress={() => {
-                  void handleStart();
-                }}
-                disabled={recordDisabled || !verseAudio.canRecordNewTake}
-                accessibilityRole="button"
-                accessibilityLabel="Record new take"
-                testID="record-new-take-button"
-              >
-                <CircleDot
-                  size={iconSizes.headerTab}
-                  color={theme.colors.primaryForeground}
-                  strokeWidth={listIconStrokeWidth}
-                />
-                <Text style={styles.newTakeLabel}>Record New Take</Text>
-              </TouchableOpacity>
             </View>
           ) : null}
         </View>
@@ -680,6 +835,10 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md,
     justifyContent: 'center',
   },
+  mainTopAligned: {
+    justifyContent: 'flex-start',
+    paddingTop: theme.spacing.md,
+  },
   waveformWrap: {
     minHeight: theme.waveform.tallHeight,
     width: '100%',
@@ -726,9 +885,36 @@ const styles = StyleSheet.create({
     gap: theme.spacing.lg,
     width: '100%',
   },
+  takeViewToggle: {
+    flexDirection: 'row',
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.cardBackground,
+    padding: theme.spacing.xs,
+    gap: theme.spacing.xs,
+    alignSelf: 'center',
+    marginTop: theme.spacing.md,
+  },
+  toggleOption: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.md,
+  },
+  toggleOptionActive: {
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
+  toggleLabel: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.mutedForeground,
+    fontWeight: theme.typography.weights.medium,
+  },
+  toggleLabelActive: {
+    color: theme.colors.foreground,
+  },
   takeList: {
     width: '100%',
-    maxHeight: theme.waveform.tallHeight * 3,
+    maxHeight: theme.waveform.tallHeight * 3.5,
   },
   takeListContent: {
     gap: theme.spacing.sm,

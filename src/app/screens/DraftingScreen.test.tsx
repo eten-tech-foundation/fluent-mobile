@@ -182,7 +182,8 @@ describe('DraftingScreen onChapterClaimed', () => {
     });
     expect(mockGetChapterAssignmentById).toHaveBeenCalledTimes(1);
     expect(mockGetBibleTexts).toHaveBeenCalledTimes(1);
-    expect(mockGetRecordedVerseNumbers).toHaveBeenCalledTimes(1);
+    // DraftingScreen + DraftingContext (#279) each load recorded verses on mount.
+    expect(mockGetRecordedVerseNumbers).toHaveBeenCalledTimes(2);
 
     fireEvent.press(screen.getByTestId('mock-record-tab-claim'));
 
@@ -191,7 +192,7 @@ describe('DraftingScreen onChapterClaimed', () => {
     });
     expect(mockGetChapterAssignmentById).toHaveBeenLastCalledWith(5);
     expect(mockGetBibleTexts).toHaveBeenCalledTimes(1);
-    expect(mockGetRecordedVerseNumbers).toHaveBeenCalledTimes(1);
+    expect(mockGetRecordedVerseNumbers).toHaveBeenCalledTimes(2);
     expect(capturedOnChapterClaimed).toBeDefined();
   });
 });
