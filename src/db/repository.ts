@@ -1021,6 +1021,7 @@ export async function reconcileUserChapterWork(
     }
   });
 }
+
 export async function isUserProjectMember(
   userId: number,
   projectId: number,
@@ -1032,6 +1033,7 @@ export async function isUserProjectMember(
   );
   return Number(result.rows?.[0]?.count ?? 0) > 0;
 }
+
 export { claimChapterOffline } from './repositories/chapterClaimsRepository';
 
 export {
