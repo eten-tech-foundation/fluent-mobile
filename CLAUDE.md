@@ -22,6 +22,7 @@ This file is the **entrypoint for non-Cursor agents** (Claude Code, Codex, Copil
 - Android-only permanently; CNG — do not commit generated `android/`
 - Never push or merge to `main`; ticketed branch + PR; PR body from [`.cursor/templates/pr-template.md`](.cursor/templates/pr-template.md). Full loop: `/start-issue NNN` (chains to `/create-pr`). Delivery-only: `/create-pr` (`/open-pr` alias).
 - Do not reorganize Project 4 (`Dev Ready` / Product columns) without an approved change set
+- Do **not** move or edit tickets that are not fluent-mobile / Project 4 (other repos, other projects, Linear) without stopping and per-ticket confirmation — [`.cursor/rules/foreign-tickets.mdc`](.cursor/rules/foreign-tickets.mdc)
 - Prefer Expo SDK modules; do not rip out React Navigation without a ticket
 - Needs QA per [docs/guides/qa-process.md](docs/guides/qa-process.md) → post-merge handoff → human Android device QA on the **nightly** (merge is not blocked on QA)
 
