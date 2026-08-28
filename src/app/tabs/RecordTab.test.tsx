@@ -127,6 +127,7 @@ const chapterData: ChapterAssignmentData = {
   assignedUserId: 42,
   bibleName: 'BSB',
   bookName: 'Mark',
+  hasConflict: false,
 };
 
 const verses = [

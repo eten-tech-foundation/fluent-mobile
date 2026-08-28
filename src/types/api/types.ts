@@ -25,6 +25,8 @@ export interface ApiChapterAssignment {
   updatedAt?: string | null;
   totalVerses?: number;
   completedVerses?: number;
+  /** Chapter-level unresolved audio-take conflict rollup (fluent-api#271). */
+  hasConflict?: boolean;
 }
 
 /** GET /users/:id/chapter-assignments — same shape web My Work uses. */

@@ -9,6 +9,7 @@ const baseChapter: ChapterAssignmentData = {
   bookId: 1,
   chapterNumber: 1,
   status: 'draft',
+  hasConflict: false,
 };
 
 describe('isChapterTakenByOther', () => {

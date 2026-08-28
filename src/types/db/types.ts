@@ -51,6 +51,7 @@ export interface MyWorkChapter {
   completedVerses: number;
   totalVerses: number;
   downloadedVerses: number;
+  hasConflict: boolean;
   lastActivityAt?: string;
   lastActivityLabel?: string;
   projectName: string;
@@ -68,6 +69,7 @@ export interface ProjectChapter {
   completedVerses: number;
   totalVerses: number;
   downloadedVerses: number;
+  hasConflict: boolean;
   lastActivityAt?: string;
   lastActivityLabel?: string;
 }
@@ -87,6 +89,7 @@ export interface ProjectChapterRow {
   completed_verses: number;
   downloaded_verses: number;
   assigned_user_id?: number | null;
+  has_conflict: number;
 }
 
 export interface MyWorkChapterRow {
@@ -106,6 +109,7 @@ export interface MyWorkChapterRow {
   completed_verses: number;
   downloaded_verses: number;
   assigned_user_id?: number | null;
+  has_conflict: number;
 }
 
 export interface ProjectSummary extends Project {
@@ -145,6 +149,11 @@ export interface ChapterAssignment {
   updatedAt?: string;
   totalVerses?: number;
   completedVerses?: number;
+  /**
+   * Unresolved audio-take conflict rollup. `undefined` means the API payload
+   * omitted the field — preserve the existing SQLite value on upsert.
+   */
+  hasConflict?: boolean;
 }
 
 export interface Verse {
@@ -180,6 +189,7 @@ export interface ChapterAssignmentData {
   bookName?: string;
   bibleName?: string;
   bibleAbbreviation?: string;
+  hasConflict: boolean;
 }
 
 export interface ChapterAssignmentRow {
@@ -198,6 +208,7 @@ export interface ChapterAssignmentRow {
   book_name?: string;
   bible_name?: string;
   bible_abbreviation?: string;
+  has_conflict?: number;
 }
 
 export interface ChapterListItem {
