@@ -26,6 +26,7 @@ import {
   type NormalizedClaimChapterAssignmentResponse,
 } from '../types/api/chapterClaim';
 import type { SubmitChapterAssignmentResponse } from '../types/api/submitChapterAssignment';
+import { getApiBaseUrl } from '../config/apiBaseUrl';
 import { checkServerReachable } from './connectivity';
 import {
   authedMultipartRequest,
@@ -40,7 +41,6 @@ import {
   buildVerseAudioFormData,
   verseAudioUploadPath,
 } from './verseAudioFormData';
-import { chapterClaimPath, isChapterClaimApiStubbed } from './chapterClaimApi';
 import { logger } from '../utils/logger';
 
 const log = logger.create('FluentAPI');
@@ -105,28 +105,16 @@ async function uploadVerseAudioRequest(
 
 async function claimChapterAssignmentRequest(
   chapterAssignmentId: number,
-  userId: number,
 ): Promise<NormalizedClaimChapterAssignmentResponse> {
-  if (isChapterClaimApiStubbed()) {
-    log.warn(
-      'FluentAPI.claimChapterAssignment stubbed pending fluent-api#272',
-      {
-        chapterAssignmentId,
-        userId,
-      },
-    );
-    return {
-      chapterAssignmentId,
-      assignedUserId: userId,
-      status: 'draft',
-      hasClaimConflict: false,
-    };
-  }
+  const path = `/chapter-assignments/${chapterAssignmentId}/claim`;
+  log.info('claimChapterAssignment POST', {
+    url: `${getApiBaseUrl()}${path}`,
+    chapterAssignmentId,
+  });
 
-  const api = await authedRequest<ClaimChapterAssignmentResponse>(
-    chapterClaimPath(chapterAssignmentId),
-    { method: 'POST' },
-  );
+  const api = await authedRequest<ClaimChapterAssignmentResponse>(path, {
+    method: 'POST',
+  });
 
   return normalizeClaimResponse(api);
 }
@@ -221,9 +209,9 @@ export const FluentAPI = {
 
   claimChapterAssignment: (
     chapterAssignmentId: number,
-    userId: number,
+    _userId: number,
   ): Promise<NormalizedClaimChapterAssignmentResponse> =>
-    claimChapterAssignmentRequest(chapterAssignmentId, userId),
+    claimChapterAssignmentRequest(chapterAssignmentId),
 
   /**
    * Aquifer-backed Translation Notes for one verse (fluent-api #274).
