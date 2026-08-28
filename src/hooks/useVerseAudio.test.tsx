@@ -64,10 +64,6 @@ jest.mock('../services/connectivity', () => ({
   getConnectivitySnapshot: jest.fn(),
 }));
 
-jest.mock('../db/queries', () => ({
-  countChapterRecordingsByUser: jest.fn(async () => 0),
-}));
-
 jest.mock('../services/chapterClaimSync', () => ({
   syncChapterClaim: jest.fn(),
 }));

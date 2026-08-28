@@ -562,58 +562,6 @@ export async function getBibleTexts(
   }
 }
 
-export async function countChapterRecordings(
-  bibleId: number,
-  bookId: number,
-  chapterNumber: number,
-): Promise<number> {
-  const db = getDatabase();
-  try {
-    const result = await db.execute(
-      `SELECT COUNT(*) as count
-       FROM recordings r
-       JOIN bible_texts bt ON bt.id = r.bible_text_id
-       WHERE bt.bible_id = ? AND bt.book_id = ? AND bt.chapter_number = ?`,
-      [bibleId, bookId, chapterNumber],
-    );
-    return (
-      Number((result?.rows as unknown as { count: number }[])?.at(0)?.count) ||
-      0
-    );
-  } catch (error) {
-    log.error('Error counting chapter recordings', { error });
-    return 0;
-  }
-}
-
-export async function countChapterRecordingsByUser(
-  bibleId: number,
-  bookId: number,
-  chapterNumber: number,
-  userId: number,
-): Promise<number> {
-  const db = getDatabase();
-  try {
-    const result = await db.execute(
-      `SELECT COUNT(*) as count
-       FROM recordings r
-       JOIN bible_texts bt ON bt.id = r.bible_text_id
-       WHERE bt.bible_id = ?
-         AND bt.book_id = ?
-         AND bt.chapter_number = ?
-         AND r.recorded_by_user_id = ?`,
-      [bibleId, bookId, chapterNumber, userId],
-    );
-    return (
-      Number((result?.rows as unknown as { count: number }[])?.at(0)?.count) ||
-      0
-    );
-  } catch (error) {
-    log.error('Error counting chapter recordings by user', { error });
-    return 0;
-  }
-}
-
 export async function getRecordedVerseNumbers(
   bibleId: number,
   bookId: number,

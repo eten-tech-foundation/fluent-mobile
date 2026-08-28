@@ -3,7 +3,6 @@ import { getConnectivitySnapshot } from '../services/connectivity';
 import { useRecordingEngine } from './useRecordingEngine';
 import { usePlaybackEngine } from './usePlaybackEngine';
 import { claimChapterOffline } from '../db/repository';
-import { countChapterRecordingsByUser } from '../db/queries';
 import { syncChapterClaim } from '../services/chapterClaimSync';
 import { useVerseAudio } from './useVerseAudio';
 import { logger } from '../utils/logger';
@@ -18,10 +17,6 @@ jest.mock('../db/repository', () => ({
   claimChapterOffline: jest.fn(),
 }));
 
-jest.mock('../db/queries', () => ({
-  countChapterRecordingsByUser: jest.fn(),
-}));
-
 jest.mock('../services/chapterClaimSync', () => ({
   syncChapterClaim: jest.fn(),
 }));
@@ -34,8 +29,6 @@ jest.mock('./useRecordingEngine');
 jest.mock('./usePlaybackEngine');
 
 const mockClaimChapterOffline = claimChapterOffline as jest.Mock;
-const mockCountChapterRecordingsByUser =
-  countChapterRecordingsByUser as jest.Mock;
 const mockSyncChapterClaim = syncChapterClaim as jest.Mock;
 const mockGetConnectivitySnapshot = getConnectivitySnapshot as jest.Mock;
 const mockUseRecordingEngine = useRecordingEngine as jest.Mock;
@@ -118,7 +111,6 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
       isCellular: false,
     });
     mockClaimChapterOffline.mockResolvedValue(true);
-    mockCountChapterRecordingsByUser.mockResolvedValue(1);
     mockSyncChapterClaim.mockResolvedValue({
       chapterAssignmentId: CHAPTER_ASSIGNMENT_ID,
       assignedUserId: USER_ID,
@@ -215,7 +207,7 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
   });
 
   describe('online (#268)', () => {
-    it('syncs claim on the user first chapter recording when unassigned', async () => {
+    it('syncs claim when the chapter is unassigned and online', async () => {
       const onChapterClaimed = jest.fn();
       const { result } = renderHook(() =>
         useVerseAudio({
@@ -229,12 +221,6 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
       await stopAfterStart(result);
 
       expect(mockClaimChapterOffline).not.toHaveBeenCalled();
-      expect(mockCountChapterRecordingsByUser).toHaveBeenCalledWith(
-        1,
-        2,
-        3,
-        USER_ID,
-      );
       expect(mockSyncChapterClaim).toHaveBeenCalledWith(
         CHAPTER_ASSIGNMENT_ID,
         USER_ID,
@@ -242,9 +228,24 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
       expect(onChapterClaimed).toHaveBeenCalled();
     });
 
-    it('does not claim online when the user already has multiple chapter recordings', async () => {
-      mockCountChapterRecordingsByUser.mockResolvedValue(2);
+    it('retries claim on a later take while the chapter remains unassigned', async () => {
+      const { result } = renderHook(() =>
+        useVerseAudio({
+          ...verseAudioArgs(),
+          persistTake,
+          loadTakes,
+        }),
+      );
 
+      mockSyncChapterClaim.mockRejectedValueOnce(new Error('network error'));
+
+      await stopAfterStart(result);
+      await stopAfterStart(result);
+
+      expect(mockSyncChapterClaim).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not claim again after a successful online claim in the same session', async () => {
       const { result } = renderHook(() =>
         useVerseAudio({
           ...verseAudioArgs(),
@@ -254,8 +255,9 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
       );
 
       await stopAfterStart(result);
+      await stopAfterStart(result);
 
-      expect(mockSyncChapterClaim).not.toHaveBeenCalled();
+      expect(mockSyncChapterClaim).toHaveBeenCalledTimes(1);
     });
 
     it('does not claim online when the chapter is already assigned locally', async () => {

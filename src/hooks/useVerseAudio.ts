@@ -21,7 +21,6 @@ import { getRemuxNativeModule } from '../audio/aacRemux';
 import { ensureSeekableTakeUri } from '../audio/ensureSeekableTakeUri';
 import { logger } from '../utils/logger';
 import { claimChapterOffline } from '../db/repository';
-import { countChapterRecordingsByUser } from '../db/queries';
 import { syncChapterClaim } from '../services/chapterClaimSync';
 import { usePlaybackEngine } from './usePlaybackEngine';
 import { useRecordingEngine } from './useRecordingEngine';
@@ -271,24 +270,16 @@ export function useVerseAudio({
               onChapterClaimed?.();
             }
           } else {
-            const userRecordingCount = await countChapterRecordingsByUser(
-              chapterClaim.bibleId,
-              chapterClaim.bookId,
-              chapterClaim.chapterNumber,
+            const response = await syncChapterClaim(
+              chapterAssignmentId,
               userId,
             );
-            if (userRecordingCount === 1) {
-              const response = await syncChapterClaim(
-                chapterAssignmentId,
-                userId,
-              );
-              if (
-                !response.hasClaimConflict &&
-                response.assignedUserId === userId
-              ) {
-                chapterAssignedRef.current = true;
-                onChapterClaimed?.();
-              }
+            if (
+              !response.hasClaimConflict &&
+              response.assignedUserId === userId
+            ) {
+              chapterAssignedRef.current = true;
+              onChapterClaimed?.();
             }
           }
         }
