@@ -1,10 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
-  FlatList,
   Linking,
   Platform,
-  SectionList,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -102,6 +101,9 @@ type RecordTabProps = {
  * ordered by take_number ASC; exclusive playback is enforced by the single
  * playback engine inside useVerseAudio (tracked via playingTakeId).
  * Cross-account All Takes toggle + canonical designation is #279.
+ * Take list and Source Text render inline (no independent scroll
+ * containers) inside a single page-level ScrollView beneath the pinned
+ * verse nav bar — see #404.
  */
 export function RecordTab({
   chapterData,
@@ -507,7 +509,14 @@ export function RecordTab({
         </View>
       ) : null}
 
-      <View style={[styles.main, showReview && styles.mainTopAligned]}>
+      <ScrollView
+        style={styles.main}
+        contentContainerStyle={[
+          styles.mainContent,
+          !showReview && styles.mainContentCentered,
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
         {showCapture ? (
           <View style={styles.waveformWrap} testID="record-waveform">
             <PlaybackProgressBar
@@ -625,22 +634,13 @@ export function RecordTab({
             <View style={styles.reviewGroup}>
               {takeView === 'mine' ? (
                 hasTake ? (
-                  <FlatList
-                    testID="record-take-list"
-                    data={verseAudio.takes}
-                    keyExtractor={take => take.id}
-                    style={styles.takeList}
-                    contentContainerStyle={styles.takeListContent}
-                    renderItem={({ item: take }) => {
+                  <View style={styles.takeList} testID="record-take-list">
+                    {verseAudio.takes.map(take => {
                       const isSelected =
                         take.id === verseAudio.selectedTake?.id;
                       const isLoaded = verseAudio.playingTakeId === take.id;
                       const isThisPlaying =
                         isLoaded && verseAudio.state === 'playing';
-                      // Playback clears playingTakeId when a take reaches its end,
-                      // but the take stays in the player and stays scrubbable.
-                      // With nothing loaded yet, the selected draft still scrubs:
-                      // `seek` loads it without playing (#176).
                       const isSeekable =
                         verseAudio.loadedTakeId === take.id ||
                         (verseAudio.loadedTakeId === null && isSelected);
@@ -648,78 +648,82 @@ export function RecordTab({
                         ? 'canonicalReadOnly'
                         : 'selection';
                       return (
-                        <DraftTakeRow
-                          takeNumber={take.takeNumber}
-                          isSelected={isSelected}
-                          isPlaying={isThisPlaying}
-                          leadingIndicator={leadingIndicator}
-                          isCanonical={
-                            take.id === verseAudio.ownCanonicalTakeId
-                          }
-                          positionMs={isLoaded ? verseAudio.positionMs : 0}
-                          durationMs={
-                            isLoaded && verseAudio.durationMs > 0
-                              ? verseAudio.durationMs
-                              : take.durationMs ?? 0
-                          }
-                          onPlayPause={() => {
-                            void (isThisPlaying
-                              ? verseAudio.pausePlayback()
-                              : verseAudio.playTake(take));
-                          }}
-                          onSelect={() => {
-                            void verseAudio.selectTake(take.id);
-                          }}
-                          onDelete={() => handleDeleteTake(take)}
-                          onSeek={
-                            isSeekable
-                              ? ms => {
-                                  void verseAudio.seek(ms);
-                                }
-                              : undefined
-                          }
-                        />
+                        <View key={take.id} style={styles.takeItemSpacing}>
+                          <DraftTakeRow
+                            takeNumber={take.takeNumber}
+                            isSelected={isSelected}
+                            isPlaying={isThisPlaying}
+                            leadingIndicator={leadingIndicator}
+                            isCanonical={
+                              take.id === verseAudio.ownCanonicalTakeId
+                            }
+                            positionMs={isLoaded ? verseAudio.positionMs : 0}
+                            durationMs={
+                              isLoaded && verseAudio.durationMs > 0
+                                ? verseAudio.durationMs
+                                : take.durationMs ?? 0
+                            }
+                            onPlayPause={() => {
+                              void (isThisPlaying
+                                ? verseAudio.pausePlayback()
+                                : verseAudio.playTake(take));
+                            }}
+                            onSelect={() => {
+                              void verseAudio.selectTake(take.id);
+                            }}
+                            onDelete={() => handleDeleteTake(take)}
+                            onSeek={
+                              isSeekable
+                                ? ms => {
+                                    void verseAudio.seek(ms);
+                                  }
+                                : undefined
+                            }
+                          />
+                        </View>
                       );
-                    }}
-                  />
+                    })}
+                  </View>
                 ) : null
               ) : (
-                <SectionList
-                  testID="record-all-take-list"
-                  sections={groupTakesByOwner(verseAudio.allTakes)}
-                  keyExtractor={take => take.id}
-                  style={styles.takeList}
-                  contentContainerStyle={styles.takeListContent}
-                  renderSectionHeader={({ section }) => (
-                    <TakeGroupHeader displayName={section.title} />
-                  )}
-                  renderItem={({ item: take }) => {
-                    const isLoaded = verseAudio.playingTakeId === take.id;
-                    const isThisPlaying =
-                      isLoaded && verseAudio.state === 'playing';
-                    return (
-                      <SharedTakeRow
-                        takeNumber={take.takeNumber}
-                        isPlaying={isThisPlaying}
-                        isCanonical={take.isCanonical}
-                        positionMs={isLoaded ? verseAudio.positionMs : 0}
-                        durationMs={
-                          isLoaded && verseAudio.durationMs > 0
-                            ? verseAudio.durationMs
-                            : take.durationMs ?? 0
-                        }
-                        onPlayPause={() => {
-                          void (isThisPlaying
-                            ? verseAudio.pausePlayback()
-                            : verseAudio.playTake(take));
-                        }}
-                        onDesignateCanonical={() => {
-                          void verseAudio.setCanonical(take.id);
-                        }}
-                      />
-                    );
-                  }}
-                />
+                <View style={styles.takeList} testID="record-all-take-list">
+                  {groupTakesByOwner(verseAudio.allTakes).map(section => (
+                    <View
+                      key={section.ownerId ?? 'unassigned'}
+                      style={styles.takeItemSpacing}
+                    >
+                      <TakeGroupHeader displayName={section.title} />
+                      {section.data.map(take => {
+                        const isLoaded = verseAudio.playingTakeId === take.id;
+                        const isThisPlaying =
+                          isLoaded && verseAudio.state === 'playing';
+                        return (
+                          <View key={take.id} style={styles.takeItemSpacing}>
+                            <SharedTakeRow
+                              takeNumber={take.takeNumber}
+                              isPlaying={isThisPlaying}
+                              isCanonical={take.isCanonical}
+                              positionMs={isLoaded ? verseAudio.positionMs : 0}
+                              durationMs={
+                                isLoaded && verseAudio.durationMs > 0
+                                  ? verseAudio.durationMs
+                                  : take.durationMs ?? 0
+                              }
+                              onPlayPause={() => {
+                                void (isThisPlaying
+                                  ? verseAudio.pausePlayback()
+                                  : verseAudio.playTake(take));
+                              }}
+                              onDesignateCanonical={() => {
+                                void verseAudio.setCanonical(take.id);
+                              }}
+                            />
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ))}
+                </View>
               )}
 
               {takeView === 'mine' ? (
@@ -773,7 +777,7 @@ export function RecordTab({
           onToggle={() => setSourceExpanded(v => !v)}
           text={selected?.text}
         />
-      </View>
+      </ScrollView>
 
       {showSourceAudio ? (
         <SourceAudioPlayerBar
@@ -823,13 +827,17 @@ const styles = StyleSheet.create({
   dim: { opacity: 0.35 },
   main: {
     flex: 1,
-    paddingHorizontal: theme.spacing.lg,
-    gap: theme.spacing.md,
-    justifyContent: 'center',
   },
-  mainTopAligned: {
-    justifyContent: 'flex-start',
+  mainContent: {
+    paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.lg,
+    gap: theme.spacing.md,
+  },
+  mainContentCentered: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingTop: 0,
   },
   waveformWrap: {
     minHeight: theme.waveform.tallHeight,
@@ -904,12 +912,12 @@ const styles = StyleSheet.create({
   toggleLabelActive: {
     color: theme.colors.foreground,
   },
+
   takeList: {
     width: '100%',
-    maxHeight: theme.waveform.tallHeight * 3.5,
   },
-  takeListContent: {
-    gap: theme.spacing.sm,
+  takeItemSpacing: {
+    marginBottom: theme.spacing.sm,
   },
   newTakeButton: {
     flexDirection: 'row',
