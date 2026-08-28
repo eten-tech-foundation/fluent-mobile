@@ -294,7 +294,6 @@ export function useVerseAudio({
         }
       } catch (claimError) {
         log.error('Chapter claim failed', {
-          chapterAssignmentId,
           message:
             claimError instanceof Error
               ? claimError.message

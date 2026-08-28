@@ -26,7 +26,6 @@ import {
   type NormalizedClaimChapterAssignmentResponse,
 } from '../types/api/chapterClaim';
 import type { SubmitChapterAssignmentResponse } from '../types/api/submitChapterAssignment';
-import { getApiBaseUrl } from '../config/apiBaseUrl';
 import { checkServerReachable } from './connectivity';
 import {
   authedMultipartRequest,
@@ -41,9 +40,6 @@ import {
   buildVerseAudioFormData,
   verseAudioUploadPath,
 } from './verseAudioFormData';
-import { logger } from '../utils/logger';
-
-const log = logger.create('FluentAPI');
 
 function translationResourcesVersePath(
   projectId: number,
@@ -106,15 +102,10 @@ async function uploadVerseAudioRequest(
 async function claimChapterAssignmentRequest(
   chapterAssignmentId: number,
 ): Promise<NormalizedClaimChapterAssignmentResponse> {
-  const path = `/chapter-assignments/${chapterAssignmentId}/claim`;
-  log.info('claimChapterAssignment POST', {
-    url: `${getApiBaseUrl()}${path}`,
-    chapterAssignmentId,
-  });
-
-  const api = await authedRequest<ClaimChapterAssignmentResponse>(path, {
-    method: 'POST',
-  });
+  const api = await authedRequest<ClaimChapterAssignmentResponse>(
+    `/chapter-assignments/${chapterAssignmentId}/claim`,
+    { method: 'POST' },
+  );
 
   return normalizeClaimResponse(api);
 }
