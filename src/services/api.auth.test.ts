@@ -22,6 +22,22 @@ describe('buildHeaders', () => {
     });
   });
 
+  it('prefers an explicit bearer over the global token', () => {
+    authToken.set('global-token');
+    expect(buildHeaders(undefined, 'explicit-token')).toEqual({
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer explicit-token',
+    });
+  });
+
+  it('uses global token when explicit bearer is omitted', () => {
+    authToken.set('global-token');
+    expect(buildHeaders()).toEqual({
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer global-token',
+    });
+  });
+
   it('merges extra headers', () => {
     authToken.set('session-abc');
     expect(buildHeaders({ 'x-client-type': 'mobile' })).toEqual({

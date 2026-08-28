@@ -89,12 +89,14 @@ async function signInRequest(
 
 async function uploadVerseAudioRequest(
   params: UploadVerseAudioParams,
+  token?: string,
 ): Promise<VerseAudioResponse> {
   const formData = await buildVerseAudioFormData(params);
   const raw = await authedMultipartRequest<unknown>(
     verseAudioUploadPath(params.projectUnitId, params.bibleTextId),
     formData,
     { method: 'PUT' },
+    token,
   );
   return parseVerseAudioResponse(raw);
 }
@@ -137,16 +139,28 @@ export const FluentAPI = {
 
   getBibles: (): Promise<ApiBible[]> => publicRequest<ApiBible[]>('/bibles'),
 
-  getUserByEmail: (email: string): Promise<ApiUser> =>
-    authedRequest<ApiUser>(`/users/email/${encodeURIComponent(email)}`),
+  getUserByEmail: (email: string, token?: string): Promise<ApiUser> =>
+    authedRequest<ApiUser>(
+      `/users/email/${encodeURIComponent(email)}`,
+      undefined,
+      token,
+    ),
 
-  getUserProjects: (userId: number): Promise<UserProjectsResponse> =>
-    authedRequest<UserProjectsResponse>(`/users/${userId}/projects`),
+  getUserProjects: (
+    userId: number,
+    token?: string,
+  ): Promise<UserProjectsResponse> =>
+    authedRequest<UserProjectsResponse>(
+      `/users/${userId}/projects`,
+      undefined,
+      token,
+    ),
 
   getChapterAssignments: (
     userId: number,
     updatedAfter?: string,
     excludeProjectIds?: number[],
+    token?: string,
   ): Promise<ChapterAssignmentsResponse> => {
     const params = new URLSearchParams();
     if (updatedAfter) params.append('updatedAfter', updatedAfter);
@@ -156,15 +170,20 @@ export const FluentAPI = {
     const query = params.toString();
     return authedRequest<ChapterAssignmentsResponse>(
       `/users/${userId}/chapter-assignments/all${query ? `?${query}` : ''}`,
+      undefined,
+      token,
     );
   },
 
   /** Role-filtered assignments — matches web My Work / My History. */
   getUserChapterAssignments: (
     userId: number,
+    token?: string,
   ): Promise<UserChapterAssignmentsResponse> =>
     authedRequest<UserChapterAssignmentsResponse>(
       `/users/${userId}/chapter-assignments`,
+      undefined,
+      token,
     ),
 
   /**
@@ -196,7 +215,8 @@ export const FluentAPI = {
    */
   uploadVerseAudio: (
     params: UploadVerseAudioParams,
-  ): Promise<VerseAudioResponse> => uploadVerseAudioRequest(params),
+    token?: string,
+  ): Promise<VerseAudioResponse> => uploadVerseAudioRequest(params, token),
 
   claimChapterAssignment: (
     chapterAssignmentId: number,

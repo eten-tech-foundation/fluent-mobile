@@ -21,8 +21,11 @@ jest.mock('./keychain', () => ({
 }));
 
 const mockSignOut = jest.fn();
+const mockResolveReauthForUser = jest.fn();
 jest.mock('./authSession', () => ({
   signOut: (...args: unknown[]) => mockSignOut(...args),
+  resolveReauthForUser: (...args: unknown[]) =>
+    mockResolveReauthForUser(...args),
 }));
 
 const mockGetActiveUserId = jest.fn();
@@ -82,6 +85,7 @@ describe('accountSession', () => {
       });
 
       expect(mockClearCredentials).toHaveBeenCalledWith('active-1');
+      expect(mockResolveReauthForUser).toHaveBeenCalledWith('active-1');
       expect(mockSetItemSync).toHaveBeenCalledWith(
         'known_user_ids',
         'bad-2,good-3',
@@ -110,6 +114,7 @@ describe('accountSession', () => {
       });
 
       expect(mockClearCredentials).toHaveBeenCalledWith('active-1');
+      expect(mockResolveReauthForUser).toHaveBeenCalledWith('active-1');
       expect(mockSignOut).toHaveBeenCalled();
     });
   });
