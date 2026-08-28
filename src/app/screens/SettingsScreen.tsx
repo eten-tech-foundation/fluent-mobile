@@ -23,6 +23,7 @@ import { loadPendingUploadCount } from '../../hooks/usePendingUploads';
 import { usePreferences } from '../../hooks/usePreferences';
 import { hrefs } from '../../navigation/hrefs';
 import { useAuthSession } from '../../navigation/AuthSessionProvider';
+import { resetNavigationAfterAccountSwitch } from '../../navigation/resetNavigationAfterAccountSwitch';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import { logger } from '../../utils/logger';
 
@@ -45,10 +46,8 @@ export default function SettingsScreen() {
   );
 
   const goBack = useCallback(() => {
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
+    // Settings is a Drawer sibling of `(stack)`, so `canGoBack()` is often false
+    // after More Settings. Always land on home to avoid a blank white surface (#348).
     router.replace(hrefs.home());
   }, [router]);
 
@@ -61,7 +60,7 @@ export default function SettingsScreen() {
     const result = await signOutCurrentDeviceAccount();
     if (result.kind === 'switched') {
       onUserSwitched();
-      goBack();
+      resetNavigationAfterAccountSwitch(router);
       return;
     }
     onSignOut();
