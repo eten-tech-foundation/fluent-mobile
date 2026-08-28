@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,9 +12,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useRouter } from 'expo-router';
+import { ApiUser } from '../../types/api/responses';
 import { theme } from '../../theme';
 import { useLogin } from '../../hooks/useLogin';
 import { AuthFormError } from '../../components/ui/AuthFormError';
+import { REAUTH_SUBMIT_BUTTON } from '../../constants/messages';
 import { hrefs } from '../../navigation/hrefs';
 import { useAuthSession } from '../../navigation/AuthSessionProvider';
 import { authFormStyles as styles } from './authFormStyles';
@@ -22,23 +24,40 @@ import { authFormStyles as styles } from './authFormStyles';
 interface LoginScreenProps {
   /**
    * Override post-login handling. Defaults to cold `signIn` from auth session.
-   * Pass explicitly for Add User (`signInAddUser` + navigate home).
+   * Pass explicitly for Add User (`signInAddUser` + navigate home) or reauth.
    */
-  onLoginSuccess?: (email: string) => void;
+  onLoginSuccess?: (email: string, preloadedUser?: ApiUser) => void;
   /**
    * Which route group legal / forgot-password links should target.
    * Use `app` when LoginScreen is shown as Add User (authenticated stack).
    */
   legalLinksGroup?: 'auth' | 'app';
+  initialEmail?: string;
+  title?: string;
+  subtitle?: string;
+  /** Password-only re-sign-in (session refresh); locks email and hides legal/footer links. */
+  variant?: 'default' | 'reauth' | 'addAccount';
 }
 
 export default function LoginScreen({
   onLoginSuccess: onLoginSuccessProp,
   legalLinksGroup = 'auth',
+  initialEmail = '',
+  title = 'Welcome',
+  subtitle = 'Log in to continue to Fluent.',
+  variant = 'default',
 }: LoginScreenProps) {
+  const isReauth = variant === 'reauth';
+  const sessionMode =
+    variant === 'addAccount'
+      ? 'addAccount'
+      : variant === 'reauth'
+      ? 'reauth'
+      : 'login';
   const { signIn } = useAuthSession();
   const onLoginSuccess = onLoginSuccessProp ?? signIn;
   const router = useRouter();
+  const passwordInputRef = useRef<TextInput>(null);
   const {
     email,
     setEmail,
@@ -50,10 +69,33 @@ export default function LoginScreen({
     globalError,
     isSubmitting,
     handleLogin,
-  } = useLogin(onLoginSuccess);
+  } = useLogin(onLoginSuccess, { initialEmail, sessionMode });
+
+  useEffect(() => {
+    if (!isReauth) {
+      return;
+    }
+    const focusTimer = setTimeout(() => {
+      passwordInputRef.current?.focus();
+      passwordInputRef.current?.setNativeProps({
+        selection: { start: 0, end: 0 },
+      });
+    }, 150);
+    return () => clearTimeout(focusTimer);
+  }, [isReauth]);
+
+  const focusPasswordAtStart = () => {
+    if (!isReauth) {
+      return;
+    }
+    passwordInputRef.current?.setNativeProps({
+      selection: { start: 0, end: 0 },
+    });
+  };
 
   const hasEmailError = Boolean(fieldErrors.email || globalError);
   const hasPasswordError = Boolean(fieldErrors.password || globalError);
+  const showEmailLabel = isReauth || email.length > 0;
 
   const forgotHref =
     legalLinksGroup === 'app' ? hrefs.forgotPasswordApp : hrefs.forgotPassword;
@@ -74,7 +116,7 @@ export default function LoginScreen({
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.card}>
+        <View style={[styles.card, isReauth && styles.cardCompact]}>
           <Image
             accessibilityLabel="Fluent logo"
             source={require('../../assets/icons/Fluent-Blue-Icon-720.png')}
@@ -84,12 +126,12 @@ export default function LoginScreen({
 
           <View style={styles.wrapper}>
             <Text style={styles.title} accessibilityRole="header">
-              Welcome
+              {title}
             </Text>
-            <Text style={styles.subtitle}>Log in to continue to Fluent.</Text>
+            <Text style={styles.subtitle}>{subtitle}</Text>
 
             <View style={styles.fieldContainer}>
-              {email.length > 0 && (
+              {showEmailLabel ? (
                 <Text
                   style={[
                     styles.floatingLabel,
@@ -98,17 +140,24 @@ export default function LoginScreen({
                 >
                   Email address*
                 </Text>
-              )}
+              ) : null}
               <TextInput
-                style={[styles.input, hasEmailError && styles.inputErrorBorder]}
-                placeholder={email.length > 0 ? '' : 'Email address*'}
+                style={[
+                  styles.input,
+                  hasEmailError && styles.inputErrorBorder,
+                  isReauth && styles.inputDisabled,
+                ]}
+                placeholder={showEmailLabel ? '' : 'Email address*'}
                 placeholderTextColor={theme.colors.mutedForeground}
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
                 keyboardType="email-address"
-                editable={!isSubmitting}
+                editable={!isReauth && !isSubmitting}
+                showSoftInputOnFocus={!isReauth}
+                selection={isReauth ? { start: 0, end: 0 } : undefined}
                 accessibilityLabel="Email address"
+                accessibilityState={{ disabled: isReauth }}
                 testID="login-email-input"
               />
               <AuthFormError
@@ -130,6 +179,7 @@ export default function LoginScreen({
               )}
               <View style={styles.passwordWrapper}>
                 <TextInput
+                  ref={passwordInputRef}
                   style={[
                     styles.passwordInput,
                     hasPasswordError && styles.inputErrorBorder,
@@ -141,6 +191,7 @@ export default function LoginScreen({
                   autoCapitalize="none"
                   secureTextEntry={!showPassword}
                   editable={!isSubmitting}
+                  onFocus={focusPasswordAtStart}
                   accessibilityLabel="Password"
                   testID="login-password-input"
                 />
@@ -171,22 +222,24 @@ export default function LoginScreen({
               />
             </View>
 
-            <TouchableOpacity
-              style={styles.linkButton}
-              onPress={() =>
-                router.push(
-                  forgotHref({
-                    initialEmail: email.trim() || undefined,
-                  }),
-                )
-              }
-              disabled={isSubmitting}
-              accessibilityRole="button"
-              accessibilityLabel="Forgot password"
-              testID="login-forgot-password-link"
-            >
-              <Text style={styles.linkText}>Forgot password?</Text>
-            </TouchableOpacity>
+            {!isReauth ? (
+              <TouchableOpacity
+                style={styles.linkButton}
+                onPress={() =>
+                  router.push(
+                    forgotHref({
+                      initialEmail: email.trim() || undefined,
+                    }),
+                  )
+                }
+                disabled={isSubmitting}
+                accessibilityRole="button"
+                accessibilityLabel="Forgot password"
+                testID="login-forgot-password-link"
+              >
+                <Text style={styles.linkText}>Forgot password?</Text>
+              </TouchableOpacity>
+            ) : null}
 
             <TouchableOpacity
               style={[
@@ -197,7 +250,7 @@ export default function LoginScreen({
               disabled={isSubmitting}
               activeOpacity={0.8}
               accessibilityRole="button"
-              accessibilityLabel="Continue"
+              accessibilityLabel={isReauth ? REAUTH_SUBMIT_BUTTON : 'Continue'}
               accessibilityState={{
                 disabled: isSubmitting,
                 busy: isSubmitting,
@@ -207,33 +260,37 @@ export default function LoginScreen({
               {isSubmitting ? (
                 <ActivityIndicator color={theme.colors.primaryForeground} />
               ) : (
-                <Text style={styles.primaryButtonText}>Continue</Text>
+                <Text style={styles.primaryButtonText}>
+                  {isReauth ? REAUTH_SUBMIT_BUTTON : 'Continue'}
+                </Text>
               )}
             </TouchableOpacity>
           </View>
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              By continuing, you agree to the{' '}
-              <Text
-                style={styles.footerLink}
-                accessibilityRole="link"
-                onPress={() => router.push(privacyHref)}
-                testID="login-privacy-link"
-              >
-                Privacy Policy
-              </Text>{' '}
-              and{' '}
-              <Text
-                style={styles.footerLink}
-                accessibilityRole="link"
-                onPress={() => router.push(termsHref)}
-                testID="login-terms-link"
-              >
-                Terms.
+          {!isReauth ? (
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>
+                By continuing, you agree to the{' '}
+                <Text
+                  style={styles.footerLink}
+                  accessibilityRole="link"
+                  onPress={() => router.push(privacyHref)}
+                  testID="login-privacy-link"
+                >
+                  Privacy Policy
+                </Text>{' '}
+                and{' '}
+                <Text
+                  style={styles.footerLink}
+                  accessibilityRole="link"
+                  onPress={() => router.push(termsHref)}
+                  testID="login-terms-link"
+                >
+                  Terms.
+                </Text>
               </Text>
-            </Text>
-          </View>
+            </View>
+          ) : null}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

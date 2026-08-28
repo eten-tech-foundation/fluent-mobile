@@ -64,6 +64,18 @@ jest.mock('../services/connectivity', () => ({
   getConnectivitySnapshot: jest.fn(),
 }));
 
+jest.mock('../services/chapterClaimSync', () => ({
+  syncChapterClaim: jest.fn(),
+}));
+
+jest.mock('../db/repository', () => ({
+  addRecordingTake: jest.fn(),
+  deleteRecordingTake: jest.fn(),
+  getTakesForVerse: jest.fn(),
+  selectRecordingTake: jest.fn(),
+  claimChapterOffline: jest.fn(),
+}));
+
 const mockGetConnectivitySnapshot = getConnectivitySnapshot as jest.Mock;
 
 function makeTake(overrides: Partial<Recording> = {}): Recording {

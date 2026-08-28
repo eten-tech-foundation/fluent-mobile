@@ -25,10 +25,15 @@ import {
   getUserEmailSync,
   KV_KEYS,
   MAX_DEVICE_ACCOUNTS,
+  registerKnownUser,
   setActiveUserId,
   setUserEmail,
   setUserSync,
   switchActiveUser,
+  setReauthRequired,
+  clearReauthRequired,
+  isReauthRequired,
+  isReauthRequiredForActiveUser,
 } from './storage';
 
 describe('storage (KV wrapper)', () => {
@@ -114,6 +119,19 @@ describe('storage (KV wrapper)', () => {
     });
   });
 
+  describe('registerKnownUser', () => {
+    it('adds the user and email without changing the active user pointer', () => {
+      setUserSync('1', 'one@example.com');
+      registerKnownUser('2', 'two@example.com');
+
+      expect(getActiveUserId()).toBe('1');
+      expect(getKnownUserIds()).toEqual(['1', '2']);
+      expect(getUserEmail('2')).toBe('two@example.com');
+      expect(mockKv.get(KV_KEYS.USER_ID)).toBe('1');
+      expect(mockKv.get(KV_KEYS.USER_EMAIL)).toBe('one@example.com');
+    });
+  });
+
   describe('setUserSync', () => {
     it('sets the active user, adds them to known users, and stores their email', () => {
       setUserSync('1', 'one@example.com');
@@ -149,6 +167,23 @@ describe('storage (KV wrapper)', () => {
 
       expect(getActiveUserId()).toBe('3');
       expect(mockKv.get(KV_KEYS.USER_EMAIL)).toBe('');
+    });
+  });
+
+  describe('reauth required flag', () => {
+    it('round-trips per-user reauth state', () => {
+      expect(isReauthRequired('7')).toBe(false);
+      setReauthRequired('7');
+      expect(isReauthRequired('7')).toBe(true);
+      clearReauthRequired('7');
+      expect(isReauthRequired('7')).toBe(false);
+    });
+
+    it('reflects the active user reauth state', () => {
+      setUserSync('3', 'three@example.com');
+      expect(isReauthRequiredForActiveUser()).toBe(false);
+      setReauthRequired('3');
+      expect(isReauthRequiredForActiveUser()).toBe(true);
     });
   });
 

@@ -33,6 +33,10 @@ export const authFormStyles = StyleSheet.create({
       android: { elevation: 8 },
     }),
   },
+  /** Reauth screen: no footer/forgot-password — drop fixed card height. */
+  cardCompact: {
+    minHeight: 0,
+  },
   wrapper: { width: '100%', alignItems: 'center' },
   logo: { height: 55, width: 180, marginBottom: theme.spacing.lg },
   title: {
@@ -107,6 +111,10 @@ export const authFormStyles = StyleSheet.create({
     borderColor: theme.colors.destructive,
     borderWidth: 1.5,
     backgroundColor: theme.colors.background,
+  },
+  inputDisabled: {
+    backgroundColor: theme.colors.background,
+    color: theme.colors.syncStatusOffline,
   },
   errorRow: {
     flexDirection: 'row',

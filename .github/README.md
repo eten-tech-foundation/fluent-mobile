@@ -14,7 +14,7 @@ Workflows for Fluent Mobile (**Android-only**).
 | `eas-build.yml` | push tag `v*` | Sync `APP_VERSION_FALLBACK` in `app.config.ts` with tag; hand off to EAS |
 | `preview-build.yml` | PR label `preview-build` | Optional isolated Android preview APK (**PR comment only** — debug) |
 | `qa-handoff.yml` | PR merged | Needs QA? Yes → issue handoff + assign Roslin + Project 4 `In QA` |
-| `nightly-preview.yml` | cron (06:00 UTC) + `workflow_dispatch` | Nightly **binary-only** Android internal APK (dev API); install comments on recent handoffs |
+| `nightly-preview.yml` | cron 23:17 PT (APK) + 09:07 PT (Slack) + `workflow_dispatch` | Nightly **binary-only** Android internal APK (dev API); Slack held to 09:00–16:00 PT |
 
 ## PR template + CODEOWNERS
 
@@ -58,7 +58,7 @@ Scheduled (and manually dispatchable) workflow [`.github/workflows/nightly-previ
 - Always starts a **new** EAS Android build with profile **`nightly`** (internal APK, baked `https://dev.api.fluent.bible`).
 - **No OTA** (`eas update` is not used). Expo Updates stay disabled for `nightly` so the APK is self-contained.
 - Skips when `main` HEAD matches the last successful nightly unless `force_build` is set.
-- Posts a GitHub Actions job summary, optional Slack notification, and install comments on recent QA handoff issues.
+- Posts a GitHub Actions job summary and install comments on recent QA handoff issues. Slack waits until **09:00–16:00 America/Los_Angeles** (success, skip, and no-APK) — incoming webhooks cannot mute phone push. A run that did not produce an APK uses the same `:zzz:` skip-style card as “no new commits” (not a red X), with an Actions log link. Daytime `workflow_dispatch` still Slacks immediately.
 
 ### Secrets
 

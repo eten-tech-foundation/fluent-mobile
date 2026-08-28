@@ -21,6 +21,10 @@ const mockMarkRecordingFailed = jest.fn();
 const mockUploadVerseAudio = jest.fn();
 const mockSetChapterUploadWorker = jest.fn();
 const mockGetCredentials = jest.fn();
+const mockGetActiveUserId = jest.fn();
+const mockSetReauthRequired = jest.fn();
+const mockEmitAuthReauthRequired = jest.fn();
+const mockEmitUploadSessionEvent = jest.fn();
 
 jest.mock('../db/repository', () => ({
   getPendingRecordings: (...args: unknown[]) =>
@@ -45,6 +49,18 @@ jest.mock('./uploadOrchestrator', () => ({
 
 jest.mock('./keychain', () => ({
   getCredentials: (...args: unknown[]) => mockGetCredentials(...args),
+}));
+
+jest.mock('./storage', () => ({
+  getActiveUserId: (...args: unknown[]) => mockGetActiveUserId(...args),
+  setReauthRequired: (...args: unknown[]) => mockSetReauthRequired(...args),
+}));
+
+jest.mock('./syncEvents', () => ({
+  emitUploadSessionEvent: (...args: unknown[]) =>
+    mockEmitUploadSessionEvent(...args),
+  emitAuthReauthRequired: (...args: unknown[]) =>
+    mockEmitAuthReauthRequired(...args),
 }));
 
 const FILE_URI = 'file:///mock-document/recordings/verse-1.m4a';
@@ -96,6 +112,7 @@ describe('recordingSync', () => {
     mockMarkRecordingFailed.mockResolvedValue(undefined);
     mockUploadVerseAudio.mockResolvedValue(successResponse());
     mockGetCredentials.mockResolvedValue(null);
+    mockGetActiveUserId.mockReturnValue('2');
   });
 
   afterEach(() => {
@@ -106,21 +123,13 @@ describe('recordingSync', () => {
     const result = await syncPendingRecordings('tok-1', { delay });
 
     expect(result).toEqual({ uploaded: 1, failed: 0 });
-    expect(authToken.get()).toBe('tok-1');
-    expect(mockSetRecordingSyncStatus).toHaveBeenCalledWith(
-      'rec-1',
-      'uploading',
+    expect(mockUploadVerseAudio).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectUnitId: 12,
+        bibleTextId: 42,
+      }),
+      'tok-1',
     );
-    expect(mockUploadVerseAudio).toHaveBeenCalledWith({
-      projectUnitId: 12,
-      bibleTextId: 42,
-      file: {
-        uri: FILE_URI,
-        name: 'verse-1.m4a',
-        type: 'audio/mp4',
-      },
-      durationSeconds: 1.5,
-    });
     expect(mockMarkRecordingUploaded).toHaveBeenCalledWith(
       'rec-1',
       'unit-12/text-42',
@@ -137,8 +146,10 @@ describe('recordingSync', () => {
     await syncPendingRecordings('active-tok', { delay });
 
     expect(mockGetCredentials).toHaveBeenCalledWith('7');
-    expect(authToken.get()).toBe('owner-tok');
-    expect(mockUploadVerseAudio).toHaveBeenCalled();
+    expect(mockUploadVerseAudio).toHaveBeenCalledWith(
+      expect.any(Object),
+      'owner-tok',
+    );
   });
 
   it('falls back to the pass token when owner credentials are missing', async () => {
@@ -150,7 +161,10 @@ describe('recordingSync', () => {
     await syncPendingRecordings('pass-tok', { delay });
 
     expect(mockGetCredentials).toHaveBeenCalledWith('9');
-    expect(authToken.get()).toBe('pass-tok');
+    expect(mockUploadVerseAudio).toHaveBeenCalledWith(
+      expect.any(Object),
+      'pass-tok',
+    );
   });
 
   it('filters by chapter when provided (orchestrator batching)', async () => {
@@ -265,6 +279,25 @@ describe('recordingSync', () => {
 
     expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
     expect(mockSetRecordingSyncStatus).toHaveBeenCalledWith('rec-1', 'pending');
+    expect(mockSetReauthRequired).toHaveBeenCalledWith('2');
+    expect(mockEmitAuthReauthRequired).toHaveBeenCalledWith('2');
+  });
+
+  it('marks the recording owner for reauth when owner token upload returns 401', async () => {
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ recordedByUserId: 7 }),
+    ]);
+    mockGetCredentials.mockResolvedValue({ token: 'owner-tok' });
+    mockGetActiveUserId.mockReturnValue('2');
+    mockUploadVerseAudio.mockRejectedValue(new AuthError('session expired'));
+
+    await expect(
+      syncPendingRecordings('active-tok', { delay }),
+    ).rejects.toBeInstanceOf(AuthError);
+
+    expect(mockSetReauthRequired).toHaveBeenCalledWith('7');
+    expect(mockEmitAuthReauthRequired).not.toHaveBeenCalled();
+    expect(mockSetRecordingSyncStatus).toHaveBeenCalledWith('rec-1', 'pending');
   });
 
   it('honors abort signal between recordings and leaves status pending', async () => {
@@ -365,7 +398,10 @@ describe('recordingSync', () => {
       controller.signal,
     );
 
-    expect(authToken.get()).toBe('worker-tok');
+    expect(mockUploadVerseAudio).toHaveBeenCalledWith(
+      expect.any(Object),
+      'worker-tok',
+    );
     expect(mockGetPendingRecordings).toHaveBeenCalledWith({
       bookId: 40,
       chapterNumber: 2,

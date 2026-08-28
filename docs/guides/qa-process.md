@@ -39,7 +39,7 @@ Done     Automation:
          - Project 4 → In QA
          |
          v
-   Next nightly APK (06:00 UTC)
+   Next nightly APK (23:17 America/Los_Angeles; Slack 09:00–16:00 PT)
          |
          v
        QA on nightly
