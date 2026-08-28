@@ -4,7 +4,7 @@ Quick map for Cursor agents, other coding tools, and new contributors. Verified 
 
 **Delivery judgment** (acceptance criteria, scope, abstraction budget, human device QA): root [`AGENTS.md`](../AGENTS.md).
 
-**Any AI tool (not only Cursor):** start at [`CLAUDE.md`](../CLAUDE.md). Board mutations: [`guides/project-board.md`](guides/project-board.md). New deps: [`guides/expo-first-dependencies.md`](guides/expo-first-dependencies.md).
+**Any AI tool (not only Cursor):** start at [`CLAUDE.md`](../CLAUDE.md). Board mutations: [`guides/project-board.md`](guides/project-board.md). Foreign tickets (other repos / Linear): [`.cursor/rules/foreign-tickets.mdc`](../.cursor/rules/foreign-tickets.mdc). New deps: [`guides/expo-first-dependencies.md`](guides/expo-first-dependencies.md).
 
 ## What this project is
 

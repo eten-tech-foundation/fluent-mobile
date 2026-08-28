@@ -1,0 +1,35 @@
+---
+description: Never mutate tickets outside fluent-mobile / Project 4 without stopping and explicit per-ticket confirmation
+alwaysApply: true
+---
+
+# Foreign tickets — stop and confirm
+
+This repo is **`eten-tech-foundation/fluent-mobile`**. Tracker is **org Project 4, view 9 (Fluent Mobile Board)** only. **Not Linear.**
+
+Applies to **Cursor and Claude Code** (and any agent reading these rules via `CLAUDE.md`).
+
+## In scope (no extra confirm)
+
+GitHub issues in **`eten-tech-foundation/fluent-mobile`** that are (or will be) on Project 4. Board edits still follow [project-board.mdc](./project-board.mdc) and [docs/guides/project-board.md](../../docs/guides/project-board.md).
+
+## Out of scope — stop. Do not act.
+
+Treat as foreign until the user **pauses this turn and explicitly confirms**, including:
+
+- Issues in **any other GitHub repo** (other Fluent, ETF, Gloo, or personal repos)
+- **Any org/user project that is not Project 4** (including Project 7)
+- **Linear** (or Jira, Notion, etc.) tickets
+- Status, Priority, assignee, labels, comments, close, or project-item moves on a ticket that is **not** a fluent-mobile issue
+
+Do **not** “helpfully” update, move, or comment on foreign tickets while working here.
+
+## Confirm bar (all must be true)
+
+Vague asks do **not** count: “clean up the board”, “sync tickets”, “while you’re in Linear”, “update the other Fluent tickets”, umbrella/org playbooks, or a blanket “yes”.
+
+1. **Stop.** Do not call GitHub/Linear/project write tools yet.
+2. List each ticket: tracker, **repo or project**, ID, and the **exact** mutation.
+3. Wait for the user, in **this** conversation, to **name those IDs** and approve **those** mutations.
+
+If confirmation is missing, partial, or ambiguous: **do nothing**. Ask once; do not proceed.
