@@ -16,6 +16,7 @@ import { getCredentials } from '../../services/keychain';
 import { switchActiveUser } from '../../services/storage';
 import { hrefs } from '../../navigation/hrefs';
 import { useAuthSession } from '../../navigation/AuthSessionProvider';
+import { resetNavigationAfterAccountSwitch } from '../../navigation/resetNavigationAfterAccountSwitch';
 import { useDeviceAccounts } from '../../hooks/useDeviceAccounts';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { logger } from '../../utils/logger';
@@ -67,11 +68,7 @@ export function AccountSwitcherPanel({
         notifyUserSwitched();
 
         onClose();
-        // Clear nested account-scoped screens before landing on home.
-        if (router.canDismiss()) {
-          router.dismissAll();
-        }
-        router.replace(hrefs.home({ newUserLoading: false }));
+        resetNavigationAfterAccountSwitch(router);
       } catch (error) {
         log.error('Account switch failed', { userId, error });
         setSwitchError(

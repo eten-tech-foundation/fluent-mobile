@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../theme';
 import { appStyles } from '../../app/appStyles';
 import { hrefs } from '../../navigation/hrefs';
+import { resetNavigationAfterAccountSwitch } from '../../navigation/resetNavigationAfterAccountSwitch';
 import { getActiveUserId } from '../../services/storage';
 import {
   signOutCurrentDeviceAccount,
@@ -124,8 +125,11 @@ export function UserSettingsMenu({
     setSwitchingUserId(userId);
     try {
       await switchToDeviceAccount(userId);
-      closeDrawer();
       onUserSwitched?.();
+      closeDrawer();
+      // Drop nested drafting/settings routes so the next account cannot land on
+      // a blank white screen (#348).
+      resetNavigationAfterAccountSwitch(router);
     } catch (error) {
       log.error('Account switch failed', { userId, error });
       closeDrawer();
@@ -144,6 +148,7 @@ export function UserSettingsMenu({
       const result = await signOutCurrentDeviceAccount();
       if (result.kind === 'switched') {
         onUserSwitched?.();
+        resetNavigationAfterAccountSwitch(router);
         return;
       }
       onSignOut?.();

@@ -14,6 +14,8 @@ import { theme, iconSizes, listIconStrokeWidth } from '../../../theme';
 type ImageThumbnailProps = {
   item: ImagesMapsItem;
   onOpenFullscreen: (item: ImagesMapsItem) => void;
+  /** Called when the remote/local image asset fails to decode or download. */
+  onLoadError?: (itemId: string) => void;
 };
 
 /**
@@ -22,6 +24,7 @@ type ImageThumbnailProps = {
 export function ImageThumbnail({
   item,
   onOpenFullscreen,
+  onLoadError,
 }: ImageThumbnailProps) {
   const [imageLoading, setImageLoading] = useState(true);
   const [imageFailed, setImageFailed] = useState(false);
@@ -34,6 +37,7 @@ export function ImageThumbnail({
   const handleLoadError = () => {
     setImageLoading(false);
     setImageFailed(true);
+    onLoadError?.(item.id);
   };
 
   return (

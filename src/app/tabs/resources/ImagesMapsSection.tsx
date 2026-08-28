@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -18,15 +18,70 @@ type ImagesMapsSectionProps = {
   retry: () => void;
 };
 
+function ImagesMapsErrorBody({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <View style={styles.centered} testID="images-maps-error">
+      <Text style={styles.errorMessage}>{message}</Text>
+      <TouchableOpacity
+        onPress={onRetry}
+        accessibilityRole="button"
+        accessibilityLabel="Retry loading Images and Maps"
+        testID="images-maps-retry"
+      >
+        <Text style={styles.retryLink}>Retry</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 /**
- * Images & Maps body for the Resources tab (#191).
+ * Images & Maps body for the Resources tab (#191 / #348).
  * Thumbnails with caption/attribution, pinch-zoom, fullscreen maximize.
  * Empty availability is handled by the parent (hide the accordion slot).
+ * Asset load failures (e.g. offline after metadata resolved) escalate to the
+ * same section-scoped error + Retry as metadata/network failures.
  */
 export function ImagesMapsSection({ state, retry }: ImagesMapsSectionProps) {
   const [fullscreenItem, setFullscreenItem] = useState<ImagesMapsItem | null>(
     null,
   );
+  const [failedIds, setFailedIds] = useState<Set<string>>(() => new Set());
+
+  const itemIdsKey =
+    state.status === 'ready' ? state.items.map(item => item.id).join('|') : '';
+  const resetKey = `${state.status}:${itemIdsKey}`;
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+
+  // Reset failure tracking when the unit/load status changes (render-time sync so
+  // we do not clear failures reported by children in the same commit).
+  if (resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey);
+    setFailedIds(new Set());
+    setFullscreenItem(null);
+  }
+
+  const handleImageFailed = useCallback((itemId: string) => {
+    setFailedIds(prev => {
+      if (prev.has(itemId)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.add(itemId);
+      return next;
+    });
+  }, []);
+
+  const handleRetry = useCallback(() => {
+    setFailedIds(new Set());
+    setFullscreenItem(null);
+    retry();
+  }, [retry]);
 
   if (state.status === 'loading') {
     return (
@@ -38,22 +93,24 @@ export function ImagesMapsSection({ state, retry }: ImagesMapsSectionProps) {
 
   if (state.status === 'error') {
     return (
-      <View style={styles.centered} testID="images-maps-error">
-        <Text style={styles.errorMessage}>{IMAGES_MAPS_LOAD_ERROR}</Text>
-        <TouchableOpacity
-          onPress={() => void retry()}
-          accessibilityRole="button"
-          accessibilityLabel="Retry loading Images and Maps"
-          testID="images-maps-retry"
-        >
-          <Text style={styles.retryLink}>Retry</Text>
-        </TouchableOpacity>
-      </View>
+      <ImagesMapsErrorBody
+        message={state.message || IMAGES_MAPS_LOAD_ERROR}
+        onRetry={handleRetry}
+      />
     );
   }
 
   if (state.items.length === 0) {
     return null;
+  }
+
+  if (failedIds.size >= state.items.length) {
+    return (
+      <ImagesMapsErrorBody
+        message={IMAGES_MAPS_LOAD_ERROR}
+        onRetry={handleRetry}
+      />
+    );
   }
 
   return (
@@ -64,6 +121,7 @@ export function ImagesMapsSection({ state, retry }: ImagesMapsSectionProps) {
             key={item.id}
             item={item}
             onOpenFullscreen={setFullscreenItem}
+            onLoadError={handleImageFailed}
           />
         ))}
       </View>
