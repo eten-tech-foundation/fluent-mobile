@@ -12,16 +12,19 @@
 #   FEEDBACK_URL — optional issue / feedback link
 #   API_BASE_URL — baked API URL (success)
 #   NOTIFY_SLACK — "true" to send (default true); "false" skips send
+#   SLACK_PAYLOAD_JSON — optional path to JSON written by write-slack-nightly-payload.sh
+#   DRY_RUN — "true" prints the JSON payload and exits (no webhook)
+# Incoming webhooks cannot mute phone push. STATUS=failure uses the same
+# :zzz: / amber card as skipped so overnight misses do not look like incidents.
 set -euo pipefail
+
+if [ -n "${SLACK_PAYLOAD_JSON:-}" ] && [ -f "${SLACK_PAYLOAD_JSON}" ]; then
+  eval "$(jq -r 'to_entries[] | select(.key != "pending") | "export \(.key)=\(.value|@sh)"' "${SLACK_PAYLOAD_JSON}")"
+fi
 
 NOTIFY_SLACK="${NOTIFY_SLACK:-true}"
 if [ "${NOTIFY_SLACK}" != "true" ]; then
   echo "ℹ️ Slack notify disabled (NOTIFY_SLACK=${NOTIFY_SLACK})"
-  exit 0
-fi
-
-if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
-  echo "⚠️ SLACK_WEBHOOK_URL not set — skipping Slack notification"
   exit 0
 fi
 
@@ -80,16 +83,19 @@ QR (install page): ${QR_URL}"
     fi
     ;;
   failure)
-    TITLE=":x: Fluent nightly Android build failed"
-    COLOR="#e01e5a"
+    TITLE=":zzz: Fluent nightly skipped (no APK)"
+    COLOR="#e8b339"
+    DETAIL_NOTE="This run did not produce an APK. Details are in the Actions log."
+    if [ -n "${FAILED_STEP}" ]; then
+      DETAIL_NOTE="${DETAIL_NOTE} Look at \`${FAILED_STEP}\` if you want the specifics."
+    fi
     DETAIL_LINES=$(cat <<EOF
-*Status:* failure
-*Failed step:* ${FAILED_STEP:-unknown}
+*Status:* skipped
 *Trigger:* ${TRIGGER}
 *Branch:* \`${BRANCH}\`
 *Commit:* \`${SHORT_SHA}\`
-*Actions:* <${RUN_URL}|View logs>
-*Owner:* Fluent Mobile maintainers — check EAS / Actions logs
+*Actions:* <${RUN_URL}|Workflow run>
+${DETAIL_NOTE}
 EOF
 )
     ;;
@@ -126,6 +132,16 @@ PAYLOAD=$(jq -n \
       }
     ]
   }')
+
+if [ "${DRY_RUN:-}" = "true" ]; then
+  printf '%s\n' "${PAYLOAD}"
+  exit 0
+fi
+
+if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
+  echo "⚠️ SLACK_WEBHOOK_URL not set — skipping Slack notification"
+  exit 0
+fi
 
 HTTP_CODE=$(curl -sS -o /tmp/slack-nightly-response.txt -w "%{http_code}" \
   -X POST \

@@ -36,7 +36,7 @@ Nightlies are a **standalone internal APK** for `main` (no over-the-air update).
 8. The app should open normally (sign-in / home) — **not** a Metro dev launcher and **not** Expo Go.
 9. Sign in and test.
 
-Scheduled nightlies run ~**06:00 UTC**. If nothing new landed on `main`, the nightly may skip a build — wait for the next run that includes your merge.
+Scheduled nightlies run ~**23:17 America/Los_Angeles** (11:17pm Pacific). Slack install notices wait until **09:00–16:00 PT** so they do not land overnight. If nothing new landed on `main`, the nightly may skip a build — wait for the next run that includes your merge.
 
 If the app looks wrong after installing a different APK:
 
@@ -63,6 +63,7 @@ If the app looks wrong after installing a different APK:
 | Phone offers **Expo Go** | Cancel. Install **Fluent** from the install link. |
 | Testing the wrong build | Install again from the latest nightly comment for that issue. |
 | Install blocked | Allow **Install unknown apps** for your browser. |
+| Slack says no APK | That is the quiet skip-style notice (same look as “no new commits”), not an incident ping. Open the Actions link in the message if you want the log. |
 | No handoff / nightly comment on the issue | Confirm the PR had **Needs QA? Yes** and `Refs #NNN`, then ask a developer to check `qa-handoff` / nightly Actions. |
 | expo.dev asks me to log in | Request access to the Fluent project from your team lead. |
 
