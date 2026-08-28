@@ -14,12 +14,14 @@ import {
   userHasLocalProjects,
   userHasLocalChapterAssignments,
   userNeedsAssigneeRepair,
+  reconcileUserChapterWork,
+  reconcileUserProjects,
 } from '../db/repository';
 import { logger } from '../utils/logger';
 import { getDatabase } from '../db/db';
 import { ApiBook, ApiVerse } from '../types/api/types';
-import { ApiUser } from '../types/api/responses';
-import { unwrapApiListResponse } from '../types/api/responses';
+import { ApiUser, unwrapApiListResponse } from '../types/api/responses';
+import { getConnectivitySnapshot } from './connectivity';
 import {
   setUserSync,
   registerKnownUser,
@@ -200,11 +202,12 @@ export async function syncProjects(userId: number, sessionToken?: string) {
 
       const response = await FluentAPI.getUserProjects(userId, sessionToken);
       const raw = unwrapApiListResponse(response);
-      const projects = (Array.isArray(raw) ? raw : []).map(mapApiProject);
+      const isConfirmedShape = Array.isArray(raw);
+      const projects = (isConfirmedShape ? raw : []).map(mapApiProject);
 
       log.info('Projects fetched', {
         count: projects.length,
-        isArray: Array.isArray(raw),
+        isArray: isConfirmedShape,
       });
 
       if (projects.length > 0) {
@@ -215,8 +218,21 @@ export async function syncProjects(userId: number, sessionToken?: string) {
         );
       }
 
-      await ensureUserProjectMembership(userId);
+      if (isConfirmedShape) {
+        await reconcileUserProjects(
+          userId,
+          projects.map(project => project.id),
+        );
+      } else {
+        log.warn(
+          'Skipping project reconciliation — unexpected response shape',
+          { userId },
+        );
+      }
 
+      if (!(isConfirmedShape && projects.length === 0)) {
+        await ensureUserProjectMembership(userId);
+      }
       const db = getDatabase();
       const result = await db.execute(
         'SELECT COUNT(*) as count FROM user_projects WHERE user_id = ?',
@@ -239,7 +255,7 @@ export async function syncChapterAssignments(
   updatedAfter?: string,
   excludeProjectIds?: number[],
   sessionToken?: string,
-) {
+): Promise<{ syncedAt?: string }> {
   return retrySyncStep(
     'Chapter assignment sync',
     KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS,
@@ -257,6 +273,12 @@ export async function syncChapterAssignments(
         sessionToken,
       );
 
+      const syncedAt =
+        response !== null &&
+        typeof response === 'object' &&
+        !Array.isArray(response)
+          ? response.syncedAt
+          : undefined;
       const raw = unwrapApiListResponse(response);
       const allAssignments = (Array.isArray(raw) ? raw : []).map(
         mapApiChapterAssignment,
@@ -285,6 +307,8 @@ export async function syncChapterAssignments(
       } else {
         log.info('No chapter assignment changes');
       }
+
+      return { syncedAt };
     },
     String(userId),
   );
@@ -299,12 +323,34 @@ async function syncUserChapterWork(userId: number, sessionToken?: string) {
         userId,
         sessionToken,
       );
-      const assigned = response.assignedChapters ?? [];
-      const peerCheck = response.peerCheckChapters ?? [];
+      const isConfirmedShape =
+        response !== null &&
+        typeof response === 'object' &&
+        Array.isArray(response.assignedChapters) &&
+        Array.isArray(response.peerCheckChapters);
+
+      const assigned = Array.isArray(response?.assignedChapters)
+        ? response.assignedChapters
+        : [];
+      const peerCheck = Array.isArray(response?.peerCheckChapters)
+        ? response.peerCheckChapters
+        : [];
       const mapped = [...assigned, ...peerCheck].map(mapApiChapterAssignment);
 
       if (mapped.length > 0) {
         await insertChapterAssignmentSyncData(mapped);
+      }
+      if (isConfirmedShape) {
+        await reconcileUserChapterWork(
+          userId,
+          assigned.map(a => a.chapterAssignmentId),
+          peerCheck.map(a => a.chapterAssignmentId),
+        );
+      } else {
+        log.warn(
+          'Skipping chapter work reconciliation — unexpected response shape',
+          { userId },
+        );
       }
     },
     String(userId),
@@ -315,12 +361,18 @@ async function syncChapterAssignmentsForUser(
   userId: number,
   updatedAfter?: string,
   sessionToken?: string,
-): Promise<{ didFullSync: boolean }> {
+): Promise<{ didFullSync: boolean; syncedAt?: string }> {
   const userIdStr = String(userId);
 
   const runFullProjectAssignments = async () => {
-    await syncChapterAssignments(userId, undefined, undefined, sessionToken);
+    const { syncedAt } = await syncChapterAssignments(
+      userId,
+      undefined,
+      undefined,
+      sessionToken,
+    );
     await syncUserChapterWork(userId, sessionToken);
+    return { syncedAt };
   };
 
   if (!getUserLastSyncedAt(userIdStr)) {
@@ -328,8 +380,8 @@ async function syncChapterAssignmentsForUser(
       'Forcing full chapter assignment sync — user has no per-user sync cursor',
       { userId },
     );
-    await runFullProjectAssignments();
-    return { didFullSync: true };
+    const { syncedAt } = await runFullProjectAssignments();
+    return { didFullSync: true, syncedAt };
   }
 
   if (
@@ -340,13 +392,18 @@ async function syncChapterAssignmentsForUser(
       'Forcing full chapter assignment sync — local assignments incomplete',
       { userId },
     );
-    await runFullProjectAssignments();
-    return { didFullSync: true };
+    const { syncedAt } = await runFullProjectAssignments();
+    return { didFullSync: true, syncedAt };
   }
 
-  await syncChapterAssignments(userId, updatedAfter, undefined, sessionToken);
+  const { syncedAt } = await syncChapterAssignments(
+    userId,
+    updatedAfter,
+    undefined,
+    sessionToken,
+  );
   await syncUserChapterWork(userId, sessionToken);
-  return { didFullSync: !updatedAfter };
+  return { didFullSync: !updatedAfter, syncedAt };
 }
 
 export async function syncBibleTexts(updatedAfter?: string) {
@@ -720,4 +777,66 @@ export async function syncAllData(
   } finally {
     emitSyncComplete();
   }
+}
+
+const inFlightMetadataRefresh = new Map<number, Promise<void>>();
+
+export async function refreshChapterMetadataIfOnline(
+  userId: number,
+): Promise<void> {
+  const existing = inFlightMetadataRefresh.get(userId);
+  if (existing) {
+    return existing;
+  }
+
+  const refreshPromise = (async () => {
+    try {
+      const { isOnline } = await getConnectivitySnapshot();
+      if (!isOnline) return;
+
+      const userIdStr = String(userId);
+
+      if (userIdStr !== getActiveUserId()) {
+        log.warn(
+          'Skipping background metadata refresh — user is no longer active',
+          {
+            userId,
+          },
+        );
+        return;
+      }
+
+      const creds = await getCredentials(userIdStr);
+      if (!creds?.token) {
+        await handleSyncAuthFailure(userIdStr);
+        return;
+      }
+
+      const sessionToken = creds.token;
+      await syncProjects(userId, sessionToken);
+
+      const cursor = getUserLastSyncedAt(userIdStr) || undefined;
+      const { syncedAt } = await syncChapterAssignmentsForUser(
+        userId,
+        cursor,
+        sessionToken,
+      );
+      if (syncedAt) {
+        setUserLastSyncedAt(userIdStr, syncedAt);
+      }
+    } catch (error) {
+      if (isAuthError(error)) {
+        await handleSyncAuthFailure(String(userId));
+      }
+      log.warn('Chapter metadata refresh failed (non-blocking)', {
+        userId,
+        error: getErrorMessage(error),
+      });
+    } finally {
+      inFlightMetadataRefresh.delete(userId);
+    }
+  })();
+
+  inFlightMetadataRefresh.set(userId, refreshPromise);
+  return refreshPromise;
 }

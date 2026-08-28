@@ -50,6 +50,7 @@ export interface ApiProject {
 
 export interface ApiDataResponse<T> {
   data: T;
+  syncedAt?: string;
 }
 
 export interface SignInResponse {

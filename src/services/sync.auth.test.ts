@@ -1,4 +1,5 @@
 import { AuthError } from './authError';
+import { waitFor } from '@testing-library/react-native';
 import { FluentAPI } from './api';
 import { authToken } from './authToken';
 import {
@@ -6,9 +7,14 @@ import {
   getCredentials,
   getTempCredentials,
 } from './keychain';
-import { syncAllData, syncAllUsers } from './sync';
+import {
+  refreshChapterMetadataIfOnline,
+  syncAllData,
+  syncAllUsers,
+} from './sync';
 import * as sync from './sync';
 import * as syncEvents from './syncEvents';
+import { getConnectivitySnapshot } from './connectivity';
 import {
   getActiveUserId,
   getKnownUserIds,
@@ -44,6 +50,10 @@ jest.mock('./api', () => ({
     }),
     getBibleTexts: jest.fn(),
   },
+}));
+
+jest.mock('./connectivity', () => ({
+  getConnectivitySnapshot: jest.fn(),
 }));
 
 jest.mock('./keychain', () => ({
@@ -96,6 +106,8 @@ jest.mock('../db/repository', () => ({
   userHasLocalChapterAssignments: jest.fn().mockResolvedValue(true),
   userNeedsAssigneeRepair: jest.fn().mockResolvedValue(false),
   insertUser: jest.fn().mockResolvedValue(undefined),
+  reconcileUserProjects: jest.fn().mockResolvedValue(undefined),
+  reconcileUserChapterWork: jest.fn().mockResolvedValue(undefined),
 }));
 
 const {
@@ -110,11 +122,221 @@ const {
   userNeedsAssigneeRepair: jest.Mock;
 };
 
+const { reconcileUserProjects, reconcileUserChapterWork } = jest.requireMock(
+  '../db/repository',
+) as {
+  reconcileUserProjects: jest.Mock;
+  reconcileUserChapterWork: jest.Mock;
+};
+describe('syncProjects / syncUserChapterWork reconciliation shape guard', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetConnectivitySnapshot.mockResolvedValue({
+      isOnline: true,
+      isWifi: true,
+      isCellular: false,
+    });
+    (getActiveUserId as jest.Mock).mockReturnValue('2');
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'valid-token' });
+    (getUserLastSyncedAt as jest.Mock).mockReturnValue(
+      '2026-06-01T00:00:00.000Z',
+    );
+  });
+
+  it('runs project reconciliation with an empty list when the response is validly empty', async () => {
+    (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(reconcileUserProjects).toHaveBeenCalledWith(2, []);
+  });
+
+  it('skips project reconciliation when the response shape is malformed', async () => {
+    (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+      data: 'not-an-array',
+    });
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(reconcileUserProjects).not.toHaveBeenCalled();
+  });
+
+  it('runs project reconciliation with populated ids on a valid response', async () => {
+    (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+      data: [{ id: 5, name: 'Test', target_language_name: 'X' }],
+    });
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(reconcileUserProjects).toHaveBeenCalledWith(2, [5]);
+  });
+
+  it('runs chapter-work reconciliation with empty lists when the response is validly empty', async () => {
+    (FluentAPI.getUserChapterAssignments as jest.Mock).mockResolvedValue({
+      assignedChapters: [],
+      peerCheckChapters: [],
+    });
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(reconcileUserChapterWork).toHaveBeenCalledWith(2, [], []);
+  });
+
+  it('skips chapter-work reconciliation when the response shape is malformed', async () => {
+    (FluentAPI.getUserChapterAssignments as jest.Mock).mockResolvedValue({
+      assignedChapters: null,
+      peerCheckChapters: [],
+    });
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(reconcileUserChapterWork).not.toHaveBeenCalled();
+  });
+
+  it('skips chapter-work reconciliation when the response is missing entirely', async () => {
+    (FluentAPI.getUserChapterAssignments as jest.Mock).mockResolvedValue(null);
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(reconcileUserChapterWork).not.toHaveBeenCalled();
+  });
+});
+
+const mockGetConnectivitySnapshot =
+  getConnectivitySnapshot as jest.MockedFunction<
+    typeof getConnectivitySnapshot
+  >;
+
 jest.mock('../db/db', () => ({
   getDatabase: jest.fn(() => ({
     execute: jest.fn().mockResolvedValue({ rows: [{ count: 0 }] }),
   })),
 }));
+
+describe('refreshChapterMetadataIfOnline', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    mockGetConnectivitySnapshot.mockResolvedValue({
+      isOnline: true,
+      isWifi: true,
+      isCellular: false,
+    });
+    (getActiveUserId as jest.Mock).mockReturnValue('2');
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'valid-token' });
+    (getUserLastSyncedAt as jest.Mock).mockReturnValue(
+      '2026-06-01T00:00:00.000Z',
+    );
+    userHasLocalChapterAssignments.mockResolvedValue(true);
+    userNeedsAssigneeRepair.mockResolvedValue(false);
+    (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+      data: [],
+    });
+    (FluentAPI.getUserChapterAssignments as jest.Mock).mockResolvedValue({
+      assignedChapters: [],
+      peerCheckChapters: [],
+    });
+  });
+
+  it('does not skip a later metadata refresh after the previous one completes', async () => {
+    (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValueOnce({
+      syncedAt: '2026-08-18T07:10:52.908Z',
+      data: [],
+    });
+
+    await refreshChapterMetadataIfOnline(2);
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(mockGetConnectivitySnapshot).toHaveBeenCalledTimes(2);
+    expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(2);
+    expect(FluentAPI.getChapterAssignments).toHaveBeenNthCalledWith(
+      1,
+      2,
+      '2026-06-01T00:00:00.000Z',
+      undefined,
+      'valid-token',
+    );
+    expect(FluentAPI.getChapterAssignments).toHaveBeenNthCalledWith(
+      2,
+      2,
+      '2026-06-01T00:00:00.000Z',
+      undefined,
+      'valid-token',
+    );
+    expect(setUserLastSyncedAt).toHaveBeenCalledWith(
+      '2',
+      '2026-08-18T07:10:52.908Z',
+    );
+  });
+
+  it('shares an in-flight metadata refresh for the same user', async () => {
+    let releaseAssignments!: () => void;
+    (FluentAPI.getChapterAssignments as jest.Mock).mockReturnValueOnce(
+      new Promise(resolve => {
+        releaseAssignments = () => resolve({ data: [] });
+      }),
+    );
+
+    const first = refreshChapterMetadataIfOnline(2);
+    const second = refreshChapterMetadataIfOnline(2);
+
+    await waitFor(() => {
+      expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+    });
+    expect(mockGetConnectivitySnapshot).toHaveBeenCalledTimes(1);
+
+    releaseAssignments();
+    await Promise.all([first, second]);
+  });
+
+  it('does not call the server when offline', async () => {
+    mockGetConnectivitySnapshot.mockResolvedValueOnce({
+      isOnline: false,
+      isWifi: false,
+      isCellular: false,
+    });
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
+    expect(FluentAPI.getUserChapterAssignments).not.toHaveBeenCalled();
+  });
+
+  it("passes this user's stored token to sync calls without mutating global authToken", async () => {
+    (getCredentials as jest.Mock).mockResolvedValue({
+      token: 'user-2-specific-token',
+    });
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(getCredentials).toHaveBeenCalledWith('2');
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(
+      2,
+      'user-2-specific-token',
+    );
+    expect(authToken.set).not.toHaveBeenCalled();
+  });
+
+  it('marks reauth required and skips the refresh when no credentials exist for this user', async () => {
+    (getCredentials as jest.Mock).mockResolvedValue(null);
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
+    expect(setReauthRequired).toHaveBeenCalledWith('2');
+    expect(authToken.set).not.toHaveBeenCalled();
+  });
+
+  it('skips the refresh without calling the server when userId is not the active user', async () => {
+    (getActiveUserId as jest.Mock).mockReturnValue('1');
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(getCredentials).not.toHaveBeenCalled();
+    expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
+    expect(authToken.set).not.toHaveBeenCalled();
+  });
+});
 
 describe('syncAllData auth handling', () => {
   beforeEach(() => {

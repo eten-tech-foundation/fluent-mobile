@@ -40,7 +40,7 @@ Expo documents dependency hygiene in [resolving-dependency-issues](https://githu
 | Use **`npx expo install --check`** / **`--fix`** instead of raw `npm update` for Expo ecosystem packages | Aligns versions to the installed SDK — Dependabot/npm alone can leave patch drift |
 | Prefer **`npx expo install <pkg>`** when adding native modules | Version ranges are validated against the SDK matrix |
 | Treat **expo / react / react-native / navigation / native modules** as **risky** | Dependabot groups help, but lockfile-only bumps can still break autolinking |
-| **GitHub Actions** `expo/expo-github-action` bumps are separate from app deps | Validate workflows; app Expo alignment is still `npm run doctor` |
+| **GitHub Actions** SHA bumps (`github_actions` label) | Grouped weekly PRs from Dependabot; pin comments stay on the SHA (`# v7.0.1`). App Expo alignment is still `npm run doctor` |
 
 Renovate/Dependabot do not understand Expo’s SDK pin matrix — this repo uses Dependabot for breadth but **enforces Expo alignment via CI + doctor**, not blind semver.
 
@@ -206,6 +206,18 @@ The agent runs in **autonomous mode** by default:
 - Does not merge workflow/config PRs unless explicitly requested
 
 Rule: [`.cursor/rules/dependabot-workflow.mdc`](../../.cursor/rules/dependabot-workflow.mdc)
+
+## SHA pinning for GitHub Actions
+
+Workflow `uses:` refs are pinned to 40-character commit SHAs with a version comment (`# v7.0.1`). Dependabot's `github-actions` ecosystem is grouped (`patterns: ['*']` plus a matching security-updates group) with a 7-day cooldown so SHA bumps land in one PR labeled `github_actions`.
+
+Local check (must exit 0):
+
+```bash
+ruby .github/scripts/check-action-pins.rb
+```
+
+The CI job is `action-pins.yml` (`pull_request_target`). Do not switch it to `pull_request` — that would let a PR replace its own checker.
 
 ## Related
 
