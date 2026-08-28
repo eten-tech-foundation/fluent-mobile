@@ -1,9 +1,12 @@
 name: Quality Gates
 
-# TypeScript + Expo health checks for PRs. No native Gradle build — native
-# compile is validated on demand via EAS preview (preview-build label) and
-# nightly APK; post-merge QA uses nightly (see docs/guides/qa-process.md).
-# production releases (tag → EAS).
+# TypeScript + Expo health checks for PRs. PR CI is a frozen snapshot of this
+# commit (pinned Node via .nvmrc; lockfile expo-doctor — never @latest).
+# `expo install --check` still consults Expo's published SDK matrix and can
+# go red overnight; that is recovered by the weekday Expo sync job (#422),
+# not by drive-by lockfile commits on feature branches. No native Gradle build —
+# native compile is on-demand via EAS preview (preview-build label) and nightly APK;
+# post-merge QA uses nightly (see docs/guides/qa-process.md). Production: tag → EAS.
 
 on:
   push:
@@ -29,7 +32,7 @@ jobs:
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 24
+          node-version-file: '.nvmrc'
           cache: npm
 
       - name: Install dependencies
@@ -51,14 +54,14 @@ jobs:
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 24
+          node-version-file: '.nvmrc'
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
       - name: Run expo-doctor
-        run: npx expo-doctor
+        run: npm run doctor
 
   expo-install-check:
     name: expo install --check
@@ -73,7 +76,7 @@ jobs:
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 24
+          node-version-file: '.nvmrc'
           cache: npm
 
       - name: Install dependencies

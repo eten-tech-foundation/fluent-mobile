@@ -20,7 +20,7 @@ Recording follow-up: wire source audio dock to real fetch + playback ([#235](htt
 | Native | **CNG, Android-only** — `android/` generated via `npm run prebuild` (`--platform android`; not committed) |
 | Language | TypeScript ~6.0 |
 | Package manager | **npm** (`package-lock.json`). `yarn` in-repo is shimmed to npm; pnpm is blocked. |
-| Node | `>= 24.14.0` (README: Node 24) |
+| Node | `>= 24.14.0` (CI: `.nvmrc` `24.14.0`) |
 | Local DB | `@op-engineering/op-sqlite` |
 | Navigation | **Expo Router** (`expo-router`, file-based routes in `src/routes/`) |
 | Server state (installed) | `@tanstack/react-query` (minimal use today) |
@@ -29,7 +29,7 @@ Recording follow-up: wire source audio dock to real fetch + playback ([#235](htt
 | Lint | ESLint 9 flat config |
 | Format | Prettier 2.8 |
 | Test | Jest 29 + `jest-expo` + `@testing-library/react-native` |
-| CI | GitHub Actions: lint, test, typecheck, expo-doctor, expo install --check; native compile via EAS preview/release |
+| CI | GitHub Actions: lint, test, typecheck, lockfile expo-doctor, `expo install --check`; native compile via EAS preview/release. Two clocks: [docs/ci.md](ci.md#two-clocks--pr-ci-vs-scheduled-expo-health) |
 
 ## Repository layout
 
@@ -69,7 +69,7 @@ Recording follow-up: wire source audio dock to real fetch + playback ([#235](htt
 
 ## Setup
 
-1. Node 24: `nvm use 24` (or match `engines` in `package.json`).
+1. Node: `nvm use` (`.nvmrc` `24.14.0`) or any `>= 24.14.0` from `package.json` `engines`.
 2. Copy env: `cp .env.example .env` — set `EXPO_PUBLIC_API_BASE_URL` (see [local development workflow](guides/local-development-workflow.md)).
 3. `npm install`
 4. Generate native project (first time or after config plugin changes): `npm run prebuild` (Android-only)

@@ -28,4 +28,4 @@ This file is the **entrypoint for non-Cursor agents** (Claude Code, Codex, Copil
 ## Package manager / Node
 
 - **npm** only (`package-lock.json`)
-- Node `>= 24.14.0`
+- Node `>= 24.14.0` (CI: `.nvmrc` `24.14.0`)

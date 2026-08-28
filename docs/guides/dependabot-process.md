@@ -8,9 +8,9 @@ Use this for **every** Dependabot merge (copy into PR comment or issue when tria
 
 - [ ] Author is `dependabot[bot]` / `app/dependabot`
 - [ ] Checkout PR branch → `npm ci`
-- [ ] **`npm run doctor`** (after any npm bump; mirrors Quality Gates expo-doctor)
+- [ ] **`npm run doctor`** (after any npm bump; lockfile `expo-doctor`, same as Quality Gates)
 - [ ] Local CI order: `format:check` → `lint` → `typecheck` → `npm test -- --ci`
-- [ ] If doctor / `expo install --check` fails: `npx expo install --check` then `npx expo install --fix` when SDK patch drift only
+- [ ] If `--check` is red **with no package change on this PR**: wait for the Expo compatibility sync ([#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422)), rebase — do not `--fix` on an unrelated feature ticket. If this **is** a deps PR and drift is SDK 57 patch-only: `npx expo install --fix` on that branch
 - [ ] Approve + **squash merge exactly one** lockfile PR
 - [ ] Wait for **`main` CI green** before the next merge
 - [ ] Comment **`@dependabot rebase`** on **all other open** Dependabot PRs (parallel prep)
@@ -27,7 +27,7 @@ Risky bumps (`react`, `react-native`, navigation, native modules): add Android s
 5. **Version lock-stepping**: `react`, `react-test-renderer`, and `react-native` are pinned — validate the **final merged state** on `main`.
 6. **Runtime testing**: Static checks miss renderer mismatches — smoke test on Android for risky bumps.
 7. **One lockfile merge at a time**: Merge **one** lockfile PR, let **`main` CI go green**, then **`@dependabot rebase` all other open bots in parallel** before the next merge.
-8. **Expo Doctor after rebases**: Every `@dependabot rebase` triggers fresh CI — **Quality Gates** runs `expo-doctor` and `expo install --check`. Do not merge if either fails; fix with `npx expo install --fix` when appropriate.
+8. **Expo health after rebases**: Every `@dependabot rebase` triggers Quality Gates (`npm run doctor` + `expo install --check`). `--check` can go red overnight when Expo publishes new SDK 57 patches ([two-clock model](../ci.md#two-clocks--pr-ci-vs-scheduled-expo-health)). Recover via the weekday sync PR ([#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422)), not a drive-by `--fix` on every open bot. Until #422 lands, `--fix` only on a dedicated deps ticket.
 9. **Automate the queue**: Cursor agents should run the full safe queue without per-PR confirmation (see `.cursor/rules/dependabot-workflow.mdc` → Autonomous mode).
 
 ## Expo + Dependabot (best practices)
@@ -36,7 +36,7 @@ Expo documents dependency hygiene in [resolving-dependency-issues](https://githu
 
 | Practice | Why |
 |----------|-----|
-| Run **`npx expo-doctor@latest`** after any dependency change | Catches SDK version drift, duplicate native modules (SDK 54+), misaligned `react`/`react-native` |
+| Run **`npm run doctor`** (lockfile `expo-doctor`, never `@latest` on feature PRs) | Catches SDK version drift, duplicate native modules, misaligned `react`/`react-native`. Latest doctor / RN Directory: scheduled job [#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422) |
 | Use **`npx expo install --check`** / **`--fix`** instead of raw `npm update` for Expo ecosystem packages | Aligns versions to the installed SDK — Dependabot/npm alone can leave patch drift |
 | Prefer **`npx expo install <pkg>`** when adding native modules | Version ranges are validated against the SDK matrix |
 | Treat **expo / react / react-native / navigation / native modules** as **risky** | Dependabot groups help, but lockfile-only bumps can still break autolinking |
@@ -44,12 +44,15 @@ Expo documents dependency hygiene in [resolving-dependency-issues](https://githu
 
 Renovate/Dependabot do not understand Expo’s SDK pin matrix — this repo uses Dependabot for breadth but **enforces Expo alignment via CI + doctor**, not blind semver.
 
-**When doctor fails on a Dependabot PR:**
+**When doctor / `--check` fails on a Dependabot PR:**
 
 1. `npx expo install --check` — list mismatches
-2. If SDK patch drift only: `npx expo install --fix` on the PR branch, push, re-run doctor
-3. If duplicate native modules: `npm why <pkg>`, `npm dedupe`, or targeted `overrides` (see Expo FYI)
-4. If the bump is incompatible with SDK 57: close the PR or defer to an SDK upgrade ticket
+2. If the failure is **only** Expo’s published matrix moving (no change in this bot’s packages): wait for [#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422) (or a dedicated `--fix` ticket until that job exists), rebase
+3. If this bot caused SDK 57 patch drift: `npx expo install --fix` on the PR branch, push, re-run doctor
+4. If duplicate native modules: `npm why <pkg>`, `npm dedupe`, or targeted `overrides` (see Expo FYI)
+5. If the bump is incompatible with SDK 57: close the PR or defer to an SDK upgrade ticket
+
+Dependabot still owns Expo/RN groups until [#424](https://github.com/eten-tech-foundation/fluent-mobile/issues/424).
 
 ## Categorization
 
@@ -88,7 +91,7 @@ npm run typecheck
 npm test -- --ci
 ```
 
-**Expo Doctor** and **`expo install --check`** run in GitHub **Quality Gates** on every PR push (including post-rebase). Local `npm run doctor` mirrors the expo-doctor job — run it after `npm ci` when triaging locally.
+**Quality Gates** on every PR: lockfile `npm run doctor` and required **`expo install --check`**. Local `npm run doctor` matches the CI CLI version. If `--check` is red with no code change, see [two clocks](../ci.md#two-clocks--pr-ci-vs-scheduled-expo-health).
 
 If doctor fails, see [Expo + Dependabot (best practices)](#expo--dependabot-best-practices) above.
 

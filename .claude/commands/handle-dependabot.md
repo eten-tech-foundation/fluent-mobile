@@ -26,7 +26,7 @@ branch must be `main` (`baseRefName` == `"main"`). Drop any other author or base
 2. Triage: safe / risky / skip / RN upgrade / workflow-only
 3. `@dependabot rebase` on conflicting, stale, or post-merge bots (skip bots with fresh `IN_PROGRESS` CI)
 4. Pick **oldest safe PR** only when **Lint & Format**, **Unit Tests**, and
-   **Quality Gates** (TypeScript, Expo Doctor, `expo install --check`) are all
+   **Quality Gates** (TypeScript, lockfile Expo Doctor, `expo install --check`) are all
    `SUCCESS`.
 5. Before approve: `format:check`, `lint`, `typecheck`, `npm test -- --ci`, Expo
    Doctor when applicable, and those required build checks must be green. Then
@@ -38,14 +38,14 @@ branch must be `main` (`baseRefName` == `"main"`). Drop any other author or base
 
 ```bash
 npm ci
-npm run doctor          # Expo SDK alignment — also in Test Check CI
+npm run doctor          # lockfile expo-doctor — Quality Gates, never @latest
 npm run format:check
 npm run lint
 npm run typecheck
 npm test -- --ci
 ```
 
-If `npm run doctor` fails: `npx expo install --check` → `npx expo install --fix` on the PR branch when SDK patch drift; do not merge until clean.
+If `npm run doctor` fails: `npx expo install --check`. If red overnight with no change on this bot, wait for #422 then rebase. SDK 57 patch drift caused by this PR: `npx expo install --fix` on the PR branch; do not merge until clean.
 
 Risky PRs (`react`, `react-native`, `@react-navigation/*`, native modules): add Android smoke test (`npm run android`).
 
