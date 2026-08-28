@@ -85,7 +85,7 @@ function buildHandoffCommentBody({
     '',
     '### What to do',
     '',
-    '1. Wait for the next **Nightly Preview** run (scheduled **06:00 UTC**, or the next successful nightly after this merge).',
+    '1. Wait for the next **Nightly Preview** run (scheduled **23:17 America/Los_Angeles**, or the next successful nightly after this merge). Slack notices wait until **09:00–16:00 PT**.',
     '2. Install from the Slack nightly notice or the follow-up comment this bot posts on this issue when the APK is ready.',
     '3. Test the acceptance criteria for this ticket on that nightly build.',
     '4. **Pass:** move Project 4 Status → **Passed QA** (and comment briefly).',
