@@ -16,6 +16,24 @@ jest.mock('lucide-react-native', () => {
   };
 });
 
+jest.mock('./ChapterSyncIndicator', () => {
+  const ReactNative = require('react-native');
+  return {
+    ChapterCloudSyncIndicator: () => (
+      <ReactNative.View testID="chapter-cloud-sync-indicator" />
+    ),
+  };
+});
+
+jest.mock('./ChapterOwnershipIndicator', () => {
+  const ReactNative = require('react-native');
+  return {
+    ChapterOwnershipIndicator: () => (
+      <ReactNative.View testID="chapter-ownership-indicator" />
+    ),
+  };
+});
+
 const baseChapter: MyWorkChapter = {
   id: 1,
   displayLabel: 'Mark 1',
@@ -55,5 +73,22 @@ describe('MyWorkRow', () => {
     );
 
     expect(queryByTestId('chapter-conflict-indicator')).toBeNull();
+  });
+
+  it('renders indicators in the shared cloud, conflict, ownership order', () => {
+    const { getAllByTestId } = render(
+      <MyWorkRow
+        chapter={{ ...baseChapter, hasConflict: true }}
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(
+      getAllByTestId(/-indicator$/).map(node => node.props.testID),
+    ).toEqual([
+      'chapter-cloud-sync-indicator',
+      'chapter-conflict-indicator',
+      'chapter-ownership-indicator',
+    ]);
   });
 });
