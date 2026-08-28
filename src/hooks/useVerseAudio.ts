@@ -25,6 +25,7 @@ import { syncChapterClaim } from '../services/chapterClaimSync';
 import { usePlaybackEngine } from './usePlaybackEngine';
 import { useRecordingEngine } from './useRecordingEngine';
 import { getConnectivitySnapshot } from '../services/connectivity';
+import { shouldEndPlaybackOnIdle } from './playbackStatusGuards';
 import { verseAudioReducer, type VerseAudioState } from './verseAudioReducer';
 
 const log = logger.create('useVerseAudio');
@@ -126,6 +127,14 @@ export function useVerseAudio({
   const allTakesRequestIdRef = useRef(0);
   const chapterAssignedRef = useRef(false);
   const activeBibleTextIdRef = useRef<number | null>(null);
+  /**
+   * `playback.play` / `load` briefly leave the engine `idle` while `replace`
+   * runs. If verse state is already `playing` (Take 1 → Take 2), the natural-end
+   * effect must not treat that gap as PLAYBACK_END (#298).
+   */
+  const playbackLoadInFlightRef = useRef(false);
+  /** Bumped when an in-flight load ends so the natural-end effect re-checks. */
+  const [playbackLoadGate, setPlaybackLoadGate] = useState(0);
 
   useEffect(() => {
     chapterAssignedRef.current = false;
@@ -318,6 +327,7 @@ export function useVerseAudio({
 
   const playTake = useCallback(
     async (take: Recording) => {
+      playbackLoadInFlightRef.current = true;
       try {
         const path = take.localFilePath;
         const exists = await fileExists(path);
@@ -343,6 +353,9 @@ export function useVerseAudio({
         const message = error instanceof Error ? error.message : 'play failed';
         setErrorMessage(message);
         dispatch({ type: 'ERROR', message });
+      } finally {
+        playbackLoadInFlightRef.current = false;
+        setPlaybackLoadGate(n => n + 1);
       }
     },
     [playback],
@@ -361,6 +374,7 @@ export function useVerseAudio({
           ? takes.find(t => t.id === loadedTakeId)
           : null) ?? selectedTake;
       if (!take?.localFilePath) return;
+      playbackLoadInFlightRef.current = true;
       try {
         const path = take.localFilePath;
         const exists = await fileExists(path);
@@ -382,6 +396,9 @@ export function useVerseAudio({
         const message = error instanceof Error ? error.message : 'seek failed';
         setErrorMessage(message);
         dispatch({ type: 'ERROR', message });
+      } finally {
+        playbackLoadInFlightRef.current = false;
+        setPlaybackLoadGate(n => n + 1);
       }
     },
     [loadedTakeId, playback, selectedTake, takes],
@@ -401,14 +418,21 @@ export function useVerseAudio({
   }, [playback]);
 
   // Natural end (`didJustFinish` → idle). Explicit pause already dispatches
-  // PLAYBACK_END. Do not treat brief !playing during load as end — that raced
-  // the take UI back to recorded with duration stuck at 0:00.
+  // PLAYBACK_END. Do not treat brief idle during in-flight play/load (replace)
+  // as end — that raced Take 2 play and could bounce the reducer (#298).
   useEffect(() => {
-    if (state === 'playing' && playback.status === 'idle') {
-      dispatch({ type: 'PLAYBACK_END' });
-      setPlayingTakeId(null);
+    if (
+      !shouldEndPlaybackOnIdle(
+        state,
+        playback.status,
+        playbackLoadInFlightRef.current,
+      )
+    ) {
+      return;
     }
-  }, [state, playback.status]);
+    dispatch({ type: 'PLAYBACK_END' });
+    setPlayingTakeId(null);
+  }, [state, playback.status, playbackLoadGate]);
 
   const deleteTake = useCallback(
     async (id: string) => {

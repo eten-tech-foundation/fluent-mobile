@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   createAudioPlayer,
   setAudioModeAsync,
@@ -6,6 +6,7 @@ import {
 } from 'expo-audio';
 import { createPlaybackEngine } from '../audio/createPlaybackEngine';
 import type { PlayerApi, PlayerStatus } from '../audio/playbackTypes';
+import { didJustFinishEdge } from './playbackStatusGuards';
 
 export type UsePlaybackEngineApi = PlayerApi;
 
@@ -23,6 +24,13 @@ export function usePlaybackEngine(): UsePlaybackEngineApi {
   const [status, setStatus] = useState<PlayerStatus>('idle');
   const [positionMs, setPositionMs] = useState(0);
   const [durationMs, setDurationMs] = useState(0);
+  /**
+   * Android may leave `didJustFinish: true` in the last `useEvent` payload
+   * until the next status emit (periodic updates stop when not playing). Treat
+   * finish as an edge so a sticky flag cannot keep forcing `idle` across a
+   * take `replace` / play (#298).
+   */
+  const prevDidJustFinishRef = useRef(false);
 
   const engine = useMemo(
     () =>
@@ -51,7 +59,14 @@ export function usePlaybackEngine(): UsePlaybackEngineApi {
       setDurationMs(nextDuration);
     }
 
-    if (nativeStatus.didJustFinish) {
+    const didJustFinish = Boolean(nativeStatus.didJustFinish);
+    const finishEdge = didJustFinishEdge(
+      prevDidJustFinishRef.current,
+      didJustFinish,
+    );
+    prevDidJustFinishRef.current = didJustFinish;
+
+    if (finishEdge) {
       setStatus('idle');
       return;
     }
@@ -79,8 +94,16 @@ export function usePlaybackEngine(): UsePlaybackEngineApi {
     status,
     positionMs,
     durationMs,
-    load: uri => engine.load(uri),
-    play: uri => engine.play(uri),
+    load: uri => {
+      // Consume a sticky Android didJustFinish across replace so it cannot
+      // re-edge to idle mid-load; the next false→true finish still fires (#298).
+      prevDidJustFinishRef.current = true;
+      return engine.load(uri);
+    },
+    play: uri => {
+      prevDidJustFinishRef.current = true;
+      return engine.play(uri);
+    },
     pause: () => engine.pause(),
     seek: ms => engine.seek(ms),
     stop: () => engine.stop(),
