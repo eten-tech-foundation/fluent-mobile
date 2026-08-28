@@ -12,6 +12,7 @@ const baseChapter: ProjectChapter = {
   completedVerses: 5,
   totalVerses: 5,
   downloadedVerses: 5,
+  hasConflict: false,
   lastActivityLabel: 'Apr 14, 2026',
 };
 

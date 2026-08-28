@@ -210,6 +210,7 @@ export async function getChapterAssignmentById(
         ca.status,
         ca.submitted_time,
         ca.updated_at,
+        ca.has_conflict,
         b.code as book_code,
         b.eng_display_name as book_name,
         bi.name as bible_name,
@@ -243,10 +244,32 @@ export async function getChapterAssignmentById(
       bookName: row.book_name,
       bibleName: row.bible_name,
       bibleAbbreviation: row.bible_abbreviation,
+      hasConflict: Number(row.has_conflict) === 1,
     };
   } catch (error) {
     log.error('Error fetching chapter assignment by ID:', { error });
     return null;
+  }
+}
+
+/** Chapter-level unresolved audio-take conflict rollup (#260). */
+export async function getChapterHasConflict(
+  chapterAssignmentId: number,
+): Promise<boolean> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT has_conflict FROM chapter_assignments WHERE id = ?`,
+      [chapterAssignmentId],
+    );
+    const row = result?.rows?.[0] as { has_conflict?: number } | undefined;
+    return Number(row?.has_conflict) === 1;
+  } catch (error) {
+    log.error('Error fetching chapter conflict status', {
+      error,
+      chapterAssignmentId,
+    });
+    return false;
   }
 }
 
@@ -308,6 +331,7 @@ function mapChapterRowCore(
     | 'completed_verses'
     | 'downloaded_verses'
     | 'assigned_user_id'
+    | 'has_conflict'
   >,
   currentUserId: number,
 ) {
@@ -330,6 +354,7 @@ function mapChapterRowCore(
     completedVerses: Number(row.completed_verses) || 0,
     totalVerses: Number(row.total_verses) || 0,
     downloadedVerses: Number(row.downloaded_verses) || 0,
+    hasConflict: Number(row.has_conflict) === 1,
   };
 }
 
@@ -378,7 +403,8 @@ export async function getProjectChapters(
           WHERE ${BIBLE_TEXTS_MATCH_CA}
         ) AS downloaded_verses,
         ca.total_verses,
-        ca.completed_verses
+        ca.completed_verses,
+        ca.has_conflict
       FROM chapter_assignments ca
       JOIN books b ON ca.book_id = b.id
       JOIN project_units pu ON ca.project_unit_id = pu.id
@@ -427,7 +453,8 @@ export async function getMyWorkChapters(
           WHERE ${BIBLE_TEXTS_MATCH_CA}
         ) AS downloaded_verses,
         ca.total_verses,
-        ca.completed_verses
+        ca.completed_verses,
+        ca.has_conflict
       FROM chapter_assignments ca
       JOIN books b ON ca.book_id = b.id
       JOIN project_units pu ON ca.project_unit_id = pu.id
