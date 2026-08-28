@@ -841,6 +841,20 @@ export async function setRecordingSyncStatus(
   );
 }
 
+export async function claimChapterAssignment(
+  chapterAssignmentId: number,
+  userId: number,
+): Promise<void> {
+  const db = getDatabase();
+  const updatedAt = new Date().toISOString();
+  await db.transaction(async (tx: Transaction) => {
+    await tx.execute(
+      `UPDATE chapter_assignments SET assigned_user_id = ?, updated_at = ? WHERE id = ?`,
+      [userId, updatedAt, chapterAssignmentId],
+    );
+  });
+}
+
 /**
  * Immediately apply a local stage advance (#258). Server confirmation and
  * pending-sync queue behavior are owned by #257.

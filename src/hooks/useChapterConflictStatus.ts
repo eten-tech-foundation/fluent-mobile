@@ -1,6 +1,6 @@
 import { isDevPreviewChapterConflictEnabled } from '../config/devPreviewChapterConflict';
 
-/** Placeholder until fluent-api#271's conflict data model lands (#260 consumes the same source). */
+/** Placeholder until #271's conflict data model lands (#260 consumes the same source). */
 export function useChapterConflictStatus(chapterAssignmentId: number): {
   hasConflict: boolean;
 } {

@@ -3,6 +3,7 @@ import { getConnectivitySnapshot } from '../services/connectivity';
 import { useRecordingEngine } from './useRecordingEngine';
 import { usePlaybackEngine } from './usePlaybackEngine';
 import { claimChapterOffline } from '../db/repository';
+import { syncChapterClaim } from '../services/chapterClaimSync';
 import { useVerseAudio } from './useVerseAudio';
 import { logger } from '../utils/logger';
 
@@ -16,6 +17,10 @@ jest.mock('../db/repository', () => ({
   claimChapterOffline: jest.fn(),
 }));
 
+jest.mock('../services/chapterClaimSync', () => ({
+  syncChapterClaim: jest.fn(),
+}));
+
 jest.mock('../services/connectivity', () => ({
   getConnectivitySnapshot: jest.fn(),
 }));
@@ -24,12 +29,35 @@ jest.mock('./useRecordingEngine');
 jest.mock('./usePlaybackEngine');
 
 const mockClaimChapterOffline = claimChapterOffline as jest.Mock;
+const mockSyncChapterClaim = syncChapterClaim as jest.Mock;
 const mockGetConnectivitySnapshot = getConnectivitySnapshot as jest.Mock;
 const mockUseRecordingEngine = useRecordingEngine as jest.Mock;
 const mockUsePlaybackEngine = usePlaybackEngine as jest.Mock;
 
 const BIBLE_TEXT_ID = 42;
 const CHAPTER_ASSIGNMENT_ID = 7;
+const USER_ID = 5;
+
+const chapterClaim = {
+  bibleId: 1,
+  bookId: 2,
+  chapterNumber: 3,
+  assignedUserId: null as number | null,
+};
+
+function verseAudioArgs(
+  overrides: Partial<Parameters<typeof useVerseAudio>[0]> = {},
+) {
+  return {
+    bibleTextId: BIBLE_TEXT_ID,
+    chapterAssignmentId: CHAPTER_ASSIGNMENT_ID,
+    userId: USER_ID,
+    chapterClaim,
+    persistTake: jest.fn(),
+    loadTakes: jest.fn(),
+    ...overrides,
+  };
+}
 
 function setupEngines() {
   const recording = {
@@ -64,7 +92,7 @@ async function stopAfterStart(hookResult: { current: VerseAudioResult }) {
   });
 }
 
-describe('useVerseAudio offline claim (#270)', () => {
+describe('useVerseAudio chapter claim (#268 / #270)', () => {
   const persistTake = jest.fn();
   const loadTakes = jest.fn();
   const mockTransport = jest.fn();
@@ -83,6 +111,12 @@ describe('useVerseAudio offline claim (#270)', () => {
       isCellular: false,
     });
     mockClaimChapterOffline.mockResolvedValue(true);
+    mockSyncChapterClaim.mockResolvedValue({
+      chapterAssignmentId: CHAPTER_ASSIGNMENT_ID,
+      assignedUserId: USER_ID,
+      status: 'draft',
+      hasClaimConflict: false,
+    });
     logger.setTransport(mockTransport);
   });
 
@@ -90,131 +124,172 @@ describe('useVerseAudio offline claim (#270)', () => {
     logger.reset();
   });
 
-  it('claims the chapter when offline with a known user', async () => {
-    mockGetConnectivitySnapshot.mockResolvedValue({
-      isOnline: false,
-      isWifi: false,
-      isCellular: false,
+  describe('offline (#270)', () => {
+    beforeEach(() => {
+      mockGetConnectivitySnapshot.mockResolvedValue({
+        isOnline: false,
+        isWifi: false,
+        isCellular: false,
+      });
     });
 
-    const { result } = renderHook(() =>
-      useVerseAudio({
-        bibleTextId: BIBLE_TEXT_ID,
-        chapterAssignmentId: CHAPTER_ASSIGNMENT_ID,
-        userId: 5,
-        persistTake,
-        loadTakes,
-      }),
-    );
+    it('claims the chapter when offline with a known user', async () => {
+      const onChapterClaimed = jest.fn();
+      const { result } = renderHook(() =>
+        useVerseAudio({
+          ...verseAudioArgs(),
+          persistTake,
+          loadTakes,
+          onChapterClaimed,
+        }),
+      );
 
-    await stopAfterStart(result);
+      await stopAfterStart(result);
 
-    expect(mockClaimChapterOffline).toHaveBeenCalledWith(
-      CHAPTER_ASSIGNMENT_ID,
-      5,
-    );
-    await waitFor(() => expect(result.current.state).toBe('recorded'));
+      expect(mockClaimChapterOffline).toHaveBeenCalledWith(
+        CHAPTER_ASSIGNMENT_ID,
+        USER_ID,
+      );
+      expect(onChapterClaimed).toHaveBeenCalled();
+      await waitFor(() => expect(result.current.state).toBe('recorded'));
+    });
+
+    it('does not claim when userId is null, even offline', async () => {
+      const { result } = renderHook(() =>
+        useVerseAudio({
+          ...verseAudioArgs({ userId: null }),
+          persistTake,
+          loadTakes,
+        }),
+      );
+
+      await stopAfterStart(result);
+
+      expect(mockClaimChapterOffline).not.toHaveBeenCalled();
+      expect(mockGetConnectivitySnapshot).not.toHaveBeenCalled();
+    });
+
+    it('does not claim when chapterAssignmentId is null, even offline', async () => {
+      const { result } = renderHook(() =>
+        useVerseAudio({
+          ...verseAudioArgs({ chapterAssignmentId: null }),
+          persistTake,
+          loadTakes,
+        }),
+      );
+
+      await stopAfterStart(result);
+
+      expect(mockClaimChapterOffline).not.toHaveBeenCalled();
+    });
+
+    it('still saves the take when offline claim throws, and logs the failure', async () => {
+      mockClaimChapterOffline.mockRejectedValue(new Error('db locked'));
+
+      const { result } = renderHook(() =>
+        useVerseAudio({
+          ...verseAudioArgs(),
+          persistTake,
+          loadTakes,
+        }),
+      );
+
+      await stopAfterStart(result);
+
+      await waitFor(() => expect(result.current.state).toBe('recorded'));
+      expect(mockTransport).toHaveBeenCalledWith(
+        'error',
+        'useVerseAudio',
+        'Chapter claim failed',
+        expect.objectContaining({ message: 'db locked' }),
+      );
+    });
   });
 
-  it('does not claim when online, even with a known user', async () => {
-    mockGetConnectivitySnapshot.mockResolvedValue({
-      isOnline: true,
-      isWifi: true,
-      isCellular: false,
+  describe('online (#268)', () => {
+    it('syncs claim when the chapter is unassigned and online', async () => {
+      const onChapterClaimed = jest.fn();
+      const { result } = renderHook(() =>
+        useVerseAudio({
+          ...verseAudioArgs(),
+          persistTake,
+          loadTakes,
+          onChapterClaimed,
+        }),
+      );
+
+      await stopAfterStart(result);
+
+      expect(mockClaimChapterOffline).not.toHaveBeenCalled();
+      expect(mockSyncChapterClaim).toHaveBeenCalledWith(
+        CHAPTER_ASSIGNMENT_ID,
+        USER_ID,
+      );
+      expect(onChapterClaimed).toHaveBeenCalled();
     });
 
-    const { result } = renderHook(() =>
-      useVerseAudio({
-        bibleTextId: BIBLE_TEXT_ID,
-        chapterAssignmentId: CHAPTER_ASSIGNMENT_ID,
-        userId: 5,
-        persistTake,
-        loadTakes,
-      }),
-    );
+    it('retries claim on a later take while the chapter remains unassigned', async () => {
+      const { result } = renderHook(() =>
+        useVerseAudio({
+          ...verseAudioArgs(),
+          persistTake,
+          loadTakes,
+        }),
+      );
 
-    await stopAfterStart(result);
+      mockSyncChapterClaim.mockRejectedValueOnce(new Error('network error'));
 
-    expect(mockClaimChapterOffline).not.toHaveBeenCalled();
-  });
+      await stopAfterStart(result);
+      await stopAfterStart(result);
 
-  it('does not claim when userId is null, even offline', async () => {
-    mockGetConnectivitySnapshot.mockResolvedValue({
-      isOnline: false,
-      isWifi: false,
-      isCellular: false,
+      expect(mockSyncChapterClaim).toHaveBeenCalledTimes(2);
     });
 
-    const { result } = renderHook(() =>
-      useVerseAudio({
-        bibleTextId: BIBLE_TEXT_ID,
-        chapterAssignmentId: CHAPTER_ASSIGNMENT_ID,
-        userId: null,
-        persistTake,
-        loadTakes,
-      }),
-    );
+    it('does not claim again after a successful online claim in the same session', async () => {
+      const { result } = renderHook(() =>
+        useVerseAudio({
+          ...verseAudioArgs(),
+          persistTake,
+          loadTakes,
+        }),
+      );
 
-    await stopAfterStart(result);
+      await stopAfterStart(result);
+      await stopAfterStart(result);
 
-    expect(mockClaimChapterOffline).not.toHaveBeenCalled();
-    // Connectivity check is skipped entirely when userId is null (short-circuit).
-    expect(mockGetConnectivitySnapshot).not.toHaveBeenCalled();
-  });
-
-  it('does not claim when chapterAssignmentId is null, even offline with a known user', async () => {
-    mockGetConnectivitySnapshot.mockResolvedValue({
-      isOnline: false,
-      isWifi: false,
-      isCellular: false,
+      expect(mockSyncChapterClaim).toHaveBeenCalledTimes(1);
     });
 
-    const { result } = renderHook(() =>
-      useVerseAudio({
-        bibleTextId: BIBLE_TEXT_ID,
-        chapterAssignmentId: null,
-        userId: 5,
-        persistTake,
-        loadTakes,
-      }),
-    );
+    it('does not claim online when the chapter is already assigned locally', async () => {
+      const { result } = renderHook(() =>
+        useVerseAudio({
+          ...verseAudioArgs({
+            chapterClaim: { ...chapterClaim, assignedUserId: 99 },
+          }),
+          persistTake,
+          loadTakes,
+        }),
+      );
 
-    await stopAfterStart(result);
+      await stopAfterStart(result);
 
-    expect(mockClaimChapterOffline).not.toHaveBeenCalled();
-  });
-
-  it('still saves the take and reaches recorded state when the claim call throws, and logs the failure', async () => {
-    mockGetConnectivitySnapshot.mockResolvedValue({
-      isOnline: false,
-      isWifi: false,
-      isCellular: false,
+      expect(mockSyncChapterClaim).not.toHaveBeenCalled();
+      expect(mockGetConnectivitySnapshot).not.toHaveBeenCalled();
     });
-    mockClaimChapterOffline.mockRejectedValue(new Error('db locked'));
 
-    const { result } = renderHook(() =>
-      useVerseAudio({
-        bibleTextId: BIBLE_TEXT_ID,
-        chapterAssignmentId: CHAPTER_ASSIGNMENT_ID,
-        userId: 5,
-        persistTake,
-        loadTakes,
-      }),
-    );
+    it('does not claim when chapterClaim context is omitted', async () => {
+      const { result } = renderHook(() =>
+        useVerseAudio({
+          ...verseAudioArgs({ chapterClaim: null }),
+          persistTake,
+          loadTakes,
+        }),
+      );
 
-    await stopAfterStart(result);
+      await stopAfterStart(result);
 
-    expect(persistTake).toHaveBeenCalledWith(
-      expect.objectContaining({ bibleTextId: BIBLE_TEXT_ID }),
-    );
-    expect(result.current.errorMessage).toBeNull();
-    await waitFor(() => expect(result.current.state).toBe('recorded'));
-
-    expect(mockTransport).toHaveBeenCalledWith(
-      'error',
-      'useVerseAudio',
-      'Offline chapter claim failed',
-      expect.objectContaining({ message: 'db locked' }),
-    );
+      expect(mockSyncChapterClaim).not.toHaveBeenCalled();
+      expect(mockClaimChapterOffline).not.toHaveBeenCalled();
+    });
   });
 });

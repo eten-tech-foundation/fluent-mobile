@@ -20,6 +20,11 @@ import type {
   UploadVerseAudioParams,
   VerseAudioResponse,
 } from '../types/api/verseAudio';
+import {
+  normalizeClaimResponse,
+  type ClaimChapterAssignmentResponse,
+  type NormalizedClaimChapterAssignmentResponse,
+} from '../types/api/chapterClaim';
 import type { SubmitChapterAssignmentResponse } from '../types/api/submitChapterAssignment';
 import { checkServerReachable } from './connectivity';
 import {
@@ -92,6 +97,17 @@ async function uploadVerseAudioRequest(
     { method: 'PUT' },
   );
   return parseVerseAudioResponse(raw);
+}
+
+async function claimChapterAssignmentRequest(
+  chapterAssignmentId: number,
+): Promise<NormalizedClaimChapterAssignmentResponse> {
+  const api = await authedRequest<ClaimChapterAssignmentResponse>(
+    `/chapter-assignments/${chapterAssignmentId}/claim`,
+    { method: 'POST' },
+  );
+
+  return normalizeClaimResponse(api);
 }
 
 export const FluentAPI = {
@@ -181,6 +197,12 @@ export const FluentAPI = {
   uploadVerseAudio: (
     params: UploadVerseAudioParams,
   ): Promise<VerseAudioResponse> => uploadVerseAudioRequest(params),
+
+  claimChapterAssignment: (
+    chapterAssignmentId: number,
+    _userId: number,
+  ): Promise<NormalizedClaimChapterAssignmentResponse> =>
+    claimChapterAssignmentRequest(chapterAssignmentId),
 
   /**
    * Aquifer-backed Translation Notes for one verse (fluent-api #274).
