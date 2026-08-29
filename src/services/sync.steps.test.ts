@@ -335,6 +335,34 @@ describe('sync step orchestration', () => {
         jest.useRealTimers();
       }
     });
+
+    it('retries when pending claims report failures then sets the sync error', async () => {
+      jest.useFakeTimers();
+      syncPendingChapterClaimsMock.mockResolvedValue({
+        synced: 0,
+        conflicts: 0,
+        failed: 1,
+      });
+
+      try {
+        const pending = syncPendingChapterClaimsForUser(9);
+        const expectation = expect(pending).rejects.toThrow(
+          'Failed to sync 1 pending chapter claim(s)',
+        );
+
+        await jest.advanceTimersByTimeAsync(500);
+        await jest.advanceTimersByTimeAsync(1000);
+        await expectation;
+
+        expect(syncPendingChapterClaimsMock).toHaveBeenCalledTimes(3);
+        expect(setSyncErrorMock).toHaveBeenCalledWith(
+          'sync_error_chapter_assignments',
+          'Failed to sync 1 pending chapter claim(s)',
+        );
+      } finally {
+        jest.useRealTimers();
+      }
+    });
   });
 
   describe('syncBibleTexts', () => {

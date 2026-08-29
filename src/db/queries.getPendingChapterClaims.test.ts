@@ -65,8 +65,8 @@ describe('getPendingChapterClaims', () => {
     );
   });
 
-  it('returns an empty array when the query throws', async () => {
+  it('rethrows when the query throws', async () => {
     mockExecute.mockRejectedValue(new Error('db unavailable'));
-    await expect(getPendingChapterClaims()).resolves.toEqual([]);
+    await expect(getPendingChapterClaims()).rejects.toThrow('db unavailable');
   });
 });

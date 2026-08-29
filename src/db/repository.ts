@@ -866,15 +866,19 @@ export async function setChapterAssignmentConflict(
   hasConflict: boolean,
 ): Promise<void> {
   const db = getDatabase();
-  await db.execute(
-    `UPDATE chapter_assignments SET has_conflict = ? WHERE id = ?`,
-    [hasConflict ? 1 : 0, chapterAssignmentId],
-  );
+  await db.transaction(async (tx: Transaction) => {
+    await tx.execute(
+      `UPDATE chapter_assignments SET has_conflict = ? WHERE id = ?`,
+      [hasConflict ? 1 : 0, chapterAssignmentId],
+    );
+  });
 }
 
 export async function resolveChapterClaimQueueEntry(id: number): Promise<void> {
   const db = getDatabase();
-  await db.execute(`DELETE FROM chapter_claim_queue WHERE id = ?`, [id]);
+  await db.transaction(async (tx: Transaction) => {
+    await tx.execute(`DELETE FROM chapter_claim_queue WHERE id = ?`, [id]);
+  });
 }
 
 /**

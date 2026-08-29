@@ -281,7 +281,7 @@ export async function getPendingChapterClaims(): Promise<
     }));
   } catch (error) {
     log.error('Error fetching pending chapter claims', { error });
-    return [];
+    throw error;
   }
 }
 

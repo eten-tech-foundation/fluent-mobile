@@ -260,7 +260,15 @@ export async function syncPendingChapterClaimsForUser(userId: number) {
   return retrySyncStep(
     'Pending chapter claim sync',
     KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS,
-    () => syncPendingChapterClaims(userId),
+    async () => {
+      const result = await syncPendingChapterClaims(userId);
+      if (result.failed > 0) {
+        throw new Error(
+          `Failed to sync ${result.failed} pending chapter claim(s)`,
+        );
+      }
+      return result;
+    },
     String(userId),
   );
 }
