@@ -22,6 +22,7 @@ import { getDatabase } from '../db/db';
 import { ApiBook, ApiVerse } from '../types/api/types';
 import { ApiUser, unwrapApiListResponse } from '../types/api/responses';
 import { getConnectivitySnapshot } from './connectivity';
+import { syncPendingChapterClaims } from './chapterClaimSync';
 import {
   setUserSync,
   registerKnownUser,
@@ -246,6 +247,20 @@ export async function syncProjects(userId: number, sessionToken?: string) {
         userProjectsInDb: totalProjectsCount,
       });
     },
+    String(userId),
+  );
+}
+
+export async function syncPendingChapterClaimsForUser(userId: number) {
+  const { isOnline } = await getConnectivitySnapshot();
+  if (!isOnline) {
+    return { synced: 0, conflicts: 0, failed: 0 };
+  }
+
+  return retrySyncStep(
+    'Pending chapter claim sync',
+    KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS,
+    () => syncPendingChapterClaims(userId),
     String(userId),
   );
 }
@@ -589,6 +604,7 @@ export async function syncAllUsers(): Promise<void> {
 
       try {
         await syncProjects(userIdNum, creds.token);
+        await syncPendingChapterClaimsForUser(userIdNum);
         const { didFullSync } = await syncChapterAssignmentsForUser(
           userIdNum,
           assignmentCursor,
@@ -708,6 +724,7 @@ export async function syncAllData(
 
     await syncMasterData();
     await syncProjects(userId, sessionToken);
+    await syncPendingChapterClaimsForUser(userId);
 
     if (isIncremental) {
       const assignmentCursor = userAssignmentCursor ?? lastSyncedAt;

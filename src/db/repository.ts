@@ -861,6 +861,22 @@ export async function claimChapterAssignment(
   });
 }
 
+export async function setChapterAssignmentConflict(
+  chapterAssignmentId: number,
+  hasConflict: boolean,
+): Promise<void> {
+  const db = getDatabase();
+  await db.execute(
+    `UPDATE chapter_assignments SET has_conflict = ? WHERE id = ?`,
+    [hasConflict ? 1 : 0, chapterAssignmentId],
+  );
+}
+
+export async function resolveChapterClaimQueueEntry(id: number): Promise<void> {
+  const db = getDatabase();
+  await db.execute(`DELETE FROM chapter_claim_queue WHERE id = ?`, [id]);
+}
+
 /**
  * Immediately apply a local stage advance (#258). Server confirmation and
  * pending-sync queue behavior are owned by #257.

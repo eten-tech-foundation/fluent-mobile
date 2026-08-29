@@ -27,6 +27,9 @@ export interface ApiChapterAssignment {
   completedVerses?: number;
   /** Chapter-level unresolved audio-take conflict rollup (fluent-api#271). */
   hasConflict?: boolean;
+  /** Race conflict from POST claim — distinct from audio-take `hasConflict` (fluent-api#272). */
+  hasClaimConflict?: boolean;
+  claimConflictUserId?: number | null;
 }
 
 /** GET /users/:id/chapter-assignments — same shape web My Work uses. */
