@@ -299,7 +299,6 @@ const styles = StyleSheet.create({
   prepareOfflineRow: {
     backgroundColor: theme.colors.cardBackground,
   },
-
   hairlineDivider: {
     height: 1,
     backgroundColor: theme.colors.border,
@@ -309,10 +308,5 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.lg,
     overflow: 'hidden',
     marginTop: theme.spacing.md,
-  },
-
-  rowDivider: {
-    height: 1,
-    backgroundColor: theme.colors.border,
   },
 });
