@@ -14,6 +14,7 @@ import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import {
   SettingsDestructiveRow,
   SettingsNavigationRow,
+  SettingsSegmentedRow,
   SettingsToggleRow,
 } from '../../components/ui/SettingsListRow';
 import {
@@ -35,6 +36,7 @@ import { useAuthSession } from '../../navigation/AuthSessionProvider';
 import { resetNavigationAfterAccountSwitch } from '../../navigation/resetNavigationAfterAccountSwitch';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import { logger } from '../../utils/logger';
+import { useDraftingUnit } from '../../hooks/useDraftingUnit';
 
 const log = logger.create('SettingsScreen');
 
@@ -44,6 +46,7 @@ export default function SettingsScreen() {
   const { signOut: onSignOut, notifyUserSwitched: onUserSwitched } =
     useAuthSession();
   const { uploadOverCellular, setUploadOverCellular } = usePreferences();
+  const { draftingUnit, setDraftingUnit } = useDraftingUnit();
   const { reauthRequired } = useReauthRequired({ refreshOnFocus: true });
   const [atAccountLimit, setAtAccountLimit] = useState(
     () => getKnownUserIds().length >= MAX_DEVICE_ACCOUNTS,
@@ -153,8 +156,11 @@ export default function SettingsScreen() {
           ) : null}
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Offline</Text>
-            <View style={styles.cardGroup}>
-              <View style={styles.sectionCard}>
+
+            <View style={styles.offlineArea}>
+              <View style={styles.hairlineDivider} />
+
+              <View style={styles.prepareOfflineRow}>
                 <SettingsNavigationRow
                   title="Prepare for Offline"
                   subtitle="Download resources and manage device storage"
@@ -168,27 +174,48 @@ export default function SettingsScreen() {
                   onPress={() => router.push(hrefs.prepareForOffline())}
                 />
               </View>
-              <View style={styles.sectionCard}>
-                <SettingsToggleRow
-                  title="Upload/Download over cellular"
-                  subtitle="Use mobile data to upload recordings when WiFi isn't available."
-                  value={uploadOverCellular}
-                  onValueChange={setUploadOverCellular}
-                />
+
+              <View style={styles.hairlineDivider} />
+
+              <View style={styles.cardGroup}>
+                <View style={styles.sectionCard}>
+                  <SettingsToggleRow
+                    title="Upload/Download over cellular"
+                    subtitle="Use mobile data to upload recordings when WiFi isn't available."
+                    value={uploadOverCellular}
+                    onValueChange={setUploadOverCellular}
+                  />
+                </View>
+
+                <View style={styles.sectionCard}>
+                  <SettingsSegmentedRow
+                    title="Drafting unit"
+                    subtitle="Choose whether the drafting tabs work one verse at a time or by full pericope."
+                    options={[
+                      { label: 'Verse', value: 'verse' },
+                      { label: 'Pericope', value: 'pericope' },
+                    ]}
+                    value={draftingUnit}
+                    onValueChange={setDraftingUnit}
+                  />
+                </View>
               </View>
-              <View style={styles.sectionCard}>
-                <SettingsDestructiveRow
-                  title="Clear cache"
-                  icon={
-                    <Trash2
-                      size={iconSizes.headerTab}
-                      color={theme.colors.destructive}
-                      strokeWidth={listIconStrokeWidth}
-                    />
-                  }
-                  onPress={handleClearCache}
-                />
-              </View>
+
+              <View style={styles.hairlineDivider} />
+            </View>
+
+            <View style={styles.clearCacheCard}>
+              <SettingsDestructiveRow
+                title="Clear cache"
+                icon={
+                  <Trash2
+                    size={iconSizes.headerTab}
+                    color={theme.colors.destructive}
+                    strokeWidth={listIconStrokeWidth}
+                  />
+                }
+                onPress={handleClearCache}
+              />
             </View>
           </View>
           <View style={styles.section}>
@@ -251,10 +278,41 @@ const styles = StyleSheet.create({
   },
   cardGroup: {
     gap: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    width: '100%',
   },
   sectionCard: {
     backgroundColor: theme.colors.cardBackground,
     borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     overflow: 'hidden',
+    width: '100%',
+    alignSelf: 'stretch',
+    marginHorizontal: 0,
+  },
+  offlineArea: {
+    backgroundColor: theme.colors.cardBackground,
+    marginHorizontal: -theme.spacing.lg,
+  },
+  prepareOfflineRow: {
+    backgroundColor: theme.colors.cardBackground,
+  },
+
+  hairlineDivider: {
+    height: 1,
+    backgroundColor: theme.colors.border,
+  },
+  clearCacheCard: {
+    backgroundColor: theme.colors.cardBackground,
+    borderRadius: theme.radius.lg,
+    overflow: 'hidden',
+    marginTop: theme.spacing.md,
+  },
+
+  rowDivider: {
+    height: 1,
+    backgroundColor: theme.colors.border,
   },
 });
