@@ -13,7 +13,7 @@ This repo runs GitHub Actions on pushes and pull requests. This doc maps what ru
 | `quality-gates.yml` | `TypeScript`, `expo-doctor`, `expo install --check` | Typecheck + Expo SDK / native-module alignment |
 | `preview-build.yml` | Android EAS preview APK | Optional label `preview-build` — binary only (no OTA); **PR comment only** (debug). Does not move Project 4 or start QA |
 | `qa-handoff.yml` | Post-merge QA handoff | On merge of Needs-QA PRs: issue comment + assign `@Roslin22` + best-effort Project 4 → `In QA` ([guides/qa-process.md](guides/qa-process.md)) |
-| `nightly-preview.yml` | Nightly Android APK | Scheduled binary-only internal APK (dev API); also `workflow_dispatch`; comments install URL on recent handoff issues |
+| `nightly-preview.yml` | Nightly Android APK | 23:17 PT APK + 09:07 PT Slack (09:00–16:00 PT); `workflow_dispatch`; install comments on recent handoffs |
 | `eas-build.yml` | Tag → version sync | Production release path on `v*` tags |
 
 Local mirrors (run before claiming PR-ready):

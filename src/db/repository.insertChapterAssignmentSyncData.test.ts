@@ -158,7 +158,15 @@ function createSyncTestDb() {
           updated_at: params[9] as string,
           total_verses: params[10] as number,
           completed_verses: params[11] as number,
+          has_conflict: params[12] as number,
         };
+        const updateHasConflict = Number(params[13] ?? 0) === 1;
+        const existing = tables
+          .get('chapter_assignments')
+          ?.rows.find(r => r.id === row.id);
+        if (existing && !updateHasConflict) {
+          row.has_conflict = existing.has_conflict ?? 0;
+        }
         upsertById('chapter_assignments', row);
         return { rows: [], rowsAffected: 1 };
       }
@@ -414,5 +422,31 @@ describe('insertChapterAssignmentSyncData', () => {
 
     expect(db.table('chapter_assignments')).toHaveLength(1);
     expect(db.table('chapter_assignments')[0].id).toBe(1);
+  });
+
+  it('sets has_conflict when provided and preserves it when omitted', async () => {
+    const db = createSyncTestDb();
+    setDatabase(db as never);
+    db.seed({
+      projects: [{ id: 100, name: 'P' }],
+      bibles: [{ id: 4, language_id: 1, name: 'B', abbreviation: 'B' }],
+      books: [{ id: 12, code: 'GEN', eng_display_name: 'Genesis' }],
+      project_units: [{ id: 10, project_id: 100, status: 'not_started' }],
+    });
+
+    await insertChapterAssignmentSyncData([
+      validAssignment({ chapterAssignmentId: 1, hasConflict: true }),
+    ]);
+    expect(db.table('chapter_assignments')[0].has_conflict).toBe(1);
+
+    await insertChapterAssignmentSyncData([
+      validAssignment({ chapterAssignmentId: 1, chapterStatus: 'draft' }),
+    ]);
+    expect(db.table('chapter_assignments')[0].has_conflict).toBe(1);
+
+    await insertChapterAssignmentSyncData([
+      validAssignment({ chapterAssignmentId: 1, hasConflict: false }),
+    ]);
+    expect(db.table('chapter_assignments')[0].has_conflict).toBe(0);
   });
 });

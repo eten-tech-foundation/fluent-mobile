@@ -54,6 +54,7 @@ function makeChapter(overrides: Partial<ProjectChapter> = {}): ProjectChapter {
     completedVerses: 0,
     totalVerses: 10,
     downloadedVerses: 10,
+    hasConflict: false,
     ...overrides,
   };
 }

@@ -10,11 +10,20 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 
 const mockPush = jest.fn();
+const mockReplace = jest.fn();
+const mockDismissAll = jest.fn();
+const mockCanDismiss = jest.fn(() => false);
 const mockNavigate = jest.fn();
 const mockCloseDrawer = jest.fn();
 let mockDrawerStatus: 'open' | 'closed' = 'closed';
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: mockPush, replace: jest.fn(), back: jest.fn() }),
+  useRouter: () => ({
+    push: mockPush,
+    replace: mockReplace,
+    back: jest.fn(),
+    canDismiss: mockCanDismiss,
+    dismissAll: mockDismissAll,
+  }),
 }));
 jest.mock('expo-router/drawer', () => {
   const React = require('react');
@@ -166,6 +175,7 @@ describe('UserSettingsMenu', () => {
     jest.resetAllMocks();
     mockDrawerStatus = 'closed';
     mockReload.mockResolvedValue(undefined);
+    mockCanDismiss.mockReturnValue(false);
 
     mockGetActiveUserId.mockReturnValue('active-1');
     setDeviceAccountsResult();
@@ -286,6 +296,7 @@ describe('UserSettingsMenu', () => {
   });
 
   it('switches successfully when the target user has a valid session', async () => {
+    mockCanDismiss.mockReturnValue(true);
     mockSwitchToDeviceAccount.mockResolvedValueOnce(undefined);
     const { getByText } = renderMenu();
 
@@ -295,6 +306,10 @@ describe('UserSettingsMenu', () => {
       expect(mockSwitchToDeviceAccount).toHaveBeenCalledWith('other-2');
       expect(mockCloseDrawer).toHaveBeenCalled();
       expect(onUserSwitched).toHaveBeenCalled();
+      expect(mockDismissAll).toHaveBeenCalled();
+      expect(mockReplace).toHaveBeenCalledWith(
+        hrefs.home({ newUserLoading: false }),
+      );
     });
   });
 
@@ -326,6 +341,9 @@ describe('UserSettingsMenu', () => {
       expect(mockSignOutCurrentDeviceAccount).toHaveBeenCalled();
       expect(onUserSwitched).toHaveBeenCalled();
       expect(onSignOut).not.toHaveBeenCalled();
+      expect(mockReplace).toHaveBeenCalledWith(
+        hrefs.home({ newUserLoading: false }),
+      );
     });
   });
 

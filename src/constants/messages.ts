@@ -10,7 +10,8 @@ export const PROJECT_CHAPTERS_EMPTY_MESSAGE =
 export const RESOURCES_EMPTY_MESSAGE =
   'No resources are on this device yet. Download them from Prepare for Offline.';
 
-export const IMAGES_MAPS_LOAD_ERROR = 'Unable to load Images & Maps.';
+/** Section-scoped Images & Maps failure copy (#191 / #348). */
+export const IMAGES_MAPS_LOAD_ERROR = 'Images unavailable';
 
 export const TRANSLATION_NOTES_LOAD_ERROR = 'Unable to load Translation Notes.';
 
@@ -24,6 +25,13 @@ export const LOGOUT_UNSYNCED_MESSAGE =
   'You have recordings that have not been uploaded. Log out anyway?';
 export const LOGOUT_UNSYNCED_CONFIRM = 'Log out';
 export const LOGOUT_UNSYNCED_CANCEL = 'Cancel';
+
+export const REAUTH_PROMPT_TITLE = 'Session expired';
+export const REAUTH_PROMPT_SUBTITLE = 'Sign in again to sync your work';
+export const REAUTH_SCREEN_TITLE = 'Sign in again';
+export const REAUTH_SCREEN_SUBTITLE =
+  'Enter your password to refresh your session.';
+export const REAUTH_SUBMIT_BUTTON = 'Sign in again';
 
 export const DELETE_OFFLINE_RESOURCES_TITLE = 'Delete selected resources?';
 export const DELETE_OFFLINE_RESOURCES_MESSAGE =

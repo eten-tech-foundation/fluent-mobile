@@ -4,6 +4,7 @@ import { ProjectChapter } from '../../types/db/types';
 import { getProjectChapterRowDisplay } from '../../utils/projectChapterRowDisplay';
 import { theme } from '../../theme';
 import { iconSizes } from '../../theme/iconSpecs';
+import { ChapterConflictIndicator } from './ChapterConflictIndicator';
 import { ChapterProgressRing } from './ChapterProgressRing';
 import { ChapterCloudSyncIndicator } from './ChapterSyncIndicator';
 import { ListCard } from './ListCard';
@@ -44,6 +45,9 @@ export function ProjectChapterRow({
               syncState={syncState}
               size={iconSizes.projectSync}
             />
+          ) : null}
+          {chapter.hasConflict ? (
+            <ChapterConflictIndicator size={iconSizes.projectSync} />
           ) : null}
           <ChapterOwnershipIndicator
             ownershipState={chapter.ownershipState}

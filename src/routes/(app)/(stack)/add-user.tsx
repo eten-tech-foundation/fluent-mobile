@@ -9,9 +9,10 @@ export default function AddUserRoute() {
   return (
     <LoginScreen
       legalLinksGroup="app"
-      onLoginSuccess={email => {
+      variant="addAccount"
+      onLoginSuccess={(email, preloadedUser) => {
         router.replace(hrefs.home({ newUserLoading: true }));
-        signInAddUser(email);
+        signInAddUser(email, preloadedUser);
       }}
     />
   );

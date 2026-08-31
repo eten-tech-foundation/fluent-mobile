@@ -8,13 +8,16 @@ import {
 } from '@testing-library/react-native';
 import { RecordTab } from './RecordTab';
 import { DraftingProvider } from '../context/DraftingContext';
-import type { ChapterAssignmentData } from '../../types/db/types';
 import {
   RECORD_AUDIO_CONFLICT_WARNING,
   RECORD_TAKEN_CHAPTER_WARNING,
 } from '../../constants/messages';
 import type { useVerseAudio } from '../../hooks/useVerseAudio';
-import type { Recording, RecordingWithOwner } from '../../types/db/types';
+import type {
+  Recording,
+  RecordingWithOwner,
+  ChapterAssignmentData,
+} from '../../types/db/types';
 
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({ chapterName: 'Mark 14' }),
@@ -27,6 +30,10 @@ jest.mock('expo-router', () => ({
 jest.mock('../../db/queries', () => ({
   getBibleTextId: jest.fn(async () => 42),
   getRecordedVerseNumbers: jest.fn(async () => new Set([3])),
+}));
+
+jest.mock('../../hooks/useVerseAudio', () => ({
+  useVerseAudio: () => mockUseVerseAudio(),
 }));
 
 jest.mock('../../audio/micPermission', () => ({
@@ -109,12 +116,6 @@ jest.mock('../../hooks/useChapterConflictStatus', () => ({
     mockUseChapterConflictStatus(chapterId),
 }));
 
-jest.mock('../../utils/parseUserId', () => ({
-  parseUserId: jest.fn(() => 42),
-}));
-
-import { parseUserId } from '../../utils/parseUserId';
-
 const chapterData: ChapterAssignmentData = {
   id: 1,
   projectUnitId: 1,
@@ -126,6 +127,7 @@ const chapterData: ChapterAssignmentData = {
   assignedUserId: 42,
   bibleName: 'BSB',
   bookName: 'Mark',
+  hasConflict: false,
 };
 
 const verses = [
@@ -138,16 +140,23 @@ const verses = [
   },
 ];
 
+type RenderTabOptions = {
+  chapterData?: ChapterAssignmentData;
+  userId?: number | null;
+  onChapterClaimed?: () => void;
+};
+
 function renderTab(
   onCaptureActiveChange?: (active: boolean) => void,
-  overrides?: { chapterData?: ChapterAssignmentData; userId?: number | null },
+  options?: RenderTabOptions,
 ) {
   return render(
     <DraftingProvider verses={verses} initialVerse={3}>
       <RecordTab
-        chapterData={overrides?.chapterData ?? chapterData}
-        userId={overrides?.userId ?? 1}
+        chapterData={options?.chapterData ?? chapterData}
+        userId={options?.userId ?? 42}
         onCaptureActiveChange={onCaptureActiveChange}
+        onChapterClaimed={options?.onChapterClaimed}
       />
     </DraftingProvider>,
   );
@@ -185,7 +194,6 @@ describe('RecordTab', () => {
     jest.clearAllMocks();
     mockUseVerseAudio.mockReturnValue(idleAudio);
     mockUseChapterConflictStatus.mockReturnValue({ hasConflict: false });
-    jest.mocked(parseUserId).mockReturnValue(42);
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 

@@ -38,6 +38,8 @@ jest.mock('lucide-react-native', () => {
     Circle: MockIcon,
     Mic: MockIcon,
     UserCheck: MockIcon,
+    Users: MockIcon,
+    TriangleAlert: MockIcon,
     ChevronRight: MockIcon,
     User: MockIcon,
   };
@@ -64,6 +66,7 @@ const sampleChapter: MyWorkChapter = {
   completedVerses: 3,
   totalVerses: 5,
   downloadedVerses: 5,
+  hasConflict: false,
   lastActivityLabel: 'Jun 1, 2024',
   projectName: 'Gospel of Luke',
   targetLanguageName: 'Baka',
@@ -80,6 +83,7 @@ const notStartedChapter: MyWorkChapter = {
   completedVerses: 0,
   totalVerses: 5,
   downloadedVerses: 0,
+  hasConflict: false,
   projectName: 'Gospel of Luke',
   targetLanguageName: 'Baka',
 };

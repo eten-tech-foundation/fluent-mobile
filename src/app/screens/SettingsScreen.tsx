@@ -2,7 +2,13 @@ import React, { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { HardDrive, LogOut, Trash2, UserPlus } from 'lucide-react-native';
+import {
+  AlertCircle,
+  HardDrive,
+  LogOut,
+  Trash2,
+  UserPlus,
+} from 'lucide-react-native';
 import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import {
@@ -15,14 +21,18 @@ import {
   LOGOUT_UNSYNCED_CONFIRM,
   LOGOUT_UNSYNCED_MESSAGE,
   LOGOUT_UNSYNCED_TITLE,
+  REAUTH_PROMPT_TITLE,
+  REAUTH_PROMPT_SUBTITLE,
 } from '../../constants/messages';
 import { signOutCurrentDeviceAccount } from '../../services/accountSession';
 import { clearAllPausedTakes } from '../../services/pausedTakes';
 import { getKnownUserIds, MAX_DEVICE_ACCOUNTS } from '../../services/storage';
 import { loadPendingUploadCount } from '../../hooks/usePendingUploads';
 import { usePreferences } from '../../hooks/usePreferences';
+import { useReauthRequired } from '../../hooks/useReauthRequired';
 import { hrefs } from '../../navigation/hrefs';
 import { useAuthSession } from '../../navigation/AuthSessionProvider';
+import { resetNavigationAfterAccountSwitch } from '../../navigation/resetNavigationAfterAccountSwitch';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import { logger } from '../../utils/logger';
 
@@ -34,6 +44,7 @@ export default function SettingsScreen() {
   const { signOut: onSignOut, notifyUserSwitched: onUserSwitched } =
     useAuthSession();
   const { uploadOverCellular, setUploadOverCellular } = usePreferences();
+  const { reauthRequired } = useReauthRequired({ refreshOnFocus: true });
   const [atAccountLimit, setAtAccountLimit] = useState(
     () => getKnownUserIds().length >= MAX_DEVICE_ACCOUNTS,
   );
@@ -45,10 +56,8 @@ export default function SettingsScreen() {
   );
 
   const goBack = useCallback(() => {
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
+    // Settings is a Drawer sibling of `(stack)`, so `canGoBack()` is often false
+    // after More Settings. Always land on home to avoid a blank white surface (#348).
     router.replace(hrefs.home());
   }, [router]);
 
@@ -61,7 +70,7 @@ export default function SettingsScreen() {
     const result = await signOutCurrentDeviceAccount();
     if (result.kind === 'switched') {
       onUserSwitched();
-      goBack();
+      resetNavigationAfterAccountSwitch(router);
       return;
     }
     onSignOut();
@@ -120,6 +129,28 @@ export default function SettingsScreen() {
             { paddingBottom: theme.spacing.lg + insets.bottom },
           ]}
         >
+          {reauthRequired ? (
+            <View style={styles.section}>
+              <View style={styles.cardGroup}>
+                <View style={styles.sectionCard}>
+                  <SettingsNavigationRow
+                    title={REAUTH_PROMPT_TITLE}
+                    subtitle={REAUTH_PROMPT_SUBTITLE}
+                    icon={
+                      <AlertCircle
+                        size={iconSizes.headerTab}
+                        color={theme.colors.destructive}
+                        strokeWidth={listIconStrokeWidth}
+                      />
+                    }
+                    onPress={() =>
+                      router.push(hrefs.reauth({ returnTo: 'settings' }))
+                    }
+                  />
+                </View>
+              </View>
+            </View>
+          ) : null}
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Offline</Text>
             <View style={styles.cardGroup}>

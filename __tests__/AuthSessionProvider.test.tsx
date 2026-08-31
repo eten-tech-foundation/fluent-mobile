@@ -62,10 +62,6 @@ jest.mock('../src/services/uploadProgressNotification', () => ({
   stopUploadProgressNotification: () => mockStopUploadProgressNotification(),
 }));
 
-jest.mock('../src/services/syncEvents', () => ({
-  onAuthSessionExpired: jest.fn(() => jest.fn()),
-}));
-
 import {
   AuthSessionProvider,
   useAuthSession,

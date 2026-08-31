@@ -34,6 +34,8 @@ import {
   getProjectsWithSummary,
   isUserAssignedToProject,
 } from '../../db/queries';
+import { ReauthBanner } from '../../components/ui/ReauthBanner';
+import { useReauthRequired } from '../../hooks/useReauthRequired';
 import { hrefs } from '../../navigation/hrefs';
 import { parseOptionalBoolean } from '../../navigation/routeParams';
 import { useAuthSession } from '../../navigation/AuthSessionProvider';
@@ -45,8 +47,10 @@ type AppDrawerNavigation = {
 
 function HomeScreenBody({
   postLoginSyncActive,
+  userSwitchEpoch,
 }: {
   postLoginSyncActive: boolean;
+  userSwitchEpoch: number;
 }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -263,6 +267,20 @@ function HomeScreenBody({
     hasResolved,
   ]);
 
+  const { reauthRequired, refreshReauthRequired } = useReauthRequired({
+    refreshOnFocus: true,
+  });
+
+  useEffect(() => {
+    autoRepairSyncAttempted.current = false;
+    refreshReauthRequired();
+    setRefreshKey(key => key + 1);
+  }, [userSwitchEpoch, refreshReauthRequired]);
+
+  const handleReauthPress = useCallback(() => {
+    router.push(hrefs.reauth({ returnTo: 'home' }));
+  }, [router]);
+
   const handleSettingsPress = () => {
     navigation.openDrawer();
   };
@@ -310,6 +328,9 @@ function HomeScreenBody({
           <ProjectsTab refreshKey={refreshKey} />
         )}
       </View>
+      {reauthRequired ? (
+        <ReauthBanner onSignInAgain={handleReauthPress} />
+      ) : null}
     </ScreenContainer>
   );
 }
@@ -320,6 +341,7 @@ export default function HomeScreen() {
     <HomeScreenBody
       key={userSwitchEpoch}
       postLoginSyncActive={postLoginSyncActive}
+      userSwitchEpoch={userSwitchEpoch}
     />
   );
 }

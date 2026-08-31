@@ -37,5 +37,8 @@ export function mapApiChapterAssignment(
     updatedAt: api.updatedAt ?? undefined,
     totalVerses: nonNegativeInt(api.totalVerses),
     completedVerses: nonNegativeInt(api.completedVerses),
+    ...(typeof api.hasConflict === 'boolean'
+      ? { hasConflict: api.hasConflict }
+      : {}),
   };
 }

@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { MyWorkChapter } from '../../types/db/types';
 import { getMyWorkRowDisplay } from '../../utils/myWorkRowDisplay';
 import { theme } from '../../theme';
+import { ChapterConflictIndicator } from './ChapterConflictIndicator';
 import { ChapterProgressRing } from './ChapterProgressRing';
 import { ChapterCloudSyncIndicator } from './ChapterSyncIndicator';
 import { ListCard } from './ListCard';
@@ -33,6 +34,7 @@ export function MyWorkRow({
           {display.showCloudSync ? (
             <ChapterCloudSyncIndicator syncState={chapter.syncState} />
           ) : null}
+          {chapter.hasConflict ? <ChapterConflictIndicator /> : null}
           <ChapterOwnershipIndicator ownershipState={chapter.ownershipState} />
         </View>
 
