@@ -461,70 +461,69 @@ export function RecordTab({
         </TouchableOpacity>
       </View>
 
-      {verseAudio.hasMultipleRecorders ? (
-        <View style={styles.takeViewToggle} testID="take-view-toggle">
-          <TouchableOpacity
-            style={[
-              styles.toggleOption,
-              takeView === 'mine' && styles.toggleOptionActive,
-            ]}
-            onPress={() => {
-              if (!showCapture) setTakeView('mine');
-            }}
-            disabled={showCapture}
-            accessibilityRole="button"
-            accessibilityState={{
-              selected: takeView === 'mine',
-              disabled: showCapture,
-            }}
-            testID="take-view-mine"
-          >
-            <Text
-              style={[
-                styles.toggleLabel,
-                takeView === 'mine' && styles.toggleLabelActive,
-              ]}
-            >
-              My Takes
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.toggleOption,
-              takeView === 'all' && styles.toggleOptionActive,
-            ]}
-            onPress={() => {
-              if (!showCapture) setTakeView('all');
-            }}
-            disabled={showCapture}
-            accessibilityRole="button"
-            accessibilityState={{
-              selected: takeView === 'all',
-              disabled: showCapture,
-            }}
-            testID="take-view-all"
-          >
-            <Text
-              style={[
-                styles.toggleLabel,
-                takeView === 'all' && styles.toggleLabelActive,
-                showCapture && styles.dim,
-              ]}
-            >
-              All Takes
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
-
       <ScrollView
         style={styles.main}
         contentContainerStyle={[
           styles.mainContent,
           !showReview && styles.mainContentCentered,
         ]}
-        showsVerticalScrollIndicator={false}
       >
+        {verseAudio.hasMultipleRecorders ? (
+          <View style={styles.takeViewToggle} testID="take-view-toggle">
+            <TouchableOpacity
+              style={[
+                styles.toggleOption,
+                takeView === 'mine' && styles.toggleOptionActive,
+              ]}
+              onPress={() => {
+                if (!showCapture) setTakeView('mine');
+              }}
+              disabled={showCapture}
+              accessibilityRole="button"
+              accessibilityState={{
+                selected: takeView === 'mine',
+                disabled: showCapture,
+              }}
+              testID="take-view-mine"
+            >
+              <Text
+                style={[
+                  styles.toggleLabel,
+                  takeView === 'mine' && styles.toggleLabelActive,
+                ]}
+              >
+                My Takes
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.toggleOption,
+                takeView === 'all' && styles.toggleOptionActive,
+              ]}
+              onPress={() => {
+                if (!showCapture) setTakeView('all');
+              }}
+              disabled={showCapture}
+              accessibilityRole="button"
+              accessibilityState={{
+                selected: takeView === 'all',
+                disabled: showCapture,
+              }}
+              testID="take-view-all"
+            >
+              <Text
+                style={[
+                  styles.toggleLabel,
+                  takeView === 'all' && styles.toggleLabelActive,
+                  showCapture && styles.dim,
+                ]}
+              >
+                All Takes
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
         {showCapture ? (
           <View style={styles.waveformWrap} testID="record-waveform">
             <PlaybackProgressBar
@@ -900,7 +899,6 @@ const styles = StyleSheet.create({
     padding: theme.spacing.xs,
     gap: theme.spacing.xs,
     alignSelf: 'center',
-    marginTop: theme.spacing.md,
   },
   toggleOption: {
     paddingHorizontal: theme.spacing.lg,
