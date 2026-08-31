@@ -200,8 +200,10 @@ const styles = StyleSheet.create({
   },
   segmentedGroup: {
     flexDirection: 'row',
-    backgroundColor: `${theme.colors.border}80`,
+    backgroundColor: theme.colors.cardBackground,
     borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     padding: 4,
     marginTop: theme.spacing.xs,
   },
