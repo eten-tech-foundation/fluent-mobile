@@ -696,6 +696,8 @@ describe('usePrepareOfflineDownload', () => {
       }),
     );
 
+    expect(result.current.canDownload).toBe(true);
+
     await act(async () => {
       await result.current.handleDownload();
     });
