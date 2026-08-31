@@ -663,6 +663,52 @@ describe('usePrepareOfflineDownload', () => {
     expect(result.current.inventoryRefreshSignal).toBe('0');
   });
 
+  it('enqueues newly selected items even when the raw canDownload prop is stale/false, as long as canDownloadNow is true', async () => {
+    // Regression test: after a cancel, `canDownload` (the raw prop, driven
+    // by the mock-status catalog) can be false while `canDownloadNow`
+    // (which also checks the real queue via hasResumableQueueWork) is true.
+    // handleDownload() must gate enqueuePrepareOfflineDownload on
+    // canDownloadNow, not the raw canDownload prop — otherwise newly
+    // selected resources never get written to download_queue and nothing
+    // new starts downloading (#147 QA bug 3).
+    const { enqueuePrepareOfflineDownload } = jest.requireMock(
+      '../services/prepareOfflineDownload',
+    );
+
+    mockSnapshot.items = [
+      {
+        id: 'tier-1-source-bible-audio',
+        tier: 1,
+        label: 'Audio',
+        progress: 0,
+        status: 'cancelled',
+        projectId: 1,
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: false, // stale mock-status value, as it would be post-cancel
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(enqueuePrepareOfflineDownload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 42,
+        projectId: 1,
+        items: catalog.items,
+      }),
+    );
+  });
+
   it('uses full catalog size for download button label after cancel', async () => {
     mockSnapshot.items = [
       {
