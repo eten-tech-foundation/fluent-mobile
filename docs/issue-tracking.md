@@ -27,6 +27,7 @@ Agents must follow [guides/project-board.md](guides/project-board.md) before cha
 - Do **not** move `Dev Ready` cards to `Backlog` / `Sprint Shaping` to sequence work — use Priority inside `Dev Ready`, or ask.
 - Do **not** edit `In Progress (Product)` (or other Product-owned columns) unless the tech lead explicitly names those issues.
 - Broad board sweeps require a proposed change set and explicit approval.
+- Do **not** mutate tickets outside `eten-tech-foundation/fluent-mobile` / Project 4 (other repos, other org projects, Linear) without stopping and explicit per-ticket confirmation — [guides/project-board.md](guides/project-board.md#foreign-tickets-not-fluent-mobile), [`.cursor/rules/foreign-tickets.mdc`](../.cursor/rules/foreign-tickets.mdc).
 
 ## Where to file work
 

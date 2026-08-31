@@ -1,14 +1,36 @@
+import { useEffect, useState } from 'react';
 import { isDevPreviewChapterConflictEnabled } from '../config/devPreviewChapterConflict';
+import { getChapterHasConflict } from '../db/queries';
 
-/** Placeholder until fluent-api#271's conflict data model lands (#260 consumes the same source). */
+/** Reads chapter-level `has_conflict` from SQLite (synced via fluent-api#271). */
 export function useChapterConflictStatus(chapterAssignmentId: number): {
   hasConflict: boolean;
 } {
-  void chapterAssignmentId;
+  const previewEnabled = isDevPreviewChapterConflictEnabled();
+  const [hasConflict, setHasConflict] = useState(previewEnabled);
 
-  if (isDevPreviewChapterConflictEnabled()) {
-    return { hasConflict: true };
-  }
+  useEffect(() => {
+    let cancelled = false;
 
-  return { hasConflict: false };
+    if (previewEnabled) {
+      setHasConflict(true);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setHasConflict(false);
+
+    void getChapterHasConflict(chapterAssignmentId).then(value => {
+      if (!cancelled) {
+        setHasConflict(value);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [chapterAssignmentId, previewEnabled]);
+
+  return { hasConflict };
 }

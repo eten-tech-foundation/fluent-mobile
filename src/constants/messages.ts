@@ -26,6 +26,13 @@ export const LOGOUT_UNSYNCED_MESSAGE =
 export const LOGOUT_UNSYNCED_CONFIRM = 'Log out';
 export const LOGOUT_UNSYNCED_CANCEL = 'Cancel';
 
+export const REAUTH_PROMPT_TITLE = 'Session expired';
+export const REAUTH_PROMPT_SUBTITLE = 'Sign in again to sync your work';
+export const REAUTH_SCREEN_TITLE = 'Sign in again';
+export const REAUTH_SCREEN_SUBTITLE =
+  'Enter your password to refresh your session.';
+export const REAUTH_SUBMIT_BUTTON = 'Sign in again';
+
 export const DELETE_OFFLINE_RESOURCES_TITLE = 'Delete selected resources?';
 export const DELETE_OFFLINE_RESOURCES_MESSAGE =
   "These files will be removed from your device. You'll need to re-download them if needed later.";

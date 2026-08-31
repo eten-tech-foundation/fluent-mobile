@@ -25,6 +25,7 @@ import { useDraftingContext } from '../context/DraftingContext';
 import { getBibleTextId, getRecordedVerseNumbers } from '../../db/queries';
 import { useVerseAudio } from '../../hooks/useVerseAudio';
 import { requestMicPermission } from '../../audio/micPermission';
+import { logger } from '../../utils/logger';
 import { PlaybackProgressBar } from '../../components/ui/PlaybackProgressBar';
 import { DraftTakeRow } from '../../components/ui/DraftTakeRow';
 import { SharedTakeRow } from '../../components/ui/SharedTakeRow';
@@ -41,13 +42,11 @@ import {
 import { parseRequiredString } from '../../navigation/routeParams';
 import { useChapterConflictStatus } from '../../hooks/useChapterConflictStatus';
 import { isChapterTakenByOther } from '../../utils/chapterTakenStatus';
-import { parseUserId } from '../../utils/parseUserId';
 import {
   getStageAdvanceVisibility,
   stageAdvanceConfirmBody,
 } from '../../utils/stageAdvancement';
 import { confirmStageAdvancement } from '../../services/stageAdvance';
-import { logger } from '../../utils/logger';
 import { ChapterAssignmentData } from '../../types/db/types';
 import type { Recording, RecordingWithOwner } from '../../types/db/types';
 
@@ -93,6 +92,7 @@ type RecordTabProps = {
   chapterData: ChapterAssignmentData;
   userId: number | null;
   onCaptureActiveChange?: (active: boolean) => void;
+  onChapterClaimed?: () => void;
 };
 
 /**
@@ -109,6 +109,7 @@ export function RecordTab({
   chapterData,
   userId,
   onCaptureActiveChange,
+  onChapterClaimed,
 }: RecordTabProps) {
   const router = useRouter();
   const rawParams = useLocalSearchParams<{ chapterName?: string }>();
@@ -127,6 +128,13 @@ export function RecordTab({
     bibleTextId,
     chapterAssignmentId: chapterData.id,
     userId,
+    chapterClaim: {
+      bibleId: chapterData.bibleId,
+      bookId: chapterData.bookId,
+      chapterNumber: chapterData.chapterNumber,
+      assignedUserId: chapterData.assignedUserId,
+    },
+    onChapterClaimed,
   });
   const verseIndex = verses.findIndex(v => v.verseNumber === selectedVerse);
   const prevDisabled = verseIndex <= 0;
@@ -310,7 +318,7 @@ export function RecordTab({
     (verseAudio.state === 'idle' && activeViewHasTakes);
   const showSourceAudio = showIdle || showReview;
 
-  const currentUserId = useMemo(() => parseUserId(), []);
+  const currentUserId = userId;
   const isTaken = useMemo(
     () => isChapterTakenByOther(chapterData, currentUserId),
     [chapterData, currentUserId],

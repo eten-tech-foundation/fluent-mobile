@@ -60,6 +60,7 @@ On feature PRs with heavy agent co-authorship, reviewers should prioritize **sco
 - Issue tracking (Project 4 Fluent Mobile Board): [docs/issue-tracking.md](docs/issue-tracking.md)
 - QA process / post-merge nightly: [docs/guides/qa-process.md](docs/guides/qa-process.md) · install how-to: [docs/guides/qa-preview-testing.md](docs/guides/qa-preview-testing.md)
 - Board mutation rules: [docs/guides/project-board.md](docs/guides/project-board.md) · [`.cursor/rules/project-board.mdc`](.cursor/rules/project-board.mdc)
+- Foreign tickets (other repos / projects / Linear): [`.cursor/rules/foreign-tickets.mdc`](.cursor/rules/foreign-tickets.mdc) — stop and get per-ticket confirmation
 - Expo-first deps: [docs/guides/expo-first-dependencies.md](docs/guides/expo-first-dependencies.md) · [`.cursor/rules/expo-first-dependencies.mdc`](.cursor/rules/expo-first-dependencies.mdc)
 - CI command order: [`.cursor/rules/commands.mdc`](.cursor/rules/commands.mdc)
 - CI inventory: [docs/ci.md](docs/ci.md)

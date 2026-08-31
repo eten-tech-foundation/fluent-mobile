@@ -793,6 +793,58 @@ describe('recordings linkage (#99)', () => {
   });
 });
 
+describe('v12 migration collision repair (#260 / #279)', () => {
+  it('repairs a preview v12 database that already has has_conflict', async () => {
+    const db = createFakeDb(12);
+    db._tables.set('chapter_assignments', {
+      columns: new Set(['id', 'has_conflict']),
+      rows: [],
+      foreignKeys: new Map(),
+      defaults: new Map([['has_conflict', '0']]),
+    });
+    db._tables.set('recordings', {
+      columns: new Set(['id', 'bible_text_id']),
+      rows: [],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+
+    await runMigrations(db);
+
+    expect(await columnExists(db, 'chapter_assignments', 'has_conflict')).toBe(
+      true,
+    );
+    expect(await columnExists(db, 'recordings', 'is_canonical')).toBe(true);
+    expect(db._indexes.has('idx_rec_canonical')).toBe(true);
+    await expect(getUserVersion(db)).resolves.toBe(13);
+  });
+
+  it('applies canonical and conflict columns when upgrading from main v11', async () => {
+    const db = createFakeDb(11);
+    db._tables.set('chapter_assignments', {
+      columns: new Set(['id']),
+      rows: [],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+    db._tables.set('recordings', {
+      columns: new Set(['id', 'bible_text_id']),
+      rows: [],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+
+    await runMigrations(db);
+
+    expect(await columnExists(db, 'recordings', 'is_canonical')).toBe(true);
+    expect(await columnExists(db, 'chapter_assignments', 'has_conflict')).toBe(
+      true,
+    );
+    expect(db._indexes.has('idx_rec_canonical')).toBe(true);
+    await expect(getUserVersion(db)).resolves.toBe(13);
+  });
+});
+
 describe('recordings attribution migration (#105)', () => {
   it('includes recorded_by_user_id in baseline recordings schema', () => {
     const recordingsSql = createTableQueries.find(q =>

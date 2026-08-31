@@ -42,6 +42,7 @@ describe('getChapterAssignmentById', () => {
           status: 'draft',
           submitted_time: null,
           updated_at: '2026-01-01T00:00:00.000Z',
+          has_conflict: 1,
           book_code: 'MRK',
           book_name: 'Mark',
           bible_name: 'BSB',
@@ -53,9 +54,11 @@ describe('getChapterAssignmentById', () => {
     const result = await getChapterAssignmentById(1);
 
     expect(mockExecute.mock.calls[0]?.[0]).toContain('ca.peer_checker_id');
+    expect(mockExecute.mock.calls[0]?.[0]).toContain('ca.has_conflict');
     expect(result).toMatchObject({
       assignedUserId: 10,
       peerCheckerId: 20,
+      hasConflict: true,
     });
   });
 

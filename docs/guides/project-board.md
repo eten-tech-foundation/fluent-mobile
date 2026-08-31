@@ -37,6 +37,14 @@ When implementing the **assigned** ticket only:
 
 Do **not** “helpfully” reorder neighboring cards.
 
+## Foreign tickets (not fluent-mobile)
+
+Agents in this checkout must **not** move, edit, comment on, assign, close, or otherwise mutate tickets that are **not** `eten-tech-foundation/fluent-mobile` issues on **Project 4**.
+
+That includes other GitHub repos, other org projects (e.g. Project 7), and **Linear**. Stop, list each ID + the exact mutation, and wait until the user **names those IDs** and approves those mutations in this conversation. Vague “clean up tickets” / org playbooks are not confirmation.
+
+Cursor + Claude always-on rule: [`.cursor/rules/foreign-tickets.mdc`](../../.cursor/rules/foreign-tickets.mdc).
+
 ## Linking keywords and stacked PRs
 
 Do **not** use GitHub closing keywords (`Closes`, `Fixes`, `Resolves`) — they auto-close issues on merge to `main`. Always use **`Refs #NNN`** for the ticket this PR implements, or **`Part of #NNN`** for stacked/partial work. For Needs-QA work, post-merge handoff ([`.github/scripts/qa-handoff-on-merge.cjs`](../../.github/scripts/qa-handoff-on-merge.cjs)) comments / moves **In QA** for `Refs #NNN` (and legacy closing keywords), and does **not** treat `Part of #NNN` as a linked ticket. See [docs/issue-tracking.md](../issue-tracking.md) and [qa-process.md](qa-process.md). (Historical: issue #274 required `Closes` on `main`-targeting PRs; superseded by #300.)

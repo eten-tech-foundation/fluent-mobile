@@ -40,8 +40,9 @@ export function summarizeApiErrorResponse(
 /** Builds authenticated request headers; synchronous and testable. */
 export function buildHeaders(
   extra?: Record<string, string>,
+  bearerToken?: string | null,
 ): Record<string, string> {
-  const token = authToken.get();
+  const token = bearerToken ?? authToken.get();
   return {
     'Content-Type': 'application/json',
     ...(token && { Authorization: `Bearer ${token}` }),
@@ -55,8 +56,9 @@ export function buildHeaders(
  */
 export function buildMultipartAuthHeaders(
   extra?: Record<string, string>,
+  bearerToken?: string | null,
 ): Record<string, string> {
-  const token = authToken.get();
+  const token = bearerToken ?? authToken.get();
   return {
     ...(token && { Authorization: `Bearer ${token}` }),
     ...extra,
@@ -201,12 +203,16 @@ export async function publicRequestWithResponse<T>(
 export async function authedRequest<T>(
   endpoint: string,
   options?: RequestInit,
+  bearerToken?: string | null,
 ): Promise<T> {
   return executeRequest<T>(
     endpoint,
     {
       ...options,
-      headers: { ...buildHeaders(), ...options?.headers },
+      headers: {
+        ...buildHeaders(undefined, bearerToken),
+        ...options?.headers,
+      },
     },
     true,
     'API error',
@@ -218,6 +224,7 @@ export async function authedMultipartRequest<T>(
   endpoint: string,
   body: FormData,
   options?: Omit<RequestInit, 'body'>,
+  bearerToken?: string | null,
 ): Promise<T> {
   return executeRequest<T>(
     endpoint,
@@ -226,7 +233,7 @@ export async function authedMultipartRequest<T>(
       ...options,
       body,
       headers: {
-        ...buildMultipartAuthHeaders(),
+        ...buildMultipartAuthHeaders(undefined, bearerToken),
         ...options?.headers,
       },
     },

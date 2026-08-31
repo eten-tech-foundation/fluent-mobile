@@ -21,6 +21,7 @@ import { getRemuxNativeModule } from '../audio/aacRemux';
 import { ensureSeekableTakeUri } from '../audio/ensureSeekableTakeUri';
 import { logger } from '../utils/logger';
 import { claimChapterOffline } from '../db/repository';
+import { syncChapterClaim } from '../services/chapterClaimSync';
 import { usePlaybackEngine } from './usePlaybackEngine';
 import { useRecordingEngine } from './useRecordingEngine';
 import { getConnectivitySnapshot } from '../services/connectivity';
@@ -44,10 +45,20 @@ export type VerseAudioPersistDeps = {
   designateCanonical?: (id: string) => Promise<void>;
 };
 
+export type ChapterClaimContext = {
+  bibleId: number;
+  bookId: number;
+  chapterNumber: number;
+  assignedUserId: number | null | undefined;
+};
+
 export type UseVerseAudioArgs = {
   bibleTextId: number | null;
   chapterAssignmentId?: number | null;
   userId?: number | null;
+  /** When set, first recording on an unassigned chapter triggers claim (#268/#270). */
+  chapterClaim?: ChapterClaimContext | null;
+  onChapterClaimed?: () => void;
 } & VerseAudioPersistDeps;
 
 async function defaultPersistTake(args: {
@@ -85,6 +96,8 @@ export function useVerseAudio({
   bibleTextId,
   chapterAssignmentId = null,
   userId = null,
+  chapterClaim = null,
+  onChapterClaimed,
   persistTake = defaultPersistTake,
   loadTakes = getTakesForVerse,
   loadAllTakes = getAllTakesForVerse,
@@ -122,6 +135,10 @@ export function useVerseAudio({
   const playbackLoadInFlightRef = useRef(false);
   /** Bumped when an in-flight load ends so the natural-end effect re-checks. */
   const [playbackLoadGate, setPlaybackLoadGate] = useState(0);
+
+  useEffect(() => {
+    chapterAssignedRef.current = false;
+  }, [chapterAssignmentId]);
 
   const selectedTake = takes.find(t => t.isSelected) ?? null;
   const canRecordNewTake = takes.length < MAX_TAKES;
@@ -246,6 +263,9 @@ export function useVerseAudio({
         if (
           userId !== null &&
           chapterAssignmentId !== null &&
+          chapterClaim !== null &&
+          // eslint-disable-next-line eqeqeq -- nullish check covers undefined + null
+          chapterClaim.assignedUserId == null &&
           !chapterAssignedRef.current
         ) {
           const { isOnline } = await getConnectivitySnapshot();
@@ -256,11 +276,24 @@ export function useVerseAudio({
             );
             if (claimed) {
               chapterAssignedRef.current = true;
+              onChapterClaimed?.();
+            }
+          } else {
+            const response = await syncChapterClaim(
+              chapterAssignmentId,
+              userId,
+            );
+            if (
+              !response.hasClaimConflict &&
+              response.assignedUserId === userId
+            ) {
+              chapterAssignedRef.current = true;
+              onChapterClaimed?.();
             }
           }
         }
       } catch (claimError) {
-        log.error('Offline chapter claim failed', {
+        log.error('Chapter claim failed', {
           message:
             claimError instanceof Error
               ? claimError.message
@@ -283,7 +316,9 @@ export function useVerseAudio({
   }, [
     bibleTextId,
     chapterAssignmentId,
+    chapterClaim,
     loadTakes,
+    onChapterClaimed,
     persistTake,
     recording,
     userId,
