@@ -118,6 +118,21 @@ function createSyncTestDb() {
         };
       }
 
+      if (/^INSERT OR IGNORE INTO users \(id, email\)/i.test(sql)) {
+        const [id, email] = params;
+        const table = tables.get('users')!;
+        if (!table.rows.some(r => r.id === id)) {
+          table.rows.push({
+            id: id as number,
+            username: null,
+            email: email as string,
+            first_name: null,
+            last_name: null,
+          });
+        }
+        return { rows: [], rowsAffected: 1 };
+      }
+
       if (/^INSERT OR IGNORE INTO project_units/i.test(sql)) {
         const [id, projectId, status] = params;
         const table = tables.get('project_units')!;
@@ -366,7 +381,7 @@ describe('insertChapterAssignmentSyncData', () => {
     expect(db.table('chapter_assignments')).toHaveLength(0);
   });
 
-  it('inserts assignment when FK parents exist', async () => {
+  it('stubs an unknown assignee and writes assigned_user_id through', async () => {
     const db = createSyncTestDb();
     setDatabase(db as never);
     db.seed({
@@ -385,7 +400,29 @@ describe('insertChapterAssignmentSyncData', () => {
     ]);
 
     expect(db.table('chapter_assignments')).toHaveLength(1);
-    expect(db.table('chapter_assignments')[0].assigned_user_id).toBeNull();
+    expect(db.table('chapter_assignments')[0].assigned_user_id).toBe(999);
+
+    const stub = db.table('users').find(u => u.id === 999);
+    expect(stub).toBeDefined();
+    expect(stub?.email).toBe('stub+999@fluent.local');
+  });
+  it('stubs an unknown peer checker and writes peer_checker_id through', async () => {
+    const db = createSyncTestDb();
+    setDatabase(db as never);
+    db.seed({
+      projects: [{ id: 100, name: 'P' }],
+      bibles: [{ id: 4, language_id: 1, name: 'B', abbreviation: 'B' }],
+      books: [{ id: 12, code: 'GEN', eng_display_name: 'Genesis' }],
+      project_units: [{ id: 10, project_id: 100, status: 'not_started' }],
+    });
+
+    await insertChapterAssignmentSyncData([
+      validAssignment({ chapterAssignmentId: 8, peerCheckerId: 777 }),
+    ]);
+
+    expect(db.table('chapter_assignments')[0].peer_checker_id).toBe(777);
+    const stub = db.table('users').find(u => u.id === 777);
+    expect(stub?.email).toBe('stub+777@fluent.local');
   });
 
   it('inserts assignment and upserts missing project unit from payload', async () => {
