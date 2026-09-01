@@ -234,7 +234,7 @@ describe('reconcileUserChapterWork', () => {
     await reconcileUserChapterWork(1, [], []);
     expect(
       chapterAssignmentRows.some(
-           r => r.assigned_user_id === 1 || r.peer_checker_id === 1,
+        r => r.assigned_user_id === 1 || r.peer_checker_id === 1,
       ),
     ).toBe(true);
   });
