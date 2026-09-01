@@ -71,17 +71,30 @@ async function insertProjectUnitTx(
   ]);
 }
 
+function buildStubEmail(userId: number): string {
+  return `stub+${userId}@fluent.local`;
+}
+
 /**
- * Keep assigned_user_id only when the user row exists locally.
- * Matches migration v3 orphan nulling — sync only upserts the active user, but
- * chapter-assignment payloads include other project members' assignee ids.
+ * Insert minimal stub rows for any assignee/peer-checker id referenced by a
+ * sync batch but not yet present locally, satisfying assigned_user_id's FK
+ * without nulling real server assignments (#428). Placeholder email keeps
+ * the NOT NULL UNIQUE constraint happy; real profile sync is a future ticket.
  */
-export function coalesceAssignedUserId(
-  assignedUserId: number | null | undefined,
-  knownUserIds: ReadonlySet<number>,
-): number | null {
-  if (assignedUserId === null || assignedUserId === undefined) return null;
-  return knownUserIds.has(assignedUserId) ? assignedUserId : null;
+async function ensureUserStubs(
+  tx: Transaction,
+  userIds: number[],
+): Promise<{ stubbedCount: number }> {
+  if (userIds.length === 0) return { stubbedCount: 0 };
+  const known = await loadKnownUserIds(tx, userIds);
+  const missing = userIds.filter(id => !known.has(id));
+  for (const id of missing) {
+    await tx.execute(`INSERT OR IGNORE INTO users (id, email) VALUES (?, ?)`, [
+      id,
+      buildStubEmail(id),
+    ]);
+  }
+  return { stubbedCount: missing.length };
 }
 
 async function loadKnownUserIds(
@@ -282,19 +295,21 @@ export function filterAssignmentsWithValidParents(
 function collectAssigneeIds(
   assignments: DBTypes.ChapterAssignment[],
 ): number[] {
-  return [
-    ...new Set(
-      assignments
-        .map(a => a.assignedUserId)
-        .filter((id): id is number => typeof id === 'number' && id > 0),
-    ),
-  ];
+  const ids = new Set<number>();
+  for (const a of assignments) {
+    if (typeof a.assignedUserId === 'number' && a.assignedUserId > 0) {
+      ids.add(a.assignedUserId);
+    }
+    if (typeof a.peerCheckerId === 'number' && a.peerCheckerId > 0) {
+      ids.add(a.peerCheckerId);
+    }
+  }
+  return [...ids];
 }
 
 async function insertChapterAssignmentTx(
   tx: Transaction,
   assignment: DBTypes.ChapterAssignment,
-  knownUserIds: ReadonlySet<number>,
 ) {
   if (!assignment?.chapterAssignmentId) return;
 
@@ -326,7 +341,7 @@ async function insertChapterAssignmentTx(
       assignment.bibleId,
       assignment.bookId,
       assignment.chapterNumber,
-      coalesceAssignedUserId(assignment.assignedUserId, knownUserIds),
+      assignment.assignedUserId ?? null,
       assignment.peerCheckerId ?? null,
       assignment.chapterStatus ?? 'not_started',
       assignment.submittedTime ?? null,
@@ -484,11 +499,11 @@ export async function insertChapterAssignments(
   data: DBTypes.ChapterAssignment[],
 ) {
   const db = getDatabase();
-  const assigneeIds = collectAssigneeIds(data);
+  const userIds = collectAssigneeIds(data);
   await db.transaction(async (tx: Transaction) => {
-    const knownUserIds = await loadKnownUserIds(tx, assigneeIds);
+    await ensureUserStubs(tx, userIds);
     for (const assignment of data) {
-      await insertChapterAssignmentTx(tx, assignment, knownUserIds);
+      await insertChapterAssignmentTx(tx, assignment);
     }
   });
 }
@@ -512,10 +527,10 @@ export async function insertChapterAssignmentSyncData(
   assignments: DBTypes.ChapterAssignment[],
 ) {
   const db = getDatabase();
-  const assigneeIds = collectAssigneeIds(assignments);
+  const userIds = collectAssigneeIds(assignments);
 
   await db.transaction(async (tx: Transaction) => {
-    const knownUserIds = await loadKnownUserIds(tx, assigneeIds);
+    const { stubbedCount } = await ensureUserStubs(tx, userIds);
     const parentContext = await loadChapterAssignmentParentContext(tx);
     const unitsMapForFilter = resolveProjectUnitsForSync(
       assignments,
@@ -540,14 +555,12 @@ export async function insertChapterAssignmentSyncData(
       insertCount: validAssignments.length,
       skippedCount,
       unitsMapSize: unitsMap.size,
-      distinctAssignees: assigneeIds.length,
+      distinctAssigneesAndCheckers: userIds.length,
     });
 
-    const orphanedAssignees = assigneeIds.filter(id => !knownUserIds.has(id));
-    if (orphanedAssignees.length > 0) {
-      log.info('Nulling assigned_user_id for users not in local users table', {
-        orphanedCount: orphanedAssignees.length,
-        knownCount: knownUserIds.size,
+    if (stubbedCount > 0) {
+      log.info('Stubbed missing user rows for assignee/peer-checker ids', {
+        stubbedCount,
       });
     }
 
@@ -569,7 +582,7 @@ export async function insertChapterAssignmentSyncData(
       await insertProjectUnitTx(tx, unit);
     }
     for (const assignment of validAssignments) {
-      await insertChapterAssignmentTx(tx, assignment, knownUserIds);
+      await insertChapterAssignmentTx(tx, assignment);
     }
   });
 }
@@ -995,16 +1008,10 @@ export async function reconcileUserChapterWork(
         });
       }
     } else {
-      const result = await tx.execute(
-        `UPDATE chapter_assignments SET assigned_user_id = NULL WHERE assigned_user_id = ?`,
-        [userId],
+      log.info(
+        'Skipping assigned_user_id wipe — empty result not trusted as authoritative',
+        { userId },
       );
-      if (result.rowsAffected) {
-        log.info('Cleared all assigned_user_id — user has no assigned work', {
-          userId,
-          count: result.rowsAffected,
-        });
-      }
     }
 
     if (currentPeerCheckIds.length > 0) {
@@ -1022,16 +1029,10 @@ export async function reconcileUserChapterWork(
         });
       }
     } else {
-      const result = await tx.execute(
-        `UPDATE chapter_assignments SET peer_checker_id = NULL WHERE peer_checker_id = ?`,
-        [userId],
+      log.info(
+        'Skipping peer_checker_id wipe — empty result not trusted as authoritative',
+        { userId },
       );
-      if (result.rowsAffected) {
-        log.info('Cleared all peer_checker_id — user has no peer-check work', {
-          userId,
-          count: result.rowsAffected,
-        });
-      }
     }
   });
 }
