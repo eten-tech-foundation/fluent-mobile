@@ -4,8 +4,7 @@ import type { PendingUploadChapter } from '../db/queries';
 import {
   getPendingRecordings,
   getLatestVersionToken,
-  markChapterHasConflictForVerse,
-  markRecordingConflicted,
+  markRecordingAndChapterConflicted,
   markRecordingFailed,
   markRecordingUploaded,
   setRecordingSyncStatus,
@@ -199,9 +198,14 @@ async function uploadOneRecording(
       );
 
       if (response.conflictStatus === 'conflict') {
-        await markRecordingConflicted(recording.id, response.versionToken);
-        await markChapterHasConflictForVerse(recording.bibleTextId);
+        // Set flag BEFORE transaction to prevent retries if transaction fails.
+        // Upload already succeeded on server; transaction failure should not retry.
         didMarkConflicted = true;
+        await markRecordingAndChapterConflicted(
+          recording.id,
+          recording.bibleTextId,
+          response.versionToken,
+        );
         log.info('Recording uploaded with conflict', {
           recordingId: recording.id,
           versionToken: response.versionToken,
@@ -243,6 +247,20 @@ async function uploadOneRecording(
           error: error.message,
         });
         throw error;
+      }
+
+      // After successful conflict response, DB transaction failures are NOT retryable.
+      // Upload was already accepted by server; retrying would create duplicate takes.
+      if (didMarkConflicted) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Failed to persist conflict state locally';
+        log.error('DB transaction failed after conflict response', {
+          recordingId: recording.id,
+          error: message,
+        });
+        return 'failed';
       }
 
       const terminalMissing =

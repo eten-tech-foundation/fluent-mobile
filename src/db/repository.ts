@@ -933,6 +933,51 @@ export async function markRecordingConflicted(
   );
 }
 
+/**
+ * Atomically mark both recording and its chapter as conflicted (#256).
+ * Runs both updates in a single transaction to prevent inconsistent state
+ * if one operation fails. Used when server returns conflictStatus: 'conflict'
+ * (upload was accepted but flagged as conflicting with another take).
+ */
+export async function markRecordingAndChapterConflicted(
+  recordingId: string,
+  bibleTextId: number,
+  versionToken: number,
+): Promise<void> {
+  const db = getDatabase();
+  const updatedAt = new Date().toISOString();
+
+  await db.transaction(async (tx: Transaction) => {
+    // Mark recording as conflicted
+    await tx.execute(
+      `UPDATE recordings
+       SET sync_status = 'conflicted',
+           version_token = ?,
+           upload_error = NULL,
+           updated_at = ?
+       WHERE id = ?`,
+      [versionToken, updatedAt, recordingId],
+    );
+
+    // Mark chapter as having conflict (for #260 UI indicator)
+    await tx.execute(
+      `UPDATE chapter_assignments
+       SET has_conflict = 1,
+           updated_at = ?
+       WHERE id IN (
+         SELECT ca.id
+         FROM chapter_assignments ca
+         INNER JOIN bible_texts bt
+           ON ca.bible_id = bt.bible_id
+          AND ca.book_id = bt.book_id
+          AND ca.chapter_number = bt.chapter_number
+         WHERE bt.id = ?
+       )`,
+      [updatedAt, bibleTextId],
+    );
+  });
+}
+
 export async function getLatestVersionToken(
   bibleTextId: number,
 ): Promise<number | undefined> {

@@ -20,6 +20,7 @@ const mockGetLatestVersionToken = jest.fn();
 const mockSetRecordingSyncStatus = jest.fn();
 const mockMarkRecordingUploaded = jest.fn();
 const mockMarkRecordingConflicted = jest.fn();
+const mockMarkRecordingAndChapterConflicted = jest.fn();
 const mockMarkChapterHasConflictForVerse = jest.fn();
 const mockMarkRecordingFailed = jest.fn();
 const mockUploadVerseAudio = jest.fn();
@@ -41,6 +42,8 @@ jest.mock('../db/repository', () => ({
     mockMarkRecordingUploaded(...args),
   markRecordingConflicted: (...args: unknown[]) =>
     mockMarkRecordingConflicted(...args),
+  markRecordingAndChapterConflicted: (...args: unknown[]) =>
+    mockMarkRecordingAndChapterConflicted(...args),
   markChapterHasConflictForVerse: (...args: unknown[]) =>
     mockMarkChapterHasConflictForVerse(...args),
   markRecordingFailed: (...args: unknown[]) => mockMarkRecordingFailed(...args),
@@ -128,6 +131,7 @@ describe('recordingSync', () => {
     mockSetRecordingSyncStatus.mockResolvedValue(undefined);
     mockMarkRecordingUploaded.mockResolvedValue(undefined);
     mockMarkRecordingConflicted.mockResolvedValue(undefined);
+    mockMarkRecordingAndChapterConflicted.mockResolvedValue(undefined);
     mockMarkChapterHasConflictForVerse.mockResolvedValue(undefined);
     mockMarkRecordingFailed.mockResolvedValue(undefined);
     mockUploadVerseAudio.mockResolvedValue(successResponse());
@@ -179,8 +183,11 @@ describe('recordingSync', () => {
     const result = await syncPendingRecordings('tok-1', { delay });
 
     expect(result).toEqual({ uploaded: 0, conflicted: 1, failed: 0 });
-    expect(mockMarkRecordingConflicted).toHaveBeenCalledWith('rec-1', 4);
-    expect(mockMarkChapterHasConflictForVerse).toHaveBeenCalledWith(42);
+    expect(mockMarkRecordingAndChapterConflicted).toHaveBeenCalledWith(
+      'rec-1',
+      42,
+      4,
+    );
     expect(mockMarkRecordingUploaded).not.toHaveBeenCalled();
     expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
   });
