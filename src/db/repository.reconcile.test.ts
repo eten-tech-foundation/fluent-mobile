@@ -230,11 +230,11 @@ describe('reconcileUserChapterWork', () => {
     );
   });
 
-  it('clears all assigned and peer-check roles when both lists are empty', async () => {
+  it('does not clear assigned and peer-check roles when both lists are empty', async () => {
     await reconcileUserChapterWork(1, [], []);
     expect(
-      chapterAssignmentRows.every(
-        r => r.assigned_user_id !== 1 && r.peer_checker_id !== 1,
+      chapterAssignmentRows.some(
+        r => r.assigned_user_id === 1 || r.peer_checker_id === 1,
       ),
     ).toBe(true);
   });

@@ -2,7 +2,6 @@ import React from 'react';
 import {
   LayoutAnimation,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -27,6 +26,8 @@ type SourceTextAccordionProps = {
 
 /**
  * Collapsible source text for Record (Lovable View/Hide source text).
+ * Renders at full height — scrolling is handled by the page-level
+ * ScrollView in RecordTab, not an internal ScrollView (see #404).
  */
 export function SourceTextAccordion({
   expanded,
@@ -68,13 +69,7 @@ export function SourceTextAccordion({
       </TouchableOpacity>
       {expanded ? (
         <View style={styles.body} testID="record-source-body">
-          <ScrollView
-            style={styles.scroll}
-            nestedScrollEnabled
-            showsVerticalScrollIndicator={false}
-          >
-            <Text style={styles.bodyText}>{body}</Text>
-          </ScrollView>
+          <Text style={styles.bodyText}>{body}</Text>
         </View>
       ) : null}
     </View>
@@ -95,13 +90,9 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
   },
   body: {
-    maxHeight: 160,
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.cardBackground,
     padding: theme.spacing.md,
-  },
-  scroll: {
-    maxHeight: 128,
   },
   bodyText: {
     fontSize: theme.typography.sizes.md,
