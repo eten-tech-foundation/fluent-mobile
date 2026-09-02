@@ -6,7 +6,7 @@ CNG app (Android-only, custom dev client — not Expo Go). Two health checks mus
 green after dependency work:
 
 - `npx expo install --check` — Expo-managed packages at SDK-compatible versions
-- `npm run doctor` (`expo-doctor`) — config / native compatibility
+- `npm run doctor` (`expo-doctor` from the lockfile — never `@latest` on a feature PR) — config / native compatibility
 
 Proceed autonomously and report what you did; only stop at hard gates below.
 
@@ -33,7 +33,7 @@ Warn if on `main` or if unrelated dirty files exist. Do not commit unless the us
 ### 2. Apply the change
 
 - **Add/bump Expo-aware package(s):** `npx expo install <pkg>…`
-- **Align tree only:** `npx expo install --fix` when doctor / install-check reports drift
+- **Align tree only:** `npx expo install --fix` only on a **dedicated deps ticket**, or wait for [#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422). Never `--fix` on an unrelated feature branch.
 - **Pure-JS:** `npm install <pkg>` then re-check
 
 ### 3. Validate (blocking for this command)
@@ -43,9 +43,8 @@ npx expo install --check
 npm run doctor
 ```
 
-If doctor reports SDK patch drift, `npx expo install --fix`, then re-run **both**
-`npx expo install --check` and `npm run doctor`. Do not proceed until both are
-clean.
+If doctor reports SDK patch drift, `npx expo install --fix` **on a dedicated deps ticket** (or wait for [#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422)), then re-run **both**
+`npx expo install --check` and `npm run doctor`. Do not `--fix` on an unrelated feature branch. Do not proceed until both are clean.
 
 ### 4. Native regen (only if needed)
 
