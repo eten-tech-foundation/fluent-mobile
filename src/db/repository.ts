@@ -754,7 +754,7 @@ export async function userHasLocalChapterAssignments(
 }
 
 /**
- * Selected recordings not yet uploaded (`is_selected = 1 AND sync_status != 'uploaded'`).
+ * Selected recordings not yet uploaded (`is_selected = 1` and not uploaded/conflicted).
  *
  * TODO(#71 follow-up): only the selected take per verse is upload-eligible.
  * All audio recoridngs takes needs to be uploaded.
@@ -792,7 +792,7 @@ export async function getPendingRecordings(chapter?: {
      FROM recordings r
      JOIN bible_texts bt ON bt.id = r.bible_text_id
      WHERE r.is_selected = 1
-       AND r.sync_status != 'uploaded'
+       AND r.sync_status NOT IN ('uploaded', 'conflicted')
        ${chapterFilter}
      ORDER BY bt.book_id, bt.chapter_number, r.bible_text_id`,
     params,
@@ -887,6 +887,7 @@ export async function updateChapterAssignmentStatusLocally(
 export async function markRecordingUploaded(
   id: string,
   blobKey: string,
+  versionToken: number,
 ): Promise<void> {
   const db = getDatabase();
   const updatedAt = new Date().toISOString();
@@ -894,10 +895,65 @@ export async function markRecordingUploaded(
     `UPDATE recordings
      SET sync_status = 'uploaded',
          blob_key = ?,
+         version_token = ?,
          upload_error = NULL,
          updated_at = ?
      WHERE id = ?`,
-    [blobKey, updatedAt, id],
+    [blobKey, versionToken, updatedAt, id],
+  );
+}
+
+export async function markRecordingConflicted(
+  id: string,
+  versionToken: number,
+): Promise<void> {
+  const db = getDatabase();
+  const updatedAt = new Date().toISOString();
+  await db.execute(
+    `UPDATE recordings
+     SET sync_status = 'conflicted',
+         version_token = ?,
+         upload_error = NULL,
+         updated_at = ?
+     WHERE id = ?`,
+    [versionToken, updatedAt, id],
+  );
+}
+
+export async function getLatestVersionToken(
+  bibleTextId: number,
+): Promise<number | undefined> {
+  const db = getDatabase();
+  const result = await db.execute(
+    `SELECT version_token FROM recordings
+     WHERE bible_text_id = ? AND version_token IS NOT NULL
+     ORDER BY updated_at DESC LIMIT 1`,
+    [bibleTextId],
+  );
+  const row = (result?.rows as { version_token: number }[] | undefined)?.[0];
+  return row?.version_token ?? undefined;
+}
+
+/** Propagate chapter-level conflict indicator locally (#256 / #260 consumption). */
+export async function markChapterHasConflictForVerse(
+  bibleTextId: number,
+): Promise<void> {
+  const db = getDatabase();
+  const updatedAt = new Date().toISOString();
+  await db.execute(
+    `UPDATE chapter_assignments
+     SET has_conflict = 1,
+         updated_at = ?
+     WHERE id IN (
+       SELECT ca.id
+       FROM chapter_assignments ca
+       INNER JOIN bible_texts bt
+         ON ca.bible_id = bt.bible_id
+        AND ca.book_id = bt.book_id
+        AND ca.chapter_number = bt.chapter_number
+       WHERE bt.id = ?
+     )`,
+    [updatedAt, bibleTextId],
   );
 }
 

@@ -49,6 +49,7 @@ function mapRecordingRow(row: RecordingRow): Recording {
     isSelected: row.is_selected === 1,
     isCanonical: row.is_canonical === 1,
     syncStatus: row.sync_status,
+    versionToken: row.version_token,
     uploadError: row.upload_error,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

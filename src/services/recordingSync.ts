@@ -3,6 +3,9 @@ import { getApiBaseUrl } from '../config/apiBaseUrl';
 import type { PendingUploadChapter } from '../db/queries';
 import {
   getPendingRecordings,
+  getLatestVersionToken,
+  markChapterHasConflictForVerse,
+  markRecordingConflicted,
   markRecordingFailed,
   markRecordingUploaded,
   setRecordingSyncStatus,
@@ -30,6 +33,7 @@ export const MAX_UPLOAD_ATTEMPTS = 3;
 
 export interface UploadResult {
   uploaded: number;
+  conflicted: number;
   failed: number;
 }
 
@@ -135,7 +139,7 @@ async function uploadOneRecording(
     /** User id that owns the upload token (for auth failure handling). */
     tokenUserId: string | null;
   },
-): Promise<'uploaded' | 'failed'> {
+): Promise<'uploaded' | 'conflicted' | 'failed'> {
   const { signal, delay, maxAttempts, token, tokenUserId } = options;
 
   throwIfAborted(signal);
@@ -162,6 +166,7 @@ async function uploadOneRecording(
 
   let lastMessage = 'Upload failed';
   let didMarkUploaded = false;
+  let didMarkConflicted = false;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     throwIfAborted(signal);
@@ -174,6 +179,10 @@ async function uploadOneRecording(
           ? recording.durationMs / 1000
           : undefined;
 
+      const baseVersionToken = await getLatestVersionToken(
+        recording.bibleTextId,
+      );
+
       const response = await FluentAPI.uploadVerseAudio(
         {
           projectUnitId: recording.projectUnitId,
@@ -184,16 +193,31 @@ async function uploadOneRecording(
             type: contentTypeFromPath(recording.localFilePath),
           },
           ...(durationSeconds !== undefined ? { durationSeconds } : {}),
+          ...(baseVersionToken !== undefined ? { baseVersionToken } : {}),
         },
         token,
       );
 
+      if (response.conflictStatus === 'conflict') {
+        await markRecordingConflicted(recording.id, response.versionToken);
+        await markChapterHasConflictForVerse(recording.bibleTextId);
+        didMarkConflicted = true;
+        log.info('Recording uploaded with conflict', {
+          recordingId: recording.id,
+          versionToken: response.versionToken,
+          recordedByUserId: recording.recordedByUserId,
+        });
+        throwIfAborted(signal);
+        return 'conflicted';
+      }
+
       const blobKey = blobKeyFromVerseAudioResponse(response);
-      await markRecordingUploaded(recording.id, blobKey);
+      await markRecordingUploaded(recording.id, blobKey, response.versionToken);
       didMarkUploaded = true;
       log.info('Recording uploaded', {
         recordingId: recording.id,
         blobKey,
+        versionToken: response.versionToken,
         recordedByUserId: recording.recordedByUserId,
       });
       // Abort after a successful put still counts as uploaded (server has bytes).
@@ -201,7 +225,7 @@ async function uploadOneRecording(
       return 'uploaded';
     } catch (error) {
       if (isAbortError(error) || signal?.aborted) {
-        if (!didMarkUploaded) {
+        if (!didMarkUploaded && !didMarkConflicted) {
           await setRecordingSyncStatus(recording.id, 'pending');
         }
         throwIfAborted(signal);
@@ -284,6 +308,7 @@ async function runUploadPass(
   emitUploadSessionEvent({ type: 'start', totalChapters: total });
 
   let uploaded = 0;
+  let conflicted = 0;
   let failed = 0;
   let completed = 0;
 
@@ -301,6 +326,8 @@ async function runUploadPass(
       });
       if (result === 'uploaded') {
         uploaded += 1;
+      } else if (result === 'conflicted') {
+        conflicted += 1;
       } else {
         failed += 1;
       }
@@ -313,8 +340,12 @@ async function runUploadPass(
     }
 
     emitUploadSessionEvent({ type: 'complete' });
-    log.info('Recording upload pass complete', { uploaded, failed });
-    return { uploaded, failed };
+    log.info('Recording upload pass complete', {
+      uploaded,
+      conflicted,
+      failed,
+    });
+    return { uploaded, conflicted, failed };
   } catch (error) {
     if (isAbortError(error) || options.signal?.aborted) {
       emitUploadSessionEvent({ type: 'cancelled' });
