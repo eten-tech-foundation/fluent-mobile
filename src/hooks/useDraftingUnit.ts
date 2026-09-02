@@ -1,5 +1,6 @@
 import { useCallback, useSyncExternalStore } from 'react';
 import { useFocusEffect } from 'expo-router';
+import { getActiveUserId } from '../services/storage';
 import {
   getDraftingUnit,
   notifyDraftingUnitChanged,
@@ -11,8 +12,8 @@ import {
 export function useDraftingUnit() {
   const draftingUnit = useSyncExternalStore(
     subscribeToDraftingUnit,
-    () => getDraftingUnit(),
-    () => getDraftingUnit(),
+    () => getDraftingUnit(getActiveUserId()),
+    () => getDraftingUnit(getActiveUserId()),
   );
 
   useFocusEffect(
@@ -22,7 +23,7 @@ export function useDraftingUnit() {
   );
 
   const setUnit = useCallback((unit: DraftingUnit) => {
-    setDraftingUnit(unit);
+    setDraftingUnit(unit, getActiveUserId());
   }, []);
 
   return { draftingUnit, setDraftingUnit: setUnit };

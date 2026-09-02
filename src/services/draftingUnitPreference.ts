@@ -1,4 +1,4 @@
-import { getActiveUserId, kvStorage } from './storage';
+import { kvStorage } from './storage';
 
 export type DraftingUnit = 'verse' | 'pericope';
 
@@ -16,34 +16,25 @@ function isDraftingUnit(value: string | undefined): value is DraftingUnit {
   return value === 'verse' || value === 'pericope';
 }
 
-export function getDraftingUnit(
-  userId: string = getActiveUserId(),
-): DraftingUnit {
+export function getDraftingUnit(userId: string): DraftingUnit {
   if (!userId) return DEFAULT_DRAFTING_UNIT;
   const raw = kvStorage.getItemSync(draftingUnitKey(userId)) ?? undefined;
   return isDraftingUnit(raw) ? raw : DEFAULT_DRAFTING_UNIT;
 }
 
-export function setDraftingUnit(
-  unit: DraftingUnit,
-  userId: string = getActiveUserId(),
-): void {
+export function setDraftingUnit(unit: DraftingUnit, userId: string): void {
   if (!userId) return;
   kvStorage.setItemSync(draftingUnitKey(userId), unit);
   kvStorage.setItemSync(draftingUnitDirtyKey(userId), 'true');
   notifyDraftingUnitChanged();
 }
 
-export function isDraftingUnitDirty(
-  userId: string = getActiveUserId(),
-): boolean {
+export function isDraftingUnitDirty(userId: string): boolean {
   if (!userId) return false;
   return kvStorage.getItemSync(draftingUnitDirtyKey(userId)) === 'true';
 }
 
-export function clearDraftingUnitDirty(
-  userId: string = getActiveUserId(),
-): void {
+export function clearDraftingUnitDirty(userId: string): void {
   if (!userId) return;
   kvStorage.removeItemSync(draftingUnitDirtyKey(userId));
 }
