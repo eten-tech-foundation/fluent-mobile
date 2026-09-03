@@ -934,6 +934,25 @@ export async function markRecordingConflicted(
 }
 
 /**
+ * Update only the version_token for a recording without changing its sync_status.
+ * Used when extracting currentVersionToken from a 409 response before retry.
+ */
+export async function updateRecordingVersionToken(
+  id: string,
+  versionToken: number,
+): Promise<void> {
+  const db = getDatabase();
+  const updatedAt = new Date().toISOString();
+  await db.execute(
+    `UPDATE recordings
+     SET version_token = ?,
+         updated_at = ?
+     WHERE id = ?`,
+    [versionToken, updatedAt, id],
+  );
+}
+
+/**
  * Atomically mark both recording and its chapter as conflicted (#256).
  * Runs both updates in a single transaction to prevent inconsistent state
  * if one operation fails. Used when server returns conflictStatus: 'conflict'

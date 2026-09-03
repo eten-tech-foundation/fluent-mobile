@@ -25,6 +25,8 @@ export type VerseAudioUploadClientOutcome =
       message: string;
       /** Network (status 0), 409 CAS race, or other 5xx — backoff and retry. */
       retryable: true;
+      /** Current server version token from 409 response (for retry with updated token). */
+      currentVersionToken?: number;
     };
 
 /** Persist into local `recordings.blob_key` (matches server `audioBlobName`). */
@@ -52,9 +54,19 @@ export function outcomeFromVerseAudioFailure(
     if (error.status === 503) {
       return { kind: 'failed', message: error.message, retryable: false };
     }
-    // Compare-and-swap race — distinct from 200 + conflictStatus: 'conflict'.
+    // Compare-and-swap race — extract currentVersionToken for retry.
     if (error.status === 409) {
-      return { kind: 'retryable', message: error.message, retryable: true };
+      const currentVersionToken =
+        typeof error.body?.currentVersionToken === 'number'
+          ? error.body.currentVersionToken
+          : undefined;
+
+      return {
+        kind: 'retryable',
+        message: error.message,
+        retryable: true,
+        currentVersionToken,
+      };
     }
     if (error.isRetryable) {
       return { kind: 'retryable', message: error.message, retryable: true };

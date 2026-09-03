@@ -8,10 +8,12 @@ import {
   markRecordingFailed,
   markRecordingUploaded,
   setRecordingSyncStatus,
+  updateRecordingVersionToken,
 } from '../db/repository';
 import type { PendingRecording } from '../types/db/types';
 import { logger } from '../utils/logger';
 import { FluentAPI } from './api';
+import { isApiError } from '../types/api/errors';
 import { isAuthError } from './authError';
 import { authToken } from './authToken';
 import { getCredentials } from './keychain';
@@ -182,6 +184,13 @@ async function uploadOneRecording(
         recording.bibleTextId,
       );
 
+      // DEBUG: Log token being sent
+      log.info('DEBUG: About to upload with baseVersionToken', {
+        recordingId: recording.id,
+        bibleTextId: recording.bibleTextId,
+        baseVersionToken,
+      });
+
       const response = await FluentAPI.uploadVerseAudio(
         {
           projectUnitId: recording.projectUnitId,
@@ -274,6 +283,38 @@ async function uploadOneRecording(
 
       const outcome = outcomeFromVerseAudioFailure(error);
       lastMessage = outcome.message;
+
+      // DEBUG: Log error details
+      log.info('DEBUG: Upload error occurred', {
+        recordingId: recording.id,
+        errorStatus: isApiError(error) ? error.status : 'unknown',
+        errorMessage: lastMessage,
+        outcomeKind: outcome.kind,
+        currentVersionToken: outcome.kind === 'retryable' ? outcome.currentVersionToken : undefined,
+      });
+
+      // Save currentVersionToken from 409 before retry to avoid stale token loop
+      if (outcome.kind === 'retryable' && outcome.currentVersionToken) {
+        try {
+          await updateRecordingVersionToken(
+            recording.id,
+            outcome.currentVersionToken,
+          );
+          log.info('Saved currentVersionToken from 409 before retry', {
+            recordingId: recording.id,
+            currentVersionToken: outcome.currentVersionToken,
+          });
+        } catch (saveError) {
+          log.error('Failed to save currentVersionToken from 409', {
+            recordingId: recording.id,
+            error:
+              saveError instanceof Error
+                ? saveError.message
+                : 'Unknown error',
+          });
+          // Don't block retry - better to retry with stale token than fail completely
+        }
+      }
 
       if (!outcome.retryable || attempt === maxAttempts) {
         log.error('Recording upload failed', {

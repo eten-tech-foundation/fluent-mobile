@@ -80,6 +80,47 @@ describe('verseAudioContract', () => {
     });
   });
 
+  it('extracts currentVersionToken from 409 response body', () => {
+    const error = new ApiError(
+      409,
+      'Verse audio changed concurrently',
+      undefined,
+      { currentVersionToken: 7 },
+    );
+
+    const outcome = outcomeFromVerseAudioFailure(error);
+
+    expect(outcome).toEqual({
+      kind: 'retryable',
+      message: 'Verse audio changed concurrently',
+      retryable: true,
+      currentVersionToken: 7,
+    });
+  });
+
+  it('handles 409 without currentVersionToken gracefully', () => {
+    const error = new ApiError(409, 'Conflict', undefined, {});
+
+    const outcome = outcomeFromVerseAudioFailure(error);
+
+    expect(outcome).toEqual({
+      kind: 'retryable',
+      message: 'Conflict',
+      retryable: true,
+      currentVersionToken: undefined,
+    });
+  });
+
+  it('handles 409 with non-number currentVersionToken', () => {
+    const error = new ApiError(409, 'Conflict', undefined, {
+      currentVersionToken: 'invalid',
+    });
+
+    const outcome = outcomeFromVerseAudioFailure(error);
+
+    expect(outcome.currentVersionToken).toBeUndefined();
+  });
+
   it('treats 503 storage-unavailable as terminal failed (no retry loop)', () => {
     expect(
       outcomeFromVerseAudioFailure(

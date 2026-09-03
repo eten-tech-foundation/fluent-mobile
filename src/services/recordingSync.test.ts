@@ -23,6 +23,7 @@ const mockMarkRecordingConflicted = jest.fn();
 const mockMarkRecordingAndChapterConflicted = jest.fn();
 const mockMarkChapterHasConflictForVerse = jest.fn();
 const mockMarkRecordingFailed = jest.fn();
+const mockUpdateRecordingVersionToken = jest.fn();
 const mockUploadVerseAudio = jest.fn();
 const mockSetChapterUploadWorker = jest.fn();
 const mockGetCredentials = jest.fn();
@@ -47,6 +48,8 @@ jest.mock('../db/repository', () => ({
   markChapterHasConflictForVerse: (...args: unknown[]) =>
     mockMarkChapterHasConflictForVerse(...args),
   markRecordingFailed: (...args: unknown[]) => mockMarkRecordingFailed(...args),
+  updateRecordingVersionToken: (...args: unknown[]) =>
+    mockUpdateRecordingVersionToken(...args),
 }));
 
 jest.mock('./api', () => ({
@@ -278,6 +281,38 @@ describe('recordingSync', () => {
       'unit-12/text-42',
       2,
     );
+  });
+
+  it('saves currentVersionToken from 409 before retry', async () => {
+    mockUploadVerseAudio
+      .mockRejectedValueOnce(
+        new ApiError(409, 'Conflict', undefined, { currentVersionToken: 8 }),
+      )
+      .mockResolvedValueOnce(successResponse());
+
+    const result = await syncPendingRecordings('tok-1', { delay });
+
+    expect(result).toEqual({ uploaded: 1, conflicted: 0, failed: 0 });
+    expect(mockUpdateRecordingVersionToken).toHaveBeenCalledWith('rec-1', 8);
+    expect(mockUploadVerseAudio).toHaveBeenCalledTimes(2);
+    expect(delay).toHaveBeenCalledWith(500);
+    expect(mockMarkRecordingUploaded).toHaveBeenCalledWith(
+      'rec-1',
+      'unit-12/text-42',
+      2,
+    );
+  });
+
+  it('does not save when 409 lacks currentVersionToken', async () => {
+    mockUploadVerseAudio
+      .mockRejectedValueOnce(new ApiError(409, 'Conflict', undefined, {}))
+      .mockResolvedValueOnce(successResponse());
+
+    const result = await syncPendingRecordings('tok-1', { delay });
+
+    expect(result).toEqual({ uploaded: 1, conflicted: 0, failed: 0 });
+    expect(mockUpdateRecordingVersionToken).not.toHaveBeenCalled();
+    expect(mockUploadVerseAudio).toHaveBeenCalledTimes(2);
   });
 
   it('retries retryable failures with backoff then succeeds', async () => {
