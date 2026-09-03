@@ -284,6 +284,11 @@ describe('recordingSync', () => {
   });
 
   it('saves currentVersionToken from 409 before retry', async () => {
+    // First call returns undefined (no token yet), second call returns the saved token
+    mockGetLatestVersionToken
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(8);
+
     mockUploadVerseAudio
       .mockRejectedValueOnce(
         new ApiError(409, 'Conflict', undefined, { currentVersionToken: 8 }),
@@ -295,6 +300,18 @@ describe('recordingSync', () => {
     expect(result).toEqual({ uploaded: 1, conflicted: 0, failed: 0 });
     expect(mockUpdateRecordingVersionToken).toHaveBeenCalledWith('rec-1', 8);
     expect(mockUploadVerseAudio).toHaveBeenCalledTimes(2);
+
+    // Verify first upload had no baseVersionToken property
+    const firstCall = mockUploadVerseAudio.mock.calls[0];
+    expect(firstCall[0]).not.toHaveProperty('baseVersionToken');
+
+    // Verify second upload (retry) uses the saved token
+    expect(mockUploadVerseAudio).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ baseVersionToken: 8 }),
+      'tok-1',
+    );
+
     expect(delay).toHaveBeenCalledWith(500);
     expect(mockMarkRecordingUploaded).toHaveBeenCalledWith(
       'rec-1',

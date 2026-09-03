@@ -118,7 +118,12 @@ describe('verseAudioContract', () => {
 
     const outcome = outcomeFromVerseAudioFailure(error);
 
-    expect(outcome.currentVersionToken).toBeUndefined();
+    expect(outcome).toEqual({
+      kind: 'retryable',
+      message: 'Conflict',
+      retryable: true,
+      currentVersionToken: undefined,
+    });
   });
 
   it('treats 503 storage-unavailable as terminal failed (no retry loop)', () => {
