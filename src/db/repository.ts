@@ -675,6 +675,24 @@ export async function checkIfTextsSynced(
   }
 }
 
+/** True when any language row is missing ISO-639-3 (pre-mapApiLanguage sync). */
+export async function hasLanguagesMissingIsoCode(): Promise<boolean> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT 1 AS missing
+       FROM languages
+       WHERE lang_code_iso_639_3 IS NULL
+          OR TRIM(lang_code_iso_639_3) = ''
+       LIMIT 1`,
+    );
+    return (result.rows?.length ?? 0) > 0;
+  } catch (error) {
+    log.error('Error checking language ISO codes:', { error });
+    return true;
+  }
+}
+
 export async function insertUserProjects(userId: number, projectIds: number[]) {
   if (projectIds.length === 0) return;
 

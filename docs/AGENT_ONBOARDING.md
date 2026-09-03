@@ -10,7 +10,7 @@ Quick map for Cursor agents, other coding tools, and new contributors. Verified 
 
 **Fluent Mobile** is an offline-first React Native companion app for Bible translation recording workflows. **Android-only permanently** — no iOS app. On launch it initializes a local SQLite database and restores the auth session, then shows the navigator. After login (or when the user triggers sync), it syncs Fluent API data into SQLite so translators can browse **projects → chapters → drafting** (Bible / Resources / Record). The **Record** tab captures verse audio, persists takes to the `recordings` table, and uploads pending takes via `recordingSync` + `uploadOrchestrator` (see **Repository layout** and [recordings-sync-contract.md](guides/recordings-sync-contract.md)).
 
-Recording follow-up: wire source audio dock to real fetch + playback ([#235](https://github.com/eten-tech-foundation/fluent-mobile/issues/235)) — playback in `SourceAudioPlayerBar` is still a stub on `main`.
+Recording follow-up: wire source audio dock to real fetch + playback ([#235](https://github.com/eten-tech-foundation/fluent-mobile/issues/235)) — consumes fluent-api `GET /projects/.../source-audio/...` (fluent-api #282).
 
 ## Tech stack
 

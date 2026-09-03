@@ -6,13 +6,16 @@ import {
   waitFor,
   fireEvent,
 } from '@testing-library/react-native';
+import { getBibleTextId } from '../../db/queries';
 import { RecordTab } from './RecordTab';
 import { DraftingProvider } from '../context/DraftingContext';
 import {
   RECORD_AUDIO_CONFLICT_WARNING,
   RECORD_TAKEN_CHAPTER_WARNING,
+  RECORD_SOURCE_TEXT_UNAVAILABLE,
 } from '../../constants/messages';
 import type { useVerseAudio } from '../../hooks/useVerseAudio';
+import type { useSourceAudio } from '../../hooks/useSourceAudio';
 import type {
   Recording,
   RecordingWithOwner,
@@ -32,8 +35,27 @@ jest.mock('../../db/queries', () => ({
   getRecordedVerseNumbers: jest.fn(async () => new Set([3])),
 }));
 
+const mockGetBibleTextId = getBibleTextId as jest.MockedFunction<
+  typeof getBibleTextId
+>;
+
 jest.mock('../../hooks/useVerseAudio', () => ({
   useVerseAudio: () => mockUseVerseAudio(),
+}));
+
+jest.mock('../../hooks/useSourceAudio', () => ({
+  useSourceAudio: () => mockUseSourceAudio(),
+}));
+
+jest.mock('../../hooks/useDraftingUnit', () => ({
+  useDraftingUnit: () => ({
+    draftingUnit: 'verse',
+    setDraftingUnit: jest.fn(),
+  }),
+}));
+
+jest.mock('../../hooks/useGlobalSyncStatus', () => ({
+  useGlobalSyncStatus: () => false,
 }));
 
 jest.mock('../../audio/micPermission', () => ({
@@ -45,6 +67,7 @@ jest.mock('../../services/stageAdvance', () => ({
 }));
 
 type VerseAudioApi = ReturnType<typeof useVerseAudio>;
+type SourceAudioApi = ReturnType<typeof useSourceAudio>;
 
 function makeTake(overrides: Partial<Recording> = {}): Recording {
   return {
@@ -102,9 +125,20 @@ const idleAudio: VerseAudioApi = {
 
 const mockUseVerseAudio = jest.fn((): VerseAudioApi => idleAudio);
 
-jest.mock('../../hooks/useVerseAudio', () => ({
-  useVerseAudio: () => mockUseVerseAudio(),
-}));
+const emptySourceAudio: SourceAudioApi = {
+  loadState: 'empty',
+  status: 'idle',
+  positionMs: 0,
+  durationMs: 0,
+  isPlaying: false,
+  play: jest.fn(),
+  pause: jest.fn(),
+  seek: jest.fn(),
+  stop: jest.fn(),
+  retry: jest.fn(),
+};
+
+const mockUseSourceAudio = jest.fn((): SourceAudioApi => emptySourceAudio);
 
 const mockUseChapterConflictStatus = jest.fn((chapterId: number) => {
   void chapterId;
@@ -127,6 +161,8 @@ const chapterData: ChapterAssignmentData = {
   assignedUserId: 42,
   bibleName: 'BSB',
   bookName: 'Mark',
+  bookCode: 'MRK',
+  sourceLanguageCode: 'eng',
   hasConflict: false,
 };
 
@@ -193,6 +229,7 @@ describe('RecordTab', () => {
     // test's `.not.toHaveBeenCalled()` assertion.
     jest.clearAllMocks();
     mockUseVerseAudio.mockReturnValue(idleAudio);
+    mockUseSourceAudio.mockReturnValue(emptySourceAudio);
     mockUseChapterConflictStatus.mockReturnValue({ hasConflict: false });
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
@@ -211,12 +248,94 @@ describe('RecordTab', () => {
     expect(screen.getByTestId('source-audio-label')).toHaveTextContent(
       'No source audio',
     );
-    expect(screen.queryByTestId('source-audio-time-stub')).toBeNull();
+    expect(screen.getByTestId('source-audio-time')).toHaveTextContent('0:00');
+    expect(screen.getByTestId('source-audio-duration')).toHaveTextContent(
+      '--:--',
+    );
+    expect(screen.getByTestId('source-audio-empty-track')).toBeTruthy();
     expect(screen.queryByTestId('record-take-list')).toBeNull();
 
     await waitFor(() => {
       expect(screen.queryByTestId('record-syncing-hint')).toBeNull();
     });
+  });
+
+  it('does not claim text is syncing when bible text is missing and sync is idle', async () => {
+    mockGetBibleTextId.mockResolvedValueOnce(null);
+
+    renderTab();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('record-syncing-hint')).toHaveTextContent(
+        RECORD_SOURCE_TEXT_UNAVAILABLE,
+      );
+    });
+  });
+
+  it('wires ready source audio play/pause/seek to the dock', () => {
+    const play = jest.fn();
+    const pause = jest.fn();
+    const seek = jest.fn();
+    mockUseSourceAudio.mockReturnValue({
+      ...emptySourceAudio,
+      loadState: 'ready',
+      isPlaying: false,
+      positionMs: 1500,
+      durationMs: 60000,
+      play,
+      pause,
+      seek,
+    });
+
+    renderTab();
+
+    expect(screen.getByTestId('source-audio-label')).toHaveTextContent(
+      'BSB Source Audio · Verse 3',
+    );
+    expect(screen.getByTestId('source-audio-time')).toHaveTextContent('0:01');
+    expect(screen.getByTestId('source-audio-duration')).toHaveTextContent(
+      '1:00',
+    );
+
+    fireEvent.press(screen.getByTestId('source-audio-play'));
+    expect(play).toHaveBeenCalled();
+  });
+
+  it('pauses draft playback when source audio starts playing', () => {
+    const pausePlayback = jest.fn();
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      pausePlayback,
+    });
+    mockUseSourceAudio.mockReturnValue({
+      ...emptySourceAudio,
+      loadState: 'ready',
+      isPlaying: true,
+    });
+
+    renderTab();
+
+    expect(pausePlayback).toHaveBeenCalled();
+  });
+
+  it('stops source audio when draft take is playing or recording', () => {
+    const stop = jest.fn();
+    mockUseSourceAudio.mockReturnValue({
+      ...emptySourceAudio,
+      loadState: 'ready',
+      stop,
+    });
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      state: 'playing',
+      takes: [makeTake()],
+      selectedTake: makeTake(),
+      playingTakeId: 'rec_1',
+    });
+
+    renderTab();
+
+    expect(stop).toHaveBeenCalled();
   });
 
   it('renders review chrome with a single take row and Record New Take', () => {
