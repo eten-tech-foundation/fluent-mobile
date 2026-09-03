@@ -1,4 +1,5 @@
 import { FluentAPI } from './api';
+import { pMapLimit } from '../utils/concurrency';
 import { isAuthError, AuthError } from './authError';
 import { mapApiChapterAssignment } from './mapChapterAssignment';
 import { mapApiProject } from './mapApiProject';
@@ -16,10 +17,15 @@ import {
   userNeedsAssigneeRepair,
   reconcileUserChapterWork,
   reconcileUserProjects,
+  insertPericopeSets,
+  getProjectPericopeSetId,
+  insertPericopeVersesBatch,
+  getChaptersNeedingPericopeSync,
 } from '../db/repository';
 import { logger } from '../utils/logger';
 import { getDatabase } from '../db/db';
 import { ApiBook, ApiVerse } from '../types/api/types';
+import type { ApiPericopeGroupInput } from '../db/repository';
 import { ApiUser, unwrapApiListResponse } from '../types/api/responses';
 import { getConnectivitySnapshot } from './connectivity';
 import {
@@ -530,6 +536,108 @@ export async function syncBibleTexts(updatedAfter?: string) {
   );
 }
 
+export async function syncPericopeSets() {
+  return retrySyncStep(
+    'Pericope sets sync',
+    KV_KEYS.SYNC_ERROR_PERICOPE_SETS,
+    async () => {
+      const sets = await FluentAPI.getPericopeSets();
+      await insertPericopeSets(sets);
+      log.info('Pericope sets synced', { count: sets.length });
+    },
+  );
+}
+
+/**
+ * Per-chapter pericope sync. One API call per (project, book, chapter) the
+ * user has locally — the endpoint has no bulk/batch variant. Cross-chapter
+ * pericopes will be incomplete from this call alone (confirmed API gap,
+ * tracked separately — not addressed here).
+ */
+/**
+ * Per-chapter pericope sync. One API call per (project, book, chapter) the
+ * user has locally — the endpoint has no bulk/batch variant. Fetches run with
+ * bounded concurrency; failures are isolated per chapter and retried on the
+ * next sync (getChaptersNeedingPericopeSync returns all known chapters every
+ * run, so nothing needs to be queued). Inserts are batched into one
+ * transaction. Cross-chapter pericopes will be incomplete from this call
+ * alone (confirmed API gap, tracked separately — not addressed here).
+ */
+export async function syncPericopes() {
+  return retrySyncStep(
+    'Pericope sync',
+    KV_KEYS.SYNC_ERROR_PERICOPES,
+    async () => {
+      const chapters = await getChaptersNeedingPericopeSync();
+      if (chapters.length === 0) {
+        log.info('No chapters need pericope sync');
+        return;
+      }
+
+      const distinctProjectIds = [...new Set(chapters.map(c => c.projectId))];
+      const pericopeSetIdByProject = new Map<number, number | null>();
+      await Promise.all(
+        distinctProjectIds.map(async id =>
+          pericopeSetIdByProject.set(id, await getProjectPericopeSetId(id)),
+        ),
+      );
+
+      const chaptersToFetch = chapters.filter(c => {
+        const pericopeSetId = pericopeSetIdByProject.get(c.projectId);
+        return pericopeSetId !== null && pericopeSetId !== undefined;
+      });
+      if (chaptersToFetch.length === 0) {
+        log.info('No chapters with a pericope set assigned');
+        return;
+      }
+
+      const results = await pMapLimit(chaptersToFetch, 6, async chapter => {
+        const groups = await FluentAPI.getChapterPericopes(
+          chapter.projectId,
+          chapter.bookCode,
+          chapter.chapterNumber,
+        );
+        return {
+          bookId: chapter.bookId,
+          chapterNumber: chapter.chapterNumber,
+          pericopeSetId: pericopeSetIdByProject.get(chapter.projectId)!,
+          groups: groups ?? [],
+        };
+      });
+
+      const fetched: Array<{
+        bookId: number;
+        chapterNumber: number;
+        pericopeSetId: number;
+        groups: ApiPericopeGroupInput[];
+      }> = [];
+      let failed = 0;
+
+      results.forEach((result, i) => {
+        if (result.status === 'fulfilled') {
+          fetched.push(result.value);
+        } else {
+          failed++;
+          log.warn('Pericope fetch failed for chapter — will retry next sync', {
+            chapter: chaptersToFetch[i],
+            error: getErrorMessage(result.reason),
+          });
+        }
+      });
+
+      if (fetched.length > 0) {
+        await insertPericopeVersesBatch(fetched);
+      }
+
+      log.info('Pericopes synced', {
+        attempted: chaptersToFetch.length,
+        succeeded: fetched.length,
+        failed,
+      });
+    },
+  );
+}
+
 export async function syncAllUsers(): Promise<void> {
   log.info('Syncing all users...');
   clearAllSyncErrors();
@@ -568,6 +676,7 @@ export async function syncAllUsers(): Promise<void> {
     const usersPendingCursorUpdate: string[] = [];
 
     await syncMasterData();
+    await syncPericopeSets();
 
     for (const userId of userIdsToSync) {
       const creds = await getCredentials(userId);
@@ -631,6 +740,7 @@ export async function syncAllUsers(): Promise<void> {
       : oldestAssignmentCursor ??
         (deviceHasLocalProjects ? deviceLastSyncedAt : undefined);
 
+    await syncPericopes();
     await syncBibleTexts(bibleTextUpdatedAfter);
 
     const userSyncCompletedAt = new Date().toISOString();
@@ -707,6 +817,7 @@ export async function syncAllData(
     const userAssignmentCursor = getUserLastSyncedAt(userIdStr) || undefined;
 
     await syncMasterData();
+    await syncPericopeSets();
     await syncProjects(userId, sessionToken);
 
     if (isIncremental) {
@@ -716,10 +827,12 @@ export async function syncAllData(
         assignmentCursor,
         sessionToken,
       );
+      await syncPericopes();
       await syncBibleTexts(didFullSync ? undefined : assignmentCursor);
     } else if (localProjectIdsBefore.length === 0) {
       await syncChapterAssignments(userId, undefined, undefined, sessionToken);
       await syncUserChapterWork(userId, sessionToken);
+      await syncPericopes();
       await syncBibleTexts();
     } else {
       // Omit excludeProjectIds on re-login: the API can return [] when every
@@ -729,6 +842,7 @@ export async function syncAllData(
         userAssignmentCursor,
         sessionToken,
       );
+      await syncPericopes();
       await syncBibleTexts(didFullSync ? undefined : userAssignmentCursor);
     }
 
