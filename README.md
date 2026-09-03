@@ -12,7 +12,7 @@
 
 Before you begin, make sure you have the following installed:
 
-- [Node.js 24](https://nodejs.org/en/) — `>= 24.14.0` (see `package.json` engines)
+- [Node.js 24](https://nodejs.org/en/) — `>= 24.14.0` (`package.json` engines). CI uses **`.nvmrc` (`24.14.0`)**
 - [Android Studio](https://developer.android.com/studio) — Android SDK, emulator, and JDK 17
 - **npm** — package manager for this repo (`package-lock.json`). `yarn` in this directory is forwarded to npm; do not use pnpm.
 
@@ -26,15 +26,15 @@ Check your current Node version:
 node --version
 ```
 
-If it's not version 24, install and switch to it using NVM:
+If it's below `24.14.0`, install and switch using NVM (`nvm install` / `nvm use` read `.nvmrc`):
 
 ```bash
-# install and use node 24
-nvm install 24.14.0
-nvm use 24.14.0
+# install and use the CI pin (reads .nvmrc)
+nvm install
+nvm use
 
 # verify
-node --version  # verify it is v24.x.x
+node --version  # v24.14.0 in CI; local may be any 24.14+ per engines
 ```
 
 ---
@@ -164,14 +164,14 @@ cd fluent-mobile
 npm install
 ```
 
-Before opening a PR (and after dependency changes), run the same Expo health checks CI runs in Quality Gates — these are already available via the Expo CLI after `npm install`; no extra packages required:
+Before opening a PR (and after dependency changes), run the same Expo health checks Quality Gates runs. `npm run doctor` is the **lockfile** `expo-doctor` (not `@latest`).
 
 ```bash
-npm run doctor              # expo-doctor
-npx expo install --check    # SDK-aligned dependency versions
+npm run doctor              # lockfile expo-doctor
+npx expo install --check    # SDK-aligned dependency versions (Expo’s published matrix)
 ```
 
-If either reports patch drift (e.g. Expo published a newer `expo@~56.0.x` than the lockfile), fix with `npx expo install --fix` on a ticketed branch, merge that bump first, then update other open PRs from `main`. See [docs/ci.md](docs/ci.md).
+If `--check` goes red overnight with **no** change on your ticket, wait for the Expo compatibility sync ([#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422)) and rebase — do not `--fix` on the feature branch. See [docs/ci.md](docs/ci.md) (two clocks).
 
 Generate the native Android project (required before first run):
 

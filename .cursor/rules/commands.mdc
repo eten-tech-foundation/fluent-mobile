@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Commands
 
-Run from repo root. Node **>= 24.14.0**. Package manager: **npm**.
+Run from repo root. Node **>= 24.14.0** (CI: `.nvmrc` **24.14.0**). Package manager: **npm**.
 
 ## Before claiming done (CI order)
 
@@ -15,7 +15,7 @@ Run from repo root. Node **>= 24.14.0**. Package manager: **npm**.
 4. `npm run typecheck`
 5. `npm test -- --ci`
 
-**Dependency / Dependabot work:** also `npm run doctor` after `npm ci` (same check runs in Test Check CI). If doctor reports SDK patch drift, `npx expo install --fix`.
+**Dependency / Dependabot work:** also `npm run doctor` after `npm ci` (Quality Gates). If `--check` is red overnight with no change on this ticket, wait for the Expo sync PR ([#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422)); do not `--fix` on a feature branch. See [docs/ci.md](../../docs/ci.md).
 
 Report what ran and the outcome. If a step was skipped, say why.
 
@@ -29,7 +29,7 @@ Report what ran and the outcome. If a step was skipped, say why.
 | `npm run format` | Fix Prettier (`src/**/*.{ts,tsx}` — same as `format:check`) |
 | `npm run architecture-guard` | Fail on UI `fetch(` / `getDatabase(` / `executeSql` (`--ci`) |
 | `npm run typecheck` | TypeScript check (`tsc --noEmit`) |
-| `npm run doctor` | Expo SDK / native-module alignment (`expo-doctor`) |
+| `npm run doctor` | Expo SDK / native-module alignment (lockfile `expo-doctor`, never `@latest`) |
 
 ## CI mirrors
 

@@ -10,7 +10,7 @@ Workflows for Fluent Mobile (**Android-only**).
 | `action-pins.yml` | `pull_request_target` on `main` | SHA-pin gate (`Action pins`); checker from default branch |
 | `lint.yml` | push, PR | ESLint + Prettier |
 | `test.yml` | push, PR | Jest unit tests |
-| `quality-gates.yml` | push, PR | TypeScript, `expo-doctor`, `expo install --check` |
+| `quality-gates.yml` | push, PR | TypeScript, lockfile `expo-doctor`, `expo install --check` (Node from `.nvmrc`) |
 | `eas-build.yml` | push tag `v*` | Sync `APP_VERSION_FALLBACK` in `app.config.ts` with tag; hand off to EAS |
 | `preview-build.yml` | PR label `preview-build` | Optional isolated Android preview APK (**PR comment only** — debug) |
 | `qa-handoff.yml` | PR merged | Needs QA? Yes → issue handoff + assign Roslin + Project 4 `In QA` |
