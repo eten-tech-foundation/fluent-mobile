@@ -15,7 +15,7 @@ if command -v node >/dev/null 2>&1; then
   MINOR="$(printf '%s' "$NODE_V" | cut -d. -f2)"
   PATCH="$(printf '%s' "$NODE_V" | cut -d. -f3)"
   if [ -z "$MAJOR" ] || [ "$MAJOR" -lt 24 ] || { [ "$MAJOR" -eq 24 ] && [ "${MINOR:-0}" -lt 14 ]; }; then
-    WARNINGS+=("Node $NODE_V is below engines (>= 24.14.0). Use nvm use 24 (or install Node 24.14+).")
+    WARNINGS+=("Node $NODE_V is below engines (>= 24.14.0). Use nvm use (reads .nvmrc 24.14.0).")
   fi
 else
   WARNINGS+=("node not found on PATH. Install Node >= 24.14.0.")

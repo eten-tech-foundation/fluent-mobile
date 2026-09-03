@@ -2,6 +2,8 @@
 
 Records how open Dependabot PRs were resolved in a given branch so the team can close or merge PRs consistently.
 
+**Two clocks:** PR CI is a frozen snapshot; Expo SDK patch drift is recovered by the weekday compatibility job ([#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422)), not by `--fix` on every feature/Dependabot branch. Parent tracker: [#420](https://github.com/eten-tech-foundation/fluent-mobile/issues/420). Process: [dependabot-process.md](./dependabot-process.md).
+
 ## Batch: `main` (2026-08-11)
 
 Resolved: 2026-08-11 (triage + close pass; SDK alignment via #314)

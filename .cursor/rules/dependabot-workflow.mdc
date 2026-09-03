@@ -31,7 +31,7 @@ When the user asks to handle/process Dependabot PRs, **run the full queue end-to
 For **safe** PRs (lockfile-only transitive bumps; no `package.json` changes except overrides):
 
 - GitHub CI all green is sufficient — **local checkout optional**.
-- Required checks: Lint & Format, Unit Tests, Quality Gates (TypeScript, expo-doctor, expo install --check) — all `SUCCESS`.
+- Required checks: Lint & Format, Unit Tests, Quality Gates (TypeScript, lockfile expo-doctor, expo install --check) — all `SUCCESS`.
 - Branch protection requires approval: always `gh pr review --approve` before merge.
 
 For **risky** PRs: local validation gate + Android smoke test still mandatory.
@@ -97,7 +97,7 @@ Categorize each PR:
    npm test -- --ci
    ```
 
-   If `npm run doctor` fails with patch mismatches, run `npx expo install --fix`, commit on the PR branch, then re-run the suite. Do **not** merge until doctor is clean.
+   If `npm run doctor` fails with patch mismatches caused by **this** bot, run `npx expo install --fix` on the PR branch, then re-run the suite. If `--check` is red overnight with no change in this PR, wait for #422 and rebase. Do **not** merge until doctor/`--check` are clean.
 
    *Note: `fluent-api.test.ts` may hit the network — a failure there alone does not block a dep bump if it also fails on `main`.*
 
