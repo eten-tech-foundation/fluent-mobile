@@ -1,9 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
-import {
-  SourceAudioBarSlot,
-  SourceAudioProvider,
-} from './SourceAudioShell';
+import { SourceAudioBarSlot, SourceAudioProvider } from './SourceAudioShell';
 import type { ChapterAssignmentData } from '../../types/db/types';
 
 const mockUseSourceAudio = jest.fn();

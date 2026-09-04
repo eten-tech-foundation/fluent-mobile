@@ -17,12 +17,8 @@ type BibleTabProps = {
 };
 
 export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
-  const {
-    verses,
-    selectedVerse,
-    setSelectedVerse,
-    recordedVerseNumbers,
-  } = useDraftingContext();
+  const { verses, selectedVerse, setSelectedVerse, recordedVerseNumbers } =
+    useDraftingContext();
 
   const listRef = useRef<FlatList<VerseData>>(null);
 
@@ -49,10 +45,7 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
 
       return (
         <TouchableOpacity
-          style={[
-            styles.row,
-            isSelected && styles.rowSelected,
-          ]}
+          style={[styles.row, isSelected && styles.rowSelected]}
           onPress={() => handleVersePress(item.verseNumber)}
           activeOpacity={0.7}
           accessibilityRole="button"
@@ -83,11 +76,7 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
         </TouchableOpacity>
       );
     },
-    [
-      selectedVerse,
-      recordedVerseNumbers,
-      handleVersePress,
-    ],
+    [selectedVerse, recordedVerseNumbers, handleVersePress],
   );
 
   return (

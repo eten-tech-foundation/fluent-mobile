@@ -29,7 +29,7 @@ function verseAtPositionMs(
   positionMs: number,
 ): number {
   if (verseMarkers.length === 0) return 1;
-  
+
   // Find the last marker whose startMs is <= positionMs
   let activeVerse = verseMarkers[0].verseNumber;
   for (const marker of verseMarkers) {
@@ -49,7 +49,7 @@ function verseStartMs(
   verseMarkers: Array<{ verseNumber: number; startMs: number }>,
   verseNumber: number,
 ): number {
-  const marker = verseMarkers.find((m) => m.verseNumber === verseNumber);
+  const marker = verseMarkers.find(m => m.verseNumber === verseNumber);
   return marker?.startMs ?? 0;
 }
 
@@ -171,7 +171,7 @@ export function useSourceAudio({
     try {
       if (DEV_PREVIEW_ENABLED) {
         // Dev preview mode: use mock audio for testing without API
-        await new Promise<void>((resolve) => setTimeout(resolve, 400));
+        await new Promise<void>(resolve => setTimeout(resolve, 400));
         await applyResolved(
           resolveMockChapterSourceAudio({ verseCount: verses.length }),
         );
@@ -194,12 +194,7 @@ export function useSourceAudio({
       log.error('Failed to resolve chapter source audio', { error });
       setLoadState('error');
     }
-  }, [
-    chapterData.bookCode,
-    chapterData.projectId,
-    userId,
-    verses.length,
-  ]);
+  }, [chapterData.bookCode, chapterData.projectId, userId, verses.length]);
 
   useEffect(() => {
     void loadChapterAudio();
