@@ -816,7 +816,7 @@ describe('v12 migration collision repair (#260 / #279)', () => {
     );
     expect(await columnExists(db, 'recordings', 'is_canonical')).toBe(true);
     expect(db._indexes.has('idx_rec_canonical')).toBe(true);
-    await expect(getUserVersion(db)).resolves.toBe(13);
+    await expect(getUserVersion(db)).resolves.toBe(14);
   });
 
   it('applies canonical and conflict columns when upgrading from main v11', async () => {
@@ -841,7 +841,7 @@ describe('v12 migration collision repair (#260 / #279)', () => {
       true,
     );
     expect(db._indexes.has('idx_rec_canonical')).toBe(true);
-    await expect(getUserVersion(db)).resolves.toBe(13);
+    await expect(getUserVersion(db)).resolves.toBe(14);
   });
 });
 

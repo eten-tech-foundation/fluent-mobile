@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 13;
+export const CURRENT_SCHEMA_VERSION = 14;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -376,6 +376,41 @@ async function addChapterAssignmentHasConflict(db: SqlExecutor): Promise<void> {
   await addRecordingsCanonicalColumn(db);
 }
 
+async function applyPericopeTables(db: SqlExecutor): Promise<void> {
+  await db.execute(
+    `CREATE TABLE IF NOT EXISTS pericope_sets (
+      id          INTEGER PRIMARY KEY,
+      name        TEXT NOT NULL,
+      description TEXT
+    )`,
+  );
+  await db.execute(
+    `CREATE TABLE IF NOT EXISTS pericope_verses (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      pericope_set_id INTEGER REFERENCES pericope_sets(id),
+      book_id         INTEGER NOT NULL REFERENCES books(id),
+      chapter_number  INTEGER NOT NULL,
+      verse_number    INTEGER NOT NULL,
+      section         INTEGER,
+      pericope_number TEXT NOT NULL,
+      pericope_title  TEXT,
+      UNIQUE (pericope_set_id, book_id, chapter_number, verse_number)
+    )`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_pv_book_chapter
+     ON pericope_verses(book_id, chapter_number)`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_pv_pericope
+     ON pericope_verses(pericope_set_id, book_id, pericope_number, chapter_number, verse_number)`,
+  );
+
+  const projectsInfo = await db.execute('PRAGMA table_info(projects)');
+  if (projectsInfo.rows.length) {
+    await addColumnIfMissing(db, 'projects', 'pericope_set_id', 'INTEGER');
+  }
+}
 /** Ordered schema migrations. Version 1 = current CREATE IF NOT EXISTS baseline. */
 export const migrations: Migration[] = [
   {
@@ -442,6 +477,11 @@ export const migrations: Migration[] = [
     version: 13,
     name: 'chapter_assignment_has_conflict',
     up: addChapterAssignmentHasConflict,
+  },
+  {
+    version: 14,
+    name: 'pericope_tables',
+    up: applyPericopeTables,
   },
 ];
 
