@@ -20,6 +20,7 @@ jest.mock('expo-router', () => ({
   useNavigation: () => ({
     addListener: jest.fn(() => jest.fn()),
   }),
+  useIsFocused: () => true,
   useLocalSearchParams: () => ({
     chapterId: '5',
     chapterName: 'Mark 14',
@@ -126,6 +127,21 @@ jest.mock('../tabs/ResourcesTab', () => {
       MockReact.createElement(View, { testID: 'resources-tab' }),
   };
 });
+
+jest.mock('../../hooks/useSourceAudio', () => ({
+  useSourceAudio: () => ({
+    loadState: 'empty',
+    positionMs: 0,
+    durationMs: 0,
+    isPlaying: false,
+    unitLabel: 'Verse 1 / 1',
+    sourceLabel: 'BSB',
+    togglePlay: jest.fn(),
+    seek: jest.fn(),
+    retry: jest.fn(),
+    pause: jest.fn(),
+  }),
+}));
 
 const mockGetChapterAssignmentById = jest.fn();
 const mockGetBibleTexts = jest.fn();

@@ -269,8 +269,9 @@ export function PlaybackProgressBar({
       onResponderTerminate={endSeek}
     >
       {Array.from({ length: renderedBarCount }, (_, i) => {
-        // Capture pulse uses a stable seed so timer ticks don't jump heights.
-        const amplitude = barAmplitude(i, animate ? i * 120 : displayMs, tall);
+        // Stable decorative heights per bar; progress fill is the active/inactive
+        // split (left → right), not amplitude keyed to playback position.
+        const amplitude = barAmplitude(i, i * 120, tall);
         const baseHeight = Math.round(
           Math.max(
             theme.waveform.barMinHeight,

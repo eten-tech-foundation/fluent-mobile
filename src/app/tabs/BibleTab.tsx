@@ -17,13 +17,8 @@ type BibleTabProps = {
 };
 
 export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
-  const {
-    verses,
-    selectedVerse,
-    setSelectedVerse,
-    currentlyPlayingVerse,
-    recordedVerseNumbers,
-  } = useDraftingContext();
+  const { verses, selectedVerse, setSelectedVerse, recordedVerseNumbers } =
+    useDraftingContext();
 
   const listRef = useRef<FlatList<VerseData>>(null);
 
@@ -46,16 +41,11 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
   const renderItem = useCallback(
     ({ item }: { item: VerseData }) => {
       const isSelected = item.verseNumber === selectedVerse;
-      const isPlaying = item.verseNumber === currentlyPlayingVerse;
       const hasRecording = recordedVerseNumbers.has(item.verseNumber);
 
       return (
         <TouchableOpacity
-          style={[
-            styles.row,
-            isSelected && styles.rowSelected,
-            isPlaying && styles.rowPlaying,
-          ]}
+          style={[styles.row, isSelected && styles.rowSelected]}
           onPress={() => handleVersePress(item.verseNumber)}
           activeOpacity={0.7}
           accessibilityRole="button"
@@ -86,12 +76,7 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
         </TouchableOpacity>
       );
     },
-    [
-      selectedVerse,
-      currentlyPlayingVerse,
-      recordedVerseNumbers,
-      handleVersePress,
-    ],
+    [selectedVerse, recordedVerseNumbers, handleVersePress],
   );
 
   return (
@@ -130,9 +115,6 @@ const styles = StyleSheet.create({
   },
   rowSelected: {
     borderLeftColor: theme.colors.primary,
-  },
-  rowPlaying: {
-    backgroundColor: `${theme.colors.primary}14`,
   },
   iconColumn: {
     alignItems: 'center',

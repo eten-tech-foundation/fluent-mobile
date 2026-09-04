@@ -197,7 +197,7 @@ describe('RecordTab', () => {
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 
-  it('renders idle design chrome: verse nav, record, source link, source audio', async () => {
+  it('renders idle design chrome: verse nav, record, source link', async () => {
     renderTab();
 
     expect(screen.getByTestId('record-tab')).toBeTruthy();
@@ -207,11 +207,7 @@ describe('RecordTab', () => {
     expect(screen.getByTestId('record-play-idle-placeholder')).toBeTruthy();
     expect(screen.getByTestId('record-source-toggle')).toBeTruthy();
     expect(screen.getByText('View source text')).toBeTruthy();
-    expect(screen.getByTestId('source-audio-bar')).toBeTruthy();
-    expect(screen.getByTestId('source-audio-label')).toHaveTextContent(
-      'No source audio',
-    );
-    expect(screen.queryByTestId('source-audio-time-stub')).toBeNull();
+    // Note: source-audio-bar is now rendered globally by DraftingScreen via SourceAudioShell
     expect(screen.queryByTestId('record-take-list')).toBeNull();
 
     await waitFor(() => {

@@ -32,7 +32,6 @@ import { SharedTakeRow } from '../../components/ui/SharedTakeRow';
 import { TakeGroupHeader } from '../../components/ui/TakeGroupHeader';
 import { RecordCircleButton } from '../../components/ui/RecordCircleButton';
 import { SourceTextAccordion } from '../../components/ui/SourceTextAccordion';
-import { SourceAudioPlayerBar } from '../../components/layout/SourceAudioPlayerBar';
 import { WarningBanner } from '../../components/ui/WarningBanner';
 import { StageAdvanceConfirmSheet } from '../../components/ui/StageAdvanceConfirmSheet';
 import {
@@ -316,7 +315,6 @@ export function RecordTab({
     verseAudio.state === 'saving' ||
     (verseAudio.state === 'error' && activeViewHasTakes) ||
     (verseAudio.state === 'idle' && activeViewHasTakes);
-  const showSourceAudio = showIdle || showReview;
 
   const currentUserId = userId;
   const isTaken = useMemo(
@@ -785,14 +783,6 @@ export function RecordTab({
           text={selected?.text}
         />
       </ScrollView>
-
-      {showSourceAudio ? (
-        <SourceAudioPlayerBar
-          verses={verses}
-          selectedVerse={selectedVerse}
-          sourceLabel={chapterData.bibleName ?? 'Source'}
-        />
-      ) : null}
 
       {confirmVisible && stageAdvance.destination ? (
         <StageAdvanceConfirmSheet
