@@ -262,3 +262,18 @@ export function setSyncPausedUntilMs(ms: number | null): void {
 export function clearSyncPausedUntil(): void {
   setSyncPausedUntilMs(null);
 }
+
+const pericopeSetVersionKey = (pericopeSetId: number) =>
+  `pericope_set_version:${pericopeSetId}`;
+
+export function getPericopeSetVersion(pericopeSetId: number): string {
+  return kvStorage.getItemSync(pericopeSetVersionKey(pericopeSetId)) ?? '';
+}
+
+export function setPericopeSetVersion(
+  pericopeSetId: number,
+  version: string,
+): void {
+  kvStorage.setItemSync(pericopeSetVersionKey(pericopeSetId), version);
+  log.info('Pericope set version updated', { pericopeSetId, version });
+}
