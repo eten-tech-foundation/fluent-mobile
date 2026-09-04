@@ -14,7 +14,7 @@ Cross-tool source of truth for **delivery judgment** (any coding agent, IDE assi
 | [docs/guides/expo-first-dependencies.md](docs/guides/expo-first-dependencies.md) | Prefer Expo SDK packages when available |
 | [`.cursor/rules/`](.cursor/rules/) | Always-on + topic rules (plain Markdown — readable by any tool) |
 | This file (`AGENTS.md`) | AC, scope, abstraction, and human QA gates |
-| [docs/README.md](docs/README.md) | Docs directory convention — features/, runbooks/, guides/, tasks/ |
+| [docs/README.md](docs/README.md) | Docs directory convention — features/, runbooks/, guides/, tasks/. Brainstorming/writing-plans skill output goes to `docs/features/<slug>/`, not the skill's default `docs/superpowers/...` |
 
 `.cursor/rules/*.mdc` are **not** Cursor-only secrets: any agent should open them. Cursor auto-injects a subset; Claude Code / Copilot should follow [CLAUDE.md](CLAUDE.md) and [`.github/copilot-instructions.md`](.github/copilot-instructions.md).
 
