@@ -124,4 +124,74 @@ describe('mapApiChapterAssignment', () => {
 
     expect(mapped.hasConflict).toBeUndefined();
   });
+
+  it('maps hasClaimConflict when only the claim conflict flag is set', () => {
+    const mapped = mapApiChapterAssignment({
+      chapterAssignmentId: 17,
+      projectId: 2,
+      projectUnitId: 2,
+      bibleId: 4,
+      bookId: 12,
+      chapterNumber: 1,
+      chapterStatus: 'draft',
+      hasClaimConflict: true,
+    });
+
+    expect(mapped.hasConflict).toBe(true);
+  });
+
+  it('maps has_claim_conflict from snake_case payloads', () => {
+    const mapped = mapApiChapterAssignment({
+      chapterAssignmentId: 18,
+      projectId: 2,
+      projectUnitId: 2,
+      bibleId: 4,
+      bookId: 12,
+      chapterNumber: 1,
+      chapterStatus: 'draft',
+      has_claim_conflict: true,
+    } as Parameters<typeof mapApiChapterAssignment>[0]);
+
+    expect(mapped.hasConflict).toBe(true);
+  });
+
+  it('ORs audio-take hasConflict with claim conflict', () => {
+    const audioOnly = mapApiChapterAssignment({
+      chapterAssignmentId: 19,
+      projectId: 2,
+      projectUnitId: 2,
+      bibleId: 4,
+      bookId: 12,
+      chapterNumber: 1,
+      chapterStatus: 'draft',
+      hasConflict: true,
+      hasClaimConflict: false,
+    });
+    const claimOnly = mapApiChapterAssignment({
+      chapterAssignmentId: 20,
+      projectId: 2,
+      projectUnitId: 2,
+      bibleId: 4,
+      bookId: 12,
+      chapterNumber: 2,
+      chapterStatus: 'draft',
+      hasConflict: false,
+      hasClaimConflict: true,
+    });
+    const bothFalse = mapApiChapterAssignment({
+      chapterAssignmentId: 21,
+      projectId: 2,
+      projectUnitId: 2,
+      bibleId: 4,
+      bookId: 12,
+      chapterNumber: 3,
+      chapterStatus: 'draft',
+      hasConflict: false,
+      hasClaimConflict: false,
+    });
+
+    expect(audioOnly.hasConflict).toBe(true);
+    expect(claimOnly.hasConflict).toBe(true);
+    expect(bothFalse.hasConflict).toBe(false);
+  });
 });
