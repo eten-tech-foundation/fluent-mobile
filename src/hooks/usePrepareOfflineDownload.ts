@@ -423,7 +423,11 @@ export function usePrepareOfflineDownload({
       setSessionStarted(true);
       setPrepareOfflineDownloadStarted(String(userId), projectId);
 
-      if (canDownload) {
+      // Gate on canDownloadNow (real-queue-aware), not the raw canDownload
+      // prop (mock-status-driven, never updated by cancel/download
+      // activity) — otherwise newly selected resources after a cancel never
+      // get written to download_queue and nothing new starts downloading.
+      if (canDownloadNow) {
         await enqueuePrepareOfflineDownload({
           userId,
           projectId,
@@ -453,7 +457,6 @@ export function usePrepareOfflineDownload({
       await flushPendingSessionAction();
     }
   }, [
-    canDownload,
     canDownloadNow,
     catalog.items,
     flushPendingSessionAction,
