@@ -167,7 +167,10 @@ export function useVerseAudio({
   useEffect(() => {
     let cancelled = false;
     setLoadedTakeId(null);
+    setPlayingTakeId(null);
     activeBibleTextIdRef.current = bibleTextId;
+    // Stop any in-flight draft playback when the active verse unit changes (#235).
+    void playback.stop();
     (async () => {
       if (bibleTextId === null) {
         allTakesRequestIdRef.current += 1;
@@ -196,6 +199,8 @@ export function useVerseAudio({
     return () => {
       cancelled = true;
     };
+    // playback identity changes every render; stop() is bound to the stable engine.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- bibleTextId-driven reload
   }, [bibleTextId, loadTakes, refreshAllTakes]);
 
   const start = useCallback(async () => {

@@ -89,6 +89,7 @@ jest.mock('../db/repository', () => ({
   insertBibleTexts: jest.fn().mockResolvedValue(undefined),
   getChaptersToSync: jest.fn().mockResolvedValue(new Map()),
   getLocalProjectIds: jest.fn().mockResolvedValue([1]),
+  hasLanguagesMissingIsoCode: jest.fn().mockResolvedValue(false),
   userHasLocalProjects: jest.fn().mockResolvedValue(true),
   userHasLocalChapterAssignments: jest.fn().mockResolvedValue(true),
   userNeedsAssigneeRepair: jest.fn().mockResolvedValue(false),
@@ -128,7 +129,7 @@ describe('sync step orchestration', () => {
     jest.clearAllMocks();
     mockDbCount(0);
     (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([
-      { id: 1, name: 'English' },
+      { id: 1, langName: 'English', langCodeIso6393: 'eng' },
     ]);
     (FluentAPI.getBooks as jest.Mock).mockResolvedValue([
       { id: 1, name: 'Genesis' },
@@ -148,7 +149,13 @@ describe('sync step orchestration', () => {
       await syncMasterData();
 
       expect(insertMasterDataMock).toHaveBeenCalledWith(
-        [{ id: 1, name: 'English' }],
+        [
+          expect.objectContaining({
+            id: 1,
+            langName: 'English',
+            langCode: 'eng',
+          }),
+        ],
         [{ id: 1, name: 'Genesis' }],
         [{ id: 10, name: 'Source' }],
       );

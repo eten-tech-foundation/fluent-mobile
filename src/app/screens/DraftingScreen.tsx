@@ -5,7 +5,7 @@ import { RecordTab } from '../tabs/RecordTab';
 import { ResourcesTab } from '../tabs/ResourcesTab';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { onSyncComplete } from '../../services/syncEvents';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
 import { DraftingHeader } from '../../components/layout/DraftingHeader';
 import { ChapterAssignmentData, VerseData } from '../../types/db/types';
@@ -28,6 +28,7 @@ import {
   getChapterAssignmentById,
   getRecordedVerseNumbers,
 } from '../../db/queries';
+import { syncBibleTexts, syncMasterData } from '../../services/sync';
 import { hrefs } from '../../navigation/hrefs';
 import {
   parseRequiredNumber,
@@ -53,6 +54,7 @@ export default function DraftingScreen() {
   );
   /** True while Record tab has an in-progress take (recording/paused). */
   const [recordCaptureActive, setRecordCaptureActive] = useState(false);
+  const bibleTextEnsureForChapterRef = useRef<number | null>(null);
 
   const setActiveTab = useCallback(
     (tab: DraftingTab) => {
@@ -168,31 +170,84 @@ export default function DraftingScreen() {
   }, [loadChapterAssignment]);
 
   useEffect(() => {
+    setChapterData(null);
+    setVerses([]);
+    setLoading(true);
+    setInitialVerse(1);
+    bibleTextEnsureForChapterRef.current = null;
+  }, [chapterId]);
+
+  useEffect(() => {
     let ignore = false;
 
     const loadVerses = async () => {
       try {
-        setLoading(true);
-
-        const assignment = await loadChapterAssignment();
+        let assignment = await loadChapterAssignment();
         if (ignore) return;
         if (!assignment) {
           return;
         }
 
-        const [texts, recordedVerseNumbers] = await Promise.all([
-          getBibleTexts(
-            assignment.bibleId,
-            assignment.bookId,
-            assignment.chapterNumber,
-          ),
-          getRecordedVerseNumbers(
-            assignment.bibleId,
-            assignment.bookId,
-            assignment.chapterNumber,
-          ),
-        ]);
+        // Source-audio needs ISO-639-3 on the project language. Devices that
+        // synced languages before mapApiLanguage may still have null codes.
+        if (!assignment.sourceLanguageCode?.trim()) {
+          log.info('Source language ISO missing; syncing master data', {
+            chapterId,
+            projectId: assignment.projectId,
+          });
+          try {
+            await syncMasterData();
+          } catch (masterError) {
+            log.error('Master data sync for language ISO failed', {
+              error: masterError,
+            });
+          }
+          if (ignore) return;
+          assignment = (await loadChapterAssignment()) ?? assignment;
+          if (ignore) return;
+        }
 
+        let texts = await getBibleTexts(
+          assignment.bibleId,
+          assignment.bookId,
+          assignment.chapterNumber,
+        );
+
+        // New assignments often land via light metadata refresh before a full
+        // Sync Now — pull missing chapter text so Record can unlock.
+        if (
+          texts.length === 0 &&
+          bibleTextEnsureForChapterRef.current !== chapterId
+        ) {
+          log.info('No local bible texts; syncing before drafting', {
+            chapterId,
+            bibleId: assignment.bibleId,
+            bookId: assignment.bookId,
+            chapterNumber: assignment.chapterNumber,
+          });
+          try {
+            await syncBibleTexts();
+            bibleTextEnsureForChapterRef.current = chapterId;
+          } catch (syncError) {
+            // Leave ref unset so refreshKey / remount can retry.
+            log.error('Bible text ensure failed', { error: syncError });
+            throw syncError;
+          }
+          if (ignore) return;
+          texts = await getBibleTexts(
+            assignment.bibleId,
+            assignment.bookId,
+            assignment.chapterNumber,
+          );
+        }
+
+        if (ignore) return;
+
+        const recordedVerseNumbers = await getRecordedVerseNumbers(
+          assignment.bibleId,
+          assignment.bookId,
+          assignment.chapterNumber,
+        );
         if (ignore) return;
 
         setVerses(texts);
@@ -210,11 +265,11 @@ export default function DraftingScreen() {
       }
     };
 
-    loadVerses();
+    void loadVerses();
     return () => {
       ignore = true;
     };
-  }, [chapterId, loadChapterAssignment]);
+  }, [chapterId, refreshKey, loadChapterAssignment]);
 
   // Header + tab bar own safe-area insets; keep container white edge-to-edge.
   if (loading) {
