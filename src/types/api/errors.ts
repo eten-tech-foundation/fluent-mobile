@@ -2,12 +2,19 @@
 export class ApiError extends Error {
   readonly status: number;
   readonly code?: string;
+  readonly body?: Record<string, unknown>;
 
-  constructor(status: number, message: string, code?: string) {
+  constructor(
+    status: number,
+    message: string,
+    code?: string,
+    body?: Record<string, unknown>,
+  ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
+    this.body = body;
   }
 
   /** Retry on server errors and network failures (status 0). */

@@ -816,7 +816,7 @@ describe('v12 migration collision repair (#260 / #279)', () => {
     );
     expect(await columnExists(db, 'recordings', 'is_canonical')).toBe(true);
     expect(db._indexes.has('idx_rec_canonical')).toBe(true);
-    await expect(getUserVersion(db)).resolves.toBe(13);
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
   });
 
   it('applies canonical and conflict columns when upgrading from main v11', async () => {
@@ -841,7 +841,7 @@ describe('v12 migration collision repair (#260 / #279)', () => {
       true,
     );
     expect(db._indexes.has('idx_rec_canonical')).toBe(true);
-    await expect(getUserVersion(db)).resolves.toBe(13);
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
   });
 });
 
@@ -1003,5 +1003,30 @@ describe('recordings is_selected rename migration (#71)', () => {
         ),
       ).resolves.toBeDefined();
     });
+  });
+});
+
+describe('recordings version_token migration (#256)', () => {
+  it('adds version_token when upgrading from v13', async () => {
+    const db = createFakeDb(13);
+    db._tables.set('recordings', {
+      columns: new Set([
+        'id',
+        'bible_text_id',
+        'local_file_path',
+        'sync_status',
+        'updated_at',
+      ]),
+      rows: [{ id: 'rec_1', bible_text_id: 10, sync_status: 'pending' }],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+
+    expect(await columnExists(db, 'recordings', 'version_token')).toBe(false);
+
+    await runMigrations(db);
+
+    expect(await columnExists(db, 'recordings', 'version_token')).toBe(true);
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
   });
 });

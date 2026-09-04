@@ -10,7 +10,7 @@ This repo runs GitHub Actions on pushes and pull requests. This doc maps what ru
 | `action-pins.yml` | `Action pins` | SHA-pin gate: every `uses:` in workflow YAML must be a 40-character commit. Runs on `pull_request_target` so the checker comes from `main`, not the PR. Local: `ruby .github/scripts/check-action-pins.rb` |
 | `lint.yml` | `Lint & Format` | ESLint + Prettier (`format:check`) + `architecture-guard --ci` |
 | `test.yml` | `Unit Tests` | Jest (`npm test -- --ci`) |
-| `quality-gates.yml` | `TypeScript`, `expo-doctor`, `expo install --check` | Typecheck + Expo SDK / native-module alignment |
+| `quality-gates.yml` | `TypeScript`, `expo-doctor`, `expo install --check` | Typecheck + lockfile `expo-doctor` + `expo install --check` (see [Two clocks](#two-clocks--pr-ci-vs-scheduled-expo-health)) |
 | `preview-build.yml` | Android EAS preview APK | Optional label `preview-build` — binary only (no OTA); **PR comment only** (debug). Does not move Project 4 or start QA |
 | `qa-handoff.yml` | Post-merge QA handoff | On merge of Needs-QA PRs: issue comment + assign `@Roslin22` + best-effort Project 4 → `In QA` ([guides/qa-process.md](guides/qa-process.md)) |
 | `nightly-preview.yml` | Nightly Android APK | 23:17 PT APK + 09:07 PT Slack (09:00–16:00 PT); `workflow_dispatch`; install comments on recent handoffs |
@@ -35,6 +35,8 @@ ruby .github/scripts/check-action-pins.rb
 
 `npm run architecture-guard` (`scripts/architecture-guard.mjs --ci`) scans `src/app` and `src/components` and **fails** on bare `fetch(`, `getDatabase(`, or `executeSql` — part of the `Lint & Format` job. Unit coverage: `scripts/architecture-guard.test.cjs`. The Cursor/Claude agent hook (`.cursor/hooks/architecture-guard.mjs` → same script without `--ci`) stays **warn-only** so Write/StrReplace are never denied; policy is documented in the script header. String SQL without those calls is not regex-scanned here (English UI copy false positives); ESLint UI bans (#366) cover broader layer rules.
 
+CI Node is **`.nvmrc` (`24.14.0`)**, the engines floor. `package.json` `engines.node` stays `>= 24.14.0` for local installs. Do not use `node-version: 24` (latest 24.x).
+
 After dependency / Dependabot work (and before claiming PR-ready), also:
 
 ```bash
@@ -43,7 +45,24 @@ npm run doctor
 npx expo install --check
 ```
 
-If either reports SDK patch drift, `npx expo install --fix` on a ticketed branch. First-clone copy lives in the [README](../README.md) (Step 6). See [`.cursor/rules/commands.mdc`](../.cursor/rules/commands.mdc).
+`npm run doctor` is the **lockfile** `expo-doctor` CLI (`1.20.4` today) — never `npx expo-doctor@latest` on a feature PR. If `--check` (or doctor) reports SDK patch drift **on a feature ticket**, do **not** land `expo install --fix` there: wait for / land the Expo compatibility sync PR ([#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422)), then rebase. Until that job exists, `expo install --fix` still belongs on a **dedicated** deps ticket, not the feature branch. First-clone copy lives in the [README](../README.md) (Step 6). See [`.cursor/rules/commands.mdc`](../.cursor/rules/commands.mdc).
+
+## Two clocks — PR CI vs scheduled Expo health
+
+```text
+PR CI  = deterministic snapshot of *this commit*
+         (npm ci, pinned Node, lockfile expo-doctor, lint/typecheck/test)
+Weekday / scheduled Expo CI = allowed to look at the outside world (#422)
+```
+
+| Check | PR CI | Notes |
+| ----- | ----- | ----- |
+| `npm ci` | Required (team policy) | Lockfile-frozen |
+| Node | `.nvmrc` | Not floating `24` |
+| `npm run doctor` | Runs on every PR (Quality Gates `expo-doctor`) | Pinned CLI. Latest doctor / RN Directory belongs on the scheduled job (#422), not `@latest` here |
+| `expo install --check` | **Keep required** | Still an **external** Expo matrix. Red overnight without a code change means wait for [#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422), then rebase — do not fix deps on the feature ticket |
+| Dependabot vs Expo `--fix` | Dependabot for non-Expo JS | Ownership split: [#424](https://github.com/eten-tech-foundation/fluent-mobile/issues/424). Merge queue: [#423](https://github.com/eten-tech-foundation/fluent-mobile/issues/423) |
+| SDK / RN line bump | Human ticket | Never the weekday bot |
 
 ## What is required today
 

@@ -3,6 +3,7 @@ import { waitFor } from '@testing-library/react-native';
 import { resetFileSystemMock } from '../test/mocks/expo-file-system';
 import type { PendingRecording } from '../types/db/types';
 import { ApiError } from '../types/api/errors';
+import type { VerseAudioResponse } from '../types/api/verseAudio';
 import { AuthError } from './authError';
 import { authToken } from './authToken';
 import {
@@ -15,9 +16,14 @@ import {
 } from './recordingSync';
 
 const mockGetPendingRecordings = jest.fn();
+const mockGetLatestVersionToken = jest.fn();
 const mockSetRecordingSyncStatus = jest.fn();
 const mockMarkRecordingUploaded = jest.fn();
+const mockMarkRecordingConflicted = jest.fn();
+const mockMarkRecordingAndChapterConflicted = jest.fn();
+const mockMarkChapterHasConflictForVerse = jest.fn();
 const mockMarkRecordingFailed = jest.fn();
+const mockUpdateRecordingVersionToken = jest.fn();
 const mockUploadVerseAudio = jest.fn();
 const mockSetChapterUploadWorker = jest.fn();
 const mockGetCredentials = jest.fn();
@@ -29,11 +35,21 @@ const mockEmitUploadSessionEvent = jest.fn();
 jest.mock('../db/repository', () => ({
   getPendingRecordings: (...args: unknown[]) =>
     mockGetPendingRecordings(...args),
+  getLatestVersionToken: (...args: unknown[]) =>
+    mockGetLatestVersionToken(...args),
   setRecordingSyncStatus: (...args: unknown[]) =>
     mockSetRecordingSyncStatus(...args),
   markRecordingUploaded: (...args: unknown[]) =>
     mockMarkRecordingUploaded(...args),
+  markRecordingConflicted: (...args: unknown[]) =>
+    mockMarkRecordingConflicted(...args),
+  markRecordingAndChapterConflicted: (...args: unknown[]) =>
+    mockMarkRecordingAndChapterConflicted(...args),
+  markChapterHasConflictForVerse: (...args: unknown[]) =>
+    mockMarkChapterHasConflictForVerse(...args),
   markRecordingFailed: (...args: unknown[]) => mockMarkRecordingFailed(...args),
+  updateRecordingVersionToken: (...args: unknown[]) =>
+    mockUpdateRecordingVersionToken(...args),
 }));
 
 jest.mock('./api', () => ({
@@ -81,7 +97,9 @@ function pendingRecording(
   };
 }
 
-function successResponse() {
+function successResponse(
+  overrides: Partial<VerseAudioResponse> = {},
+): VerseAudioResponse {
   return {
     id: 9,
     projectUnitId: 12,
@@ -90,10 +108,15 @@ function successResponse() {
     contentType: 'audio/mp4',
     sizeBytes: 100,
     durationSeconds: 1.5,
+    versionToken: 2,
+    conflictStatus: 'clean',
+    activeTakeId: 9,
+    takes: [],
     verseNumber: 1,
     downloadUrl: 'https://example.test/a',
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
+    ...overrides,
   };
 }
 
@@ -107,8 +130,12 @@ describe('recordingSync', () => {
     authToken.set(null);
     await FileSystem.writeAsStringAsync(FILE_URI, 'fake-audio');
     mockGetPendingRecordings.mockResolvedValue([pendingRecording()]);
+    mockGetLatestVersionToken.mockResolvedValue(undefined);
     mockSetRecordingSyncStatus.mockResolvedValue(undefined);
     mockMarkRecordingUploaded.mockResolvedValue(undefined);
+    mockMarkRecordingConflicted.mockResolvedValue(undefined);
+    mockMarkRecordingAndChapterConflicted.mockResolvedValue(undefined);
+    mockMarkChapterHasConflictForVerse.mockResolvedValue(undefined);
     mockMarkRecordingFailed.mockResolvedValue(undefined);
     mockUploadVerseAudio.mockResolvedValue(successResponse());
     mockGetCredentials.mockResolvedValue(null);
@@ -122,7 +149,8 @@ describe('recordingSync', () => {
   it('uploads pending recordings via FluentAPI and marks uploaded with blob_key', async () => {
     const result = await syncPendingRecordings('tok-1', { delay });
 
-    expect(result).toEqual({ uploaded: 1, failed: 0 });
+    expect(result).toEqual({ uploaded: 1, conflicted: 0, failed: 0 });
+    expect(mockGetLatestVersionToken).toHaveBeenCalledWith(42);
     expect(mockUploadVerseAudio).toHaveBeenCalledWith(
       expect.objectContaining({
         projectUnitId: 12,
@@ -133,7 +161,37 @@ describe('recordingSync', () => {
     expect(mockMarkRecordingUploaded).toHaveBeenCalledWith(
       'rec-1',
       'unit-12/text-42',
+      2,
     );
+    expect(mockMarkRecordingConflicted).not.toHaveBeenCalled();
+    expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+  });
+
+  it('sends baseVersionToken when a prior token exists locally', async () => {
+    mockGetLatestVersionToken.mockResolvedValue(3);
+
+    await syncPendingRecordings('tok-1', { delay });
+
+    expect(mockUploadVerseAudio).toHaveBeenCalledWith(
+      expect.objectContaining({ baseVersionToken: 3 }),
+      'tok-1',
+    );
+  });
+
+  it('marks conflicted when server returns conflictStatus conflict', async () => {
+    mockUploadVerseAudio.mockResolvedValue(
+      successResponse({ conflictStatus: 'conflict', versionToken: 4 }),
+    );
+
+    const result = await syncPendingRecordings('tok-1', { delay });
+
+    expect(result).toEqual({ uploaded: 0, conflicted: 1, failed: 0 });
+    expect(mockMarkRecordingAndChapterConflicted).toHaveBeenCalledWith(
+      'rec-1',
+      42,
+      4,
+    );
+    expect(mockMarkRecordingUploaded).not.toHaveBeenCalled();
     expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
   });
 
@@ -184,7 +242,7 @@ describe('recordingSync', () => {
 
     const result = await syncPendingRecordings('tok-1', { delay });
 
-    expect(result).toEqual({ uploaded: 0, failed: 1 });
+    expect(result).toEqual({ uploaded: 0, conflicted: 0, failed: 1 });
     expect(mockUploadVerseAudio).toHaveBeenCalledTimes(1);
     expect(delay).not.toHaveBeenCalled();
     expect(mockMarkRecordingFailed).toHaveBeenCalledWith(
@@ -200,12 +258,78 @@ describe('recordingSync', () => {
 
     const result = await syncPendingRecordings('tok-1', { delay });
 
-    expect(result).toEqual({ uploaded: 0, failed: 1 });
+    expect(result).toEqual({ uploaded: 0, conflicted: 0, failed: 1 });
     expect(mockUploadVerseAudio).toHaveBeenCalledTimes(1);
     expect(mockMarkRecordingFailed).toHaveBeenCalledWith(
       'rec-1',
       'Storage not configured: missing connection',
     );
+  });
+
+  it('retries 409 compare-and-swap races then succeeds', async () => {
+    mockUploadVerseAudio
+      .mockRejectedValueOnce(new ApiError(409, 'concurrent write'))
+      .mockResolvedValueOnce(successResponse());
+
+    const result = await syncPendingRecordings('tok-1', { delay });
+
+    expect(result).toEqual({ uploaded: 1, conflicted: 0, failed: 0 });
+    expect(mockUploadVerseAudio).toHaveBeenCalledTimes(2);
+    expect(delay).toHaveBeenCalledWith(500);
+    expect(mockMarkRecordingUploaded).toHaveBeenCalledWith(
+      'rec-1',
+      'unit-12/text-42',
+      2,
+    );
+  });
+
+  it('saves currentVersionToken from 409 before retry', async () => {
+    // First call returns undefined (no token yet), second call returns the saved token
+    mockGetLatestVersionToken
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(8);
+
+    mockUploadVerseAudio
+      .mockRejectedValueOnce(
+        new ApiError(409, 'Conflict', undefined, { currentVersionToken: 8 }),
+      )
+      .mockResolvedValueOnce(successResponse());
+
+    const result = await syncPendingRecordings('tok-1', { delay });
+
+    expect(result).toEqual({ uploaded: 1, conflicted: 0, failed: 0 });
+    expect(mockUpdateRecordingVersionToken).toHaveBeenCalledWith('rec-1', 8);
+    expect(mockUploadVerseAudio).toHaveBeenCalledTimes(2);
+
+    // Verify first upload had no baseVersionToken property
+    const firstCall = mockUploadVerseAudio.mock.calls[0];
+    expect(firstCall[0]).not.toHaveProperty('baseVersionToken');
+
+    // Verify second upload (retry) uses the saved token
+    expect(mockUploadVerseAudio).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ baseVersionToken: 8 }),
+      'tok-1',
+    );
+
+    expect(delay).toHaveBeenCalledWith(500);
+    expect(mockMarkRecordingUploaded).toHaveBeenCalledWith(
+      'rec-1',
+      'unit-12/text-42',
+      2,
+    );
+  });
+
+  it('does not save when 409 lacks currentVersionToken', async () => {
+    mockUploadVerseAudio
+      .mockRejectedValueOnce(new ApiError(409, 'Conflict', undefined, {}))
+      .mockResolvedValueOnce(successResponse());
+
+    const result = await syncPendingRecordings('tok-1', { delay });
+
+    expect(result).toEqual({ uploaded: 1, conflicted: 0, failed: 0 });
+    expect(mockUpdateRecordingVersionToken).not.toHaveBeenCalled();
+    expect(mockUploadVerseAudio).toHaveBeenCalledTimes(2);
   });
 
   it('retries retryable failures with backoff then succeeds', async () => {
@@ -216,13 +340,14 @@ describe('recordingSync', () => {
 
     const result = await syncPendingRecordings('tok-1', { delay });
 
-    expect(result).toEqual({ uploaded: 1, failed: 0 });
+    expect(result).toEqual({ uploaded: 1, conflicted: 0, failed: 0 });
     expect(mockUploadVerseAudio).toHaveBeenCalledTimes(3);
     expect(delay).toHaveBeenNthCalledWith(1, 500);
     expect(delay).toHaveBeenNthCalledWith(2, 1000);
     expect(mockMarkRecordingUploaded).toHaveBeenCalledWith(
       'rec-1',
       'unit-12/text-42',
+      2,
     );
   });
 
@@ -234,7 +359,7 @@ describe('recordingSync', () => {
       maxAttempts: MAX_UPLOAD_ATTEMPTS,
     });
 
-    expect(result).toEqual({ uploaded: 0, failed: 1 });
+    expect(result).toEqual({ uploaded: 0, conflicted: 0, failed: 1 });
     expect(mockUploadVerseAudio).toHaveBeenCalledTimes(MAX_UPLOAD_ATTEMPTS);
     expect(mockMarkRecordingFailed).toHaveBeenCalledWith(
       'rec-1',
@@ -247,7 +372,7 @@ describe('recordingSync', () => {
 
     const result = await syncPendingRecordings('tok-1', { delay });
 
-    expect(result).toEqual({ uploaded: 0, failed: 1 });
+    expect(result).toEqual({ uploaded: 0, conflicted: 0, failed: 1 });
     expect(mockUploadVerseAudio).not.toHaveBeenCalled();
     expect(mockMarkRecordingFailed).toHaveBeenCalledWith(
       'rec-1',
@@ -262,7 +387,7 @@ describe('recordingSync', () => {
 
     const result = await syncPendingRecordings('tok-1', { delay });
 
-    expect(result).toEqual({ uploaded: 0, failed: 1 });
+    expect(result).toEqual({ uploaded: 0, conflicted: 0, failed: 1 });
     expect(mockUploadVerseAudio).not.toHaveBeenCalled();
     expect(mockMarkRecordingFailed).toHaveBeenCalledWith(
       'rec-1',
@@ -319,6 +444,7 @@ describe('recordingSync', () => {
     expect(mockMarkRecordingUploaded).toHaveBeenCalledWith(
       'rec-1',
       'unit-12/text-42',
+      2,
     );
     expect(mockSetRecordingSyncStatus).not.toHaveBeenCalledWith(
       'rec-2',
@@ -362,8 +488,8 @@ describe('recordingSync', () => {
 
     resolveUpload(successResponse());
     const [a, b] = await Promise.all([first, second]);
-    expect(a).toEqual({ uploaded: 1, failed: 0 });
-    expect(b).toEqual({ uploaded: 1, failed: 0 });
+    expect(a).toEqual({ uploaded: 1, conflicted: 0, failed: 0 });
+    expect(b).toEqual({ uploaded: 1, conflicted: 0, failed: 0 });
     expect(mockUploadVerseAudio).toHaveBeenCalledTimes(1);
   });
 

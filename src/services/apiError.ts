@@ -44,7 +44,22 @@ export function parseApiErrorMessage(
 
 export function createApiError(status: number, errorBody: string): ApiError {
   const { message, code } = parseApiErrorBody(errorBody);
-  return new ApiError(status, message || `API failed: ${status}`, code);
+
+  // Preserve the parsed body for consumers that need additional fields (e.g., currentVersionToken)
+  let parsedBody: Record<string, unknown> | undefined;
+
+  try {
+    parsedBody = JSON.parse(errorBody) as Record<string, unknown>;
+  } catch {
+    // If body isn't JSON, leave it undefined
+  }
+
+  return new ApiError(
+    status,
+    message || `API failed: ${status}`,
+    code,
+    parsedBody,
+  );
 }
 
 export function createNetworkApiError(cause: unknown): ApiError {

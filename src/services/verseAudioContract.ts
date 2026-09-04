@@ -1,7 +1,9 @@
 import { isApiError } from '../types/api/errors';
 import {
   verseAudioBlobKey,
+  type VerseAudioConflictStatus,
   type VerseAudioResponse,
+  type VerseAudioTakeResponse,
 } from '../types/api/verseAudio';
 import { createApiError } from './apiError';
 
@@ -21,8 +23,10 @@ export type VerseAudioUploadClientOutcome =
   | {
       kind: 'retryable';
       message: string;
-      /** Network (status 0) or other 5xx — backoff and retry in #100. */
+      /** Network (status 0), 409 CAS race, or other 5xx — backoff and retry. */
       retryable: true;
+      /** Current server version token from 409 response (for retry with updated token). */
+      currentVersionToken?: number;
     };
 
 /** Persist into local `recordings.blob_key` (matches server `audioBlobName`). */
@@ -50,6 +54,20 @@ export function outcomeFromVerseAudioFailure(
     if (error.status === 503) {
       return { kind: 'failed', message: error.message, retryable: false };
     }
+    // Compare-and-swap race — extract currentVersionToken for retry.
+    if (error.status === 409) {
+      const currentVersionToken =
+        typeof error.body?.currentVersionToken === 'number'
+          ? error.body.currentVersionToken
+          : undefined;
+
+      return {
+        kind: 'retryable',
+        message: error.message,
+        retryable: true,
+        currentVersionToken,
+      };
+    }
     if (error.isRetryable) {
       return { kind: 'retryable', message: error.message, retryable: true };
     }
@@ -63,6 +81,75 @@ export function outcomeFromVerseAudioFailure(
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isConflictStatus(value: unknown): value is VerseAudioConflictStatus {
+  return value === 'clean' || value === 'conflict';
+}
+
+function parseVerseAudioTake(data: unknown): VerseAudioTakeResponse {
+  if (data === null || typeof data !== 'object') {
+    throw createApiError(500, 'Malformed verse audio response: invalid take');
+  }
+
+  const body = data as Record<string, unknown>;
+  const requiredNumbers = ['id', 'uploadedBy', 'sizeBytes'] as const;
+
+  for (const key of requiredNumbers) {
+    if (!isFiniteNumber(body[key])) {
+      throw createApiError(
+        500,
+        `Malformed verse audio response: take missing ${key}`,
+      );
+    }
+  }
+
+  if (typeof body.contentType !== 'string' || body.contentType.length === 0) {
+    throw createApiError(
+      500,
+      'Malformed verse audio response: take missing contentType',
+    );
+  }
+  if (typeof body.contentHash !== 'string' || body.contentHash.length === 0) {
+    throw createApiError(
+      500,
+      'Malformed verse audio response: take missing contentHash',
+    );
+  }
+  if (typeof body.downloadUrl !== 'string' || body.downloadUrl.length === 0) {
+    throw createApiError(
+      500,
+      'Malformed verse audio response: take missing downloadUrl',
+    );
+  }
+  if (
+    typeof body.createdAt !== 'string' ||
+    typeof body.updatedAt !== 'string'
+  ) {
+    throw createApiError(
+      500,
+      'Malformed verse audio response: take missing timestamps',
+    );
+  }
+
+  const durationSeconds =
+    body.durationSeconds === null
+      ? null
+      : isFiniteNumber(body.durationSeconds)
+      ? body.durationSeconds
+      : null;
+
+  return {
+    id: body.id as number,
+    uploadedBy: body.uploadedBy as number,
+    contentType: body.contentType,
+    sizeBytes: body.sizeBytes as number,
+    durationSeconds,
+    contentHash: body.contentHash,
+    downloadUrl: body.downloadUrl,
+    createdAt: body.createdAt,
+    updatedAt: body.updatedAt,
+  };
 }
 
 /**
@@ -82,6 +169,7 @@ export function parseVerseAudioResponse(data: unknown): VerseAudioResponse {
     'uploadedBy',
     'sizeBytes',
     'verseNumber',
+    'versionToken',
   ] as const;
 
   for (const key of requiredNumbers) {
@@ -91,6 +179,24 @@ export function parseVerseAudioResponse(data: unknown): VerseAudioResponse {
         `Malformed verse audio response: missing ${key}`,
       );
     }
+  }
+
+  if (!isConflictStatus(body.conflictStatus)) {
+    throw createApiError(
+      500,
+      'Malformed verse audio response: missing conflictStatus',
+    );
+  }
+
+  if (
+    body.activeTakeId !== null &&
+    body.activeTakeId !== undefined &&
+    !isFiniteNumber(body.activeTakeId)
+  ) {
+    throw createApiError(
+      500,
+      'Malformed verse audio response: invalid activeTakeId',
+    );
   }
 
   if (typeof body.contentType !== 'string' || body.contentType.length === 0) {
@@ -115,6 +221,10 @@ export function parseVerseAudioResponse(data: unknown): VerseAudioResponse {
     );
   }
 
+  if (!Array.isArray(body.takes)) {
+    throw createApiError(500, 'Malformed verse audio response: missing takes');
+  }
+
   const durationSeconds =
     body.durationSeconds === null
       ? null
@@ -130,8 +240,15 @@ export function parseVerseAudioResponse(data: unknown): VerseAudioResponse {
     contentType: body.contentType,
     sizeBytes: body.sizeBytes as number,
     durationSeconds,
+    versionToken: body.versionToken as number,
+    conflictStatus: body.conflictStatus,
+    activeTakeId:
+      body.activeTakeId === null || body.activeTakeId === undefined
+        ? null
+        : (body.activeTakeId as number),
     verseNumber: body.verseNumber as number,
     downloadUrl: body.downloadUrl,
+    takes: body.takes.map(parseVerseAudioTake),
     createdAt: body.createdAt,
     updatedAt: body.updatedAt,
   };
