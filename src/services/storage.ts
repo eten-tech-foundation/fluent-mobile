@@ -23,6 +23,8 @@ export const KV_KEYS = {
   SYNC_ERROR_CHAPTER_ASSIGNMENTS: 'sync_error_chapter_assignments',
   SYNC_ERROR_PROJECT_UNITS: 'sync_error_project_units',
   SYNC_ERROR_BIBLE_TEXTS: 'sync_error_bible_texts',
+  SYNC_ERROR_PERICOPES: 'sync_error_pericopes',
+  SYNC_ERROR_PERICOPE_SETS: 'sync_error_pericope_sets',
   /** ISO timestamp; empty / missing = not paused. */
   SYNC_PAUSED_UNTIL: 'sync_paused_until',
 } as const;
@@ -83,6 +85,8 @@ export function clearAllSyncErrors() {
   clearSyncError(KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS);
   clearSyncError(KV_KEYS.SYNC_ERROR_PROJECT_UNITS);
   clearSyncError(KV_KEYS.SYNC_ERROR_BIBLE_TEXTS);
+  clearSyncError(KV_KEYS.SYNC_ERROR_PERICOPES);
+  clearSyncError(KV_KEYS.SYNC_ERROR_PERICOPE_SETS);
   log.info('All sync errors cleared');
 }
 
@@ -257,4 +261,19 @@ export function setSyncPausedUntilMs(ms: number | null): void {
 
 export function clearSyncPausedUntil(): void {
   setSyncPausedUntilMs(null);
+}
+
+const pericopeSetVersionKey = (pericopeSetId: number) =>
+  `pericope_set_version:${pericopeSetId}`;
+
+export function getPericopeSetVersion(pericopeSetId: number): string {
+  return kvStorage.getItemSync(pericopeSetVersionKey(pericopeSetId)) ?? '';
+}
+
+export function setPericopeSetVersion(
+  pericopeSetId: number,
+  version: string,
+): void {
+  kvStorage.setItemSync(pericopeSetVersionKey(pericopeSetId), version);
+  log.info('Pericope set version updated', { pericopeSetId, version });
 }

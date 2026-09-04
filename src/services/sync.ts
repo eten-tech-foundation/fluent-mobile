@@ -16,6 +16,9 @@ import {
   userNeedsAssigneeRepair,
   reconcileUserChapterWork,
   reconcileUserProjects,
+  insertPericopeSets,
+  getProjectPericopeSetId,
+  getChaptersNeedingPericopeSync,
 } from '../db/repository';
 import { logger } from '../utils/logger';
 import { getDatabase } from '../db/db';
@@ -530,6 +533,73 @@ export async function syncBibleTexts(updatedAfter?: string) {
   );
 }
 
+export async function syncPericopeSets() {
+  return retrySyncStep(
+    'Pericope sets sync',
+    KV_KEYS.SYNC_ERROR_PERICOPE_SETS,
+    async () => {
+      const sets = await FluentAPI.getPericopeSets();
+      await insertPericopeSets(sets);
+      log.info('Pericope sets synced', { count: sets.length });
+    },
+  );
+}
+
+/**
+ * Set-level pericope hydrate (Refs #438).
+ *
+ * Per-chapter GETs were removed here: the amended #438 bandwidth contract
+ * forbids one HTTP call per assigned chapter on mobile sync. The intended
+ * replacement — bundled-asset seed (#447) with a set-level API fallback
+ * (fluent-api#309) — has no implementation to call yet, since neither
+ * ticket has landed. This step derives the distinct pericope_set_ids in
+ * play and no-ops with a clear log per set until a hydrate source exists.
+ *
+ * Follow-up: #TBD — wire loadBundledPericopeSet() (#447) and
+ * FluentAPI.getPericopeSet() (fluent-api#309) into this function.
+ */
+export async function syncPericopes() {
+  return retrySyncStep(
+    'Pericope sync',
+    KV_KEYS.SYNC_ERROR_PERICOPES,
+    async () => {
+      const chapters = await getChaptersNeedingPericopeSync();
+      if (chapters.length === 0) {
+        log.info('No chapters need pericope sync');
+        return;
+      }
+
+      const distinctProjectIds = [...new Set(chapters.map(c => c.projectId))];
+      const pericopeSetIdByProject = new Map<number, number | null>();
+      await Promise.all(
+        distinctProjectIds.map(async id =>
+          pericopeSetIdByProject.set(id, await getProjectPericopeSetId(id)),
+        ),
+      );
+
+      const distinctSetIds = [
+        ...new Set(
+          [...pericopeSetIdByProject.values()].filter(
+            (id): id is number => id !== null && id !== undefined,
+          ),
+        ),
+      ];
+
+      if (distinctSetIds.length === 0) {
+        log.info('No chapters with a pericope set assigned');
+        return;
+      }
+
+      for (const pericopeSetId of distinctSetIds) {
+        log.info(
+          'Pericope set has no hydrate source yet — blocked on #447 (bundled seed) / fluent-api#309 (set API)',
+          { pericopeSetId },
+        );
+      }
+    },
+  );
+}
+
 export async function syncAllUsers(): Promise<void> {
   log.info('Syncing all users...');
   clearAllSyncErrors();
@@ -568,6 +638,7 @@ export async function syncAllUsers(): Promise<void> {
     const usersPendingCursorUpdate: string[] = [];
 
     await syncMasterData();
+    await syncPericopeSets();
 
     for (const userId of userIdsToSync) {
       const creds = await getCredentials(userId);
@@ -631,6 +702,7 @@ export async function syncAllUsers(): Promise<void> {
       : oldestAssignmentCursor ??
         (deviceHasLocalProjects ? deviceLastSyncedAt : undefined);
 
+    await syncPericopes();
     await syncBibleTexts(bibleTextUpdatedAfter);
 
     const userSyncCompletedAt = new Date().toISOString();
@@ -707,6 +779,7 @@ export async function syncAllData(
     const userAssignmentCursor = getUserLastSyncedAt(userIdStr) || undefined;
 
     await syncMasterData();
+    await syncPericopeSets();
     await syncProjects(userId, sessionToken);
 
     if (isIncremental) {
@@ -716,10 +789,12 @@ export async function syncAllData(
         assignmentCursor,
         sessionToken,
       );
+      await syncPericopes();
       await syncBibleTexts(didFullSync ? undefined : assignmentCursor);
     } else if (localProjectIdsBefore.length === 0) {
       await syncChapterAssignments(userId, undefined, undefined, sessionToken);
       await syncUserChapterWork(userId, sessionToken);
+      await syncPericopes();
       await syncBibleTexts();
     } else {
       // Omit excludeProjectIds on re-login: the API can return [] when every
@@ -729,6 +804,7 @@ export async function syncAllData(
         userAssignmentCursor,
         sessionToken,
       );
+      await syncPericopes();
       await syncBibleTexts(didFullSync ? undefined : userAssignmentCursor);
     }
 

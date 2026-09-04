@@ -460,10 +460,11 @@ export async function insertProjects(data: DBTypes.Project[]) {
       const metadataJson = project.metadata
         ? JSON.stringify(project.metadata)
         : null;
+
       await tx.execute(
         `INSERT OR IGNORE INTO projects
-        (id, name, source_language_id, target_language_id, is_active, status, updated_at, metadata)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, name, source_language_id, target_language_id, is_active, status, updated_at, metadata, pericope_set_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           project.id,
           project.name,
@@ -473,12 +474,13 @@ export async function insertProjects(data: DBTypes.Project[]) {
           project.status ?? 'not_assigned',
           project.updatedAt ?? new Date().toISOString(),
           metadataJson,
+          project.pericopeSetId ?? null,
         ],
       );
       await tx.execute(
         `UPDATE projects SET
           name = ?, source_language_id = ?, target_language_id = ?,
-          is_active = ?, status = ?, updated_at = ?, metadata = ?
+          is_active = ?, status = ?, updated_at = ?, metadata = ?, pericope_set_id = ?
         WHERE id = ?`,
         [
           project.name,
@@ -488,6 +490,7 @@ export async function insertProjects(data: DBTypes.Project[]) {
           project.status ?? 'not_assigned',
           project.updatedAt ?? new Date().toISOString(),
           metadataJson,
+          project.pericopeSetId ?? null,
           project.id,
         ],
       );
@@ -1079,3 +1082,12 @@ export {
 } from './downloadQueueRepository';
 
 export type { EnqueueDownloadItemInput } from './downloadQueueRepository';
+
+export {
+  insertPericopeSets,
+  getProjectPericopeSetId,
+  insertPericopeVersesBatch,
+  getChaptersNeedingPericopeSync,
+} from './repositories/pericopesRepository';
+
+export type { ApiPericopeGroupInput } from './repositories/pericopesRepository';

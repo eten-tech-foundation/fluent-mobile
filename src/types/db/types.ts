@@ -24,6 +24,7 @@ export interface Project {
   status?: string;
   updatedAt?: string;
   metadata?: Record<string, unknown>;
+  pericopeSetId?: number | null;
 }
 
 export type ProjectSyncState = 'none' | 'synced' | 'unsynced';
@@ -346,3 +347,30 @@ export type ConnectivityProfile =
   | 'usually_connected'
   | 'sometimes_connected'
   | 'rarely_connected';
+
+export interface PericopeSet {
+  id: number;
+  name: string;
+  description?: string | null;
+}
+
+export interface PericopeVerse {
+  pericopeSetId: number | null;
+  bookId: number;
+  chapterNumber: number;
+  verseNumber: number;
+  section?: number | null;
+  pericopeNumber: string;
+  pericopeTitle?: string | null;
+}
+
+export interface PericopeVerseRow {
+  id: number;
+  pericope_set_id: number | null;
+  book_id: number;
+  chapter_number: number;
+  verse_number: number;
+  section: number | null;
+  pericope_number: string;
+  pericope_title: string | null;
+}
