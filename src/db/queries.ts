@@ -255,6 +255,38 @@ export async function getChapterAssignmentById(
 }
 
 /** Chapter-level unresolved audio-take conflict rollup (#260). */
+export type PendingChapterClaim = {
+  id: number;
+  chapterAssignmentId: number;
+  userId: number;
+  claimedAt: string;
+};
+
+/** Offline chapter claims waiting to be pushed on reconnect (#271). */
+export async function getPendingChapterClaims(): Promise<
+  PendingChapterClaim[]
+> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT id, chapter_assignment_id, user_id, claimed_at
+       FROM chapter_claim_queue
+       WHERE sync_status = 'pending'
+       ORDER BY claimed_at ASC`,
+    );
+    const rows = result.rows ?? [];
+    return rows.map(row => ({
+      id: Number(row.id),
+      chapterAssignmentId: Number(row.chapter_assignment_id),
+      userId: Number(row.user_id),
+      claimedAt: String(row.claimed_at),
+    }));
+  } catch (error) {
+    log.error('Error fetching pending chapter claims', { error });
+    throw error;
+  }
+}
+
 export async function getChapterHasConflict(
   chapterAssignmentId: number,
 ): Promise<boolean> {
