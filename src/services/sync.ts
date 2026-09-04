@@ -1,5 +1,4 @@
 import { FluentAPI } from './api';
-import { pMapLimit } from '../utils/concurrency';
 import { isAuthError, AuthError } from './authError';
 import { mapApiChapterAssignment } from './mapChapterAssignment';
 import { mapApiProject } from './mapApiProject';
@@ -19,13 +18,11 @@ import {
   reconcileUserProjects,
   insertPericopeSets,
   getProjectPericopeSetId,
-  insertPericopeVersesBatch,
   getChaptersNeedingPericopeSync,
 } from '../db/repository';
 import { logger } from '../utils/logger';
 import { getDatabase } from '../db/db';
 import { ApiBook, ApiVerse } from '../types/api/types';
-import type { ApiPericopeGroupInput } from '../db/repository';
 import { ApiUser, unwrapApiListResponse } from '../types/api/responses';
 import { getConnectivitySnapshot } from './connectivity';
 import {
@@ -549,19 +546,17 @@ export async function syncPericopeSets() {
 }
 
 /**
- * Per-chapter pericope sync. One API call per (project, book, chapter) the
- * user has locally — the endpoint has no bulk/batch variant. Cross-chapter
- * pericopes will be incomplete from this call alone (confirmed API gap,
- * tracked separately — not addressed here).
- */
-/**
- * Per-chapter pericope sync. One API call per (project, book, chapter) the
- * user has locally — the endpoint has no bulk/batch variant. Fetches run with
- * bounded concurrency; failures are isolated per chapter and retried on the
- * next sync (getChaptersNeedingPericopeSync returns all known chapters every
- * run, so nothing needs to be queued). Inserts are batched into one
- * transaction. Cross-chapter pericopes will be incomplete from this call
- * alone (confirmed API gap, tracked separately — not addressed here).
+ * Set-level pericope hydrate (Refs #438).
+ *
+ * Per-chapter GETs were removed here: the amended #438 bandwidth contract
+ * forbids one HTTP call per assigned chapter on mobile sync. The intended
+ * replacement — bundled-asset seed (#447) with a set-level API fallback
+ * (fluent-api#309) — has no implementation to call yet, since neither
+ * ticket has landed. This step derives the distinct pericope_set_ids in
+ * play and no-ops with a clear log per set until a hydrate source exists.
+ *
+ * Follow-up: #TBD — wire loadBundledPericopeSet() (#447) and
+ * FluentAPI.getPericopeSet() (fluent-api#309) into this function.
  */
 export async function syncPericopes() {
   return retrySyncStep(
@@ -582,58 +577,25 @@ export async function syncPericopes() {
         ),
       );
 
-      const chaptersToFetch = chapters.filter(c => {
-        const pericopeSetId = pericopeSetIdByProject.get(c.projectId);
-        return pericopeSetId !== null && pericopeSetId !== undefined;
-      });
-      if (chaptersToFetch.length === 0) {
+      const distinctSetIds = [
+        ...new Set(
+          [...pericopeSetIdByProject.values()].filter(
+            (id): id is number => id !== null && id !== undefined,
+          ),
+        ),
+      ];
+
+      if (distinctSetIds.length === 0) {
         log.info('No chapters with a pericope set assigned');
         return;
       }
 
-      const results = await pMapLimit(chaptersToFetch, 6, async chapter => {
-        const groups = await FluentAPI.getChapterPericopes(
-          chapter.projectId,
-          chapter.bookCode,
-          chapter.chapterNumber,
+      for (const pericopeSetId of distinctSetIds) {
+        log.info(
+          'Pericope set has no hydrate source yet — blocked on #447 (bundled seed) / fluent-api#309 (set API)',
+          { pericopeSetId },
         );
-        return {
-          bookId: chapter.bookId,
-          chapterNumber: chapter.chapterNumber,
-          pericopeSetId: pericopeSetIdByProject.get(chapter.projectId)!,
-          groups: groups ?? [],
-        };
-      });
-
-      const fetched: Array<{
-        bookId: number;
-        chapterNumber: number;
-        pericopeSetId: number;
-        groups: ApiPericopeGroupInput[];
-      }> = [];
-      let failed = 0;
-
-      results.forEach((result, i) => {
-        if (result.status === 'fulfilled') {
-          fetched.push(result.value);
-        } else {
-          failed++;
-          log.warn('Pericope fetch failed for chapter — will retry next sync', {
-            chapter: chaptersToFetch[i],
-            error: getErrorMessage(result.reason),
-          });
-        }
-      });
-
-      if (fetched.length > 0) {
-        await insertPericopeVersesBatch(fetched);
       }
-
-      log.info('Pericopes synced', {
-        attempted: chaptersToFetch.length,
-        succeeded: fetched.length,
-        failed,
-      });
     },
   );
 }
