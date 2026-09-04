@@ -106,6 +106,7 @@ async function mockExecute(
       is_selected: 1,
       is_canonical: 0,
       sync_status: syncStatus,
+      version_token: null,
       upload_error: null,
       created_at: createdAt,
       updated_at: updatedAt,
