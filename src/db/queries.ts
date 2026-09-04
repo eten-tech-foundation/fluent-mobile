@@ -59,7 +59,8 @@ export const RECORDINGS_JOIN_CA = `
 const RECORDING_AGGREGATES = `
   COUNT(DISTINCT CASE WHEN r.id IS NOT NULL AND r.is_selected = 1 THEN r.id END) AS recording_count,
   COUNT(DISTINCT CASE
-    WHEN r.id IS NOT NULL AND r.is_selected = 1 AND r.sync_status != 'uploaded' THEN r.id
+    WHEN r.id IS NOT NULL AND r.is_selected = 1
+      AND r.sync_status NOT IN ('uploaded', 'conflicted') THEN r.id
   END) AS pending_count,
   MAX(CASE WHEN r.is_selected = 1 THEN r.updated_at END) AS last_recording_activity`;
 
@@ -123,7 +124,8 @@ export async function getProjectsWithSummary(
         COUNT(DISTINCT ca.id) AS chapter_count,
         COUNT(DISTINCT CASE WHEN r.id IS NOT NULL THEN r.id END) AS recording_count,
         COUNT(DISTINCT CASE
-          WHEN r.id IS NOT NULL AND r.sync_status != 'uploaded' THEN r.id
+          WHEN r.id IS NOT NULL
+            AND r.sync_status NOT IN ('uploaded', 'conflicted') THEN r.id
         END) AS pending_count
       FROM projects p
       INNER JOIN user_projects up ON up.project_id = p.id
@@ -488,7 +490,7 @@ export async function getPendingUploadCount(): Promise<number> {
     const result = await db.execute(
       `SELECT COUNT(*) AS count
        FROM recordings
-       WHERE is_selected = 1 AND sync_status != 'uploaded'
+       WHERE is_selected = 1 AND sync_status NOT IN ('uploaded', 'conflicted')
          AND recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'};`,
       userId === null ? [] : [userId],
     );
@@ -538,7 +540,7 @@ export async function getPendingUploadChapters(): Promise<
       `SELECT DISTINCT bt.book_id AS book_id, bt.chapter_number AS chapter_number
        FROM recordings r
        JOIN bible_texts bt ON bt.id = r.bible_text_id
-       WHERE r.is_selected = 1 AND r.sync_status != 'uploaded'
+       WHERE r.is_selected = 1 AND r.sync_status NOT IN ('uploaded', 'conflicted')
          AND r.recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}
        ORDER BY bt.book_id, bt.chapter_number`,
       userId === null ? [] : [userId],

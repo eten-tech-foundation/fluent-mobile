@@ -39,7 +39,11 @@ describe('useRetryFailedUploads', () => {
 
   it('calls syncPendingRecordings and reflects in-flight + result', async () => {
     authToken.set('tok-1');
-    let resolveUpload!: (value: { uploaded: number; failed: number }) => void;
+    let resolveUpload!: (value: {
+      uploaded: number;
+      conflicted: number;
+      failed: number;
+    }) => void;
     mockSyncPendingRecordings.mockImplementation(
       () =>
         new Promise(resolve => {
@@ -49,7 +53,11 @@ describe('useRetryFailedUploads', () => {
 
     const { result } = renderHook(() => useRetryFailedUploads());
 
-    let pending: Promise<{ uploaded: number; failed: number } | null>;
+    let pending: Promise<{
+      uploaded: number;
+      conflicted: number;
+      failed: number;
+    } | null>;
     act(() => {
       pending = result.current.retryFailedUploads();
     });
@@ -59,13 +67,17 @@ describe('useRetryFailedUploads', () => {
     });
 
     await act(async () => {
-      resolveUpload({ uploaded: 2, failed: 0 });
+      resolveUpload({ uploaded: 2, conflicted: 0, failed: 0 });
       await pending!;
     });
 
     expect(mockSyncPendingRecordings).toHaveBeenCalledWith('tok-1');
     expect(result.current.isRetrying).toBe(false);
-    expect(result.current.lastResult).toEqual({ uploaded: 2, failed: 0 });
+    expect(result.current.lastResult).toEqual({
+      uploaded: 2,
+      conflicted: 0,
+      failed: 0,
+    });
     expect(result.current.lastError).toBeNull();
   });
 });

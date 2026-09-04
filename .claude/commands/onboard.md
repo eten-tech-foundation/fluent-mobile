@@ -24,7 +24,7 @@ Native `android/` is gitignored (CNG). Generate it before the first Android run.
 
 ```bash
 # Toolchain: Node >= 24.14.0, npm >= 10, Android Studio + SDK + JDK 17
-nvm use 24                    # or otherwise match package.json engines
+nvm use                       # .nvmrc 24.14.0; engines allow any >= 24.14.0
 npm install
 cp .env.example .env          # set EXPO_PUBLIC_API_BASE_URL (see below)
 npm run prebuild              # expo prebuild --clean --platform android
@@ -46,7 +46,7 @@ Summarize PASS / WARN / FAIL for:
 
 | Check | Expectation |
 | ----- | ----------- |
-| Node | `>= 24.14.0` (`node -v` vs `package.json` `engines`) |
+| Node | `>= 24.14.0` (`node -v` vs `engines`; CI pin is `.nvmrc`) |
 | npm | `>= 10` |
 | `.env` | Present; `EXPO_PUBLIC_API_BASE_URL` non-empty |
 | `android/` | Present after `npm run prebuild` (optional until first device run) |
@@ -55,7 +55,7 @@ Summarize PASS / WARN / FAIL for:
 Offer fixes only after the developer agrees. Safe non-destructive fixes:
 
 - Missing `.env` → `cp .env.example .env`
-- Wrong Node → `nvm install 24 && nvm use 24`
+- Wrong Node → `nvm install` / `nvm use` (`.nvmrc`)
 - Missing `android/` → `npm run prebuild`
 
 ## Step 3 — Sanity commands
