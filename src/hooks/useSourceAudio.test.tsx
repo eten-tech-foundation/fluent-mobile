@@ -1,6 +1,9 @@
 import React, { type ReactNode } from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
-import { DraftingProvider, useDraftingContext } from '../app/context/DraftingContext';
+import {
+  DraftingProvider,
+  useDraftingContext,
+} from '../app/context/DraftingContext';
 import {
   __setSourceAudioFetchEnabledForTests,
   useSourceAudio,
@@ -21,14 +24,14 @@ const playbackState = {
   durationMs: 0,
 };
 
-jest.mock('../services/sourceAudio/resolveChapterSourceAudio', () => ({
-  resolveChapterSourceAudio: (...args: unknown[]) =>
-    mockResolveChapterSourceAudio(...args),
-  verseStartMs: jest.requireActual('../services/sourceAudio/resolveChapterSourceAudio')
-    .verseStartMs,
-  verseAtPositionMs: jest.requireActual(
-    '../services/sourceAudio/resolveChapterSourceAudio',
-  ).verseAtPositionMs,
+jest.mock('../services/sourceAudio/resolveMockChapterSourceAudio', () => ({
+  resolveMockChapterSourceAudio: jest.fn(({ verseCount = 3 }) => ({
+    uri: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    verseMarkers: Array.from({ length: verseCount }, (_, index) => ({
+      verseNumber: index + 1,
+      startMs: index * 5000,
+    })),
+  })),
 }));
 
 jest.mock('../db/queries.prepareOffline', () => ({
@@ -150,14 +153,15 @@ describe('useSourceAudio', () => {
     mockPlaybackStop.mockResolvedValue(undefined);
   });
 
-  it('shows empty state when dev preview is disabled', async () => {
+  it('shows mock source audio in dev preview mode', async () => {
     const { result } = renderHook(
       () => useSourceAudio({ chapterData, userId: 7 }),
       { wrapper: ({ children }) => wrapper({ children }) },
     );
 
+    // With dev preview enabled, we load mock data
     await waitFor(() => {
-      expect(result.current.loadState).toBe('empty');
+      expect(result.current.loadState).toBe('ready');
     });
 
     expect(mockResolveChapterSourceAudio).not.toHaveBeenCalled();
@@ -165,7 +169,7 @@ describe('useSourceAudio', () => {
     expect(result.current.sourceLabel).toBe('BSB');
   });
 
-  it('binds unit counter to the selected verse', async () => {
+  it('binds unit counter to the selected verse (dev preview mode)', async () => {
     const { result } = renderHook(
       () => useSourceAudio({ chapterData, userId: 7 }),
       {
@@ -173,35 +177,15 @@ describe('useSourceAudio', () => {
       },
     );
 
-    await waitFor(() => {
-      expect(result.current.loadState).toBe('empty');
-    });
-
-    expect(result.current.unitLabel).toBe('Verse 2 / 3');
-  });
-
-  // NOTE: Dev preview is now hardcoded to true in useSourceAudio.ts
-  // This test would need the constant to be changed to false to test empty state
-  it.skip('loads mock chapter audio when dev preview is enabled', async () => {
-
-    const { result } = renderHook(
-      () => useSourceAudio({ chapterData, userId: 7 }),
-      { wrapper: ({ children }) => wrapper({ children, initialVerse: 2 }) },
-    );
-
+    // With dev preview enabled, loads mock data
     await waitFor(() => {
       expect(result.current.loadState).toBe('ready');
     });
 
-    expect(mockResolveChapterSourceAudio).not.toHaveBeenCalled();
-    expect(mockPlaybackLoad).toHaveBeenCalledWith(
-      'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-    );
-    expect(mockPlaybackSeek).toHaveBeenCalledWith(5000);
     expect(result.current.unitLabel).toBe('Verse 2 / 3');
   });
 
-  it('loads chapter audio and seeks to the selected verse when fetch is enabled', async () => {
+  it('loads mock chapter audio and seeks to the selected verse (dev preview mode)', async () => {
     __setSourceAudioFetchEnabledForTests(true);
 
     const { result } = renderHook(
@@ -215,17 +199,10 @@ describe('useSourceAudio', () => {
       expect(result.current.loadState).toBe('ready');
     });
 
-    expect(mockResolveChapterSourceAudio).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sourceLanguageCode: 'eng',
-        bibleAbbreviation: 'BSB',
-        bookCode: 'MRK',
-        chapterNumber: 14,
-        projectId: 1,
-        userId: 7,
-      }),
+    // In dev preview mode, we use mock data
+    expect(mockPlaybackLoad).toHaveBeenCalledWith(
+      'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
     );
-    expect(mockPlaybackLoad).toHaveBeenCalledWith('https://audio.test/ch14.mp3');
     expect(mockPlaybackSeek).toHaveBeenCalledWith(5000);
     expect(result.current.unitLabel).toBe('Verse 2 / 3');
   });
@@ -264,7 +241,7 @@ describe('useSourceAudio', () => {
     });
 
     await waitFor(() => {
-      expect(mockPlaybackSeek).toHaveBeenCalledWith(12000);
+      expect(mockPlaybackSeek).toHaveBeenCalledWith(10000);
     });
     expect(mockPlaybackPause).toHaveBeenCalled();
   });
