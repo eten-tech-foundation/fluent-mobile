@@ -6,12 +6,13 @@ This file is the **entrypoint for non-Cursor agents** (Claude Code, Codex, Copil
 
 1. [`AGENTS.md`](AGENTS.md) — delivery judgment (AC, scope, abstraction, device QA)
 2. [`docs/AGENT_ONBOARDING.md`](docs/AGENT_ONBOARDING.md) — setup, architecture, commands
-3. [`docs/issue-tracking.md`](docs/issue-tracking.md) — Project 4 board, branches, PRs
-4. [`docs/guides/project-board.md`](docs/guides/project-board.md) — **board mutation hard rules**
-5. [`docs/guides/qa-process.md`](docs/guides/qa-process.md) — Needs QA? / post-merge nightly QA
-6. [`docs/guides/expo-first-dependencies.md`](docs/guides/expo-first-dependencies.md) — prefer Expo packages
-7. [`.cursor/rules/`](.cursor/rules/) — always-on + topic rules (`delivery`, `architecture`, `android-only`, `project-board`, `expo-first-dependencies`, …)
-8. [`.claude/commands/`](.claude/commands/) — canonical slash commands (`/start-issue`, `/create-pr`, …). Cursor `/` palette shims live in [`.cursor/commands/`](.cursor/commands/).
+3. [`docs/README.md`](docs/README.md) — docs directory convention (`features/`, `runbooks/`, `guides/`, `tasks/`)
+4. [`docs/issue-tracking.md`](docs/issue-tracking.md) — Project 4 board, branches, PRs
+5. [`docs/guides/project-board.md`](docs/guides/project-board.md) — **board mutation hard rules**
+6. [`docs/guides/qa-process.md`](docs/guides/qa-process.md) — Needs QA? / post-merge nightly QA
+7. [`docs/guides/expo-first-dependencies.md`](docs/guides/expo-first-dependencies.md) — prefer Expo packages
+8. [`.cursor/rules/`](.cursor/rules/) — always-on + topic rules (`delivery`, `architecture`, `android-only`, `project-board`, `expo-first-dependencies`, …)
+9. [`.claude/commands/`](.claude/commands/) — canonical slash commands (`/start-issue`, `/create-pr`, …). Cursor `/` palette shims live in [`.cursor/commands/`](.cursor/commands/).
 
 ## Precedence
 
