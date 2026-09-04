@@ -11,7 +11,12 @@ import { DraftingHeader } from '../../components/layout/DraftingHeader';
 import { ChapterAssignmentData, VerseData } from '../../types/db/types';
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import {
+  useLocalSearchParams,
+  useNavigation,
+  useRouter,
+  useIsFocused,
+} from 'expo-router';
 import { useActiveAccountSummary } from '../../hooks/useActiveAccountSummary';
 import { AccountSwitcherPanel } from '../../components/ui/AccountSwitcherPanel';
 import {
@@ -23,6 +28,10 @@ import {
   DraftingTab,
   DraftingTabBar,
 } from '../../components/layout/DraftingTabBar';
+import {
+  SourceAudioBarSlot,
+  SourceAudioProvider,
+} from '../../components/layout/SourceAudioShell';
 import {
   getBibleTexts,
   getChapterAssignmentById,
@@ -40,6 +49,7 @@ const log = logger.create('DraftingScreen');
 export default function DraftingScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  const isFocused = useIsFocused();
   const userId = parseUserId();
   const rawParams = useLocalSearchParams<{
     chapterId?: string;
@@ -241,60 +251,71 @@ export default function DraftingScreen() {
     );
   }
 
-  return (
-    <ScreenContainer>
-      <DraftingProvider verses={verses} initialVerse={initialVerse}>
-        <View style={styles.screen}>
-          {renderHeader()}
+  const draftingBody = (
+    <View style={styles.screen}>
+      {renderHeader()}
 
-          <View style={styles.content}>
-            {/*
+      <View style={styles.content}>
+        {/*
               Keep Record mounted (display:none when inactive) so the native
               recording session survives Bible/Resources tab switches.
             */}
-            <View
-              style={[
-                styles.tabPane,
-                activeTab !== 'bible' && styles.tabHidden,
-              ]}
-              pointerEvents={activeTab === 'bible' ? 'auto' : 'none'}
-            >
-              <BibleTab onOpenRecord={() => setActiveTab('record')} />
-            </View>
-            <View
-              style={[
-                styles.tabPane,
-                activeTab !== 'resources' && styles.tabHidden,
-              ]}
-              pointerEvents={activeTab === 'resources' ? 'auto' : 'none'}
-            >
-              <ResourcesTab
-                chapterId={chapterId}
-                chapterName={chapterName}
-                projectId={chapterData.projectId ?? null}
-                userId={userId}
-                bookCode={chapterData.bookCode ?? ''}
-                chapterNumber={chapterData.chapterNumber}
-              />
-            </View>
-            <View
-              style={[
-                styles.tabPane,
-                activeTab !== 'record' && styles.tabHidden,
-              ]}
-              pointerEvents={activeTab === 'record' ? 'auto' : 'none'}
-            >
-              <RecordTab
-                chapterData={chapterData}
-                userId={userId}
-                onCaptureActiveChange={setRecordCaptureActive}
-                onChapterClaimed={handleChapterClaimed}
-              />
-            </View>
-          </View>
-
-          <DraftingTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+        <View
+          style={[styles.tabPane, activeTab !== 'bible' && styles.tabHidden]}
+          pointerEvents={activeTab === 'bible' ? 'auto' : 'none'}
+        >
+          <BibleTab onOpenRecord={() => setActiveTab('record')} />
         </View>
+        <View
+          style={[
+            styles.tabPane,
+            activeTab !== 'resources' && styles.tabHidden,
+          ]}
+          pointerEvents={activeTab === 'resources' ? 'auto' : 'none'}
+        >
+          <ResourcesTab
+            chapterId={chapterId}
+            chapterName={chapterName}
+            projectId={chapterData.projectId ?? null}
+            userId={userId}
+            bookCode={chapterData.bookCode ?? ''}
+            chapterNumber={chapterData.chapterNumber}
+          />
+        </View>
+        <View
+          style={[styles.tabPane, activeTab !== 'record' && styles.tabHidden]}
+          pointerEvents={activeTab === 'record' ? 'auto' : 'none'}
+        >
+          <RecordTab
+            chapterData={chapterData}
+            userId={userId}
+            onCaptureActiveChange={setRecordCaptureActive}
+            onChapterClaimed={handleChapterClaimed}
+          />
+        </View>
+      </View>
+
+      {isFocused ? (
+        <SourceAudioBarSlot
+          activeTab={activeTab}
+          recordCaptureActive={recordCaptureActive}
+        />
+      ) : null}
+
+      <DraftingTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+    </View>
+  );
+
+  return (
+    <ScreenContainer>
+      <DraftingProvider verses={verses} initialVerse={initialVerse}>
+        {isFocused ? (
+          <SourceAudioProvider chapterData={chapterData} userId={userId}>
+            {draftingBody}
+          </SourceAudioProvider>
+        ) : (
+          draftingBody
+        )}
         {renderAccountSwitcher()}
       </DraftingProvider>
     </ScreenContainer>
