@@ -293,6 +293,48 @@ describe('DownloadQueueWorker', () => {
       expect(worker.getState()).toBe('idle');
     });
 
+    it('does not mark a cancelled item failed when resumeAsync rejects after cancel()', async () => {
+      // Mirror processNext(): if cancel() runs while resumeAsync() is in flight
+      // and then rejects, the catch must not overwrite 'cancelled' with 'failed'.
+      let rejectResume!: (reason?: unknown) => void;
+      const pendingResume = new Promise<{ uri: string }>((_, reject) => {
+        rejectResume = reject;
+      });
+      const pauseAsync = jest.fn().mockResolvedValue({
+        url: 'https://example.com/x.mp3',
+        fileUri: 'file:///docs/downloads/1/item-1.mp3',
+        options: {},
+        resumeData: 'resume-token',
+      });
+      spyResumable({
+        downloadAsync: jest.fn().mockReturnValue(new Promise(() => {})),
+        pauseAsync,
+        resumeAsync: jest.fn().mockReturnValue(pendingResume),
+      });
+      const resolver = jest
+        .fn()
+        .mockResolvedValue({ url: 'https://example.com/x.mp3', ext: 'mp3' });
+
+      const worker = new DownloadQueueWorker(resolver);
+      void worker.start([makeItem()]);
+      await flushMicrotasks();
+      await flushMicrotasks();
+
+      await worker.pause();
+      const resumePromise = worker.resume();
+      await flushMicrotasks();
+
+      await worker.cancel();
+      rejectResume(new Error('resume aborted'));
+      await resumePromise;
+
+      expect(mockMarkDownloadItemCancelled).toHaveBeenCalledWith(
+        'item-1',
+        expect.stringContaining('resume-token'),
+      );
+      expect(mockMarkDownloadItemFailed).not.toHaveBeenCalled();
+    });
+
     it('pause is a no-op when nothing is active', async () => {
       const worker = new DownloadQueueWorker(async () => ({
         url: 'https://example.com/x.mp3',
@@ -375,6 +417,53 @@ describe('DownloadQueueWorker', () => {
         expect.stringContaining('resume-token'),
       );
       expect(worker.getState()).toBe('idle');
+    });
+
+    it('does not mark a cancelled item completed when downloadAsync settles after cancel() already reset state to idle', async () => {
+      // Regression test for a race: calling pauseAsync() inside cancel()
+      // can cause the in-flight downloadAsync() to settle around the same
+      // time cancel() finishes and flips `state` back to 'idle'. If the
+      // pending download's completion handler only checked
+      // `this.state === 'cancelled'`, it could lose that race and mark a
+      // cancelled item 'completed' instead of leaving it 'cancelled' — which
+      // is why re-downloading it afterwards silently did nothing (#147 QA).
+      let resolveDownload!: (value: { uri: string }) => void;
+      const pending = new Promise<{ uri: string }>(resolve => {
+        resolveDownload = resolve;
+      });
+      const pauseAsync = jest.fn().mockResolvedValue({
+        url: 'https://example.com/x.mp3',
+        fileUri: 'file:///docs/downloads/1/item-1.mp3',
+        options: {},
+        resumeData: 'resume-token',
+      });
+      spyResumable({
+        downloadAsync: jest.fn().mockReturnValue(pending),
+        pauseAsync,
+      });
+      const resolver = jest
+        .fn()
+        .mockResolvedValue({ url: 'https://example.com/x.mp3', ext: 'mp3' });
+
+      const worker = new DownloadQueueWorker(resolver);
+      const startPromise = worker.start([makeItem()]);
+      await flushMicrotasks();
+      await flushMicrotasks();
+
+      await worker.cancel();
+      expect(worker.getState()).toBe('idle');
+
+      // Simulate the native downloadAsync() finally settling after cancel()
+      // has already run to completion — the exact ordering this fix guards
+      // against.
+      resolveDownload({ uri: 'file:///docs/downloads/1/item-1.mp3' });
+      await startPromise;
+
+      expect(mockMarkDownloadItemCancelled).toHaveBeenCalledWith(
+        'item-1',
+        expect.stringContaining('resume-token'),
+      );
+      expect(mockMarkDownloadItemCompleted).not.toHaveBeenCalled();
     });
 
     it('cancel with nothing active still transitions state and clears the queue', async () => {

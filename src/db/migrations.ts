@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 14;
+export const CURRENT_SCHEMA_VERSION = 15;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -411,6 +411,14 @@ async function applyPericopeTables(db: SqlExecutor): Promise<void> {
     await addColumnIfMissing(db, 'projects', 'pericope_set_id', 'INTEGER');
   }
 }
+/** Per-unit version token for conflict detection (#256 / fluent-api#271). */
+async function addRecordingsVersionToken(db: SqlExecutor): Promise<void> {
+  const info = await db.execute('PRAGMA table_info(recordings)');
+  if (info.rows.length) {
+    await addColumnIfMissing(db, 'recordings', 'version_token', 'INTEGER');
+  }
+}
+
 /** Ordered schema migrations. Version 1 = current CREATE IF NOT EXISTS baseline. */
 export const migrations: Migration[] = [
   {
@@ -480,9 +488,15 @@ export const migrations: Migration[] = [
   },
   {
     version: 14,
+    name: 'add_recordings_version_token',
+    up: addRecordingsVersionToken,
+  },
+  {
+    version: 15,
     name: 'pericope_tables',
     up: applyPericopeTables,
   },
+];
 ];
 
 /**

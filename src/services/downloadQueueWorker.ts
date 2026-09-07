@@ -28,6 +28,15 @@ type ActiveDownload = {
   resumable: FileSystem.DownloadResumable;
   /** Set when pauseAsync succeeds — reused on cancel to avoid double-pause. */
   savedPauseState?: string;
+  /**
+   * Set synchronously by cancel() before any await. `cancel()` also flips
+   * `this.state` back to 'idle' once it's done, so a pending
+   * downloadAsync()/resumeAsync() continuation racing with cancel() cannot
+   * rely on `this.state === 'cancelled'` — that check can lose the race and
+   * let a cancelled item get marked 'completed'. This flag lives on the
+   * captured ActiveDownload object itself, so it's immune to that race.
+   */
+  cancelled?: boolean;
 };
 
 type SavedDownloadState = {
@@ -110,18 +119,18 @@ export class DownloadQueueWorker {
     if (this.state !== 'paused' || !this.active) {
       return;
     }
-    const { itemId, resumable } = this.active;
+    const activeAtStart = this.active;
+    const { itemId, resumable } = activeAtStart;
     this.state = 'downloading';
     try {
       await markDownloadItemDownloading(itemId);
       const result = await resumable.resumeAsync();
 
       // A concurrent cancel() may have run while resumeAsync() was in
-      // flight — don't restart queue processing on top of a cancelled
-      // session. Cast needed: TS narrows `this.state` to 'downloading'
-      // after the assignment above and doesn't account for cancel()
-      // mutating it asynchronously from a different method.
-      if ((this.state as WorkerSessionState) === 'cancelled') {
+      // flight. cancel() flips `this.state` to 'idle' once it finishes, so
+      // that check alone can lose the race — check the flag cancel() set
+      // synchronously on this specific download instead.
+      if (activeAtStart.cancelled) {
         return;
       }
 
@@ -130,6 +139,9 @@ export class DownloadQueueWorker {
       }
     } catch (error) {
       log.error('Failed to resume download', { error, itemId });
+      if (activeAtStart.cancelled) {
+        return;
+      }
       try {
         await markDownloadItemFailed(itemId);
       } catch (innerError) {
@@ -138,10 +150,8 @@ export class DownloadQueueWorker {
           itemId,
         });
       }
-      if ((this.state as WorkerSessionState) !== 'cancelled') {
-        this.active = null;
-        await this.processNext();
-      }
+      this.active = null;
+      await this.processNext();
     }
   }
 
@@ -149,32 +159,41 @@ export class DownloadQueueWorker {
     const wasPaused = this.state === 'paused';
     const active = this.active;
 
+    // Set synchronously, before any await, so a racing
+    // processNext()/resume() continuation always observes it regardless of
+    // ordering — see ActiveDownload.cancelled.
+    if (active) {
+      active.cancelled = true;
+    }
+
     this.state = 'cancelled';
     this.queue = [];
 
-    if (active) {
-      const { itemId, resumable, savedPauseState } = active;
+    try {
+      if (active) {
+        const { itemId, resumable, savedPauseState } = active;
 
-      if (wasPaused) {
-        // Already paused — do not call pauseAsync again (native throws
-        // "No download object available"). Resume data was persisted on pause.
-        await markDownloadItemCancelled(itemId, savedPauseState);
-      } else {
-        try {
-          const pauseState = await resumable.pauseAsync();
-          await markDownloadItemCancelled(
-            itemId,
-            serializeDownloadState(pauseState),
-          );
-        } catch (error) {
-          log.error('Failed to pause on cancel', { error, itemId });
+        if (wasPaused) {
+          // Already paused — do not call pauseAsync again (native throws
+          // "No download object available"). Resume data was persisted on pause.
           await markDownloadItemCancelled(itemId, savedPauseState);
+        } else {
+          try {
+            const pauseState = await resumable.pauseAsync();
+            await markDownloadItemCancelled(
+              itemId,
+              serializeDownloadState(pauseState),
+            );
+          } catch (error) {
+            log.error('Failed to pause on cancel', { error, itemId });
+            await markDownloadItemCancelled(itemId, savedPauseState);
+          }
         }
       }
+    } finally {
+      this.active = null;
+      this.state = 'idle';
     }
-
-    this.active = null;
-    this.state = 'idle';
   }
 
   private async processNext(): Promise<void> {
@@ -187,6 +206,7 @@ export class DownloadQueueWorker {
       return;
     }
 
+    let activeAtStart: ActiveDownload | undefined;
     try {
       const saved = parseDownloadState(next.resumeData);
       const { url, ext } = await this.resolver(next);
@@ -217,13 +237,18 @@ export class DownloadQueueWorker {
         saved?.resumeData,
       );
 
-      this.active = { itemId: next.id, resumable };
+      activeAtStart = { itemId: next.id, resumable };
+      this.active = activeAtStart;
       await markDownloadItemDownloading(next.id);
       const shouldResume = Boolean(saved?.resumeData);
       const result = shouldResume
         ? await resumable.resumeAsync()
         : await resumable.downloadAsync();
-      if ((this.state as WorkerSessionState) === 'cancelled') {
+      // A concurrent cancel() may have run while the transfer was in
+      // flight. cancel() flips `this.state` to 'idle' once it finishes, so
+      // that check alone can lose the race — check the flag cancel() set
+      // synchronously on this specific download instead.
+      if (activeAtStart.cancelled) {
         return;
       }
       if (result) {
@@ -231,7 +256,7 @@ export class DownloadQueueWorker {
       }
     } catch (error) {
       log.error('Failed to download item', { error, itemId: next.id });
-      if ((this.state as WorkerSessionState) === 'cancelled') {
+      if (activeAtStart?.cancelled) {
         return;
       }
       try {

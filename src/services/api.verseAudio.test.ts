@@ -24,6 +24,10 @@ const successBody = {
   contentType: 'audio/mp4',
   sizeBytes: 4096,
   durationSeconds: 12.5,
+  versionToken: 2,
+  conflictStatus: 'clean',
+  activeTakeId: 9,
+  takes: [],
   verseNumber: 1,
   downloadUrl: 'https://example.test/sas',
   createdAt: '2026-07-15T00:00:00.000Z',
@@ -64,6 +68,42 @@ describe('verseAudioFormData helpers', () => {
       await buildVerseAudioFormData({ file: blob, durationSeconds: 12.5 });
       expect(append).toHaveBeenCalledWith('file', blob);
       expect(append).toHaveBeenCalledWith('durationSeconds', '12.5');
+    } finally {
+      g.FormData = OriginalFormData;
+    }
+  });
+
+  it('appends baseVersionToken when provided', async () => {
+    const append = jest.fn();
+    const g = globalThis as GlobalWithFormData;
+    const OriginalFormData = g.FormData;
+    g.FormData = jest.fn(() => ({ append })) as unknown as typeof g.FormData;
+
+    try {
+      const blob = { __blob: true } as unknown as Blob;
+      await buildVerseAudioFormData({
+        file: blob,
+        baseVersionToken: 3,
+      });
+      expect(append).toHaveBeenCalledWith('baseVersionToken', '3');
+    } finally {
+      g.FormData = OriginalFormData;
+    }
+  });
+
+  it('omits baseVersionToken when not provided', async () => {
+    const append = jest.fn();
+    const g = globalThis as GlobalWithFormData;
+    const OriginalFormData = g.FormData;
+    g.FormData = jest.fn(() => ({ append })) as unknown as typeof g.FormData;
+
+    try {
+      const blob = { __blob: true } as unknown as Blob;
+      await buildVerseAudioFormData({ file: blob });
+      expect(append).not.toHaveBeenCalledWith(
+        'baseVersionToken',
+        expect.anything(),
+      );
     } finally {
       g.FormData = OriginalFormData;
     }
@@ -268,6 +308,26 @@ describe('FluentAPI.uploadVerseAudio', () => {
       status: 503,
       message: 'Verse audio is not available: Audio storage is not configured',
     });
+  });
+
+  it('throws retryable ApiError on 409 compare-and-swap race', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 409,
+      text: async () =>
+        JSON.stringify({ message: 'Concurrent write invalidated upload' }),
+    });
+
+    await expect(
+      FluentAPI.uploadVerseAudio({
+        projectUnitId: 1,
+        bibleTextId: 2,
+        file: sampleFile,
+      }),
+    ).rejects.toMatchObject({
+      status: 409,
+      isTerminal: true,
+    } as Partial<ApiError>);
   });
 
   it('throws retryable ApiError on 500', async () => {

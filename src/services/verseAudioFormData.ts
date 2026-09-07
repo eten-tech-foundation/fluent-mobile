@@ -70,11 +70,14 @@ type FormDataWithFilename = FormData & {
 
 /**
  * Multipart body for `PUT /verse-audio/{projectUnitId}/{bibleTextId}`
- * (fluent-api PR #224). Path carries the IDs; body is `file` + optional
- * `durationSeconds` only.
+ * (fluent-api PR #271). Path carries the IDs; body is `file` + optional
+ * `durationSeconds` and `baseVersionToken`.
  */
 export async function buildVerseAudioFormData(
-  params: Pick<UploadVerseAudioParams, 'file' | 'durationSeconds'>,
+  params: Pick<
+    UploadVerseAudioParams,
+    'file' | 'durationSeconds' | 'baseVersionToken'
+  >,
 ): Promise<FormData> {
   const formData = new FormData() as FormDataWithFilename;
   const { blob, filename } = await verseAudioFileToBlob(params.file);
@@ -90,6 +93,13 @@ export async function buildVerseAudioFormData(
     Number.isFinite(params.durationSeconds)
   ) {
     formData.append('durationSeconds', String(params.durationSeconds));
+  }
+
+  if (
+    params.baseVersionToken !== undefined &&
+    Number.isFinite(params.baseVersionToken)
+  ) {
+    formData.append('baseVersionToken', String(params.baseVersionToken));
   }
 
   return formData;

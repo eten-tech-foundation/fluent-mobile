@@ -3,9 +3,12 @@ import { getApiBaseUrl } from '../config/apiBaseUrl';
 import type { PendingUploadChapter } from '../db/queries';
 import {
   getPendingRecordings,
+  getLatestVersionToken,
+  markRecordingAndChapterConflicted,
   markRecordingFailed,
   markRecordingUploaded,
   setRecordingSyncStatus,
+  updateRecordingVersionToken,
 } from '../db/repository';
 import type { PendingRecording } from '../types/db/types';
 import { logger } from '../utils/logger';
@@ -30,6 +33,7 @@ export const MAX_UPLOAD_ATTEMPTS = 3;
 
 export interface UploadResult {
   uploaded: number;
+  conflicted: number;
   failed: number;
 }
 
@@ -135,7 +139,7 @@ async function uploadOneRecording(
     /** User id that owns the upload token (for auth failure handling). */
     tokenUserId: string | null;
   },
-): Promise<'uploaded' | 'failed'> {
+): Promise<'uploaded' | 'conflicted' | 'failed'> {
   const { signal, delay, maxAttempts, token, tokenUserId } = options;
 
   throwIfAborted(signal);
@@ -162,6 +166,7 @@ async function uploadOneRecording(
 
   let lastMessage = 'Upload failed';
   let didMarkUploaded = false;
+  let didMarkConflicted = false;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     throwIfAborted(signal);
@@ -174,6 +179,10 @@ async function uploadOneRecording(
           ? recording.durationMs / 1000
           : undefined;
 
+      const baseVersionToken = await getLatestVersionToken(
+        recording.bibleTextId,
+      );
+
       const response = await FluentAPI.uploadVerseAudio(
         {
           projectUnitId: recording.projectUnitId,
@@ -184,16 +193,36 @@ async function uploadOneRecording(
             type: contentTypeFromPath(recording.localFilePath),
           },
           ...(durationSeconds !== undefined ? { durationSeconds } : {}),
+          ...(baseVersionToken !== undefined ? { baseVersionToken } : {}),
         },
         token,
       );
 
+      if (response.conflictStatus === 'conflict') {
+        // Set flag BEFORE transaction to prevent retries if transaction fails.
+        // Upload already succeeded on server; transaction failure should not retry.
+        didMarkConflicted = true;
+        await markRecordingAndChapterConflicted(
+          recording.id,
+          recording.bibleTextId,
+          response.versionToken,
+        );
+        log.info('Recording uploaded with conflict', {
+          recordingId: recording.id,
+          versionToken: response.versionToken,
+          recordedByUserId: recording.recordedByUserId,
+        });
+        throwIfAborted(signal);
+        return 'conflicted';
+      }
+
       const blobKey = blobKeyFromVerseAudioResponse(response);
-      await markRecordingUploaded(recording.id, blobKey);
+      await markRecordingUploaded(recording.id, blobKey, response.versionToken);
       didMarkUploaded = true;
       log.info('Recording uploaded', {
         recordingId: recording.id,
         blobKey,
+        versionToken: response.versionToken,
         recordedByUserId: recording.recordedByUserId,
       });
       // Abort after a successful put still counts as uploaded (server has bytes).
@@ -201,7 +230,7 @@ async function uploadOneRecording(
       return 'uploaded';
     } catch (error) {
       if (isAbortError(error) || signal?.aborted) {
-        if (!didMarkUploaded) {
+        if (!didMarkUploaded && !didMarkConflicted) {
           await setRecordingSyncStatus(recording.id, 'pending');
         }
         throwIfAborted(signal);
@@ -221,6 +250,20 @@ async function uploadOneRecording(
         throw error;
       }
 
+      // After successful conflict response, DB transaction failures are NOT retryable.
+      // Upload was already accepted by server; retrying would create duplicate takes.
+      if (didMarkConflicted) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Failed to persist conflict state locally';
+        log.error('DB transaction failed after conflict response', {
+          recordingId: recording.id,
+          error: message,
+        });
+        return 'failed';
+      }
+
       const terminalMissing =
         error instanceof Error &&
         (error as Error & { terminal?: boolean }).terminal === true;
@@ -232,6 +275,27 @@ async function uploadOneRecording(
 
       const outcome = outcomeFromVerseAudioFailure(error);
       lastMessage = outcome.message;
+
+      // Save currentVersionToken from 409 before retry to avoid stale token loop
+      if (outcome.kind === 'retryable' && outcome.currentVersionToken) {
+        try {
+          await updateRecordingVersionToken(
+            recording.id,
+            outcome.currentVersionToken,
+          );
+          log.info('Saved currentVersionToken from 409 before retry', {
+            recordingId: recording.id,
+            currentVersionToken: outcome.currentVersionToken,
+          });
+        } catch (saveError) {
+          log.error('Failed to save currentVersionToken from 409', {
+            recordingId: recording.id,
+            error:
+              saveError instanceof Error ? saveError.message : 'Unknown error',
+          });
+          // Don't block retry - better to retry with stale token than fail completely
+        }
+      }
 
       if (!outcome.retryable || attempt === maxAttempts) {
         log.error('Recording upload failed', {
@@ -284,6 +348,7 @@ async function runUploadPass(
   emitUploadSessionEvent({ type: 'start', totalChapters: total });
 
   let uploaded = 0;
+  let conflicted = 0;
   let failed = 0;
   let completed = 0;
 
@@ -301,6 +366,8 @@ async function runUploadPass(
       });
       if (result === 'uploaded') {
         uploaded += 1;
+      } else if (result === 'conflicted') {
+        conflicted += 1;
       } else {
         failed += 1;
       }
@@ -313,8 +380,12 @@ async function runUploadPass(
     }
 
     emitUploadSessionEvent({ type: 'complete' });
-    log.info('Recording upload pass complete', { uploaded, failed });
-    return { uploaded, failed };
+    log.info('Recording upload pass complete', {
+      uploaded,
+      conflicted,
+      failed,
+    });
+    return { uploaded, conflicted, failed };
   } catch (error) {
     if (isAbortError(error) || options.signal?.aborted) {
       emitUploadSessionEvent({ type: 'cancelled' });
