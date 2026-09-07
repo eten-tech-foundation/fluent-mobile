@@ -26,6 +26,12 @@ import { ApiBook, ApiVerse } from '../types/api/types';
 import { ApiUser, unwrapApiListResponse } from '../types/api/responses';
 import { getConnectivitySnapshot } from './connectivity';
 import { syncPendingChapterClaims } from './chapterClaimSync';
+import { getPericopeSetVersion, setPericopeSetVersion } from './storage';
+import { upsertPericopeSet } from '@/db/repositories/pericopesRepository';
+import {
+  loadBundledPericopeSet,
+  getBundledPericopeSetVersion,
+} from './pericopeSets';
 import {
   setUserSync,
   registerKnownUser,
@@ -600,24 +606,57 @@ export async function syncPericopes() {
         ),
       );
 
-      const distinctSetIds = [
-        ...new Set(
-          [...pericopeSetIdByProject.values()].filter(
-            (id): id is number => id !== null && id !== undefined,
-          ),
-        ),
-      ];
+      // Group chapters by their project's pericope set, so we know which
+      // (setId, bookCode) pairs actually need hydrating.
+      const chaptersBySetId = new Map<number, typeof chapters>();
+      for (const chapter of chapters) {
+        const setId = pericopeSetIdByProject.get(chapter.projectId);
+        if (setId === null || setId === undefined) continue;
+        const existing = chaptersBySetId.get(setId) ?? [];
+        existing.push(chapter);
+        chaptersBySetId.set(setId, existing);
+      }
 
-      if (distinctSetIds.length === 0) {
+      if (chaptersBySetId.size === 0) {
         log.info('No chapters with a pericope set assigned');
         return;
       }
 
-      for (const pericopeSetId of distinctSetIds) {
-        log.info(
-          'Pericope set has no hydrate source yet — blocked on #447 (bundled seed) / fluent-api#309 (set API)',
-          { pericopeSetId },
-        );
+      for (const [pericopeSetId, setChapters] of chaptersBySetId) {
+        const bundledVersion = getBundledPericopeSetVersion(pericopeSetId);
+
+        if (!bundledVersion) {
+          log.info(
+            'No bundled source for this set — blocked on network path (fluent-api#309)',
+            { pericopeSetId },
+          );
+          continue;
+        }
+
+        const storedVersion = getPericopeSetVersion(pericopeSetId);
+        if (storedVersion === bundledVersion) {
+          log.info('Pericope set already current, skipping reseed', {
+            pericopeSetId,
+          });
+          continue;
+        }
+
+        const distinctBookCodes = [
+          ...new Set(setChapters.map(c => c.bookCode)),
+        ];
+
+        for (const bookCode of distinctBookCodes) {
+          const verses = loadBundledPericopeSet(pericopeSetId, bookCode);
+          if (!verses) {
+            log.warn('No bundled data for book in this set', {
+              pericopeSetId,
+              bookCode,
+            });
+            continue;
+          }
+          await upsertPericopeSet(pericopeSetId, bookCode, verses);
+        }
+        setPericopeSetVersion(pericopeSetId, bundledVersion);
       }
     },
   );

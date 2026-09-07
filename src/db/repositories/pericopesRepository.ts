@@ -2,9 +2,7 @@ import { getDatabase } from '../db';
 import { logger } from '../../utils/logger';
 import * as DBTypes from '../../types/db/types';
 import { Transaction } from '@op-engineering/op-sqlite';
-import { setPericopeSetVersion } from '../../services/storage';
 import type { BundledPericopeVerse } from '../../types/pericopeSets/types';
-
 
 const log = logger.create('PericopesRepository');
 
@@ -139,7 +137,6 @@ export async function upsertPericopeSet(
   pericopeSetId: number,
   bookCode: string,
   verses: BundledPericopeVerse[],
-  version: string,
 ): Promise<void> {
   if (!verses.length) return;
 
@@ -173,8 +170,6 @@ export async function upsertPericopeSet(
       );
     }
   });
-
-  setPericopeSetVersion(pericopeSetId, version);
 
   log.info('Pericope set upserted', {
     pericopeSetId,

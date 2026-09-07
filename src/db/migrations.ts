@@ -497,7 +497,6 @@ export const migrations: Migration[] = [
     up: applyPericopeTables,
   },
 ];
-];
 
 /**
  * Apply migrations with `version > PRAGMA user_version`, each once, in order.
