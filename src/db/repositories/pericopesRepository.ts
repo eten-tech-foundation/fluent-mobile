@@ -22,56 +22,6 @@ export async function insertPericopeSets(sets: DBTypes.PericopeSet[]) {
   log.info('Pericope sets synced', { count: sets.length });
 }
 
-export type ApiPericopeGroupInput = {
-  pericopeNumber: string;
-  pericopeTitle: string | null;
-  verses: { chapterNumber: number; verseNumber: number }[];
-};
-
-export async function insertPericopeVersesBatch(
-  chapters: Array<{
-    bookId: number;
-    chapterNumber: number;
-    pericopeSetId: number | null;
-    groups: ApiPericopeGroupInput[];
-  }>,
-) {
-  if (!chapters.length) return;
-  const db = getDatabase();
-  let verseCount = 0;
-
-  await db.transaction(async (tx: Transaction) => {
-    for (const chapter of chapters) {
-      for (const group of chapter.groups) {
-        for (const verse of group.verses) {
-          await tx.execute(
-            `INSERT INTO pericope_verses
-             (pericope_set_id, book_id, chapter_number, verse_number, pericope_number, pericope_title)
-             VALUES (?, ?, ?, ?, ?, ?)
-             ON CONFLICT(pericope_set_id, book_id, chapter_number, verse_number) DO UPDATE SET
-               pericope_number = excluded.pericope_number,
-               pericope_title = excluded.pericope_title`,
-            [
-              chapter.pericopeSetId,
-              chapter.bookId,
-              verse.chapterNumber,
-              verse.verseNumber,
-              group.pericopeNumber,
-              group.pericopeTitle,
-            ],
-          );
-          verseCount++;
-        }
-      }
-    }
-  });
-
-  log.info('Pericope verses batch synced', {
-    chapterCount: chapters.length,
-    verseCount,
-  });
-}
-
 /** Distinct (project, book, chapter) triples the user has locally, for pericope sync. */
 export async function getChaptersNeedingPericopeSync(): Promise<
   {
@@ -151,6 +101,10 @@ export async function upsertPericopeSet(
 
   const db = getDatabase();
   await db.transaction(async (tx: Transaction) => {
+    await tx.execute(
+      'DELETE FROM pericope_verses WHERE pericope_set_id = ? AND book_id = ?',
+      [pericopeSetId, bookId],
+    );
     for (const verse of verses) {
       await tx.execute(
         `INSERT INTO pericope_verses

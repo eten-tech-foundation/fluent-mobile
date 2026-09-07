@@ -277,3 +277,26 @@ export function setPericopeSetVersion(
   kvStorage.setItemSync(pericopeSetVersionKey(pericopeSetId), version);
   log.info('Pericope set version updated', { pericopeSetId, version });
 }
+
+const pericopeBookVersionKey = (pericopeSetId: number, bookCode: string) =>
+  `pericope_book_version:${pericopeSetId}:${bookCode}`;
+
+export function getPericopeBookVersion(
+  pericopeSetId: number,
+  bookCode: string,
+): string {
+  return (
+    kvStorage.getItemSync(pericopeBookVersionKey(pericopeSetId, bookCode)) ?? ''
+  );
+}
+
+export function setPericopeBookVersion(
+  pericopeSetId: number,
+  bookCode: string,
+  version: string,
+): void {
+  kvStorage.setItemSync(
+    pericopeBookVersionKey(pericopeSetId, bookCode),
+    version,
+  );
+}

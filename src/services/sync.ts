@@ -19,6 +19,7 @@ import {
   insertPericopeSets,
   getProjectPericopeSetId,
   getChaptersNeedingPericopeSync,
+  upsertPericopeSet,
 } from '../db/repository';
 import { logger } from '../utils/logger';
 import { getDatabase } from '../db/db';
@@ -26,8 +27,7 @@ import { ApiBook, ApiVerse } from '../types/api/types';
 import { ApiUser, unwrapApiListResponse } from '../types/api/responses';
 import { getConnectivitySnapshot } from './connectivity';
 import { syncPendingChapterClaims } from './chapterClaimSync';
-import { getPericopeSetVersion, setPericopeSetVersion } from './storage';
-import { upsertPericopeSet } from '@/db/repositories/pericopesRepository';
+import { getPericopeBookVersion, setPericopeBookVersion } from './storage';
 import {
   loadBundledPericopeSet,
   getBundledPericopeSetVersion,
@@ -633,30 +633,35 @@ export async function syncPericopes() {
           continue;
         }
 
-        const storedVersion = getPericopeSetVersion(pericopeSetId);
-        if (storedVersion === bundledVersion) {
-          log.info('Pericope set already current, skipping reseed', {
-            pericopeSetId,
-          });
-          continue;
-        }
-
         const distinctBookCodes = [
           ...new Set(setChapters.map(c => c.bookCode)),
         ];
 
         for (const bookCode of distinctBookCodes) {
-          const verses = loadBundledPericopeSet(pericopeSetId, bookCode);
-          if (!verses) {
-            log.warn('No bundled data for book in this set', {
+          const storedBookVersion = getPericopeBookVersion(
+            pericopeSetId,
+            bookCode,
+          );
+          if (storedBookVersion === bundledVersion) {
+            log.info('Pericope book already current, skipping reseed', {
               pericopeSetId,
               bookCode,
             });
             continue;
           }
+
+          const verses = loadBundledPericopeSet(pericopeSetId, bookCode);
+          if (!verses) {
+            log.warn(
+              'No bundled data for book in this set — will retry next sync',
+              { pericopeSetId, bookCode },
+            );
+            continue;
+          }
+
           await upsertPericopeSet(pericopeSetId, bookCode, verses);
+          setPericopeBookVersion(pericopeSetId, bookCode, bundledVersion);
         }
-        setPericopeSetVersion(pericopeSetId, bundledVersion);
       }
     },
   );
