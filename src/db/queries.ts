@@ -59,7 +59,8 @@ export const RECORDINGS_JOIN_CA = `
 const RECORDING_AGGREGATES = `
   COUNT(DISTINCT CASE WHEN r.id IS NOT NULL AND r.is_selected = 1 THEN r.id END) AS recording_count,
   COUNT(DISTINCT CASE
-    WHEN r.id IS NOT NULL AND r.is_selected = 1 AND r.sync_status != 'uploaded' THEN r.id
+    WHEN r.id IS NOT NULL AND r.is_selected = 1
+      AND r.sync_status NOT IN ('uploaded', 'conflicted') THEN r.id
   END) AS pending_count,
   MAX(CASE WHEN r.is_selected = 1 THEN r.updated_at END) AS last_recording_activity`;
 
@@ -123,7 +124,8 @@ export async function getProjectsWithSummary(
         COUNT(DISTINCT ca.id) AS chapter_count,
         COUNT(DISTINCT CASE WHEN r.id IS NOT NULL THEN r.id END) AS recording_count,
         COUNT(DISTINCT CASE
-          WHEN r.id IS NOT NULL AND r.sync_status != 'uploaded' THEN r.id
+          WHEN r.id IS NOT NULL
+            AND r.sync_status NOT IN ('uploaded', 'conflicted') THEN r.id
         END) AS pending_count
       FROM projects p
       INNER JOIN user_projects up ON up.project_id = p.id
@@ -253,6 +255,38 @@ export async function getChapterAssignmentById(
 }
 
 /** Chapter-level unresolved audio-take conflict rollup (#260). */
+export type PendingChapterClaim = {
+  id: number;
+  chapterAssignmentId: number;
+  userId: number;
+  claimedAt: string;
+};
+
+/** Offline chapter claims waiting to be pushed on reconnect (#271). */
+export async function getPendingChapterClaims(): Promise<
+  PendingChapterClaim[]
+> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT id, chapter_assignment_id, user_id, claimed_at
+       FROM chapter_claim_queue
+       WHERE sync_status = 'pending'
+       ORDER BY claimed_at ASC`,
+    );
+    const rows = result.rows ?? [];
+    return rows.map(row => ({
+      id: Number(row.id),
+      chapterAssignmentId: Number(row.chapter_assignment_id),
+      userId: Number(row.user_id),
+      claimedAt: String(row.claimed_at),
+    }));
+  } catch (error) {
+    log.error('Error fetching pending chapter claims', { error });
+    throw error;
+  }
+}
+
 export async function getChapterHasConflict(
   chapterAssignmentId: number,
 ): Promise<boolean> {
@@ -488,7 +522,7 @@ export async function getPendingUploadCount(): Promise<number> {
     const result = await db.execute(
       `SELECT COUNT(*) AS count
        FROM recordings
-       WHERE is_selected = 1 AND sync_status != 'uploaded'
+       WHERE is_selected = 1 AND sync_status NOT IN ('uploaded', 'conflicted')
          AND recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'};`,
       userId === null ? [] : [userId],
     );
@@ -538,7 +572,7 @@ export async function getPendingUploadChapters(): Promise<
       `SELECT DISTINCT bt.book_id AS book_id, bt.chapter_number AS chapter_number
        FROM recordings r
        JOIN bible_texts bt ON bt.id = r.bible_text_id
-       WHERE r.is_selected = 1 AND r.sync_status != 'uploaded'
+       WHERE r.is_selected = 1 AND r.sync_status NOT IN ('uploaded', 'conflicted')
          AND r.recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}
        ORDER BY bt.book_id, bt.chapter_number`,
       userId === null ? [] : [userId],

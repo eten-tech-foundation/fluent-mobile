@@ -3,6 +3,7 @@ import {
   syncBibleTexts,
   syncChapterAssignments,
   syncMasterData,
+  syncPendingChapterClaimsForUser,
   syncProjects,
 } from './sync';
 import { clearSyncError, setSyncCount, setSyncError } from './storage';
@@ -17,6 +18,16 @@ import {
   reconcileUserProjects,
   ensureUserProjectMembership,
 } from '../db/repository';
+import { getConnectivitySnapshot } from './connectivity';
+import { syncPendingChapterClaims } from './chapterClaimSync';
+
+jest.mock('./connectivity', () => ({
+  getConnectivitySnapshot: jest.fn(),
+}));
+
+jest.mock('./chapterClaimSync', () => ({
+  syncPendingChapterClaims: jest.fn(),
+}));
 
 jest.mock('./authToken', () => ({
   authToken: {
@@ -116,6 +127,8 @@ const getChaptersToSyncMock = jest.mocked(getChaptersToSync);
 const setSyncErrorMock = jest.mocked(setSyncError);
 const clearSyncErrorMock = jest.mocked(clearSyncError);
 const setSyncCountMock = jest.mocked(setSyncCount);
+const getConnectivitySnapshotMock = jest.mocked(getConnectivitySnapshot);
+const syncPendingChapterClaimsMock = jest.mocked(syncPendingChapterClaims);
 
 function mockDbCount(count: number) {
   (getDatabase as jest.Mock).mockReturnValue({
@@ -127,6 +140,16 @@ describe('sync step orchestration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockDbCount(0);
+    getConnectivitySnapshotMock.mockResolvedValue({
+      isOnline: true,
+      isWifi: true,
+      isCellular: false,
+    });
+    syncPendingChapterClaimsMock.mockResolvedValue({
+      synced: 0,
+      conflicts: 0,
+      failed: 0,
+    });
     (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([
       { id: 1, name: 'English' },
     ]);
@@ -252,6 +275,93 @@ describe('sync step orchestration', () => {
       expect(clearSyncErrorMock).toHaveBeenCalledWith(
         'sync_error_chapter_assignments',
       );
+    });
+  });
+
+  describe('syncPendingChapterClaimsForUser', () => {
+    it('syncs pending offline claims when online and clears the error key', async () => {
+      syncPendingChapterClaimsMock.mockResolvedValue({
+        synced: 2,
+        conflicts: 0,
+        failed: 0,
+      });
+
+      await expect(syncPendingChapterClaimsForUser(9)).resolves.toEqual({
+        synced: 2,
+        conflicts: 0,
+        failed: 0,
+      });
+
+      expect(syncPendingChapterClaimsMock).toHaveBeenCalledWith(9);
+      expect(clearSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_chapter_assignments',
+      );
+    });
+
+    it('skips syncing pending offline claims when offline', async () => {
+      getConnectivitySnapshotMock.mockResolvedValue({
+        isOnline: false,
+        isWifi: false,
+        isCellular: false,
+      });
+
+      await expect(syncPendingChapterClaimsForUser(9)).resolves.toEqual({
+        synced: 0,
+        conflicts: 0,
+        failed: 0,
+      });
+
+      expect(syncPendingChapterClaimsMock).not.toHaveBeenCalled();
+    });
+
+    it('retries non-auth failures then sets the sync error', async () => {
+      jest.useFakeTimers();
+      syncPendingChapterClaimsMock.mockRejectedValue(new Error('network'));
+
+      try {
+        const pending = syncPendingChapterClaimsForUser(9);
+        const expectation = expect(pending).rejects.toThrow('network');
+
+        await jest.advanceTimersByTimeAsync(500);
+        await jest.advanceTimersByTimeAsync(1000);
+        await expectation;
+
+        expect(syncPendingChapterClaimsMock).toHaveBeenCalledTimes(3);
+        expect(setSyncErrorMock).toHaveBeenCalledWith(
+          'sync_error_chapter_assignments',
+          'network',
+        );
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('retries when pending claims report failures then sets the sync error', async () => {
+      jest.useFakeTimers();
+      syncPendingChapterClaimsMock.mockResolvedValue({
+        synced: 0,
+        conflicts: 0,
+        failed: 1,
+      });
+
+      try {
+        const pending = syncPendingChapterClaimsForUser(9);
+        const expectation = expect(pending).rejects.toThrow(
+          'Failed to sync 1 pending chapter claim(s)',
+        );
+
+        await jest.advanceTimersByTimeAsync(500);
+        await jest.advanceTimersByTimeAsync(1000);
+        await expectation;
+
+        expect(syncPendingChapterClaimsMock).toHaveBeenCalledTimes(3);
+        expect(setSyncErrorMock).toHaveBeenCalledWith(
+          'sync_error_chapter_assignments',
+          'Failed to sync 1 pending chapter claim(s)',
+        );
+      } finally {
+        jest.useRealTimers();
+      }
     });
   });
 

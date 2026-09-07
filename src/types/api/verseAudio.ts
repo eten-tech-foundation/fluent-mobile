@@ -2,9 +2,9 @@
  * Frozen client contract for verse audio upload/playback.
  *
  * Source of truth consulted:
- * - fluent-api `main` @ 3fd1027313c40c5e7a9fb3abe97c2b72d313e226 — **no** audio routes
- * - Open PR [fluent-api #224](https://github.com/eten-tech-foundation/fluent-api/pull/224)
- *   (`feat/verse-audio`) — Azure Blob, `PUT/GET/DELETE /verse-audio/...`
+ * - fluent-api PR [#281](https://github.com/eten-tech-foundation/fluent-api/pull/281)
+ *   (`fluent-api#271` — verse audio conflict detection)
+ * - Prior baseline: fluent-api #224 (`PUT/GET/DELETE /verse-audio/...`)
  *
  * Draft [fluent-api #188](https://github.com/eten-tech-foundation/fluent-api/pull/188)
  * (`POST /recordings/sync` + Cloudflare R2) is **not** on main and conflicts with #224.
@@ -32,9 +32,28 @@ export interface UploadVerseAudioParams {
   file: Blob | VerseAudioFilePart;
   /** Optional client-measured duration (seconds); form field `durationSeconds`. */
   durationSeconds?: number;
+  /**
+   * Last-known unit versionToken (starts at 1). Omit for a first take on a
+   * unit or a legacy client. See fluent-api#271 / PR #281.
+   */
+  baseVersionToken?: number;
 }
 
-/** Successful `200` body (`verseAudioResponseSchema` in fluent-api #224). */
+export type VerseAudioConflictStatus = 'clean' | 'conflict';
+
+export interface VerseAudioTakeResponse {
+  id: number;
+  uploadedBy: number;
+  contentType: string;
+  sizeBytes: number;
+  durationSeconds: number | null;
+  contentHash: string;
+  downloadUrl: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Successful `200` body (`verseAudioResponseSchema` in fluent-api #271). */
 export interface VerseAudioResponse {
   id: number;
   projectUnitId: number;
@@ -43,14 +62,19 @@ export interface VerseAudioResponse {
   contentType: string;
   sizeBytes: number;
   durationSeconds: number | null;
+  versionToken: number;
+  conflictStatus: VerseAudioConflictStatus;
+  activeTakeId: number | null;
   verseNumber: number;
   downloadUrl: string;
+  takes: VerseAudioTakeResponse[];
   createdAt: string;
   updatedAt: string;
 }
 
 export interface VerseAudioListResponse {
   items: VerseAudioResponse[];
+  hasConflict: boolean;
 }
 
 /** `503` when `AZURE_STORAGE_CONNECTION_STRING` is unset (fluent-api #224). */

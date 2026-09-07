@@ -13,9 +13,35 @@ export function normalizeChapterStatus(
   return normalized || 'not_started';
 }
 
+function readClaimConflict(api: ApiChapterAssignment): boolean | undefined {
+  if (typeof api.hasClaimConflict === 'boolean') {
+    return api.hasClaimConflict;
+  }
+  const snake = (api as { has_claim_conflict?: boolean }).has_claim_conflict;
+  return typeof snake === 'boolean' ? snake : undefined;
+}
+
+function mergeConflictFlags(
+  audioTakeConflict: boolean | undefined,
+  claimConflict: boolean | undefined,
+): boolean | undefined {
+  if (audioTakeConflict === true || claimConflict === true) {
+    return true;
+  }
+  if (audioTakeConflict === false && claimConflict === false) {
+    return false;
+  }
+  return audioTakeConflict ?? claimConflict;
+}
+
 export function mapApiChapterAssignment(
   api: ApiChapterAssignment,
 ): ChapterAssignment {
+  const audioTakeConflict =
+    typeof api.hasConflict === 'boolean' ? api.hasConflict : undefined;
+  const claimConflict = readClaimConflict(api);
+  const hasConflict = mergeConflictFlags(audioTakeConflict, claimConflict);
+
   return {
     chapterAssignmentId: api.chapterAssignmentId,
     projectUnitId: api.projectUnitId,
@@ -37,8 +63,6 @@ export function mapApiChapterAssignment(
     updatedAt: api.updatedAt ?? undefined,
     totalVerses: nonNegativeInt(api.totalVerses),
     completedVerses: nonNegativeInt(api.completedVerses),
-    ...(typeof api.hasConflict === 'boolean'
-      ? { hasConflict: api.hasConflict }
-      : {}),
+    ...(typeof hasConflict === 'boolean' ? { hasConflict } : {}),
   };
 }
