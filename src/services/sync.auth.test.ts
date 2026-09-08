@@ -49,6 +49,8 @@ jest.mock('./api', () => ({
       peerCheckChapters: [],
     }),
     getBibleTexts: jest.fn(),
+    getPericopeSets: jest.fn().mockResolvedValue([]),
+    getChapterPericopes: jest.fn().mockResolvedValue([]),
   },
 }));
 
@@ -109,6 +111,10 @@ jest.mock('../db/repository', () => ({
   insertUser: jest.fn().mockResolvedValue(undefined),
   reconcileUserProjects: jest.fn().mockResolvedValue(undefined),
   reconcileUserChapterWork: jest.fn().mockResolvedValue(undefined),
+  insertPericopeSets: jest.fn().mockResolvedValue(undefined),
+  getProjectPericopeSetId: jest.fn().mockResolvedValue(null),
+  insertPericopeVersesBatch: jest.fn().mockResolvedValue(undefined),
+  getChaptersNeedingPericopeSync: jest.fn().mockResolvedValue([]),
 }));
 
 const {

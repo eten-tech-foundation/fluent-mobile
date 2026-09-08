@@ -1,5 +1,6 @@
 import {
   ApiBook,
+  ApiPericopeGroup,
   ApiChapterAssignment,
   ApiUserChapterAssignmentsByUser,
 } from './types';
@@ -48,6 +49,7 @@ export interface ApiProject {
   status?: string;
   updatedAt?: string;
   metadata?: Record<string, unknown>;
+  pericopeSetId?: number | null;
 }
 
 export interface ApiDataResponse<T> {
@@ -91,3 +93,17 @@ export function unwrapApiListResponse<T>(response: ApiDataResponse<T> | T): T {
 
   return response as T;
 }
+
+export interface ApiPericopeSet {
+  id: number;
+  name: string;
+  description?: string | null;
+}
+
+export type PericopeSetsResponse =
+  | ApiDataResponse<ApiPericopeSet[]>
+  | ApiPericopeSet[];
+
+export type ChapterPericopesResponse =
+  | ApiDataResponse<ApiPericopeGroup[]>
+  | ApiPericopeGroup[];

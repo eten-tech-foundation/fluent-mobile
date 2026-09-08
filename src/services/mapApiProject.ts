@@ -18,5 +18,6 @@ export function mapApiProject(api: ApiProject): Project {
     status: api.status,
     updatedAt: api.updatedAt,
     metadata: api.metadata,
+    pericopeSetId: api.pericopeSetId ?? null,
   };
 }

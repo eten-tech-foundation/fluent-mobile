@@ -3,6 +3,7 @@ import {
   ApiBookMeta,
   ApiLanguage,
   ApiUser,
+  ApiPericopeSet,
   BibleTextsResponse,
   ChapterAssignmentsResponse,
   ForgotPasswordResponse,
@@ -39,6 +40,7 @@ import {
 } from './httpClient';
 import { resolveSessionToken } from './sessionToken';
 import { createApiError } from './apiError';
+import type { ApiPericopeGroup } from '../types/api/types';
 import { parseVerseAudioResponse } from './verseAudioContract';
 import {
   buildVerseAudioFormData,
@@ -303,6 +305,24 @@ export const FluentAPI = {
         verse,
         languageCode,
       ),
+    ),
+  getPericopeSets: (): Promise<ApiPericopeSet[]> =>
+    publicRequest<ApiPericopeSet[]>('/pericope-sets'),
+
+  /**
+   * Pericope groupings for one chapter (#XXX). Chapter-scoped only — no bulk
+   * endpoint. A pericope spanning chapters returns only in-chapter verses
+   * from this call (confirmed API limitation, flagged separately).
+   */
+  getChapterPericopes: (
+    projectId: number,
+    bookCode: string,
+    chapter: number,
+  ): Promise<ApiPericopeGroup[]> =>
+    authedRequest<ApiPericopeGroup[]>(
+      `/projects/${projectId}/pericopes/${encodeURIComponent(
+        bookCode,
+      )}/${chapter}`,
     ),
 
   /**
