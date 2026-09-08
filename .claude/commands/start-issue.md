@@ -115,73 +115,16 @@ Follow [docs/guides/project-board.md](../../docs/guides/project-board.md):
 - Allowed for this assigned ticket: add to Project 4 if missing; set
   **`In Progress (Dev)`**.
 
-Best-effort warn-and-continue on API failure (except the Product-column STOP
-above). Resolve Status option IDs **by name** when possible. Verified Project 4
-IDs (eten-tech-foundation project #4):
-
-- Project: `PVT_kwDOB8vK1s4A34c5`
-- Status field: `PVTSSF_lADOB8vK1s4A34c5zgs8akY`
-- `In Progress (Dev)`: `db53740f`
+Best-effort warn-and-continue on failure (except the Product-column STOP
+above). **Do not paste GraphQL** — use the shared CLI:
 
 ```bash
-ISSUE=$CHOSEN
-CURSOR=""
-ITEM_ID=""
-
-while :; do
-  if [ -z "$CURSOR" ]; then
-    PAGE=$(gh api graphql -f query='
-      query($n: Int!) {
-        repository(owner: "eten-tech-foundation", name: "fluent-mobile") {
-          issue(number: $n) {
-            projectItems(first: 20) {
-              pageInfo { hasNextPage endCursor }
-              nodes {
-                id
-                project { number }
-                fieldValueByName(name: "Status") {
-                  ... on ProjectV2ItemFieldSingleSelectValue { name }
-                }
-              }
-            }
-          }
-        }
-      }' -F n=$ISSUE)
-  else
-    PAGE=$(gh api graphql -f query='
-      query($n: Int!, $c: String!) {
-        repository(owner: "eten-tech-foundation", name: "fluent-mobile") {
-          issue(number: $n) {
-            projectItems(first: 20, after: $c) {
-              pageInfo { hasNextPage endCursor }
-              nodes {
-                id
-                project { number }
-                fieldValueByName(name: "Status") {
-                  ... on ProjectV2ItemFieldSingleSelectValue { name }
-                }
-              }
-            }
-          }
-        }
-      }' -F n=$ISSUE -f c="$CURSOR")
-  fi
-
-  ITEM_ID=$(printf '%s' "$PAGE" | jq -r '[.data.repository.issue.projectItems.nodes[] | select(.project.number == 4) | .id] | first // empty')
-  [ -n "$ITEM_ID" ] && break
-  HAS=$(printf '%s' "$PAGE" | jq -r '.data.repository.issue.projectItems.pageInfo.hasNextPage')
-  CURSOR=$(printf '%s' "$PAGE" | jq -r '.data.repository.issue.projectItems.pageInfo.endCursor // empty')
-  [ "$HAS" = "true" ] && [ -n "$CURSOR" ] || break
-done
-
-# If missing from Project 4: gh project item-add 4 --owner eten-tech-foundation \
-#   --url https://github.com/eten-tech-foundation/fluent-mobile/issues/$ISSUE
-# then re-query ITEM_ID (same paginated GraphQL + jq scalar `.id`).
-
-# If Status is In Progress (Product) | Product Ready | Sprint Shaping → STOP.
-# Else set Status to In Progress (Dev) (option db53740f).
+node .github/scripts/project-board-cli.cjs set-status \
+  --issue "$CHOSEN" --to "In Progress (Dev)"
 ```
 
+The CLI adds the issue to Project 4 when missing, refuses Product-owned
+columns, and prints `WARN:` instead of failing the kickoff.
 #### 4c. Branch from `main`
 
 If a local or `origin` branch matching `*/${CHOSEN}-*` already exists: **resume**

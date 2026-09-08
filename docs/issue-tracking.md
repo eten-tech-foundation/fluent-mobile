@@ -16,7 +16,7 @@ The [repo Issues list](https://github.com/eten-tech-foundation/fluent-mobile/iss
 
 `Backlog` · `In Progress (Product)` · `Product Ready` · `Sprint Shaping` · `Dev Ready` · `In Progress (Dev)` · `In PR Review` · `In QA` · `Passed QA` · `To Deploy` · `Done`
 
-For open PRs awaiting review, prefer **`In PR Review`**. For **Needs-QA** PRs, check **Needs QA? Yes**; after merge, automation moves to **`In QA`** and QA tests the **nightly**. Humans set **`Passed QA`**. Engineering-only PRs skip that handoff. Set **`Done`** only after QA/release completes — never auto-close issues on PR merge. Canonical process: [guides/qa-process.md](guides/qa-process.md).
+For open PRs awaiting review, prefer **`In PR Review`**. For **Needs-QA** PRs, check **Needs QA? Yes**; after merge, automation moves to **`In QA`** and QA tests the **nightly**. Humans set **`Passed QA`**. For **engineering-only** PRs, check **Needs QA? No**; after merge, automation moves to **`Done`** and **closes** the linked issue. Canonical process: [guides/qa-process.md](guides/qa-process.md) · board rules: [guides/project-board.md](guides/project-board.md).
 
 Do **not** use org Project 7 (“Fluent Mobile App”) as the primary tracker unless the team explicitly migrates.
 
@@ -67,14 +67,14 @@ See [`.claude/commands/create-pr-branch.md`](../.claude/commands/create-pr-branc
 - **Base branch:** `main`
 - **Title:** `[#NNN]: Short description`
 - **Body:** **required** — fill [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md) / [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md) (same content: TLDR, Reviewer checklist, Details, Technical changes, Testing, How to verify, Follow-ups). The **`PR Description`** check fails empty / CodeRabbit-only bodies. Prefer `/start-issue` (full loop) or `/generate-pr-description` / `/create-pr` (`/open-pr` is an alias). Do not ship a short Summary/Test plan substitute.
-  - Under Details: `Refs #NNN` on its own line (links the issue without closing it)
-  - Do **not** use GitHub closing keywords (`Closes`, `Fixes`, `Resolves`) — merged PRs must not auto-close issues
+  - Under Details: `Refs #NNN` on its own line (links the issue without GitHub auto-close keywords)
+  - Do **not** use GitHub closing keywords (`Closes`, `Fixes`, `Resolves`) in the PR body — engineering-only close is **post-merge automation** when **Needs QA? No** is checked
   - **Assignee:** agents must assign the PR to the author (`--assignee @me`)
   - **Development sidebar:** closing keywords are the only API-friendly way to auto-populate GitHub’s “linked issues” widget; we refuse those keywords, so link `#NNN` manually in the PR sidebar when the widget is empty (or ask a human). `Refs #NNN` still cross-references the issue in timelines.
   - For related / stacked work that is not the full ticket, say “Part of #NNN” in prose, or link manually in the PR sidebar
-- After opening a PR, set Project 4 Status to **`In PR Review`** (if not already)
+- After opening a PR, set Project 4 Status to **`In PR Review`** via `node .github/scripts/project-board-cli.cjs set-status --issue NNN --to "In PR Review"`
 - If the PR **Needs QA** ([guides/qa-process.md](guides/qa-process.md)): check **Needs QA? Yes**. After merge, Status → **`In QA`** (automation). QA tests the nightly — merge is **not** blocked on QA. Leave the GitHub issue **open**
-- Engineering-only PRs: merge after review + CI; no QA handoff
+- Engineering-only PRs: check **Needs QA? No**. After merge, Status → **`Done`** and the issue is **closed** (automation)
 - **Template source of truth:** [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md) — also required by [delivery.mdc](../.cursor/rules/delivery.mdc); generate with `/generate-pr-description` or `/create-pr`
 
 ### Agent command: `/start-issue`
@@ -89,13 +89,16 @@ End-to-end agent loop for one issue (Cursor `/` palette or “run `/start-issue 
 
 Canonical instructions: [`.claude/commands/start-issue.md`](../.claude/commands/start-issue.md). Delivery-only (commits already on a branch): `/create-pr` / `/open-pr`.
 
-### Linking without auto-close
+### Linking without closing keywords
 
-Use `Refs #NNN` (or sidebar linking) so GitHub [does not auto-close](https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue) the issue on merge.
+Use `Refs #NNN` (or sidebar linking) so GitHub [does not auto-close](https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue) the issue via PR keywords.
 
-Never use `Closes`, `Fixes`, or `Resolves` in PR bodies for ticketed work. Issues stay open until QA finishes; humans set **`Done`** (and may close the issue) after **Passed QA** / release process — not on merge alone. **Needs-QA work merges on engineer approval**; QA is post-merge on the nightly ([guides/qa-process.md](guides/qa-process.md)).
+Never use `Closes`, `Fixes`, or `Resolves` in PR bodies for ticketed work.
 
-Put `Refs #NNN` on its **own line** under Details (see the PR template). Post-merge QA handoff ([`.github/scripts/qa-handoff-on-merge.cjs`](../.github/scripts/qa-handoff-on-merge.cjs)) treats that form as the linked ticket for handoff comments, assignee, and Project 4 → **In QA**. `Part of #NNN` is ignored (stacked/partial work stays out of automatic QA handoff). Explicit no-ticket chores may use `Refs: none`.
+- **Needs QA? Yes:** issue stays open after merge until QA finishes; humans set **`Passed QA`** / **`Done`**.
+- **Needs QA? No:** post-merge automation ([`.github/scripts/qa-handoff-on-merge.cjs`](../.github/scripts/qa-handoff-on-merge.cjs)) sets Project 4 → **Done** and closes the linked issue.
+
+Put `Refs #NNN` on its **own line** under Details (see the PR template). Handoff treats that form as the linked ticket. `Part of #NNN` is ignored (stacked/partial work stays out of automatic handoff). Explicit no-ticket chores may use `Refs: none`.
 
 ## Agents / delivery
 

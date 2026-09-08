@@ -33,27 +33,27 @@ Needs QA?
   /    \
 No      Yes
 |        |
-Done     Automation:
-(for     - Comment on linked issue(s)
- eng)    - Add assignee @Roslin22
-         - Project 4 → In QA
-         |
-         v
-   Next nightly APK (23:17 America/Los_Angeles; Slack 09:00–16:00 PT)
-         |
-         v
-       QA on nightly
-      /  \
-   Pass   Fail
-    |      |
-    |    New bug ticket
-    |    (code already on main)
-    |
-    v
-Passed QA
-    |
-    v
-Done / release process
+Automation:  Automation:
+- Comment   - Comment on linked issue(s)
+- Project 4 - Add assignee @Roslin22
+  → Done    - Project 4 → In QA
+- Close        |
+  issue        v
+         Next nightly APK (23:17 America/Los_Angeles; Slack 09:00–16:00 PT)
+               |
+               v
+             QA on nightly
+            /  \
+         Pass   Fail
+          |      |
+          |    New bug ticket
+          |    (code already on main)
+          |
+          v
+      Passed QA
+          |
+          v
+      Done / release process
 ```
 
 ## Ownership
@@ -62,7 +62,7 @@ Done / release process
 | --- | --- |
 | **Developer** | Decide Needs QA?; keep `Refs #NNN` correct; do **not** wait on QA to merge once an engineer approved |
 | **Reviewer / merger** | Approve and merge when CI is green (agents still do not merge — [delivery](../../.cursor/rules/delivery.mdc)) |
-| **CI** | On merge of Needs-QA PRs: issue handoff comment, assign Roslin, best-effort Project 4 → `In QA`. Nightly posts install URL on recent handoff issues |
+| **CI** | On merge: **Needs QA? Yes** → handoff comment, assign Roslin, Project 4 → `In QA`. **Needs QA? No** → Project 4 → `Done` + close linked issues. Nightly posts install URL on recent QA-handoff issues |
 | **QA** | Pass/fail on the **nightly** build that includes the merge (not an isolated PR preview, not production) |
 
 ## Needs QA? heuristics
@@ -82,17 +82,18 @@ Done / release process
 - Logging / metrics / instrumentation only
 - Dependabot bumps with no app UX impact (still run CI)
 
-## Status on Project 4 (QA-required work)
+## Status on Project 4
 
 | Step | Status |
 | --- | --- |
-| Coding | `In Progress (Dev)` |
-| PR open | `In PR Review` |
-| Merged (Needs QA? Yes) | `In QA` (automation from `In PR Review` / `In Progress (Dev)` when possible) |
+| Coding (`/start-issue`) | `In Progress (Dev)` (agent CLI) |
+| PR open (`/create-pr`) | `In PR Review` (agent CLI) |
+| Merged (**Needs QA? Yes**) | `In QA` (automation; issue stays open) |
+| Merged (**Needs QA? No**) | `Done` + GitHub issue **closed** (automation) |
 | QA pass on nightly | `Passed QA` (human) |
-| After release | `To Deploy` / `Done` — humans; do **not** auto-close on merge |
+| After release (Needs-QA path) | `To Deploy` / `Done` — humans |
 
-Engineering-only PRs skip the QA handoff. They still use `In PR Review` and merge when review + CI allow.
+Still never put `Closes` / `Fixes` / `Resolves` in the PR body — engineering-only close is post-merge automation only.
 
 ### Optional isolated `preview-build`
 
@@ -106,12 +107,20 @@ The **`preview-build`** label still builds an isolated PR APK for **debugging**.
 4. Confirm automation commented on the issue, assigned `@Roslin22`, and moved Project 4 → **In QA** (or move/assign manually if secrets were unavailable).
 5. On QA fail after merge: open a **new** bug ticket; fix on a new branch/PR.
 
+## Developer checklist (engineering-only)
+
+1. Open PR with `Refs #NNN` (never closing keywords).
+2. Check **Needs QA? No** in the PR body.
+3. Get engineer approval + green CI → **merge** (human merger).
+4. Confirm automation moved Project 4 → **Done** and closed the issue (or do so manually if secrets were unavailable).
+
 ## CI / automation (current)
 
 | Piece | Behavior |
 | --- | --- |
-| [`.github/workflows/qa-handoff.yml`](../../.github/workflows/qa-handoff.yml) | On merge: if Needs QA? Yes → comment + assign Roslin + best-effort `In QA` |
-| [`.github/workflows/nightly-preview.yml`](../../.github/workflows/nightly-preview.yml) | Daily binary APK; comments install URL on issues with a recent handoff marker |
+| [`.github/workflows/qa-handoff.yml`](../../.github/workflows/qa-handoff.yml) | On merge: **Yes** → comment + assign Roslin + `In QA`; **No** → comment + `Done` + close linked issues |
+| [`.github/scripts/project-board-cli.cjs`](../../.github/scripts/project-board-cli.cjs) | Agent `/start-issue` / `/create-pr` Status moves |
+| [`.github/workflows/nightly-preview.yml`](../../.github/workflows/nightly-preview.yml) | Daily binary APK; comments install URL on issues with a recent QA-handoff marker |
 | [`.github/workflows/preview-build.yml`](../../.github/workflows/preview-build.yml) | Optional label → isolated PR APK (**PR comment only**) |
 
 ## Related
