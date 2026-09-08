@@ -16,7 +16,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
     "doctor": "expo-doctor",
-    "expo:check": "EXPO_OFFLINE=1 expo install --check",
+    "expo:check": "node ./scripts/expo-check-offline.cjs",
     "expo:check:latest": "expo install --check"
   },
   "dependencies": {

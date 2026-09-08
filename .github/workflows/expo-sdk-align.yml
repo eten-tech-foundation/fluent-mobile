@@ -99,6 +99,9 @@ jobs:
         with:
           app-id: ${{ secrets.EXPO_SDK_ALIGN_APP_ID }}
           private-key: ${{ secrets.EXPO_SDK_ALIGN_APP_PRIVATE_KEY }}
+          # Restrict below installation defaults (least privilege for create-pull-request).
+          permission-contents: write
+          permission-pull-requests: write
 
       - name: Resolve PR authoring token
         id: token

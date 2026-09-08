@@ -10,11 +10,11 @@ This repo runs GitHub Actions on pushes and pull requests. This doc maps what ru
 | `action-pins.yml` | `Action pins` | SHA-pin gate: every `uses:` in workflow YAML must be a 40-character commit. Runs on `pull_request_target` so the checker comes from `main`, not the PR. Local: `ruby .github/scripts/check-action-pins.rb` |
 | `lint.yml` | `Lint & Format` | ESLint + Prettier (`format:check`) + `architecture-guard --ci` |
 | `test.yml` | `Unit Tests` | Jest (`npm test -- --ci`) |
-| `quality-gates.yml` | `TypeScript`, `expo-doctor`, `expo install --check` | Typecheck + lockfile `expo-doctor` + **offline** `expo install --check` (`EXPO_OFFLINE=1`; see [Two clocks](#two-clocks--pr-ci-vs-scheduled-expo-health)) |
+| `quality-gates.yml` | `TypeScript`, `expo-doctor`, `expo install --check`, `Docs Structure Check` | Typecheck + lockfile `expo-doctor` + **offline** `expo install --check` (`EXPO_OFFLINE=1`; see [Two clocks](#two-clocks--pr-ci-vs-scheduled-expo-health)) + docs layout guard |
 | `expo-sdk-align.yml` | `Align Expo SDK patches` | Weekly Monday + `workflow_dispatch`: online `expo install --fix` → full doctor → one rolling PR on `chore/expo-sdk-align` (#422) |
 | `preview-build.yml` | Android EAS preview APK | Optional label `preview-build` — binary only (no OTA); **PR comment only** (debug). Does not move Project 4 or start QA |
 | `qa-handoff.yml` | Post-merge QA handoff | On merge of Needs-QA PRs: issue comment + assign `@Roslin22` + best-effort Project 4 → `In QA` ([guides/qa-process.md](guides/qa-process.md)) |
-| `nightly-preview.yml` | Nightly Android APK | 23:17 PT APK + 09:07 PT Slack (09:00–16:00 PT); `workflow_dispatch`; install comments on recent handoffs |
+| `nightly-preview.yml` | Nightly Android APK | 23:17 PT APK cron (trusted even when GitHub delays) + 09:07 PT Slack (09:00–16:00 PT); `workflow_dispatch`; install comments on recent handoffs |
 | `eas-build.yml` | Tag → version sync | Production release path on `v*` tags |
 
 Local mirrors (run before claiming PR-ready):
