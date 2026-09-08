@@ -251,6 +251,23 @@ describe('useVerseAudio', () => {
     expect(result.current.loadedTakeId).toBe('rec_1');
   });
 
+  it('pausePlayback is a no-op when draft is not playing', async () => {
+    const take = makeTake();
+    loadTakes.mockResolvedValue([take]);
+
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+
+    await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+    mockPlaybackPause.mockClear();
+    await act(async () => {
+      await result.current.pausePlayback();
+    });
+
+    expect(mockPlaybackPause).not.toHaveBeenCalled();
+    expect(result.current.state).toBe('recorded');
+  });
+
   it('errors when playTake file is missing', async () => {
     const take = makeTake();
     loadTakes.mockResolvedValue([take]);

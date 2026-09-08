@@ -189,6 +189,8 @@ export interface ChapterAssignmentData {
   bookName?: string;
   bibleName?: string;
   bibleAbbreviation?: string;
+  /** Project source language ISO-639-3 (Aquifer / source-audio query). */
+  sourceLanguageCode?: string;
   hasConflict: boolean;
 }
 
@@ -208,6 +210,7 @@ export interface ChapterAssignmentRow {
   book_name?: string;
   bible_name?: string;
   bible_abbreviation?: string;
+  source_language_code?: string;
   has_conflict?: number;
 }
 

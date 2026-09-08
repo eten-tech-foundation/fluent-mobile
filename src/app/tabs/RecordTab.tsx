@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   Alert,
   Linking,
@@ -24,8 +30,12 @@ import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import { useDraftingContext } from '../context/DraftingContext';
 import { getBibleTextId, getRecordedVerseNumbers } from '../../db/queries';
 import { useVerseAudio } from '../../hooks/useVerseAudio';
+import { useSourceAudio } from '../../hooks/useSourceAudio';
+import { useDraftingUnit } from '../../hooks/useDraftingUnit';
+import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
 import { requestMicPermission } from '../../audio/micPermission';
 import { logger } from '../../utils/logger';
+import { recordSourceTextHint } from '../../utils/recordSourceTextHint';
 import { PlaybackProgressBar } from '../../components/ui/PlaybackProgressBar';
 import { DraftTakeRow } from '../../components/ui/DraftTakeRow';
 import { SharedTakeRow } from '../../components/ui/SharedTakeRow';
@@ -114,8 +124,13 @@ export function RecordTab({
   const router = useRouter();
   const rawParams = useLocalSearchParams<{ chapterName?: string }>();
   const chapterName = parseRequiredString(rawParams.chapterName, 'chapterName');
-  const { verses, selectedVerse, setSelectedVerse, refreshRecordedVerses } =
-    useDraftingContext();
+  const {
+    verses,
+    selectedVerse,
+    setSelectedVerse,
+    refreshRecordedVerses,
+    setCurrentlyPlayingVerse,
+  } = useDraftingContext();
   const [bibleTextId, setBibleTextId] = useState<number | null>(null);
   const [sourceExpanded, setSourceExpanded] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -136,14 +151,47 @@ export function RecordTab({
     },
     onChapterClaimed,
   });
+  const { draftingUnit } = useDraftingUnit();
   const verseIndex = verses.findIndex(v => v.verseNumber === selectedVerse);
   const prevDisabled = verseIndex <= 0;
   const nextDisabled = verseIndex < 0 || verseIndex >= verses.length - 1;
   const selected = verses.find(v => v.verseNumber === selectedVerse);
   const reference = `${chapterName}:${selectedVerse}`;
+  const sourceUnitCaption =
+    draftingUnit === 'pericope' && verses.length > 0 && verseIndex >= 0
+      ? `Pericope ${verseIndex + 1} / ${verses.length}`
+      : `Verse ${selectedVerse}`;
   const hasTake = verseAudio.takes.length > 0;
   const hasAnyTake = hasTake || verseAudio.allTakes.length > 0;
   const activeViewHasTakes = takeView === 'mine' ? hasTake : hasAnyTake;
+
+  const resolveBibleTextId = useCallback(async () => {
+    return getBibleTextId(
+      chapterData.bibleId,
+      chapterData.bookId,
+      chapterData.chapterNumber,
+      selectedVerse,
+    );
+  }, [
+    chapterData.bibleId,
+    chapterData.bookId,
+    chapterData.chapterNumber,
+    selectedVerse,
+  ]);
+
+  /** Shared generation so sync-triggered and verse-change lookups ignore stale IDs. */
+  const bibleTextRequestIdRef = useRef(0);
+
+  const refreshBibleTextId = useCallback(() => {
+    const requestId = ++bibleTextRequestIdRef.current;
+    void resolveBibleTextId().then(id => {
+      if (requestId === bibleTextRequestIdRef.current) {
+        setBibleTextId(id);
+      }
+    });
+  }, [resolveBibleTextId]);
+
+  const isSyncing = useGlobalSyncStatus(refreshBibleTextId);
 
   useEffect(() => {
     setTakeView('mine');
@@ -161,22 +209,17 @@ export function RecordTab({
   }, [verseAudio.hasMultipleRecorders, takeView]);
 
   useEffect(() => {
-    let cancelled = false;
+    const requestId = ++bibleTextRequestIdRef.current;
     setBibleTextId(null);
-    (async () => {
-      const id = await getBibleTextId(
-        chapterData.bibleId,
-        chapterData.bookId,
-        chapterData.chapterNumber,
-        selectedVerse,
-      );
-      if (!cancelled) setBibleTextId(id);
-    })();
+    void resolveBibleTextId().then(id => {
+      if (requestId === bibleTextRequestIdRef.current) {
+        setBibleTextId(id);
+      }
+    });
     return () => {
-      cancelled = true;
+      bibleTextRequestIdRef.current += 1;
     };
-  }, [chapterData, selectedVerse]);
-
+  }, [resolveBibleTextId, verses.length]);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -230,10 +273,7 @@ export function RecordTab({
   }, [verseAudio.errorMessage]);
 
   const recordDisabled = bibleTextId === null;
-  const syncingMessage =
-    bibleTextId === null
-      ? 'Source text still syncing for this verse — recording will unlock when ready.'
-      : null;
+  const syncingMessage = recordSourceTextHint(bibleTextId, isSyncing);
 
   async function ensureMic(): Promise<boolean> {
     const permission = await requestMicPermission();
@@ -252,16 +292,6 @@ export function RecordTab({
       ],
     );
     return false;
-  }
-
-  async function handleStart() {
-    if (!(await ensureMic())) return;
-    setElapsedMs(0);
-    await verseAudio.start();
-  }
-
-  async function handleStop() {
-    await verseAudio.stop();
   }
 
   /**
@@ -318,6 +348,79 @@ export function RecordTab({
     (verseAudio.state === 'idle' && activeViewHasTakes);
   const showSourceAudio = showIdle || showReview;
 
+  const sourceAudio = useSourceAudio({
+    projectId: chapterData.projectId,
+    bookCode: chapterData.bookCode,
+    chapter: chapterData.chapterNumber,
+    bibleId: chapterData.bibleId,
+    languageCode: chapterData.sourceLanguageCode,
+    verse: selectedVerse,
+    enabled: showSourceAudio,
+    onPlayingVerseChange: setCurrentlyPlayingVerse,
+  });
+
+  const pauseDraftPlaybackRef = useRef(verseAudio.pausePlayback);
+  const stopSourceAudioRef = useRef(sourceAudio.stop);
+
+  useEffect(() => {
+    pauseDraftPlaybackRef.current = verseAudio.pausePlayback;
+  }, [verseAudio.pausePlayback]);
+
+  useEffect(() => {
+    stopSourceAudioRef.current = sourceAudio.stop;
+  }, [sourceAudio.stop]);
+
+  // Exclusive audio: draft take / record wins over source, and vice versa.
+  // Handlers await the competing engine before starting. Effects are narrow
+  // fallbacks for externally driven state and must no-op when the target is
+  // already idle — otherwise expo-audio status events can ping-pong into
+  // Maximum update depth exceeded on physical devices.
+  // Note: verseAudio `paused` is recording-paused (source dock stays usable
+  // for review); only `playing` / `recording` own the audio bus.
+  useEffect(() => {
+    if (!sourceAudio.isPlaying) return;
+    if (verseAudio.state !== 'playing') return;
+    void pauseDraftPlaybackRef.current();
+  }, [sourceAudio.isPlaying, verseAudio.state]);
+
+  useEffect(() => {
+    const draftOwnsAudio =
+      verseAudio.state === 'playing' || verseAudio.state === 'recording';
+    if (!draftOwnsAudio) return;
+    if (sourceAudio.status === 'idle') return;
+    void stopSourceAudioRef.current();
+  }, [verseAudio.state, sourceAudio.status]);
+
+  async function handleStart() {
+    if (!(await ensureMic())) return;
+    setElapsedMs(0);
+    if (sourceAudio.status !== 'idle') {
+      await stopSourceAudioRef.current();
+    }
+    await verseAudio.start();
+  }
+
+  async function handleStop() {
+    await verseAudio.stop();
+  }
+
+  async function handlePlayTake(take: Recording) {
+    if (sourceAudio.status !== 'idle') {
+      await stopSourceAudioRef.current();
+    }
+    await verseAudio.playTake(take);
+  }
+
+  async function handleSourcePlayPause() {
+    if (sourceAudio.isPlaying) {
+      await sourceAudio.pause();
+      return;
+    }
+    if (verseAudio.state === 'playing') {
+      await pauseDraftPlaybackRef.current();
+    }
+    await sourceAudio.play();
+  }
   const currentUserId = userId;
   const isTaken = useMemo(
     () => isChapterTakenByOther(chapterData, currentUserId),
@@ -673,7 +776,7 @@ export function RecordTab({
                             onPlayPause={() => {
                               void (isThisPlaying
                                 ? verseAudio.pausePlayback()
-                                : verseAudio.playTake(take));
+                                : handlePlayTake(take));
                             }}
                             onSelect={() => {
                               void verseAudio.selectTake(take.id);
@@ -719,7 +822,7 @@ export function RecordTab({
                               onPlayPause={() => {
                                 void (isThisPlaying
                                   ? verseAudio.pausePlayback()
-                                  : verseAudio.playTake(take));
+                                  : handlePlayTake(take));
                               }}
                               onDesignateCanonical={() => {
                                 void verseAudio.setCanonical(take.id);
@@ -788,9 +891,19 @@ export function RecordTab({
 
       {showSourceAudio ? (
         <SourceAudioPlayerBar
-          verses={verses}
-          selectedVerse={selectedVerse}
           sourceLabel={chapterData.bibleName ?? 'Source'}
+          unitCaption={sourceUnitCaption}
+          loadState={sourceAudio.loadState}
+          isPlaying={sourceAudio.isPlaying}
+          positionMs={sourceAudio.positionMs}
+          durationMs={sourceAudio.durationMs}
+          onPlayPause={() => {
+            void handleSourcePlayPause();
+          }}
+          onSeek={ms => {
+            void sourceAudio.seek(ms);
+          }}
+          onRetry={sourceAudio.retry}
         />
       ) : null}
 

@@ -102,6 +102,7 @@ jest.mock('../db/repository', () => ({
   insertBibleTexts: jest.fn().mockResolvedValue(undefined),
   getChaptersToSync: jest.fn().mockResolvedValue(new Map()),
   getLocalProjectIds: jest.fn().mockResolvedValue([1]),
+  hasLanguagesMissingIsoCode: jest.fn().mockResolvedValue(false),
   userHasLocalProjects: jest.fn().mockResolvedValue(true),
   userHasLocalChapterAssignments: jest.fn().mockResolvedValue(true),
   userNeedsAssigneeRepair: jest.fn().mockResolvedValue(false),
@@ -248,6 +249,7 @@ describe('refreshChapterMetadataIfOnline', () => {
     await refreshChapterMetadataIfOnline(2);
 
     expect(mockGetConnectivitySnapshot).toHaveBeenCalledTimes(2);
+    expect(FluentAPI.getLanguages).not.toHaveBeenCalled();
     expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(2);
     expect(FluentAPI.getChapterAssignments).toHaveBeenNthCalledWith(
       1,
