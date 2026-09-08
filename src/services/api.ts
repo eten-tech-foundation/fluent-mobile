@@ -7,10 +7,12 @@ import {
   BibleTextsResponse,
   ChapterAssignmentsResponse,
   ForgotPasswordResponse,
+  PericopeSetsResponse,
   SignInResponse,
   SignOutResponse,
   UserChapterAssignmentsResponse,
   UserProjectsResponse,
+  unwrapApiListResponse,
 } from '../types/api/responses';
 import type {
   ApiSourceAudioResponse,
@@ -40,7 +42,6 @@ import {
 } from './httpClient';
 import { resolveSessionToken } from './sessionToken';
 import { createApiError } from './apiError';
-import type { ApiPericopeGroup } from '../types/api/types';
 import { parseVerseAudioResponse } from './verseAudioContract';
 import {
   buildVerseAudioFormData,
@@ -306,24 +307,13 @@ export const FluentAPI = {
         languageCode,
       ),
     ),
-  getPericopeSets: (): Promise<ApiPericopeSet[]> =>
-    publicRequest<ApiPericopeSet[]>('/pericope-sets'),
-
-  /**
-   * Pericope groupings for one chapter (#XXX). Chapter-scoped only — no bulk
-   * endpoint. A pericope spanning chapters returns only in-chapter verses
-   * from this call (confirmed API limitation, flagged separately).
-   */
-  getChapterPericopes: (
-    projectId: number,
-    bookCode: string,
-    chapter: number,
-  ): Promise<ApiPericopeGroup[]> =>
-    authedRequest<ApiPericopeGroup[]>(
-      `/projects/${projectId}/pericopes/${encodeURIComponent(
-        bookCode,
-      )}/${chapter}`,
-    ),
+  getPericopeSets: async (): Promise<ApiPericopeSet[]> => {
+    const response = await publicRequest<PericopeSetsResponse>(
+      '/pericope-sets',
+    );
+    const raw = unwrapApiListResponse(response);
+    return Array.isArray(raw) ? raw : [];
+  },
 
   /**
    * Source/reference chapter audio for the drafting dock (fluent-api #282).

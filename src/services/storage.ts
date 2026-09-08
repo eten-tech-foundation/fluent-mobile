@@ -262,3 +262,41 @@ export function setSyncPausedUntilMs(ms: number | null): void {
 export function clearSyncPausedUntil(): void {
   setSyncPausedUntilMs(null);
 }
+
+const pericopeSetVersionKey = (pericopeSetId: number) =>
+  `pericope_set_version:${pericopeSetId}`;
+
+export function getPericopeSetVersion(pericopeSetId: number): string {
+  return kvStorage.getItemSync(pericopeSetVersionKey(pericopeSetId)) ?? '';
+}
+
+export function setPericopeSetVersion(
+  pericopeSetId: number,
+  version: string,
+): void {
+  kvStorage.setItemSync(pericopeSetVersionKey(pericopeSetId), version);
+  log.info('Pericope set version updated', { pericopeSetId, version });
+}
+
+const pericopeBookVersionKey = (pericopeSetId: number, bookCode: string) =>
+  `pericope_book_version:${pericopeSetId}:${bookCode}`;
+
+export function getPericopeBookVersion(
+  pericopeSetId: number,
+  bookCode: string,
+): string {
+  return (
+    kvStorage.getItemSync(pericopeBookVersionKey(pericopeSetId, bookCode)) ?? ''
+  );
+}
+
+export function setPericopeBookVersion(
+  pericopeSetId: number,
+  bookCode: string,
+  version: string,
+): void {
+  kvStorage.setItemSync(
+    pericopeBookVersionKey(pericopeSetId, bookCode),
+    version,
+  );
+}

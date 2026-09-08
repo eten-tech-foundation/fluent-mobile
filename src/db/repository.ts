@@ -1244,8 +1244,6 @@ export type { EnqueueDownloadItemInput } from './downloadQueueRepository';
 export {
   insertPericopeSets,
   getProjectPericopeSetId,
-  insertPericopeVersesBatch,
   getChaptersNeedingPericopeSync,
+  upsertPericopeSet,
 } from './repositories/pericopesRepository';
-
-export type { ApiPericopeGroupInput } from './repositories/pericopesRepository';

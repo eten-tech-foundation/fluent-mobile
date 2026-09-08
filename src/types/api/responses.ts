@@ -103,7 +103,3 @@ export interface ApiPericopeSet {
 export type PericopeSetsResponse =
   | ApiDataResponse<ApiPericopeSet[]>
   | ApiPericopeSet[];
-
-export type ChapterPericopesResponse =
-  | ApiDataResponse<ApiPericopeGroup[]>
-  | ApiPericopeGroup[];

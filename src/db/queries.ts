@@ -715,15 +715,16 @@ export interface PericopeGroupResult {
 export async function getPericopesForChapter(
   bookId: number,
   chapterNumber: number,
+  pericopeSetId: number,
 ): Promise<PericopeGroupResult[]> {
   const db = getDatabase();
   try {
     const result = await db.execute(
       `SELECT pericope_number, pericope_title, chapter_number, verse_number
        FROM pericope_verses
-       WHERE book_id = ? AND chapter_number = ?
+       WHERE book_id = ? AND chapter_number = ? AND pericope_set_id = ?
        ORDER BY pericope_number, verse_number`,
-      [bookId, chapterNumber],
+      [bookId, chapterNumber, pericopeSetId],
     );
     const rows = (result.rows ?? []) as unknown as {
       pericope_number: string;
@@ -755,6 +756,7 @@ export async function getPericopesForChapter(
       error,
       bookId,
       chapterNumber,
+      pericopeSetId,
     });
     return [];
   }
@@ -764,14 +766,15 @@ export async function getPericopeForVerse(
   bookId: number,
   chapterNumber: number,
   verseNumber: number,
+  pericopeSetId: number,
 ): Promise<PericopeGroupResult | null> {
   const db = getDatabase();
   try {
     const numberResult = await db.execute(
       `SELECT pericope_number FROM pericope_verses
-       WHERE book_id = ? AND chapter_number = ? AND verse_number = ?
+       WHERE book_id = ? AND chapter_number = ? AND verse_number = ? AND pericope_set_id = ?
        LIMIT 1`,
-      [bookId, chapterNumber, verseNumber],
+      [bookId, chapterNumber, verseNumber, pericopeSetId],
     );
     const pericopeNumber = numberResult.rows?.[0]?.pericope_number as
       | string
@@ -781,9 +784,9 @@ export async function getPericopeForVerse(
     const result = await db.execute(
       `SELECT pericope_title, chapter_number, verse_number
        FROM pericope_verses
-       WHERE book_id = ? AND pericope_number = ?
+       WHERE book_id = ? AND pericope_number = ? AND pericope_set_id = ?
        ORDER BY chapter_number, verse_number`,
-      [bookId, pericopeNumber],
+      [bookId, pericopeNumber, pericopeSetId],
     );
     const rows = (result.rows ?? []) as unknown as {
       pericope_title: string | null;
@@ -806,6 +809,7 @@ export async function getPericopeForVerse(
       bookId,
       chapterNumber,
       verseNumber,
+      pericopeSetId,
     });
     return null;
   }
