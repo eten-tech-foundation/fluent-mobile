@@ -6,9 +6,10 @@ name: Nightly Preview
 
 on:
   schedule:
-    # APK at 23:17 America/Los_Angeles (off :00 peak). Changing the cron
-    # string re-registers GitHub's scheduler — after workflow_dispatch,
-    # `0 6 * * *` had drifted to ~17:00–18:00 UTC (~11:00 PT) the next day.
+    # APK intended ~23:17 America/Los_Angeles (off :00 peak). GitHub often
+    # delays schedule fires by hours — `nightly-windows.cjs` trusts this
+    # cron string (`github.event.schedule`) so a ~04–06 PT landing still
+    # builds. Changing the cron re-registers the scheduler (see #421 / #459).
     - cron: '17 23 * * *'
       timezone: America/Los_Angeles
     # Slack after overnight build. Incoming webhooks cannot mute phone
@@ -97,27 +98,32 @@ jobs:
             echo "run_url=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           } >> "${GITHUB_OUTPUT}"
 
-      - name: Drop drifted schedule fires
+      - name: Resolve Pacific windows (cron-aware)
         id: window
         env:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
+          # Authoritative for APK vs Slack slots when GitHub delays the fire.
+          GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
         run: |
           set -euo pipefail
           node .github/scripts/nightly-windows.cjs | tee -a "${GITHUB_OUTPUT}"
           IN_WINDOW=$(grep '^in_window=' "${GITHUB_OUTPUT}" | tail -n1 | cut -d= -f2)
           HOUR_PT=$(grep '^hour_pt=' "${GITHUB_OUTPUT}" | tail -n1 | cut -d= -f2)
+          SCHEDULE="${GITHUB_EVENT_SCHEDULE:-}"
           if [ "${IN_WINDOW}" != "true" ]; then
-            echo "::notice::Ignoring drifted schedule fire at ${HOUR_PT}:xx PT (expected ~23:17 America/Los_Angeles)."
+            echo "::notice::Ignoring non-APK schedule at ${HOUR_PT}:xx PT (schedule=${SCHEDULE:-none}; APK cron is 17 23 * * *)."
+          elif [ "${GITHUB_EVENT_NAME}" = "schedule" ] && [ "${SCHEDULE}" = "17 23 * * *" ] && { [ "${HOUR_PT}" -lt 22 ] && [ "${HOUR_PT}" -gt 2 ]; }; then
+            echo "::notice::APK cron delayed to ${HOUR_PT}:xx PT — building anyway (cron identity trusted; see #459)."
           fi
 
-      - name: Write drifted-schedule summary
+      - name: Write ignored-schedule summary
         if: steps.window.outputs.in_window != 'true'
         run: |
           {
-            echo "## Nightly preview — ignored drifted schedule"
+            echo "## Nightly preview — ignored schedule"
             echo ""
-            echo "GitHub fired \`schedule\` outside 22:00–02:00 America/Los_Angeles."
-            echo "No Slack notification and no EAS build. Cron is \`17 23 * * *\` with \`timezone: America/Los_Angeles\`."
+            echo "Not the APK cron (\`17 23 * * *\`) and outside the legacy 22:00–02:00 America/Los_Angeles wall-clock guard."
+            echo "No Slack notification and no EAS build. Delayed APK cron fires still build via cron identity (#459)."
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Check for new commits since last success
@@ -128,13 +134,8 @@ jobs:
         run: |
           set -euo pipefail
           FORCE="${FORCE_BUILD}"
-          PREV_SHA=""
-          # Latest successful run of this workflow on the default branch (main)
-          PREV_SHA=$(gh api \
-            -H "Accept: application/vnd.github+json" \
-            "/repos/${GITHUB_REPOSITORY}/actions/workflows/nightly-preview.yml/runs?branch=main&status=completed&per_page=20" \
-            --jq '[.workflow_runs[] | select(.conclusion == "success" and .head_sha != null)] | .[0].head_sha // empty' \
-            2>/dev/null || true)
+          # Ignore green “ignored schedule” no-ops that never built (#459).
+          PREV_SHA=$(node .github/scripts/resolve-last-nightly-sha.cjs | tee /dev/stderr | grep '^prev_sha=' | cut -d= -f2- || true)
 
           echo "prev_sha=${PREV_SHA}" >> "${GITHUB_OUTPUT}"
 

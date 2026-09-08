@@ -31,7 +31,7 @@ const VARIANT_SIZE: Record<RecordCircleVariant, number> = {
 
 /**
  * Shared circular control for Record-tab idle / capture / review.
- * Matches Lovable + docs/design/record-tab button chrome.
+ * Matches Lovable + docs/features/record-tab/design button chrome.
  */
 export function RecordCircleButton({
   variant,
