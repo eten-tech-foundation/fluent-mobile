@@ -30,8 +30,6 @@ import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import { useDraftingContext } from '../context/DraftingContext';
 import { getBibleTextId, getRecordedVerseNumbers } from '../../db/queries';
 import { useVerseAudio } from '../../hooks/useVerseAudio';
-import { useSourceAudio } from '../../hooks/useSourceAudio';
-import { useDraftingUnit } from '../../hooks/useDraftingUnit';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
 import { requestMicPermission } from '../../audio/micPermission';
 import { logger } from '../../utils/logger';
@@ -42,7 +40,10 @@ import { SharedTakeRow } from '../../components/ui/SharedTakeRow';
 import { TakeGroupHeader } from '../../components/ui/TakeGroupHeader';
 import { RecordCircleButton } from '../../components/ui/RecordCircleButton';
 import { SourceTextAccordion } from '../../components/ui/SourceTextAccordion';
-import { SourceAudioPlayerBar } from '../../components/layout/SourceAudioPlayerBar';
+import {
+  useSourceAudioControl,
+  useSourceAudioRecordTabIntegration,
+} from '../../components/layout/SourceAudioShell';
 import { WarningBanner } from '../../components/ui/WarningBanner';
 import { StageAdvanceConfirmSheet } from '../../components/ui/StageAdvanceConfirmSheet';
 import {
@@ -124,13 +125,8 @@ export function RecordTab({
   const router = useRouter();
   const rawParams = useLocalSearchParams<{ chapterName?: string }>();
   const chapterName = parseRequiredString(rawParams.chapterName, 'chapterName');
-  const {
-    verses,
-    selectedVerse,
-    setSelectedVerse,
-    refreshRecordedVerses,
-    setCurrentlyPlayingVerse,
-  } = useDraftingContext();
+  const { verses, selectedVerse, setSelectedVerse, refreshRecordedVerses } =
+    useDraftingContext();
   const [bibleTextId, setBibleTextId] = useState<number | null>(null);
   const [sourceExpanded, setSourceExpanded] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -151,16 +147,11 @@ export function RecordTab({
     },
     onChapterClaimed,
   });
-  const { draftingUnit } = useDraftingUnit();
   const verseIndex = verses.findIndex(v => v.verseNumber === selectedVerse);
   const prevDisabled = verseIndex <= 0;
   const nextDisabled = verseIndex < 0 || verseIndex >= verses.length - 1;
   const selected = verses.find(v => v.verseNumber === selectedVerse);
   const reference = `${chapterName}:${selectedVerse}`;
-  const sourceUnitCaption =
-    draftingUnit === 'pericope' && verses.length > 0 && verseIndex >= 0
-      ? `Pericope ${verseIndex + 1} / ${verses.length}`
-      : `Verse ${selectedVerse}`;
   const hasTake = verseAudio.takes.length > 0;
   const hasAnyTake = hasTake || verseAudio.allTakes.length > 0;
   const activeViewHasTakes = takeView === 'mine' ? hasTake : hasAnyTake;
@@ -348,53 +339,25 @@ export function RecordTab({
     (verseAudio.state === 'idle' && activeViewHasTakes);
   const showSourceAudio = showIdle || showReview;
 
-  const sourceAudio = useSourceAudio({
-    projectId: chapterData.projectId,
-    bookCode: chapterData.bookCode,
-    chapter: chapterData.chapterNumber,
-    bibleId: chapterData.bibleId,
-    languageCode: chapterData.sourceLanguageCode,
-    verse: selectedVerse,
-    enabled: showSourceAudio,
-    onPlayingVerseChange: setCurrentlyPlayingVerse,
+  const sourceAudioControl = useSourceAudioControl();
+  const stopSourceAudioRef = useRef(
+    sourceAudioControl?.stop ?? (async () => {}),
+  );
+
+  useEffect(() => {
+    stopSourceAudioRef.current = sourceAudioControl?.stop ?? (async () => {});
+  }, [sourceAudioControl?.stop]);
+
+  useSourceAudioRecordTabIntegration({
+    sourceEnabled: showSourceAudio,
+    verseAudioState: verseAudio.state,
+    pauseDraftPlayback: verseAudio.pausePlayback,
   });
-
-  const pauseDraftPlaybackRef = useRef(verseAudio.pausePlayback);
-  const stopSourceAudioRef = useRef(sourceAudio.stop);
-
-  useEffect(() => {
-    pauseDraftPlaybackRef.current = verseAudio.pausePlayback;
-  }, [verseAudio.pausePlayback]);
-
-  useEffect(() => {
-    stopSourceAudioRef.current = sourceAudio.stop;
-  }, [sourceAudio.stop]);
-
-  // Exclusive audio: draft take / record wins over source, and vice versa.
-  // Handlers await the competing engine before starting. Effects are narrow
-  // fallbacks for externally driven state and must no-op when the target is
-  // already idle — otherwise expo-audio status events can ping-pong into
-  // Maximum update depth exceeded on physical devices.
-  // Note: verseAudio `paused` is recording-paused (source dock stays usable
-  // for review); only `playing` / `recording` own the audio bus.
-  useEffect(() => {
-    if (!sourceAudio.isPlaying) return;
-    if (verseAudio.state !== 'playing') return;
-    void pauseDraftPlaybackRef.current();
-  }, [sourceAudio.isPlaying, verseAudio.state]);
-
-  useEffect(() => {
-    const draftOwnsAudio =
-      verseAudio.state === 'playing' || verseAudio.state === 'recording';
-    if (!draftOwnsAudio) return;
-    if (sourceAudio.status === 'idle') return;
-    void stopSourceAudioRef.current();
-  }, [verseAudio.state, sourceAudio.status]);
 
   async function handleStart() {
     if (!(await ensureMic())) return;
     setElapsedMs(0);
-    if (sourceAudio.status !== 'idle') {
+    if (sourceAudioControl && sourceAudioControl.status !== 'idle') {
       await stopSourceAudioRef.current();
     }
     await verseAudio.start();
@@ -405,21 +368,10 @@ export function RecordTab({
   }
 
   async function handlePlayTake(take: Recording) {
-    if (sourceAudio.status !== 'idle') {
+    if (sourceAudioControl && sourceAudioControl.status !== 'idle') {
       await stopSourceAudioRef.current();
     }
     await verseAudio.playTake(take);
-  }
-
-  async function handleSourcePlayPause() {
-    if (sourceAudio.isPlaying) {
-      await sourceAudio.pause();
-      return;
-    }
-    if (verseAudio.state === 'playing') {
-      await pauseDraftPlaybackRef.current();
-    }
-    await sourceAudio.play();
   }
   const currentUserId = userId;
   const isTaken = useMemo(
@@ -888,24 +840,6 @@ export function RecordTab({
           text={selected?.text}
         />
       </ScrollView>
-
-      {showSourceAudio ? (
-        <SourceAudioPlayerBar
-          sourceLabel={chapterData.bibleName ?? 'Source'}
-          unitCaption={sourceUnitCaption}
-          loadState={sourceAudio.loadState}
-          isPlaying={sourceAudio.isPlaying}
-          positionMs={sourceAudio.positionMs}
-          durationMs={sourceAudio.durationMs}
-          onPlayPause={() => {
-            void handleSourcePlayPause();
-          }}
-          onSeek={ms => {
-            void sourceAudio.seek(ms);
-          }}
-          onRetry={sourceAudio.retry}
-        />
-      ) : null}
 
       {confirmVisible && stageAdvance.destination ? (
         <StageAdvanceConfirmSheet

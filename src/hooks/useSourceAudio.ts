@@ -9,6 +9,8 @@ import {
   chapterSourceAudioCacheKey,
   isCachedSourceAudioResponseValid,
   resolveSourceAudioUri,
+  sourceAudioItemDurationMs,
+  verseAtPositionMs,
   verseStartMs,
 } from './sourceAudioHelpers';
 
@@ -47,9 +49,11 @@ export function useSourceAudio({
 
   const [loadState, setLoadState] = useState<SourceAudioLoadState>('empty');
   const [uri, setUri] = useState<string | null>(null);
+  const [catalogDurationMs, setCatalogDurationMs] = useState(0);
   const [verseTimestamps, setVerseTimestamps] =
     useState<ApiSourceAudioResponse['verseTimestamps']>(undefined);
   const [dblAudioBibleId, setDblAudioBibleId] = useState<string | undefined>();
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [retryToken, setRetryToken] = useState(0);
 
   const requestIdRef = useRef(0);
@@ -84,6 +88,7 @@ export function useSourceAudio({
     setVerseTimestamps(data.verseTimestamps);
     setDblAudioBibleId(resolved?.item.dblAudioBibleId);
     setUri(resolved?.uri ?? null);
+    setCatalogDurationMs(sourceAudioItemDurationMs(resolved?.item));
     setLoadState(resolved ? 'ready' : 'empty');
   }, []);
 
@@ -101,6 +106,7 @@ export function useSourceAudio({
     setUri(null);
     setVerseTimestamps(undefined);
     setDblAudioBibleId(undefined);
+    setCatalogDurationMs(0);
   }, []);
 
   useEffect(() => {
@@ -159,6 +165,7 @@ export function useSourceAudio({
     setUri(null);
     setVerseTimestamps(undefined);
     setDblAudioBibleId(undefined);
+    setCatalogDurationMs(0);
 
     (async () => {
       try {
@@ -180,6 +187,7 @@ export function useSourceAudio({
         setUri(null);
         setVerseTimestamps(undefined);
         setDblAudioBibleId(undefined);
+        setCatalogDurationMs(0);
         setLoadState('error');
       }
     })();
@@ -207,20 +215,50 @@ export function useSourceAudio({
     };
   }, []);
 
-  // While already playing, verse change seeks to that verse's start.
+  // Playing or paused: verse navigation seeks to that verse's start immediately.
   useEffect(() => {
-    if (playback.status !== 'playing' || !uri) {
-      if (playback.status !== 'playing') {
-        playingVerseRef.current = null;
-      }
+    if (!uri) {
+      return;
+    }
+    if (playback.status !== 'playing' && playback.status !== 'paused') {
+      playingVerseRef.current = null;
       return;
     }
     if (playingVerseRef.current === verse) return;
     playingVerseRef.current = verse;
     const startMs = verseStartMs(verse, verseTimestamps, dblAudioBibleId);
     void playbackRef.current.seek(startMs);
-    onPlayingVerseChangeRef.current?.(verse);
+    if (playback.status === 'playing') {
+      onPlayingVerseChangeRef.current?.(verse);
+    }
   }, [verse, playback.status, uri, verseTimestamps, dblAudioBibleId]);
+
+  // While playing, poll position so verse highlight + footer advance (#412).
+  useEffect(() => {
+    if (!uri || playback.status !== 'playing') {
+      return;
+    }
+    if (!verseTimestamps?.length) {
+      return;
+    }
+
+    const syncPlayingVerse = () => {
+      const activeVerse = verseAtPositionMs(
+        playbackRef.current.positionMs,
+        timestampsRef.current,
+        dblIdRef.current,
+      );
+      if (activeVerse === playingVerseRef.current) {
+        return;
+      }
+      playingVerseRef.current = activeVerse;
+      onPlayingVerseChangeRef.current?.(activeVerse);
+    };
+
+    syncPlayingVerse();
+    const intervalId = setInterval(syncPlayingVerse, 250);
+    return () => clearInterval(intervalId);
+  }, [uri, playback.status, verseTimestamps, dblAudioBibleId]);
 
   // Verse change while paused/idle: next play should open at that verse.
   // Depend on verse only so a plain pause does not force a rewind on resume.
@@ -272,22 +310,32 @@ export function useSourceAudio({
       ? verseStartMs(verseRef.current, timestampsRef.current, dblIdRef.current)
       : 0;
     // Load + optional verse seek before play so first start is not 0:00.
-    await playbackRef.current.load(currentUri);
-    if (playGeneration !== playGenerationRef.current) return;
-    if (startMs > 0) {
-      await playbackRef.current.seek(startMs);
+    setIsLoadingAudio(true);
+    try {
+      await playbackRef.current.load(currentUri);
       if (playGeneration !== playGenerationRef.current) return;
+      if (startMs > 0) {
+        await playbackRef.current.seek(startMs);
+        if (playGeneration !== playGenerationRef.current) return;
+      }
+      await playbackRef.current.play(currentUri);
+      if (playGeneration !== playGenerationRef.current) return;
+      onPlayingVerseChangeRef.current?.(verseRef.current);
+    } finally {
+      setIsLoadingAudio(false);
     }
-    await playbackRef.current.play(currentUri);
-    if (playGeneration !== playGenerationRef.current) return;
-    onPlayingVerseChangeRef.current?.(verseRef.current);
   }, []);
 
   const pause = useCallback(async () => {
     playGenerationRef.current += 1;
-    playingVerseRef.current = null;
     await playbackRef.current.pause();
-    onPlayingVerseChangeRef.current?.(null);
+    const activeVerse = verseAtPositionMs(
+      playbackRef.current.positionMs,
+      timestampsRef.current,
+      dblIdRef.current,
+    );
+    playingVerseRef.current = activeVerse;
+    onPlayingVerseChangeRef.current?.(activeVerse);
   }, []);
 
   const seek = useCallback(async (ms: number) => {
@@ -299,6 +347,13 @@ export function useSourceAudio({
       await playbackRef.current.load(currentUri);
     }
     await playbackRef.current.seek(ms);
+    const activeVerse = verseAtPositionMs(
+      ms,
+      timestampsRef.current,
+      dblIdRef.current,
+    );
+    playingVerseRef.current = activeVerse;
+    onPlayingVerseChangeRef.current?.(activeVerse);
   }, []);
 
   const stop = useCallback(async () => {
@@ -324,8 +379,10 @@ export function useSourceAudio({
     loadState,
     status: playback.status,
     positionMs: playback.positionMs,
-    durationMs: playback.durationMs,
+    durationMs:
+      playback.durationMs > 0 ? playback.durationMs : catalogDurationMs,
     isPlaying: playback.status === 'playing',
+    isLoadingAudio,
     play,
     pause,
     seek,

@@ -15,7 +15,6 @@ import {
   RECORD_SOURCE_TEXT_UNAVAILABLE,
 } from '../../constants/messages';
 import type { useVerseAudio } from '../../hooks/useVerseAudio';
-import type { useSourceAudio } from '../../hooks/useSourceAudio';
 import type {
   Recording,
   RecordingWithOwner,
@@ -43,8 +42,21 @@ jest.mock('../../hooks/useVerseAudio', () => ({
   useVerseAudio: () => mockUseVerseAudio(),
 }));
 
-jest.mock('../../hooks/useSourceAudio', () => ({
-  useSourceAudio: () => mockUseSourceAudio(),
+const mockStopSourceAudio = jest.fn().mockResolvedValue(undefined);
+const mockUseSourceAudioControl = jest.fn(() => ({
+  pause: jest.fn().mockResolvedValue(undefined),
+  stop: mockStopSourceAudio,
+  status: 'idle' as 'idle' | 'playing' | 'paused',
+}));
+const mockUseSourceAudioRecordTabIntegration = jest.fn();
+
+jest.mock('../../components/layout/SourceAudioShell', () => ({
+  useSourceAudioControl: () => mockUseSourceAudioControl(),
+  useSourceAudioRecordTabIntegration: (...args: unknown[]) =>
+    mockUseSourceAudioRecordTabIntegration(...args),
+  SourceAudioProvider: ({ children }: { children?: React.ReactNode }) =>
+    children,
+  SourceAudioBarSlot: () => null,
 }));
 
 jest.mock('../../hooks/useDraftingUnit', () => ({
@@ -67,7 +79,6 @@ jest.mock('../../services/stageAdvance', () => ({
 }));
 
 type VerseAudioApi = ReturnType<typeof useVerseAudio>;
-type SourceAudioApi = ReturnType<typeof useSourceAudio>;
 
 function makeTake(overrides: Partial<Recording> = {}): Recording {
   return {
@@ -124,21 +135,6 @@ const idleAudio: VerseAudioApi = {
 };
 
 const mockUseVerseAudio = jest.fn((): VerseAudioApi => idleAudio);
-
-const emptySourceAudio: SourceAudioApi = {
-  loadState: 'empty',
-  status: 'idle',
-  positionMs: 0,
-  durationMs: 0,
-  isPlaying: false,
-  play: jest.fn(),
-  pause: jest.fn(),
-  seek: jest.fn(),
-  stop: jest.fn(),
-  retry: jest.fn(),
-};
-
-const mockUseSourceAudio = jest.fn((): SourceAudioApi => emptySourceAudio);
 
 const mockUseChapterConflictStatus = jest.fn((chapterId: number) => {
   void chapterId;
@@ -229,12 +225,16 @@ describe('RecordTab', () => {
     // test's `.not.toHaveBeenCalled()` assertion.
     jest.clearAllMocks();
     mockUseVerseAudio.mockReturnValue(idleAudio);
-    mockUseSourceAudio.mockReturnValue(emptySourceAudio);
+    mockUseSourceAudioControl.mockReturnValue({
+      pause: jest.fn().mockResolvedValue(undefined),
+      stop: mockStopSourceAudio,
+      status: 'idle',
+    });
     mockUseChapterConflictStatus.mockReturnValue({ hasConflict: false });
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 
-  it('renders idle design chrome: verse nav, record, source link, source audio', async () => {
+  it('renders idle design chrome: verse nav, record, source link', async () => {
     renderTab();
 
     expect(screen.getByTestId('record-tab')).toBeTruthy();
@@ -244,16 +244,8 @@ describe('RecordTab', () => {
     expect(screen.getByTestId('record-play-idle-placeholder')).toBeTruthy();
     expect(screen.getByTestId('record-source-toggle')).toBeTruthy();
     expect(screen.getByText('View source text')).toBeTruthy();
-    expect(screen.getByTestId('source-audio-bar')).toBeTruthy();
-    expect(screen.getByTestId('source-audio-label')).toHaveTextContent(
-      'No source audio',
-    );
-    expect(screen.getByTestId('source-audio-time')).toHaveTextContent('0:00');
-    expect(screen.getByTestId('source-audio-duration')).toHaveTextContent(
-      '--:--',
-    );
-    expect(screen.getByTestId('source-audio-empty-track')).toBeTruthy();
     expect(screen.queryByTestId('record-take-list')).toBeNull();
+    expect(mockUseSourceAudioRecordTabIntegration).toHaveBeenCalled();
 
     await waitFor(() => {
       expect(screen.queryByTestId('record-syncing-hint')).toBeNull();
@@ -272,98 +264,37 @@ describe('RecordTab', () => {
     });
   });
 
-  it('wires ready source audio play/pause/seek to the dock', async () => {
-    const play = jest.fn().mockResolvedValue(undefined);
-    const pause = jest.fn().mockResolvedValue(undefined);
-    const seek = jest.fn().mockResolvedValue(undefined);
-    mockUseSourceAudio.mockReturnValue({
-      ...emptySourceAudio,
-      loadState: 'ready',
-      isPlaying: false,
-      positionMs: 1500,
-      durationMs: 60000,
-      play,
-      pause,
-      seek,
+  it('registers shell source-audio integration for idle record chrome', () => {
+    renderTab();
+
+    expect(mockUseSourceAudioRecordTabIntegration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceEnabled: true,
+        verseAudioState: 'idle',
+      }),
+    );
+  });
+
+  it('stops shell source audio before starting a draft recording', async () => {
+    mockUseSourceAudioControl.mockReturnValue({
+      pause: jest.fn().mockResolvedValue(undefined),
+      stop: mockStopSourceAudio,
+      status: 'playing',
     });
 
     renderTab();
 
-    expect(screen.getByTestId('source-audio-label')).toHaveTextContent(
-      'BSB Source Audio · Verse 3',
-    );
-    expect(screen.getByTestId('source-audio-time')).toHaveTextContent('0:01');
-    expect(screen.getByTestId('source-audio-duration')).toHaveTextContent(
-      '1:00',
-    );
-
-    fireEvent.press(screen.getByTestId('source-audio-play'));
     await waitFor(() => {
-      expect(play).toHaveBeenCalled();
-    });
-  });
-
-  it('pauses draft playback when source audio starts playing', () => {
-    const pausePlayback = jest.fn();
-    mockUseVerseAudio.mockReturnValue({
-      ...idleAudio,
-      state: 'playing',
-      takes: [makeTake()],
-      selectedTake: makeTake(),
-      playingTakeId: 'rec_1',
-      pausePlayback,
-    });
-    mockUseSourceAudio.mockReturnValue({
-      ...emptySourceAudio,
-      loadState: 'ready',
-      status: 'playing',
-      isPlaying: true,
+      expect(
+        screen.getByTestId('record-start-button').props.accessibilityState,
+      ).toEqual(expect.objectContaining({ disabled: false }));
     });
 
-    renderTab();
+    fireEvent.press(screen.getByTestId('record-start-button'));
 
-    expect(pausePlayback).toHaveBeenCalled();
-  });
-
-  it('stops source audio when draft take is playing or recording', () => {
-    const stop = jest.fn();
-    mockUseSourceAudio.mockReturnValue({
-      ...emptySourceAudio,
-      loadState: 'ready',
-      status: 'playing',
-      isPlaying: true,
-      stop,
+    await waitFor(() => {
+      expect(mockStopSourceAudio).toHaveBeenCalled();
     });
-    mockUseVerseAudio.mockReturnValue({
-      ...idleAudio,
-      state: 'playing',
-      takes: [makeTake()],
-      selectedTake: makeTake(),
-      playingTakeId: 'rec_1',
-    });
-
-    renderTab();
-
-    expect(stop).toHaveBeenCalled();
-  });
-
-  it('does not stop source audio while recording is paused (source review)', () => {
-    const stop = jest.fn();
-    mockUseSourceAudio.mockReturnValue({
-      ...emptySourceAudio,
-      loadState: 'ready',
-      status: 'playing',
-      isPlaying: true,
-      stop,
-    });
-    mockUseVerseAudio.mockReturnValue({
-      ...idleAudio,
-      state: 'paused',
-    });
-
-    renderTab();
-
-    expect(stop).not.toHaveBeenCalled();
   });
 
   it('renders review chrome with a single take row and Record New Take', () => {
