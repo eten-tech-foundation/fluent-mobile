@@ -307,11 +307,16 @@ describe('RecordTab', () => {
     const pausePlayback = jest.fn();
     mockUseVerseAudio.mockReturnValue({
       ...idleAudio,
+      state: 'playing',
+      takes: [makeTake()],
+      selectedTake: makeTake(),
+      playingTakeId: 'rec_1',
       pausePlayback,
     });
     mockUseSourceAudio.mockReturnValue({
       ...emptySourceAudio,
       loadState: 'ready',
+      status: 'playing',
       isPlaying: true,
     });
 
@@ -325,6 +330,8 @@ describe('RecordTab', () => {
     mockUseSourceAudio.mockReturnValue({
       ...emptySourceAudio,
       loadState: 'ready',
+      status: 'playing',
+      isPlaying: true,
       stop,
     });
     mockUseVerseAudio.mockReturnValue({
@@ -338,6 +345,25 @@ describe('RecordTab', () => {
     renderTab();
 
     expect(stop).toHaveBeenCalled();
+  });
+
+  it('does not stop source audio while recording is paused (source review)', () => {
+    const stop = jest.fn();
+    mockUseSourceAudio.mockReturnValue({
+      ...emptySourceAudio,
+      loadState: 'ready',
+      status: 'playing',
+      isPlaying: true,
+      stop,
+    });
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      state: 'paused',
+    });
+
+    renderTab();
+
+    expect(stop).not.toHaveBeenCalled();
   });
 
   it('renders review chrome with a single take row and Record New Take', () => {

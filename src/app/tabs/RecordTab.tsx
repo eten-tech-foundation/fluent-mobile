@@ -182,14 +182,16 @@ export function RecordTab({
   /** Shared generation so sync-triggered and verse-change lookups ignore stale IDs. */
   const bibleTextRequestIdRef = useRef(0);
 
-  const isSyncing = useGlobalSyncStatus(() => {
+  const refreshBibleTextId = useCallback(() => {
     const requestId = ++bibleTextRequestIdRef.current;
     void resolveBibleTextId().then(id => {
       if (requestId === bibleTextRequestIdRef.current) {
         setBibleTextId(id);
       }
     });
-  });
+  }, [resolveBibleTextId]);
+
+  const isSyncing = useGlobalSyncStatus(refreshBibleTextId);
 
   useEffect(() => {
     setTakeView('mine');
@@ -369,28 +371,32 @@ export function RecordTab({
   }, [sourceAudio.stop]);
 
   // Exclusive audio: draft take / record wins over source, and vice versa.
-  // Effects cover externally driven state; handlers below also await the
-  // competing engine before starting so both never play concurrently.
+  // Handlers await the competing engine before starting. Effects are narrow
+  // fallbacks for externally driven state and must no-op when the target is
+  // already idle — otherwise expo-audio status events can ping-pong into
+  // Maximum update depth exceeded on physical devices.
+  // Note: verseAudio `paused` is recording-paused (source dock stays usable
+  // for review); only `playing` / `recording` own the audio bus.
   useEffect(() => {
-    if (sourceAudio.isPlaying) {
-      void pauseDraftPlaybackRef.current();
-    }
-  }, [sourceAudio.isPlaying]);
+    if (!sourceAudio.isPlaying) return;
+    if (verseAudio.state !== 'playing') return;
+    void pauseDraftPlaybackRef.current();
+  }, [sourceAudio.isPlaying, verseAudio.state]);
 
   useEffect(() => {
-    if (
-      verseAudio.state === 'playing' ||
-      verseAudio.state === 'recording' ||
-      verseAudio.state === 'paused'
-    ) {
-      void stopSourceAudioRef.current();
-    }
-  }, [verseAudio.state]);
+    const draftOwnsAudio =
+      verseAudio.state === 'playing' || verseAudio.state === 'recording';
+    if (!draftOwnsAudio) return;
+    if (sourceAudio.status === 'idle') return;
+    void stopSourceAudioRef.current();
+  }, [verseAudio.state, sourceAudio.status]);
 
   async function handleStart() {
     if (!(await ensureMic())) return;
     setElapsedMs(0);
-    await stopSourceAudioRef.current();
+    if (sourceAudio.status !== 'idle') {
+      await stopSourceAudioRef.current();
+    }
     await verseAudio.start();
   }
 
@@ -399,7 +405,9 @@ export function RecordTab({
   }
 
   async function handlePlayTake(take: Recording) {
-    await stopSourceAudioRef.current();
+    if (sourceAudio.status !== 'idle') {
+      await stopSourceAudioRef.current();
+    }
     await verseAudio.playTake(take);
   }
 
@@ -408,7 +416,9 @@ export function RecordTab({
       await sourceAudio.pause();
       return;
     }
-    await pauseDraftPlaybackRef.current();
+    if (verseAudio.state === 'playing') {
+      await pauseDraftPlaybackRef.current();
+    }
     await sourceAudio.play();
   }
   const currentUserId = userId;

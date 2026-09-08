@@ -29,6 +29,7 @@ import {
   getRecordedVerseNumbers,
 } from '../../db/queries';
 import { syncBibleTexts, syncMasterData } from '../../services/sync';
+import { emitSyncComplete, emitSyncStart } from '../../services/syncEvents';
 import { hrefs } from '../../navigation/hrefs';
 import {
   parseRequiredNumber,
@@ -37,6 +38,19 @@ import {
 import { parseUserId } from '../../utils/parseUserId';
 
 const log = logger.create('DraftingScreen');
+
+/** One master-data ISO ensure attempt per project per JS session (#235 review). */
+const masterDataIsoEnsureAttempted = new Set<number>();
+
+/** Wrap silent auto-heal sync so Record’s #448 hint sees isSyncing. */
+async function withSyncChrome<T>(work: () => Promise<T>): Promise<T> {
+  emitSyncStart();
+  try {
+    return await work();
+  } finally {
+    emitSyncComplete();
+  }
+}
 
 export default function DraftingScreen() {
   const router = useRouter();
@@ -192,21 +206,34 @@ export default function DraftingScreen() {
         // Source-audio needs ISO-639-3 on the project language. Devices that
         // synced languages before mapApiLanguage may still have null codes.
         if (!assignment.sourceLanguageCode?.trim()) {
-          log.info('Source language ISO missing; syncing master data', {
-            chapterId,
-            projectId: assignment.projectId,
-          });
-          try {
-            await syncMasterData();
-          } catch (masterError) {
-            log.error('Master data sync for language ISO failed', {
-              error: masterError,
+          const projectId = assignment.projectId;
+          if (
+            projectId !== null &&
+            !masterDataIsoEnsureAttempted.has(projectId)
+          ) {
+            masterDataIsoEnsureAttempted.add(projectId);
+            log.info('Source language ISO missing; syncing master data', {
+              chapterId,
+              projectId,
             });
+            try {
+              await withSyncChrome(() => syncMasterData());
+            } catch (masterError) {
+              // Allow a later chapter open / refresh to retry.
+              masterDataIsoEnsureAttempted.delete(projectId);
+              log.error('Master data sync for language ISO failed', {
+                error: masterError,
+              });
+            }
+            if (ignore) return;
+            assignment = (await loadChapterAssignment()) ?? assignment;
+            if (ignore) return;
+            setChapterData(assignment);
+            // Only keep the one-shot latch when ISO is actually present.
+            if (!assignment.sourceLanguageCode?.trim()) {
+              masterDataIsoEnsureAttempted.delete(projectId);
+            }
           }
-          if (ignore) return;
-          assignment = (await loadChapterAssignment()) ?? assignment;
-          if (ignore) return;
-          setChapterData(assignment);
         }
 
         let texts = await getBibleTexts(
@@ -228,7 +255,7 @@ export default function DraftingScreen() {
             chapterNumber: assignment.chapterNumber,
           });
           try {
-            await syncBibleTexts();
+            await withSyncChrome(() => syncBibleTexts());
             bibleTextEnsureForChapterRef.current = chapterId;
           } catch (syncError) {
             // Leave ref unset so refreshKey / remount can retry.

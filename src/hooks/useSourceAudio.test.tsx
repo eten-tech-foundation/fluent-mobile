@@ -60,6 +60,11 @@ describe('useSourceAudio', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPlaybackPlay.mockResolvedValue(undefined);
+    mockPlaybackStop.mockResolvedValue(undefined);
+    mockPlaybackPause.mockResolvedValue(undefined);
+    mockPlaybackLoad.mockResolvedValue(undefined);
+    mockPlaybackSeek.mockResolvedValue(undefined);
     playbackState.status = 'idle';
     playbackState.positionMs = 0;
     playbackState.durationMs = 0;
@@ -439,5 +444,140 @@ describe('useSourceAudio', () => {
 
     expect(mockPlaybackPlay).not.toHaveBeenCalled();
     expect(onPlayingVerseChange).not.toHaveBeenCalledWith(1);
+  });
+
+  it('resumes from pause without re-seeking to verse start', async () => {
+    fetchChapterSourceAudio.mockResolvedValue({
+      provider: 'aquifer',
+      bible: { name: 'BSB', abbreviation: 'BSB' },
+      bookCode: 'MRK',
+      chapter: 1,
+      items: [
+        {
+          format: 'mp3',
+          url: 'https://cdn.example/ch.mp3',
+          scope: 'chapter',
+        },
+      ],
+      verseTimestamps: [
+        { verse: 1, startSeconds: 0 },
+        { verse: 2, startSeconds: 4 },
+      ],
+    });
+
+    const { result } = renderHook(() =>
+      useSourceAudio({ ...baseArgs(), verse: 2 }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.loadState).toBe('ready');
+    });
+
+    await act(async () => {
+      await result.current.play();
+    });
+    expect(mockPlaybackSeek).toHaveBeenCalledWith(4000);
+    expect(mockPlaybackPlay).toHaveBeenCalled();
+
+    mockPlaybackSeek.mockClear();
+    mockPlaybackLoad.mockClear();
+    mockPlaybackPlay.mockClear();
+
+    await act(async () => {
+      await result.current.pause();
+    });
+    expect(playbackState.status).toBe('paused');
+
+    await act(async () => {
+      await result.current.play();
+    });
+
+    expect(mockPlaybackPlay).toHaveBeenCalledWith('https://cdn.example/ch.mp3');
+    expect(mockPlaybackLoad).not.toHaveBeenCalled();
+    expect(mockPlaybackSeek).not.toHaveBeenCalled();
+  });
+
+  it('seeks to the new verse when play resumes after a verse change while paused', async () => {
+    fetchChapterSourceAudio.mockResolvedValue({
+      provider: 'aquifer',
+      bible: { name: 'BSB', abbreviation: 'BSB' },
+      bookCode: 'MRK',
+      chapter: 1,
+      items: [
+        {
+          format: 'mp3',
+          url: 'https://cdn.example/ch.mp3',
+          scope: 'chapter',
+        },
+      ],
+      verseTimestamps: [
+        { verse: 1, startSeconds: 0 },
+        { verse: 2, startSeconds: 4 },
+      ],
+    });
+
+    const { result, rerender } = renderHook(
+      (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
+      { initialProps: baseArgs() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.loadState).toBe('ready');
+    });
+
+    await act(async () => {
+      await result.current.play();
+    });
+    await act(async () => {
+      await result.current.pause();
+    });
+
+    mockPlaybackSeek.mockClear();
+    mockPlaybackPlay.mockClear();
+
+    rerender({ ...baseArgs(), verse: 2 });
+
+    await act(async () => {
+      await result.current.play();
+    });
+
+    expect(mockPlaybackSeek).toHaveBeenCalledWith(4000);
+    expect(mockPlaybackPlay).toHaveBeenCalledWith('https://cdn.example/ch.mp3');
+  });
+
+  it('does not snap to verse start after scrub then play', async () => {
+    fetchChapterSourceAudio.mockResolvedValue({
+      provider: 'aquifer',
+      bible: { name: 'BSB', abbreviation: 'BSB' },
+      bookCode: 'MRK',
+      chapter: 1,
+      items: [
+        {
+          format: 'mp3',
+          url: 'https://cdn.example/ch.mp3',
+          scope: 'chapter',
+        },
+      ],
+      verseTimestamps: [{ verse: 1, startSeconds: 0 }],
+    });
+
+    const { result } = renderHook(() => useSourceAudio(baseArgs()));
+
+    await waitFor(() => {
+      expect(result.current.loadState).toBe('ready');
+    });
+
+    await act(async () => {
+      await result.current.seek(12_500);
+    });
+    mockPlaybackSeek.mockClear();
+    mockPlaybackLoad.mockClear();
+
+    await act(async () => {
+      await result.current.play();
+    });
+
+    expect(mockPlaybackPlay).toHaveBeenCalledWith('https://cdn.example/ch.mp3');
+    expect(mockPlaybackSeek).not.toHaveBeenCalled();
   });
 });

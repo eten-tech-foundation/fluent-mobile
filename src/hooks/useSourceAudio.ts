@@ -66,6 +66,12 @@ export function useSourceAudio({
   const chapterKeyRef = useRef<string | null>(null);
   /** Avoid double-seek when play() already sought before status becomes playing. */
   const playingVerseRef = useRef<number | null>(null);
+  /**
+   * Pause → play should resume the current position. Only seek to verse start
+   * on a fresh play, after stop/clear, or when the selected verse changes.
+   * User scrub (`seek`) clears this so play does not jump back to verse start.
+   */
+  const seekToVerseOnNextPlayRef = useRef(true);
 
   uriRef.current = uri;
   verseRef.current = verse;
@@ -84,6 +90,7 @@ export function useSourceAudio({
   const stopAndClearPlaying = useCallback(async () => {
     playGenerationRef.current += 1;
     playingVerseRef.current = null;
+    seekToVerseOnNextPlayRef.current = true;
     await playbackRef.current.stop();
     onPlayingVerseChangeRef.current?.(null);
   }, []);
@@ -215,12 +222,19 @@ export function useSourceAudio({
     onPlayingVerseChangeRef.current?.(verse);
   }, [verse, playback.status, uri, verseTimestamps, dblAudioBibleId]);
 
+  // Verse change while paused/idle: next play should open at that verse.
+  // Depend on verse only so a plain pause does not force a rewind on resume.
+  useEffect(() => {
+    seekToVerseOnNextPlayRef.current = true;
+  }, [verse]);
+
   // Natural end clears Bible-tab highlight.
   useEffect(() => {
     const prev = prevStatusRef.current;
     prevStatusRef.current = playback.status;
     if (prev === 'playing' && playback.status === 'idle') {
       playingVerseRef.current = null;
+      seekToVerseOnNextPlayRef.current = true;
       onPlayingVerseChangeRef.current?.(null);
     }
   }, [playback.status]);
@@ -229,13 +243,35 @@ export function useSourceAudio({
     const currentUri = uriRef.current;
     if (!currentUri) return;
     const playGeneration = ++playGenerationRef.current;
-    const startMs = verseStartMs(
-      verseRef.current,
-      timestampsRef.current,
-      dblIdRef.current,
-    );
     playingVerseRef.current = verseRef.current;
-    // Load + seek before play so verse starts do not briefly sound from 0:00.
+
+    // Pause → play usually resumes. If the selected verse changed while
+    // paused, seek to that verse first instead of staying mid-old-verse.
+    if (playbackRef.current.status === 'paused') {
+      if (seekToVerseOnNextPlayRef.current) {
+        seekToVerseOnNextPlayRef.current = false;
+        const startMs = verseStartMs(
+          verseRef.current,
+          timestampsRef.current,
+          dblIdRef.current,
+        );
+        if (startMs > 0) {
+          await playbackRef.current.seek(startMs);
+          if (playGeneration !== playGenerationRef.current) return;
+        }
+      }
+      await playbackRef.current.play(currentUri);
+      if (playGeneration !== playGenerationRef.current) return;
+      onPlayingVerseChangeRef.current?.(verseRef.current);
+      return;
+    }
+
+    const shouldSeekToVerse = seekToVerseOnNextPlayRef.current;
+    seekToVerseOnNextPlayRef.current = false;
+    const startMs = shouldSeekToVerse
+      ? verseStartMs(verseRef.current, timestampsRef.current, dblIdRef.current)
+      : 0;
+    // Load + optional verse seek before play so first start is not 0:00.
     await playbackRef.current.load(currentUri);
     if (playGeneration !== playGenerationRef.current) return;
     if (startMs > 0) {
@@ -257,6 +293,8 @@ export function useSourceAudio({
   const seek = useCallback(async (ms: number) => {
     const currentUri = uriRef.current;
     if (!currentUri) return;
+    // Scrub owns the resume position; do not snap back to verse start on play.
+    seekToVerseOnNextPlayRef.current = false;
     if (playbackRef.current.status === 'idle') {
       await playbackRef.current.load(currentUri);
     }

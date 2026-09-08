@@ -411,6 +411,11 @@ export function useVerseAudio({
 
   /** Pause draft review playback (design review control shows Pause while playing). */
   const pausePlayback = useCallback(async () => {
+    // No-op when already idle/paused so exclusivity fallbacks cannot cascade
+    // expo-audio status → setState loops on physical devices.
+    if (state !== 'playing' && playback.status !== 'playing') {
+      return;
+    }
     try {
       await playback.pause();
       dispatch({ type: 'PLAYBACK_END' });
@@ -420,7 +425,7 @@ export function useVerseAudio({
       setErrorMessage(message);
       dispatch({ type: 'ERROR', message });
     }
-  }, [playback]);
+  }, [playback, state]);
 
   // Natural end (`didJustFinish` → idle). Explicit pause already dispatches
   // PLAYBACK_END. Do not treat brief idle during in-flight play/load (replace)
