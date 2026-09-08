@@ -10,7 +10,8 @@ Workflows for Fluent Mobile (**Android-only**).
 | `action-pins.yml` | `pull_request_target` on `main` | SHA-pin gate (`Action pins`); checker from default branch |
 | `lint.yml` | push, PR | ESLint + Prettier |
 | `test.yml` | push, PR | Jest unit tests |
-| `quality-gates.yml` | push, PR | TypeScript, lockfile `expo-doctor`, `expo install --check` (Node from `.nvmrc`) |
+| `quality-gates.yml` | push, PR | TypeScript, lockfile `expo-doctor` (skip remote dep-version check), offline `expo install --check` (Node from `.nvmrc`) |
+| `expo-sdk-align.yml` | cron Monday 13:00 UTC + `workflow_dispatch` | Online `expo install --fix` → full doctor → one PR on `chore/expo-sdk-align` |
 | `eas-build.yml` | push tag `v*` | Sync `APP_VERSION_FALLBACK` in `app.config.ts` with tag; hand off to EAS |
 | `preview-build.yml` | PR label `preview-build` | Optional isolated Android preview APK (**PR comment only** — debug) |
 | `qa-handoff.yml` | PR merged | Needs QA? Yes → issue handoff + assign Roslin + Project 4 `In QA` |
@@ -71,3 +72,14 @@ Scheduled (and manually dispatchable) workflow [`.github/workflows/nightly-previ
 Does **not** require the Expo GitHub App — only `EXPO_TOKEN`. Manual run: **Actions → Nightly Preview → Run workflow** (available after this workflow exists on `main`).
 
 To test from a PR before merge, add the **`nightly-preview`** label (forces a build + Slack notify).
+
+## Expo SDK Align (scheduled patch PR)
+
+Weekly Monday + `workflow_dispatch`: [`.github/workflows/expo-sdk-align.yml`](workflows/expo-sdk-align.yml) runs online `expo install --fix`, full `expo-doctor`, and opens/updates one PR on `chore/expo-sdk-align`.
+
+| Secret | Purpose |
+|--------|---------|
+| `EXPO_SDK_ALIGN_APP_ID` + `EXPO_SDK_ALIGN_APP_PRIVATE_KEY` | Preferred: GitHub App credentials so the bot PR still triggers required checks |
+| `EXPO_SDK_ALIGN_TOKEN` | Alternative: fine-grained PAT (Contents write + Pull requests write) |
+
+`GITHUB_TOKEN` must **not** author this PR — Actions will not run `pull_request` workflows on that PR (recursion guard), so required checks such as `PR Description` never post and the merge button deadlocks.

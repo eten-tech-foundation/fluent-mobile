@@ -1,0 +1,185 @@
+name: Expo SDK Align
+
+# Scheduled freshness for Expo SDK 57 patch versions (#422).
+# PR Quality Gates validate dependencies offline (EXPO_OFFLINE) so a new upstream
+# patch does not turn CI red with no repo diff. This job is where online
+# `expo install --fix` belongs: it opens/updates one rolling PR.
+#
+# Token identity matters: PRs opened with GITHUB_TOKEN do not trigger other
+# workflows (GitHub recursion guard). Required checks such as PR Description
+# would sit forever at "Expected — Waiting for status". Use a GitHub App
+# (preferred) or fine-grained PAT — see secrets in .github/README.md.
+
+on:
+  schedule:
+    # Monday 13:00 UTC — weekly leaves at most ~7 days of patch staleness.
+    - cron: '0 13 * * 1'
+  workflow_dispatch:
+
+# No workflow-level paths: filter (docs/ci.md required-check guardrail).
+
+concurrency:
+  group: expo-sdk-align
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  align:
+    name: Align Expo SDK patches
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Record current expo range
+        id: before
+        run: |
+          set -euo pipefail
+          echo "expo=$(node -p "require('./package.json').dependencies.expo")" >> "$GITHUB_OUTPUT"
+
+      - name: Check for upstream drift (online)
+        id: check
+        continue-on-error: true
+        run: npx expo install --check
+
+      - name: No drift — nothing to align
+        if: steps.check.outcome == 'success'
+        run: echo "Dependencies already match the online Expo SDK map. Exiting without a PR."
+
+      - name: Align with expo install --fix (online)
+        if: steps.check.outcome != 'success'
+        run: |
+          set -euo pipefail
+          # If this fails (e.g. versions endpoint advertises an unpublished
+          # package — expo/expo#48612), fail the job loudly and open no PR.
+          npx expo install --fix
+
+      - name: Abort if Expo SDK major/minor would change
+        if: steps.check.outcome != 'success'
+        env:
+          BEFORE: ${{ steps.before.outputs.expo }}
+        run: |
+          set -euo pipefail
+          AFTER=$(node -p "require('./package.json').dependencies.expo")
+          strip() { echo "$1" | sed -E 's/^[^0-9]*([0-9]+\.[0-9]+).*/\1/'; }
+          BEFORE_MM=$(strip "$BEFORE")
+          AFTER_MM=$(strip "$AFTER")
+          echo "expo before=$BEFORE ($BEFORE_MM) after=$AFTER ($AFTER_MM)"
+          if [ "$BEFORE_MM" != "$AFTER_MM" ]; then
+            echo "::error::expo install --fix would move Expo SDK line from ${BEFORE_MM} to ${AFTER_MM}. SDK upgrades are a human ticket — aborting without a PR."
+            exit 1
+          fi
+
+      - name: Run full online expo-doctor
+        if: steps.check.outcome != 'success'
+        env:
+          EXPO_PUBLIC_API_BASE_URL: http://localhost:9999
+        run: npm run doctor
+
+      - name: Create GitHub App token
+        id: app-token
+        if: steps.check.outcome != 'success'
+        continue-on-error: true
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.EXPO_SDK_ALIGN_APP_ID }}
+          private-key: ${{ secrets.EXPO_SDK_ALIGN_APP_PRIVATE_KEY }}
+
+      - name: Resolve PR authoring token
+        id: token
+        if: steps.check.outcome != 'success'
+        env:
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+          PAT: ${{ secrets.EXPO_SDK_ALIGN_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${APP_TOKEN:-}" ]; then
+            echo "token=${APP_TOKEN}" >> "$GITHUB_OUTPUT"
+            echo "Using token source: github-app"
+          elif [ -n "${PAT:-}" ]; then
+            echo "token=${PAT}" >> "$GITHUB_OUTPUT"
+            echo "Using token source: pat"
+          else
+            echo "::error::Missing bot credentials for expo-sdk-align. Set EXPO_SDK_ALIGN_APP_ID + EXPO_SDK_ALIGN_APP_PRIVATE_KEY (preferred) or EXPO_SDK_ALIGN_TOKEN (fine-grained PAT with Contents write + Pull requests write). GITHUB_TOKEN cannot open PRs that trigger required checks."
+            exit 1
+          fi
+
+      - name: Create or update alignment PR
+        if: steps.check.outcome != 'success'
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7
+        with:
+          token: ${{ steps.token.outputs.token }}
+          commit-message: 'chore(expo): align Expo SDK 57 patch versions'
+          branch: chore/expo-sdk-align
+          base: main
+          delete-branch: false
+          title: 'chore(expo): align Expo SDK 57 patch versions'
+          labels: dependencies,automated
+          body: |
+            ### TLDR
+
+            Scheduled Expo SDK 57 patch realignment via `npx expo install --fix` (`expo-sdk-align.yml`). Brings lockfile/`package.json` in line with Expo's published compatibility map for the current SDK line.
+
+            ### Reviewer checklist
+
+            - [ ] How to verify steps completed or valid waiver noted below
+            - [ ] Acceptance criteria met, **or** unmet AC waived **in the issue** with linked follow-up (see `AGENTS.md`)
+            - [x] Scope limited to Expo SDK patch alignment — no adjacent feature work
+            - [ ] Android device / fresh dev client smoke when native-linked packages moved
+
+            ### Details
+
+            Refs: none
+
+            Automated by `.github/workflows/expo-sdk-align.yml` (see #422). Do **not** treat this as an Expo SDK major/minor upgrade.
+
+            **Native rebuild warning:** `expo-modules-core` and related packages ship native sources and a Gradle plugin. Before trusting any device check, run `npm run prebuild` and install a **fresh Android dev client**. These are not JS-only bumps.
+
+            **Needs QA?**
+
+            - [x] No — engineering-only unless a reviewer flips this when native-linked versions clearly need a device smoke
+            - [ ] Yes — post-merge nightly QA (see `docs/guides/qa-process.md`)
+
+            **Type of change:**
+
+            - [ ] Bug fix
+            - [ ] New feature
+            - [ ] Breaking change
+            - [ ] Documentation
+            - [x] Maintenance / refactor
+
+            #### Technical changes
+
+            - `package.json` / `package-lock.json` — `npx expo install --fix` for current SDK 57 expected patches
+
+            #### Testing
+
+            - Scheduled job ran online `expo install --fix` and full `npm run doctor` before opening this PR
+            - PR CI Quality Gates use offline/`EXPO_OFFLINE` dependency validation
+
+            ### How to verify
+
+            1. Confirm `expo` major.minor is unchanged (still SDK 57).
+            2. Confirm Quality Gates / lint / tests are green on this PR.
+            3. If native-linked packages moved: `npm ci && npm run prebuild`, install a fresh dev client, smoke launch + one record path.
+
+            **Expected:** Patch-only alignment; app builds on a regenerated Android tree.
+
+            ### Follow-ups
+
+            None from this bot PR. SDK line bumps remain a human ticket.
