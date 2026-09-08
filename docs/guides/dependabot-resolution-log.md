@@ -4,6 +4,26 @@ Records how open Dependabot PRs were resolved in a given branch so the team can 
 
 **Two clocks:** PR CI is a frozen snapshot; Expo SDK patch drift is recovered by the weekday compatibility job ([#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422)), not by `--fix` on every feature/Dependabot branch. Parent tracker: [#420](https://github.com/eten-tech-foundation/fluent-mobile/issues/420). Process: [dependabot-process.md](./dependabot-process.md).
 
+## Batch: `main` (2026-08-31)
+
+Resolved: 2026-08-31 (weekly npm queue; one squash-merge + close pass)
+
+| PR | Title / scope | Change applied |
+|----|---------------|----------------|
+| #432 | `@tanstack/react-query` 5.102.3 → 5.102.8 | **Merged** — patch JS lib; Lint & Format, Unit Tests, Quality Gates (TypeScript, expo-doctor, expo install --check) green; squash + `main` CI green |
+| #429 | react group (`react` / `react-dom` / `react-test-renderer` 19.2.3 → 19.2.8) | **Closed** — Expo SDK 57 / RN 0.86 React pin; expo-doctor / expo install --check red; held by `dependabot.yml` ignore-all for React (Refs #435); dedicated upgrade + Android smoke optional |
+| #430 | testing group (Jest 29→30, RTL 13→14) | **Closed** — stacked majors; TypeScript / tests / doctor red; held by Jest/RTL semver-major ignores (Refs #435); migration ticket optional |
+| #431 | dev-tools group (Babel 8, ESLint 10, typescript-eslint patches) | **Closed** — stacked majors; lint / TS / tests / doctor red; held by Babel/ESLint/typescript-eslint semver-major ignores (Refs #435); tooling ticket optional |
+| #433 | `lucide-react-native` 0.544.0 → 1.35.0 | **Closed** — semver major; Unit Tests red; held by lucide semver-major ignore (Refs #435); UI/Android smoke ticket optional |
+
+**Action:** Squash-merged #432. Closed #429, #430, #431, #433 with technical comments. No remaining open Dependabot PRs. Ignore rules so the same majors/React pin drift do not refill the 5-PR limit are tracked by #435 (this chore PR).
+
+**Left open (Dependabot):** none.
+
+**Verification run:** GitHub CI on #432 green before merge. `main` Lint Check, Test Check, Quality Gates success for squash `4c33a395`. No Android smoke (N/A — JS patch only; closes were CI-red / majors). Local checkout skipped (CI-first for this safe PR; working tree was `main`).
+
+---
+
 ## Batch: `main` (2026-08-11)
 
 Resolved: 2026-08-11 (triage + close pass; SDK alignment via #314)
