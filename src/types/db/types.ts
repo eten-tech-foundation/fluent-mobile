@@ -276,7 +276,8 @@ export type RecordingSyncStatus =
   | 'pending'
   | 'uploading'
   | 'uploaded'
-  | 'failed';
+  | 'failed'
+  | 'conflicted';
 
 export interface Recording {
   id: string;
@@ -291,6 +292,7 @@ export interface Recording {
   isSelected: boolean;
   isCanonical: boolean;
   syncStatus: RecordingSyncStatus;
+  versionToken?: number | null;
   uploadError?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -308,6 +310,7 @@ export interface RecordingRow {
   is_selected: number;
   is_canonical: number;
   sync_status: RecordingSyncStatus;
+  version_token: number | null;
   upload_error: string | null;
   created_at: string;
   updated_at: string;

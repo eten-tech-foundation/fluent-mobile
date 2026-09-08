@@ -72,6 +72,33 @@ describe('createApiError', () => {
     );
     expect(error.message).toBe('Invalid or revoked session token');
   });
+
+  it('preserves parsed body for JSON responses', () => {
+    const errorBody = JSON.stringify({
+      message: 'Conflict',
+      currentVersionToken: 42,
+    });
+
+    const error = createApiError(409, errorBody);
+
+    expect(error.status).toBe(409);
+    expect(error.message).toBe('Conflict');
+    expect(error.body).toEqual({
+      message: 'Conflict',
+      currentVersionToken: 42,
+    });
+    expect(error.body?.currentVersionToken).toBe(42);
+  });
+
+  it('handles non-JSON body gracefully', () => {
+    const errorBody = 'Plain text error';
+
+    const error = createApiError(500, errorBody);
+
+    expect(error.status).toBe(500);
+    expect(error.message).toBe('Plain text error');
+    expect(error.body).toBeUndefined();
+  });
 });
 
 describe('parseApiErrorMessage', () => {

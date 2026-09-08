@@ -99,6 +99,7 @@ export const createTableQueries: string[] = [
       is_selected           INTEGER NOT NULL DEFAULT 1,
       is_canonical          INTEGER NOT NULL DEFAULT 0,
       sync_status           TEXT NOT NULL DEFAULT 'pending',
+      version_token         INTEGER,
       upload_error          TEXT,
       created_at            TEXT NOT NULL,
       updated_at            TEXT NOT NULL

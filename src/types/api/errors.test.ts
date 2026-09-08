@@ -26,4 +26,19 @@ describe('ApiError', () => {
     expect(error.isTerminal).toBe(true);
     expect(isRetryableApiError(error)).toBe(false);
   });
+
+  it('preserves parsed body when provided', () => {
+    const body = { currentVersionToken: 5, customField: 'value' };
+    const error = new ApiError(409, 'Conflict', 'CONFLICT', body);
+
+    expect(error.body).toEqual(body);
+    expect(error.body?.currentVersionToken).toBe(5);
+    expect(error.body?.customField).toBe('value');
+  });
+
+  it('accepts undefined body', () => {
+    const error = new ApiError(500, 'Internal error');
+
+    expect(error.body).toBeUndefined();
+  });
 });
