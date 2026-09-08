@@ -47,6 +47,7 @@ describe('getChapterAssignmentById', () => {
           book_name: 'Mark',
           bible_name: 'BSB',
           bible_abbreviation: 'BSB',
+          source_language_code: 'eng',
         },
       ],
     });
@@ -55,10 +56,14 @@ describe('getChapterAssignmentById', () => {
 
     expect(mockExecute.mock.calls[0]?.[0]).toContain('ca.peer_checker_id');
     expect(mockExecute.mock.calls[0]?.[0]).toContain('ca.has_conflict');
+    expect(mockExecute.mock.calls[0]?.[0]).toContain(
+      'sl.lang_code_iso_639_3 as source_language_code',
+    );
     expect(result).toMatchObject({
       assignedUserId: 10,
       peerCheckerId: 20,
       hasConflict: true,
+      sourceLanguageCode: 'eng',
     });
   });
 

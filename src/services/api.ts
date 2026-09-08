@@ -15,6 +15,10 @@ import {
   unwrapApiListResponse,
 } from '../types/api/responses';
 import type {
+  ApiSourceAudioResponse,
+  GetChapterSourceAudioParams,
+} from '../types/api/sourceAudio';
+import type {
   ApiTranslationImagesResponse,
   ApiTranslationNotesResponse,
   ApiTranslationQuestionsResponse,
@@ -56,6 +60,19 @@ function translationResourcesVersePath(
   return `/projects/${projectId}/translation-resources/${kind}/${encodeURIComponent(
     bookCode,
   )}/${chapter}/${verse}?${params.toString()}`;
+}
+
+function chapterSourceAudioPath(params: GetChapterSourceAudioParams): string {
+  const query = new URLSearchParams({
+    languageCode: params.languageCode,
+    bibleId: String(params.bibleId),
+  });
+  if (params.verse !== undefined) {
+    query.set('verse', String(params.verse));
+  }
+  return `/projects/${params.projectId}/source-audio/${encodeURIComponent(
+    params.bookCode,
+  )}/${params.chapter}?${query.toString()}`;
 }
 
 const MOBILE_HEADERS = {
@@ -297,6 +314,15 @@ export const FluentAPI = {
     const raw = unwrapApiListResponse(response);
     return Array.isArray(raw) ? raw : [];
   },
+
+  /**
+   * Source/reference chapter audio for the drafting dock (fluent-api #282).
+   * Empty `items` means no audio (HTTP 200). Distinct from `/verse-audio` takes.
+   */
+  getChapterSourceAudio: (
+    params: GetChapterSourceAudioParams,
+  ): Promise<ApiSourceAudioResponse> =>
+    authedRequest<ApiSourceAudioResponse>(chapterSourceAudioPath(params)),
 };
 
 export { buildHeaders, buildMultipartAuthHeaders } from './httpClient';

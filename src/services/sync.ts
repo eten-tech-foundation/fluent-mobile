@@ -1,6 +1,7 @@
 import { FluentAPI } from './api';
 import { isAuthError, AuthError } from './authError';
 import { mapApiChapterAssignment } from './mapChapterAssignment';
+import { mapApiLanguage } from './mapApiLanguage';
 import { mapApiProject } from './mapApiProject';
 import {
   insertUser,
@@ -20,6 +21,8 @@ import {
   getProjectPericopeSetId,
   getChaptersNeedingPericopeSync,
   upsertPericopeSet,
+  getLocalProjectIds,
+  hasLanguagesMissingIsoCode,
 } from '../db/repository';
 import { logger } from '../utils/logger';
 import { getDatabase } from '../db/db';
@@ -51,7 +54,6 @@ import {
   setUserLastSyncedAt,
   setReauthRequired,
 } from '../services/storage';
-import { getLocalProjectIds } from '../db/repository';
 import {
   clearTempCredentials,
   getCredentials,
@@ -197,7 +199,11 @@ export async function syncMasterData() {
         biblesCount: bibles?.length,
       });
 
-      await insertMasterData(languages, books, bibles);
+      await insertMasterData(
+        (languages ?? []).map(mapApiLanguage),
+        books,
+        bibles,
+      );
       log.info('Master data sync completed');
     },
   );
@@ -926,6 +932,29 @@ export async function syncAllData(
 
 const inFlightMetadataRefresh = new Map<number, Promise<void>>();
 
+/** Skip repeated full master-data pulls after a successful backfill this session. */
+let masterDataBackfilledThisSession = false;
+
+async function maybeBackfillMasterDataOnRefresh(): Promise<void> {
+  if (masterDataBackfilledThisSession) return;
+  const needsIso = await hasLanguagesMissingIsoCode();
+  if (!needsIso) {
+    masterDataBackfilledThisSession = true;
+    return;
+  }
+  emitSyncStart();
+  try {
+    await syncMasterData();
+  } finally {
+    emitSyncComplete();
+  }
+  // Only latch the session flag once ISO codes are actually present so a
+  // partial/empty master-data response can retry on later metadata refreshes.
+  if (!(await hasLanguagesMissingIsoCode())) {
+    masterDataBackfilledThisSession = true;
+  }
+}
+
 export async function refreshChapterMetadataIfOnline(
   userId: number,
 ): Promise<void> {
@@ -958,6 +987,9 @@ export async function refreshChapterMetadataIfOnline(
       }
 
       const sessionToken = creds.token;
+      // One-shot ISO backfill for devices that synced languages before
+      // mapApiLanguage. Verse text stays on Sync Now / DraftingScreen ensure.
+      await maybeBackfillMasterDataOnRefresh();
       await syncProjects(userId, sessionToken);
 
       const cursor = getUserLastSyncedAt(userIdStr) || undefined;

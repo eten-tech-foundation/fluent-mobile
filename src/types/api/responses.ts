@@ -1,5 +1,6 @@
 import {
   ApiBook,
+  ApiPericopeGroup,
   ApiChapterAssignment,
   ApiUserChapterAssignmentsByUser,
 } from './types';
@@ -16,7 +17,9 @@ export interface ApiLanguage {
   id: number;
   langName: string;
   langNameLocalized?: string;
+  /** @deprecated Prefer langCodeIso6393 (fluent-api OpenAPI). */
   langCode?: string;
+  langCodeIso6393?: string | null;
   scriptDirection?: string;
 }
 

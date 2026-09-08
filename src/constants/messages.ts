@@ -54,3 +54,9 @@ export const RECORD_TAKEN_CHAPTER_WARNING =
   'This chapter is assigned to another translator.';
 export const RECORD_AUDIO_CONFLICT_WARNING =
   'Unresolved audio take conflict on this chapter/pericope.';
+
+/** Record tab when local `bible_texts` row is missing (#448). */
+export const RECORD_SOURCE_TEXT_SYNCING =
+  'Source text still syncing for this verse — recording will unlock when ready.';
+export const RECORD_SOURCE_TEXT_UNAVAILABLE =
+  "Source text isn't available for this verse yet. Open Sync and tap Sync Now, then return here.";

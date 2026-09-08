@@ -28,6 +28,17 @@ type Props = {
    * Ignored while `animate` (live capture) is on.
    */
   onSeek?: (positionMs: number) => void;
+  /** Thin vertical playhead at the current position (source-audio dock). */
+  showPlayhead?: boolean;
+  /**
+   * Unplayed bar color. When set, idle bars use this solid color (source dock).
+   * When omitted, idle bars use `accentColor` at 0.35 opacity (take rows).
+   */
+  idleColor?: string;
+  /** Override non-tall row height (source dock uses `sourceDockHeight`). */
+  rowHeight?: number;
+  /** Accessibility label when seekable; defaults by playhead presence. */
+  accessibilityLabel?: string;
 };
 
 /** Lovable-style decorative height: sine envelope + light phase noise (0–1). */
@@ -109,8 +120,7 @@ export function stableTrackWidth(prev: number, next: number): number {
  * position — decorative amplitudes (not mic metering). Optional `animate`
  * mode for capture-state pulse (Lovable scaleY loop). Live metering can
  * replace decorative heights later. Progress fill is real when `durationMs` /
- * `positionMs` come from the playback engine; source-audio dock passes stub
- * values on purpose.
+ * `positionMs` come from the playback engine (including the source-audio dock).
  *
  * Optional `onSeek` enables Review scrubbing (#176 / #49 deferred AC).
  */
@@ -122,6 +132,10 @@ export function PlaybackProgressBar({
   tall = false,
   animate = false,
   onSeek,
+  showPlayhead = false,
+  idleColor,
+  rowHeight: rowHeightProp,
+  accessibilityLabel: accessibilityLabelProp,
 }: Props) {
   const seekable = Boolean(onSeek) && !animate && durationMs > 0;
   const [trackWidth, setTrackWidth] = useState(0);
@@ -140,7 +154,19 @@ export function PlaybackProgressBar({
   const activeBars = Math.round(progress * renderedBarCount);
   const rowHeight = tall
     ? theme.waveform.tallHeight
-    : theme.waveform.dockHeight;
+    : rowHeightProp ?? theme.waveform.dockHeight;
+  const playheadLeft =
+    trackWidth > 0
+      ? Math.min(
+          trackWidth - theme.waveform.playheadWidth,
+          Math.max(0, progress * trackWidth - theme.waveform.playheadWidth / 2),
+        )
+      : 0;
+  const scrubberLabel =
+    accessibilityLabelProp ??
+    (showPlayhead
+      ? 'Source audio waveform scrubber'
+      : 'Draft waveform scrubber');
 
   // One Animated.Value per bar — kept across elapsedMs re-renders so the
   // capture loop is not restarted by the duration timer.
@@ -244,7 +270,7 @@ export function PlaybackProgressBar({
     <View
       style={[styles.row, { height: rowHeight, gap: theme.waveform.barGap }]}
       accessibilityRole={seekable ? 'adjustable' : 'progressbar'}
-      accessibilityLabel={seekable ? 'Draft waveform scrubber' : undefined}
+      accessibilityLabel={seekable ? scrubberLabel : undefined}
       accessibilityValue={{
         min: 0,
         max: durationMs,
@@ -301,12 +327,36 @@ export function PlaybackProgressBar({
             key={i}
             style={[
               styles.bar,
-              { height: baseHeight, backgroundColor: accentColor },
-              active ? styles.barActive : styles.barIdle,
+              {
+                height: baseHeight,
+                backgroundColor: active
+                  ? accentColor
+                  : idleColor ?? accentColor,
+              },
+              idleColor
+                ? undefined
+                : active
+                ? styles.barActive
+                : styles.barIdle,
             ]}
           />
         );
       })}
+      {showPlayhead && durationMs > 0 && trackWidth > 0 ? (
+        <View
+          pointerEvents="none"
+          testID="playback-progress-playhead"
+          style={[
+            styles.playhead,
+            {
+              left: playheadLeft,
+              height: rowHeight,
+              width: theme.waveform.playheadWidth,
+              backgroundColor: accentColor,
+            },
+          ]}
+        />
+      ) : null}
     </View>
   );
 }
@@ -321,6 +371,7 @@ const styles = StyleSheet.create({
     // Bars are measured-fit below, but clip until the first layout arrives so
     // they can never paint over a sibling (e.g. the take-row timer).
     overflow: 'hidden',
+    position: 'relative',
   },
   /**
    * Fixed width (not flex) so changing `fittedBarCount` does not alter the
@@ -335,5 +386,10 @@ const styles = StyleSheet.create({
   },
   barIdle: {
     opacity: 0.35,
+  },
+  playhead: {
+    position: 'absolute',
+    top: 0,
+    borderRadius: theme.radius.full,
   },
 });

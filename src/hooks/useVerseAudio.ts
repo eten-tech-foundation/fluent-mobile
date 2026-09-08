@@ -167,7 +167,10 @@ export function useVerseAudio({
   useEffect(() => {
     let cancelled = false;
     setLoadedTakeId(null);
+    setPlayingTakeId(null);
     activeBibleTextIdRef.current = bibleTextId;
+    // Stop any in-flight draft playback when the active verse unit changes (#235).
+    void playback.stop();
     (async () => {
       if (bibleTextId === null) {
         allTakesRequestIdRef.current += 1;
@@ -196,6 +199,8 @@ export function useVerseAudio({
     return () => {
       cancelled = true;
     };
+    // playback identity changes every render; stop() is bound to the stable engine.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- bibleTextId-driven reload
   }, [bibleTextId, loadTakes, refreshAllTakes]);
 
   const start = useCallback(async () => {
@@ -406,6 +411,11 @@ export function useVerseAudio({
 
   /** Pause draft review playback (design review control shows Pause while playing). */
   const pausePlayback = useCallback(async () => {
+    // No-op when already idle/paused so exclusivity fallbacks cannot cascade
+    // expo-audio status → setState loops on physical devices.
+    if (state !== 'playing' && playback.status !== 'playing') {
+      return;
+    }
     try {
       await playback.pause();
       dispatch({ type: 'PLAYBACK_END' });
@@ -415,7 +425,7 @@ export function useVerseAudio({
       setErrorMessage(message);
       dispatch({ type: 'ERROR', message });
     }
-  }, [playback]);
+  }, [playback, state]);
 
   // Natural end (`didJustFinish` → idle). Explicit pause already dispatches
   // PLAYBACK_END. Do not treat brief idle during in-flight play/load (replace)
