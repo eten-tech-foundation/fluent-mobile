@@ -216,9 +216,12 @@ export async function getChapterAssignmentById(
         b.code as book_code,
         b.eng_display_name as book_name,
         bi.name as bible_name,
-        bi.abbreviation as bible_abbreviation
+        bi.abbreviation as bible_abbreviation,
+        sl.lang_code_iso_639_3 as source_language_code
       FROM chapter_assignments ca
       LEFT JOIN project_units pu ON pu.id = ca.project_unit_id
+      LEFT JOIN projects p ON pu.project_id = p.id
+      LEFT JOIN languages sl ON p.source_language_id = sl.id
       LEFT JOIN books b ON ca.book_id = b.id
       LEFT JOIN bibles bi ON ca.bible_id = bi.id
       WHERE ca.id = ?`,
@@ -246,6 +249,7 @@ export async function getChapterAssignmentById(
       bookName: row.book_name,
       bibleName: row.bible_name,
       bibleAbbreviation: row.bible_abbreviation,
+      sourceLanguageCode: row.source_language_code?.trim() || undefined,
       hasConflict: Number(row.has_conflict) === 1,
     };
   } catch (error) {

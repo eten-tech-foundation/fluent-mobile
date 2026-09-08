@@ -36,7 +36,7 @@ Nightlies are a **standalone internal APK** for `main` (no over-the-air update).
 8. The app should open normally (sign-in / home) — **not** a Metro dev launcher and **not** Expo Go.
 9. Sign in and test.
 
-Scheduled nightlies run ~**23:17 America/Los_Angeles** (11:17pm Pacific). Slack install notices wait until **09:00–16:00 PT** so they do not land overnight. If nothing new landed on `main`, the nightly may skip a build — wait for the next run that includes your merge.
+Scheduled nightlies aim for ~**23:17 America/Los_Angeles** (11:17pm Pacific); GitHub may start the job a few hours late, but it still builds. Slack install notices wait until **09:00–16:00 PT** so they do not land overnight. If nothing new landed on `main`, the nightly may skip a build — wait for the next run that includes your merge.
 
 If the app looks wrong after installing a different APK:
 
