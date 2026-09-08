@@ -179,8 +179,16 @@ export function RecordTab({
     selectedVerse,
   ]);
 
+  /** Shared generation so sync-triggered and verse-change lookups ignore stale IDs. */
+  const bibleTextRequestIdRef = useRef(0);
+
   const isSyncing = useGlobalSyncStatus(() => {
-    void resolveBibleTextId().then(id => setBibleTextId(id));
+    const requestId = ++bibleTextRequestIdRef.current;
+    void resolveBibleTextId().then(id => {
+      if (requestId === bibleTextRequestIdRef.current) {
+        setBibleTextId(id);
+      }
+    });
   });
 
   useEffect(() => {
@@ -199,16 +207,17 @@ export function RecordTab({
   }, [verseAudio.hasMultipleRecorders, takeView]);
 
   useEffect(() => {
-    let cancelled = false;
+    const requestId = ++bibleTextRequestIdRef.current;
     setBibleTextId(null);
     void resolveBibleTextId().then(id => {
-      if (!cancelled) setBibleTextId(id);
+      if (requestId === bibleTextRequestIdRef.current) {
+        setBibleTextId(id);
+      }
     });
     return () => {
-      cancelled = true;
+      bibleTextRequestIdRef.current += 1;
     };
   }, [resolveBibleTextId, verses.length]);
-
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -283,16 +292,6 @@ export function RecordTab({
     return false;
   }
 
-  async function handleStart() {
-    if (!(await ensureMic())) return;
-    setElapsedMs(0);
-    await verseAudio.start();
-  }
-
-  async function handleStop() {
-    await verseAudio.stop();
-  }
-
   /**
    * Non-selected take: delete immediately, no prompt.
    * Selected take: confirm first — deleting it hands off is_selected to the
@@ -359,11 +358,19 @@ export function RecordTab({
   });
 
   const pauseDraftPlaybackRef = useRef(verseAudio.pausePlayback);
-  pauseDraftPlaybackRef.current = verseAudio.pausePlayback;
   const stopSourceAudioRef = useRef(sourceAudio.stop);
-  stopSourceAudioRef.current = sourceAudio.stop;
+
+  useEffect(() => {
+    pauseDraftPlaybackRef.current = verseAudio.pausePlayback;
+  }, [verseAudio.pausePlayback]);
+
+  useEffect(() => {
+    stopSourceAudioRef.current = sourceAudio.stop;
+  }, [sourceAudio.stop]);
 
   // Exclusive audio: draft take / record wins over source, and vice versa.
+  // Effects cover externally driven state; handlers below also await the
+  // competing engine before starting so both never play concurrently.
   useEffect(() => {
     if (sourceAudio.isPlaying) {
       void pauseDraftPlaybackRef.current();
@@ -380,6 +387,30 @@ export function RecordTab({
     }
   }, [verseAudio.state]);
 
+  async function handleStart() {
+    if (!(await ensureMic())) return;
+    setElapsedMs(0);
+    await stopSourceAudioRef.current();
+    await verseAudio.start();
+  }
+
+  async function handleStop() {
+    await verseAudio.stop();
+  }
+
+  async function handlePlayTake(take: Recording) {
+    await stopSourceAudioRef.current();
+    await verseAudio.playTake(take);
+  }
+
+  async function handleSourcePlayPause() {
+    if (sourceAudio.isPlaying) {
+      await sourceAudio.pause();
+      return;
+    }
+    await pauseDraftPlaybackRef.current();
+    await sourceAudio.play();
+  }
   const currentUserId = userId;
   const isTaken = useMemo(
     () => isChapterTakenByOther(chapterData, currentUserId),
@@ -735,7 +766,7 @@ export function RecordTab({
                             onPlayPause={() => {
                               void (isThisPlaying
                                 ? verseAudio.pausePlayback()
-                                : verseAudio.playTake(take));
+                                : handlePlayTake(take));
                             }}
                             onSelect={() => {
                               void verseAudio.selectTake(take.id);
@@ -781,7 +812,7 @@ export function RecordTab({
                               onPlayPause={() => {
                                 void (isThisPlaying
                                   ? verseAudio.pausePlayback()
-                                  : verseAudio.playTake(take));
+                                  : handlePlayTake(take));
                               }}
                               onDesignateCanonical={() => {
                                 void verseAudio.setCanonical(take.id);
@@ -857,9 +888,7 @@ export function RecordTab({
           positionMs={sourceAudio.positionMs}
           durationMs={sourceAudio.durationMs}
           onPlayPause={() => {
-            void (sourceAudio.isPlaying
-              ? sourceAudio.pause()
-              : sourceAudio.play());
+            void handleSourcePlayPause();
           }}
           onSeek={ms => {
             void sourceAudio.seek(ms);

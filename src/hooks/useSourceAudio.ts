@@ -7,6 +7,7 @@ import type { SourceAudioLoadState } from '../types/sourceAudio';
 import { usePlaybackEngine } from './usePlaybackEngine';
 import {
   chapterSourceAudioCacheKey,
+  isCachedSourceAudioResponseValid,
   resolveSourceAudioUri,
   verseStartMs,
 } from './sourceAudioHelpers';
@@ -52,6 +53,7 @@ export function useSourceAudio({
   const [retryToken, setRetryToken] = useState(0);
 
   const requestIdRef = useRef(0);
+  const playGenerationRef = useRef(0);
   const responseCacheRef = useRef<Map<string, ApiSourceAudioResponse>>(
     new Map(),
   );
@@ -80,6 +82,7 @@ export function useSourceAudio({
   }, []);
 
   const stopAndClearPlaying = useCallback(async () => {
+    playGenerationRef.current += 1;
     playingVerseRef.current = null;
     await playbackRef.current.stop();
     onPlayingVerseChangeRef.current?.(null);
@@ -94,13 +97,20 @@ export function useSourceAudio({
   }, []);
 
   useEffect(() => {
+    // Invalidate any in-flight fetch before early returns clear/replace state.
+    const invalidatePendingFetch = () => {
+      requestIdRef.current += 1;
+    };
+
     if (!enabled) {
+      invalidatePendingFetch();
       resetLoadChrome('empty');
       void stopAndClearPlaying();
       return;
     }
 
     if (projectId === null || projectId <= 0 || !bookCode?.trim()) {
+      invalidatePendingFetch();
       resetLoadChrome('empty');
       void stopAndClearPlaying();
       return;
@@ -108,6 +118,7 @@ export function useSourceAudio({
 
     // Language ISO may still be backfilling — don't claim "No source audio".
     if (!languageCode?.trim()) {
+      invalidatePendingFetch();
       resetLoadChrome('loading');
       void stopAndClearPlaying();
       return;
@@ -128,8 +139,12 @@ export function useSourceAudio({
 
     const cached = responseCacheRef.current.get(cacheKey);
     if (cached) {
-      applyResponse(cached);
-      return;
+      if (isCachedSourceAudioResponseValid(cached)) {
+        invalidatePendingFetch();
+        applyResponse(cached);
+        return;
+      }
+      responseCacheRef.current.delete(cacheKey);
     }
 
     const requestId = ++requestIdRef.current;
@@ -177,6 +192,8 @@ export function useSourceAudio({
 
   useEffect(() => {
     return () => {
+      requestIdRef.current += 1;
+      playGenerationRef.current += 1;
       playingVerseRef.current = null;
       void playbackRef.current.stop();
       onPlayingVerseChangeRef.current?.(null);
@@ -211,6 +228,7 @@ export function useSourceAudio({
   const play = useCallback(async () => {
     const currentUri = uriRef.current;
     if (!currentUri) return;
+    const playGeneration = ++playGenerationRef.current;
     const startMs = verseStartMs(
       verseRef.current,
       timestampsRef.current,
@@ -219,14 +237,18 @@ export function useSourceAudio({
     playingVerseRef.current = verseRef.current;
     // Load + seek before play so verse starts do not briefly sound from 0:00.
     await playbackRef.current.load(currentUri);
+    if (playGeneration !== playGenerationRef.current) return;
     if (startMs > 0) {
       await playbackRef.current.seek(startMs);
+      if (playGeneration !== playGenerationRef.current) return;
     }
     await playbackRef.current.play(currentUri);
+    if (playGeneration !== playGenerationRef.current) return;
     onPlayingVerseChangeRef.current?.(verseRef.current);
   }, []);
 
   const pause = useCallback(async () => {
+    playGenerationRef.current += 1;
     playingVerseRef.current = null;
     await playbackRef.current.pause();
     onPlayingVerseChangeRef.current?.(null);

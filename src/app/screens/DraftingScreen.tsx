@@ -160,13 +160,13 @@ export default function DraftingScreen() {
   }, []);
 
   const loadChapterAssignment = useCallback(async () => {
-    const assignment = await getChapterAssignmentById(chapterId);
-    setChapterData(assignment);
-    return assignment;
+    return getChapterAssignmentById(chapterId);
   }, [chapterId]);
 
   const handleChapterClaimed = useCallback(() => {
-    void loadChapterAssignment();
+    void loadChapterAssignment().then(assignment => {
+      setChapterData(assignment);
+    });
   }, [loadChapterAssignment]);
 
   useEffect(() => {
@@ -184,6 +184,7 @@ export default function DraftingScreen() {
       try {
         let assignment = await loadChapterAssignment();
         if (ignore) return;
+        setChapterData(assignment);
         if (!assignment) {
           return;
         }
@@ -205,6 +206,7 @@ export default function DraftingScreen() {
           if (ignore) return;
           assignment = (await loadChapterAssignment()) ?? assignment;
           if (ignore) return;
+          setChapterData(assignment);
         }
 
         let texts = await getBibleTexts(

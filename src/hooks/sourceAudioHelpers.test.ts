@@ -3,6 +3,8 @@ import {
   resolveSourceAudioUri,
   verseStartMs,
   chapterSourceAudioCacheKey,
+  isSourceAudioItemExpired,
+  isCachedSourceAudioResponseValid,
 } from './sourceAudioHelpers';
 import type { ApiSourceAudioResponse } from '../types/api/sourceAudio';
 
@@ -88,5 +90,87 @@ describe('sourceAudioHelpers', () => {
       uri: 'https://cdn.example/ch.mp3',
       item: response.items[0],
     });
+  });
+
+  it('treats missing expiresAt as not expired', () => {
+    expect(
+      isSourceAudioItemExpired({
+        format: 'mp3',
+        url: 'https://cdn.example/ch.mp3',
+        scope: 'chapter',
+      }),
+    ).toBe(false);
+  });
+
+  it('detects expired signed URLs in seconds or ms', () => {
+    const nowMs = 1_700_000_000_000;
+    expect(
+      isSourceAudioItemExpired(
+        {
+          format: 'mp3',
+          url: 'https://cdn.example/ch.mp3',
+          scope: 'chapter',
+          expiresAt: Math.floor(nowMs / 1000) - 10,
+        },
+        nowMs,
+      ),
+    ).toBe(true);
+    expect(
+      isSourceAudioItemExpired(
+        {
+          format: 'mp3',
+          url: 'https://cdn.example/ch.mp3',
+          scope: 'chapter',
+          expiresAt: nowMs - 1,
+        },
+        nowMs,
+      ),
+    ).toBe(true);
+    expect(
+      isSourceAudioItemExpired(
+        {
+          format: 'mp3',
+          url: 'https://cdn.example/ch.mp3',
+          scope: 'chapter',
+          expiresAt: Math.floor(nowMs / 1000) + 60,
+        },
+        nowMs,
+      ),
+    ).toBe(false);
+  });
+
+  it('invalidates cached responses when the selected item expired', () => {
+    const nowMs = 1_700_000_000_000;
+    expect(
+      isCachedSourceAudioResponseValid(
+        {
+          provider: 'aquifer',
+          bible: { name: 'BSB', abbreviation: 'BSB' },
+          bookCode: 'MRK',
+          chapter: 1,
+          items: [
+            {
+              format: 'mp3',
+              url: 'https://cdn.example/ch.mp3',
+              scope: 'chapter',
+              expiresAt: Math.floor(nowMs / 1000) - 1,
+            },
+          ],
+        },
+        nowMs,
+      ),
+    ).toBe(false);
+    expect(
+      isCachedSourceAudioResponseValid(
+        {
+          provider: 'aquifer',
+          bible: { name: 'BSB', abbreviation: 'BSB' },
+          bookCode: 'MRK',
+          chapter: 1,
+          items: [],
+        },
+        nowMs,
+      ),
+    ).toBe(true);
   });
 });

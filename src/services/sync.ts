@@ -823,7 +823,11 @@ async function maybeBackfillMasterDataOnRefresh(): Promise<void> {
     return;
   }
   await syncMasterData();
-  masterDataBackfilledThisSession = true;
+  // Only latch the session flag once ISO codes are actually present so a
+  // partial/empty master-data response can retry on later metadata refreshes.
+  if (!(await hasLanguagesMissingIsoCode())) {
+    masterDataBackfilledThisSession = true;
+  }
 }
 
 export async function refreshChapterMetadataIfOnline(

@@ -54,3 +54,31 @@ export function resolveSourceAudioUri(
   if (!item?.url) return null;
   return { uri: item.url, item };
 }
+
+/**
+ * True when the preferred playable item's signed URL has expired.
+ * `expiresAt` is Unix seconds; values already in ms (>= 1e12) are accepted.
+ */
+export function isSourceAudioItemExpired(
+  item: ApiSourceAudioItem,
+  nowMs: number = Date.now(),
+): boolean {
+  if (item.expiresAt === undefined || !Number.isFinite(item.expiresAt)) {
+    return false;
+  }
+  const expiresAtMs =
+    item.expiresAt >= 1_000_000_000_000
+      ? item.expiresAt
+      : item.expiresAt * 1000;
+  return expiresAtMs <= nowMs;
+}
+
+/** Cached chapter responses are usable only while the selected item is unexpired. */
+export function isCachedSourceAudioResponseValid(
+  response: ApiSourceAudioResponse,
+  nowMs: number = Date.now(),
+): boolean {
+  const item = pickSourceAudioItem(response.items);
+  if (!item) return true;
+  return !isSourceAudioItemExpired(item, nowMs);
+}

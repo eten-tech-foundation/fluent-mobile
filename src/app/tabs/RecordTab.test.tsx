@@ -272,10 +272,10 @@ describe('RecordTab', () => {
     });
   });
 
-  it('wires ready source audio play/pause/seek to the dock', () => {
-    const play = jest.fn();
-    const pause = jest.fn();
-    const seek = jest.fn();
+  it('wires ready source audio play/pause/seek to the dock', async () => {
+    const play = jest.fn().mockResolvedValue(undefined);
+    const pause = jest.fn().mockResolvedValue(undefined);
+    const seek = jest.fn().mockResolvedValue(undefined);
     mockUseSourceAudio.mockReturnValue({
       ...emptySourceAudio,
       loadState: 'ready',
@@ -298,7 +298,9 @@ describe('RecordTab', () => {
     );
 
     fireEvent.press(screen.getByTestId('source-audio-play'));
-    expect(play).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(play).toHaveBeenCalled();
+    });
   });
 
   it('pauses draft playback when source audio starts playing', () => {
@@ -453,7 +455,7 @@ describe('RecordTab', () => {
     expect(idleAudio.deleteTake).toHaveBeenCalledWith('rec_2');
   });
 
-  it('plays the tapped take and pauses when the same playing take is tapped again', () => {
+  it('plays the tapped take and pauses when the same playing take is tapped again', async () => {
     const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isSelected: false });
     const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isSelected: true });
     mockUseVerseAudio.mockReturnValue({
@@ -468,7 +470,9 @@ describe('RecordTab', () => {
 
     const playButtons = screen.getAllByTestId('record-play-button');
     fireEvent.press(playButtons[0]!); // play take 1
-    expect(idleAudio.playTake).toHaveBeenCalledWith(take1);
+    await waitFor(() => {
+      expect(idleAudio.playTake).toHaveBeenCalledWith(take1);
+    });
 
     // Now simulate take 1 actually loaded + playing.
     mockUseVerseAudio.mockReturnValue({
@@ -487,10 +491,14 @@ describe('RecordTab', () => {
 
     const playButtonsAfter = screen.getAllByTestId('record-play-button');
     fireEvent.press(playButtonsAfter[0]!); // tap the same (now playing) take
-    expect(idleAudio.pausePlayback).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(idleAudio.pausePlayback).toHaveBeenCalled();
+    });
     // Tapping a different, non-loaded take's play button still calls playTake.
     fireEvent.press(playButtonsAfter[1]!);
-    expect(idleAudio.playTake).toHaveBeenCalledWith(take2);
+    await waitFor(() => {
+      expect(idleAudio.playTake).toHaveBeenCalledWith(take2);
+    });
     // Review scrub surface (#176) — only the loaded take's waveform is seekable.
     expect(screen.getByLabelText('Draft waveform scrubber')).toBeTruthy();
   });

@@ -213,4 +213,231 @@ describe('useSourceAudio', () => {
       expect(result.current.loadState).toBe('empty');
     });
   });
+
+  it('ignores a delayed fetch after disable', async () => {
+    let resolveFetch: (value: unknown) => void = () => {};
+    fetchChapterSourceAudio.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolveFetch = resolve;
+        }),
+    );
+
+    const { result, rerender } = renderHook(
+      (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
+      { initialProps: baseArgs() },
+    );
+
+    await waitFor(() => {
+      expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(1);
+    });
+
+    rerender({ ...baseArgs(), enabled: false });
+    await waitFor(() => {
+      expect(result.current.loadState).toBe('empty');
+    });
+
+    await act(async () => {
+      resolveFetch({
+        provider: 'aquifer',
+        bible: { name: 'BSB', abbreviation: 'BSB' },
+        bookCode: 'MRK',
+        chapter: 1,
+        items: [
+          {
+            format: 'mp3',
+            url: 'https://cdn.example/stale.mp3',
+            scope: 'chapter',
+          },
+        ],
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.loadState).toBe('empty');
+    });
+    expect(result.current.isPlaying).toBe(false);
+  });
+
+  it('ignores a delayed fetch after switching to a cached chapter', async () => {
+    let resolveSecond: (value: unknown) => void = () => {};
+    fetchChapterSourceAudio
+      .mockResolvedValueOnce({
+        provider: 'aquifer',
+        bible: { name: 'BSB', abbreviation: 'BSB' },
+        bookCode: 'MRK',
+        chapter: 1,
+        items: [
+          {
+            format: 'mp3',
+            url: 'https://cdn.example/ch1.mp3',
+            scope: 'chapter',
+          },
+        ],
+      })
+      .mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            resolveSecond = resolve;
+          }),
+      );
+
+    const { result, rerender } = renderHook(
+      (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
+      { initialProps: baseArgs() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.loadState).toBe('ready');
+    });
+
+    rerender({ ...baseArgs(), chapter: 2 });
+    await waitFor(() => {
+      expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(2);
+      expect(result.current.loadState).toBe('loading');
+    });
+
+    rerender({ ...baseArgs(), chapter: 1 });
+    await waitFor(() => {
+      expect(result.current.loadState).toBe('ready');
+    });
+
+    await act(async () => {
+      resolveSecond({
+        provider: 'aquifer',
+        bible: { name: 'BSB', abbreviation: 'BSB' },
+        bookCode: 'MRK',
+        chapter: 2,
+        items: [
+          {
+            format: 'mp3',
+            url: 'https://cdn.example/stale-ch2.mp3',
+            scope: 'chapter',
+          },
+        ],
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.loadState).toBe('ready');
+    });
+
+    await act(async () => {
+      await result.current.play();
+    });
+    expect(mockPlaybackLoad).toHaveBeenCalledWith(
+      'https://cdn.example/ch1.mp3',
+    );
+  });
+
+  it('refetches when a cached item is expired', async () => {
+    const expiredAt = Math.floor(Date.now() / 1000) - 60;
+    fetchChapterSourceAudio
+      .mockResolvedValueOnce({
+        provider: 'aquifer',
+        bible: { name: 'BSB', abbreviation: 'BSB' },
+        bookCode: 'MRK',
+        chapter: 1,
+        items: [
+          {
+            format: 'mp3',
+            url: 'https://cdn.example/expired.mp3',
+            scope: 'chapter',
+            expiresAt: expiredAt,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        provider: 'aquifer',
+        bible: { name: 'BSB', abbreviation: 'BSB' },
+        bookCode: 'MRK',
+        chapter: 1,
+        items: [
+          {
+            format: 'mp3',
+            url: 'https://cdn.example/fresh.mp3',
+            scope: 'chapter',
+            expiresAt: Math.floor(Date.now() / 1000) + 3600,
+          },
+        ],
+      });
+
+    const { result, rerender } = renderHook(
+      (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
+      { initialProps: baseArgs() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.loadState).toBe('ready');
+    });
+
+    rerender({ ...baseArgs(), enabled: false });
+    await waitFor(() => {
+      expect(result.current.loadState).toBe('empty');
+    });
+
+    rerender({ ...baseArgs(), enabled: true });
+    await waitFor(() => {
+      expect(result.current.loadState).toBe('ready');
+    });
+    expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await result.current.play();
+    });
+    expect(mockPlaybackLoad).toHaveBeenCalledWith(
+      'https://cdn.example/fresh.mp3',
+    );
+  });
+
+  it('does not finish play after stop clears an in-flight load', async () => {
+    fetchChapterSourceAudio.mockResolvedValue({
+      provider: 'aquifer',
+      bible: { name: 'BSB', abbreviation: 'BSB' },
+      bookCode: 'MRK',
+      chapter: 1,
+      items: [
+        {
+          format: 'mp3',
+          url: 'https://cdn.example/ch.mp3',
+          scope: 'chapter',
+        },
+      ],
+    });
+
+    let resolveLoad: (() => void) | undefined;
+    mockPlaybackLoad.mockImplementation(
+      () =>
+        new Promise<void>(resolve => {
+          resolveLoad = resolve;
+        }),
+    );
+
+    const { result } = renderHook(() => useSourceAudio(baseArgs()));
+
+    await waitFor(() => {
+      expect(result.current.loadState).toBe('ready');
+    });
+
+    let playPromise: Promise<void> | undefined;
+    await act(async () => {
+      playPromise = result.current.play();
+    });
+
+    await waitFor(() => {
+      expect(mockPlaybackLoad).toHaveBeenCalled();
+    });
+
+    await act(async () => {
+      await result.current.stop();
+    });
+
+    await act(async () => {
+      resolveLoad?.();
+      await playPromise;
+    });
+
+    expect(mockPlaybackPlay).not.toHaveBeenCalled();
+    expect(onPlayingVerseChange).not.toHaveBeenCalledWith(1);
+  });
 });
