@@ -92,6 +92,8 @@ jest.mock('./storage', () => ({
   clearAllSyncErrors: jest.fn(),
   setReauthRequired: jest.fn(),
   isReauthRequired: jest.fn(),
+  isBibleTextsServerIdRemapPending: jest.fn().mockReturnValue(false),
+  clearBibleTextsServerIdRemapPending: jest.fn(),
 }));
 
 jest.mock('../db/repository', () => ({
@@ -102,6 +104,7 @@ jest.mock('../db/repository', () => ({
   insertChapterAssignmentSyncData: jest.fn().mockResolvedValue(undefined),
   insertBibleTexts: jest.fn().mockResolvedValue(undefined),
   getChaptersToSync: jest.fn().mockResolvedValue(new Map()),
+  getRecordingLinkedChaptersToSync: jest.fn().mockResolvedValue(new Map()),
   getLocalProjectIds: jest.fn().mockResolvedValue([1]),
   hasLanguagesMissingIsoCode: jest.fn().mockResolvedValue(false),
   userHasLocalProjects: jest.fn().mockResolvedValue(true),

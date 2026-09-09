@@ -22,7 +22,7 @@ Frozen client contract for uploading translator verse audio. Refs GitHub [#102](
 | Content-Type | `multipart/form-data` (omit manual `Content-Type`; runtime sets boundary) |
 | Auth | Bearer session + server `CONTENT_UPDATE` / chapter-assignment edit gate |
 | Body | `file` (required), `durationSeconds` (optional positive number as text) |
-| IDs | Path only — no user id in the body |
+| IDs | Path only — no user id in the body. **`bibleTextId` must be the Fluent API `bible_texts.id`** (same as bulk-texts `verses[].id`). Local SQLite `bible_texts.id` is that server id (#469), not an autoincrement surrogate. |
 | Client | `FluentAPI.uploadVerseAudio()` → `src/services/api.ts` |
 | Types | `src/types/api/verseAudio.ts` |
 | Outcome helpers | `src/services/verseAudioContract.ts` |

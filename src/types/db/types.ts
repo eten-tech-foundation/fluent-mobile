@@ -158,7 +158,8 @@ export interface ChapterAssignment {
 }
 
 export interface Verse {
-  id?: number;
+  /** Server bible-text id (same as API `verses[].id` / upload `bibleTextId`). */
+  id: number;
   bible_id: number;
   book_id: number;
   chapter_number: number;
