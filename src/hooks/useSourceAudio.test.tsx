@@ -14,33 +14,47 @@ const playbackState = {
   durationMs: 0,
 };
 
-jest.mock('./usePlaybackEngine', () => ({
-  usePlaybackEngine: () => ({
-    play: async (...args: unknown[]) => {
-      playbackState.status = 'playing';
-      return mockPlaybackPlay(...args);
+jest.mock('./usePlaybackEngine', () => {
+  const React = require('react');
+
+  return {
+    usePlaybackEngine: () => {
+      const [status, setStatus] = React.useState<'idle' | 'playing' | 'paused'>(
+        'idle',
+      );
+
+      React.useEffect(() => {
+        playbackState.status = status;
+      }, [status]);
+
+      return {
+        play: async (...args: unknown[]) => {
+          setStatus('playing');
+          return mockPlaybackPlay(...args);
+        },
+        stop: async (...args: unknown[]) => {
+          setStatus('idle');
+          return mockPlaybackStop(...args);
+        },
+        pause: async (...args: unknown[]) => {
+          setStatus('paused');
+          return mockPlaybackPause(...args);
+        },
+        load: mockPlaybackLoad,
+        seek: mockPlaybackSeek,
+        get status() {
+          return status;
+        },
+        get positionMs() {
+          return playbackState.positionMs;
+        },
+        get durationMs() {
+          return playbackState.durationMs;
+        },
+      };
     },
-    stop: async (...args: unknown[]) => {
-      playbackState.status = 'idle';
-      return mockPlaybackStop(...args);
-    },
-    pause: async (...args: unknown[]) => {
-      playbackState.status = 'paused';
-      return mockPlaybackPause(...args);
-    },
-    load: mockPlaybackLoad,
-    seek: mockPlaybackSeek,
-    get status() {
-      return playbackState.status;
-    },
-    get positionMs() {
-      return playbackState.positionMs;
-    },
-    get durationMs() {
-      return playbackState.durationMs;
-    },
-  }),
-}));
+  };
+});
 
 describe('useSourceAudio', () => {
   const fetchChapterSourceAudio = jest.fn();
@@ -483,6 +497,8 @@ describe('useSourceAudio', () => {
     mockPlaybackLoad.mockClear();
     mockPlaybackPlay.mockClear();
 
+    playbackState.positionMs = 4500;
+
     await act(async () => {
       await result.current.pause();
     });
@@ -610,7 +626,7 @@ describe('useSourceAudio', () => {
       ],
     });
 
-    const { result, rerender } = renderHook(
+    const { result } = renderHook(
       (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
       { initialProps: baseArgs() },
     );
@@ -622,16 +638,19 @@ describe('useSourceAudio', () => {
     await act(async () => {
       await result.current.play();
     });
-    rerender(baseArgs());
+
+    expect(result.current.status).toBe('playing');
     expect(onPlayingVerseChange).toHaveBeenCalledWith(1);
 
     onPlayingVerseChange.mockClear();
     playbackState.positionMs = 4500;
-    rerender(baseArgs());
 
-    await waitFor(() => {
-      expect(onPlayingVerseChange).toHaveBeenCalledWith(2);
-    });
+    await waitFor(
+      () => {
+        expect(onPlayingVerseChange).toHaveBeenCalledWith(2);
+      },
+      { timeout: 2000, interval: 50 },
+    );
   });
 
   it('does not snap to verse start after scrub then play', async () => {
