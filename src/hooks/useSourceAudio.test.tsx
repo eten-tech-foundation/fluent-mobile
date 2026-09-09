@@ -19,8 +19,8 @@ jest.mock('./usePlaybackEngine', () => {
 
   return {
     usePlaybackEngine: () => {
-      const [status, setStatus] = React.useState<'idle' | 'playing' | 'paused'>(
-        'idle',
+      const [status, setStatus] = React.useState(
+        'idle' as 'idle' | 'playing' | 'paused',
       );
 
       React.useEffect(() => {
