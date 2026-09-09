@@ -1,4 +1,6 @@
 export interface ApiVerse {
+  /** Server `bible_texts.id` — must be persisted locally (#469). */
+  id: number;
   verseNumber: number;
   text: string;
 }

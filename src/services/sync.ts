@@ -53,6 +53,8 @@ import {
   getUserLastSyncedAt,
   setUserLastSyncedAt,
   setReauthRequired,
+  isBibleTextsServerIdRemapPending,
+  clearBibleTextsServerIdRemapPending,
 } from '../services/storage';
 import {
   clearTempCredentials,
@@ -451,6 +453,17 @@ export async function syncBibleTexts(updatedAfter?: string) {
     async () => {
       log.info('Syncing bible texts...');
 
+      // #469: one-shot full fetch after upgrade so local autoincrement ids remap.
+      // Keep the KV flag until this step succeeds so a failed sync can retry.
+      let cursorForSync = updatedAfter;
+      const remapPending = isBibleTextsServerIdRemapPending();
+      if (remapPending) {
+        log.warn(
+          'Bible texts server-id remap pending; full-fetching without cursor',
+        );
+        cursorForSync = undefined;
+      }
+
       const bibleGroups = await getChaptersToSync();
 
       if (bibleGroups.size === 0) {
@@ -479,8 +492,8 @@ export async function syncBibleTexts(updatedAfter?: string) {
           // Root cause (#177): incremental `updatedAfter` can return empty payloads
           // for newly assigned chapters whose verses were never inserted locally.
           // Force a full chapter fetch when any chapter in the chunk has 0 verses.
-          let cursor = updatedAfter;
-          if (updatedAfter) {
+          let cursor = cursorForSync;
+          if (cursorForSync) {
             for (const chapter of chunk) {
               const countResult = await db.execute(
                 `SELECT COUNT(*) AS count FROM bible_texts
@@ -529,13 +542,21 @@ export async function syncBibleTexts(updatedAfter?: string) {
             bibleId,
             bookId: book.bookId,
             chapterNumber: book.chapterNumber,
-            verses: book.verses.map((verse: ApiVerse) => ({
-              bible_id: bibleId,
-              book_id: book.bookId,
-              chapter_number: book.chapterNumber,
-              verse_number: verse.verseNumber,
-              text: verse.text,
-            })),
+            verses: book.verses.map((verse: ApiVerse) => {
+              if (!Number.isFinite(verse.id) || verse.id <= 0) {
+                throw new Error(
+                  `Bible text sync missing verse id for bible ${bibleId} book ${book.bookId} ch ${book.chapterNumber} v ${verse.verseNumber}`,
+                );
+              }
+              return {
+                id: verse.id,
+                bible_id: bibleId,
+                book_id: book.bookId,
+                chapter_number: book.chapterNumber,
+                verse_number: verse.verseNumber,
+                text: verse.text,
+              };
+            }),
           }));
 
           await insertBibleTexts(textsWithBibleId);
@@ -564,6 +585,10 @@ export async function syncBibleTexts(updatedAfter?: string) {
         textsInserted: totalTextsInserted,
         uniqueBiblesInDb: uniqueBiblesCount,
       });
+
+      if (remapPending) {
+        clearBibleTextsServerIdRemapPending();
+      }
     },
   );
 }

@@ -69,6 +69,10 @@ export const createTableQueries: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_ca_project_unit ON chapter_assignments(project_unit_id);`,
   `CREATE INDEX IF NOT EXISTS idx_ca_assigned_user ON chapter_assignments(assigned_user_id);`,
 
+  /**
+   * `id` is the Fluent API bible-text id (bulk-texts `verses[].id`), not a
+   * local surrogate — recordings upload that value as `bibleTextId` (#469).
+   */
   `CREATE TABLE IF NOT EXISTS bible_texts (
       id             INTEGER PRIMARY KEY,
       bible_id       INTEGER NOT NULL REFERENCES bibles(id),

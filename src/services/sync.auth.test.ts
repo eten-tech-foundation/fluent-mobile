@@ -92,6 +92,8 @@ jest.mock('./storage', () => ({
   clearAllSyncErrors: jest.fn(),
   setReauthRequired: jest.fn(),
   isReauthRequired: jest.fn(),
+  isBibleTextsServerIdRemapPending: jest.fn().mockReturnValue(false),
+  clearBibleTextsServerIdRemapPending: jest.fn(),
 }));
 
 jest.mock('../db/repository', () => ({

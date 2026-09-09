@@ -6,7 +6,13 @@ import {
   syncPendingChapterClaimsForUser,
   syncProjects,
 } from './sync';
-import { clearSyncError, setSyncCount, setSyncError } from './storage';
+import {
+  clearSyncError,
+  setSyncCount,
+  setSyncError,
+  isBibleTextsServerIdRemapPending,
+  clearBibleTextsServerIdRemapPending,
+} from './storage';
 import { getDatabase } from '../db/db';
 import {
   getChaptersToSync,
@@ -87,6 +93,8 @@ jest.mock('./storage', () => ({
   setSyncError: jest.fn(),
   clearSyncError: jest.fn(),
   clearAllSyncErrors: jest.fn(),
+  isBibleTextsServerIdRemapPending: jest.fn().mockReturnValue(false),
+  clearBibleTextsServerIdRemapPending: jest.fn(),
 }));
 
 jest.mock('../db/repository', () => ({
@@ -130,6 +138,12 @@ const clearSyncErrorMock = jest.mocked(clearSyncError);
 const setSyncCountMock = jest.mocked(setSyncCount);
 const getConnectivitySnapshotMock = jest.mocked(getConnectivitySnapshot);
 const syncPendingChapterClaimsMock = jest.mocked(syncPendingChapterClaims);
+const isBibleTextsServerIdRemapPendingMock = jest.mocked(
+  isBibleTextsServerIdRemapPending,
+);
+const clearBibleTextsServerIdRemapPendingMock = jest.mocked(
+  clearBibleTextsServerIdRemapPending,
+);
 
 function mockDbCount(count: number) {
   (getDatabase as jest.Mock).mockReturnValue({
@@ -391,7 +405,7 @@ describe('sync step orchestration', () => {
           {
             bookId: 1,
             chapterNumber: 1,
-            verses: [{ verseNumber: 1, text: 'In the beginning' }],
+            verses: [{ id: 9001, verseNumber: 1, text: 'In the beginning' }],
           },
         ],
       });
@@ -410,6 +424,7 @@ describe('sync step orchestration', () => {
           chapterNumber: 1,
           verses: [
             expect.objectContaining({
+              id: 9001,
               verse_number: 1,
               text: 'In the beginning',
             }),
@@ -418,6 +433,78 @@ describe('sync step orchestration', () => {
       ]);
       expect(setSyncCountMock).toHaveBeenCalledWith('sync_count_bibles', 2);
       expect(clearSyncErrorMock).toHaveBeenCalledWith('sync_error_bible_texts');
+    });
+
+    it('full-fetches without cursor when server-id remap is pending', async () => {
+      mockDbCount(2);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 1,
+            chapterNumber: 1,
+            verses: [{ id: 9001, verseNumber: 1, text: 'In the beginning' }],
+          },
+        ],
+      });
+
+      await syncBibleTexts('2026-01-01T00:00:00.000Z');
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 1, chapterNumber: 1 }],
+        undefined,
+      );
+      expect(clearBibleTextsServerIdRemapPendingMock).toHaveBeenCalled();
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+    });
+
+    it('keeps the remap flag when no chapters are available', async () => {
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+
+      await syncBibleTexts('2026-01-01T00:00:00.000Z');
+
+      expect(FluentAPI.getBibleTexts).not.toHaveBeenCalled();
+      expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+    });
+
+    it('rejects verses missing a server id', async () => {
+      jest.useFakeTimers();
+      mockDbCount(0);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 1,
+            chapterNumber: 1,
+            verses: [{ verseNumber: 1, text: 'In the beginning' }],
+          },
+        ],
+      });
+
+      try {
+        const pending = syncBibleTexts();
+        const expectation =
+          expect(pending).rejects.toThrow(/missing verse id/i);
+
+        await jest.advanceTimersByTimeAsync(500);
+        await jest.advanceTimersByTimeAsync(1000);
+        await expectation;
+
+        expect(insertBibleTextsMock).not.toHaveBeenCalled();
+        expect(setSyncErrorMock).toHaveBeenCalledWith(
+          'sync_error_bible_texts',
+          expect.stringMatching(/missing verse id/i),
+        );
+      } finally {
+        jest.useRealTimers();
+      }
     });
   });
 });
