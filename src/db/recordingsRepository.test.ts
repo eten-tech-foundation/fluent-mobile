@@ -681,6 +681,38 @@ describe('recordingsRepository multi-take', () => {
     expect(atFive.map(t => t.takeNumber)).toEqual([1, 2, 3, 4]);
   });
 
+  it('does not clear selection on another bible when selecting overlapping coordinates', async () => {
+    await addRecordingTake({
+      bibleTextId: 205,
+      localFilePath: 'file:///other-bible.m4a',
+      id: 'other-bible',
+      granularity: 'pericope',
+      startChapter: 1,
+      startVerse: 3,
+      endChapter: 1,
+      endVerse: 7,
+    });
+    await addRecordingTake({
+      bibleTextId: 105,
+      localFilePath: 'file:///home.m4a',
+      id: 'home',
+      granularity: 'verse',
+      startChapter: 1,
+      startVerse: 5,
+      endChapter: 1,
+      endVerse: 5,
+    });
+
+    await selectRecordingTake('other-bible');
+
+    expect(__getRecordingRows().find(r => r.id === 'home')?.is_selected).toBe(
+      1,
+    );
+    expect(
+      __getRecordingRows().find(r => r.id === 'other-bible')?.is_selected,
+    ).toBe(1);
+  });
+
   it('does not list a pericope take across bibles with identical coordinates', async () => {
     await addRecordingTake({
       bibleTextId: 203,

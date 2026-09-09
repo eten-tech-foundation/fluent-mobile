@@ -135,6 +135,8 @@ export function RecordTab({
     setCurrentlyPlayingVerse,
   } = useDraftingContext();
   const [bibleTextId, setBibleTextId] = useState<number | null>(null);
+  /** Verse `selectedVerse` that `bibleTextId` was resolved for (null while stale). */
+  const [bibleTextVerse, setBibleTextVerse] = useState<number | null>(null);
   const [sourceExpanded, setSourceExpanded] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [takeView, setTakeView] = useState<'mine' | 'all'>('mine');
@@ -145,8 +147,15 @@ export function RecordTab({
   const [recordingUnit, setRecordingUnit] =
     useState<RecordingUnitCapture | null>(null);
 
+  const captureBibleTextId = useMemo(() => {
+    if (bibleTextId === null || bibleTextVerse !== selectedVerse) {
+      return null;
+    }
+    return bibleTextId;
+  }, [bibleTextId, bibleTextVerse, selectedVerse]);
+
   const recordingCaptureReady = useMemo(() => {
-    if (bibleTextId === null) {
+    if (captureBibleTextId === null) {
       return false;
     }
     if (draftingUnit !== 'pericope') {
@@ -156,13 +165,13 @@ export function RecordTab({
       recordingUnit !== null &&
       recordingUnit.coveredViews.some(
         view =>
-          view.bibleTextId === bibleTextId &&
+          view.bibleTextId === captureBibleTextId &&
           view.chapterNumber === chapterData.chapterNumber &&
           view.verseNumber === selectedVerse,
       )
     );
   }, [
-    bibleTextId,
+    captureBibleTextId,
     chapterData.chapterNumber,
     draftingUnit,
     recordingUnit,
@@ -173,7 +182,7 @@ export function RecordTab({
     draftingUnit === 'pericope' && recordingCaptureReady ? recordingUnit : null;
 
   const verseAudio = useVerseAudio({
-    bibleTextId,
+    bibleTextId: captureBibleTextId,
     chapterAssignmentId: chapterData.id,
     userId,
     chapterClaim: {
@@ -220,12 +229,14 @@ export function RecordTab({
 
   const refreshBibleTextId = useCallback(() => {
     const requestId = ++bibleTextRequestIdRef.current;
+    const verse = selectedVerse;
     void resolveBibleTextId().then(id => {
       if (requestId === bibleTextRequestIdRef.current) {
         setBibleTextId(id);
+        setBibleTextVerse(verse);
       }
     });
-  }, [resolveBibleTextId]);
+  }, [resolveBibleTextId, selectedVerse]);
 
   const isSyncing = useGlobalSyncStatus(refreshBibleTextId);
 
@@ -239,7 +250,7 @@ export function RecordTab({
       bookId: chapterData.bookId,
       chapterNumber: chapterData.chapterNumber,
       verseNumber: selectedVerse,
-      selectedBibleTextId: bibleTextId,
+      selectedBibleTextId: captureBibleTextId,
     }).then(unit => {
       if (!cancelled) {
         setRecordingUnit(unit);
@@ -249,7 +260,7 @@ export function RecordTab({
       cancelled = true;
     };
   }, [
-    bibleTextId,
+    captureBibleTextId,
     chapterData.bibleId,
     chapterData.bookId,
     chapterData.chapterNumber,
@@ -260,7 +271,7 @@ export function RecordTab({
 
   useEffect(() => {
     setTakeView('mine');
-  }, [bibleTextId]);
+  }, [captureBibleTextId]);
 
   useEffect(() => {
     void refreshRecordedVerses();
@@ -275,16 +286,19 @@ export function RecordTab({
 
   useEffect(() => {
     const requestId = ++bibleTextRequestIdRef.current;
+    const verse = selectedVerse;
     setBibleTextId(null);
+    setBibleTextVerse(null);
     void resolveBibleTextId().then(id => {
       if (requestId === bibleTextRequestIdRef.current) {
         setBibleTextId(id);
+        setBibleTextVerse(verse);
       }
     });
     return () => {
       bibleTextRequestIdRef.current += 1;
     };
-  }, [resolveBibleTextId, verses.length]);
+  }, [resolveBibleTextId, selectedVerse, verses.length]);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -337,8 +351,8 @@ export function RecordTab({
     Alert.alert('Audio error', verseAudio.errorMessage);
   }, [verseAudio.errorMessage]);
 
-  const recordDisabled = bibleTextId === null;
-  const syncingMessage = recordSourceTextHint(bibleTextId, isSyncing);
+  const recordDisabled = captureBibleTextId === null;
+  const syncingMessage = recordSourceTextHint(captureBibleTextId, isSyncing);
 
   async function ensureMic(): Promise<boolean> {
     const permission = await requestMicPermission();
@@ -396,6 +410,10 @@ export function RecordTab({
       );
       return;
     }
+    bibleTextRequestIdRef.current += 1;
+    setBibleTextId(null);
+    setBibleTextVerse(null);
+    setRecordingUnit(null);
     setSelectedVerse(next);
   }
 

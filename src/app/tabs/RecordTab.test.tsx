@@ -14,7 +14,10 @@ import {
   RECORD_TAKEN_CHAPTER_WARNING,
   RECORD_SOURCE_TEXT_UNAVAILABLE,
 } from '../../constants/messages';
-import type { useVerseAudio } from '../../hooks/useVerseAudio';
+import type {
+  useVerseAudio,
+  UseVerseAudioArgs,
+} from '../../hooks/useVerseAudio';
 import type { useSourceAudio } from '../../hooks/useSourceAudio';
 import type {
   Recording,
@@ -44,7 +47,7 @@ const mockGetBibleTextId = getBibleTextId as jest.MockedFunction<
 >;
 
 jest.mock('../../hooks/useVerseAudio', () => ({
-  useVerseAudio: () => mockUseVerseAudio(),
+  useVerseAudio: (args: UseVerseAudioArgs) => mockUseVerseAudio(args),
 }));
 
 jest.mock('../../hooks/useSourceAudio', () => ({
@@ -132,7 +135,9 @@ const idleAudio: VerseAudioApi = {
   setCanonical: jest.fn(),
 };
 
-const mockUseVerseAudio = jest.fn((): VerseAudioApi => idleAudio);
+const mockUseVerseAudio = jest.fn(
+  (_args: UseVerseAudioArgs): VerseAudioApi => idleAudio,
+);
 
 const emptySourceAudio: SourceAudioApi = {
   loadState: 'empty',
@@ -267,6 +272,64 @@ describe('RecordTab', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('record-syncing-hint')).toBeNull();
     });
+  });
+
+  it('disables record until bible text resolves for the active verse', async () => {
+    const multiVerses = [
+      {
+        bibleId: 1,
+        bookId: 1,
+        chapterNumber: 14,
+        verseNumber: 3,
+        text: 'v3',
+      },
+      {
+        bibleId: 1,
+        bookId: 1,
+        chapterNumber: 14,
+        verseNumber: 5,
+        text: 'v5',
+      },
+    ];
+    let resolveVerseFive: (id: number) => void = () => {};
+    mockGetBibleTextId.mockImplementation(async (_b, _bk, _ch, verse) => {
+      if (verse === 3) {
+        return 100;
+      }
+      if (verse === 5) {
+        return await new Promise<number>(resolve => {
+          resolveVerseFive = resolve;
+        });
+      }
+      return null;
+    });
+
+    const capturedIds: (number | null)[] = [];
+    mockUseVerseAudio.mockImplementation((args: UseVerseAudioArgs) => {
+      capturedIds.push(args.bibleTextId);
+      return idleAudio;
+    });
+
+    render(
+      <DraftingProvider verses={multiVerses} initialVerse={3}>
+        <RecordTab chapterData={chapterData} userId={42} />
+      </DraftingProvider>,
+    );
+
+    await waitFor(() => {
+      expect(capturedIds.some(id => id === 100)).toBe(true);
+    });
+
+    fireEvent.press(screen.getByTestId('record-next-verse'));
+
+    expect(screen.getByTestId('record-start-button')).toBeDisabled();
+    expect(capturedIds.at(-1)).toBeNull();
+
+    resolveVerseFive(200);
+    await waitFor(() => {
+      expect(screen.getByTestId('record-start-button')).toBeEnabled();
+    });
+    expect(capturedIds.some(id => id === 200)).toBe(true);
   });
 
   it('does not claim text is syncing when bible text is missing and sync is idle', async () => {
