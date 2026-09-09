@@ -355,6 +355,46 @@ describe('sync step orchestration', () => {
         });
       }
     });
+
+    it('returns a partial-skip warning when some rows insert and others are skipped', async () => {
+      mockDbCount(3);
+      insertChapterAssignmentSyncDataMock.mockResolvedValue({
+        insertedCount: 1,
+        skipped: [{ chapterAssignmentId: 12, reason: 'missing_book' as const }],
+      });
+      (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            chapterAssignmentId: 11,
+            projectUnitId: 22,
+            projectId: 5,
+            bibleId: 10,
+            bookId: 1,
+            chapterNumber: 1,
+            chapterStatus: 'in_progress',
+            totalVerses: 10,
+            completedVerses: 2,
+          },
+          {
+            chapterAssignmentId: 12,
+            projectUnitId: 22,
+            projectId: 5,
+            bibleId: 10,
+            bookId: 1,
+            chapterNumber: 2,
+            chapterStatus: 'in_progress',
+            totalVerses: 10,
+            completedVerses: 0,
+          },
+        ],
+      });
+
+      await expect(syncChapterAssignments(2)).resolves.toEqual({
+        syncedAt: undefined,
+        partialSkipWarning:
+          'Skipped 1 of 2 chapter assignment(s) — missing FK parents',
+      });
+    });
   });
 
   describe('syncPendingChapterClaimsForUser', () => {
@@ -393,13 +433,17 @@ describe('sync step orchestration', () => {
       expect(syncPendingChapterClaimsMock).not.toHaveBeenCalled();
     });
 
-    it('retries non-auth failures then sets the sync error', async () => {
+    it('retries non-auth failures then soft-fails without aborting', async () => {
       jest.useFakeTimers();
       syncPendingChapterClaimsMock.mockRejectedValue(new Error('network'));
 
       try {
         const pending = syncPendingChapterClaimsForUser(9);
-        const expectation = expect(pending).rejects.toThrow('network');
+        const expectation = expect(pending).resolves.toEqual({
+          synced: 0,
+          conflicts: 0,
+          failed: 1,
+        });
 
         await jest.advanceTimersByTimeAsync(500);
         await jest.advanceTimersByTimeAsync(1000);
@@ -415,24 +459,34 @@ describe('sync step orchestration', () => {
       }
     });
 
-    it('soft-fails when pending claims report failures without aborting', async () => {
+    it('retries pending claim failures then soft-fails without aborting', async () => {
+      jest.useFakeTimers();
       syncPendingChapterClaimsMock.mockResolvedValue({
         synced: 0,
         conflicts: 0,
         failed: 1,
       });
 
-      await expect(syncPendingChapterClaimsForUser(9)).resolves.toEqual({
-        synced: 0,
-        conflicts: 0,
-        failed: 1,
-      });
+      try {
+        const pending = syncPendingChapterClaimsForUser(9);
+        const expectation = expect(pending).resolves.toEqual({
+          synced: 0,
+          conflicts: 0,
+          failed: 1,
+        });
 
-      expect(syncPendingChapterClaimsMock).toHaveBeenCalledTimes(1);
-      expect(setSyncErrorMock).toHaveBeenCalledWith(
-        'sync_error_chapter_claims',
-        'Failed to sync 1 pending chapter claim(s)',
-      );
+        await jest.advanceTimersByTimeAsync(500);
+        await jest.advanceTimersByTimeAsync(1000);
+        await expectation;
+
+        expect(syncPendingChapterClaimsMock).toHaveBeenCalledTimes(3);
+        expect(setSyncErrorMock).toHaveBeenCalledWith(
+          'sync_error_chapter_claims',
+          'Failed to sync 1 pending chapter claim(s)',
+        );
+      } finally {
+        jest.useRealTimers();
+      }
     });
   });
 

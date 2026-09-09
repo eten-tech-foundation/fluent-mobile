@@ -10,10 +10,14 @@ import type { NormalizedClaimChapterAssignmentResponse } from '../types/api/chap
 
 const log = logger.create('ChapterClaimSync');
 
+function isFinitePositiveId(value: number): boolean {
+  return Number.isFinite(value) && value > 0;
+}
+
 /**
  * Pushes a chapter claim to the server (#268). On a winning claim, updates
  * local `assigned_user_id` for the active user. Race losers persist
- * `has_conflict` locally (#271).
+ * `has_conflict` locally (#271 / #470).
  */
 export async function syncChapterClaim(
   chapterAssignmentId: number,
@@ -27,6 +31,9 @@ export async function syncChapterClaim(
     await setChapterAssignmentConflict(chapterAssignmentId, true);
   } else if (response.assignedUserId === userId) {
     await claimChapterAssignment(chapterAssignmentId, userId);
+  } else if (isFinitePositiveId(response.assignedUserId)) {
+    // Definitive loss: another assignee without relying on the optional flag.
+    await setChapterAssignmentConflict(chapterAssignmentId, true);
   }
   return response;
 }
@@ -39,9 +46,9 @@ export type SyncPendingChapterClaimsResult = {
 
 /**
  * Syncs pending offline claims from `chapter_claim_queue` for the given user (#271).
- * Resolves each row only on a definitive API outcome (win or conflict). Leaves
- * rows pending on transient failure or ambiguous responses so the next sync
- * cycle retries (#470).
+ * Resolves each row on a definitive API outcome (win, conflict flag, or other
+ * finite assignee). Leaves rows pending on transient failure or malformed /
+ * non-finite assignee so the next sync cycle retries (#470).
  */
 export async function syncPendingChapterClaims(
   userId: number,
@@ -66,6 +73,9 @@ export async function syncPendingChapterClaims(
         await resolveChapterClaimQueueEntry(row.id);
       } else if (response.assignedUserId === row.userId) {
         synced += 1;
+        await resolveChapterClaimQueueEntry(row.id);
+      } else if (isFinitePositiveId(response.assignedUserId)) {
+        conflicts += 1;
         await resolveChapterClaimQueueEntry(row.id);
       } else {
         failed += 1;

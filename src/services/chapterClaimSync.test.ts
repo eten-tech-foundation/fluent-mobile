@@ -63,6 +63,22 @@ describe('syncChapterClaim', () => {
     expect(mockClaimChapterAssignment).not.toHaveBeenCalled();
     expect(mockSetChapterAssignmentConflict).toHaveBeenCalledWith(3, true);
   });
+
+  it('persists has_conflict when another finite assignee wins without the flag', async () => {
+    mockFluentClaim.mockResolvedValue({
+      ...winningResponse,
+      assignedUserId: 99,
+      hasClaimConflict: false,
+    });
+
+    await expect(syncChapterClaim(3, 9)).resolves.toEqual({
+      ...winningResponse,
+      assignedUserId: 99,
+      hasClaimConflict: false,
+    });
+    expect(mockClaimChapterAssignment).not.toHaveBeenCalled();
+    expect(mockSetChapterAssignmentConflict).toHaveBeenCalledWith(3, true);
+  });
 });
 
 describe('syncPendingChapterClaims', () => {
@@ -140,7 +156,7 @@ describe('syncPendingChapterClaims', () => {
     expect(mockResolveChapterClaimQueueEntry).not.toHaveBeenCalled();
   });
 
-  it('leaves the queue row pending on ambiguous API responses', async () => {
+  it('resolves the queue row when another finite assignee wins without the flag', async () => {
     mockGetPendingChapterClaims.mockResolvedValue([
       {
         id: 7,
@@ -152,6 +168,32 @@ describe('syncPendingChapterClaims', () => {
     mockFluentClaim.mockResolvedValue({
       chapterAssignmentId: 16,
       assignedUserId: 42,
+      status: 'draft',
+      hasClaimConflict: false,
+    });
+
+    await expect(syncPendingChapterClaims(9)).resolves.toEqual({
+      synced: 0,
+      conflicts: 1,
+      failed: 0,
+    });
+    expect(mockClaimChapterAssignment).not.toHaveBeenCalled();
+    expect(mockSetChapterAssignmentConflict).toHaveBeenCalledWith(16, true);
+    expect(mockResolveChapterClaimQueueEntry).toHaveBeenCalledWith(7);
+  });
+
+  it('leaves the queue row pending on malformed non-finite assignee', async () => {
+    mockGetPendingChapterClaims.mockResolvedValue([
+      {
+        id: 8,
+        chapterAssignmentId: 17,
+        userId: 9,
+        claimedAt: '2026-08-28T00:00:00.000Z',
+      },
+    ]);
+    mockFluentClaim.mockResolvedValue({
+      chapterAssignmentId: 17,
+      assignedUserId: Number.NaN,
       status: 'draft',
       hasClaimConflict: false,
     });

@@ -75,7 +75,7 @@ describe('useSync', () => {
     expect(result.current.displayText).toBe('Sync failed: projects');
   });
 
-  it('surfaces chapter claim sync errors ahead of assignment errors', () => {
+  it('joins chapter claim and assignment sync errors', () => {
     mockGetSyncError.mockImplementation((key: string) => {
       if (key === KV_KEYS.SYNC_ERROR_CHAPTER_CLAIMS) {
         return 'Failed to sync 1 pending chapter claim(s)';
@@ -89,7 +89,9 @@ describe('useSync', () => {
     const { result } = renderHook(() => useSync());
 
     expect(result.current.stateType).toBe('error');
-    expect(result.current.displayText).toBe('Sync failed: chapter claims');
+    expect(result.current.displayText).toBe(
+      'Sync failed: chapter claims, chapter assignments',
+    );
   });
 
   it('surfaces pericope sync errors from KV', () => {
