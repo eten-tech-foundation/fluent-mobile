@@ -108,6 +108,8 @@ export type VerseTakeView = {
 
 export type AddRecordingTakeInput = {
   bibleTextId: number;
+  /** Verse view where capture happened — scopes take_number across mixed takes (#410). */
+  viewBibleTextId?: number;
   localFilePath: string;
   durationMs?: number;
   fileSizeBytes?: number;
@@ -149,25 +151,42 @@ function rowRange(row: {
   };
 }
 
+/** Match pericope takes whose anchor shares bible/book with `view_bt.id`. */
 function pericopeCoversViewSql(alias = ''): string {
   const p = alias ? `${alias}.` : '';
   return `(
     ${p}granularity = 'pericope'
-    AND (${p}start_chapter < ? OR (${p}start_chapter = ? AND ${p}start_verse <= ?))
-    AND (${p}end_chapter > ? OR (${p}end_chapter = ? AND ${p}end_verse >= ?))
+    AND EXISTS (
+      SELECT 1
+      FROM bible_texts anchor_bt
+      INNER JOIN bible_texts view_bt ON view_bt.id = ?
+      WHERE anchor_bt.id = ${p}bible_text_id
+        AND anchor_bt.bible_id = view_bt.bible_id
+        AND anchor_bt.book_id = view_bt.book_id
+        AND (${p}start_chapter < view_bt.chapter_number
+          OR (${p}start_chapter = view_bt.chapter_number AND ${p}start_verse <= view_bt.verse_number))
+        AND (${p}end_chapter > view_bt.chapter_number
+          OR (${p}end_chapter = view_bt.chapter_number AND ${p}end_verse >= view_bt.verse_number))
+    )
   )`;
 }
 
-function verseViewParams(view: VerseTakeView): number[] {
-  const { chapterNumber, verseNumber } = view;
-  return [
-    chapterNumber,
-    chapterNumber,
-    verseNumber,
-    chapterNumber,
-    chapterNumber,
-    verseNumber,
-  ];
+async function maxTakeNumberAtView(
+  tx: Transaction,
+  owner: { sql: string; params: (number | null)[] },
+  viewBibleTextId: number,
+): Promise<number> {
+  const result = await tx.execute(
+    `SELECT MAX(take_number) AS max_take
+     FROM recordings
+     WHERE ${owner.sql}
+       AND (bible_text_id = ? OR ${pericopeCoversViewSql()})`,
+    [...owner.params, viewBibleTextId, viewBibleTextId],
+  );
+  return Number(
+    (result.rows?.[0] as { max_take?: number | null } | undefined)?.max_take ??
+      0,
+  );
 }
 
 async function clearOverlappingSelectedTakes(
@@ -181,10 +200,18 @@ async function clearOverlappingSelectedTakes(
   now: string,
 ): Promise<void> {
   const selected = await tx.execute(
-    `SELECT id, bible_text_id, start_chapter, start_verse, end_chapter, end_verse
-     FROM recordings
-     WHERE is_selected = 1 AND ${owner.sql}`,
-    owner.params,
+    `SELECT r.id, r.bible_text_id, r.start_chapter, r.start_verse, r.end_chapter, r.end_verse
+     FROM recordings r
+     INNER JOIN bible_texts incoming_bt ON incoming_bt.id = ?
+     INNER JOIN bible_texts anchor_bt ON anchor_bt.id = r.bible_text_id
+     WHERE r.is_selected = 1
+       AND ${owner.sql.replaceAll(
+         'recorded_by_user_id',
+         'r.recorded_by_user_id',
+       )}
+       AND anchor_bt.bible_id = incoming_bt.bible_id
+       AND anchor_bt.book_id = incoming_bt.book_id`,
+    [incoming.bibleTextId, ...owner.params],
   );
   const rows = (selected.rows ?? []) as unknown as {
     id: string;
@@ -241,15 +268,20 @@ export async function addRecordingTake(
       now,
     );
 
-    const maxResult = await tx.execute(
-      `SELECT MAX(take_number) AS max_take FROM recordings
-       WHERE bible_text_id = ? AND ${owner.sql}`,
-      [input.bibleTextId, ...owner.params],
-    );
-    const maxTake = Number(
-      (maxResult.rows?.[0] as { max_take?: number | null } | undefined)
-        ?.max_take ?? 0,
-    );
+    let maxTake = 0;
+    if (input.viewBibleTextId !== null && input.viewBibleTextId !== undefined) {
+      maxTake = await maxTakeNumberAtView(tx, owner, input.viewBibleTextId);
+    } else {
+      const maxResult = await tx.execute(
+        `SELECT MAX(take_number) AS max_take FROM recordings
+         WHERE bible_text_id = ? AND ${owner.sql}`,
+        [input.bibleTextId, ...owner.params],
+      );
+      maxTake = Number(
+        (maxResult.rows?.[0] as { max_take?: number | null } | undefined)
+          ?.max_take ?? 0,
+      );
+    }
     const takeNumber = maxTake + 1;
 
     await tx.execute(
@@ -314,13 +346,11 @@ export async function getTakesForVerse(
   const viewSql = view
     ? `AND (bible_text_id = ? OR ${pericopeCoversViewSql()})`
     : 'AND bible_text_id = ?';
-  const viewParams = view
-    ? [bibleTextId, ...verseViewParams(view)]
-    : [bibleTextId];
+  const viewParams = view ? [bibleTextId, bibleTextId] : [bibleTextId];
   const result = await db.execute(
     `SELECT * FROM recordings
      WHERE ${owner.sql} ${viewSql}
-     ORDER BY take_number ASC, created_at ASC`,
+     ORDER BY ${view ? 'created_at ASC' : 'take_number ASC, created_at ASC'}`,
     [...owner.params, ...viewParams],
   );
   const rows = (result.rows ?? []) as unknown as RecordingRow[];
@@ -335,15 +365,15 @@ export async function getAllTakesForVerse(
   const viewSql = view
     ? `AND (r.bible_text_id = ? OR ${pericopeCoversViewSql('r')})`
     : 'AND r.bible_text_id = ?';
-  const viewParams = view
-    ? [bibleTextId, ...verseViewParams(view)]
-    : [bibleTextId];
+  const viewParams = view ? [bibleTextId, bibleTextId] : [bibleTextId];
   const result = await db.execute(
     `SELECT r.*, u.first_name, u.last_name, u.username, u.email
      FROM recordings r
      LEFT JOIN users u ON u.id = r.recorded_by_user_id
      WHERE 1 = 1 ${viewSql}
-     ORDER BY r.recorded_by_user_id IS NOT NULL, r.recorded_by_user_id ASC, r.take_number ASC`,
+     ORDER BY r.recorded_by_user_id IS NOT NULL, r.recorded_by_user_id ASC, ${
+       view ? 'r.created_at ASC' : 'r.take_number ASC'
+     }`,
     viewParams,
   );
   const rows = (result.rows ?? []) as unknown as OwnerJoinRow[];
@@ -361,9 +391,7 @@ export async function verseHasMultipleRecorders(
   const viewSql = view
     ? `AND (bible_text_id = ? OR ${pericopeCoversViewSql()})`
     : 'AND bible_text_id = ?';
-  const viewParams = view
-    ? [bibleTextId, ...verseViewParams(view)]
-    : [bibleTextId];
+  const viewParams = view ? [bibleTextId, bibleTextId] : [bibleTextId];
   const result = await db.execute(
     `SELECT COUNT(*) AS cnt
      FROM recordings

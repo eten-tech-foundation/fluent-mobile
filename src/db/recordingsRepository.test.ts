@@ -6,6 +6,21 @@ type Row = RecordingRow;
 let rows: Row[] = [];
 let mockActiveUserId = '1';
 
+type BibleTextRef = {
+  bible_id: number;
+  book_id: number;
+  chapter_number: number;
+  verse_number: number;
+};
+
+const bibleTexts: Record<number, BibleTextRef> = {
+  103: { bible_id: 1, book_id: 1, chapter_number: 1, verse_number: 3 },
+  105: { bible_id: 1, book_id: 1, chapter_number: 1, verse_number: 5 },
+  108: { bible_id: 1, book_id: 1, chapter_number: 1, verse_number: 8 },
+  203: { bible_id: 2, book_id: 1, chapter_number: 1, verse_number: 3 },
+  205: { bible_id: 2, book_id: 1, chapter_number: 1, verse_number: 5 },
+};
+
 function clone(row: Row): Row {
   return { ...row };
 }
@@ -40,15 +55,31 @@ function matchesOwner(
   return true;
 }
 
+function sharesBibleBook(anchorId: number, viewId: number): boolean {
+  const anchor = bibleTexts[anchorId];
+  const view = bibleTexts[viewId];
+  if (!anchor || !view) {
+    return anchorId === viewId;
+  }
+  return anchor.bible_id === view.bible_id && anchor.book_id === view.book_id;
+}
+
 function isVisibleAtVerse(
   row: Row,
   bibleTextId: number,
-  view?: { chapterNumber: number; verseNumber: number },
+  withView: boolean,
 ): boolean {
   if (row.bible_text_id === bibleTextId) {
     return true;
   }
-  if (!view || row.granularity !== 'pericope') {
+  if (!withView || row.granularity !== 'pericope') {
+    return false;
+  }
+  if (!sharesBibleBook(row.bible_text_id, bibleTextId)) {
+    return false;
+  }
+  const view = bibleTexts[bibleTextId];
+  if (!view) {
     return false;
   }
   return rangeCoversVerse(
@@ -58,29 +89,35 @@ function isVisibleAtVerse(
       endChapter: row.end_chapter,
       endVerse: row.end_verse,
     },
-    view.chapterNumber,
-    view.verseNumber,
+    view.chapter_number,
+    view.verse_number,
   );
 }
 
-function parseVerseView(
+function parseViewBibleTextId(
   sql: string,
   params: unknown[],
   bibleTextIdIndex: number,
-): {
-  bibleTextId: number;
-  view?: { chapterNumber: number; verseNumber: number };
-} {
+): { bibleTextId: number; withView: boolean } {
   const bibleTextId = params[bibleTextIdIndex] as number;
-  if (!sql.includes("granularity = 'pericope'")) {
-    return { bibleTextId };
+  const withView = sql.includes("granularity = 'pericope'");
+  return { bibleTextId, withView };
+}
+
+function matchesSameBibleBookSelection(
+  row: Row,
+  incomingBibleTextId: number,
+  sql: string,
+  params: unknown[],
+): boolean {
+  if (!sql.includes('anchor_bt.bible_id = incoming_bt.bible_id')) {
+    return row.is_selected === 1 && matchesOwner(row, sql, params, 1);
   }
-  const chapterNumber = params[bibleTextIdIndex + 1] as number;
-  const verseNumber = params[bibleTextIdIndex + 3] as number;
-  return {
-    bibleTextId,
-    view: { chapterNumber, verseNumber },
-  };
+  return (
+    row.is_selected === 1 &&
+    sharesBibleBook(row.bible_text_id, incomingBibleTextId) &&
+    matchesOwner(row, sql, params, 1)
+  );
 }
 
 async function mockExecute(
@@ -91,13 +128,19 @@ async function mockExecute(
 
   if (
     normalized.startsWith(
-      'SELECT id, bible_text_id, start_chapter, start_verse, end_chapter, end_verse FROM recordings WHERE is_selected = 1',
+      'SELECT r.id, r.bible_text_id, r.start_chapter, r.start_verse, r.end_chapter, r.end_verse FROM recordings r',
     )
   ) {
+    const incomingBibleTextId = params[0] as number;
     return {
       rows: rows
-        .filter(
-          r => r.is_selected === 1 && matchesOwner(r, normalized, params, 0),
+        .filter(r =>
+          matchesSameBibleBookSelection(
+            r,
+            incomingBibleTextId,
+            normalized,
+            params,
+          ),
         )
         .map(r => ({
           id: r.id,
@@ -131,6 +174,17 @@ async function mockExecute(
   }
 
   if (normalized.startsWith('SELECT MAX(take_number)')) {
+    if (normalized.includes("granularity = 'pericope'")) {
+      const viewBibleTextId = params[1] as number;
+      const max = rows
+        .filter(
+          r =>
+            matchesOwner(r, normalized, params, 0) &&
+            isVisibleAtVerse(r, viewBibleTextId, true),
+        )
+        .reduce((m, r) => Math.max(m, r.take_number), 0);
+      return { rows: [{ max_take: max || null }] };
+    }
     const bibleTextId = params[0] as number;
     const max = rows
       .filter(
@@ -218,19 +272,24 @@ async function mockExecute(
 
   if (
     normalized.startsWith('SELECT * FROM recordings') &&
-    normalized.includes('ORDER BY take_number ASC')
+    (normalized.includes('ORDER BY take_number ASC') ||
+      normalized.includes('ORDER BY created_at ASC'))
   ) {
     const ownerFirst = normalized.includes('WHERE recorded_by_user_id');
-    const parsed = parseVerseView(normalized, params, ownerFirst ? 1 : 0);
+    const parsed = parseViewBibleTextId(normalized, params, ownerFirst ? 1 : 0);
+    const sorted = rows
+      .filter(
+        r =>
+          matchesOwner(r, normalized, params, 0) &&
+          isVisibleAtVerse(r, parsed.bibleTextId, parsed.withView),
+      )
+      .sort((a, b) =>
+        normalized.includes('ORDER BY created_at ASC')
+          ? a.created_at.localeCompare(b.created_at)
+          : a.take_number - b.take_number,
+      );
     return {
-      rows: rows
-        .filter(
-          r =>
-            matchesOwner(r, normalized, params, 0) &&
-            isVisibleAtVerse(r, parsed.bibleTextId, parsed.view),
-        )
-        .sort((a, b) => a.take_number - b.take_number)
-        .map(clone),
+      rows: sorted.map(clone),
     };
   }
 
@@ -581,6 +640,64 @@ describe('recordingsRepository multi-take', () => {
     expect(__getRecordingRows().find(r => r.id === 'peri')?.is_selected).toBe(
       1,
     );
+  });
+
+  it('numbers and orders a verse take after visible pericope takes at the view', async () => {
+    for (let n = 1; n <= 3; n++) {
+      await addRecordingTake({
+        bibleTextId: 103,
+        viewBibleTextId: 105,
+        localFilePath: `file:///p${n}.m4a`,
+        id: `peri-${n}`,
+        granularity: 'pericope',
+        startChapter: 1,
+        startVerse: 3,
+        endChapter: 1,
+        endVerse: 7,
+      });
+    }
+    await addRecordingTake({
+      bibleTextId: 105,
+      viewBibleTextId: 105,
+      localFilePath: 'file:///v.m4a',
+      id: 'verse',
+      granularity: 'verse',
+      startChapter: 1,
+      startVerse: 5,
+      endChapter: 1,
+      endVerse: 5,
+    });
+
+    const atFive = await getTakesForVerse(105, undefined, {
+      chapterNumber: 1,
+      verseNumber: 5,
+    });
+    expect(atFive.map(t => t.id)).toEqual([
+      'peri-1',
+      'peri-2',
+      'peri-3',
+      'verse',
+    ]);
+    expect(atFive.map(t => t.takeNumber)).toEqual([1, 2, 3, 4]);
+  });
+
+  it('does not list a pericope take across bibles with identical coordinates', async () => {
+    await addRecordingTake({
+      bibleTextId: 203,
+      localFilePath: 'file:///other-bible-p.m4a',
+      id: 'other-bible-peri',
+      granularity: 'pericope',
+      startChapter: 1,
+      startVerse: 3,
+      endChapter: 1,
+      endVerse: 7,
+    });
+
+    const atFive = await getTakesForVerse(105, undefined, {
+      chapterNumber: 1,
+      verseNumber: 5,
+    });
+    expect(atFive).toEqual([]);
   });
 
   it('deleting a pericope take removes it from every spanned verse view', async () => {

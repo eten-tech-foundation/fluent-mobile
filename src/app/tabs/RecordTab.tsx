@@ -145,6 +145,33 @@ export function RecordTab({
   const [recordingUnit, setRecordingUnit] =
     useState<RecordingUnitCapture | null>(null);
 
+  const recordingCaptureReady = useMemo(() => {
+    if (bibleTextId === null) {
+      return false;
+    }
+    if (draftingUnit !== 'pericope') {
+      return true;
+    }
+    return (
+      recordingUnit !== null &&
+      recordingUnit.coveredViews.some(
+        view =>
+          view.bibleTextId === bibleTextId &&
+          view.chapterNumber === chapterData.chapterNumber &&
+          view.verseNumber === selectedVerse,
+      )
+    );
+  }, [
+    bibleTextId,
+    chapterData.chapterNumber,
+    draftingUnit,
+    recordingUnit,
+    selectedVerse,
+  ]);
+
+  const activeRecordingUnit =
+    draftingUnit === 'pericope' && recordingCaptureReady ? recordingUnit : null;
+
   const verseAudio = useVerseAudio({
     bibleTextId,
     chapterAssignmentId: chapterData.id,
@@ -159,7 +186,7 @@ export function RecordTab({
     chapterNumber: chapterData.chapterNumber,
     verseNumber: selectedVerse,
     draftingUnit,
-    recordingUnit,
+    recordingUnit: activeRecordingUnit,
   });
   const verseIndex = verses.findIndex(v => v.verseNumber === selectedVerse);
   const prevDisabled = verseIndex <= 0;
@@ -203,6 +230,7 @@ export function RecordTab({
   const isSyncing = useGlobalSyncStatus(refreshBibleTextId);
 
   useEffect(() => {
+    setRecordingUnit(null);
     let cancelled = false;
     void resolveRecordingUnit({
       draftingUnit,

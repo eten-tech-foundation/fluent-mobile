@@ -41,6 +41,8 @@ const log = logger.create('useVerseAudio');
 
 export type PersistTakeArgs = {
   bibleTextId: number;
+  /** Active verse view — mixed take_number cap/list scope (#410). */
+  viewBibleTextId: number;
   tempUri: string;
   durationMs: number;
   granularity: RecordingGranularity;
@@ -101,6 +103,7 @@ async function defaultPersistTake(
   await addRecordingTake({
     id,
     bibleTextId: args.bibleTextId,
+    viewBibleTextId: args.viewBibleTextId,
     localFilePath: dest,
     durationMs: args.durationMs,
     fileSizeBytes,
@@ -328,6 +331,16 @@ export function useVerseAudio({
       setLoadedTakeId(null);
       captureBibleTextIdRef.current =
         recordingUnit?.anchorBibleTextId ?? bibleTextId;
+      log.debug('starting capture', {
+        draftingUnit,
+        bibleTextId,
+        anchorBibleTextId: captureBibleTextIdRef.current,
+        granularity: recordingUnit?.granularity ?? 'verse',
+        span: recordingUnit
+          ? `${recordingUnit.startChapter}:${recordingUnit.startVerse}-${recordingUnit.endChapter}:${recordingUnit.endVerse}`
+          : `${chapterNumber ?? '?'}:${verseNumber ?? '?'}`,
+        coveredViewCount: recordingUnit?.coveredViews.length ?? 1,
+      });
       await recording.start();
       dispatch({ type: 'START' });
       setErrorMessage(null);
@@ -376,8 +389,9 @@ export function useVerseAudio({
       const { uri, durationMs } = await recording.stop();
       dispatch({ type: 'STOP' });
       const persistId = recordingUnit?.anchorBibleTextId ?? id;
-      await persistTake({
+      const persistMeta = {
         bibleTextId: persistId,
+        viewBibleTextId: bibleTextId ?? persistId,
         tempUri: uri,
         durationMs,
         granularity: recordingUnit?.granularity ?? 'verse',
@@ -385,7 +399,16 @@ export function useVerseAudio({
         startVerse: recordingUnit?.startVerse ?? verseNumber ?? 0,
         endChapter: recordingUnit?.endChapter ?? chapterNumber ?? 0,
         endVerse: recordingUnit?.endVerse ?? verseNumber ?? 0,
+      };
+      log.debug('persisting take', {
+        draftingUnit,
+        viewVerse: `${chapterNumber ?? '?'}:${verseNumber ?? '?'}`,
+        span: `${persistMeta.startChapter}:${persistMeta.startVerse}-${persistMeta.endChapter}:${persistMeta.endVerse}`,
+        granularity: persistMeta.granularity,
+        anchorBibleTextId: persistMeta.bibleTextId,
+        durationMs: persistMeta.durationMs,
       });
+      await persistTake(persistMeta);
 
       try {
         if (

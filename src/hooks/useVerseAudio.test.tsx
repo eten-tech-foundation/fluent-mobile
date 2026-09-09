@@ -232,6 +232,7 @@ describe('useVerseAudio', () => {
     expect(mockRecordingStop).toHaveBeenCalled();
     expect(persistTake).toHaveBeenCalledWith({
       bibleTextId: 42,
+      viewBibleTextId: 42,
       tempUri: 'file:///tmp/take.m4a',
       durationMs: 500,
       granularity: 'verse',

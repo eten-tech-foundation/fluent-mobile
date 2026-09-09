@@ -1,7 +1,10 @@
 import { getBibleTextId, getPericopeForVerse } from '../db/queries';
 import { getProjectPericopeSetId } from '../db/repository';
 import type { DraftingUnit } from '../services/draftingUnitPreference';
+import { logger } from '../utils/logger';
 import type { RecordingUnitCapture } from '../utils/recordingRange';
+
+const log = logger.create('ResolveRecordingUnit');
 
 export type ResolveRecordingUnitArgs = {
   draftingUnit: DraftingUnit;
@@ -30,6 +33,12 @@ export async function resolveRecordingUnit(
     selectedBibleTextId,
   } = args;
   if (selectedBibleTextId === null) {
+    log.debug('resolve skipped — no selected bible text id', {
+      bookId,
+      chapterNumber,
+      verseNumber,
+      draftingUnit,
+    });
     return null;
   }
 
@@ -39,6 +48,14 @@ export async function resolveRecordingUnit(
     projectId > 0
   ) {
     const setId = await getProjectPericopeSetId(projectId);
+    log.debug('resolving pericope recording unit', {
+      bookId,
+      chapterNumber,
+      verseNumber,
+      projectId,
+      pericopeSetId: setId,
+      selectedBibleTextId,
+    });
     if (setId !== null) {
       const group = await getPericopeForVerse(
         bookId,
@@ -69,7 +86,7 @@ export async function resolveRecordingUnit(
           )
         ).filter((v): v is NonNullable<typeof v> => v !== null);
         const anchor = coveredViews[0]?.bibleTextId ?? selectedBibleTextId;
-        return {
+        const capture: RecordingUnitCapture = {
           granularity: 'pericope',
           startChapter: first.chapterNumber,
           startVerse: first.verseNumber,
@@ -87,11 +104,35 @@ export async function resolveRecordingUnit(
                   },
                 ],
         };
+        log.debug('resolved pericope recording unit', {
+          bookId,
+          anchorVerse: `${chapterNumber}:${verseNumber}`,
+          pericopeNumber: group.pericopeNumber,
+          pericopeTitle: group.pericopeTitle,
+          span: `${capture.startChapter}:${capture.startVerse}-${capture.endChapter}:${capture.endVerse}`,
+          verseCount: group.verses.length,
+          coveredViews: capture.coveredViews,
+          anchorBibleTextId: capture.anchorBibleTextId,
+        });
+        return capture;
       }
+      log.debug('pericope lookup returned no verses — falling back to verse', {
+        bookId,
+        chapterNumber,
+        verseNumber,
+        pericopeSetId: setId,
+      });
+    } else {
+      log.debug('project has no pericope set — falling back to verse', {
+        projectId,
+        bookId,
+        chapterNumber,
+        verseNumber,
+      });
     }
   }
 
-  return {
+  const verseCapture: RecordingUnitCapture = {
     granularity: 'verse',
     startChapter: chapterNumber,
     startVerse: verseNumber,
@@ -106,4 +147,12 @@ export async function resolveRecordingUnit(
       },
     ],
   };
+  log.debug('resolved verse recording unit', {
+    bookId,
+    chapterNumber,
+    verseNumber,
+    draftingUnit,
+    anchorBibleTextId: verseCapture.anchorBibleTextId,
+  });
+  return verseCapture;
 }
