@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 15;
+export const CURRENT_SCHEMA_VERSION = 16;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -419,6 +419,26 @@ async function addRecordingsVersionToken(db: SqlExecutor): Promise<void> {
   }
 }
 
+/**
+ * Existing installs used SQLite autoincrement for bible_texts.id while the API
+ * expects server verse ids on upload (#469). Flag a one-shot full bible-text
+ * re-fetch; insertBibleTexts remaps recordings when ids differ.
+ *
+ * KV is required dynamically so migrations.test does not load native Storage.
+ */
+async function markBibleTextsServerIdsRemap(db: SqlExecutor): Promise<void> {
+  const result = await db.execute('SELECT COUNT(*) AS count FROM bible_texts');
+  const count = Number(
+    (result.rows?.[0] as { count?: number } | undefined)?.count ?? 0,
+  );
+  if (count > 0) {
+    const { markBibleTextsServerIdRemapPending } =
+      require('../services/storage') as typeof import('../services/storage');
+    markBibleTextsServerIdRemapPending();
+    log.info('Marked bible texts server-id remap pending', { rowCount: count });
+  }
+}
+
 /** Ordered schema migrations. Version 1 = current CREATE IF NOT EXISTS baseline. */
 export const migrations: Migration[] = [
   {
@@ -495,6 +515,11 @@ export const migrations: Migration[] = [
     version: 15,
     name: 'pericope_tables',
     up: applyPericopeTables,
+  },
+  {
+    version: 16,
+    name: 'bible_texts_server_ids',
+    up: markBibleTextsServerIdsRemap,
   },
 ];
 

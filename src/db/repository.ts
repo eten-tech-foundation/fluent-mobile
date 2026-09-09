@@ -590,6 +590,29 @@ export async function insertChapterAssignmentSyncData(
   });
 }
 
+type BibleChapterGroup = Map<
+  number,
+  Array<{ bookId: number; chapterNumber: number }>
+>;
+
+function chapterRowsToBibleGroups(
+  rows: DBTypes.ChapterRow[],
+): BibleChapterGroup {
+  const bibleGroups: BibleChapterGroup = new Map();
+
+  for (const row of rows) {
+    if (!bibleGroups.has(row.bible_id)) {
+      bibleGroups.set(row.bible_id, []);
+    }
+    bibleGroups.get(row.bible_id)!.push({
+      bookId: row.book_id,
+      chapterNumber: row.chapter_number,
+    });
+  }
+
+  return bibleGroups;
+}
+
 export async function getChaptersToSync() {
   const db = getDatabase();
 
@@ -601,25 +624,34 @@ export async function getChaptersToSync() {
     `);
 
     const rows = result.rows as unknown as DBTypes.ChapterRow[];
-
-    const bibleGroups = new Map<
-      number,
-      Array<{ bookId: number; chapterNumber: number }>
-    >();
-
-    for (const row of rows) {
-      if (!bibleGroups.has(row.bible_id)) {
-        bibleGroups.set(row.bible_id, []);
-      }
-      bibleGroups.get(row.bible_id)!.push({
-        bookId: row.book_id,
-        chapterNumber: row.chapter_number,
-      });
-    }
-
-    return bibleGroups;
+    return chapterRowsToBibleGroups(rows);
   } catch (error) {
     log.error('Error getting chapters to sync:', { error });
+    return new Map();
+  }
+}
+
+/**
+ * Chapters referenced by local recordings (#469 remap). Includes verses whose
+ * chapter is no longer in chapter_assignments so recording-linked ids still remap.
+ */
+export async function getRecordingLinkedChaptersToSync(): Promise<BibleChapterGroup> {
+  const db = getDatabase();
+
+  try {
+    const result = await db.execute(`
+      SELECT DISTINCT bt.bible_id AS bible_id,
+                      bt.book_id AS book_id,
+                      bt.chapter_number AS chapter_number
+      FROM recordings r
+      JOIN bible_texts bt ON bt.id = r.bible_text_id
+      ORDER BY bt.bible_id, bt.book_id, bt.chapter_number
+    `);
+
+    const rows = result.rows as unknown as DBTypes.ChapterRow[];
+    return chapterRowsToBibleGroups(rows);
+  } catch (error) {
+    log.error('Error getting recording-linked chapters to sync:', { error });
     return new Map();
   }
 }
@@ -633,26 +665,154 @@ export async function insertBibleTexts(data: DBTypes.BibleText[]) {
     await db.transaction(async (tx: Transaction) => {
       for (const chapter of data) {
         for (const verse of chapter.verses) {
-          await tx.execute(
-            `INSERT INTO bible_texts
-            (bible_id, book_id, chapter_number, verse_number, text)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(bible_id, book_id, chapter_number, verse_number)
-            DO UPDATE SET text = excluded.text`,
-            [
-              verse.bible_id,
-              verse.book_id,
-              verse.chapter_number,
-              verse.verse_number,
-              verse.text,
-            ],
-          );
+          await upsertBibleTextVerse(tx, verse);
         }
       }
     });
   } catch (error) {
     log.error('Error inserting bible texts:', { error });
     throw error;
+  }
+}
+
+/**
+ * Persist a verse using the server bible-text id as PK (#469).
+ * When a local autoincrement id differs, remaps recordings then replaces the row.
+ */
+type BibleTextIdentityRow = {
+  id: number;
+  bible_id: number;
+  book_id: number;
+  chapter_number: number;
+  verse_number: number;
+  text: string;
+};
+
+function parkedBibleTextVerseNumber(id: number): number {
+  return -Math.abs(id) - 1_000_000;
+}
+
+async function parkBibleTextRow(
+  tx: Transaction,
+  row: BibleTextIdentityRow,
+): Promise<void> {
+  const parkedId = parkedBibleTextVerseNumber(row.id);
+  await tx.execute(
+    `UPDATE bible_texts
+     SET verse_number = ?
+     WHERE id = ?`,
+    [parkedId, row.id],
+  );
+  await tx.execute(
+    `INSERT INTO bible_texts
+      (id, bible_id, book_id, chapter_number, verse_number, text)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      parkedId,
+      row.bible_id,
+      row.book_id,
+      row.chapter_number,
+      row.verse_number,
+      row.text,
+    ],
+  );
+  await tx.execute(
+    `UPDATE recordings SET bible_text_id = ? WHERE bible_text_id = ?`,
+    [parkedId, row.id],
+  );
+  await tx.execute(`DELETE FROM bible_texts WHERE id = ?`, [row.id]);
+}
+
+export async function upsertBibleTextVerse(
+  tx: Transaction,
+  verse: DBTypes.Verse,
+): Promise<void> {
+  const serverId = verse.id;
+  if (!Number.isFinite(serverId) || serverId <= 0) {
+    throw new Error(
+      `Missing or invalid bible text id for verse ${verse.bible_id}/${verse.book_id}/${verse.chapter_number}:${verse.verse_number}`,
+    );
+  }
+
+  const naturalKeyParams = [
+    verse.bible_id,
+    verse.book_id,
+    verse.chapter_number,
+    verse.verse_number,
+  ] as const;
+
+  const byNatural = await tx.execute(
+    `SELECT id FROM bible_texts
+     WHERE bible_id = ? AND book_id = ? AND chapter_number = ? AND verse_number = ?`,
+    [...naturalKeyParams],
+  );
+  const localId = Number(
+    (byNatural.rows?.[0] as { id?: number } | undefined)?.id,
+  );
+
+  if (Number.isFinite(localId) && localId === serverId) {
+    await tx.execute(`UPDATE bible_texts SET text = ? WHERE id = ?`, [
+      verse.text,
+      serverId,
+    ]);
+    return;
+  }
+
+  if (Number.isFinite(localId) && localId !== serverId) {
+    // Free the natural key while keeping the old PK until recordings remapped.
+    // Negative verse_number is never used by real Bible data.
+    await tx.execute(
+      `UPDATE bible_texts
+       SET verse_number = ?
+       WHERE id = ?`,
+      [parkedBibleTextVerseNumber(localId), localId],
+    );
+  }
+
+  const byPk = await tx.execute(
+    `SELECT id, bible_id, book_id, chapter_number, verse_number, text
+     FROM bible_texts WHERE id = ?`,
+    [serverId],
+  );
+  const serverRow =
+    (byPk.rows?.[0] as BibleTextIdentityRow | undefined) ?? null;
+
+  if (
+    serverRow &&
+    (serverRow.bible_id !== verse.bible_id ||
+      serverRow.book_id !== verse.book_id ||
+      serverRow.chapter_number !== verse.chapter_number ||
+      serverRow.verse_number !== verse.verse_number)
+  ) {
+    await parkBibleTextRow(tx, serverRow);
+  }
+
+  await tx.execute(
+    `INSERT INTO bible_texts
+      (id, bible_id, book_id, chapter_number, verse_number, text)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       bible_id = excluded.bible_id,
+       book_id = excluded.book_id,
+       chapter_number = excluded.chapter_number,
+       verse_number = excluded.verse_number,
+       text = excluded.text`,
+    [
+      serverId,
+      verse.bible_id,
+      verse.book_id,
+      verse.chapter_number,
+      verse.verse_number,
+      verse.text,
+    ],
+  );
+
+  if (Number.isFinite(localId) && localId !== serverId) {
+    await tx.execute(
+      `UPDATE recordings SET bible_text_id = ? WHERE bible_text_id = ?`,
+      [serverId, localId],
+    );
+    await tx.execute(`DELETE FROM bible_texts WHERE id = ?`, [localId]);
   }
 }
 
@@ -827,6 +987,7 @@ export async function getPendingRecordings(chapter?: {
      JOIN bible_texts bt ON bt.id = r.bible_text_id
      WHERE r.is_selected = 1
        AND r.sync_status NOT IN ('uploaded', 'conflicted')
+       AND r.bible_text_id > 0
        ${chapterFilter}
      ORDER BY bt.book_id, bt.chapter_number, r.bible_text_id`,
     params,
