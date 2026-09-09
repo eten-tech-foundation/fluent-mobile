@@ -30,6 +30,9 @@ import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import { useDraftingContext } from '../context/DraftingContext';
 import { getBibleTextId, getRecordedVerseNumbers } from '../../db/queries';
 import { useVerseAudio } from '../../hooks/useVerseAudio';
+import { resolveRecordingUnit } from '../../hooks/resolveRecordingUnit';
+import { formatTakeSubtitle } from '../../utils/takeSubtitle';
+import type { RecordingUnitCapture } from '../../utils/recordingRange';
 import { useSourceAudio } from '../../hooks/useSourceAudio';
 import { useDraftingUnit } from '../../hooks/useDraftingUnit';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
@@ -138,6 +141,9 @@ export function RecordTab({
   const [hasChapterRecording, setHasChapterRecording] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const { draftingUnit } = useDraftingUnit();
+  const [recordingUnit, setRecordingUnit] =
+    useState<RecordingUnitCapture | null>(null);
 
   const verseAudio = useVerseAudio({
     bibleTextId,
@@ -150,8 +156,11 @@ export function RecordTab({
       assignedUserId: chapterData.assignedUserId,
     },
     onChapterClaimed,
+    chapterNumber: chapterData.chapterNumber,
+    verseNumber: selectedVerse,
+    draftingUnit,
+    recordingUnit,
   });
-  const { draftingUnit } = useDraftingUnit();
   const verseIndex = verses.findIndex(v => v.verseNumber === selectedVerse);
   const prevDisabled = verseIndex <= 0;
   const nextDisabled = verseIndex < 0 || verseIndex >= verses.length - 1;
@@ -192,6 +201,34 @@ export function RecordTab({
   }, [resolveBibleTextId]);
 
   const isSyncing = useGlobalSyncStatus(refreshBibleTextId);
+
+  useEffect(() => {
+    let cancelled = false;
+    void resolveRecordingUnit({
+      draftingUnit,
+      projectId: chapterData.projectId ?? null,
+      bibleId: chapterData.bibleId,
+      bookId: chapterData.bookId,
+      chapterNumber: chapterData.chapterNumber,
+      verseNumber: selectedVerse,
+      selectedBibleTextId: bibleTextId,
+    }).then(unit => {
+      if (!cancelled) {
+        setRecordingUnit(unit);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    bibleTextId,
+    chapterData.bibleId,
+    chapterData.bookId,
+    chapterData.chapterNumber,
+    chapterData.projectId,
+    draftingUnit,
+    selectedVerse,
+  ]);
 
   useEffect(() => {
     setTakeView('mine');
@@ -761,6 +798,7 @@ export function RecordTab({
                         <View key={take.id} style={styles.takeItemSpacing}>
                           <DraftTakeRow
                             takeNumber={take.takeNumber}
+                            label={formatTakeSubtitle(take)}
                             isSelected={isSelected}
                             isPlaying={isThisPlaying}
                             leadingIndicator={leadingIndicator}
@@ -811,6 +849,7 @@ export function RecordTab({
                           <View key={take.id} style={styles.takeItemSpacing}>
                             <SharedTakeRow
                               takeNumber={take.takeNumber}
+                              label={formatTakeSubtitle(take)}
                               isPlaying={isThisPlaying}
                               isCanonical={take.isCanonical}
                               positionMs={isLoaded ? verseAudio.positionMs : 0}

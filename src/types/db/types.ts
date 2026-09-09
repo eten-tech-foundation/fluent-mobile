@@ -281,6 +281,8 @@ export type RecordingSyncStatus =
   | 'failed'
   | 'conflicted';
 
+export type RecordingGranularity = 'verse' | 'pericope';
+
 export interface Recording {
   id: string;
   bibleTextId: number;
@@ -298,6 +300,12 @@ export interface Recording {
   uploadError?: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Capture granularity (#410). Defaults to verse for pre-migration rows. */
+  granularity: RecordingGranularity;
+  startChapter: number;
+  startVerse: number;
+  endChapter: number;
+  endVerse: number;
 }
 
 export interface RecordingRow {
@@ -316,6 +324,11 @@ export interface RecordingRow {
   upload_error: string | null;
   created_at: string;
   updated_at: string;
+  granularity: RecordingGranularity;
+  start_chapter: number;
+  start_verse: number;
+  end_chapter: number;
+  end_verse: number;
 }
 
 export type RecordingWithOwner = Recording & {

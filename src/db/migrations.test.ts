@@ -1030,3 +1030,33 @@ describe('recordings version_token migration (#256)', () => {
     await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
   });
 });
+
+describe('recordings granularity migration (#410)', () => {
+  it('adds granularity and verse-range columns when upgrading from v16', async () => {
+    const db = createFakeDb(16);
+    db._tables.set('recordings', {
+      columns: new Set([
+        'id',
+        'bible_text_id',
+        'local_file_path',
+        'sync_status',
+        'updated_at',
+        'version_token',
+      ]),
+      rows: [{ id: 'rec_1', bible_text_id: 10, sync_status: 'pending' }],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+
+    expect(await columnExists(db, 'recordings', 'granularity')).toBe(false);
+
+    await runMigrations(db);
+
+    expect(await columnExists(db, 'recordings', 'granularity')).toBe(true);
+    expect(await columnExists(db, 'recordings', 'start_chapter')).toBe(true);
+    expect(await columnExists(db, 'recordings', 'start_verse')).toBe(true);
+    expect(await columnExists(db, 'recordings', 'end_chapter')).toBe(true);
+    expect(await columnExists(db, 'recordings', 'end_verse')).toBe(true);
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
+  });
+});

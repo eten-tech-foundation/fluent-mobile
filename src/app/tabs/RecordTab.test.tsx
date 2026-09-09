@@ -30,6 +30,10 @@ jest.mock('expo-router', () => ({
   }),
 }));
 
+jest.mock('../../hooks/resolveRecordingUnit', () => ({
+  resolveRecordingUnit: jest.fn(async () => null),
+}));
+
 jest.mock('../../db/queries', () => ({
   getBibleTextId: jest.fn(async () => 42),
   getRecordedVerseNumbers: jest.fn(async () => new Set([3])),
@@ -81,8 +85,13 @@ function makeTake(overrides: Partial<Recording> = {}): Recording {
     syncStatus: 'pending',
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
+    granularity: 'verse',
+    startChapter: 14,
+    startVerse: 3,
+    endChapter: 14,
+    endVerse: 3,
     ...overrides,
-  } as Recording;
+  };
 }
 
 function makeOwnedTake(
@@ -380,7 +389,9 @@ describe('RecordTab', () => {
     renderTab();
 
     expect(screen.getByTestId('record-take-row')).toBeTruthy();
-    expect(screen.getByTestId('record-take-badge')).toHaveTextContent('Take 1');
+    expect(screen.getByTestId('record-take-badge')).toHaveTextContent(
+      'Take 1 - Verse - v. 3',
+    );
     expect(screen.getByTestId('record-play-button')).toBeTruthy();
     expect(screen.getByTestId('record-take-time')).toBeTruthy();
     // Not the loaded take (playingTakeId is null), so position falls back to
@@ -392,6 +403,27 @@ describe('RecordTab', () => {
     expect(screen.getByText('Record New Take')).toBeTruthy();
     // Toggle hidden — only this account has takes for the unit.
     expect(screen.queryByTestId('take-view-toggle')).toBeNull();
+  });
+
+  it('renders a pericope take subtitle from capture metadata', () => {
+    const take = makeTake({
+      takeNumber: 2,
+      granularity: 'pericope',
+      startVerse: 3,
+      endVerse: 7,
+    });
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      state: 'recorded',
+      takes: [take],
+      selectedTake: take,
+    });
+
+    renderTab();
+
+    expect(screen.getByTestId('record-take-badge')).toHaveTextContent(
+      'Take 2 - Pericope - vv. 3-7',
+    );
   });
 
   it('renders one card per take, in list order, with only the latest marked selected', () => {
@@ -408,8 +440,8 @@ describe('RecordTab', () => {
 
     const badges = screen.getAllByTestId('record-take-badge');
     expect(badges).toHaveLength(2);
-    expect(badges[0]).toHaveTextContent('Take 1');
-    expect(badges[1]).toHaveTextContent('Take 2');
+    expect(badges[0]).toHaveTextContent('Take 1 - Verse - v. 3');
+    expect(badges[1]).toHaveTextContent('Take 2 - Verse - v. 3');
 
     expect(
       screen.getByLabelText('Select this take as active draft'),
@@ -757,8 +789,8 @@ describe('RecordTab', () => {
 
       const badges = screen.getAllByTestId('shared-take-badge');
       expect(badges).toHaveLength(3);
-      expect(badges[1]).toHaveTextContent('Take 1');
-      expect(badges[2]).toHaveTextContent('Take 2');
+      expect(badges[1]).toHaveTextContent('Take 1 - Verse - v. 3');
+      expect(badges[2]).toHaveTextContent('Take 2 - Verse - v. 3');
     });
 
     it('tapping the canonical circle in All Takes calls setCanonical with the take id', () => {
