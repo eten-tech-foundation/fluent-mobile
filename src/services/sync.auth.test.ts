@@ -375,18 +375,20 @@ describe('refreshChapterMetadataIfOnline', () => {
       skipped: [{ chapterAssignmentId: 99, reason: 'missing_book' }],
     });
 
-    await refreshChapterMetadataIfOnline(2);
+    try {
+      await refreshChapterMetadataIfOnline(2);
 
-    expect(setSyncError).toHaveBeenCalledWith(
-      'sync_error_chapter_assignments',
-      'Skipped 1 of 2 chapter assignment(s) — missing FK parents',
-    );
-    expect(setUserLastSyncedAt).not.toHaveBeenCalled();
-
-    insertChapterAssignmentSyncData.mockResolvedValue({
-      insertedCount: 1,
-      skipped: [],
-    });
+      expect(setSyncError).toHaveBeenCalledWith(
+        'sync_error_chapter_assignments',
+        'Skipped 1 of 2 chapter assignment(s) — missing FK parents',
+      );
+      expect(setUserLastSyncedAt).not.toHaveBeenCalled();
+    } finally {
+      insertChapterAssignmentSyncData.mockResolvedValue({
+        insertedCount: 1,
+        skipped: [],
+      });
+    }
   });
 
   it('shares an in-flight metadata refresh for the same user', async () => {
