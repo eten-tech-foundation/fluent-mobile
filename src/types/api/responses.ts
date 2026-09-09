@@ -1,6 +1,5 @@
 import {
   ApiBook,
-  ApiPericopeGroup,
   ApiChapterAssignment,
   ApiUserChapterAssignmentsByUser,
 } from './types';

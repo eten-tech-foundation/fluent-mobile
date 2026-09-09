@@ -108,9 +108,10 @@ export async function upsertPericopeSet(
     for (const verse of verses) {
       await tx.execute(
         `INSERT INTO pericope_verses
-         (pericope_set_id, book_id, chapter_number, verse_number, pericope_number, pericope_title)
-         VALUES (?, ?, ?, ?, ?, ?)
+         (pericope_set_id, book_id, chapter_number, verse_number, section, pericope_number, pericope_title)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(pericope_set_id, book_id, chapter_number, verse_number) DO UPDATE SET
+           section = excluded.section,
            pericope_number = excluded.pericope_number,
            pericope_title = excluded.pericope_title`,
         [
@@ -118,6 +119,7 @@ export async function upsertPericopeSet(
           bookId,
           verse.chapterNumber,
           verse.verseNumber,
+          verse.section,
           verse.pericopeNumber,
           verse.pericopeTitle,
         ],
