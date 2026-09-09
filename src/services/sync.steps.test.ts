@@ -16,6 +16,7 @@ import {
 import { getDatabase } from '../db/db';
 import {
   getChaptersToSync,
+  getRecordingLinkedChaptersToSync,
   insertBibleTexts,
   insertChapterAssignmentSyncData,
   insertMasterData,
@@ -107,6 +108,7 @@ jest.mock('../db/repository', () => ({
   insertChapterAssignmentSyncData: jest.fn().mockResolvedValue(undefined),
   insertBibleTexts: jest.fn().mockResolvedValue(undefined),
   getChaptersToSync: jest.fn().mockResolvedValue(new Map()),
+  getRecordingLinkedChaptersToSync: jest.fn().mockResolvedValue(new Map()),
   getLocalProjectIds: jest.fn().mockResolvedValue([1]),
   hasLanguagesMissingIsoCode: jest.fn().mockResolvedValue(false),
   userHasLocalProjects: jest.fn().mockResolvedValue(true),
@@ -133,6 +135,9 @@ const insertChapterAssignmentSyncDataMock = jest.mocked(
 );
 const insertBibleTextsMock = jest.mocked(insertBibleTexts);
 const getChaptersToSyncMock = jest.mocked(getChaptersToSync);
+const getRecordingLinkedChaptersToSyncMock = jest.mocked(
+  getRecordingLinkedChaptersToSync,
+);
 const setSyncErrorMock = jest.mocked(setSyncError);
 const clearSyncErrorMock = jest.mocked(clearSyncError);
 const setSyncCountMock = jest.mocked(setSyncCount);
@@ -179,6 +184,8 @@ describe('sync step orchestration', () => {
       data: [],
     });
     getChaptersToSyncMock.mockResolvedValue(new Map());
+    getRecordingLinkedChaptersToSyncMock.mockResolvedValue(new Map());
+    isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
   });
 
   describe('syncMasterData', () => {
@@ -469,6 +476,44 @@ describe('sync step orchestration', () => {
 
       expect(FluentAPI.getBibleTexts).not.toHaveBeenCalled();
       expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+    });
+
+    it('remaps recording-linked chapters absent from chapter_assignments', async () => {
+      mockDbCount(1);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+      // Assignment list empty — verse only reachable via a local recording.
+      getChaptersToSyncMock.mockResolvedValue(new Map());
+      getRecordingLinkedChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 40, chapterNumber: 5 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 40,
+            chapterNumber: 5,
+            verses: [{ id: 5001, verseNumber: 1, text: 'Blessed are' }],
+          },
+        ],
+      });
+
+      await syncBibleTexts('2026-01-01T00:00:00.000Z');
+
+      expect(getRecordingLinkedChaptersToSyncMock).toHaveBeenCalled();
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 40, chapterNumber: 5 }],
+        undefined,
+      );
+      expect(insertBibleTextsMock).toHaveBeenCalledWith([
+        expect.objectContaining({
+          bibleId: 10,
+          bookId: 40,
+          chapterNumber: 5,
+          verses: [expect.objectContaining({ id: 5001, verse_number: 1 })],
+        }),
+      ]);
+      expect(clearBibleTextsServerIdRemapPendingMock).toHaveBeenCalled();
       isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
     });
 

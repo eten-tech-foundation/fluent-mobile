@@ -10,6 +10,7 @@ import {
   insertChapterAssignmentSyncData,
   insertBibleTexts,
   getChaptersToSync,
+  getRecordingLinkedChaptersToSync,
   insertUserProjects,
   ensureUserProjectMembership,
   userHasLocalProjects,
@@ -72,6 +73,32 @@ const log = logger.create('SyncService');
 
 const MAX_SYNC_ATTEMPTS = 3;
 const BIBLE_TEXT_CHUNK_SIZE = 1200;
+
+type BibleChapterGroup = Map<
+  number,
+  Array<{ bookId: number; chapterNumber: number }>
+>;
+
+/** Merge chapter groups in place (dedupe by bible/book/chapter). */
+function mergeBibleChapterGroups(
+  target: BibleChapterGroup,
+  source: BibleChapterGroup,
+): void {
+  for (const [bibleId, chapters] of source) {
+    if (!target.has(bibleId)) {
+      target.set(bibleId, []);
+    }
+    const list = target.get(bibleId)!;
+    const seen = new Set(list.map(c => `${c.bookId}:${c.chapterNumber}`));
+    for (const chapter of chapters) {
+      const key = `${chapter.bookId}:${chapter.chapterNumber}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        list.push(chapter);
+      }
+    }
+  }
+}
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -465,6 +492,15 @@ export async function syncBibleTexts(updatedAfter?: string) {
       }
 
       const bibleGroups = await getChaptersToSync();
+      // #469: remap must cover recording-linked verses even when the chapter is
+      // no longer in chapter_assignments. Clear the pending flag only after
+      // those chapters are fetched and upserted below.
+      if (remapPending) {
+        mergeBibleChapterGroups(
+          bibleGroups,
+          await getRecordingLinkedChaptersToSync(),
+        );
+      }
 
       if (bibleGroups.size === 0) {
         log.info('No chapters to sync');

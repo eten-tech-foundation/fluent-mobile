@@ -590,6 +590,29 @@ export async function insertChapterAssignmentSyncData(
   });
 }
 
+type BibleChapterGroup = Map<
+  number,
+  Array<{ bookId: number; chapterNumber: number }>
+>;
+
+function chapterRowsToBibleGroups(
+  rows: DBTypes.ChapterRow[],
+): BibleChapterGroup {
+  const bibleGroups: BibleChapterGroup = new Map();
+
+  for (const row of rows) {
+    if (!bibleGroups.has(row.bible_id)) {
+      bibleGroups.set(row.bible_id, []);
+    }
+    bibleGroups.get(row.bible_id)!.push({
+      bookId: row.book_id,
+      chapterNumber: row.chapter_number,
+    });
+  }
+
+  return bibleGroups;
+}
+
 export async function getChaptersToSync() {
   const db = getDatabase();
 
@@ -601,25 +624,34 @@ export async function getChaptersToSync() {
     `);
 
     const rows = result.rows as unknown as DBTypes.ChapterRow[];
-
-    const bibleGroups = new Map<
-      number,
-      Array<{ bookId: number; chapterNumber: number }>
-    >();
-
-    for (const row of rows) {
-      if (!bibleGroups.has(row.bible_id)) {
-        bibleGroups.set(row.bible_id, []);
-      }
-      bibleGroups.get(row.bible_id)!.push({
-        bookId: row.book_id,
-        chapterNumber: row.chapter_number,
-      });
-    }
-
-    return bibleGroups;
+    return chapterRowsToBibleGroups(rows);
   } catch (error) {
     log.error('Error getting chapters to sync:', { error });
+    return new Map();
+  }
+}
+
+/**
+ * Chapters referenced by local recordings (#469 remap). Includes verses whose
+ * chapter is no longer in chapter_assignments so recording-linked ids still remap.
+ */
+export async function getRecordingLinkedChaptersToSync(): Promise<BibleChapterGroup> {
+  const db = getDatabase();
+
+  try {
+    const result = await db.execute(`
+      SELECT DISTINCT bt.bible_id AS bible_id,
+                      bt.book_id AS book_id,
+                      bt.chapter_number AS chapter_number
+      FROM recordings r
+      JOIN bible_texts bt ON bt.id = r.bible_text_id
+      ORDER BY bt.bible_id, bt.book_id, bt.chapter_number
+    `);
+
+    const rows = result.rows as unknown as DBTypes.ChapterRow[];
+    return chapterRowsToBibleGroups(rows);
+  } catch (error) {
+    log.error('Error getting recording-linked chapters to sync:', { error });
     return new Map();
   }
 }
@@ -955,6 +987,7 @@ export async function getPendingRecordings(chapter?: {
      JOIN bible_texts bt ON bt.id = r.bible_text_id
      WHERE r.is_selected = 1
        AND r.sync_status NOT IN ('uploaded', 'conflicted')
+       AND r.bible_text_id > 0
        ${chapterFilter}
      ORDER BY bt.book_id, bt.chapter_number, r.bible_text_id`,
     params,
