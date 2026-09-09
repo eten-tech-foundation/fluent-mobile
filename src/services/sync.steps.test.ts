@@ -475,6 +475,7 @@ describe('sync step orchestration', () => {
     it('rejects verses missing a server id', async () => {
       jest.useFakeTimers();
       mockDbCount(0);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
       getChaptersToSyncMock.mockResolvedValue(
         new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
       );
@@ -498,11 +499,13 @@ describe('sync step orchestration', () => {
         await expectation;
 
         expect(insertBibleTextsMock).not.toHaveBeenCalled();
+        expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
         expect(setSyncErrorMock).toHaveBeenCalledWith(
           'sync_error_bible_texts',
           expect.stringMatching(/missing verse id/i),
         );
       } finally {
+        isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
         jest.useRealTimers();
       }
     });

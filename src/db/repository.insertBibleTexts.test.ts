@@ -266,6 +266,7 @@ describe('insertBibleTexts (#469 server ids)', () => {
         text: 'Updated',
       },
     ]);
+    expect(db.__texts.every(row => row.id > 0)).toBe(true);
     expect(db.__recordings[0]?.bible_text_id).toBe(5001);
   });
 
@@ -332,25 +333,26 @@ describe('insertBibleTexts (#469 server ids)', () => {
       },
     ]);
 
-    expect(db.__texts).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          id: 5001,
-          bible_id: 1,
-          book_id: 40,
-          chapter_number: 1,
-          verse_number: 1,
-          text: 'Target server row',
-        }),
-        expect.objectContaining({
-          id: 7002,
-          bible_id: 1,
-          book_id: 40,
-          chapter_number: 1,
-          verse_number: 2,
-          text: 'Occupant server row',
-        }),
-      ]),
+    expect(db.__texts).toEqual([
+      {
+        id: 5001,
+        bible_id: 1,
+        book_id: 40,
+        chapter_number: 1,
+        verse_number: 1,
+        text: 'Target server row',
+      },
+      {
+        id: 7002,
+        bible_id: 1,
+        book_id: 40,
+        chapter_number: 1,
+        verse_number: 2,
+        text: 'Occupant server row',
+      },
+    ]);
+    expect(db.__texts.every(row => row.id > 0 && row.verse_number > 0)).toBe(
+      true,
     );
     expect(db.__recordings).toEqual(
       expect.arrayContaining([
