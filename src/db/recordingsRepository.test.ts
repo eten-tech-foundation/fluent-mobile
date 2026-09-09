@@ -17,6 +17,8 @@ const bibleTexts: Record<number, BibleTextRef> = {
   103: { bible_id: 1, book_id: 1, chapter_number: 1, verse_number: 3 },
   105: { bible_id: 1, book_id: 1, chapter_number: 1, verse_number: 5 },
   108: { bible_id: 1, book_id: 1, chapter_number: 1, verse_number: 8 },
+  113: { bible_id: 1, book_id: 2, chapter_number: 1, verse_number: 3 },
+  115: { bible_id: 1, book_id: 2, chapter_number: 1, verse_number: 5 },
   203: { bible_id: 2, book_id: 1, chapter_number: 1, verse_number: 3 },
   205: { bible_id: 2, book_id: 1, chapter_number: 1, verse_number: 5 },
 };
@@ -718,6 +720,57 @@ describe('recordingsRepository multi-take', () => {
       bibleTextId: 203,
       localFilePath: 'file:///other-bible-p.m4a',
       id: 'other-bible-peri',
+      granularity: 'pericope',
+      startChapter: 1,
+      startVerse: 3,
+      endChapter: 1,
+      endVerse: 7,
+    });
+
+    const atFive = await getTakesForVerse(105, undefined, {
+      chapterNumber: 1,
+      verseNumber: 5,
+    });
+    expect(atFive).toEqual([]);
+  });
+
+  it('does not clear selection on another book when selecting overlapping coordinates', async () => {
+    await addRecordingTake({
+      bibleTextId: 115,
+      localFilePath: 'file:///other-book.m4a',
+      id: 'other-book',
+      granularity: 'pericope',
+      startChapter: 1,
+      startVerse: 3,
+      endChapter: 1,
+      endVerse: 7,
+    });
+    await addRecordingTake({
+      bibleTextId: 105,
+      localFilePath: 'file:///home.m4a',
+      id: 'home',
+      granularity: 'verse',
+      startChapter: 1,
+      startVerse: 5,
+      endChapter: 1,
+      endVerse: 5,
+    });
+
+    await selectRecordingTake('other-book');
+
+    expect(__getRecordingRows().find(r => r.id === 'home')?.is_selected).toBe(
+      1,
+    );
+    expect(
+      __getRecordingRows().find(r => r.id === 'other-book')?.is_selected,
+    ).toBe(1);
+  });
+
+  it('does not list a pericope take across books with identical coordinates', async () => {
+    await addRecordingTake({
+      bibleTextId: 113,
+      localFilePath: 'file:///other-book-p.m4a',
+      id: 'other-book-peri',
       granularity: 'pericope',
       startChapter: 1,
       startVerse: 3,
