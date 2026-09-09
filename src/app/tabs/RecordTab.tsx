@@ -189,19 +189,29 @@ export function RecordTab({
     useState<PericopeGroupResult | null>(null);
   const pericopeRequestIdRef = useRef(0);
 
-  const pericopeVerseNumbers =
-    activePericope?.verses.map(v => v.verseNumber) ?? [];
+  const pericopeVerses = activePericope?.verses ?? [];
+  const firstPericopeVerse = pericopeVerses[0] ?? null;
+  const lastPericopeVerse = pericopeVerses[pericopeVerses.length - 1] ?? null;
+  const pericopeSpansChapters =
+    firstPericopeVerse !== null &&
+    lastPericopeVerse !== null &&
+    firstPericopeVerse.chapterNumber !== lastPericopeVerse.chapterNumber;
   const pericopeRange =
-    pericopeVerseNumbers.length > 0
-      ? `${Math.min(...pericopeVerseNumbers)}–${Math.max(
-          ...pericopeVerseNumbers,
-        )}`
+    firstPericopeVerse && lastPericopeVerse
+      ? pericopeSpansChapters
+        ? `${firstPericopeVerse.chapterNumber}:${firstPericopeVerse.verseNumber}–${lastPericopeVerse.chapterNumber}:${lastPericopeVerse.verseNumber}`
+        : `${firstPericopeVerse.verseNumber}–${lastPericopeVerse.verseNumber}`
       : null;
   // Falls back to the verse reference silently whenever no pericope set/data
   // is resolved (e.g. project has no pericope set configured) — see #409.
+  // Cross-chapter pericopes (e.g. Genesis 1→2) render with explicit chapter
+  // numbers on both endpoints rather than the "chapterName:range" shorthand,
+  // since a bare verse range would be ambiguous across chapters.
   const reference =
     draftingUnit === 'pericope' && pericopeRange
-      ? `${chapterName}:${pericopeRange}`
+      ? pericopeSpansChapters
+        ? `${chapterData.bookName} ${pericopeRange}`
+        : `${chapterName}:${pericopeRange}`
       : `${chapterName}:${selectedVerse}`;
   const referenceSubtitle =
     draftingUnit === 'pericope' && pericopeRange
@@ -237,11 +247,12 @@ export function RecordTab({
   }, [chapterData.projectId]);
 
   useEffect(() => {
+    const requestId = ++pericopeRequestIdRef.current;
     if (draftingUnit !== 'pericope' || pericopeSetId === null) {
       setActivePericope(null);
       return;
     }
-    const requestId = ++pericopeRequestIdRef.current;
+    setActivePericope(null);
     void getPericopeForVerse(
       chapterData.bookId,
       chapterData.chapterNumber,
@@ -287,6 +298,7 @@ export function RecordTab({
       bibleTextRequestIdRef.current += 1;
     };
   }, [resolveBibleTextId, verses.length]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {

@@ -1032,4 +1032,72 @@ describe('RecordTab', () => {
       ).toBeNull();
     });
   });
+
+  it('formats a cross-chapter pericope range with explicit chapter numbers on both endpoints', async () => {
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(7);
+    (getPericopeForVerse as jest.Mock).mockResolvedValueOnce({
+      pericopeNumber: '2',
+      pericopeTitle: null,
+      section: null,
+      verses: [
+        { chapterNumber: 14, verseNumber: 45 },
+        { chapterNumber: 15, verseNumber: 1 },
+        { chapterNumber: 15, verseNumber: 3 },
+      ],
+    });
+
+    renderTab();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+        'Mark 14:45–15:3',
+      );
+    });
+  });
+  it('ignores a stale pericope lookup that resolves after a mode switch away from pericope', async () => {
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(7);
+
+    let resolveStale: (value: unknown) => void;
+    (getPericopeForVerse as jest.Mock).mockReturnValueOnce(
+      new Promise(resolve => {
+        resolveStale = resolve;
+      }),
+    );
+
+    const { rerender } = renderTab();
+
+    // Switch to verse mode before the in-flight pericope lookup resolves.
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'verse',
+      setDraftingUnit: jest.fn(),
+    });
+    rerender(
+      <DraftingProvider verses={verses} initialVerse={3}>
+        <RecordTab chapterData={chapterData} userId={42} />
+      </DraftingProvider>,
+    );
+
+    // Now let the stale request resolve — it must not resurrect a subtitle.
+    resolveStale!({
+      pericopeNumber: '1',
+      pericopeTitle: 'Stale title',
+      section: null,
+      verses: [{ chapterNumber: 14, verseNumber: 3 }],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+        'Mark 14:3',
+      );
+    });
+    expect(screen.queryByTestId('record-verse-reference-subtitle')).toBeNull();
+  });
 });
