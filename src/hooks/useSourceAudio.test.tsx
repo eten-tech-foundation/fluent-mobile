@@ -604,6 +604,7 @@ describe('useSourceAudio', () => {
     await waitFor(() => {
       expect(mockPlaybackSeek).toHaveBeenCalledWith(4000);
     });
+    expect(onPlayingVerseChange).toHaveBeenCalledWith(2);
     expect(mockPlaybackPlay).not.toHaveBeenCalled();
   });
 

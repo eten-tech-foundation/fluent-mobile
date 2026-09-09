@@ -228,9 +228,7 @@ export function useSourceAudio({
     playingVerseRef.current = verse;
     const startMs = verseStartMs(verse, verseTimestamps, dblAudioBibleId);
     void playbackRef.current.seek(startMs);
-    if (playback.status === 'playing') {
-      onPlayingVerseChangeRef.current?.(verse);
-    }
+    onPlayingVerseChangeRef.current?.(verse);
   }, [verse, playback.status, uri, verseTimestamps, dblAudioBibleId]);
 
   // While playing, poll position so verse highlight + footer advance (#412).
@@ -329,11 +327,13 @@ export function useSourceAudio({
   const pause = useCallback(async () => {
     playGenerationRef.current += 1;
     await playbackRef.current.pause();
-    const activeVerse = verseAtPositionMs(
-      playbackRef.current.positionMs,
-      timestampsRef.current,
-      dblIdRef.current,
-    );
+    const activeVerse = timestampsRef.current?.length
+      ? verseAtPositionMs(
+          playbackRef.current.positionMs,
+          timestampsRef.current,
+          dblIdRef.current,
+        )
+      : verseRef.current;
     playingVerseRef.current = activeVerse;
     onPlayingVerseChangeRef.current?.(activeVerse);
   }, []);
@@ -347,11 +347,9 @@ export function useSourceAudio({
       await playbackRef.current.load(currentUri);
     }
     await playbackRef.current.seek(ms);
-    const activeVerse = verseAtPositionMs(
-      ms,
-      timestampsRef.current,
-      dblIdRef.current,
-    );
+    const activeVerse = timestampsRef.current?.length
+      ? verseAtPositionMs(ms, timestampsRef.current, dblIdRef.current)
+      : verseRef.current;
     playingVerseRef.current = activeVerse;
     onPlayingVerseChangeRef.current?.(activeVerse);
   }, []);
