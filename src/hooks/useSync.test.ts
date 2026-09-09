@@ -75,6 +75,34 @@ describe('useSync', () => {
     expect(result.current.displayText).toBe('Sync failed: projects');
   });
 
+  it('surfaces chapter claim sync errors ahead of assignment errors', () => {
+    mockGetSyncError.mockImplementation((key: string) => {
+      if (key === KV_KEYS.SYNC_ERROR_CHAPTER_CLAIMS) {
+        return 'Failed to sync 1 pending chapter claim(s)';
+      }
+      if (key === KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS) {
+        return 'assignment failed';
+      }
+      return undefined;
+    });
+
+    const { result } = renderHook(() => useSync());
+
+    expect(result.current.stateType).toBe('error');
+    expect(result.current.displayText).toBe('Sync failed: chapter claims');
+  });
+
+  it('surfaces pericope sync errors from KV', () => {
+    mockGetSyncError.mockImplementation((key: string) =>
+      key === KV_KEYS.SYNC_ERROR_PERICOPES ? 'pericope failed' : undefined,
+    );
+
+    const { result } = renderHook(() => useSync());
+
+    expect(result.current.stateType).toBe('error');
+    expect(result.current.displayText).toBe('Sync failed: pericopes');
+  });
+
   it('shows last synced relative time in normal state', () => {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60_000).toISOString();
     mockGetSyncState.mockReturnValue({

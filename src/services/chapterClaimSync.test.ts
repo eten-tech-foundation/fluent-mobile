@@ -140,6 +140,32 @@ describe('syncPendingChapterClaims', () => {
     expect(mockResolveChapterClaimQueueEntry).not.toHaveBeenCalled();
   });
 
+  it('leaves the queue row pending on ambiguous API responses', async () => {
+    mockGetPendingChapterClaims.mockResolvedValue([
+      {
+        id: 7,
+        chapterAssignmentId: 16,
+        userId: 9,
+        claimedAt: '2026-08-28T00:00:00.000Z',
+      },
+    ]);
+    mockFluentClaim.mockResolvedValue({
+      chapterAssignmentId: 16,
+      assignedUserId: 42,
+      status: 'draft',
+      hasClaimConflict: false,
+    });
+
+    await expect(syncPendingChapterClaims(9)).resolves.toEqual({
+      synced: 0,
+      conflicts: 0,
+      failed: 1,
+    });
+    expect(mockClaimChapterAssignment).not.toHaveBeenCalled();
+    expect(mockSetChapterAssignmentConflict).not.toHaveBeenCalled();
+    expect(mockResolveChapterClaimQueueEntry).not.toHaveBeenCalled();
+  });
+
   it('skips pending rows for other users', async () => {
     mockGetPendingChapterClaims.mockResolvedValue([
       {

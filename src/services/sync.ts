@@ -301,20 +301,24 @@ export async function syncPendingChapterClaimsForUser(userId: number) {
     return { synced: 0, conflicts: 0, failed: 0 };
   }
 
-  return retrySyncStep(
+  // Soft-fail per-row claim failures (#470): do not throw when some rows fail,
+  // so chapter assignment / bible-text sync still runs. Per-row failures are
+  // caught inside syncPendingChapterClaims; only unexpected throws (e.g. queue
+  // read) hit retrySyncStep. Re-set the claim error after retrySyncStep clears
+  // the key on a non-throwing return.
+  const result = await retrySyncStep(
     'Pending chapter claim sync',
-    KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS,
-    async () => {
-      const result = await syncPendingChapterClaims(userId);
-      if (result.failed > 0) {
-        throw new Error(
-          `Failed to sync ${result.failed} pending chapter claim(s)`,
-        );
-      }
-      return result;
-    },
+    KV_KEYS.SYNC_ERROR_CHAPTER_CLAIMS,
+    () => syncPendingChapterClaims(userId),
     String(userId),
   );
+  if (result.failed > 0) {
+    setSyncError(
+      KV_KEYS.SYNC_ERROR_CHAPTER_CLAIMS,
+      `Failed to sync ${result.failed} pending chapter claim(s)`,
+    );
+  }
+  return result;
 }
 
 export async function syncChapterAssignments(
@@ -352,7 +356,13 @@ export async function syncChapterAssignments(
       );
 
       if (allAssignments.length > 0) {
-        await insertChapterAssignmentSyncData(allAssignments);
+        const { insertedCount, skipped } =
+          await insertChapterAssignmentSyncData(allAssignments);
+        if (insertedCount === 0) {
+          throw new Error(
+            `Skipped all ${skipped.length} chapter assignment(s) — missing FK parents`,
+          );
+        }
         await insertUserProjects(userId, [
           ...new Set(
             allAssignments
@@ -370,6 +380,8 @@ export async function syncChapterAssignments(
         );
         log.info('Chapter assignments synced', {
           fetched: allAssignments.length,
+          inserted: insertedCount,
+          skipped: skipped.length,
         });
       } else {
         log.info('No chapter assignment changes');
@@ -405,7 +417,13 @@ async function syncUserChapterWork(userId: number, sessionToken?: string) {
       const mapped = [...assigned, ...peerCheck].map(mapApiChapterAssignment);
 
       if (mapped.length > 0) {
-        await insertChapterAssignmentSyncData(mapped);
+        const { insertedCount, skipped } =
+          await insertChapterAssignmentSyncData(mapped);
+        if (insertedCount === 0) {
+          throw new Error(
+            `Skipped all ${skipped.length} chapter assignment(s) — missing FK parents`,
+          );
+        }
       }
       if (isConfirmedShape) {
         await reconcileUserChapterWork(

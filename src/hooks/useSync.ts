@@ -11,9 +11,12 @@ const SYNC_ERROR_STEPS = [
   { key: KV_KEYS.SYNC_ERROR_USER, label: 'user' },
   { key: KV_KEYS.SYNC_ERROR_MASTER_DATA, label: 'master data' },
   { key: KV_KEYS.SYNC_ERROR_PROJECTS, label: 'projects' },
+  { key: KV_KEYS.SYNC_ERROR_CHAPTER_CLAIMS, label: 'chapter claims' },
   { key: KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS, label: 'chapter assignments' },
   { key: KV_KEYS.SYNC_ERROR_PROJECT_UNITS, label: 'project units' },
   { key: KV_KEYS.SYNC_ERROR_BIBLE_TEXTS, label: 'bible texts' },
+  { key: KV_KEYS.SYNC_ERROR_PERICOPE_SETS, label: 'pericope sets' },
+  { key: KV_KEYS.SYNC_ERROR_PERICOPES, label: 'pericopes' },
 ] as const;
 
 function getRelativeTime(isoTimestamp: string | undefined): string {

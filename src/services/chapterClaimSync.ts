@@ -4,8 +4,11 @@ import {
   setChapterAssignmentConflict,
 } from '../db/repository';
 import { getPendingChapterClaims } from '../db/queries';
+import { logger } from '../utils/logger';
 import { FluentAPI } from './api';
 import type { NormalizedClaimChapterAssignmentResponse } from '../types/api/chapterClaim';
+
+const log = logger.create('ChapterClaimSync');
 
 /**
  * Pushes a chapter claim to the server (#268). On a winning claim, updates
@@ -36,8 +39,9 @@ export type SyncPendingChapterClaimsResult = {
 
 /**
  * Syncs pending offline claims from `chapter_claim_queue` for the given user (#271).
- * Resolves each row on a definitive API outcome; leaves rows pending on
- * transient failure so the next sync cycle retries.
+ * Resolves each row only on a definitive API outcome (win or conflict). Leaves
+ * rows pending on transient failure or ambiguous responses so the next sync
+ * cycle retries (#470).
  */
 export async function syncPendingChapterClaims(
   userId: number,
@@ -59,10 +63,20 @@ export async function syncPendingChapterClaims(
       );
       if (response.hasClaimConflict) {
         conflicts += 1;
+        await resolveChapterClaimQueueEntry(row.id);
       } else if (response.assignedUserId === row.userId) {
         synced += 1;
+        await resolveChapterClaimQueueEntry(row.id);
+      } else {
+        failed += 1;
+        log.warn('Leaving claim queue row pending — ambiguous API response', {
+          queueId: row.id,
+          chapterAssignmentId: row.chapterAssignmentId,
+          userId: row.userId,
+          assignedUserId: response.assignedUserId,
+          hasClaimConflict: response.hasClaimConflict,
+        });
       }
-      await resolveChapterClaimQueueEntry(row.id);
     } catch {
       failed += 1;
     }
