@@ -15,9 +15,11 @@ export function useProjectsSummary(refreshKey = 0) {
   const [refreshing, setRefreshing] = useState(false);
   const refreshGenerationRef = useRef(0);
   const loadInFlightRef = useRef<Promise<void> | null>(null);
+  const needsReloadRef = useRef(false);
 
   const loadProjects = useCallback(async () => {
     if (loadInFlightRef.current) {
+      needsReloadRef.current = true;
       return loadInFlightRef.current;
     }
 
@@ -40,6 +42,10 @@ export function useProjectsSummary(refreshKey = 0) {
       await loadPromise;
     } finally {
       loadInFlightRef.current = null;
+      if (needsReloadRef.current) {
+        needsReloadRef.current = false;
+        void loadProjects();
+      }
     }
   }, []);
 
@@ -55,6 +61,8 @@ export function useProjectsSummary(refreshKey = 0) {
 
       refreshGenerationRef.current += 1;
       const generation = refreshGenerationRef.current;
+
+      void loadProjects();
 
       refreshChapterMetadataIfOnline(Number(activeUserId)).then(() => {
         if (refreshGenerationRef.current !== generation) return;

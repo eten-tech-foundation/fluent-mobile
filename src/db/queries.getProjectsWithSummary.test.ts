@@ -10,6 +10,7 @@ jest.mock('./repository', () => ({
   ensureUserProjectMembership: jest.fn(async () => undefined),
 }));
 
+// queries.ts imports parseUserId → storage → native op-sqlite; mock the chain.
 jest.mock('../utils/parseUserId', () => ({
   parseUserId: jest.fn(),
 }));
@@ -115,6 +116,46 @@ describe('getProjectsWithSummary', () => {
     expect(result[0]).toMatchObject({
       chapterCount: 0,
       syncState: 'none',
+    });
+  });
+
+  it('maps recordings with no pending items to synced', async () => {
+    mockExecute.mockImplementation(async (sql: string) => {
+      if (sql.includes('ORDER BY p.name COLLATE NOCASE')) {
+        return {
+          rows: [
+            {
+              id: 3,
+              name: 'Gamma',
+              source_language_id: 10,
+              target_language_id: 22,
+              is_active: 1,
+              status: 'active',
+              updated_at: '2026-01-01T00:00:00.000Z',
+              metadata: null,
+              source_language_name: 'English',
+              target_language_name: 'Spanish',
+            },
+          ],
+        };
+      }
+      if (sql.includes('COUNT(DISTINCT ca.id) AS chapter_count')) {
+        return { rows: [{ id: 3, chapter_count: 4 }] };
+      }
+      if (sql.includes('FROM recordings r')) {
+        return {
+          rows: [{ id: 3, recording_count: 5, pending_count: 0 }],
+        };
+      }
+      throw new Error(`Unexpected SQL: ${sql}`);
+    });
+
+    const result = await getProjectsWithSummary(247);
+
+    expect(result[0]).toMatchObject({
+      id: 3,
+      chapterCount: 4,
+      syncState: 'synced',
     });
   });
 
