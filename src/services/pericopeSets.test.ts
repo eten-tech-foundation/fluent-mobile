@@ -24,9 +24,10 @@ describe('loadBundledPericopeSet', () => {
     expect(fia).not.toBeNull();
   });
 
-  it('normalizes FCBH section+number into a single pericopeNumber, title always null', () => {
+  it('normalizes FCBH section+number, with section carried separately and title always null', () => {
     const result = loadBundledPericopeSet(1, 'GEN')!;
-    expect(result[0].pericopeNumber).toMatch(/^\d+\.\d+$/);
+    expect(result[0].pericopeNumber).toEqual(expect.any(String));
+    expect(result[0].section).toEqual(expect.any(Number));
     expect(result[0].pericopeTitle).toBeNull();
   });
 

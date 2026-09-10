@@ -28,8 +28,10 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import { useDraftingContext } from '../context/DraftingContext';
-import { getBibleTextId, getRecordedVerseNumbers } from '../../db/queries';
 import { useVerseAudio } from '../../hooks/useVerseAudio';
+import { resolveRecordingUnit } from '../../hooks/resolveRecordingUnit';
+import { formatTakeSubtitle } from '../../utils/takeSubtitle';
+import type { RecordingUnitCapture } from '../../utils/recordingRange';
 import { useSourceAudio } from '../../hooks/useSourceAudio';
 import { useDraftingUnit } from '../../hooks/useDraftingUnit';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
@@ -49,16 +51,23 @@ import {
   RECORD_AUDIO_CONFLICT_WARNING,
   RECORD_TAKEN_CHAPTER_WARNING,
 } from '../../constants/messages';
+import type { PericopeGroupResult } from '../../db/queries';
+import { ChapterAssignmentData } from '../../types/db/types';
+import { getProjectPericopeSetId } from '../../db/repository';
 import { parseRequiredString } from '../../navigation/routeParams';
 import { useChapterConflictStatus } from '../../hooks/useChapterConflictStatus';
 import { isChapterTakenByOther } from '../../utils/chapterTakenStatus';
+import type { Recording, RecordingWithOwner } from '../../types/db/types';
 import {
   getStageAdvanceVisibility,
   stageAdvanceConfirmBody,
 } from '../../utils/stageAdvancement';
 import { confirmStageAdvancement } from '../../services/stageAdvance';
-import { ChapterAssignmentData } from '../../types/db/types';
-import type { Recording, RecordingWithOwner } from '../../types/db/types';
+import {
+  getBibleTextId,
+  getPericopeForVerse,
+  getRecordedVerseNumbers,
+} from '../../db/queries';
 
 const log = logger.create('RecordTab');
 
@@ -132,15 +141,54 @@ export function RecordTab({
     setCurrentlyPlayingVerse,
   } = useDraftingContext();
   const [bibleTextId, setBibleTextId] = useState<number | null>(null);
+  /** Verse `selectedVerse` that `bibleTextId` was resolved for (null while stale). */
+  const [bibleTextVerse, setBibleTextVerse] = useState<number | null>(null);
   const [sourceExpanded, setSourceExpanded] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [takeView, setTakeView] = useState<'mine' | 'all'>('mine');
   const [hasChapterRecording, setHasChapterRecording] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const { draftingUnit } = useDraftingUnit();
+  const [recordingUnit, setRecordingUnit] =
+    useState<RecordingUnitCapture | null>(null);
+
+  const captureBibleTextId = useMemo(() => {
+    if (bibleTextId === null || bibleTextVerse !== selectedVerse) {
+      return null;
+    }
+    return bibleTextId;
+  }, [bibleTextId, bibleTextVerse, selectedVerse]);
+
+  const recordingCaptureReady = useMemo(() => {
+    if (captureBibleTextId === null) {
+      return false;
+    }
+    if (draftingUnit !== 'pericope') {
+      return true;
+    }
+    return (
+      recordingUnit !== null &&
+      recordingUnit.coveredViews.some(
+        view =>
+          view.bibleTextId === captureBibleTextId &&
+          view.chapterNumber === chapterData.chapterNumber &&
+          view.verseNumber === selectedVerse,
+      )
+    );
+  }, [
+    captureBibleTextId,
+    chapterData.chapterNumber,
+    draftingUnit,
+    recordingUnit,
+    selectedVerse,
+  ]);
+
+  const activeRecordingUnit =
+    draftingUnit === 'pericope' && recordingCaptureReady ? recordingUnit : null;
 
   const verseAudio = useVerseAudio({
-    bibleTextId,
+    bibleTextId: captureBibleTextId,
     chapterAssignmentId: chapterData.id,
     userId,
     chapterClaim: {
@@ -150,13 +198,15 @@ export function RecordTab({
       assignedUserId: chapterData.assignedUserId,
     },
     onChapterClaimed,
+    chapterNumber: chapterData.chapterNumber,
+    verseNumber: selectedVerse,
+    draftingUnit,
+    recordingUnit: activeRecordingUnit,
   });
-  const { draftingUnit } = useDraftingUnit();
   const verseIndex = verses.findIndex(v => v.verseNumber === selectedVerse);
   const prevDisabled = verseIndex <= 0;
   const nextDisabled = verseIndex < 0 || verseIndex >= verses.length - 1;
   const selected = verses.find(v => v.verseNumber === selectedVerse);
-  const reference = `${chapterName}:${selectedVerse}`;
   const sourceUnitCaption =
     draftingUnit === 'pericope' && verses.length > 0 && verseIndex >= 0
       ? `Pericope ${verseIndex + 1} / ${verses.length}`
@@ -179,23 +229,131 @@ export function RecordTab({
     selectedVerse,
   ]);
 
+  const [pericopeSetId, setPericopeSetId] = useState<number | null>(null);
+  const [activePericope, setActivePericope] =
+    useState<PericopeGroupResult | null>(null);
+  const pericopeRequestIdRef = useRef(0);
+
+  const pericopeVerses = activePericope?.verses ?? [];
+  const firstPericopeVerse = pericopeVerses[0] ?? null;
+  const lastPericopeVerse = pericopeVerses[pericopeVerses.length - 1] ?? null;
+  const pericopeSpansChapters =
+    firstPericopeVerse !== null &&
+    lastPericopeVerse !== null &&
+    firstPericopeVerse.chapterNumber !== lastPericopeVerse.chapterNumber;
+  const pericopeRange =
+    firstPericopeVerse && lastPericopeVerse
+      ? pericopeSpansChapters
+        ? `${firstPericopeVerse.chapterNumber}:${firstPericopeVerse.verseNumber}–${lastPericopeVerse.chapterNumber}:${lastPericopeVerse.verseNumber}`
+        : `${firstPericopeVerse.verseNumber}–${lastPericopeVerse.verseNumber}`
+      : null;
+  // Falls back to the verse reference silently whenever no pericope set/data
+  // is resolved (e.g. project has no pericope set configured) — see #409.
+  // Cross-chapter pericopes (e.g. Genesis 1→2) render with explicit chapter
+  // numbers on both endpoints rather than the "chapterName:range" shorthand,
+  // since a bare verse range would be ambiguous across chapters.
+  const reference =
+    draftingUnit === 'pericope' && pericopeRange
+      ? pericopeSpansChapters
+        ? `${chapterData.bookName} ${pericopeRange}`
+        : `${chapterName}:${pericopeRange}`
+      : `${chapterName}:${selectedVerse}`;
+  const referenceSubtitle =
+    draftingUnit === 'pericope' && pericopeRange
+      ? activePericope?.pericopeTitle ?? null
+      : null;
+
   /** Shared generation so sync-triggered and verse-change lookups ignore stale IDs. */
   const bibleTextRequestIdRef = useRef(0);
 
   const refreshBibleTextId = useCallback(() => {
     const requestId = ++bibleTextRequestIdRef.current;
+    const verse = selectedVerse;
     void resolveBibleTextId().then(id => {
       if (requestId === bibleTextRequestIdRef.current) {
         setBibleTextId(id);
+        setBibleTextVerse(verse);
       }
     });
-  }, [resolveBibleTextId]);
+  }, [resolveBibleTextId, selectedVerse]);
 
   const isSyncing = useGlobalSyncStatus(refreshBibleTextId);
 
   useEffect(() => {
+    if (chapterData.projectId === null) {
+      setPericopeSetId(null);
+      return;
+    }
+    let cancelled = false;
+    void getProjectPericopeSetId(chapterData.projectId).then(id => {
+      if (!cancelled) setPericopeSetId(id);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [chapterData.projectId]);
+
+  useEffect(() => {
+    const requestId = ++pericopeRequestIdRef.current;
+    if (draftingUnit !== 'pericope' || pericopeSetId === null) {
+      setActivePericope(null);
+      return;
+    }
+    setActivePericope(null);
+    void getPericopeForVerse(
+      chapterData.bookId,
+      chapterData.chapterNumber,
+      selectedVerse,
+      pericopeSetId,
+    ).then(result => {
+      if (requestId === pericopeRequestIdRef.current) {
+        setActivePericope(result);
+      }
+    });
+  }, [
+    draftingUnit,
+    pericopeSetId,
+    chapterData.bookId,
+    chapterData.chapterNumber,
+    selectedVerse,
+  ]);
+
+  useEffect(() => {
+    if (verseAudio.state === 'recording' || verseAudio.state === 'paused') {
+      return;
+    }
+    setRecordingUnit(null);
+    let cancelled = false;
+    void resolveRecordingUnit({
+      draftingUnit,
+      projectId: chapterData.projectId ?? null,
+      bibleId: chapterData.bibleId,
+      bookId: chapterData.bookId,
+      chapterNumber: chapterData.chapterNumber,
+      verseNumber: selectedVerse,
+      selectedBibleTextId: captureBibleTextId,
+    }).then(unit => {
+      if (!cancelled) {
+        setRecordingUnit(unit);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    captureBibleTextId,
+    chapterData.bibleId,
+    chapterData.bookId,
+    chapterData.chapterNumber,
+    chapterData.projectId,
+    draftingUnit,
+    selectedVerse,
+    verseAudio.state,
+  ]);
+
+  useEffect(() => {
     setTakeView('mine');
-  }, [bibleTextId]);
+  }, [captureBibleTextId]);
 
   useEffect(() => {
     void refreshRecordedVerses();
@@ -210,16 +368,19 @@ export function RecordTab({
 
   useEffect(() => {
     const requestId = ++bibleTextRequestIdRef.current;
+    const verse = selectedVerse;
     setBibleTextId(null);
+    setBibleTextVerse(null);
     void resolveBibleTextId().then(id => {
       if (requestId === bibleTextRequestIdRef.current) {
         setBibleTextId(id);
+        setBibleTextVerse(verse);
       }
     });
     return () => {
       bibleTextRequestIdRef.current += 1;
     };
-  }, [resolveBibleTextId, verses.length]);
+  }, [resolveBibleTextId, selectedVerse, verses.length]);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -272,8 +433,8 @@ export function RecordTab({
     Alert.alert('Audio error', verseAudio.errorMessage);
   }, [verseAudio.errorMessage]);
 
-  const recordDisabled = bibleTextId === null;
-  const syncingMessage = recordSourceTextHint(bibleTextId, isSyncing);
+  const recordDisabled = captureBibleTextId === null;
+  const syncingMessage = recordSourceTextHint(captureBibleTextId, isSyncing);
 
   async function ensureMic(): Promise<boolean> {
     const permission = await requestMicPermission();
@@ -331,6 +492,10 @@ export function RecordTab({
       );
       return;
     }
+    bibleTextRequestIdRef.current += 1;
+    setBibleTextId(null);
+    setBibleTextVerse(null);
+    setRecordingUnit(null);
     setSelectedVerse(next);
   }
 
@@ -535,9 +700,20 @@ export function RecordTab({
             style={prevDisabled ? styles.dim : undefined}
           />
         </TouchableOpacity>
-        <Text style={styles.reference} testID="record-verse-reference">
-          {reference}
-        </Text>
+        <View style={styles.referenceColumn}>
+          <Text style={styles.reference} testID="record-verse-reference">
+            {reference}
+          </Text>
+          {referenceSubtitle ? (
+            <Text
+              style={styles.referenceSubtitle}
+              numberOfLines={1}
+              testID="record-verse-reference-subtitle"
+            >
+              {referenceSubtitle}
+            </Text>
+          ) : null}
+        </View>
         <TouchableOpacity
           onPress={() => {
             if (!nextDisabled) {
@@ -761,6 +937,7 @@ export function RecordTab({
                         <View key={take.id} style={styles.takeItemSpacing}>
                           <DraftTakeRow
                             takeNumber={take.takeNumber}
+                            label={formatTakeSubtitle(take)}
                             isSelected={isSelected}
                             isPlaying={isThisPlaying}
                             leadingIndicator={leadingIndicator}
@@ -811,6 +988,7 @@ export function RecordTab({
                           <View key={take.id} style={styles.takeItemSpacing}>
                             <SharedTakeRow
                               takeNumber={take.takeNumber}
+                              label={formatTakeSubtitle(take)}
                               isPlaying={isThisPlaying}
                               isCanonical={take.isCanonical}
                               positionMs={isLoaded ? verseAudio.positionMs : 0}
@@ -1068,5 +1246,15 @@ const styles = StyleSheet.create({
     color: theme.colors.primaryForeground,
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.weights.semibold,
+  },
+  referenceColumn: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  referenceSubtitle: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.mutedForeground,
+    marginTop: theme.spacing.xs,
+    textAlign: 'center',
   },
 });

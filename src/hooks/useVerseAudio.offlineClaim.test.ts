@@ -13,6 +13,8 @@ jest.mock('../db/repository', () => ({
   addRecordingTake: jest.fn(),
   deleteRecordingTake: jest.fn(),
   getTakesForVerse: jest.fn(),
+  getAllTakesForVerse: jest.fn().mockResolvedValue([]),
+  verseHasMultipleRecorders: jest.fn().mockResolvedValue(false),
   selectRecordingTake: jest.fn(),
   claimChapterOffline: jest.fn(),
 }));

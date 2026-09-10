@@ -37,9 +37,8 @@ function normalizeFcbhRow(row: RawFcbhPericopeRow): BundledPericopeVerse {
   return {
     chapterNumber: row.chapter,
     verseNumber: row.verse,
-    // FCBH splits pericope identity across two fields and has no title;
-    // collapse to a single string so both sources share one shape.
-    pericopeNumber: `${row.fcbh_section}.${row.fcbh_pericope_number}`,
+    section: row.fcbh_section,
+    pericopeNumber: String(row.fcbh_pericope_number),
     pericopeTitle: null,
   };
 }
@@ -48,6 +47,7 @@ function normalizeFiaRow(row: RawFiaPericopeRow): BundledPericopeVerse {
   return {
     chapterNumber: row.chapter,
     verseNumber: row.verse,
+    section: null,
     pericopeNumber: row.fia_pericope_number,
     pericopeTitle: row.fia_pericope_title,
   };
