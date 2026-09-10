@@ -3,6 +3,7 @@ appId: com.eten.fluent
 flows:
   - 'flows/**'
   - '!helpers/**'
+  - '!flows/**/subflows/**'
 # Relative to this workspace (.maestro/) — outputs land in .maestro/test_output/
 testOutputDir: test_output
 # disableAnimations applies on Maestro Cloud only; local emulators ignore it.

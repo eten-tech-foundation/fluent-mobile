@@ -1,0 +1,52 @@
+# Home → My Work / Projects → chapter → Bible / Resources / Record tabs.
+# Requires Maestro translator with ≥1 My Work assignment (and project chapters).
+appId: com.eten.fluent
+tags:
+  - smoke
+  - nav
+---
+- runFlow: subflows/boot-to-login.yaml
+- runFlow: subflows/login.yaml
+- runFlow: subflows/wait-for-home.yaml
+
+# My Work → drafting tabs
+- runFlow: subflows/open-first-my-work-chapter.yaml
+- tapOn:
+    id: 'drafting-tab-bible'
+- assertVisible:
+    id: 'bible-tab'
+- tapOn:
+    id: 'drafting-tab-resources'
+- assertVisible:
+    id: 'resources-tab'
+- tapOn:
+    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'record-tab'
+- back
+
+# Projects → chapter → drafting
+- tapOn:
+    id: 'home-tab-projects'
+- extendedWaitUntil:
+    visible:
+      id: 'project-row-.*'
+    timeout: 60000
+- tapOn:
+    id: 'project-row-.*'
+- extendedWaitUntil:
+    visible:
+      id: 'chapter-row-.*'
+    timeout: 60000
+- tapOn:
+    id: 'chapter-row-.*'
+- extendedWaitUntil:
+    visible:
+      id: 'drafting-tab-bar'
+    timeout: 60000
+- assertVisible:
+    id: 'drafting-tab-bible'
+- assertVisible:
+    id: 'drafting-tab-resources'
+- assertVisible:
+    id: 'drafting-tab-record'
