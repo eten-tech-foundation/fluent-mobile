@@ -168,10 +168,11 @@ Before opening a PR (and after dependency changes), run the same Expo health che
 
 ```bash
 npm run doctor              # lockfile expo-doctor
-npx expo install --check    # SDK-aligned dependency versions (Expo’s published matrix)
+npm run expo:check          # offline SDK check (mirrors Quality Gates)
+npm run expo:check:latest   # online freshness probe (optional)
 ```
 
-If `--check` goes red overnight with **no** change on your ticket, wait for the Expo compatibility sync ([#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422)) and rebase — do not `--fix` on the feature branch. See [docs/ci.md](docs/ci.md) (two clocks).
+If `npm run expo:check:latest` reports drift with **no** change on your ticket, wait for the `chore/expo-sdk-align` PR from [`expo-sdk-align.yml`](.github/workflows/expo-sdk-align.yml) (#422) and rebase — do not `--fix` on the feature branch. Offline `npm run expo:check` mirrors Quality Gates and should not go red from upstream patch churn alone. See [docs/ci.md](docs/ci.md) (two clocks).
 
 Generate the native Android project (required before first run):
 

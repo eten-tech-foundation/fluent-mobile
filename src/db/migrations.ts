@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 16;
+export const CURRENT_SCHEMA_VERSION = 17;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -426,6 +426,67 @@ async function addRecordingsVersionToken(db: SqlExecutor): Promise<void> {
  *
  * KV is required dynamically so migrations.test does not load native Storage.
  */
+async function addRecordingsGranularityColumns(db: SqlExecutor): Promise<void> {
+  const info = await db.execute('PRAGMA table_info(recordings)');
+  if (!info.rows.length) {
+    return;
+  }
+  await addColumnIfMissing(
+    db,
+    'recordings',
+    'granularity',
+    "TEXT NOT NULL DEFAULT 'verse'",
+  );
+  await addColumnIfMissing(
+    db,
+    'recordings',
+    'start_chapter',
+    'INTEGER NOT NULL DEFAULT 0',
+  );
+  await addColumnIfMissing(
+    db,
+    'recordings',
+    'start_verse',
+    'INTEGER NOT NULL DEFAULT 0',
+  );
+  await addColumnIfMissing(
+    db,
+    'recordings',
+    'end_chapter',
+    'INTEGER NOT NULL DEFAULT 0',
+  );
+  await addColumnIfMissing(
+    db,
+    'recordings',
+    'end_verse',
+    'INTEGER NOT NULL DEFAULT 0',
+  );
+
+  // Backfill verse ranges from the anchor bible_text. Harmless no-op in the
+  // migrations fake DB (no UPDATE support); real SQLite applies this.
+  await db.execute(
+    `UPDATE recordings
+     SET granularity = 'verse',
+         start_chapter = COALESCE(
+           (SELECT chapter_number FROM bible_texts WHERE bible_texts.id = recordings.bible_text_id),
+           start_chapter
+         ),
+         start_verse = COALESCE(
+           (SELECT verse_number FROM bible_texts WHERE bible_texts.id = recordings.bible_text_id),
+           start_verse
+         ),
+         end_chapter = COALESCE(
+           (SELECT chapter_number FROM bible_texts WHERE bible_texts.id = recordings.bible_text_id),
+           end_chapter
+         ),
+         end_verse = COALESCE(
+           (SELECT verse_number FROM bible_texts WHERE bible_texts.id = recordings.bible_text_id),
+           end_verse
+         )
+     WHERE granularity IS NULL OR granularity = 'verse'`,
+  );
+}
+
 async function markBibleTextsServerIdsRemap(db: SqlExecutor): Promise<void> {
   const result = await db.execute('SELECT COUNT(*) AS count FROM bible_texts');
   const count = Number(
@@ -520,6 +581,11 @@ export const migrations: Migration[] = [
     version: 16,
     name: 'bible_texts_server_ids',
     up: markBibleTextsServerIdsRemap,
+  },
+  {
+    version: 17,
+    name: 'recordings_granularity',
+    up: addRecordingsGranularityColumns,
   },
 ];
 

@@ -7,6 +7,8 @@ import { RecordCircleButton } from './RecordCircleButton';
 
 type DraftTakeRowProps = {
   takeNumber: number;
+  /** Full card label, e.g. "Take 1 - Verse - v. 3" (#410). */
+  label?: string;
   /** Live engine position (ms) — only meaningful while this take is loaded/playing. */
   positionMs: number;
   /** Engine duration while loaded, or DB fallback from capture (ms). */
@@ -43,6 +45,7 @@ function formatDuration(ms: number): string {
  */
 export function DraftTakeRow({
   takeNumber,
+  label,
   positionMs,
   durationMs,
   isPlaying,
@@ -118,8 +121,12 @@ export function DraftTakeRow({
       </RecordCircleButton>
       <View style={styles.middleColumn}>
         <View style={styles.topRow}>
-          <Text style={styles.takeLabel} testID="record-take-badge">
-            Take {takeNumber}
+          <Text
+            style={styles.takeLabel}
+            numberOfLines={1}
+            testID="record-take-badge"
+          >
+            {label ?? `Take ${takeNumber}`}
           </Text>
           <Text
             style={styles.time}
@@ -203,6 +210,8 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.sm,
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.foreground,
+    flex: 1,
+    marginRight: theme.spacing.sm,
   },
   waveform: {
     flex: 1,

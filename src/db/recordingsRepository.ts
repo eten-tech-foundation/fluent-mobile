@@ -2,11 +2,17 @@ import { getDatabase } from './db';
 import { logger } from '../utils/logger';
 import type {
   Recording,
+  RecordingGranularity,
   RecordingRow,
   RecordingWithOwner,
   RecordingSyncStatus,
 } from '../types/db/types';
 import { Transaction } from '@op-engineering/op-sqlite';
+import {
+  rangesOverlap,
+  shouldClearSelectionForIncomingTake,
+  type RecordingVerseRange,
+} from '../utils/recordingRange';
 
 const log = logger.create('RecordingsRepo');
 
@@ -37,6 +43,8 @@ export function resolveRecordedByUserId(
 }
 
 function mapRecordingRow(row: RecordingRow): Recording {
+  const granularity: RecordingGranularity =
+    row.granularity === 'pericope' ? 'pericope' : 'verse';
   return {
     id: row.id,
     bibleTextId: row.bible_text_id,
@@ -53,6 +61,11 @@ function mapRecordingRow(row: RecordingRow): Recording {
     uploadError: row.upload_error,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    granularity,
+    startChapter: Number(row.start_chapter ?? 0),
+    startVerse: Number(row.start_verse ?? 0),
+    endChapter: Number(row.end_chapter ?? 0),
+    endVerse: Number(row.end_verse ?? 0),
   };
 }
 
@@ -89,8 +102,15 @@ function recordedByClause(
   return { sql: `${column} = ?`, params: [userId] };
 }
 
+export type VerseTakeView = {
+  chapterNumber: number;
+  verseNumber: number;
+};
+
 export type AddRecordingTakeInput = {
   bibleTextId: number;
+  /** Verse view where capture happened — scopes take_number across mixed takes (#410). */
+  viewBibleTextId?: number;
   localFilePath: string;
   durationMs?: number;
   fileSizeBytes?: number;
@@ -102,7 +122,125 @@ export type AddRecordingTakeInput = {
    * Pass `null` explicitly only in tests for legacy unattributed rows.
    */
   recordedByUserId?: number | null;
+  granularity?: RecordingGranularity;
+  startChapter?: number;
+  startVerse?: number;
+  endChapter?: number;
+  endVerse?: number;
 };
+
+function rangeFromInput(input: AddRecordingTakeInput): RecordingVerseRange {
+  return {
+    startChapter: input.startChapter ?? 0,
+    startVerse: input.startVerse ?? 0,
+    endChapter: input.endChapter ?? input.startChapter ?? 0,
+    endVerse: input.endVerse ?? input.startVerse ?? 0,
+  };
+}
+
+function rowRange(row: {
+  start_chapter?: number | null;
+  start_verse?: number | null;
+  end_chapter?: number | null;
+  end_verse?: number | null;
+}): RecordingVerseRange {
+  return {
+    startChapter: Number(row.start_chapter ?? 0),
+    startVerse: Number(row.start_verse ?? 0),
+    endChapter: Number(row.end_chapter ?? 0),
+    endVerse: Number(row.end_verse ?? 0),
+  };
+}
+
+/** Match pericope takes whose anchor shares bible/book with `view_bt.id`. */
+function pericopeCoversViewSql(alias = ''): string {
+  const p = alias ? `${alias}.` : '';
+  return `(
+    ${p}granularity = 'pericope'
+    AND EXISTS (
+      SELECT 1
+      FROM bible_texts anchor_bt
+      INNER JOIN bible_texts view_bt ON view_bt.id = ?
+      WHERE anchor_bt.id = ${p}bible_text_id
+        AND anchor_bt.bible_id = view_bt.bible_id
+        AND anchor_bt.book_id = view_bt.book_id
+        AND (${p}start_chapter < view_bt.chapter_number
+          OR (${p}start_chapter = view_bt.chapter_number AND ${p}start_verse <= view_bt.verse_number))
+        AND (${p}end_chapter > view_bt.chapter_number
+          OR (${p}end_chapter = view_bt.chapter_number AND ${p}end_verse >= view_bt.verse_number))
+    )
+  )`;
+}
+
+async function maxTakeNumberAtView(
+  tx: Transaction,
+  owner: { sql: string; params: (number | null)[] },
+  viewBibleTextId: number,
+): Promise<number> {
+  const result = await tx.execute(
+    `SELECT MAX(take_number) AS max_take
+     FROM recordings
+     WHERE ${owner.sql}
+       AND (bible_text_id = ? OR ${pericopeCoversViewSql()})`,
+    [...owner.params, viewBibleTextId, viewBibleTextId],
+  );
+  return Number(
+    (result.rows?.[0] as { max_take?: number | null } | undefined)?.max_take ??
+      0,
+  );
+}
+
+async function clearOverlappingSelectedTakes(
+  tx: Transaction,
+  owner: { sql: string; params: (number | null)[] },
+  incoming: {
+    id?: string;
+    bibleTextId: number;
+    range: RecordingVerseRange;
+  },
+  now: string,
+): Promise<void> {
+  const selected = await tx.execute(
+    `SELECT r.id, r.bible_text_id, r.start_chapter, r.start_verse, r.end_chapter, r.end_verse
+     FROM recordings r
+     INNER JOIN bible_texts incoming_bt ON incoming_bt.id = ?
+     INNER JOIN bible_texts anchor_bt ON anchor_bt.id = r.bible_text_id
+     WHERE r.is_selected = 1
+       AND ${owner.sql.replaceAll(
+         'recorded_by_user_id',
+         'r.recorded_by_user_id',
+       )}
+       AND anchor_bt.bible_id = incoming_bt.bible_id
+       AND anchor_bt.book_id = incoming_bt.book_id`,
+    [incoming.bibleTextId, ...owner.params],
+  );
+  const rows = (selected.rows ?? []) as unknown as {
+    id: string;
+    bible_text_id: number;
+    start_chapter: number | null;
+    start_verse: number | null;
+    end_chapter: number | null;
+    end_verse: number | null;
+  }[];
+  for (const row of rows) {
+    if (
+      !shouldClearSelectionForIncomingTake(
+        {
+          id: row.id,
+          bibleTextId: row.bible_text_id,
+          range: rowRange(row),
+        },
+        incoming,
+      )
+    ) {
+      continue;
+    }
+    await tx.execute(
+      `UPDATE recordings SET is_selected = 0, updated_at = ? WHERE id = ?`,
+      [now, row.id],
+    );
+  }
+}
 
 /**
  * Insert a new take for a verse: clear prior `is_selected` for this user, bump
@@ -122,29 +260,37 @@ export async function addRecordingTake(
   const owner = recordedByClause(recordedByUserId);
 
   await db.transaction(async (tx: Transaction) => {
-    await tx.execute(
-      `UPDATE recordings SET is_selected = 0, updated_at = ?
-       WHERE bible_text_id = ? AND is_selected = 1 AND ${owner.sql}`,
-      [now, input.bibleTextId, ...owner.params],
+    const range = rangeFromInput(input);
+    const granularity: RecordingGranularity = input.granularity ?? 'verse';
+    await clearOverlappingSelectedTakes(
+      tx,
+      owner,
+      { bibleTextId: input.bibleTextId, range },
+      now,
     );
 
-    const maxResult = await tx.execute(
-      `SELECT MAX(take_number) AS max_take FROM recordings
-       WHERE bible_text_id = ? AND ${owner.sql}`,
-      [input.bibleTextId, ...owner.params],
-    );
-    const maxTake = Number(
-      (maxResult.rows?.[0] as { max_take?: number | null } | undefined)
-        ?.max_take ?? 0,
-    );
+    let maxTake = 0;
+    if (input.viewBibleTextId !== null && input.viewBibleTextId !== undefined) {
+      maxTake = await maxTakeNumberAtView(tx, owner, input.viewBibleTextId);
+    } else {
+      const maxResult = await tx.execute(
+        `SELECT MAX(take_number) AS max_take FROM recordings
+         WHERE bible_text_id = ? AND ${owner.sql}`,
+        [input.bibleTextId, ...owner.params],
+      );
+      maxTake = Number(
+        (maxResult.rows?.[0] as { max_take?: number | null } | undefined)
+          ?.max_take ?? 0,
+      );
+    }
     const takeNumber = maxTake + 1;
 
     await tx.execute(
       `INSERT INTO recordings (
          id, bible_text_id, recorded_by_user_id, local_file_path, duration_ms,
          file_size_bytes, take_number, is_selected, sync_status, created_at,
-         updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+         updated_at, granularity, start_chapter, start_verse, end_chapter, end_verse
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         input.bibleTextId,
@@ -156,6 +302,11 @@ export async function addRecordingTake(
         syncStatus,
         now,
         now,
+        granularity,
+        range.startChapter,
+        range.startVerse,
+        range.endChapter,
+        range.endVerse,
       ],
     );
   });
@@ -188,15 +339,20 @@ export async function getLatestRecordingForVerse(
 export async function getTakesForVerse(
   bibleTextId: number,
   recordedByUserId?: number | null,
+  view?: VerseTakeView,
 ): Promise<Recording[]> {
   const db = getDatabase();
   const ownerId = resolveRecordedByUserId(recordedByUserId);
   const owner = recordedByClause(ownerId);
+  const viewSql = view
+    ? `AND (bible_text_id = ? OR ${pericopeCoversViewSql()})`
+    : 'AND bible_text_id = ?';
+  const viewParams = view ? [bibleTextId, bibleTextId] : [bibleTextId];
   const result = await db.execute(
     `SELECT * FROM recordings
-     WHERE bible_text_id = ? AND ${owner.sql}
-     ORDER BY take_number ASC`,
-    [bibleTextId, ...owner.params],
+     WHERE ${owner.sql} ${viewSql}
+     ORDER BY ${view ? 'created_at ASC' : 'take_number ASC, created_at ASC'}`,
+    [...owner.params, ...viewParams],
   );
   const rows = (result.rows ?? []) as unknown as RecordingRow[];
   return rows.map(mapRecordingRow);
@@ -204,15 +360,22 @@ export async function getTakesForVerse(
 
 export async function getAllTakesForVerse(
   bibleTextId: number,
+  view?: VerseTakeView,
 ): Promise<RecordingWithOwner[]> {
   const db = getDatabase();
+  const viewSql = view
+    ? `AND (r.bible_text_id = ? OR ${pericopeCoversViewSql('r')})`
+    : 'AND r.bible_text_id = ?';
+  const viewParams = view ? [bibleTextId, bibleTextId] : [bibleTextId];
   const result = await db.execute(
     `SELECT r.*, u.first_name, u.last_name, u.username, u.email
      FROM recordings r
      LEFT JOIN users u ON u.id = r.recorded_by_user_id
-     WHERE r.bible_text_id = ?
-     ORDER BY r.recorded_by_user_id IS NOT NULL, r.recorded_by_user_id ASC, r.take_number ASC`,
-    [bibleTextId],
+     WHERE 1 = 1 ${viewSql}
+     ORDER BY r.recorded_by_user_id IS NOT NULL, r.recorded_by_user_id ASC, ${
+       view ? 'r.created_at ASC' : 'r.take_number ASC'
+     }`,
+    viewParams,
   );
   const rows = (result.rows ?? []) as unknown as OwnerJoinRow[];
   return rows.map(mapRecordingWithOwnerRow);
@@ -221,15 +384,20 @@ export async function getAllTakesForVerse(
 export async function verseHasMultipleRecorders(
   bibleTextId: number,
   recordedByUserId?: number | null,
+  view?: VerseTakeView,
 ): Promise<boolean> {
   const db = getDatabase();
   const ownerId = resolveRecordedByUserId(recordedByUserId);
   const owner = recordedByClause(ownerId);
+  const viewSql = view
+    ? `AND (bible_text_id = ? OR ${pericopeCoversViewSql()})`
+    : 'AND bible_text_id = ?';
+  const viewParams = view ? [bibleTextId, bibleTextId] : [bibleTextId];
   const result = await db.execute(
     `SELECT COUNT(*) AS cnt
      FROM recordings
-     WHERE bible_text_id = ? AND NOT (${owner.sql})`,
-    [bibleTextId, ...owner.params],
+     WHERE NOT (${owner.sql}) ${viewSql}`,
+    [...owner.params, ...viewParams],
   );
   const cnt = Number(
     (result.rows?.[0] as { cnt?: number } | undefined)?.cnt ?? 0,
@@ -288,15 +456,21 @@ export async function selectRecordingTake(id: string): Promise<void> {
 
   await db.transaction(async (tx: Transaction) => {
     const existing = await tx.execute(
-      `SELECT bible_text_id, recorded_by_user_id, is_selected
+      `SELECT id, bible_text_id, recorded_by_user_id, is_selected,
+              start_chapter, start_verse, end_chapter, end_verse
        FROM recordings WHERE id = ?`,
       [id],
     );
     const row = existing.rows?.[0] as
       | {
+          id: string;
           bible_text_id: number;
           recorded_by_user_id: number | null;
           is_selected: number;
+          start_chapter: number | null;
+          start_verse: number | null;
+          end_chapter: number | null;
+          end_verse: number | null;
         }
       | undefined;
     if (!row || row.is_selected === 1) {
@@ -318,10 +492,15 @@ export async function selectRecordingTake(id: string): Promise<void> {
 
     const owner = recordedByClause(row.recorded_by_user_id);
 
-    await tx.execute(
-      `UPDATE recordings SET is_selected = 0, updated_at = ?
-       WHERE bible_text_id = ? AND is_selected = 1 AND ${owner.sql}`,
-      [now, row.bible_text_id, ...owner.params],
+    await clearOverlappingSelectedTakes(
+      tx,
+      owner,
+      {
+        id: row.id,
+        bibleTextId: row.bible_text_id,
+        range: rowRange(row),
+      },
+      now,
     );
     await tx.execute(
       `UPDATE recordings SET is_selected = 1, updated_at = ? WHERE id = ?`,
@@ -351,7 +530,8 @@ export async function deleteRecordingTake(id: string): Promise<void> {
 
   await db.transaction(async (tx: Transaction) => {
     const existing = await tx.execute(
-      `SELECT bible_text_id, recorded_by_user_id, is_selected
+      `SELECT bible_text_id, recorded_by_user_id, is_selected,
+              start_chapter, start_verse, end_chapter, end_verse
        FROM recordings WHERE id = ?`,
       [id],
     );
@@ -360,6 +540,10 @@ export async function deleteRecordingTake(id: string): Promise<void> {
           bible_text_id: number;
           recorded_by_user_id: number | null;
           is_selected: number;
+          start_chapter: number | null;
+          start_verse: number | null;
+          end_chapter: number | null;
+          end_verse: number | null;
         }
       | undefined;
     if (!row) {
@@ -381,6 +565,7 @@ export async function deleteRecordingTake(id: string): Promise<void> {
 
     const wasSelected = row.is_selected === 1;
     const bibleTextId = row.bible_text_id;
+    const deletedRange = rowRange(row);
     const owner = recordedByClause(row.recorded_by_user_id);
 
     await tx.execute(`DELETE FROM recordings WHERE id = ?`, [id]);
@@ -390,14 +575,43 @@ export async function deleteRecordingTake(id: string): Promise<void> {
       return;
     }
 
-    const prior = await tx.execute(
-      `SELECT id FROM recordings
-       WHERE bible_text_id = ? AND ${owner.sql}
-       ORDER BY take_number DESC
-       LIMIT 1`,
+    const candidates = await tx.execute(
+      `SELECT r.id, r.bible_text_id, r.start_chapter, r.start_verse,
+              r.end_chapter, r.end_verse, r.take_number
+       FROM recordings r
+       INNER JOIN bible_texts anchor_bt ON anchor_bt.id = r.bible_text_id
+       INNER JOIN bible_texts deleted_bt ON deleted_bt.id = ?
+       WHERE anchor_bt.bible_id = deleted_bt.bible_id
+         AND anchor_bt.book_id = deleted_bt.book_id
+         AND ${owner.sql.replaceAll(
+           'recorded_by_user_id',
+           'r.recorded_by_user_id',
+         )}`,
       [bibleTextId, ...owner.params],
     );
-    const priorId = (prior.rows?.[0] as { id?: string } | undefined)?.id;
+    const priorId = (
+      (candidates.rows ?? []) as {
+        id: string;
+        bible_text_id: number;
+        start_chapter: number | null;
+        start_verse: number | null;
+        end_chapter: number | null;
+        end_verse: number | null;
+        take_number: number;
+      }[]
+    )
+      .filter(candidate =>
+        rangesOverlap(
+          deletedRange,
+          rowRange({
+            start_chapter: candidate.start_chapter,
+            start_verse: candidate.start_verse,
+            end_chapter: candidate.end_chapter,
+            end_verse: candidate.end_verse,
+          }),
+        ),
+      )
+      .sort((a, b) => b.take_number - a.take_number)[0]?.id;
     if (priorId) {
       await tx.execute(
         `UPDATE recordings SET is_selected = 1, updated_at = ? WHERE id = ?`,

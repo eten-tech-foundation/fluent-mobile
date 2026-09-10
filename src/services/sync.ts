@@ -30,7 +30,10 @@ import { getDatabase } from '../db/db';
 import { ApiBook, ApiVerse } from '../types/api/types';
 import { ApiUser, unwrapApiListResponse } from '../types/api/responses';
 import { getConnectivitySnapshot } from './connectivity';
-import { syncPendingChapterClaims } from './chapterClaimSync';
+import {
+  syncPendingChapterClaims,
+  type SyncPendingChapterClaimsResult,
+} from './chapterClaimSync';
 import { getPericopeBookVersion, setPericopeBookVersion } from './storage';
 import {
   loadBundledPericopeSet,
@@ -301,20 +304,40 @@ export async function syncPendingChapterClaimsForUser(userId: number) {
     return { synced: 0, conflicts: 0, failed: 0 };
   }
 
-  return retrySyncStep(
-    'Pending chapter claim sync',
-    KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS,
-    async () => {
-      const result = await syncPendingChapterClaims(userId);
-      if (result.failed > 0) {
-        throw new Error(
-          `Failed to sync ${result.failed} pending chapter claim(s)`,
-        );
+  // Retry while any row failed (#470), then soft-fail: set SYNC_ERROR_CHAPTER_CLAIMS
+  // and return without rethrowing so chapter assignment / bible-text sync still runs.
+  // Auth failures still propagate.
+  try {
+    return await retrySyncStep(
+      'Pending chapter claim sync',
+      KV_KEYS.SYNC_ERROR_CHAPTER_CLAIMS,
+      async () => {
+        const result = await syncPendingChapterClaims(userId);
+        if (result.failed > 0) {
+          throw Object.assign(
+            new Error(
+              `Failed to sync ${result.failed} pending chapter claim(s)`,
+            ),
+            { claimResult: result },
+          );
+        }
+        return result;
+      },
+      String(userId),
+    );
+  } catch (error) {
+    if (isAuthError(error)) {
+      throw error;
+    }
+    const claimResult = claimResultFromError(error);
+    return (
+      claimResult ?? {
+        synced: 0,
+        conflicts: 0,
+        failed: 1,
       }
-      return result;
-    },
-    String(userId),
-  );
+    );
+  }
 }
 
 export async function syncChapterAssignments(
@@ -322,11 +345,13 @@ export async function syncChapterAssignments(
   updatedAfter?: string,
   excludeProjectIds?: number[],
   sessionToken?: string,
-): Promise<{ syncedAt?: string }> {
-  return retrySyncStep(
+): Promise<{ syncedAt?: string; partialSkipWarning?: string }> {
+  let partialSkipWarning: string | undefined;
+  const result = await retrySyncStep(
     'Chapter assignment sync',
     KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS,
     async () => {
+      partialSkipWarning = undefined;
       log.info('Syncing chapter assignments...', {
         userId,
         updatedAfter,
@@ -352,7 +377,16 @@ export async function syncChapterAssignments(
       );
 
       if (allAssignments.length > 0) {
-        await insertChapterAssignmentSyncData(allAssignments);
+        const { insertedCount, skipped } =
+          await insertChapterAssignmentSyncData(allAssignments);
+        if (insertedCount === 0) {
+          throw new Error(
+            `Skipped all ${skipped.length} chapter assignment(s) — missing FK parents`,
+          );
+        }
+        if (skipped.length > 0) {
+          partialSkipWarning = `Skipped ${skipped.length} of ${allAssignments.length} chapter assignment(s) — missing FK parents`;
+        }
         await insertUserProjects(userId, [
           ...new Set(
             allAssignments
@@ -361,15 +395,17 @@ export async function syncChapterAssignments(
           ),
         ]);
         const db = getDatabase();
-        const result = await db.execute(
+        const countResult = await db.execute(
           'SELECT COUNT(*) as count FROM chapter_assignments',
         );
         setSyncCount(
           KV_KEYS.SYNC_COUNT_CHAPTERS,
-          Number(result.rows?.[0]?.count ?? 0),
+          Number(countResult.rows?.[0]?.count ?? 0),
         );
         log.info('Chapter assignments synced', {
           fetched: allAssignments.length,
+          inserted: insertedCount,
+          skipped: skipped.length,
         });
       } else {
         log.info('No chapter assignment changes');
@@ -379,13 +415,19 @@ export async function syncChapterAssignments(
     },
     String(userId),
   );
+  return { ...result, partialSkipWarning };
 }
 
-async function syncUserChapterWork(userId: number, sessionToken?: string) {
-  return retrySyncStep(
+async function syncUserChapterWork(
+  userId: number,
+  sessionToken?: string,
+): Promise<{ partialSkipWarning?: string }> {
+  let partialSkipWarning: string | undefined;
+  await retrySyncStep(
     'User chapter work sync',
     KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS,
     async () => {
+      partialSkipWarning = undefined;
       const response = await FluentAPI.getUserChapterAssignments(
         userId,
         sessionToken,
@@ -405,7 +447,16 @@ async function syncUserChapterWork(userId: number, sessionToken?: string) {
       const mapped = [...assigned, ...peerCheck].map(mapApiChapterAssignment);
 
       if (mapped.length > 0) {
-        await insertChapterAssignmentSyncData(mapped);
+        const { insertedCount, skipped } =
+          await insertChapterAssignmentSyncData(mapped);
+        if (insertedCount === 0) {
+          throw new Error(
+            `Skipped all ${skipped.length} chapter assignment(s) — missing FK parents`,
+          );
+        }
+        if (skipped.length > 0) {
+          partialSkipWarning = `Skipped ${skipped.length} of ${mapped.length} chapter assignment(s) — missing FK parents`;
+        }
       }
       if (isConfirmedShape) {
         await reconcileUserChapterWork(
@@ -422,24 +473,68 @@ async function syncUserChapterWork(userId: number, sessionToken?: string) {
     },
     String(userId),
   );
+  return { partialSkipWarning };
+}
+
+function applyChapterAssignmentSkipWarning(
+  ...warnings: Array<string | undefined>
+): string | undefined {
+  const combined = warnings.filter(
+    (value): value is string => typeof value === 'string' && value.length > 0,
+  );
+  if (combined.length === 0) {
+    return undefined;
+  }
+  const warning = combined.join('; ');
+  setSyncError(KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS, warning);
+  return warning;
+}
+
+function claimResultFromError(
+  error: unknown,
+): SyncPendingChapterClaimsResult | undefined {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'claimResult' in error &&
+    typeof (error as { claimResult: unknown }).claimResult === 'object' &&
+    (error as { claimResult: unknown }).claimResult !== null
+  ) {
+    return (error as { claimResult: SyncPendingChapterClaimsResult })
+      .claimResult;
+  }
+  return undefined;
 }
 
 async function syncChapterAssignmentsForUser(
   userId: number,
   updatedAfter?: string,
   sessionToken?: string,
-): Promise<{ didFullSync: boolean; syncedAt?: string }> {
+): Promise<{
+  didFullSync: boolean;
+  syncedAt?: string;
+  partialSkipWarning?: string;
+}> {
   const userIdStr = String(userId);
 
   const runFullProjectAssignments = async () => {
-    const { syncedAt } = await syncChapterAssignments(
+    const projectResult = await syncChapterAssignments(
       userId,
       undefined,
       undefined,
       sessionToken,
     );
-    await syncUserChapterWork(userId, sessionToken);
-    return { syncedAt };
+    const workResult = await syncUserChapterWork(userId, sessionToken);
+    const partialSkipWarning = applyChapterAssignmentSkipWarning(
+      workResult.partialSkipWarning,
+      projectResult.partialSkipWarning,
+    );
+    return {
+      // Withhold cursor advancement when skips remain so the next sync
+      // re-fetches instead of clearing the warning as a false recovery (#470).
+      syncedAt: partialSkipWarning ? undefined : projectResult.syncedAt,
+      partialSkipWarning,
+    };
   };
 
   if (!getUserLastSyncedAt(userIdStr)) {
@@ -447,8 +542,8 @@ async function syncChapterAssignmentsForUser(
       'Forcing full chapter assignment sync — user has no per-user sync cursor',
       { userId },
     );
-    const { syncedAt } = await runFullProjectAssignments();
-    return { didFullSync: true, syncedAt };
+    const { syncedAt, partialSkipWarning } = await runFullProjectAssignments();
+    return { didFullSync: true, syncedAt, partialSkipWarning };
   }
 
   if (
@@ -459,18 +554,26 @@ async function syncChapterAssignmentsForUser(
       'Forcing full chapter assignment sync — local assignments incomplete',
       { userId },
     );
-    const { syncedAt } = await runFullProjectAssignments();
-    return { didFullSync: true, syncedAt };
+    const { syncedAt, partialSkipWarning } = await runFullProjectAssignments();
+    return { didFullSync: true, syncedAt, partialSkipWarning };
   }
 
-  const { syncedAt } = await syncChapterAssignments(
+  const projectResult = await syncChapterAssignments(
     userId,
     updatedAfter,
     undefined,
     sessionToken,
   );
-  await syncUserChapterWork(userId, sessionToken);
-  return { didFullSync: !updatedAfter, syncedAt };
+  const workResult = await syncUserChapterWork(userId, sessionToken);
+  const partialSkipWarning = applyChapterAssignmentSkipWarning(
+    workResult.partialSkipWarning,
+    projectResult.partialSkipWarning,
+  );
+  return {
+    didFullSync: !updatedAfter,
+    syncedAt: partialSkipWarning ? undefined : projectResult.syncedAt,
+    partialSkipWarning,
+  };
 }
 
 export async function syncBibleTexts(updatedAfter?: string) {
@@ -795,15 +898,18 @@ export async function syncAllUsers(): Promise<void> {
       try {
         await syncProjects(userIdNum, creds.token);
         await syncPendingChapterClaimsForUser(userIdNum);
-        const { didFullSync } = await syncChapterAssignmentsForUser(
-          userIdNum,
-          assignmentCursor,
-          creds.token,
-        );
+        const { didFullSync, partialSkipWarning } =
+          await syncChapterAssignmentsForUser(
+            userIdNum,
+            assignmentCursor,
+            creds.token,
+          );
         if (didFullSync) {
           anyUserDidFullAssignmentSync = true;
         }
-        usersPendingCursorUpdate.push(userId);
+        if (!partialSkipWarning) {
+          usersPendingCursorUpdate.push(userId);
+        }
         if (assignmentCursor) {
           oldestAssignmentCursor =
             oldestAssignmentCursor === undefined ||
@@ -918,28 +1024,43 @@ export async function syncAllData(
     await syncProjects(userId, sessionToken);
     await syncPendingChapterClaimsForUser(userId);
 
+    let assignmentPartialSkipWarning: string | undefined;
+
     if (isIncremental) {
       const assignmentCursor = userAssignmentCursor ?? lastSyncedAt;
-      const { didFullSync } = await syncChapterAssignmentsForUser(
-        userId,
-        assignmentCursor,
-        sessionToken,
-      );
+      const { didFullSync, partialSkipWarning } =
+        await syncChapterAssignmentsForUser(
+          userId,
+          assignmentCursor,
+          sessionToken,
+        );
+      assignmentPartialSkipWarning = partialSkipWarning;
       await syncPericopes();
       await syncBibleTexts(didFullSync ? undefined : assignmentCursor);
     } else if (localProjectIdsBefore.length === 0) {
-      await syncChapterAssignments(userId, undefined, undefined, sessionToken);
-      await syncUserChapterWork(userId, sessionToken);
+      const projectResult = await syncChapterAssignments(
+        userId,
+        undefined,
+        undefined,
+        sessionToken,
+      );
+      const workResult = await syncUserChapterWork(userId, sessionToken);
+      assignmentPartialSkipWarning = applyChapterAssignmentSkipWarning(
+        workResult.partialSkipWarning,
+        projectResult.partialSkipWarning,
+      );
       await syncPericopes();
       await syncBibleTexts();
     } else {
       // Omit excludeProjectIds on re-login: the API can return [] when every
       // local project is excluded before checking newly assigned work.
-      const { didFullSync } = await syncChapterAssignmentsForUser(
-        userId,
-        userAssignmentCursor,
-        sessionToken,
-      );
+      const { didFullSync, partialSkipWarning } =
+        await syncChapterAssignmentsForUser(
+          userId,
+          userAssignmentCursor,
+          sessionToken,
+        );
+      assignmentPartialSkipWarning = partialSkipWarning;
       await syncPericopes();
       await syncBibleTexts(didFullSync ? undefined : userAssignmentCursor);
     }
@@ -947,7 +1068,9 @@ export async function syncAllData(
     const now = new Date().toISOString();
     setLastSyncedAt(now);
     setLastAssignmentSyncAt(now);
-    setUserLastSyncedAt(userIdStr, now);
+    if (!assignmentPartialSkipWarning) {
+      setUserLastSyncedAt(userIdStr, now);
+    }
 
     const db = getDatabase();
     const langCount = await db.execute(

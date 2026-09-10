@@ -58,7 +58,7 @@ export default function SyncScreen() {
   const effectivelyOnline = isOnline && (isWifi || uploadOverCellular);
   const cellularBlocked = isOnline && !isWifi && !uploadOverCellular;
 
-  const { triggerSync, isSyncing } = useSync({
+  const { triggerSync, isSyncing, displayText, stateType } = useSync({
     onSyncComplete: () => {
       setRefreshKey(key => key + 1);
     },
@@ -127,6 +127,11 @@ export default function SyncScreen() {
             failedCount,
             isUploading,
           )}
+          {stateType === 'error' ? (
+            <Text style={styles.errorText} testID="sync-metadata-error">
+              {displayText}
+            </Text>
+          ) : null}
           {sessionError ? (
             <Text style={styles.errorText} testID="sync-retry-error">
               {sessionError}
