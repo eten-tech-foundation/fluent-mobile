@@ -952,6 +952,9 @@ export async function userHasLocalChapterAssignments(
  *
  * TODO(#71 follow-up): only the selected take per verse is upload-eligible.
  * All audio recoridngs takes needs to be uploaded.
+ *
+ * Pericope takes (#410) stay local until fluent-api supports verse-range
+ * translator recordings — do not map them onto PUT /verse-audio/{bibleTextId}.
  */
 export async function getPendingRecordings(chapter?: {
   bookId: number;
@@ -986,6 +989,7 @@ export async function getPendingRecordings(chapter?: {
      FROM recordings r
      JOIN bible_texts bt ON bt.id = r.bible_text_id
      WHERE r.is_selected = 1
+       AND IFNULL(r.granularity, 'verse') = 'verse'
        AND r.sync_status NOT IN ('uploaded', 'conflicted')
        AND r.bible_text_id > 0
        ${chapterFilter}
@@ -1383,7 +1387,10 @@ export {
   selectRecordingTake,
   setCanonicalTake,
 } from './recordingsRepository';
-export type { AddRecordingTakeInput } from './recordingsRepository';
+export type {
+  AddRecordingTakeInput,
+  VerseTakeView,
+} from './recordingsRepository';
 
 export {
   enqueueDownloadItems,
