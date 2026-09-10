@@ -5,30 +5,22 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+# shellcheck source=maestro-common.sh
+source "${ROOT}/scripts/maestro-common.sh"
 
 APP_ID="com.eten.fluent"
 export PATH="${HOME}/.maestro/bin:${PATH}"
 
-echo "==> adb devices"
-if ! command -v adb >/dev/null 2>&1; then
-  echo "error: adb not found. Install Android platform-tools." >&2
-  exit 1
-fi
+echo "==> adb device"
+SERIAL="$(maestro_resolve_android_serial)"
+export ANDROID_SERIAL="${SERIAL}"
+echo "  device: ${SERIAL}"
 
-adb start-server >/dev/null
-DEVICES="$(adb devices | awk 'NR>1 && $2=="device" {print $1}')"
-if [[ -z "${DEVICES}" ]]; then
-  echo "error: no device/emulator online." >&2
-  echo "Boot an AVD (Android Studio Device Manager) or plug in a device with USB debugging." >&2
-  exit 1
-fi
-echo "${DEVICES}" | while read -r d; do echo "  device: ${d}"; done
+echo "==> adb -s ${SERIAL} reverse tcp:8081 tcp:8081"
+adb -s "${SERIAL}" reverse tcp:8081 tcp:8081
+adb -s "${SERIAL}" reverse --list || true
 
-echo "==> adb reverse tcp:8081 tcp:8081"
-adb reverse tcp:8081 tcp:8081
-adb reverse --list || true
-
-if adb shell pm path "${APP_ID}" >/dev/null 2>&1; then
+if adb -s "${SERIAL}" shell pm path "${APP_ID}" >/dev/null 2>&1; then
   echo "==> App installed: ${APP_ID}"
 else
   echo "warn: ${APP_ID} not installed. Build the Debug/dev-client APK:"

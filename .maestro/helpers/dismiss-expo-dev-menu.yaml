@@ -1,24 +1,19 @@
-# Conditional dismiss for Expo Dev Client launcher / Dev Menu sheets.
 # Prefer EXPO_PUBLIC_E2E_MODE=1 on Debug+Metro so the menu never opens.
+# Optional taps tolerate delayed sheets; missing UI is a no-op when E2E mode suppresses it.
 appId: com.eten.fluent
 ---
-- runFlow:
-    when:
-      visible: 'Continue'
-    commands:
-      - tapOn: 'Continue'
-- runFlow:
-    when:
-      visible: '.*8081.*'
-    commands:
-      - tapOn: '.*8081.*'
+- tapOn:
+    text: 'Continue'
+    optional: true
+- tapOn:
+    text: '.*8081.*'
+    optional: true
+- tapOn:
+    text: 'Close'
+    optional: true
+# pressKey cannot be optional; only send Back when Dev Menu chrome is present
 - runFlow:
     when:
       visible: 'Toggle performance monitor'
     commands:
       - pressKey: back
-- runFlow:
-    when:
-      visible: 'Close'
-    commands:
-      - tapOn: 'Close'

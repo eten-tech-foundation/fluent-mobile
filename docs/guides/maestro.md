@@ -15,16 +15,20 @@ Opt-in **Android-only** Maestro suite for Fluent Mobile. This is the foundation 
 ## Install + doctor
 
 ```bash
-npm run maestro:install   # curl installer → ~/.maestro/bin
-npm run maestro:doctor    # java, maestro, adb, package, reverse hint
+npm run maestro:install   # pinned Maestro zip + SHA-256 verify → ~/.maestro/bin
+npm run maestro:doctor    # JDK 17+, maestro, single adb device, package, reverse hint
 ```
 
-Add `~/.maestro/bin` to your shell `PATH` if the installer did not.
+`maestro:install` downloads a pinned CLI release (`MAESTRO_VERSION`, default `2.10.0`) and verifies `maestro.zip` against `checksums_sha256.txt` — it does **not** pipe a remote install script to bash. Override with `MAESTRO_VERSION=x.y.z` when bumping deliberately.
+
+Add `~/.maestro/bin` to your shell `PATH` if needed.
+
+With multiple devices online, set `ANDROID_SERIAL` before `maestro:doctor` / `maestro:android:up`.
 
 ## Debug APK + Metro + reverse
 
 ```bash
-npm run maestro:android:up   # adb reverse tcp:8081; device check
+npm run maestro:android:up   # selects one device; adb -s … reverse tcp:8081
 EXPO_PUBLIC_E2E_MODE=1 npm start
 # separate terminal — install/run Debug client if needed:
 npm run android

@@ -4,6 +4,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+# shellcheck source=maestro-common.sh
+source "${ROOT}/scripts/maestro-common.sh"
 
 APP_ID="com.eten.fluent"
 MAESTRO_BIN="${HOME}/.maestro/bin"
@@ -17,7 +19,11 @@ fail() { echo "  FAIL $*"; status=1; }
 
 echo "==> Java"
 if command -v java >/dev/null 2>&1; then
-  ok "java: $(java -version 2>&1 | head -1)"
+  if major="$(maestro_java_major)" && [[ "${major}" -ge 17 ]]; then
+    ok "java: $(java -version 2>&1 | head -1) (major ${major})"
+  else
+    fail "unsupported Java — need JDK 17+ (got: $(java -version 2>&1 | head -1))"
+  fi
 else
   fail "java missing — install JDK 17+ and set JAVA_HOME"
 fi
@@ -30,23 +36,26 @@ else
   fail "maestro missing — run: npm run maestro:install"
 fi
 
+SERIAL=""
 echo "==> adb / device"
 if command -v adb >/dev/null 2>&1; then
   ok "adb: $(command -v adb)"
-  DEVICES="$(adb devices | awk 'NR>1 && $2=="device" {print $1}')"
-  if [[ -n "${DEVICES}" ]]; then
-    ok "device(s): $(echo "${DEVICES}" | tr '\n' ' ')"
+  resolve_err="$(mktemp)"
+  if SERIAL="$(maestro_resolve_android_serial 2>"${resolve_err}")"; then
+    ok "device: ${SERIAL}"
   else
-    fail "no adb device — boot an emulator or attach a device, then: npm run maestro:android:up"
+    fail "$(tr '\n' ' ' <"${resolve_err}" | sed 's/^error: //;s/[[:space:]]*$//')"
+    SERIAL=""
   fi
+  rm -f "${resolve_err}"
 else
   fail "adb missing — install Android platform-tools"
 fi
 
 echo "==> App package ${APP_ID}"
-if command -v adb >/dev/null 2>&1 && [[ -n "${DEVICES:-}" ]]; then
-  if adb shell pm path "${APP_ID}" >/dev/null 2>&1; then
-    ok "installed: $(adb shell pm path "${APP_ID}" | tr -d '\r')"
+if [[ -n "${SERIAL}" ]]; then
+  if adb -s "${SERIAL}" shell pm path "${APP_ID}" >/dev/null 2>&1; then
+    ok "installed: $(adb -s "${SERIAL}" shell pm path "${APP_ID}" | tr -d '\r')"
   else
     fail "package not installed — build Debug APK: npm run android (dev client, not Expo Go)"
   fi
@@ -55,11 +64,11 @@ else
 fi
 
 echo "==> adb reverse (Metro 8081)"
-if command -v adb >/dev/null 2>&1 && [[ -n "${DEVICES:-}" ]]; then
-  if adb reverse --list 2>/dev/null | grep -q 'tcp:8081'; then
+if [[ -n "${SERIAL}" ]]; then
+  if adb -s "${SERIAL}" reverse --list 2>/dev/null | grep -q 'tcp:8081'; then
     ok "tcp:8081 reversed"
   else
-    warn "tcp:8081 not reversed — run: npm run maestro:android:up (or adb reverse tcp:8081 tcp:8081)"
+    warn "tcp:8081 not reversed — run: npm run maestro:android:up (or adb -s ${SERIAL} reverse tcp:8081 tcp:8081)"
   fi
 fi
 
