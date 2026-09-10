@@ -1,0 +1,24 @@
+# Conditional dismiss for Expo Dev Client launcher / Dev Menu sheets.
+# Prefer EXPO_PUBLIC_E2E_MODE=1 on Debug+Metro so the menu never opens.
+appId: com.eten.fluent
+---
+- runFlow:
+    when:
+      visible: 'Continue'
+    commands:
+      - tapOn: 'Continue'
+- runFlow:
+    when:
+      visible: '.*8081.*'
+    commands:
+      - tapOn: '.*8081.*'
+- runFlow:
+    when:
+      visible: 'Toggle performance monitor'
+    commands:
+      - pressKey: back
+- runFlow:
+    when:
+      visible: 'Close'
+    commands:
+      - tapOn: 'Close'

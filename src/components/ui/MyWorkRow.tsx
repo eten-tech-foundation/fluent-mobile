@@ -25,7 +25,7 @@ export function MyWorkRow({
   const { workflowStage } = chapter;
 
   return (
-    <ListCard onPress={onPress}>
+    <ListCard onPress={onPress} testID={`my-work-row-${chapter.id}`}>
       <View style={styles.column}>
         <View style={styles.titleRow}>
           <Text style={styles.title} numberOfLines={1}>
