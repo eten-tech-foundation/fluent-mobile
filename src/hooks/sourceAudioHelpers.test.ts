@@ -1,6 +1,8 @@
 import {
   pickSourceAudioItem,
   resolveSourceAudioUri,
+  sourceAudioItemDurationMs,
+  verseAtPositionMs,
   verseStartMs,
   chapterSourceAudioCacheKey,
   isSourceAudioItemExpired,
@@ -39,6 +41,18 @@ describe('sourceAudioHelpers', () => {
     ).toBeNull();
   });
 
+  it('maps catalog duration seconds to ms', () => {
+    expect(sourceAudioItemDurationMs(undefined)).toBe(0);
+    expect(
+      sourceAudioItemDurationMs({
+        format: 'mp3',
+        url: 'https://cdn.example/ch.mp3',
+        scope: 'chapter',
+        durationSeconds: 631.4,
+      }),
+    ).toBe(631_400);
+  });
+
   it('maps verse timestamps to ms and prefers matching dbl id', () => {
     expect(verseStartMs(2, undefined)).toBe(0);
     expect(
@@ -57,6 +71,19 @@ describe('sourceAudioHelpers', () => {
         'b',
       ),
     ).toBe(9000);
+  });
+
+  it('resolves the active verse at a playback position', () => {
+    const timestamps = [
+      { verse: 1, startSeconds: 0 },
+      { verse: 2, startSeconds: 4 },
+      { verse: 3, startSeconds: 9 },
+    ];
+    expect(verseAtPositionMs(0, timestamps)).toBe(1);
+    expect(verseAtPositionMs(3999, timestamps)).toBe(1);
+    expect(verseAtPositionMs(4000, timestamps)).toBe(2);
+    expect(verseAtPositionMs(9000, timestamps)).toBe(3);
+    expect(verseAtPositionMs(500, undefined)).toBe(1);
   });
 
   it('builds a stable chapter cache key', () => {
