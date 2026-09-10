@@ -24,24 +24,27 @@ When the user asks to handle/process Dependabot PRs, **run the full queue end-to
 4. Pick the **oldest safe PR** with all required checks `SUCCESS` and `mergeable: MERGEABLE`.
 5. `gh pr review <N> --approve` then `gh pr merge <N> --squash --delete-branch`.
 6. Wait for `main` CI green: Lint Check, Test Check, Quality Gates (`gh run list --branch main --limit 5`).
-7. Go to step 3 until no safe PRs remain. Log results in `docs/guides/dependabot-resolution-log.md`.
+7. Go to step 3 until no safe PRs remain. Write batch notes in a PR/issue comment; land `docs/guides/dependabot-resolution-log.md` via a **ticketed chore PR** (never commit on `main`).
 
 ### CI-first merge gate (safe PRs)
 
-For **safe** PRs (lockfile-only transitive bumps; no `package.json` changes except overrides):
+For **safe** PRs (lockfile-only / non-native patch bumps; no native or Expo ecosystem `package.json` changes):
 
-- GitHub CI all green is sufficient — **local checkout optional**.
+- Required GitHub checks green is enough — **local `npm ci` + doctor optional**.
 - Required checks: Lint & Format, Unit Tests, Quality Gates (TypeScript, lockfile expo-doctor, expo install --check) — all `SUCCESS`.
 - Branch protection requires approval: always `gh pr review --approve` before merge.
 
-For **risky** PRs: local validation gate + Android smoke test still mandatory.
+For **risky** / native / Expo ecosystem bumps: local `npm ci` + doctor + full CI gate + Android smoke still mandatory.
+
+**GitHub Actions** SHA bumps (`github_actions` label): merge when Action pins check + required checks are green — **do not skip by default** (match historical merge of Actions SHA bumps).
 
 ### Skip without merge
 
 - Any required check `FAILURE` or `CANCELLED` (including **Expo Doctor** / SDK version mismatch)
 - `mergeable: CONFLICTING` after `@dependabot rebase` (retry rebase once; then report)
-- RN line upgrade or pinned React/RN drift
+- RN line upgrade or pinned React/RN drift (also covered by `dependabot.yml` ignores — see `.github/dependabot.yml`)
 - `@op-engineering/op-sqlite` major bump
+- Deferred majors (Jest 30, Babel 8, ESLint 10, lucide v1, etc.): close only when an ignore rule will hold them **or** a dedicated upgrade ticket is opened/linked — no orphan “needs ticket” comments
 
 ### Useful commands
 
@@ -53,13 +56,14 @@ For **risky** PRs: local validation gate + Android smoke test still mandatory.
 
 1. **Verify author**: ONLY process PRs authored by `app/dependabot` or `dependabot[bot]`.
 2. **Never auto-merge React Native line bumps**: If a PR upgrades `react-native` past the pinned `0.86.x` line or multiple `@react-native/*` packages together, DO NOT merge. Plan a dedicated RN upgrade ticket.
-3. **Mandatory validation**: NEVER merge without running the full gate from [commands.mdc](./commands.mdc): `format:check` → `lint` → `typecheck` → `npm test -- --ci`. **Expo/RN deps**: also `npm run doctor` (or wait for **Quality Gates** expo-doctor / expo install --check CI) after every rebase/`npm ci`.
-4. **Target branch**: Dependabot PRs merge into `main` via GitHub squash-merge only. **Agent-authored changes** (expo doctor CI, lockfile fixes) never push to `main` — separate ticketed PR ([delivery.mdc](./delivery.mdc)).
-5. **Version lock-stepping**: `react`, `react-test-renderer`, and `react-native` are pinned for Expo SDK 57 / RN 0.86. Treat any change to those as **risky** — validate on device/emulator.
+3. **Mandatory validation (tiered)**: **Safe** lockfile-only / non-native patches may merge on required GitHub checks alone (CI-first). **Risky** / native / Expo ecosystem bumps: NEVER merge without local `npm ci` + `npm run doctor` + the full gate from [commands.mdc](./commands.mdc): `format:check` → `lint` → `typecheck` → `npm test -- --ci` (and Android smoke). Quality Gates on the PR still must be green either way.
+4. **Target branch**: Dependabot PRs merge into `main` via GitHub squash-merge only. **Agent-authored changes** (expo doctor CI, lockfile fixes, resolution-log catch-up) never push to `main` — separate ticketed PR ([delivery.mdc](./delivery.mdc)).
+5. **Version lock-stepping**: `react`, `react-dom`, `react-test-renderer`, and `react-native` are pinned for Expo SDK 57 / RN 0.86 (`dependabot.yml` ignores all React updates). Treat any change to those as **risky** — validate on device/emulator; prefer a dedicated ticket over merging a bot.
 6. **Runtime testing required**: For React/RN/navigation/native-module updates, smoke test on Android (`npm run android`). Static checks miss renderer and native ABI mismatches.
 7. **Manual merges = high risk**: Prefer `@dependabot rebase`. If manual merge is required, run full validation + Android smoke test.
 8. **Final state validation**: After merging multiple PRs, ALWAYS validate the final merged state on `main`.
 9. **One Dependabot merge at a time (lockfile)**: Merge **at most one** lockfile PR, wait for **`main` CI green**, then **`@dependabot rebase` all other open bots in parallel** (prep while CI runs on the ones already rebased). Never stack merges without rebasing — corrupt `package-lock.json` breaks `npm ci`.
+10. **Deferred upgrades**: When closing a bot as “needs dedicated ticket”, open/link that ticket **or** rely on the ignore rules in `.github/dependabot.yml` — do not leave orphan “needs ticket” comments with no tracker.
 
 ## Implementation workflow
 
@@ -73,11 +77,15 @@ gh pr list --author app/dependabot --author dependabot[bot] --state open --json 
 
 Categorize each PR:
 
-- **Safe**: Dev dependencies, patch versions of pure JS utilities.
-- **Risky**: `react`, `react-native`, `@react-native/*`, `@react-navigation/*`, `@op-engineering/op-sqlite`, or any native-linked package.
-- **RN upgrade**: `react-native` `>=0.87` or coordinated `@react-native/*` bump. **Action: close with explanation** — use a dedicated upgrade ticket.
+- **Safe**: Lockfile-only / non-native patch bumps; GitHub Actions SHA bumps with Action pins + required checks green.
+- **Risky**: `react`, `react-native`, `@react-native/*`, `@react-navigation/*`, `@op-engineering/op-sqlite`, Expo ecosystem, or any native-linked package — local doctor + Android smoke.
+- **RN upgrade / ignored majors**: `react-native` `>=0.87`, React pin drift, Jest/Babel/ESLint/lucide majors covered by ignores. **Action: close with explanation** — open/link a dedicated ticket **or** confirm the ignore rule will hold (no orphan closes).
 
 ### Step 2: Validation for each PR
+
+**Safe (CI-first):** confirm required GitHub checks are `SUCCESS` — local checkout optional.
+
+**Risky / native / Expo:** local checkout is mandatory:
 
 1. **Checkout**:
 
@@ -124,7 +132,7 @@ Categorize each PR:
 
 ### Step 3: Merging
 
-If all validations pass (or CI-first gate for safe PRs):
+If CI-first (safe) or local validation (risky) passes:
 
     gh pr review <PR_NUMBER> --approve --body "CI green. Safe lockfile bump per dependabot workflow."
     gh pr merge <PR_NUMBER> --squash --delete-branch
@@ -207,4 +215,4 @@ If a Dependabot PR drifts these, align manually to the [React Native upgrade hel
 
 - Config: `.github/dependabot.yml`
 - Process doc: `docs/guides/dependabot-process.md`
-- Resolution log: `docs/guides/dependabot-resolution-log.md`
+- Resolution log: `docs/guides/dependabot-resolution-log.md` — write batch notes in PR/issue comments first; land the markdown file via a ticketed chore PR (never commit on `main`)

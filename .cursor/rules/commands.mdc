@@ -15,7 +15,7 @@ Run from repo root. Node **>= 24.14.0** (CI: `.nvmrc` **24.14.0**). Package mana
 4. `npm run typecheck`
 5. `npm test -- --ci`
 
-**Dependency / Dependabot work:** also `npm run doctor` after `npm ci` (Quality Gates). If `--check` is red overnight with no change on this ticket, wait for the Expo sync PR ([#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422)); do not `--fix` on a feature branch. See [docs/ci.md](../../docs/ci.md).
+**Dependency / Dependabot work:** also `npm run doctor` + `npm run expo:check` after `npm ci` (Quality Gates). Online freshness is the scheduled Expo sync PR ([#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422)); do not `--fix` on a feature branch. See [docs/ci.md](../../docs/ci.md).
 
 Report what ran and the outcome. If a step was skipped, say why.
 
@@ -30,13 +30,15 @@ Report what ran and the outcome. If a step was skipped, say why.
 | `npm run architecture-guard` | Fail on UI `fetch(` / `getDatabase(` / `executeSql` (`--ci`) |
 | `npm run typecheck` | TypeScript check (`tsc --noEmit`) |
 | `npm run doctor` | Expo SDK / native-module alignment (lockfile `expo-doctor`, never `@latest`) |
+| `npm run expo:check` | Offline `expo install --check` (mirrors Quality Gates) |
+| `npm run expo:check:latest` | Online freshness probe (not a PR gate) |
 
 ## CI mirrors
 
 - Lint + format: `.github/workflows/lint.yml`
 - Test: `.github/workflows/test.yml`
 - Action pins: `.github/workflows/action-pins.yml` (`pull_request_target`; checker from default branch)
-- TypeScript + Expo health: `.github/workflows/quality-gates.yml` (`typecheck`, `expo-doctor`, `expo install --check`)
+- TypeScript + Expo health: `.github/workflows/quality-gates.yml` (`typecheck`, `expo-doctor` with skip-dep-version + warn-on-network, offline `expo install --check`); freshness: `expo-sdk-align.yml`
 - Release on tag: `.github/workflows/eas-build.yml` + `.eas/workflows/create-production-builds.yml`
 - PR preview (optional debug APK): `.github/workflows/preview-build.yml` (label `preview-build`)
 - Post-merge QA handoff: `.github/workflows/qa-handoff.yml`

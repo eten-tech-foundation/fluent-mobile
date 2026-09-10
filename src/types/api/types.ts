@@ -1,4 +1,6 @@
 export interface ApiVerse {
+  /** Server `bible_texts.id` — must be persisted locally (#469). */
+  id: number;
   verseNumber: number;
   text: string;
 }
@@ -36,4 +38,16 @@ export interface ApiChapterAssignment {
 export interface ApiUserChapterAssignmentsByUser {
   assignedChapters: ApiChapterAssignment[];
   peerCheckChapters: ApiChapterAssignment[];
+}
+
+export interface ApiPericopeVerseRef {
+  chapterNumber: number;
+  verseNumber: number;
+}
+
+/** GET /projects/:id/pericopes/:bookCode/:chapter — one group per pericope. */
+export interface ApiPericopeGroup {
+  pericopeNumber: string;
+  pericopeTitle: string | null;
+  verses: ApiPericopeVerseRef[];
 }

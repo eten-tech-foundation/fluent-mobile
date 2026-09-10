@@ -320,7 +320,10 @@ describe('insertChapterAssignmentSyncData', () => {
     const db = createSyncTestDb();
     setDatabase(db as never);
 
-    await expect(insertChapterAssignmentSyncData([])).resolves.toBeUndefined();
+    await expect(insertChapterAssignmentSyncData([])).resolves.toEqual({
+      insertedCount: 0,
+      skipped: [],
+    });
 
     expect(db.table('chapter_assignments')).toHaveLength(0);
     expect(db.table('project_units')).toHaveLength(0);
@@ -340,7 +343,15 @@ describe('insertChapterAssignmentSyncData', () => {
       insertChapterAssignmentSyncData([
         validAssignment({ chapterAssignmentId: 5, bibleId: 999 }),
       ]),
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({
+      insertedCount: 0,
+      skipped: [
+        {
+          chapterAssignmentId: 5,
+          reason: 'missing_bible',
+        },
+      ],
+    });
 
     expect(db.table('chapter_assignments')).toHaveLength(0);
   });
@@ -359,7 +370,15 @@ describe('insertChapterAssignmentSyncData', () => {
       insertChapterAssignmentSyncData([
         validAssignment({ chapterAssignmentId: 6, bookId: 999 }),
       ]),
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({
+      insertedCount: 0,
+      skipped: [
+        {
+          chapterAssignmentId: 6,
+          reason: 'missing_book',
+        },
+      ],
+    });
 
     expect(db.table('chapter_assignments')).toHaveLength(0);
   });

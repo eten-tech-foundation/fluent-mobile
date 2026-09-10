@@ -72,6 +72,8 @@ jest.mock('../db/repository', () => ({
   addRecordingTake: jest.fn(),
   deleteRecordingTake: jest.fn(),
   getTakesForVerse: jest.fn(),
+  getAllTakesForVerse: jest.fn().mockResolvedValue([]),
+  verseHasMultipleRecorders: jest.fn().mockResolvedValue(false),
   selectRecordingTake: jest.fn(),
   claimChapterOffline: jest.fn(),
 }));
@@ -92,6 +94,11 @@ function makeTake(overrides: Partial<Recording> = {}): Recording {
     syncStatus: 'pending',
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
+    granularity: 'verse',
+    startChapter: 1,
+    startVerse: 1,
+    endChapter: 1,
+    endVerse: 1,
     ...overrides,
   };
 }
@@ -225,8 +232,14 @@ describe('useVerseAudio', () => {
     expect(mockRecordingStop).toHaveBeenCalled();
     expect(persistTake).toHaveBeenCalledWith({
       bibleTextId: 42,
+      viewBibleTextId: 42,
       tempUri: 'file:///tmp/take.m4a',
       durationMs: 500,
+      granularity: 'verse',
+      startChapter: 0,
+      startVerse: 0,
+      endChapter: 0,
+      endVerse: 0,
     });
     expect(result.current.state).toBe('recorded');
     expect(result.current.takes).toEqual([saved]);
@@ -249,6 +262,23 @@ describe('useVerseAudio', () => {
     expect(result.current.state).toBe('playing');
     expect(result.current.playingTakeId).toBe('rec_1');
     expect(result.current.loadedTakeId).toBe('rec_1');
+  });
+
+  it('pausePlayback is a no-op when draft is not playing', async () => {
+    const take = makeTake();
+    loadTakes.mockResolvedValue([take]);
+
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+
+    await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+    mockPlaybackPause.mockClear();
+    await act(async () => {
+      await result.current.pausePlayback();
+    });
+
+    expect(mockPlaybackPause).not.toHaveBeenCalled();
+    expect(result.current.state).toBe('recorded');
   });
 
   it('errors when playTake file is missing', async () => {
@@ -317,5 +347,174 @@ describe('useVerseAudio', () => {
 
     // Stale resolution for verse A must not clobber verse B's takes.
     expect(result.current.takes).toEqual([takeB]);
+  });
+
+  it('does not start recording when the visible take list is at the cap', async () => {
+    loadTakes.mockResolvedValue(
+      Array.from({ length: 5 }, (_, i) =>
+        makeTake({ id: `rec_${i + 1}`, takeNumber: i + 1 }),
+      ),
+    );
+
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+
+    await waitFor(() => expect(result.current.canRecordNewTake).toBe(false));
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(mockRecordingStart).not.toHaveBeenCalled();
+    expect(result.current.errorMessage).toMatch(/Maximum of 5 takes/);
+  });
+
+  it('treats a shared pericope take as filling the verse-mode cap', async () => {
+    loadTakes.mockResolvedValue([
+      ...Array.from({ length: 4 }, (_, i) =>
+        makeTake({
+          id: `verse_${i + 1}`,
+          takeNumber: i + 1,
+          granularity: 'verse',
+          startVerse: 5,
+          endVerse: 5,
+        }),
+      ),
+      makeTake({
+        id: 'peri',
+        takeNumber: 1,
+        granularity: 'pericope',
+        bibleTextId: 103,
+        startVerse: 3,
+        endVerse: 7,
+      }),
+    ]);
+
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+
+    await waitFor(() => expect(result.current.canRecordNewTake).toBe(false));
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(mockRecordingStart).not.toHaveBeenCalled();
+  });
+
+  it('persists frozen capture metadata when recordingUnit clears before stop', async () => {
+    mockRecordingStart.mockResolvedValue(undefined);
+    mockRecordingStop.mockResolvedValue({
+      uri: 'file:///tmp/take.m4a',
+      durationMs: 2500,
+    });
+    loadTakes.mockResolvedValue([]);
+    persistTake.mockResolvedValue({
+      id: 'rec_new',
+      localFilePath: '/recordings/rec_new.m4a',
+    });
+
+    const pericopeUnit = {
+      granularity: 'pericope' as const,
+      startChapter: 1,
+      startVerse: 3,
+      endChapter: 1,
+      endVerse: 7,
+      anchorBibleTextId: 103,
+      coveredViews: [
+        { bibleTextId: 103, chapterNumber: 1, verseNumber: 3 },
+        { bibleTextId: 105, chapterNumber: 1, verseNumber: 5 },
+      ],
+    };
+
+    const countTakesAtView = jest.fn().mockResolvedValue(0);
+
+    const { result, rerender } = renderHook(
+      (
+        props: ReturnType<typeof verseAudioArgs> & {
+          recordingUnit?: typeof pericopeUnit | null;
+        },
+      ) =>
+        useVerseAudio({
+          ...props,
+          draftingUnit: 'pericope',
+          chapterNumber: 1,
+          verseNumber: 5,
+          bibleTextId: 105,
+          countTakesAtView,
+          recordingUnit: props.recordingUnit ?? pericopeUnit,
+        }),
+      {
+        initialProps: {
+          ...verseAudioArgs(),
+          recordingUnit: pericopeUnit,
+        },
+      },
+    );
+
+    await waitFor(() => expect(result.current.canRecordNewTake).toBe(true));
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    await act(async () => {
+      rerender({
+        ...verseAudioArgs(),
+        recordingUnit: null,
+      });
+    });
+
+    await act(async () => {
+      await result.current.stop();
+    });
+
+    expect(persistTake).toHaveBeenCalledWith({
+      bibleTextId: 103,
+      viewBibleTextId: 105,
+      tempUri: 'file:///tmp/take.m4a',
+      durationMs: 2500,
+      granularity: 'pericope',
+      startChapter: 1,
+      startVerse: 3,
+      endChapter: 1,
+      endVerse: 7,
+    });
+  });
+
+  it('blocks pericope capture when another spanned verse is already at the cap', async () => {
+    const countTakesAtView = jest.fn(async (view: { verseNumber: number }) =>
+      view.verseNumber === 7 ? 5 : 0,
+    );
+    loadTakes.mockResolvedValue([]);
+
+    const { result } = renderHook(() =>
+      useVerseAudio({
+        ...verseAudioArgs(),
+        draftingUnit: 'pericope',
+        chapterNumber: 1,
+        verseNumber: 3,
+        countTakesAtView,
+        recordingUnit: {
+          granularity: 'pericope',
+          startChapter: 1,
+          startVerse: 3,
+          endChapter: 1,
+          endVerse: 7,
+          anchorBibleTextId: 103,
+          coveredViews: [
+            { bibleTextId: 103, chapterNumber: 1, verseNumber: 3 },
+            { bibleTextId: 107, chapterNumber: 1, verseNumber: 7 },
+          ],
+        },
+      }),
+    );
+
+    await waitFor(() => expect(result.current.canRecordNewTake).toBe(false));
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(mockRecordingStart).not.toHaveBeenCalled();
+    expect(result.current.errorMessage).toMatch(/Maximum of 5 takes/);
   });
 });

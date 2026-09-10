@@ -7,6 +7,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type SharedTakeRowProps = {
   takeNumber: number;
+  label?: string;
   positionMs: number;
   durationMs: number;
   isPlaying: boolean;
@@ -24,6 +25,7 @@ function formatDuration(ms: number): string {
 
 export function SharedTakeRow({
   takeNumber,
+  label,
   positionMs,
   durationMs,
   isPlaying,
@@ -61,8 +63,12 @@ export function SharedTakeRow({
       </RecordCircleButton>
       <View style={styles.middleColumn}>
         <View style={styles.topRow}>
-          <Text style={styles.takeLabel} testID="shared-take-badge">
-            Take {takeNumber}
+          <Text
+            style={styles.takeLabel}
+            numberOfLines={1}
+            testID="shared-take-badge"
+          >
+            {label ?? `Take ${takeNumber}`}
           </Text>
           <Text
             style={styles.time}
@@ -135,6 +141,8 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.sm,
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.foreground,
+    flex: 1,
+    marginRight: theme.spacing.sm,
   },
   waveform: {
     width: '100%',

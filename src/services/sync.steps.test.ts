@@ -6,10 +6,17 @@ import {
   syncPendingChapterClaimsForUser,
   syncProjects,
 } from './sync';
-import { clearSyncError, setSyncCount, setSyncError } from './storage';
+import {
+  clearSyncError,
+  setSyncCount,
+  setSyncError,
+  isBibleTextsServerIdRemapPending,
+  clearBibleTextsServerIdRemapPending,
+} from './storage';
 import { getDatabase } from '../db/db';
 import {
   getChaptersToSync,
+  getRecordingLinkedChaptersToSync,
   insertBibleTexts,
   insertChapterAssignmentSyncData,
   insertMasterData,
@@ -69,6 +76,7 @@ jest.mock('./storage', () => ({
     SYNC_ERROR_MASTER_DATA: 'sync_error_master_data',
     SYNC_ERROR_PROJECTS: 'sync_error_projects',
     SYNC_ERROR_CHAPTER_ASSIGNMENTS: 'sync_error_chapter_assignments',
+    SYNC_ERROR_CHAPTER_CLAIMS: 'sync_error_chapter_claims',
     SYNC_ERROR_PROJECT_UNITS: 'sync_error_project_units',
     SYNC_ERROR_BIBLE_TEXTS: 'sync_error_bible_texts',
   },
@@ -87,6 +95,8 @@ jest.mock('./storage', () => ({
   setSyncError: jest.fn(),
   clearSyncError: jest.fn(),
   clearAllSyncErrors: jest.fn(),
+  isBibleTextsServerIdRemapPending: jest.fn().mockReturnValue(false),
+  clearBibleTextsServerIdRemapPending: jest.fn(),
 }));
 
 jest.mock('../db/repository', () => ({
@@ -96,10 +106,15 @@ jest.mock('../db/repository', () => ({
   reconcileUserProjects: jest.fn().mockResolvedValue(undefined),
   reconcileUserChapterWork: jest.fn().mockResolvedValue(undefined),
   ensureUserProjectMembership: jest.fn().mockResolvedValue(undefined),
-  insertChapterAssignmentSyncData: jest.fn().mockResolvedValue(undefined),
+  insertChapterAssignmentSyncData: jest.fn().mockResolvedValue({
+    insertedCount: 1,
+    skipped: [],
+  }),
   insertBibleTexts: jest.fn().mockResolvedValue(undefined),
   getChaptersToSync: jest.fn().mockResolvedValue(new Map()),
+  getRecordingLinkedChaptersToSync: jest.fn().mockResolvedValue(new Map()),
   getLocalProjectIds: jest.fn().mockResolvedValue([1]),
+  hasLanguagesMissingIsoCode: jest.fn().mockResolvedValue(false),
   userHasLocalProjects: jest.fn().mockResolvedValue(true),
   userHasLocalChapterAssignments: jest.fn().mockResolvedValue(true),
   userNeedsAssigneeRepair: jest.fn().mockResolvedValue(false),
@@ -124,11 +139,20 @@ const insertChapterAssignmentSyncDataMock = jest.mocked(
 );
 const insertBibleTextsMock = jest.mocked(insertBibleTexts);
 const getChaptersToSyncMock = jest.mocked(getChaptersToSync);
+const getRecordingLinkedChaptersToSyncMock = jest.mocked(
+  getRecordingLinkedChaptersToSync,
+);
 const setSyncErrorMock = jest.mocked(setSyncError);
 const clearSyncErrorMock = jest.mocked(clearSyncError);
 const setSyncCountMock = jest.mocked(setSyncCount);
 const getConnectivitySnapshotMock = jest.mocked(getConnectivitySnapshot);
 const syncPendingChapterClaimsMock = jest.mocked(syncPendingChapterClaims);
+const isBibleTextsServerIdRemapPendingMock = jest.mocked(
+  isBibleTextsServerIdRemapPending,
+);
+const clearBibleTextsServerIdRemapPendingMock = jest.mocked(
+  clearBibleTextsServerIdRemapPending,
+);
 
 function mockDbCount(count: number) {
   (getDatabase as jest.Mock).mockReturnValue({
@@ -151,7 +175,7 @@ describe('sync step orchestration', () => {
       failed: 0,
     });
     (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([
-      { id: 1, name: 'English' },
+      { id: 1, langName: 'English', langCodeIso6393: 'eng' },
     ]);
     (FluentAPI.getBooks as jest.Mock).mockResolvedValue([
       { id: 1, name: 'Genesis' },
@@ -164,6 +188,8 @@ describe('sync step orchestration', () => {
       data: [],
     });
     getChaptersToSyncMock.mockResolvedValue(new Map());
+    getRecordingLinkedChaptersToSyncMock.mockResolvedValue(new Map());
+    isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
   });
 
   describe('syncMasterData', () => {
@@ -171,7 +197,13 @@ describe('sync step orchestration', () => {
       await syncMasterData();
 
       expect(insertMasterDataMock).toHaveBeenCalledWith(
-        [{ id: 1, name: 'English' }],
+        [
+          expect.objectContaining({
+            id: 1,
+            langName: 'English',
+            langCode: 'eng',
+          }),
+        ],
         [{ id: 1, name: 'Genesis' }],
         [{ id: 10, name: 'Source' }],
       );
@@ -276,6 +308,93 @@ describe('sync step orchestration', () => {
         'sync_error_chapter_assignments',
       );
     });
+
+    it('sets chapter assignment sync error when all rows are FK-skipped', async () => {
+      jest.useFakeTimers();
+      insertChapterAssignmentSyncDataMock.mockResolvedValue({
+        insertedCount: 0,
+        skipped: [
+          { chapterAssignmentId: 11, reason: 'missing_bible' as const },
+        ],
+      });
+      (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            chapterAssignmentId: 11,
+            projectUnitId: 22,
+            projectId: 5,
+            bibleId: 10,
+            bookId: 1,
+            chapterNumber: 1,
+            chapterStatus: 'in_progress',
+            totalVerses: 10,
+            completedVerses: 2,
+          },
+        ],
+      });
+
+      try {
+        const pending = syncChapterAssignments(2);
+        const expectation = expect(pending).rejects.toThrow(
+          'Skipped all 1 chapter assignment(s) — missing FK parents',
+        );
+
+        await jest.advanceTimersByTimeAsync(500);
+        await jest.advanceTimersByTimeAsync(1000);
+        await expectation;
+
+        expect(setSyncErrorMock).toHaveBeenCalledWith(
+          'sync_error_chapter_assignments',
+          'Skipped all 1 chapter assignment(s) — missing FK parents',
+        );
+      } finally {
+        jest.useRealTimers();
+        insertChapterAssignmentSyncDataMock.mockResolvedValue({
+          insertedCount: 1,
+          skipped: [],
+        });
+      }
+    });
+
+    it('returns a partial-skip warning when some rows insert and others are skipped', async () => {
+      mockDbCount(3);
+      insertChapterAssignmentSyncDataMock.mockResolvedValue({
+        insertedCount: 1,
+        skipped: [{ chapterAssignmentId: 12, reason: 'missing_book' as const }],
+      });
+      (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            chapterAssignmentId: 11,
+            projectUnitId: 22,
+            projectId: 5,
+            bibleId: 10,
+            bookId: 1,
+            chapterNumber: 1,
+            chapterStatus: 'in_progress',
+            totalVerses: 10,
+            completedVerses: 2,
+          },
+          {
+            chapterAssignmentId: 12,
+            projectUnitId: 22,
+            projectId: 5,
+            bibleId: 10,
+            bookId: 1,
+            chapterNumber: 2,
+            chapterStatus: 'in_progress',
+            totalVerses: 10,
+            completedVerses: 0,
+          },
+        ],
+      });
+
+      await expect(syncChapterAssignments(2)).resolves.toEqual({
+        syncedAt: undefined,
+        partialSkipWarning:
+          'Skipped 1 of 2 chapter assignment(s) — missing FK parents',
+      });
+    });
   });
 
   describe('syncPendingChapterClaimsForUser', () => {
@@ -294,7 +413,7 @@ describe('sync step orchestration', () => {
 
       expect(syncPendingChapterClaimsMock).toHaveBeenCalledWith(9);
       expect(clearSyncErrorMock).toHaveBeenCalledWith(
-        'sync_error_chapter_assignments',
+        'sync_error_chapter_claims',
       );
     });
 
@@ -314,13 +433,17 @@ describe('sync step orchestration', () => {
       expect(syncPendingChapterClaimsMock).not.toHaveBeenCalled();
     });
 
-    it('retries non-auth failures then sets the sync error', async () => {
+    it('retries non-auth failures then soft-fails without aborting', async () => {
       jest.useFakeTimers();
       syncPendingChapterClaimsMock.mockRejectedValue(new Error('network'));
 
       try {
         const pending = syncPendingChapterClaimsForUser(9);
-        const expectation = expect(pending).rejects.toThrow('network');
+        const expectation = expect(pending).resolves.toEqual({
+          synced: 0,
+          conflicts: 0,
+          failed: 1,
+        });
 
         await jest.advanceTimersByTimeAsync(500);
         await jest.advanceTimersByTimeAsync(1000);
@@ -328,7 +451,7 @@ describe('sync step orchestration', () => {
 
         expect(syncPendingChapterClaimsMock).toHaveBeenCalledTimes(3);
         expect(setSyncErrorMock).toHaveBeenCalledWith(
-          'sync_error_chapter_assignments',
+          'sync_error_chapter_claims',
           'network',
         );
       } finally {
@@ -336,7 +459,7 @@ describe('sync step orchestration', () => {
       }
     });
 
-    it('retries when pending claims report failures then sets the sync error', async () => {
+    it('retries pending claim failures then soft-fails without aborting', async () => {
       jest.useFakeTimers();
       syncPendingChapterClaimsMock.mockResolvedValue({
         synced: 0,
@@ -346,9 +469,11 @@ describe('sync step orchestration', () => {
 
       try {
         const pending = syncPendingChapterClaimsForUser(9);
-        const expectation = expect(pending).rejects.toThrow(
-          'Failed to sync 1 pending chapter claim(s)',
-        );
+        const expectation = expect(pending).resolves.toEqual({
+          synced: 0,
+          conflicts: 0,
+          failed: 1,
+        });
 
         await jest.advanceTimersByTimeAsync(500);
         await jest.advanceTimersByTimeAsync(1000);
@@ -356,7 +481,7 @@ describe('sync step orchestration', () => {
 
         expect(syncPendingChapterClaimsMock).toHaveBeenCalledTimes(3);
         expect(setSyncErrorMock).toHaveBeenCalledWith(
-          'sync_error_chapter_assignments',
+          'sync_error_chapter_claims',
           'Failed to sync 1 pending chapter claim(s)',
         );
       } finally {
@@ -384,7 +509,7 @@ describe('sync step orchestration', () => {
           {
             bookId: 1,
             chapterNumber: 1,
-            verses: [{ verseNumber: 1, text: 'In the beginning' }],
+            verses: [{ id: 9001, verseNumber: 1, text: 'In the beginning' }],
           },
         ],
       });
@@ -403,6 +528,7 @@ describe('sync step orchestration', () => {
           chapterNumber: 1,
           verses: [
             expect.objectContaining({
+              id: 9001,
               verse_number: 1,
               text: 'In the beginning',
             }),
@@ -411,6 +537,119 @@ describe('sync step orchestration', () => {
       ]);
       expect(setSyncCountMock).toHaveBeenCalledWith('sync_count_bibles', 2);
       expect(clearSyncErrorMock).toHaveBeenCalledWith('sync_error_bible_texts');
+    });
+
+    it('full-fetches without cursor when server-id remap is pending', async () => {
+      mockDbCount(2);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 1,
+            chapterNumber: 1,
+            verses: [{ id: 9001, verseNumber: 1, text: 'In the beginning' }],
+          },
+        ],
+      });
+
+      await syncBibleTexts('2026-01-01T00:00:00.000Z');
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 1, chapterNumber: 1 }],
+        undefined,
+      );
+      expect(clearBibleTextsServerIdRemapPendingMock).toHaveBeenCalled();
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+    });
+
+    it('keeps the remap flag when no chapters are available', async () => {
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+
+      await syncBibleTexts('2026-01-01T00:00:00.000Z');
+
+      expect(FluentAPI.getBibleTexts).not.toHaveBeenCalled();
+      expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+    });
+
+    it('remaps recording-linked chapters absent from chapter_assignments', async () => {
+      mockDbCount(1);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+      // Assignment list empty — verse only reachable via a local recording.
+      getChaptersToSyncMock.mockResolvedValue(new Map());
+      getRecordingLinkedChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 40, chapterNumber: 5 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 40,
+            chapterNumber: 5,
+            verses: [{ id: 5001, verseNumber: 1, text: 'Blessed are' }],
+          },
+        ],
+      });
+
+      await syncBibleTexts('2026-01-01T00:00:00.000Z');
+
+      expect(getRecordingLinkedChaptersToSyncMock).toHaveBeenCalled();
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 40, chapterNumber: 5 }],
+        undefined,
+      );
+      expect(insertBibleTextsMock).toHaveBeenCalledWith([
+        expect.objectContaining({
+          bibleId: 10,
+          bookId: 40,
+          chapterNumber: 5,
+          verses: [expect.objectContaining({ id: 5001, verse_number: 1 })],
+        }),
+      ]);
+      expect(clearBibleTextsServerIdRemapPendingMock).toHaveBeenCalled();
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+    });
+
+    it('rejects verses missing a server id', async () => {
+      jest.useFakeTimers();
+      mockDbCount(0);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 1,
+            chapterNumber: 1,
+            verses: [{ verseNumber: 1, text: 'In the beginning' }],
+          },
+        ],
+      });
+
+      try {
+        const pending = syncBibleTexts();
+        const expectation =
+          expect(pending).rejects.toThrow(/missing verse id/i);
+
+        await jest.advanceTimersByTimeAsync(500);
+        await jest.advanceTimersByTimeAsync(1000);
+        await expectation;
+
+        expect(insertBibleTextsMock).not.toHaveBeenCalled();
+        expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
+        expect(setSyncErrorMock).toHaveBeenCalledWith(
+          'sync_error_bible_texts',
+          expect.stringMatching(/missing verse id/i),
+        );
+      } finally {
+        isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+        jest.useRealTimers();
+      }
     });
   });
 });
