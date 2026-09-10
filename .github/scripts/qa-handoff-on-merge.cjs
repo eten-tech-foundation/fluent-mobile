@@ -1,10 +1,9 @@
 /**
- * Post-merge QA handoff for Needs-QA PRs.
+ * Post-merge ticket handoff for Project 4.
  *
- * When a PR with **Needs QA? Yes** merges:
- *   - Comment on linked issues (`Refs #NNN`) that QA should test the next nightly
- *   - Add @Roslin22 as an assignee (keeps existing assignees)
- *   - Best-effort Project 4 Status → In QA
+ * When a PR merges:
+ *   - **Needs QA? Yes** → comment, assign @Roslin22, Project 4 → In QA
+ *   - **Needs QA? No** (engineering-only) → comment, Project 4 → Done, close issue
  *
  * Soft-fails: merge success must not fail if issue/board side effects fail.
  *
@@ -13,7 +12,7 @@
  *
  * Env (optional):
  *   PROJECT_BOARD_TOKEN — PAT with org project write (preferred for Project 4)
- *   FLUENT_PROJECT_ID / FLUENT_STATUS_FIELD_ID / FLUENT_IN_QA_OPTION_ID
+ *   FLUENT_PROJECT_ID / FLUENT_STATUS_FIELD_ID / FLUENT_*_OPTION_ID
  *   QA_ASSIGNEE_LOGIN — default Roslin22
  */
 
@@ -21,10 +20,15 @@
 
 const {
   resolveLinkedIssueNumbers,
-  moveIssuesToInQa,
 } = require('./preview-notify-linked-issues.cjs');
+const {
+  moveIssuesToInQa,
+  moveIssueStatus,
+  ENG_HANDOFF_FROM,
+} = require('./project-board.cjs');
 
 const HANDOFF_MARKER = '<!-- qa-nightly-handoff -->';
+const ENG_DONE_MARKER = '<!-- eng-done-on-merge -->';
 const DEFAULT_QA_ASSIGNEE = 'Roslin22';
 const DEPENDABOT_LOGINS = new Set([
   'dependabot',
@@ -33,23 +37,36 @@ const DEPENDABOT_LOGINS = new Set([
 ]);
 
 /**
+ * Scope text to the **Needs QA?** block when present.
+ * Returns an empty string when the header is absent so stray checklist
+ * lines elsewhere in the PR body cannot drive handoff.
+ * @param {string | null | undefined} body
+ * @returns {string}
+ */
+function needsQaSection(body) {
+  const text = String(body || '');
+  const sectionMatch = text.match(
+    /\*\*Needs QA\?\*\*[\s\S]*?(?=\n\*\*[^*]|\n### |\n## |$)/i,
+  );
+  return sectionMatch ? sectionMatch[0] : '';
+}
+
+/**
  * Detect checked "Yes" under **Needs QA?** in the PR body.
- * Matches common template forms:
- *   - [x] Yes — …
- *   - [X] Yes
- * Avoids matching unchecked `[ ] Yes` or the No checkbox.
- *
  * @param {string | null | undefined} body
  * @returns {boolean}
  */
 function needsQaYes(body) {
-  const text = String(body || '');
-  // Prefer the Needs QA? block when present
-  const sectionMatch = text.match(
-    /\*\*Needs QA\?\*\*[\s\S]*?(?=\n\*\*[^*]|\n### |\n## |$)/i,
-  );
-  const scope = sectionMatch ? sectionMatch[0] : text;
-  return /^\s*[-*]\s*\[[xX]\]\s*Yes\b/m.test(scope);
+  return /^\s*[-*]\s*\[[xX]\]\s*Yes\b/m.test(needsQaSection(body));
+}
+
+/**
+ * Detect checked "No" under **Needs QA?** (engineering-only).
+ * @param {string | null | undefined} body
+ * @returns {boolean}
+ */
+function needsQaNo(body) {
+  return /^\s*[-*]\s*\[[xX]\]\s*No\b/m.test(needsQaSection(body));
 }
 
 /**
@@ -85,7 +102,7 @@ function buildHandoffCommentBody({
     '',
     '### What to do',
     '',
-    '1. Wait for the next **Nightly Preview** run (scheduled **23:17 America/Los_Angeles**, or the next successful nightly after this merge). Slack notices wait until **09:00–16:00 PT**.',
+    '1. Wait for the next **Nightly Preview** run (scheduled **06:00 UTC**, or the next successful nightly after this merge).',
     '2. Install from the Slack nightly notice or the follow-up comment this bot posts on this issue when the APK is ready.',
     '3. Test the acceptance criteria for this ticket on that nightly build.',
     '4. **Pass:** move Project 4 Status → **Passed QA** (and comment briefly).',
@@ -97,6 +114,72 @@ function buildHandoffCommentBody({
     '_Post-merge QA handoff. See `docs/guides/qa-process.md`._',
   );
   return lines.join('\n');
+}
+
+/**
+ * @param {{ prNumber: number, prUrl: string, mergeSha?: string | null }} opts
+ * @returns {string}
+ */
+function buildEngDoneCommentBody({ prNumber, prUrl, mergeSha }) {
+  const lines = [
+    ENG_DONE_MARKER,
+    '',
+    '## Engineering-only — closed on merge',
+    '',
+    `PR [**#${prNumber}**](${prUrl}) merged with **Needs QA? No**. Project 4 → **Done**; closing this issue.`,
+  ];
+  if (mergeSha) {
+    lines.push('', `**Merged commit:** \`${String(mergeSha).slice(0, 7)}\``);
+  }
+  lines.push(
+    '',
+    '---',
+    '_Post-merge eng-done handoff. See `docs/guides/qa-process.md`._',
+  );
+  return lines.join('\n');
+}
+
+/**
+ * Upsert a bot comment identified by marker (delete prior, then create).
+ */
+async function upsertMarkedComment({
+  github,
+  core,
+  owner,
+  repo,
+  issueNumber,
+  marker,
+  body,
+}) {
+  const { data: comments } = await github.rest.issues.listComments({
+    owner,
+    repo,
+    issue_number: issueNumber,
+    per_page: 100,
+  });
+  const prior = comments.filter(
+    c =>
+      c.user?.login === 'github-actions[bot]' && c.body?.includes(marker),
+  );
+  for (const comment of prior) {
+    try {
+      await github.rest.issues.deleteComment({
+        owner,
+        repo,
+        comment_id: comment.id,
+      });
+    } catch (error) {
+      core.warning(
+        `Could not delete old comment ${comment.id}: ${error.message}`,
+      );
+    }
+  }
+  await github.rest.issues.createComment({
+    owner,
+    repo,
+    issue_number: issueNumber,
+    body,
+  });
 }
 
 /**
@@ -114,19 +197,30 @@ async function qaHandoffOnMerge({ github, context, core, getOctokit }) {
   }
 
   if (!pr.merged) {
-    core.info('PR closed without merge — skipping QA handoff');
+    core.info('PR closed without merge — skipping ticket handoff');
     return { skipped: true, reason: 'not_merged' };
   }
 
   const authorLogin = pr.user?.login;
   if (isDependabotAuthor(authorLogin)) {
-    core.info(`Dependabot PR — skipping QA handoff (${authorLogin})`);
+    core.info(`Dependabot PR — skipping ticket handoff (${authorLogin})`);
     return { skipped: true, reason: 'dependabot' };
   }
 
-  if (!needsQaYes(pr.body)) {
-    core.info('Needs QA? is not Yes — skipping QA handoff');
-    return { skipped: true, reason: 'needs_qa_no' };
+  const wantsQa = needsQaYes(pr.body);
+  const engOnly = needsQaNo(pr.body);
+
+  if (!wantsQa && !engOnly) {
+    core.info(
+      'Needs QA? neither Yes nor No checked — skipping ticket handoff',
+    );
+    return { skipped: true, reason: 'needs_qa_unset' };
+  }
+
+  if (wantsQa && engOnly) {
+    core.warning(
+      'Needs QA? has both Yes and No checked — treating as Needs QA Yes',
+    );
   }
 
   const owner = context.repo.owner;
@@ -135,7 +229,6 @@ async function qaHandoffOnMerge({ github, context, core, getOctokit }) {
   const prUrl =
     pr.html_url || `https://github.com/${owner}/${repo}/pull/${prNumber}`;
   const mergeSha = pr.merge_commit_sha || null;
-  const qaAssignee = process.env.QA_ASSIGNEE_LOGIN || DEFAULT_QA_ASSIGNEE;
 
   let issueNumbers;
   try {
@@ -153,11 +246,50 @@ async function qaHandoffOnMerge({ github, context, core, getOctokit }) {
   }
   if (issueNumbers.length === 0) {
     core.info(
-      'Needs QA? Yes but no linked Refs #NNN issues — skipping comments / board',
+      'No linked Refs #NNN issues — skipping comments / board',
     );
     return { skipped: true, reason: 'no_linked_issues' };
   }
 
+  if (wantsQa) {
+    return runQaHandoff({
+      github,
+      core,
+      getOctokit,
+      owner,
+      repo,
+      prNumber,
+      prUrl,
+      mergeSha,
+      issueNumbers,
+    });
+  }
+
+  return runEngDoneHandoff({
+    github,
+    core,
+    getOctokit,
+    owner,
+    repo,
+    prNumber,
+    prUrl,
+    mergeSha,
+    issueNumbers,
+  });
+}
+
+async function runQaHandoff({
+  github,
+  core,
+  getOctokit,
+  owner,
+  repo,
+  prNumber,
+  prUrl,
+  mergeSha,
+  issueNumbers,
+}) {
+  const qaAssignee = process.env.QA_ASSIGNEE_LOGIN || DEFAULT_QA_ASSIGNEE;
   core.info(
     `QA handoff for PR #${prNumber} → ${issueNumbers
       .map(n => `#${n}`)
@@ -173,34 +305,13 @@ async function qaHandoffOnMerge({ github, context, core, getOctokit }) {
 
   for (const issueNumber of issueNumbers) {
     try {
-      const { data: comments } = await github.rest.issues.listComments({
+      await upsertMarkedComment({
+        github,
+        core,
         owner,
         repo,
-        issue_number: issueNumber,
-        per_page: 100,
-      });
-      const prior = comments.filter(
-        c =>
-          c.user?.login === 'github-actions[bot]' &&
-          c.body?.includes(HANDOFF_MARKER),
-      );
-      for (const comment of prior) {
-        try {
-          await github.rest.issues.deleteComment({
-            owner,
-            repo,
-            comment_id: comment.id,
-          });
-        } catch (error) {
-          core.warning(
-            `Could not delete old handoff comment ${comment.id}: ${error.message}`,
-          );
-        }
-      }
-      await github.rest.issues.createComment({
-        owner,
-        repo,
-        issue_number: issueNumber,
+        issueNumber,
+        marker: HANDOFF_MARKER,
         body: commentBody,
       });
       core.info(`Posted QA handoff comment on #${issueNumber}`);
@@ -238,12 +349,100 @@ async function qaHandoffOnMerge({ github, context, core, getOctokit }) {
     core.warning(`Could not update Project 4 Status: ${error.message}`);
   }
 
-  return { skipped: false, issueNumbers };
+  return { skipped: false, path: 'qa', issueNumbers };
+}
+
+async function runEngDoneHandoff({
+  github,
+  core,
+  getOctokit,
+  owner,
+  repo,
+  prNumber,
+  prUrl,
+  mergeSha,
+  issueNumbers,
+}) {
+  core.info(
+    `Eng-done handoff for PR #${prNumber} → ${issueNumbers
+      .map(n => `#${n}`)
+      .join(', ')}`,
+  );
+
+  const commentBody = buildEngDoneCommentBody({
+    prNumber,
+    prUrl,
+    mergeSha,
+  });
+
+  for (const issueNumber of issueNumbers) {
+    let boardOk = false;
+    try {
+      const moved = await moveIssueStatus({
+        github,
+        core,
+        getOctokit,
+        owner,
+        repo,
+        issueNumber,
+        targetStatus: 'Done',
+        allowedFrom: ENG_HANDOFF_FROM,
+        addIfMissing: false,
+      });
+      boardOk = Boolean(moved?.ok);
+    } catch (error) {
+      core.warning(
+        `Could not update Project 4 Status for #${issueNumber}: ${error.message}`,
+      );
+    }
+
+    if (!boardOk) {
+      core.warning(
+        `Skipping close for #${issueNumber} — Project 4 was not moved to Done (allowlist / Product / missing)`,
+      );
+      continue;
+    }
+
+    try {
+      await upsertMarkedComment({
+        github,
+        core,
+        owner,
+        repo,
+        issueNumber,
+        marker: ENG_DONE_MARKER,
+        body: commentBody,
+      });
+      core.info(`Posted eng-done comment on #${issueNumber}`);
+    } catch (error) {
+      core.warning(
+        `Could not comment on #${issueNumber}: ${error.message}`,
+      );
+    }
+
+    try {
+      await github.rest.issues.update({
+        owner,
+        repo,
+        issue_number: issueNumber,
+        state: 'closed',
+        state_reason: 'completed',
+      });
+      core.info(`Closed #${issueNumber} (engineering-only merge)`);
+    } catch (error) {
+      core.warning(`Could not close #${issueNumber}: ${error.message}`);
+    }
+  }
+
+  return { skipped: false, path: 'eng_done', issueNumbers };
 }
 
 module.exports = qaHandoffOnMerge;
 module.exports.needsQaYes = needsQaYes;
+module.exports.needsQaNo = needsQaNo;
 module.exports.isDependabotAuthor = isDependabotAuthor;
 module.exports.buildHandoffCommentBody = buildHandoffCommentBody;
+module.exports.buildEngDoneCommentBody = buildEngDoneCommentBody;
 module.exports.HANDOFF_MARKER = HANDOFF_MARKER;
+module.exports.ENG_DONE_MARKER = ENG_DONE_MARKER;
 module.exports.DEFAULT_QA_ASSIGNEE = DEFAULT_QA_ASSIGNEE;

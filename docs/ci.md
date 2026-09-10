@@ -13,7 +13,7 @@ This repo runs GitHub Actions on pushes and pull requests. This doc maps what ru
 | `quality-gates.yml` | `TypeScript`, `expo-doctor`, `expo install --check`, `Docs Structure Check` | Typecheck + lockfile `expo-doctor` + **offline** `expo install --check` (`EXPO_OFFLINE=1`; see [Two clocks](#two-clocks--pr-ci-vs-scheduled-expo-health)) + docs layout guard |
 | `expo-sdk-align.yml` | `Align Expo SDK patches` | Weekly Monday + `workflow_dispatch`: online `expo install --fix` → full doctor → one rolling PR on `chore/expo-sdk-align` (#422) |
 | `preview-build.yml` | Android EAS preview APK | Optional label `preview-build` — binary only (no OTA); **PR comment only** (debug). Does not move Project 4 or start QA |
-| `qa-handoff.yml` | Post-merge QA handoff | On merge of Needs-QA PRs: issue comment + assign `@Roslin22` + best-effort Project 4 → `In QA` ([guides/qa-process.md](guides/qa-process.md)) |
+| `qa-handoff.yml` | Post-merge ticket handoff | **Needs QA? Yes** → comment + assign `@Roslin22` + `In QA`; **Needs QA? No** → `Done` + close linked issues ([guides/qa-process.md](guides/qa-process.md)) |
 | `nightly-preview.yml` | Nightly Android APK | 23:17 PT APK cron (trusted even when GitHub delays) + 09:07 PT Slack (09:00–16:00 PT); `workflow_dispatch`; install comments on recent handoffs |
 | `eas-build.yml` | Tag → version sync | Production release path on `v*` tags |
 
@@ -109,7 +109,8 @@ PR template for the GitHub UI: [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/P
 ## Preview / nightly / QA handoff
 
 - Optional PR APKs: `preview-build.yml` + [`.github/scripts/eas-resolve-android-build.sh`](../.github/scripts/eas-resolve-android-build.sh) with `FORCE_NEW_BUILD=true` (no fingerprint reuse; no OTA) — **PR comment only**
-- Post-merge QA: [`.github/workflows/qa-handoff.yml`](../.github/workflows/qa-handoff.yml) + [`.github/scripts/qa-handoff-on-merge.cjs`](../.github/scripts/qa-handoff-on-merge.cjs) — Needs QA? Yes → comment / assign / `In QA` for `Refs #NNN`
+- Post-merge handoff: [`.github/workflows/qa-handoff.yml`](../.github/workflows/qa-handoff.yml) + [`.github/scripts/qa-handoff-on-merge.cjs`](../.github/scripts/qa-handoff-on-merge.cjs) — Needs QA? Yes → comment / assign / `In QA`; Needs QA? No → `Done` + close for `Refs #NNN`
+- Agent board CLI: [`.github/scripts/project-board-cli.cjs`](../.github/scripts/project-board-cli.cjs)
 - Nightly: `nightly-preview.yml` + [`.github/scripts/nightly-notify-qa-issues.cjs`](../.github/scripts/nightly-notify-qa-issues.cjs) posts install URL on recent handoff issues
 - **Process:** [guides/qa-process.md](guides/qa-process.md) (Needs QA?, post-merge nightly QA)
 - Human install steps: [guides/qa-preview-testing.md](guides/qa-preview-testing.md)
