@@ -47,15 +47,15 @@ cp .env.maestro.example .env.maestro
 
 `.env.maestro` is gitignored via `.env.*`. Only [`.env.maestro.example`](../../.env.maestro.example) is committed.
 
-`scripts/maestro-test.sh` auto-sources `.env.maestro` when present (`MAESTRO_*` vars are also read by the Maestro CLI from the shell).
+`scripts/maestro-test.sh` loads `.env.maestro` literally when present (no `source` / expansion; `MAESTRO_*` and related keys are exported for the Maestro CLI).
 
 **Seed / assignment prerequisites (smokes):**
 
 1. Create a translator on hosted **dev** (`https://dev.api.fluent.bible`).
 2. Assign **≥1 chapter** so My Work shows a `my-work-row-*` and Projects has a matching `project-row-*` / `chapter-row-*`.
 3. Point Metro / Debug at the same API (`EXPO_PUBLIC_API_BASE_URL` in `.env` and `.env.maestro`).
-4. Prefer a dedicated Maestro account — smokes **record** a take but **do not** tap `stage-advance-button`.
-5. Keep the assigned chapter **under the 5-take cap** so Record still shows `record-start-button` or `record-new-take-button` (smoke branches on either).
+4. Prefer a dedicated Maestro account — the record smoke creates a take then **deletes it** (no `stage-advance-button`).
+5. Keep the assigned chapter **under the 5-take cap** before a run so Record shows an enabled `record-start-button` or `record-new-take-button` (smoke fails fast if neither is enabled).
 
 ## Harness vs product smokes
 
@@ -75,7 +75,7 @@ npm run maestro:test           # workspace flows (excludes helpers + subflows)
 | `flows/smoke-launch.yaml` | `harness` | yes | Boot → `login-email-input` |
 | `flows/android/smoke-auth.yaml` | `smoke` `auth` | yes | Login, session restore, logout |
 | `flows/android/smoke-nav.yaml` | `smoke` `nav` | yes | My Work + Projects → drafting tabs |
-| `flows/android/smoke-record.yaml` | `smoke` `record` | yes (+ mic allow) | Record → stop → play; no stage advance |
+| `flows/android/smoke-record.yaml` | `smoke` `record` | yes (+ mic allow) | Record → stop → play → delete take; no stage advance |
 | `flows/android/smoke-sync-offline.yaml` | `smoke` `sync` | yes | Sync Now; Prepare for Offline chrome |
 | `flows/android/smoke-edges.yaml` | `smoke` `edges` | yes | Forgot password, legal, mic/notification deny |
 
@@ -89,7 +89,7 @@ Note: `platform.android.disableAnimations` in `.maestro/config.yaml` applies on 
 - **Sync pause/resume:** only exercised when `sync-action-pause` appears (upload/metadata in flight); otherwise Sync Now + screen chrome is enough.
 - **Reauth forced path:** not automatable without a backend/session hook to invalidate the token mid-run. Residual: cover manually or when a hook exists; Settings shows `settings-reauth` only when `reauthRequired` is already true.
 - **Empty My Work:** nav/record/deny edges fail without an assignment — seed the Maestro account first.
-- **Record at 5-take cap:** neither start nor new-take controls appear — reset takes on the seed chapter or treat max-takes as residual.
+- **Record at 5-take cap:** `record-new-take-button` may still be mounted but **disabled** — smoke asserts an enabled start/new-take before waiting on stop. Delete takes on the seed chapter (or rely on smoke cleanup) before re-running.
 
 ## Agent / MCP loop (opt-in)
 

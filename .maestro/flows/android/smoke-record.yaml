@@ -1,8 +1,9 @@
-# Record happy path: mic allow → record → stop → play.
+# Record happy path: mic allow → record → stop → play → delete that take.
 # Does NOT tap stage-advance (destructive on shared dev). Needs ≥1 assignment.
 # Start vs new-take: idle-no-takes shows record-start-button; existing takes show
-# record-new-take-button (common after sync / prior smoke runs). Chapter must be
-# under the 5-take cap or neither control appears (residual — see maestro.md).
+# enabled record-new-take-button. At the 5-take cap new-take stays mounted but
+# disabled — fail fast (do not wait on record-stop-button). Cleanup deletes the
+# take this smoke created so re-runs stay under the cap.
 appId: com.eten.fluent
 tags:
   - smoke
@@ -25,10 +26,21 @@ tags:
     id: 'drafting-tab-record'
 - assertVisible:
     id: 'record-tab'
+# Cap fail-fast: if start is absent, an *enabled* new-take must be present.
+- runFlow:
+    when:
+      notVisible:
+        id: 'record-start-button'
+        enabled: true
+    commands:
+      - assertVisible:
+          id: 'record-new-take-button'
+          enabled: true
 - runFlow:
     when:
       visible:
         id: 'record-start-button'
+        enabled: true
     commands:
       - tapOn:
           id: 'record-start-button'
@@ -36,6 +48,7 @@ tags:
     when:
       visible:
         id: 'record-new-take-button'
+        enabled: true
     commands:
       - tapOn:
           id: 'record-new-take-button'
@@ -53,6 +66,13 @@ tags:
     timeout: 30000
 - tapOn:
     id: 'record-play-button'
+- assertVisible:
+    id: 'record-tab'
+# Remove the take this smoke created (selected after stop) for repeatable runs.
+- tapOn:
+    id: 'record-delete-selected-button'
+- tapOn:
+    text: 'Delete'
 - assertVisible:
     id: 'record-tab'
 # Explicitly avoid stage-advance-button on shared Maestro accounts
