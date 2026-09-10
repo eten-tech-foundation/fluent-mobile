@@ -24,6 +24,10 @@ tags:
 - assertVisible:
     id: 'record-tab'
 - back
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 15000
 
 # Projects → chapter → drafting
 - tapOn:

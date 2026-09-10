@@ -55,6 +55,7 @@ cp .env.maestro.example .env.maestro
 2. Assign **≥1 chapter** so My Work shows a `my-work-row-*` and Projects has a matching `project-row-*` / `chapter-row-*`.
 3. Point Metro / Debug at the same API (`EXPO_PUBLIC_API_BASE_URL` in `.env` and `.env.maestro`).
 4. Prefer a dedicated Maestro account — smokes **record** a take but **do not** tap `stage-advance-button`.
+5. Keep the assigned chapter **under the 5-take cap** so Record still shows `record-start-button` or `record-new-take-button` (smoke branches on either).
 
 ## Harness vs product smokes
 
@@ -88,6 +89,7 @@ Note: `platform.android.disableAnimations` in `.maestro/config.yaml` applies on 
 - **Sync pause/resume:** only exercised when `sync-action-pause` appears (upload/metadata in flight); otherwise Sync Now + screen chrome is enough.
 - **Reauth forced path:** not automatable without a backend/session hook to invalidate the token mid-run. Residual: cover manually or when a hook exists; Settings shows `settings-reauth` only when `reauthRequired` is already true.
 - **Empty My Work:** nav/record/deny edges fail without an assignment — seed the Maestro account first.
+- **Record at 5-take cap:** neither start nor new-take controls appear — reset takes on the seed chapter or treat max-takes as residual.
 
 ## Agent / MCP loop (opt-in)
 

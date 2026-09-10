@@ -1,5 +1,8 @@
 # Record happy path: mic allow → record → stop → play.
 # Does NOT tap stage-advance (destructive on shared dev). Needs ≥1 assignment.
+# Start vs new-take: idle-no-takes shows record-start-button; existing takes show
+# record-new-take-button (common after sync / prior smoke runs). Chapter must be
+# under the 5-take cap or neither control appears (residual — see maestro.md).
 appId: com.eten.fluent
 tags:
   - smoke
@@ -22,10 +25,20 @@ tags:
     id: 'drafting-tab-record'
 - assertVisible:
     id: 'record-tab'
-- assertVisible:
-    id: 'record-start-button'
-- tapOn:
-    id: 'record-start-button'
+- runFlow:
+    when:
+      visible:
+        id: 'record-start-button'
+    commands:
+      - tapOn:
+          id: 'record-start-button'
+- runFlow:
+    when:
+      visible:
+        id: 'record-new-take-button'
+    commands:
+      - tapOn:
+          id: 'record-new-take-button'
 - extendedWaitUntil:
     visible:
       id: 'record-stop-button'
