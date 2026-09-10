@@ -9,6 +9,7 @@ import type {
 } from '../types/db/types';
 import { Transaction } from '@op-engineering/op-sqlite';
 import {
+  rangesOverlap,
   shouldClearSelectionForIncomingTake,
   type RecordingVerseRange,
 } from '../utils/recordingRange';
@@ -529,7 +530,8 @@ export async function deleteRecordingTake(id: string): Promise<void> {
 
   await db.transaction(async (tx: Transaction) => {
     const existing = await tx.execute(
-      `SELECT bible_text_id, recorded_by_user_id, is_selected
+      `SELECT bible_text_id, recorded_by_user_id, is_selected,
+              start_chapter, start_verse, end_chapter, end_verse
        FROM recordings WHERE id = ?`,
       [id],
     );
@@ -538,6 +540,10 @@ export async function deleteRecordingTake(id: string): Promise<void> {
           bible_text_id: number;
           recorded_by_user_id: number | null;
           is_selected: number;
+          start_chapter: number | null;
+          start_verse: number | null;
+          end_chapter: number | null;
+          end_verse: number | null;
         }
       | undefined;
     if (!row) {
@@ -559,6 +565,7 @@ export async function deleteRecordingTake(id: string): Promise<void> {
 
     const wasSelected = row.is_selected === 1;
     const bibleTextId = row.bible_text_id;
+    const deletedRange = rowRange(row);
     const owner = recordedByClause(row.recorded_by_user_id);
 
     await tx.execute(`DELETE FROM recordings WHERE id = ?`, [id]);
@@ -568,14 +575,43 @@ export async function deleteRecordingTake(id: string): Promise<void> {
       return;
     }
 
-    const prior = await tx.execute(
-      `SELECT id FROM recordings
-       WHERE bible_text_id = ? AND ${owner.sql}
-       ORDER BY take_number DESC
-       LIMIT 1`,
+    const candidates = await tx.execute(
+      `SELECT r.id, r.bible_text_id, r.start_chapter, r.start_verse,
+              r.end_chapter, r.end_verse, r.take_number
+       FROM recordings r
+       INNER JOIN bible_texts anchor_bt ON anchor_bt.id = r.bible_text_id
+       INNER JOIN bible_texts deleted_bt ON deleted_bt.id = ?
+       WHERE anchor_bt.bible_id = deleted_bt.bible_id
+         AND anchor_bt.book_id = deleted_bt.book_id
+         AND ${owner.sql.replaceAll(
+           'recorded_by_user_id',
+           'r.recorded_by_user_id',
+         )}`,
       [bibleTextId, ...owner.params],
     );
-    const priorId = (prior.rows?.[0] as { id?: string } | undefined)?.id;
+    const priorId = (
+      (candidates.rows ?? []) as {
+        id: string;
+        bible_text_id: number;
+        start_chapter: number | null;
+        start_verse: number | null;
+        end_chapter: number | null;
+        end_verse: number | null;
+        take_number: number;
+      }[]
+    )
+      .filter(candidate =>
+        rangesOverlap(
+          deletedRange,
+          rowRange({
+            start_chapter: candidate.start_chapter,
+            start_verse: candidate.start_verse,
+            end_chapter: candidate.end_chapter,
+            end_verse: candidate.end_verse,
+          }),
+        ),
+      )
+      .sort((a, b) => b.take_number - a.take_number)[0]?.id;
     if (priorId) {
       await tx.execute(
         `UPDATE recordings SET is_selected = 1, updated_at = ? WHERE id = ?`,

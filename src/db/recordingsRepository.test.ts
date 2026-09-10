@@ -299,9 +299,10 @@ async function mockExecute(
     normalized.startsWith(
       'SELECT id, bible_text_id, recorded_by_user_id, is_selected, start_chapter',
     ) ||
-    normalized.startsWith(
-      'SELECT bible_text_id, recorded_by_user_id, is_selected FROM recordings WHERE id = ?',
-    )
+    (normalized.startsWith(
+      'SELECT bible_text_id, recorded_by_user_id, is_selected',
+    ) &&
+      normalized.includes('FROM recordings WHERE id = ?'))
   ) {
     const id = params[0] as string;
     const match = rows.find(r => r.id === id);
@@ -330,18 +331,29 @@ async function mockExecute(
   }
 
   if (
-    normalized.includes('SELECT id FROM recordings WHERE bible_text_id = ?') &&
-    normalized.includes('ORDER BY take_number DESC LIMIT 1')
+    normalized.includes('FROM recordings r') &&
+    normalized.includes('INNER JOIN bible_texts anchor_bt') &&
+    normalized.includes('INNER JOIN bible_texts deleted_bt') &&
+    normalized.includes('r.take_number')
   ) {
-    const bibleTextId = params[0] as number;
-    const match = rows
-      .filter(
-        r =>
-          r.bible_text_id === bibleTextId &&
-          matchesOwner(r, normalized, params, 1),
-      )
-      .sort((a, b) => b.take_number - a.take_number)[0];
-    return { rows: match ? [{ id: match.id }] : [] };
+    const deletedBibleTextId = params[0] as number;
+    return {
+      rows: rows
+        .filter(
+          r =>
+            sharesBibleBook(r.bible_text_id, deletedBibleTextId) &&
+            matchesOwner(r, normalized, params, 1),
+        )
+        .map(r => ({
+          id: r.id,
+          bible_text_id: r.bible_text_id,
+          start_chapter: r.start_chapter,
+          start_verse: r.start_verse,
+          end_chapter: r.end_chapter,
+          end_verse: r.end_verse,
+          take_number: r.take_number,
+        })),
+    };
   }
 
   if (normalized.startsWith('UPDATE recordings SET is_selected = 1')) {
@@ -470,6 +482,35 @@ describe('recordingsRepository multi-take', () => {
         r.is_selected === 1,
     );
     expect(selectedCount).toHaveLength(1);
+  });
+
+  it('promotes overlapping verse take when deleting selected pericope', async () => {
+    await addRecordingTake({
+      bibleTextId: 105,
+      localFilePath: 'file:///v5.m4a',
+      id: 'verse-5',
+      granularity: 'verse',
+      startChapter: 1,
+      startVerse: 5,
+      endChapter: 1,
+      endVerse: 5,
+    });
+    await addRecordingTake({
+      bibleTextId: 103,
+      localFilePath: 'file:///p.m4a',
+      id: 'peri',
+      granularity: 'pericope',
+      startChapter: 1,
+      startVerse: 3,
+      endChapter: 1,
+      endVerse: 7,
+    });
+
+    await deleteRecordingTake('peri');
+
+    expect(
+      __getRecordingRows().find(r => r.id === 'verse-5')?.is_selected,
+    ).toBe(1);
   });
 
   it('promotes previous take when deleting the selected take', async () => {

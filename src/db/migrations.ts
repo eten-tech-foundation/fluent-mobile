@@ -483,7 +483,7 @@ async function addRecordingsGranularityColumns(db: SqlExecutor): Promise<void> {
            (SELECT verse_number FROM bible_texts WHERE bible_texts.id = recordings.bible_text_id),
            end_verse
          )
-     WHERE granularity IS NULL OR granularity = 'verse' OR granularity = '0'`,
+     WHERE granularity IS NULL OR granularity = 'verse'`,
   );
 }
 

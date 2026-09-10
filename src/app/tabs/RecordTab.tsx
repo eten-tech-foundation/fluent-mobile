@@ -319,6 +319,9 @@ export function RecordTab({
   ]);
 
   useEffect(() => {
+    if (verseAudio.state === 'recording' || verseAudio.state === 'paused') {
+      return;
+    }
     setRecordingUnit(null);
     let cancelled = false;
     void resolveRecordingUnit({
@@ -345,6 +348,7 @@ export function RecordTab({
     chapterData.projectId,
     draftingUnit,
     selectedVerse,
+    verseAudio.state,
   ]);
 
   useEffect(() => {

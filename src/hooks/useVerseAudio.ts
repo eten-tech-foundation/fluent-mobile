@@ -39,17 +39,21 @@ export type { RecordingUnitCapture };
 
 const log = logger.create('useVerseAudio');
 
-export type PersistTakeArgs = {
+/** Frozen at successful `start()` — `stop()` must not read live recording props. */
+export type CapturePersistSnapshot = {
   bibleTextId: number;
   /** Active verse view — mixed take_number cap/list scope (#410). */
   viewBibleTextId: number;
-  tempUri: string;
-  durationMs: number;
   granularity: RecordingGranularity;
   startChapter: number;
   startVerse: number;
   endChapter: number;
   endVerse: number;
+};
+
+export type PersistTakeArgs = CapturePersistSnapshot & {
+  tempUri: string;
+  durationMs: number;
 };
 
 export type VerseAudioPersistDeps = {
@@ -196,7 +200,7 @@ export function useVerseAudio({
    */
   const [loadedTakeId, setLoadedTakeId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const captureBibleTextIdRef = useRef<number | null>(null);
+  const capturePersistRef = useRef<CapturePersistSnapshot | null>(null);
   const allTakesRequestIdRef = useRef(0);
   const chapterAssignedRef = useRef(false);
   const activeBibleTextIdRef = useRef<number | null>(null);
@@ -329,23 +333,29 @@ export function useVerseAudio({
       }
       setPlayingTakeId(null);
       setLoadedTakeId(null);
-      captureBibleTextIdRef.current =
-        recordingUnit?.anchorBibleTextId ?? bibleTextId;
+      const anchorBibleTextId = recordingUnit?.anchorBibleTextId ?? bibleTextId;
+      capturePersistRef.current = {
+        bibleTextId: anchorBibleTextId,
+        viewBibleTextId: bibleTextId,
+        granularity: recordingUnit?.granularity ?? 'verse',
+        startChapter: recordingUnit?.startChapter ?? chapterNumber ?? 0,
+        startVerse: recordingUnit?.startVerse ?? verseNumber ?? 0,
+        endChapter: recordingUnit?.endChapter ?? chapterNumber ?? 0,
+        endVerse: recordingUnit?.endVerse ?? verseNumber ?? 0,
+      };
       log.debug('starting capture', {
         draftingUnit,
         bibleTextId,
-        anchorBibleTextId: captureBibleTextIdRef.current,
-        granularity: recordingUnit?.granularity ?? 'verse',
-        span: recordingUnit
-          ? `${recordingUnit.startChapter}:${recordingUnit.startVerse}-${recordingUnit.endChapter}:${recordingUnit.endVerse}`
-          : `${chapterNumber ?? '?'}:${verseNumber ?? '?'}`,
+        anchorBibleTextId: capturePersistRef.current.bibleTextId,
+        granularity: capturePersistRef.current.granularity,
+        span: `${capturePersistRef.current.startChapter}:${capturePersistRef.current.startVerse}-${capturePersistRef.current.endChapter}:${capturePersistRef.current.endVerse}`,
         coveredViewCount: recordingUnit?.coveredViews.length ?? 1,
       });
       await recording.start();
       dispatch({ type: 'START' });
       setErrorMessage(null);
     } catch (error) {
-      captureBibleTextIdRef.current = null;
+      capturePersistRef.current = null;
       const message = error instanceof Error ? error.message : 'start failed';
       setErrorMessage(message);
       dispatch({ type: 'ERROR', message });
@@ -353,11 +363,13 @@ export function useVerseAudio({
   }, [
     bibleTextId,
     canRecordNewTake,
+    chapterNumber,
     countTakesAtView,
     draftingUnit,
     playback,
     recording,
     recordingUnit,
+    verseNumber,
   ]);
 
   const pause = useCallback(async () => {
@@ -383,29 +395,21 @@ export function useVerseAudio({
   }, [recording]);
 
   const stop = useCallback(async () => {
-    const id = captureBibleTextIdRef.current ?? bibleTextId;
-    if (id === null) return;
+    const snapshot = capturePersistRef.current;
+    if (snapshot === null) return;
     try {
       const { uri, durationMs } = await recording.stop();
       dispatch({ type: 'STOP' });
-      const persistId = recordingUnit?.anchorBibleTextId ?? id;
       const persistMeta = {
-        bibleTextId: persistId,
-        viewBibleTextId: bibleTextId ?? persistId,
+        ...snapshot,
         tempUri: uri,
         durationMs,
-        granularity: recordingUnit?.granularity ?? 'verse',
-        startChapter: recordingUnit?.startChapter ?? chapterNumber ?? 0,
-        startVerse: recordingUnit?.startVerse ?? verseNumber ?? 0,
-        endChapter: recordingUnit?.endChapter ?? chapterNumber ?? 0,
-        endVerse: recordingUnit?.endVerse ?? verseNumber ?? 0,
       };
       log.debug('persisting take', {
-        draftingUnit,
-        viewVerse: `${chapterNumber ?? '?'}:${verseNumber ?? '?'}`,
         span: `${persistMeta.startChapter}:${persistMeta.startVerse}-${persistMeta.endChapter}:${persistMeta.endVerse}`,
         granularity: persistMeta.granularity,
         anchorBibleTextId: persistMeta.bibleTextId,
+        viewBibleTextId: persistMeta.viewBibleTextId,
         durationMs: persistMeta.durationMs,
       });
       await persistTake(persistMeta);
@@ -453,32 +457,25 @@ export function useVerseAudio({
         });
       }
 
-      const rows =
-        bibleTextId !== null
-          ? await loadTakesFn(bibleTextId)
-          : await loadTakesFn(persistId);
+      const rows = await loadTakesFn(snapshot.viewBibleTextId);
       setTakes(rows);
-      await refreshAllTakes(bibleTextId ?? persistId);
-      captureBibleTextIdRef.current = null;
+      await refreshAllTakes(snapshot.viewBibleTextId);
+      capturePersistRef.current = null;
       dispatch({ type: 'SAVED' });
     } catch (error) {
-      captureBibleTextIdRef.current = null;
+      capturePersistRef.current = null;
       const message = error instanceof Error ? error.message : 'stop failed';
       setErrorMessage(message);
       dispatch({ type: 'ERROR', message });
     }
   }, [
-    bibleTextId,
     chapterAssignmentId,
     chapterClaim,
-    chapterNumber,
     loadTakesFn,
     onChapterClaimed,
     persistTake,
     recording,
-    recordingUnit,
     userId,
-    verseNumber,
     refreshAllTakes,
   ]);
 

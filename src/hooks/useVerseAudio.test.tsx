@@ -400,6 +400,86 @@ describe('useVerseAudio', () => {
     expect(mockRecordingStart).not.toHaveBeenCalled();
   });
 
+  it('persists frozen capture metadata when recordingUnit clears before stop', async () => {
+    mockRecordingStart.mockResolvedValue(undefined);
+    mockRecordingStop.mockResolvedValue({
+      uri: 'file:///tmp/take.m4a',
+      durationMs: 2500,
+    });
+    loadTakes.mockResolvedValue([]);
+    persistTake.mockResolvedValue({
+      id: 'rec_new',
+      localFilePath: '/recordings/rec_new.m4a',
+    });
+
+    const pericopeUnit = {
+      granularity: 'pericope' as const,
+      startChapter: 1,
+      startVerse: 3,
+      endChapter: 1,
+      endVerse: 7,
+      anchorBibleTextId: 103,
+      coveredViews: [
+        { bibleTextId: 103, chapterNumber: 1, verseNumber: 3 },
+        { bibleTextId: 105, chapterNumber: 1, verseNumber: 5 },
+      ],
+    };
+
+    const countTakesAtView = jest.fn().mockResolvedValue(0);
+
+    const { result, rerender } = renderHook(
+      (
+        props: ReturnType<typeof verseAudioArgs> & {
+          recordingUnit?: typeof pericopeUnit | null;
+        },
+      ) =>
+        useVerseAudio({
+          ...props,
+          draftingUnit: 'pericope',
+          chapterNumber: 1,
+          verseNumber: 5,
+          bibleTextId: 105,
+          countTakesAtView,
+          recordingUnit: props.recordingUnit ?? pericopeUnit,
+        }),
+      {
+        initialProps: {
+          ...verseAudioArgs(),
+          recordingUnit: pericopeUnit,
+        },
+      },
+    );
+
+    await waitFor(() => expect(result.current.canRecordNewTake).toBe(true));
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    await act(async () => {
+      rerender({
+        ...verseAudioArgs(),
+        recordingUnit: null,
+      });
+    });
+
+    await act(async () => {
+      await result.current.stop();
+    });
+
+    expect(persistTake).toHaveBeenCalledWith({
+      bibleTextId: 103,
+      viewBibleTextId: 105,
+      tempUri: 'file:///tmp/take.m4a',
+      durationMs: 2500,
+      granularity: 'pericope',
+      startChapter: 1,
+      startVerse: 3,
+      endChapter: 1,
+      endVerse: 7,
+    });
+  });
+
   it('blocks pericope capture when another spanned verse is already at the cap', async () => {
     const countTakesAtView = jest.fn(async (view: { verseNumber: number }) =>
       view.verseNumber === 7 ? 5 : 0,

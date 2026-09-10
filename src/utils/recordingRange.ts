@@ -1,4 +1,6 @@
-export type RecordingGranularity = 'verse' | 'pericope';
+import type { RecordingGranularity } from '../types/db/types';
+
+export type { RecordingGranularity };
 
 export type RecordingVerseRange = {
   startChapter: number;
