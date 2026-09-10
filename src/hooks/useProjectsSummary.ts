@@ -14,18 +14,32 @@ export function useProjectsSummary(refreshKey = 0) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const refreshGenerationRef = useRef(0);
+  const loadInFlightRef = useRef<Promise<void> | null>(null);
 
   const loadProjects = useCallback(async () => {
-    const userId = parseUserId();
-    if (!userId) {
-      setProjects([]);
-      return;
+    if (loadInFlightRef.current) {
+      return loadInFlightRef.current;
     }
 
+    const loadPromise = (async () => {
+      const userId = parseUserId();
+      if (!userId) {
+        setProjects([]);
+        return;
+      }
+
+      try {
+        setProjects(await getProjectsWithSummary(userId));
+      } catch (error) {
+        log.error('Error loading projects:', { error });
+      }
+    })();
+
+    loadInFlightRef.current = loadPromise;
     try {
-      setProjects(await getProjectsWithSummary(userId));
-    } catch (error) {
-      log.error('Error loading projects:', { error });
+      await loadPromise;
+    } finally {
+      loadInFlightRef.current = null;
     }
   }, []);
 
@@ -61,12 +75,6 @@ export function useProjectsSummary(refreshKey = 0) {
       setRefreshing(false);
     }
   }, [loadProjects]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void refresh();
-    }, [refresh]),
-  );
 
   return { projects, loading, refreshing, refresh };
 }
