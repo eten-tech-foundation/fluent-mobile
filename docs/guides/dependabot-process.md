@@ -7,28 +7,30 @@ Repeatable process for safely managing Dependabot PRs in **Fluent Mobile**. Prio
 Use this for **every** Dependabot merge (copy into PR comment or issue when triaging):
 
 - [ ] Author is `dependabot[bot]` / `app/dependabot`
-- [ ] Checkout PR branch → `npm ci`
-- [ ] **`npm run doctor`** (after any npm bump; lockfile `expo-doctor`, same as Quality Gates)
-- [ ] Local CI order: `format:check` → `lint` → `typecheck` → `npm test -- --ci`
+- [ ] Required GitHub checks green: Lint & Format, Unit Tests, Quality Gates (TypeScript, expo-doctor, expo install --check)
+- [ ] **Safe** (lockfile-only / non-native patch, or Actions SHA bump with Action pins green): CI-first is enough — local checkout optional
+- [ ] **Risky** / native / Expo ecosystem: checkout → `npm ci` → **`npm run doctor`** → `format:check` → `lint` → `typecheck` → `npm test -- --ci` (+ Android smoke)
 - [ ] If `--check` is red **with no package change on this PR**: wait for the Expo compatibility sync ([#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422)), rebase — do not `--fix` on an unrelated feature ticket. If this **is** a deps PR and drift is SDK 57 patch-only: `npx expo install --fix` on that branch
-- [ ] Approve + **squash merge exactly one** lockfile PR
+- [ ] Approve + **squash merge exactly one** lockfile PR (Actions PRs: merge when pins + required checks green — do **not** skip by default)
 - [ ] Wait for **`main` CI green** before the next merge
 - [ ] Comment **`@dependabot rebase`** on **all other open** Dependabot PRs (parallel prep)
 - [ ] Re-triage next PR when its checks are green; repeat
+- [ ] Batch notes in a PR/issue comment; land resolution-log catch-up via a **ticketed chore PR** (never commit on `main`)
 
 Risky bumps (`react`, `react-native`, navigation, native modules): add Android smoke test before merge (see below).
 
 ## Core principles
 
 1. **Stability first**: Never merge updates that break Expo SDK 57 / RN 0.86 compatibility or native module ABI.
-2. **Automated validation**: Always run the CI gate locally before merge (see [`.cursor/rules/commands.mdc`](../../.cursor/rules/commands.mdc)).
+2. **CI-first for safe PRs**: Required GitHub checks green is enough for lockfile-only / non-native patch bumps (and Actions SHA bumps with Action pins green). Local `npm ci` + doctor remains mandatory for risky / native / Expo ecosystem bumps.
 3. **Verified authors**: Only process PRs from `app/dependabot` or `dependabot[bot]`.
-4. **Targeted merges**: Prefer squash merges into `main` via **Dependabot PRs only** — agent-authored fixes use a separate ticketed PR ([delivery.mdc](../../.cursor/rules/delivery.mdc)).
-5. **Version lock-stepping**: `react`, `react-test-renderer`, and `react-native` are pinned — validate the **final merged state** on `main`.
+4. **Targeted merges**: Prefer squash merges into `main` via **Dependabot PRs only** — agent-authored fixes and resolution-log catch-up use a separate ticketed PR ([delivery.mdc](../../.cursor/rules/delivery.mdc)). Never commit on `main`.
+5. **Version lock-stepping**: `react`, `react-dom`, `react-test-renderer`, and `react-native` are pinned — `dependabot.yml` ignores all React updates; validate the **final merged state** on `main` after any related work.
 6. **Runtime testing**: Static checks miss renderer mismatches — smoke test on Android for risky bumps.
 7. **One lockfile merge at a time**: Merge **one** lockfile PR, let **`main` CI go green**, then **`@dependabot rebase` all other open bots in parallel** before the next merge.
 8. **Expo health after rebases**: Every `@dependabot rebase` triggers Quality Gates (`npm run doctor` + `expo install --check`). `--check` can go red overnight when Expo publishes new SDK 57 patches ([two-clock model](../ci.md#two-clocks--pr-ci-vs-scheduled-expo-health)). Recover via the weekday sync PR ([#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422)), not a drive-by `--fix` on every open bot. Until #422 lands, `--fix` only on a dedicated deps ticket.
 9. **Automate the queue**: Cursor agents should run the full safe queue without per-PR confirmation (see `.cursor/rules/dependabot-workflow.mdc` → Autonomous mode).
+10. **Deferred upgrades**: When closing a bot as “needs dedicated ticket”, open/link that ticket **or** rely on ignore rules in `.github/dependabot.yml` — no orphan “needs ticket” comments.
 
 ## Expo + Dependabot (best practices)
 
@@ -58,9 +60,9 @@ Dependabot still owns Expo/RN groups until [#424](https://github.com/eten-tech-f
 
 | Category | Action | Example |
 |----------|--------|---------|
-| **RN line upgrade** | Close and plan separately | `react-native` `>=0.87`, coordinated `@react-native/*` |
-| **Safe updates** | Validate and merge | Patch/minor dev tools, ESLint, Prettier, Jest plugins |
-| **Risky updates** | Full validation + Android smoke test | `react`, navigation libs, `@op-engineering/op-sqlite`, UI/native modules |
+| **RN line upgrade / ignored majors** | Close; open/link dedicated ticket **or** rely on `dependabot.yml` ignores | `react-native` `>=0.87`, React pin drift, Jest 30, Babel 8, ESLint 10, lucide v1 |
+| **Safe updates** | CI-first merge when required checks green | Lockfile-only / non-native patch bumps; GitHub Actions SHA bumps (Action pins green) |
+| **Risky updates** | Local doctor + full gate + Android smoke | `react`, navigation libs, `@op-engineering/op-sqlite`, Expo ecosystem, UI/native modules |
 
 ## Workflow
 
@@ -71,9 +73,13 @@ gh pr view <PR_NUMBER> --json author,title,body
 ```
 
 - If author is NOT Dependabot → **stop**.
-- If it is an RN line upgrade (`>=0.87`) → close with a comment; track in a dedicated ticket.
+- If it is an RN line upgrade (`>=0.87`) or an ignored major/pin-drift bump → close with a comment; open/link a dedicated ticket **or** confirm the ignore rule will hold.
 
-### 2. Local checkout and install
+### 2. Validation (tiered)
+
+**Safe (CI-first):** required checks green is enough — skip local checkout.
+
+**Risky / native / Expo:** local checkout and install:
 
 ```bash
 git fetch origin pull/<PR_NUMBER>/head:dependabot-pr-<PR_NUMBER>
@@ -81,7 +87,7 @@ git checkout dependabot-pr-<PR_NUMBER>
 npm ci
 ```
 
-### 3. Validation suite (CI order)
+Then the validation suite (CI order):
 
 ```bash
 npm run doctor
@@ -102,7 +108,7 @@ npm run prebuild
 cd android && ./gradlew assembleDebug --no-daemon && cd ..
 ```
 
-### 4. Smoke test (runtime-affecting changes)
+### 3. Smoke test (runtime-affecting changes)
 
 Mandatory for `react`, `react-native`, `@react-native/*`, `@react-navigation/*`, and native modules.
 
@@ -118,7 +124,7 @@ Verify:
 - Sync runs without crash
 - No "Incompatible React versions" in Metro/logcat
 
-### 5. Merge (one at a time)
+### 4. Merge (one at a time)
 
 Branch protection requires approval first:
 
@@ -127,7 +133,7 @@ Branch protection requires approval first:
 
 Wait for **Lint Check**, **Test Check**, and **Quality Gates** on `main`.
 
-### 6. Parallel rebase prep (do not skip)
+### 5. Parallel rebase prep (do not skip)
 
 Immediately after each merge, rebase **all** remaining open Dependabot PRs — not just the next merge candidate:
 
@@ -204,15 +210,18 @@ The agent runs in **autonomous mode** by default:
 
 - Triages all open bots
 - Rebases stale/conflicting PRs in parallel
-- Merges safe PRs when GitHub CI is fully green (no hand-holding per PR)
-- Skips risky/failed PRs and reports blockers
-- Does not merge workflow/config PRs unless explicitly requested
+- Merges safe PRs when GitHub CI is fully green (CI-first; no hand-holding per PR)
+- Merges GitHub Actions SHA bumps when Action pins + required checks are green (do not skip by default)
+- Skips risky/failed PRs and reports blockers; deferred closes need a ticket or an ignore rule
+- Does not merge non-Dependabot workflow/config PRs unless explicitly requested
 
 Rule: [`.cursor/rules/dependabot-workflow.mdc`](../../.cursor/rules/dependabot-workflow.mdc)
 
 ## SHA pinning for GitHub Actions
 
 Workflow `uses:` refs are pinned to 40-character commit SHAs with a version comment (`# v7.0.1`). Dependabot's `github-actions` ecosystem is grouped (`patterns: ['*']` plus a matching security-updates group) with a 7-day cooldown so SHA bumps land in one PR labeled `github_actions`.
+
+**Do not skip Actions PRs by default** when Action pins + required checks are green — merge them like other safe bots (historical practice for Actions SHA bumps).
 
 Local check (must exit 0):
 
@@ -225,5 +234,5 @@ The CI job is `action-pins.yml` (`pull_request_target`). Do not switch it to `pu
 ## Related
 
 - Config: [`.github/dependabot.yml`](../../.github/dependabot.yml)
-- Resolution log: [dependabot-resolution-log.md](./dependabot-resolution-log.md)
+- Resolution log: [dependabot-resolution-log.md](./dependabot-resolution-log.md) — write batch notes in PR/issue comments first; land the markdown file via a ticketed chore PR (never commit on `main`)
 - Agent commands: [`.cursor/rules/commands.mdc`](../../.cursor/rules/commands.mdc)

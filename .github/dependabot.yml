@@ -20,15 +20,49 @@ updates:
       - dependency-name: '@react-native/*'
         versions:
           - '>=0.87.0'
-      # React must stay lock-step with RN 0.86 (pinned in package.json)
+      # Intentional holds until dedicated upgrade tickets exist (#435).
+      # Without these, closed majors/pin-drift PRs refill open-pull-requests-limit: 5.
+      # React must stay Expo SDK 57 / RN 0.86 pin (package.json) — ignore ALL updates
+      # (patch drift like 19.2.3→19.2.8 still opens when only major/minor are ignored).
       - dependency-name: 'react'
-        update-types:
-          - 'version-update:semver-major'
-          - 'version-update:semver-minor'
+      - dependency-name: 'react-dom'
       - dependency-name: 'react-test-renderer'
+      # Jest 30 / RTL 14 — semver-major only (migration ticket)
+      - dependency-name: 'jest'
         update-types:
           - 'version-update:semver-major'
-          - 'version-update:semver-minor'
+      - dependency-name: 'jest-*'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: '@jest/*'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: '@testing-library/react-native'
+        update-types:
+          - 'version-update:semver-major'
+      # Babel 8 + ESLint 10 — semver-major only (tooling ticket)
+      - dependency-name: '@babel/core'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: '@babel/preset-env'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: '@babel/runtime'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: 'eslint'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: 'eslint-*'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: '@typescript-eslint/*'
+        update-types:
+          - 'version-update:semver-major'
+      # lucide-react-native v1 — semver-major only (UI smoke ticket)
+      - dependency-name: 'lucide-react-native'
+        update-types:
+          - 'version-update:semver-major'
       # Native SQLite — validate binary compatibility before bumping
       - dependency-name: '@op-engineering/op-sqlite'
         update-types:
