@@ -1,6 +1,12 @@
 import React from 'react';
 import { Pause, Play, RotateCw } from 'lucide-react-native';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import {
   theme,
   iconSizes,
@@ -13,38 +19,41 @@ import { PlaybackProgressBar } from '../ui/PlaybackProgressBar';
 export type { SourceAudioLoadState } from '../../types/sourceAudio';
 
 interface SourceAudioPlayerBarProps {
-  /** Bible / source name shown in the footer label (e.g. BSB). */
+  /** Short bible label in the footer (e.g. BSB). */
   sourceLabel?: string;
-  /**
-   * Unit caption after the middle-dot (e.g. `Verse 3` or `Pericope 2 / 4`).
-   * Matches Lovable drafting dock chrome.
-   */
+  /** Verse-mode unit counter (e.g. `Verse 3 / 12`). */
   unitCaption?: string;
   loadState?: SourceAudioLoadState;
   isPlaying?: boolean;
+  isLoadingAudio?: boolean;
   positionMs?: number;
   durationMs?: number;
-  onPlayPause?: () => void;
-  onSeek?: (positionMs: number) => void;
+  onPlayPause?: () => void | Promise<void>;
+  onSeek?: (positionMs: number) => void | Promise<void>;
   onRetry?: () => void;
 }
 
 function formatDuration(ms: number): string {
-  const totalSec = Math.floor(Math.max(0, ms) / 1000);
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function formatFooterLabel(sourceLabel: string, unitCaption: string): string {
+  return `${sourceLabel} Source Audio · ${unitCaption}`;
 }
 
 /**
- * Bottom source-audio strip for Record tab idle/review (Lovable drafting dock).
- * Playback is controlled by the parent via useSourceAudio (#235).
+ * Shell-level source-audio player for Bible + Record tabs (#412).
+ * Playback state is controlled by the parent hook (#235 / #449).
  */
 export function SourceAudioPlayerBar({
   sourceLabel = 'Source',
-  unitCaption,
+  unitCaption = '',
   loadState = 'empty',
   isPlaying = false,
+  isLoadingAudio = false,
   positionMs = 0,
   durationMs = 0,
   onPlayPause,
@@ -73,91 +82,114 @@ export function SourceAudioPlayerBar({
     );
   }
 
-  const isLoading = loadState === 'loading';
-  const isEmpty = loadState === 'empty';
-  const isReady = loadState === 'ready';
-  const playDisabled = !isReady || !onPlayPause;
-  /** Empty/loading chrome: same dock layout as ready, muted (no primary blue). */
-  const showMutedChrome = isLoading || isEmpty;
+  if (loadState === 'empty') {
+    return (
+      <View style={styles.emptyBar} testID="source-audio-bar">
+        <Text
+          style={[styles.captionLabel, styles.captionLabelEmpty]}
+          testID="source-audio-label"
+        >
+          No source audio
+        </Text>
+      </View>
+    );
+  }
 
-  const footerLabel = isLoading
-    ? 'Loading source audio…'
-    : isEmpty
-    ? 'No source audio'
-    : unitCaption
-    ? `${sourceLabel} Source Audio · ${unitCaption}`
+  if (loadState === 'loading') {
+    return (
+      <View style={styles.bar} testID="source-audio-bar">
+        <View style={styles.loadingContent}>
+          <ActivityIndicator
+            size="small"
+            color={theme.colors.primary}
+            testID="source-audio-loading"
+          />
+        </View>
+        <Text style={styles.captionLabel} testID="source-audio-label">
+          Loading source audio...
+        </Text>
+      </View>
+    );
+  }
+
+  const footerLabel = unitCaption
+    ? formatFooterLabel(sourceLabel, unitCaption)
     : `${sourceLabel} Source Audio`;
+  const elapsedLabel = formatDuration(positionMs);
+  const durationLabel = durationMs > 0 ? formatDuration(durationMs) : '--:--';
+  const playAccessibilityLabel = isLoadingAudio
+    ? 'Loading audio'
+    : isPlaying
+    ? 'Pause source audio'
+    : 'Play source audio';
 
   return (
     <View style={styles.bar} testID="source-audio-bar">
-      <Pressable
-        onPress={() => onPlayPause?.()}
-        disabled={playDisabled}
-        style={[styles.playButton, playDisabled && styles.playButtonDisabled]}
-        accessibilityRole="button"
-        accessibilityLabel={
-          isPlaying ? 'Pause source audio' : 'Play source audio'
-        }
-        accessibilityState={{ disabled: playDisabled }}
-        android_ripple={{ color: 'transparent' }}
-        testID="source-audio-play"
-      >
-        {isPlaying ? (
-          <Pause
-            size={iconSizes.headerTab}
-            color={theme.colors.primaryForeground}
-            strokeWidth={listIconStrokeWidth}
-          />
-        ) : (
-          <Play
-            size={iconSizes.headerTab}
-            color={theme.colors.primaryForeground}
-            strokeWidth={listIconStrokeWidth}
-          />
-        )}
-      </Pressable>
-
-      <View style={styles.waveformArea}>
-        <View style={styles.waveformRow} testID="source-audio-waveform">
-          {showMutedChrome ? (
-            <View
-              style={styles.emptyTrack}
-              accessibilityRole="progressbar"
-              accessibilityState={{ disabled: true }}
-              testID="source-audio-empty-track"
-            >
-              {Array.from({ length: 48 }, (_, i) => (
-                <View key={i} style={styles.emptyTrackDash} />
-              ))}
-            </View>
+      <View style={styles.controlsRow}>
+        <Pressable
+          onPress={() => {
+            void onPlayPause?.();
+          }}
+          disabled={!onPlayPause || isLoadingAudio}
+          style={styles.playButton}
+          accessibilityRole="button"
+          accessibilityLabel={playAccessibilityLabel}
+          android_ripple={{ color: 'transparent' }}
+          testID="source-audio-play"
+        >
+          {isLoadingAudio ? (
+            <ActivityIndicator
+              size="small"
+              color={theme.colors.primaryForeground}
+              testID="source-audio-play-loading"
+            />
+          ) : isPlaying ? (
+            <Pause
+              size={iconSizes.headerTab}
+              color={theme.colors.primaryForeground}
+              strokeWidth={listIconStrokeWidth}
+            />
           ) : (
+            <Play
+              size={iconSizes.headerTab}
+              color={theme.colors.primaryForeground}
+              strokeWidth={listIconStrokeWidth}
+            />
+          )}
+        </Pressable>
+
+        <View style={styles.waveformArea}>
+          <View style={styles.waveformRow} testID="source-audio-waveform">
             <PlaybackProgressBar
               positionMs={positionMs}
               durationMs={durationMs}
-              barCount={64}
+              barCount={56}
               accentColor={theme.colors.waveformActive}
               idleColor={theme.colors.waveformIdle}
               rowHeight={theme.waveform.sourceDockHeight}
               showPlayhead
               accessibilityLabel="Source audio waveform scrubber"
-              onSeek={onSeek}
+              onSeek={position => {
+                void onSeek?.(position);
+              }}
             />
-          )}
+          </View>
+          <View style={styles.timeRow}>
+            <Text style={styles.timeText} testID="source-audio-time-elapsed">
+              {elapsedLabel}
+            </Text>
+            <Text style={styles.timeText} testID="source-audio-time-duration">
+              {durationLabel}
+            </Text>
+          </View>
         </View>
-        <View style={styles.timeRow}>
-          <Text style={styles.timeText} testID="source-audio-time">
-            {showMutedChrome ? '0:00' : formatDuration(positionMs)}
-          </Text>
-          <Text style={styles.timeText} testID="source-audio-duration">
-            {showMutedChrome || durationMs <= 0
-              ? '--:--'
-              : formatDuration(durationMs)}
-          </Text>
-        </View>
-        <Text style={styles.footerLabel} testID="source-audio-label">
-          {footerLabel}
-        </Text>
       </View>
+
+      <View style={styles.spacer} />
+
+      <Text style={styles.captionLabel} testID="source-audio-label">
+        {footerLabel}
+      </Text>
     </View>
   );
 }
@@ -166,14 +198,50 @@ const TOUCH_TARGET = theme.recordControlSizes.secondary;
 
 const styles = StyleSheet.create({
   bar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.md,
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.lg,
     backgroundColor: theme.colors.cardBackground,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: theme.colors.border,
+    width: '100%',
+  },
+  emptyBar: {
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.cardBackground,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: theme.colors.border,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  captionLabel: {
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.mutedForeground,
+    textAlign: 'center',
+    alignSelf: 'center',
+    width: '100%',
+    paddingTop: 0,
+    paddingBottom: 0,
+  },
+  captionLabelEmpty: {
+    // Mantém o mesmo padding em ambos os estados
+  },
+  spacer: {
+    height: theme.spacing.md,
+  },
+  loadingContent: {
+    width: '100%',
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  controlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
     width: '100%',
   },
   playButton: {
@@ -185,33 +253,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  playButtonDisabled: {
-    backgroundColor: theme.colors.mutedForeground,
-  },
   waveformArea: {
     flex: 1,
     minWidth: 0,
     justifyContent: 'center',
-    gap: theme.spacing.xs,
+    gap: 2,
   },
   waveformRow: {
     width: '100%',
     height: theme.waveform.sourceDockHeight,
     justifyContent: 'center',
-  },
-  /** Empty/loading: flat dashed track (no decorative amplitude spikes). */
-  emptyTrack: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    height: theme.waveform.playheadWidth,
-  },
-  emptyTrackDash: {
-    width: theme.waveform.emptyDashWidth,
-    height: theme.waveform.playheadWidth,
-    borderRadius: theme.radius.full,
-    backgroundColor: theme.colors.border,
   },
   timeRow: {
     flexDirection: 'row',
@@ -222,11 +273,6 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.xs,
     color: theme.colors.mutedForeground,
     fontVariant: ['tabular-nums'],
-  },
-  footerLabel: {
-    fontSize: theme.typography.sizes.xs,
-    color: theme.colors.mutedForeground,
-    textAlign: 'center',
   },
   errorText: {
     flex: 1,

@@ -1,6 +1,8 @@
 name: QA Handoff
 
-# Post-merge: Needs QA? Yes → comment + assign Roslin22 + Project 4 In QA.
+# Post-merge ticket handoff on Project 4:
+#   Needs QA? Yes → comment + assign Roslin22 + In QA (nightly QA)
+#   Needs QA? No  → comment + Done + close linked Refs #NNN issues
 # Merge is not blocked on QA; testers use the next nightly APK.
 
 on:
@@ -24,7 +26,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Handoff linked tickets to QA
+      - name: Handoff linked tickets (QA or eng-done)
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           PROJECT_BOARD_TOKEN: ${{ secrets.PROJECT_BOARD_TOKEN }}

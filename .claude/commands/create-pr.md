@@ -150,7 +150,9 @@ and pre-fill:
    only). After a human merges, `qa-handoff.yml` comments on the issue,
    assigns `@Roslin22`, and moves Project 4 → **In QA**. QA tests the
    **nightly** — merge is **not** blocked on QA.
-3. If **No**: check engineering-only; skip QA handoff.
+3. If **No**: check engineering-only. After merge, automation moves Project 4
+   → **Done** and **closes** the linked `Refs #NNN` issue (still never use
+   `Closes` / `Fixes` / `Resolves` in the PR body).
 
 Do **not** auto-check **Acceptance criteria** or **Scope** unless verified.
 
@@ -195,61 +197,15 @@ Skip entirely when the body has `Refs: none` (no-ticket chore).
    If `Refs: none`, skip this step.
 2. Do **not** move Product-owned columns (`In Progress (Product)`,
    `Product Ready`, `Sprint Shaping`).
-3. If the assigned issue is missing from Project 4, **add it**, then set Status
-   to **`In PR Review`**. Resolve the option **by name** when possible. Verified:
-   project `PVT_kwDOB8vK1s4A34c5`, Status field `PVTSSF_lADOB8vK1s4A34c5zgs8akY`,
-   In PR Review `19224fda`.
+3. If the assigned issue is missing from Project 4, the CLI **adds it**, then
+   sets Status to **`In PR Review`**.
+
+**Do not paste GraphQL** — use the shared CLI:
 
 ```bash
 ISSUE=<NNN>
-
-ITEM_ID=$(gh api graphql -f query='
-  query($n: Int!) {
-    repository(owner: "eten-tech-foundation", name: "fluent-mobile") {
-      issue(number: $n) {
-        projectItems(first: 10) {
-          nodes {
-            id
-            project { number }
-            fieldValueByName(name: "Status") {
-              ... on ProjectV2ItemFieldSingleSelectValue { name }
-            }
-          }
-        }
-      }
-    }
-  }' -F n=$ISSUE \
-  --jq '.data.repository.issue.projectItems.nodes[] | select(.project.number == 4) | .id')
-
-if [ -z "$ITEM_ID" ]; then
-  gh project item-add 4 --owner eten-tech-foundation \
-    --url "https://github.com/eten-tech-foundation/fluent-mobile/issues/$ISSUE"
-  ITEM_ID=$(gh api graphql -f query='
-    query($n: Int!) {
-      repository(owner: "eten-tech-foundation", name: "fluent-mobile") {
-        issue(number: $n) {
-          projectItems(first: 10) {
-            nodes { id project { number } }
-          }
-        }
-      }
-    }' -F n=$ISSUE \
-    --jq '.data.repository.issue.projectItems.nodes[] | select(.project.number == 4) | .id')
-fi
-
-if [ -z "$ITEM_ID" ]; then echo "WARN: issue #$ISSUE still not on Project 4; skipping."; else
-  gh api graphql -f query='
-    mutation($item: ID!) {
-      updateProjectV2ItemFieldValue(input: {
-        projectId: "PVT_kwDOB8vK1s4A34c5"
-        itemId: $item
-        fieldId: "PVTSSF_lADOB8vK1s4A34c5zgs8akY"
-        value: { singleSelectOptionId: "19224fda" }
-      }) { projectV2Item { id } }
-    }' -F item="$ITEM_ID" >/dev/null \
-    && echo "Moved issue #$ISSUE to In PR Review." \
-    || echo "WARN: failed to move issue #$ISSUE to In PR Review (continuing)."
-fi
+node .github/scripts/project-board-cli.cjs set-status \
+  --issue "$ISSUE" --to "In PR Review"
 ```
 
 ### 7. Wait for CI — **not done until green**

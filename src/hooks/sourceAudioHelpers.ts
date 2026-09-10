@@ -12,6 +12,43 @@ export function pickSourceAudioItem(
   return items.find(item => item.format === 'mp3') ?? items[0] ?? null;
 }
 
+/** Catalog duration in ms from the selected playable item (0 when missing). */
+export function sourceAudioItemDurationMs(
+  item: ApiSourceAudioItem | null | undefined,
+): number {
+  const durationSeconds = item?.durationSeconds;
+  if (durationSeconds === undefined || !Number.isFinite(durationSeconds)) {
+    return 0;
+  }
+  return Math.max(0, Math.round(durationSeconds * 1000));
+}
+
+/** Verse active at a playback position from provider timestamps (1 when missing). */
+export function verseAtPositionMs(
+  positionMs: number,
+  timestamps: ApiSourceAudioVerseTimestamp[] | undefined,
+  preferredDblAudioBibleId?: string,
+): number {
+  if (!timestamps?.length) return 1;
+  const verseNumbers = [...new Set(timestamps.map(t => t.verse))].sort(
+    (a, b) => a - b,
+  );
+  let activeVerse = verseNumbers[0] ?? 1;
+  for (const verseNumber of verseNumbers) {
+    const startMs = verseStartMs(
+      verseNumber,
+      timestamps,
+      preferredDblAudioBibleId,
+    );
+    if (startMs <= positionMs) {
+      activeVerse = verseNumber;
+    } else {
+      break;
+    }
+  }
+  return activeVerse;
+}
+
 /** Verse start offset in ms from provider timestamps (0 when missing). */
 export function verseStartMs(
   verse: number,

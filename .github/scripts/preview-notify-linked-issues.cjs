@@ -1,23 +1,17 @@
 /**
- * Shared helpers for linked-issue resolution and Project 4 → In QA moves.
+ * Shared helpers for linked-issue resolution (and re-export of In QA moves).
  *
  * Historically called from preview-build to mirror PR comments onto issues.
- * Post-merge QA handoff now owns issue comments / assignee / In QA via
- * qa-handoff-on-merge.cjs; this module still exports:
+ * Post-merge ticket handoff owns issue comments / assignee / Status via
+ * qa-handoff-on-merge.cjs. This module still exports:
  *   - collectLinkedIssueNumbersFromText / resolveLinkedIssueNumbers
- *   - moveIssuesToInQa (allowlist: In PR Review, In Progress (Dev))
+ *   - moveIssuesToInQa (from project-board.cjs)
  *
  * Soft-fails: callers must not fail the primary job if board side effects fail.
  *
  * Linked tickets are resolved from PR title/body via `Refs #NNN` (preferred)
  * and legacy closing keywords (`Closes` / `Fixes` / `Resolves`). `Part of #NNN`
  * is intentionally ignored so stacked/partial work does not get QA handoff.
- *
- * Env (optional):
- *   PROJECT_BOARD_TOKEN — PAT with org project write (preferred for Project 4)
- *   FLUENT_PROJECT_ID — Projects V2 node id (default: Fluent Project 4)
- *   FLUENT_STATUS_FIELD_ID — Status field node id
- *   FLUENT_IN_QA_OPTION_ID — "In QA" single-select option id
  *
  * @param {object} args
  * @param {import('@octokit/rest').Octokit} args.github
@@ -229,141 +223,13 @@ async function upsertIssueComment(
   });
 }
 
-const DEFAULT_PROJECT_ID = 'PVT_kwDOB8vK1s4A34c5'; // eten-tech-foundation Project 4 (Fluent)
-const DEFAULT_STATUS_FIELD_ID = 'PVTSSF_lADOB8vK1s4A34c5zgs8akY';
-const DEFAULT_IN_QA_OPTION_ID = 'bb3c3d02';
+const {
+  ENG_HANDOFF_FROM,
+  moveIssuesToInQa,
+} = require('./project-board.cjs');
 
-/** Only move from eng handoff statuses — never Product / terminal columns. */
-const ALLOWED_FROM_STATUS_NAMES = new Set([
-  'In Progress (Dev)',
-  'In PR Review',
-]);
-
-async function moveIssuesToInQa({
-  github,
-  core,
-  getOctokit,
-  owner,
-  repo,
-  issueNumbers,
-}) {
-  const projectId = process.env.FLUENT_PROJECT_ID || DEFAULT_PROJECT_ID;
-  const statusFieldId =
-    process.env.FLUENT_STATUS_FIELD_ID || DEFAULT_STATUS_FIELD_ID;
-  const inQaOptionId =
-    process.env.FLUENT_IN_QA_OPTION_ID || DEFAULT_IN_QA_OPTION_ID;
-
-  const boardGithub = await resolveBoardClient(github, getOctokit, core);
-  if (!boardGithub) return;
-
-  for (const issueNumber of issueNumbers) {
-    try {
-      const item = await findProjectItem(
-        boardGithub,
-        projectId,
-        owner,
-        repo,
-        issueNumber,
-      );
-      if (!item) {
-        core.info(`#${issueNumber} is not on Project 4 — skipping board move`);
-        continue;
-      }
-
-      const currentStatus = item.statusName || '';
-      if (currentStatus === 'In QA') {
-        core.info(`#${issueNumber} already In QA`);
-        continue;
-      }
-      if (!ALLOWED_FROM_STATUS_NAMES.has(currentStatus)) {
-        core.info(
-          `#${issueNumber} Status is "${
-            currentStatus || '(none)'
-          }" — not moving to In QA (allowlist: ${[
-            ...ALLOWED_FROM_STATUS_NAMES,
-          ].join(', ')})`,
-        );
-        continue;
-      }
-
-      await boardGithub.graphql(
-        `
-        mutation ($project: ID!, $item: ID!, $field: ID!, $option: String!) {
-          updateProjectV2ItemFieldValue(
-            input: {
-              projectId: $project
-              itemId: $item
-              fieldId: $field
-              value: { singleSelectOptionId: $option }
-            }
-          ) {
-            projectV2Item { id }
-          }
-        }
-      `,
-        {
-          project: projectId,
-          item: item.itemId,
-          field: statusFieldId,
-          option: inQaOptionId,
-        },
-      );
-      core.info(`Moved #${issueNumber} → In QA (was ${currentStatus})`);
-    } catch (error) {
-      core.warning(`Board move failed for #${issueNumber}: ${error.message}`);
-    }
-  }
-}
-
-async function resolveBoardClient(github, getOctokit, core) {
-  const projectToken = process.env.PROJECT_BOARD_TOKEN;
-  if (projectToken && typeof getOctokit === 'function') {
-    core.info('Using PROJECT_BOARD_TOKEN for Project 4 updates');
-    return getOctokit(projectToken);
-  }
-  if (projectToken) {
-    core.warning(
-      'PROJECT_BOARD_TOKEN is set but getOctokit was not provided — falling back to GITHUB_TOKEN',
-    );
-  } else {
-    core.info(
-      'PROJECT_BOARD_TOKEN unset — attempting Project 4 update with GITHUB_TOKEN (org projects often need a PAT)',
-    );
-  }
-  return github;
-}
-
-async function findProjectItem(github, projectId, owner, repo, issueNumber) {
-  const result = await github.graphql(
-    `
-    query ($owner: String!, $repo: String!, $number: Int!) {
-      repository(owner: $owner, name: $repo) {
-        issue(number: $number) {
-          projectItems(first: 20) {
-            nodes {
-              id
-              project { id }
-              fieldValueByName(name: "Status") {
-                ... on ProjectV2ItemFieldSingleSelectValue { name }
-              }
-            }
-          }
-        }
-      }
-    }
-  `,
-    { owner, repo, number: issueNumber },
-  );
-
-  const match = (result.repository?.issue?.projectItems?.nodes || []).find(
-    node => node.project?.id === projectId,
-  );
-  if (!match) return null;
-  return {
-    itemId: match.id,
-    statusName: match.fieldValueByName?.name || '',
-  };
-}
+/** @deprecated Prefer ENG_HANDOFF_FROM from project-board.cjs */
+const ALLOWED_FROM_STATUS_NAMES = ENG_HANDOFF_FROM;
 
 module.exports = notifyLinkedIssues;
 module.exports.collectLinkedIssueNumbersFromText =
