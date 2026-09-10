@@ -526,11 +526,18 @@ export async function insertProjectUnits(
   }
 }
 
+export type InsertChapterAssignmentSyncResult = {
+  insertedCount: number;
+  skipped: SkippedChapterAssignment[];
+};
+
 export async function insertChapterAssignmentSyncData(
   assignments: DBTypes.ChapterAssignment[],
-) {
+): Promise<InsertChapterAssignmentSyncResult> {
   const db = getDatabase();
   const userIds = collectAssigneeIds(assignments);
+  let insertedCount = 0;
+  let skipped: SkippedChapterAssignment[] = [];
 
   await db.transaction(async (tx: Transaction) => {
     const { stubbedCount } = await ensureUserStubs(tx, userIds);
@@ -540,12 +547,14 @@ export async function insertChapterAssignmentSyncData(
       parentContext.knownProjectIds,
       parentContext.projectUnitToProjectId,
     );
-    const { valid: validAssignments, skipped } =
-      partitionAssignmentsWithValidParents(
-        assignments,
-        parentContext,
-        unitsMapForFilter,
-      );
+    const partitioned = partitionAssignmentsWithValidParents(
+      assignments,
+      parentContext,
+      unitsMapForFilter,
+    );
+    const validAssignments = partitioned.valid;
+    skipped = partitioned.skipped;
+    insertedCount = validAssignments.length;
     const unitsMap = resolveProjectUnitsForSync(
       validAssignments,
       parentContext.knownProjectIds,
@@ -555,7 +564,7 @@ export async function insertChapterAssignmentSyncData(
 
     log.info('insertChapterAssignmentSyncData', {
       assignmentsCount: assignments.length,
-      insertCount: validAssignments.length,
+      insertCount: insertedCount,
       skippedCount,
       unitsMapSize: unitsMap.size,
       distinctAssigneesAndCheckers: userIds.length,
@@ -568,7 +577,7 @@ export async function insertChapterAssignmentSyncData(
     }
 
     if (skippedCount > 0) {
-      log.info('Skipping chapter assignments with missing FK parents', {
+      log.warn('Skipping chapter assignments with missing FK parents', {
         skippedCount,
         skippedIds: skipped
           .slice(0, SKIP_LOG_ID_LIMIT)
@@ -588,6 +597,8 @@ export async function insertChapterAssignmentSyncData(
       await insertChapterAssignmentTx(tx, assignment);
     }
   });
+
+  return { insertedCount, skipped };
 }
 
 type BibleChapterGroup = Map<
