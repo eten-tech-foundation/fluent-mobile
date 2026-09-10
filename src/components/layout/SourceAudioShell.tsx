@@ -8,6 +8,7 @@ import React, {
   useState,
 } from 'react';
 import { useDraftingContext } from '../../app/context/DraftingContext';
+import { useDraftingUnit } from '../../hooks/useDraftingUnit';
 import { useSourceAudio } from '../../hooks/useSourceAudio';
 import type { ChapterAssignmentData } from '../../types/db/types';
 import { SourceAudioPlayerBar } from './SourceAudioPlayerBar';
@@ -62,6 +63,7 @@ export function SourceAudioProvider({
     currentlyPlayingVerse,
     setCurrentlyPlayingVerse,
   } = useDraftingContext();
+  const { draftingUnit } = useDraftingUnit();
   const [recordTabSourceEnabled, setRecordTabSourceEnabledState] =
     useState(true);
   const pauseDraftPlaybackRef = useRef<() => Promise<void>>(async () => {});
@@ -110,9 +112,12 @@ export function SourceAudioProvider({
     (sourceAudio.status === 'playing' || sourceAudio.status === 'paused')
       ? currentlyPlayingVerse
       : selectedVerse;
+  const verseIndex = verses.findIndex(v => v.verseNumber === selectedVerse);
 
   const unitCaption =
-    verses.length > 0
+    draftingUnit === 'pericope' && verses.length > 0 && verseIndex >= 0
+      ? `Pericope ${verseIndex + 1} / ${verses.length}`
+      : verses.length > 0
       ? `Verse ${displayVerse} / ${verses.length}`
       : `Verse ${displayVerse}`;
 
@@ -144,6 +149,7 @@ export function SourceAudioProvider({
       chapterData.bibleName,
       currentlyPlayingVerse,
       displayVerse,
+      draftingUnit,
       unitCaption,
       sourceAudio.loadState,
       sourceAudio.positionMs,

@@ -526,11 +526,18 @@ export async function insertProjectUnits(
   }
 }
 
+export type InsertChapterAssignmentSyncResult = {
+  insertedCount: number;
+  skipped: SkippedChapterAssignment[];
+};
+
 export async function insertChapterAssignmentSyncData(
   assignments: DBTypes.ChapterAssignment[],
-) {
+): Promise<InsertChapterAssignmentSyncResult> {
   const db = getDatabase();
   const userIds = collectAssigneeIds(assignments);
+  let insertedCount = 0;
+  let skipped: SkippedChapterAssignment[] = [];
 
   await db.transaction(async (tx: Transaction) => {
     const { stubbedCount } = await ensureUserStubs(tx, userIds);
@@ -540,12 +547,14 @@ export async function insertChapterAssignmentSyncData(
       parentContext.knownProjectIds,
       parentContext.projectUnitToProjectId,
     );
-    const { valid: validAssignments, skipped } =
-      partitionAssignmentsWithValidParents(
-        assignments,
-        parentContext,
-        unitsMapForFilter,
-      );
+    const partitioned = partitionAssignmentsWithValidParents(
+      assignments,
+      parentContext,
+      unitsMapForFilter,
+    );
+    const validAssignments = partitioned.valid;
+    skipped = partitioned.skipped;
+    insertedCount = validAssignments.length;
     const unitsMap = resolveProjectUnitsForSync(
       validAssignments,
       parentContext.knownProjectIds,
@@ -555,7 +564,7 @@ export async function insertChapterAssignmentSyncData(
 
     log.info('insertChapterAssignmentSyncData', {
       assignmentsCount: assignments.length,
-      insertCount: validAssignments.length,
+      insertCount: insertedCount,
       skippedCount,
       unitsMapSize: unitsMap.size,
       distinctAssigneesAndCheckers: userIds.length,
@@ -568,7 +577,7 @@ export async function insertChapterAssignmentSyncData(
     }
 
     if (skippedCount > 0) {
-      log.info('Skipping chapter assignments with missing FK parents', {
+      log.warn('Skipping chapter assignments with missing FK parents', {
         skippedCount,
         skippedIds: skipped
           .slice(0, SKIP_LOG_ID_LIMIT)
@@ -588,6 +597,8 @@ export async function insertChapterAssignmentSyncData(
       await insertChapterAssignmentTx(tx, assignment);
     }
   });
+
+  return { insertedCount, skipped };
 }
 
 type BibleChapterGroup = Map<
@@ -952,6 +963,9 @@ export async function userHasLocalChapterAssignments(
  *
  * TODO(#71 follow-up): only the selected take per verse is upload-eligible.
  * All audio recoridngs takes needs to be uploaded.
+ *
+ * Pericope takes (#410) stay local until fluent-api supports verse-range
+ * translator recordings — do not map them onto PUT /verse-audio/{bibleTextId}.
  */
 export async function getPendingRecordings(chapter?: {
   bookId: number;
@@ -986,6 +1000,7 @@ export async function getPendingRecordings(chapter?: {
      FROM recordings r
      JOIN bible_texts bt ON bt.id = r.bible_text_id
      WHERE r.is_selected = 1
+       AND IFNULL(r.granularity, 'verse') = 'verse'
        AND r.sync_status NOT IN ('uploaded', 'conflicted')
        AND r.bible_text_id > 0
        ${chapterFilter}
@@ -1383,7 +1398,10 @@ export {
   selectRecordingTake,
   setCanonicalTake,
 } from './recordingsRepository';
-export type { AddRecordingTakeInput } from './recordingsRepository';
+export type {
+  AddRecordingTakeInput,
+  VerseTakeView,
+} from './recordingsRepository';
 
 export {
   enqueueDownloadItems,

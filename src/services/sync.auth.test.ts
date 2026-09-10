@@ -71,6 +71,7 @@ jest.mock('./storage', () => ({
     SYNC_ERROR_MASTER_DATA: 'sync_error_master_data',
     SYNC_ERROR_PROJECTS: 'sync_error_projects',
     SYNC_ERROR_CHAPTER_ASSIGNMENTS: 'sync_error_chapter_assignments',
+    SYNC_ERROR_CHAPTER_CLAIMS: 'sync_error_chapter_claims',
     SYNC_ERROR_PROJECT_UNITS: 'sync_error_project_units',
     SYNC_ERROR_BIBLE_TEXTS: 'sync_error_bible_texts',
   },
@@ -96,12 +97,23 @@ jest.mock('./storage', () => ({
   clearBibleTextsServerIdRemapPending: jest.fn(),
 }));
 
+jest.mock('./chapterClaimSync', () => ({
+  syncPendingChapterClaims: jest.fn().mockResolvedValue({
+    synced: 0,
+    conflicts: 0,
+    failed: 0,
+  }),
+}));
+
 jest.mock('../db/repository', () => ({
   insertMasterData: jest.fn().mockResolvedValue(undefined),
   insertProjects: jest.fn().mockResolvedValue(undefined),
   insertUserProjects: jest.fn().mockResolvedValue(undefined),
   ensureUserProjectMembership: jest.fn().mockResolvedValue(undefined),
-  insertChapterAssignmentSyncData: jest.fn().mockResolvedValue(undefined),
+  insertChapterAssignmentSyncData: jest.fn().mockResolvedValue({
+    insertedCount: 1,
+    skipped: [],
+  }),
   insertBibleTexts: jest.fn().mockResolvedValue(undefined),
   getChaptersToSync: jest.fn().mockResolvedValue(new Map()),
   getRecordingLinkedChaptersToSync: jest.fn().mockResolvedValue(new Map()),
@@ -124,11 +136,17 @@ const {
   userHasLocalProjects,
   userHasLocalChapterAssignments,
   userNeedsAssigneeRepair,
+  insertChapterAssignmentSyncData,
 } = jest.requireMock('../db/repository') as {
   getChaptersToSync: jest.Mock;
   userHasLocalProjects: jest.Mock;
   userHasLocalChapterAssignments: jest.Mock;
   userNeedsAssigneeRepair: jest.Mock;
+  insertChapterAssignmentSyncData: jest.Mock;
+};
+
+const { syncPendingChapterClaims } = jest.requireMock('./chapterClaimSync') as {
+  syncPendingChapterClaims: jest.Mock;
 };
 
 const { reconcileUserProjects, reconcileUserChapterWork } = jest.requireMock(
@@ -277,6 +295,100 @@ describe('refreshChapterMetadataIfOnline', () => {
       '2',
       '2026-08-18T07:10:52.908Z',
     );
+  });
+
+  it('sets chapter assignment sync error when user chapter work is fully FK-skipped', async () => {
+    jest.useFakeTimers();
+    (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+      data: [],
+    });
+    (FluentAPI.getUserChapterAssignments as jest.Mock).mockResolvedValue({
+      assignedChapters: [
+        {
+          chapterAssignmentId: 11,
+          projectUnitId: 22,
+          projectId: 5,
+          bibleId: 10,
+          bookId: 1,
+          chapterNumber: 1,
+          chapterStatus: 'in_progress',
+          totalVerses: 10,
+          completedVerses: 2,
+        },
+      ],
+      peerCheckChapters: [],
+    });
+    insertChapterAssignmentSyncData.mockResolvedValue({
+      insertedCount: 0,
+      skipped: [{ chapterAssignmentId: 11, reason: 'missing_bible' }],
+    });
+
+    try {
+      const pending = refreshChapterMetadataIfOnline(2);
+      const expectation = expect(pending).resolves.toBeUndefined();
+      await jest.advanceTimersByTimeAsync(500);
+      await jest.advanceTimersByTimeAsync(1000);
+      await expectation;
+
+      expect(setSyncError).toHaveBeenCalledWith(
+        'sync_error_chapter_assignments',
+        'Skipped all 1 chapter assignment(s) — missing FK parents',
+      );
+    } finally {
+      jest.useRealTimers();
+      insertChapterAssignmentSyncData.mockResolvedValue({
+        insertedCount: 1,
+        skipped: [],
+      });
+    }
+  });
+
+  it('applies partial FK skip warnings after chapter metadata refresh', async () => {
+    (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          chapterAssignmentId: 11,
+          projectUnitId: 22,
+          projectId: 5,
+          bibleId: 10,
+          bookId: 1,
+          chapterNumber: 1,
+          chapterStatus: 'in_progress',
+          totalVerses: 10,
+          completedVerses: 2,
+        },
+        {
+          chapterAssignmentId: 99,
+          projectUnitId: 22,
+          projectId: 5,
+          bibleId: 10,
+          bookId: 1,
+          chapterNumber: 2,
+          chapterStatus: 'in_progress',
+          totalVerses: 10,
+          completedVerses: 0,
+        },
+      ],
+    });
+    insertChapterAssignmentSyncData.mockResolvedValue({
+      insertedCount: 1,
+      skipped: [{ chapterAssignmentId: 99, reason: 'missing_book' }],
+    });
+
+    try {
+      await refreshChapterMetadataIfOnline(2);
+
+      expect(setSyncError).toHaveBeenCalledWith(
+        'sync_error_chapter_assignments',
+        'Skipped 1 of 2 chapter assignment(s) — missing FK parents',
+      );
+      expect(setUserLastSyncedAt).not.toHaveBeenCalled();
+    } finally {
+      insertChapterAssignmentSyncData.mockResolvedValue({
+        insertedCount: 1,
+        skipped: [],
+      });
+    }
   });
 
   it('shares an in-flight metadata refresh for the same user', async () => {
@@ -564,6 +676,46 @@ describe('syncAllData auth handling', () => {
     await syncAllData(true);
 
     expect(setUserLastSyncedAt).toHaveBeenCalledWith('2', expect.any(String));
+  });
+
+  it('continues chapter assignment sync after pending claim soft-fail', async () => {
+    jest.useFakeTimers();
+    mockGetConnectivitySnapshot.mockResolvedValue({
+      isOnline: true,
+      isWifi: true,
+      isCellular: false,
+    });
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'valid-token' });
+    (getUserLastSyncedAt as jest.Mock).mockReturnValue(
+      '2026-06-01T00:00:00.000Z',
+    );
+    syncPendingChapterClaims.mockResolvedValue({
+      synced: 0,
+      conflicts: 0,
+      failed: 1,
+    });
+
+    try {
+      const pending = syncAllData(true);
+      const expectation = expect(pending).resolves.toBeUndefined();
+      await jest.advanceTimersByTimeAsync(500);
+      await jest.advanceTimersByTimeAsync(1000);
+      await expectation;
+
+      expect(syncPendingChapterClaims).toHaveBeenCalled();
+      expect(FluentAPI.getChapterAssignments).toHaveBeenCalled();
+      expect(setSyncError).toHaveBeenCalledWith(
+        'sync_error_chapter_claims',
+        'Failed to sync 1 pending chapter claim(s)',
+      );
+    } finally {
+      jest.useRealTimers();
+      syncPendingChapterClaims.mockResolvedValue({
+        synced: 0,
+        conflicts: 0,
+        failed: 0,
+      });
+    }
   });
 });
 

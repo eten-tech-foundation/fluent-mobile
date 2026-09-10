@@ -438,6 +438,41 @@ function createFakeDb(initialVersion = 0) {
         return emptyResult(tables.get('user_projects')!.rows);
       }
 
+      if (/^UPDATE\s+recordings\b/i.test(sql)) {
+        const recTable = tables.get('recordings');
+        const btTable = tables.get('bible_texts');
+        if (recTable) {
+          for (const row of recTable.rows) {
+            const granularity = row.granularity;
+            if (
+              granularity === null ||
+              granularity === undefined ||
+              granularity === 'verse' ||
+              granularity === 0
+            ) {
+              row.granularity = 'verse';
+              const bt = btTable?.rows.find(
+                entry => entry.id === row.bible_text_id,
+              );
+              if (bt) {
+                row.start_chapter = bt.chapter_number;
+                row.start_verse = bt.verse_number;
+                row.end_chapter = bt.chapter_number;
+                row.end_verse = bt.verse_number;
+              }
+            }
+          }
+        }
+        return emptyResult();
+      }
+
+      if (
+        /^SELECT\s+COUNT\(\*\)\s+AS\s+count\s+FROM\s+bible_texts/i.test(sql)
+      ) {
+        const bt = tables.get('bible_texts');
+        return emptyResult([{ count: bt?.rows.length ?? 0 }]);
+      }
+
       // Baseline CREATE statements may include whitespace quirks; ignore unknown DDL in fake.
       if (/^CREATE\s+/i.test(sql) || sql.length === 0) {
         return emptyResult();
@@ -1027,6 +1062,64 @@ describe('recordings version_token migration (#256)', () => {
     await runMigrations(db);
 
     expect(await columnExists(db, 'recordings', 'version_token')).toBe(true);
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
+  });
+});
+
+describe('recordings granularity migration (#410)', () => {
+  it('adds granularity and verse-range columns when upgrading from v16', async () => {
+    const db = createFakeDb(16);
+    db._tables.set('bible_texts', {
+      columns: new Set([
+        'id',
+        'bible_id',
+        'book_id',
+        'chapter_number',
+        'verse_number',
+        'text',
+      ]),
+      rows: [
+        {
+          id: 10,
+          bible_id: 1,
+          book_id: 1,
+          chapter_number: 14,
+          verse_number: 3,
+          text: 'verse',
+        },
+      ],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+    db._tables.set('recordings', {
+      columns: new Set([
+        'id',
+        'bible_text_id',
+        'local_file_path',
+        'sync_status',
+        'updated_at',
+        'version_token',
+      ]),
+      rows: [{ id: 'rec_1', bible_text_id: 10, sync_status: 'pending' }],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+
+    expect(await columnExists(db, 'recordings', 'granularity')).toBe(false);
+
+    await runMigrations(db);
+
+    expect(await columnExists(db, 'recordings', 'granularity')).toBe(true);
+    expect(await columnExists(db, 'recordings', 'start_chapter')).toBe(true);
+    expect(await columnExists(db, 'recordings', 'start_verse')).toBe(true);
+    expect(await columnExists(db, 'recordings', 'end_chapter')).toBe(true);
+    expect(await columnExists(db, 'recordings', 'end_verse')).toBe(true);
+    const row = db._tables.get('recordings')!.rows[0]!;
+    expect(row.granularity).toBe('verse');
+    expect(row.start_chapter).toBe(14);
+    expect(row.start_verse).toBe(3);
+    expect(row.end_chapter).toBe(14);
+    expect(row.end_verse).toBe(3);
     await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
   });
 });

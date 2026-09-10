@@ -21,6 +21,13 @@ jest.mock('../../hooks/useSourceAudio', () => ({
   useSourceAudio: (...args: unknown[]) => mockUseSourceAudio(...args),
 }));
 
+jest.mock('../../hooks/useDraftingUnit', () => ({
+  useDraftingUnit: () => ({
+    draftingUnit: 'verse',
+    setDraftingUnit: jest.fn(),
+  }),
+}));
+
 const chapterData: ChapterAssignmentData = {
   id: 1,
   projectUnitId: 1,

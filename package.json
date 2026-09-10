@@ -15,7 +15,9 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
-    "doctor": "expo-doctor"
+    "doctor": "expo-doctor",
+    "expo:check": "node ./scripts/expo-check-offline.cjs",
+    "expo:check:latest": "expo install --check"
   },
   "dependencies": {
     "@op-engineering/op-sqlite": "^15.2.11",
@@ -39,7 +41,7 @@
     "expo-status-bar": "~57.0.1",
     "expo-system-ui": "~57.0.3",
     "expo-updates": "~57.0.21",
-    "lucide-react-native": "^0.544.0",
+    "lucide-react-native": "^0.577.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.3",

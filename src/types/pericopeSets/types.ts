@@ -27,6 +27,7 @@ export interface RawFcbhPericopeRow {
 export interface BundledPericopeVerse {
   chapterNumber: number;
   verseNumber: number;
+  section: number | null;
   pericopeNumber: string;
   pericopeTitle: string | null;
 }

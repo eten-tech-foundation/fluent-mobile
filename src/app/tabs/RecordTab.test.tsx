@@ -6,7 +6,6 @@ import {
   waitFor,
   fireEvent,
 } from '@testing-library/react-native';
-import { getBibleTextId } from '../../db/queries';
 import { RecordTab } from './RecordTab';
 import { DraftingProvider } from '../context/DraftingContext';
 import {
@@ -14,7 +13,13 @@ import {
   RECORD_TAKEN_CHAPTER_WARNING,
   RECORD_SOURCE_TEXT_UNAVAILABLE,
 } from '../../constants/messages';
-import type { useVerseAudio } from '../../hooks/useVerseAudio';
+import { getProjectPericopeSetId } from '../../db/repository';
+import type {
+  useVerseAudio,
+  UseVerseAudioArgs,
+} from '../../hooks/useVerseAudio';
+import type { useDraftingUnit } from '../../hooks/useDraftingUnit';
+import { getBibleTextId, getPericopeForVerse } from '../../db/queries';
 import type {
   Recording,
   RecordingWithOwner,
@@ -29,9 +34,14 @@ jest.mock('expo-router', () => ({
   }),
 }));
 
+jest.mock('../../hooks/resolveRecordingUnit', () => ({
+  resolveRecordingUnit: jest.fn(async () => null),
+}));
+
 jest.mock('../../db/queries', () => ({
   getBibleTextId: jest.fn(async () => 42),
   getRecordedVerseNumbers: jest.fn(async () => new Set([3])),
+  getPericopeForVerse: jest.fn(async () => null),
 }));
 
 const mockGetBibleTextId = getBibleTextId as jest.MockedFunction<
@@ -39,7 +49,7 @@ const mockGetBibleTextId = getBibleTextId as jest.MockedFunction<
 >;
 
 jest.mock('../../hooks/useVerseAudio', () => ({
-  useVerseAudio: () => mockUseVerseAudio(),
+  useVerseAudio: (args: UseVerseAudioArgs) => mockUseVerseAudio(args),
 }));
 
 const mockStopSourceAudio = jest.fn().mockResolvedValue(undefined);
@@ -59,13 +69,6 @@ jest.mock('../../components/layout/SourceAudioShell', () => ({
   SourceAudioBarSlot: () => null,
 }));
 
-jest.mock('../../hooks/useDraftingUnit', () => ({
-  useDraftingUnit: () => ({
-    draftingUnit: 'verse',
-    setDraftingUnit: jest.fn(),
-  }),
-}));
-
 jest.mock('../../hooks/useGlobalSyncStatus', () => ({
   useGlobalSyncStatus: () => false,
 }));
@@ -76,6 +79,23 @@ jest.mock('../../audio/micPermission', () => ({
 
 jest.mock('../../services/stageAdvance', () => ({
   confirmStageAdvancement: jest.fn(async () => undefined),
+}));
+
+jest.mock('../../db/repository', () => ({
+  getProjectPericopeSetId: jest.fn(async () => null),
+}));
+
+type DraftingUnitApi = ReturnType<typeof useDraftingUnit>;
+
+const mockUseDraftingUnit = jest.fn(
+  (): DraftingUnitApi => ({
+    draftingUnit: 'verse',
+    setDraftingUnit: jest.fn(),
+  }),
+);
+
+jest.mock('../../hooks/useDraftingUnit', () => ({
+  useDraftingUnit: () => mockUseDraftingUnit(),
 }));
 
 type VerseAudioApi = ReturnType<typeof useVerseAudio>;
@@ -92,8 +112,13 @@ function makeTake(overrides: Partial<Recording> = {}): Recording {
     syncStatus: 'pending',
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
+    granularity: 'verse',
+    startChapter: 14,
+    startVerse: 3,
+    endChapter: 14,
+    endVerse: 3,
     ...overrides,
-  } as Recording;
+  };
 }
 
 function makeOwnedTake(
@@ -134,7 +159,9 @@ const idleAudio: VerseAudioApi = {
   setCanonical: jest.fn(),
 };
 
-const mockUseVerseAudio = jest.fn((): VerseAudioApi => idleAudio);
+const mockUseVerseAudio = jest.fn(
+  (_args: UseVerseAudioArgs): VerseAudioApi => idleAudio,
+);
 
 const mockUseChapterConflictStatus = jest.fn((chapterId: number) => {
   void chapterId;
@@ -231,6 +258,10 @@ describe('RecordTab', () => {
       status: 'idle',
     });
     mockUseChapterConflictStatus.mockReturnValue({ hasConflict: false });
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'verse',
+      setDraftingUnit: jest.fn(),
+    });
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 
@@ -250,6 +281,64 @@ describe('RecordTab', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('record-syncing-hint')).toBeNull();
     });
+  });
+
+  it('disables record until bible text resolves for the active verse', async () => {
+    const multiVerses = [
+      {
+        bibleId: 1,
+        bookId: 1,
+        chapterNumber: 14,
+        verseNumber: 3,
+        text: 'v3',
+      },
+      {
+        bibleId: 1,
+        bookId: 1,
+        chapterNumber: 14,
+        verseNumber: 5,
+        text: 'v5',
+      },
+    ];
+    let resolveVerseFive: (id: number) => void = () => {};
+    mockGetBibleTextId.mockImplementation(async (_b, _bk, _ch, verse) => {
+      if (verse === 3) {
+        return 100;
+      }
+      if (verse === 5) {
+        return await new Promise<number>(resolve => {
+          resolveVerseFive = resolve;
+        });
+      }
+      return null;
+    });
+
+    const capturedIds: (number | null)[] = [];
+    mockUseVerseAudio.mockImplementation((args: UseVerseAudioArgs) => {
+      capturedIds.push(args.bibleTextId);
+      return idleAudio;
+    });
+
+    render(
+      <DraftingProvider verses={multiVerses} initialVerse={3}>
+        <RecordTab chapterData={chapterData} userId={42} />
+      </DraftingProvider>,
+    );
+
+    await waitFor(() => {
+      expect(capturedIds.some(id => id === 100)).toBe(true);
+    });
+
+    fireEvent.press(screen.getByTestId('record-next-verse'));
+
+    expect(screen.getByTestId('record-start-button')).toBeDisabled();
+    expect(capturedIds.at(-1)).toBeNull();
+
+    resolveVerseFive(200);
+    await waitFor(() => {
+      expect(screen.getByTestId('record-start-button')).toBeEnabled();
+    });
+    expect(capturedIds.some(id => id === 200)).toBe(true);
   });
 
   it('does not claim text is syncing when bible text is missing and sync is idle', async () => {
@@ -311,7 +400,9 @@ describe('RecordTab', () => {
     renderTab();
 
     expect(screen.getByTestId('record-take-row')).toBeTruthy();
-    expect(screen.getByTestId('record-take-badge')).toHaveTextContent('Take 1');
+    expect(screen.getByTestId('record-take-badge')).toHaveTextContent(
+      'Take 1 - Verse - v. 3',
+    );
     expect(screen.getByTestId('record-play-button')).toBeTruthy();
     expect(screen.getByTestId('record-take-time')).toBeTruthy();
     // Not the loaded take (playingTakeId is null), so position falls back to
@@ -323,6 +414,27 @@ describe('RecordTab', () => {
     expect(screen.getByText('Record New Take')).toBeTruthy();
     // Toggle hidden — only this account has takes for the unit.
     expect(screen.queryByTestId('take-view-toggle')).toBeNull();
+  });
+
+  it('renders a pericope take subtitle from capture metadata', () => {
+    const take = makeTake({
+      takeNumber: 2,
+      granularity: 'pericope',
+      startVerse: 3,
+      endVerse: 7,
+    });
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      state: 'recorded',
+      takes: [take],
+      selectedTake: take,
+    });
+
+    renderTab();
+
+    expect(screen.getByTestId('record-take-badge')).toHaveTextContent(
+      'Take 2 - Pericope - vv. 3-7',
+    );
   });
 
   it('renders one card per take, in list order, with only the latest marked selected', () => {
@@ -339,8 +451,8 @@ describe('RecordTab', () => {
 
     const badges = screen.getAllByTestId('record-take-badge');
     expect(badges).toHaveLength(2);
-    expect(badges[0]).toHaveTextContent('Take 1');
-    expect(badges[1]).toHaveTextContent('Take 2');
+    expect(badges[0]).toHaveTextContent('Take 1 - Verse - v. 3');
+    expect(badges[1]).toHaveTextContent('Take 2 - Verse - v. 3');
 
     expect(
       screen.getByLabelText('Select this take as active draft'),
@@ -688,8 +800,8 @@ describe('RecordTab', () => {
 
       const badges = screen.getAllByTestId('shared-take-badge');
       expect(badges).toHaveLength(3);
-      expect(badges[1]).toHaveTextContent('Take 1');
-      expect(badges[2]).toHaveTextContent('Take 2');
+      expect(badges[1]).toHaveTextContent('Take 1 - Verse - v. 3');
+      expect(badges[2]).toHaveTextContent('Take 2 - Verse - v. 3');
     });
 
     it('tapping the canonical circle in All Takes calls setCanonical with the take id', () => {
@@ -879,5 +991,139 @@ describe('RecordTab', () => {
       expect(screen.getByTestId('record-start-button')).toBeTruthy();
     });
     expect(screen.queryByTestId('stage-advance-button')).toBeNull();
+  });
+
+  describe('Mode-aware Current Unit Title (#409)', () => {
+    it('shows the pericope range and title as a subtitle when a pericope resolves', async () => {
+      mockUseDraftingUnit.mockReturnValue({
+        draftingUnit: 'pericope',
+        setDraftingUnit: jest.fn(),
+      });
+      (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(7);
+      (getPericopeForVerse as jest.Mock).mockResolvedValueOnce({
+        pericopeNumber: '1',
+        pericopeTitle: 'The plot to kill Jesus; anointing at Bethany',
+        section: null,
+        verses: [
+          { chapterNumber: 14, verseNumber: 1 },
+          { chapterNumber: 14, verseNumber: 2 },
+          { chapterNumber: 14, verseNumber: 3 },
+        ],
+      });
+
+      renderTab();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+          'Mark 14:1–3',
+        );
+      });
+      expect(
+        screen.getByTestId('record-verse-reference-subtitle'),
+      ).toHaveTextContent('The plot to kill Jesus; anointing at Bethany');
+    });
+
+    it('falls back silently to the plain verse reference when no pericope set is configured', async () => {
+      mockUseDraftingUnit.mockReturnValue({
+        draftingUnit: 'pericope',
+        setDraftingUnit: jest.fn(),
+      });
+      (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(null);
+
+      renderTab();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+          'Mark 14:3',
+        );
+      });
+      expect(
+        screen.queryByTestId('record-verse-reference-subtitle'),
+      ).toBeNull();
+    });
+
+    it('never shows a subtitle in verse mode, even if a pericope would resolve', () => {
+      mockUseDraftingUnit.mockReturnValue({
+        draftingUnit: 'verse',
+        setDraftingUnit: jest.fn(),
+      });
+
+      renderTab();
+
+      expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+        'Mark 14:3',
+      );
+      expect(
+        screen.queryByTestId('record-verse-reference-subtitle'),
+      ).toBeNull();
+    });
+  });
+
+  it('formats a cross-chapter pericope range with explicit chapter numbers on both endpoints', async () => {
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(7);
+    (getPericopeForVerse as jest.Mock).mockResolvedValueOnce({
+      pericopeNumber: '2',
+      pericopeTitle: null,
+      section: null,
+      verses: [
+        { chapterNumber: 14, verseNumber: 45 },
+        { chapterNumber: 15, verseNumber: 1 },
+        { chapterNumber: 15, verseNumber: 3 },
+      ],
+    });
+
+    renderTab();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+        'Mark 14:45–15:3',
+      );
+    });
+  });
+  it('ignores a stale pericope lookup that resolves after a mode switch away from pericope', async () => {
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(7);
+
+    let resolveStale: (value: unknown) => void;
+    (getPericopeForVerse as jest.Mock).mockReturnValueOnce(
+      new Promise(resolve => {
+        resolveStale = resolve;
+      }),
+    );
+
+    const { rerender } = renderTab();
+
+    // Switch to verse mode before the in-flight pericope lookup resolves.
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'verse',
+      setDraftingUnit: jest.fn(),
+    });
+    rerender(
+      <DraftingProvider verses={verses} initialVerse={3}>
+        <RecordTab chapterData={chapterData} userId={42} />
+      </DraftingProvider>,
+    );
+
+    // Now let the stale request resolve — it must not resurrect a subtitle.
+    resolveStale!({
+      pericopeNumber: '1',
+      pericopeTitle: 'Stale title',
+      section: null,
+      verses: [{ chapterNumber: 14, verseNumber: 3 }],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+        'Mark 14:3',
+      );
+    });
+    expect(screen.queryByTestId('record-verse-reference-subtitle')).toBeNull();
   });
 });
