@@ -30,10 +30,11 @@ Agents: UI reads here after sync; writes happen only in the repository. See [`.c
 
 - `runMigrations(db)` applies steps with `version > PRAGMA user_version`, once each, in a transaction.
 - Use `rebuildTable()` for SQLite FK/default/type changes (#99 / #103).
-- Current schema version: see `CURRENT_SCHEMA_VERSION` in `migrations.ts` (v3 = `projects.metadata`; v4 = `chapter_assignments` assigned-user FK + `idx_ca_assigned_user`; v5 = `user_projects.user_id` FK; v6 = `recordings.recorded_by_user_id`; v7 = `recordings.is_latest` renamed to `is_selected`; v8 = `download_queue` table #51; v9 = `download_queue.user_id` #53; v10 = user-scoped `idx_dq_active_resource` #53; v11 = `chapter_claim_queue` table; v12 = `recordings.is_canonical`; v13 = `chapter_assignments.has_conflict` #260).
+- Current schema version: see `CURRENT_SCHEMA_VERSION` in `migrations.ts` (v3 = `projects.metadata`; v4 = `chapter_assignments` assigned-user FK + `idx_ca_assigned_user`; v5 = `user_projects.user_id` FK; v6 = `recordings.recorded_by_user_id`; v7 = `recordings.is_latest` renamed to `is_selected`; v8 = `download_queue` table #51; v9 = `download_queue.user_id` #53; v10 = user-scoped `idx_dq_active_resource` #53; v11 = `chapter_claim_queue` table; v12 = `recordings.is_canonical`; v13 = `chapter_assignments.has_conflict` #260; v14 = `recordings.version_token`; v15 = pericope tables; v16 = bible_texts server-id remap flag #469; v17 = recordings granularity + verse range #410).
 
 ## Recordings linkage
 
 - Canonical link is `recordings.bible_text_id → bible_texts.id` (not `chapter_assignment_id`).
+- **`bible_texts.id` is the Fluent API verse id** (bulk-texts `verses[].id`), not a local surrogate — upload sends it as `bibleTextId` (#469).
 - Chapter aggregates join assignments → chapter `bible_texts` → latest recordings for the active user (`RECORDINGS_JOIN_CA` binds `recorded_by_user_id`).
 - Capture attribution: `recorded_by_user_id` from `getActiveUserId()` (#105); take / `is_selected` scoped per user.

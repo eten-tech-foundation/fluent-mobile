@@ -20,6 +20,7 @@ type RecordingRow = {
   version_token: number | null;
   upload_error: string | null;
   updated_at: string;
+  granularity?: string;
 };
 
 type BibleTextRow = {
@@ -131,7 +132,9 @@ function createRecordingConflictTestDb() {
           r =>
             r.is_selected === 1 &&
             r.sync_status !== 'uploaded' &&
-            r.sync_status !== 'conflicted',
+            r.sync_status !== 'conflicted' &&
+            r.bible_text_id > 0 &&
+            (r.granularity ?? 'verse') !== 'pericope',
         )
         .map(r => {
           const bt = bibleTexts.find(b => b.id === r.bible_text_id)!;
@@ -222,6 +225,49 @@ describe('recording upload conflict repository helpers (#256)', () => {
 
   it('getPendingRecordings excludes uploaded and conflicted rows', async () => {
     const db = createRecordingConflictTestDb();
+    setDatabase(db as never);
+
+    const pending = await getPendingRecordings();
+    expect(pending.map(r => r.id)).toEqual(['rec-pending']);
+  });
+
+  it('getPendingRecordings excludes non-positive bible_text_id rows', async () => {
+    const db = createRecordingConflictTestDb();
+    db.__recordings.push({
+      id: 'rec-parked',
+      bible_text_id: -1000007,
+      local_file_path: '/parked.m4a',
+      duration_ms: 1000,
+      recorded_by_user_id: 1,
+      is_selected: 1,
+      sync_status: 'pending',
+      blob_key: null,
+      version_token: null,
+      upload_error: null,
+      updated_at: '2026-01-06T00:00:00.000Z',
+    });
+    setDatabase(db as never);
+
+    const pending = await getPendingRecordings();
+    expect(pending.map(r => r.id)).toEqual(['rec-pending']);
+  });
+
+  it('getPendingRecordings excludes pericope takes (#410 upload waiver)', async () => {
+    const db = createRecordingConflictTestDb();
+    db.__recordings.push({
+      id: 'rec-pericope',
+      bible_text_id: 42,
+      local_file_path: '/p.m4a',
+      duration_ms: 1000,
+      recorded_by_user_id: 1,
+      is_selected: 1,
+      sync_status: 'pending',
+      blob_key: null,
+      version_token: null,
+      upload_error: null,
+      updated_at: '2026-01-07T00:00:00.000Z',
+      granularity: 'pericope',
+    });
     setDatabase(db as never);
 
     const pending = await getPendingRecordings();

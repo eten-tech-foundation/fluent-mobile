@@ -21,10 +21,18 @@ export const KV_KEYS = {
   SYNC_ERROR_MASTER_DATA: 'sync_error_master_data',
   SYNC_ERROR_PROJECTS: 'sync_error_projects',
   SYNC_ERROR_CHAPTER_ASSIGNMENTS: 'sync_error_chapter_assignments',
+  SYNC_ERROR_CHAPTER_CLAIMS: 'sync_error_chapter_claims',
   SYNC_ERROR_PROJECT_UNITS: 'sync_error_project_units',
   SYNC_ERROR_BIBLE_TEXTS: 'sync_error_bible_texts',
+  SYNC_ERROR_PERICOPES: 'sync_error_pericopes',
+  SYNC_ERROR_PERICOPE_SETS: 'sync_error_pericope_sets',
   /** ISO timestamp; empty / missing = not paused. */
   SYNC_PAUSED_UNTIL: 'sync_paused_until',
+  /**
+   * When `'1'`, next bible-text sync full-fetches (no `updatedAfter`) so local
+   * autoincrement ids remap to server verse ids (#469).
+   */
+  BIBLE_TEXTS_SERVER_IDS_REMAP_PENDING: 'bible_texts_server_ids_remap_pending',
 } as const;
 
 export function clearUserSession() {
@@ -81,8 +89,11 @@ export function clearAllSyncErrors() {
   clearSyncError(KV_KEYS.SYNC_ERROR_MASTER_DATA);
   clearSyncError(KV_KEYS.SYNC_ERROR_PROJECTS);
   clearSyncError(KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS);
+  clearSyncError(KV_KEYS.SYNC_ERROR_CHAPTER_CLAIMS);
   clearSyncError(KV_KEYS.SYNC_ERROR_PROJECT_UNITS);
   clearSyncError(KV_KEYS.SYNC_ERROR_BIBLE_TEXTS);
+  clearSyncError(KV_KEYS.SYNC_ERROR_PERICOPES);
+  clearSyncError(KV_KEYS.SYNC_ERROR_PERICOPE_SETS);
   log.info('All sync errors cleared');
 }
 
@@ -257,4 +268,64 @@ export function setSyncPausedUntilMs(ms: number | null): void {
 
 export function clearSyncPausedUntil(): void {
   setSyncPausedUntilMs(null);
+}
+
+const pericopeSetVersionKey = (pericopeSetId: number) =>
+  `pericope_set_version:${pericopeSetId}`;
+
+export function getPericopeSetVersion(pericopeSetId: number): string {
+  return kvStorage.getItemSync(pericopeSetVersionKey(pericopeSetId)) ?? '';
+}
+
+export function setPericopeSetVersion(
+  pericopeSetId: number,
+  version: string,
+): void {
+  kvStorage.setItemSync(pericopeSetVersionKey(pericopeSetId), version);
+  log.info('Pericope set version updated', { pericopeSetId, version });
+}
+
+const pericopeBookVersionKey = (pericopeSetId: number, bookCode: string) =>
+  `pericope_book_version:${pericopeSetId}:${bookCode}`;
+
+export function getPericopeBookVersion(
+  pericopeSetId: number,
+  bookCode: string,
+): string {
+  return (
+    kvStorage.getItemSync(pericopeBookVersionKey(pericopeSetId, bookCode)) ?? ''
+  );
+}
+
+export function setPericopeBookVersion(
+  pericopeSetId: number,
+  bookCode: string,
+  version: string,
+): void {
+  kvStorage.setItemSync(
+    pericopeBookVersionKey(pericopeSetId, bookCode),
+    version,
+  );
+}
+
+/** Mark that the next bible-text sync must full-fetch to remap server ids (#469). */
+export function markBibleTextsServerIdRemapPending(): void {
+  kvStorage.setItemSync(KV_KEYS.BIBLE_TEXTS_SERVER_IDS_REMAP_PENDING, '1');
+  log.info('Bible texts server-id remap pending');
+}
+
+/** True when next bible-text sync must full-fetch to remap server ids (#469). */
+export function isBibleTextsServerIdRemapPending(): boolean {
+  return (
+    kvStorage.getItemSync(KV_KEYS.BIBLE_TEXTS_SERVER_IDS_REMAP_PENDING) === '1'
+  );
+}
+
+/** Clear the one-shot remap flag after a successful bible-text sync (#469). */
+export function clearBibleTextsServerIdRemapPending(): void {
+  if (!isBibleTextsServerIdRemapPending()) {
+    return;
+  }
+  kvStorage.removeItemSync(KV_KEYS.BIBLE_TEXTS_SERVER_IDS_REMAP_PENDING);
+  log.info('Cleared bible texts server-id remap pending flag');
 }

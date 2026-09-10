@@ -51,6 +51,11 @@ jest.mock('../../services/syncEvents', () => ({
   onSyncComplete: () => jest.fn(),
 }));
 
+jest.mock('../../services/sync', () => ({
+  syncBibleTexts: jest.fn().mockResolvedValue(undefined),
+  syncMasterData: jest.fn().mockResolvedValue(undefined),
+}));
+
 jest.mock('../../utils/draftingTabState', () => ({
   getLastActiveTab: () => 'record',
   setLastActiveTab: jest.fn(),
@@ -150,6 +155,7 @@ const baseAssignment = {
   status: 'in_progress',
   bibleName: 'BSB',
   bookCode: 'MRK',
+  sourceLanguageCode: 'eng',
 };
 
 describe('DraftingScreen onChapterClaimed', () => {

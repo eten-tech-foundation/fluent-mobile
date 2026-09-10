@@ -36,7 +36,8 @@ export const createTableQueries: string[] = [
       is_active          INTEGER NOT NULL DEFAULT 1,
       status             TEXT NOT NULL DEFAULT 'not_assigned',
       updated_at         TEXT NOT NULL,
-      metadata           TEXT
+      metadata           TEXT,
+      pericope_set_id    INTEGER
     );`,
 
   `CREATE TABLE IF NOT EXISTS project_units (
@@ -68,6 +69,10 @@ export const createTableQueries: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_ca_project_unit ON chapter_assignments(project_unit_id);`,
   `CREATE INDEX IF NOT EXISTS idx_ca_assigned_user ON chapter_assignments(assigned_user_id);`,
 
+  /**
+   * `id` is the Fluent API bible-text id (bulk-texts `verses[].id`), not a
+   * local surrogate — recordings upload that value as `bibleTextId` (#469).
+   */
   `CREATE TABLE IF NOT EXISTS bible_texts (
       id             INTEGER PRIMARY KEY,
       bible_id       INTEGER NOT NULL REFERENCES bibles(id),
@@ -98,6 +103,11 @@ export const createTableQueries: string[] = [
       take_number           INTEGER NOT NULL DEFAULT 1,
       is_selected           INTEGER NOT NULL DEFAULT 1,
       is_canonical          INTEGER NOT NULL DEFAULT 0,
+      granularity           TEXT NOT NULL DEFAULT 'verse',
+      start_chapter         INTEGER NOT NULL DEFAULT 0,
+      start_verse           INTEGER NOT NULL DEFAULT 0,
+      end_chapter           INTEGER NOT NULL DEFAULT 0,
+      end_verse             INTEGER NOT NULL DEFAULT 0,
       sync_status           TEXT NOT NULL DEFAULT 'pending',
       version_token         INTEGER,
       upload_error          TEXT,
@@ -154,4 +164,28 @@ export const createTableQueries: string[] = [
 
   `CREATE INDEX IF NOT EXISTS idx_ccq_chapter_assignment ON chapter_claim_queue(chapter_assignment_id);`,
   `CREATE INDEX IF NOT EXISTS idx_ccq_status ON chapter_claim_queue(sync_status);`,
+
+  `CREATE TABLE IF NOT EXISTS pericope_sets (
+      id          INTEGER PRIMARY KEY,
+      name        TEXT NOT NULL,
+      description TEXT
+    );`,
+
+  `CREATE TABLE IF NOT EXISTS pericope_verses (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      pericope_set_id INTEGER REFERENCES pericope_sets(id),
+      book_id         INTEGER NOT NULL REFERENCES books(id),
+      chapter_number  INTEGER NOT NULL,
+      verse_number    INTEGER NOT NULL,
+      section         INTEGER,
+      pericope_number TEXT NOT NULL,
+      pericope_title  TEXT,
+      UNIQUE (pericope_set_id, book_id, chapter_number, verse_number)
+    );`,
+
+  `CREATE INDEX IF NOT EXISTS idx_pv_book_chapter
+     ON pericope_verses(book_id, chapter_number);`,
+
+  `CREATE INDEX IF NOT EXISTS idx_pv_pericope
+     ON pericope_verses(pericope_set_id, book_id, pericope_number, chapter_number, verse_number);`,
 ];
