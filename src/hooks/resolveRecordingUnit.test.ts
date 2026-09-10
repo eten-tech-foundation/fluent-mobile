@@ -69,6 +69,7 @@ describe('resolveRecordingUnit', () => {
     mockGetPericopeForVerse.mockResolvedValue({
       pericopeNumber: '1.1',
       pericopeTitle: 'Title',
+      section: null,
       verses: [
         { chapterNumber: 14, verseNumber: 3 },
         { chapterNumber: 14, verseNumber: 4 },

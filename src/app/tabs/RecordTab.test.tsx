@@ -6,7 +6,6 @@ import {
   waitFor,
   fireEvent,
 } from '@testing-library/react-native';
-import { getBibleTextId } from '../../db/queries';
 import { RecordTab } from './RecordTab';
 import { DraftingProvider } from '../context/DraftingContext';
 import {
@@ -14,11 +13,14 @@ import {
   RECORD_TAKEN_CHAPTER_WARNING,
   RECORD_SOURCE_TEXT_UNAVAILABLE,
 } from '../../constants/messages';
+import { getProjectPericopeSetId } from '../../db/repository';
 import type {
   useVerseAudio,
   UseVerseAudioArgs,
 } from '../../hooks/useVerseAudio';
 import type { useSourceAudio } from '../../hooks/useSourceAudio';
+import type { useDraftingUnit } from '../../hooks/useDraftingUnit';
+import { getBibleTextId, getPericopeForVerse } from '../../db/queries';
 import type {
   Recording,
   RecordingWithOwner,
@@ -40,6 +42,7 @@ jest.mock('../../hooks/resolveRecordingUnit', () => ({
 jest.mock('../../db/queries', () => ({
   getBibleTextId: jest.fn(async () => 42),
   getRecordedVerseNumbers: jest.fn(async () => new Set([3])),
+  getPericopeForVerse: jest.fn(async () => null),
 }));
 
 const mockGetBibleTextId = getBibleTextId as jest.MockedFunction<
@@ -54,13 +57,6 @@ jest.mock('../../hooks/useSourceAudio', () => ({
   useSourceAudio: () => mockUseSourceAudio(),
 }));
 
-jest.mock('../../hooks/useDraftingUnit', () => ({
-  useDraftingUnit: () => ({
-    draftingUnit: 'verse',
-    setDraftingUnit: jest.fn(),
-  }),
-}));
-
 jest.mock('../../hooks/useGlobalSyncStatus', () => ({
   useGlobalSyncStatus: () => false,
 }));
@@ -71,6 +67,23 @@ jest.mock('../../audio/micPermission', () => ({
 
 jest.mock('../../services/stageAdvance', () => ({
   confirmStageAdvancement: jest.fn(async () => undefined),
+}));
+
+jest.mock('../../db/repository', () => ({
+  getProjectPericopeSetId: jest.fn(async () => null),
+}));
+
+type DraftingUnitApi = ReturnType<typeof useDraftingUnit>;
+
+const mockUseDraftingUnit = jest.fn(
+  (): DraftingUnitApi => ({
+    draftingUnit: 'verse',
+    setDraftingUnit: jest.fn(),
+  }),
+);
+
+jest.mock('../../hooks/useDraftingUnit', () => ({
+  useDraftingUnit: () => mockUseDraftingUnit(),
 }));
 
 type VerseAudioApi = ReturnType<typeof useVerseAudio>;
@@ -245,6 +258,10 @@ describe('RecordTab', () => {
     mockUseVerseAudio.mockReturnValue(idleAudio);
     mockUseSourceAudio.mockReturnValue(emptySourceAudio);
     mockUseChapterConflictStatus.mockReturnValue({ hasConflict: false });
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'verse',
+      setDraftingUnit: jest.fn(),
+    });
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 
@@ -1043,5 +1060,139 @@ describe('RecordTab', () => {
       expect(screen.getByTestId('record-start-button')).toBeTruthy();
     });
     expect(screen.queryByTestId('stage-advance-button')).toBeNull();
+  });
+
+  describe('Mode-aware Current Unit Title (#409)', () => {
+    it('shows the pericope range and title as a subtitle when a pericope resolves', async () => {
+      mockUseDraftingUnit.mockReturnValue({
+        draftingUnit: 'pericope',
+        setDraftingUnit: jest.fn(),
+      });
+      (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(7);
+      (getPericopeForVerse as jest.Mock).mockResolvedValueOnce({
+        pericopeNumber: '1',
+        pericopeTitle: 'The plot to kill Jesus; anointing at Bethany',
+        section: null,
+        verses: [
+          { chapterNumber: 14, verseNumber: 1 },
+          { chapterNumber: 14, verseNumber: 2 },
+          { chapterNumber: 14, verseNumber: 3 },
+        ],
+      });
+
+      renderTab();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+          'Mark 14:1–3',
+        );
+      });
+      expect(
+        screen.getByTestId('record-verse-reference-subtitle'),
+      ).toHaveTextContent('The plot to kill Jesus; anointing at Bethany');
+    });
+
+    it('falls back silently to the plain verse reference when no pericope set is configured', async () => {
+      mockUseDraftingUnit.mockReturnValue({
+        draftingUnit: 'pericope',
+        setDraftingUnit: jest.fn(),
+      });
+      (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(null);
+
+      renderTab();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+          'Mark 14:3',
+        );
+      });
+      expect(
+        screen.queryByTestId('record-verse-reference-subtitle'),
+      ).toBeNull();
+    });
+
+    it('never shows a subtitle in verse mode, even if a pericope would resolve', () => {
+      mockUseDraftingUnit.mockReturnValue({
+        draftingUnit: 'verse',
+        setDraftingUnit: jest.fn(),
+      });
+
+      renderTab();
+
+      expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+        'Mark 14:3',
+      );
+      expect(
+        screen.queryByTestId('record-verse-reference-subtitle'),
+      ).toBeNull();
+    });
+  });
+
+  it('formats a cross-chapter pericope range with explicit chapter numbers on both endpoints', async () => {
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(7);
+    (getPericopeForVerse as jest.Mock).mockResolvedValueOnce({
+      pericopeNumber: '2',
+      pericopeTitle: null,
+      section: null,
+      verses: [
+        { chapterNumber: 14, verseNumber: 45 },
+        { chapterNumber: 15, verseNumber: 1 },
+        { chapterNumber: 15, verseNumber: 3 },
+      ],
+    });
+
+    renderTab();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+        'Mark 14:45–15:3',
+      );
+    });
+  });
+  it('ignores a stale pericope lookup that resolves after a mode switch away from pericope', async () => {
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(7);
+
+    let resolveStale: (value: unknown) => void;
+    (getPericopeForVerse as jest.Mock).mockReturnValueOnce(
+      new Promise(resolve => {
+        resolveStale = resolve;
+      }),
+    );
+
+    const { rerender } = renderTab();
+
+    // Switch to verse mode before the in-flight pericope lookup resolves.
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'verse',
+      setDraftingUnit: jest.fn(),
+    });
+    rerender(
+      <DraftingProvider verses={verses} initialVerse={3}>
+        <RecordTab chapterData={chapterData} userId={42} />
+      </DraftingProvider>,
+    );
+
+    // Now let the stale request resolve — it must not resurrect a subtitle.
+    resolveStale!({
+      pericopeNumber: '1',
+      pericopeTitle: 'Stale title',
+      section: null,
+      verses: [{ chapterNumber: 14, verseNumber: 3 }],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+        'Mark 14:3',
+      );
+    });
+    expect(screen.queryByTestId('record-verse-reference-subtitle')).toBeNull();
   });
 });
