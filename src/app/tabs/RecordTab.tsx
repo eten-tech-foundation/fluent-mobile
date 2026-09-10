@@ -28,7 +28,6 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import { useDraftingContext } from '../context/DraftingContext';
-import { getBibleTextId, getRecordedVerseNumbers } from '../../db/queries';
 import { useVerseAudio } from '../../hooks/useVerseAudio';
 import { useSourceAudio } from '../../hooks/useSourceAudio';
 import { useDraftingUnit } from '../../hooks/useDraftingUnit';
@@ -49,16 +48,23 @@ import {
   RECORD_AUDIO_CONFLICT_WARNING,
   RECORD_TAKEN_CHAPTER_WARNING,
 } from '../../constants/messages';
+import type { PericopeGroupResult } from '../../db/queries';
+import { ChapterAssignmentData } from '../../types/db/types';
+import { getProjectPericopeSetId } from '../../db/repository';
 import { parseRequiredString } from '../../navigation/routeParams';
 import { useChapterConflictStatus } from '../../hooks/useChapterConflictStatus';
 import { isChapterTakenByOther } from '../../utils/chapterTakenStatus';
+import type { Recording, RecordingWithOwner } from '../../types/db/types';
 import {
   getStageAdvanceVisibility,
   stageAdvanceConfirmBody,
 } from '../../utils/stageAdvancement';
 import { confirmStageAdvancement } from '../../services/stageAdvance';
-import { ChapterAssignmentData } from '../../types/db/types';
-import type { Recording, RecordingWithOwner } from '../../types/db/types';
+import {
+  getBibleTextId,
+  getPericopeForVerse,
+  getRecordedVerseNumbers,
+} from '../../db/queries';
 
 const log = logger.create('RecordTab');
 
@@ -156,7 +162,6 @@ export function RecordTab({
   const prevDisabled = verseIndex <= 0;
   const nextDisabled = verseIndex < 0 || verseIndex >= verses.length - 1;
   const selected = verses.find(v => v.verseNumber === selectedVerse);
-  const reference = `${chapterName}:${selectedVerse}`;
   const sourceUnitCaption =
     draftingUnit === 'pericope' && verses.length > 0 && verseIndex >= 0
       ? `Pericope ${verseIndex + 1} / ${verses.length}`
@@ -179,6 +184,40 @@ export function RecordTab({
     selectedVerse,
   ]);
 
+  const [pericopeSetId, setPericopeSetId] = useState<number | null>(null);
+  const [activePericope, setActivePericope] =
+    useState<PericopeGroupResult | null>(null);
+  const pericopeRequestIdRef = useRef(0);
+
+  const pericopeVerses = activePericope?.verses ?? [];
+  const firstPericopeVerse = pericopeVerses[0] ?? null;
+  const lastPericopeVerse = pericopeVerses[pericopeVerses.length - 1] ?? null;
+  const pericopeSpansChapters =
+    firstPericopeVerse !== null &&
+    lastPericopeVerse !== null &&
+    firstPericopeVerse.chapterNumber !== lastPericopeVerse.chapterNumber;
+  const pericopeRange =
+    firstPericopeVerse && lastPericopeVerse
+      ? pericopeSpansChapters
+        ? `${firstPericopeVerse.chapterNumber}:${firstPericopeVerse.verseNumber}–${lastPericopeVerse.chapterNumber}:${lastPericopeVerse.verseNumber}`
+        : `${firstPericopeVerse.verseNumber}–${lastPericopeVerse.verseNumber}`
+      : null;
+  // Falls back to the verse reference silently whenever no pericope set/data
+  // is resolved (e.g. project has no pericope set configured) — see #409.
+  // Cross-chapter pericopes (e.g. Genesis 1→2) render with explicit chapter
+  // numbers on both endpoints rather than the "chapterName:range" shorthand,
+  // since a bare verse range would be ambiguous across chapters.
+  const reference =
+    draftingUnit === 'pericope' && pericopeRange
+      ? pericopeSpansChapters
+        ? `${chapterData.bookName} ${pericopeRange}`
+        : `${chapterName}:${pericopeRange}`
+      : `${chapterName}:${selectedVerse}`;
+  const referenceSubtitle =
+    draftingUnit === 'pericope' && pericopeRange
+      ? activePericope?.pericopeTitle ?? null
+      : null;
+
   /** Shared generation so sync-triggered and verse-change lookups ignore stale IDs. */
   const bibleTextRequestIdRef = useRef(0);
 
@@ -192,6 +231,45 @@ export function RecordTab({
   }, [resolveBibleTextId]);
 
   const isSyncing = useGlobalSyncStatus(refreshBibleTextId);
+
+  useEffect(() => {
+    if (chapterData.projectId === null) {
+      setPericopeSetId(null);
+      return;
+    }
+    let cancelled = false;
+    void getProjectPericopeSetId(chapterData.projectId).then(id => {
+      if (!cancelled) setPericopeSetId(id);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [chapterData.projectId]);
+
+  useEffect(() => {
+    const requestId = ++pericopeRequestIdRef.current;
+    if (draftingUnit !== 'pericope' || pericopeSetId === null) {
+      setActivePericope(null);
+      return;
+    }
+    setActivePericope(null);
+    void getPericopeForVerse(
+      chapterData.bookId,
+      chapterData.chapterNumber,
+      selectedVerse,
+      pericopeSetId,
+    ).then(result => {
+      if (requestId === pericopeRequestIdRef.current) {
+        setActivePericope(result);
+      }
+    });
+  }, [
+    draftingUnit,
+    pericopeSetId,
+    chapterData.bookId,
+    chapterData.chapterNumber,
+    selectedVerse,
+  ]);
 
   useEffect(() => {
     setTakeView('mine');
@@ -220,6 +298,7 @@ export function RecordTab({
       bibleTextRequestIdRef.current += 1;
     };
   }, [resolveBibleTextId, verses.length]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -535,9 +614,20 @@ export function RecordTab({
             style={prevDisabled ? styles.dim : undefined}
           />
         </TouchableOpacity>
-        <Text style={styles.reference} testID="record-verse-reference">
-          {reference}
-        </Text>
+        <View style={styles.referenceColumn}>
+          <Text style={styles.reference} testID="record-verse-reference">
+            {reference}
+          </Text>
+          {referenceSubtitle ? (
+            <Text
+              style={styles.referenceSubtitle}
+              numberOfLines={1}
+              testID="record-verse-reference-subtitle"
+            >
+              {referenceSubtitle}
+            </Text>
+          ) : null}
+        </View>
         <TouchableOpacity
           onPress={() => {
             if (!nextDisabled) {
@@ -1068,5 +1158,15 @@ const styles = StyleSheet.create({
     color: theme.colors.primaryForeground,
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.weights.semibold,
+  },
+  referenceColumn: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  referenceSubtitle: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.mutedForeground,
+    marginTop: theme.spacing.xs,
+    textAlign: 'center',
   },
 });

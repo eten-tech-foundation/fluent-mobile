@@ -708,10 +708,10 @@ export async function getBibleTextId(
 export interface PericopeGroupResult {
   pericopeNumber: string;
   pericopeTitle: string | null;
+  section: number | null;
   verses: { chapterNumber: number; verseNumber: number }[];
 }
 
-/** All pericope groupings touching this chapter, for #408's unit cards. */
 export async function getPericopesForChapter(
   bookId: number,
   chapterNumber: number,
@@ -720,22 +720,24 @@ export async function getPericopesForChapter(
   const db = getDatabase();
   try {
     const result = await db.execute(
-      `SELECT pericope_number, pericope_title, chapter_number, verse_number
+      `SELECT pericope_number, pericope_title, section, chapter_number, verse_number
        FROM pericope_verses
        WHERE book_id = ? AND chapter_number = ? AND pericope_set_id = ?
-       ORDER BY pericope_number, verse_number`,
+       ORDER BY section, pericope_number, verse_number`,
       [bookId, chapterNumber, pericopeSetId],
     );
     const rows = (result.rows ?? []) as unknown as {
       pericope_number: string;
       pericope_title: string | null;
+      section: number | null;
       chapter_number: number;
       verse_number: number;
     }[];
 
     const groups = new Map<string, PericopeGroupResult>();
     for (const row of rows) {
-      const existing = groups.get(row.pericope_number);
+      const groupKey = `${row.section ?? ''}:${row.pericope_number}`;
+      const existing = groups.get(groupKey);
       const verse = {
         chapterNumber: row.chapter_number,
         verseNumber: row.verse_number,
@@ -743,9 +745,10 @@ export async function getPericopesForChapter(
       if (existing) {
         existing.verses.push(verse);
       } else {
-        groups.set(row.pericope_number, {
+        groups.set(groupKey, {
           pericopeNumber: row.pericope_number,
           pericopeTitle: row.pericope_title,
+          section: row.section,
           verses: [verse],
         });
       }
@@ -771,22 +774,25 @@ export async function getPericopeForVerse(
   const db = getDatabase();
   try {
     const numberResult = await db.execute(
-      `SELECT pericope_number FROM pericope_verses
+      `SELECT pericope_number, section FROM pericope_verses
        WHERE book_id = ? AND chapter_number = ? AND verse_number = ? AND pericope_set_id = ?
        LIMIT 1`,
       [bookId, chapterNumber, verseNumber, pericopeSetId],
     );
-    const pericopeNumber = numberResult.rows?.[0]?.pericope_number as
-      | string
+    const numberRow = numberResult.rows?.[0] as
+      | { pericope_number?: string; section?: number | null }
       | undefined;
+    const pericopeNumber = numberRow?.pericope_number;
     if (!pericopeNumber) return null;
+    const section = numberRow?.section ?? null;
 
     const result = await db.execute(
       `SELECT pericope_title, chapter_number, verse_number
        FROM pericope_verses
        WHERE book_id = ? AND pericope_number = ? AND pericope_set_id = ?
+         AND (section IS ? OR section = ?)
        ORDER BY chapter_number, verse_number`,
-      [bookId, pericopeNumber, pericopeSetId],
+      [bookId, pericopeNumber, pericopeSetId, section, section],
     );
     const rows = (result.rows ?? []) as unknown as {
       pericope_title: string | null;
@@ -798,6 +804,7 @@ export async function getPericopeForVerse(
     return {
       pericopeNumber,
       pericopeTitle: rows[0].pericope_title,
+      section,
       verses: rows.map(r => ({
         chapterNumber: r.chapter_number,
         verseNumber: r.verse_number,
