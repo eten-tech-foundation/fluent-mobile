@@ -132,6 +132,19 @@ jest.mock('../tabs/ResourcesTab', () => {
   };
 });
 
+jest.mock('../../components/layout/SourceAudioShell', () => {
+  const MockReact = require('react');
+  const { View } = require('react-native');
+  return {
+    SourceAudioProvider: ({ children }: { children?: React.ReactNode }) =>
+      children,
+    SourceAudioBarSlot: () =>
+      MockReact.createElement(View, { testID: 'source-audio-bar-slot' }),
+    useSourceAudioControl: () => null,
+    useSourceAudioRecordTabIntegration: jest.fn(),
+  };
+});
+
 const mockGetChapterAssignmentById = jest.fn();
 const mockGetBibleTexts = jest.fn();
 const mockGetRecordedVerseNumbers = jest.fn();
@@ -200,5 +213,13 @@ describe('DraftingScreen onChapterClaimed', () => {
     expect(mockGetBibleTexts).toHaveBeenCalledTimes(1);
     expect(mockGetRecordedVerseNumbers).toHaveBeenCalledTimes(2);
     expect(capturedOnChapterClaimed).toBeDefined();
+  });
+
+  it('renders the shell source-audio bar slot above the tab bar', async () => {
+    render(<DraftingScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('source-audio-bar-slot')).toBeTruthy();
+    });
   });
 });

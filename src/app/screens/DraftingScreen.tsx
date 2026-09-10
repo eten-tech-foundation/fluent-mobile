@@ -24,6 +24,10 @@ import {
   DraftingTabBar,
 } from '../../components/layout/DraftingTabBar';
 import {
+  SourceAudioBarSlot,
+  SourceAudioProvider,
+} from '../../components/layout/SourceAudioShell';
+import {
   getBibleTexts,
   getChapterAssignmentById,
   getRecordedVerseNumbers,
@@ -328,57 +332,64 @@ export default function DraftingScreen() {
   return (
     <ScreenContainer>
       <DraftingProvider verses={verses} initialVerse={initialVerse}>
-        <View style={styles.screen}>
-          {renderHeader()}
+        <SourceAudioProvider
+          chapterData={chapterData}
+          activeTab={activeTab}
+          recordCaptureActive={recordCaptureActive}
+        >
+          <View style={styles.screen}>
+            {renderHeader()}
 
-          <View style={styles.content}>
-            {/*
-              Keep Record mounted (display:none when inactive) so the native
-              recording session survives Bible/Resources tab switches.
-            */}
-            <View
-              style={[
-                styles.tabPane,
-                activeTab !== 'bible' && styles.tabHidden,
-              ]}
-              pointerEvents={activeTab === 'bible' ? 'auto' : 'none'}
-            >
-              <BibleTab onOpenRecord={() => setActiveTab('record')} />
+            <View style={styles.content}>
+              {/*
+                Keep Record mounted (display:none when inactive) so the native
+                recording session survives Bible/Resources tab switches.
+              */}
+              <View
+                style={[
+                  styles.tabPane,
+                  activeTab !== 'bible' && styles.tabHidden,
+                ]}
+                pointerEvents={activeTab === 'bible' ? 'auto' : 'none'}
+              >
+                <BibleTab onOpenRecord={() => setActiveTab('record')} />
+              </View>
+              <View
+                style={[
+                  styles.tabPane,
+                  activeTab !== 'resources' && styles.tabHidden,
+                ]}
+                pointerEvents={activeTab === 'resources' ? 'auto' : 'none'}
+              >
+                <ResourcesTab
+                  chapterId={chapterId}
+                  chapterName={chapterName}
+                  projectId={chapterData.projectId ?? null}
+                  userId={userId}
+                  bookCode={chapterData.bookCode ?? ''}
+                  chapterNumber={chapterData.chapterNumber}
+                />
+              </View>
+              <View
+                style={[
+                  styles.tabPane,
+                  activeTab !== 'record' && styles.tabHidden,
+                ]}
+                pointerEvents={activeTab === 'record' ? 'auto' : 'none'}
+              >
+                <RecordTab
+                  chapterData={chapterData}
+                  userId={userId}
+                  onCaptureActiveChange={setRecordCaptureActive}
+                  onChapterClaimed={handleChapterClaimed}
+                />
+              </View>
             </View>
-            <View
-              style={[
-                styles.tabPane,
-                activeTab !== 'resources' && styles.tabHidden,
-              ]}
-              pointerEvents={activeTab === 'resources' ? 'auto' : 'none'}
-            >
-              <ResourcesTab
-                chapterId={chapterId}
-                chapterName={chapterName}
-                projectId={chapterData.projectId ?? null}
-                userId={userId}
-                bookCode={chapterData.bookCode ?? ''}
-                chapterNumber={chapterData.chapterNumber}
-              />
-            </View>
-            <View
-              style={[
-                styles.tabPane,
-                activeTab !== 'record' && styles.tabHidden,
-              ]}
-              pointerEvents={activeTab === 'record' ? 'auto' : 'none'}
-            >
-              <RecordTab
-                chapterData={chapterData}
-                userId={userId}
-                onCaptureActiveChange={setRecordCaptureActive}
-                onChapterClaimed={handleChapterClaimed}
-              />
-            </View>
+
+            <SourceAudioBarSlot />
+            <DraftingTabBar activeTab={activeTab} onTabChange={setActiveTab} />
           </View>
-
-          <DraftingTabBar activeTab={activeTab} onTabChange={setActiveTab} />
-        </View>
+        </SourceAudioProvider>
         {renderAccountSwitcher()}
       </DraftingProvider>
     </ScreenContainer>
