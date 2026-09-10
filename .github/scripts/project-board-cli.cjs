@@ -18,6 +18,7 @@ const { execFileSync } = require('child_process');
 const {
   DEFAULT_PROJECT_ID,
   DEFAULT_STATUS_FIELD_ID,
+  DEFAULT_PROJECT_NUMBER,
   DEFAULT_OWNER,
   DEFAULT_REPO,
   STATUS_OPTIONS,
@@ -26,6 +27,8 @@ const {
   IN_PR_REVIEW_FROM,
   optionIdForStatus,
 } = require('./project-board.cjs');
+
+class UsageError extends Error {}
 
 function usage() {
   return `Usage:
@@ -44,7 +47,7 @@ function parseArgs(argv) {
     if (flag === '--issue') args.issue = Number(rest.shift());
     else if (flag === '--to') args.to = rest.shift();
     else if (flag === '--strict') args.strict = true;
-    else throw new Error(`Unknown argument: ${flag}`);
+    else throw new UsageError(`Unknown argument: ${flag}`);
   }
   return args;
 }
@@ -65,14 +68,22 @@ function allowlistForTarget(target) {
 
 async function setStatus({ issue, to, strict }) {
   if (!Number.isInteger(issue) || issue <= 0) {
-    throw new Error('--issue must be a positive integer');
+    throw new UsageError('--issue must be a positive integer');
   }
   if (!to || !optionIdForStatus(to)) {
-    throw new Error(`Unknown --to status: ${to}`);
+    throw new UsageError(`Unknown --to status: ${to}`);
   }
 
   const optionId = optionIdForStatus(to);
   const projectId = process.env.FLUENT_PROJECT_ID || DEFAULT_PROJECT_ID;
+  const projectNumber = Number(
+    process.env.FLUENT_PROJECT_NUMBER || DEFAULT_PROJECT_NUMBER,
+  );
+  if (!Number.isInteger(projectNumber) || projectNumber <= 0) {
+    throw new UsageError(
+      'FLUENT_PROJECT_NUMBER must be a positive integer when set',
+    );
+  }
   const statusFieldId =
     process.env.FLUENT_STATUS_FIELD_ID || DEFAULT_STATUS_FIELD_ID;
   const owner = DEFAULT_OWNER;
@@ -89,7 +100,7 @@ async function setStatus({ issue, to, strict }) {
           projectItems(first: 20) {
             nodes {
               id
-              project { id number }
+              project { id }
               fieldValueByName(name: "Status") {
                 ... on ProjectV2ItemFieldSingleSelectValue { name }
               }
@@ -114,7 +125,7 @@ async function setStatus({ issue, to, strict }) {
   }
 
   let item = (issueNode.projectItems?.nodes || []).find(
-    n => n.project?.id === projectId || n.project?.number === 4,
+    n => n.project?.id === projectId,
   );
 
   if (!item) {
@@ -124,7 +135,7 @@ async function setStatus({ issue, to, strict }) {
       [
         'project',
         'item-add',
-        '4',
+        String(projectNumber),
         '--owner',
         owner,
         '--url',
@@ -142,7 +153,7 @@ async function setStatus({ issue, to, strict }) {
             projectItems(first: 20) {
               nodes {
                 id
-                project { id number }
+                project { id }
                 fieldValueByName(name: "Status") {
                   ... on ProjectV2ItemFieldSingleSelectValue { name }
                 }
@@ -159,7 +170,7 @@ async function setStatus({ issue, to, strict }) {
       `number=${issue}`,
     ]);
     item = (again?.data?.repository?.issue?.projectItems?.nodes || []).find(
-      n => n.project?.id === projectId || n.project?.number === 4,
+      n => n.project?.id === projectId,
     );
   }
 
@@ -198,16 +209,22 @@ async function setStatus({ issue, to, strict }) {
     'api',
     'graphql',
     '-f',
-    `query=mutation($item: ID!) {
+    `query=mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
       updateProjectV2ItemFieldValue(input: {
-        projectId: "${projectId}"
+        projectId: $project
         itemId: $item
-        fieldId: "${statusFieldId}"
-        value: { singleSelectOptionId: "${optionId}" }
+        fieldId: $field
+        value: { singleSelectOptionId: $option }
       }) { projectV2Item { id } }
     }`,
     '-F',
+    `project=${projectId}`,
+    '-F',
     `item=${item.id}`,
+    '-F',
+    `field=${statusFieldId}`,
+    '-F',
+    `option=${optionId}`,
   ]);
 
   console.log(`Moved issue #${issue} to ${to}.`);
@@ -231,6 +248,11 @@ async function main() {
   try {
     await setStatus(args);
   } catch (error) {
+    if (error instanceof UsageError) {
+      console.error(error.message);
+      console.error(usage());
+      process.exit(2);
+    }
     console.warn(`WARN: board move failed: ${error.message}`);
     if (args.strict) process.exit(1);
   }

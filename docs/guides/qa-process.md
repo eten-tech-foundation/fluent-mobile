@@ -112,13 +112,13 @@ The **`preview-build`** label still builds an isolated PR APK for **debugging**.
 1. Open PR with `Refs #NNN` (never closing keywords).
 2. Check **Needs QA? No** in the PR body.
 3. Get engineer approval + green CI → **merge** (human merger).
-4. Confirm automation moved Project 4 → **Done** and closed the issue (or do so manually if secrets were unavailable).
+4. Confirm automation moved Project 4 → **Done** and closed the issue. If secrets were unavailable, manually move the issue to **Done**, verify that the move succeeded, and then close the issue.
 
 ## CI / automation (current)
 
 | Piece | Behavior |
 | --- | --- |
-| [`.github/workflows/qa-handoff.yml`](../../.github/workflows/qa-handoff.yml) | On merge: **Yes** → comment + assign Roslin + `In QA`; **No** → comment + `Done` + close linked issues |
+| [`.github/workflows/qa-handoff.yml`](../../.github/workflows/qa-handoff.yml) | On merge: **Yes** → comment + assign Roslin + `In QA`; **No** → `Done`, then comment + close (skip comment/close if the Done move fails) |
 | [`.github/scripts/project-board-cli.cjs`](../../.github/scripts/project-board-cli.cjs) | Agent `/start-issue` / `/create-pr` Status moves |
 | [`.github/workflows/nightly-preview.yml`](../../.github/workflows/nightly-preview.yml) | Daily binary APK; comments install URL on issues with a recent QA-handoff marker |
 | [`.github/workflows/preview-build.yml`](../../.github/workflows/preview-build.yml) | Optional label → isolated PR APK (**PR comment only**) |

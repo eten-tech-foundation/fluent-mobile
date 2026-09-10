@@ -68,8 +68,21 @@ describe('needsQaYes / needsQaNo', () => {
   });
 
   it('matches uppercase X checkbox', () => {
-    expect(needsQaYes('- [X] Yes — device QA')).toBe(true);
-    expect(needsQaNo('- [X] No — engineering-only')).toBe(true);
+    expect(
+      needsQaYes('**Needs QA?**\n\n- [X] Yes — device QA'),
+    ).toBe(true);
+    expect(
+      needsQaNo('**Needs QA?**\n\n- [X] No — engineering-only'),
+    ).toBe(true);
+  });
+
+  it('does not match checked No outside the Needs QA section', () => {
+    expect(
+      needsQaNo('Refs #1\n\n- [x] No — unrelated checklist item'),
+    ).toBe(false);
+    expect(
+      needsQaYes('Refs #1\n\n- [x] Yes — unrelated checklist item'),
+    ).toBe(false);
   });
 });
 
@@ -237,6 +250,148 @@ describe('qaHandoffOnMerge', () => {
       state: 'closed',
       state_reason: 'completed',
     });
+  });
+
+  it('skips eng-done comment and close when Status is outside allowlist', async () => {
+    const createComment = jest.fn().mockResolvedValue({});
+    const update = jest.fn().mockResolvedValue({});
+    const graphql = jest
+      .fn()
+      .mockResolvedValueOnce({
+        repository: {
+          pullRequest: { closingIssuesReferences: { nodes: [] } },
+        },
+      })
+      .mockResolvedValueOnce({
+        repository: {
+          issue: {
+            id: 'issue-node-275',
+            projectItems: {
+              nodes: [
+                {
+                  id: 'item-275',
+                  project: { id: 'PVT_kwDOB8vK1s4A34c5' },
+                  fieldValueByName: { name: 'Dev Ready' },
+                },
+              ],
+            },
+          },
+        },
+      });
+
+    const github = {
+      rest: {
+        pulls: {
+          get: jest.fn().mockResolvedValue({
+            data: {
+              title: '[#275]: Docs',
+              body: NEEDS_QA_NO_BODY,
+            },
+          }),
+        },
+        issues: {
+          createComment,
+          listComments: jest.fn().mockResolvedValue({ data: [] }),
+          deleteComment: jest.fn(),
+          update,
+        },
+      },
+      graphql,
+    };
+
+    const core = createCore();
+    const result = await qaHandoffOnMerge({
+      github,
+      context: {
+        repo: { owner: 'org', repo: 'fluent-mobile' },
+        payload: {
+          pull_request: {
+            number: 100,
+            merged: true,
+            body: NEEDS_QA_NO_BODY,
+            user: { login: 'mattrace-gloo' },
+            html_url: 'https://example.com/pull/100',
+            merge_commit_sha: 'abc1234567890',
+          },
+        },
+      },
+      core,
+    });
+
+    expect(result.skipped).toBe(false);
+    expect(result.path).toBe('eng_done');
+    expect(createComment).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+    expect(core.warning).toHaveBeenCalledWith(
+      expect.stringContaining('Skipping close for #275'),
+    );
+  });
+
+  it('skips eng-done comment and close when issue is not on Project 4', async () => {
+    const createComment = jest.fn().mockResolvedValue({});
+    const update = jest.fn().mockResolvedValue({});
+    const graphql = jest
+      .fn()
+      .mockResolvedValueOnce({
+        repository: {
+          pullRequest: { closingIssuesReferences: { nodes: [] } },
+        },
+      })
+      .mockResolvedValueOnce({
+        repository: {
+          issue: {
+            id: 'issue-node-275',
+            projectItems: { nodes: [] },
+          },
+        },
+      });
+
+    const github = {
+      rest: {
+        pulls: {
+          get: jest.fn().mockResolvedValue({
+            data: {
+              title: '[#275]: Docs',
+              body: NEEDS_QA_NO_BODY,
+            },
+          }),
+        },
+        issues: {
+          createComment,
+          listComments: jest.fn().mockResolvedValue({ data: [] }),
+          deleteComment: jest.fn(),
+          update,
+        },
+      },
+      graphql,
+    };
+
+    const core = createCore();
+    const result = await qaHandoffOnMerge({
+      github,
+      context: {
+        repo: { owner: 'org', repo: 'fluent-mobile' },
+        payload: {
+          pull_request: {
+            number: 100,
+            merged: true,
+            body: NEEDS_QA_NO_BODY,
+            user: { login: 'mattrace-gloo' },
+            html_url: 'https://example.com/pull/100',
+            merge_commit_sha: 'abc1234567890',
+          },
+        },
+      },
+      core,
+    });
+
+    expect(result.skipped).toBe(false);
+    expect(result.path).toBe('eng_done');
+    expect(createComment).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+    expect(core.warning).toHaveBeenCalledWith(
+      expect.stringContaining('Skipping close for #275'),
+    );
   });
 
   it('skips Dependabot', async () => {

@@ -38,6 +38,8 @@ const DEPENDABOT_LOGINS = new Set([
 
 /**
  * Scope text to the **Needs QA?** block when present.
+ * Returns an empty string when the header is absent so stray checklist
+ * lines elsewhere in the PR body cannot drive handoff.
  * @param {string | null | undefined} body
  * @returns {string}
  */
@@ -46,7 +48,7 @@ function needsQaSection(body) {
   const sectionMatch = text.match(
     /\*\*Needs QA\?\*\*[\s\S]*?(?=\n\*\*[^*]|\n### |\n## |$)/i,
   );
-  return sectionMatch ? sectionMatch[0] : text;
+  return sectionMatch ? sectionMatch[0] : '';
 }
 
 /**
@@ -374,23 +376,6 @@ async function runEngDoneHandoff({
   });
 
   for (const issueNumber of issueNumbers) {
-    try {
-      await upsertMarkedComment({
-        github,
-        core,
-        owner,
-        repo,
-        issueNumber,
-        marker: ENG_DONE_MARKER,
-        body: commentBody,
-      });
-      core.info(`Posted eng-done comment on #${issueNumber}`);
-    } catch (error) {
-      core.warning(
-        `Could not comment on #${issueNumber}: ${error.message}`,
-      );
-    }
-
     let boardOk = false;
     try {
       const moved = await moveIssueStatus({
@@ -416,6 +401,23 @@ async function runEngDoneHandoff({
         `Skipping close for #${issueNumber} — Project 4 was not moved to Done (allowlist / Product / missing)`,
       );
       continue;
+    }
+
+    try {
+      await upsertMarkedComment({
+        github,
+        core,
+        owner,
+        repo,
+        issueNumber,
+        marker: ENG_DONE_MARKER,
+        body: commentBody,
+      });
+      core.info(`Posted eng-done comment on #${issueNumber}`);
+    } catch (error) {
+      core.warning(
+        `Could not comment on #${issueNumber}: ${error.message}`,
+      );
     }
 
     try {

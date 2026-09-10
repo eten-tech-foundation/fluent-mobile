@@ -305,6 +305,7 @@ async function moveIssueStatus({
 
 /**
  * @param {object} opts — same as moveIssueStatus plus issueNumbers[]
+ * @returns {Promise<Array<{ issueNumber: number, ok: boolean, reason?: string, from?: string }>>}
  */
 async function moveIssuesToStatus({
   github,
@@ -318,9 +319,10 @@ async function moveIssuesToStatus({
   addIfMissing = false,
   refuseProductOwned = true,
 }) {
+  const results = [];
   for (const issueNumber of issueNumbers) {
     try {
-      await moveIssueStatus({
+      const result = await moveIssueStatus({
         github,
         core,
         getOctokit,
@@ -332,10 +334,13 @@ async function moveIssuesToStatus({
         addIfMissing,
         refuseProductOwned,
       });
+      results.push({ issueNumber, ...result });
     } catch (error) {
       core.warning(`Board move failed for #${issueNumber}: ${error.message}`);
+      results.push({ issueNumber, ok: false, reason: 'threw' });
     }
   }
+  return results;
 }
 
 async function moveIssuesToInQa(opts) {
