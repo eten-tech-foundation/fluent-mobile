@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 14;
+export const CURRENT_SCHEMA_VERSION = 17;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -376,11 +376,127 @@ async function addChapterAssignmentHasConflict(db: SqlExecutor): Promise<void> {
   await addRecordingsCanonicalColumn(db);
 }
 
+async function applyPericopeTables(db: SqlExecutor): Promise<void> {
+  await db.execute(
+    `CREATE TABLE IF NOT EXISTS pericope_sets (
+      id          INTEGER PRIMARY KEY,
+      name        TEXT NOT NULL,
+      description TEXT
+    )`,
+  );
+  await db.execute(
+    `CREATE TABLE IF NOT EXISTS pericope_verses (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      pericope_set_id INTEGER REFERENCES pericope_sets(id),
+      book_id         INTEGER NOT NULL REFERENCES books(id),
+      chapter_number  INTEGER NOT NULL,
+      verse_number    INTEGER NOT NULL,
+      section         INTEGER,
+      pericope_number TEXT NOT NULL,
+      pericope_title  TEXT,
+      UNIQUE (pericope_set_id, book_id, chapter_number, verse_number)
+    )`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_pv_book_chapter
+     ON pericope_verses(book_id, chapter_number)`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_pv_pericope
+     ON pericope_verses(pericope_set_id, book_id, pericope_number, chapter_number, verse_number)`,
+  );
+
+  const projectsInfo = await db.execute('PRAGMA table_info(projects)');
+  if (projectsInfo.rows.length) {
+    await addColumnIfMissing(db, 'projects', 'pericope_set_id', 'INTEGER');
+  }
+}
 /** Per-unit version token for conflict detection (#256 / fluent-api#271). */
 async function addRecordingsVersionToken(db: SqlExecutor): Promise<void> {
   const info = await db.execute('PRAGMA table_info(recordings)');
   if (info.rows.length) {
     await addColumnIfMissing(db, 'recordings', 'version_token', 'INTEGER');
+  }
+}
+
+/**
+ * Existing installs used SQLite autoincrement for bible_texts.id while the API
+ * expects server verse ids on upload (#469). Flag a one-shot full bible-text
+ * re-fetch; insertBibleTexts remaps recordings when ids differ.
+ *
+ * KV is required dynamically so migrations.test does not load native Storage.
+ */
+async function addRecordingsGranularityColumns(db: SqlExecutor): Promise<void> {
+  const info = await db.execute('PRAGMA table_info(recordings)');
+  if (!info.rows.length) {
+    return;
+  }
+  await addColumnIfMissing(
+    db,
+    'recordings',
+    'granularity',
+    "TEXT NOT NULL DEFAULT 'verse'",
+  );
+  await addColumnIfMissing(
+    db,
+    'recordings',
+    'start_chapter',
+    'INTEGER NOT NULL DEFAULT 0',
+  );
+  await addColumnIfMissing(
+    db,
+    'recordings',
+    'start_verse',
+    'INTEGER NOT NULL DEFAULT 0',
+  );
+  await addColumnIfMissing(
+    db,
+    'recordings',
+    'end_chapter',
+    'INTEGER NOT NULL DEFAULT 0',
+  );
+  await addColumnIfMissing(
+    db,
+    'recordings',
+    'end_verse',
+    'INTEGER NOT NULL DEFAULT 0',
+  );
+
+  // Backfill verse ranges from the anchor bible_text. Harmless no-op in the
+  // migrations fake DB (no UPDATE support); real SQLite applies this.
+  await db.execute(
+    `UPDATE recordings
+     SET granularity = 'verse',
+         start_chapter = COALESCE(
+           (SELECT chapter_number FROM bible_texts WHERE bible_texts.id = recordings.bible_text_id),
+           start_chapter
+         ),
+         start_verse = COALESCE(
+           (SELECT verse_number FROM bible_texts WHERE bible_texts.id = recordings.bible_text_id),
+           start_verse
+         ),
+         end_chapter = COALESCE(
+           (SELECT chapter_number FROM bible_texts WHERE bible_texts.id = recordings.bible_text_id),
+           end_chapter
+         ),
+         end_verse = COALESCE(
+           (SELECT verse_number FROM bible_texts WHERE bible_texts.id = recordings.bible_text_id),
+           end_verse
+         )
+     WHERE granularity IS NULL OR granularity = 'verse'`,
+  );
+}
+
+async function markBibleTextsServerIdsRemap(db: SqlExecutor): Promise<void> {
+  const result = await db.execute('SELECT COUNT(*) AS count FROM bible_texts');
+  const count = Number(
+    (result.rows?.[0] as { count?: number } | undefined)?.count ?? 0,
+  );
+  if (count > 0) {
+    const { markBibleTextsServerIdRemapPending } =
+      require('../services/storage') as typeof import('../services/storage');
+    markBibleTextsServerIdRemapPending();
+    log.info('Marked bible texts server-id remap pending', { rowCount: count });
   }
 }
 
@@ -455,6 +571,21 @@ export const migrations: Migration[] = [
     version: 14,
     name: 'add_recordings_version_token',
     up: addRecordingsVersionToken,
+  },
+  {
+    version: 15,
+    name: 'pericope_tables',
+    up: applyPericopeTables,
+  },
+  {
+    version: 16,
+    name: 'bible_texts_server_ids',
+    up: markBibleTextsServerIdsRemap,
+  },
+  {
+    version: 17,
+    name: 'recordings_granularity',
+    up: addRecordingsGranularityColumns,
   },
 ];
 

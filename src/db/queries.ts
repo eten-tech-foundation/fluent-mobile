@@ -216,9 +216,12 @@ export async function getChapterAssignmentById(
         b.code as book_code,
         b.eng_display_name as book_name,
         bi.name as bible_name,
-        bi.abbreviation as bible_abbreviation
+        bi.abbreviation as bible_abbreviation,
+        sl.lang_code_iso_639_3 as source_language_code
       FROM chapter_assignments ca
       LEFT JOIN project_units pu ON pu.id = ca.project_unit_id
+      LEFT JOIN projects p ON pu.project_id = p.id
+      LEFT JOIN languages sl ON p.source_language_id = sl.id
       LEFT JOIN books b ON ca.book_id = b.id
       LEFT JOIN bibles bi ON ca.bible_id = bi.id
       WHERE ca.id = ?`,
@@ -246,6 +249,7 @@ export async function getChapterAssignmentById(
       bookName: row.book_name,
       bibleName: row.bible_name,
       bibleAbbreviation: row.bible_abbreviation,
+      sourceLanguageCode: row.source_language_code?.trim() || undefined,
       hasConflict: Number(row.has_conflict) === 1,
     };
   } catch (error) {
@@ -697,6 +701,123 @@ export async function getBibleTextId(
     return row?.id ?? null;
   } catch (error) {
     log.error('Error resolving bible_text id', { error });
+    return null;
+  }
+}
+
+export interface PericopeGroupResult {
+  pericopeNumber: string;
+  pericopeTitle: string | null;
+  section: number | null;
+  verses: { chapterNumber: number; verseNumber: number }[];
+}
+
+export async function getPericopesForChapter(
+  bookId: number,
+  chapterNumber: number,
+  pericopeSetId: number,
+): Promise<PericopeGroupResult[]> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT pericope_number, pericope_title, section, chapter_number, verse_number
+       FROM pericope_verses
+       WHERE book_id = ? AND chapter_number = ? AND pericope_set_id = ?
+       ORDER BY section, pericope_number, verse_number`,
+      [bookId, chapterNumber, pericopeSetId],
+    );
+    const rows = (result.rows ?? []) as unknown as {
+      pericope_number: string;
+      pericope_title: string | null;
+      section: number | null;
+      chapter_number: number;
+      verse_number: number;
+    }[];
+
+    const groups = new Map<string, PericopeGroupResult>();
+    for (const row of rows) {
+      const groupKey = `${row.section ?? ''}:${row.pericope_number}`;
+      const existing = groups.get(groupKey);
+      const verse = {
+        chapterNumber: row.chapter_number,
+        verseNumber: row.verse_number,
+      };
+      if (existing) {
+        existing.verses.push(verse);
+      } else {
+        groups.set(groupKey, {
+          pericopeNumber: row.pericope_number,
+          pericopeTitle: row.pericope_title,
+          section: row.section,
+          verses: [verse],
+        });
+      }
+    }
+    return Array.from(groups.values());
+  } catch (error) {
+    log.error('Error fetching pericopes for chapter', {
+      error,
+      bookId,
+      chapterNumber,
+      pericopeSetId,
+    });
+    return [];
+  }
+}
+
+export async function getPericopeForVerse(
+  bookId: number,
+  chapterNumber: number,
+  verseNumber: number,
+  pericopeSetId: number,
+): Promise<PericopeGroupResult | null> {
+  const db = getDatabase();
+  try {
+    const numberResult = await db.execute(
+      `SELECT pericope_number, section FROM pericope_verses
+       WHERE book_id = ? AND chapter_number = ? AND verse_number = ? AND pericope_set_id = ?
+       LIMIT 1`,
+      [bookId, chapterNumber, verseNumber, pericopeSetId],
+    );
+    const numberRow = numberResult.rows?.[0] as
+      | { pericope_number?: string; section?: number | null }
+      | undefined;
+    const pericopeNumber = numberRow?.pericope_number;
+    if (!pericopeNumber) return null;
+    const section = numberRow?.section ?? null;
+
+    const result = await db.execute(
+      `SELECT pericope_title, chapter_number, verse_number
+       FROM pericope_verses
+       WHERE book_id = ? AND pericope_number = ? AND pericope_set_id = ?
+         AND (section IS ? OR section = ?)
+       ORDER BY chapter_number, verse_number`,
+      [bookId, pericopeNumber, pericopeSetId, section, section],
+    );
+    const rows = (result.rows ?? []) as unknown as {
+      pericope_title: string | null;
+      chapter_number: number;
+      verse_number: number;
+    }[];
+    if (!rows.length) return null;
+
+    return {
+      pericopeNumber,
+      pericopeTitle: rows[0].pericope_title,
+      section,
+      verses: rows.map(r => ({
+        chapterNumber: r.chapter_number,
+        verseNumber: r.verse_number,
+      })),
+    };
+  } catch (error) {
+    log.error('Error fetching pericope for verse', {
+      error,
+      bookId,
+      chapterNumber,
+      verseNumber,
+      pericopeSetId,
+    });
     return null;
   }
 }

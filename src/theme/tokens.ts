@@ -79,6 +79,8 @@ export const colors = {
   recordAccent: '#DC2626',
   /** Progress / paused waveform fill (Lovable `--waveform-active`). */
   waveformActive: hslToHex(219, 87, 59),
+  /** Unplayed waveform bars on the source-audio dock (Lovable muted lavender). */
+  waveformIdle: hslToHex(220, 40, 78),
   workflowBadgeDraftBorder: '#FBBF24',
   workflowBadgeDraftText: '#1A1A1A',
   workflowBadgePeerCheckBorder: '#EA580C',
@@ -197,8 +199,15 @@ export const waveform = {
   barGap: 3,
   barMinWidth: 3,
   barMinHeight: 4,
+  /** Default take-row / compact waveform height. */
   dockHeight: 28,
+  /** Source-audio dock waveform height (Lovable drafting chrome). */
+  sourceDockHeight: 36,
   tallHeight: 72,
+  /** Vertical playhead width on the source-audio dock. */
+  playheadWidth: 2,
+  /** Empty/loading dashed track segment. */
+  emptyDashWidth: 4,
 } as const;
 
 /** Soft elevation for white stop control + red record CTA. */

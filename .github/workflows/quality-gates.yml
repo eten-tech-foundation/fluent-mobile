@@ -2,11 +2,12 @@ name: Quality Gates
 
 # TypeScript + Expo health checks for PRs. PR CI is a frozen snapshot of this
 # commit (pinned Node via .nvmrc; lockfile expo-doctor — never @latest).
-# `expo install --check` still consults Expo's published SDK matrix and can
-# go red overnight; that is recovered by the weekday Expo sync job (#422),
-# not by drive-by lockfile commits on feature branches. No native Gradle build —
-# native compile is on-demand via EAS preview (preview-build label) and nightly APK;
-# post-merge QA uses nightly (see docs/guides/qa-process.md). Production: tag → EAS.
+# Dependency version validation is offline/deterministic (#422): Expo ships a
+# 57.0.x patch every ~3 days and the remote versions map advances with no
+# diff here. Freshness is handled by the scheduled expo-sdk-align workflow.
+# No native Gradle build — native compile is on-demand via EAS preview
+# (preview-build label) and nightly APK; post-merge QA uses nightly
+# (see docs/guides/qa-process.md). Production: tag → EAS.
 
 on:
   push:
@@ -61,6 +62,14 @@ jobs:
         run: npm ci
 
       - name: Run expo-doctor
+        env:
+          # Patch freshness is scheduled maintenance (#422), not a per-PR gate:
+          # Expo ships a 57.0.x patch every ~3 days and the remote versions map
+          # advances with no diff here. Dependency validation is still done
+          # once, deterministically, by the expo install --check step below.
+          EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK: '1'
+          # A transient api.expo.dev / reactnative.directory blip must not fail a PR.
+          EXPO_DOCTOR_WARN_ON_NETWORK_ERRORS: '1'
         run: npm run doctor
 
   expo-install-check:
@@ -83,4 +92,18 @@ jobs:
         run: npm ci
 
       - name: Check dependency versions
-        run: npx expo install --check
+        # Script also sets EXPO_OFFLINE=1; env here documents the CI contract (#422).
+        env:
+          EXPO_OFFLINE: '1'
+        run: npm run expo:check
+
+  docs-structure:
+    name: Docs Structure Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - run: ./scripts/check-docs-structure.sh

@@ -69,11 +69,23 @@ describe('stableTrackWidth', () => {
 });
 
 describe('PlaybackProgressBar', () => {
-  it('renders static progress bars by default', () => {
+  it('renders a playhead when showPlayhead is set', () => {
+    // fireEvent.layout only reaches onLayout when the row is seekable (RNTL);
+    // the source-audio dock always passes onSeek when ready.
     render(
-      <PlaybackProgressBar positionMs={500} durationMs={1000} barCount={8} />,
+      <PlaybackProgressBar
+        positionMs={500}
+        durationMs={1000}
+        barCount={8}
+        showPlayhead
+        onSeek={() => undefined}
+      />,
     );
-    expect(screen.getByTestId('playback-progress')).toBeTruthy();
+    const bar = screen.getByTestId('playback-progress');
+    fireEvent(bar, 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 200, height: 36 } },
+    });
+    expect(screen.getByTestId('playback-progress-playhead')).toBeTruthy();
   });
 
   it('uses animated capture testID when animate+tall (live recording pulse)', () => {

@@ -24,6 +24,7 @@ export interface Project {
   status?: string;
   updatedAt?: string;
   metadata?: Record<string, unknown>;
+  pericopeSetId?: number | null;
 }
 
 export type ProjectSyncState = 'none' | 'synced' | 'unsynced';
@@ -157,7 +158,8 @@ export interface ChapterAssignment {
 }
 
 export interface Verse {
-  id?: number;
+  /** Server bible-text id (same as API `verses[].id` / upload `bibleTextId`). */
+  id: number;
   bible_id: number;
   book_id: number;
   chapter_number: number;
@@ -189,6 +191,8 @@ export interface ChapterAssignmentData {
   bookName?: string;
   bibleName?: string;
   bibleAbbreviation?: string;
+  /** Project source language ISO-639-3 (Aquifer / source-audio query). */
+  sourceLanguageCode?: string;
   hasConflict: boolean;
 }
 
@@ -208,6 +212,7 @@ export interface ChapterAssignmentRow {
   book_name?: string;
   bible_name?: string;
   bible_abbreviation?: string;
+  source_language_code?: string;
   has_conflict?: number;
 }
 
@@ -276,6 +281,8 @@ export type RecordingSyncStatus =
   | 'failed'
   | 'conflicted';
 
+export type RecordingGranularity = 'verse' | 'pericope';
+
 export interface Recording {
   id: string;
   bibleTextId: number;
@@ -293,6 +300,12 @@ export interface Recording {
   uploadError?: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Capture granularity (#410). Defaults to verse for pre-migration rows. */
+  granularity: RecordingGranularity;
+  startChapter: number;
+  startVerse: number;
+  endChapter: number;
+  endVerse: number;
 }
 
 export interface RecordingRow {
@@ -311,6 +324,11 @@ export interface RecordingRow {
   upload_error: string | null;
   created_at: string;
   updated_at: string;
+  granularity: RecordingGranularity;
+  start_chapter: number;
+  start_verse: number;
+  end_chapter: number;
+  end_verse: number;
 }
 
 export type RecordingWithOwner = Recording & {
@@ -349,3 +367,30 @@ export type ConnectivityProfile =
   | 'usually_connected'
   | 'sometimes_connected'
   | 'rarely_connected';
+
+export interface PericopeSet {
+  id: number;
+  name: string;
+  description?: string | null;
+}
+
+export interface PericopeVerse {
+  pericopeSetId: number | null;
+  bookId: number;
+  chapterNumber: number;
+  verseNumber: number;
+  section?: number | null;
+  pericopeNumber: string;
+  pericopeTitle?: string | null;
+}
+
+export interface PericopeVerseRow {
+  id: number;
+  pericope_set_id: number | null;
+  book_id: number;
+  chapter_number: number;
+  verse_number: number;
+  section: number | null;
+  pericope_number: string;
+  pericope_title: string | null;
+}

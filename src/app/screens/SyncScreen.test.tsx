@@ -17,6 +17,8 @@ const mockSyncNowUploads = jest.fn();
 let mockPageStatus = 'pending';
 let mockCellularBlocked = false;
 let mockIsSyncing = false;
+let mockDisplayText = 'Last synced: Just now';
+let mockStateType: 'normal' | 'syncing' | 'never' | 'error' = 'normal';
 const mockPause = jest.fn();
 const mockCancel = jest.fn();
 const mockResumeUploads = jest.fn();
@@ -58,6 +60,8 @@ jest.mock('../../hooks/useSync', () => ({
     return {
       triggerSync: mockTriggerSync,
       isSyncing: mockIsSyncing,
+      displayText: mockDisplayText,
+      stateType: mockStateType,
     };
   }),
 }));
@@ -143,6 +147,8 @@ describe('SyncScreen', () => {
     mockPageStatus = 'pending';
     mockCellularBlocked = false;
     mockIsSyncing = false;
+    mockDisplayText = 'Last synced: Just now';
+    mockStateType = 'normal';
     mockPause.mockResolvedValue(undefined);
     mockCancel.mockResolvedValue(undefined);
     mockResumeUploads.mockResolvedValue(undefined);
@@ -227,5 +233,15 @@ describe('SyncScreen', () => {
     expect(
       screen.getByTestId('sync-action-sync-now-disabled-hint'),
     ).toBeTruthy();
+  });
+
+  it('shows metadata sync failures from useSync', () => {
+    mockStateType = 'error';
+    mockDisplayText = 'Sync failed: chapter claims';
+    render(<SyncScreen />);
+
+    expect(screen.getByTestId('sync-metadata-error')).toHaveTextContent(
+      'Sync failed: chapter claims',
+    );
   });
 });

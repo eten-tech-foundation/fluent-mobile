@@ -4,6 +4,26 @@ Records how open Dependabot PRs were resolved in a given branch so the team can 
 
 **Two clocks:** PR CI is a frozen snapshot; Expo SDK patch drift is recovered by the weekday compatibility job ([#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422)), not by `--fix` on every feature/Dependabot branch. Parent tracker: [#420](https://github.com/eten-tech-foundation/fluent-mobile/issues/420). Process: [dependabot-process.md](./dependabot-process.md).
 
+## Batch: `main` (2026-09-08)
+
+Resolved: 2026-09-08 (merge + close pass)
+
+| PR | Title / scope | Change applied |
+|----|---------------|----------------|
+| #441 | browserslist 4.28.4 → 4.28.9 | **Merged** — safe lockfile-only; GitHub CI green + local worktree gate (doctor / format / lint / architecture-guard / typecheck / tests); squash by CODEOWNER |
+| #444 | @xmldom/xmldom 0.8.13 → 0.8.15 | **Merged** — safe lockfile-only security patch; rebased onto post-#441 `main`; CI green + local worktree gate; squash by CODEOWNER |
+| #456 | react-native-worklets 0.10.1 → 0.12.1 (RN group) | **Closed** — ERESOLVE vs `react-native-reanimated@4.5.1` peer `worklets@0.10.x`; dedicated lockstep ticket + Android smoke required |
+| #457 | react group (`react` / `react-dom` / `react-test-renderer` 19.2.3 → 19.2.8) | **Closed** — Expo SDK 57 / RN 0.86 React pin; doctor + `expo install --check` red; dedicated ticket + Android smoke |
+| #458 | testing group (RTL 13→14 + Jest tooling) | **Closed** — stacked majors; TypeScript/tests/Quality Gates red; dedicated migration ticket |
+
+**Action:** Merged #441 then #444 one-at-a-time (waited for `main` Lint/Test/Quality Gates green between merges; one transient `sharp` `ECONNRESET` on #441 `main` Test Check was re-run successfully). Closed #456–#458 with technical comments. No open Dependabot PRs remain.
+
+**Left open (Dependabot):** none.
+
+**Verification run:** Local worktree validation on #441, #444, and final `main` @ `094a284` (doctor, format:check, lint, architecture-guard, typecheck, `npm test -- --ci`) all green. `main` required CI green after #444. No Android smoke (N/A for lockfile-only merges / closes).
+
+---
+
 ## Batch: `main` (2026-08-31)
 
 Resolved: 2026-08-31 (weekly npm queue; one squash-merge + close pass)

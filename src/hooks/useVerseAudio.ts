@@ -27,19 +27,43 @@ import { useRecordingEngine } from './useRecordingEngine';
 import { getConnectivitySnapshot } from '../services/connectivity';
 import { shouldEndPlaybackOnIdle } from './playbackStatusGuards';
 import { verseAudioReducer, type VerseAudioState } from './verseAudioReducer';
+import { MAX_RECORDING_TAKES } from '../constants/recordingTakes';
+import type { DraftingUnit } from '../services/draftingUnitPreference';
+import type { RecordingGranularity } from '../types/db/types';
+import type {
+  RecordingUnitCapture,
+  VerseViewRef,
+} from '../utils/recordingRange';
+
+export type { RecordingUnitCapture };
 
 const log = logger.create('useVerseAudio');
-const MAX_TAKES = 5;
+
+/** Frozen at successful `start()` — `stop()` must not read live recording props. */
+export type CapturePersistSnapshot = {
+  bibleTextId: number;
+  /** Active verse view — mixed take_number cap/list scope (#410). */
+  viewBibleTextId: number;
+  granularity: RecordingGranularity;
+  startChapter: number;
+  startVerse: number;
+  endChapter: number;
+  endVerse: number;
+};
+
+export type PersistTakeArgs = CapturePersistSnapshot & {
+  tempUri: string;
+  durationMs: number;
+};
 
 export type VerseAudioPersistDeps = {
-  persistTake?: (args: {
-    bibleTextId: number;
-    tempUri: string;
-    durationMs: number;
-  }) => Promise<{ id: string; localFilePath: string }>;
+  persistTake?: (
+    args: PersistTakeArgs,
+  ) => Promise<{ id: string; localFilePath: string }>;
   loadTakes?: (bibleTextId: number) => Promise<Recording[]>;
   loadAllTakes?: (bibleTextId: number) => Promise<RecordingWithOwner[]>;
   checkMultipleRecorders?: (bibleTextId: number) => Promise<boolean>;
+  countTakesAtView?: (view: VerseViewRef) => Promise<number>;
   deleteTake?: (id: string) => Promise<void>;
   selectTake?: (id: string) => Promise<void>;
   designateCanonical?: (id: string) => Promise<void>;
@@ -59,13 +83,15 @@ export type UseVerseAudioArgs = {
   /** When set, first recording on an unassigned chapter triggers claim (#268/#270). */
   chapterClaim?: ChapterClaimContext | null;
   onChapterClaimed?: () => void;
+  chapterNumber?: number;
+  verseNumber?: number;
+  draftingUnit?: DraftingUnit;
+  recordingUnit?: RecordingUnitCapture | null;
 } & VerseAudioPersistDeps;
 
-async function defaultPersistTake(args: {
-  bibleTextId: number;
-  tempUri: string;
-  durationMs: number;
-}): Promise<{ id: string; localFilePath: string }> {
+async function defaultPersistTake(
+  args: PersistTakeArgs,
+): Promise<{ id: string; localFilePath: string }> {
   await ensureRecordingsDir();
   const id = `rec_${Date.now().toString(36)}_${Math.random()
     .toString(36)
@@ -81,11 +107,25 @@ async function defaultPersistTake(args: {
   await addRecordingTake({
     id,
     bibleTextId: args.bibleTextId,
+    viewBibleTextId: args.viewBibleTextId,
     localFilePath: dest,
     durationMs: args.durationMs,
     fileSizeBytes,
+    granularity: args.granularity,
+    startChapter: args.startChapter,
+    startVerse: args.startVerse,
+    endChapter: args.endChapter,
+    endVerse: args.endVerse,
   });
   return { id, localFilePath: dest };
+}
+
+async function defaultCountTakesAtView(view: VerseViewRef): Promise<number> {
+  const rows = await getTakesForVerse(view.bibleTextId, undefined, {
+    chapterNumber: view.chapterNumber,
+    verseNumber: view.verseNumber,
+  });
+  return rows.length;
 }
 
 /**
@@ -98,14 +138,51 @@ export function useVerseAudio({
   userId = null,
   chapterClaim = null,
   onChapterClaimed,
+  chapterNumber,
+  verseNumber,
+  draftingUnit = 'verse',
+  recordingUnit = null,
   persistTake = defaultPersistTake,
-  loadTakes = getTakesForVerse,
-  loadAllTakes = getAllTakesForVerse,
-  checkMultipleRecorders = verseHasMultipleRecorders,
+  loadTakes,
+  loadAllTakes,
+  checkMultipleRecorders,
+  countTakesAtView = defaultCountTakesAtView,
   deleteTake: deleteTakeFn = deleteRecordingTake,
   selectTake: selectTakeFn = selectRecordingTake,
   designateCanonical: designateCanonicalFn = setCanonicalTake,
 }: UseVerseAudioArgs) {
+  const loadTakesFn = useCallback(
+    (id: number) => {
+      const view =
+        typeof chapterNumber === 'number' && typeof verseNumber === 'number'
+          ? { chapterNumber, verseNumber }
+          : undefined;
+      return loadTakes ? loadTakes(id) : getTakesForVerse(id, undefined, view);
+    },
+    [loadTakes, chapterNumber, verseNumber],
+  );
+  const loadAllTakesFn = useCallback(
+    (id: number) => {
+      const view =
+        typeof chapterNumber === 'number' && typeof verseNumber === 'number'
+          ? { chapterNumber, verseNumber }
+          : undefined;
+      return loadAllTakes ? loadAllTakes(id) : getAllTakesForVerse(id, view);
+    },
+    [loadAllTakes, chapterNumber, verseNumber],
+  );
+  const checkMultipleRecordersFn = useCallback(
+    (id: number) => {
+      const view =
+        typeof chapterNumber === 'number' && typeof verseNumber === 'number'
+          ? { chapterNumber, verseNumber }
+          : undefined;
+      return checkMultipleRecorders
+        ? checkMultipleRecorders(id)
+        : verseHasMultipleRecorders(id, undefined, view);
+    },
+    [checkMultipleRecorders, chapterNumber, verseNumber],
+  );
   const recording = useRecordingEngine();
   const playback = usePlaybackEngine();
   const [state, dispatch] = useReducer(
@@ -123,7 +200,7 @@ export function useVerseAudio({
    */
   const [loadedTakeId, setLoadedTakeId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const captureBibleTextIdRef = useRef<number | null>(null);
+  const capturePersistRef = useRef<CapturePersistSnapshot | null>(null);
   const allTakesRequestIdRef = useRef(0);
   const chapterAssignedRef = useRef(false);
   const activeBibleTextIdRef = useRef<number | null>(null);
@@ -141,7 +218,29 @@ export function useVerseAudio({
   }, [chapterAssignmentId]);
 
   const selectedTake = takes.find(t => t.isSelected) ?? null;
-  const canRecordNewTake = takes.length < MAX_TAKES;
+  const [rangeCapBlocked, setRangeCapBlocked] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const views = recordingUnit?.coveredViews;
+    if (draftingUnit !== 'pericope' || !views?.length) {
+      setRangeCapBlocked(false);
+      return;
+    }
+    void Promise.all(views.map(view => countTakesAtView(view))).then(counts => {
+      if (!cancelled) {
+        setRangeCapBlocked(counts.some(c => c >= MAX_RECORDING_TAKES));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [countTakesAtView, draftingUnit, recordingUnit, takes]);
+
+  const canRecordNewTake =
+    draftingUnit === 'pericope'
+      ? recordingUnit !== null && !rangeCapBlocked
+      : takes.length < MAX_RECORDING_TAKES;
   const ownCanonicalTakeId = takes.find(t => t.isCanonical)?.id ?? null;
 
   const refreshAllTakes = useCallback(
@@ -149,8 +248,8 @@ export function useVerseAudio({
       const requestId = ++allTakesRequestIdRef.current;
       try {
         const [rows, multi] = await Promise.all([
-          loadAllTakes(id),
-          checkMultipleRecorders(id),
+          loadAllTakesFn(id),
+          checkMultipleRecordersFn(id),
         ]);
         if (requestId !== allTakesRequestIdRef.current) {
           return;
@@ -161,13 +260,16 @@ export function useVerseAudio({
         log.error('Failed to load all takes', { error });
       }
     },
-    [loadAllTakes, checkMultipleRecorders],
+    [loadAllTakesFn, checkMultipleRecordersFn],
   );
 
   useEffect(() => {
     let cancelled = false;
     setLoadedTakeId(null);
+    setPlayingTakeId(null);
     activeBibleTextIdRef.current = bibleTextId;
+    // Stop any in-flight draft playback when the active verse unit changes (#235).
+    void playback.stop();
     (async () => {
       if (bibleTextId === null) {
         allTakesRequestIdRef.current += 1;
@@ -178,7 +280,7 @@ export function useVerseAudio({
         return;
       }
       try {
-        const rows = await loadTakes(bibleTextId);
+        const rows = await loadTakesFn(bibleTextId);
         if (cancelled) return;
         setTakes(rows);
         dispatch({ type: 'REHYDRATE', hasTake: rows.length > 0 });
@@ -196,12 +298,26 @@ export function useVerseAudio({
     return () => {
       cancelled = true;
     };
-  }, [bibleTextId, loadTakes, refreshAllTakes]);
+    // playback identity changes every render; stop() is bound to the stable engine.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- bibleTextId-driven reload
+  }, [bibleTextId, loadTakesFn, refreshAllTakes]);
 
   const start = useCallback(async () => {
     if (bibleTextId === null) return;
+    // Wait until capture metadata resolves so pericope mode cannot persist as verse.
+    if (draftingUnit === 'pericope' && recordingUnit === null) return;
 
-    if (!canRecordNewTake) {
+    if (draftingUnit === 'pericope' && recordingUnit?.coveredViews.length) {
+      const counts = await Promise.all(
+        recordingUnit.coveredViews.map(view => countTakesAtView(view)),
+      );
+      if (counts.some(c => c >= MAX_RECORDING_TAKES)) {
+        setErrorMessage(
+          'Maximum of 5 takes reached. Delete a take before recording another.',
+        );
+        return;
+      }
+    } else if (!canRecordNewTake) {
       setErrorMessage(
         'Maximum of 5 takes reached. Delete a take before recording another.',
       );
@@ -217,17 +333,44 @@ export function useVerseAudio({
       }
       setPlayingTakeId(null);
       setLoadedTakeId(null);
-      captureBibleTextIdRef.current = bibleTextId;
+      const anchorBibleTextId = recordingUnit?.anchorBibleTextId ?? bibleTextId;
+      capturePersistRef.current = {
+        bibleTextId: anchorBibleTextId,
+        viewBibleTextId: bibleTextId,
+        granularity: recordingUnit?.granularity ?? 'verse',
+        startChapter: recordingUnit?.startChapter ?? chapterNumber ?? 0,
+        startVerse: recordingUnit?.startVerse ?? verseNumber ?? 0,
+        endChapter: recordingUnit?.endChapter ?? chapterNumber ?? 0,
+        endVerse: recordingUnit?.endVerse ?? verseNumber ?? 0,
+      };
+      log.debug('starting capture', {
+        draftingUnit,
+        bibleTextId,
+        anchorBibleTextId: capturePersistRef.current.bibleTextId,
+        granularity: capturePersistRef.current.granularity,
+        span: `${capturePersistRef.current.startChapter}:${capturePersistRef.current.startVerse}-${capturePersistRef.current.endChapter}:${capturePersistRef.current.endVerse}`,
+        coveredViewCount: recordingUnit?.coveredViews.length ?? 1,
+      });
       await recording.start();
       dispatch({ type: 'START' });
       setErrorMessage(null);
     } catch (error) {
-      captureBibleTextIdRef.current = null;
+      capturePersistRef.current = null;
       const message = error instanceof Error ? error.message : 'start failed';
       setErrorMessage(message);
       dispatch({ type: 'ERROR', message });
     }
-  }, [bibleTextId, canRecordNewTake, playback, recording]);
+  }, [
+    bibleTextId,
+    canRecordNewTake,
+    chapterNumber,
+    countTakesAtView,
+    draftingUnit,
+    playback,
+    recording,
+    recordingUnit,
+    verseNumber,
+  ]);
 
   const pause = useCallback(async () => {
     try {
@@ -252,12 +395,24 @@ export function useVerseAudio({
   }, [recording]);
 
   const stop = useCallback(async () => {
-    const id = captureBibleTextIdRef.current ?? bibleTextId;
-    if (id === null) return;
+    const snapshot = capturePersistRef.current;
+    if (snapshot === null) return;
     try {
       const { uri, durationMs } = await recording.stop();
       dispatch({ type: 'STOP' });
-      await persistTake({ bibleTextId: id, tempUri: uri, durationMs });
+      const persistMeta = {
+        ...snapshot,
+        tempUri: uri,
+        durationMs,
+      };
+      log.debug('persisting take', {
+        span: `${persistMeta.startChapter}:${persistMeta.startVerse}-${persistMeta.endChapter}:${persistMeta.endVerse}`,
+        granularity: persistMeta.granularity,
+        anchorBibleTextId: persistMeta.bibleTextId,
+        viewBibleTextId: persistMeta.viewBibleTextId,
+        durationMs: persistMeta.durationMs,
+      });
+      await persistTake(persistMeta);
 
       try {
         if (
@@ -302,22 +457,21 @@ export function useVerseAudio({
         });
       }
 
-      const rows = await loadTakes(id);
+      const rows = await loadTakesFn(snapshot.viewBibleTextId);
       setTakes(rows);
-      await refreshAllTakes(id);
-      captureBibleTextIdRef.current = null;
+      await refreshAllTakes(snapshot.viewBibleTextId);
+      capturePersistRef.current = null;
       dispatch({ type: 'SAVED' });
     } catch (error) {
-      captureBibleTextIdRef.current = null;
+      capturePersistRef.current = null;
       const message = error instanceof Error ? error.message : 'stop failed';
       setErrorMessage(message);
       dispatch({ type: 'ERROR', message });
     }
   }, [
-    bibleTextId,
     chapterAssignmentId,
     chapterClaim,
-    loadTakes,
+    loadTakesFn,
     onChapterClaimed,
     persistTake,
     recording,
@@ -406,6 +560,11 @@ export function useVerseAudio({
 
   /** Pause draft review playback (design review control shows Pause while playing). */
   const pausePlayback = useCallback(async () => {
+    // No-op when already idle/paused so exclusivity fallbacks cannot cascade
+    // expo-audio status → setState loops on physical devices.
+    if (state !== 'playing' && playback.status !== 'playing') {
+      return;
+    }
     try {
       await playback.pause();
       dispatch({ type: 'PLAYBACK_END' });
@@ -415,7 +574,7 @@ export function useVerseAudio({
       setErrorMessage(message);
       dispatch({ type: 'ERROR', message });
     }
-  }, [playback]);
+  }, [playback, state]);
 
   // Natural end (`didJustFinish` → idle). Explicit pause already dispatches
   // PLAYBACK_END. Do not treat brief idle during in-flight play/load (replace)
@@ -450,7 +609,7 @@ export function useVerseAudio({
             // best-effort — DB row is already gone, don't block the UI on a stray file
           });
         }
-        const rows = bibleTextId !== null ? await loadTakes(bibleTextId) : [];
+        const rows = bibleTextId !== null ? await loadTakesFn(bibleTextId) : [];
         setTakes(rows);
         if (bibleTextId !== null) {
           await refreshAllTakes(bibleTextId);
@@ -469,7 +628,7 @@ export function useVerseAudio({
     },
     [
       bibleTextId,
-      loadTakes,
+      loadTakesFn,
       loadedTakeId,
       playback,
       takes,
@@ -483,7 +642,7 @@ export function useVerseAudio({
       try {
         await selectTakeFn(id);
         if (bibleTextId !== null) {
-          setTakes(await loadTakes(bibleTextId));
+          setTakes(await loadTakesFn(bibleTextId));
         }
       } catch (error) {
         const message =
@@ -492,7 +651,7 @@ export function useVerseAudio({
         dispatch({ type: 'ERROR', message });
       }
     },
-    [bibleTextId, loadTakes, selectTakeFn],
+    [bibleTextId, loadTakesFn, selectTakeFn],
   );
 
   /** Designate canonical from All Takes (#279) — any account may call this. */
@@ -508,7 +667,7 @@ export function useVerseAudio({
           if (activeBibleTextIdRef.current === bibleTextId) {
             // Own take list also carries `isCanonical` for the My Takes
             // read-only indicator — refresh it too.
-            setTakes(await loadTakes(bibleTextId));
+            setTakes(await loadTakesFn(bibleTextId));
           }
         }
       } catch (error) {
@@ -518,7 +677,7 @@ export function useVerseAudio({
         dispatch({ type: 'ERROR', message });
       }
     },
-    [bibleTextId, designateCanonicalFn, loadTakes, refreshAllTakes],
+    [bibleTextId, designateCanonicalFn, loadTakesFn, refreshAllTakes],
   );
 
   return {
