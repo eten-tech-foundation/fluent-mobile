@@ -27,6 +27,11 @@ export const KV_KEYS = {
   SYNC_ERROR_PERICOPE_SETS: 'sync_error_pericope_sets',
   /** ISO timestamp; empty / missing = not paused. */
   SYNC_PAUSED_UNTIL: 'sync_paused_until',
+  /**
+   * When `'1'`, next bible-text sync full-fetches (no `updatedAfter`) so local
+   * autoincrement ids remap to server verse ids (#469).
+   */
+  BIBLE_TEXTS_SERVER_IDS_REMAP_PENDING: 'bible_texts_server_ids_remap_pending',
 } as const;
 
 export function clearUserSession() {
@@ -299,4 +304,26 @@ export function setPericopeBookVersion(
     pericopeBookVersionKey(pericopeSetId, bookCode),
     version,
   );
+}
+
+/** Mark that the next bible-text sync must full-fetch to remap server ids (#469). */
+export function markBibleTextsServerIdRemapPending(): void {
+  kvStorage.setItemSync(KV_KEYS.BIBLE_TEXTS_SERVER_IDS_REMAP_PENDING, '1');
+  log.info('Bible texts server-id remap pending');
+}
+
+/** True when next bible-text sync must full-fetch to remap server ids (#469). */
+export function isBibleTextsServerIdRemapPending(): boolean {
+  return (
+    kvStorage.getItemSync(KV_KEYS.BIBLE_TEXTS_SERVER_IDS_REMAP_PENDING) === '1'
+  );
+}
+
+/** Clear the one-shot remap flag after a successful bible-text sync (#469). */
+export function clearBibleTextsServerIdRemapPending(): void {
+  if (!isBibleTextsServerIdRemapPending()) {
+    return;
+  }
+  kvStorage.removeItemSync(KV_KEYS.BIBLE_TEXTS_SERVER_IDS_REMAP_PENDING);
+  log.info('Cleared bible texts server-id remap pending flag');
 }
