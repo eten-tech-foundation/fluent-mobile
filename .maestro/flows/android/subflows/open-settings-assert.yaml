@@ -1,0 +1,19 @@
+# Drawer → More Settings → assert Settings chrome (no red/white screen).
+appId: com.eten.fluent
+---
+- runFlow: open-drawer.yaml
+- tapOn:
+    id: 'settings-menu-more-settings'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-prepare-offline'
+    timeout: 30000
+- assertVisible:
+    id: 'settings-add-user'
+- assertVisible:
+    id: 'settings-log-out'
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000

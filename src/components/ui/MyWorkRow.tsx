@@ -28,7 +28,11 @@ export function MyWorkRow({
     <ListCard onPress={onPress} testID={`my-work-row-${chapter.id}`}>
       <View style={styles.column}>
         <View style={styles.titleRow}>
-          <Text style={styles.title} numberOfLines={1}>
+          <Text
+            style={styles.title}
+            numberOfLines={1}
+            testID={`my-work-row-title-${chapter.id}`}
+          >
             {chapter.displayLabel}
           </Text>
           {display.showCloudSync ? (
