@@ -1,15 +1,59 @@
 # Maestro (Android E2E)
 
-Opt-in **Android-only** Maestro suite for Fluent Mobile ([#488](https://github.com/eten-tech-foundation/fluent-mobile/issues/488)): harness ([#489](https://github.com/eten-tech-foundation/fluent-mobile/issues/489)) + domain smokes ([#491](https://github.com/eten-tech-foundation/fluent-mobile/issues/491)) + multi-account isolation ([#495](https://github.com/eten-tech-foundation/fluent-mobile/issues/495)).
+Opt-in **Android-only** Maestro suite for Fluent Mobile ([#488](https://github.com/eten-tech-foundation/fluent-mobile/issues/488)): harness ([#489](https://github.com/eten-tech-foundation/fluent-mobile/issues/489)) + domain smokes ([#491](https://github.com/eten-tech-foundation/fluent-mobile/issues/491)) + multi-account isolation ([#495](https://github.com/eten-tech-foundation/fluent-mobile/issues/495)) + informational CI playbook ([#497](https://github.com/eten-tech-foundation/fluent-mobile/issues/497)).
 
-**Not** a `/create-pr` or required PR merge gate. CI playbook stays in a later ticket ([#497](https://github.com/eten-tech-foundation/fluent-mobile/issues/497)).
+**Not** a `/create-pr` or required PR merge gate. Manual Actions: [`.github/workflows/maestro-android.yml`](../../.github/workflows/maestro-android.yml) (`workflow_dispatch` only). Needs QA? / `@Roslin22` nightly handoff is unchanged.
+
+## Playbook — eng vs QA
+
+| Audience | Use Maestro for | Still do manually |
+| --- | --- | --- |
+| **Engineering** | Local Debug + Metro (`maestro:android:up`, suite scripts) while building auth/nav/record/sync/account features; optional informational Actions dispatch | Exploratory UX, hardware mics/cameras, store builds, anything not encoded below |
+| **QA** | Optional: same flows against a Debug client when debugging a Maestro failure | **Nightly APK** checklist and device QA per [qa-process.md](qa-process.md) — Maestro does **not** replace `@Roslin22` handoff |
+
+### Journey → flow map
+
+| Human / QA journey | Maestro | Command / tag |
+| --- | --- | --- |
+| Cold launch → login screen | `flows/smoke-launch.yaml` | `npm run maestro:test:harness` |
+| Sign in / session restore / logout | `flows/android/smoke-auth.yaml` | `npm run maestro:test:auth` |
+| Home → My Work / Projects → drafting tabs | `flows/android/smoke-nav.yaml` | `npm run maestro:test:nav` |
+| Record → stop → play → delete take | `flows/android/smoke-record.yaml` | `npm run maestro:test:record` |
+| Sync Now + Prepare for Offline chrome | `flows/android/smoke-sync-offline.yaml` | `npm run maestro:test:sync` |
+| Forgot password / legal / permission deny | `flows/android/smoke-edges.yaml` | `npm run maestro:test:edges` |
+| Multi-account nightly A–D | `flows/android/smoke-multi-account.yaml` | `npm run maestro:test:multi-account` |
+| All single-account smokes | tag `smoke` | `npm run maestro:test:smokes` |
+
+### Residual manual (not automated)
+
+- Exploratory / visual polish on the **nightly** APK
+- Hardware mic quality, Bluetooth, low-storage, OEM permission variants
+- Multi-account **A3** (3-account cap) and **E** (sign-out when another account remains) — see [qa-multi-account-nightly.md](qa-multi-account-nightly.md)
+- Forced reauth mid-session (needs a backend/session hook)
+- Production / Play Store builds (never set `EXPO_PUBLIC_E2E_MODE` on EAS production profiles)
+- Raising `MAX_DEVICE_ACCOUNTS` / account-cap product changes
+
+## Informational CI (`workflow_dispatch`)
+
+[`.github/workflows/maestro-android.yml`](../../.github/workflows/maestro-android.yml) builds a local Android **release** APK (CNG prebuild + Gradle; **no Metro**, no `EXPO_PUBLIC_E2E_MODE`), boots an API 34 emulator, and runs one suite. **Not** required on PRs; **no** cron until stable. Day-to-day eng iteration remains Debug + Metro (below).
+
+| Input `suite` | Secrets required |
+| --- | --- |
+| `harness` | none |
+| `smokes` | `MAESTRO_EMAIL`, `MAESTRO_PASSWORD` |
+| `multi-account` | both pairs (`MAESTRO_EMAIL_2`, `MAESTRO_PASSWORD_2` too) |
+
+Dispatch: **Actions → Maestro Android (informational) → Run workflow** (after the workflow exists on the target branch / `main`). Artifacts: JUnit + Maestro output + APK (14-day retention).
+
+See also [docs/ci.md](../ci.md) and [`.github/README.md`](../../.github/README.md).
 
 ## Prerequisites
 
 - JDK **17+** (`JAVA_HOME`)
 - Android SDK `platform-tools` (`adb`)
 - Emulator or physical device (USB debugging)
-- **Debug / expo-dev-client APK** — not Expo Go, not store builds
+- **Local eng playbook:** Debug / expo-dev-client APK + Metro — not Expo Go, not store builds
+- **Informational CI:** release APK produced in the workflow (no Metro / no `EXPO_PUBLIC_E2E_MODE`)
 - Dedicated **Maestro translator** on `dev.api.fluent.bible` with **≥1 chapter assignment** (My Work + project data for nav/record/sync smokes)
 - For multi-account: a **second** dedicated translator (`MAESTRO_EMAIL_2` / `MAESTRO_PASSWORD_2`), also with ≥1 assignment — prefer a **different** first My Work display label than account A (isolation assert C1–C3)
 
@@ -151,4 +195,4 @@ Prefer Maestro `id:` matching React Native `testID`.
 
 ## Out of scope
 
-Informational CI / playbook ([#497](https://github.com/eten-tech-foundation/fluent-mobile/issues/497)), auth bypass, iOS, merge-gating Maestro, raising the 3-account device cap.
+Auth bypass, iOS, merge-gating Maestro, raising the 3-account device cap, replacing Needs QA? nightly handoff.
