@@ -14,12 +14,12 @@
 #   NOTIFY_SLACK — "true" to send (default true); "false" skips send
 #   SLACK_PAYLOAD_JSON — optional path to JSON written by write-slack-nightly-payload.sh
 #   DRY_RUN — "true" prints the JSON payload and exits (no webhook)
-# Incoming webhooks cannot mute phone push. STATUS=failure uses the same
-# :zzz: / amber card as skipped so overnight misses do not look like incidents.
+# STATUS=failure uses the same :zzz: / amber card as skipped so quiet misses
+# do not look like incidents. Slack posts in the same nightly run (#484).
 set -euo pipefail
 
 if [ -n "${SLACK_PAYLOAD_JSON:-}" ] && [ -f "${SLACK_PAYLOAD_JSON}" ]; then
-  eval "$(jq -r 'to_entries[] | select(.key != "pending") | "export \(.key)=\(.value|@sh)"' "${SLACK_PAYLOAD_JSON}")"
+  eval "$(jq -r 'to_entries[] | "export \(.key)=\(.value|@sh)"' "${SLACK_PAYLOAD_JSON}")"
 fi
 
 NOTIFY_SLACK="${NOTIFY_SLACK:-true}"
