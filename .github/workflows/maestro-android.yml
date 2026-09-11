@@ -97,12 +97,12 @@ jobs:
         env:
           CI: 'true'
 
-      # Assemble inside emulator-runner so ANDROID_HOME / SDK from the action are available.
-      # android-emulator-runner invokes script with /usr/bin/sh (dash on ubuntu) — run the
-      # body via a bash heredoc so `pipefail` and ${HOME} expansion work (#510).
+      # android-emulator-runner runs *each line* of `script:` as a separate
+      # `/usr/bin/sh -c` (dash). Keep this a single line that execs a bash file (#510).
       - name: Build APK + run Maestro on emulator
         uses: reactivecircus/android-emulator-runner@1dcd0090116d15e7c562f8db72807de5e036a4ed # v2.34.0
         env:
+          MAESTRO_SUITE: ${{ inputs.suite }}
           MAESTRO_EMAIL: ${{ secrets.MAESTRO_EMAIL }}
           MAESTRO_PASSWORD: ${{ secrets.MAESTRO_PASSWORD }}
           MAESTRO_EMAIL_2: ${{ secrets.MAESTRO_EMAIL_2 }}
@@ -115,36 +115,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-metrics
           emulator-boot-timeout: 900
-          script: |
-            bash -euo pipefail <<'SCRIPT'
-            export PATH="${HOME}/.maestro/bin:${PATH}"
-            chmod +x android/gradlew
-            (
-              cd android
-              ./gradlew :app:assembleRelease --no-daemon -PreactNativeArchitectures=x86_64
-            )
-            APK="android/app/build/outputs/apk/release/app-release.apk"
-            test -f "${APK}"
-            adb install -r "${APK}"
-            mkdir -p .maestro/test_output
-            suite="${{ inputs.suite }}"
-            case "${suite}" in
-              harness)
-                npm run maestro:test:harness -- --format junit --output .maestro/test_output/report.xml
-                ;;
-              smokes)
-                npm run maestro:test:smokes -- --format junit --output .maestro/test_output/report.xml
-                ;;
-              multi-account)
-                npm run maestro:test:multi-account -- --format junit --output .maestro/test_output/report.xml
-                ;;
-              *)
-                echo "Unknown suite: ${suite}" >&2
-                exit 1
-                ;;
-            esac
-            adb logcat -d > .maestro/test_output/logcat.txt || true
-            SCRIPT
+          script: bash ./scripts/maestro-ci-emulator.sh
 
       - name: Upload Maestro artifacts
         if: always()
