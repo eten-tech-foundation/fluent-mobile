@@ -14,7 +14,10 @@ import {
   MY_WORK_CHAPTER_WHERE,
 } from '../utils/myWorkChapterFilter';
 import { getBadgeStage, getWorkflowStage } from '../utils/workflowStage';
-import { deriveChapterOwnershipState } from '../utils/chapterOwnershipState';
+import {
+  deriveChapterOwnershipState,
+  resolveStageAssigneeId,
+} from '../utils/chapterOwnershipState';
 
 function parseConnectivityProfile(
   metadata: string | null,
@@ -360,6 +363,7 @@ function mapChapterRowCore(
     | 'id'
     | 'book_name'
     | 'chapter_number'
+    | 'status'
     | 'updated_at'
     | 'submitted_time'
     | 'last_recording_activity'
@@ -369,6 +373,7 @@ function mapChapterRowCore(
     | 'completed_verses'
     | 'downloaded_verses'
     | 'assigned_user_id'
+    | 'peer_checker_id'
     | 'has_conflict'
   >,
   currentUserId: number,
@@ -384,7 +389,11 @@ function mapChapterRowCore(
     chapterNumber: row.chapter_number,
     syncState: deriveChapterSyncState(recordingCount, pendingCount),
     ownershipState: deriveChapterOwnershipState(
-      row.assigned_user_id,
+      resolveStageAssigneeId(
+        row.status,
+        row.assigned_user_id,
+        row.peer_checker_id,
+      ),
       currentUserId,
     ),
     lastActivityAt: activity.lastActivityAt,
@@ -433,6 +442,7 @@ export async function getProjectChapters(
         ca.updated_at,
         ca.submitted_time,
         ca.assigned_user_id,
+        ca.peer_checker_id,
         b.eng_display_name AS book_name,
         ${RECORDING_AGGREGATES},
         (
@@ -481,6 +491,7 @@ export async function getMyWorkChapters(
         ca.updated_at,
         ca.submitted_time,
         ca.assigned_user_id,
+        ca.peer_checker_id,
         b.eng_display_name AS book_name,
         p.name AS project_name,
         tl.lang_name AS target_language_name,
