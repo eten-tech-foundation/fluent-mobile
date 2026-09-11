@@ -409,7 +409,7 @@ describe('RecordTab', () => {
     // 0 and duration falls back to the take's stored duration — rendered as
     // one combined "position / duration" label, not duration alone.
     expect(screen.getByText('0:00 / 0:13')).toBeTruthy();
-    expect(screen.getByTestId('record-delete-button')).toBeTruthy();
+    expect(screen.getByTestId('record-delete-selected-button')).toBeTruthy();
     expect(screen.getByTestId('record-new-take-button')).toBeTruthy();
     expect(screen.getByText('Record New Take')).toBeTruthy();
     // Toggle hidden — only this account has takes for the unit.
@@ -488,8 +488,7 @@ describe('RecordTab', () => {
 
     renderTab();
 
-    const deleteButtons = screen.getAllByTestId('record-delete-button');
-    fireEvent.press(deleteButtons[0]!); // take 1, not selected
+    fireEvent.press(screen.getByTestId('record-delete-button')); // take 1
 
     expect(Alert.alert).not.toHaveBeenCalled();
     expect(idleAudio.deleteTake).toHaveBeenCalledWith('rec_1');
@@ -507,8 +506,7 @@ describe('RecordTab', () => {
 
     renderTab();
 
-    const deleteButtons = screen.getAllByTestId('record-delete-button');
-    fireEvent.press(deleteButtons[1]!); // take 2, selected
+    fireEvent.press(screen.getByTestId('record-delete-selected-button'));
 
     expect(Alert.alert).toHaveBeenCalledTimes(1);
     expect(idleAudio.deleteTake).not.toHaveBeenCalled();

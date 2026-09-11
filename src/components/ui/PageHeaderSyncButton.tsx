@@ -24,6 +24,7 @@ export function PageHeaderSyncButton({
       accessibilityRole="button"
       hitSlop={touchHitSlop}
       activeOpacity={0.7}
+      testID="home-sync-button"
     >
       <CloudSyncStatusIcon
         status={syncStatus}
