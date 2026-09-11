@@ -672,6 +672,61 @@ describe('useVerseAudio', () => {
     expect(mockPlaybackPlay).toHaveBeenCalledTimes(1);
   });
 
+  it('abandons the stitched queue when recording starts', async () => {
+    loadTakes.mockResolvedValue([makeTake()]);
+    const stitchedRow = makeStitchedRow();
+
+    const { result, rerender } = renderHook(() =>
+      useVerseAudio(verseAudioArgs()),
+    );
+
+    await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+    await act(async () => {
+      await result.current.playStitched(stitchedRow);
+    });
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(mockRecordingStart).toHaveBeenCalled();
+
+    playbackState.status = 'idle';
+    await act(async () => {
+      rerender(undefined);
+    });
+
+    expect(mockPlaybackPlay).toHaveBeenCalledTimes(1);
+  });
+
+  it('abandons the stitched queue when a take is deleted', async () => {
+    loadTakes.mockResolvedValue([makeTake()]);
+    deleteTake.mockResolvedValue(undefined);
+    const stitchedRow = makeStitchedRow();
+
+    const { result, rerender } = renderHook(() =>
+      useVerseAudio(verseAudioArgs()),
+    );
+
+    await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+    await act(async () => {
+      await result.current.playStitched(stitchedRow);
+    });
+    await act(async () => {
+      await result.current.deleteTake('rec_1');
+    });
+
+    expect(deleteTake).toHaveBeenCalledWith('rec_1');
+
+    playbackState.status = 'idle';
+    await act(async () => {
+      rerender(undefined);
+    });
+
+    expect(mockPlaybackPlay).toHaveBeenCalledTimes(1);
+  });
+
   it('drops the stitched queue when the active verse changes', async () => {
     loadTakes.mockResolvedValue([makeTake()]);
     const stitchedRow = makeStitchedRow();
