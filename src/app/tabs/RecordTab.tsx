@@ -212,9 +212,6 @@ export function RecordTab({
   const prevDisabled = verseIndex <= 0;
   const nextDisabled = verseIndex < 0 || verseIndex >= verses.length - 1;
   const selected = verses.find(v => v.verseNumber === selectedVerse);
-  const hasTake = verseAudio.takes.length > 0;
-  const hasAnyTake = hasTake || verseAudio.allTakes.length > 0;
-  const activeViewHasTakes = takeView === 'mine' ? hasTake : hasAnyTake;
 
   const resolveBibleTextId = useCallback(async () => {
     return getBibleTextId(
@@ -295,6 +292,10 @@ export function RecordTab({
       verseAudio.takes,
     ],
   );
+
+  const hasTake = displayRows.length > 0;
+  const hasAnyTake = hasTake || verseAudio.allTakes.length > 0;
+  const activeViewHasTakes = takeView === 'mine' ? hasTake : hasAnyTake;
 
   /** Shared generation so sync-triggered and verse-change lookups ignore stale IDs. */
   const bibleTextRequestIdRef = useRef(0);

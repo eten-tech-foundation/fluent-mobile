@@ -799,6 +799,8 @@ export function useVerseAudio({
   const selectTake = useCallback(
     async (id: string) => {
       try {
+        clearStitchQueue();
+        setPlayingTakeId(null);
         await selectTakeFn(id);
         if (bibleTextId !== null) {
           setTakes(await loadTakesFn(bibleTextId));
@@ -810,7 +812,7 @@ export function useVerseAudio({
         dispatch({ type: 'ERROR', message });
       }
     },
-    [bibleTextId, loadTakesFn, selectTakeFn],
+    [bibleTextId, clearStitchQueue, loadTakesFn, selectTakeFn],
   );
 
   /** Designate canonical from All Takes (#279) — any account may call this. */
