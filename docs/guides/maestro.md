@@ -33,6 +33,23 @@ Opt-in **Android-only** Maestro suite for Fluent Mobile ([#488](https://github.c
 - Production / Play Store builds (never set `EXPO_PUBLIC_E2E_MODE` on EAS production profiles)
 - Raising `MAX_DEVICE_ACCOUNTS` / account-cap product changes
 
+## Sources of truth (Expo MCP + Maestro)
+
+Prefer these over memory when changing Maestro or CI:
+
+| Topic | Canonical docs |
+| --- | --- |
+| Expo Maestro on EAS Workflows | [EAS Workflows E2E + Maestro](https://docs.expo.dev/eas/workflows/examples/e2e-tests/), [CI/CD tutorial E2E](https://docs.expo.dev/tutorial/cicd/e2e-tests/), [Maestro insights](https://docs.expo.dev/eas-insights/maestro/) |
+| CNG / prebuild (Android-only here) | [Continuous Native Generation](https://docs.expo.dev/workflow/continuous-native-generation/), local compile via [`npx expo run:android`](https://docs.expo.dev/more/expo-cli/#compiling) |
+| Maestro CLI / flows | [docs.maestro.dev](https://docs.maestro.dev/) — React Native `testID` → `id:`, `maestro test --format junit`, `--test-output-dir` (CI on Maestro **2.10.0**); `--debug-output` is separate and ignored when `--test-output-dir` is set on that pin |
+| Maestro Cloud GitHub Action | [Maestro Cloud + GHA](https://docs.maestro.dev/cloud/ci-cd-integration/github-actions) (we do **not** use Cloud today) |
+
+**Expo’s documented CI path** is an EAS Workflow with `type: build` (`e2e-test` profile: `withoutCredentials` + Android `buildType: apk`) then `type: maestro` with `flow_path`. That is the Expo-book default for hosted E2E.
+
+**This repo’s chosen path (#497):** informational GitHub Actions (`workflow_dispatch` only) that CNG-prebuilds Android, assembles a **release** APK on the runner, boots `reactivecircus/android-emulator-runner`, and runs the Maestro CLI locally. Reasons we keep GHA for now: no Maestro Cloud / EAS Maestro job dependency, mirrors local Debug+Metro eng loops with the same `.maestro/` flows, and stays an explicit non-merge-gate. Migrating to EAS Workflows `maestro` is a separate ticket — do not treat GHA as Expo’s preferred long-term host.
+
+Local eng still follows Maestro’s React Native guidance: Debug / standalone package (`appId: com.eten.fluent`), not Expo Go; prefer `testID` selectors.
+
 ## Informational CI (`workflow_dispatch`)
 
 [`.github/workflows/maestro-android.yml`](../../.github/workflows/maestro-android.yml) CNG-prebuilds Android, assembles a **release** APK **before** booting the emulator (so Gradle does not share the runner with the AVD), then runs one Maestro suite on API 34 (**no Metro**, no `EXPO_PUBLIC_E2E_MODE`). Job timeout is **150** minutes. **Not** required on PRs; **no** cron until stable. Day-to-day eng iteration remains Debug + Metro (below).
@@ -43,12 +60,14 @@ Opt-in **Android-only** Maestro suite for Fluent Mobile ([#488](https://github.c
 | `smokes` | `MAESTRO_EMAIL`, `MAESTRO_PASSWORD` |
 | `multi-account` | both pairs (`MAESTRO_EMAIL_2`, `MAESTRO_PASSWORD_2` too) |
 
-Dispatch: **Actions → Maestro Android (informational) → Run workflow** (after the workflow exists on the target branch / `main`). Artifacts: JUnit + Maestro output + APK (14-day retention).
+Dispatch: **Actions → Maestro Android (informational) → Run workflow** (after the workflow exists on the target branch / `main`). Artifacts: JUnit (`report.xml`) + `--test-output-dir` session output + APK (14-day retention). On Maestro **2.10.0**, do not rely on a separate `--debug-output` tree when `--test-output-dir` is set.
 
 Notes (#510):
 
 - `android-emulator-runner` runs **each line** of `script:` as a separate `/usr/bin/sh -c` (dash on Ubuntu). Emulator `script:` stays one line: `bash ./scripts/maestro-ci-emulator.sh run`.
 - `bash ./scripts/maestro-ci-emulator.sh assemble` runs in a prior step (Android SDK via `android-actions/setup-android` + Gradle cache) so a cold `assembleRelease` is not racing the emulator under the old 90m timeout.
+- CLI install uses our pinned zip + SHA (`npm run maestro:install` / `MAESTRO_VERSION`) instead of piping `get.maestro.mobile.dev` to bash. Maestro’s own pin is `MAESTRO_VERSION=…; curl … | bash`; we keep the checksum path for CI supply-chain hardening.
+- Credentials reach flows as process env (`MAESTRO_*` on the GHA step / `.env.maestro` locally). Flows use `${MAESTRO_EMAIL}` etc.; Maestro also supports `maestro test -e KEY=value`.
 
 See also [docs/ci.md](../ci.md) and [`.github/README.md`](../../.github/README.md).
 
