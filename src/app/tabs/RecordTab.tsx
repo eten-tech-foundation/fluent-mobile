@@ -383,11 +383,9 @@ export function RecordTab({
         return;
       }
       const settledState = verseAudioStateRef.current;
-      if (
-        settledState === 'recording' ||
-        settledState === 'paused' ||
-        settledState === 'playing'
-      ) {
+      // Do not discard the first resolved unit just because review playback
+      // already started — only block while capture is active (#411).
+      if (settledState === 'recording' || settledState === 'paused') {
         return;
       }
       // Keep the prior unit while async resolve runs, and skip setState when
@@ -951,9 +949,13 @@ export function RecordTab({
                   <View style={styles.takeList} testID="record-take-list">
                     {displayRows.map(row => {
                       if (row.kind === 'stitched') {
-                        const isLoaded = verseAudio.playingTakeId === row.id;
                         const isThisPlaying =
-                          isLoaded && verseAudio.state === 'playing';
+                          verseAudio.playingTakeId === row.id &&
+                          verseAudio.state === 'playing';
+                        const showStitchedProgress =
+                          verseAudio.playingTakeId === row.id &&
+                          (verseAudio.state === 'playing' ||
+                            verseAudio.playbackStatus === 'paused');
                         return (
                           <View key={row.id} style={styles.takeItemSpacing}>
                             <DraftTakeRow
@@ -972,9 +974,12 @@ export function RecordTab({
                               // Progress is segment-local while playing:
                               // continuous scrub across segments is out of
                               // scope for #411.
-                              positionMs={isLoaded ? verseAudio.positionMs : 0}
+                              positionMs={
+                                showStitchedProgress ? verseAudio.positionMs : 0
+                              }
                               durationMs={
-                                isLoaded && verseAudio.durationMs > 0
+                                showStitchedProgress &&
+                                verseAudio.durationMs > 0
                                   ? verseAudio.durationMs
                                   : row.durationMs ?? 0
                               }
@@ -990,9 +995,13 @@ export function RecordTab({
                       const take = row.take;
                       const isSelected =
                         take.id === verseAudio.selectedTake?.id;
-                      const isLoaded = verseAudio.playingTakeId === take.id;
                       const isThisPlaying =
-                        isLoaded && verseAudio.state === 'playing';
+                        verseAudio.playingTakeId === take.id &&
+                        verseAudio.state === 'playing';
+                      const showLiveProgress =
+                        verseAudio.playingTakeId === take.id ||
+                        (verseAudio.loadedTakeId === take.id &&
+                          verseAudio.playbackStatus === 'paused');
                       const isSeekable =
                         verseAudio.loadedTakeId === take.id ||
                         (verseAudio.loadedTakeId === null && isSelected);
@@ -1010,9 +1019,11 @@ export function RecordTab({
                             isCanonical={
                               take.id === verseAudio.ownCanonicalTakeId
                             }
-                            positionMs={isLoaded ? verseAudio.positionMs : 0}
+                            positionMs={
+                              showLiveProgress ? verseAudio.positionMs : 0
+                            }
                             durationMs={
-                              isLoaded && verseAudio.durationMs > 0
+                              showLiveProgress && verseAudio.durationMs > 0
                                 ? verseAudio.durationMs
                                 : take.durationMs ?? 0
                             }
@@ -1047,9 +1058,13 @@ export function RecordTab({
                     >
                       <TakeGroupHeader displayName={section.title} />
                       {section.data.map(take => {
-                        const isLoaded = verseAudio.playingTakeId === take.id;
                         const isThisPlaying =
-                          isLoaded && verseAudio.state === 'playing';
+                          verseAudio.playingTakeId === take.id &&
+                          verseAudio.state === 'playing';
+                        const showLiveProgress =
+                          verseAudio.playingTakeId === take.id ||
+                          (verseAudio.loadedTakeId === take.id &&
+                            verseAudio.playbackStatus === 'paused');
                         return (
                           <View key={take.id} style={styles.takeItemSpacing}>
                             <SharedTakeRow
@@ -1057,9 +1072,11 @@ export function RecordTab({
                               label={formatTakeSubtitle(take)}
                               isPlaying={isThisPlaying}
                               isCanonical={take.isCanonical}
-                              positionMs={isLoaded ? verseAudio.positionMs : 0}
+                              positionMs={
+                                showLiveProgress ? verseAudio.positionMs : 0
+                              }
                               durationMs={
-                                isLoaded && verseAudio.durationMs > 0
+                                showLiveProgress && verseAudio.durationMs > 0
                                   ? verseAudio.durationMs
                                   : take.durationMs ?? 0
                               }

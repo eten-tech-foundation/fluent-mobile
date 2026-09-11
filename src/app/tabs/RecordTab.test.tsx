@@ -150,6 +150,7 @@ const idleAudio: VerseAudioApi = {
   canRecordNewTake: true,
   playingTakeId: null,
   loadedTakeId: null,
+  playbackStatus: 'idle' as const,
   errorMessage: null,
   positionMs: 0,
   durationMs: 0,
@@ -576,6 +577,50 @@ describe('RecordTab', () => {
       expect(idleAudio.playTake).toHaveBeenCalledWith(take2);
     });
     // Review scrub surface (#176) — only the loaded take's waveform is seekable.
+    expect(screen.getByLabelText('Draft waveform scrubber')).toBeTruthy();
+  });
+
+  it('keeps waveform progress visible while a take is paused mid-playback', () => {
+    const take = makeTake({
+      granularity: 'pericope',
+      startVerse: 3,
+      endVerse: 7,
+      durationMs: 13000,
+    });
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      state: 'recorded',
+      takes: [take],
+      selectedTake: take,
+      playingTakeId: null,
+      loadedTakeId: 'rec_1',
+      playbackStatus: 'paused',
+      positionMs: 5200,
+      durationMs: 13000,
+    });
+
+    renderTab();
+
+    expect(screen.getByLabelText('Take time 0:05 / 0:13')).toBeTruthy();
+  });
+
+  it('clears waveform progress after playback ends but keeps scrub enabled', () => {
+    const take = makeTake({ durationMs: 13000 });
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      state: 'recorded',
+      takes: [take],
+      selectedTake: take,
+      playingTakeId: null,
+      loadedTakeId: 'rec_1',
+      playbackStatus: 'idle',
+      positionMs: 13000,
+      durationMs: 13000,
+    });
+
+    renderTab();
+
+    expect(screen.getByLabelText('Take time 0:00 / 0:13')).toBeTruthy();
     expect(screen.getByLabelText('Draft waveform scrubber')).toBeTruthy();
   });
 

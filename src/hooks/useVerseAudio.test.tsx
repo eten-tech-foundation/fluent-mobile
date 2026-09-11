@@ -643,7 +643,7 @@ describe('useVerseAudio', () => {
     expect(result.current.playingTakeId).toBeNull();
   });
 
-  it('abandons the stitched queue on pause so play restarts at the first segment', async () => {
+  it('preserves the stitched queue on pause and resumes the current segment', async () => {
     loadTakes.mockResolvedValue([makeTake()]);
     const stitchedRow = makeStitchedRow();
 
@@ -662,14 +662,51 @@ describe('useVerseAudio', () => {
 
     expect(mockPlaybackPause).toHaveBeenCalled();
     expect(result.current.state).toBe('recorded');
+    expect(result.current.playingTakeId).toBe('stitched:1:3-1:4');
 
-    // A later idle report must not resume the abandoned queue.
+    // Idle while paused must not auto-advance to the next segment.
     playbackState.status = 'idle';
     await act(async () => {
       rerender(undefined);
     });
-
     expect(mockPlaybackPlay).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await result.current.playStitched(stitchedRow);
+    });
+    expect(mockPlaybackPlay).toHaveBeenNthCalledWith(2, '/recordings/v3.m4a');
+    expect(result.current.state).toBe('playing');
+  });
+
+  it('resumes the second stitched segment after pause mid-playback', async () => {
+    loadTakes.mockResolvedValue([makeTake()]);
+    const stitchedRow = makeStitchedRow();
+
+    const { result, rerender } = renderHook(() =>
+      useVerseAudio(verseAudioArgs()),
+    );
+
+    await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+    await act(async () => {
+      await result.current.playStitched(stitchedRow);
+    });
+    playbackState.status = 'idle';
+    await act(async () => {
+      rerender(undefined);
+    });
+    expect(mockPlaybackPlay).toHaveBeenNthCalledWith(2, '/recordings/v4.m4a');
+
+    await act(async () => {
+      await result.current.pausePlayback();
+    });
+    expect(result.current.playingTakeId).toBe('stitched:1:3-1:4');
+
+    await act(async () => {
+      await result.current.playStitched(stitchedRow);
+    });
+    expect(mockPlaybackPlay).toHaveBeenNthCalledWith(3, '/recordings/v4.m4a');
+    expect(mockPlaybackPlay).toHaveBeenCalledTimes(3);
   });
 
   it('abandons the stitched queue when recording starts', async () => {

@@ -618,6 +618,18 @@ export function useVerseAudio({
   /** Play a synthetic stitched row's verse takes back to back (#411). */
   const playStitched = useCallback(
     async (row: StitchedTakeRow) => {
+      // Resume mid-row after pause — keep queue position and segment file.
+      if (
+        stitchRowIdRef.current === row.id &&
+        stitchQueueRef.current !== null &&
+        playback.status === 'paused'
+      ) {
+        const resumeUri = currentStitchUri(stitchQueueRef.current);
+        if (resumeUri !== null) {
+          await playStitchedSegment(resumeUri, row.id);
+          return;
+        }
+      }
       const queue = createStitchQueue(
         row.segments.map(segment => segment.localFilePath),
       );
@@ -632,7 +644,7 @@ export function useVerseAudio({
       stitchRowIdRef.current = row.id;
       await playStitchedSegment(uri, row.id);
     },
-    [playStitchedSegment],
+    [playStitchedSegment, playback.status],
   );
 
   /**
@@ -688,8 +700,12 @@ export function useVerseAudio({
       return;
     }
     try {
-      // Pausing abandons the rest of a stitched row; Play restarts at segment 1.
-      clearStitchQueue();
+      const isStitched = stitchRowIdRef.current !== null;
+      // Stitched rows keep queue + playingTakeId so Play resumes in-segment.
+      if (!isStitched) {
+        clearStitchQueue();
+        setPlayingTakeId(null);
+      }
       await playback.pause();
       dispatch({ type: 'PLAYBACK_END' });
     } catch (error) {
@@ -833,6 +849,7 @@ export function useVerseAudio({
     canRecordNewTake,
     playingTakeId,
     loadedTakeId,
+    playbackStatus: playback.status,
     errorMessage,
     positionMs: playback.positionMs,
     durationMs: playback.durationMs,
