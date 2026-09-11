@@ -17,7 +17,20 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
     "doctor": "expo-doctor",
     "expo:check": "node ./scripts/expo-check-offline.cjs",
-    "expo:check:latest": "expo install --check"
+    "expo:check:latest": "expo install --check",
+    "maestro:install": "bash ./scripts/maestro-install.sh",
+    "maestro:doctor": "bash ./scripts/maestro-doctor.sh",
+    "maestro:android:up": "bash ./scripts/maestro-android-up.sh",
+    "maestro:test": "bash ./scripts/maestro-test.sh --config .maestro/config.yaml --exclude-tags multi-account .maestro",
+    "maestro:test:harness": "bash ./scripts/maestro-test.sh --config .maestro/config.yaml .maestro/flows/smoke-launch.yaml",
+    "maestro:test:smokes": "bash ./scripts/maestro-test.sh --config .maestro/config.yaml --include-tags smoke .maestro",
+    "maestro:test:auth": "bash ./scripts/maestro-test.sh --config .maestro/config.yaml --include-tags auth .maestro",
+    "maestro:test:nav": "bash ./scripts/maestro-test.sh --config .maestro/config.yaml --include-tags nav .maestro",
+    "maestro:test:record": "bash ./scripts/maestro-test.sh --config .maestro/config.yaml --include-tags record .maestro",
+    "maestro:test:sync": "bash ./scripts/maestro-test.sh --config .maestro/config.yaml --include-tags sync .maestro",
+    "maestro:test:edges": "bash ./scripts/maestro-test.sh --config .maestro/config.yaml --include-tags edges .maestro",
+    "maestro:test:multi-account": "bash ./scripts/maestro-test-multi-account.sh",
+    "maestro:agent:up": "bash ./scripts/maestro-agent-up.sh"
   },
   "dependencies": {
     "@op-engineering/op-sqlite": "^15.2.11",

@@ -1,0 +1,38 @@
+# Launch → login → Home; session restore; logout.
+appId: com.eten.fluent
+tags:
+  - smoke
+  - auth
+---
+- runFlow: subflows/boot-to-login.yaml
+- runFlow: subflows/login.yaml
+- runFlow: subflows/wait-for-home.yaml
+
+# Session restore without clearState
+- stopApp
+- launchApp
+- runFlow: ../../helpers/dismiss-expo-dev-menu.yaml
+- runFlow: subflows/wait-for-home.yaml
+
+# Logout via Settings
+- tapOn:
+    id: 'home-settings-button'
+- tapOn:
+    id: 'settings-menu-more-settings'
+- scrollUntilVisible:
+    element:
+      id: 'settings-log-out'
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: 'settings-log-out'
+# Confirm only when the unsynced-work alert is shown
+- runFlow:
+    when:
+      visible: 'Unsynced work on device'
+    commands:
+      - tapOn: 'Log out'
+- extendedWaitUntil:
+    visible:
+      id: 'login-email-input'
+    timeout: 60000

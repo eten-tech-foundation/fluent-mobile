@@ -1,0 +1,82 @@
+# Edges: forgot-password, Privacy/Terms, mic/notification deny (no crash).
+# Reauth forced-session is residual — see docs/guides/maestro.md (no backend hook).
+appId: com.eten.fluent
+tags:
+  - smoke
+  - edges
+---
+# --- Forgot password happy path ---
+- runFlow: subflows/boot-to-login.yaml
+- tapOn:
+    id: 'login-forgot-password-link'
+- extendedWaitUntil:
+    visible:
+      id: 'forgot-password-email-input'
+    timeout: 15000
+- tapOn:
+    id: 'forgot-password-email-input'
+- eraseText
+- inputText: ${MAESTRO_EMAIL}
+- hideKeyboard
+- tapOn:
+    id: 'forgot-password-submit-button'
+- extendedWaitUntil:
+    visible:
+      id: 'forgot-password-sent-view'
+    timeout: 60000
+- tapOn:
+    id: 'forgot-password-sent-back-link'
+- extendedWaitUntil:
+    visible:
+      id: 'login-email-input'
+    timeout: 15000
+
+# --- Legal by id (auth login footer) ---
+- tapOn:
+    id: 'login-privacy-link'
+- extendedWaitUntil:
+    visible:
+      id: 'privacy-policy-scroll'
+    timeout: 15000
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'login-email-input'
+    timeout: 15000
+- tapOn:
+    id: 'login-terms-link'
+- extendedWaitUntil:
+    visible:
+      id: 'terms-of-use-scroll'
+    timeout: 15000
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'login-email-input'
+    timeout: 15000
+
+# --- Mic + notification deny: reach Record without crash ---
+- launchApp:
+    clearState: true
+    permissions:
+      microphone: deny
+      notifications: deny
+- runFlow: ../../helpers/dismiss-expo-dev-menu.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'login-email-input'
+    timeout: 60000
+- runFlow: subflows/login.yaml
+- runFlow: subflows/wait-for-home.yaml
+- runFlow: subflows/open-first-my-work-chapter.yaml
+- tapOn:
+    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'record-tab'
+# Attempt start; system may no-op when denied — assert we did not crash
+- tapOn:
+    id: 'record-start-button'
+    optional: true
+- assertVisible:
+    id: 'record-tab'
+# Forced reauth without a backend/session hook is residual — see docs/guides/maestro.md

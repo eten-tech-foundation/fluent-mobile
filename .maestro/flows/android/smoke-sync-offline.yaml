@@ -1,0 +1,68 @@
+# Sync Now (+ pause/resume when visible) and Prepare-for-Offline primary chrome.
+appId: com.eten.fluent
+tags:
+  - smoke
+  - sync
+---
+- runFlow: subflows/boot-to-login.yaml
+- runFlow: subflows/login.yaml
+- runFlow: subflows/wait-for-home.yaml
+
+# Sync screen
+- tapOn:
+    id: 'home-sync-button'
+- extendedWaitUntil:
+    visible:
+      id: 'sync-screen'
+    timeout: 30000
+- assertVisible:
+    id: 'sync-action-sync-now'
+- tapOn:
+    id: 'sync-action-sync-now'
+# Pause/resume only when upload/metadata sync surfaces controls (optional)
+- runFlow:
+    when:
+      visible:
+        id: 'sync-action-pause'
+    commands:
+      - tapOn:
+          id: 'sync-action-pause'
+      - extendedWaitUntil:
+          visible:
+            id: 'sync-action-resume'
+          timeout: 15000
+      - tapOn:
+          id: 'sync-action-resume'
+- back
+
+# Prepare for Offline via Settings
+- tapOn:
+    id: 'home-settings-button'
+- tapOn:
+    id: 'settings-menu-more-settings'
+- scrollUntilVisible:
+    element:
+      id: 'settings-prepare-offline'
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: 'settings-prepare-offline'
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-screen'
+    timeout: 30000
+# Picker (no projectId in route) → pick first project → primary resources chrome
+- extendedWaitUntil:
+    visible:
+      id: 'project-row-.*'
+    timeout: 60000
+- tapOn:
+    id: 'project-row-.*'
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-resources-section'
+    timeout: 60000
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-download-footer'
+    timeout: 60000

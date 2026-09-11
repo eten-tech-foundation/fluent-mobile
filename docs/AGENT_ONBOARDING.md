@@ -205,7 +205,7 @@ Keep changes **small and scoped** — avoid drive-by refactors.
 - **Expo mocks:** [`src/test/mocks/`](../src/test/mocks/) — global `moduleNameMapper` in `jest.config.cjs` for `expo-secure-store`, `expo-file-system`, `expo-audio`.
 - **Colocated:** `src/**/*.test.ts(x)` — e.g. `src/utils/logger.test.ts`, `src/services/recordingSync.test.ts`.
 - **Live API test:** `fluent-api.test.ts` is **skipped by default**; opt in with `RUN_LIVE_API_TESTS=1 npm test -- fluent-api.test.ts`.
-- **No E2E** in this repo yet.
+- **Maestro (opt-in Android E2E):** harness + domain smokes + multi-account — see [guides/maestro.md](./guides/maestro.md). Playbook maps QA journeys → flows; residual manual listed there. Informational Actions: `maestro-android.yml` (`workflow_dispatch` only). **Not** a PR/CI merge gate; does not replace Needs QA? / nightly handoff ([guides/qa-process.md](./guides/qa-process.md)).
 - **Gap:** `src/db/` has partial unit coverage — prefer adding tests when changing queries/repository.
 
 When adding features: mock `op-sqlite`, navigation, and sync in screen tests following existing patterns. Reset shared Expo mocks in `beforeEach` when mutating secure-store/file-system state.

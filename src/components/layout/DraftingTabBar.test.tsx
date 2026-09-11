@@ -27,9 +27,12 @@ describe('DraftingTabBar', () => {
       'Resources',
       'Record',
     ]);
+    expect(screen.getByTestId('drafting-tab-bible')).toBeTruthy();
+    expect(screen.getByTestId('drafting-tab-resources')).toBeTruthy();
+    expect(screen.getByTestId('drafting-tab-record')).toBeTruthy();
     expect(tabs[2]?.props.accessibilityState?.selected).toBe(true);
 
-    fireEvent.press(screen.getByLabelText('Resources'));
+    fireEvent.press(screen.getByTestId('drafting-tab-resources'));
     expect(onTabChange).toHaveBeenCalledWith('resources');
   });
 });

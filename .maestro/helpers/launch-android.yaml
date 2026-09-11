@@ -1,0 +1,6 @@
+# Cold-start launch for harness / auth-reset flows.
+# Use clearState ONLY here — never during agent iteration (see docs/guides/maestro.md).
+appId: com.eten.fluent
+---
+- launchApp:
+    clearState: true

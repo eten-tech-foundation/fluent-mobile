@@ -16,6 +16,7 @@ interface ListCardProps {
   leading?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
+  testID?: string;
 }
 
 export function ListCard({
@@ -25,6 +26,7 @@ export function ListCard({
   leading,
   style,
   contentStyle,
+  testID,
 }: ListCardProps) {
   const content = (
     <>
@@ -46,13 +48,18 @@ export function ListCard({
         style={[styles.card, style]}
         onPress={onPress}
         activeOpacity={theme.listCard.activeOpacity}
+        testID={testID}
       >
         {content}
       </TouchableOpacity>
     );
   }
 
-  return <View style={[styles.card, style]}>{content}</View>;
+  return (
+    <View style={[styles.card, style]} testID={testID}>
+      {content}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
