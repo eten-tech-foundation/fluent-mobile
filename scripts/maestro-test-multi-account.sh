@@ -30,4 +30,5 @@ fi
 exec bash "${ROOT}/scripts/maestro-test.sh" \
   --config .maestro/config.yaml \
   --include-tags multi-account \
-  .maestro
+  .maestro \
+  "$@"
