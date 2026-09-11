@@ -19,6 +19,7 @@ export function SettingsButton({ onPress }: SettingsButtonProps) {
       accessibilityLabel="Settings"
       accessibilityRole="button"
       hitSlop={touchHitSlop}
+      testID="home-settings-button"
     >
       <Settings
         size={iconSizes.header}

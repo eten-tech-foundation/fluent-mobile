@@ -13,7 +13,7 @@ interface ProjectRowProps {
 
 export function ProjectRow({ project, onPress }: ProjectRowProps) {
   return (
-    <ListCard onPress={onPress}>
+    <ListCard onPress={onPress} testID={`project-row-${project.id}`}>
       <View style={styles.column}>
         <View style={styles.titleRow}>
           <Text style={styles.title} numberOfLines={1}>

@@ -29,6 +29,7 @@ export function ProjectChapterRow({
   return (
     <ListCard
       onPress={onPress}
+      testID={`chapter-row-${chapter.id}`}
       leading={
         display.showPhaseIcon ? (
           <PhaseStatusIcon stage={workflowStage!} />

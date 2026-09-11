@@ -1,0 +1,19 @@
+# Prefer EXPO_PUBLIC_E2E_MODE=1 on Debug+Metro so the menu never opens.
+# Optional taps tolerate delayed sheets; missing UI is a no-op when E2E mode suppresses it.
+appId: com.eten.fluent
+---
+- tapOn:
+    text: 'Continue'
+    optional: true
+- tapOn:
+    text: '.*8081.*'
+    optional: true
+- tapOn:
+    text: 'Close'
+    optional: true
+# pressKey cannot be optional; only send Back when Dev Menu chrome is present
+- runFlow:
+    when:
+      visible: 'Toggle performance monitor'
+    commands:
+      - pressKey: back

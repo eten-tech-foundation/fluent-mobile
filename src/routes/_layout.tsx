@@ -16,6 +16,7 @@ import {
   AuthSessionProvider,
   useAuthSession,
 } from '../navigation/AuthSessionProvider';
+import { E2eDevMenuGuard } from '../navigation/E2eDevMenuGuard';
 import { useUploadSyncNotificationTap } from '../navigation/useUploadSyncNotificationTap';
 import {
   classifyRouteGroups,
@@ -76,6 +77,7 @@ export default function RootLayout() {
           {/* Edge-to-edge: transparent system bars; dark icons on light chrome. */}
           <NavigationBar style="dark" />
           <AuthSessionProvider>
+            <E2eDevMenuGuard />
             <UploadSyncNotificationTap />
             <RootNavigator />
           </AuthSessionProvider>

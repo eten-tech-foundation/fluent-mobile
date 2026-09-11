@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "maestro": {
+      "command": "${workspaceFolder}/scripts/maestro-mcp.sh",
+      "args": []
+    }
+  }
+}
