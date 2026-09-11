@@ -45,6 +45,8 @@ Opt-in **Android-only** Maestro suite for Fluent Mobile ([#488](https://github.c
 
 Dispatch: **Actions → Maestro Android (informational) → Run workflow** (after the workflow exists on the target branch / `main`). Artifacts: JUnit + Maestro output + APK (14-day retention).
 
+Note: `android-emulator-runner` runs its `script` under `/usr/bin/sh` (dash on Ubuntu). The workflow runs the body through a `bash -euo pipefail` heredoc so bashisms like `pipefail` work (#510).
+
 See also [docs/ci.md](../ci.md) and [`.github/README.md`](../../.github/README.md).
 
 ## Prerequisites
