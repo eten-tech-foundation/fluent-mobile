@@ -1,0 +1,15 @@
+# Opens the first My Work chapter into drafting. Requires ≥1 assignment.
+appId: com.eten.fluent
+---
+- tapOn:
+    id: 'home-tab-my-work'
+- extendedWaitUntil:
+    visible:
+      id: 'my-work-row-.*'
+    timeout: 60000
+- tapOn:
+    id: 'my-work-row-.*'
+- extendedWaitUntil:
+    visible:
+      id: 'drafting-tab-bar'
+    timeout: 60000

@@ -10,6 +10,7 @@ interface SettingsNavigationRowProps {
   onPress: () => void;
   disabled?: boolean;
   disabledSubtitle?: string;
+  testID?: string;
 }
 
 export function SettingsNavigationRow({
@@ -19,6 +20,7 @@ export function SettingsNavigationRow({
   onPress,
   disabled = false,
   disabledSubtitle,
+  testID,
 }: SettingsNavigationRowProps) {
   return (
     <TouchableOpacity
@@ -28,6 +30,7 @@ export function SettingsNavigationRow({
       activeOpacity={0.7}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
+      testID={testID}
     >
       <View style={styles.iconSlot}>{icon}</View>
       <View style={styles.textBlock}>
@@ -55,6 +58,7 @@ interface SettingsToggleRowProps {
   subtitle: string;
   value: boolean;
   onValueChange: (value: boolean) => void;
+  testID?: string;
 }
 
 export function SettingsToggleRow({
@@ -63,9 +67,10 @@ export function SettingsToggleRow({
   subtitle,
   value,
   onValueChange,
+  testID,
 }: SettingsToggleRowProps) {
   return (
-    <View style={styles.row}>
+    <View style={styles.row} testID={testID}>
       {icon ? <View style={styles.iconSlot}>{icon}</View> : null}
       <View style={styles.textBlock}>
         <Text style={styles.title}>{title}</Text>
@@ -80,6 +85,7 @@ export function SettingsToggleRow({
         }}
         thumbColor={theme.colors.primaryForeground}
         accessibilityLabel={title}
+        testID={testID ? `${testID}-switch` : undefined}
       />
     </View>
   );
@@ -89,12 +95,14 @@ interface SettingsDestructiveRowProps {
   icon: React.ReactNode;
   title: string;
   onPress: () => void;
+  testID?: string;
 }
 
 export function SettingsDestructiveRow({
   icon,
   title,
   onPress,
+  testID,
 }: SettingsDestructiveRowProps) {
   return (
     <TouchableOpacity
@@ -102,6 +110,7 @@ export function SettingsDestructiveRow({
       onPress={onPress}
       activeOpacity={0.7}
       accessibilityRole="button"
+      testID={testID}
     >
       <View style={styles.iconSlot}>{icon}</View>
       <Text style={styles.destructiveTitle}>{title}</Text>
@@ -114,6 +123,7 @@ interface SettingsSegmentedRowProps<T extends string> {
   options: { label: string; value: T }[];
   value: T;
   onValueChange: (value: T) => void;
+  testID?: string;
 }
 
 export function SettingsSegmentedRow<T extends string>({
@@ -122,9 +132,10 @@ export function SettingsSegmentedRow<T extends string>({
   options,
   value,
   onValueChange,
+  testID,
 }: SettingsSegmentedRowProps<T>) {
   return (
-    <View style={styles.segmentedContainer}>
+    <View style={styles.segmentedContainer} testID={testID}>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.subtitle}>{subtitle}</Text>
       <View style={styles.segmentedGroup}>
@@ -141,6 +152,7 @@ export function SettingsSegmentedRow<T extends string>({
               activeOpacity={0.7}
               accessibilityRole="button"
               accessibilityState={{ selected }}
+              testID={testID ? `${testID}-${option.value}` : undefined}
             >
               <Text
                 style={[

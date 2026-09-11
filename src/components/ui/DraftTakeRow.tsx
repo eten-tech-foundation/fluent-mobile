@@ -166,7 +166,11 @@ export function DraftTakeRow({
           onPress={onDelete}
           accessibilityRole="button"
           accessibilityLabel="Delete take"
-          testID="record-delete-button"
+          testID={
+            isSelected
+              ? 'record-delete-selected-button'
+              : 'record-delete-button'
+          }
           hitSlop={8}
           style={styles.deleteHit}
         >

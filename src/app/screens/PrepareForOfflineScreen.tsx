@@ -197,7 +197,7 @@ export default function PrepareForOfflineScreen() {
 
   return (
     <ScreenContainer>
-      <View style={styles.screen}>
+      <View style={styles.screen} testID="prepare-offline-screen">
         <StackScreenHeader
           title="Prepare for Offline"
           subtitle={INSTRUCTION}

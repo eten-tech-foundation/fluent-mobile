@@ -15,6 +15,11 @@ const TABS: { id: HomeTab; label: string; Icon: LucideIcon }[] = [
   { id: 'myWork', label: 'My Work', Icon: ListChecks },
 ];
 
+const TAB_TEST_IDS: Record<HomeTab, string> = {
+  projects: 'home-tab-projects',
+  myWork: 'home-tab-my-work',
+};
+
 const TAB_INDICATOR = 2;
 
 export function TabBar({ activeTab, onTabChange }: TabBarProps) {
@@ -33,6 +38,7 @@ export function TabBar({ activeTab, onTabChange }: TabBarProps) {
             onPress={() => onTabChange(id)}
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}
+            testID={TAB_TEST_IDS[id]}
           >
             <Icon
               size={iconSizes.headerTab}
