@@ -35,7 +35,7 @@ Opt-in **Android-only** Maestro suite for Fluent Mobile ([#488](https://github.c
 
 ## Informational CI (`workflow_dispatch`)
 
-[`.github/workflows/maestro-android.yml`](../../.github/workflows/maestro-android.yml) builds a local Android **release** APK (CNG prebuild + Gradle; **no Metro**, no `EXPO_PUBLIC_E2E_MODE`), boots an API 34 emulator, and runs one suite. **Not** required on PRs; **no** cron until stable. Day-to-day eng iteration remains Debug + Metro (below).
+[`.github/workflows/maestro-android.yml`](../../.github/workflows/maestro-android.yml) CNG-prebuilds Android, assembles a **release** APK **before** booting the emulator (so Gradle does not share the runner with the AVD), then runs one Maestro suite on API 34 (**no Metro**, no `EXPO_PUBLIC_E2E_MODE`). Job timeout is **150** minutes. **Not** required on PRs; **no** cron until stable. Day-to-day eng iteration remains Debug + Metro (below).
 
 | Input `suite` | Secrets required |
 | --- | --- |
@@ -45,7 +45,10 @@ Opt-in **Android-only** Maestro suite for Fluent Mobile ([#488](https://github.c
 
 Dispatch: **Actions → Maestro Android (informational) → Run workflow** (after the workflow exists on the target branch / `main`). Artifacts: JUnit + Maestro output + APK (14-day retention).
 
-Note: `android-emulator-runner` runs **each line** of `script:` as a separate `/usr/bin/sh -c` (dash on Ubuntu). The workflow keeps `script:` to one line — `bash ./scripts/maestro-ci-emulator.sh` — so bashisms and multiline Gradle/Maestro logic live in that script file (#510).
+Notes (#510):
+
+- `android-emulator-runner` runs **each line** of `script:` as a separate `/usr/bin/sh -c` (dash on Ubuntu). Emulator `script:` stays one line: `bash ./scripts/maestro-ci-emulator.sh run`.
+- `bash ./scripts/maestro-ci-emulator.sh assemble` runs in a prior step (Android SDK via `android-actions/setup-android` + Gradle cache) so a cold `assembleRelease` is not racing the emulator under the old 90m timeout.
 
 See also [docs/ci.md](../ci.md) and [`.github/README.md`](../../.github/README.md).
 
