@@ -1,0 +1,11 @@
+# Drawer lists both Maestro emails and an active-account indicator.
+# Requires MAESTRO_EMAIL and MAESTRO_EMAIL_2.
+appId: com.eten.fluent
+---
+- runFlow: open-drawer.yaml
+- assertVisible: ${MAESTRO_EMAIL}
+- assertVisible: ${MAESTRO_EMAIL_2}
+- assertVisible:
+    id: 'settings-menu-active-.*'
+- assertVisible:
+    id: 'settings-menu-account-.*'

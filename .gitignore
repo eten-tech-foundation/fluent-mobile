@@ -41,6 +41,13 @@ pnpm-lock.yaml
 .env
 .env.*
 !.env.example
+!.env.maestro.example
+
+# Maestro E2E (local artifacts; flows under .maestro/ are committed)
+.maestro/test_output/
+.maestro/**/screenshots/
+.maestro/**/*.png
+.maestro/**/*.mp4
 
 # Expo CNG — native projects are generated locally and in CI
 .expo/

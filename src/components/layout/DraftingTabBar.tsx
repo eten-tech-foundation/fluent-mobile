@@ -24,6 +24,12 @@ const TABS: { id: DraftingTab; label: string; Icon: LucideIcon }[] = [
   { id: 'record', label: 'Record', Icon: Mic },
 ];
 
+const TAB_TEST_IDS: Record<DraftingTab, string> = {
+  bible: 'drafting-tab-bible',
+  resources: 'drafting-tab-resources',
+  record: 'drafting-tab-record',
+};
+
 export function DraftingTabBar({
   activeTab,
   onTabChange,
@@ -47,6 +53,7 @@ export function DraftingTabBar({
             accessibilityState={{ selected: isActive }}
             accessibilityLabel={label}
             android_ripple={{ color: 'transparent' }}
+            testID={TAB_TEST_IDS[id]}
           >
             {/* Stable top rule — avoid borderColor swap / margin overlap flicker. */}
             <View
