@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
-# Write a JSON payload that notify-slack-nightly.sh can replay later.
-# Env: SLACK_PAYLOAD_OUT (path), SLACK_PENDING (true|false), plus notify-slack fields.
+# Write a JSON payload for notify-slack-nightly.sh (same-run delivery).
+# Env: SLACK_PAYLOAD_OUT (path), plus notify-slack fields.
 set -euo pipefail
 
 OUT="${SLACK_PAYLOAD_OUT:?SLACK_PAYLOAD_OUT is required}"
-PENDING="${SLACK_PENDING:-true}"
 
 jq -n \
-  --arg pending "${PENDING}" \
   --arg STATUS "${STATUS:?STATUS is required}" \
   --arg TRIGGER "${TRIGGER:-unknown}" \
   --arg PLATFORM "${PLATFORM:-android}" \
@@ -26,7 +24,6 @@ jq -n \
   --arg API_BASE_URL "${API_BASE_URL:-https://dev.api.fluent.bible}" \
   --arg FEEDBACK_URL "${FEEDBACK_URL:-https://github.com/eten-tech-foundation/fluent-mobile/issues/new}" \
   '{
-    pending: ($pending == "true"),
     STATUS: $STATUS,
     TRIGGER: $TRIGGER,
     PLATFORM: $PLATFORM,
@@ -46,4 +43,4 @@ jq -n \
     FEEDBACK_URL: $FEEDBACK_URL
   }' > "${OUT}"
 
-echo "Wrote Slack payload (${STATUS}, pending=${PENDING}) to ${OUT}"
+echo "Wrote Slack payload (${STATUS}) to ${OUT}"

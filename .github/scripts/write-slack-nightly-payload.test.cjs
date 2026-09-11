@@ -6,13 +6,12 @@ const path = require('path');
 const script = path.join(__dirname, 'write-slack-nightly-payload.sh');
 
 describe('write-slack-nightly-payload', () => {
-  it('writes pending JSON that notify-slack can reload', () => {
+  it('writes JSON that notify-slack can reload', () => {
     const out = path.join(os.tmpdir(), `slack-payload-${Date.now()}.json`);
     execFileSync('bash', [script], {
       env: {
         ...process.env,
         SLACK_PAYLOAD_OUT: out,
-        SLACK_PENDING: 'true',
         STATUS: 'failure',
         TRIGGER: 'schedule',
         SHA: 'abc1234deadbeef',
@@ -23,7 +22,7 @@ describe('write-slack-nightly-payload', () => {
     });
     const payload = JSON.parse(fs.readFileSync(out, 'utf8'));
     fs.unlinkSync(out);
-    expect(payload.pending).toBe(true);
+    expect(payload.pending).toBeUndefined();
     expect(payload.STATUS).toBe('failure');
     expect(payload.CHANGELOG).toBe('line one\nline two');
     expect(payload.SHA).toBe('abc1234deadbeef');
