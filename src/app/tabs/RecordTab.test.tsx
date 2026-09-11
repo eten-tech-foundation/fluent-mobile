@@ -1351,20 +1351,27 @@ describe('RecordTab', () => {
         ],
       }));
 
-      const view = (
+      const { rerender } = render(
         <DraftingProvider verses={verses} initialVerse={3}>
           <RecordTab chapterData={chapterData} userId={42} />
-        </DraftingProvider>
+        </DraftingProvider>,
       );
-      const { rerender } = render(view);
 
       await waitFor(() => {
         expect(mockResolveRecordingUnit).toHaveBeenCalled();
       });
       const callsAfterMount = mockResolveRecordingUnit.mock.calls.length;
+      const hookCallsBeforeRerender = mockUseVerseAudio.mock.calls.length;
 
       audioState = 'recorded';
-      rerender(view);
+      rerender(
+        <DraftingProvider verses={verses} initialVerse={3}>
+          <RecordTab chapterData={chapterData} userId={42} />
+        </DraftingProvider>,
+      );
+      expect(mockUseVerseAudio.mock.calls.length).toBeGreaterThan(
+        hookCallsBeforeRerender,
+      );
 
       await waitFor(() => {
         expect(screen.getByTestId('record-take-badge')).toHaveTextContent(

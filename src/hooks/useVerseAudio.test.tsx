@@ -736,6 +736,40 @@ describe('useVerseAudio', () => {
     expect(mockPlaybackPlay).toHaveBeenCalledTimes(1);
   });
 
+  it('does not enter playing when recording starts during an in-flight stitched load', async () => {
+    loadTakes.mockResolvedValue([makeTake()]);
+    const stitchedRow = makeStitchedRow();
+    let resolvePlay!: () => void;
+    const playBlocked = new Promise<void>(resolve => {
+      resolvePlay = resolve;
+    });
+    mockPlaybackPlay.mockImplementation(async () => {
+      await playBlocked;
+    });
+
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+
+    await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+    let playPromise!: Promise<void>;
+    await act(async () => {
+      playPromise = result.current.playStitched(stitchedRow);
+    });
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    await act(async () => {
+      resolvePlay();
+      await playPromise;
+    });
+
+    expect(mockRecordingStart).toHaveBeenCalled();
+    expect(result.current.state).toBe('recording');
+    expect(result.current.playingTakeId).toBeNull();
+  });
+
   it('abandons the stitched queue when a take is deleted', async () => {
     loadTakes.mockResolvedValue([makeTake()]);
     deleteTake.mockResolvedValue(undefined);

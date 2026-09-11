@@ -206,6 +206,12 @@ export function RecordTab({
     draftingUnit,
     recordingUnit: activeRecordingUnit,
   });
+  /**
+   * Latest-value ref synced during render so async `resolveRecordingUnit`
+   * settlements read current audio state without listing `verseAudio.state` in
+   * effect deps (that re-ran resolve and looped REHYDRATE — #411). Do not move
+   * to useLayoutEffect: the .then can settle before layout effects run.
+   */
   const verseAudioStateRef = useRef<VerseAudioState>(verseAudio.state);
   verseAudioStateRef.current = verseAudio.state;
   const verseIndex = verses.findIndex(v => v.verseNumber === selectedVerse);

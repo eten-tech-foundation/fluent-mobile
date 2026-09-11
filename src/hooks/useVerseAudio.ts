@@ -163,8 +163,6 @@ export function useVerseAudio({
   designateCanonical: designateCanonicalFn = setCanonicalTake,
 }: UseVerseAudioArgs) {
   const coveredViews = recordingUnit?.coveredViews;
-  const coveredViewsRef = useRef(coveredViews);
-  coveredViewsRef.current = coveredViews;
   /**
    * Stable dep for the take load: the capture unit is re-resolved (new array
    * identity, same content) on playback transitions, and `loadTakesFn` gates
@@ -181,11 +179,11 @@ export function useVerseAudio({
       // Pericope view lists takes for the whole unit, not just the current
       // verse, so verse takes recorded elsewhere in the pericope can stitch
       // (#411). One query per covered verse: a pericope take spanning them all
-      // comes back from each, hence the dedupe. The key both gates this branch
-      // and re-keys the callback; the array is read from the ref.
+      // comes back from each, hence the dedupe. `coveredViewsKey` re-keys the
+      // callback when span content changes; read `coveredViews` from closure.
       if (draftingUnit === 'pericope' && coveredViewsKey !== '') {
         const groups = await Promise.all(
-          (coveredViewsRef.current ?? []).map(covered =>
+          (coveredViews ?? []).map(covered =>
             getTakesForVerse(covered.bibleTextId, undefined, {
               chapterNumber: covered.chapterNumber,
               verseNumber: covered.verseNumber,
@@ -200,6 +198,8 @@ export function useVerseAudio({
           : undefined;
       return getTakesForVerse(id, undefined, view);
     },
+    // coveredViewsKey tracks span content; omit coveredViews to avoid identity-only array churn (#411).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [loadTakes, chapterNumber, verseNumber, draftingUnit, coveredViewsKey],
   );
   const loadAllTakesFn = useCallback(
@@ -256,8 +256,11 @@ export function useVerseAudio({
   /** Remaining segments of a stitched row, or null when not stitching (#411). */
   const stitchQueueRef = useRef<StitchQueue | null>(null);
   const stitchRowIdRef = useRef<string | null>(null);
+  /** Bumped when the stitch queue is cleared so in-flight segment loads abort. */
+  const stitchPlaybackGenerationRef = useRef(0);
 
   const clearStitchQueue = useCallback(() => {
+    stitchPlaybackGenerationRef.current += 1;
     stitchQueueRef.current = null;
     stitchRowIdRef.current = null;
   }, []);
@@ -592,15 +595,26 @@ export function useVerseAudio({
    */
   const playStitchedSegment = useCallback(
     async (uri: string, rowId: string) => {
+      const generation = stitchPlaybackGenerationRef.current;
+      const isStale = () => generation !== stitchPlaybackGenerationRef.current;
       playbackLoadInFlightRef.current = true;
       try {
+        if (isStale()) {
+          return;
+        }
         setErrorMessage(null);
         await playUri(uri);
+        if (isStale()) {
+          return;
+        }
         setPlayingTakeId(rowId);
         // Stitched rows are not seekable — no single file backs the row.
         setLoadedTakeId(null);
         dispatch({ type: 'PLAY' });
       } catch (error) {
+        if (isStale()) {
+          return;
+        }
         clearStitchQueue();
         setPlayingTakeId(null);
         setLoadedTakeId(null);
