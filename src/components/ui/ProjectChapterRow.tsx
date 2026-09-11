@@ -49,11 +49,12 @@ export function ProjectChapterRow({
           ) : null}
           {chapter.hasConflict ? (
             <ChapterConflictIndicator size={iconSizes.projectSync} />
-          ) : null}
-          <ChapterOwnershipIndicator
-            ownershipState={chapter.ownershipState}
-            size={iconSizes.projectSync}
-          />
+          ) : (
+            <ChapterOwnershipIndicator
+              ownershipState={chapter.ownershipState}
+              size={iconSizes.projectSync}
+            />
+          )}
         </View>
 
         <View style={styles.metaRow}>

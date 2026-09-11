@@ -90,6 +90,7 @@ export interface ProjectChapterRow {
   completed_verses: number;
   downloaded_verses: number;
   assigned_user_id?: number | null;
+  peer_checker_id?: number | null;
   has_conflict: number;
 }
 
@@ -110,6 +111,7 @@ export interface MyWorkChapterRow {
   completed_verses: number;
   downloaded_verses: number;
   assigned_user_id?: number | null;
+  peer_checker_id?: number | null;
   has_conflict: number;
 }
 
