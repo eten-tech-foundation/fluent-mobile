@@ -52,7 +52,7 @@ Local eng still follows Maestro’s React Native guidance: Debug / standalone pa
 
 ## Informational CI (`workflow_dispatch`)
 
-[`.github/workflows/maestro-android.yml`](../../.github/workflows/maestro-android.yml) builds a local Android **release** APK (`npm run prebuild` → `expo prebuild --clean --platform android`, then Gradle `:app:assembleRelease` in [scripts/maestro-ci-emulator.sh](../../scripts/maestro-ci-emulator.sh); **no Metro**, no `EXPO_PUBLIC_E2E_MODE`), boots an API 34 emulator, and runs one suite. **Not** required on PRs; **no** cron until stable. Day-to-day eng iteration remains Debug + Metro (below).
+[`.github/workflows/maestro-android.yml`](../../.github/workflows/maestro-android.yml) CNG-prebuilds Android, assembles a **release** APK **before** booting the emulator (so Gradle does not share the runner with the AVD), then runs one Maestro suite on API 34 (**no Metro**, no `EXPO_PUBLIC_E2E_MODE`). Job timeout is **150** minutes. **Not** required on PRs; **no** cron until stable. Day-to-day eng iteration remains Debug + Metro (below).
 
 | Input `suite` | Secrets required |
 | --- | --- |
@@ -62,9 +62,10 @@ Local eng still follows Maestro’s React Native guidance: Debug / standalone pa
 
 Dispatch: **Actions → Maestro Android (informational) → Run workflow** (after the workflow exists on the target branch / `main`). Artifacts: JUnit (`report.xml`) + `--test-output-dir` session output + APK (14-day retention). On Maestro **2.10.0**, do not rely on a separate `--debug-output` tree when `--test-output-dir` is set.
 
-Notes:
+Notes (#510):
 
-- `android-emulator-runner` runs **each line** of `script:` as a separate `/usr/bin/sh -c` (dash on Ubuntu). The workflow keeps `script:` to one line — `bash ./scripts/maestro-ci-emulator.sh` — so bashisms and multiline Gradle/Maestro logic live in that script file (#510).
+- `android-emulator-runner` runs **each line** of `script:` as a separate `/usr/bin/sh -c` (dash on Ubuntu). Emulator `script:` stays one line: `bash ./scripts/maestro-ci-emulator.sh run`.
+- `bash ./scripts/maestro-ci-emulator.sh assemble` runs in a prior step (Android SDK via `android-actions/setup-android` + Gradle cache) so a cold `assembleRelease` is not racing the emulator under the old 90m timeout.
 - CLI install uses our pinned zip + SHA (`npm run maestro:install` / `MAESTRO_VERSION`) instead of piping `get.maestro.mobile.dev` to bash. Maestro’s own pin is `MAESTRO_VERSION=…; curl … | bash`; we keep the checksum path for CI supply-chain hardening.
 - Credentials reach flows as process env (`MAESTRO_*` on the GHA step / `.env.maestro` locally). Flows use `${MAESTRO_EMAIL}` etc.; Maestro also supports `maestro test -e KEY=value`.
 
