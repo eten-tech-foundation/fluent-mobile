@@ -1,0 +1,155 @@
+# Informational Android Maestro E2E — NOT a required PR / merge gate (#497).
+# Manual only (workflow_dispatch). Do not add schedule until the suite is stable.
+# Does not replace Needs QA? / @Roslin22 nightly handoff.
+name: Maestro Android (informational)
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Maestro suite to run
+        type: choice
+        required: true
+        default: harness
+        options:
+          - harness
+          - smokes
+          - multi-account
+
+concurrency:
+  group: maestro-android-${{ github.ref }}-${{ inputs.suite }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  EXPO_PUBLIC_API_BASE_URL: https://dev.api.fluent.bible
+  # Release APK is not __DEV__; E2E_MODE is for local Debug+Metro only.
+  ORG_GRADLE_PROJECT_reactNativeArchitectures: x86_64
+  MAESTRO_VERSION: '2.10.0'
+
+jobs:
+  maestro-android:
+    name: Maestro ${{ inputs.suite }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Require secrets for suite
+        env:
+          MAESTRO_EMAIL: ${{ secrets.MAESTRO_EMAIL }}
+          MAESTRO_PASSWORD: ${{ secrets.MAESTRO_PASSWORD }}
+          MAESTRO_EMAIL_2: ${{ secrets.MAESTRO_EMAIL_2 }}
+          MAESTRO_PASSWORD_2: ${{ secrets.MAESTRO_PASSWORD_2 }}
+        run: |
+          set -euo pipefail
+          suite="${{ inputs.suite }}"
+          missing=()
+          if [[ "${suite}" == "smokes" || "${suite}" == "multi-account" ]]; then
+            [[ -n "${MAESTRO_EMAIL:-}" ]] || missing+=("MAESTRO_EMAIL")
+            [[ -n "${MAESTRO_PASSWORD:-}" ]] || missing+=("MAESTRO_PASSWORD")
+          fi
+          if [[ "${suite}" == "multi-account" ]]; then
+            [[ -n "${MAESTRO_EMAIL_2:-}" ]] || missing+=("MAESTRO_EMAIL_2")
+            [[ -n "${MAESTRO_PASSWORD_2:-}" ]] || missing+=("MAESTRO_PASSWORD_2")
+          fi
+          if ((${#missing[@]} > 0)); then
+            echo "::error::Missing repository secrets for suite=${suite}: ${missing[*]}"
+            echo "Configure secrets listed in docs/guides/maestro.md / .github/README.md (#497)."
+            exit 1
+          fi
+          echo "Secrets OK for suite=${suite} (harness needs none)."
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Setup Java 17
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5.0.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Enable KVM
+        run: |
+          set -euo pipefail
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Install Maestro CLI
+        run: npm run maestro:install
+
+      - name: Prebuild Android (CNG)
+        run: npm run prebuild
+        env:
+          CI: 'true'
+
+      # Assemble inside emulator-runner so ANDROID_HOME / SDK from the action are available.
+      - name: Build APK + run Maestro on emulator
+        uses: reactivecircus/android-emulator-runner@1dcd0090116d15e7c562f8db72807de5e036a4ed # v2.34.0
+        env:
+          MAESTRO_EMAIL: ${{ secrets.MAESTRO_EMAIL }}
+          MAESTRO_PASSWORD: ${{ secrets.MAESTRO_PASSWORD }}
+          MAESTRO_EMAIL_2: ${{ secrets.MAESTRO_EMAIL_2 }}
+          MAESTRO_PASSWORD_2: ${{ secrets.MAESTRO_PASSWORD_2 }}
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          emulator-boot-timeout: 900
+          script: |
+            set -euo pipefail
+            export PATH="${HOME}/.maestro/bin:${PATH}"
+            chmod +x android/gradlew
+            (
+              cd android
+              ./gradlew :app:assembleRelease --no-daemon -PreactNativeArchitectures=x86_64
+            )
+            APK="android/app/build/outputs/apk/release/app-release.apk"
+            test -f "${APK}"
+            adb install -r "${APK}"
+            mkdir -p .maestro/test_output
+            suite="${{ inputs.suite }}"
+            case "${suite}" in
+              harness)
+                npm run maestro:test:harness -- --format junit --output .maestro/test_output/report.xml
+                ;;
+              smokes)
+                npm run maestro:test:smokes -- --format junit --output .maestro/test_output/report.xml
+                ;;
+              multi-account)
+                npm run maestro:test:multi-account -- --format junit --output .maestro/test_output/report.xml
+                ;;
+              *)
+                echo "Unknown suite: ${suite}" >&2
+                exit 1
+                ;;
+            esac
+            adb logcat -d > .maestro/test_output/logcat.txt || true
+
+      - name: Upload Maestro artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: maestro-${{ inputs.suite }}-${{ github.run_id }}
+          path: |
+            .maestro/test_output
+            android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: warn
+          retention-days: 14

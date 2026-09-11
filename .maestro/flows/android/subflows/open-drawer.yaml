@@ -1,0 +1,9 @@
+# Open the Home settings drawer (Accounts / More Settings).
+appId: com.eten.fluent
+---
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000

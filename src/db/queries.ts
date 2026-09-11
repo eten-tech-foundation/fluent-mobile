@@ -102,45 +102,135 @@ function mapProjectSummaryRow(
   };
 }
 
+type ProjectSummaryBaseRow = Omit<
+  DBTypes.ProjectSummaryRow,
+  'chapter_count' | 'recording_count' | 'pending_count'
+>;
+
+type ProjectRecordingCounts = {
+  recording_count: number;
+  pending_count: number;
+};
+
+/** Project list fields for Home / prepare offline — no chapter or recording joins. */
+async function fetchProjectSummaryBases(
+  userId: number,
+): Promise<ProjectSummaryBaseRow[]> {
+  const db = getDatabase();
+  const result = await db.execute(
+    `SELECT
+       p.id,
+       p.name,
+       p.source_language_id,
+       p.target_language_id,
+       p.is_active,
+       p.status,
+       p.updated_at,
+       p.metadata,
+       sl.lang_name AS source_language_name,
+       tl.lang_name AS target_language_name
+     FROM projects p
+     INNER JOIN user_projects up ON up.project_id = p.id
+     LEFT JOIN languages sl ON p.source_language_id = sl.id
+     LEFT JOIN languages tl ON p.target_language_id = tl.id
+     WHERE up.user_id = ?
+     ORDER BY p.name COLLATE NOCASE;`,
+    [userId],
+  );
+
+  return (result?.rows as unknown as ProjectSummaryBaseRow[]) || [];
+}
+
+/** Chapter counts per project — avoids joining bible_texts for the Projects tab. */
+async function fetchProjectChapterCounts(
+  userId: number,
+): Promise<Map<number, number>> {
+  const db = getDatabase();
+  const result = await db.execute(
+    `SELECT
+       pu.project_id AS id,
+       COUNT(DISTINCT ca.id) AS chapter_count
+     FROM chapter_assignments ca
+     INNER JOIN project_units pu ON ca.project_unit_id = pu.id
+     INNER JOIN user_projects up ON up.project_id = pu.project_id
+     WHERE up.user_id = ?
+     GROUP BY pu.project_id;`,
+    [userId],
+  );
+
+  const counts = new Map<number, number>();
+  for (const row of (result.rows ?? []) as Array<{
+    id: number;
+    chapter_count: number;
+  }>) {
+    counts.set(row.id, Number(row.chapter_count) || 0);
+  }
+  return counts;
+}
+
+/** Recording sync aggregates — starts from recordings, not all bible_texts rows. */
+async function fetchProjectRecordingCounts(
+  userId: number,
+): Promise<Map<number, ProjectRecordingCounts>> {
+  const db = getDatabase();
+  const result = await db.execute(
+    `SELECT
+       pu.project_id AS id,
+       COUNT(DISTINCT r.id) AS recording_count,
+       COUNT(DISTINCT CASE
+         WHEN r.sync_status NOT IN ('uploaded', 'conflicted') THEN r.id
+       END) AS pending_count
+     FROM recordings r
+     INNER JOIN bible_texts bt_r ON r.bible_text_id = bt_r.id
+     INNER JOIN chapter_assignments ca
+       ON bt_r.bible_id = ca.bible_id
+       AND bt_r.book_id = ca.book_id
+       AND bt_r.chapter_number = ca.chapter_number
+     INNER JOIN project_units pu ON ca.project_unit_id = pu.id
+     INNER JOIN user_projects up ON up.project_id = pu.project_id
+     WHERE up.user_id = ?
+       AND r.is_selected = 1
+       AND r.recorded_by_user_id = ?
+     GROUP BY pu.project_id;`,
+    [userId, userId],
+  );
+
+  const counts = new Map<number, ProjectRecordingCounts>();
+  for (const row of (result.rows ?? []) as Array<{
+    id: number;
+    recording_count: number;
+    pending_count: number;
+  }>) {
+    counts.set(row.id, {
+      recording_count: Number(row.recording_count) || 0,
+      pending_count: Number(row.pending_count) || 0,
+    });
+  }
+  return counts;
+}
+
 export async function getProjectsWithSummary(
   userId: number,
 ): Promise<DBTypes.ProjectSummary[]> {
-  const db = getDatabase();
   try {
     await ensureUserProjectMembership(userId);
 
-    const result = await db.execute(
-      `SELECT
-         p.id,
-         p.name,
-         p.source_language_id,
-         p.target_language_id,
-         p.is_active,
-         p.status,
-         p.updated_at,
-         p.metadata,
-        sl.lang_name AS source_language_name,
-        tl.lang_name AS target_language_name,
-        COUNT(DISTINCT ca.id) AS chapter_count,
-        COUNT(DISTINCT CASE WHEN r.id IS NOT NULL THEN r.id END) AS recording_count,
-        COUNT(DISTINCT CASE
-          WHEN r.id IS NOT NULL
-            AND r.sync_status NOT IN ('uploaded', 'conflicted') THEN r.id
-        END) AS pending_count
-      FROM projects p
-      INNER JOIN user_projects up ON up.project_id = p.id
-      LEFT JOIN languages sl ON p.source_language_id = sl.id
-      LEFT JOIN languages tl ON p.target_language_id = tl.id
-      LEFT JOIN project_units pu ON pu.project_id = p.id
-      LEFT JOIN chapter_assignments ca ON ca.project_unit_id = pu.id
-      ${RECORDINGS_JOIN_CA}
-      WHERE up.user_id = ?
-      GROUP BY p.id
-      ORDER BY p.name COLLATE NOCASE;`,
-      [userId, userId],
-    );
+    const [bases, chapterCounts, recordingCounts] = await Promise.all([
+      fetchProjectSummaryBases(userId),
+      fetchProjectChapterCounts(userId),
+      fetchProjectRecordingCounts(userId),
+    ]);
 
-    const rows = (result?.rows as unknown as DBTypes.ProjectSummaryRow[]) || [];
+    const rows: DBTypes.ProjectSummaryRow[] = bases.map(row => {
+      const recordings = recordingCounts.get(row.id);
+      return {
+        ...row,
+        chapter_count: chapterCounts.get(row.id) ?? 0,
+        recording_count: recordings?.recording_count ?? 0,
+        pending_count: recordings?.pending_count ?? 0,
+      };
+    });
+
     log.info('Projects with summary fetched', { count: rows.length });
     return rows.map(mapProjectSummaryRow);
   } catch (error) {

@@ -16,6 +16,7 @@ This repo runs GitHub Actions on pushes and pull requests. This doc maps what ru
 | `qa-handoff.yml` | Post-merge ticket handoff | **Needs QA? Yes** → comment + assign `@Roslin22` + `In QA`; **Needs QA? No** → `Done` + close linked issues ([guides/qa-process.md](guides/qa-process.md)) |
 | `nightly-preview.yml` | Nightly Android APK | 23:17 PT APK cron (trusted even when GitHub delays) + 09:07 PT Slack (09:00–16:00 PT); `workflow_dispatch`; install comments on recent handoffs |
 | `eas-build.yml` | Tag → version sync | Production release path on `v*` tags |
+| `maestro-android.yml` | Maestro Android (informational) | **Manual only** (`workflow_dispatch`): build release APK + emulator + Maestro suite. **Not** a PR/merge gate. Secrets: `MAESTRO_EMAIL` / `MAESTRO_PASSWORD` (smokes); + `_2` pair (multi-account). See [guides/maestro.md](guides/maestro.md) |
 
 Local mirrors (run before claiming PR-ready):
 
@@ -114,6 +115,7 @@ PR template for the GitHub UI: [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/P
 - Nightly: `nightly-preview.yml` + [`.github/scripts/nightly-notify-qa-issues.cjs`](../.github/scripts/nightly-notify-qa-issues.cjs) posts install URL on recent handoff issues
 - **Process:** [guides/qa-process.md](guides/qa-process.md) (Needs QA?, post-merge nightly QA)
 - Human install steps: [guides/qa-preview-testing.md](guides/qa-preview-testing.md)
+- Opt-in Maestro E2E (not a merge gate): [guides/maestro.md](guides/maestro.md) + informational `maestro-android.yml`
 - **Merge rule:** engineer approval + required CI — QA does **not** block merge
 - Production: tag `v*` → `eas-build.yml` + [`.eas/README.md`](../.eas/README.md)
 

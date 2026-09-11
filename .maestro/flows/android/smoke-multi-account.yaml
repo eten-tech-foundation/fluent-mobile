@@ -1,0 +1,140 @@
+# Multi-account isolation — nightly checklist A–D (#495 / docs/guides/qa-multi-account-nightly.md).
+# Requires MAESTRO_EMAIL + MAESTRO_PASSWORD and MAESTRO_EMAIL_2 + MAESTRO_PASSWORD_2
+# (each with ≥1 distinct My Work assignment). Secrets via env / .env.maestro only.
+# Not tagged `smoke` — keep single-account smokes runnable with one credential pair.
+appId: com.eten.fluent
+tags:
+  - multi-account
+---
+# --- Setup: clear state, Account A, sync, add Account B, sync ---
+- runFlow: subflows/boot-to-login.yaml
+- runFlow: subflows/login.yaml
+- runFlow: subflows/wait-for-home.yaml
+- runFlow: subflows/sync-now-and-return.yaml
+
+# Capture Account A's first My Work title for cross-account isolation (C).
+# Seed accounts with distinct chapter display labels so this assert is meaningful.
+- tapOn:
+    id: 'home-tab-my-work'
+- extendedWaitUntil:
+    visible:
+      id: 'my-work-row-title-.*'
+    timeout: 60000
+- copyTextFrom:
+    id: 'my-work-row-title-.*'
+- evalScript: ${output.accountAMyWorkLabel = maestro.copiedText}
+- assertTrue: ${output.accountAMyWorkLabel != null && output.accountAMyWorkLabel != ''}
+
+# A2: Add User → sign in as B
+- runFlow: subflows/open-drawer.yaml
+- tapOn:
+    id: 'settings-menu-add-user'
+- extendedWaitUntil:
+    visible:
+      id: 'login-email-input'
+    timeout: 30000
+- runFlow: subflows/login-account-b.yaml
+- runFlow: subflows/wait-for-home.yaml
+- runFlow: subflows/sync-now-and-return.yaml
+
+# --- A. Add and list accounts (A1–A2) ---
+- runFlow: subflows/assert-drawer-accounts.yaml
+# Close drawer (system back) without switching accounts
+- pressKey: Back
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 15000
+
+# --- B. Switch accounts + Settings (covers B1–B4; order starts on B after add-user) ---
+# Switch B → A (checklist B3), then Settings on A (B4)
+- runFlow: subflows/open-drawer.yaml
+- tapOn: ${MAESTRO_EMAIL}
+- runFlow: subflows/wait-for-home.yaml
+- runFlow: subflows/open-settings-assert.yaml
+- runFlow: subflows/open-drawer.yaml
+- assertVisible:
+    id: 'settings-menu-active-.*'
+- assertVisible: ${MAESTRO_EMAIL}
+- pressKey: Back
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 15000
+
+# Switch A → B (checklist B1), then Settings on B (B2)
+- runFlow: subflows/open-drawer.yaml
+- tapOn: ${MAESTRO_EMAIL_2}
+- runFlow: subflows/wait-for-home.yaml
+- runFlow: subflows/open-settings-assert.yaml
+
+# --- C. No cross-account data leakage (C1–C3) ---
+# C1: My Work for B; A's title must not appear while B is active
+# (residual: identical displayLabel on both accounts → false fail / weak signal).
+- tapOn:
+    id: 'home-tab-my-work'
+- extendedWaitUntil:
+    visible:
+      id: 'my-work-row-.*'
+    timeout: 60000
+- assertNotVisible: ${output.accountAMyWorkLabel}
+# C2: open B's chapter → Record tab loads for active user
+- runFlow: subflows/open-first-my-work-chapter.yaml
+- tapOn:
+    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'record-tab'
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000
+
+# C3: switch to A — A's title returns; Record for A
+- runFlow: subflows/open-drawer.yaml
+- tapOn: ${MAESTRO_EMAIL}
+- runFlow: subflows/wait-for-home.yaml
+- tapOn:
+    id: 'home-tab-my-work'
+- extendedWaitUntil:
+    visible:
+      id: 'my-work-row-.*'
+    timeout: 60000
+- assertVisible: ${output.accountAMyWorkLabel}
+- runFlow: subflows/open-first-my-work-chapter.yaml
+- tapOn:
+    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'record-tab'
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000
+
+# --- D. Sync scoped to active user (D1–D3) ---
+# D1: sync on A (already active)
+- runFlow: subflows/sync-now-and-return.yaml
+# D2: switch to B, sync; both accounts still listed; B active
+- runFlow: subflows/open-drawer.yaml
+- tapOn: ${MAESTRO_EMAIL_2}
+- runFlow: subflows/wait-for-home.yaml
+- runFlow: subflows/sync-now-and-return.yaml
+- runFlow: subflows/assert-drawer-accounts.yaml
+- assertVisible: ${MAESTRO_EMAIL_2}
+- pressKey: Back
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 15000
+# D3: switch back to A — My Work retained
+- runFlow: subflows/open-drawer.yaml
+- tapOn: ${MAESTRO_EMAIL}
+- runFlow: subflows/wait-for-home.yaml
+- tapOn:
+    id: 'home-tab-my-work'
+- extendedWaitUntil:
+    visible:
+      id: 'my-work-row-.*'
+    timeout: 60000
+- assertVisible: ${output.accountAMyWorkLabel}
