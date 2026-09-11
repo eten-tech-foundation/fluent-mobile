@@ -1,26 +1,39 @@
 import type { RecordingGranularity } from './recordingRange';
 
+/**
+ * Display granularity — deliberately wider than the persisted
+ * `RecordingGranularity`. `'stitched'` (#411) labels a synthetic aggregate of
+ * several verse takes, so no `recordings` row can ever hold it.
+ */
+export type TakeSubtitleGranularity = RecordingGranularity | 'stitched';
+
 export type TakeSubtitleInput = {
   takeNumber: number;
-  granularity: RecordingGranularity;
+  granularity: TakeSubtitleGranularity;
   startChapter: number;
   startVerse: number;
   endChapter: number;
   endVerse: number;
 };
 
+/** Cross-chapter spans carry chapter numbers; same-chapter spans do not. */
+function formatSpan(take: TakeSubtitleInput): string {
+  return take.startChapter === take.endChapter
+    ? `vv. ${take.startVerse}-${take.endVerse}`
+    : `vv. ${take.startChapter}:${take.startVerse}-${take.endChapter}:${take.endVerse}`;
+}
+
 /**
  * Take-card label (#410): "Take N - Pericope - vv. X-Y" or "Take N - Verse - v. X".
- * Cross-chapter pericopes include chapter numbers in the verse span.
+ * Stitched rows (#411) reuse the pericope span rules: "Take N - Stitched - vv. X-Y".
  */
 export function formatTakeSubtitle(take: TakeSubtitleInput): string {
   const n = take.takeNumber;
+  if (take.granularity === 'stitched') {
+    return `Take ${n} - Stitched - ${formatSpan(take)}`;
+  }
   if (take.granularity === 'pericope') {
-    const sameChapter = take.startChapter === take.endChapter;
-    const span = sameChapter
-      ? `vv. ${take.startVerse}-${take.endVerse}`
-      : `vv. ${take.startChapter}:${take.startVerse}-${take.endChapter}:${take.endVerse}`;
-    return `Take ${n} - Pericope - ${span}`;
+    return `Take ${n} - Pericope - ${formatSpan(take)}`;
   }
   return `Take ${n} - Verse - v. ${take.startVerse}`;
 }

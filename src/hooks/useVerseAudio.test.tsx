@@ -103,6 +103,36 @@ function makeTake(overrides: Partial<Recording> = {}): Recording {
   };
 }
 
+/** Synthetic aggregate row as `buildCrossGranularityRows` emits it (#411). */
+function makeStitchedRow() {
+  return {
+    kind: 'stitched' as const,
+    id: 'stitched:1:3-1:4',
+    takeNumber: 1,
+    startChapter: 1,
+    startVerse: 3,
+    endChapter: 1,
+    endVerse: 4,
+    durationMs: 2000,
+    segments: [
+      {
+        takeId: 'v3',
+        localFilePath: '/recordings/v3.m4a',
+        chapterNumber: 1,
+        verseNumber: 3,
+        durationMs: 1000,
+      },
+      {
+        takeId: 'v4',
+        localFilePath: '/recordings/v4.m4a',
+        chapterNumber: 1,
+        verseNumber: 4,
+        durationMs: 1000,
+      },
+    ],
+  };
+}
+
 describe('useVerseAudio', () => {
   const loadTakes = jest.fn();
   const persistTake = jest.fn();
@@ -516,5 +546,210 @@ describe('useVerseAudio', () => {
 
     expect(mockRecordingStart).not.toHaveBeenCalled();
     expect(result.current.errorMessage).toMatch(/Maximum of 5 takes/);
+  });
+
+  it('loads takes for every covered verse in pericope mode, without duplicates', async () => {
+    const { getTakesForVerse } = jest.requireMock('../db/repository');
+    const spanningTake = makeTake({
+      id: 'pericope-take',
+      granularity: 'pericope',
+      startVerse: 3,
+      endVerse: 4,
+    });
+    const verseTake = makeTake({ id: 'v4', startVerse: 4, endVerse: 4 });
+    // The pericope take covers both verses, so both queries return it (#411).
+    getTakesForVerse.mockImplementation((id: number) =>
+      Promise.resolve(id === 103 ? [spanningTake] : [spanningTake, verseTake]),
+    );
+
+    const { result } = renderHook(() =>
+      useVerseAudio({
+        bibleTextId: 103,
+        persistTake,
+        deleteTake,
+        selectTake,
+        draftingUnit: 'pericope',
+        chapterNumber: 1,
+        verseNumber: 3,
+        countTakesAtView: jest.fn().mockResolvedValue(0),
+        recordingUnit: {
+          granularity: 'pericope',
+          startChapter: 1,
+          startVerse: 3,
+          endChapter: 1,
+          endVerse: 4,
+          anchorBibleTextId: 103,
+          coveredViews: [
+            { bibleTextId: 103, chapterNumber: 1, verseNumber: 3 },
+            { bibleTextId: 104, chapterNumber: 1, verseNumber: 4 },
+          ],
+        },
+      }),
+    );
+
+    await waitFor(() => expect(result.current.takes).toHaveLength(2));
+
+    expect(getTakesForVerse).toHaveBeenCalledWith(103, undefined, {
+      chapterNumber: 1,
+      verseNumber: 3,
+    });
+    expect(getTakesForVerse).toHaveBeenCalledWith(104, undefined, {
+      chapterNumber: 1,
+      verseNumber: 4,
+    });
+    expect(result.current.takes.map(take => take.id)).toEqual([
+      'pericope-take',
+      'v4',
+    ]);
+  });
+
+  it('plays stitched segments in order and ends after the last one', async () => {
+    loadTakes.mockResolvedValue([makeTake()]);
+    const stitchedRow = makeStitchedRow();
+
+    const { result, rerender } = renderHook(() =>
+      useVerseAudio(verseAudioArgs()),
+    );
+
+    await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+    await act(async () => {
+      await result.current.playStitched(stitchedRow);
+    });
+
+    expect(mockPlaybackPlay).toHaveBeenNthCalledWith(1, '/recordings/v3.m4a');
+    expect(result.current.state).toBe('playing');
+    expect(result.current.playingTakeId).toBe('stitched:1:3-1:4');
+    // Not seekable: no single file backs a stitched row.
+    expect(result.current.loadedTakeId).toBeNull();
+
+    // Engine reports the end of segment 1 — the queue must advance, not end.
+    playbackState.status = 'idle';
+    await act(async () => {
+      rerender(undefined);
+    });
+
+    expect(mockPlaybackPlay).toHaveBeenNthCalledWith(2, '/recordings/v4.m4a');
+    expect(result.current.state).toBe('playing');
+
+    // End of the last segment ends playback.
+    playbackState.status = 'idle';
+    await act(async () => {
+      rerender(undefined);
+    });
+
+    expect(mockPlaybackPlay).toHaveBeenCalledTimes(2);
+    expect(result.current.state).toBe('recorded');
+    expect(result.current.playingTakeId).toBeNull();
+  });
+
+  it('abandons the stitched queue on pause so play restarts at the first segment', async () => {
+    loadTakes.mockResolvedValue([makeTake()]);
+    const stitchedRow = makeStitchedRow();
+
+    const { result, rerender } = renderHook(() =>
+      useVerseAudio(verseAudioArgs()),
+    );
+
+    await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+    await act(async () => {
+      await result.current.playStitched(stitchedRow);
+    });
+    await act(async () => {
+      await result.current.pausePlayback();
+    });
+
+    expect(mockPlaybackPause).toHaveBeenCalled();
+    expect(result.current.state).toBe('recorded');
+
+    // A later idle report must not resume the abandoned queue.
+    playbackState.status = 'idle';
+    await act(async () => {
+      rerender(undefined);
+    });
+
+    expect(mockPlaybackPlay).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops the stitched queue when the active verse changes', async () => {
+    loadTakes.mockResolvedValue([makeTake()]);
+    const stitchedRow = makeStitchedRow();
+
+    const { result, rerender } = renderHook(
+      ({ bibleTextId }: { bibleTextId: number }) =>
+        useVerseAudio({
+          bibleTextId,
+          loadTakes,
+          persistTake,
+          deleteTake,
+          selectTake,
+        }),
+      { initialProps: { bibleTextId: 42 } },
+    );
+
+    await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+    await act(async () => {
+      await result.current.playStitched(stitchedRow);
+    });
+    expect(mockPlaybackPlay).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      rerender({ bibleTextId: 43 });
+    });
+
+    playbackState.status = 'idle';
+    await act(async () => {
+      rerender({ bibleTextId: 43 });
+    });
+
+    expect(mockPlaybackPlay).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not reload takes or stop playback when the capture unit is re-resolved unchanged', async () => {
+    const { getTakesForVerse } = jest.requireMock('../db/repository');
+    getTakesForVerse.mockResolvedValue([makeTake()]);
+    const countTakesAtView = jest.fn().mockResolvedValue(0);
+    const makeUnit = () => ({
+      granularity: 'pericope' as const,
+      startChapter: 1,
+      startVerse: 3,
+      endChapter: 1,
+      endVerse: 4,
+      anchorBibleTextId: 103,
+      coveredViews: [
+        { bibleTextId: 103, chapterNumber: 1, verseNumber: 3 },
+        { bibleTextId: 104, chapterNumber: 1, verseNumber: 4 },
+      ],
+    });
+
+    const { result, rerender } = renderHook(
+      ({ recordingUnit }: { recordingUnit: ReturnType<typeof makeUnit> }) =>
+        useVerseAudio({
+          bibleTextId: 103,
+          persistTake,
+          deleteTake,
+          selectTake,
+          draftingUnit: 'pericope',
+          chapterNumber: 1,
+          verseNumber: 3,
+          countTakesAtView,
+          recordingUnit,
+        }),
+      { initialProps: { recordingUnit: makeUnit() } },
+    );
+
+    await waitFor(() => expect(result.current.takes).toHaveLength(1));
+    const loadsBefore = getTakesForVerse.mock.calls.length;
+    const stopsBefore = mockPlaybackStop.mock.calls.length;
+
+    // A playback transition re-resolves the unit: same verses, new identity.
+    await act(async () => {
+      rerender({ recordingUnit: makeUnit() });
+    });
+
+    expect(getTakesForVerse.mock.calls).toHaveLength(loadsBefore);
+    expect(mockPlaybackStop.mock.calls).toHaveLength(stopsBefore);
   });
 });

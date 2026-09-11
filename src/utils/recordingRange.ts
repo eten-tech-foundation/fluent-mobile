@@ -101,3 +101,35 @@ export function shouldClearSelectionForIncomingTake(
   }
   return rangesOverlap(existing.range, incoming.range);
 }
+
+/** Stable string for a verse list — ignores array identity, same items → same key. */
+export function formatCoveredViewsKey(
+  views: readonly VerseViewRef[] | null | undefined,
+): string {
+  return (views ?? [])
+    .map(
+      view => `${view.bibleTextId}:${view.chapterNumber}:${view.verseNumber}`,
+    )
+    .join(',');
+}
+
+/** Stable content key for capture metadata — ignores `coveredViews` array identity. */
+export function recordingUnitCaptureKey(
+  unit: RecordingUnitCapture | null,
+): string {
+  if (unit === null) {
+    return '';
+  }
+  return `${unit.granularity}|${unit.startChapter}:${unit.startVerse}-${
+    unit.endChapter
+  }:${unit.endVerse}|${unit.anchorBibleTextId}|${formatCoveredViewsKey(
+    unit.coveredViews,
+  )}`;
+}
+
+export function recordingUnitCapturesEqual(
+  a: RecordingUnitCapture | null,
+  b: RecordingUnitCapture | null,
+): boolean {
+  return recordingUnitCaptureKey(a) === recordingUnitCaptureKey(b);
+}

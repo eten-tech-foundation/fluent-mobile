@@ -30,10 +30,21 @@ import { verseAudioReducer, type VerseAudioState } from './verseAudioReducer';
 import { MAX_RECORDING_TAKES } from '../constants/recordingTakes';
 import type { DraftingUnit } from '../services/draftingUnitPreference';
 import type { RecordingGranularity } from '../types/db/types';
-import type {
-  RecordingUnitCapture,
-  VerseViewRef,
+import {
+  formatCoveredViewsKey,
+  type RecordingUnitCapture,
+  type VerseViewRef,
 } from '../utils/recordingRange';
+import {
+  uniqueTakesById,
+  type StitchedTakeRow,
+} from '../utils/crossGranularityRows';
+import {
+  advanceStitchQueue,
+  createStitchQueue,
+  currentStitchUri,
+  type StitchQueue,
+} from '../utils/stitchQueue';
 
 export type { RecordingUnitCapture };
 
@@ -151,15 +162,45 @@ export function useVerseAudio({
   selectTake: selectTakeFn = selectRecordingTake,
   designateCanonical: designateCanonicalFn = setCanonicalTake,
 }: UseVerseAudioArgs) {
+  const coveredViews = recordingUnit?.coveredViews;
+  const coveredViewsRef = useRef(coveredViews);
+  coveredViewsRef.current = coveredViews;
+  /**
+   * Stable dep for the take load: the capture unit is re-resolved (new array
+   * identity, same content) on playback transitions, and `loadTakesFn` gates
+   * the reload effect that stops playback. Keying on identity killed audio
+   * mid-take (#411).
+   */
+  const coveredViewsKey = formatCoveredViewsKey(coveredViews);
+
   const loadTakesFn = useCallback(
-    (id: number) => {
+    async (id: number) => {
+      if (loadTakes) {
+        return loadTakes(id);
+      }
+      // Pericope view lists takes for the whole unit, not just the current
+      // verse, so verse takes recorded elsewhere in the pericope can stitch
+      // (#411). One query per covered verse: a pericope take spanning them all
+      // comes back from each, hence the dedupe. The key both gates this branch
+      // and re-keys the callback; the array is read from the ref.
+      if (draftingUnit === 'pericope' && coveredViewsKey !== '') {
+        const groups = await Promise.all(
+          (coveredViewsRef.current ?? []).map(covered =>
+            getTakesForVerse(covered.bibleTextId, undefined, {
+              chapterNumber: covered.chapterNumber,
+              verseNumber: covered.verseNumber,
+            }),
+          ),
+        );
+        return uniqueTakesById(groups);
+      }
       const view =
         typeof chapterNumber === 'number' && typeof verseNumber === 'number'
           ? { chapterNumber, verseNumber }
           : undefined;
-      return loadTakes ? loadTakes(id) : getTakesForVerse(id, undefined, view);
+      return getTakesForVerse(id, undefined, view);
     },
-    [loadTakes, chapterNumber, verseNumber],
+    [loadTakes, chapterNumber, verseNumber, draftingUnit, coveredViewsKey],
   );
   const loadAllTakesFn = useCallback(
     (id: number) => {
@@ -212,12 +253,33 @@ export function useVerseAudio({
   const playbackLoadInFlightRef = useRef(false);
   /** Bumped when an in-flight load ends so the natural-end effect re-checks. */
   const [playbackLoadGate, setPlaybackLoadGate] = useState(0);
+  /** Remaining segments of a stitched row, or null when not stitching (#411). */
+  const stitchQueueRef = useRef<StitchQueue | null>(null);
+  const stitchRowIdRef = useRef<string | null>(null);
+
+  const clearStitchQueue = useCallback(() => {
+    stitchQueueRef.current = null;
+    stitchRowIdRef.current = null;
+  }, []);
 
   useEffect(() => {
     chapterAssignedRef.current = false;
   }, [chapterAssignmentId]);
 
-  const selectedTake = takes.find(t => t.isSelected) ?? null;
+  /**
+   * Pericope view loads takes for the whole unit (#411), so "the selected
+   * draft here" must still mean the active verse view — otherwise a verse-4
+   * take answers for verse 3 and feeds the seek fallback.
+   */
+  const isTakeInActiveView = useCallback(
+    (take: Recording) =>
+      draftingUnit !== 'pericope' ||
+      take.granularity === 'pericope' ||
+      (take.startChapter === chapterNumber && take.startVerse === verseNumber),
+    [chapterNumber, draftingUnit, verseNumber],
+  );
+  const selectedTake =
+    takes.find(t => t.isSelected && isTakeInActiveView(t)) ?? null;
   const [rangeCapBlocked, setRangeCapBlocked] = useState(false);
 
   useEffect(() => {
@@ -241,7 +303,8 @@ export function useVerseAudio({
     draftingUnit === 'pericope'
       ? recordingUnit !== null && !rangeCapBlocked
       : takes.length < MAX_RECORDING_TAKES;
-  const ownCanonicalTakeId = takes.find(t => t.isCanonical)?.id ?? null;
+  const ownCanonicalTakeId =
+    takes.find(t => t.isCanonical && isTakeInActiveView(t))?.id ?? null;
 
   const refreshAllTakes = useCallback(
     async (id: number) => {
@@ -267,6 +330,7 @@ export function useVerseAudio({
     let cancelled = false;
     setLoadedTakeId(null);
     setPlayingTakeId(null);
+    clearStitchQueue();
     activeBibleTextIdRef.current = bibleTextId;
     // Stop any in-flight draft playback when the active verse unit changes (#235).
     void playback.stop();
@@ -300,7 +364,7 @@ export function useVerseAudio({
     };
     // playback identity changes every render; stop() is bound to the stable engine.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- bibleTextId-driven reload
-  }, [bibleTextId, loadTakesFn, refreshAllTakes]);
+  }, [bibleTextId, loadTakesFn, refreshAllTakes, clearStitchQueue]);
 
   const start = useCallback(async () => {
     if (bibleTextId === null) return;
@@ -333,6 +397,7 @@ export function useVerseAudio({
       }
       setPlayingTakeId(null);
       setLoadedTakeId(null);
+      clearStitchQueue();
       const anchorBibleTextId = recordingUnit?.anchorBibleTextId ?? bibleTextId;
       capturePersistRef.current = {
         bibleTextId: anchorBibleTextId,
@@ -364,6 +429,7 @@ export function useVerseAudio({
     bibleTextId,
     canRecordNewTake,
     chapterNumber,
+    clearStitchQueue,
     countTakesAtView,
     draftingUnit,
     playback,
@@ -479,25 +545,29 @@ export function useVerseAudio({
     refreshAllTakes,
   ]);
 
+  /** File checks + engine play, shared by single takes and stitched segments. */
+  const playUri = useCallback(
+    async (path: string) => {
+      const exists = await fileExists(path);
+      if (!exists) {
+        throw new Error('Take file is missing on disk. Re-record this verse.');
+      }
+      const size = await fileSize(path);
+      if (size === undefined || size <= 0) {
+        throw new Error('Take file is empty (0 bytes). Re-record this verse.');
+      }
+      await playback.play(path);
+    },
+    [playback],
+  );
+
   const playTake = useCallback(
     async (take: Recording) => {
       playbackLoadInFlightRef.current = true;
       try {
-        const path = take.localFilePath;
-        const exists = await fileExists(path);
-        if (!exists) {
-          throw new Error(
-            'Take file is missing on disk. Re-record this verse.',
-          );
-        }
-        const size = await fileSize(path);
-        if (size === undefined || size <= 0) {
-          throw new Error(
-            'Take file is empty (0 bytes). Re-record this verse.',
-          );
-        }
+        clearStitchQueue();
         setErrorMessage(null);
-        await playback.play(path);
+        await playUri(take.localFilePath);
         setPlayingTakeId(take.id);
         setLoadedTakeId(take.id);
         dispatch({ type: 'PLAY' });
@@ -512,7 +582,57 @@ export function useVerseAudio({
         setPlaybackLoadGate(n => n + 1);
       }
     },
-    [playback],
+    [clearStitchQueue, playUri],
+  );
+
+  /**
+   * Play one segment of a stitched row. `playbackLoadInFlightRef` is set
+   * **before** `replace` so the natural-end effect cannot read the unload gap
+   * as end-of-playback and drop the rest of the queue (#298).
+   */
+  const playStitchedSegment = useCallback(
+    async (uri: string, rowId: string) => {
+      playbackLoadInFlightRef.current = true;
+      try {
+        setErrorMessage(null);
+        await playUri(uri);
+        setPlayingTakeId(rowId);
+        // Stitched rows are not seekable — no single file backs the row.
+        setLoadedTakeId(null);
+        dispatch({ type: 'PLAY' });
+      } catch (error) {
+        clearStitchQueue();
+        setPlayingTakeId(null);
+        setLoadedTakeId(null);
+        const message = error instanceof Error ? error.message : 'play failed';
+        setErrorMessage(message);
+        dispatch({ type: 'ERROR', message });
+      } finally {
+        playbackLoadInFlightRef.current = false;
+        setPlaybackLoadGate(n => n + 1);
+      }
+    },
+    [clearStitchQueue, playUri],
+  );
+
+  /** Play a synthetic stitched row's verse takes back to back (#411). */
+  const playStitched = useCallback(
+    async (row: StitchedTakeRow) => {
+      const queue = createStitchQueue(
+        row.segments.map(segment => segment.localFilePath),
+      );
+      const uri = currentStitchUri(queue);
+      if (!queue || uri === null) {
+        const message = 'No recordings to play for this pericope.';
+        setErrorMessage(message);
+        dispatch({ type: 'ERROR', message });
+        return;
+      }
+      stitchQueueRef.current = queue;
+      stitchRowIdRef.current = row.id;
+      await playStitchedSegment(uri, row.id);
+    },
+    [playStitchedSegment],
   );
 
   /**
@@ -537,6 +657,8 @@ export function useVerseAudio({
             'Take file is missing on disk. Re-record this verse.',
           );
         }
+        // Scrubbing a real row abandons a stitched row's remaining segments.
+        clearStitchQueue();
         setErrorMessage(null);
         await playback.load(path);
         setPlayingTakeId(take.id);
@@ -555,7 +677,7 @@ export function useVerseAudio({
         setPlaybackLoadGate(n => n + 1);
       }
     },
-    [loadedTakeId, playback, selectedTake, takes],
+    [clearStitchQueue, loadedTakeId, playback, selectedTake, takes],
   );
 
   /** Pause draft review playback (design review control shows Pause while playing). */
@@ -566,6 +688,8 @@ export function useVerseAudio({
       return;
     }
     try {
+      // Pausing abandons the rest of a stitched row; Play restarts at segment 1.
+      clearStitchQueue();
       await playback.pause();
       dispatch({ type: 'PLAYBACK_END' });
     } catch (error) {
@@ -574,7 +698,7 @@ export function useVerseAudio({
       setErrorMessage(message);
       dispatch({ type: 'ERROR', message });
     }
-  }, [playback, state]);
+  }, [clearStitchQueue, playback, state]);
 
   // Natural end (`didJustFinish` → idle). Explicit pause already dispatches
   // PLAYBACK_END. Do not treat brief idle during in-flight play/load (replace)
@@ -589,14 +713,32 @@ export function useVerseAudio({
     ) {
       return;
     }
+    // A stitched row is not finished until its last segment ends (#411).
+    const nextQueue = advanceStitchQueue(stitchQueueRef.current);
+    const nextUri = currentStitchUri(nextQueue);
+    const rowId = stitchRowIdRef.current;
+    if (nextQueue && nextUri !== null && rowId !== null) {
+      stitchQueueRef.current = nextQueue;
+      void playStitchedSegment(nextUri, rowId);
+      return;
+    }
+    clearStitchQueue();
     dispatch({ type: 'PLAYBACK_END' });
     setPlayingTakeId(null);
-  }, [state, playback.status, playbackLoadGate]);
+  }, [
+    state,
+    playback.status,
+    playbackLoadGate,
+    clearStitchQueue,
+    playStitchedSegment,
+  ]);
 
   const deleteTake = useCallback(
     async (id: string) => {
       try {
         const target = takes.find(t => t.id === id);
+        // A deleted take may be a stitched segment — drop the queue either way.
+        clearStitchQueue();
         // The player still holds this file even after playback ended.
         if (loadedTakeId === id) {
           await playback.stop();
@@ -628,6 +770,7 @@ export function useVerseAudio({
     },
     [
       bibleTextId,
+      clearStitchQueue,
       loadTakesFn,
       loadedTakeId,
       playback,
@@ -698,6 +841,7 @@ export function useVerseAudio({
     resume,
     stop,
     playTake,
+    playStitched,
     seek,
     pausePlayback,
     selectTake,

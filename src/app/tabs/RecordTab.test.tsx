@@ -34,9 +34,15 @@ jest.mock('expo-router', () => ({
   }),
 }));
 
+import { resolveRecordingUnit } from '../../hooks/resolveRecordingUnit';
+
 jest.mock('../../hooks/resolveRecordingUnit', () => ({
   resolveRecordingUnit: jest.fn(async () => null),
 }));
+
+const mockResolveRecordingUnit = resolveRecordingUnit as jest.MockedFunction<
+  typeof resolveRecordingUnit
+>;
 
 jest.mock('../../db/queries', () => ({
   getBibleTextId: jest.fn(async () => 42),
@@ -152,6 +158,7 @@ const idleAudio: VerseAudioApi = {
   resume: jest.fn(),
   stop: jest.fn(),
   playTake: jest.fn(),
+  playStitched: jest.fn(),
   seek: jest.fn(),
   pausePlayback: jest.fn(),
   selectTake: jest.fn(),
@@ -1125,5 +1132,226 @@ describe('RecordTab', () => {
       );
     });
     expect(screen.queryByTestId('record-verse-reference-subtitle')).toBeNull();
+  });
+
+  describe('cross-granularity playback (#411)', () => {
+    /**
+     * Pericope mode has two `getPericopeForVerse` consumers — the #409
+     * reference effect and `resolveRecordingUnit` for the capture unit — so a
+     * `...Once` mock would leave one of them with the default `null`.
+     */
+    function mockPericopeVerses3to5() {
+      mockUseDraftingUnit.mockReturnValue({
+        draftingUnit: 'pericope',
+        setDraftingUnit: jest.fn(),
+      });
+      (getProjectPericopeSetId as jest.Mock).mockResolvedValue(7);
+      (getPericopeForVerse as jest.Mock).mockResolvedValue({
+        pericopeNumber: '1',
+        pericopeTitle: 'At Bethany',
+        section: null,
+        verses: [
+          { chapterNumber: 14, verseNumber: 3 },
+          { chapterNumber: 14, verseNumber: 4 },
+          { chapterNumber: 14, verseNumber: 5 },
+        ],
+      });
+    }
+
+    /**
+     * `jest.clearAllMocks()` does not drain queued `...Once` values, and the
+     * queue wins over a persistent implementation — an unconsumed `Once` from
+     * an earlier test would otherwise decide this block's pericope.
+     */
+    function resetPericopeMocks() {
+      (getProjectPericopeSetId as jest.Mock).mockReset();
+      (getProjectPericopeSetId as jest.Mock).mockImplementation(
+        async () => null,
+      );
+      (getPericopeForVerse as jest.Mock).mockReset();
+      (getPericopeForVerse as jest.Mock).mockImplementation(async () => null);
+    }
+
+    beforeEach(resetPericopeMocks);
+    afterEach(resetPericopeMocks);
+
+    it('collapses verse takes into one play-only stitched row in pericope view', async () => {
+      mockPericopeVerses3to5();
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [
+          makeTake({ id: 'v3', takeNumber: 1, startVerse: 3, endVerse: 3 }),
+          makeTake({ id: 'v4', takeNumber: 1, startVerse: 4, endVerse: 4 }),
+        ],
+      });
+
+      renderTab();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('record-take-badge')).toHaveTextContent(
+          'Take 1 - Stitched - vv. 3-4',
+        );
+      });
+
+      expect(screen.getAllByTestId('record-take-row')).toHaveLength(1);
+      expect(screen.queryByTestId('record-delete-button')).toBeNull();
+      expect(screen.queryByTestId('record-take-select')).toBeNull();
+    });
+
+    it('plays the stitched row with its segments in pericope order', async () => {
+      mockPericopeVerses3to5();
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [
+          makeTake({
+            id: 'v5',
+            localFilePath: 'file:///v5.m4a',
+            startVerse: 5,
+            endVerse: 5,
+          }),
+          makeTake({
+            id: 'v3',
+            localFilePath: 'file:///v3.m4a',
+            startVerse: 3,
+            endVerse: 3,
+          }),
+        ],
+      });
+
+      renderTab();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('record-take-badge')).toHaveTextContent(
+          'Take 1 - Stitched - vv. 3-5',
+        );
+      });
+
+      fireEvent.press(screen.getByTestId('record-play-button'));
+
+      expect(idleAudio.playStitched).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: 'stitched',
+          segments: [
+            expect.objectContaining({
+              takeId: 'v3',
+              localFilePath: 'file:///v3.m4a',
+            }),
+            expect.objectContaining({
+              takeId: 'v5',
+              localFilePath: 'file:///v5.m4a',
+            }),
+          ],
+        }),
+      );
+    });
+
+    it('keeps a native pericope take as its own deletable row', async () => {
+      mockPericopeVerses3to5();
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [
+          makeTake({
+            id: 'pericope-take',
+            takeNumber: 2,
+            granularity: 'pericope',
+            startVerse: 3,
+            endVerse: 5,
+          }),
+          makeTake({ id: 'v3', takeNumber: 1, startVerse: 3, endVerse: 3 }),
+        ],
+      });
+
+      renderTab();
+
+      await waitFor(() => {
+        expect(screen.getAllByTestId('record-take-badge')).toHaveLength(2);
+      });
+
+      const badges = screen.getAllByTestId('record-take-badge');
+      expect(badges[0]).toHaveTextContent('Take 2 - Pericope - vv. 3-5');
+      expect(badges[1]).toHaveTextContent('Take 1 - Stitched - vv. 3-3');
+      // Only the real take is deletable.
+      expect(screen.getAllByTestId('record-delete-button')).toHaveLength(1);
+    });
+
+    it('does not re-run resolveRecordingUnit when verse audio state changes to recorded', async () => {
+      mockPericopeVerses3to5();
+      const pericopeUnit = {
+        granularity: 'pericope' as const,
+        startChapter: 14,
+        startVerse: 3,
+        endChapter: 14,
+        endVerse: 5,
+        anchorBibleTextId: 42,
+        coveredViews: [
+          { bibleTextId: 42, chapterNumber: 14, verseNumber: 3 },
+          { bibleTextId: 43, chapterNumber: 14, verseNumber: 4 },
+          { bibleTextId: 44, chapterNumber: 14, verseNumber: 5 },
+        ],
+      };
+      mockResolveRecordingUnit.mockResolvedValue(pericopeUnit);
+
+      let audioState: 'idle' | 'recorded' = 'idle';
+      mockUseVerseAudio.mockImplementation(() => ({
+        ...idleAudio,
+        state: audioState,
+        takes: [
+          makeTake({ id: 'v3', startVerse: 3, endVerse: 3 }),
+          makeTake({
+            id: 'v4',
+            startVerse: 4,
+            endVerse: 4,
+          }),
+        ],
+      }));
+
+      const view = (
+        <DraftingProvider verses={verses} initialVerse={3}>
+          <RecordTab chapterData={chapterData} userId={42} />
+        </DraftingProvider>
+      );
+      const { rerender } = render(view);
+
+      await waitFor(() => {
+        expect(mockResolveRecordingUnit).toHaveBeenCalled();
+      });
+      const callsAfterMount = mockResolveRecordingUnit.mock.calls.length;
+
+      audioState = 'recorded';
+      rerender(view);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('record-take-badge')).toHaveTextContent(
+          'Take 1 - Stitched - vv. 3-4',
+        );
+      });
+
+      expect(mockResolveRecordingUnit.mock.calls.length).toBe(callsAfterMount);
+    });
+
+    it('lists verse takes individually in verse view', () => {
+      mockUseDraftingUnit.mockReturnValue({
+        draftingUnit: 'verse',
+        setDraftingUnit: jest.fn(),
+      });
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [
+          makeTake({ id: 'v3-t1', takeNumber: 1 }),
+          makeTake({ id: 'v3-t2', takeNumber: 2 }),
+        ],
+      });
+
+      renderTab();
+
+      const badges = screen.getAllByTestId('record-take-badge');
+      expect(badges).toHaveLength(2);
+      expect(badges[0]).toHaveTextContent('Take 1 - Verse - v. 3');
+      expect(screen.getAllByTestId('record-delete-button')).toHaveLength(2);
+    });
   });
 });
