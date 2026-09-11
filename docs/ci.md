@@ -16,7 +16,7 @@ This repo runs GitHub Actions on pushes and pull requests. This doc maps what ru
 | `qa-handoff.yml` | Post-merge ticket handoff | **Needs QA? Yes** → comment + assign `@Roslin22` + `In QA`; **Needs QA? No** → `Done` + close linked issues ([guides/qa-process.md](guides/qa-process.md)) |
 | `nightly-preview.yml` | Nightly Android APK | 23:17 PT APK cron (trusted even when GitHub delays) + 09:07 PT Slack (09:00–16:00 PT); `workflow_dispatch`; install comments on recent handoffs |
 | `eas-build.yml` | Tag → version sync | Production release path on `v*` tags |
-| `maestro-android.yml` | Maestro Android (informational) | **Manual only** (`workflow_dispatch`): build release APK + emulator + Maestro suite. **Not** a PR/merge gate. Secrets: `MAESTRO_EMAIL` / `MAESTRO_PASSWORD` (smokes); + `_2` pair (multi-account). See [guides/maestro.md](guides/maestro.md) |
+| `maestro-android.yml` | Maestro Android (informational) | **Manual only** (`workflow_dispatch`): CNG prebuild + release APK + emulator + Maestro suite. **Not** a PR/merge gate (Expo’s hosted path is EAS Workflows `maestro` — see [guides/maestro.md](guides/maestro.md) “Sources of truth”). Secrets: `MAESTRO_EMAIL` / `MAESTRO_PASSWORD` (smokes); + `_2` pair (multi-account) |
 
 Local mirrors (run before claiming PR-ready):
 

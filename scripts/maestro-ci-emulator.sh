@@ -22,15 +22,25 @@ adb install -r "${APK}"
 mkdir -p .maestro/test_output
 suite="${MAESTRO_SUITE:?MAESTRO_SUITE is required (harness|smokes|multi-account)}"
 
+# Maestro CLI report flags (docs.maestro.dev). On pinned 2.10.0, --test-output-dir
+# owns session logs/screenshots; --debug-output is ignored when test-output-dir is set.
+# CLI --test-output-dir overrides config.yaml; use .maestro/test_output so artifacts
+# match GHA upload paths and .gitignore (config `test_output` alone is CWD-relative).
+maestro_report_args=(
+  --format junit
+  --output .maestro/test_output/report.xml
+  --test-output-dir .maestro/test_output
+)
+
 case "${suite}" in
   harness)
-    npm run maestro:test:harness -- --format junit --output .maestro/test_output/report.xml
+    npm run maestro:test:harness -- "${maestro_report_args[@]}"
     ;;
   smokes)
-    npm run maestro:test:smokes -- --format junit --output .maestro/test_output/report.xml
+    npm run maestro:test:smokes -- "${maestro_report_args[@]}"
     ;;
   multi-account)
-    npm run maestro:test:multi-account -- --format junit --output .maestro/test_output/report.xml
+    npm run maestro:test:multi-account -- "${maestro_report_args[@]}"
     ;;
   *)
     echo "Unknown MAESTRO_SUITE: ${suite}" >&2
