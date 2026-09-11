@@ -1,8 +1,8 @@
 # Maestro (Android E2E)
 
-Opt-in **Android-only** Maestro suite for Fluent Mobile ([#488](https://github.com/eten-tech-foundation/fluent-mobile/issues/488)): harness ([#489](https://github.com/eten-tech-foundation/fluent-mobile/issues/489)) + domain smokes ([#491](https://github.com/eten-tech-foundation/fluent-mobile/issues/491)).
+Opt-in **Android-only** Maestro suite for Fluent Mobile ([#488](https://github.com/eten-tech-foundation/fluent-mobile/issues/488)): harness ([#489](https://github.com/eten-tech-foundation/fluent-mobile/issues/489)) + domain smokes ([#491](https://github.com/eten-tech-foundation/fluent-mobile/issues/491)) + multi-account isolation ([#495](https://github.com/eten-tech-foundation/fluent-mobile/issues/495)).
 
-**Not** a `/create-pr` or required PR merge gate. CI playbook stays in a later ticket.
+**Not** a `/create-pr` or required PR merge gate. CI playbook stays in a later ticket ([#497](https://github.com/eten-tech-foundation/fluent-mobile/issues/497)).
 
 ## Prerequisites
 
@@ -11,6 +11,7 @@ Opt-in **Android-only** Maestro suite for Fluent Mobile ([#488](https://github.c
 - Emulator or physical device (USB debugging)
 - **Debug / expo-dev-client APK** — not Expo Go, not store builds
 - Dedicated **Maestro translator** on `dev.api.fluent.bible` with **≥1 chapter assignment** (My Work + project data for nav/record/sync smokes)
+- For multi-account: a **second** dedicated translator (`MAESTRO_EMAIL_2` / `MAESTRO_PASSWORD_2`), also with ≥1 assignment — prefer a **different** first My Work display label than account A (isolation assert C1–C3)
 
 ## Install + doctor
 
@@ -43,11 +44,12 @@ Flows also run [`.maestro/helpers/dismiss-expo-dev-menu.yaml`](../../.maestro/he
 ```bash
 cp .env.maestro.example .env.maestro
 # fill MAESTRO_EMAIL / MAESTRO_PASSWORD — never commit .env.maestro
+# for multi-account (#495): also MAESTRO_EMAIL_2 / MAESTRO_PASSWORD_2
 ```
 
 `.env.maestro` is gitignored via `.env.*`. Only [`.env.maestro.example`](../../.env.maestro.example) is committed.
 
-`scripts/maestro-test.sh` loads `.env.maestro` literally when present (no `source` / expansion; `MAESTRO_*` and related keys are exported for the Maestro CLI).
+`scripts/maestro-test.sh` loads `.env.maestro` literally when present (no `source` / expansion; `MAESTRO_*` and related keys are exported for the Maestro CLI). `maestro:test:multi-account` **fail-fast** exits if either credential pair is missing.
 
 **Seed / assignment prerequisites (smokes):**
 
@@ -57,17 +59,24 @@ cp .env.maestro.example .env.maestro
 4. Prefer a dedicated Maestro account — the record smoke creates a take then **deletes it** (no `stage-advance-button`).
 5. Keep the assigned chapter **under the 5-take cap** before a run so Record shows an enabled `record-start-button` or `record-new-take-button` (smoke fails fast if neither is enabled).
 
+**Seed / assignment prerequisites (multi-account):**
+
+1. Provision **two** translators; put both pairs in `.env.maestro`.
+2. Assign ≥1 chapter to **each**; prefer distinct `displayLabel` values so C1–C3 can assert A’s first My Work row is absent while B is active.
+3. Run `npm run maestro:test:multi-account` (not part of `maestro:test:smokes`).
+
 ## Harness vs product smokes
 
 ```bash
 npm run maestro:test:harness   # flows/smoke-launch.yaml (login screen only)
-npm run maestro:test:smokes    # all flows tagged `smoke`
+npm run maestro:test:smokes    # all flows tagged `smoke` (single-account)
 npm run maestro:test:auth      # include-tags auth
 npm run maestro:test:nav
 npm run maestro:test:record
 npm run maestro:test:sync
 npm run maestro:test:edges
-npm run maestro:test           # workspace flows (excludes helpers + subflows)
+npm run maestro:test:multi-account  # A–D isolation; needs EMAIL_2 / PASSWORD_2
+npm run maestro:test           # workspace flows (excludes helpers, subflows, multi-account)
 ```
 
 | Flow | Tag(s) | Clears state | Notes |
@@ -78,6 +87,7 @@ npm run maestro:test           # workspace flows (excludes helpers + subflows)
 | `flows/android/smoke-record.yaml` | `smoke` `record` | yes (+ mic allow) | Record → stop → play → delete take; no stage advance |
 | `flows/android/smoke-sync-offline.yaml` | `smoke` `sync` | yes | Sync Now; Prepare for Offline chrome |
 | `flows/android/smoke-edges.yaml` | `smoke` `edges` | yes | Forgot password, legal, mic/notification deny |
+| `flows/android/smoke-multi-account.yaml` | `multi-account` | yes | Nightly checklist A–D; two accounts; not in `smokes` |
 
 Shared subflows live under [`.maestro/flows/android/subflows/`](../../.maestro/flows/android/subflows/) and are **excluded** from workspace discovery (`!flows/**/subflows/**` in config).
 
@@ -90,6 +100,7 @@ Note: `platform.android.disableAnimations` in `.maestro/config.yaml` applies on 
 - **Reauth forced path:** not automatable without a backend/session hook to invalidate the token mid-run. Residual: cover manually or when a hook exists; Settings shows `settings-reauth` only when `reauthRequired` is already true.
 - **Empty My Work:** nav/record/deny edges fail without an assignment — seed the Maestro account first.
 - **Record at 5-take cap:** `record-new-take-button` may still be mounted but **disabled** — smoke asserts an enabled start/new-take before waiting on stop. Delete takes on the seed chapter (or rely on smoke cleanup) before re-running.
+- **Multi-account identical My Work labels:** C1–C3 `assertNotVisible` / `assertVisible` on the copied Account A label is weak or false-fails if both users’ first row shares the same `displayLabel` — seed distinct chapters. A3 (3-account limit) and E (sign-out edge) are **not** automated (optional human checklist).
 
 ## Agent / MCP loop (opt-in)
 
@@ -117,7 +128,7 @@ Prefer Maestro `id:` matching React Native `testID`.
 | Home tabs | `home-tab-projects`, `home-tab-my-work` |
 | Open settings drawer | `home-settings-button` |
 | Open Sync | `home-sync-button` |
-| Project / chapter / My Work rows | `project-row-{id}`, `chapter-row-{id}`, `my-work-row-{id}` |
+| Project / chapter / My Work rows | `project-row-{id}`, `chapter-row-{id}`, `my-work-row-{id}`, `my-work-row-title-{id}` |
 | Drafting tabs | `drafting-tab-bar`, `drafting-tab-bible`, `drafting-tab-resources`, `drafting-tab-record` |
 | Drafting surfaces | `bible-tab`, `resources-tab`, `record-tab`, record control ids |
 | Sync / offline | `sync-screen`, `sync-action-*`, `prepare-offline-screen`, `prepare-offline-*` |
@@ -131,12 +142,13 @@ Prefer Maestro `id:` matching React Native `testID`.
 | `maestro:install` | Install CLI |
 | `maestro:doctor` | Local health check |
 | `maestro:android:up` | Device + `adb reverse` |
-| `maestro:test` | Workspace flows (config excludes helpers/subflows) |
+| `maestro:test` | Workspace flows (excludes helpers/subflows/`multi-account`) |
 | `maestro:test:harness` | Launch stub only |
 | `maestro:test:smokes` | All `smoke`-tagged flows |
 | `maestro:test:auth` / `:nav` / `:record` / `:sync` / `:edges` | Single smoke slice |
+| `maestro:test:multi-account` | Fail-fast A–D isolation (two credential pairs) |
 | `maestro:agent:up` | Device prep + MCP instructions |
 
 ## Out of scope
 
-Multi-account isolation ([#495](https://github.com/eten-tech-foundation/fluent-mobile/issues/495)), informational CI / playbook ([#497](https://github.com/eten-tech-foundation/fluent-mobile/issues/497)), auth bypass, iOS, merge-gating Maestro.
+Informational CI / playbook ([#497](https://github.com/eten-tech-foundation/fluent-mobile/issues/497)), auth bypass, iOS, merge-gating Maestro, raising the 3-account device cap.

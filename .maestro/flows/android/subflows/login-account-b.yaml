@@ -1,0 +1,15 @@
+# Sign in as MAESTRO_EMAIL_2 / MAESTRO_PASSWORD_2 (second Maestro account).
+# Assumes login screen is already visible (Add User or cold login).
+appId: com.eten.fluent
+---
+- tapOn:
+    id: 'login-email-input'
+- eraseText
+- inputText: ${MAESTRO_EMAIL_2}
+- tapOn:
+    id: 'login-password-input'
+- eraseText
+- inputText: ${MAESTRO_PASSWORD_2}
+- hideKeyboard
+- tapOn:
+    id: 'login-submit-button'
