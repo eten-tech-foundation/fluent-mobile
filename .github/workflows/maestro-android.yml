@@ -33,7 +33,8 @@ jobs:
   maestro-android:
     name: Maestro ${{ inputs.suite }}
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    # First cold assembleRelease + emulator + Maestro needs headroom (#510).
+    timeout-minutes: 150
 
     steps:
       - name: Checkout
@@ -78,6 +79,11 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+        with:
+          packages: tools platform-tools platforms;android-36 build-tools;36.0.0
+
       - name: Enable KVM
         run: |
           set -euo pipefail
@@ -97,9 +103,23 @@ jobs:
         env:
           CI: 'true'
 
+      - name: Cache Gradle
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-maestro-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties', 'android/build.gradle') }}
+          restore-keys: |
+            ${{ runner.os }}-maestro-gradle-
+
+      # Assemble *before* the emulator so Gradle does not compete with AVD CPU/RAM (#510).
+      - name: Assemble release APK
+        run: bash ./scripts/maestro-ci-emulator.sh assemble
+
       # android-emulator-runner runs *each line* of `script:` as a separate
       # `/usr/bin/sh -c` (dash). Keep this a single line that execs a bash file (#510).
-      - name: Build APK + run Maestro on emulator
+      - name: Run Maestro on emulator
         uses: reactivecircus/android-emulator-runner@1dcd0090116d15e7c562f8db72807de5e036a4ed # v2.34.0
         env:
           MAESTRO_SUITE: ${{ inputs.suite }}
@@ -115,7 +135,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-metrics
           emulator-boot-timeout: 900
-          script: bash ./scripts/maestro-ci-emulator.sh
+          script: bash ./scripts/maestro-ci-emulator.sh run
 
       - name: Upload Maestro artifacts
         if: always()
