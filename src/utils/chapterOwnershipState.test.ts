@@ -33,9 +33,9 @@ describe('resolveStageAssigneeId', () => {
     expect(resolveStageAssigneeId('peer_check', 42, 99)).toBe(99);
   });
 
-  it('returns null at Peer Check when open/unassigned (#442)', () => {
+  it('returns null/undefined at Peer Check when open/unassigned (#442)', () => {
     expect(resolveStageAssigneeId('peer_check', 42, null)).toBeNull();
-    expect(resolveStageAssigneeId('peer_check', 42, undefined)).toBeNull();
+    expect(resolveStageAssigneeId('peer_check', 42, undefined)).toBeUndefined();
   });
 
   it('returns null for stages with no assignee concept', () => {

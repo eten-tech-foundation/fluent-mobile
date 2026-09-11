@@ -75,8 +75,8 @@ describe('MyWorkRow', () => {
     expect(queryByTestId('chapter-conflict-indicator')).toBeNull();
   });
 
-  it('renders indicators in the shared cloud, conflict, ownership order', () => {
-    const { getAllByTestId } = render(
+  it('shows only the conflict indicator when both conflict and ownership apply', () => {
+    const { getAllByTestId, queryByTestId } = render(
       <MyWorkRow
         chapter={{ ...baseChapter, hasConflict: true }}
         onPress={jest.fn()}
@@ -85,10 +85,17 @@ describe('MyWorkRow', () => {
 
     expect(
       getAllByTestId(/-indicator$/).map(node => node.props.testID),
-    ).toEqual([
-      'chapter-cloud-sync-indicator',
-      'chapter-conflict-indicator',
-      'chapter-ownership-indicator',
-    ]);
+    ).toEqual(['chapter-cloud-sync-indicator', 'chapter-conflict-indicator']);
+    expect(queryByTestId('chapter-ownership-indicator')).toBeNull();
+  });
+
+  it('shows the ownership indicator when there is no conflict', () => {
+    const { getAllByTestId } = render(
+      <MyWorkRow chapter={baseChapter} onPress={jest.fn()} />,
+    );
+
+    expect(
+      getAllByTestId(/-indicator$/).map(node => node.props.testID),
+    ).toEqual(['chapter-cloud-sync-indicator', 'chapter-ownership-indicator']);
   });
 });
