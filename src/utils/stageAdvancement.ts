@@ -1,46 +1,69 @@
 import type { ChapterAssignmentData } from '../types/db/types';
-import { getWorkflowStage } from './workflowStage';
+import { CHAPTER_ASSIGNMENT_STATUS } from '../types/db/types';
+
+export type StageAdvanceStatus =
+  | 'peer_check'
+  | 'community_review'
+  | 'linguist_check'
+  | 'theological_check'
+  | 'consultant_check'
+  | 'complete';
 
 export type StageAdvanceDestination = {
   /** Next chapter_assignments.status value written locally / expected by API. */
-  nextStatus: 'peer_check' | 'community_check';
+  nextStatus: StageAdvanceStatus;
   /** CTA label, e.g. "Send to Peer Check". */
   buttonLabel: string;
   /** Confirm-sheet destination name, e.g. "Peer Check". */
   destinationLabel: string;
 };
 
+function normalizeAdvanceStatus(status: string | null | undefined): string {
+  return (status ?? '').trim().toLowerCase();
+}
+
+/** Full linear chain (#258 + #443): current status -> next submit destination. */
+const STAGE_CHAIN: Record<string, StageAdvanceStatus> = {
+  '': 'peer_check',
+  not_started: 'peer_check',
+  draft: 'peer_check',
+  peer_check: 'community_review',
+  community_review: 'linguist_check',
+  linguist_check: 'theological_check',
+  theological_check: 'consultant_check',
+  consultant_check: 'complete',
+  // complete: terminal, intentionally absent — returns null below
+};
+
 /**
- * Maps the chapter's current workflow stage to the next submit destination.
- * Only Drafting → Peer Check and Peer Check → Community Review are advanceable
- * from mobile (#258).
+ * Maps the chapter's current status to the next stage-advance destination.
+ * Covers the full linear chain from Drafting through Complete (#258, #443).
+ * Terminal (`complete`) or unrecognized statuses return null.
  */
 export function getStageAdvanceDestination(
   status: string | null | undefined,
 ): StageAdvanceDestination | null {
-  const stage = getWorkflowStage(status);
-  if (stage === 'draft' || stage === 'not_started') {
-    return {
-      nextStatus: 'peer_check',
-      buttonLabel: 'Send to Peer Check',
-      destinationLabel: 'Peer Check',
-    };
+  const normalized = normalizeAdvanceStatus(status);
+  const nextStatus = STAGE_CHAIN[normalized];
+  if (!nextStatus) {
+    return null;
   }
-  if (stage === 'peer_check') {
-    return {
-      nextStatus: 'community_check',
-      buttonLabel: 'Send to Community Review',
-      destinationLabel: 'Community Review',
-    };
-  }
-  return null;
+
+  return {
+    nextStatus,
+    buttonLabel: `Send to ${CHAPTER_ASSIGNMENT_STATUS[nextStatus]}`,
+    destinationLabel: CHAPTER_ASSIGNMENT_STATUS[nextStatus],
+  };
 }
 
+type StageAdvanceChapterData = {
+  status: ChapterAssignmentData['status'];
+  assignedUserId?: ChapterAssignmentData['assignedUserId'];
+  peerCheckerId?: ChapterAssignmentData['peerCheckerId'];
+};
+
 export type StageAdvanceVisibilityInput = {
-  chapterData: Pick<
-    ChapterAssignmentData,
-    'status' | 'assignedUserId' | 'peerCheckerId'
-  >;
+  chapterData: StageAdvanceChapterData;
   currentUserId: number | null;
   /** True when at least one verse in the chapter has a selected recording. */
   hasChapterRecording: boolean;
@@ -53,9 +76,19 @@ export type StageAdvanceVisibility = {
   destination: StageAdvanceDestination | null;
 };
 
+/** Statuses gated to a specific assignee. Everything else (Community Review
+ * through Consultant Check) is open to any translator per #443 AC. */
+const ASSIGNEE_GATED_STATUSES = new Set([
+  '',
+  'not_started',
+  'draft',
+  'peer_check',
+]);
+
 /**
- * Visibility / enablement for the Record-tab stage advancement CTA (#258).
- * Conflict disables (does not hide). Wrong assignee / community / no recordings hide.
+ * Visibility / enablement for the Record-tab stage advancement CTA (#258, #443).
+ * Conflict disables (does not hide). Wrong assignee / no recordings / terminal
+ * stage hide. Community Review and later stages are ungated — any translator.
  */
 export function getStageAdvanceVisibility({
   chapterData,
@@ -68,20 +101,25 @@ export function getStageAdvanceVisibility({
     return { visible: false, disabled: false, destination: null };
   }
 
-  const stage = getWorkflowStage(chapterData.status);
-  const isAssignee =
-    stage === 'peer_check'
+  const normalized = normalizeAdvanceStatus(chapterData.status);
+
+  if (ASSIGNEE_GATED_STATUSES.has(normalized)) {
+    const isPeerCheck = normalized === 'peer_check';
+    const isAssignee = isPeerCheck
       ? chapterData.peerCheckerId === currentUserId
       : chapterData.assignedUserId === currentUserId;
 
-  if (!isAssignee) {
-    return { visible: false, disabled: false, destination: null };
-  }
+    if (!isAssignee) {
+      return { visible: false, disabled: false, destination: null };
+    }
 
-  // Drafting with no recordings: hide until at least one verse is recorded.
-  if ((stage === 'draft' || stage === 'not_started') && !hasChapterRecording) {
-    return { visible: false, disabled: false, destination: null };
+    // Drafting with no recordings: hide until at least one verse is recorded.
+    if (!isPeerCheck && !hasChapterRecording) {
+      return { visible: false, disabled: false, destination: null };
+    }
   }
+  // community_review, linguist_check, theological_check, consultant_check:
+  // no assignee — visible to any translator on the project.
 
   return {
     visible: true,

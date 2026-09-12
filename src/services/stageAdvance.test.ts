@@ -45,13 +45,13 @@ describe('confirmStageAdvancement', () => {
     await confirmStageAdvancement({
       chapterAssignmentId: 7,
       destination: {
-        nextStatus: 'community_check',
+        nextStatus: 'community_review',
         buttonLabel: 'Send to Community Review',
         destinationLabel: 'Community Review',
       },
     });
 
-    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'community_check');
+    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'community_review');
     expect(mockSubmit).not.toHaveBeenCalled();
   });
 
@@ -70,5 +70,19 @@ describe('confirmStageAdvancement', () => {
     ).resolves.toBeUndefined();
 
     expect(mockLocalUpdate).toHaveBeenCalled();
+  });
+
+  it('writes local status then submits for a late-chain stage (Consultant Check → Complete)', async () => {
+    await confirmStageAdvancement({
+      chapterAssignmentId: 7,
+      destination: {
+        nextStatus: 'complete',
+        buttonLabel: 'Send to Complete',
+        destinationLabel: 'Complete',
+      },
+    });
+
+    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'complete');
+    expect(mockSubmit).toHaveBeenCalledWith(7);
   });
 });

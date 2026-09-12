@@ -108,7 +108,7 @@ export const workflowStages = {
     phaseIcon: 'user-check',
     ...stageColors(20, 89, 48),
   },
-  community_check: {
+  community_review: {
     label: 'Community Check',
     phaseIcon: 'users-round',
     ...stageColors(271, 81, 56),
