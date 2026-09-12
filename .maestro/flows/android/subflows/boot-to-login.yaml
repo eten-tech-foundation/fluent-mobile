@@ -1,0 +1,9 @@
+# Cold-start to login screen (clearState). Shared by CI-shaped smokes.
+appId: com.eten.fluent
+---
+- runFlow: ../../../helpers/launch-android.yaml
+- runFlow: ../../../helpers/dismiss-expo-dev-menu.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'login-email-input'
+    timeout: 60000

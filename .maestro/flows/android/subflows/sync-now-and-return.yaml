@@ -1,0 +1,37 @@
+# Home header sync → Sync Now (when pending) → wait until not syncing → no errors → back.
+# Already-idle Sync (uploadComplete/allComplete, no Sync Now) is success for D1.
+appId: com.eten.fluent
+---
+- tapOn:
+    id: 'home-sync-button'
+- extendedWaitUntil:
+    visible:
+      id: 'sync-screen'
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: 'sync-action-sync-now'
+    commands:
+      - tapOn:
+          id: 'sync-action-sync-now'
+      - extendedWaitUntil:
+          visible:
+            id: 'sync-action-controls-syncing'
+          timeout: 5000
+          optional: true
+- extendedWaitUntil:
+    notVisible:
+      id: 'sync-action-controls-syncing'
+    timeout: 180000
+- assertNotVisible:
+    id: 'sync-metadata-error'
+- assertNotVisible:
+    id: 'sync-retry-error'
+- assertNotVisible:
+    id: 'login-email-input'
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000

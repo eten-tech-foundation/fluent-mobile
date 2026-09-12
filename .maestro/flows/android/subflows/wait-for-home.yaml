@@ -1,0 +1,11 @@
+# Post-login Home (tabs). Allows long first sync after clearState login.
+appId: com.eten.fluent
+---
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- assertVisible:
+    id: 'home-tab-projects'
+- assertVisible:
+    id: 'home-settings-button'

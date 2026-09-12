@@ -105,6 +105,7 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
       contentContainerStyle={styles.content}
       style={styles.list}
       showsVerticalScrollIndicator={false}
+      testID="bible-tab"
     />
   );
 }

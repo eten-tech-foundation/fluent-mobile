@@ -139,6 +139,7 @@ export default function SettingsScreen() {
                   <SettingsNavigationRow
                     title={REAUTH_PROMPT_TITLE}
                     subtitle={REAUTH_PROMPT_SUBTITLE}
+                    testID="settings-reauth"
                     icon={
                       <AlertCircle
                         size={iconSizes.headerTab}
@@ -164,6 +165,7 @@ export default function SettingsScreen() {
                 <SettingsNavigationRow
                   title="Prepare for Offline"
                   subtitle="Download resources and manage device storage"
+                  testID="settings-prepare-offline"
                   icon={
                     <HardDrive
                       size={iconSizes.headerTab}
@@ -184,6 +186,7 @@ export default function SettingsScreen() {
                     subtitle="Use mobile data to upload recordings when WiFi isn't available."
                     value={uploadOverCellular}
                     onValueChange={setUploadOverCellular}
+                    testID="settings-upload-cellular"
                   />
                 </View>
 
@@ -197,6 +200,7 @@ export default function SettingsScreen() {
                     ]}
                     value={draftingUnit}
                     onValueChange={setDraftingUnit}
+                    testID="settings-drafting-unit"
                   />
                 </View>
               </View>
@@ -207,6 +211,7 @@ export default function SettingsScreen() {
             <View style={styles.clearCacheCard}>
               <SettingsDestructiveRow
                 title="Clear cache"
+                testID="settings-clear-cache"
                 icon={
                   <Trash2
                     size={iconSizes.headerTab}
@@ -226,6 +231,7 @@ export default function SettingsScreen() {
                 subtitle="Sign in with another account on this device"
                 disabled={atAccountLimit}
                 disabledSubtitle="You've reached the 3-account limit"
+                testID="settings-add-user"
                 icon={
                   <UserPlus
                     size={iconSizes.headerTab}
@@ -237,6 +243,7 @@ export default function SettingsScreen() {
               />
               <SettingsDestructiveRow
                 title="Log out"
+                testID="settings-log-out"
                 icon={
                   <LogOut
                     size={iconSizes.headerTab}

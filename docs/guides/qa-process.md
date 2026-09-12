@@ -1,6 +1,6 @@
 # QA process (merge → nightly → pass/fail)
 
-Canonical **when / who / board handoff** for Fluent Mobile QA. For install steps on a phone, see [qa-preview-testing.md](qa-preview-testing.md).
+Canonical **when / who / board handoff** for Fluent Mobile QA. For install steps on a phone, see [qa-preview-testing.md](qa-preview-testing.md). Opt-in Maestro E2E (engineering / debug; not a merge gate): [maestro.md](maestro.md). Multi-account nightly checklist: [qa-multi-account-nightly.md](qa-multi-account-nightly.md).
 
 **Invariant:** Engineer approval + green required CI is enough to **merge**. Device QA is **post-merge** on the next **nightly** Android APK (main). QA no longer blocks merge.
 
@@ -39,7 +39,7 @@ Automation:  Automation:
   → Done    - Project 4 → In QA
 - Close        |
   issue        v
-         Next nightly APK (23:17 America/Los_Angeles; Slack 09:00–16:00 PT)
+         Next nightly APK (15:17 America/Los_Angeles; Slack in same run; GitHub may delay hours)
                |
                v
              QA on nightly

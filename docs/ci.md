@@ -14,8 +14,10 @@ This repo runs GitHub Actions on pushes and pull requests. This doc maps what ru
 | `expo-sdk-align.yml` | `Align Expo SDK patches` | Weekly Monday + `workflow_dispatch`: online `expo install --fix` → full doctor → one rolling PR on `chore/expo-sdk-align` (#422) |
 | `preview-build.yml` | Android EAS preview APK | Optional label `preview-build` — binary only (no OTA); **PR comment only** (debug). Does not move Project 4 or start QA |
 | `qa-handoff.yml` | Post-merge ticket handoff | **Needs QA? Yes** → comment + assign `@Roslin22` + `In QA`; **Needs QA? No** → `Done` + close linked issues ([guides/qa-process.md](guides/qa-process.md)) |
-| `nightly-preview.yml` | Nightly Android APK | 23:17 PT APK cron (trusted even when GitHub delays) + 09:07 PT Slack (09:00–16:00 PT); `workflow_dispatch`; install comments on recent handoffs |
+| `nightly-preview.yml` | Nightly Android APK | Single 15:17 PT cron (trusted when GitHub delays ~3–5h; target late evening MT / early IST morning); Slack in same run; `workflow_dispatch`; install comments on recent handoffs |
 | `eas-build.yml` | Tag → version sync | Production release path on `v*` tags |
+
+Maestro hosted E2E lives on **EAS Workflows** (not GitHub Actions): [`.eas/workflows/maestro-android.yml`](../.eas/workflows/maestro-android.yml) — see [guides/maestro.md](guides/maestro.md).
 
 Local mirrors (run before claiming PR-ready):
 
@@ -114,6 +116,7 @@ PR template for the GitHub UI: [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/P
 - Nightly: `nightly-preview.yml` + [`.github/scripts/nightly-notify-qa-issues.cjs`](../.github/scripts/nightly-notify-qa-issues.cjs) posts install URL on recent handoff issues
 - **Process:** [guides/qa-process.md](guides/qa-process.md) (Needs QA?, post-merge nightly QA)
 - Human install steps: [guides/qa-preview-testing.md](guides/qa-preview-testing.md)
+- Opt-in Maestro E2E (not a merge gate): [guides/maestro.md](guides/maestro.md) + EAS Workflow `.eas/workflows/maestro-android.yml`
 - **Merge rule:** engineer approval + required CI — QA does **not** block merge
 - Production: tag `v*` → `eas-build.yml` + [`.eas/README.md`](../.eas/README.md)
 

@@ -1,0 +1,11 @@
+# Trivial harness proof — not a product smoke (see #491 for domain flows).
+appId: com.eten.fluent
+tags:
+  - harness
+---
+- runFlow: ../helpers/launch-android.yaml
+- runFlow: ../helpers/dismiss-expo-dev-menu.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'login-email-input'
+    timeout: 60000

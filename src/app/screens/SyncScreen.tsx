@@ -109,6 +109,7 @@ export default function SyncScreen() {
           styles.content,
           { paddingBottom: theme.spacing.lg + insets.bottom },
         ]}
+        testID="sync-screen"
       >
         <View style={styles.statusSection}>
           <SyncStatusIndicator
