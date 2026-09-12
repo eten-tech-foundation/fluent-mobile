@@ -28,17 +28,51 @@ describe('getStageAdvanceDestination', () => {
 
   it('maps peer_check to Community Review', () => {
     expect(getStageAdvanceDestination('peer_check')).toEqual({
-      nextStatus: 'community_check',
+      nextStatus: 'community_review',
       buttonLabel: 'Send to Community Review',
       destinationLabel: 'Community Review',
     });
   });
 
-  it('returns null for community and later stages', () => {
-    expect(getStageAdvanceDestination('community_check')).toBeNull();
-    expect(getStageAdvanceDestination('community_review')).toBeNull();
-    expect(getStageAdvanceDestination('complete')).toBeNull();
+  it('maps community_review to Linguist Check', () => {
+    expect(getStageAdvanceDestination('community_review')).toEqual({
+      nextStatus: 'linguist_check',
+      buttonLabel: 'Send to Linguist Check',
+      destinationLabel: 'Linguist Check',
+    });
   });
+});
+
+it('maps linguist_check to Theological Check', () => {
+  expect(getStageAdvanceDestination('linguist_check')).toEqual({
+    nextStatus: 'theological_check',
+    buttonLabel: 'Send to Theological Check',
+    destinationLabel: 'Theological Check',
+  });
+});
+
+it('maps theological_check to Consultant Check', () => {
+  expect(getStageAdvanceDestination('theological_check')).toEqual({
+    nextStatus: 'consultant_check',
+    buttonLabel: 'Send to Consultant Check',
+    destinationLabel: 'Consultant Check',
+  });
+});
+
+it('maps consultant_check to Complete', () => {
+  expect(getStageAdvanceDestination('consultant_check')).toEqual({
+    nextStatus: 'complete',
+    buttonLabel: 'Send to Complete',
+    destinationLabel: 'Complete',
+  });
+});
+
+it('returns null for complete (terminal stage)', () => {
+  expect(getStageAdvanceDestination('complete')).toBeNull();
+});
+
+it('returns null for unrecognized status', () => {
+  expect(getStageAdvanceDestination('not_a_real_stage')).toBeNull();
 });
 
 describe('getStageAdvanceVisibility', () => {
@@ -116,15 +150,54 @@ describe('getStageAdvanceVisibility', () => {
     ).toMatchObject({ visible: true, disabled: true });
   });
 
-  it('hides for community reviewers', () => {
+  it.each([
+    ['community_review', 'Send to Linguist Check'],
+    ['linguist_check', 'Send to Theological Check'],
+    ['theological_check', 'Send to Consultant Check'],
+    ['consultant_check', 'Send to Complete'],
+  ])(
+    'shows any translator at %s stage regardless of assignee/peerChecker fields',
+    (status, expectedLabel) => {
+      expect(
+        getStageAdvanceVisibility({
+          chapterData: {
+            ...baseChapter,
+            status,
+            assignedUserId: undefined,
+            peerCheckerId: undefined,
+          },
+          currentUserId: 999,
+          hasChapterRecording: false,
+          hasConflict: false,
+        }),
+      ).toMatchObject({
+        visible: true,
+        disabled: false,
+        destination: { buttonLabel: expectedLabel },
+      });
+    },
+  );
+
+  it('hides for complete (terminal stage, no next destination)', () => {
     expect(
       getStageAdvanceVisibility({
-        chapterData: { ...baseChapter, status: 'community_check' },
+        chapterData: { ...baseChapter, status: 'complete' },
         currentUserId: 10,
         hasChapterRecording: true,
         hasConflict: false,
       }).visible,
     ).toBe(false);
+  });
+
+  it('disables (does not hide) an advanced-stage chapter with a conflict', () => {
+    expect(
+      getStageAdvanceVisibility({
+        chapterData: { ...baseChapter, status: 'theological_check' },
+        currentUserId: 1,
+        hasChapterRecording: false,
+        hasConflict: true,
+      }),
+    ).toMatchObject({ visible: true, disabled: true });
   });
 });
 

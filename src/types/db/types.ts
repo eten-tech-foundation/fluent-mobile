@@ -37,7 +37,7 @@ export type WorkflowBadgeStage =
   | 'not_started'
   | 'draft'
   | 'peer_check'
-  | 'community_check'
+  | 'community_review'
   | 'advanced_check'
   | 'complete';
 

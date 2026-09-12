@@ -2,6 +2,7 @@ import { getDatabase } from './db';
 import { logger } from '../utils/logger';
 import * as DBTypes from '../types/db/types';
 import { Transaction } from '@op-engineering/op-sqlite';
+import { StageAdvanceStatus } from '@/utils/stageAdvancement';
 
 const log = logger.create('DBRepository');
 
@@ -1092,12 +1093,12 @@ export async function resolveChapterClaimQueueEntry(id: number): Promise<void> {
 }
 
 /**
- * Immediately apply a local stage advance (#258). Server confirmation and
+ * Immediately apply a local stage advance (#258, #443). Server confirmation and
  * pending-sync queue behavior are owned by #257.
  */
 export async function updateChapterAssignmentStatusLocally(
   chapterAssignmentId: number,
-  status: 'peer_check' | 'community_check',
+  status: StageAdvanceStatus,
 ): Promise<void> {
   const db = getDatabase();
   const updatedAt = new Date().toISOString();
