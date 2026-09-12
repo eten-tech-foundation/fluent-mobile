@@ -2,13 +2,13 @@
 
 Opt-in **Android-only** Maestro suite for Fluent Mobile ([#488](https://github.com/eten-tech-foundation/fluent-mobile/issues/488)): harness ([#489](https://github.com/eten-tech-foundation/fluent-mobile/issues/489)) + domain smokes ([#491](https://github.com/eten-tech-foundation/fluent-mobile/issues/491)) + multi-account isolation ([#495](https://github.com/eten-tech-foundation/fluent-mobile/issues/495)) + informational CI playbook ([#497](https://github.com/eten-tech-foundation/fluent-mobile/issues/497)).
 
-**Not** a `/create-pr` or required PR merge gate. Manual Actions: [`.github/workflows/maestro-android.yml`](../../.github/workflows/maestro-android.yml) (`workflow_dispatch` only). Needs QA? / `@Roslin22` nightly handoff is unchanged.
+**Not** a `/create-pr` or required PR merge gate. Hosted runs: EAS Workflow [`.eas/workflows/maestro-android.yml`](../../.eas/workflows/maestro-android.yml) (`workflow_dispatch` / `eas workflow:run`). Needs QA? / `@Roslin22` nightly handoff is unchanged.
 
 ## Playbook — eng vs QA
 
 | Audience | Use Maestro for | Still do manually |
 | --- | --- | --- |
-| **Engineering** | Local Debug + Metro (`maestro:android:up`, suite scripts) while building auth/nav/record/sync/account features; optional informational Actions dispatch | Exploratory UX, hardware mics/cameras, store builds, anything not encoded below |
+| **Engineering** | Local Debug + Metro (`maestro:android:up`, suite scripts) while building features; optional EAS Maestro dispatch (`npm run maestro:eas`) | Exploratory UX, hardware mics/cameras, store builds, anything not encoded below |
 | **QA** | Optional: same flows against a Debug client when debugging a Maestro failure | **Nightly APK** checklist and device QA per [qa-process.md](qa-process.md) — Maestro does **not** replace `@Roslin22` handoff |
 
 ### Journey → flow map
@@ -42,34 +42,34 @@ Prefer these over memory when changing Maestro or CI:
 | Expo Maestro on EAS Workflows | [EAS Workflows E2E + Maestro](https://docs.expo.dev/eas/workflows/examples/e2e-tests/), [CI/CD tutorial E2E](https://docs.expo.dev/tutorial/cicd/e2e-tests/), [Maestro insights](https://docs.expo.dev/eas-insights/maestro/) |
 | CNG / prebuild (Android-only here) | [Continuous Native Generation](https://docs.expo.dev/workflow/continuous-native-generation/), local compile via [`npx expo run:android`](https://docs.expo.dev/more/expo-cli/#compiling) |
 | Maestro CLI / flows | [docs.maestro.dev](https://docs.maestro.dev/) — React Native `testID` → `id:`, `maestro test --format junit`, `--test-output-dir` (CI on Maestro **2.10.0**); `--debug-output` is separate and ignored when `--test-output-dir` is set on that pin |
-| Maestro Cloud GitHub Action | [Maestro Cloud + GHA](https://docs.maestro.dev/cloud/ci-cd-integration/github-actions) (we do **not** use Cloud today) |
+| Maestro Cloud | [Maestro Cloud docs](https://docs.maestro.dev/cloud/ci-cd-integration/github-actions) — we use EAS `type: maestro` (hosted emulator), **not** `maestro-cloud` |
 
-**Expo’s documented CI path** is an EAS Workflow with `type: build` (`e2e-test` profile: `withoutCredentials` + Android `buildType: apk`) then `type: maestro` with `flow_path`. That is the Expo-book default for hosted E2E.
-
-**This repo’s chosen path (#497):** informational GitHub Actions (`workflow_dispatch` only) that CNG-prebuilds Android, assembles a **release** APK on the runner, boots `reactivecircus/android-emulator-runner`, and runs the Maestro CLI locally. Reasons we keep GHA for now: no Maestro Cloud / EAS Maestro job dependency, mirrors local Debug+Metro eng loops with the same `.maestro/` flows, and stays an explicit non-merge-gate. Migrating to EAS Workflows `maestro` is a separate ticket — do not treat GHA as Expo’s preferred long-term host.
+**This repo’s hosted path (#516):** EAS Workflow `type: build` (`e2e-test` profile) → `type: maestro` with `flow_path` / suite inputs. Android-only. **Not** a PR merge gate. Local Debug + Metro remains the day-to-day eng loop.
 
 Local eng still follows Maestro’s React Native guidance: Debug / standalone package (`appId: com.eten.fluent`), not Expo Go; prefer `testID` selectors.
 
-## Informational CI (`workflow_dispatch`)
+## Hosted CI (EAS Workflows)
 
-[`.github/workflows/maestro-android.yml`](../../.github/workflows/maestro-android.yml) CNG-prebuilds Android, assembles a **release** APK **before** booting the emulator (so Gradle does not share the runner with the AVD), then runs one Maestro suite on API 34 (**no Metro**, no `EXPO_PUBLIC_E2E_MODE`). Job timeout is **150** minutes. **Not** required on PRs; **no** cron until stable. Day-to-day eng iteration remains Debug + Metro (below).
+[`.eas/workflows/maestro-android.yml`](../../.eas/workflows/maestro-android.yml) builds an Android **`e2e-test`** APK (`withoutCredentials`, `buildType: apk`, baked `EXPO_PUBLIC_API_BASE_URL=https://dev.api.fluent.bible`; **no Metro**, no `EXPO_PUBLIC_E2E_MODE`), then runs one Maestro suite on an EAS Android emulator (`linux-large-nested-virtualization`, Maestro **2.10.0**, Pixel 6 / API 34). **Not** required on PRs; **no** cron until stable.
 
-| Input `suite` | Secrets required |
+| Input `suite` | EAS preview secrets required |
 | --- | --- |
 | `harness` | none |
 | `smokes` | `MAESTRO_EMAIL`, `MAESTRO_PASSWORD` |
 | `multi-account` | both pairs (`MAESTRO_EMAIL_2`, `MAESTRO_PASSWORD_2` too) |
 
-Dispatch: **Actions → Maestro Android (informational) → Run workflow** (after the workflow exists on the target branch / `main`). Artifacts: JUnit (`report.xml`) + `--test-output-dir` session output + APK (14-day retention). On Maestro **2.10.0**, do not rely on a separate `--debug-output` tree when `--test-output-dir` is set.
+```bash
+# From repo root (needs EXPO_TOKEN / logged-in eas CLI + project access)
+npm run maestro:eas -- -F suite=harness
+# or:
+npm run maestro:eas -- -F suite=smokes
+```
 
-Notes (#510):
+Also runnable from the [EAS dashboard](https://expo.dev) → project **fluent-mobile** → Workflows → **Maestro Android (EAS)**.
 
-- `android-emulator-runner` runs **each line** of `script:` as a separate `/usr/bin/sh -c` (dash on Ubuntu). Emulator `script:` stays one line: `bash ./scripts/maestro-ci-emulator.sh run`.
-- `bash ./scripts/maestro-ci-emulator.sh assemble` runs in a prior step (Android SDK via `android-actions/setup-android` + Gradle cache) so a cold `assembleRelease` is not racing the emulator under the old 90m timeout.
-- CLI install uses our pinned zip + SHA (`npm run maestro:install` / `MAESTRO_VERSION`) instead of piping `get.maestro.mobile.dev` to bash. Maestro’s own pin is `MAESTRO_VERSION=…; curl … | bash`; we keep the checksum path for CI supply-chain hardening.
-- Credentials reach flows as process env (`MAESTRO_*` on the GHA step / `.env.maestro` locally). Flows use `${MAESTRO_EMAIL}` etc.; Maestro also supports `maestro test -e KEY=value`.
+**One-time secrets:** add `MAESTRO_*` as **Secret** visibility (never Plain / never `EXPO_PUBLIC_*`) on the EAS project for the **preview** environment ([EAS env vars](https://docs.expo.dev/eas/environment-variables/)). Maestro jobs use `environment: preview`, and so do `preview` / `nightly` / `e2e-test` builds — those secrets are available on every preview-environment build/job VM, not Maestro alone. Variables prefixed `MAESTRO_` are visible to flows as `${MAESTRO_EMAIL}` etc.
 
-See also [docs/ci.md](../ci.md) and [`.github/README.md`](../../.github/README.md).
+See also [docs/ci.md](../ci.md) and [`.eas/README.md`](../../.eas/README.md).
 
 ## Prerequisites
 
@@ -77,7 +77,7 @@ See also [docs/ci.md](../ci.md) and [`.github/README.md`](../../.github/README.m
 - Android SDK `platform-tools` (`adb`)
 - Emulator or physical device (USB debugging)
 - **Local eng playbook:** Debug / expo-dev-client APK + Metro — not Expo Go, not store builds
-- **Informational CI:** release APK produced in the workflow (no Metro / no `EXPO_PUBLIC_E2E_MODE`)
+- **Informational CI (EAS):** `e2e-test` APK via EAS Workflows (no Metro / no `EXPO_PUBLIC_E2E_MODE`)
 - Dedicated **Maestro translator** on `dev.api.fluent.bible` with **≥1 chapter assignment** (My Work + project data for nav/record/sync smokes)
 - For multi-account: a **second** dedicated translator (`MAESTRO_EMAIL_2` / `MAESTRO_PASSWORD_2`), also with ≥1 assignment — prefer a **different** first My Work display label than account A (isolation assert C1–C3)
 
@@ -216,6 +216,7 @@ Prefer Maestro `id:` matching React Native `testID`.
 | `maestro:test:auth` / `:nav` / `:record` / `:sync` / `:edges` | Single smoke slice |
 | `maestro:test:multi-account` | Fail-fast A–D isolation (two credential pairs) |
 | `maestro:agent:up` | Device prep + MCP instructions |
+| `maestro:eas` | Hosted EAS Workflow (`-F suite=harness\|smokes\|multi-account`) |
 
 ## Out of scope
 

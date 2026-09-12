@@ -30,7 +30,8 @@
     "maestro:test:sync": "bash ./scripts/maestro-test.sh --config .maestro/config.yaml --include-tags sync .maestro",
     "maestro:test:edges": "bash ./scripts/maestro-test.sh --config .maestro/config.yaml --include-tags edges .maestro",
     "maestro:test:multi-account": "bash ./scripts/maestro-test-multi-account.sh",
-    "maestro:agent:up": "bash ./scripts/maestro-agent-up.sh"
+    "maestro:agent:up": "bash ./scripts/maestro-agent-up.sh",
+    "maestro:eas": "npx --yes eas-cli@24.3.0 workflow:run .eas/workflows/maestro-android.yml"
   },
   "dependencies": {
     "@op-engineering/op-sqlite": "^15.2.11",
