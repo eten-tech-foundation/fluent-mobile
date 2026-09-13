@@ -44,7 +44,9 @@ export function getStageAdvanceDestination(
   status: string | null | undefined,
 ): StageAdvanceDestination | null {
   const normalized = normalizeAdvanceStatus(status);
-  const nextStatus = STAGE_CHAIN[normalized];
+  const nextStatus = Object.prototype.hasOwnProperty.call(STAGE_CHAIN, normalized)
+    ? STAGE_CHAIN[normalized]
+    : undefined;
   if (!nextStatus) {
     return null;
   }

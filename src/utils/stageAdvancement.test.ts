@@ -75,6 +75,12 @@ it('returns null for unrecognized status', () => {
   expect(getStageAdvanceDestination('not_a_real_stage')).toBeNull();
 });
 
+it('returns null for prototype-pollution-style keys, not inherited Object properties', () => {
+  expect(getStageAdvanceDestination('constructor')).toBeNull();
+  expect(getStageAdvanceDestination('__proto__')).toBeNull();
+  expect(getStageAdvanceDestination('toString')).toBeNull();
+});
+
 describe('getStageAdvanceVisibility', () => {
   it('shows enabled Send to Peer Check for assigned drafter with recordings', () => {
     expect(
