@@ -41,44 +41,44 @@ describe('getStageAdvanceDestination', () => {
       destinationLabel: 'Linguist Check',
     });
   });
-});
 
-it('maps linguist_check to Theological Check', () => {
-  expect(getStageAdvanceDestination('linguist_check')).toEqual({
-    nextStatus: 'theological_check',
-    buttonLabel: 'Send to Theological Check',
-    destinationLabel: 'Theological Check',
+  it('maps linguist_check to Theological Check', () => {
+    expect(getStageAdvanceDestination('linguist_check')).toEqual({
+      nextStatus: 'theological_check',
+      buttonLabel: 'Send to Theological Check',
+      destinationLabel: 'Theological Check',
+    });
   });
-});
 
-it('maps theological_check to Consultant Check', () => {
-  expect(getStageAdvanceDestination('theological_check')).toEqual({
-    nextStatus: 'consultant_check',
-    buttonLabel: 'Send to Consultant Check',
-    destinationLabel: 'Consultant Check',
+  it('maps theological_check to Consultant Check', () => {
+    expect(getStageAdvanceDestination('theological_check')).toEqual({
+      nextStatus: 'consultant_check',
+      buttonLabel: 'Send to Consultant Check',
+      destinationLabel: 'Consultant Check',
+    });
   });
-});
 
-it('maps consultant_check to Complete', () => {
-  expect(getStageAdvanceDestination('consultant_check')).toEqual({
-    nextStatus: 'complete',
-    buttonLabel: 'Send to Complete',
-    destinationLabel: 'Complete',
+  it('maps consultant_check to Complete', () => {
+    expect(getStageAdvanceDestination('consultant_check')).toEqual({
+      nextStatus: 'complete',
+      buttonLabel: 'Send to Complete',
+      destinationLabel: 'Complete',
+    });
   });
-});
 
-it('returns null for complete (terminal stage)', () => {
-  expect(getStageAdvanceDestination('complete')).toBeNull();
-});
+  it('returns null for complete (terminal stage)', () => {
+    expect(getStageAdvanceDestination('complete')).toBeNull();
+  });
 
-it('returns null for unrecognized status', () => {
-  expect(getStageAdvanceDestination('not_a_real_stage')).toBeNull();
-});
+  it('returns null for unrecognized status', () => {
+    expect(getStageAdvanceDestination('not_a_real_stage')).toBeNull();
+  });
 
-it('returns null for prototype-pollution-style keys, not inherited Object properties', () => {
-  expect(getStageAdvanceDestination('constructor')).toBeNull();
-  expect(getStageAdvanceDestination('__proto__')).toBeNull();
-  expect(getStageAdvanceDestination('toString')).toBeNull();
+  it('returns null for prototype-pollution-style keys, not inherited Object properties', () => {
+    expect(getStageAdvanceDestination('constructor')).toBeNull();
+    expect(getStageAdvanceDestination('__proto__')).toBeNull();
+    expect(getStageAdvanceDestination('toString')).toBeNull();
+  });
 });
 
 describe('getStageAdvanceVisibility', () => {
