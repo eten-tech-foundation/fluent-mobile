@@ -15,13 +15,14 @@ const mockHandleDownload = jest.fn();
 
 const mockPush = jest.fn();
 const mockGoBack = jest.fn();
+const mockUseLocalSearchParams = jest.fn(() => ({} as { projectId?: string }));
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({
     push: mockPush,
     back: mockGoBack,
   }),
-  useLocalSearchParams: () => ({}),
+  useLocalSearchParams: () => mockUseLocalSearchParams(),
   useFocusEffect: (callback: () => void) => {
     callback();
   },
@@ -124,6 +125,7 @@ const { usePrepareOfflineSelection } = jest.requireMock(
 describe('PrepareForOfflineScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseLocalSearchParams.mockReturnValue({});
     resetMockPrepareOfflineInventory();
     setPrepareOfflineMockInventoryScenario('fresh');
     usePrepareOfflineSelection.mockImplementation(
@@ -317,5 +319,43 @@ describe('PrepareForOfflineScreen', () => {
 
     expect(screen.getByTestId('prepare-offline-download-footer')).toBeTruthy();
     expect(screen.getByTestId('prepare-offline-download-button')).toBeTruthy();
+  });
+
+  describe('back navigation (#503)', () => {
+    it('returns to the picker instead of calling router.back() when a project was selected in-screen', async () => {
+      render(<PrepareForOfflineScreen />);
+
+      fireEvent.press(screen.getByText('Luke'));
+      await waitFor(() => {
+        expect(screen.getByText('Assigned chapters (1)')).toBeTruthy();
+      });
+
+      fireEvent.press(screen.getByLabelText('Go back'));
+
+      expect(screen.getByText('Select a project')).toBeTruthy();
+      expect(mockGoBack).not.toHaveBeenCalled();
+    });
+
+    it('returns to the picker instead of calling router.back() when the project was seeded from a route param', async () => {
+      mockUseLocalSearchParams.mockReturnValue({ projectId: '5' });
+
+      render(<PrepareForOfflineScreen />);
+      await waitFor(() => {
+        expect(screen.getByText('Assigned chapters (1)')).toBeTruthy();
+      });
+
+      fireEvent.press(screen.getByLabelText('Go back'));
+
+      expect(screen.getByText('Select a project')).toBeTruthy();
+      expect(mockGoBack).not.toHaveBeenCalled();
+    });
+
+    it('calls router.back() when already on the picker with no project selected', () => {
+      render(<PrepareForOfflineScreen />);
+
+      fireEvent.press(screen.getByLabelText('Go back'));
+
+      expect(mockGoBack).toHaveBeenCalledTimes(1);
+    });
   });
 });
