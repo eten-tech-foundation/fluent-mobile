@@ -386,5 +386,6 @@ export function useSourceAudio({
     seek,
     stop,
     retry,
+    verseTimestamps,
   };
 }

@@ -16,6 +16,9 @@ interface DraftingContextValue {
   selectedVerse: number;
   setSelectedVerse: (verseNumber: number) => void;
   verses: VerseData[];
+  projectId: number | null;
+  bookName: string;
+  chapterName: string;
   /**
    * The verse whose source audio is currently playing, tracked
    * independently of `selectedVerse`. Not wired to real audio yet —
@@ -38,12 +41,18 @@ interface DraftingProviderProps {
   children: React.ReactNode;
   verses: VerseData[];
   initialVerse: number;
+  projectId?: number | null;
+  bookName?: string;
+  chapterName?: string;
 }
 
 export function DraftingProvider({
   children,
   verses,
   initialVerse,
+  projectId = null,
+  bookName = '',
+  chapterName = '',
 }: DraftingProviderProps) {
   const [selectedVerse, setSelectedVerse] = useState<number>(initialVerse);
   const [currentlyPlayingVerse, setCurrentlyPlayingVerse] = useState<
@@ -95,6 +104,9 @@ export function DraftingProvider({
       selectedVerse,
       setSelectedVerse,
       verses,
+      projectId,
+      bookName,
+      chapterName,
       currentlyPlayingVerse,
       setCurrentlyPlayingVerse,
       recordedVerseNumbers,
@@ -103,6 +115,9 @@ export function DraftingProvider({
     [
       selectedVerse,
       verses,
+      projectId,
+      bookName,
+      chapterName,
       currentlyPlayingVerse,
       recordedVerseNumbers,
       refreshRecordedVerses,

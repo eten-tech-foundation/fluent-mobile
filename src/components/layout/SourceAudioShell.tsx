@@ -9,6 +9,8 @@ import React, {
 } from 'react';
 import { useDraftingContext } from '../../app/context/DraftingContext';
 import { useSourceAudio } from '../../hooks/useSourceAudio';
+import { useBibleTabUnits } from '../../hooks/useBibleTabUnits';
+import { subdivisionTickMarks } from '../../utils/bibleTabUnits';
 import type { ChapterAssignmentData } from '../../types/db/types';
 import { SourceAudioPlayerBar } from './SourceAudioPlayerBar';
 import type { DraftingTab } from './DraftingTabBar';
@@ -21,6 +23,7 @@ type SourceAudioShellContextValue = {
   barVisible: boolean;
   sourceLabel: string;
   unitCaption: string;
+  tickMarks: { verse: number; ratio: number }[];
   loadState: ReturnType<typeof useSourceAudio>['loadState'];
   positionMs: number;
   durationMs: number;
@@ -61,6 +64,10 @@ export function SourceAudioProvider({
     verses,
     currentlyPlayingVerse,
     setCurrentlyPlayingVerse,
+    recordedVerseNumbers,
+    projectId,
+    bookName,
+    chapterName,
   } = useDraftingContext();
   const [recordTabSourceEnabled, setRecordTabSourceEnabledState] =
     useState(true);
@@ -105,15 +112,25 @@ export function SourceAudioProvider({
     }
   }, [barVisible, sourceAudio.status, sourceAudio.pause]);
 
-  const displayVerse =
-    currentlyPlayingVerse !== null &&
-    (sourceAudio.status === 'playing' || sourceAudio.status === 'paused')
-      ? currentlyPlayingVerse
-      : selectedVerse;
-  const unitCaption =
-    verses.length > 0
-      ? `Verse ${displayVerse} / ${verses.length}`
-      : `Verse ${displayVerse}`;
+  const lookupVerse = currentlyPlayingVerse ?? selectedVerse;
+  const { unitCaption, boundaryVerses } = useBibleTabUnits({
+    bibleId: chapterData.bibleId,
+    bookId: chapterData.bookId,
+    chapterNumber: chapterData.chapterNumber,
+    projectId: chapterData.projectId ?? projectId,
+    verses,
+    chapterName:
+      chapterName ||
+      `${chapterData.bookName ?? ''} ${chapterData.chapterNumber}`.trim(),
+    bookName: bookName || chapterData.bookName || '',
+    selectedVerse: lookupVerse,
+    coverageEpoch: recordedVerseNumbers.size,
+  });
+  const tickMarks = subdivisionTickMarks({
+    timestamps: sourceAudio.verseTimestamps,
+    durationMs: sourceAudio.durationMs,
+    boundaryVerses,
+  });
 
   const value = useMemo<SourceAudioShellContextValue>(
     () => ({
@@ -123,6 +140,7 @@ export function SourceAudioProvider({
         chapterData.bibleName?.trim() ||
         'Source',
       unitCaption,
+      tickMarks,
       loadState: sourceAudio.loadState,
       positionMs: sourceAudio.positionMs,
       durationMs: sourceAudio.durationMs,
@@ -141,9 +159,8 @@ export function SourceAudioProvider({
       barVisible,
       chapterData.bibleAbbreviation,
       chapterData.bibleName,
-      currentlyPlayingVerse,
-      displayVerse,
       unitCaption,
+      tickMarks,
       sourceAudio.loadState,
       sourceAudio.positionMs,
       sourceAudio.durationMs,
@@ -179,6 +196,7 @@ export function SourceAudioBarSlot() {
     <SourceAudioPlayerBar
       sourceLabel={ctx.sourceLabel}
       unitCaption={ctx.unitCaption}
+      tickMarks={ctx.tickMarks}
       loadState={ctx.loadState}
       isPlaying={ctx.isPlaying}
       isLoadingAudio={ctx.isLoadingAudio}
