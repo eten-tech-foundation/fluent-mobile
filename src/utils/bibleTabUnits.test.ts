@@ -3,6 +3,7 @@ import {
   formatSourceAudioUnitCaption,
   lastUnrecordedAnchorVerse,
   subdivisionTickMarks,
+  unitContainsVerse,
   unitRecordedStatus,
 } from './bibleTabUnits';
 import type { VerseData } from '../types/db/types';
@@ -122,6 +123,21 @@ describe('buildBibleUnits', () => {
     });
     expect(units[0]?.title).toBe('Genesis 1:31–2:2');
     expect(units[0]?.anchorVerse).toBe(1);
+  });
+});
+
+describe('unitContainsVerse', () => {
+  const spanning = {
+    verses: [
+      { chapterNumber: 13, verseNumber: 2 },
+      { chapterNumber: 14, verseNumber: 1 },
+    ],
+  };
+
+  it('requires both chapter and verse, not verse number alone', () => {
+    expect(unitContainsVerse(spanning, 14, 1)).toBe(true);
+    expect(unitContainsVerse(spanning, 13, 2)).toBe(true);
+    expect(unitContainsVerse(spanning, 14, 2)).toBe(false);
   });
 });
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Pressable } from 'react-native';
 import {
   fireEvent,
   render,
@@ -6,8 +7,15 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { BibleTab } from './BibleTab';
-import { DraftingProvider } from '../context/DraftingContext';
-import { getPericopesForChapter } from '../../db/queries';
+import {
+  DraftingProvider,
+  useDraftingContext,
+} from '../context/DraftingContext';
+import {
+  getPericopesForChapter,
+  getRecordedVerseNumbers,
+  getSelectedTakeCoverages,
+} from '../../db/queries';
 import type { useDraftingUnit } from '../../hooks/useDraftingUnit';
 
 jest.mock('../../services/storage', () => ({
@@ -54,6 +62,18 @@ const verses = [
     text: 'Source text for verse 2',
   },
 ];
+
+function RefreshRecordedButton() {
+  const { refreshRecordedVerses } = useDraftingContext();
+  return (
+    <Pressable
+      testID="refresh-recorded"
+      onPress={() => {
+        void refreshRecordedVerses();
+      }}
+    />
+  );
+}
 
 describe('BibleTab', () => {
   beforeEach(() => {
@@ -125,5 +145,144 @@ describe('BibleTab', () => {
     expect(screen.getByLabelText('Mark 14:1–2, selected')).toBeTruthy();
     expect(screen.queryByTestId('bible-pericope-verse-1')).toBeNull();
     expect(screen.queryByTestId('bible-pericope-verse-2')).toBeNull();
+  });
+
+  it('marks a pericope selected when the selected verse is in the unit, not only the anchor', async () => {
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    jest.mocked(getPericopesForChapter).mockResolvedValue([
+      {
+        pericopeNumber: '1',
+        pericopeTitle: null,
+        section: 1,
+        verses: [
+          { chapterNumber: 14, verseNumber: 1 },
+          { chapterNumber: 14, verseNumber: 2 },
+        ],
+      },
+    ]);
+
+    render(
+      <DraftingProvider
+        verses={verses}
+        initialVerse={2}
+        projectId={9}
+        chapterName="Mark 14"
+        bookName="Mark"
+      >
+        <BibleTab />
+      </DraftingProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Mark 14:1–2, selected')).toBeTruthy();
+    });
+  });
+
+  it('expands the current-chapter pericope, not a cross-chapter verse-number collision', async () => {
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    jest.mocked(getPericopesForChapter).mockResolvedValue([
+      {
+        pericopeNumber: '1',
+        pericopeTitle: null,
+        section: 1,
+        verses: [
+          { chapterNumber: 13, verseNumber: 2 },
+          { chapterNumber: 14, verseNumber: 1 },
+        ],
+      },
+      {
+        pericopeNumber: '2',
+        pericopeTitle: null,
+        section: 1,
+        verses: [{ chapterNumber: 14, verseNumber: 2 }],
+      },
+    ]);
+
+    render(
+      <DraftingProvider
+        verses={verses}
+        initialVerse={2}
+        projectId={9}
+        chapterName="Mark 14"
+        bookName="Mark"
+      >
+        <BibleTab />
+      </DraftingProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Mark 14:2, selected')).toBeTruthy();
+    });
+    expect(screen.getByTestId('bible-pericope-verse-2')).toBeTruthy();
+    expect(screen.queryByTestId('bible-pericope-verse-1')).toBeNull();
+  });
+
+  it('refreshes recorded status when coverage changes without changing recorded count', async () => {
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    jest.mocked(getRecordedVerseNumbers).mockResolvedValue(new Set([1]));
+    let coverages: {
+      startChapter: number;
+      startVerse: number;
+      endChapter: number;
+      endVerse: number;
+    }[] = [];
+    jest
+      .mocked(getSelectedTakeCoverages)
+      .mockImplementation(async () => coverages);
+    jest.mocked(getPericopesForChapter).mockResolvedValue([
+      {
+        pericopeNumber: '1',
+        pericopeTitle: null,
+        section: 1,
+        verses: [
+          { chapterNumber: 14, verseNumber: 1 },
+          { chapterNumber: 14, verseNumber: 2 },
+        ],
+      },
+    ]);
+
+    render(
+      <DraftingProvider
+        verses={verses}
+        initialVerse={1}
+        projectId={9}
+        chapterName="Mark 14"
+        bookName="Mark"
+      >
+        <RefreshRecordedButton />
+        <BibleTab />
+      </DraftingProvider>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByTestId('bible-unit-unrecorded').length,
+      ).toBeGreaterThan(0);
+    });
+
+    coverages = [
+      {
+        startChapter: 14,
+        startVerse: 1,
+        endChapter: 14,
+        endVerse: 2,
+      },
+    ];
+    fireEvent.press(screen.getByTestId('refresh-recorded'));
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByTestId('bible-unit-recorded').length,
+      ).toBeGreaterThan(0);
+    });
   });
 });

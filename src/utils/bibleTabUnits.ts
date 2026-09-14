@@ -29,6 +29,18 @@ export type BibleUnit = {
 
 export type BibleUnitRecordedStatus = 'none' | 'partial' | 'recorded';
 
+export function unitContainsVerse(
+  unit: { verses: BibleUnitVerse[] },
+  chapterNumber: number,
+  verseNumber: number,
+): boolean {
+  return unit.verses.some(
+    verse =>
+      verse.chapterNumber === chapterNumber &&
+      verse.verseNumber === verseNumber,
+  );
+}
+
 export type SubdivisionTickMark = {
   verse: number;
   ratio: number;

@@ -10,6 +10,7 @@ import {
   buildBibleUnits,
   formatSourceAudioUnitCaption,
   lastUnrecordedAnchorVerse,
+  unitContainsVerse,
   unitRecordedStatus,
   type BibleUnit,
   type BibleUnitRecordedStatus,
@@ -56,6 +57,7 @@ export function useBibleTabUnits(args: {
 
   useEffect(() => {
     const requestId = ++pericopeRequestIdRef.current;
+    setPericopes(current => (current.length === 0 ? current : []));
     if (draftingUnit !== 'pericope' || pericopeSetId === null) {
       return;
     }
@@ -118,11 +120,7 @@ export function useBibleTabUnits(args: {
   const activeIndex = Math.max(
     0,
     units.findIndex(unit =>
-      unit.verses.some(
-        verse =>
-          verse.chapterNumber === args.chapterNumber &&
-          verse.verseNumber === args.selectedVerse,
-      ),
+      unitContainsVerse(unit, args.chapterNumber, args.selectedVerse),
     ),
   );
 

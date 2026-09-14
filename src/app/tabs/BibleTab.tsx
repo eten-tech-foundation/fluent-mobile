@@ -9,6 +9,7 @@ import {
 import { useDraftingContext } from '../context/DraftingContext';
 import { useBibleTabUnits } from '../../hooks/useBibleTabUnits';
 import type { BibleTabUnitView } from '../../hooks/useBibleTabUnits';
+import { unitContainsVerse } from '../../utils/bibleTabUnits';
 import {
   FlatList,
   StyleSheet,
@@ -101,42 +102,43 @@ export function BibleTab(_props: BibleTabProps = {}) {
     selectedVerse,
     setSelectedVerse,
     currentlyPlayingVerse,
-    recordedVerseNumbers,
+    recordedCoverageEpoch,
     projectId,
     bookName,
     chapterName,
   } = useDraftingContext();
   const first = verses[0];
+  const chapterNumber = first?.chapterNumber ?? 0;
   const { units, lastUnrecorded, draftingUnit, effectiveUnit } =
     useBibleTabUnits({
       bibleId: first?.bibleId ?? 0,
       bookId: first?.bookId ?? 0,
-      chapterNumber: first?.chapterNumber ?? 0,
+      chapterNumber,
       projectId,
       verses,
       chapterName,
       bookName,
       selectedVerse,
-      coverageEpoch: recordedVerseNumbers.size,
+      coverageEpoch: recordedCoverageEpoch,
     });
 
   const listRef = useRef<FlatList<BibleTabUnitView>>(null);
   const prevDraftingUnitRef = useRef(draftingUnit);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
-  const initialIndex = Math.max(
-    0,
-    units.findIndex(unit => unit.anchorVerse === selectedVerse),
+  const selectedIndex = units.findIndex(unit =>
+    unitContainsVerse(unit, chapterNumber, selectedVerse),
   );
+  const initialIndex = Math.max(0, selectedIndex);
 
   useEffect(() => {
     const selected = units.find(unit =>
-      unit.verses.some(verse => verse.verseNumber === selectedVerse),
+      unitContainsVerse(unit, chapterNumber, selectedVerse),
     );
     if (selected && effectiveUnit === 'pericope') {
       setExpandedKey(selected.key);
     }
-  }, [effectiveUnit, selectedVerse, units]);
+  }, [chapterNumber, effectiveUnit, selectedVerse, units]);
 
   useEffect(() => {
     if (prevDraftingUnitRef.current === draftingUnit) {
@@ -169,7 +171,7 @@ export function BibleTab(_props: BibleTabProps = {}) {
 
   const renderVerseRow = useCallback(
     ({ item }: { item: BibleTabUnitView }) => {
-      const isSelected = item.anchorVerse === selectedVerse;
+      const isSelected = unitContainsVerse(item, chapterNumber, selectedVerse);
       const isPlaying = item.anchorVerse === currentlyPlayingVerse;
 
       return (
@@ -210,12 +212,12 @@ export function BibleTab(_props: BibleTabProps = {}) {
         </TouchableOpacity>
       );
     },
-    [currentlyPlayingVerse, handleUnitPress, selectedVerse],
+    [chapterNumber, currentlyPlayingVerse, handleUnitPress, selectedVerse],
   );
 
   const renderPericopeCard = useCallback(
     ({ item }: { item: BibleTabUnitView }) => {
-      const isSelected = item.anchorVerse === selectedVerse;
+      const isSelected = unitContainsVerse(item, chapterNumber, selectedVerse);
       const expanded = expandedKey === item.key;
       const Chevron = expanded ? ChevronUp : ChevronDown;
 
@@ -250,7 +252,7 @@ export function BibleTab(_props: BibleTabProps = {}) {
         </TouchableOpacity>
       );
     },
-    [expandedKey, handleUnitPress, selectedVerse],
+    [chapterNumber, expandedKey, handleUnitPress, selectedVerse],
   );
 
   return (

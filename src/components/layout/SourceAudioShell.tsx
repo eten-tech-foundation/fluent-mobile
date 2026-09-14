@@ -64,7 +64,7 @@ export function SourceAudioProvider({
     verses,
     currentlyPlayingVerse,
     setCurrentlyPlayingVerse,
-    recordedVerseNumbers,
+    recordedCoverageEpoch,
     projectId,
     bookName,
     chapterName,
@@ -124,7 +124,7 @@ export function SourceAudioProvider({
       `${chapterData.bookName ?? ''} ${chapterData.chapterNumber}`.trim(),
     bookName: bookName || chapterData.bookName || '',
     selectedVerse: lookupVerse,
-    coverageEpoch: recordedVerseNumbers.size,
+    coverageEpoch: recordedCoverageEpoch,
   });
   const tickMarks = subdivisionTickMarks({
     timestamps: sourceAudio.verseTimestamps,

@@ -105,4 +105,39 @@ describe('useBibleTabUnits', () => {
     expect(result.current.units[0]?.title).toBe('Mark 14:1–2');
     expect(result.current.unitCaption).toBe('Pericope 1 / 1');
   });
+
+  it('drops previous pericopes when the project has no pericope set', async () => {
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    jest.mocked(getPericopesForChapter).mockResolvedValue([
+      {
+        pericopeNumber: '1',
+        pericopeTitle: null,
+        section: 1,
+        verses: [
+          { chapterNumber: 14, verseNumber: 1 },
+          { chapterNumber: 14, verseNumber: 2 },
+        ],
+      },
+    ]);
+
+    const { result, rerender } = renderHook(
+      (props: typeof hookArgs) => useBibleTabUnits(props),
+      { initialProps: hookArgs },
+    );
+
+    await waitFor(() => {
+      expect(result.current.effectiveUnit).toBe('pericope');
+    });
+
+    jest.mocked(getProjectPericopeSetId).mockResolvedValue(null);
+    rerender({ ...hookArgs, projectId: 10 });
+
+    await waitFor(() => {
+      expect(result.current.effectiveUnit).toBe('verse');
+    });
+    expect(result.current.units.map(u => u.title)).toEqual(['1', '2']);
+  });
 });
