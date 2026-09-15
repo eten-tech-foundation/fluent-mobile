@@ -7,6 +7,7 @@ export type EngineRecorder = {
   record: () => void;
   pause: () => void;
   stop: () => Promise<void>;
+  readonly isRecording: boolean;
   readonly uri: string | null;
   /** Length of the recording in seconds (expo-audio). */
   readonly currentTime: number;
@@ -27,6 +28,7 @@ export type RecordingEngineDeps = {
 
 export type RecordingEngine = RecorderApi & {
   getStatus(): RecorderStatus;
+  syncPausedNativeState(): void;
 };
 
 /**
@@ -86,16 +88,25 @@ export function createRecordingEngine(
       if (status !== 'recording') {
         return;
       }
-      // Android's MediaRecorder can reject resume() after the app has been
-      // paused for a short interval or the screen locks. Keep the native
-      // recorder running so the same take remains resumable.
+      recorder.pause();
       setStatus('paused');
     },
     async resume() {
       if (status !== 'paused') {
         return;
       }
+      if (!recorder.isRecording) {
+        if (prepareAudioMode) {
+          await prepareAudioMode();
+        }
+        recorder.record();
+      }
       setStatus('recording');
+    },
+    syncPausedNativeState() {
+      if (status === 'paused' && recorder.isRecording) {
+        recorder.pause();
+      }
     },
     async stop(): Promise<StopResult> {
       if (status !== 'recording' && status !== 'paused') {

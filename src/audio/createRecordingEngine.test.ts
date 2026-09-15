@@ -4,17 +4,20 @@ import type { EngineRecorder } from './createRecordingEngine';
 function makeFakeRecorder(): EngineRecorder & {
   _uri: string | null;
   _time: number;
+  _isRecording: boolean;
   calls: string[];
 } {
   const state = {
     _uri: null as string | null,
     _time: 0,
+    _isRecording: false,
     calls: [] as string[],
   };
 
   const fake: EngineRecorder & {
     _uri: string | null;
     _time: number;
+    _isRecording: boolean;
     calls: string[];
   } = {
     get _uri() {
@@ -29,8 +32,17 @@ function makeFakeRecorder(): EngineRecorder & {
     set _time(v: number) {
       state._time = v;
     },
+    get _isRecording() {
+      return state._isRecording;
+    },
+    set _isRecording(v: boolean) {
+      state._isRecording = v;
+    },
     get calls() {
       return state.calls;
+    },
+    get isRecording(): boolean {
+      return state._isRecording;
     },
     get uri(): string | null {
       return state._uri;
@@ -43,13 +55,16 @@ function makeFakeRecorder(): EngineRecorder & {
     },
     record() {
       state.calls.push('record');
+      state._isRecording = true;
       state._time = 1.25;
     },
     pause() {
       state.calls.push('pause');
+      state._isRecording = false;
     },
     async stop() {
       state.calls.push('stop');
+      state._isRecording = false;
       state._uri = 'file:///mock-recording.m4a';
       state._time = 0;
     },
@@ -74,9 +89,11 @@ describe('createRecordingEngine', () => {
 
     await engine.pause();
     expect(engine.getStatus()).toBe('paused');
+    expect(recorder.calls).toEqual(['prepare', 'record', 'pause']);
 
     await engine.resume();
     expect(engine.getStatus()).toBe('recording');
+    expect(recorder.calls).toEqual(['prepare', 'record', 'pause', 'record']);
 
     const result = await engine.stop();
     expect(engine.getStatus()).toBe('idle');
@@ -87,22 +104,33 @@ describe('createRecordingEngine', () => {
     expect(statuses).toEqual(['recording', 'paused', 'recording', 'idle']);
   });
 
-  it('keeps the native recorder active while paused so Android resume does not re-enter MediaRecorder.resume()', async () => {
+  it('re-pauses the native recorder if Android auto-resumes while the UI is paused', async () => {
     const recorder = makeFakeRecorder();
     const engine = createRecordingEngine({ recorder });
 
     await engine.start();
     await engine.pause();
-    recorder.record = () => {
-      throw new Error('native resume failed');
-    };
+    recorder._isRecording = true;
 
-    await expect(engine.resume()).resolves.toBeUndefined();
-    expect(engine.getStatus()).toBe('recording');
-    expect(recorder.calls).toEqual(['prepare', 'record']);
+    engine.syncPausedNativeState();
+    expect(engine.getStatus()).toBe('paused');
+    expect(recorder.calls).toEqual(['prepare', 'record', 'pause', 'pause']);
   });
 
-  it('calls prepareAudioMode once before first start', async () => {
+  it('does not call native record again if Android is already recording on resume', async () => {
+    const recorder = makeFakeRecorder();
+    const engine = createRecordingEngine({ recorder });
+
+    await engine.start();
+    await engine.pause();
+    recorder._isRecording = true;
+
+    await engine.resume();
+    expect(engine.getStatus()).toBe('recording');
+    expect(recorder.calls).toEqual(['prepare', 'record', 'pause']);
+  });
+
+  it('prepares audio mode before first start and resume', async () => {
     const recorder = makeFakeRecorder();
     const prepareAudioMode = jest.fn(async () => undefined);
     const engine = createRecordingEngine({ recorder, prepareAudioMode });
@@ -110,7 +138,7 @@ describe('createRecordingEngine', () => {
     await engine.start();
     await engine.pause();
     await engine.resume();
-    expect(prepareAudioMode).toHaveBeenCalledTimes(1);
+    expect(prepareAudioMode).toHaveBeenCalledTimes(2);
   });
 
   it('throws when stop is called while idle', async () => {
