@@ -1,0 +1,109 @@
+# Android-only Maestro E2E on EAS Workflows (Expo-canonical — #516).
+# NOT a required PR / merge gate. Manual only.
+# Does not replace Needs QA? / @Roslin22 nightly handoff.
+# Docs: https://docs.expo.dev/eas/workflows/examples/e2e-tests/
+# Run: npm run maestro:eas -- -F suite=harness
+name: Maestro Android (EAS)
+run_name: Maestro ${{ inputs.suite }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        type: choice
+        required: true
+        default: harness
+        description: Maestro suite to run
+        options:
+          - harness
+          - smokes
+          - multi-account
+
+jobs:
+  build_android_e2e:
+    name: Build Android e2e-test APK
+    type: build
+    params:
+      platform: android
+      profile: e2e-test
+
+  maestro_harness:
+    name: Maestro harness
+    needs: [build_android_e2e]
+    if: ${{ inputs.suite == 'harness' }}
+    type: maestro
+    environment: preview
+    runs_on: linux-large-nested-virtualization
+    params:
+      build_id: ${{ needs.build_android_e2e.outputs.build_id }}
+      flow_path: .maestro/flows/smoke-launch.yaml
+      maestro_version: '2.10.0'
+      output_format: junit
+      device_identifier: pixel_6
+      android_system_image_package: system-images;android-34;google_apis;x86_64
+
+  maestro_smokes:
+    name: Maestro smokes
+    needs: [build_android_e2e]
+    if: ${{ inputs.suite == 'smokes' }}
+    type: maestro
+    environment: preview
+    runs_on: linux-large-nested-virtualization
+    # Requires EAS preview secrets: MAESTRO_EMAIL, MAESTRO_PASSWORD
+    params:
+      build_id: ${{ needs.build_android_e2e.outputs.build_id }}
+      # Directory + tags matches local `maestro:test:smokes` (new smoke flows auto-include).
+      flow_path: .maestro
+      include_tags: smoke
+      maestro_version: '2.10.0'
+      output_format: junit
+      device_identifier: pixel_6
+      android_system_image_package: system-images;android-34;google_apis;x86_64
+    hooks:
+      before_maestro_tests:
+        - name: Require MAESTRO credentials
+          run: |
+            set -euo pipefail
+            missing=()
+            [[ -n "${MAESTRO_EMAIL:-}" ]] || missing+=("MAESTRO_EMAIL")
+            [[ -n "${MAESTRO_PASSWORD:-}" ]] || missing+=("MAESTRO_PASSWORD")
+            if ((${#missing[@]} > 0)); then
+              echo "error: Missing EAS preview secrets: ${missing[*]}"
+              echo "Add them under Environment variables (preview) — docs/guides/maestro.md (#516)."
+              exit 1
+            fi
+            echo "Secrets OK for smokes."
+
+  maestro_multi_account:
+    name: Maestro multi-account
+    needs: [build_android_e2e]
+    if: ${{ inputs.suite == 'multi-account' }}
+    type: maestro
+    environment: preview
+    runs_on: linux-large-nested-virtualization
+    # Requires EAS preview secrets: MAESTRO_EMAIL, MAESTRO_PASSWORD,
+    # MAESTRO_EMAIL_2, MAESTRO_PASSWORD_2
+    params:
+      build_id: ${{ needs.build_android_e2e.outputs.build_id }}
+      flow_path: .maestro/flows/android/smoke-multi-account.yaml
+      include_tags: multi-account
+      maestro_version: '2.10.0'
+      output_format: junit
+      device_identifier: pixel_6
+      android_system_image_package: system-images;android-34;google_apis;x86_64
+    hooks:
+      before_maestro_tests:
+        - name: Require MAESTRO credentials (two accounts)
+          run: |
+            set -euo pipefail
+            missing=()
+            [[ -n "${MAESTRO_EMAIL:-}" ]] || missing+=("MAESTRO_EMAIL")
+            [[ -n "${MAESTRO_PASSWORD:-}" ]] || missing+=("MAESTRO_PASSWORD")
+            [[ -n "${MAESTRO_EMAIL_2:-}" ]] || missing+=("MAESTRO_EMAIL_2")
+            [[ -n "${MAESTRO_PASSWORD_2:-}" ]] || missing+=("MAESTRO_PASSWORD_2")
+            if ((${#missing[@]} > 0)); then
+              echo "error: Missing EAS preview secrets: ${missing[*]}"
+              echo "Add them under Environment variables (preview) — docs/guides/maestro.md (#516)."
+              exit 1
+            fi
+            echo "Secrets OK for multi-account."

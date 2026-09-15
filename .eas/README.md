@@ -7,8 +7,19 @@ Automated **Android-only** production releases for Fluent Mobile.
 | File | Purpose |
 |------|---------|
 | `create-production-builds.yml` | Production Android AAB build + Play Store submit on version tags |
+| `maestro-android.yml` | Informational Maestro E2E (`e2e-test` APK → `type: maestro`; `workflow_dispatch` suite) |
 
 Tag-based version sync runs in GitHub Actions (`.github/workflows/eas-build.yml`).
+
+## Maestro E2E (informational)
+
+Android-only hosted suite — Expo-canonical path ([docs](https://docs.expo.dev/eas/workflows/examples/e2e-tests/)):
+
+```bash
+npm run maestro:eas -- -F suite=harness   # or smokes / multi-account
+```
+
+Requires `eas.json` profile **`e2e-test`** and EAS **preview** secrets `MAESTRO_*` for credentialed suites. Full playbook: [docs/guides/maestro.md](../docs/guides/maestro.md).
 
 ## How it works
 

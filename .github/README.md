@@ -15,8 +15,9 @@ Workflows for Fluent Mobile (**Android-only**).
 | `eas-build.yml` | push tag `v*` | Sync `APP_VERSION_FALLBACK` in `app.config.ts` with tag; hand off to EAS |
 | `preview-build.yml` | PR label `preview-build` | Optional isolated Android preview APK (**PR comment only** — debug) |
 | `qa-handoff.yml` | PR merged | Needs QA? Yes → issue handoff + assign Roslin + Project 4 `In QA` |
-| `nightly-preview.yml` | cron 23:17 PT (APK) + 09:07 PT (Slack) + `workflow_dispatch` | Nightly **binary-only** Android internal APK (dev API); APK cron identity trusted when GitHub delays; Slack held to 09:00–16:00 PT |
-| `maestro-android.yml` | `workflow_dispatch` only | **Informational** Maestro E2E (release APK + emulator). Not a required check. See [docs/guides/maestro.md](../docs/guides/maestro.md) |
+| `nightly-preview.yml` | cron 15:17 PT + `workflow_dispatch` | Nightly **binary-only** Android internal APK (dev API); cron identity trusted when GitHub delays; Slack in the same run |
+
+Maestro E2E is **not** a GitHub Action — use EAS Workflow [`.eas/workflows/maestro-android.yml`](../.eas/workflows/maestro-android.yml) (`npm run maestro:eas`). See [docs/guides/maestro.md](../docs/guides/maestro.md).
 
 ## PR template + CODEOWNERS
 
@@ -60,8 +61,8 @@ Scheduled (and manually dispatchable) workflow [`.github/workflows/nightly-previ
 - Always starts a **new** EAS Android build with profile **`nightly`** (internal APK, baked `https://dev.api.fluent.bible`).
 - **No OTA** (`eas update` is not used). Expo Updates stay disabled for `nightly` so the APK is self-contained.
 - Skips when `main` HEAD matches the last successful nightly unless `force_build` is set.
-- GitHub often delays the ~23:17 PT APK cron until early morning; the workflow trusts `github.event.schedule == 17 23 * * *` so those delayed fires still build (wall-clock 22–02 PT is only a guard for unknown/legacy schedules). Green ignored-schedule no-ops do not count as the last nightly SHA for skip-if-unchanged.
-- Posts a GitHub Actions job summary and install comments on recent QA handoff issues. Slack waits until **09:00–16:00 America/Los_Angeles** (success, skip, and no-APK) — incoming webhooks cannot mute phone push. A run that did not produce an APK uses the same `:zzz:` skip-style card as “no new commits” (not a red X), with an Actions log link. Daytime `workflow_dispatch` still Slacks immediately.
+- Single schedule cron intended ~**15:17 America/Los_Angeles** (~16:17 MT). GitHub often delays fires by ~3–5 hours; after lag the notice aims for late evening Mountain / early India morning (~06:30–09:00 IST). The workflow trusts `github.event.schedule == 17 15 * * *` so delayed fires still build; unknown/legacy cron strings are ignored. Green ignored-schedule no-ops do not count as the last nightly SHA for skip-if-unchanged.
+- Posts a GitHub Actions job summary, install comments on recent QA handoff issues, and **Slack in the same run** (success, skip, and quiet no-APK). A run that did not produce an APK uses the same `:zzz:` skip-style card as “no new commits” (not a red X), with an Actions log link.
 
 ### Secrets
 
@@ -70,8 +71,6 @@ Scheduled (and manually dispatchable) workflow [`.github/workflows/nightly-previ
 | `EXPO_TOKEN` | EAS CLI auth (required for PR preview + nightly) |
 | `PROJECT_BOARD_TOKEN` | Optional PAT for Project 4 Status → `In QA` on merge handoff |
 | `SLACK_WEBHOOK_URL` | Incoming webhook for nightly success / failure / skip notices |
-| `MAESTRO_EMAIL` / `MAESTRO_PASSWORD` | Optional repo secrets — **required** when dispatching `maestro-android.yml` suite `smokes` |
-| `MAESTRO_EMAIL_2` / `MAESTRO_PASSWORD_2` | Optional — **required** for suite `multi-account` only (`harness` needs none) |
 
 Does **not** require the Expo GitHub App — only `EXPO_TOKEN`. Manual run: **Actions → Nightly Preview → Run workflow** (available after this workflow exists on `main`).
 

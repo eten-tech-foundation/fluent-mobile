@@ -1,22 +1,23 @@
 /**
- * Pacific time windows for nightly preview.
- * Build cron: `17 23 * * *` America/Los_Angeles (intended ~23:17 PT).
- * Slack cron: `7 9 * * *` America/Los_Angeles (intended ~09:07 PT).
+ * Schedule identity for nightly preview.
+ * Cron: `17 15 * * *` America/Los_Angeles (intended ~15:17 PT / ~16:17 MT).
  *
- * GitHub often delays schedule fires by several hours. Trust
- * `github.event.schedule` (cron identity) for the APK slot so a delayed
- * 23:17 PT fire that lands at ~04–06 PT still builds. Wall-clock
- * 22:00–02:00 PT remains only for unknown / legacy schedule strings.
- * Slack: 09:00–16:00 America/Los_Angeles (incoming webhooks cannot mute push).
+ * Target after typical GitHub schedule lag (~3–5h): late evening Mountain /
+ * early India morning (~06:30–09:00 IST). GitHub delay is expected — docs and
+ * this comment state the intended local time, not a guarantee.
+ *
+ * Trust `github.event.schedule` (cron identity) so a delayed fire still builds.
+ * Unknown / legacy cron strings are ignored (no APK, no Slack) so re-registers
+ * and leftover dual-cron fires from #421 do not rebuild.
+ *
+ * Slack posts in the same workflow run as the build/skip outcome (#484) —
+ * no quiet-hours hold or morning delivery job.
  */
 
 const TIME_ZONE = 'America/Los_Angeles';
 
-/** Cron string for the overnight APK job (must match nightly-preview.yml). */
-const APK_SCHEDULE_CRON = '17 23 * * *';
-
-/** Cron string for the morning Slack delivery job. */
-const SLACK_SCHEDULE_CRON = '7 9 * * *';
+/** Cron string for the nightly APK + Slack job (must match nightly-preview.yml). */
+const NIGHTLY_SCHEDULE_CRON = '17 15 * * *';
 
 function pacificHour(now = new Date()) {
   const hour = new Intl.DateTimeFormat('en-US', {
@@ -25,14 +26,6 @@ function pacificHour(now = new Date()) {
     hourCycle: 'h23',
   }).format(now);
   return Number(hour);
-}
-
-function isBuildWindowHour(hour) {
-  return hour === 22 || hour === 23 || hour === 0 || hour === 1 || hour === 2;
-}
-
-function isSlackHoursHour(hour) {
-  return hour >= 9 && hour <= 16;
 }
 
 function resolveWindows({
@@ -48,46 +41,34 @@ function resolveWindows({
   if (!isSchedule) {
     // workflow_dispatch / pull_request — always allow the APK path.
     inBuildWindow = true;
-  } else if (cron === APK_SCHEDULE_CRON) {
-    // Authoritative APK slot even when GitHub delays past 02:00 PT.
+  } else if (cron === NIGHTLY_SCHEDULE_CRON) {
+    // Authoritative nightly slot even when GitHub delays the fire.
     inBuildWindow = true;
-  } else if (cron === SLACK_SCHEDULE_CRON) {
-    // Morning Slack-only slot (APK job is skipped at the job `if` anyway).
-    inBuildWindow = false;
   } else {
-    // Unknown / legacy schedules — keep the narrow wall-clock guard so an
-    // old drifted ~11am PT fire cannot rebuild after a cron re-register.
-    inBuildWindow = isBuildWindowHour(hourPt);
+    // Unknown / legacy schedules (including removed dual-cron strings) — no-op.
+    inBuildWindow = false;
   }
 
   return {
     hourPt,
     inBuildWindow,
-    inSlackHours: isSlackHoursHour(hourPt),
   };
 }
 
 function printGithubOutput(env = process.env) {
-  const { hourPt, inBuildWindow, inSlackHours } = resolveWindows({
+  const { hourPt, inBuildWindow } = resolveWindows({
     eventName: env.GITHUB_EVENT_NAME || '',
     scheduleCron: env.GITHUB_EVENT_SCHEDULE || '',
   });
-  const lines = [
-    `hour_pt=${hourPt}`,
-    `in_window=${inBuildWindow}`,
-    `in_slack_hours=${inSlackHours}`,
-  ];
+  const lines = [`hour_pt=${hourPt}`, `in_window=${inBuildWindow}`];
   process.stdout.write(`${lines.join('\n')}\n`);
-  return { hourPt, inBuildWindow, inSlackHours };
+  return { hourPt, inBuildWindow };
 }
 
 module.exports = {
   TIME_ZONE,
-  APK_SCHEDULE_CRON,
-  SLACK_SCHEDULE_CRON,
+  NIGHTLY_SCHEDULE_CRON,
   pacificHour,
-  isBuildWindowHour,
-  isSlackHoursHour,
   resolveWindows,
   printGithubOutput,
 };

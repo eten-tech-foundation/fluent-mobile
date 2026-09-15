@@ -56,6 +56,18 @@
         "buildType": "app-bundle",
         "autoIncrement": "versionCode"
       }
+    },
+    "e2e-test": {
+      "extends": "base",
+      "withoutCredentials": true,
+      "environment": "preview",
+      "env": {
+        "EAS_USE_CACHE": "1",
+        "EXPO_PUBLIC_API_BASE_URL": "https://dev.api.fluent.bible"
+      },
+      "android": {
+        "buildType": "apk"
+      }
     }
   },
   "submit": {

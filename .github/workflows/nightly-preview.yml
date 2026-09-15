@@ -6,15 +6,12 @@ name: Nightly Preview
 
 on:
   schedule:
-    # APK intended ~23:17 America/Los_Angeles (off :00 peak). GitHub often
-    # delays schedule fires by hours — `nightly-windows.cjs` trusts this
-    # cron string (`github.event.schedule`) so a ~04–06 PT landing still
-    # builds. Changing the cron re-registers the scheduler (see #421 / #459).
-    - cron: '17 23 * * *'
-      timezone: America/Los_Angeles
-    # Slack after overnight build. Incoming webhooks cannot mute phone
-    # push; hold notices until Pacific business hours (success and failure).
-    - cron: '7 9 * * *'
+    # Intended ~15:17 America/Los_Angeles (~16:17 MT). After typical GitHub
+    # schedule lag (~3–5h), aims for late evening Mountain / early India
+    # morning (~06:30–09:00 IST). Delay is expected — not a hard SLA.
+    # `nightly-windows.cjs` trusts this cron string so delayed fires still
+    # build. Changing the cron re-registers the scheduler (see #484).
+    - cron: '17 15 * * *'
       timezone: America/Los_Angeles
   workflow_dispatch:
     inputs:
@@ -53,10 +50,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     if: >
-      (github.event_name != 'pull_request' ||
-      contains(github.event.label.name, 'nightly-preview'))
-      && (github.event_name != 'schedule' ||
-      github.event.schedule != '7 9 * * *')
+      github.event_name != 'pull_request' ||
+      contains(github.event.label.name, 'nightly-preview')
     env:
       # On schedule, inputs are empty → force false, notify true.
       # PR label runs always force a build (test / one-off).
@@ -98,11 +93,11 @@ jobs:
             echo "run_url=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           } >> "${GITHUB_OUTPUT}"
 
-      - name: Resolve Pacific windows (cron-aware)
+      - name: Resolve schedule window (cron-aware)
         id: window
         env:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
-          # Authoritative for APK vs Slack slots when GitHub delays the fire.
+          # Authoritative for the nightly slot when GitHub delays the fire.
           GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
         run: |
           set -euo pipefail
@@ -111,9 +106,9 @@ jobs:
           HOUR_PT=$(grep '^hour_pt=' "${GITHUB_OUTPUT}" | tail -n1 | cut -d= -f2)
           SCHEDULE="${GITHUB_EVENT_SCHEDULE:-}"
           if [ "${IN_WINDOW}" != "true" ]; then
-            echo "::notice::Ignoring non-APK schedule at ${HOUR_PT}:xx PT (schedule=${SCHEDULE:-none}; APK cron is 17 23 * * *)."
-          elif [ "${GITHUB_EVENT_NAME}" = "schedule" ] && [ "${SCHEDULE}" = "17 23 * * *" ] && { [ "${HOUR_PT}" -lt 22 ] && [ "${HOUR_PT}" -gt 2 ]; }; then
-            echo "::notice::APK cron delayed to ${HOUR_PT}:xx PT — building anyway (cron identity trusted; see #459)."
+            echo "::notice::Ignoring non-nightly schedule at ${HOUR_PT}:xx PT (schedule=${SCHEDULE:-none}; nightly cron is 17 15 * * *)."
+          elif [ "${GITHUB_EVENT_NAME}" = "schedule" ] && [ "${SCHEDULE}" = "17 15 * * *" ]; then
+            echo "::notice::Nightly cron at ${HOUR_PT}:xx PT (cron identity trusted; GitHub may delay hours — see #484)."
           fi
 
       - name: Write ignored-schedule summary
@@ -122,8 +117,8 @@ jobs:
           {
             echo "## Nightly preview — ignored schedule"
             echo ""
-            echo "Not the APK cron (\`17 23 * * *\`) and outside the legacy 22:00–02:00 America/Los_Angeles wall-clock guard."
-            echo "No Slack notification and no EAS build. Delayed APK cron fires still build via cron identity (#459)."
+            echo "Not the nightly cron (\`17 15 * * *\`). No Slack notification and no EAS build."
+            echo "Legacy dual-cron leftovers from #421 are ignored until GitHub drops them."
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Check for new commits since last success
@@ -178,7 +173,6 @@ jobs:
         if: steps.window.outputs.in_window == 'true' && steps.skip.outputs.should_skip == 'true'
         env:
           SLACK_PAYLOAD_OUT: ${{ runner.temp }}/slack-payload.json
-          SLACK_PENDING: ${{ steps.window.outputs.in_slack_hours != 'true' }}
           STATUS: skipped
           TRIGGER: ${{ steps.meta.outputs.trigger }}
           BRANCH: ${{ steps.meta.outputs.branch }}
@@ -190,7 +184,7 @@ jobs:
         if: >
           steps.window.outputs.in_window == 'true' &&
           steps.skip.outputs.should_skip == 'true' &&
-          steps.window.outputs.in_slack_hours == 'true'
+          env.NOTIFY_SLACK == 'true'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_PAYLOAD_JSON: ${{ runner.temp }}/slack-payload.json
@@ -277,7 +271,6 @@ jobs:
         if: steps.window.outputs.in_window == 'true' && steps.skip.outputs.should_skip != 'true' && steps.build.outputs.build_id != ''
         env:
           SLACK_PAYLOAD_OUT: ${{ runner.temp }}/slack-payload.json
-          SLACK_PENDING: ${{ steps.window.outputs.in_slack_hours != 'true' }}
           STATUS: success
           TRIGGER: ${{ steps.meta.outputs.trigger }}
           PLATFORM: android
@@ -301,7 +294,7 @@ jobs:
           steps.window.outputs.in_window == 'true' &&
           steps.skip.outputs.should_skip != 'true' &&
           steps.build.outputs.build_id != '' &&
-          steps.window.outputs.in_slack_hours == 'true'
+          env.NOTIFY_SLACK == 'true'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_PAYLOAD_JSON: ${{ runner.temp }}/slack-payload.json
@@ -337,7 +330,6 @@ jobs:
         if: failure() && steps.window.outputs.in_window == 'true' && steps.skip.outputs.should_skip != 'true'
         env:
           SLACK_PAYLOAD_OUT: ${{ runner.temp }}/slack-payload.json
-          SLACK_PENDING: ${{ steps.window.outputs.in_slack_hours != 'true' }}
           STATUS: failure
           TRIGGER: ${{ steps.meta.outputs.trigger }}
           BRANCH: ${{ steps.meta.outputs.branch }}
@@ -352,59 +344,8 @@ jobs:
           failure() &&
           steps.window.outputs.in_window == 'true' &&
           steps.skip.outputs.should_skip != 'true' &&
-          steps.window.outputs.in_slack_hours == 'true'
+          env.NOTIFY_SLACK == 'true'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_PAYLOAD_JSON: ${{ runner.temp }}/slack-payload.json
         run: bash .github/scripts/notify-slack-nightly.sh
-
-      - name: Upload pending Slack payload
-        if: >
-          always() &&
-          env.NOTIFY_SLACK == 'true' &&
-          steps.window.outputs.in_window == 'true' &&
-          steps.window.outputs.in_slack_hours != 'true'
-        continue-on-error: true
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: nightly-slack-payload
-          path: ${{ runner.temp }}/slack-payload.json
-          if-no-files-found: ignore
-          retention-days: 2
-
-  nightly-slack:
-    name: Slack in Pacific business hours
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: github.event_name == 'schedule'
-    permissions:
-      actions: read
-      contents: read
-    steps:
-      - name: 📋 Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Deliver pending Slack if this is the morning slot
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SCHEDULE_CRON: ${{ github.event.schedule }}
-        run: |
-          set -euo pipefail
-          HOUR_PT=$(TZ=America/Los_Angeles date +%H)
-          echo "hour_pt=${HOUR_PT} cron=${SCHEDULE_CRON}"
-          case "${SCHEDULE_CRON}" in
-            '7 9 * * *') ;;
-            *)
-              case "${HOUR_PT}" in
-                09|10) ;;
-                *)
-                  echo "Not the 09:07 America/Los_Angeles Slack slot — exiting"
-                  exit 0
-                  ;;
-              esac
-              ;;
-          esac
-          bash .github/scripts/deliver-pending-slack-nightly.sh
