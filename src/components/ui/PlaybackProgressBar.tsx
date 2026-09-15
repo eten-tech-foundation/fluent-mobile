@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     // Bars are measured-fit below, but clip until the first layout arrives so
     // they can never paint over a sibling (e.g. the take-row timer).
     overflow: 'hidden',
