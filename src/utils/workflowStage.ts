@@ -2,7 +2,7 @@ import { WorkflowBadgeStage } from '../types/db/types';
 import { workflowStages } from '../theme/tokens';
 
 /** Matches fluent-api CHAPTER_ASSIGNMENT_STATUS.complete */
-const COMPLETE_STATUSES = new Set(['complete', 'completed']);
+const COMPLETE_STATUSES = new Set(['complete']);
 
 const MY_WORK_BADGE_STAGES = new Set<WorkflowBadgeStage>([
   'draft',
@@ -15,13 +15,11 @@ const STAGE_BY_STATUS: Record<string, WorkflowBadgeStage> = {
   peer_check: 'peer_check',
   not_started: 'not_started',
   '': 'not_started',
-  community_check: 'community_check',
-  community_review: 'community_check',
-  advanced_check: 'advanced_check',
+  community_review: 'community_review',
+  linguist_check: 'advanced_check',
+  theological_check: 'advanced_check',
   consultant_check: 'advanced_check',
-  expert_check: 'advanced_check',
   complete: 'complete',
-  completed: 'complete',
 };
 
 function normalizeStatus(status: string | null | undefined): string {
