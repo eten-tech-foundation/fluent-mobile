@@ -62,6 +62,7 @@ import { isChapterTakenByOther } from '../../utils/chapterTakenStatus';
 import type { Recording, RecordingWithOwner } from '../../types/db/types';
 import {
   getStageAdvanceVisibility,
+  resolvePeerCheckerAssignmentOnAdvance,
   stageAdvanceConfirmBody,
 } from '../../utils/stageAdvancement';
 import { confirmStageAdvancement } from '../../services/stageAdvance';
@@ -589,6 +590,11 @@ export function RecordTab({
       await confirmStageAdvancement({
         chapterAssignmentId: chapterData.id,
         destination: stageAdvance.destination,
+        assignPeerCheckerId: resolvePeerCheckerAssignmentOnAdvance({
+          chapterData,
+          currentUserId,
+          nextStatus: stageAdvance.destination.nextStatus,
+        }),
       });
       setConfirmVisible(false);
       if (router.canGoBack()) {
@@ -604,8 +610,9 @@ export function RecordTab({
       setSubmitting(false);
     }
   }, [
-    chapterData.id,
+    chapterData,
     confirmVisible,
+    currentUserId,
     router,
     stageAdvance.destination,
     stageAdvance.disabled,

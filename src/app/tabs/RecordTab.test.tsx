@@ -8,6 +8,7 @@ import {
 } from '@testing-library/react-native';
 import { RecordTab } from './RecordTab';
 import { DraftingProvider } from '../context/DraftingContext';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   RECORD_AUDIO_CONFLICT_WARNING,
   RECORD_TAKEN_CHAPTER_WARNING,
@@ -80,6 +81,8 @@ jest.mock('../../audio/micPermission', () => ({
 jest.mock('../../services/stageAdvance', () => ({
   confirmStageAdvancement: jest.fn(async () => undefined),
 }));
+
+import { confirmStageAdvancement } from '../../services/stageAdvance';
 
 jest.mock('../../db/repository', () => ({
   getProjectPericopeSetId: jest.fn(async () => null),
@@ -989,6 +992,92 @@ describe('RecordTab', () => {
       expect(screen.getByTestId('record-start-button')).toBeTruthy();
     });
     expect(screen.queryByTestId('stage-advance-button')).toBeNull();
+  });
+
+  it('shows Send to Community Review without a taken banner on open Peer Check', async () => {
+    renderTab(undefined, {
+      chapterData: {
+        ...chapterData,
+        status: 'peer_check',
+        assignedUserId: 99,
+        peerCheckerId: undefined,
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stage-advance-button')).toBeTruthy();
+    });
+    expect(screen.getByText('Send to Community Review')).toBeTruthy();
+    expect(screen.queryByText(RECORD_TAKEN_CHAPTER_WARNING)).toBeNull();
+  });
+
+  it('hides Send to Community Review from the drafter on open Peer Check', async () => {
+    renderTab(undefined, {
+      chapterData: {
+        ...chapterData,
+        status: 'peer_check',
+        assignedUserId: 42,
+        peerCheckerId: undefined,
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('record-start-button')).toBeTruthy();
+    });
+    expect(screen.queryByTestId('stage-advance-button')).toBeNull();
+  });
+
+  it('shows taken banner and hides Send for a non-assignee on PM-assigned Peer Check', async () => {
+    renderTab(undefined, {
+      chapterData: {
+        ...chapterData,
+        status: 'peer_check',
+        assignedUserId: 7,
+        peerCheckerId: 99,
+      },
+    });
+
+    expect(screen.getByText(RECORD_TAKEN_CHAPTER_WARNING)).toBeTruthy();
+    expect(screen.queryByTestId('stage-advance-button')).toBeNull();
+  });
+
+  it('assigns the tapping peer when confirming Send to Community Review on open Peer Check', async () => {
+    render(
+      <SafeAreaProvider
+        initialMetrics={{
+          frame: { x: 0, y: 0, width: 390, height: 844 },
+          insets: { top: 0, left: 0, right: 0, bottom: 0 },
+        }}
+      >
+        <DraftingProvider verses={verses} initialVerse={3}>
+          <RecordTab
+            chapterData={{
+              ...chapterData,
+              status: 'peer_check',
+              assignedUserId: 99,
+              peerCheckerId: undefined,
+            }}
+            userId={42}
+          />
+        </DraftingProvider>
+      </SafeAreaProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stage-advance-button')).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId('stage-advance-button'));
+    fireEvent.press(screen.getByTestId('stage-advance-send'));
+
+    await waitFor(() => {
+      expect(confirmStageAdvancement).toHaveBeenCalledWith({
+        chapterAssignmentId: 1,
+        destination: expect.objectContaining({
+          nextStatus: 'community_review',
+        }),
+        assignPeerCheckerId: 42,
+      });
+    });
   });
 
   describe('Mode-aware Current Unit Title (#409)', () => {
