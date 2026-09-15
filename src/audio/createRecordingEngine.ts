@@ -99,7 +99,12 @@ export function createRecordingEngine(
         if (prepareAudioMode) {
           await prepareAudioMode();
         }
-        recorder.record();
+        if (status !== 'paused') {
+          return;
+        }
+        if (!recorder.isRecording) {
+          recorder.record();
+        }
       }
       setStatus('recording');
     },

@@ -130,6 +130,56 @@ describe('createRecordingEngine', () => {
     expect(recorder.calls).toEqual(['prepare', 'record', 'pause']);
   });
 
+  it('does not record from a stale resume after stop completes during audio-mode setup', async () => {
+    const recorder = makeFakeRecorder();
+    let resolvePrepareAudioMode!: () => void;
+    const prepareAudioMode = jest
+      .fn<Promise<void>, []>()
+      .mockResolvedValueOnce(undefined)
+      .mockImplementation(
+        () =>
+          new Promise<void>(resolve => {
+            resolvePrepareAudioMode = resolve;
+          }),
+      );
+    const engine = createRecordingEngine({ recorder, prepareAudioMode });
+
+    await engine.start();
+    await engine.pause();
+    const resumePromise = engine.resume();
+    await engine.stop();
+    resolvePrepareAudioMode();
+    await resumePromise;
+
+    expect(engine.getStatus()).toBe('idle');
+    expect(recorder.calls).toEqual(['prepare', 'record', 'pause', 'stop']);
+  });
+
+  it('does not call native record if Android resumes during audio-mode setup', async () => {
+    const recorder = makeFakeRecorder();
+    let resolvePrepareAudioMode!: () => void;
+    const prepareAudioMode = jest
+      .fn<Promise<void>, []>()
+      .mockResolvedValueOnce(undefined)
+      .mockImplementation(
+        () =>
+          new Promise<void>(resolve => {
+            resolvePrepareAudioMode = resolve;
+          }),
+      );
+    const engine = createRecordingEngine({ recorder, prepareAudioMode });
+
+    await engine.start();
+    await engine.pause();
+    const resumePromise = engine.resume();
+    recorder._isRecording = true;
+    resolvePrepareAudioMode();
+    await resumePromise;
+
+    expect(engine.getStatus()).toBe('recording');
+    expect(recorder.calls).toEqual(['prepare', 'record', 'pause']);
+  });
+
   it('prepares audio mode before first start and resume', async () => {
     const recorder = makeFakeRecorder();
     const prepareAudioMode = jest.fn(async () => undefined);
