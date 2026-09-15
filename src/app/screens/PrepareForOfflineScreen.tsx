@@ -33,11 +33,15 @@ export default function PrepareForOfflineScreen() {
   const rawParams = useLocalSearchParams<{ projectId?: string }>();
   const routeProjectId = parseOptionalNumber(rawParams.projectId);
 
+  // `pickedProjectId` is the single source of truth for which step is shown,
+  // seeded once from the route param. Back navigation (#503) always clears
+  // this to return to the project list, regardless of how a project was
+  // entered (in-screen tap or a `?projectId=` deep link e.g. from Sync).
   const [pickedProjectId, setPickedProjectId] = useState<number | null>(
     routeProjectId ?? null,
   );
 
-  const projectId = pickedProjectId ?? routeProjectId ?? null;
+  const projectId = pickedProjectId;
   const userId = useMemo(() => parseUserId(), []);
 
   const {
@@ -96,7 +100,13 @@ export default function PrepareForOfflineScreen() {
     canDownload,
   });
 
-  const goBack = useCallback(() => router.back(), [router]);
+  const goBack = useCallback(() => {
+    if (projectId !== null) {
+      setPickedProjectId(null);
+      return;
+    }
+    router.back();
+  }, [projectId, router]);
 
   const scrollContentStyle = [
     styles.content,
@@ -124,75 +134,71 @@ export default function PrepareForOfflineScreen() {
       />
     ) : null;
 
-  let body: React.ReactNode;
+  let projectDetailBody: React.ReactNode = null;
 
-  if (!projectId) {
-    body = (
-      <ScrollView contentContainerStyle={scrollContentStyle}>
-        <ProjectPickerStep onSelectProject={handleSelectProject} />
-      </ScrollView>
-    );
-  } else if (loading) {
-    body = (
-      <View style={styles.centered}>
-        <LoadingSpinner />
-      </View>
-    );
-  } else if (error) {
-    body = (
-      <View style={styles.centered}>
-        <Text style={styles.errorMessage}>Unable to load chapters.</Text>
-        <TouchableOpacity
-          onPress={() => void retry()}
-          accessibilityRole="button"
-        >
-          <Text style={styles.retryLink}>Try again</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  } else if (books.length === 0) {
-    body = (
-      <ScrollView contentContainerStyle={scrollContentStyle}>
-        <EmptyState message="No chapters available for this project." />
-        {storageSection}
-      </ScrollView>
-    );
-  } else {
-    body = (
-      <ScrollView contentContainerStyle={scrollContentStyle}>
-        <ChapterSelectionAccordion
-          title={accordionTitle}
-          expanded={accordionExpanded}
-          onToggleExpanded={() => setAccordionExpanded(prev => !prev)}
-          books={books}
-          selectedIds={selectedIds}
-          expandedBookIds={expandedBookIds}
-          onToggleBookExpanded={toggleBookExpanded}
-          onToggleChapter={toggleChapter}
-          onToggleBook={toggleBook}
-          isBookFullySelected={isBookFullySelected}
-        />
-        <PrepareOfflineResourcesSection
-          catalog={catalogWithProgress}
-          isItemSelected={isItemSelected}
-          onToggleItem={toggleItemSelected}
-        />
-        {showDownloadFooter ? (
-          <PrepareOfflineDownloadFooter
-            totalBytes={totalBytes}
-            canDownload={canDownloadNow}
-            downloadButtonLabel={downloadButtonLabel}
-            session={session}
-            busy={busy}
-            onDownload={() => void handleDownload()}
-            onPause={() => void pause()}
-            onResume={() => void resume()}
-            onCancel={() => void cancel()}
+  if (projectId !== null) {
+    if (loading) {
+      projectDetailBody = (
+        <View style={styles.centered}>
+          <LoadingSpinner />
+        </View>
+      );
+    } else if (error) {
+      projectDetailBody = (
+        <View style={styles.centered}>
+          <Text style={styles.errorMessage}>Unable to load chapters.</Text>
+          <TouchableOpacity
+            onPress={() => void retry()}
+            accessibilityRole="button"
+          >
+            <Text style={styles.retryLink}>Try again</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    } else if (books.length === 0) {
+      projectDetailBody = (
+        <ScrollView contentContainerStyle={scrollContentStyle}>
+          <EmptyState message="No chapters available for this project." />
+          {storageSection}
+        </ScrollView>
+      );
+    } else {
+      projectDetailBody = (
+        <ScrollView contentContainerStyle={scrollContentStyle}>
+          <ChapterSelectionAccordion
+            title={accordionTitle}
+            expanded={accordionExpanded}
+            onToggleExpanded={() => setAccordionExpanded(prev => !prev)}
+            books={books}
+            selectedIds={selectedIds}
+            expandedBookIds={expandedBookIds}
+            onToggleBookExpanded={toggleBookExpanded}
+            onToggleChapter={toggleChapter}
+            onToggleBook={toggleBook}
+            isBookFullySelected={isBookFullySelected}
           />
-        ) : null}
-        {storageSection}
-      </ScrollView>
-    );
+          <PrepareOfflineResourcesSection
+            catalog={catalogWithProgress}
+            isItemSelected={isItemSelected}
+            onToggleItem={toggleItemSelected}
+          />
+          {showDownloadFooter ? (
+            <PrepareOfflineDownloadFooter
+              totalBytes={totalBytes}
+              canDownload={canDownloadNow}
+              downloadButtonLabel={downloadButtonLabel}
+              session={session}
+              busy={busy}
+              onDownload={() => void handleDownload()}
+              onPause={() => void pause()}
+              onResume={() => void resume()}
+              onCancel={() => void cancel()}
+            />
+          ) : null}
+          {storageSection}
+        </ScrollView>
+      );
+    }
   }
 
   return (
@@ -204,7 +210,18 @@ export default function PrepareForOfflineScreen() {
           onBack={goBack}
           subtitleLines={2}
         />
-        {body}
+        <View
+          style={[styles.stepLayer, projectId !== null && styles.stepHidden]}
+        >
+          <ScrollView contentContainerStyle={scrollContentStyle}>
+            <ProjectPickerStep onSelectProject={handleSelectProject} />
+          </ScrollView>
+        </View>
+        <View
+          style={[styles.stepLayer, projectId === null && styles.stepHidden]}
+        >
+          {projectDetailBody}
+        </View>
       </View>
     </ScreenContainer>
   );
@@ -214,6 +231,12 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  stepLayer: {
+    flex: 1,
+  },
+  stepHidden: {
+    display: 'none',
   },
   content: {
     padding: theme.spacing.lg,
