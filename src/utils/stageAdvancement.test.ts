@@ -191,6 +191,22 @@ describe('getStageAdvanceVisibility', () => {
     ).toBe(false);
   });
 
+  it('hides Send to Community Review when Peer Check lacks a drafter id', () => {
+    expect(
+      getStageAdvanceVisibility({
+        chapterData: {
+          ...baseChapter,
+          status: 'peer_check',
+          assignedUserId: undefined,
+          peerCheckerId: undefined,
+        },
+        currentUserId: 99,
+        hasChapterRecording: true,
+        hasConflict: false,
+      }).visible,
+    ).toBe(false);
+  });
+
   it('disables when conflict is set without hiding', () => {
     expect(
       getStageAdvanceVisibility({
@@ -304,6 +320,20 @@ describe('resolvePeerCheckerAssignmentOnAdvance', () => {
         },
         currentUserId: 10,
         nextStatus: 'peer_check',
+      }),
+    ).toBeUndefined();
+  });
+
+  it('does not assign when Peer Check lacks a drafter id', () => {
+    expect(
+      resolvePeerCheckerAssignmentOnAdvance({
+        chapterData: {
+          status: 'peer_check',
+          assignedUserId: undefined,
+          peerCheckerId: undefined,
+        },
+        currentUserId: 99,
+        nextStatus: 'community_review',
       }),
     ).toBeUndefined();
   });

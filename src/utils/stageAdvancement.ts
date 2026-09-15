@@ -113,7 +113,11 @@ export function getStageAdvanceVisibility({
     const isPeerCheck = normalized === 'peer_check';
 
     if (isPeerCheck) {
-      const isDrafter = chapterData.assignedUserId === currentUserId;
+      const assignedUserId = chapterData.assignedUserId;
+      if (typeof assignedUserId !== 'number') {
+        return { visible: false, disabled: false, destination: null };
+      }
+      const isDrafter = assignedUserId === currentUserId;
       const peerCheckerId = chapterData.peerCheckerId;
       const isOpen = typeof peerCheckerId !== 'number';
       const isAssignedPeerChecker = peerCheckerId === currentUserId;
@@ -158,6 +162,9 @@ export function resolvePeerCheckerAssignmentOnAdvance(params: {
     return undefined;
   }
   if (currentUserId === null) {
+    return undefined;
+  }
+  if (typeof chapterData.assignedUserId !== 'number') {
     return undefined;
   }
   if (chapterData.assignedUserId === currentUserId) {
