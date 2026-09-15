@@ -73,11 +73,54 @@ describe('useBibleTabUnits', () => {
   it('returns verse rows and a Verse caption in verse mode', async () => {
     const { result } = renderHook(() => useBibleTabUnits(hookArgs));
 
+    expect(result.current.unitsPending).toBe(true);
+
     await waitFor(() => {
-      expect(result.current.units).toHaveLength(2);
+      expect(result.current.unitsPending).toBe(false);
     });
+    expect(result.current.units).toHaveLength(2);
     expect(result.current.unitCaption).toBe('Verse 2 / 2');
     expect(result.current.units.map(u => u.title)).toEqual(['1', '2']);
+  });
+
+  it('does not fall back to verse rows while pericope data is still loading', async () => {
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    let resolveSetId: (value: number | null) => void = () => {};
+    jest.mocked(getProjectPericopeSetId).mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolveSetId = resolve;
+        }),
+    );
+    jest.mocked(getPericopesForChapter).mockResolvedValue([
+      {
+        pericopeNumber: '1',
+        pericopeTitle: null,
+        section: 1,
+        verses: [
+          { chapterNumber: 14, verseNumber: 1 },
+          { chapterNumber: 14, verseNumber: 2 },
+        ],
+      },
+    ]);
+
+    const { result } = renderHook(() => useBibleTabUnits(hookArgs));
+
+    expect(result.current.effectiveUnit).toBe('pericope');
+    expect(result.current.unitsPending).toBe(true);
+    expect(result.current.units).toHaveLength(0);
+
+    resolveSetId(7);
+
+    await waitFor(() => {
+      expect(result.current.units).toHaveLength(1);
+    });
+    expect(result.current.effectiveUnit).toBe('pericope');
+    expect(result.current.unitsPending).toBe(false);
+    expect(result.current.units[0]?.title).toBe('Mark 14:1–2');
   });
 
   it('returns pericope cards and a Pericope caption in pericope mode', async () => {

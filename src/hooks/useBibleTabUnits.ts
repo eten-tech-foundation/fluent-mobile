@@ -34,21 +34,33 @@ export function useBibleTabUnits(args: {
 }) {
   const { draftingUnit } = useDraftingUnit();
   const [pericopeSetId, setPericopeSetId] = useState<number | null>(null);
+  const [pericopeSetResolved, setPericopeSetResolved] = useState(
+    args.projectId === null,
+  );
   const [pericopes, setPericopes] = useState<
     Parameters<typeof buildBibleUnits>[0]['pericopes']
   >([]);
+  const [pericopesResolved, setPericopesResolved] = useState(
+    draftingUnit !== 'pericope',
+  );
   const [coverages, setCoverages] = useState<RecordingVerseRange[]>([]);
+  const [coveragesResolved, setCoveragesResolved] = useState(false);
   const pericopeRequestIdRef = useRef(0);
   const coverageRequestIdRef = useRef(0);
 
   useEffect(() => {
     if (args.projectId === null) {
       setPericopeSetId(null);
+      setPericopeSetResolved(true);
       return;
     }
+    setPericopeSetResolved(false);
     let cancelled = false;
     void getProjectPericopeSetId(args.projectId).then(id => {
-      if (!cancelled) setPericopeSetId(id);
+      if (!cancelled) {
+        setPericopeSetId(id);
+        setPericopeSetResolved(true);
+      }
     });
     return () => {
       cancelled = true;
@@ -58,35 +70,68 @@ export function useBibleTabUnits(args: {
   useEffect(() => {
     const requestId = ++pericopeRequestIdRef.current;
     setPericopes(current => (current.length === 0 ? current : []));
-    if (draftingUnit !== 'pericope' || pericopeSetId === null) {
+    if (draftingUnit !== 'pericope') {
+      setPericopesResolved(true);
       return;
     }
+    if (!pericopeSetResolved) {
+      setPericopesResolved(false);
+      return;
+    }
+    if (pericopeSetId === null) {
+      setPericopesResolved(true);
+      return;
+    }
+    setPericopesResolved(false);
+    let cancelled = false;
     void getPericopesForChapter(
       args.bookId,
       args.chapterNumber,
       pericopeSetId,
     ).then(groups => {
-      if (requestId === pericopeRequestIdRef.current) {
-        setPericopes(groups);
+      if (cancelled || requestId !== pericopeRequestIdRef.current) {
+        return;
       }
+      setPericopes(groups);
+      setPericopesResolved(true);
     });
-  }, [draftingUnit, pericopeSetId, args.bookId, args.chapterNumber]);
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    draftingUnit,
+    pericopeSetId,
+    pericopeSetResolved,
+    args.bookId,
+    args.chapterNumber,
+  ]);
 
   const refreshCoverages = useCallback(() => {
     const requestId = ++coverageRequestIdRef.current;
     void getSelectedTakeCoverages(args.bibleId, args.bookId).then(rows => {
-      if (requestId === coverageRequestIdRef.current) {
-        setCoverages(rows);
+      if (requestId !== coverageRequestIdRef.current) {
+        return;
       }
+      setCoverages(rows);
+      setCoveragesResolved(true);
     });
+  }, [args.bibleId, args.bookId]);
+
+  useEffect(() => {
+    setCoveragesResolved(false);
   }, [args.bibleId, args.bookId]);
 
   useEffect(() => {
     refreshCoverages();
   }, [refreshCoverages, args.coverageEpoch]);
 
+  const pericopeModePending =
+    draftingUnit === 'pericope' && (!pericopeSetResolved || !pericopesResolved);
+  const unitsPending = !coveragesResolved || pericopeModePending;
   const effectiveUnit =
-    draftingUnit === 'pericope' && pericopes.length > 0 ? 'pericope' : 'verse';
+    draftingUnit === 'pericope' && (pericopes.length > 0 || pericopeModePending)
+      ? 'pericope'
+      : 'verse';
 
   const units = useMemo(
     () =>
@@ -143,6 +188,7 @@ export function useBibleTabUnits(args: {
   return {
     draftingUnit,
     effectiveUnit,
+    unitsPending,
     units: unitViews,
     activeIndex,
     unitCaption,

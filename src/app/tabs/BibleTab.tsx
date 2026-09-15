@@ -11,6 +11,7 @@ import { useBibleTabUnits } from '../../hooks/useBibleTabUnits';
 import type { BibleTabUnitView } from '../../hooks/useBibleTabUnits';
 import { unitContainsVerse } from '../../utils/bibleTabUnits';
 import {
+  ActivityIndicator,
   FlatList,
   StyleSheet,
   Text,
@@ -109,7 +110,7 @@ export function BibleTab(_props: BibleTabProps = {}) {
   } = useDraftingContext();
   const first = verses[0];
   const chapterNumber = first?.chapterNumber ?? 0;
-  const { units, lastUnrecorded, draftingUnit, effectiveUnit } =
+  const { units, unitsPending, lastUnrecorded, draftingUnit, effectiveUnit } =
     useBibleTabUnits({
       bibleId: first?.bibleId ?? 0,
       bookId: first?.bookId ?? 0,
@@ -125,20 +126,11 @@ export function BibleTab(_props: BibleTabProps = {}) {
   const listRef = useRef<FlatList<BibleTabUnitView>>(null);
   const prevDraftingUnitRef = useRef(draftingUnit);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
-
+  const isPericopeList = effectiveUnit === 'pericope';
   const selectedIndex = units.findIndex(unit =>
     unitContainsVerse(unit, chapterNumber, selectedVerse),
   );
   const initialIndex = Math.max(0, selectedIndex);
-
-  useEffect(() => {
-    const selected = units.find(unit =>
-      unitContainsVerse(unit, chapterNumber, selectedVerse),
-    );
-    if (selected && effectiveUnit === 'pericope') {
-      setExpandedKey(selected.key);
-    }
-  }, [chapterNumber, effectiveUnit, selectedVerse, units]);
 
   useEffect(() => {
     if (prevDraftingUnitRef.current === draftingUnit) {
@@ -255,20 +247,33 @@ export function BibleTab(_props: BibleTabProps = {}) {
     [chapterNumber, expandedKey, handleUnitPress, selectedVerse],
   );
 
+  if (unitsPending) {
+    return (
+      <View style={styles.loading} testID="bible-tab-loading">
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <FlatList
+      key={effectiveUnit}
       ref={listRef}
       data={units}
       keyExtractor={item => item.key}
-      renderItem={
-        effectiveUnit === 'pericope' ? renderPericopeCard : renderVerseRow
+      extraData={isPericopeList ? expandedKey : undefined}
+      renderItem={isPericopeList ? renderPericopeCard : renderVerseRow}
+      initialScrollIndex={
+        isPericopeList || initialIndex === 0 ? undefined : initialIndex
       }
-      initialScrollIndex={initialIndex > 0 ? initialIndex : undefined}
-      onScrollToIndexFailed={handleScrollToIndexFailed}
+      onScrollToIndexFailed={
+        isPericopeList ? undefined : handleScrollToIndexFailed
+      }
       contentContainerStyle={
-        effectiveUnit === 'pericope' ? styles.cardContent : styles.content
+        isPericopeList ? styles.cardContent : styles.content
       }
       style={styles.list}
+      removeClippedSubviews={isPericopeList ? false : undefined}
       showsVerticalScrollIndicator={false}
       testID="bible-tab"
     />
@@ -278,6 +283,12 @@ export function BibleTab(_props: BibleTabProps = {}) {
 const styles = StyleSheet.create({
   list: {
     flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: theme.colors.background,
   },
   content: {
@@ -329,12 +340,15 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     gap: theme.spacing.md,
     borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   cardCollapsed: {
     backgroundColor: theme.colors.cardBackground,
   },
   cardExpanded: {
     backgroundColor: playingVerseHighlight,
+    borderColor: theme.colors.primary,
   },
   cardHeader: {
     flexDirection: 'row',

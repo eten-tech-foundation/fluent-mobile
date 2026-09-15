@@ -11,6 +11,7 @@ import {
   DraftingProvider,
   useDraftingContext,
 } from '../context/DraftingContext';
+import { getProjectPericopeSetId } from '../../db/repository';
 import {
   getPericopesForChapter,
   getRecordedVerseNumbers,
@@ -82,10 +83,12 @@ describe('BibleTab', () => {
       draftingUnit: 'verse',
       setDraftingUnit: jest.fn(),
     });
+    jest.mocked(getProjectPericopeSetId).mockResolvedValue(7);
     jest.mocked(getPericopesForChapter).mockResolvedValue([]);
+    jest.mocked(getSelectedTakeCoverages).mockResolvedValue([]);
   });
 
-  it('keeps the tapped verse selected on the Bible tab', () => {
+  it('keeps the tapped verse selected on the Bible tab', async () => {
     render(
       <DraftingProvider
         verses={verses}
@@ -97,12 +100,62 @@ describe('BibleTab', () => {
       </DraftingProvider>,
     );
 
+    await waitFor(() => {
+      expect(screen.getByLabelText('Verse 2')).toBeTruthy();
+    });
     fireEvent.press(screen.getByLabelText('Verse 2'));
     expect(screen.getByLabelText('Verse 2, selected')).toBeTruthy();
     expect(
       screen.getAllByTestId('bible-verse-waveform').length,
     ).toBeGreaterThan(0);
     expect(screen.queryByTestId('bible-unit-recorded')).toBeNull();
+  });
+
+  it('shows a loading indicator instead of verse rows while coverage loads', () => {
+    jest
+      .mocked(getSelectedTakeCoverages)
+      .mockImplementation(() => new Promise(() => {}));
+
+    render(
+      <DraftingProvider
+        verses={verses}
+        initialVerse={1}
+        chapterName="Mark 14"
+        bookName="Mark"
+      >
+        <BibleTab />
+      </DraftingProvider>,
+    );
+
+    expect(screen.getByTestId('bible-tab-loading')).toBeTruthy();
+    expect(screen.queryByTestId('bible-tab')).toBeNull();
+    expect(screen.queryByLabelText(/Verse /)).toBeNull();
+  });
+
+  it('shows a loading indicator instead of verse rows while pericopes load', () => {
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    jest
+      .mocked(getProjectPericopeSetId)
+      .mockImplementation(() => new Promise(() => {}));
+
+    render(
+      <DraftingProvider
+        verses={verses}
+        initialVerse={1}
+        projectId={9}
+        chapterName="Mark 14"
+        bookName="Mark"
+      >
+        <BibleTab />
+      </DraftingProvider>,
+    );
+
+    expect(screen.getByTestId('bible-tab-loading')).toBeTruthy();
+    expect(screen.queryByTestId('bible-tab')).toBeNull();
+    expect(screen.queryByLabelText(/Verse /)).toBeNull();
   });
 
   it('renders pericope range cards instead of Pericope N labels', async () => {
@@ -138,6 +191,10 @@ describe('BibleTab', () => {
       expect(screen.getByLabelText('Mark 14:1–2, selected')).toBeTruthy();
     });
     expect(screen.queryByText(/Pericope 1/)).toBeNull();
+    expect(screen.queryByTestId('bible-pericope-verse-1')).toBeNull();
+    expect(screen.queryByTestId('bible-pericope-verse-2')).toBeNull();
+
+    fireEvent.press(screen.getByLabelText('Mark 14:1–2, selected'));
     expect(screen.getByTestId('bible-pericope-verse-1')).toBeTruthy();
     expect(screen.getByTestId('bible-pericope-verse-2')).toBeTruthy();
 
@@ -219,6 +276,10 @@ describe('BibleTab', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('Mark 14:2, selected')).toBeTruthy();
     });
+    expect(screen.queryByTestId('bible-pericope-verse-2')).toBeNull();
+    expect(screen.queryByTestId('bible-pericope-verse-1')).toBeNull();
+
+    fireEvent.press(screen.getByLabelText('Mark 14:2, selected'));
     expect(screen.getByTestId('bible-pericope-verse-2')).toBeTruthy();
     expect(screen.queryByTestId('bible-pericope-verse-1')).toBeNull();
   });
