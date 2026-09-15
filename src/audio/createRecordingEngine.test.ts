@@ -87,6 +87,21 @@ describe('createRecordingEngine', () => {
     expect(statuses).toEqual(['recording', 'paused', 'recording', 'idle']);
   });
 
+  it('keeps the native recorder active while paused so Android resume does not re-enter MediaRecorder.resume()', async () => {
+    const recorder = makeFakeRecorder();
+    const engine = createRecordingEngine({ recorder });
+
+    await engine.start();
+    await engine.pause();
+    recorder.record = () => {
+      throw new Error('native resume failed');
+    };
+
+    await expect(engine.resume()).resolves.toBeUndefined();
+    expect(engine.getStatus()).toBe('recording');
+    expect(recorder.calls).toEqual(['prepare', 'record']);
+  });
+
   it('calls prepareAudioMode once before first start', async () => {
     const recorder = makeFakeRecorder();
     const prepareAudioMode = jest.fn(async () => undefined);

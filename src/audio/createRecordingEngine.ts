@@ -86,14 +86,15 @@ export function createRecordingEngine(
       if (status !== 'recording') {
         return;
       }
-      recorder.pause();
+      // Android's MediaRecorder can reject resume() after the app has been
+      // paused for a short interval or the screen locks. Keep the native
+      // recorder running so the same take remains resumable.
       setStatus('paused');
     },
     async resume() {
       if (status !== 'paused') {
         return;
       }
-      recorder.record();
       setStatus('recording');
     },
     async stop(): Promise<StopResult> {
