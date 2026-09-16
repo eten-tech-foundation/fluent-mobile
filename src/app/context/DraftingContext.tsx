@@ -16,6 +16,9 @@ interface DraftingContextValue {
   selectedVerse: number;
   setSelectedVerse: (verseNumber: number) => void;
   verses: VerseData[];
+  projectId: number | null;
+  bookName: string;
+  chapterName: string;
   /**
    * The verse whose source audio is currently playing, tracked
    * independently of `selectedVerse`. Not wired to real audio yet —
@@ -26,6 +29,11 @@ interface DraftingContextValue {
   setCurrentlyPlayingVerse: (verseNumber: number | null) => void;
   /** Verse numbers with a current take for the active user (#47 waveform icon). */
   recordedVerseNumbers: Set<number>;
+  /**
+   * Bumps on every recorded-verse refresh so coverage queries rerun even when
+   * the recorded-anchor count stays the same (replaced take / changed range).
+   */
+  recordedCoverageEpoch: number;
   /** Call after a take is added/deleted so the waveform icon reflects it. */
   refreshRecordedVerses: () => Promise<void>;
 }
@@ -38,12 +46,18 @@ interface DraftingProviderProps {
   children: React.ReactNode;
   verses: VerseData[];
   initialVerse: number;
+  projectId?: number | null;
+  bookName?: string;
+  chapterName?: string;
 }
 
 export function DraftingProvider({
   children,
   verses,
   initialVerse,
+  projectId = null,
+  bookName = '',
+  chapterName = '',
 }: DraftingProviderProps) {
   const [selectedVerse, setSelectedVerse] = useState<number>(initialVerse);
   const [currentlyPlayingVerse, setCurrentlyPlayingVerse] = useState<
@@ -52,6 +66,7 @@ export function DraftingProvider({
   const [recordedVerseNumbers, setRecordedVerseNumbers] = useState<Set<number>>(
     new Set(),
   );
+  const [recordedCoverageEpoch, setRecordedCoverageEpoch] = useState(0);
   const recordedVersesRequestIdRef = useRef(0);
 
   const chapterKey = verses[0]
@@ -64,6 +79,7 @@ export function DraftingProvider({
     if (!first) {
       if (requestId === recordedVersesRequestIdRef.current) {
         setRecordedVerseNumbers(new Set());
+        setRecordedCoverageEpoch(n => n + 1);
       }
       return;
     }
@@ -77,6 +93,7 @@ export function DraftingProvider({
         return;
       }
       setRecordedVerseNumbers(nums);
+      setRecordedCoverageEpoch(n => n + 1);
     } catch (error) {
       if (requestId !== recordedVersesRequestIdRef.current) {
         return;
@@ -95,16 +112,24 @@ export function DraftingProvider({
       selectedVerse,
       setSelectedVerse,
       verses,
+      projectId,
+      bookName,
+      chapterName,
       currentlyPlayingVerse,
       setCurrentlyPlayingVerse,
       recordedVerseNumbers,
+      recordedCoverageEpoch,
       refreshRecordedVerses,
     }),
     [
       selectedVerse,
       verses,
+      projectId,
+      bookName,
+      chapterName,
       currentlyPlayingVerse,
       recordedVerseNumbers,
+      recordedCoverageEpoch,
       refreshRecordedVerses,
     ],
   );

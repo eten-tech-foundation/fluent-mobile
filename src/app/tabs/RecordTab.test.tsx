@@ -48,6 +48,8 @@ jest.mock('../../db/queries', () => ({
   getBibleTextId: jest.fn(async () => 42),
   getRecordedVerseNumbers: jest.fn(async () => new Set([3])),
   getPericopeForVerse: jest.fn(async () => null),
+  getPericopesForChapter: jest.fn(async () => []),
+  getSelectedTakeCoverages: jest.fn(async () => []),
 }));
 
 const mockGetBibleTextId = getBibleTextId as jest.MockedFunction<

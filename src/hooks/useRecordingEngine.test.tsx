@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import * as ExpoAudio from 'expo-audio';
+import { AppState } from 'react-native';
 import {
   AudioRecorder,
   __setPermission,
@@ -121,6 +122,38 @@ describe('useRecordingEngine', () => {
       allowsRecording: false,
     });
     expect(stopSpy).not.toHaveBeenCalled();
+  });
+
+  it('re-pauses a paused recorder when the app returns active', async () => {
+    let appStateListener: ((state: string) => void) | undefined;
+    const remove = jest.fn();
+    const pauseSpy = jest.spyOn(recorder, 'pause');
+    jest
+      .spyOn(AppState, 'addEventListener')
+      .mockImplementation((_event, listener) => {
+        appStateListener = listener as (state: string) => void;
+        return { remove };
+      });
+
+    const { result, unmount } = renderHook(() => useRecordingEngine());
+
+    await act(async () => {
+      await result.current.start();
+      await result.current.pause();
+    });
+    expect(result.current.status).toBe('paused');
+    pauseSpy.mockClear();
+
+    recorder.isRecording = true;
+    act(() => {
+      appStateListener?.('active');
+    });
+
+    expect(pauseSpy).toHaveBeenCalledTimes(1);
+    expect(recorder.isRecording).toBe(false);
+
+    unmount();
+    expect(remove).toHaveBeenCalledTimes(1);
   });
 
   it('stops an active recording on unmount', async () => {

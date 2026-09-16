@@ -821,11 +821,21 @@ export async function getPericopesForChapter(
   const db = getDatabase();
   try {
     const result = await db.execute(
-      `SELECT pericope_number, pericope_title, section, chapter_number, verse_number
-       FROM pericope_verses
-       WHERE book_id = ? AND chapter_number = ? AND pericope_set_id = ?
-       ORDER BY section, pericope_number, verse_number`,
-      [bookId, chapterNumber, pericopeSetId],
+      `SELECT pv.pericope_number, pv.pericope_title, pv.section,
+              pv.chapter_number, pv.verse_number
+       FROM pericope_verses pv
+       WHERE pv.book_id = ? AND pv.pericope_set_id = ?
+         AND EXISTS (
+           SELECT 1
+           FROM pericope_verses hit
+           WHERE hit.book_id = pv.book_id
+             AND hit.pericope_set_id = pv.pericope_set_id
+             AND hit.pericope_number = pv.pericope_number
+             AND (hit.section IS pv.section OR hit.section = pv.section)
+             AND hit.chapter_number = ?
+         )
+       ORDER BY pv.section, pv.pericope_number, pv.chapter_number, pv.verse_number`,
+      [bookId, pericopeSetId, chapterNumber],
     );
     const rows = (result.rows ?? []) as unknown as {
       pericope_number: string;
@@ -862,6 +872,62 @@ export async function getPericopesForChapter(
       chapterNumber,
       pericopeSetId,
     });
+    return [];
+  }
+}
+
+/** Selected take ranges for Bible-tab recorded/partial status (#408). */
+export async function getSelectedTakeCoverages(
+  bibleId: number,
+  bookId: number,
+): Promise<
+  {
+    startChapter: number;
+    startVerse: number;
+    endChapter: number;
+    endVerse: number;
+  }[]
+> {
+  const db = getDatabase();
+  const userId = parseUserId();
+  try {
+    const result = await db.execute(
+      `SELECT r.granularity,
+              r.start_chapter,
+              r.start_verse,
+              r.end_chapter,
+              r.end_verse,
+              bt.chapter_number,
+              bt.verse_number
+       FROM recordings r
+       JOIN bible_texts bt ON bt.id = r.bible_text_id
+       WHERE bt.bible_id = ?
+         AND bt.book_id = ?
+         AND r.is_selected = 1
+         AND r.recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}`,
+      userId === null ? [bibleId, bookId] : [bibleId, bookId, userId],
+    );
+    const rows =
+      (result?.rows as unknown as {
+        granularity: string;
+        start_chapter: number;
+        start_verse: number;
+        end_chapter: number;
+        end_verse: number;
+        chapter_number: number;
+        verse_number: number;
+      }[]) || [];
+    return rows.map(row => {
+      const hasRange = row.start_chapter > 0 && row.start_verse > 0;
+      return {
+        startChapter: hasRange ? row.start_chapter : row.chapter_number,
+        startVerse: hasRange ? row.start_verse : row.verse_number,
+        endChapter: hasRange ? row.end_chapter : row.chapter_number,
+        endVerse: hasRange ? row.end_verse : row.verse_number,
+      };
+    });
+  } catch (error) {
+    log.error('Error fetching selected take coverages', { error });
     return [];
   }
 }

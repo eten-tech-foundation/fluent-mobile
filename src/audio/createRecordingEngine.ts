@@ -7,6 +7,7 @@ export type EngineRecorder = {
   record: () => void;
   pause: () => void;
   stop: () => Promise<void>;
+  readonly isRecording: boolean;
   readonly uri: string | null;
   /** Length of the recording in seconds (expo-audio). */
   readonly currentTime: number;
@@ -27,6 +28,7 @@ export type RecordingEngineDeps = {
 
 export type RecordingEngine = RecorderApi & {
   getStatus(): RecorderStatus;
+  syncPausedNativeState(): void;
 };
 
 /**
@@ -93,8 +95,23 @@ export function createRecordingEngine(
       if (status !== 'paused') {
         return;
       }
-      recorder.record();
+      if (!recorder.isRecording) {
+        if (prepareAudioMode) {
+          await prepareAudioMode();
+        }
+        if (status !== 'paused') {
+          return;
+        }
+        if (!recorder.isRecording) {
+          recorder.record();
+        }
+      }
       setStatus('recording');
+    },
+    syncPausedNativeState() {
+      if (status === 'paused' && recorder.isRecording) {
+        recorder.pause();
+      }
     },
     async stop(): Promise<StopResult> {
       if (status !== 'recording' && status !== 'paused') {
