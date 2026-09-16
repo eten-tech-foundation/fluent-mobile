@@ -78,17 +78,14 @@ tags:
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 
-# C1: Account B must not show A's My Work label
+# C1: Account B empty My Work — then prove A's label is absent
 - tapOn:
     id: 'home-tab-my-work'
+- extendedWaitUntil:
+    visible:
+      id: 'my-work-empty'
+    timeout: 60000
 - assertNotVisible: ${output.accountAMyWorkLabel}
-- runFlow:
-    when:
-      visible:
-        id: 'my-work-empty'
-    commands:
-      - assertVisible:
-          id: 'my-work-empty'
 
 # C3: switch to A — label returns
 - runFlow: ../../shared/nav/open-drawer.yaml

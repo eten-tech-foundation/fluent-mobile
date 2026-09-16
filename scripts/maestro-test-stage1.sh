@@ -15,7 +15,7 @@ FLOWS=(
 )
 
 need_b=0
-if [[ -n "${MAESTRO_EMAIL_2:-}" || -f "${ROOT}/.env.maestro" ]]; then
+if [[ -n "${MAESTRO_EMAIL_2:-}" || -n "${MAESTRO_PM_EMAIL:-}" || -n "${MAESTRO_PM_PASSWORD:-}" || -f "${ROOT}/.env.maestro" ]]; then
   # shellcheck source=maestro-env.sh
   source "${ROOT}/scripts/maestro-env.sh"
   if [[ -f "${ROOT}/.env.maestro" ]]; then

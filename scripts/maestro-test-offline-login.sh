@@ -11,7 +11,8 @@ restore_network() {
 trap restore_network EXIT
 
 bash "${ROOT}/scripts/maestro-adb-network.sh" offline
-exec bash "${ROOT}/scripts/maestro-test.sh" \
+# Do not exec — EXIT trap must restore network after the child finishes.
+bash "${ROOT}/scripts/maestro-test.sh" \
   --config .maestro/config.yaml \
   .maestro/flows/offline/login-offline.yaml \
   "$@"
