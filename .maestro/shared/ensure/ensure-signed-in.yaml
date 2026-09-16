@@ -8,8 +8,4 @@ appId: com.eten.fluent
         id: 'login-email-input'
     commands:
       - runFlow: ../auth/login-translator.yaml
-- extendedWaitUntil:
-    visible:
-      id: 'home-tab-my-work'
-    timeout: 180000
-- runFlow: ensure-at-home.yaml
+- runFlow: ensure-home-settled.yaml

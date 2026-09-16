@@ -6,14 +6,9 @@ tags:
   - edges
 ---
 - runFlow: ../../shared/ensure/ensure-on-login.yaml
-- runFlow: ../../shared/auth/login-translator.yaml
-- extendedWaitUntil:
-    visible:
-      id: 'home-tab-my-work'
-    timeout: 180000
-- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- runFlow: ../../shared/ensure/ensure-signed-in.yaml
 - runFlow: ../../shared/nav/goto-sync.yaml
 - assertVisible:
-    id: 'sync-upload-cellular'
+    id: 'sync-screen'
 - assertVisible:
-    id: 'sync-action-sync-now'
+    id: 'sync-upload-cellular'

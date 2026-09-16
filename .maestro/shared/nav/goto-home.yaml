@@ -1,12 +1,7 @@
 # Reach Home tabs from Sync / Settings / Prepare Offline / drafting.
 appId: com.eten.fluent
 ---
-- runFlow:
-    when:
-      visible:
-        id: 'prepare-offline-screen'
-    commands:
-      - back
+- runFlow: ../ensure/ensure-no-modal.yaml
 - runFlow:
     when:
       visible:
@@ -25,6 +20,7 @@ appId: com.eten.fluent
         id: 'settings-prepare-offline'
     commands:
       - back
+- runFlow: ../ensure/ensure-no-modal.yaml
 - extendedWaitUntil:
     visible:
       id: 'home-tab-my-work'

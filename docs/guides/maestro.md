@@ -63,7 +63,7 @@ Opt-in **Android-only** Maestro suite for Fluent Mobile. Architecture: state-tol
   shared/
     auth/              # login-as, login-translator, login-account-b, logout
     nav/               # goto-home/sync/settings, open-any-chapter, sync-now-and-return
-    ensure/            # ensure-on-login, ensure-signed-in, ensure-at-home, ensure-no-modal, ensure-take-capacity
+    ensure/            # ensure-on-login, ensure-signed-in, ensure-home-settled, ensure-at-home, ensure-no-modal, ensure-take-capacity
   flows/
     harness|auth|navigation|drafting|recording|sync|offline|accounts|edges/
 ```
@@ -168,7 +168,7 @@ Set `MAESTRO_LAUNCH_MODE=embedded` in `.env.maestro` to make it the local defaul
 ## Known flakes / residuals
 
 - First Home after `clearState`: wait up to 180s for `home-tab-my-work`.
-- Auto Prepare-for-Offline push: dismissed via `ensure-no-modal`.
+- Post-login Prepare-for-Offline auto-push: settle via `ensure-signed-in` / `ensure-home-settled` (dismiss PFO, then assert Home) — do not wait for `home-tab-my-work` alone before dismiss.
 - Reauth forced path: blocked without backend token-revoke — residual manual.
 - Three-account cap / sign-out-with-other-remaining: residual manual ([qa-multi-account-nightly.md](qa-multi-account-nightly.md)).
 - Record at 5-take cap: fail-fast via `ensure-take-capacity`.

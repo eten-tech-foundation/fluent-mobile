@@ -5,11 +5,7 @@ tags:
   - auth
 ---
 - runFlow: ../../shared/ensure/ensure-on-login.yaml
-- runFlow: ../../shared/auth/login-translator.yaml
-- extendedWaitUntil:
-    visible:
-      id: 'home-tab-my-work'
-    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-signed-in.yaml
 - assertVisible:
     id: 'home-tab-projects'
 - assertVisible:

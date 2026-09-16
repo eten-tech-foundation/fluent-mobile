@@ -25,6 +25,7 @@ appId: com.eten.fluent
 - assertNotVisible:
     id: 'login-email-input'
 - back
+- runFlow: ../ensure/ensure-no-modal.yaml
 - extendedWaitUntil:
     visible:
       id: 'home-tab-my-work'

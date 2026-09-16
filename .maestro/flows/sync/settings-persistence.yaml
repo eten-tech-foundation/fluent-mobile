@@ -5,12 +5,7 @@ tags:
   - settings
 ---
 - runFlow: ../../shared/ensure/ensure-on-login.yaml
-- runFlow: ../../shared/auth/login-translator.yaml
-- extendedWaitUntil:
-    visible:
-      id: 'home-tab-my-work'
-    timeout: 180000
-- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- runFlow: ../../shared/ensure/ensure-signed-in.yaml
 - runFlow: ../../shared/nav/goto-settings.yaml
 - scrollUntilVisible:
     element:
@@ -39,6 +34,7 @@ tags:
     id: 'settings-drafting-unit-pericope'
     selected: true
 - back
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - extendedWaitUntil:
     visible:
       id: 'home-tab-my-work'
