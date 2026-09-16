@@ -7,7 +7,7 @@ Automated **Android-only** production releases for Fluent Mobile.
 | File | Purpose |
 |------|---------|
 | `create-production-builds.yml` | Production Android AAB build + Play Store submit on version tags |
-| `maestro-android.yml` | Maestro E2E: nightly `get-build`+fingerprint against nightly APK when possible; PR harness (paths-filtered); `workflow_dispatch` suites |
+| `maestro-android.yml` | Informational Maestro E2E (`e2e-test` APK → `type: maestro`; `workflow_dispatch` suite) |
 
 Tag-based version sync runs in GitHub Actions (`.github/workflows/eas-build.yml`).
 
