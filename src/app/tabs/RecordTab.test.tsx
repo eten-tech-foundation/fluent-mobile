@@ -399,17 +399,19 @@ describe('RecordTab', () => {
 
     renderTab();
 
-    expect(screen.getByTestId('record-take-row')).toBeTruthy();
-    expect(screen.getByTestId('record-take-badge')).toHaveTextContent(
+    expect(screen.getByTestId('record-take-row-rec_1')).toBeTruthy();
+    expect(screen.getByTestId('record-take-badge-rec_1')).toHaveTextContent(
       'Take 1 - Verse - v. 3',
     );
-    expect(screen.getByTestId('record-play-button')).toBeTruthy();
-    expect(screen.getByTestId('record-take-time')).toBeTruthy();
+    expect(screen.getByTestId('record-play-button-rec_1')).toBeTruthy();
+    expect(screen.getByTestId('record-take-time-rec_1')).toBeTruthy();
     // Not the loaded take (playingTakeId is null), so position falls back to
     // 0 and duration falls back to the take's stored duration — rendered as
     // one combined "position / duration" label, not duration alone.
     expect(screen.getByText('0:00 / 0:13')).toBeTruthy();
-    expect(screen.getByTestId('record-delete-selected-button')).toBeTruthy();
+    expect(
+      screen.getByTestId('record-delete-selected-button-rec_1'),
+    ).toBeTruthy();
     expect(screen.getByTestId('record-new-take-button')).toBeTruthy();
     expect(screen.getByText('Record New Take')).toBeTruthy();
     // Toggle hidden — only this account has takes for the unit.
@@ -432,7 +434,7 @@ describe('RecordTab', () => {
 
     renderTab();
 
-    expect(screen.getByTestId('record-take-badge')).toHaveTextContent(
+    expect(screen.getByTestId('record-take-badge-rec_1')).toHaveTextContent(
       'Take 2 - Pericope - vv. 3-7',
     );
   });
@@ -449,10 +451,12 @@ describe('RecordTab', () => {
 
     renderTab();
 
-    const badges = screen.getAllByTestId('record-take-badge');
-    expect(badges).toHaveLength(2);
-    expect(badges[0]).toHaveTextContent('Take 1 - Verse - v. 3');
-    expect(badges[1]).toHaveTextContent('Take 2 - Verse - v. 3');
+    expect(screen.getByTestId('record-take-badge-rec_1')).toHaveTextContent(
+      'Take 1 - Verse - v. 3',
+    );
+    expect(screen.getByTestId('record-take-badge-rec_2')).toHaveTextContent(
+      'Take 2 - Verse - v. 3',
+    );
 
     expect(
       screen.getByLabelText('Select this take as active draft'),
@@ -488,7 +492,7 @@ describe('RecordTab', () => {
 
     renderTab();
 
-    fireEvent.press(screen.getByTestId('record-delete-button')); // take 1
+    fireEvent.press(screen.getByTestId('record-delete-button-rec_1')); // take 1
 
     expect(Alert.alert).not.toHaveBeenCalled();
     expect(idleAudio.deleteTake).toHaveBeenCalledWith('rec_1');
@@ -506,7 +510,7 @@ describe('RecordTab', () => {
 
     renderTab();
 
-    fireEvent.press(screen.getByTestId('record-delete-selected-button'));
+    fireEvent.press(screen.getByTestId('record-delete-selected-button-rec_2'));
 
     expect(Alert.alert).toHaveBeenCalledTimes(1);
     expect(idleAudio.deleteTake).not.toHaveBeenCalled();
@@ -535,8 +539,7 @@ describe('RecordTab', () => {
 
     const { rerender } = renderTab();
 
-    const playButtons = screen.getAllByTestId('record-play-button');
-    fireEvent.press(playButtons[0]!); // play take 1
+    fireEvent.press(screen.getByTestId('record-play-button-rec_1')); // play take 1
     await waitFor(() => {
       expect(idleAudio.playTake).toHaveBeenCalledWith(take1);
     });
@@ -556,13 +559,12 @@ describe('RecordTab', () => {
       </DraftingProvider>,
     );
 
-    const playButtonsAfter = screen.getAllByTestId('record-play-button');
-    fireEvent.press(playButtonsAfter[0]!); // tap the same (now playing) take
+    fireEvent.press(screen.getByTestId('record-play-button-rec_1')); // tap the same (now playing) take
     await waitFor(() => {
       expect(idleAudio.pausePlayback).toHaveBeenCalled();
     });
     // Tapping a different, non-loaded take's play button still calls playTake.
-    fireEvent.press(playButtonsAfter[1]!);
+    fireEvent.press(screen.getByTestId('record-play-button-rec_2'));
     await waitFor(() => {
       expect(idleAudio.playTake).toHaveBeenCalledWith(take2);
     });
@@ -728,7 +730,9 @@ describe('RecordTab', () => {
 
       renderTab();
 
-      expect(screen.getByTestId('record-take-canonical-readonly')).toBeTruthy();
+      expect(
+        screen.getByTestId('record-take-canonical-readonly-rec_1'),
+      ).toBeTruthy();
     });
 
     it('does not show Record New Take in All Takes view', () => {
@@ -867,7 +871,7 @@ describe('RecordTab', () => {
       expect(screen.getByTestId('take-view-toggle')).toBeTruthy();
       // My Takes shows the idle record button, not a take list or Record New Take.
       expect(screen.getByTestId('record-start-button')).toBeTruthy();
-      expect(screen.queryByTestId('record-take-row')).toBeNull();
+      expect(screen.queryByTestId('record-take-row-rec_1')).toBeNull();
       expect(screen.queryByTestId('record-new-take-button')).toBeNull();
 
       fireEvent.press(screen.getByTestId('take-view-all'));

@@ -1,0 +1,12 @@
+# Cold launch → login screen (harness proof).
+# Metro: deep-links past Dev Client launcher. Embedded: MAESTRO_LAUNCH_MODE=embedded.
+appId: com.eten.fluent
+tags:
+  - harness
+---
+- runFlow: ../../helpers/launch-android.yaml
+- runFlow: ../../helpers/boot-past-dev-launcher.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'login-email-input'
+    timeout: 180000

@@ -32,7 +32,12 @@ export function StackScreenHeader({
       subtitle={subtitle}
       subtitleLines={subtitleLines}
       titleAlign="start"
-      left={<HeaderBackButton onPress={onBack} testID={backTestID} />}
+      left={
+        <HeaderBackButton
+          onPress={onBack}
+          testID={backTestID ?? 'stack-header-back'}
+        />
+      }
       right={
         onSyncPress && syncStatus ? (
           <TouchableOpacity
@@ -41,6 +46,7 @@ export function StackScreenHeader({
             style={styles.syncButton}
             accessibilityRole="button"
             accessibilityLabel={SYNC_STATUS_LABELS[syncStatus]}
+            testID="stack-header-sync-button"
           >
             <CloudSyncStatusIcon status={syncStatus} decorative />
           </TouchableOpacity>

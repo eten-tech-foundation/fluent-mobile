@@ -78,10 +78,10 @@ if [[ -f .maestro/config.yaml ]]; then
 else
   fail ".maestro/config.yaml missing"
 fi
-if [[ -f .maestro/flows/smoke-launch.yaml ]]; then
-  ok ".maestro/flows/smoke-launch.yaml"
+if [[ -f .maestro/flows/harness/launch.yaml ]]; then
+  ok ".maestro/flows/harness/launch.yaml"
 else
-  fail "smoke-launch.yaml missing"
+  fail "flows/harness/launch.yaml missing"
 fi
 
 if [[ "${status}" -ne 0 ]]; then
@@ -92,5 +92,5 @@ fi
 
 echo ""
 echo "doctor: OK"
-echo "Next: npm run maestro:android:up  # then Metro with EXPO_PUBLIC_E2E_MODE=1"
+echo "Next: npm run maestro:android:up  # then npm run maestro:metro"
 echo "      npm run maestro:test:harness"

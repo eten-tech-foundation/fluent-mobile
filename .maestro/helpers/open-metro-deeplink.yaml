@@ -1,0 +1,12 @@
+# Deep-link into Metro (skips Dev Client launcher UI).
+# Opt-in: only when MAESTRO_LAUNCH_MODE=metro (local Debug). EAS e2e/nightly
+# leaves the var unset / embedded — never openLink a packager URL there.
+appId: com.eten.fluent
+---
+- runFlow:
+    when:
+      true: ${MAESTRO_LAUNCH_MODE == 'metro'}
+    commands:
+      - openLink: ${MAESTRO_DEV_CLIENT_URL}
+      - waitForAnimationToEnd:
+          timeout: 30000

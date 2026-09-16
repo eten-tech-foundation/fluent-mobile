@@ -1,0 +1,33 @@
+# Settings toggles persist across navigation (cellular + drafting unit).
+appId: com.eten.fluent
+tags:
+  - smoke
+  - settings
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- runFlow: ../../shared/auth/login-translator.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- runFlow: ../../shared/nav/goto-settings.yaml
+- scrollUntilVisible:
+    element:
+      id: 'settings-upload-cellular'
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: 'settings-upload-cellular'
+- assertVisible:
+    id: 'settings-drafting-unit'
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000
+- runFlow: ../../shared/nav/goto-settings.yaml
+- assertVisible:
+    id: 'settings-upload-cellular'
+- assertVisible:
+    id: 'settings-drafting-unit'

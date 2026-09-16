@@ -890,6 +890,7 @@ export function RecordTab({
                       return (
                         <View key={take.id} style={styles.takeItemSpacing}>
                           <DraftTakeRow
+                            takeId={take.id}
                             takeNumber={take.takeNumber}
                             label={formatTakeSubtitle(take)}
                             isSelected={isSelected}

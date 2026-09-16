@@ -1,12 +1,9 @@
-# Prefer EXPO_PUBLIC_E2E_MODE=1 on Debug+Metro so the menu never opens.
-# Optional taps tolerate delayed sheets; missing UI is a no-op when E2E mode suppresses it.
+# Prefer EXPO_PUBLIC_E2E_MODE=1 on Debug+Metro so the Dev Menu never opens.
+# Clears residual Dev Menu sheets only — do NOT tap "8081" (that fights deep-link).
 appId: com.eten.fluent
 ---
 - tapOn:
     text: 'Continue'
-    optional: true
-- tapOn:
-    text: '.*8081.*'
     optional: true
 - tapOn:
     text: 'Close'

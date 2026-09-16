@@ -1,0 +1,39 @@
+# Login validation matrix: empty email, malformed email, empty password.
+appId: com.eten.fluent
+tags:
+  - smoke
+  - edges
+  - validation
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+
+# Empty email
+- tapOn:
+    id: 'login-submit-button'
+- assertVisible:
+    id: 'login-email-error'
+
+# Malformed email
+- tapOn:
+    id: 'login-email-input'
+- eraseText
+- inputText: not-an-email
+- hideKeyboard
+- tapOn:
+    id: 'login-submit-button'
+- assertVisible:
+    id: 'login-email-error'
+
+# Empty password (valid email shape)
+- tapOn:
+    id: 'login-email-input'
+- eraseText
+- inputText: ${MAESTRO_EMAIL}
+- tapOn:
+    id: 'login-password-input'
+- eraseText
+- hideKeyboard
+- tapOn:
+    id: 'login-submit-button'
+- assertVisible:
+    id: 'login-password-error'

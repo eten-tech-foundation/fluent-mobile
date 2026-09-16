@@ -29,7 +29,9 @@ export function MyWorkTab({
   }
 
   if (chapters.length === 0) {
-    return <EmptyState message={MY_WORK_EMPTY_MESSAGE} />;
+    return (
+      <EmptyState message={MY_WORK_EMPTY_MESSAGE} testID="my-work-empty" />
+    );
   }
 
   return (

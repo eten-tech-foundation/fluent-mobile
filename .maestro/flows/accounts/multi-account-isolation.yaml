@@ -1,0 +1,110 @@
+# Multi-account isolation — nightly checklist A–D.
+# Account A = translator shape (MAESTRO_EMAIL). Account B = member-without-assignments (MAESTRO_EMAIL_2).
+appId: com.eten.fluent
+tags:
+  - multi-account
+  - accounts
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- runFlow: ../../shared/auth/login-translator.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- runFlow: ../../shared/nav/sync-now-and-return.yaml
+
+- tapOn:
+    id: 'home-tab-my-work'
+- extendedWaitUntil:
+    visible:
+      id: 'my-work-row-title-.*'
+    timeout: 60000
+- copyTextFrom:
+    id: 'my-work-row-title-.*'
+- evalScript: ${output.accountAMyWorkLabel = maestro.copiedText}
+- assertTrue: ${output.accountAMyWorkLabel != null && output.accountAMyWorkLabel != ''}
+
+# A2: Add User → Account B
+- runFlow: ../../shared/nav/open-drawer.yaml
+- tapOn:
+    id: 'settings-menu-add-user'
+- extendedWaitUntil:
+    visible:
+      id: 'login-email-input'
+    timeout: 30000
+- runFlow: ../../shared/auth/login-account-b.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- runFlow: ../../shared/nav/sync-now-and-return.yaml
+
+# A1–A2: both accounts listed
+- runFlow: ../../shared/nav/open-drawer.yaml
+- assertVisible: ${MAESTRO_EMAIL}
+- assertVisible: ${MAESTRO_EMAIL_2}
+- assertVisible:
+    id: 'settings-menu-active-.*'
+- pressKey: Back
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 15000
+
+# B: switch B → A, then A → B
+- runFlow: ../../shared/nav/open-drawer.yaml
+- tapOn: ${MAESTRO_EMAIL}
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- runFlow: ../../shared/nav/goto-settings.yaml
+- assertVisible:
+    id: 'settings-log-out'
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000
+
+- runFlow: ../../shared/nav/open-drawer.yaml
+- tapOn: ${MAESTRO_EMAIL_2}
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+
+# C1: Account B must not show A's My Work label
+- tapOn:
+    id: 'home-tab-my-work'
+- assertNotVisible: ${output.accountAMyWorkLabel}
+- runFlow:
+    when:
+      visible:
+        id: 'my-work-empty'
+    commands:
+      - assertVisible:
+          id: 'my-work-empty'
+
+# C3: switch to A — label returns
+- runFlow: ../../shared/nav/open-drawer.yaml
+- tapOn: ${MAESTRO_EMAIL}
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- tapOn:
+    id: 'home-tab-my-work'
+- extendedWaitUntil:
+    visible:
+      id: 'my-work-row-\d+$'
+    timeout: 60000
+- assertVisible: ${output.accountAMyWorkLabel}
+
+# D: sync on active user
+- runFlow: ../../shared/nav/sync-now-and-return.yaml

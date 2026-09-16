@@ -1,0 +1,10 @@
+# Home → Sync screen via header sync button.
+appId: com.eten.fluent
+---
+- runFlow: goto-home.yaml
+- tapOn:
+    id: 'home-sync-button'
+- extendedWaitUntil:
+    visible:
+      id: 'sync-screen'
+    timeout: 30000

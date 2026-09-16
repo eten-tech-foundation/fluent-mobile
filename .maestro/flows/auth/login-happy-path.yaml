@@ -1,0 +1,16 @@
+# Login happy path → Home tabs visible.
+appId: com.eten.fluent
+tags:
+  - smoke
+  - auth
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- runFlow: ../../shared/auth/login-translator.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- assertVisible:
+    id: 'home-tab-projects'
+- assertVisible:
+    id: 'home-settings-button'
