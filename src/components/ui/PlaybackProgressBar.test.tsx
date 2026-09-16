@@ -189,4 +189,47 @@ describe('PlaybackProgressBar', () => {
     });
     expect(onSeek).not.toHaveBeenCalled();
   });
+
+  it('renders labeled verse-boundary ticks when tickMarks are provided', () => {
+    render(
+      <PlaybackProgressBar
+        positionMs={0}
+        durationMs={2000}
+        barCount={8}
+        showPlayhead
+        onSeek={() => undefined}
+        tickMarks={[
+          { verse: 16, ratio: 0.25 },
+          { verse: 21, ratio: 0.5 },
+        ]}
+      />,
+    );
+    const bar = screen.getByTestId('playback-progress');
+    fireEvent(bar, 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 200, height: 36 } },
+    });
+    expect(screen.getByTestId('playback-progress-tick-16')).toHaveTextContent(
+      '16',
+    );
+    expect(screen.getByTestId('playback-progress-tick-21')).toHaveTextContent(
+      '21',
+    );
+  });
+
+  it('renders a plain scrubber when tickMarks are omitted', () => {
+    render(
+      <PlaybackProgressBar
+        positionMs={0}
+        durationMs={2000}
+        barCount={8}
+        showPlayhead
+        onSeek={() => undefined}
+      />,
+    );
+    const bar = screen.getByTestId('playback-progress');
+    fireEvent(bar, 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 200, height: 36 } },
+    });
+    expect(screen.queryByTestId('playback-progress-tick-16')).toBeNull();
+  });
 });

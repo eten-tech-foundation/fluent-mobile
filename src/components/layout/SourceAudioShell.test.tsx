@@ -10,6 +10,19 @@ import {
 
 jest.mock('../../db/queries', () => ({
   getRecordedVerseNumbers: jest.fn(async () => new Set()),
+  getPericopesForChapter: jest.fn(async () => []),
+  getSelectedTakeCoverages: jest.fn(async () => []),
+}));
+
+jest.mock('../../db/repository', () => ({
+  getProjectPericopeSetId: jest.fn(async () => null),
+}));
+
+jest.mock('../../hooks/useDraftingUnit', () => ({
+  useDraftingUnit: () => ({
+    draftingUnit: 'verse',
+    setDraftingUnit: jest.fn(),
+  }),
 }));
 
 const mockUseSourceAudio = jest.fn();
@@ -69,6 +82,7 @@ function renderSlot(
     positionMs: 0,
     durationMs: 60000,
     isPlaying: false,
+    verseTimestamps: undefined,
     play: mockPlay,
     pause: mockPause,
     seek: jest.fn(),
