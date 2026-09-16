@@ -179,7 +179,7 @@ export function BibleTab(_props: BibleTabProps = {}) {
           accessibilityLabel={`Verse ${item.anchorVerse}${
             isSelected ? ', selected' : ''
           }`}
-          testID={`bible-verse-row-${item.verseNumber}`}
+          testID={`bible-verse-row-${item.anchorVerse}`}
         >
           <View style={styles.iconColumn}>
             <Text
