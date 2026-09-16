@@ -834,7 +834,7 @@ export async function getPericopesForChapter(
              AND (hit.section IS pv.section OR hit.section = pv.section)
              AND hit.chapter_number = ?
          )
-       ORDER BY pv.section, pv.pericope_number, pv.chapter_number, pv.verse_number`,
+       ORDER BY pv.chapter_number, pv.verse_number`,
       [bookId, pericopeSetId, chapterNumber],
     );
     const rows = (result.rows ?? []) as unknown as {
@@ -864,7 +864,18 @@ export async function getPericopesForChapter(
         });
       }
     }
-    return Array.from(groups.values());
+    // FCBH `section` is a harmony id, not reading order (Mark 1:16–20 is
+    // section 2; Mark 1:1–5 is section 51). Sort groups by first verse.
+    return Array.from(groups.values()).sort((a, b) => {
+      const av = a.verses[0];
+      const bv = b.verses[0];
+      if (!av) return 1;
+      if (!bv) return -1;
+      if (av.chapterNumber !== bv.chapterNumber) {
+        return av.chapterNumber - bv.chapterNumber;
+      }
+      return av.verseNumber - bv.verseNumber;
+    });
   } catch (error) {
     log.error('Error fetching pericopes for chapter', {
       error,
