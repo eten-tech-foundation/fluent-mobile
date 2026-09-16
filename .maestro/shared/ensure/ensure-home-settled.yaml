@@ -4,7 +4,7 @@
 appId: com.eten.fluent
 ---
 - repeat:
-    times: 10
+    times: 6
     while:
       notVisible:
         id: 'home-tab-my-work'
@@ -16,5 +16,8 @@ appId: com.eten.fluent
 - extendedWaitUntil:
     visible:
       id: 'home-tab-my-work'
-    timeout: 180000
-- runFlow: ensure-at-home.yaml
+    timeout: 120000
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-tab-projects'

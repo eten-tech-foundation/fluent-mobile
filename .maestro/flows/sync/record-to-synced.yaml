@@ -46,11 +46,7 @@ tags:
     timeout: 30000
 - tapOn:
     id: 'drafting-header-back'
-- runFlow: ../../shared/ensure/ensure-no-modal.yaml
-- extendedWaitUntil:
-    visible:
-      id: 'home-tab-my-work'
-    timeout: 30000
+- runFlow: ../../shared/nav/goto-home.yaml
 # Require pending upload chrome before sync-now-and-return (helper's sync-now tap is optional)
 - runFlow: ../../shared/nav/goto-sync.yaml
 - extendedWaitUntil:

@@ -1,9 +1,11 @@
-# Dismiss auto Prepare-for-Offline push and drawer if present.
+# Dismiss auto Prepare-for-Offline push, Expo Dev Menu, and drawer if present.
 # Repeat — sync can re-push Prepare-for-Offline after the first dismiss.
+# Only use stack-header-back for PFO (never system Back — overshoots to launcher).
 appId: com.eten.fluent
 ---
+- runFlow: ../../helpers/dismiss-expo-dev-menu.yaml
 - repeat:
-    times: 4
+    times: 6
     while:
       visible:
         id: 'prepare-offline-screen'
@@ -18,3 +20,4 @@ appId: com.eten.fluent
         id: 'settings-drawer-content'
     commands:
       - pressKey: Back
+- runFlow: ../../helpers/dismiss-expo-dev-menu.yaml

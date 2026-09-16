@@ -14,18 +14,12 @@ appId: com.eten.fluent
 - tapOn:
     id: 'my-work-row-\d+$'
 - repeat:
-    times: 6
+    times: 8
     while:
       notVisible:
         id: 'drafting-tab-bar'
     commands:
-      - runFlow:
-          when:
-            visible:
-              id: 'prepare-offline-screen'
-          commands:
-            - tapOn:
-                id: 'stack-header-back'
+      - runFlow: ../ensure/ensure-no-modal.yaml
       - runFlow:
           when:
             visible:

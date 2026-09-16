@@ -1,16 +1,18 @@
 # Prefer EXPO_PUBLIC_E2E_MODE=1 on Debug+Metro so the Dev Menu never opens.
-# Clears residual Dev Menu sheets only — do NOT tap "8081" (that fights deep-link).
+# Only dismiss when Dev Menu chrome is visible. Never pressKey Back — that
+# leaves the app and lands on the Android launcher (breaks ensure-on-login).
 appId: com.eten.fluent
 ---
-- tapOn:
-    text: 'Continue'
-    optional: true
-- tapOn:
-    text: 'Close'
-    optional: true
-# pressKey cannot be optional; only send Back when Dev Menu chrome is present
 - runFlow:
     when:
       visible: 'Toggle performance monitor'
     commands:
-      - pressKey: back
+      - tapOn:
+          text: 'Close'
+- runFlow:
+    when:
+      visible: 'Reload'
+    commands:
+      - tapOn:
+          text: 'Close'
+          optional: true
