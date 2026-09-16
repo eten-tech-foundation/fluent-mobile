@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { AppState } from 'react-native';
 import {
   RecordingPresets,
   setAudioModeAsync,
@@ -59,6 +60,18 @@ export function useRecordingEngine(): UseRecordingEngineApi {
         void releaseRecordingAudioMode();
       }
     };
+  }, [engine]);
+
+  // expo-audio's Android module can resume paused recorders when the activity
+  // returns to foreground. If our UI still represents a paused take, restore
+  // the native paused state before the user taps Resume.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextState => {
+      if (nextState === 'active') {
+        engine.syncPausedNativeState();
+      }
+    });
+    return () => subscription.remove();
   }, [engine]);
 
   return {
