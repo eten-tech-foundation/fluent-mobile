@@ -38,6 +38,17 @@ jest.mock('../../hooks/useSyncStatus', () => ({
   useSyncStatus: () => ({ status: 'idle' }),
 }));
 
+jest.mock('../../hooks/useDraftingUnit', () => ({
+  useDraftingUnit: () => ({
+    draftingUnit: 'verse',
+    setDraftingUnit: jest.fn(),
+  }),
+}));
+
+jest.mock('../../db/repository', () => ({
+  getProjectPericopeSetId: jest.fn(async () => null),
+}));
+
 jest.mock('../../hooks/useActiveAccountSummary', () => ({
   useActiveAccountSummary: () => ({
     hasMultipleAccounts: false,
@@ -155,6 +166,8 @@ jest.mock('../../db/queries', () => ({
   getBibleTexts: (...args: unknown[]) => mockGetBibleTexts(...args),
   getRecordedVerseNumbers: (...args: unknown[]) =>
     mockGetRecordedVerseNumbers(...args),
+  getPericopesForChapter: jest.fn(async () => []),
+  getSelectedTakeCoverages: jest.fn(async () => []),
 }));
 
 const baseAssignment = {

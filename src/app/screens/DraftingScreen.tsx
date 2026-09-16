@@ -331,7 +331,13 @@ export default function DraftingScreen() {
 
   return (
     <ScreenContainer>
-      <DraftingProvider verses={verses} initialVerse={initialVerse}>
+      <DraftingProvider
+        verses={verses}
+        initialVerse={initialVerse}
+        projectId={chapterData.projectId}
+        bookName={chapterData.bookName ?? ''}
+        chapterName={chapterName}
+      >
         <SourceAudioProvider
           chapterData={chapterData}
           activeTab={activeTab}
