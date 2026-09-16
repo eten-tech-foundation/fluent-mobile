@@ -5,6 +5,7 @@ import {
   type GestureResponderEvent,
   type LayoutChangeEvent,
   StyleSheet,
+  Text,
   View,
 } from 'react-native';
 import { theme } from '../../theme';
@@ -39,6 +40,8 @@ type Props = {
   rowHeight?: number;
   /** Accessibility label when seekable; defaults by playhead presence. */
   accessibilityLabel?: string;
+  /** Verse-boundary marks on the source-audio waveform (#408). */
+  tickMarks?: { verse: number; ratio: number }[];
 };
 
 /** Lovable-style decorative height: sine envelope + light phase noise (0–1). */
@@ -136,6 +139,7 @@ export function PlaybackProgressBar({
   idleColor,
   rowHeight: rowHeightProp,
   accessibilityLabel: accessibilityLabelProp,
+  tickMarks,
 }: Props) {
   const seekable = Boolean(onSeek) && !animate && durationMs > 0;
   const [trackWidth, setTrackWidth] = useState(0);
@@ -357,6 +361,33 @@ export function PlaybackProgressBar({
           ]}
         />
       ) : null}
+      {trackWidth > 0
+        ? (tickMarks ?? []).map(mark => (
+            <View
+              key={mark.verse}
+              pointerEvents="none"
+              testID={`playback-progress-tick-${mark.verse}`}
+              style={[
+                styles.tick,
+                {
+                  left: Math.min(
+                    trackWidth - 1,
+                    Math.max(0, mark.ratio * trackWidth),
+                  ),
+                  height: rowHeight,
+                },
+              ]}
+            >
+              <Text style={styles.tickLabel}>{mark.verse}</Text>
+              <View
+                style={[
+                  styles.tickLine,
+                  { backgroundColor: theme.colors.mutedForeground },
+                ]}
+              />
+            </View>
+          ))
+        : null}
     </View>
   );
 }
@@ -367,7 +398,7 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     // Bars are measured-fit below, but clip until the first layout arrives so
     // they can never paint over a sibling (e.g. the take-row timer).
     overflow: 'hidden',
@@ -391,5 +422,23 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     borderRadius: theme.radius.full,
+  },
+  tick: {
+    position: 'absolute',
+    top: 0,
+    width: 24,
+    marginLeft: -12,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  tickLabel: {
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.mutedForeground,
+    lineHeight: theme.typography.sizes.sm,
+  },
+  tickLine: {
+    width: 1,
+    flex: 1,
+    opacity: 0.45,
   },
 });

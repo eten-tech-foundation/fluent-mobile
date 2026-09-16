@@ -23,6 +23,7 @@ interface SourceAudioPlayerBarProps {
   sourceLabel?: string;
   /** Verse-mode unit counter (e.g. `Verse 3 / 12`). */
   unitCaption?: string;
+  tickMarks?: { verse: number; ratio: number }[];
   loadState?: SourceAudioLoadState;
   isPlaying?: boolean;
   isLoadingAudio?: boolean;
@@ -51,6 +52,7 @@ function formatFooterLabel(sourceLabel: string, unitCaption: string): string {
 export function SourceAudioPlayerBar({
   sourceLabel = 'Source',
   unitCaption = '',
+  tickMarks,
   loadState = 'empty',
   isPlaying = false,
   isLoadingAudio = false,
@@ -168,6 +170,7 @@ export function SourceAudioPlayerBar({
               idleColor={theme.colors.waveformIdle}
               rowHeight={theme.waveform.sourceDockHeight}
               showPlayhead
+              tickMarks={tickMarks}
               accessibilityLabel="Source audio waveform scrubber"
               onSeek={position => {
                 void onSeek?.(position);

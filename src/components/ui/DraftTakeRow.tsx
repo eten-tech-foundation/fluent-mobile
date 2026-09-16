@@ -17,8 +17,10 @@ type DraftTakeRowProps = {
   isPlaying: boolean;
   isSelected: boolean;
   onPlayPause: () => void;
-  onSelect: () => void;
-  onDelete: () => void;
+  /** Omitted by play-only rows, e.g. the stitched aggregate row (#411). */
+  onSelect?: () => void;
+  /** Omitted by play-only rows — the control is not rendered at all. */
+  onDelete?: () => void;
   /** Review scrub — tap/drag waveform (#176). */
   onSeek?: (positionMs: number) => void;
   leadingIndicator?: 'selection' | 'canonicalReadOnly' | 'none';
@@ -72,7 +74,7 @@ export function DraftTakeRow({
       ]}
       testID={`record-take-row-${takeId}`}
     >
-      {leadingIndicator === 'selection' ? (
+      {leadingIndicator === 'selection' && onSelect ? (
         <TouchableOpacity
           onPress={onSelect}
           accessibilityRole="button"
@@ -161,24 +163,26 @@ export function DraftTakeRow({
           />
         </View>
       ) : null}
-      <TouchableOpacity
-        onPress={onDelete}
-        accessibilityRole="button"
-        accessibilityLabel="Delete take"
-        testID={
-          isSelected
-            ? `record-delete-selected-button-${takeId}`
-            : `record-delete-button-${takeId}`
-        }
-        hitSlop={8}
-        style={styles.deleteHit}
-      >
-        <Trash2
-          size={iconSizes.chevron}
-          color={theme.colors.destructive}
-          strokeWidth={listIconStrokeWidth}
-        />
-      </TouchableOpacity>
+      {onDelete ? (
+        <TouchableOpacity
+          onPress={onDelete}
+          accessibilityRole="button"
+          accessibilityLabel="Delete take"
+          testID={
+            isSelected
+              ? `record-delete-selected-button-${takeId}`
+              : `record-delete-button-${takeId}`
+          }
+          hitSlop={8}
+          style={styles.deleteHit}
+        >
+          <Trash2
+            size={iconSizes.chevron}
+            color={theme.colors.destructive}
+            strokeWidth={listIconStrokeWidth}
+          />
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 }
