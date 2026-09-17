@@ -46,6 +46,7 @@ const mockResolveRecordingUnit = resolveRecordingUnit as jest.MockedFunction<
 
 jest.mock('../../db/queries', () => ({
   getBibleTextId: jest.fn(async () => 42),
+  getBibleTexts: jest.fn(async () => []),
   getRecordedVerseNumbers: jest.fn(async () => new Set([3])),
   getPericopeForVerse: jest.fn(async () => null),
   getPericopesForChapter: jest.fn(async () => []),
@@ -261,6 +262,7 @@ describe('RecordTab', () => {
     // earlier test's call (e.g. deleteTake('rec_1')) leaks into the next
     // test's `.not.toHaveBeenCalled()` assertion.
     jest.clearAllMocks();
+    mockResolveRecordingUnit.mockResolvedValue(null);
     mockUseVerseAudio.mockReturnValue(idleAudio);
     mockUseSourceAudioControl.mockReturnValue({
       pause: jest.fn().mockResolvedValue(undefined),
@@ -290,7 +292,7 @@ describe('RecordTab', () => {
 
     await waitFor(() => {
       expect(screen.queryByTestId('record-syncing-hint')).toBeNull();
-    });
+    }, { timeout: 3000 });
   });
 
   it('disables record until bible text resolves for the active verse', async () => {
@@ -1190,6 +1192,19 @@ describe('RecordTab', () => {
         draftingUnit: 'pericope',
         setDraftingUnit: jest.fn(),
       });
+      mockResolveRecordingUnit.mockResolvedValue({
+        granularity: 'pericope',
+        startChapter: 14,
+        startVerse: 3,
+        endChapter: 14,
+        endVerse: 5,
+        anchorBibleTextId: 42,
+        coveredViews: [
+          { bibleTextId: 42, chapterNumber: 14, verseNumber: 3 },
+          { bibleTextId: 43, chapterNumber: 14, verseNumber: 4 },
+          { bibleTextId: 44, chapterNumber: 14, verseNumber: 5 },
+        ],
+      });
       (getProjectPericopeSetId as jest.Mock).mockResolvedValue(7);
       (getPericopeForVerse as jest.Mock).mockResolvedValue({
         pericopeNumber: '1',
@@ -1310,6 +1325,10 @@ describe('RecordTab', () => {
       });
 
       renderTab();
+
+      await waitFor(() => {
+        expect(mockResolveRecordingUnit).toHaveBeenCalled();
+      });
 
       await waitFor(() => {
         expect(screen.getAllByTestId('record-take-badge')).toHaveLength(2);

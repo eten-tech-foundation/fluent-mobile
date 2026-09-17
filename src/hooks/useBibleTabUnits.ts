@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getProjectPericopeSetId } from '../db/repository';
 import {
+  getBibleTexts,
   getPericopesForChapter,
   getSelectedTakeCoverages,
 } from '../db/queries';
@@ -43,6 +44,10 @@ export function useBibleTabUnits(args: {
   const [pericopesResolved, setPericopesResolved] = useState(
     draftingUnit !== 'pericope',
   );
+  const [crossChapterVerseTexts, setCrossChapterVerseTexts] = useState<
+    Map<string, string>
+  >(new Map());
+  const crossChapterTextRequestIdRef = useRef(0);
   const [coverages, setCoverages] = useState<RecordingVerseRange[]>([]);
   const [coveragesResolved, setCoveragesResolved] = useState(false);
   const pericopeRequestIdRef = useRef(0);
@@ -106,6 +111,40 @@ export function useBibleTabUnits(args: {
     args.chapterNumber,
   ]);
 
+  useEffect(() => {
+    const requestId = ++crossChapterTextRequestIdRef.current;
+    const otherChapters = Array.from(
+      new Set(
+        pericopes
+          .flatMap(p => p.verses)
+          .map(v => v.chapterNumber)
+          .filter(chapterNumber => chapterNumber !== args.chapterNumber),
+      ),
+    );
+
+    if (otherChapters.length === 0) {
+      setCrossChapterVerseTexts(new Map());
+      return;
+    }
+
+    void Promise.all(
+      otherChapters.map(chapterNumber =>
+        getBibleTexts(args.bibleId, args.bookId, chapterNumber),
+      ),
+    ).then(results => {
+      if (requestId !== crossChapterTextRequestIdRef.current) {
+        return;
+      }
+      const map = new Map<string, string>();
+      for (const chapterVerses of results) {
+        for (const v of chapterVerses) {
+          map.set(`${v.chapterNumber}:${v.verseNumber}`, v.text);
+        }
+      }
+      setCrossChapterVerseTexts(map);
+    });
+  }, [pericopes, args.bibleId, args.bookId, args.chapterNumber]);
+
   const refreshCoverages = useCallback(() => {
     const requestId = ++coverageRequestIdRef.current;
     void getSelectedTakeCoverages(args.bibleId, args.bookId).then(rows => {
@@ -142,6 +181,7 @@ export function useBibleTabUnits(args: {
         chapterNumber: args.chapterNumber,
         chapterName: args.chapterName,
         bookName: args.bookName,
+        crossChapterVerseTexts,
       }),
     [
       effectiveUnit,
@@ -150,6 +190,7 @@ export function useBibleTabUnits(args: {
       args.chapterNumber,
       args.chapterName,
       args.bookName,
+      crossChapterVerseTexts,
     ],
   );
 

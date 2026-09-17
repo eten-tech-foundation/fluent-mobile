@@ -73,6 +73,7 @@ import {
 import { confirmStageAdvancement } from '../../services/stageAdvance';
 import {
   getBibleTextId,
+  getBibleTexts,
   getPericopeForVerse,
   getRecordedVerseNumbers,
 } from '../../db/queries';
@@ -235,6 +236,10 @@ export function RecordTab({
   const [activePericope, setActivePericope] =
     useState<PericopeGroupResult | null>(null);
   const pericopeRequestIdRef = useRef(0);
+  const [crossChapterVerseTexts, setCrossChapterVerseTexts] = useState<
+    Map<string, string>
+  >(new Map());
+  const crossChapterTextRequestIdRef = useRef(0);
 
   const pericopeVerses = useMemo(
     () => activePericope?.verses ?? [],
@@ -305,8 +310,14 @@ export function RecordTab({
       return selected?.text;
     }
     return pericopeVerses
-      .filter(pv => pv.chapterNumber === chapterData.chapterNumber)
-      .map(pv => verses.find(v => v.verseNumber === pv.verseNumber)?.text)
+      .map(pv => {
+        if (pv.chapterNumber === chapterData.chapterNumber) {
+          return verses.find(v => v.verseNumber === pv.verseNumber)?.text;
+        }
+        return crossChapterVerseTexts.get(
+          `${pv.chapterNumber}:${pv.verseNumber}`,
+        );
+      })
       .filter((text): text is string => Boolean(text))
       .join(' ');
   }, [
@@ -315,6 +326,7 @@ export function RecordTab({
     verses,
     selected,
     chapterData.chapterNumber,
+    crossChapterVerseTexts,
   ]);
 
   /**
@@ -403,6 +415,44 @@ export function RecordTab({
     chapterData.bookId,
     chapterData.chapterNumber,
     selectedVerse,
+  ]);
+
+  useEffect(() => {
+    const requestId = ++crossChapterTextRequestIdRef.current;
+    const otherChapters = Array.from(
+      new Set(
+        pericopeVerses
+          .map(v => v.chapterNumber)
+          .filter(chapterNumber => chapterNumber !== chapterData.chapterNumber),
+      ),
+    );
+
+    if (otherChapters.length === 0) {
+      setCrossChapterVerseTexts(new Map());
+      return;
+    }
+
+    void Promise.all(
+      otherChapters.map(chapterNumber =>
+        getBibleTexts(chapterData.bibleId, chapterData.bookId, chapterNumber),
+      ),
+    ).then(results => {
+      if (requestId !== crossChapterTextRequestIdRef.current) {
+        return;
+      }
+      const map = new Map<string, string>();
+      for (const chapterVerses of results) {
+        for (const v of chapterVerses) {
+          map.set(`${v.chapterNumber}:${v.verseNumber}`, v.text);
+        }
+      }
+      setCrossChapterVerseTexts(map);
+    });
+  }, [
+    pericopeVerses,
+    chapterData.bibleId,
+    chapterData.bookId,
+    chapterData.chapterNumber,
   ]);
 
   // verseAudio.state is read via ref — listing it in deps caused a REHYDRATE
