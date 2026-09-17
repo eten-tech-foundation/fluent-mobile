@@ -285,12 +285,16 @@ export function RecordTab({
     draftingUnit === 'pericope' && pericopeVerses.length > 0;
   const pericopePrevIndex = isPericopeNav
     ? verses.findIndex(
-        v => v.verseNumber === firstPericopeVerse!.verseNumber - 1,
+        v =>
+          v.chapterNumber === firstPericopeVerse!.chapterNumber &&
+          v.verseNumber === firstPericopeVerse!.verseNumber - 1,
       )
     : -1;
   const pericopeNextIndex = isPericopeNav
     ? verses.findIndex(
-        v => v.verseNumber === lastPericopeVerse!.verseNumber + 1,
+        v =>
+          v.chapterNumber === lastPericopeVerse!.chapterNumber &&
+          v.verseNumber === lastPericopeVerse!.verseNumber + 1,
       )
     : -1;
   const prevDisabled = isPericopeNav ? pericopePrevIndex < 0 : verseIndex <= 0;

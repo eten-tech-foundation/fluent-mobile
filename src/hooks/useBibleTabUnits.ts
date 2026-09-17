@@ -113,6 +113,8 @@ export function useBibleTabUnits(args: {
 
   useEffect(() => {
     const requestId = ++crossChapterTextRequestIdRef.current;
+    setCrossChapterVerseTexts(new Map());
+
     const otherChapters = Array.from(
       new Set(
         pericopes
@@ -123,7 +125,6 @@ export function useBibleTabUnits(args: {
     );
 
     if (otherChapters.length === 0) {
-      setCrossChapterVerseTexts(new Map());
       return;
     }
 

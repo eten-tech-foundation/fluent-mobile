@@ -290,9 +290,12 @@ describe('RecordTab', () => {
     expect(screen.queryByTestId('record-take-list')).toBeNull();
     expect(mockUseSourceAudioRecordTabIntegration).toHaveBeenCalled();
 
-    await waitFor(() => {
-      expect(screen.queryByTestId('record-syncing-hint')).toBeNull();
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        expect(screen.queryByTestId('record-syncing-hint')).toBeNull();
+      },
+      { timeout: 3000 },
+    );
   });
 
   it('disables record until bible text resolves for the active verse', async () => {
@@ -1612,6 +1615,53 @@ describe('RecordTab', () => {
       expect(screen.getByTestId('record-source-body')).toHaveTextContent(
         'Verse four text.',
       );
+    });
+    it('disables Next instead of jumping to a same-numbered verse in the wrong chapter, for a cross-chapter pericope', async () => {
+      mockUseDraftingUnit.mockReturnValue({
+        draftingUnit: 'pericope',
+        setDraftingUnit: jest.fn(),
+      });
+      (getProjectPericopeSetId as jest.Mock).mockResolvedValue(7);
+      // Pericope's last verse is 15:2 — chapter 14 (the loaded chapter) has
+      // its own verse 3, which a chapter-unaware lookup would wrongly match.
+      (getPericopeForVerse as jest.Mock).mockResolvedValue({
+        pericopeNumber: '2',
+        pericopeTitle: null,
+        section: null,
+        verses: [
+          { chapterNumber: 14, verseNumber: 45 },
+          { chapterNumber: 15, verseNumber: 1 },
+          { chapterNumber: 15, verseNumber: 2 },
+        ],
+      });
+
+      const crossChapterVerses = [
+        ...pericopeChapterVerses,
+        {
+          bibleId: 1,
+          bookId: 1,
+          chapterNumber: 14,
+          verseNumber: 45,
+          text: 'Verse forty-five text.',
+        },
+      ];
+
+      render(
+        <DraftingProvider verses={crossChapterVerses} initialVerse={45}>
+          <RecordTab chapterData={chapterData} userId={42} />
+        </DraftingProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+          'Mark 14:45–15:2',
+        );
+      });
+
+      // Chapter 14 has its own verse 3 (from pericopeChapterVerses) — Next must
+      // NOT land there. It should disable instead, since the real next verse
+      // (15:3) isn't loaded in this chapter's `verses`.
+      expect(screen.getByTestId('record-next-verse')).toBeDisabled();
     });
   });
 });
