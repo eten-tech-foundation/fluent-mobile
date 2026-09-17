@@ -1406,4 +1406,193 @@ describe('RecordTab', () => {
       expect(screen.getAllByTestId('record-delete-button')).toHaveLength(2);
     });
   });
+  describe('Pericope navigation and source text (#540)', () => {
+    const pericopeChapterVerses = [
+      {
+        bibleId: 1,
+        bookId: 1,
+        chapterNumber: 14,
+        verseNumber: 1,
+        text: 'Verse one text.',
+      },
+      {
+        bibleId: 1,
+        bookId: 1,
+        chapterNumber: 14,
+        verseNumber: 2,
+        text: 'Verse two text.',
+      },
+      {
+        bibleId: 1,
+        bookId: 1,
+        chapterNumber: 14,
+        verseNumber: 3,
+        text: 'Verse three text.',
+      },
+      {
+        bibleId: 1,
+        bookId: 1,
+        chapterNumber: 14,
+        verseNumber: 4,
+        text: 'Verse four text.',
+      },
+      {
+        bibleId: 1,
+        bookId: 1,
+        chapterNumber: 14,
+        verseNumber: 5,
+        text: 'Verse five text.',
+      },
+      {
+        bibleId: 1,
+        bookId: 1,
+        chapterNumber: 14,
+        verseNumber: 6,
+        text: 'Verse six text.',
+      },
+    ];
+
+    /**
+     * Verses 1-2 and 3-5 each belong to their own pericope; verse 6 resolves
+     * to no pericope (falls back to a plain verse reference), mirroring a
+     * chapter's last verse trailing off past the final pericope boundary.
+     */
+    function mockTwoAdjacentPericopes() {
+      mockUseDraftingUnit.mockReturnValue({
+        draftingUnit: 'pericope',
+        setDraftingUnit: jest.fn(),
+      });
+      (getProjectPericopeSetId as jest.Mock).mockResolvedValue(7);
+      (getPericopeForVerse as jest.Mock).mockImplementation(
+        async (_bookId: number, _chapter: number, verse: number) => {
+          if (verse === 1 || verse === 2) {
+            return {
+              pericopeNumber: '0',
+              pericopeTitle: 'Judas agrees to betray Jesus',
+              section: null,
+              verses: [
+                { chapterNumber: 14, verseNumber: 1 },
+                { chapterNumber: 14, verseNumber: 2 },
+              ],
+            };
+          }
+          if (verse === 3 || verse === 4 || verse === 5) {
+            return {
+              pericopeNumber: '1',
+              pericopeTitle: 'At Bethany',
+              section: null,
+              verses: [
+                { chapterNumber: 14, verseNumber: 3 },
+                { chapterNumber: 14, verseNumber: 4 },
+                { chapterNumber: 14, verseNumber: 5 },
+              ],
+            };
+          }
+          return null;
+        },
+      );
+    }
+
+    afterEach(() => {
+      (getProjectPericopeSetId as jest.Mock).mockReset();
+      (getProjectPericopeSetId as jest.Mock).mockImplementation(
+        async () => null,
+      );
+      (getPericopeForVerse as jest.Mock).mockReset();
+      (getPericopeForVerse as jest.Mock).mockImplementation(async () => null);
+    });
+
+    it('tapping Next jumps past the whole current pericope, not one verse at a time', async () => {
+      mockTwoAdjacentPericopes();
+
+      render(
+        <DraftingProvider verses={pericopeChapterVerses} initialVerse={4}>
+          <RecordTab chapterData={chapterData} userId={42} />
+        </DraftingProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+          'Mark 14:3–5',
+        );
+      });
+
+      fireEvent.press(screen.getByTestId('record-next-verse'));
+
+      // Lands on verse 6 (first verse after the pericope's last verse, 5) in
+      // one tap — not verse 5 (the next verse within the same pericope).
+      await waitFor(() => {
+        expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+          'Mark 14:6',
+        );
+      });
+    });
+
+    it('tapping Previous jumps to the previous pericope set', async () => {
+      mockTwoAdjacentPericopes();
+
+      render(
+        <DraftingProvider verses={pericopeChapterVerses} initialVerse={4}>
+          <RecordTab chapterData={chapterData} userId={42} />
+        </DraftingProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+          'Mark 14:3–5',
+        );
+      });
+
+      fireEvent.press(screen.getByTestId('record-prev-verse'));
+
+      // Lands inside the prior pericope (1-2), which then resolves and
+      // displays as its own full range — not verse 2 shown as a lone verse.
+      await waitFor(() => {
+        expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+          'Mark 14:1–2',
+        );
+      });
+    });
+
+    it('shows the full pericope verse range in Source Bible text, not just the selected verse', async () => {
+      mockTwoAdjacentPericopes();
+
+      render(
+        <DraftingProvider verses={pericopeChapterVerses} initialVerse={4}>
+          <RecordTab chapterData={chapterData} userId={42} />
+        </DraftingProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+          'Mark 14:3–5',
+        );
+      });
+
+      fireEvent.press(screen.getByTestId('record-source-toggle'));
+
+      expect(screen.getByTestId('record-source-body')).toHaveTextContent(
+        'Verse three text. Verse four text. Verse five text.',
+      );
+    });
+
+    it('still shows only the selected verse in Source Bible text in verse mode', () => {
+      mockUseDraftingUnit.mockReturnValue({
+        draftingUnit: 'verse',
+        setDraftingUnit: jest.fn(),
+      });
+
+      render(
+        <DraftingProvider verses={pericopeChapterVerses} initialVerse={4}>
+          <RecordTab chapterData={chapterData} userId={42} />
+        </DraftingProvider>,
+      );
+
+      fireEvent.press(screen.getByTestId('record-source-toggle'));
+
+      expect(screen.getByTestId('record-source-body')).toHaveTextContent(
+        'Verse four text.',
+      );
+    });
+  });
 });
