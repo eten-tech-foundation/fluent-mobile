@@ -18,6 +18,7 @@ import {
   userHasLocalChapterAssignments,
   userNeedsAssigneeRepair,
   reconcileUserChapterWork,
+  reconcileUserMilestones,
   reconcileUserProjects,
   insertPericopeSets,
   getProjectPericopeSetId,
@@ -325,9 +326,11 @@ export async function syncMilestones(userId: number, sessionToken?: string) {
         return;
       }
 
-      if (units.length > 0) {
-        await upsertProjectUnits(units);
-      }
+      await upsertProjectUnits(units);
+      await reconcileUserMilestones(
+        userId,
+        units.map(unit => unit.id),
+      );
 
       clearSyncError(KV_KEYS.SYNC_ERROR_PROJECT_UNITS);
       return;
