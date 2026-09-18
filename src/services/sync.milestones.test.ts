@@ -2,7 +2,10 @@ import { FluentAPI } from './api';
 import { syncMilestones } from './sync';
 import { ApiError } from '../types/api/errors';
 import { clearSyncError, setSyncError } from './storage';
-import { upsertProjectUnits } from '../db/repository';
+import {
+  reconcileUserMilestones,
+  upsertProjectUnits,
+} from '../db/repository';
 
 jest.mock('./connectivity', () => ({
   checkServerReachable: jest.fn(),
@@ -32,10 +35,12 @@ jest.mock('./storage', () => ({
 
 jest.mock('../db/repository', () => ({
   upsertProjectUnits: jest.fn().mockResolvedValue(undefined),
+  reconcileUserMilestones: jest.fn().mockResolvedValue(undefined),
 }));
 
 const getUserMilestonesMock = FluentAPI.getUserMilestones as jest.Mock;
 const upsertProjectUnitsMock = upsertProjectUnits as jest.Mock;
+const reconcileUserMilestonesMock = reconcileUserMilestones as jest.Mock;
 const setSyncErrorMock = setSyncError as jest.Mock;
 const clearSyncErrorMock = clearSyncError as jest.Mock;
 
@@ -55,6 +60,7 @@ describe('syncMilestones', () => {
     expect(upsertProjectUnitsMock).toHaveBeenCalledWith([
       { id: 12, projectId: 3, name: 'Mark' },
     ]);
+    expect(reconcileUserMilestonesMock).toHaveBeenCalledWith(247, [12]);
     expect(clearSyncErrorMock).toHaveBeenCalledWith('sync_error_project_units');
     expect(setSyncErrorMock).not.toHaveBeenCalled();
   });
@@ -65,6 +71,7 @@ describe('syncMilestones', () => {
     await syncMilestones(247, 'session-token');
 
     expect(upsertProjectUnitsMock).not.toHaveBeenCalled();
+    expect(reconcileUserMilestonesMock).not.toHaveBeenCalled();
     expect(setSyncErrorMock).toHaveBeenCalledWith(
       'sync_error_project_units',
       'Invalid milestones response shape',
@@ -78,7 +85,18 @@ describe('syncMilestones', () => {
     await expect(syncMilestones(247, 'session-token')).resolves.toBeUndefined();
 
     expect(upsertProjectUnitsMock).not.toHaveBeenCalled();
+    expect(reconcileUserMilestonesMock).not.toHaveBeenCalled();
     expect(clearSyncErrorMock).toHaveBeenCalledWith('sync_error_project_units');
     expect(setSyncErrorMock).not.toHaveBeenCalled();
+  });
+
+  it('reconciles stale units when the API returns an empty milestone list', async () => {
+    getUserMilestonesMock.mockResolvedValue([]);
+
+    await syncMilestones(247, 'session-token');
+
+    expect(upsertProjectUnitsMock).toHaveBeenCalledWith([]);
+    expect(reconcileUserMilestonesMock).toHaveBeenCalledWith(247, []);
+    expect(clearSyncErrorMock).toHaveBeenCalledWith('sync_error_project_units');
   });
 });
