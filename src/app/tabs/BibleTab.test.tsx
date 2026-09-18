@@ -29,6 +29,7 @@ jest.mock('../../db/repository', () => ({
 }));
 
 jest.mock('../../db/queries', () => ({
+  getBibleTexts: jest.fn(async () => []),
   getRecordedVerseNumbers: jest.fn(async () => new Set()),
   getPericopesForChapter: jest.fn(async () => []),
   getSelectedTakeCoverages: jest.fn(async () => []),
@@ -190,18 +191,17 @@ describe('BibleTab', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('Mark 14:1–2, selected')).toBeTruthy();
     });
-    expect(screen.queryByText(/Pericope 1/)).toBeNull();
-    expect(screen.queryByTestId('bible-pericope-verse-1')).toBeNull();
-    expect(screen.queryByTestId('bible-pericope-verse-2')).toBeNull();
+    expect(screen.queryByTestId('bible-pericope-verse-14-1')).toBeNull();
+    expect(screen.queryByTestId('bible-pericope-verse-14-2')).toBeNull();
 
     fireEvent.press(screen.getByLabelText('Mark 14:1–2, selected'));
-    expect(screen.getByTestId('bible-pericope-verse-1')).toBeTruthy();
-    expect(screen.getByTestId('bible-pericope-verse-2')).toBeTruthy();
+    expect(screen.getByTestId('bible-pericope-verse-14-1')).toBeTruthy();
+    expect(screen.getByTestId('bible-pericope-verse-14-2')).toBeTruthy();
 
     fireEvent.press(screen.getByLabelText('Mark 14:1–2, selected'));
     expect(screen.getByLabelText('Mark 14:1–2, selected')).toBeTruthy();
-    expect(screen.queryByTestId('bible-pericope-verse-1')).toBeNull();
-    expect(screen.queryByTestId('bible-pericope-verse-2')).toBeNull();
+    expect(screen.queryByTestId('bible-pericope-verse-14-1')).toBeNull();
+    expect(screen.queryByTestId('bible-pericope-verse-14-2')).toBeNull();
   });
 
   it('marks a pericope selected when the selected verse is in the unit, not only the anchor', async () => {
@@ -276,12 +276,12 @@ describe('BibleTab', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('Mark 14:2, selected')).toBeTruthy();
     });
-    expect(screen.queryByTestId('bible-pericope-verse-2')).toBeNull();
-    expect(screen.queryByTestId('bible-pericope-verse-1')).toBeNull();
+    expect(screen.queryByTestId('bible-pericope-verse-14-2')).toBeNull();
+    expect(screen.queryByTestId('bible-pericope-verse-14-1')).toBeNull();
 
     fireEvent.press(screen.getByLabelText('Mark 14:2, selected'));
-    expect(screen.getByTestId('bible-pericope-verse-2')).toBeTruthy();
-    expect(screen.queryByTestId('bible-pericope-verse-1')).toBeNull();
+    expect(screen.getByTestId('bible-pericope-verse-14-2')).toBeTruthy();
+    expect(screen.queryByTestId('bible-pericope-verse-14-1')).toBeNull();
   });
 
   it('refreshes recorded status when coverage changes without changing recorded count', async () => {
