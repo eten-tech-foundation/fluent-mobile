@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
-import { getMyWorkChapters, getProjectChapters } from '../db/queries';
+import { getMyWorkChapters, getMilestoneChapters } from '../db/queries';
 import { isUserProjectMember } from '../db/repository';
 import { getActiveUserId } from '../services/storage';
 import { refreshChapterMetadataIfOnline } from '../services/sync';
@@ -19,7 +19,7 @@ jest.mock('expo-router', () => ({
 
 jest.mock('../db/queries', () => ({
   getMyWorkChapters: jest.fn(),
-  getProjectChapters: jest.fn(),
+  getMilestoneChapters: jest.fn(),
 }));
 
 jest.mock('../db/repository', () => ({
@@ -41,8 +41,8 @@ jest.mock('../utils/parseUserId', () => ({
 const mockGetMyWorkChapters = getMyWorkChapters as jest.MockedFunction<
   typeof getMyWorkChapters
 >;
-const mockGetProjectChapters = getProjectChapters as jest.MockedFunction<
-  typeof getProjectChapters
+const mockGetMilestoneChapters = getMilestoneChapters as jest.MockedFunction<
+  typeof getMilestoneChapters
 >;
 const mockIsUserProjectMember = isUserProjectMember as jest.MockedFunction<
   typeof isUserProjectMember
@@ -71,7 +71,7 @@ describe('chapter metadata refresh on list open', () => {
     mockParseUserId.mockReturnValue(7);
     mockGetActiveUserId.mockReturnValue('7');
     mockGetMyWorkChapters.mockResolvedValue([]);
-    mockGetProjectChapters.mockResolvedValue([]);
+    mockGetMilestoneChapters.mockResolvedValue([]);
     mockRefreshChapterMetadataIfOnline.mockResolvedValue();
     mockIsUserProjectMember.mockResolvedValue(true);
   });
@@ -105,12 +105,12 @@ describe('chapter metadata refresh on list open', () => {
       metadataRefresh.promise,
     );
 
-    renderHook(() => useProjectChapters(3));
+    renderHook(() => useProjectChapters(10, 3));
 
     await waitFor(() => {
-      expect(mockGetProjectChapters).toHaveBeenCalledTimes(1);
+      expect(mockGetMilestoneChapters).toHaveBeenCalledTimes(1);
     });
-    expect(mockGetProjectChapters).toHaveBeenCalledWith(3, 7);
+    expect(mockGetMilestoneChapters).toHaveBeenCalledWith(10, 7);
     expect(mockRefreshChapterMetadataIfOnline).toHaveBeenCalledWith(7);
 
     await act(async () => {
@@ -120,7 +120,7 @@ describe('chapter metadata refresh on list open', () => {
 
     await waitFor(() => {
       expect(mockIsUserProjectMember).toHaveBeenCalledWith(7, 3);
-      expect(mockGetProjectChapters).toHaveBeenCalledTimes(2);
+      expect(mockGetMilestoneChapters).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -131,10 +131,10 @@ describe('chapter metadata refresh on list open', () => {
     );
     mockIsUserProjectMember.mockResolvedValueOnce(false);
 
-    const { result } = renderHook(() => useProjectChapters(3));
+    const { result } = renderHook(() => useProjectChapters(10, 3));
 
     await waitFor(() => {
-      expect(mockGetProjectChapters).toHaveBeenCalledTimes(1);
+      expect(mockGetMilestoneChapters).toHaveBeenCalledTimes(1);
     });
 
     await act(async () => {
@@ -147,7 +147,7 @@ describe('chapter metadata refresh on list open', () => {
     });
 
     // second reload should never fire — membership was revoked
-    expect(mockGetProjectChapters).toHaveBeenCalledTimes(1);
+    expect(mockGetMilestoneChapters).toHaveBeenCalledTimes(1);
   });
 
   it('clears removedFromProject when membership is restored on a later refresh', async () => {
@@ -155,7 +155,7 @@ describe('chapter metadata refresh on list open', () => {
     const first = deferred<void>();
     mockRefreshChapterMetadataIfOnline.mockReturnValueOnce(first.promise);
 
-    const { result } = renderHook(() => useProjectChapters(3));
+    const { result } = renderHook(() => useProjectChapters(10, 3));
 
     await act(async () => {
       first.resolve();

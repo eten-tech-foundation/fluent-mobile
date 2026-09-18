@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 17;
+export const CURRENT_SCHEMA_VERSION = 18;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -426,6 +426,20 @@ async function addRecordingsVersionToken(db: SqlExecutor): Promise<void> {
  *
  * KV is required dynamically so migrations.test does not load native Storage.
  */
+/** Named project units (milestones) for Home #333. Empty name displays as parent project. */
+async function addProjectUnitsNameColumn(db: SqlExecutor): Promise<void> {
+  const info = await db.execute('PRAGMA table_info(project_units)');
+  if (!info.rows.length) {
+    return;
+  }
+  await addColumnIfMissing(
+    db,
+    'project_units',
+    'name',
+    "TEXT NOT NULL DEFAULT ''",
+  );
+}
+
 async function addRecordingsGranularityColumns(db: SqlExecutor): Promise<void> {
   const info = await db.execute('PRAGMA table_info(recordings)');
   if (!info.rows.length) {
@@ -586,6 +600,11 @@ export const migrations: Migration[] = [
     version: 17,
     name: 'recordings_granularity',
     up: addRecordingsGranularityColumns,
+  },
+  {
+    version: 18,
+    name: 'project_units_name',
+    up: addProjectUnitsNameColumn,
   },
 ];
 

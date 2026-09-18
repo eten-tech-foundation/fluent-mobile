@@ -1,11 +1,11 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
 import { useProjectChapters } from './useProjectChapters';
-import { getProjectChapters } from '../db/queries';
+import { getMilestoneChapters } from '../db/queries';
 import { parseUserId } from '../utils/parseUserId';
 import type { ProjectChapter } from '../types/db/types';
 
 jest.mock('../db/queries', () => ({
-  getProjectChapters: jest.fn(),
+  getMilestoneChapters: jest.fn(),
 }));
 
 jest.mock('../utils/parseUserId', () => ({
@@ -39,7 +39,7 @@ jest.mock('expo-router', () => {
   };
 });
 
-const mockGetProjectChapters = getProjectChapters as jest.Mock;
+const mockGetMilestoneChapters = getMilestoneChapters as jest.Mock;
 const mockParseUserId = parseUserId as jest.Mock;
 
 function makeChapter(overrides: Partial<ProjectChapter> = {}): ProjectChapter {
@@ -70,17 +70,17 @@ describe('useProjectChapters', () => {
     const freshChapters = [makeChapter({ id: 2, displayLabel: 'Fresh' })];
 
     let resolveStale!: (v: ProjectChapter[]) => void;
-    mockGetProjectChapters.mockImplementationOnce(
+    mockGetMilestoneChapters.mockImplementationOnce(
       () =>
         new Promise<ProjectChapter[]>(resolve => {
           resolveStale = resolve;
         }),
     );
 
-    const { result } = renderHook(() => useProjectChapters(100));
+    const { result } = renderHook(() => useProjectChapters(10, 100));
 
     let resolveFresh!: (v: ProjectChapter[]) => void;
-    mockGetProjectChapters.mockImplementationOnce(
+    mockGetMilestoneChapters.mockImplementationOnce(
       () =>
         new Promise<ProjectChapter[]>(resolve => {
           resolveFresh = resolve;
@@ -100,22 +100,22 @@ describe('useProjectChapters', () => {
 
   it('loads chapters for the active user on mount', async () => {
     const chapters = [makeChapter()];
-    mockGetProjectChapters.mockResolvedValue(chapters);
+    mockGetMilestoneChapters.mockResolvedValue(chapters);
 
-    const { result } = renderHook(() => useProjectChapters(100));
+    const { result } = renderHook(() => useProjectChapters(10, 100));
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.chapters).toEqual(chapters);
-    expect(mockGetProjectChapters).toHaveBeenCalledWith(100, 1);
+    expect(mockGetMilestoneChapters).toHaveBeenCalledWith(10, 1);
   });
 
   it('clears chapters and skips the query when there is no active user', async () => {
     mockParseUserId.mockReturnValue(null);
 
-    const { result } = renderHook(() => useProjectChapters(100));
+    const { result } = renderHook(() => useProjectChapters(10, 100));
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.chapters).toEqual([]);
-    expect(mockGetProjectChapters).not.toHaveBeenCalled();
+    expect(mockGetMilestoneChapters).not.toHaveBeenCalled();
   });
 });

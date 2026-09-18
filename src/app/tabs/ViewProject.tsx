@@ -31,11 +31,21 @@ export default function ViewProject() {
   const insets = useSafeAreaInsets();
   const rawParams = useLocalSearchParams<{
     projectId?: string;
+    projectUnitId?: string;
     projectName?: string;
+    milestoneName?: string;
     language?: string;
   }>();
   const projectId = parseRequiredNumber(rawParams.projectId, 'projectId');
+  const projectUnitId = parseRequiredNumber(
+    rawParams.projectUnitId,
+    'projectUnitId',
+  );
   const projectName = parseRequiredString(rawParams.projectName, 'projectName');
+  const milestoneName = parseRequiredString(
+    rawParams.milestoneName,
+    'milestoneName',
+  );
   const language = parseRequiredString(rawParams.language, 'language');
   const {
     chapters,
@@ -46,7 +56,7 @@ export default function ViewProject() {
     refresh,
     retry,
     reload,
-  } = useProjectChapters(projectId);
+  } = useProjectChapters(projectUnitId, projectId);
 
   const isSyncing = useGlobalSyncStatus(reload);
   const { status: syncStatus } = useSyncStatus({ isSyncing });
@@ -78,8 +88,8 @@ export default function ViewProject() {
 
   const header = (
     <StackScreenHeader
-      title={projectName}
-      subtitle={language}
+      title={milestoneName}
+      subtitle={projectName}
       onBack={goBack}
       onSyncPress={handleSyncPress}
       syncStatus={syncStatus}
@@ -112,8 +122,8 @@ export default function ViewProject() {
         {header}
         <View style={styles.centered}>
           <Text style={styles.errorMessage}>
-            You have been unassigned from this project. Go to the Projects tab
-            to view your other projects.
+            You have been unassigned from this project. Go to the Milestones tab
+            to view your other work.
           </Text>
         </View>
       </>
