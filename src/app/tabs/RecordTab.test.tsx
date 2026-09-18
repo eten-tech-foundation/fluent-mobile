@@ -19,7 +19,11 @@ import type {
   UseVerseAudioArgs,
 } from '../../hooks/useVerseAudio';
 import type { useDraftingUnit } from '../../hooks/useDraftingUnit';
-import { getBibleTextId, getPericopeForVerse } from '../../db/queries';
+import {
+  getBibleTextId,
+  getPericopeForVerse,
+  isChapterFullyRecordedVerseMode,
+} from '../../db/queries';
 import type {
   Recording,
   RecordingWithOwner,
@@ -50,11 +54,17 @@ jest.mock('../../db/queries', () => ({
   getPericopeForVerse: jest.fn(async () => null),
   getPericopesForChapter: jest.fn(async () => []),
   getSelectedTakeCoverages: jest.fn(async () => []),
+  isChapterFullyRecordedVerseMode: jest.fn(async () => true),
+  isChapterFullyRecordedPericopeMode: jest.fn(async () => true),
 }));
 
 const mockGetBibleTextId = getBibleTextId as jest.MockedFunction<
   typeof getBibleTextId
 >;
+const mockIsChapterFullyRecordedVerseMode =
+  isChapterFullyRecordedVerseMode as jest.MockedFunction<
+    typeof isChapterFullyRecordedVerseMode
+  >;
 
 jest.mock('../../hooks/useVerseAudio', () => ({
   useVerseAudio: (args: UseVerseAudioArgs) => mockUseVerseAudio(args),
@@ -1045,6 +1055,25 @@ describe('RecordTab', () => {
     expect(screen.queryByTestId('stage-advance-button')).toBeNull();
   });
 
+  it('shows stage advance CTA in pericope mode when no pericope set is configured (falls back to verse-mode completeness)', async () => {
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(null);
+
+    renderTab();
+
+    // Verse-mode fallback: the single fixture verse (3) is also the last
+    // verse in `verses`, so isOnLastUnit should resolve true via the verse
+    // comparison — not the (unreachable, since pericopeSetId is null)
+    // pericope comparison.
+    await waitFor(() => {
+      expect(screen.getByTestId('stage-advance-button')).toBeTruthy();
+    });
+    expect(screen.getByText('Send to Peer Check')).toBeTruthy();
+  });
+
   describe('Mode-aware Current Unit Title (#409)', () => {
     it('shows the pericope range and title as a subtitle when a pericope resolves', async () => {
       mockUseDraftingUnit.mockReturnValue({
@@ -1092,6 +1121,25 @@ describe('RecordTab', () => {
       expect(
         screen.queryByTestId('record-verse-reference-subtitle'),
       ).toBeNull();
+    });
+
+    it('uses verse completeness and navigation when no pericope set is configured', async () => {
+      mockUseDraftingUnit.mockReturnValue({
+        draftingUnit: 'pericope',
+        setDraftingUnit: jest.fn(),
+      });
+      (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(null);
+
+      renderTab();
+
+      await waitFor(() => {
+        expect(mockIsChapterFullyRecordedVerseMode).toHaveBeenCalledWith(
+          1,
+          1,
+          14,
+        );
+        expect(screen.getByTestId('stage-advance-button')).toBeTruthy();
+      });
     });
 
     it('never shows a subtitle in verse mode, even if a pericope would resolve', () => {
