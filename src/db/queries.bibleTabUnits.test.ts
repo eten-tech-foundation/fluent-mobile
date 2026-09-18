@@ -83,6 +83,47 @@ describe('getPericopesForChapter', () => {
       },
     ]);
   });
+
+  it('orders groups by scripture position, not FCBH section number', async () => {
+    mockExecute.mockResolvedValue({
+      rows: [
+        {
+          pericope_number: '1',
+          pericope_title: null,
+          section: 2,
+          chapter_number: 1,
+          verse_number: 16,
+        },
+        {
+          pericope_number: '1',
+          pericope_title: null,
+          section: 2,
+          chapter_number: 1,
+          verse_number: 20,
+        },
+        {
+          pericope_number: '1',
+          pericope_title: null,
+          section: 51,
+          chapter_number: 1,
+          verse_number: 1,
+        },
+        {
+          pericope_number: '1',
+          pericope_title: null,
+          section: 51,
+          chapter_number: 1,
+          verse_number: 5,
+        },
+      ],
+    });
+
+    const groups = await getPericopesForChapter(41, 1, 1);
+
+    expect(groups.map(group => group.verses[0]?.verseNumber)).toEqual([1, 16]);
+    expect(groups[0]?.section).toBe(51);
+    expect(groups[1]?.section).toBe(2);
+  });
 });
 
 describe('getSelectedTakeCoverages', () => {

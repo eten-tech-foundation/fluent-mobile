@@ -214,10 +214,14 @@ describe('PrepareForOfflineScreen', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Assigned chapters (1)')).toBeTruthy();
+      expect(screen.getByText('Genesis')).toBeTruthy();
+      expect(
+        screen.getByTestId('prepare-offline-resources-section'),
+      ).toBeTruthy();
+      expect(
+        screen.getByTestId('prepare-offline-download-button'),
+      ).toBeTruthy();
     });
-    expect(screen.getByText('Genesis')).toBeTruthy();
-    expect(screen.getByText('RESOURCES TO DOWNLOAD')).toBeTruthy();
-    expect(screen.getByTestId('prepare-offline-download-button')).toBeTruthy();
   });
 
   it('shows manage device storage section after selecting a project', async () => {
