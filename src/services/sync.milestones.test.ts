@@ -2,10 +2,7 @@ import { FluentAPI } from './api';
 import { syncMilestones } from './sync';
 import { ApiError } from '../types/api/errors';
 import { clearSyncError, setSyncError } from './storage';
-import {
-  reconcileUserMilestones,
-  upsertProjectUnits,
-} from '../db/repository';
+import { reconcileUserMilestones, upsertProjectUnits } from '../db/repository';
 
 jest.mock('./connectivity', () => ({
   checkServerReachable: jest.fn(),
