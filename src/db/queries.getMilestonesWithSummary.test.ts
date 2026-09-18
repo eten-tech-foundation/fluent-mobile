@@ -132,8 +132,15 @@ describe('getMilestoneChapters', () => {
     await getMilestoneChapters(10, 247);
 
     const sql = String(mockExecute.mock.calls[0]?.[0]);
+    expect(sql).toContain(
+      'JOIN user_projects up ON up.project_id = pu.project_id',
+    );
     expect(sql).toContain('pu.id = ?');
+    expect(sql).toContain('up.user_id = ?');
     expect(sql).not.toContain('pu.project_id = ?');
-    expect(mockExecute).toHaveBeenCalledWith(expect.any(String), [247, 10]);
+    expect(mockExecute).toHaveBeenCalledWith(
+      expect.any(String),
+      [247, 10, 247],
+    );
   });
 });

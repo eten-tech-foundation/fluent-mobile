@@ -628,11 +628,12 @@ export async function getMilestoneChapters(
       FROM chapter_assignments ca
       JOIN books b ON ca.book_id = b.id
       JOIN project_units pu ON ca.project_unit_id = pu.id
+      JOIN user_projects up ON up.project_id = pu.project_id
       ${RECORDINGS_JOIN_CA}
-      WHERE pu.id = ?
+      WHERE pu.id = ? AND up.user_id = ?
       GROUP BY ca.id
       ORDER BY b.id, ca.chapter_number`,
-      [userId, Number(projectUnitId)],
+      [userId, Number(projectUnitId), userId],
     );
 
     const rows = (result?.rows as unknown as DBTypes.ProjectChapterRow[]) || [];

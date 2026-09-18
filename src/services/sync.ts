@@ -316,6 +316,15 @@ export async function syncMilestones(userId: number, sessionToken?: string) {
         isArray: isConfirmedShape,
       });
 
+      if (!isConfirmedShape) {
+        const errorMessage = 'Invalid milestones response shape';
+        log.warn('Milestone sync failed: unexpected response shape', {
+          userId,
+        });
+        setSyncError(KV_KEYS.SYNC_ERROR_PROJECT_UNITS, errorMessage);
+        return;
+      }
+
       if (units.length > 0) {
         await upsertProjectUnits(units);
       }
