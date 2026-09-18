@@ -2,6 +2,7 @@ import type { ChapterAssignmentData } from '../types/db/types';
 import {
   getStageAdvanceDestination,
   getStageAdvanceVisibility,
+  isDrafterBlockedFromOpenPeerCheckCapture,
   resolvePeerCheckerAssignmentOnAdvance,
   stageAdvanceConfirmBody,
 } from './stageAdvancement';
@@ -266,6 +267,59 @@ describe('getStageAdvanceVisibility', () => {
         hasConflict: true,
       }),
     ).toMatchObject({ visible: true, disabled: true });
+  });
+});
+
+describe('isDrafterBlockedFromOpenPeerCheckCapture', () => {
+  it('blocks the drafter on unassigned Peer Check', () => {
+    expect(
+      isDrafterBlockedFromOpenPeerCheckCapture(
+        {
+          status: 'peer_check',
+          assignedUserId: 10,
+          peerCheckerId: undefined,
+        },
+        10,
+      ),
+    ).toBe(true);
+  });
+
+  it('allows a non-drafter peer on unassigned Peer Check', () => {
+    expect(
+      isDrafterBlockedFromOpenPeerCheckCapture(
+        {
+          status: 'peer_check',
+          assignedUserId: 10,
+          peerCheckerId: undefined,
+        },
+        99,
+      ),
+    ).toBe(false);
+  });
+
+  it('allows the PM-assigned Peer Checker', () => {
+    expect(
+      isDrafterBlockedFromOpenPeerCheckCapture(
+        {
+          status: 'peer_check',
+          assignedUserId: 10,
+          peerCheckerId: 20,
+        },
+        20,
+      ),
+    ).toBe(false);
+  });
+
+  it('allows the drafter during Drafting', () => {
+    expect(
+      isDrafterBlockedFromOpenPeerCheckCapture(
+        {
+          status: 'draft',
+          assignedUserId: 10,
+        },
+        10,
+      ),
+    ).toBe(false);
   });
 });
 

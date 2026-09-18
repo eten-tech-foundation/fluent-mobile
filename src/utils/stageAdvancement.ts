@@ -146,6 +146,26 @@ export function getStageAdvanceVisibility({
 }
 
 /**
+ * True when the drafter must not capture on open Peer Check (#442, fluent-api
+ * edit policy). PM-assigned Peer Check uses a different rule set.
+ */
+export function isDrafterBlockedFromOpenPeerCheckCapture(
+  chapterData: StageAdvanceChapterData,
+  currentUserId: number | null,
+): boolean {
+  if (currentUserId === null) {
+    return false;
+  }
+  if (normalizeAdvanceStatus(chapterData.status) !== 'peer_check') {
+    return false;
+  }
+  if (typeof chapterData.peerCheckerId === 'number') {
+    return false;
+  }
+  return chapterData.assignedUserId === currentUserId;
+}
+
+/**
  * When advancing unassigned Peer Check → Community Review, the tapping peer
  * becomes Peer Checker. Drafter and PM-assigned items do not assign here.
  */

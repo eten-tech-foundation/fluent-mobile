@@ -1063,9 +1063,10 @@ describe('RecordTab', () => {
     });
     expect(screen.getByText('Send to Community Review')).toBeTruthy();
     expect(screen.queryByText(RECORD_TAKEN_CHAPTER_WARNING)).toBeNull();
+    expect(screen.getByTestId('record-start-button')).toBeEnabled();
   });
 
-  it('hides Send to Community Review from the drafter on open Peer Check', async () => {
+  it('hides Send and disables record for the drafter on open Peer Check', async () => {
     renderTab(undefined, {
       chapterData: {
         ...chapterData,
@@ -1076,7 +1077,7 @@ describe('RecordTab', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('record-start-button')).toBeTruthy();
+      expect(screen.getByTestId('record-start-button')).toBeDisabled();
     });
     expect(screen.queryByTestId('stage-advance-button')).toBeNull();
   });
