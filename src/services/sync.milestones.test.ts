@@ -59,6 +59,19 @@ describe('syncMilestones', () => {
     expect(setSyncErrorMock).not.toHaveBeenCalled();
   });
 
+  it('records a sync error when the response is not an array', async () => {
+    getUserMilestonesMock.mockResolvedValue({ data: {} });
+
+    await syncMilestones(247, 'session-token');
+
+    expect(upsertProjectUnitsMock).not.toHaveBeenCalled();
+    expect(setSyncErrorMock).toHaveBeenCalledWith(
+      'sync_error_project_units',
+      'Invalid milestones response shape',
+    );
+    expect(clearSyncErrorMock).not.toHaveBeenCalled();
+  });
+
   it('soft-fails on 404 without storing a sync error', async () => {
     getUserMilestonesMock.mockRejectedValue(new ApiError(404, 'Not Found'));
 
