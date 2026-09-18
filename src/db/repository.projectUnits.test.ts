@@ -125,10 +125,7 @@ jest.mock('./db', () => ({
   }),
 }));
 
-import {
-  reconcileUserMilestones,
-  upsertProjectUnits,
-} from './repository';
+import { reconcileUserMilestones, upsertProjectUnits } from './repository';
 
 describe('upsertProjectUnits', () => {
   beforeEach(() => {
