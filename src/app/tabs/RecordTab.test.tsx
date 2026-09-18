@@ -1055,6 +1055,25 @@ describe('RecordTab', () => {
     expect(screen.queryByTestId('stage-advance-button')).toBeNull();
   });
 
+  it('shows stage advance CTA in pericope mode when no pericope set is configured (falls back to verse-mode completeness)', async () => {
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(null);
+
+    renderTab();
+
+    // Verse-mode fallback: the single fixture verse (3) is also the last
+    // verse in `verses`, so isOnLastUnit should resolve true via the verse
+    // comparison — not the (unreachable, since pericopeSetId is null)
+    // pericope comparison.
+    await waitFor(() => {
+      expect(screen.getByTestId('stage-advance-button')).toBeTruthy();
+    });
+    expect(screen.getByText('Send to Peer Check')).toBeTruthy();
+  });
+
   describe('Mode-aware Current Unit Title (#409)', () => {
     it('shows the pericope range and title as a subtitle when a pericope resolves', async () => {
       mockUseDraftingUnit.mockReturnValue({
