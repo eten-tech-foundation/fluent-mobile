@@ -10,7 +10,9 @@ jest.mock('expo-router', () => ({
   }),
   useLocalSearchParams: () => ({
     projectId: '1',
-    projectName: 'Gospel of Luke',
+    projectUnitId: '10',
+    projectName: 'Baka NT',
+    milestoneName: 'Mark',
     language: 'Baka',
   }),
 }));
@@ -113,8 +115,8 @@ describe('ViewProject', () => {
 
     render(<ViewProject />);
 
-    expect(await screen.findByText('Gospel of Luke')).toBeTruthy();
-    expect(await screen.findByText('Baka')).toBeTruthy();
+    expect(await screen.findByText('Mark')).toBeTruthy();
+    expect(await screen.findByText('Baka NT')).toBeTruthy();
     expect(await screen.findByText('Luke 4')).toBeTruthy();
     expect(await screen.findByText('Peer Check')).toBeTruthy();
     expect(await screen.findByText('Apr 27, 2026')).toBeTruthy();

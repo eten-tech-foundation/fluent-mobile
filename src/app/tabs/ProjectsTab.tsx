@@ -2,11 +2,11 @@ import React from 'react';
 import { FlatList, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PROJECTS_EMPTY_MESSAGE } from '../../constants/messages';
-import { useProjectsSummary } from '../../hooks/useProjectsSummary';
+import { MILESTONES_EMPTY_MESSAGE } from '../../constants/messages';
+import { useMilestonesSummary } from '../../hooks/useMilestonesSummary';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
-import { ProjectRow } from '../../components/ui/ProjectRow';
+import { MilestoneRow } from '../../components/ui/MilestoneRow';
 import { hrefs } from '../../navigation/hrefs';
 import { theme } from '../../theme';
 
@@ -17,20 +17,20 @@ interface ProjectsTabProps {
 export function ProjectsTab({ refreshKey = 0 }: ProjectsTabProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { projects, loading, refreshing, refresh } =
-    useProjectsSummary(refreshKey);
+  const { milestones, loading, refreshing, refresh } =
+    useMilestonesSummary(refreshKey);
 
   if (loading) {
     return <LoadingSpinner />;
   }
 
-  if (projects.length === 0) {
-    return <EmptyState message={PROJECTS_EMPTY_MESSAGE} />;
+  if (milestones.length === 0) {
+    return <EmptyState message={MILESTONES_EMPTY_MESSAGE} />;
   }
 
   return (
     <FlatList
-      data={projects}
+      data={milestones}
       keyExtractor={item => String(item.id)}
       contentContainerStyle={[
         styles.listContent,
@@ -39,14 +39,16 @@ export function ProjectsTab({ refreshKey = 0 }: ProjectsTabProps) {
       refreshing={refreshing}
       onRefresh={refresh}
       renderItem={({ item }) => (
-        <ProjectRow
-          project={item}
+        <MilestoneRow
+          milestone={item}
           onPress={() =>
             router.push(
               hrefs.chapters({
-                projectId: item.id,
-                projectName: item.name,
-                language: item.target_language_name,
+                projectId: item.projectId,
+                projectUnitId: item.id,
+                projectName: item.projectName,
+                milestoneName: item.name,
+                language: item.targetLanguageName,
               }),
             )
           }

@@ -79,6 +79,23 @@ export type UserChapterAssignmentsResponse = ApiUserChapterAssignmentsByUser;
 
 export type UserProjectsResponse = ApiDataResponse<ApiProject[]> | ApiProject[];
 
+export interface ApiMilestone {
+  id: number;
+  name: string;
+  status?: string;
+  type?: string;
+  connectivityProfile?: string | null;
+  projectId: number;
+  projectName: string;
+  milestoneCount?: number;
+  bookCount?: number;
+  bookIds?: number[];
+}
+
+export type UserMilestonesResponse =
+  | ApiDataResponse<ApiMilestone[]>
+  | ApiMilestone[];
+
 /** Normalizes list endpoints that return either `{ data: T }` or a bare array. */
 export function unwrapApiListResponse<T>(response: ApiDataResponse<T> | T): T {
   if (

@@ -244,6 +244,88 @@ export async function getProjectsWithSummary(
   }
 }
 
+type MilestoneSummaryRow = {
+  id: number;
+  name: string;
+  project_id: number;
+  project_name: string;
+  target_language_name: string;
+  milestone_count: number;
+  recording_count: number;
+  pending_count: number;
+};
+
+function mapMilestoneSummaryRow(
+  row: MilestoneSummaryRow,
+): DBTypes.MilestoneSummary {
+  return {
+    id: Number(row.id),
+    name: row.name,
+    projectId: Number(row.project_id),
+    projectName: row.project_name,
+    targetLanguageName: row.target_language_name,
+    milestoneCount: Number(row.milestone_count) || 0,
+    syncState: deriveProjectSyncState(
+      Number(row.recording_count) || 0,
+      Number(row.pending_count) || 0,
+    ),
+  };
+}
+
+export async function getMilestonesWithSummary(
+  userId: number,
+): Promise<DBTypes.MilestoneSummary[]> {
+  try {
+    await ensureUserProjectMembership(userId);
+    const db = getDatabase();
+    const result = await db.execute(
+      `SELECT
+         pu.id,
+         COALESCE(NULLIF(pu.name, ''), p.name, 'Milestone ' || pu.id) AS name,
+         p.id AS project_id,
+         p.name AS project_name,
+         tl.lang_name AS target_language_name,
+         (
+           SELECT COUNT(*)
+           FROM project_units pu2
+           WHERE pu2.project_id = p.id
+         ) AS milestone_count,
+         COUNT(DISTINCT CASE
+           WHEN r.id IS NOT NULL AND r.is_selected = 1 THEN r.id
+         END) AS recording_count,
+         COUNT(DISTINCT CASE
+           WHEN r.id IS NOT NULL AND r.is_selected = 1
+             AND r.sync_status NOT IN ('uploaded', 'conflicted') THEN r.id
+         END) AS pending_count
+       FROM project_units pu
+       INNER JOIN projects p ON p.id = pu.project_id
+       INNER JOIN user_projects up ON up.project_id = p.id
+       LEFT JOIN languages tl ON p.target_language_id = tl.id
+       LEFT JOIN chapter_assignments ca ON ca.project_unit_id = pu.id
+       LEFT JOIN bible_texts bt_r
+         ON bt_r.bible_id = ca.bible_id
+         AND bt_r.book_id = ca.book_id
+         AND bt_r.chapter_number = ca.chapter_number
+       LEFT JOIN recordings r ON r.bible_text_id = bt_r.id
+         AND r.is_selected = 1
+         AND r.recorded_by_user_id = ?
+       WHERE up.user_id = ?
+       GROUP BY pu.id
+       ORDER BY p.name COLLATE NOCASE, name COLLATE NOCASE;`,
+      [userId, userId],
+    );
+
+    const rows = (result?.rows as unknown as MilestoneSummaryRow[]) || [];
+    log.info('Milestones with summary fetched', { count: rows.length });
+    return rows.map(mapMilestoneSummaryRow);
+  } catch (error) {
+    log.error('Error fetching milestones with summary', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return [];
+  }
+}
+
 export async function getProjectUnits(projectId: number) {
   const db = getDatabase();
   try {
@@ -517,8 +599,8 @@ function mapProjectChapterRow(
   };
 }
 
-export async function getProjectChapters(
-  projectId: number,
+export async function getMilestoneChapters(
+  projectUnitId: number,
   userId: number,
 ): Promise<DBTypes.ProjectChapter[]> {
   const db = getDatabase();
@@ -546,23 +628,24 @@ export async function getProjectChapters(
       FROM chapter_assignments ca
       JOIN books b ON ca.book_id = b.id
       JOIN project_units pu ON ca.project_unit_id = pu.id
+      JOIN user_projects up ON up.project_id = pu.project_id
       ${RECORDINGS_JOIN_CA}
-      WHERE pu.project_id = ?
+      WHERE pu.id = ? AND up.user_id = ?
       GROUP BY ca.id
       ORDER BY b.id, ca.chapter_number`,
-      [userId, Number(projectId)],
+      [userId, Number(projectUnitId), userId],
     );
 
     const rows = (result?.rows as unknown as DBTypes.ProjectChapterRow[]) || [];
     const chapters = rows.map(row => mapProjectChapterRow(row, userId));
 
-    log.info('Project chapters fetched', {
-      projectId,
+    log.info('Milestone chapters fetched', {
+      projectUnitId,
       count: chapters.length,
     });
     return chapters;
   } catch (error) {
-    log.error('Error fetching project chapters', { error, projectId });
+    log.error('Error fetching milestone chapters', { error, projectUnitId });
     throw error;
   }
 }
