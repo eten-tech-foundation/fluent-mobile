@@ -60,16 +60,23 @@ async function insertBibleTx(tx: Transaction, bible: DBTypes.Bible) {
 
 async function insertProjectUnitTx(
   tx: Transaction,
-  unit: { id: number; projectId: number },
+  unit: { id: number; projectId: number; name?: string | null },
 ) {
+  const name = unit.name?.trim() ?? '';
   await tx.execute(
-    `INSERT OR IGNORE INTO project_units (id, project_id, status) VALUES (?, ?, ?)`,
-    [unit.id, unit.projectId, 'not_started'],
+    `INSERT OR IGNORE INTO project_units (id, project_id, status, name) VALUES (?, ?, ?, ?)`,
+    [unit.id, unit.projectId, 'not_started', name],
   );
   await tx.execute(`UPDATE project_units SET project_id = ? WHERE id = ?`, [
     unit.projectId,
     unit.id,
   ]);
+  if (name) {
+    await tx.execute(`UPDATE project_units SET name = ? WHERE id = ?`, [
+      name,
+      unit.id,
+    ]);
+  }
 }
 
 function buildStubEmail(userId: number): string {
@@ -525,6 +532,18 @@ export async function insertProjectUnits(
       }
     });
   }
+}
+
+export async function upsertProjectUnits(
+  units: Array<{ id: number; projectId: number; name: string }>,
+) {
+  if (units.length === 0) return;
+  const db = getDatabase();
+  await db.transaction(async (tx: Transaction) => {
+    for (const unit of units) {
+      await insertProjectUnitTx(tx, unit);
+    }
+  });
 }
 
 export type InsertChapterAssignmentSyncResult = {

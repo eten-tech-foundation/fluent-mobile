@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { refreshChapterMetadataIfOnline } from '../services/sync';
 import { isUserProjectMember } from '../db/repository';
-import { getProjectChapters } from '../db/queries';
+import { getMilestoneChapters } from '../db/queries';
 import { ProjectChapter } from '../types/db/types';
 import { parseUserId } from '../utils/parseUserId';
 import { getActiveUserId } from '../services/storage';
@@ -10,7 +10,7 @@ import { logger } from '../utils/logger';
 
 const log = logger.create('useProjectChapters');
 
-export function useProjectChapters(projectId: number) {
+export function useProjectChapters(projectUnitId: number, projectId: number) {
   const [chapters, setChapters] = useState<ProjectChapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -37,7 +37,7 @@ export function useProjectChapters(projectId: number) {
           return;
         }
 
-        const rows = await getProjectChapters(projectId, userId);
+        const rows = await getMilestoneChapters(projectUnitId, userId);
 
         if (requestId !== requestIdRef.current) return;
         if (
@@ -55,7 +55,11 @@ export function useProjectChapters(projectId: number) {
         )
           return;
 
-        log.error('Error loading project chapters:', { error: err, projectId });
+        log.error('Error loading project chapters:', {
+          error: err,
+          projectUnitId,
+          projectId,
+        });
         setError(err);
         setChapters([]);
       } finally {
@@ -64,7 +68,7 @@ export function useProjectChapters(projectId: number) {
         }
       }
     },
-    [projectId],
+    [projectUnitId, projectId],
   );
 
   useFocusEffect(
@@ -101,13 +105,17 @@ export function useProjectChapters(projectId: number) {
           void loadChapters(generation);
         })
         .catch(err => {
-          log.error('Focus refresh failed', { error: err, projectId });
+          log.error('Focus refresh failed', {
+            error: err,
+            projectUnitId,
+            projectId,
+          });
         });
 
       return () => {
         refreshGenerationRef.current += 1;
       };
-    }, [loadChapters, projectId]),
+    }, [loadChapters, projectId, projectUnitId]),
   );
 
   const refresh = useCallback(async () => {
