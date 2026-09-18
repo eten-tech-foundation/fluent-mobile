@@ -121,8 +121,9 @@ describe('MyWorkTab', () => {
 
     render(<MyWorkTab />);
 
+    expect(await screen.findByTestId('my-work-empty')).toBeTruthy();
     expect(
-      await screen.findByText(
+      screen.getByText(
         "You don't have any chapters to work on right now. Check the Projects tab to find available work.",
       ),
     ).toBeTruthy();

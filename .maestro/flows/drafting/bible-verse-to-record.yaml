@@ -1,0 +1,28 @@
+# Bible verse row → Record with verse reference visible.
+appId: com.eten.fluent
+tags:
+  - smoke
+  - drafting
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- runFlow: ../../shared/ensure/ensure-signed-in.yaml
+- runFlow: ../../shared/nav/open-any-chapter.yaml
+- tapOn:
+    id: 'drafting-tab-bible'
+- assertVisible:
+    id: 'bible-tab'
+- extendedWaitUntil:
+    visible:
+      id: 'bible-verse-row-.*'
+    timeout: 30000
+- tapOn:
+    id: 'bible-verse-row-.*'
+# Verse select stays on Bible; open Record tab explicitly
+- tapOn:
+    id: 'drafting-tab-record'
+- extendedWaitUntil:
+    visible:
+      id: 'record-tab'
+    timeout: 15000
+- assertVisible:
+    id: 'record-verse-reference'

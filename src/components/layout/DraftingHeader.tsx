@@ -34,7 +34,7 @@ export function DraftingHeader({
       border="hairline"
       title={title}
       titleAlign="center"
-      left={<HeaderBackButton onPress={onBack} />}
+      left={<HeaderBackButton onPress={onBack} testID="drafting-header-back" />}
       right={
         <>
           {syncStatus && onSyncPress ? (

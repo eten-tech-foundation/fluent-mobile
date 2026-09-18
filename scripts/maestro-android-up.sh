@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Prepare Android device for Debug + Metro Maestro runs.
-# Does not start Metro for you — prints the exact command with E2E mode.
+# Prepare Android device for Debug + Metro Maestro runs (deep-link launch).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -29,11 +28,17 @@ else
 fi
 
 echo ""
-echo "OK: device ready for Maestro."
+echo "OK: device ready for Maestro (metro deep-link mode)."
 echo ""
 echo "Start Metro with E2E Dev Menu suppression (local Debug only):"
-echo "  EXPO_PUBLIC_E2E_MODE=1 npm start"
+echo "  npm run maestro:metro   # all interfaces; do not use --localhost"
 echo ""
-echo "Optional: copy .env.maestro.example → .env.maestro and source it before flows."
-echo "Harness smoke: npm run maestro:test:harness"
-echo "Agent MCP:     npm run maestro:agent:up  (then wire .cursor/mcp.maestro.example.json)"
+echo "Flows deep-link past the Dev Client launcher via"
+echo "  exp+fluent-mobile://expo-development-client/?url=http://10.0.2.2:8081…"
+echo "(see .maestro/helpers/open-metro-deeplink.yaml). Keep Metro running."
+echo ""
+echo "Embedded APK (no Metro) — path C:"
+echo "  MAESTRO_E2E_APK=/path/to.apk npm run maestro:android:e2e-up"
+echo "  MAESTRO_LAUNCH_MODE=embedded npm run maestro:test:harness"
+echo ""
+echo "Harness: npm run maestro:test:harness"

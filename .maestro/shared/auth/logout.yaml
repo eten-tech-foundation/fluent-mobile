@@ -1,0 +1,23 @@
+# Settings → Log out → login screen. Confirms unsynced-work alert when shown.
+appId: com.eten.fluent
+---
+- tapOn:
+    id: 'home-settings-button'
+- tapOn:
+    id: 'settings-menu-more-settings'
+- scrollUntilVisible:
+    element:
+      id: 'settings-log-out'
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: 'settings-log-out'
+- runFlow:
+    when:
+      visible: 'Unsynced work on device'
+    commands:
+      - tapOn: 'Log out'
+- extendedWaitUntil:
+    visible:
+      id: 'login-email-input'
+    timeout: 60000

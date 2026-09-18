@@ -1,0 +1,26 @@
+# Home → Sync screen via header sync button.
+# Local Debug+Metro: Expo Dev Menu can steal the sync tap — dismiss and retry.
+appId: com.eten.fluent
+---
+- runFlow: goto-home.yaml
+- runFlow: ../../helpers/dismiss-expo-dev-menu.yaml
+- repeat:
+    times: 4
+    while:
+      notVisible:
+        id: 'sync-screen'
+    commands:
+      - runFlow: ../../helpers/dismiss-expo-dev-menu.yaml
+      - runFlow:
+          when:
+            visible:
+              id: 'home-sync-button'
+          commands:
+            - tapOn:
+                id: 'home-sync-button'
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'sync-screen'
+    timeout: 30000

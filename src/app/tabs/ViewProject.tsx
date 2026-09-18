@@ -100,7 +100,11 @@ export default function ViewProject() {
         {header}
         <View style={styles.centered}>
           <Text style={styles.errorMessage}>Unable to load this project.</Text>
-          <TouchableOpacity onPress={retry} accessibilityRole="button">
+          <TouchableOpacity
+            onPress={retry}
+            accessibilityRole="button"
+            testID="view-project-retry"
+          >
             <Text style={styles.retryLink}>Try again</Text>
           </TouchableOpacity>
         </View>
