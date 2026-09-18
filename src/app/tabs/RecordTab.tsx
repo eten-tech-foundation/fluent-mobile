@@ -68,6 +68,8 @@ import { isChapterTakenByOther } from '../../utils/chapterTakenStatus';
 import type { Recording, RecordingWithOwner } from '../../types/db/types';
 import {
   getStageAdvanceVisibility,
+  isDrafterBlockedFromOpenPeerCheckCapture,
+  resolvePeerCheckerAssignmentOnAdvance,
   stageAdvanceConfirmBody,
 } from '../../utils/stageAdvancement';
 import { confirmStageAdvancement } from '../../services/stageAdvance';
@@ -620,6 +622,11 @@ export function RecordTab({
     await verseAudio.playStitched(row);
   }
   const currentUserId = userId;
+  const drafterCaptureBlocked = useMemo(
+    () => isDrafterBlockedFromOpenPeerCheckCapture(chapterData, currentUserId),
+    [chapterData, currentUserId],
+  );
+  const captureDisabled = recordDisabled || drafterCaptureBlocked;
   const isTaken = useMemo(
     () => isChapterTakenByOther(chapterData, currentUserId),
     [chapterData, currentUserId],
@@ -668,6 +675,11 @@ export function RecordTab({
       await confirmStageAdvancement({
         chapterAssignmentId: chapterData.id,
         destination: stageAdvance.destination,
+        assignPeerCheckerId: resolvePeerCheckerAssignmentOnAdvance({
+          chapterData,
+          currentUserId,
+          nextStatus: stageAdvance.destination.nextStatus,
+        }),
       });
       setConfirmVisible(false);
       if (router.canGoBack()) {
@@ -683,8 +695,9 @@ export function RecordTab({
       setSubmitting(false);
     }
   }, [
-    chapterData.id,
+    chapterData,
     confirmVisible,
+    currentUserId,
     router,
     stageAdvance.destination,
     stageAdvance.disabled,
@@ -867,7 +880,7 @@ export function RecordTab({
                 onPress={() => {
                   void handleStart();
                 }}
-                disabled={recordDisabled || !verseAudio.canRecordNewTake}
+                disabled={captureDisabled || !verseAudio.canRecordNewTake}
                 accessibilityLabel={`Record ${reference}`}
                 testID="record-start-button"
               >
@@ -1108,13 +1121,13 @@ export function RecordTab({
                 <TouchableOpacity
                   style={[
                     styles.newTakeButton,
-                    (recordDisabled || !verseAudio.canRecordNewTake) &&
+                    (captureDisabled || !verseAudio.canRecordNewTake) &&
                       styles.disabled,
                   ]}
                   onPress={() => {
                     void handleStart();
                   }}
-                  disabled={recordDisabled || !verseAudio.canRecordNewTake}
+                  disabled={captureDisabled || !verseAudio.canRecordNewTake}
                   accessibilityRole="button"
                   accessibilityLabel="Record new take"
                   testID="record-new-take-button"

@@ -1093,17 +1093,31 @@ export async function resolveChapterClaimQueueEntry(id: number): Promise<void> {
 }
 
 /**
- * Immediately apply a local stage advance (#258, #443). Server confirmation and
- * pending-sync queue behavior are owned by #257.
+ * Immediately apply a local stage advance (#258, #443, #442). Optional
+ * peerCheckerId is set when an unassigned Peer Check is sent to Community
+ * Review. Server confirmation and pending-sync queue behavior are owned by #257.
  */
 export async function updateChapterAssignmentStatusLocally(
   chapterAssignmentId: number,
   status: StageAdvanceStatus,
+  peerCheckerId?: number,
 ): Promise<void> {
   const db = getDatabase();
   const updatedAt = new Date().toISOString();
   const submittedTime = new Date().toISOString();
   await db.transaction(async (tx: Transaction) => {
+    if (peerCheckerId !== undefined) {
+      await tx.execute(
+        `UPDATE chapter_assignments
+         SET status = ?,
+             submitted_time = ?,
+             updated_at = ?,
+             peer_checker_id = ?
+         WHERE id = ?`,
+        [status, submittedTime, updatedAt, peerCheckerId, chapterAssignmentId],
+      );
+      return;
+    }
     await tx.execute(
       `UPDATE chapter_assignments
        SET status = ?,
