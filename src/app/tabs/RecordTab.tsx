@@ -74,7 +74,9 @@ import { confirmStageAdvancement } from '../../services/stageAdvance';
 import {
   getBibleTextId,
   getPericopeForVerse,
-  getRecordedVerseNumbers,
+  getPericopesForChapter,
+  isChapterFullyRecordedVerseMode,
+  isChapterFullyRecordedPericopeMode,
 } from '../../db/queries';
 
 const log = logger.create('RecordTab');
@@ -237,6 +239,33 @@ export function RecordTab({
   const [activePericope, setActivePericope] =
     useState<PericopeGroupResult | null>(null);
   const pericopeRequestIdRef = useRef(0);
+  const [lastPericopeOfChapter, setLastPericopeOfChapter] =
+    useState<PericopeGroupResult | null>(null);
+
+  useEffect(() => {
+    if (draftingUnit !== 'pericope' || pericopeSetId === null) {
+      setLastPericopeOfChapter(null);
+      return;
+    }
+    let cancelled = false;
+    void getPericopesForChapter(
+      chapterData.bookId,
+      chapterData.chapterNumber,
+      pericopeSetId,
+    ).then(groups => {
+      if (!cancelled) {
+        setLastPericopeOfChapter(groups[groups.length - 1] ?? null);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    draftingUnit,
+    pericopeSetId,
+    chapterData.bookId,
+    chapterData.chapterNumber,
+  ]);
 
   const pericopeVerses = useMemo(
     () => activePericope?.verses ?? [],
@@ -446,16 +475,27 @@ export function RecordTab({
       bibleTextRequestIdRef.current += 1;
     };
   }, [resolveBibleTextId, selectedVerse, verses.length]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const recorded = await getRecordedVerseNumbers(
-        chapterData.bibleId,
-        chapterData.bookId,
-        chapterData.chapterNumber,
-      );
+      const complete =
+        draftingUnit === 'pericope'
+          ? pericopeSetId !== null
+            ? await isChapterFullyRecordedPericopeMode(
+                chapterData.bibleId,
+                chapterData.bookId,
+                chapterData.chapterNumber,
+                pericopeSetId,
+              )
+            : false
+          : await isChapterFullyRecordedVerseMode(
+              chapterData.bibleId,
+              chapterData.bookId,
+              chapterData.chapterNumber,
+            );
       if (!cancelled) {
-        setHasChapterRecording(recorded.size > 0);
+        setHasChapterRecording(complete);
       }
     })();
     return () => {
@@ -465,6 +505,8 @@ export function RecordTab({
     chapterData.bibleId,
     chapterData.bookId,
     chapterData.chapterNumber,
+    draftingUnit,
+    pericopeSetId,
     verseAudio.state,
   ]);
 
@@ -625,7 +667,27 @@ export function RecordTab({
     [chapterData, currentUserId],
   );
   const { hasConflict } = useChapterConflictStatus(chapterData.id);
-  const chapterHasRecording = hasChapterRecording || hasTake;
+  const chapterHasRecording = hasChapterRecording;
+  const lastVerseNumber = verses[verses.length - 1]?.verseNumber ?? null;
+  const isOnLastUnit = useMemo(() => {
+    if (draftingUnit === 'pericope') {
+      return (
+        activePericope !== null &&
+        lastPericopeOfChapter !== null &&
+        activePericope.pericopeNumber ===
+          lastPericopeOfChapter.pericopeNumber &&
+        activePericope.section === lastPericopeOfChapter.section
+      );
+    }
+    return lastVerseNumber !== null && selectedVerse === lastVerseNumber;
+  }, [
+    draftingUnit,
+    activePericope,
+    lastPericopeOfChapter,
+    lastVerseNumber,
+    selectedVerse,
+  ]);
+
   const stageAdvance = useMemo(
     () =>
       getStageAdvanceVisibility({
@@ -633,8 +695,15 @@ export function RecordTab({
         currentUserId,
         hasChapterRecording: chapterHasRecording,
         hasConflict,
+        isOnLastUnit,
       }),
-    [chapterData, currentUserId, chapterHasRecording, hasConflict],
+    [
+      chapterData,
+      currentUserId,
+      chapterHasRecording,
+      hasConflict,
+      isOnLastUnit,
+    ],
   );
 
   const handleOpenAdvanceSheet = useCallback(() => {

@@ -70,9 +70,11 @@ type StageAdvanceChapterData = {
 export type StageAdvanceVisibilityInput = {
   chapterData: StageAdvanceChapterData;
   currentUserId: number | null;
-  /** True when at least one verse in the chapter has a selected recording. */
   hasChapterRecording: boolean;
   hasConflict: boolean;
+  /** True only when the verse/pericope currently displayed is the last unit
+   *  in the chapter. The CTA never renders elsewhere, at any stage — #542. */
+  isOnLastUnit: boolean;
 };
 
 export type StageAdvanceVisibility = {
@@ -100,9 +102,10 @@ export function getStageAdvanceVisibility({
   currentUserId,
   hasChapterRecording,
   hasConflict,
+  isOnLastUnit,
 }: StageAdvanceVisibilityInput): StageAdvanceVisibility {
   const destination = getStageAdvanceDestination(chapterData.status);
-  if (!destination || currentUserId === null) {
+  if (!destination || currentUserId === null || !isOnLastUnit) {
     return { visible: false, disabled: false, destination: null };
   }
 

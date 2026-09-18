@@ -999,3 +999,66 @@ export async function getPericopeForVerse(
     return null;
   }
 }
+
+/** True when every verse in the chapter has a selected recording (verse mode) — #542. */
+export async function isChapterFullyRecordedVerseMode(
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+): Promise<boolean> {
+  const db = getDatabase();
+  const userId = parseUserId();
+  try {
+    const result = await db.execute(
+      `SELECT
+         COUNT(*) AS total,
+         COUNT(DISTINCT CASE WHEN r.id IS NOT NULL THEN bt.verse_number END) AS recorded
+       FROM bible_texts bt
+       LEFT JOIN recordings r
+         ON r.bible_text_id = bt.id
+         AND r.is_selected = 1
+         AND r.recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}
+       WHERE bt.bible_id = ? AND bt.book_id = ? AND bt.chapter_number = ?`,
+      userId === null
+        ? [bibleId, bookId, chapterNumber]
+        : [userId, bibleId, bookId, chapterNumber],
+    );
+    const row = result.rows?.[0] as
+      | { total: number; recorded: number }
+      | undefined;
+    if (!row || Number(row.total) === 0) return false;
+    return Number(row.recorded) === Number(row.total);
+  } catch (error) {
+    log.error('Error checking chapter verse-mode completeness', { error });
+    return false;
+  }
+}
+
+/** True when every pericope in the chapter has a full-range selected recording (pericope mode) — #542. */
+export async function isChapterFullyRecordedPericopeMode(
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+  pericopeSetId: number,
+): Promise<boolean> {
+  const pericopes = await getPericopesForChapter(
+    bookId,
+    chapterNumber,
+    pericopeSetId,
+  );
+  if (pericopes.length === 0) return false;
+
+  const coverages = await getSelectedTakeCoverages(bibleId, bookId);
+  return pericopes.every(pericope => {
+    const first = pericope.verses[0];
+    const last = pericope.verses[pericope.verses.length - 1];
+    if (!first || !last) return false;
+    return coverages.some(
+      c =>
+        c.startChapter === first.chapterNumber &&
+        c.startVerse === first.verseNumber &&
+        c.endChapter === last.chapterNumber &&
+        c.endVerse === last.verseNumber,
+    );
+  });
+}
