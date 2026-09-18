@@ -488,7 +488,11 @@ export function RecordTab({
                 chapterData.chapterNumber,
                 pericopeSetId,
               )
-            : false
+            : await isChapterFullyRecordedVerseMode(
+                chapterData.bibleId,
+                chapterData.bookId,
+                chapterData.chapterNumber,
+              )
           : await isChapterFullyRecordedVerseMode(
               chapterData.bibleId,
               chapterData.bookId,
@@ -670,7 +674,7 @@ export function RecordTab({
   const chapterHasRecording = hasChapterRecording;
   const lastVerseNumber = verses[verses.length - 1]?.verseNumber ?? null;
   const isOnLastUnit = useMemo(() => {
-    if (draftingUnit === 'pericope') {
+    if (draftingUnit === 'pericope' && pericopeSetId !== null) {
       return (
         activePericope !== null &&
         lastPericopeOfChapter !== null &&
@@ -682,6 +686,7 @@ export function RecordTab({
     return lastVerseNumber !== null && selectedVerse === lastVerseNumber;
   }, [
     draftingUnit,
+    pericopeSetId,
     activePericope,
     lastPericopeOfChapter,
     lastVerseNumber,

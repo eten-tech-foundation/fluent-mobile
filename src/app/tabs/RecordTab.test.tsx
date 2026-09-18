@@ -19,7 +19,11 @@ import type {
   UseVerseAudioArgs,
 } from '../../hooks/useVerseAudio';
 import type { useDraftingUnit } from '../../hooks/useDraftingUnit';
-import { getBibleTextId, getPericopeForVerse } from '../../db/queries';
+import {
+  getBibleTextId,
+  getPericopeForVerse,
+  isChapterFullyRecordedVerseMode,
+} from '../../db/queries';
 import type {
   Recording,
   RecordingWithOwner,
@@ -57,6 +61,10 @@ jest.mock('../../db/queries', () => ({
 const mockGetBibleTextId = getBibleTextId as jest.MockedFunction<
   typeof getBibleTextId
 >;
+const mockIsChapterFullyRecordedVerseMode =
+  isChapterFullyRecordedVerseMode as jest.MockedFunction<
+    typeof isChapterFullyRecordedVerseMode
+  >;
 
 jest.mock('../../hooks/useVerseAudio', () => ({
   useVerseAudio: (args: UseVerseAudioArgs) => mockUseVerseAudio(args),
@@ -1094,6 +1102,25 @@ describe('RecordTab', () => {
       expect(
         screen.queryByTestId('record-verse-reference-subtitle'),
       ).toBeNull();
+    });
+
+    it('uses verse completeness and navigation when no pericope set is configured', async () => {
+      mockUseDraftingUnit.mockReturnValue({
+        draftingUnit: 'pericope',
+        setDraftingUnit: jest.fn(),
+      });
+      (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(null);
+
+      renderTab();
+
+      await waitFor(() => {
+        expect(mockIsChapterFullyRecordedVerseMode).toHaveBeenCalledWith(
+          1,
+          1,
+          14,
+        );
+        expect(screen.getByTestId('stage-advance-button')).toBeTruthy();
+      });
     });
 
     it('never shows a subtitle in verse mode, even if a pericope would resolve', () => {
