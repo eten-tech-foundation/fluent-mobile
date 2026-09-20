@@ -23,6 +23,13 @@ import {
 } from '../utils/prepareOfflineCatalog';
 import { formatByteSize } from '../utils/formatByteSize';
 import { logger } from '../utils/logger';
+import { isTransportBlockedForTransfer } from '../utils/transportPolicy';
+import { useConnectivity } from './useConnectivity';
+import { usePreferences } from './usePreferences';
+import {
+  TRANSFER_OFFLINE_MESSAGE,
+  TRANSFER_WAITING_WIFI_MESSAGE,
+} from '../constants/messages';
 
 const log = logger.create('usePrepareOfflineDownload');
 
@@ -106,6 +113,18 @@ export function usePrepareOfflineDownload({
     refresh,
     workerSessionState,
   } = useDownloadQueue();
+  const { isOnline, isWifi, connectionType } = useConnectivity();
+  const { uploadOverCellular } = usePreferences();
+  const transferInput = {
+    isOnline,
+    isWifi,
+    connectionType,
+    uploadOverCellular,
+  };
+  const transportBlocked = isTransportBlockedForTransfer(transferInput);
+  const transportBlockedMessage = !isOnline
+    ? TRANSFER_OFFLINE_MESSAGE
+    : TRANSFER_WAITING_WIFI_MESSAGE;
 
   const [busy, setBusy] = useState(false);
   const [downloadKickoff, setDownloadKickoff] = useState(false);
@@ -336,6 +355,13 @@ export function usePrepareOfflineDownload({
       return;
     }
 
+    if (transportBlocked) {
+      log.info(
+        'Prepare offline resume skipped until transport allows transfer',
+      );
+      return;
+    }
+
     if (!tryAcquireSessionAction()) {
       return;
     }
@@ -346,7 +372,13 @@ export function usePrepareOfflineDownload({
     } finally {
       releaseSessionAction();
     }
-  }, [projectId, releaseSessionAction, resume, tryAcquireSessionAction]);
+  }, [
+    projectId,
+    releaseSessionAction,
+    resume,
+    transportBlocked,
+    tryAcquireSessionAction,
+  ]);
 
   const handleCancel = useCallback(async () => {
     if (downloadInFlightRef.current) {
@@ -399,6 +431,13 @@ export function usePrepareOfflineDownload({
 
   const handleDownload = useCallback(async () => {
     if (projectId === null || userId === null) {
+      return;
+    }
+
+    if (transportBlocked) {
+      log.info(
+        'Prepare offline download skipped until transport allows transfer',
+      );
       return;
     }
 
@@ -464,6 +503,7 @@ export function usePrepareOfflineDownload({
     refresh,
     selectedItems,
     start,
+    transportBlocked,
     userId,
   ]);
 
@@ -472,7 +512,9 @@ export function usePrepareOfflineDownload({
     busy,
     catalogWithProgress,
     downloadButtonLabel,
-    canDownload: canDownloadNow,
+    canDownload: canDownloadNow && !transportBlocked,
+    transportBlocked,
+    transportBlockedMessage,
     inventoryRefreshSignal,
     handleDownload,
     pause: handlePause,

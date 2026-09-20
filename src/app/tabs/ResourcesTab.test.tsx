@@ -101,6 +101,7 @@ jest.mock('../../hooks/useConnectivity', () => ({
     isOnline: true,
     isWifi: true,
     isCellular: false,
+    connectionType: 'wifi',
     hasResolved: true,
   })),
 }));
@@ -186,6 +187,7 @@ function mockOfflineConnectivity() {
     isOnline: false,
     isWifi: false,
     isCellular: false,
+    connectionType: 'none',
     hasResolved: true,
   });
 }
@@ -200,6 +202,7 @@ describe('ResourcesTab', () => {
       isOnline: true,
       isWifi: true,
       isCellular: false,
+      connectionType: 'wifi',
       hasResolved: true,
     });
     mockLoadNotes.mockImplementation(async ({ verseNumber }) =>
@@ -255,6 +258,7 @@ describe('ResourcesTab', () => {
       isOnline: true,
       isWifi: true,
       isCellular: false,
+      connectionType: 'wifi',
       hasResolved: false,
     });
     renderResources(1);

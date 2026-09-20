@@ -16,6 +16,10 @@ import { SyncActionControls } from '../../components/ui/SyncActionControls';
 import { DownloadProgressSection } from '../../components/ui/DownloadProgressSection';
 import { useDownloadQueue } from '../../hooks/useDownloadQueue';
 import { formatSyncStatusLabel } from '../../utils/syncStatusState';
+import {
+  isEffectivelyOnlineForTransfer,
+  isWaitingWifiForTransfer,
+} from '../../utils/transportPolicy';
 import { hrefs } from '../../navigation/hrefs';
 import { SyncPageStatus } from '../../types/sync/types';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -28,7 +32,7 @@ export default function SyncScreen() {
 
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const { isOnline, isWifi } = useConnectivity();
+  const { isOnline, isWifi, connectionType } = useConnectivity();
   const { uploadOverCellular, setUploadOverCellular } = usePreferences();
   const {
     hasPendingUploads,
@@ -55,8 +59,14 @@ export default function SyncScreen() {
     uploadProgress,
   });
 
-  const effectivelyOnline = isOnline && (isWifi || uploadOverCellular);
-  const cellularBlocked = isOnline && !isWifi && !uploadOverCellular;
+  const transferTransport = {
+    isOnline,
+    isWifi,
+    connectionType,
+    uploadOverCellular,
+  };
+  const effectivelyOnline = isEffectivelyOnlineForTransfer(transferTransport);
+  const waitingWifi = isWaitingWifiForTransfer(transferTransport);
 
   const { triggerSync, isSyncing, displayText, stateType } = useSync({
     onSyncComplete: () => {
@@ -65,7 +75,7 @@ export default function SyncScreen() {
   });
 
   const runSyncNow = useCallback(async () => {
-    if (cellularBlocked) {
+    if (waitingWifi) {
       return;
     }
 
@@ -74,7 +84,7 @@ export default function SyncScreen() {
     }
     await syncNowUploads();
     setRefreshKey(key => key + 1);
-  }, [cellularBlocked, isSyncing, triggerSync, syncNowUploads]);
+  }, [waitingWifi, isSyncing, triggerSync, syncNowUploads]);
 
   const handlePause = useCallback(async () => {
     await pause();
@@ -166,7 +176,7 @@ export default function SyncScreen() {
             onSyncNow={() => {
               void runSyncNow();
             }}
-            syncNowDisabled={cellularBlocked}
+            syncNowDisabled={waitingWifi}
             busy={startBusy}
             controlPending={isControlPending}
           />
@@ -188,7 +198,7 @@ export default function SyncScreen() {
         <View style={styles.cellularSection}>
           <SettingsToggleRow
             title="Upload/Download over cellular"
-            subtitle="Use mobile data to upload recordings when WiFi isn't available."
+            subtitle="Use mobile data to upload recordings and download resources when WiFi isn't available."
             value={uploadOverCellular}
             onValueChange={setUploadOverCellular}
           />

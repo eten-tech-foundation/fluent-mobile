@@ -58,6 +58,7 @@ describe('useSyncStatus cellular gate', () => {
       isOnline: true,
       isWifi: false,
       isCellular: true,
+      connectionType: 'cellular',
       hasResolved: true,
     });
     mockUsePreferences.mockReturnValue({
@@ -83,6 +84,7 @@ describe('useSyncStatus cellular gate', () => {
       isOnline: true,
       isWifi: false,
       isCellular: true,
+      connectionType: 'cellular',
       hasResolved: true,
     });
     mockUsePreferences.mockReturnValue({

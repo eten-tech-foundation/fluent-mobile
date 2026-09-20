@@ -13,7 +13,12 @@ jest.mock('../utils/logger', () => ({
   },
 }));
 
-type ConnListener = (isOnline: boolean, isWifi: boolean) => void;
+type ConnListener = (
+  isOnline: boolean,
+  isWifi: boolean,
+  isCellular?: boolean,
+  connectionType?: string,
+) => void;
 
 function createHarness(options?: {
   chapters?: PendingUploadChapter[];
@@ -99,8 +104,12 @@ function createHarness(options?: {
       uploadOverCellular = value;
       prefListener?.(value);
     },
-    emitConnectivity: (isOnline: boolean, isWifi: boolean) => {
-      connListener?.(isOnline, isWifi);
+    emitConnectivity: (
+      isOnline: boolean,
+      isWifi: boolean,
+      connectionType?: string,
+    ) => {
+      connListener?.(isOnline, isWifi, undefined, connectionType);
     },
     getPausedUntilMs: () => pausedUntilMs,
     flush: async () => {
@@ -157,6 +166,16 @@ describe('uploadOrchestrator', () => {
   it('auto-uploads on cellular when uploadOverCellular is true', async () => {
     const h = createHarness({ uploadOverCellular: true });
     h.emitConnectivity(true, false);
+    await h.flush();
+    await h.flush();
+
+    expect(h.uploaded).toHaveLength(2);
+    expect(h.events.some(e => e.type === 'complete')).toBe(true);
+  });
+
+  it('auto-uploads on ethernet without the cellular toggle', async () => {
+    const h = createHarness({ uploadOverCellular: false });
+    h.emitConnectivity(true, false, 'ethernet');
     await h.flush();
     await h.flush();
 

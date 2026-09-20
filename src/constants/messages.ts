@@ -1,3 +1,9 @@
+export const TRANSFER_WAITING_WIFI_MESSAGE =
+  'Connect to WiFi to upload or download, or enable cellular transfers in Settings.';
+
+export const TRANSFER_OFFLINE_MESSAGE =
+  'Connect to the internet to upload or download.';
+
 export const PROJECTS_EMPTY_MESSAGE =
   'No projects are available right now. Connect to the internet to sync and find available work.';
 

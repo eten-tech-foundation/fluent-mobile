@@ -10,7 +10,9 @@ import {
 import type { WorkerSessionState } from '../services/downloadQueueWorker';
 import { getSharedDownloadQueueWorker } from '../services/downloadQueueWorkerSingleton';
 import { getConnectivitySnapshot } from '../services/connectivity';
+import { getUploadOverCellular } from '../services/userPreferences';
 import { logger } from '../utils/logger';
+import { transportAllowsTransfer } from '../utils/transportPolicy';
 import {
   getActiveUserId,
   setPrepareOfflineDownloadStarted,
@@ -189,14 +191,12 @@ function hasActiveDownloads(snapshot: DownloadQueueSnapshot): boolean {
   return snapshot.items.some(item => item.status !== 'completed');
 }
 
-// Single worker instance for the app's lifetime, mirroring other cross-screen
-// service singletons (e.g. authToken) rather than recreating in-memory queue
-// state per hook consumer.
-const worker = getSharedDownloadQueueWorker();
-
 export { getSharedDownloadQueueWorker } from '../services/downloadQueueWorkerSingleton';
 
 export function useDownloadQueue() {
+  // Process-wide singleton — getSharedDownloadQueueWorker() does not recreate
+  // queue state per hook consumer.
+  const worker = getSharedDownloadQueueWorker();
   const [snapshot, setSnapshot] = useState<DownloadQueueSnapshot>(
     EMPTY_DOWNLOAD_SNAPSHOT,
   );
@@ -215,7 +215,7 @@ export function useDownloadQueue() {
     } catch (error) {
       log.error('Failed to load download queue snapshot', { error });
     }
-  }, []);
+  }, [worker]);
 
   useEffect(() => {
     void refresh();
@@ -242,6 +242,25 @@ export function useDownloadQueue() {
 
   const start = useCallback(
     async (items: DownloadQueueItem[]) => {
+      const snapshot = await getConnectivitySnapshot();
+      const gate = transportAllowsTransfer({
+        isOnline: snapshot.isOnline,
+        isWifi: snapshot.isWifi,
+        connectionType: snapshot.connectionType,
+        uploadOverCellular: getUploadOverCellular(),
+      });
+      if (gate !== 'ok') {
+        log.info('Download start skipped until transport allows transfer', {
+          gate,
+          isOnline: snapshot.isOnline,
+          isWifi: snapshot.isWifi,
+          isCellular: snapshot.isCellular,
+          connectionType: snapshot.connectionType,
+        });
+        await refresh();
+        return;
+      }
+
       const userId = getActiveUserId();
       if (userId) {
         // #39: mark each affected project as download-started so its
@@ -264,13 +283,13 @@ export function useDownloadQueue() {
 
       await refresh();
     },
-    [refresh],
+    [refresh, worker],
   );
 
   const pause = useCallback(async () => {
     await worker.pause();
     await refresh();
-  }, [refresh]);
+  }, [refresh, worker]);
 
   const resume = useCallback(async () => {
     if (worker.getState() === 'paused') {
@@ -282,11 +301,19 @@ export function useDownloadQueue() {
     }
 
     const snapshot = await getConnectivitySnapshot();
-    if (!snapshot.isOnline || !snapshot.isWifi) {
-      log.info('Download resume skipped until Wi-Fi is available', {
+    const gate = transportAllowsTransfer({
+      isOnline: snapshot.isOnline,
+      isWifi: snapshot.isWifi,
+      connectionType: snapshot.connectionType,
+      uploadOverCellular: getUploadOverCellular(),
+    });
+    if (gate !== 'ok') {
+      log.info('Download resume skipped until transport allows transfer', {
+        gate,
         isOnline: snapshot.isOnline,
         isWifi: snapshot.isWifi,
         isCellular: snapshot.isCellular,
+        connectionType: snapshot.connectionType,
       });
       await refresh();
       return;
@@ -297,12 +324,12 @@ export function useDownloadQueue() {
       void refresh();
     });
     await refresh();
-  }, [refresh]);
+  }, [refresh, worker]);
 
   const cancel = useCallback(async () => {
     await worker.cancel();
     await refresh();
-  }, [refresh]);
+  }, [refresh, worker]);
 
   const hasDownloads = hasActiveDownloads(snapshot);
 

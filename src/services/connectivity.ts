@@ -53,29 +53,38 @@ export async function resolveServerOnline(
   return checkServerReachable();
 }
 
+export type ConnectivitySnapshot = {
+  isOnline: boolean;
+  isWifi: boolean;
+  isCellular: boolean;
+  connectionType: string;
+};
+
 async function resolveConnectivityState(state: {
   isConnected: boolean | null;
   type: string;
-}): Promise<{ isOnline: boolean; isWifi: boolean; isCellular: boolean }> {
+}): Promise<ConnectivitySnapshot> {
   const isOnline = await resolveServerOnline(state.isConnected);
   return {
     isOnline,
     isWifi: state.type === 'wifi',
     isCellular: state.type === 'cellular',
+    connectionType: state.type,
   };
 }
 
-export async function getConnectivitySnapshot(): Promise<{
-  isOnline: boolean;
-  isWifi: boolean;
-  isCellular: boolean;
-}> {
+export async function getConnectivitySnapshot(): Promise<ConnectivitySnapshot> {
   ensureNetInfoConfigured();
   return resolveConnectivityState(await NetInfo.fetch());
 }
 
 export function subscribeToConnectivity(
-  onChange: (isOnline: boolean, isWifi: boolean, isCellular: boolean) => void,
+  onChange: (
+    isOnline: boolean,
+    isWifi: boolean,
+    isCellular: boolean,
+    connectionType: string,
+  ) => void,
 ): () => void {
   ensureNetInfoConfigured();
 
@@ -85,11 +94,10 @@ export function subscribeToConnectivity(
     isConnected: boolean | null;
     type: string;
   }) => {
-    const { isOnline, isWifi, isCellular } = await resolveConnectivityState(
-      state,
-    );
+    const { isOnline, isWifi, isCellular, connectionType } =
+      await resolveConnectivityState(state);
     if (!cancelled) {
-      onChange(isOnline, isWifi, isCellular);
+      onChange(isOnline, isWifi, isCellular, connectionType);
     }
   };
 

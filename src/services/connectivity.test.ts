@@ -50,6 +50,7 @@ describe('connectivity', () => {
       isOnline: true,
       isWifi: true,
       isCellular: false,
+      connectionType: 'wifi',
     });
   });
 
@@ -63,6 +64,7 @@ describe('connectivity', () => {
       isOnline: true,
       isWifi: false,
       isCellular: true,
+      connectionType: 'cellular',
     });
   });
 
@@ -84,13 +86,13 @@ describe('connectivity', () => {
     const unsubscribe = subscribeToConnectivity(listener);
 
     await waitFor(() => {
-      expect(listener).toHaveBeenCalledWith(true, true, false);
+      expect(listener).toHaveBeenCalledWith(true, true, false, 'wifi');
     });
 
     handlers[0]?.({ isConnected: true, type: 'cellular' });
 
     await waitFor(() => {
-      expect(listener).toHaveBeenCalledWith(true, false, true);
+      expect(listener).toHaveBeenCalledWith(true, false, true, 'cellular');
     });
 
     unsubscribe();

@@ -9,6 +9,7 @@ export function useConnectivity() {
   const [isOnline, setIsOnline] = useState(true);
   const [isWifi, setIsWifi] = useState(true);
   const [isCellular, setIsCellular] = useState(false);
+  const [connectionType, setConnectionType] = useState('wifi');
   const [hasResolved, setHasResolved] = useState(false);
 
   const updateConnectivity = useCallback(
@@ -16,14 +17,17 @@ export function useConnectivity() {
       isOnline: online,
       isWifi: wifi,
       isCellular: cellular,
+      connectionType: type,
     }: {
       isOnline: boolean;
       isWifi: boolean;
       isCellular: boolean;
+      connectionType: string;
     }) => {
       setIsOnline(online);
       setIsWifi(wifi);
       setIsCellular(cellular);
+      setConnectionType(type);
       setHasResolved(true);
     },
     [],
@@ -31,11 +35,12 @@ export function useConnectivity() {
 
   useEffect(
     () =>
-      subscribeToConnectivity((online, wifi, cellular) => {
+      subscribeToConnectivity((online, wifi, cellular, type) => {
         updateConnectivity({
           isOnline: online,
           isWifi: wifi,
           isCellular: cellular,
+          connectionType: type,
         });
       }),
     [updateConnectivity],
@@ -57,5 +62,5 @@ export function useConnectivity() {
     }, [updateConnectivity]),
   );
 
-  return { isOnline, isWifi, isCellular, hasResolved };
+  return { isOnline, isWifi, isCellular, connectionType, hasResolved };
 }

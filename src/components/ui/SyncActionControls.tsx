@@ -10,9 +10,9 @@ import {
 import { Pause, Play, X, type LucideIcon } from 'lucide-react-native';
 import { SyncPageStatus } from '../../types/sync/types';
 import { theme, listIconStrokeWidth } from '../../theme';
+import { TRANSFER_WAITING_WIFI_MESSAGE } from '../../constants/messages';
 
-export const SYNC_NOW_CELLULAR_DISABLED_MESSAGE =
-  'Connect to WiFi to sync, or enable cellular uploads in Settings.';
+export const SYNC_NOW_CELLULAR_DISABLED_MESSAGE = TRANSFER_WAITING_WIFI_MESSAGE;
 
 export interface SyncActionControlsProps {
   status: SyncPageStatus;

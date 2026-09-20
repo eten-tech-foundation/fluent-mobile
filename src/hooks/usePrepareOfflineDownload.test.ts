@@ -36,6 +36,26 @@ jest.mock('./useDownloadQueue', () => ({
   }),
 }));
 
+jest.mock('./useConnectivity', () => ({
+  useConnectivity: () => ({
+    isOnline: true,
+    isWifi: true,
+    isCellular: false,
+    connectionType: 'wifi',
+    hasResolved: true,
+  }),
+}));
+
+jest.mock('./usePreferences', () => ({
+  usePreferences: () => ({
+    uploadOverCellular: false,
+    preferences: { uploadOverCellular: false },
+    setUploadOverCellular: jest.fn(),
+    setPreferences: jest.fn(),
+    reload: jest.fn(),
+  }),
+}));
+
 jest.mock('../services/prepareOfflineDownload', () => ({
   enqueuePrepareOfflineDownload: jest.fn(() =>
     Promise.resolve(['tier-1-source-bible-text']),

@@ -30,13 +30,14 @@ describe('useConnectivity', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     mockSubscribeToConnectivity.mockImplementation(listener => {
-      listener(true, true, false);
+      listener(true, true, false, 'wifi');
       return jest.fn();
     });
     mockGetConnectivitySnapshot.mockResolvedValue({
       isOnline: true,
       isWifi: true,
       isCellular: false,
+      connectionType: 'wifi',
     });
   });
 

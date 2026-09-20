@@ -1,5 +1,6 @@
 import type { PendingUploadChapter } from '../db/queries';
 import { logger } from '../utils/logger';
+import { transportAllowsTransfer } from '../utils/transportPolicy';
 import type { UploadSessionEvent } from './syncEvents';
 
 const log = logger.create('UploadOrchestrator');
@@ -22,7 +23,12 @@ export type ChapterUploadWorker = {
 
 export type UploadOrchestratorDeps = {
   subscribeToConnectivity: (
-    onChange: (isOnline: boolean, isWifi: boolean) => void,
+    onChange: (
+      isOnline: boolean,
+      isWifi: boolean,
+      isCellular?: boolean,
+      connectionType?: string,
+    ) => void,
   ) => () => void;
   getUploadOverCellular: () => boolean;
   subscribeToUploadOverCellular: (
@@ -53,20 +59,6 @@ export type UploadOrchestrator = {
   getSnapshot: () => UploadOrchestratorSnapshot;
 };
 
-function transportAllowsUpload(
-  isOnline: boolean,
-  isWifi: boolean,
-  uploadOverCellular: boolean,
-): 'ok' | 'offline' | 'waiting_wifi' {
-  if (!isOnline) {
-    return 'offline';
-  }
-  if (!isWifi && !uploadOverCellular) {
-    return 'waiting_wifi';
-  }
-  return 'ok';
-}
-
 /** Pure upload session orchestrator (injectable deps for unit tests). */
 export function createUploadOrchestrator(
   deps: UploadOrchestratorDeps,
@@ -76,6 +68,7 @@ export function createUploadOrchestrator(
   let totalChapters = 0;
   let isOnline = false;
   let isWifi = false;
+  let connectionType = '';
   let started = false;
   let unsubConnectivity: (() => void) | null = null;
   let unsubPrefs: (() => void) | null = null;
@@ -126,11 +119,12 @@ export function createUploadOrchestrator(
       return;
     }
 
-    const gate = transportAllowsUpload(
+    const gate = transportAllowsTransfer({
       isOnline,
       isWifi,
-      deps.getUploadOverCellular(),
-    );
+      connectionType,
+      uploadOverCellular: deps.getUploadOverCellular(),
+    });
     if (gate === 'offline') {
       phase = 'offline';
       return;
@@ -212,11 +206,12 @@ export function createUploadOrchestrator(
   const evaluateAuto = (): void => {
     evaluateChain = evaluateChain
       .then(async () => {
-        const gate = transportAllowsUpload(
+        const gate = transportAllowsTransfer({
           isOnline,
           isWifi,
-          deps.getUploadOverCellular(),
-        );
+          connectionType,
+          uploadOverCellular: deps.getUploadOverCellular(),
+        });
 
         if (gate === 'offline') {
           // Offline transitions are handled immediately in onConnectivity.
@@ -249,11 +244,21 @@ export function createUploadOrchestrator(
       });
   };
 
-  const onConnectivity = (online: boolean, wifi: boolean) => {
+  const onConnectivity = (
+    online: boolean,
+    wifi: boolean,
+    _isCellular?: boolean,
+    type?: string,
+  ) => {
     const becameOnline = online && !wasOnline;
     wasOnline = online;
     isOnline = online;
     isWifi = wifi;
+    if (type !== undefined) {
+      connectionType = type;
+    } else {
+      connectionType = wifi ? 'wifi' : '';
+    }
 
     if (!online) {
       // Interrupt mid-upload immediately — do not wait on the evaluate chain.

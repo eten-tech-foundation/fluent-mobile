@@ -130,4 +130,24 @@ describe('PrepareOfflineDownloadFooter', () => {
     expect(screen.getByText('Download complete')).toBeTruthy();
     expect(screen.queryByTestId('prepare-offline-download-button')).toBeNull();
   });
+
+  it('disables download and explains when transport is blocked', () => {
+    const onDownload = jest.fn();
+    render(
+      <PrepareOfflineDownloadFooter
+        {...defaultProps}
+        onDownload={onDownload}
+        transportBlocked
+        transportBlockedMessage="Connect to WiFi to upload or download, or enable cellular transfers in Settings."
+      />,
+    );
+
+    const button = screen.getByTestId('prepare-offline-download-button');
+    expect(button.props.accessibilityState?.disabled).toBe(true);
+    expect(
+      screen.getByTestId('prepare-offline-transport-blocked-hint'),
+    ).toBeTruthy();
+    fireEvent.press(button);
+    expect(onDownload).not.toHaveBeenCalled();
+  });
 });

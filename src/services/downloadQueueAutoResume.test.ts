@@ -1,13 +1,20 @@
 import { startDownloadQueueAutoResume } from './downloadQueueAutoResume';
 import { getSharedDownloadQueueWorker } from './downloadQueueWorkerSingleton';
+import { getUploadOverCellular } from './userPreferences';
 
 const mockSubscribe = jest.fn();
 const mockGetResumable = jest.fn();
 const mockWorkerStart = jest.fn();
 const mockGetState = jest.fn();
 
+jest.mock('./userPreferences', () => ({
+  getUploadOverCellular: jest.fn(() => false),
+  subscribeToPreference: jest.fn(() => jest.fn()),
+}));
+
 jest.mock('./connectivity', () => ({
   subscribeToConnectivity: (...args: unknown[]) => mockSubscribe(...args),
+  getConnectivitySnapshot: jest.fn(),
 }));
 
 jest.mock('../db/repository', () => ({
@@ -29,6 +36,7 @@ describe('downloadQueueAutoResume', () => {
       getState: mockGetState,
       start: mockWorkerStart,
     });
+    (getUploadOverCellular as jest.Mock).mockReturnValue(false);
   });
 
   it('does not resume when not on Wi-Fi', async () => {
@@ -36,6 +44,16 @@ describe('downloadQueueAutoResume', () => {
     const listener = mockSubscribe.mock.calls[0][0];
 
     await listener(false, false, false);
+
+    expect(mockGetResumable).not.toHaveBeenCalled();
+    expect(mockWorkerStart).not.toHaveBeenCalled();
+  });
+
+  it('does not resume on cellular when uploadOverCellular is false', async () => {
+    startDownloadQueueAutoResume();
+    const listener = mockSubscribe.mock.calls[0][0];
+
+    await listener(true, false, true, 'cellular');
 
     expect(mockGetResumable).not.toHaveBeenCalled();
     expect(mockWorkerStart).not.toHaveBeenCalled();
@@ -58,6 +76,31 @@ describe('downloadQueueAutoResume', () => {
 
     await listener(true, true, false);
 
+    await Promise.resolve();
+
+    expect(mockGetResumable).toHaveBeenCalledWith(true);
+    expect(mockWorkerStart).toHaveBeenCalledWith([
+      expect.objectContaining({ status: 'cancelled' }),
+    ]);
+  });
+
+  it('resumes on cellular when uploadOverCellular is enabled', async () => {
+    (getUploadOverCellular as jest.Mock).mockReturnValue(true);
+    mockGetResumable.mockResolvedValue([
+      {
+        id: 'tier-1-source-bible-text',
+        tier: 1,
+        label: 'Text',
+        progress: 0.5,
+        status: 'cancelled',
+        projectId: 1,
+      },
+    ]);
+
+    startDownloadQueueAutoResume();
+    const listener = mockSubscribe.mock.calls[0][0];
+
+    await listener(true, false, true, 'cellular');
     await Promise.resolve();
 
     expect(mockGetResumable).toHaveBeenCalledWith(true);
