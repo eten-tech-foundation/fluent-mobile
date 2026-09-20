@@ -42,8 +42,10 @@ describe('useSyncStatus cellular gate', () => {
       pendingCount: 0,
       pendingChapterCount: 0,
       failedCount: 0,
+      unuploadableCount: 0,
       hasPendingUploads: false,
       hasFailedUploads: false,
+      hasUnuploadablePending: false,
       isUploading: false,
       uploadProgress: null,
     });

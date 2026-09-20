@@ -14,6 +14,15 @@ import { theme, listIconStrokeWidth } from '../../theme';
 export const SYNC_NOW_CELLULAR_DISABLED_MESSAGE =
   'Connect to WiFi to sync, or enable cellular uploads in Settings.';
 
+export const SYNC_NOW_OFFLINE_MESSAGE =
+  'Connect to the internet to upload recordings.';
+
+/** Generic copy; pericope upload support is #410. */
+export function formatUnuploadablePendingMessage(count: number): string {
+  const noun = count === 1 ? 'recording' : 'recordings';
+  return `${count} ${noun} can't upload yet — missing bible text or pericope-only takes.`;
+}
+
 export interface SyncActionControlsProps {
   status: SyncPageStatus;
   onPause: () => void;
@@ -21,6 +30,8 @@ export interface SyncActionControlsProps {
   onCancel: () => void;
   onSyncNow: () => void;
   syncNowDisabled?: boolean;
+  /** Overrides the default cellular hint when Sync Now is disabled. */
+  syncNowDisabledHint?: string;
   /** Blocks Sync Now in the pending state (e.g. upload or metadata sync active). */
   busy?: boolean;
   /** Blocks pause/cancel/resume/syncNow while an orchestrator control call is in flight. */
@@ -34,6 +45,7 @@ export function SyncActionControls({
   onCancel,
   onSyncNow,
   syncNowDisabled = false,
+  syncNowDisabledHint = SYNC_NOW_CELLULAR_DISABLED_MESSAGE,
   busy = false,
   controlPending = false,
 }: SyncActionControlsProps) {
@@ -103,7 +115,7 @@ export function SyncActionControls({
               style={styles.disabledHint}
               testID="sync-action-sync-now-disabled-hint"
             >
-              {SYNC_NOW_CELLULAR_DISABLED_MESSAGE}
+              {syncNowDisabledHint}
             </Text>
           ) : null}
         </View>
@@ -129,7 +141,7 @@ export function SyncActionControls({
               style={styles.disabledHint}
               testID="sync-action-sync-now-disabled-hint"
             >
-              {SYNC_NOW_CELLULAR_DISABLED_MESSAGE}
+              {syncNowDisabledHint}
             </Text>
           ) : null}
         </View>

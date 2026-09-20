@@ -77,6 +77,22 @@ describe('SyncActionControls', () => {
     expect(getByText(SYNC_NOW_CELLULAR_DISABLED_MESSAGE)).toBeTruthy();
   });
 
+  it('disables Sync Now and shows a custom explanation when provided', () => {
+    const { getByTestId, getByText, queryByText } = renderControls({
+      status: 'pending',
+      syncNowDisabled: true,
+      syncNowDisabledHint: 'Connect to the internet to upload recordings.',
+    });
+
+    expect(
+      getByTestId('sync-action-sync-now').props.accessibilityState,
+    ).toEqual(expect.objectContaining({ disabled: true }));
+    expect(
+      getByText('Connect to the internet to upload recordings.'),
+    ).toBeTruthy();
+    expect(queryByText(SYNC_NOW_CELLULAR_DISABLED_MESSAGE)).toBeNull();
+  });
+
   it('invokes callbacks for syncing controls', () => {
     const { getByTestId } = renderControls({ status: 'syncing' });
 

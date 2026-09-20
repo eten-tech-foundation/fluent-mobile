@@ -3,6 +3,7 @@ import {
   getFailedUploadCount,
   getPendingUploadChapters,
   getPendingUploadCount,
+  getUnuploadablePendingSummary,
 } from '../db/queries';
 import {
   onUploadSessionEvent,
@@ -36,6 +37,20 @@ async function loadFailedUploadCount(): Promise<number> {
   }
 }
 
+async function loadUnuploadablePendingSummary() {
+  try {
+    return await getUnuploadablePendingSummary();
+  } catch (error) {
+    log.error('Failed to load unuploadable pending summary', { error });
+    return {
+      orphanBibleText: 0,
+      pericopeOnly: 0,
+      other: 0,
+      total: 0,
+    };
+  }
+}
+
 function progressFromEvent(event: UploadSessionEvent): UploadProgress | null {
   if (event.type === 'start') {
     return { completed: 0, total: event.totalChapters };
@@ -53,6 +68,7 @@ export function usePendingUploads(refreshKey = 0) {
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingChapterCount, setPendingChapterCount] = useState(0);
   const [failedCount, setFailedCount] = useState(0);
+  const [unuploadableCount, setUnuploadableCount] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(
     null,
@@ -89,12 +105,14 @@ export function usePendingUploads(refreshKey = 0) {
       loadPendingUploadCount(),
       loadFailedUploadCount(),
       getPendingUploadChapters(),
+      loadUnuploadablePendingSummary(),
     ])
-      .then(([pending, failed, chapters]) => {
+      .then(([pending, failed, chapters, unuploadable]) => {
         if (!cancelled) {
           setPendingCount(pending);
           setPendingChapterCount(chapters.length);
           setFailedCount(failed);
+          setUnuploadableCount(unuploadable.total);
         }
       })
       .catch(() => {
@@ -110,8 +128,10 @@ export function usePendingUploads(refreshKey = 0) {
     pendingCount,
     pendingChapterCount,
     failedCount,
+    unuploadableCount,
     hasPendingUploads: pendingCount > 0,
     hasFailedUploads: failedCount > 0,
+    hasUnuploadablePending: unuploadableCount > 0,
     isUploading,
     uploadProgress,
   };

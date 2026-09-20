@@ -12,7 +12,12 @@ import { UploadProgressBar } from '../../components/ui/UploadProgressBar';
 import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
 import { SyncStatusIndicator } from '../../components/ui/SyncStatusIndicator';
 import { CloudSyncStatusIcon } from '../../components/ui/CloudSyncStatusIcon';
-import { SyncActionControls } from '../../components/ui/SyncActionControls';
+import {
+  formatUnuploadablePendingMessage,
+  SYNC_NOW_CELLULAR_DISABLED_MESSAGE,
+  SYNC_NOW_OFFLINE_MESSAGE,
+  SyncActionControls,
+} from '../../components/ui/SyncActionControls';
 import { DownloadProgressSection } from '../../components/ui/DownloadProgressSection';
 import { useDownloadQueue } from '../../hooks/useDownloadQueue';
 import { formatSyncStatusLabel } from '../../utils/syncStatusState';
@@ -34,7 +39,10 @@ export default function SyncScreen() {
     hasPendingUploads,
     hasFailedUploads,
     failedCount,
+    pendingCount,
     pendingChapterCount,
+    unuploadableCount,
+    hasUnuploadablePending,
     isUploading,
     uploadProgress,
   } = usePendingUploads(refreshKey);
@@ -52,11 +60,17 @@ export default function SyncScreen() {
   } = useUploadSessionState({
     hasPendingUploads,
     hasFailedUploads,
+    hasUnuploadablePending,
     uploadProgress,
   });
 
   const effectivelyOnline = isOnline && (isWifi || uploadOverCellular);
   const cellularBlocked = isOnline && !isWifi && !uploadOverCellular;
+  const offlineBlocked = !isOnline;
+  const syncNowDisabled = cellularBlocked || offlineBlocked;
+  const syncNowDisabledHint = offlineBlocked
+    ? SYNC_NOW_OFFLINE_MESSAGE
+    : SYNC_NOW_CELLULAR_DISABLED_MESSAGE;
 
   const { triggerSync, isSyncing, displayText, stateType } = useSync({
     onSyncComplete: () => {
@@ -65,7 +79,7 @@ export default function SyncScreen() {
   });
 
   const runSyncNow = useCallback(async () => {
-    if (cellularBlocked) {
+    if (syncNowDisabled) {
       return;
     }
 
@@ -74,7 +88,7 @@ export default function SyncScreen() {
     }
     await syncNowUploads();
     setRefreshKey(key => key + 1);
-  }, [cellularBlocked, isSyncing, triggerSync, syncNowUploads]);
+  }, [syncNowDisabled, isSyncing, triggerSync, syncNowUploads]);
 
   const handlePause = useCallback(async () => {
     await pause();
@@ -127,7 +141,17 @@ export default function SyncScreen() {
             hasFailedUploads,
             failedCount,
             isUploading,
+            hasUnuploadablePending,
+            pendingChapterCount,
           )}
+          {pendingChapterCount === 0 &&
+          (hasUnuploadablePending || hasPendingUploads) ? (
+            <Text style={styles.errorText} testID="sync-unuploadable-error">
+              {formatUnuploadablePendingMessage(
+                unuploadableCount > 0 ? unuploadableCount : pendingCount,
+              )}
+            </Text>
+          ) : null}
           {stateType === 'error' ? (
             <Text style={styles.errorText} testID="sync-metadata-error">
               {displayText}
@@ -166,7 +190,8 @@ export default function SyncScreen() {
             onSyncNow={() => {
               void runSyncNow();
             }}
-            syncNowDisabled={cellularBlocked}
+            syncNowDisabled={syncNowDisabled}
+            syncNowDisabledHint={syncNowDisabledHint}
             busy={startBusy}
             controlPending={isControlPending}
           />
@@ -210,6 +235,8 @@ function renderStatusLine(
   hasFailedUploads: boolean,
   failedCount: number,
   isUploading: boolean,
+  hasUnuploadablePending: boolean,
+  pendingChapterCount: number,
 ) {
   if (status === 'syncing' || isUploading) {
     return (
@@ -233,7 +260,7 @@ function renderStatusLine(
     );
   }
 
-  if (hasPendingUploads) {
+  if (hasPendingUploads && pendingChapterCount > 0) {
     return (
       <>
         <Text style={styles.statusTitle}>
@@ -247,6 +274,22 @@ function renderStatusLine(
         {!isOnline && (
           <CantReachFluentPill hasPendingUploads={hasPendingUploads} />
         )}
+      </>
+    );
+  }
+
+  if (hasUnuploadablePending || hasPendingUploads) {
+    return (
+      <>
+        <Text style={styles.statusTitle}>
+          {isOnline
+            ? "Online · some takes can't upload"
+            : "Offline · some takes can't upload"}
+        </Text>
+        <Text style={styles.statusSubtitle}>
+          These recordings stay on this device until they can be uploaded.
+        </Text>
+        {!isOnline && <CantReachFluentPill hasPendingUploads={false} />}
       </>
     );
   }
