@@ -35,7 +35,7 @@ function PericopeVerseRun({
   return (
     <View style={styles.verseRun}>
       {verses.map((verse, index) => (
-        <React.Fragment key={verse.verseNumber}>
+        <React.Fragment key={`${verse.chapterNumber}:${verse.verseNumber}`}>
           {index > 0 ? (
             <View style={styles.verseWord}>
               <Text style={styles.verseBody}> </Text>
@@ -44,14 +44,14 @@ function PericopeVerseRun({
           <View style={styles.verseSuperAlign}>
             <View
               style={styles.verseSuperSlot}
-              testID={`bible-pericope-verse-${verse.verseNumber}`}
+              testID={`bible-pericope-verse-${verse.chapterNumber}-${verse.verseNumber}`}
             >
               <Text style={styles.verseSuper}>{verse.verseNumber}</Text>
             </View>
           </View>
           {verse.text.split(' ').map((word, wordIndex, words) => (
             <View
-              key={`${verse.verseNumber}-${wordIndex}`}
+              key={`${verse.chapterNumber}-${verse.verseNumber}-${wordIndex}`}
               style={styles.verseWord}
             >
               <Text style={styles.verseBody}>

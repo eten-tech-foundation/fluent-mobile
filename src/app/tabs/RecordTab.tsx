@@ -75,6 +75,7 @@ import {
 import { confirmStageAdvancement } from '../../services/stageAdvance';
 import {
   getBibleTextId,
+  getBibleTexts,
   getPericopeForVerse,
   getRecordedVerseNumbers,
 } from '../../db/queries';
@@ -217,8 +218,6 @@ export function RecordTab({
   const verseAudioStateRef = useRef<VerseAudioState>(verseAudio.state);
   verseAudioStateRef.current = verseAudio.state;
   const verseIndex = verses.findIndex(v => v.verseNumber === selectedVerse);
-  const prevDisabled = verseIndex <= 0;
-  const nextDisabled = verseIndex < 0 || verseIndex >= verses.length - 1;
   const selected = verses.find(v => v.verseNumber === selectedVerse);
 
   const resolveBibleTextId = useCallback(async () => {
@@ -239,6 +238,10 @@ export function RecordTab({
   const [activePericope, setActivePericope] =
     useState<PericopeGroupResult | null>(null);
   const pericopeRequestIdRef = useRef(0);
+  const [crossChapterVerseTexts, setCrossChapterVerseTexts] = useState<
+    Map<string, string>
+  >(new Map());
+  const crossChapterTextRequestIdRef = useRef(0);
 
   const pericopeVerses = useMemo(
     () => activePericope?.verses ?? [],
@@ -271,6 +274,66 @@ export function RecordTab({
     draftingUnit === 'pericope' && pericopeRange
       ? activePericope?.pericopeTitle ?? null
       : null;
+
+  /**
+   * Next/Previous should jump straight to the adjacent pericope set in
+   * pericope mode instead of stepping through each verse in the current one
+   * (#540). Falls back to verse-by-verse stepping while pericope data is
+   * still resolving (pericopeVerses is cleared on every mode/verse change —
+   * see the getPericopeForVerse effect below) or when no pericope set is
+   * configured, matching the same silent fallback used for `reference` above.
+   */
+  const isPericopeNav =
+    draftingUnit === 'pericope' && pericopeVerses.length > 0;
+  const pericopePrevIndex = isPericopeNav
+    ? verses.findIndex(
+        v =>
+          v.chapterNumber === firstPericopeVerse!.chapterNumber &&
+          v.verseNumber === firstPericopeVerse!.verseNumber - 1,
+      )
+    : -1;
+  const pericopeNextIndex = isPericopeNav
+    ? verses.findIndex(
+        v =>
+          v.chapterNumber === lastPericopeVerse!.chapterNumber &&
+          v.verseNumber === lastPericopeVerse!.verseNumber + 1,
+      )
+    : -1;
+  const prevDisabled = isPericopeNav ? pericopePrevIndex < 0 : verseIndex <= 0;
+  const nextDisabled = isPericopeNav
+    ? pericopeNextIndex < 0
+    : verseIndex < 0 || verseIndex >= verses.length - 1;
+
+  /**
+   * Source Bible text for the current pericope should show every verse in
+   * its range, not just the selected verse (#540). `verses` is chapter-scoped
+   * (useDraftingContext), so a pericope verse from another chapter has no
+   * match here and is silently dropped — cross-chapter source text is not
+   * fully supported by this join and is out of scope for #540.
+   */
+  const sourceText = useMemo(() => {
+    if (draftingUnit !== 'pericope' || pericopeVerses.length === 0) {
+      return selected?.text;
+    }
+    return pericopeVerses
+      .map(pv => {
+        if (pv.chapterNumber === chapterData.chapterNumber) {
+          return verses.find(v => v.verseNumber === pv.verseNumber)?.text;
+        }
+        return crossChapterVerseTexts.get(
+          `${pv.chapterNumber}:${pv.verseNumber}`,
+        );
+      })
+      .filter((text): text is string => Boolean(text))
+      .join(' ');
+  }, [
+    draftingUnit,
+    pericopeVerses,
+    verses,
+    selected,
+    chapterData.chapterNumber,
+    crossChapterVerseTexts,
+  ]);
 
   /**
    * My Takes rows. Pericope view collapses verse takes into one stitched row so
@@ -360,6 +423,44 @@ export function RecordTab({
     selectedVerse,
   ]);
 
+  useEffect(() => {
+    const requestId = ++crossChapterTextRequestIdRef.current;
+    const otherChapters = Array.from(
+      new Set(
+        pericopeVerses
+          .map(v => v.chapterNumber)
+          .filter(chapterNumber => chapterNumber !== chapterData.chapterNumber),
+      ),
+    );
+
+    if (otherChapters.length === 0) {
+      setCrossChapterVerseTexts(new Map());
+      return;
+    }
+
+    void Promise.all(
+      otherChapters.map(chapterNumber =>
+        getBibleTexts(chapterData.bibleId, chapterData.bookId, chapterNumber),
+      ),
+    ).then(results => {
+      if (requestId !== crossChapterTextRequestIdRef.current) {
+        return;
+      }
+      const map = new Map<string, string>();
+      for (const chapterVerses of results) {
+        for (const v of chapterVerses) {
+          map.set(`${v.chapterNumber}:${v.verseNumber}`, v.text);
+        }
+      }
+      setCrossChapterVerseTexts(map);
+    });
+  }, [
+    pericopeVerses,
+    chapterData.bibleId,
+    chapterData.bookId,
+    chapterData.chapterNumber,
+  ]);
+
   // verseAudio.state is read via ref — listing it in deps caused a REHYDRATE
   // idle↔recorded loop when switching to pericope (#411 device QA).
   useEffect(() => {
@@ -407,7 +508,6 @@ export function RecordTab({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- verseAudio.state via ref
   }, [
     captureBibleTextId,
     chapterData.bibleId,
@@ -725,7 +825,10 @@ export function RecordTab({
         <TouchableOpacity
           onPress={() => {
             if (!prevDisabled) {
-              requestVerseChange(verses[verseIndex - 1]!.verseNumber);
+              const targetIndex = isPericopeNav
+                ? pericopePrevIndex
+                : verseIndex - 1;
+              requestVerseChange(verses[targetIndex]!.verseNumber);
             }
           }}
           disabled={prevDisabled}
@@ -763,7 +866,10 @@ export function RecordTab({
         <TouchableOpacity
           onPress={() => {
             if (!nextDisabled) {
-              requestVerseChange(verses[verseIndex + 1]!.verseNumber);
+              const targetIndex = isPericopeNav
+                ? pericopeNextIndex
+                : verseIndex + 1;
+              requestVerseChange(verses[targetIndex]!.verseNumber);
             }
           }}
           disabled={nextDisabled}
@@ -1166,7 +1272,7 @@ export function RecordTab({
         <SourceTextAccordion
           expanded={sourceExpanded}
           onToggle={() => setSourceExpanded(v => !v)}
-          text={selected?.text}
+          text={sourceText}
         />
       </ScrollView>
 
