@@ -2,6 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react-native';
 import { useBibleTabUnits } from './useBibleTabUnits';
 import { getProjectPericopeSetId } from '../db/repository';
 import {
+  getBibleTexts,
   getPericopesForChapter,
   getSelectedTakeCoverages,
 } from '../db/queries';
@@ -13,6 +14,7 @@ jest.mock('../db/repository', () => ({
 }));
 
 jest.mock('../db/queries', () => ({
+  getBibleTexts: jest.fn(async () => []),
   getPericopesForChapter: jest.fn(),
   getSelectedTakeCoverages: jest.fn(),
 }));
@@ -182,5 +184,46 @@ describe('useBibleTabUnits', () => {
       expect(result.current.effectiveUnit).toBe('verse');
     });
     expect(result.current.units.map(u => u.title)).toEqual(['1', '2']);
+  });
+
+  it('resolves body text for pericope verses in another chapter via getBibleTexts', async () => {
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    jest.mocked(getPericopesForChapter).mockResolvedValue([
+      {
+        pericopeNumber: '1',
+        pericopeTitle: null,
+        section: 1,
+        verses: [
+          { chapterNumber: 14, verseNumber: 2 },
+          { chapterNumber: 15, verseNumber: 1 },
+        ],
+      },
+    ]);
+    jest.mocked(getBibleTexts).mockResolvedValue([
+      {
+        bibleId: 1,
+        bookId: 40,
+        chapterNumber: 15,
+        verseNumber: 1,
+        text: 'Chapter fifteen verse one.',
+      },
+    ]);
+
+    const { result } = renderHook(() => useBibleTabUnits(hookArgs));
+
+    await waitFor(() => {
+      expect(result.current.units[0]?.bodyVerses).toEqual([
+        { chapterNumber: 14, verseNumber: 2, text: 'Second' },
+        {
+          chapterNumber: 15,
+          verseNumber: 1,
+          text: 'Chapter fifteen verse one.',
+        },
+      ]);
+    });
+    expect(getBibleTexts).toHaveBeenCalledWith(1, 40, 15);
   });
 });
