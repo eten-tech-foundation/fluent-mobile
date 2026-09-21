@@ -16,6 +16,8 @@ const mockSyncNowUploads = jest.fn();
 
 let mockPageStatus = 'pending';
 let mockCellularBlocked = false;
+let mockIsOnline = true;
+let mockConnectivityPending = false;
 let mockIsSyncing = false;
 let mockDisplayText = 'Last synced: Just now';
 let mockStateType: 'normal' | 'syncing' | 'never' | 'error' = 'normal';
@@ -40,8 +42,10 @@ jest.mock('../../hooks/useDownloadQueue', () => ({
 
 jest.mock('../../hooks/useConnectivity', () => ({
   useConnectivity: () => ({
-    isOnline: true,
+    isOnline: mockIsOnline,
     isWifi: !mockCellularBlocked,
+    connectionType: mockCellularBlocked ? 'cellular' : 'wifi',
+    connectivityPending: mockConnectivityPending,
   }),
 }));
 
@@ -146,6 +150,8 @@ describe('SyncScreen', () => {
     jest.clearAllMocks();
     mockPageStatus = 'pending';
     mockCellularBlocked = false;
+    mockIsOnline = true;
+    mockConnectivityPending = false;
     mockIsSyncing = false;
     mockDisplayText = 'Last synced: Just now';
     mockStateType = 'normal';
@@ -233,6 +239,31 @@ describe('SyncScreen', () => {
     expect(
       screen.getByTestId('sync-action-sync-now-disabled-hint'),
     ).toBeTruthy();
+  });
+
+  it('disables Sync Now until connectivity has resolved', () => {
+    mockConnectivityPending = true;
+    render(<SyncScreen />);
+
+    expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
+  });
+
+  it('does not start sync while connectivity is still pending', async () => {
+    mockConnectivityPending = true;
+    render(<SyncScreen />);
+
+    fireEvent.press(screen.getByTestId('sync-action-sync-now'));
+
+    expect(mockSyncNowFromHook).not.toHaveBeenCalled();
+    expect(mockTriggerSync).not.toHaveBeenCalled();
+  });
+
+  it('keeps Sync Now enabled when offline', () => {
+    mockIsOnline = false;
+    mockCellularBlocked = true;
+    render(<SyncScreen />);
+
+    expect(screen.getByTestId('sync-action-sync-now')).toBeEnabled();
   });
 
   it('shows metadata sync failures from useSync', () => {

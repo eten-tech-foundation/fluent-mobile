@@ -100,6 +100,10 @@ export default function SyncScreen() {
   const runSyncNow = useCallback(async () => {
     const gate = transportAllowsTransfer(transferTransport);
     transportQaLogGate('Sync Now (toque do usuário)', gate, transferTransport);
+    if (connectivityPending) {
+      transportQaLog('SYNC', 'Sync Now bloqueado — ainda detectando rede');
+      return;
+    }
     if (waitingWifi) {
       transportQaLog(
         'SYNC',
@@ -115,7 +119,14 @@ export default function SyncScreen() {
     await syncNowUploads();
     setRefreshKey(key => key + 1);
     transportQaLog('SYNC', 'Sync Now finalizou esta rodada');
-  }, [waitingWifi, transferTransport, isSyncing, triggerSync, syncNowUploads]);
+  }, [
+    connectivityPending,
+    waitingWifi,
+    transferTransport,
+    isSyncing,
+    triggerSync,
+    syncNowUploads,
+  ]);
 
   const handlePause = useCallback(async () => {
     transportQaLogClique('Botão Pause (tela Sync — upload)');
@@ -211,7 +222,7 @@ export default function SyncScreen() {
               transportQaLogClique('Botão Sync Now (tela Sync)');
               void runSyncNow();
             }}
-            syncNowDisabled={waitingWifi}
+            syncNowDisabled={waitingWifi || connectivityPending}
             busy={startBusy}
             controlPending={isControlPending}
           />

@@ -792,6 +792,62 @@ describe('usePrepareOfflineDownload', () => {
     expect(result.current.session).toBe('idle');
   });
 
+  it('clears a start-gate transport error when the session changes', async () => {
+    mockStart.mockResolvedValue({ ok: false, gate: 'waiting_wifi' });
+
+    const { result, rerender } = renderHook(
+      ({ projectId }: { projectId: number }) =>
+        usePrepareOfflineDownload({
+          projectId,
+          userId: 42,
+          catalog,
+          selectedItems: catalog.items,
+          canDownload: true,
+        }),
+      { initialProps: { projectId: 1 } },
+    );
+
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(result.current.transportBlocked).toBe(true);
+
+    rerender({ projectId: 2 });
+
+    expect(result.current.transportBlocked).toBe(false);
+    expect(result.current.transportBlockedMessage).toBeUndefined();
+  });
+
+  it('clears a start-gate transport error when connectivity changes', async () => {
+    mockStart.mockResolvedValue({ ok: false, gate: 'waiting_wifi' });
+
+    const { result, rerender } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(result.current.transportBlocked).toBe(true);
+
+    mockConnectivity = {
+      ...mockConnectivity,
+      connectionType: 'ethernet',
+    };
+    rerender({});
+
+    expect(result.current.transportBlocked).toBe(false);
+    expect(result.current.transportBlockedMessage).toBeUndefined();
+  });
+
   it('uses full catalog size for download button label after cancel', async () => {
     mockSnapshot.items = [
       {

@@ -187,8 +187,19 @@ export function usePrepareOfflineDownload({
       downloadInFlightRef.current = false;
       pendingSessionActionRef.current = null;
       sessionKeyRef.current = sessionKey;
+      setDownloadTransportError(null);
     }
   }, [sessionKey]);
+
+  useEffect(() => {
+    setDownloadTransportError(null);
+  }, [
+    connectivityPending,
+    connectionType,
+    isOnline,
+    isWifi,
+    uploadOverCellular,
+  ]);
 
   useEffect(() => {
     if (projectId === null || userId === null) {
