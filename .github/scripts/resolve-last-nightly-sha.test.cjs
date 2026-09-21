@@ -65,4 +65,29 @@ describe('resolve-last-nightly-sha', () => {
     expect(runConsideredApk(jobs)).toBe(false);
     expect(resolveLastNightlySha(runs, () => jobs)).toBe('');
   });
+
+  it('does not treat failed runs (no EAS / no skip summary) as last SHA', () => {
+    const runs = [
+      { id: 10, conclusion: 'failure', head_sha: 'eee' },
+      { id: 11, conclusion: 'success', head_sha: 'fff' },
+    ];
+    const jobsById = {
+      10: [
+        {
+          name: 'Nightly Android APK',
+          steps: [
+            { name: 'Expo doctor', conclusion: 'failure' },
+            { name: EAS_STEP, conclusion: 'skipped' },
+          ],
+        },
+      ],
+      11: [
+        {
+          name: 'Nightly Android APK',
+          steps: [{ name: EAS_STEP, conclusion: 'success' }],
+        },
+      ],
+    };
+    expect(resolveLastNightlySha(runs, (id) => jobsById[id])).toBe('fff');
+  });
 });
