@@ -34,6 +34,7 @@ export default function SyncScreen() {
     hasPendingUploads,
     hasFailedUploads,
     failedCount,
+    failedErrorText,
     pendingChapterCount,
     isUploading,
     uploadProgress,
@@ -128,6 +129,11 @@ export default function SyncScreen() {
             failedCount,
             isUploading,
           )}
+          {hasFailedUploads && failedErrorText ? (
+            <Text style={styles.errorText} testID="sync-failed-error">
+              {failedErrorText}
+            </Text>
+          ) : null}
           {stateType === 'error' ? (
             <Text style={styles.errorText} testID="sync-metadata-error">
               {displayText}
@@ -222,13 +228,18 @@ function renderStatusLine(
     );
   }
 
-  if (hasFailedUploads && isOnline) {
+  if (hasFailedUploads) {
     return (
       <>
-        <Text style={styles.statusTitle}>Online · upload pending</Text>
+        <Text style={styles.statusTitle}>
+          {isOnline ? 'Online · upload pending' : 'Offline · upload pending'}
+        </Text>
         <Text style={styles.statusSubtitle}>
           {formatSyncStatusLabel('online_failed', { failedCount })}
         </Text>
+        {!isOnline && (
+          <CantReachFluentPill hasPendingUploads={hasPendingUploads} />
+        )}
       </>
     );
   }

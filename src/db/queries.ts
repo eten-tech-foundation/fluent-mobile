@@ -657,6 +657,45 @@ export async function getFailedUploadCount(): Promise<number> {
   }
 }
 
+export type FailedUploadErrorSummary = {
+  message: string;
+  count: number;
+};
+
+/**
+ * Latest selected failed `upload_error` for the active user.
+ * When several distinct messages exist, appends “(+N more)”.
+ */
+export async function getFailedUploadErrorSummary(): Promise<FailedUploadErrorSummary | null> {
+  const db = getDatabase();
+  const userId = parseUserId();
+  try {
+    const result = await db.execute(
+      `SELECT upload_error
+       FROM recordings
+       WHERE is_selected = 1 AND sync_status = 'failed'
+         AND upload_error IS NOT NULL AND TRIM(upload_error) != ''
+         AND recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}
+       ORDER BY updated_at DESC;`,
+      userId === null ? [] : [userId],
+    );
+    const rows = result.rows ?? [];
+    if (rows.length === 0) {
+      return null;
+    }
+
+    const messages = rows.map(row => String(row.upload_error).trim());
+    const latest = messages[0];
+    const others = new Set(messages.slice(1).filter(msg => msg !== latest));
+    const suffix = others.size > 0 ? ` (+${others.size} more)` : '';
+
+    return { message: `${latest}${suffix}`, count: rows.length };
+  } catch (error) {
+    log.error('Error fetching failed upload error summary', { error });
+    return null;
+  }
+}
+
 export type PendingUploadChapter = {
   bookId: number;
   chapterNumber: number;

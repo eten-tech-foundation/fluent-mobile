@@ -5,11 +5,13 @@ import { emitUploadSessionEvent } from '../services/syncEvents';
 jest.mock('../db/queries', () => ({
   getPendingUploadCount: jest.fn(),
   getFailedUploadCount: jest.fn(),
+  getFailedUploadErrorSummary: jest.fn(),
   getPendingUploadChapters: jest.fn(),
 }));
 
 import {
   getFailedUploadCount,
+  getFailedUploadErrorSummary,
   getPendingUploadChapters,
   getPendingUploadCount,
 } from '../db/queries';
@@ -20,6 +22,10 @@ const mockGetPendingUploadCount = getPendingUploadCount as jest.MockedFunction<
 const mockGetFailedUploadCount = getFailedUploadCount as jest.MockedFunction<
   typeof getFailedUploadCount
 >;
+const mockGetFailedUploadErrorSummary =
+  getFailedUploadErrorSummary as jest.MockedFunction<
+    typeof getFailedUploadErrorSummary
+  >;
 const mockGetPendingUploadChapters =
   getPendingUploadChapters as jest.MockedFunction<
     typeof getPendingUploadChapters
@@ -30,6 +36,7 @@ describe('usePendingUploads', () => {
     jest.resetAllMocks();
     mockGetPendingUploadCount.mockResolvedValue(0);
     mockGetFailedUploadCount.mockResolvedValue(0);
+    mockGetFailedUploadErrorSummary.mockResolvedValue(null);
     mockGetPendingUploadChapters.mockResolvedValue([]);
   });
 
@@ -57,6 +64,65 @@ describe('usePendingUploads', () => {
       expect(result.current.hasPendingUploads).toBe(true);
       expect(result.current.failedCount).toBe(1);
       expect(result.current.hasFailedUploads).toBe(true);
+      expect(result.current.failedErrorText).toBeNull();
+    });
+  });
+
+  it('surfaces sanitized failed upload error text from the summary query', async () => {
+    mockGetFailedUploadCount.mockResolvedValue(1);
+    mockGetFailedUploadErrorSummary.mockResolvedValue({
+      message:
+        'Local file missing: /data/user/0/com.eten.fluent/files/recordings/rec_abc.m4a',
+      count: 1,
+    });
+    const { result } = renderHook(() => usePendingUploads(0));
+
+    await waitFor(() => {
+      expect(result.current.hasFailedUploads).toBe(true);
+      expect(result.current.failedErrorText).toBe('Local file missing');
+    });
+  });
+
+  it('keeps (+N more) after sanitizing the latest message', async () => {
+    mockGetFailedUploadCount.mockResolvedValue(3);
+    mockGetFailedUploadErrorSummary.mockResolvedValue({
+      message: 'Audio storage is unavailable (+1 more)',
+      count: 3,
+    });
+    const { result } = renderHook(() => usePendingUploads(0));
+
+    await waitFor(() => {
+      expect(result.current.failedErrorText).toBe(
+        'Audio storage is currently unavailable. Try again later. (+1 more)',
+      );
+    });
+  });
+
+  it('clears failedErrorText after a successful retry refresh', async () => {
+    mockGetFailedUploadCount.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+    mockGetFailedUploadErrorSummary
+      .mockResolvedValueOnce({
+        message: 'Audio storage is unavailable',
+        count: 1,
+      })
+      .mockResolvedValueOnce(null);
+
+    const { result } = renderHook(() => usePendingUploads(0));
+
+    await waitFor(() => {
+      expect(result.current.failedErrorText).toBe(
+        'Audio storage is currently unavailable. Try again later.',
+      );
+    });
+
+    act(() => {
+      emitUploadSessionEvent({ type: 'complete' });
+    });
+
+    await waitFor(() => {
+      expect(result.current.failedCount).toBe(0);
+      expect(result.current.hasFailedUploads).toBe(false);
+      expect(result.current.failedErrorText).toBeNull();
     });
   });
 

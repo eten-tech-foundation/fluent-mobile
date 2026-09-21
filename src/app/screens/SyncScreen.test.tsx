@@ -16,9 +16,15 @@ const mockSyncNowUploads = jest.fn();
 
 let mockPageStatus = 'pending';
 let mockCellularBlocked = false;
+let mockIsOnline = true;
 let mockIsSyncing = false;
 let mockDisplayText = 'Last synced: Just now';
 let mockStateType: 'normal' | 'syncing' | 'never' | 'error' = 'normal';
+let mockHasFailedUploads = false;
+let mockFailedCount = 0;
+let mockFailedErrorText: string | null = null;
+let mockHasPendingUploads = true;
+let mockSessionError: string | null = null;
 const mockPause = jest.fn();
 const mockCancel = jest.fn();
 const mockResumeUploads = jest.fn();
@@ -40,7 +46,7 @@ jest.mock('../../hooks/useDownloadQueue', () => ({
 
 jest.mock('../../hooks/useConnectivity', () => ({
   useConnectivity: () => ({
-    isOnline: true,
+    isOnline: mockIsOnline,
     isWifi: !mockCellularBlocked,
   }),
 }));
@@ -68,9 +74,10 @@ jest.mock('../../hooks/useSync', () => ({
 
 jest.mock('../../hooks/usePendingUploads', () => ({
   usePendingUploads: () => ({
-    hasPendingUploads: true,
-    hasFailedUploads: false,
-    failedCount: 0,
+    hasPendingUploads: mockHasPendingUploads,
+    hasFailedUploads: mockHasFailedUploads,
+    failedCount: mockFailedCount,
+    failedErrorText: mockFailedErrorText,
     pendingChapterCount: 1,
     isUploading: false,
     uploadProgress: null,
@@ -83,7 +90,7 @@ jest.mock('../../hooks/useUploadSessionState', () => ({
     progressUploaded: 0,
     progressTotal: 3,
     nextRetryAt: undefined,
-    sessionError: null,
+    sessionError: mockSessionError,
     isControlPending: false,
     isStartControlPending: false,
     pause: mockPause,
@@ -146,9 +153,15 @@ describe('SyncScreen', () => {
     jest.clearAllMocks();
     mockPageStatus = 'pending';
     mockCellularBlocked = false;
+    mockIsOnline = true;
     mockIsSyncing = false;
     mockDisplayText = 'Last synced: Just now';
     mockStateType = 'normal';
+    mockHasFailedUploads = false;
+    mockFailedCount = 0;
+    mockFailedErrorText = null;
+    mockHasPendingUploads = true;
+    mockSessionError = null;
     mockPause.mockResolvedValue(undefined);
     mockCancel.mockResolvedValue(undefined);
     mockResumeUploads.mockResolvedValue(undefined);
@@ -242,6 +255,31 @@ describe('SyncScreen', () => {
 
     expect(screen.getByTestId('sync-metadata-error')).toHaveTextContent(
       'Sync failed: chapter claims',
+    );
+  });
+
+  it('shows sanitized upload_error when selected takes have failed', () => {
+    mockHasFailedUploads = true;
+    mockFailedCount = 1;
+    mockFailedErrorText =
+      'Audio storage is currently unavailable. Try again later.';
+    render(<SyncScreen />);
+
+    expect(screen.getByTestId('sync-failed-error')).toHaveTextContent(
+      'Audio storage is currently unavailable. Try again later.',
+    );
+  });
+
+  it('shows failed upload detail while offline', () => {
+    mockIsOnline = false;
+    mockHasFailedUploads = true;
+    mockFailedCount = 1;
+    mockFailedErrorText =
+      'Missing projectUnitId for recording (no matching chapter assignment)';
+    render(<SyncScreen />);
+
+    expect(screen.getByTestId('sync-failed-error')).toHaveTextContent(
+      'Missing projectUnitId for recording (no matching chapter assignment)',
     );
   });
 });
