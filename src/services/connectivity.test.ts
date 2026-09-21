@@ -2,6 +2,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { waitFor } from '@testing-library/react-native';
 import {
   getConnectivitySnapshot,
+  getTransferTransportSnapshot,
   subscribeToConnectivity,
 } from './connectivity';
 
@@ -51,6 +52,35 @@ describe('connectivity', () => {
       isWifi: true,
       isCellular: false,
       connectionType: 'wifi',
+    });
+  });
+
+  it('getTransferTransportSnapshot uses link connectivity without server health', async () => {
+    fetchMock.mockResolvedValue({ ok: false });
+    mockNetInfo.fetch.mockResolvedValue({
+      isConnected: true,
+      type: 'wifi',
+    });
+
+    await expect(getTransferTransportSnapshot()).resolves.toEqual({
+      isOnline: true,
+      isWifi: true,
+      isCellular: false,
+      connectionType: 'wifi',
+    });
+  });
+
+  it('getTransferTransportSnapshot reports ethernet', async () => {
+    mockNetInfo.fetch.mockResolvedValue({
+      isConnected: true,
+      type: 'ethernet',
+    });
+
+    await expect(getTransferTransportSnapshot()).resolves.toEqual({
+      isOnline: true,
+      isWifi: false,
+      isCellular: false,
+      connectionType: 'ethernet',
     });
   });
 

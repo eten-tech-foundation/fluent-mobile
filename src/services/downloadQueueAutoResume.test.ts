@@ -1,6 +1,10 @@
 import { startDownloadQueueAutoResume } from './downloadQueueAutoResume';
+import { getTransferTransportSnapshot } from './connectivity';
 import { getSharedDownloadQueueWorker } from './downloadQueueWorkerSingleton';
-import { getUploadOverCellular } from './userPreferences';
+import {
+  getUploadOverCellular,
+  subscribeToPreference,
+} from './userPreferences';
 
 const mockSubscribe = jest.fn();
 const mockGetResumable = jest.fn();
@@ -14,7 +18,7 @@ jest.mock('./userPreferences', () => ({
 
 jest.mock('./connectivity', () => ({
   subscribeToConnectivity: (...args: unknown[]) => mockSubscribe(...args),
-  getConnectivitySnapshot: jest.fn(),
+  getTransferTransportSnapshot: jest.fn(),
 }));
 
 jest.mock('../db/repository', () => ({
@@ -24,6 +28,17 @@ jest.mock('../db/repository', () => ({
 jest.mock('./downloadQueueWorkerSingleton', () => ({
   getSharedDownloadQueueWorker: jest.fn(),
 }));
+
+const mockGetTransferTransportSnapshot =
+  getTransferTransportSnapshot as jest.MockedFunction<
+    typeof getTransferTransportSnapshot
+  >;
+
+function mockTransport(
+  snapshot: Awaited<ReturnType<typeof getTransferTransportSnapshot>>,
+) {
+  mockGetTransferTransportSnapshot.mockResolvedValue(snapshot);
+}
 
 describe('downloadQueueAutoResume', () => {
   beforeEach(() => {
@@ -37,23 +52,45 @@ describe('downloadQueueAutoResume', () => {
       start: mockWorkerStart,
     });
     (getUploadOverCellular as jest.Mock).mockReturnValue(false);
+    mockTransport({
+      isOnline: true,
+      isWifi: true,
+      isCellular: false,
+      connectionType: 'wifi',
+    });
   });
 
-  it('does not resume when not on Wi-Fi', async () => {
+  const fireConnectivity = async () => {
     startDownloadQueueAutoResume();
-    const listener = mockSubscribe.mock.calls[0][0];
+    const listener = mockSubscribe.mock.calls[0][0] as () => void;
+    listener();
+    await Promise.resolve();
+    await Promise.resolve();
+  };
 
-    await listener(false, false, false);
+  it('does not resume when the link is offline', async () => {
+    mockTransport({
+      isOnline: false,
+      isWifi: true,
+      isCellular: false,
+      connectionType: 'wifi',
+    });
+
+    await fireConnectivity();
 
     expect(mockGetResumable).not.toHaveBeenCalled();
     expect(mockWorkerStart).not.toHaveBeenCalled();
   });
 
   it('does not resume on cellular when uploadOverCellular is false', async () => {
-    startDownloadQueueAutoResume();
-    const listener = mockSubscribe.mock.calls[0][0];
+    mockTransport({
+      isOnline: true,
+      isWifi: false,
+      isCellular: true,
+      connectionType: 'cellular',
+    });
 
-    await listener(true, false, true, 'cellular');
+    await fireConnectivity();
 
     expect(mockGetResumable).not.toHaveBeenCalled();
     expect(mockWorkerStart).not.toHaveBeenCalled();
@@ -71,12 +108,7 @@ describe('downloadQueueAutoResume', () => {
       },
     ]);
 
-    startDownloadQueueAutoResume();
-    const listener = mockSubscribe.mock.calls[0][0];
-
-    await listener(true, true, false);
-
-    await Promise.resolve();
+    await fireConnectivity();
 
     expect(mockGetResumable).toHaveBeenCalledWith(true);
     expect(mockWorkerStart).toHaveBeenCalledWith([
@@ -86,6 +118,39 @@ describe('downloadQueueAutoResume', () => {
 
   it('resumes on cellular when uploadOverCellular is enabled', async () => {
     (getUploadOverCellular as jest.Mock).mockReturnValue(true);
+    mockTransport({
+      isOnline: true,
+      isWifi: false,
+      isCellular: true,
+      connectionType: 'cellular',
+    });
+    mockGetResumable.mockResolvedValue([
+      {
+        id: 'tier-1-source-bible-text',
+        tier: 1,
+        label: 'Text',
+        progress: 0.5,
+        status: 'cancelled',
+        projectId: 1,
+      },
+    ]);
+
+    await fireConnectivity();
+
+    expect(mockGetResumable).toHaveBeenCalledWith(true);
+    expect(mockWorkerStart).toHaveBeenCalledWith([
+      expect.objectContaining({ status: 'cancelled' }),
+    ]);
+  });
+
+  it('re-evaluates when uploadOverCellular preference changes', async () => {
+    let prefListener: (() => void) | undefined;
+    (subscribeToPreference as jest.Mock).mockImplementation(
+      (_key: string, listener: () => void) => {
+        prefListener = listener;
+        return jest.fn();
+      },
+    );
     mockGetResumable.mockResolvedValue([
       {
         id: 'tier-1-source-bible-text',
@@ -98,25 +163,26 @@ describe('downloadQueueAutoResume', () => {
     ]);
 
     startDownloadQueueAutoResume();
-    const listener = mockSubscribe.mock.calls[0][0];
+    mockTransport({
+      isOnline: true,
+      isWifi: false,
+      isCellular: true,
+      connectionType: 'cellular',
+    });
+    (getUploadOverCellular as jest.Mock).mockReturnValue(true);
 
-    await listener(true, false, true, 'cellular');
+    prefListener?.();
+    await Promise.resolve();
     await Promise.resolve();
 
     expect(mockGetResumable).toHaveBeenCalledWith(true);
-    expect(mockWorkerStart).toHaveBeenCalledWith([
-      expect.objectContaining({ status: 'cancelled' }),
-    ]);
+    expect(mockWorkerStart).toHaveBeenCalled();
   });
 
   it('skips auto-resume while worker is actively downloading', async () => {
     mockGetState.mockReturnValue('downloading');
 
-    startDownloadQueueAutoResume();
-    const listener = mockSubscribe.mock.calls[0][0];
-
-    await listener(true, true, false);
-    await Promise.resolve();
+    await fireConnectivity();
 
     expect(mockGetResumable).not.toHaveBeenCalled();
     expect(mockWorkerStart).not.toHaveBeenCalled();
@@ -132,9 +198,9 @@ describe('downloadQueueAutoResume', () => {
     );
 
     const stop = startDownloadQueueAutoResume();
-    const listener = mockSubscribe.mock.calls[0][0];
+    const listener = mockSubscribe.mock.calls[0][0] as () => void;
 
-    void listener(true, true, false);
+    listener();
     stop();
 
     resolveResumable([

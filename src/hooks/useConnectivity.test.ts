@@ -46,6 +46,17 @@ describe('useConnectivity', () => {
 
     await waitFor(() => {
       expect(result.current.hasResolved).toBe(true);
+      expect(result.current.connectivityPending).toBe(false);
     });
+  });
+
+  it('reports connectivity as pending before the first snapshot resolves', () => {
+    mockSubscribeToConnectivity.mockImplementation(() => jest.fn());
+    mockGetConnectivitySnapshot.mockReturnValue(new Promise(() => undefined));
+
+    const { result } = renderHook(() => useConnectivity());
+
+    expect(result.current.connectivityPending).toBe(true);
+    expect(result.current.hasResolved).toBe(false);
   });
 });

@@ -9,10 +9,22 @@ import {
 } from '../db/repository';
 import type { WorkerSessionState } from '../services/downloadQueueWorker';
 import { getSharedDownloadQueueWorker } from '../services/downloadQueueWorkerSingleton';
-import { getConnectivitySnapshot } from '../services/connectivity';
+import { getTransferTransportSnapshot } from '../services/connectivity';
 import { getUploadOverCellular } from '../services/userPreferences';
 import { logger } from '../utils/logger';
-import { transportAllowsTransfer } from '../utils/transportPolicy';
+import {
+  transportAllowsTransfer,
+  type TransportGate,
+} from '../utils/transportPolicy';
+import {
+  transportQaLog,
+  transportQaLogGate,
+  transportQaLogItensDownload,
+} from '../utils/transportQaLog';
+
+export type DownloadTransferResult =
+  | { ok: true }
+  | { ok: false; gate: TransportGate };
 import {
   getActiveUserId,
   setPrepareOfflineDownloadStarted,
@@ -241,24 +253,35 @@ export function useDownloadQueue() {
   }, [snapshot, workerSessionState, refresh]);
 
   const start = useCallback(
-    async (items: DownloadQueueItem[]) => {
-      const snapshot = await getConnectivitySnapshot();
+    async (items: DownloadQueueItem[]): Promise<DownloadTransferResult> => {
+      const transportSnapshot = await getTransferTransportSnapshot();
+      const uploadOverCellular = getUploadOverCellular();
       const gate = transportAllowsTransfer({
-        isOnline: snapshot.isOnline,
-        isWifi: snapshot.isWifi,
-        connectionType: snapshot.connectionType,
-        uploadOverCellular: getUploadOverCellular(),
+        isOnline: transportSnapshot.isOnline,
+        isWifi: transportSnapshot.isWifi,
+        connectionType: transportSnapshot.connectionType,
+        uploadOverCellular,
+      });
+      transportQaLogGate('fila de download (iniciar)', gate, {
+        isOnline: transportSnapshot.isOnline,
+        isWifi: transportSnapshot.isWifi,
+        connectionType: transportSnapshot.connectionType,
+        uploadOverCellular,
       });
       if (gate !== 'ok') {
+        transportQaLog(
+          'DOWNLOAD',
+          'Início cancelado — política de transporte não permite agora',
+        );
         log.info('Download start skipped until transport allows transfer', {
           gate,
-          isOnline: snapshot.isOnline,
-          isWifi: snapshot.isWifi,
-          isCellular: snapshot.isCellular,
-          connectionType: snapshot.connectionType,
+          isOnline: transportSnapshot.isOnline,
+          isWifi: transportSnapshot.isWifi,
+          isCellular: transportSnapshot.isCellular,
+          connectionType: transportSnapshot.connectionType,
         });
         await refresh();
-        return;
+        return { ok: false, gate };
       }
 
       const userId = getActiveUserId();
@@ -275,58 +298,81 @@ export function useDownloadQueue() {
         }
       }
 
+      transportQaLogItensDownload('Baixando agora', items);
+
       // Do not await the full queue — worker runs sequentially in the background
       // so UI can refresh progress and expose pause/cancel while downloading.
       void worker.start(items).finally(() => {
+        transportQaLog('DOWNLOAD', 'Worker da fila terminou uma execução');
         void refresh();
       });
 
       await refresh();
+      return { ok: true };
     },
     [refresh, worker],
   );
 
   const pause = useCallback(async () => {
+    transportQaLog('DOWNLOAD', 'Usuário pausou a fila de download');
     await worker.pause();
     await refresh();
   }, [refresh, worker]);
 
-  const resume = useCallback(async () => {
+  const resume = useCallback(async (): Promise<DownloadTransferResult> => {
+    const transportSnapshot = await getTransferTransportSnapshot();
+    const uploadOverCellular = getUploadOverCellular();
+    const gate = transportAllowsTransfer({
+      isOnline: transportSnapshot.isOnline,
+      isWifi: transportSnapshot.isWifi,
+      connectionType: transportSnapshot.connectionType,
+      uploadOverCellular,
+    });
+    transportQaLogGate('fila de download (retomar)', gate, {
+      isOnline: transportSnapshot.isOnline,
+      isWifi: transportSnapshot.isWifi,
+      connectionType: transportSnapshot.connectionType,
+      uploadOverCellular,
+    });
+    if (gate !== 'ok') {
+      transportQaLog(
+        'DOWNLOAD',
+        'Retomada cancelada — política de transporte não permite agora',
+      );
+      log.info('Download resume skipped until transport allows transfer', {
+        gate,
+        isOnline: transportSnapshot.isOnline,
+        isWifi: transportSnapshot.isWifi,
+        isCellular: transportSnapshot.isCellular,
+        connectionType: transportSnapshot.connectionType,
+      });
+      await refresh();
+      return { ok: false, gate };
+    }
+
     if (worker.getState() === 'paused') {
+      transportQaLog(
+        'DOWNLOAD',
+        'Retomando worker que estava em pausa (mesma sessão)',
+      );
       void worker.resume().finally(() => {
         void refresh();
       });
       await refresh();
-      return;
-    }
-
-    const snapshot = await getConnectivitySnapshot();
-    const gate = transportAllowsTransfer({
-      isOnline: snapshot.isOnline,
-      isWifi: snapshot.isWifi,
-      connectionType: snapshot.connectionType,
-      uploadOverCellular: getUploadOverCellular(),
-    });
-    if (gate !== 'ok') {
-      log.info('Download resume skipped until transport allows transfer', {
-        gate,
-        isOnline: snapshot.isOnline,
-        isWifi: snapshot.isWifi,
-        isCellular: snapshot.isCellular,
-        connectionType: snapshot.connectionType,
-      });
-      await refresh();
-      return;
+      return { ok: true };
     }
 
     const items = await getResumableDownloadItems(true);
+    transportQaLogItensDownload('Retomando fila com itens pendentes', items);
     void worker.start(items).finally(() => {
       void refresh();
     });
     await refresh();
+    return { ok: true };
   }, [refresh, worker]);
 
   const cancel = useCallback(async () => {
+    transportQaLog('DOWNLOAD', 'Usuário cancelou a fila de download');
     await worker.cancel();
     await refresh();
   }, [refresh, worker]);

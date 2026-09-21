@@ -1,11 +1,14 @@
 import { ConnectivityProfile } from '../types/db/types';
-interface ShouldPresentPrepareOfflineParams {
+import {
+  isEffectivelyOnlineForTransfer,
+  type TransferTransportInput,
+} from './transportPolicy';
+
+interface ShouldPresentPrepareOfflineParams extends TransferTransportInput {
   connectivityProfile: ConnectivityProfile | null;
   isAssigned: boolean;
-  isOnline: boolean;
-  isWifi: boolean;
-  isCellular: boolean;
-  uploadOverCellular: boolean;
+  /** @deprecated Kept for call-site compatibility; transport policy uses `connectionType`. */
+  isCellular?: boolean;
 }
 
 export function shouldPresentPrepareOffline({
@@ -13,12 +16,19 @@ export function shouldPresentPrepareOffline({
   isAssigned,
   isOnline,
   isWifi,
-  isCellular,
   uploadOverCellular,
+  connectionType,
 }: ShouldPresentPrepareOfflineParams): boolean {
-  const eligibleConnection =
-    isOnline && (isWifi || (uploadOverCellular && isCellular));
-  if (!eligibleConnection) return false;
+  if (
+    !isEffectivelyOnlineForTransfer({
+      isOnline,
+      isWifi,
+      uploadOverCellular,
+      connectionType,
+    })
+  ) {
+    return false;
+  }
 
   const profile = connectivityProfile ?? 'rarely_connected';
 

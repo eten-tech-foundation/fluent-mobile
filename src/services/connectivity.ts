@@ -78,6 +78,24 @@ export async function getConnectivitySnapshot(): Promise<ConnectivitySnapshot> {
   return resolveConnectivityState(await NetInfo.fetch());
 }
 
+/** Link-layer snapshot for transport gating (no `/health` reachability). */
+export function transferTransportFromNetInfoState(state: {
+  isConnected: boolean | null;
+  type: string;
+}): ConnectivitySnapshot {
+  return {
+    isOnline: state.isConnected === true,
+    isWifi: state.type === 'wifi',
+    isCellular: state.type === 'cellular',
+    connectionType: state.type,
+  };
+}
+
+export async function getTransferTransportSnapshot(): Promise<ConnectivitySnapshot> {
+  ensureNetInfoConfigured();
+  return transferTransportFromNetInfoState(await NetInfo.fetch());
+}
+
 export function subscribeToConnectivity(
   onChange: (
     isOnline: boolean,

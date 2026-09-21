@@ -36,6 +36,7 @@ import { useAuthSession } from '../../navigation/AuthSessionProvider';
 import { resetNavigationAfterAccountSwitch } from '../../navigation/resetNavigationAfterAccountSwitch';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import { logger } from '../../utils/logger';
+import { transportQaLogClique } from '../../utils/transportQaLog';
 import { useDraftingUnit } from '../../hooks/useDraftingUnit';
 
 const log = logger.create('SettingsScreen');
@@ -46,6 +47,16 @@ export default function SettingsScreen() {
   const { signOut: onSignOut, notifyUserSwitched: onUserSwitched } =
     useAuthSession();
   const { uploadOverCellular, setUploadOverCellular } = usePreferences();
+  const handleUploadOverCellularChange = useCallback(
+    (enabled: boolean) => {
+      transportQaLogClique(
+        'Toggle "Upload/Download over cellular" (tela Settings)',
+        enabled ? 'LIGANDO' : 'DESLIGANDO',
+      );
+      setUploadOverCellular(enabled);
+    },
+    [setUploadOverCellular],
+  );
   const { draftingUnit, setDraftingUnit } = useDraftingUnit();
   const { reauthRequired } = useReauthRequired({ refreshOnFocus: true });
   const [atAccountLimit, setAtAccountLimit] = useState(
@@ -185,7 +196,7 @@ export default function SettingsScreen() {
                     title="Upload/Download over cellular"
                     subtitle="Use mobile data to upload recordings when WiFi isn't available."
                     value={uploadOverCellular}
-                    onValueChange={setUploadOverCellular}
+                    onValueChange={handleUploadOverCellularChange}
                     testID="settings-upload-cellular"
                   />
                 </View>

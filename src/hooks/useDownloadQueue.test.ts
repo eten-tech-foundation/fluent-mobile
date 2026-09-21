@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react-native';
-import { getConnectivitySnapshot } from '../services/connectivity';
+import { getTransferTransportSnapshot } from '../services/connectivity';
 import { getSharedDownloadQueueWorker } from '../services/downloadQueueWorkerSingleton';
 import { getUploadOverCellular } from '../services/userPreferences';
 import { useDownloadQueue } from './useDownloadQueue';
@@ -9,7 +9,7 @@ const mockWorkerResume = jest.fn();
 const mockGetState = jest.fn();
 
 jest.mock('../services/connectivity', () => ({
-  getConnectivitySnapshot: jest.fn(),
+  getTransferTransportSnapshot: jest.fn(),
 }));
 
 jest.mock('../services/userPreferences', () => ({
@@ -77,7 +77,7 @@ describe('useDownloadQueue transport gate', () => {
       cancel: jest.fn(),
     });
     (getUploadOverCellular as jest.Mock).mockReturnValue(false);
-    (getConnectivitySnapshot as jest.Mock).mockResolvedValue({
+    (getTransferTransportSnapshot as jest.Mock).mockResolvedValue({
       isOnline: true,
       isWifi: true,
       isCellular: false,
@@ -86,7 +86,7 @@ describe('useDownloadQueue transport gate', () => {
   });
 
   it('skips start on cellular when the toggle is off', async () => {
-    (getConnectivitySnapshot as jest.Mock).mockResolvedValue({
+    (getTransferTransportSnapshot as jest.Mock).mockResolvedValue({
       isOnline: true,
       isWifi: false,
       isCellular: true,
@@ -96,15 +96,66 @@ describe('useDownloadQueue transport gate', () => {
     const { result } = renderHook(() => useDownloadQueue());
 
     await act(async () => {
-      await result.current.start([queuedItem]);
+      const gate = await result.current.start([queuedItem]);
+      expect(gate).toEqual({ ok: false, gate: 'waiting_wifi' });
     });
 
     expect(mockWorkerStart).not.toHaveBeenCalled();
   });
 
+  it('skips start when the link is offline', async () => {
+    (getTransferTransportSnapshot as jest.Mock).mockResolvedValue({
+      isOnline: false,
+      isWifi: true,
+      isCellular: false,
+      connectionType: 'wifi',
+    });
+
+    const { result } = renderHook(() => useDownloadQueue());
+
+    await act(async () => {
+      const gate = await result.current.start([queuedItem]);
+      expect(gate).toEqual({ ok: false, gate: 'offline' });
+    });
+
+    expect(mockWorkerStart).not.toHaveBeenCalled();
+  });
+
+  it('does not resume a paused worker on cellular when the toggle is off', async () => {
+    mockGetState.mockReturnValue('paused');
+    (getTransferTransportSnapshot as jest.Mock).mockResolvedValue({
+      isOnline: true,
+      isWifi: false,
+      isCellular: true,
+      connectionType: 'cellular',
+    });
+
+    const { result } = renderHook(() => useDownloadQueue());
+
+    await act(async () => {
+      const gate = await result.current.resume();
+      expect(gate).toEqual({ ok: false, gate: 'waiting_wifi' });
+    });
+
+    expect(mockWorkerResume).not.toHaveBeenCalled();
+    expect(mockWorkerStart).not.toHaveBeenCalled();
+  });
+
+  it('resumes a paused worker on Wi-Fi', async () => {
+    mockGetState.mockReturnValue('paused');
+
+    const { result } = renderHook(() => useDownloadQueue());
+
+    await act(async () => {
+      await result.current.resume();
+    });
+
+    expect(mockWorkerResume).toHaveBeenCalled();
+  });
+
   it('starts on cellular when the toggle is on', async () => {
     (getUploadOverCellular as jest.Mock).mockReturnValue(true);
-    (getConnectivitySnapshot as jest.Mock).mockResolvedValue({
+    (getTransferTransportSnapshot as jest.Mock).mockResolvedValue({
       isOnline: true,
       isWifi: false,
       isCellular: true,
@@ -122,7 +173,7 @@ describe('useDownloadQueue transport gate', () => {
 
   it('resumes queued items on cellular when the toggle is on', async () => {
     (getUploadOverCellular as jest.Mock).mockReturnValue(true);
-    (getConnectivitySnapshot as jest.Mock).mockResolvedValue({
+    (getTransferTransportSnapshot as jest.Mock).mockResolvedValue({
       isOnline: true,
       isWifi: false,
       isCellular: true,
@@ -139,7 +190,7 @@ describe('useDownloadQueue transport gate', () => {
   });
 
   it('starts on ethernet without the cellular toggle', async () => {
-    (getConnectivitySnapshot as jest.Mock).mockResolvedValue({
+    (getTransferTransportSnapshot as jest.Mock).mockResolvedValue({
       isOnline: true,
       isWifi: false,
       isCellular: false,

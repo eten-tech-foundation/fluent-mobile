@@ -1,11 +1,19 @@
 import { getResumableDownloadItems } from '../db/repository';
-import { transportAllowsTransfer } from '../utils/transportPolicy';
 import {
-  getConnectivitySnapshot,
+  transportAllowsTransfer,
+  type TransferTransportInput,
+} from '../utils/transportPolicy';
+import {
+  getTransferTransportSnapshot,
   subscribeToConnectivity,
 } from './connectivity';
 import { getSharedDownloadQueueWorker } from './downloadQueueWorkerSingleton';
 import { logger } from '../utils/logger';
+import {
+  transportQaLog,
+  transportQaLogGate,
+  transportQaLogItensDownload,
+} from '../utils/transportQaLog';
 import {
   getUploadOverCellular,
   subscribeToPreference,
@@ -16,21 +24,36 @@ const log = logger.create('downloadQueueAutoResume');
 export function startDownloadQueueAutoResume(): () => void {
   let disposed = false;
 
-  const evaluate = (
-    isOnline: boolean,
-    isWifi: boolean,
-    connectionType?: string,
-  ) => {
+  const evaluate = () => {
     void (async () => {
-      if (
-        disposed ||
-        transportAllowsTransfer({
-          isOnline,
-          isWifi,
-          connectionType,
-          uploadOverCellular: getUploadOverCellular(),
-        }) !== 'ok'
-      ) {
+      if (disposed) {
+        return;
+      }
+
+      const snapshot = await getTransferTransportSnapshot();
+      if (disposed) {
+        return;
+      }
+
+      const transport: TransferTransportInput = {
+        isOnline: snapshot.isOnline,
+        isWifi: snapshot.isWifi,
+        connectionType: snapshot.connectionType,
+        uploadOverCellular: getUploadOverCellular(),
+      };
+
+      const gate = transportAllowsTransfer(transport);
+      transportQaLogGate('auto-retomar fila', gate, {
+        isOnline: transport.isOnline,
+        isWifi: transport.isWifi,
+        connectionType: transport.connectionType,
+        uploadOverCellular: transport.uploadOverCellular,
+      });
+      if (gate !== 'ok') {
+        transportQaLog(
+          'DOWNLOAD',
+          'Auto-retomar ignorado — transporte não permite',
+        );
         return;
       }
 
@@ -38,6 +61,10 @@ export function startDownloadQueueAutoResume(): () => void {
       const workerState = worker.getState();
 
       if (workerState === 'downloading' || workerState === 'paused') {
+        transportQaLog(
+          'DOWNLOAD',
+          `Auto-retomar ignorado — worker em estado "${workerState}"`,
+        );
         return;
       }
 
@@ -52,8 +79,14 @@ export function startDownloadQueueAutoResume(): () => void {
         );
 
         if (resumable.length === 0) {
+          transportQaLog(
+            'DOWNLOAD',
+            'Auto-retomar: nenhum item elegível na fila',
+          );
           return;
         }
+
+        transportQaLogItensDownload('Auto-retomar iniciando', resumable);
 
         log.info(
           'Auto-resuming download queue when transport allows transfer',
@@ -68,20 +101,12 @@ export function startDownloadQueueAutoResume(): () => void {
     })();
   };
 
-  const unsubscribeConnectivity = subscribeToConnectivity(
-    (isOnline, isWifi, _isCellular, connectionType) => {
-      evaluate(isOnline, isWifi, connectionType);
-    },
-  );
+  const unsubscribeConnectivity = subscribeToConnectivity(() => {
+    evaluate();
+  });
 
   const unsubscribePref = subscribeToPreference('uploadOverCellular', () => {
-    void (async () => {
-      const snapshot = await getConnectivitySnapshot();
-      if (disposed) {
-        return;
-      }
-      evaluate(snapshot.isOnline, snapshot.isWifi, snapshot.connectionType);
-    })();
+    evaluate();
   });
 
   return () => {

@@ -1,6 +1,7 @@
 import type { PendingUploadChapter } from '../db/queries';
 import { logger } from '../utils/logger';
 import { transportAllowsTransfer } from '../utils/transportPolicy';
+import { transportQaLog, transportQaLogGate } from '../utils/transportQaLog';
 import type { UploadSessionEvent } from './syncEvents';
 
 const log = logger.create('UploadOrchestrator');
@@ -41,6 +42,12 @@ export type UploadOrchestratorDeps = {
   pauseWindowMs: number;
   worker: ChapterUploadWorker | null;
   emit: (event: UploadSessionEvent) => void;
+  /** Fresh reachability for Sync Now / runSession (avoids stale cache vs Sync UI). */
+  getSessionTransportSnapshot?: () => Promise<{
+    isOnline: boolean;
+    isWifi: boolean;
+    connectionType: string;
+  }>;
 };
 
 export type UploadOrchestratorSnapshot = {
@@ -106,6 +113,36 @@ export function createUploadOrchestrator(
     sessionPromise = null;
   };
 
+  const applyFreshTransportSnapshot = async (
+    origin: 'auto' | 'sync_now',
+  ): Promise<void> => {
+    if (!deps.getSessionTransportSnapshot) {
+      return;
+    }
+
+    const snapshot = await deps.getSessionTransportSnapshot();
+    const cachedOnline = isOnline;
+    isOnline = snapshot.isOnline;
+    isWifi = snapshot.isWifi;
+    connectionType = snapshot.connectionType;
+
+    if (cachedOnline !== snapshot.isOnline) {
+      transportQaLog(
+        'UPLOAD',
+        `Rede reconsultada antes do envio (${origin}) — cache do orchestrator estava desatualizado`,
+        {
+          cacheEraOnline: cachedOnline,
+          agoraOnline: snapshot.isOnline,
+          tipoConexao: connectionType,
+        },
+      );
+    }
+
+    if (snapshot.isOnline) {
+      wasOnline = true;
+    }
+  };
+
   const runSession = async (reason: 'auto' | 'sync_now'): Promise<void> => {
     if (sessionPromise) {
       return;
@@ -119,17 +156,31 @@ export function createUploadOrchestrator(
       return;
     }
 
+    await applyFreshTransportSnapshot(reason);
+
+    const uploadOverCellular = deps.getUploadOverCellular();
     const gate = transportAllowsTransfer({
       isOnline,
       isWifi,
       connectionType,
-      uploadOverCellular: deps.getUploadOverCellular(),
+      uploadOverCellular,
+    });
+    transportQaLogGate(`upload (${reason})`, gate, {
+      isOnline,
+      isWifi,
+      connectionType,
+      uploadOverCellular,
     });
     if (gate === 'offline') {
+      transportQaLog('UPLOAD', 'Envio bloqueado — sem rede');
       phase = 'offline';
       return;
     }
     if (gate === 'waiting_wifi') {
+      transportQaLog(
+        'UPLOAD',
+        'Envio bloqueado — aguardando Wi-Fi ou toggle de dados móveis',
+      );
       phase = 'waiting_wifi';
       deps.emit({ type: 'waiting_wifi' });
       return;
@@ -156,6 +207,17 @@ export function createUploadOrchestrator(
     totalChapters = chapters.length;
     phase = 'syncing';
     deps.emit({ type: 'start', totalChapters: chapters.length });
+    transportQaLog(
+      'UPLOAD',
+      `Enviando ${chapters.length} capítulo(s) pendente(s) — ${
+        reason === 'sync_now' ? 'Sync Now' : 'automático'
+      }`,
+      {
+        capitulos: chapters.map(
+          c => `livro ${c.bookId} cap. ${c.chapterNumber}`,
+        ),
+      },
+    );
     log.info('Upload session started', {
       reason,
       totalChapters: chapters.length,
@@ -231,6 +293,16 @@ export function createUploadOrchestrator(
         }
 
         if (gate === 'waiting_wifi') {
+          transportQaLogGate('upload (auto)', gate, {
+            isOnline,
+            isWifi,
+            connectionType,
+            uploadOverCellular: deps.getUploadOverCellular(),
+          });
+          transportQaLog(
+            'UPLOAD',
+            'Auto-envio pausado — aguardando Wi-Fi ou dados móveis liberados',
+          );
           phase = 'waiting_wifi';
           deps.emit({ type: 'waiting_wifi' });
           return;
@@ -254,11 +326,7 @@ export function createUploadOrchestrator(
     wasOnline = online;
     isOnline = online;
     isWifi = wifi;
-    if (type !== undefined) {
-      connectionType = type;
-    } else {
-      connectionType = wifi ? 'wifi' : '';
-    }
+    connectionType = type ?? (wifi ? 'wifi' : '');
 
     if (!online) {
       // Interrupt mid-upload immediately — do not wait on the evaluate chain.

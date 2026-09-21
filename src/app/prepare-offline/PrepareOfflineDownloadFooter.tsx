@@ -18,6 +18,7 @@ import {
 import { formatByteSize } from '../../utils/formatByteSize';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import type { PrepareOfflineDownloadSession } from '../../hooks/usePrepareOfflineDownload';
+import { transportQaLogClique } from '../../utils/transportQaLog';
 
 interface PrepareOfflineDownloadFooterProps {
   totalBytes: number;
@@ -79,14 +80,24 @@ export function PrepareOfflineDownloadFooter({
             label="Pause"
             Icon={Pause}
             disabled={disabled}
-            onPress={onPause}
+            onPress={() => {
+              transportQaLogClique(
+                'Botão Pause (Prepare for offline — download)',
+              );
+              onPause();
+            }}
             testID="prepare-offline-download-pause"
           />
           <FooterActionButton
             label="Cancel"
             Icon={X}
             disabled={disabled}
-            onPress={onCancel}
+            onPress={() => {
+              transportQaLogClique(
+                'Botão Cancel (Prepare for offline — download)',
+              );
+              onCancel();
+            }}
             testID="prepare-offline-download-cancel"
           />
         </View>
@@ -100,14 +111,24 @@ export function PrepareOfflineDownloadFooter({
             Icon={Play}
             variant="primary"
             disabled={transferDisabled}
-            onPress={onResume}
+            onPress={() => {
+              transportQaLogClique(
+                'Botão Resume (Prepare for offline — download)',
+              );
+              onResume();
+            }}
             testID="prepare-offline-download-resume"
           />
           <FooterActionButton
             label="Cancel"
             Icon={X}
             disabled={disabled}
-            onPress={onCancel}
+            onPress={() => {
+              transportQaLogClique(
+                'Botão Cancel (Prepare for offline — download)',
+              );
+              onCancel();
+            }}
             testID="prepare-offline-download-cancel"
           />
         </View>
@@ -117,7 +138,10 @@ export function PrepareOfflineDownloadFooter({
             styles.downloadButton,
             (!canDownload || transportBlocked) && styles.downloadButtonDisabled,
           ]}
-          onPress={onDownload}
+          onPress={() => {
+            transportQaLogClique('Botão Download (Prepare for offline)');
+            onDownload();
+          }}
           disabled={!canDownload || disabled || transportBlocked}
           accessibilityRole="button"
           accessibilityState={{

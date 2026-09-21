@@ -1,5 +1,5 @@
 import { theme } from '../../theme';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useSync } from '../../hooks/useSync';
 import { useRouter } from 'expo-router';
 import { usePreferences } from '../../hooks/usePreferences';
@@ -19,8 +19,14 @@ import { formatSyncStatusLabel } from '../../utils/syncStatusState';
 import {
   isEffectivelyOnlineForTransfer,
   isWaitingWifiForTransfer,
+  transportAllowsTransfer,
 } from '../../utils/transportPolicy';
 import { hrefs } from '../../navigation/hrefs';
+import {
+  transportQaLog,
+  transportQaLogClique,
+  transportQaLogGate,
+} from '../../utils/transportQaLog';
 import { SyncPageStatus } from '../../types/sync/types';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,7 +38,8 @@ export default function SyncScreen() {
 
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const { isOnline, isWifi, connectionType } = useConnectivity();
+  const { isOnline, isWifi, connectionType, connectivityPending } =
+    useConnectivity();
   const { uploadOverCellular, setUploadOverCellular } = usePreferences();
   const {
     hasPendingUploads,
@@ -59,14 +66,19 @@ export default function SyncScreen() {
     uploadProgress,
   });
 
-  const transferTransport = {
-    isOnline,
-    isWifi,
-    connectionType,
-    uploadOverCellular,
-  };
-  const effectivelyOnline = isEffectivelyOnlineForTransfer(transferTransport);
-  const waitingWifi = isWaitingWifiForTransfer(transferTransport);
+  const transferTransport = useMemo(
+    () => ({
+      isOnline,
+      isWifi,
+      connectionType,
+      uploadOverCellular,
+    }),
+    [isOnline, isWifi, connectionType, uploadOverCellular],
+  );
+  const effectivelyOnline =
+    !connectivityPending && isEffectivelyOnlineForTransfer(transferTransport);
+  const waitingWifi =
+    !connectivityPending && isWaitingWifiForTransfer(transferTransport);
 
   const { triggerSync, isSyncing, displayText, stateType } = useSync({
     onSyncComplete: () => {
@@ -74,27 +86,49 @@ export default function SyncScreen() {
     },
   });
 
+  const handleUploadOverCellularChange = useCallback(
+    (enabled: boolean) => {
+      transportQaLogClique(
+        'Toggle "Upload/Download over cellular" (tela Sync)',
+        enabled ? 'LIGANDO' : 'DESLIGANDO',
+      );
+      setUploadOverCellular(enabled);
+    },
+    [setUploadOverCellular],
+  );
+
   const runSyncNow = useCallback(async () => {
+    const gate = transportAllowsTransfer(transferTransport);
+    transportQaLogGate('Sync Now (toque do usuário)', gate, transferTransport);
     if (waitingWifi) {
+      transportQaLog(
+        'SYNC',
+        'Sync Now bloqueado — aguardando Wi-Fi ou toggle de dados móveis',
+      );
       return;
     }
 
+    transportQaLog('SYNC', 'Sync Now em andamento — envio de gravações');
     if (!isSyncing) {
       void triggerSync();
     }
     await syncNowUploads();
     setRefreshKey(key => key + 1);
-  }, [waitingWifi, isSyncing, triggerSync, syncNowUploads]);
+    transportQaLog('SYNC', 'Sync Now finalizou esta rodada');
+  }, [waitingWifi, transferTransport, isSyncing, triggerSync, syncNowUploads]);
 
   const handlePause = useCallback(async () => {
+    transportQaLogClique('Botão Pause (tela Sync — upload)');
     await pause();
   }, [pause]);
 
   const handleResume = useCallback(async () => {
+    transportQaLogClique('Botão Resume (tela Sync — upload / Sync Now)');
     await runSyncNow();
   }, [runSyncNow]);
 
   const handleCancel = useCallback(async () => {
+    transportQaLogClique('Botão Cancel (tela Sync — upload)');
     await cancel();
     setRefreshKey(key => key + 1);
   }, [cancel]);
@@ -174,6 +208,7 @@ export default function SyncScreen() {
               void handleCancel();
             }}
             onSyncNow={() => {
+              transportQaLogClique('Botão Sync Now (tela Sync)');
               void runSyncNow();
             }}
             syncNowDisabled={waitingWifi}
@@ -200,7 +235,7 @@ export default function SyncScreen() {
             title="Upload/Download over cellular"
             subtitle="Use mobile data to upload recordings and download resources when WiFi isn't available."
             value={uploadOverCellular}
-            onValueChange={setUploadOverCellular}
+            onValueChange={handleUploadOverCellularChange}
           />
         </View>
       </ScrollView>

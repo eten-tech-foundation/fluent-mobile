@@ -60,6 +60,7 @@ describe('useSyncStatus cellular gate', () => {
       isCellular: true,
       connectionType: 'cellular',
       hasResolved: true,
+      connectivityPending: false,
     });
     mockUsePreferences.mockReturnValue({
       uploadOverCellular: false,
@@ -79,6 +80,33 @@ describe('useSyncStatus cellular gate', () => {
     });
   });
 
+  it('treats ethernet as online for sync chrome without the cellular toggle', async () => {
+    mockUseConnectivity.mockReturnValue({
+      isOnline: true,
+      isWifi: false,
+      isCellular: false,
+      connectionType: 'ethernet',
+      hasResolved: true,
+      connectivityPending: false,
+    });
+    mockUsePreferences.mockReturnValue({
+      uploadOverCellular: false,
+      preferences: { uploadOverCellular: false },
+      setUploadOverCellular: jest.fn(),
+      setPreferences: jest.fn(),
+      reload: jest.fn(),
+    });
+
+    const { result } = renderHook(() =>
+      useSyncStatus({ isSyncing: false, refreshKey: 0 }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.isOnline).toBe(true);
+      expect(result.current.status).toBe('online_synced');
+    });
+  });
+
   it('allows cellular when uploadOverCellular is on', async () => {
     mockUseConnectivity.mockReturnValue({
       isOnline: true,
@@ -86,6 +114,7 @@ describe('useSyncStatus cellular gate', () => {
       isCellular: true,
       connectionType: 'cellular',
       hasResolved: true,
+      connectivityPending: false,
     });
     mockUsePreferences.mockReturnValue({
       uploadOverCellular: true,

@@ -103,6 +103,7 @@ jest.mock('../../hooks/useConnectivity', () => ({
     isCellular: false,
     connectionType: 'wifi',
     hasResolved: true,
+    connectivityPending: false,
   })),
 }));
 
@@ -189,6 +190,7 @@ function mockOfflineConnectivity() {
     isCellular: false,
     connectionType: 'none',
     hasResolved: true,
+    connectivityPending: false,
   });
 }
 
@@ -204,6 +206,7 @@ describe('ResourcesTab', () => {
       isCellular: false,
       connectionType: 'wifi',
       hasResolved: true,
+      connectivityPending: false,
     });
     mockLoadNotes.mockImplementation(async ({ verseNumber }) =>
       getMockTranslationNotes(99, verseNumber),
@@ -260,6 +263,7 @@ describe('ResourcesTab', () => {
       isCellular: false,
       connectionType: 'wifi',
       hasResolved: false,
+      connectivityPending: true,
     });
     renderResources(1);
     expect(screen.getByText(RESOURCES_EMPTY_MESSAGE)).toBeTruthy();
