@@ -270,6 +270,15 @@ describe('SyncScreen', () => {
     );
   });
 
+  it('does not show sync-failed-error when failed uploads have no upload_error text', () => {
+    mockHasFailedUploads = true;
+    mockFailedCount = 1;
+    mockFailedErrorText = null;
+    render(<SyncScreen />);
+
+    expect(screen.queryByTestId('sync-failed-error')).toBeNull();
+  });
+
   it('shows failed upload detail while offline', () => {
     mockIsOnline = false;
     mockHasFailedUploads = true;
