@@ -24,7 +24,7 @@ export type BibleUnit = {
   /** Verse in the current chapter used for selection. */
   anchorVerse: number;
   previewText: string;
-  bodyVerses: { verseNumber: number; text: string }[];
+  bodyVerses: { chapterNumber: number; verseNumber: number; text: string }[];
 };
 
 export type BibleUnitRecordedStatus = 'none' | 'partial' | 'recorded';
@@ -99,6 +99,7 @@ export function buildBibleUnits(args: {
   chapterNumber: number;
   chapterName: string;
   bookName: string;
+  crossChapterVerseTexts?: Map<string, string>;
 }): BibleUnit[] {
   const texts = verseTextMap(args.verses);
   if (args.draftingUnit === 'verse') {
@@ -114,17 +115,27 @@ export function buildBibleUnits(args: {
       title: String(verse.verseNumber),
       anchorVerse: verse.verseNumber,
       previewText: verse.text,
-      bodyVerses: [{ verseNumber: verse.verseNumber, text: verse.text }],
+      bodyVerses: [
+        {
+          chapterNumber: verse.chapterNumber,
+          verseNumber: verse.verseNumber,
+          text: verse.text,
+        },
+      ],
     }));
   }
 
   return args.pericopes.map(pericope => {
-    const bodyVerses = pericope.verses
-      .filter(v => v.chapterNumber === args.chapterNumber)
-      .map(v => ({
-        verseNumber: v.verseNumber,
-        text: texts.get(v.verseNumber) ?? '',
-      }));
+    const bodyVerses = pericope.verses.map(v => ({
+      chapterNumber: v.chapterNumber,
+      verseNumber: v.verseNumber,
+      text:
+        (v.chapterNumber === args.chapterNumber
+          ? texts.get(v.verseNumber)
+          : args.crossChapterVerseTexts?.get(
+              `${v.chapterNumber}:${v.verseNumber}`,
+            )) ?? '',
+    }));
     return {
       key: `pericope:${pericope.section ?? ''}:${pericope.pericopeNumber}`,
       draftingUnit: 'pericope',
@@ -140,7 +151,6 @@ export function buildBibleUnits(args: {
     };
   });
 }
-
 export function unitRecordedStatus(
   unitVerses: BibleUnitVerse[],
   coverages: RecordingVerseRange[],
