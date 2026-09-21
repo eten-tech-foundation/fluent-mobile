@@ -779,6 +779,11 @@ export function RecordTab({
       return (
         activePericope !== null &&
         lastPericopeOfChapter !== null &&
+        activePericope.verses.some(
+          v =>
+            v.chapterNumber === chapterData.chapterNumber &&
+            v.verseNumber === selectedVerse,
+        ) &&
         activePericope.pericopeNumber ===
           lastPericopeOfChapter.pericopeNumber &&
         activePericope.section === lastPericopeOfChapter.section
@@ -792,6 +797,7 @@ export function RecordTab({
     lastPericopeOfChapter,
     lastVerseNumber,
     selectedVerse,
+    chapterData.chapterNumber,
   ]);
 
   const stageAdvance = useMemo(
