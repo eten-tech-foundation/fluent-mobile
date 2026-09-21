@@ -228,18 +228,13 @@ function renderStatusLine(
     );
   }
 
-  if (hasFailedUploads) {
+  if (hasFailedUploads && isOnline) {
     return (
       <>
-        <Text style={styles.statusTitle}>
-          {isOnline ? 'Online · upload pending' : 'Offline · upload pending'}
-        </Text>
+        <Text style={styles.statusTitle}>Online · upload pending</Text>
         <Text style={styles.statusSubtitle}>
           {formatSyncStatusLabel('online_failed', { failedCount })}
         </Text>
-        {!isOnline && (
-          <CantReachFluentPill hasPendingUploads={hasPendingUploads} />
-        )}
       </>
     );
   }

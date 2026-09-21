@@ -1,10 +1,10 @@
 const MAX_DISPLAY_LENGTH = 200;
 
 const FILE_PATH_RE =
-  /(?:file:\/\/)?(?:\/(?:data\/user|storage|Users|home)[^\s]+|(?:[A-Za-z]:\\|\\\\)[^\s]+)/gi;
+  /(?:file:\/\/)?(?:\/(?:data\/(?:user|data)|storage|sdcard|Users|home)[^\s]+|content:\/\/[^\s]+|(?:[A-Za-z]:\\|\\\\)[^\s]+)/gi;
 
 export function sanitizeUploadErrorForDisplay(raw: string): string {
-  const trimmed = raw.trim();
+  const trimmed = raw.split('\n')[0]?.trim() ?? '';
   if (!trimmed) {
     return 'Upload failed';
   }

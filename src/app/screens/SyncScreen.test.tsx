@@ -273,6 +273,7 @@ describe('SyncScreen', () => {
   it('shows failed upload detail while offline', () => {
     mockIsOnline = false;
     mockHasFailedUploads = true;
+    mockHasPendingUploads = false;
     mockFailedCount = 1;
     mockFailedErrorText =
       'Missing projectUnitId for recording (no matching chapter assignment)';
@@ -281,5 +282,6 @@ describe('SyncScreen', () => {
     expect(screen.getByTestId('sync-failed-error')).toHaveTextContent(
       'Missing projectUnitId for recording (no matching chapter assignment)',
     );
+    expect(screen.queryByText(/Open Sync page to retry\./)).toBeNull();
   });
 });

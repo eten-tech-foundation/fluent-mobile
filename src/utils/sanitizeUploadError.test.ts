@@ -38,6 +38,27 @@ describe('sanitizeUploadErrorForDisplay', () => {
     expect(sanitized).not.toMatch(/\/storage\//);
   });
 
+  it('strips file:///data/data and content:// paths from worker-style errors', () => {
+    expect(
+      sanitizeUploadErrorForDisplay(
+        'Recording file missing: file:///data/data/com.eten.fluent/files/rec.m4a',
+      ),
+    ).toBe('Recording file missing');
+    expect(
+      sanitizeUploadErrorForDisplay(
+        'Recording file missing: content://media/external/audio/123',
+      ),
+    ).toBe('Recording file missing');
+  });
+
+  it('uses only the first line of multi-line upload_error text', () => {
+    expect(
+      sanitizeUploadErrorForDisplay(
+        'Audio storage is unavailable\nResponse body: {"secret":true}',
+      ),
+    ).toBe('Audio storage is currently unavailable. Try again later.');
+  });
+
   it('truncates long strings to 200 characters', () => {
     const raw = `Upload failed: ${'x'.repeat(400)}`;
     const sanitized = sanitizeUploadErrorForDisplay(raw);
