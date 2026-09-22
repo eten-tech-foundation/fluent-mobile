@@ -1,8 +1,12 @@
 import {
+  formatCoveredViewsKey,
   hasUsableRecordingRange,
   rangeCoversVerse,
   rangesOverlap,
+  recordingUnitCaptureKey,
+  recordingUnitCapturesEqual,
   shouldClearSelectionForIncomingTake,
+  type RecordingUnitCapture,
 } from './recordingRange';
 
 describe('recordingRange', () => {
@@ -96,5 +100,48 @@ describe('recordingRange', () => {
         },
       ),
     ).toBe(true);
+  });
+
+  it('formats covered-views keys by content, not array identity', () => {
+    const views = [
+      { bibleTextId: 56268, chapterNumber: 9, verseNumber: 2 },
+      { bibleTextId: 56269, chapterNumber: 9, verseNumber: 3 },
+    ];
+    expect(formatCoveredViewsKey(views)).toBe('56268:9:2,56269:9:3');
+    expect(formatCoveredViewsKey([...views])).toBe(
+      formatCoveredViewsKey(views),
+    );
+    expect(formatCoveredViewsKey(null)).toBe('');
+    expect(formatCoveredViewsKey(undefined)).toBe('');
+    expect(formatCoveredViewsKey([])).toBe('');
+  });
+
+  it('compares capture units by content, not coveredViews identity', () => {
+    const base: RecordingUnitCapture = {
+      granularity: 'pericope',
+      startChapter: 9,
+      startVerse: 2,
+      endChapter: 9,
+      endVerse: 13,
+      anchorBibleTextId: 56268,
+      coveredViews: [
+        { bibleTextId: 56268, chapterNumber: 9, verseNumber: 2 },
+        { bibleTextId: 56269, chapterNumber: 9, verseNumber: 3 },
+      ],
+    };
+    const sameContent: RecordingUnitCapture = {
+      ...base,
+      coveredViews: [
+        { bibleTextId: 56268, chapterNumber: 9, verseNumber: 2 },
+        { bibleTextId: 56269, chapterNumber: 9, verseNumber: 3 },
+      ],
+    };
+
+    expect(recordingUnitCaptureKey(base)).toBe(
+      recordingUnitCaptureKey(sameContent),
+    );
+    expect(recordingUnitCapturesEqual(base, sameContent)).toBe(true);
+    expect(recordingUnitCapturesEqual(base, null)).toBe(false);
+    expect(recordingUnitCaptureKey(null)).toBe('');
   });
 });

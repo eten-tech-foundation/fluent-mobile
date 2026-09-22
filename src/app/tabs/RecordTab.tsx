@@ -29,8 +29,14 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import { useDraftingContext } from '../context/DraftingContext';
 import { useVerseAudio } from '../../hooks/useVerseAudio';
+import type { VerseAudioState } from '../../hooks/verseAudioReducer';
 import { resolveRecordingUnit } from '../../hooks/resolveRecordingUnit';
+import { recordingUnitCapturesEqual } from '../../utils/recordingRange';
 import { formatTakeSubtitle } from '../../utils/takeSubtitle';
+import {
+  buildCrossGranularityRows,
+  type StitchedTakeRow,
+} from '../../utils/crossGranularityRows';
 import type { RecordingUnitCapture } from '../../utils/recordingRange';
 import { useDraftingUnit } from '../../hooks/useDraftingUnit';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
@@ -67,6 +73,7 @@ import {
 import { confirmStageAdvancement } from '../../services/stageAdvance';
 import {
   getBibleTextId,
+  getBibleTexts,
   getPericopeForVerse,
   getRecordedVerseNumbers,
 } from '../../db/queries';
@@ -200,13 +207,16 @@ export function RecordTab({
     draftingUnit,
     recordingUnit: activeRecordingUnit,
   });
+  /**
+   * Latest-value ref synced during render so async `resolveRecordingUnit`
+   * settlements read current audio state without listing `verseAudio.state` in
+   * effect deps (that re-ran resolve and looped REHYDRATE — #411). Do not move
+   * to useLayoutEffect: the .then can settle before layout effects run.
+   */
+  const verseAudioStateRef = useRef<VerseAudioState>(verseAudio.state);
+  verseAudioStateRef.current = verseAudio.state;
   const verseIndex = verses.findIndex(v => v.verseNumber === selectedVerse);
-  const prevDisabled = verseIndex <= 0;
-  const nextDisabled = verseIndex < 0 || verseIndex >= verses.length - 1;
   const selected = verses.find(v => v.verseNumber === selectedVerse);
-  const hasTake = verseAudio.takes.length > 0;
-  const hasAnyTake = hasTake || verseAudio.allTakes.length > 0;
-  const activeViewHasTakes = takeView === 'mine' ? hasTake : hasAnyTake;
 
   const resolveBibleTextId = useCallback(async () => {
     return getBibleTextId(
@@ -226,8 +236,15 @@ export function RecordTab({
   const [activePericope, setActivePericope] =
     useState<PericopeGroupResult | null>(null);
   const pericopeRequestIdRef = useRef(0);
+  const [crossChapterVerseTexts, setCrossChapterVerseTexts] = useState<
+    Map<string, string>
+  >(new Map());
+  const crossChapterTextRequestIdRef = useRef(0);
 
-  const pericopeVerses = activePericope?.verses ?? [];
+  const pericopeVerses = useMemo(
+    () => activePericope?.verses ?? [],
+    [activePericope],
+  );
   const firstPericopeVerse = pericopeVerses[0] ?? null;
   const lastPericopeVerse = pericopeVerses[pericopeVerses.length - 1] ?? null;
   const pericopeSpansChapters =
@@ -255,6 +272,99 @@ export function RecordTab({
     draftingUnit === 'pericope' && pericopeRange
       ? activePericope?.pericopeTitle ?? null
       : null;
+
+  /**
+   * Next/Previous should jump straight to the adjacent pericope set in
+   * pericope mode instead of stepping through each verse in the current one
+   * (#540). Falls back to verse-by-verse stepping while pericope data is
+   * still resolving (pericopeVerses is cleared on every mode/verse change —
+   * see the getPericopeForVerse effect below) or when no pericope set is
+   * configured, matching the same silent fallback used for `reference` above.
+   */
+  const isPericopeNav =
+    draftingUnit === 'pericope' && pericopeVerses.length > 0;
+  const pericopePrevIndex = isPericopeNav
+    ? verses.findIndex(
+        v =>
+          v.chapterNumber === firstPericopeVerse!.chapterNumber &&
+          v.verseNumber === firstPericopeVerse!.verseNumber - 1,
+      )
+    : -1;
+  const pericopeNextIndex = isPericopeNav
+    ? verses.findIndex(
+        v =>
+          v.chapterNumber === lastPericopeVerse!.chapterNumber &&
+          v.verseNumber === lastPericopeVerse!.verseNumber + 1,
+      )
+    : -1;
+  const prevDisabled = isPericopeNav ? pericopePrevIndex < 0 : verseIndex <= 0;
+  const nextDisabled = isPericopeNav
+    ? pericopeNextIndex < 0
+    : verseIndex < 0 || verseIndex >= verses.length - 1;
+
+  /**
+   * Source Bible text for the current pericope should show every verse in
+   * its range, not just the selected verse (#540). `verses` is chapter-scoped
+   * (useDraftingContext), so a pericope verse from another chapter has no
+   * match here and is silently dropped — cross-chapter source text is not
+   * fully supported by this join and is out of scope for #540.
+   */
+  const sourceText = useMemo(() => {
+    if (draftingUnit !== 'pericope' || pericopeVerses.length === 0) {
+      return selected?.text;
+    }
+    return pericopeVerses
+      .map(pv => {
+        if (pv.chapterNumber === chapterData.chapterNumber) {
+          return verses.find(v => v.verseNumber === pv.verseNumber)?.text;
+        }
+        return crossChapterVerseTexts.get(
+          `${pv.chapterNumber}:${pv.verseNumber}`,
+        );
+      })
+      .filter((text): text is string => Boolean(text))
+      .join(' ');
+  }, [
+    draftingUnit,
+    pericopeVerses,
+    verses,
+    selected,
+    chapterData.chapterNumber,
+    crossChapterVerseTexts,
+  ]);
+
+  /**
+   * My Takes rows. Pericope view collapses verse takes into one stitched row so
+   * the draft is still playable when display mode and capture disagree (#411).
+   * Falls back to the capture unit's covered verses when #409 pericope data has
+   * not resolved yet.
+   */
+  const displayRows = useMemo(
+    () =>
+      buildCrossGranularityRows({
+        draftingUnit,
+        pericopeVerses: pericopeVerses.length
+          ? pericopeVerses.map(verse => ({
+              chapterNumber: verse.chapterNumber,
+              verseNumber: verse.verseNumber,
+            }))
+          : activeRecordingUnit?.coveredViews.map(view => ({
+              chapterNumber: view.chapterNumber,
+              verseNumber: view.verseNumber,
+            })) ?? [],
+        takes: verseAudio.takes,
+      }),
+    [
+      draftingUnit,
+      pericopeVerses,
+      activeRecordingUnit?.coveredViews,
+      verseAudio.takes,
+    ],
+  );
+
+  const hasTake = displayRows.length > 0;
+  const hasAnyTake = hasTake || verseAudio.allTakes.length > 0;
+  const activeViewHasTakes = takeView === 'mine' ? hasTake : hasAnyTake;
 
   /** Shared generation so sync-triggered and verse-change lookups ignore stale IDs. */
   const bibleTextRequestIdRef = useRef(0);
@@ -312,10 +422,61 @@ export function RecordTab({
   ]);
 
   useEffect(() => {
-    if (verseAudio.state === 'recording' || verseAudio.state === 'paused') {
+    const requestId = ++crossChapterTextRequestIdRef.current;
+    const otherChapters = Array.from(
+      new Set(
+        pericopeVerses
+          .map(v => v.chapterNumber)
+          .filter(chapterNumber => chapterNumber !== chapterData.chapterNumber),
+      ),
+    );
+
+    if (otherChapters.length === 0) {
+      setCrossChapterVerseTexts(new Map());
       return;
     }
-    setRecordingUnit(null);
+
+    void Promise.all(
+      otherChapters.map(chapterNumber =>
+        getBibleTexts(chapterData.bibleId, chapterData.bookId, chapterNumber),
+      ),
+    ).then(results => {
+      if (requestId !== crossChapterTextRequestIdRef.current) {
+        return;
+      }
+      const map = new Map<string, string>();
+      for (const chapterVerses of results) {
+        for (const v of chapterVerses) {
+          map.set(`${v.chapterNumber}:${v.verseNumber}`, v.text);
+        }
+      }
+      setCrossChapterVerseTexts(map);
+    });
+  }, [
+    pericopeVerses,
+    chapterData.bibleId,
+    chapterData.bookId,
+    chapterData.chapterNumber,
+  ]);
+
+  // verseAudio.state is read via ref — listing it in deps caused a REHYDRATE
+  // idle↔recorded loop when switching to pericope (#411 device QA).
+  useEffect(() => {
+    const audioState = verseAudioStateRef.current;
+    if (
+      audioState === 'recording' ||
+      audioState === 'paused' ||
+      // Re-resolving during review would drop the capture unit mid-take, and
+      // the take load keys off it (#411). Verse changes tear playback down
+      // first, so this effect still re-runs with a fresh verse.
+      audioState === 'playing'
+    ) {
+      return;
+    }
+    if (captureBibleTextId === null) {
+      setRecordingUnit(null);
+      return;
+    }
     let cancelled = false;
     void resolveRecordingUnit({
       draftingUnit,
@@ -326,9 +487,21 @@ export function RecordTab({
       verseNumber: selectedVerse,
       selectedBibleTextId: captureBibleTextId,
     }).then(unit => {
-      if (!cancelled) {
-        setRecordingUnit(unit);
+      if (cancelled) {
+        return;
       }
+      const settledState = verseAudioStateRef.current;
+      // Do not discard the first resolved unit just because review playback
+      // already started — only block while capture is active (#411).
+      if (settledState === 'recording' || settledState === 'paused') {
+        return;
+      }
+      // Keep the prior unit while async resolve runs, and skip setState when
+      // content is unchanged — nulling first made loadTakesFn flip and loop
+      // with REHYDRATE (#411 device QA).
+      setRecordingUnit(prev =>
+        recordingUnitCapturesEqual(prev, unit) ? prev : unit,
+      );
     });
     return () => {
       cancelled = true;
@@ -341,7 +514,6 @@ export function RecordTab({
     chapterData.projectId,
     draftingUnit,
     selectedVerse,
-    verseAudio.state,
   ]);
 
   useEffect(() => {
@@ -540,6 +712,13 @@ export function RecordTab({
     }
     await verseAudio.playTake(take);
   }
+
+  async function handlePlayStitched(row: StitchedTakeRow) {
+    if (sourceAudioControl && sourceAudioControl.status !== 'idle') {
+      await stopSourceAudioRef.current();
+    }
+    await verseAudio.playStitched(row);
+  }
   const currentUserId = userId;
   const isTaken = useMemo(
     () => isChapterTakenByOther(chapterData, currentUserId),
@@ -633,7 +812,10 @@ export function RecordTab({
         <TouchableOpacity
           onPress={() => {
             if (!prevDisabled) {
-              requestVerseChange(verses[verseIndex - 1]!.verseNumber);
+              const targetIndex = isPericopeNav
+                ? pericopePrevIndex
+                : verseIndex - 1;
+              requestVerseChange(verses[targetIndex]!.verseNumber);
             }
           }}
           disabled={prevDisabled}
@@ -671,7 +853,10 @@ export function RecordTab({
         <TouchableOpacity
           onPress={() => {
             if (!nextDisabled) {
-              requestVerseChange(verses[verseIndex + 1]!.verseNumber);
+              const targetIndex = isPericopeNav
+                ? pericopeNextIndex
+                : verseIndex + 1;
+              requestVerseChange(verses[targetIndex]!.verseNumber);
             }
           }}
           disabled={nextDisabled}
@@ -873,14 +1058,63 @@ export function RecordTab({
           {showReview ? (
             <View style={styles.reviewGroup}>
               {takeView === 'mine' ? (
-                hasTake ? (
+                displayRows.length > 0 ? (
                   <View style={styles.takeList} testID="record-take-list">
-                    {verseAudio.takes.map(take => {
+                    {displayRows.map(row => {
+                      if (row.kind === 'stitched') {
+                        const isThisPlaying =
+                          verseAudio.playingTakeId === row.id &&
+                          verseAudio.state === 'playing';
+                        const showStitchedProgress =
+                          verseAudio.playingTakeId === row.id &&
+                          (verseAudio.state === 'playing' ||
+                            verseAudio.playbackStatus === 'paused');
+                        return (
+                          <View key={row.id} style={styles.takeItemSpacing}>
+                            <DraftTakeRow
+                              takeNumber={row.takeNumber}
+                              label={formatTakeSubtitle({
+                                takeNumber: row.takeNumber,
+                                granularity: 'stitched',
+                                startChapter: row.startChapter,
+                                startVerse: row.startVerse,
+                                endChapter: row.endChapter,
+                                endVerse: row.endVerse,
+                              })}
+                              isSelected={false}
+                              isPlaying={isThisPlaying}
+                              leadingIndicator="none"
+                              // Progress is segment-local while playing:
+                              // continuous scrub across segments is out of
+                              // scope for #411.
+                              positionMs={
+                                showStitchedProgress ? verseAudio.positionMs : 0
+                              }
+                              durationMs={
+                                showStitchedProgress &&
+                                verseAudio.durationMs > 0
+                                  ? verseAudio.durationMs
+                                  : row.durationMs ?? 0
+                              }
+                              onPlayPause={() => {
+                                void (isThisPlaying
+                                  ? verseAudio.pausePlayback()
+                                  : handlePlayStitched(row));
+                              }}
+                            />
+                          </View>
+                        );
+                      }
+                      const take = row.take;
                       const isSelected =
                         take.id === verseAudio.selectedTake?.id;
-                      const isLoaded = verseAudio.playingTakeId === take.id;
                       const isThisPlaying =
-                        isLoaded && verseAudio.state === 'playing';
+                        verseAudio.playingTakeId === take.id &&
+                        verseAudio.state === 'playing';
+                      const showLiveProgress =
+                        verseAudio.playingTakeId === take.id ||
+                        (verseAudio.loadedTakeId === take.id &&
+                          verseAudio.playbackStatus === 'paused');
                       const isSeekable =
                         verseAudio.loadedTakeId === take.id ||
                         (verseAudio.loadedTakeId === null && isSelected);
@@ -898,9 +1132,11 @@ export function RecordTab({
                             isCanonical={
                               take.id === verseAudio.ownCanonicalTakeId
                             }
-                            positionMs={isLoaded ? verseAudio.positionMs : 0}
+                            positionMs={
+                              showLiveProgress ? verseAudio.positionMs : 0
+                            }
                             durationMs={
-                              isLoaded && verseAudio.durationMs > 0
+                              showLiveProgress && verseAudio.durationMs > 0
                                 ? verseAudio.durationMs
                                 : take.durationMs ?? 0
                             }
@@ -935,9 +1171,13 @@ export function RecordTab({
                     >
                       <TakeGroupHeader displayName={section.title} />
                       {section.data.map(take => {
-                        const isLoaded = verseAudio.playingTakeId === take.id;
                         const isThisPlaying =
-                          isLoaded && verseAudio.state === 'playing';
+                          verseAudio.playingTakeId === take.id &&
+                          verseAudio.state === 'playing';
+                        const showLiveProgress =
+                          verseAudio.playingTakeId === take.id ||
+                          (verseAudio.loadedTakeId === take.id &&
+                            verseAudio.playbackStatus === 'paused');
                         return (
                           <View key={take.id} style={styles.takeItemSpacing}>
                             <SharedTakeRow
@@ -945,9 +1185,11 @@ export function RecordTab({
                               label={formatTakeSubtitle(take)}
                               isPlaying={isThisPlaying}
                               isCanonical={take.isCanonical}
-                              positionMs={isLoaded ? verseAudio.positionMs : 0}
+                              positionMs={
+                                showLiveProgress ? verseAudio.positionMs : 0
+                              }
                               durationMs={
-                                isLoaded && verseAudio.durationMs > 0
+                                showLiveProgress && verseAudio.durationMs > 0
                                   ? verseAudio.durationMs
                                   : take.durationMs ?? 0
                               }
@@ -1017,7 +1259,7 @@ export function RecordTab({
         <SourceTextAccordion
           expanded={sourceExpanded}
           onToggle={() => setSourceExpanded(v => !v)}
-          text={selected?.text}
+          text={sourceText}
         />
       </ScrollView>
 
