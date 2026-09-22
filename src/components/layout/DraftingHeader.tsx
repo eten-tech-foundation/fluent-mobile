@@ -9,6 +9,7 @@ interface DraftingHeaderProps {
   title: string;
   onBack: () => void;
   syncStatus?: SyncStatus;
+  failedErrorText?: string | null;
   onSyncPress?: () => void;
   showAccountIndicator?: boolean;
   accountFirstName?: string;
@@ -21,6 +22,7 @@ export function DraftingHeader({
   title,
   onBack,
   syncStatus,
+  failedErrorText,
   onSyncPress,
   showAccountIndicator = false,
   accountFirstName,
@@ -40,6 +42,7 @@ export function DraftingHeader({
           {syncStatus && onSyncPress ? (
             <PageHeaderSyncButton
               syncStatus={syncStatus}
+              failedErrorText={failedErrorText}
               onPress={onSyncPress}
               cloudColor={theme.colors.foreground}
             />
