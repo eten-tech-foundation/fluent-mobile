@@ -12,7 +12,7 @@ describe('sanitizeUploadErrorForDisplay', () => {
       sanitizeUploadErrorForDisplay(
         'Request failed with status 404: Not Found',
       ),
-    ).toBe("Couldn't reach this recording on the server. Open Sync to retry.");
+    ).toBe("Couldn't reach this recording on the server.");
   });
 
   it('does not treat local File not found as a 404 auth-mask', () => {

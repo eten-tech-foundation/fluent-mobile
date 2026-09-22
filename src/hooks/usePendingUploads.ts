@@ -38,20 +38,18 @@ async function loadFailedUploadCount(): Promise<number> {
   }
 }
 
-const EXTRA_ERRORS_SUFFIX_RE = / \(\+\d+ more\)$/;
-
 async function loadFailedUploadErrorText(): Promise<string | null> {
   try {
     const summary = await getFailedUploadErrorSummary();
     if (!summary) {
       return null;
     }
-    const suffixMatch = summary.message.match(EXTRA_ERRORS_SUFFIX_RE);
-    const suffix = suffixMatch?.[0] ?? '';
-    const raw = suffix
-      ? summary.message.slice(0, -suffix.length)
-      : summary.message;
-    return `${sanitizeUploadErrorForDisplay(raw)}${suffix}`;
+    const sanitized = sanitizeUploadErrorForDisplay(summary.latestMessage);
+    const suffix =
+      summary.extraDistinctCount > 0
+        ? ` (+${summary.extraDistinctCount} more)`
+        : '';
+    return `${sanitized}${suffix}`;
   } catch (error) {
     log.error('Failed to load failed upload error text', { error });
     return null;

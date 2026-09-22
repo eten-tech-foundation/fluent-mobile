@@ -658,13 +658,15 @@ export async function getFailedUploadCount(): Promise<number> {
 }
 
 export type FailedUploadErrorSummary = {
-  message: string;
-  count: number;
+  latestMessage: string;
+  /** Distinct upload_error values among older failed rows (excluding latest). */
+  extraDistinctCount: number;
 };
 
 /**
  * Latest selected failed `upload_error` for the active user.
- * When several distinct messages exist, appends “(+N more)”.
+ * When several distinct messages exist, `extraDistinctCount` is the number of
+ * other distinct errors (caller appends “(+N more)” after sanitization).
  */
 export async function getFailedUploadErrorSummary(): Promise<FailedUploadErrorSummary | null> {
   const db = getDatabase();
@@ -685,11 +687,15 @@ export async function getFailedUploadErrorSummary(): Promise<FailedUploadErrorSu
     }
 
     const messages = rows.map(row => String(row.upload_error).trim());
-    const latest = messages[0];
-    const others = new Set(messages.slice(1).filter(msg => msg !== latest));
-    const suffix = others.size > 0 ? ` (+${others.size} more)` : '';
+    const latestMessage = messages[0];
+    const others = new Set(
+      messages.slice(1).filter(msg => msg !== latestMessage),
+    );
 
-    return { message: `${latest}${suffix}`, count: rows.length };
+    return {
+      latestMessage,
+      extraDistinctCount: others.size,
+    };
   } catch (error) {
     log.error('Error fetching failed upload error summary', { error });
     return null;

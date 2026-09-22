@@ -37,8 +37,8 @@ describe('getFailedUploadErrorSummary', () => {
     });
 
     await expect(getFailedUploadErrorSummary()).resolves.toEqual({
-      message: 'Audio storage is unavailable',
-      count: 2,
+      latestMessage: 'Audio storage is unavailable',
+      extraDistinctCount: 0,
     });
     expect(mockExecute).toHaveBeenCalledWith(
       expect.stringContaining("sync_status = 'failed'"),
@@ -63,9 +63,9 @@ describe('getFailedUploadErrorSummary', () => {
     });
 
     await expect(getFailedUploadErrorSummary()).resolves.toEqual({
-      message:
-        'Missing projectUnitId for recording (no matching chapter assignment) (+1 more)',
-      count: 3,
+      latestMessage:
+        'Missing projectUnitId for recording (no matching chapter assignment)',
+      extraDistinctCount: 1,
     });
   });
 

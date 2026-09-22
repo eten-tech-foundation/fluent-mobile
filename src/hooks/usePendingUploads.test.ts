@@ -71,9 +71,9 @@ describe('usePendingUploads', () => {
   it('surfaces sanitized failed upload error text from the summary query', async () => {
     mockGetFailedUploadCount.mockResolvedValue(1);
     mockGetFailedUploadErrorSummary.mockResolvedValue({
-      message:
+      latestMessage:
         'Local file missing: /data/user/0/com.eten.fluent/files/recordings/rec_abc.m4a',
-      count: 1,
+      extraDistinctCount: 0,
     });
     const { result } = renderHook(() => usePendingUploads(0));
 
@@ -86,8 +86,8 @@ describe('usePendingUploads', () => {
   it('keeps (+N more) after sanitizing the latest message', async () => {
     mockGetFailedUploadCount.mockResolvedValue(3);
     mockGetFailedUploadErrorSummary.mockResolvedValue({
-      message: 'Audio storage is unavailable (+1 more)',
-      count: 3,
+      latestMessage: 'Audio storage is unavailable',
+      extraDistinctCount: 1,
     });
     const { result } = renderHook(() => usePendingUploads(0));
 
@@ -102,8 +102,8 @@ describe('usePendingUploads', () => {
     mockGetFailedUploadCount.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
     mockGetFailedUploadErrorSummary
       .mockResolvedValueOnce({
-        message: 'Audio storage is unavailable',
-        count: 1,
+        latestMessage: 'Audio storage is unavailable',
+        extraDistinctCount: 0,
       })
       .mockResolvedValueOnce(null);
 

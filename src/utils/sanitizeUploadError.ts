@@ -14,7 +14,7 @@ export function sanitizeUploadErrorForDisplay(raw: string): string {
   }
 
   if (/\b404\b/.test(trimmed)) {
-    return "Couldn't reach this recording on the server. Open Sync to retry.";
+    return "Couldn't reach this recording on the server.";
   }
 
   const withoutPaths = trimmed
