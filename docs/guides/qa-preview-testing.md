@@ -63,7 +63,10 @@ If the app looks wrong after installing a different APK:
 | Phone offers **Expo Go** | Cancel. Install **Fluent** from the install link. |
 | Testing the wrong build | Install again from the latest nightly comment for that issue. |
 | Install blocked | Allow **Install unknown apps** for your browser. |
-| Slack says no APK | That is the quiet skip-style notice (same look as “no new commits”), not an incident ping. Open the Actions link in the message if you want the log. |
+| Slack says **skipped (no new commits)** | HEAD matches the last successful nightly — wait for a merge, or ask a developer to re-run with **force_build**. |
+| Slack says **failed before APK build** | CI failed before EAS (named step in the message, e.g. Expo doctor). Open the Actions link; there is no new nightly APK from that run. |
+| Slack says **APK build failed** | EAS did not produce an installable APK. Open the Actions / EAS link in the message. |
+| Slack says no APK / skipped (legacy wording) | Pre-#549 quiet notice — open the Actions link; treat like a failed-before-APK or EAS-fail message. |
 | No handoff / nightly comment on the issue | Confirm the PR had **Needs QA? Yes** and `Refs #NNN`, then ask a developer to check `qa-handoff` / nightly Actions. |
 | expo.dev asks me to log in | Request access to the Fluent project from your team lead. |
 
