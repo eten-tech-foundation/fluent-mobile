@@ -191,6 +191,7 @@ jobs:
         run: bash .github/scripts/notify-slack-nightly.sh
 
       - name: 📦 Install dependencies
+        id: install
         if: steps.window.outputs.in_window == 'true' && steps.skip.outputs.should_skip != 'true'
         run: npm ci
 
@@ -200,30 +201,48 @@ jobs:
         run: bash .github/scripts/validate-nightly-api-url.sh
 
       - name: Format check
+        id: format
         if: steps.window.outputs.in_window == 'true' && steps.skip.outputs.should_skip != 'true'
         run: npm run format:check
 
       - name: Lint
+        id: lint
         if: steps.window.outputs.in_window == 'true' && steps.skip.outputs.should_skip != 'true'
         run: npm run lint
 
       - name: Typecheck
+        id: typecheck
         if: steps.window.outputs.in_window == 'true' && steps.skip.outputs.should_skip != 'true'
         run: npm run typecheck
 
       - name: Unit tests
+        id: unit-tests
         if: steps.window.outputs.in_window == 'true' && steps.skip.outputs.should_skip != 'true'
         env:
           EXPO_PUBLIC_API_BASE_URL: http://localhost:9999
         run: npm test -- --ci
 
+      # Match Quality Gates (#422 / #549): patch freshness is scheduled
+      # (expo-sdk-align.yml), not a nightly APK blocker.
       - name: Expo doctor
+        id: doctor
         if: steps.window.outputs.in_window == 'true' && steps.skip.outputs.should_skip != 'true'
         env:
           EXPO_PUBLIC_API_BASE_URL: http://localhost:9999
+          EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK: '1'
+          EXPO_DOCTOR_WARN_ON_NETWORK_ERRORS: '1'
         run: npm run doctor
 
+      - name: expo install --check
+        id: expo-check
+        if: steps.window.outputs.in_window == 'true' && steps.skip.outputs.should_skip != 'true'
+        env:
+          EXPO_PUBLIC_API_BASE_URL: http://localhost:9999
+          EXPO_OFFLINE: '1'
+        run: npm run expo:check
+
       - name: 🏗️ Setup EAS
+        id: eas-setup
         if: steps.window.outputs.in_window == 'true' && steps.skip.outputs.should_skip != 'true'
         uses: expo/expo-github-action@eab7a230208c952974db8c3245cfd78402c7b385 # v9
         with:
@@ -239,7 +258,11 @@ jobs:
         run: bash .github/scripts/eas-build-android-nightly.sh
 
       - name: Job summary (success)
-        if: steps.window.outputs.in_window == 'true' && steps.skip.outputs.should_skip != 'true' && steps.build.outputs.build_id != ''
+        if: >
+          steps.window.outputs.in_window == 'true' &&
+          steps.skip.outputs.should_skip != 'true' &&
+          steps.build.outputs.build_id != '' &&
+          steps.build.outputs.install_url != ''
         env:
           CHANGELOG: ${{ steps.changelog.outputs.changelog }}
         run: |
@@ -268,7 +291,11 @@ jobs:
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Write Slack payload (success)
-        if: steps.window.outputs.in_window == 'true' && steps.skip.outputs.should_skip != 'true' && steps.build.outputs.build_id != ''
+        if: >
+          steps.window.outputs.in_window == 'true' &&
+          steps.skip.outputs.should_skip != 'true' &&
+          steps.build.outputs.build_id != '' &&
+          steps.build.outputs.install_url != ''
         env:
           SLACK_PAYLOAD_OUT: ${{ runner.temp }}/slack-payload.json
           STATUS: success
@@ -294,6 +321,7 @@ jobs:
           steps.window.outputs.in_window == 'true' &&
           steps.skip.outputs.should_skip != 'true' &&
           steps.build.outputs.build_id != '' &&
+          steps.build.outputs.install_url != '' &&
           env.NOTIFY_SLACK == 'true'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -326,24 +354,51 @@ jobs:
               runUrl: process.env.RUN_URL || null,
             });
 
+      # Never claim “no APK” after a successful EAS step in this run (#549).
+      - name: Resolve failed step
+        id: failed
+        if: >
+          failure() &&
+          steps.window.outputs.in_window == 'true' &&
+          steps.skip.outputs.should_skip != 'true' &&
+          steps.build.conclusion != 'success'
+        env:
+          STEP_INSTALL: ${{ steps.install.conclusion }}
+          STEP_API_URL: ${{ steps.api-url.conclusion }}
+          STEP_FORMAT: ${{ steps.format.conclusion }}
+          STEP_LINT: ${{ steps.lint.conclusion }}
+          STEP_TYPECHECK: ${{ steps.typecheck.conclusion }}
+          STEP_UNIT_TESTS: ${{ steps.unit-tests.conclusion }}
+          STEP_DOCTOR: ${{ steps.doctor.conclusion }}
+          STEP_EXPO_CHECK: ${{ steps.expo-check.conclusion }}
+          STEP_EAS_SETUP: ${{ steps.eas-setup.conclusion }}
+          STEP_BUILD: ${{ steps.build.conclusion }}
+        run: |
+          set -euo pipefail
+          node .github/scripts/resolve-nightly-failed-step.cjs | tee -a "${GITHUB_OUTPUT}"
+
       - name: Write Slack payload (failure)
-        if: failure() && steps.window.outputs.in_window == 'true' && steps.skip.outputs.should_skip != 'true'
+        if: >
+          failure() &&
+          steps.window.outputs.in_window == 'true' &&
+          steps.skip.outputs.should_skip != 'true' &&
+          steps.build.conclusion != 'success'
         env:
           SLACK_PAYLOAD_OUT: ${{ runner.temp }}/slack-payload.json
-          STATUS: failure
+          STATUS: ${{ steps.failed.outputs.kind || 'gate_failure' }}
           TRIGGER: ${{ steps.meta.outputs.trigger }}
           BRANCH: ${{ steps.meta.outputs.branch }}
           SHA: ${{ steps.meta.outputs.sha }}
           RUN_URL: ${{ steps.meta.outputs.run_url }}
-          FAILED_STEP: ${{ github.job }}
+          FAILED_STEP: ${{ steps.failed.outputs.failed_step || 'unknown' }}
         run: bash .github/scripts/write-slack-nightly-payload.sh
 
-      # Same :zzz: skip-style card as “no new commits” — not a red incident ping.
       - name: Notify Slack (failure)
         if: >
           failure() &&
           steps.window.outputs.in_window == 'true' &&
           steps.skip.outputs.should_skip != 'true' &&
+          steps.build.conclusion != 'success' &&
           env.NOTIFY_SLACK == 'true'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

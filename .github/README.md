@@ -62,7 +62,12 @@ Scheduled (and manually dispatchable) workflow [`.github/workflows/nightly-previ
 - **No OTA** (`eas update` is not used). Expo Updates stay disabled for `nightly` so the APK is self-contained.
 - Skips when `main` HEAD matches the last successful nightly unless `force_build` is set.
 - Single schedule cron intended ~**15:17 America/Los_Angeles** (~16:17 MT). GitHub often delays fires by ~3–5 hours; after lag the notice aims for late evening Mountain / early India morning (~06:30–09:00 IST). The workflow trusts `github.event.schedule == 17 15 * * *` so delayed fires still build; unknown/legacy cron strings are ignored. Green ignored-schedule no-ops do not count as the last nightly SHA for skip-if-unchanged.
-- Posts a GitHub Actions job summary, install comments on recent QA handoff issues, and **Slack in the same run** (success, skip, and quiet no-APK). A run that did not produce an APK uses the same `:zzz:` skip-style card as “no new commits” (not a red X), with an Actions log link.
+- Posts a GitHub Actions job summary, install comments on recent QA handoff issues, and **Slack in the same run**. Outcomes are mutually exclusive (#549):
+  - **success** — EAS produced a build id + install URL
+  - **skipped** — HEAD matches the last successful nightly (no new commits)
+  - **failed before APK** — CI gate failed before EAS (message names the step, e.g. Expo doctor)
+  - **APK build failed** — EAS step failed
+- Expo health on nightly matches Quality Gates: `EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK` + offline `expo:check`. Online patch freshness stays on `expo-sdk-align.yml` (#422) — do not fail the APK job on upstream 57.0.x map drift.
 
 ### Secrets
 
