@@ -1082,3 +1082,97 @@ export async function getPericopeForVerse(
     return null;
   }
 }
+
+/** True when every verse in the chapter has a selected recording (verse mode) — #542. */
+export async function isChapterFullyRecordedVerseMode(
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+): Promise<boolean> {
+  const db = getDatabase();
+  const userId = parseUserId();
+  try {
+    const result = await db.execute(
+      `SELECT
+         COUNT(*) AS total,
+         COUNT(DISTINCT CASE WHEN r.id IS NOT NULL THEN bt.verse_number END) AS recorded
+       FROM bible_texts bt
+       LEFT JOIN recordings r
+         ON r.bible_text_id = bt.id
+         AND r.is_selected = 1
+         AND r.recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}
+       WHERE bt.bible_id = ? AND bt.book_id = ? AND bt.chapter_number = ?`,
+      userId === null
+        ? [bibleId, bookId, chapterNumber]
+        : [userId, bibleId, bookId, chapterNumber],
+    );
+    const row = result.rows?.[0] as
+      | { total: number; recorded: number }
+      | undefined;
+    if (!row || Number(row.total) === 0) return false;
+    return Number(row.recorded) === Number(row.total);
+  } catch (error) {
+    log.error('Error checking chapter verse-mode completeness', { error });
+    return false;
+  }
+}
+
+/** True when every pericope, and every chapter verse not covered by a pericope,
+ *  has a selected recording (pericope mode) — #542.
+ *  A pericope set may not cover every verse in the chapter (e.g. narrative
+ *  breaks, verses excluded from the harmony); those "ungrouped" verses must
+ *  independently satisfy the same per-verse check as verse mode, or a
+ *  chapter could report complete while a real verse has no take.
+ */
+export async function isChapterFullyRecordedPericopeMode(
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+  pericopeSetId: number,
+): Promise<boolean> {
+  const chapterVerses = await getBibleTexts(bibleId, bookId, chapterNumber);
+  if (chapterVerses.length === 0) return false;
+
+  const pericopes = await getPericopesForChapter(
+    bookId,
+    chapterNumber,
+    pericopeSetId,
+  );
+
+  const coveredVerseNumbers = new Set<number>();
+  for (const pericope of pericopes) {
+    for (const v of pericope.verses) {
+      if (v.chapterNumber === chapterNumber) {
+        coveredVerseNumbers.add(v.verseNumber);
+      }
+    }
+  }
+
+  const ungroupedVerseNumbers = chapterVerses
+    .map(v => v.verseNumber)
+    .filter(vn => !coveredVerseNumbers.has(vn));
+
+  const coverages = await getSelectedTakeCoverages(bibleId, bookId);
+  const pericopesComplete = pericopes.every(pericope => {
+    const first = pericope.verses[0];
+    const last = pericope.verses[pericope.verses.length - 1];
+    if (!first || !last) return false;
+    return coverages.some(
+      c =>
+        c.startChapter === first.chapterNumber &&
+        c.startVerse === first.verseNumber &&
+        c.endChapter === last.chapterNumber &&
+        c.endVerse === last.verseNumber,
+    );
+  });
+  if (!pericopesComplete) return false;
+
+  if (ungroupedVerseNumbers.length === 0) return true;
+
+  const recordedVerseNumbers = await getRecordedVerseNumbers(
+    bibleId,
+    bookId,
+    chapterNumber,
+  );
+  return ungroupedVerseNumbers.every(vn => recordedVerseNumbers.has(vn));
+}

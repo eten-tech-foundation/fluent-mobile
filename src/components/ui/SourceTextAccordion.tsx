@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
+import { VerseRun, type VerseRunItem } from './VerseRun';
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -18,25 +19,20 @@ if (Platform.OS === 'android') {
 type SourceTextAccordionProps = {
   expanded: boolean;
   onToggle: () => void;
-  text?: string | null;
+  verses?: VerseRunItem[] | null;
   /** Empty-copy when expanded with no verse text. */
   emptyMessage?: string;
   testID?: string;
 };
 
-/**
- * Collapsible source text for Record (Lovable View/Hide source text).
- * Renders at full height — scrolling is handled by the page-level
- * ScrollView in RecordTab, not an internal ScrollView (see #404).
- */
 export function SourceTextAccordion({
   expanded,
   onToggle,
-  text,
+  verses,
   emptyMessage = 'No source text for this verse yet.',
   testID = 'record-source-toggle',
 }: SourceTextAccordionProps) {
-  const body = text?.trim() ? text : emptyMessage;
+  const hasText = Boolean(verses?.some(v => v.text?.trim()));
 
   return (
     <View>
@@ -69,7 +65,11 @@ export function SourceTextAccordion({
       </TouchableOpacity>
       {expanded ? (
         <View style={styles.body} testID="record-source-body">
-          <Text style={styles.bodyText}>{body}</Text>
+          {hasText ? (
+            <VerseRun verses={verses!} />
+          ) : (
+            <Text style={styles.bodyText}>{emptyMessage}</Text>
+          )}
         </View>
       ) : null}
     </View>

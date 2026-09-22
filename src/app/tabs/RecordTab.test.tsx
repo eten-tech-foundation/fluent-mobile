@@ -19,7 +19,12 @@ import type {
   UseVerseAudioArgs,
 } from '../../hooks/useVerseAudio';
 import type { useDraftingUnit } from '../../hooks/useDraftingUnit';
-import { getBibleTextId, getPericopeForVerse } from '../../db/queries';
+import {
+  getBibleTextId,
+  getPericopeForVerse,
+  getPericopesForChapter,
+  isChapterFullyRecordedVerseMode,
+} from '../../db/queries';
 import type {
   Recording,
   RecordingWithOwner,
@@ -51,11 +56,17 @@ jest.mock('../../db/queries', () => ({
   getPericopeForVerse: jest.fn(async () => null),
   getPericopesForChapter: jest.fn(async () => []),
   getSelectedTakeCoverages: jest.fn(async () => []),
+  isChapterFullyRecordedVerseMode: jest.fn(async () => true),
+  isChapterFullyRecordedPericopeMode: jest.fn(async () => true),
 }));
 
 const mockGetBibleTextId = getBibleTextId as jest.MockedFunction<
   typeof getBibleTextId
 >;
+const mockIsChapterFullyRecordedVerseMode =
+  isChapterFullyRecordedVerseMode as jest.MockedFunction<
+    typeof isChapterFullyRecordedVerseMode
+  >;
 
 jest.mock('../../hooks/useVerseAudio', () => ({
   useVerseAudio: (args: UseVerseAudioArgs) => mockUseVerseAudio(args),
@@ -170,8 +181,8 @@ const idleAudio: VerseAudioApi = {
   setCanonical: jest.fn(),
 };
 
-const mockUseVerseAudio = jest.fn(
-  (_args: UseVerseAudioArgs): VerseAudioApi => idleAudio,
+const mockUseVerseAudio = jest.fn<VerseAudioApi, [UseVerseAudioArgs]>(
+  () => idleAudio,
 );
 
 const mockUseChapterConflictStatus = jest.fn((chapterId: number) => {
@@ -1050,6 +1061,25 @@ describe('RecordTab', () => {
     expect(screen.queryByTestId('stage-advance-button')).toBeNull();
   });
 
+  it('shows stage advance CTA in pericope mode when no pericope set is configured (falls back to verse-mode completeness)', async () => {
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(null);
+
+    renderTab();
+
+    // Verse-mode fallback: the single fixture verse (3) is also the last
+    // verse in `verses`, so isOnLastUnit should resolve true via the verse
+    // comparison — not the (unreachable, since pericopeSetId is null)
+    // pericope comparison.
+    await waitFor(() => {
+      expect(screen.getByTestId('stage-advance-button')).toBeTruthy();
+    });
+    expect(screen.getByText('Send to Peer Check')).toBeTruthy();
+  });
+
   describe('Mode-aware Current Unit Title (#409)', () => {
     it('shows the pericope range and title as a subtitle when a pericope resolves', async () => {
       mockUseDraftingUnit.mockReturnValue({
@@ -1097,6 +1127,25 @@ describe('RecordTab', () => {
       expect(
         screen.queryByTestId('record-verse-reference-subtitle'),
       ).toBeNull();
+    });
+
+    it('uses verse completeness and navigation when no pericope set is configured', async () => {
+      mockUseDraftingUnit.mockReturnValue({
+        draftingUnit: 'pericope',
+        setDraftingUnit: jest.fn(),
+      });
+      (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(null);
+
+      renderTab();
+
+      await waitFor(() => {
+        expect(mockIsChapterFullyRecordedVerseMode).toHaveBeenCalledWith(
+          1,
+          1,
+          14,
+        );
+        expect(screen.getByTestId('stage-advance-button')).toBeTruthy();
+      });
     });
 
     it('never shows a subtitle in verse mode, even if a pericope would resolve', () => {
@@ -1522,6 +1571,8 @@ describe('RecordTab', () => {
       );
       (getPericopeForVerse as jest.Mock).mockReset();
       (getPericopeForVerse as jest.Mock).mockImplementation(async () => null);
+      (getPericopesForChapter as jest.Mock).mockReset();
+      (getPericopesForChapter as jest.Mock).mockImplementation(async () => []);
     });
 
     it('tapping Next jumps past the whole current pericope, not one verse at a time', async () => {
@@ -1594,7 +1645,7 @@ describe('RecordTab', () => {
       fireEvent.press(screen.getByTestId('record-source-toggle'));
 
       expect(screen.getByTestId('record-source-body')).toHaveTextContent(
-        'Verse three text. Verse four text. Verse five text.',
+        '3Verse three text. 4Verse four text. 5Verse five text.',
       );
     });
 
@@ -1613,7 +1664,7 @@ describe('RecordTab', () => {
       fireEvent.press(screen.getByTestId('record-source-toggle'));
 
       expect(screen.getByTestId('record-source-body')).toHaveTextContent(
-        'Verse four text.',
+        '4Verse four text.',
       );
     });
     it('disables Next instead of jumping to a same-numbered verse in the wrong chapter, for a cross-chapter pericope', async () => {
@@ -1662,6 +1713,74 @@ describe('RecordTab', () => {
       // NOT land there. It should disable instead, since the real next verse
       // (15:3) isn't loaded in this chapter's `verses`.
       expect(screen.getByTestId('record-next-verse')).toBeDisabled();
+    });
+    const twoPericopes = [
+      {
+        pericopeNumber: '0',
+        pericopeTitle: 'Judas agrees to betray Jesus',
+        section: null,
+        verses: [
+          { chapterNumber: 14, verseNumber: 1 },
+          { chapterNumber: 14, verseNumber: 2 },
+        ],
+      },
+      {
+        pericopeNumber: '1',
+        pericopeTitle: 'At Bethany',
+        section: null,
+        verses: [
+          { chapterNumber: 14, verseNumber: 3 },
+          { chapterNumber: 14, verseNumber: 4 },
+          { chapterNumber: 14, verseNumber: 5 },
+        ],
+      },
+    ];
+
+    it('shows the stage advance CTA on the last pericope and hides it after navigating to an earlier one', async () => {
+      mockTwoAdjacentPericopes();
+      (getPericopesForChapter as jest.Mock).mockResolvedValue(twoPericopes);
+
+      render(
+        <DraftingProvider verses={pericopeChapterVerses} initialVerse={4}>
+          <RecordTab chapterData={chapterData} userId={42} />
+        </DraftingProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+          'Mark 14:3–5',
+        );
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('stage-advance-button')).toBeTruthy();
+      });
+
+      fireEvent.press(screen.getByTestId('record-prev-verse'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+          'Mark 14:1–2',
+        );
+      });
+      expect(screen.queryByTestId('stage-advance-button')).toBeNull();
+    });
+
+    it('does not show the stage advance CTA on a non-last pericope', async () => {
+      mockTwoAdjacentPericopes();
+      (getPericopesForChapter as jest.Mock).mockResolvedValue(twoPericopes);
+
+      render(
+        <DraftingProvider verses={pericopeChapterVerses} initialVerse={1}>
+          <RecordTab chapterData={chapterData} userId={42} />
+        </DraftingProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+          'Mark 14:1–2',
+        );
+      });
+      expect(screen.queryByTestId('stage-advance-button')).toBeNull();
     });
   });
 });
