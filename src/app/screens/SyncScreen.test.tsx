@@ -22,6 +22,7 @@ const mockSyncNowUploads = jest.fn();
 let mockPageStatus = 'pending';
 let mockCellularBlocked = false;
 let mockIsOnline = true;
+let mockHasResolved = true;
 let mockIsSyncing = false;
 let mockDisplayText = 'Last synced: Just now';
 let mockStateType: 'normal' | 'syncing' | 'never' | 'error' = 'normal';
@@ -60,6 +61,7 @@ jest.mock('../../hooks/useConnectivity', () => ({
   useConnectivity: () => ({
     isOnline: mockIsOnline,
     isWifi: mockIsOnline && !mockCellularBlocked,
+    hasResolved: mockHasResolved,
   }),
 }));
 
@@ -158,6 +160,7 @@ describe('SyncScreen', () => {
     mockPageStatus = 'pending';
     mockCellularBlocked = false;
     mockIsOnline = true;
+    mockHasResolved = true;
     mockIsSyncing = false;
     mockDisplayText = 'Last synced: Just now';
     mockStateType = 'normal';
@@ -270,6 +273,37 @@ describe('SyncScreen', () => {
     fireEvent.press(screen.getByTestId('sync-action-sync-now'));
     expect(mockSyncNowFromHook).not.toHaveBeenCalled();
     expect(mockTriggerSync).not.toHaveBeenCalled();
+  });
+
+  it('disables Sync Now until connectivity has resolved', () => {
+    mockHasResolved = false;
+    render(<SyncScreen />);
+
+    expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
+    expect(
+      screen.queryByTestId('sync-action-sync-now-disabled-hint'),
+    ).toBeNull();
+
+    fireEvent.press(screen.getByTestId('sync-action-sync-now'));
+    expect(mockSyncNowFromHook).not.toHaveBeenCalled();
+  });
+
+  it('disables Sync Now when only failed unuploadable recordings remain', () => {
+    mockPendingUploads = {
+      ...mockPendingUploads,
+      hasPendingUploads: false,
+      hasFailedUploads: true,
+      failedCount: 1,
+      pendingCount: 0,
+      pendingChapterCount: 0,
+      unuploadableCount: 1,
+      hasUnuploadablePending: true,
+    };
+    render(<SyncScreen />);
+
+    expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
+    fireEvent.press(screen.getByTestId('sync-action-sync-now'));
+    expect(mockSyncNowFromHook).not.toHaveBeenCalled();
   });
 
   it('surfaces unuploadable pending instead of a successful no-op', () => {

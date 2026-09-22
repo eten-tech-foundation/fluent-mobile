@@ -33,7 +33,7 @@ export default function SyncScreen() {
 
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const { isOnline, isWifi } = useConnectivity();
+  const { isOnline, isWifi, hasResolved } = useConnectivity();
   const { uploadOverCellular, setUploadOverCellular } = usePreferences();
   const {
     hasPendingUploads,
@@ -67,13 +67,11 @@ export default function SyncScreen() {
   const effectivelyOnline = isOnline && (isWifi || uploadOverCellular);
   const cellularBlocked = isOnline && !isWifi && !uploadOverCellular;
   const offlineBlocked = !isOnline;
-  /** Worker would visit zero chapters — pericope/orphan only, not failed retry. */
+  /** Worker would visit zero chapters — pericope/orphan (incl. failed takes not in queue). */
   const noUploadableChapters =
-    pendingChapterCount === 0 &&
-    (hasUnuploadablePending || hasPendingUploads) &&
-    !hasFailedUploads;
+    pendingChapterCount === 0 && (hasUnuploadablePending || hasPendingUploads);
   const syncNowDisabled =
-    cellularBlocked || offlineBlocked || noUploadableChapters;
+    !hasResolved || cellularBlocked || offlineBlocked || noUploadableChapters;
   const syncNowDisabledHint = offlineBlocked
     ? TRANSFER_OFFLINE_MESSAGE
     : cellularBlocked
