@@ -1645,7 +1645,7 @@ describe('RecordTab', () => {
       fireEvent.press(screen.getByTestId('record-source-toggle'));
 
       expect(screen.getByTestId('record-source-body')).toHaveTextContent(
-        'Verse three text. Verse four text. Verse five text.',
+        '3Verse three text. 4Verse four text. 5Verse five text.',
       );
     });
 
@@ -1664,7 +1664,7 @@ describe('RecordTab', () => {
       fireEvent.press(screen.getByTestId('record-source-toggle'));
 
       expect(screen.getByTestId('record-source-body')).toHaveTextContent(
-        'Verse four text.',
+        '4Verse four text.',
       );
     });
     it('disables Next instead of jumping to a same-numbered verse in the wrong chapter, for a cross-chapter pericope', async () => {

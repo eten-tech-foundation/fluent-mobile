@@ -21,7 +21,7 @@ export function VerseRun({ verses }: { verses: VerseRunItem[] }) {
           <View style={styles.verseSuperAlign}>
             <View
               style={styles.verseSuperSlot}
-              testID={`verse-run-super-${verse.chapterNumber}-${verse.verseNumber}`}
+              testID={`bible-pericope-verse-${verse.chapterNumber}-${verse.verseNumber}`}
             >
               <Text style={styles.verseSuper}>{verse.verseNumber}</Text>
             </View>
