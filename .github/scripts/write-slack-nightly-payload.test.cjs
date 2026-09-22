@@ -12,18 +12,19 @@ describe('write-slack-nightly-payload', () => {
       env: {
         ...process.env,
         SLACK_PAYLOAD_OUT: out,
-        STATUS: 'failure',
+        STATUS: 'gate_failure',
         TRIGGER: 'schedule',
         SHA: 'abc1234deadbeef',
         RUN_URL: 'https://github.com/org/repo/actions/runs/1',
-        FAILED_STEP: 'nightly-preview',
+        FAILED_STEP: 'Expo doctor',
         CHANGELOG: 'line one\nline two',
       },
     });
     const payload = JSON.parse(fs.readFileSync(out, 'utf8'));
     fs.unlinkSync(out);
     expect(payload.pending).toBeUndefined();
-    expect(payload.STATUS).toBe('failure');
+    expect(payload.STATUS).toBe('gate_failure');
+    expect(payload.FAILED_STEP).toBe('Expo doctor');
     expect(payload.CHANGELOG).toBe('line one\nline two');
     expect(payload.SHA).toBe('abc1234deadbeef');
   });
