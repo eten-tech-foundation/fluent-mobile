@@ -138,7 +138,7 @@ describe('PrepareOfflineDownloadFooter', () => {
         {...defaultProps}
         onDownload={onDownload}
         transportBlocked
-        transportBlockedMessage="Connect to WiFi to upload or download, or enable cellular transfers in Settings."
+        transportBlockedMessage="Connect to WiFi to upload and download. Or turn on Upload/Download over cellular in Settings."
       />,
     );
 

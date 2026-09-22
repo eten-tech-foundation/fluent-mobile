@@ -1,8 +1,13 @@
+/** Prepare / download when blocked on cellular without the cellular toggle. */
 export const TRANSFER_WAITING_WIFI_MESSAGE =
-  'Connect to WiFi to upload or download, or enable cellular transfers in Settings.';
+  'Connect to WiFi to upload and download. Or turn on Upload/Download over cellular in Settings.';
+
+/** Sync Now hint — toggle lives on the same screen and in Settings. */
+export const SYNC_NOW_CELLULAR_DISABLED_MESSAGE =
+  'Connect to WiFi to upload and download. Or use Upload/Download over cellular (toggle below or in Settings).';
 
 export const TRANSFER_OFFLINE_MESSAGE =
-  'Connect to the internet to upload or download.';
+  'Connect to the internet to upload and download.';
 
 export const PROJECTS_EMPTY_MESSAGE =
   'No projects are available right now. Connect to the internet to sync and find available work.';
