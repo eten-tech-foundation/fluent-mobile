@@ -15,10 +15,7 @@ import {
   TRANSFER_OFFLINE_MESSAGE,
 } from '../../constants/messages';
 
-export {
-  SYNC_NOW_CELLULAR_DISABLED_MESSAGE,
-  TRANSFER_OFFLINE_MESSAGE,
-};
+export { SYNC_NOW_CELLULAR_DISABLED_MESSAGE, TRANSFER_OFFLINE_MESSAGE };
 
 /** @deprecated Prefer TRANSFER_OFFLINE_MESSAGE — identical string; kept for #545 call sites. */
 export const SYNC_NOW_OFFLINE_MESSAGE = TRANSFER_OFFLINE_MESSAGE;

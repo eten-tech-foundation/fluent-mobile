@@ -77,8 +77,8 @@ export default function SyncScreen() {
   const syncNowDisabledHint = offlineBlocked
     ? TRANSFER_OFFLINE_MESSAGE
     : cellularBlocked
-      ? SYNC_NOW_CELLULAR_DISABLED_MESSAGE
-      : undefined;
+    ? SYNC_NOW_CELLULAR_DISABLED_MESSAGE
+    : undefined;
 
   const { triggerSync, isSyncing, displayText, stateType } = useSync({
     onSyncComplete: () => {

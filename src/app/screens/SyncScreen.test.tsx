@@ -10,7 +10,6 @@ import {
   SYNC_NOW_OFFLINE_MESSAGE,
   formatUnuploadablePendingMessage,
 } from '../../components/ui/SyncActionControls';
-import { TRANSFER_OFFLINE_MESSAGE } from '../../constants/messages';
 import SyncScreen from './SyncScreen';
 
 const mockGoBack = jest.fn();
