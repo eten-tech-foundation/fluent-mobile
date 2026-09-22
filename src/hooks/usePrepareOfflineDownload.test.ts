@@ -1,6 +1,7 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { usePrepareOfflineDownload } from './usePrepareOfflineDownload';
 import { PrepareOfflineCatalog } from '../types/prepareOffline/types';
+import { TRANSFER_OFFLINE_MESSAGE } from '../constants/messages';
 
 const mockStart = jest.fn();
 const mockPause = jest.fn();
@@ -765,6 +766,92 @@ describe('usePrepareOfflineDownload', () => {
     expect(result.current.transportBlocked).toBe(true);
     expect(result.current.canDownload).toBe(false);
     expect(result.current.transportBlockedMessage).toContain('WiFi');
+  });
+
+  it('does not enqueue or start when handleDownload is invoked on cellular with toggle off', async () => {
+    const { enqueuePrepareOfflineDownload } = jest.requireMock(
+      '../services/prepareOfflineDownload',
+    );
+    mockConnectivity = {
+      isOnline: true,
+      isWifi: false,
+      isCellular: true,
+      connectionType: 'cellular',
+      hasResolved: true,
+      connectivityPending: false,
+    };
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(enqueuePrepareOfflineDownload).not.toHaveBeenCalled();
+    expect(mockStart).not.toHaveBeenCalled();
+  });
+
+  it('does not resume when handleResume is invoked on cellular with toggle off', async () => {
+    mockConnectivity = {
+      isOnline: true,
+      isWifi: false,
+      isCellular: true,
+      connectionType: 'cellular',
+      hasResolved: true,
+      connectivityPending: false,
+    };
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.resume();
+    });
+
+    expect(mockResume).not.toHaveBeenCalled();
+  });
+
+  it('shows the offline message when prepare download is blocked without a link', () => {
+    mockConnectivity = {
+      isOnline: false,
+      isWifi: false,
+      isCellular: false,
+      connectionType: 'none',
+      hasResolved: true,
+      connectivityPending: false,
+    };
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+      }),
+    );
+
+    expect(result.current.transportBlocked).toBe(true);
+    expect(result.current.canDownload).toBe(false);
+    expect(result.current.transportBlockedMessage).toBe(
+      TRANSFER_OFFLINE_MESSAGE,
+    );
+    expect(result.current.transportBlockedMessage).not.toContain('WiFi');
   });
 
   it('rolls back and surfaces a message when start is blocked after enqueue', async () => {
