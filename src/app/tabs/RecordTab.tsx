@@ -62,6 +62,7 @@ import {
 import type { PericopeGroupResult } from '../../db/queries';
 import { ChapterAssignmentData } from '../../types/db/types';
 import { getProjectPericopeSetId } from '../../db/repository';
+import { type VerseRunItem } from '../../components/ui/VerseRun';
 import { parseRequiredString } from '../../navigation/routeParams';
 import { useChapterConflictStatus } from '../../hooks/useChapterConflictStatus';
 import { isChapterTakenByOther } from '../../utils/chapterTakenStatus';
@@ -332,34 +333,42 @@ export function RecordTab({
     ? pericopeNextIndex < 0
     : verseIndex < 0 || verseIndex >= verses.length - 1;
 
-  /**
-   * Source Bible text for the current pericope should show every verse in
-   * its range, not just the selected verse (#540). `verses` is chapter-scoped
-   * (useDraftingContext), so a pericope verse from another chapter has no
-   * match here and is silently dropped — cross-chapter source text is not
-   * fully supported by this join and is out of scope for #540.
-   */
-  const sourceText = useMemo(() => {
+  const sourceVerses = useMemo<VerseRunItem[]>(() => {
     if (draftingUnit !== 'pericope' || pericopeVerses.length === 0) {
-      return selected?.text;
+      return selected?.text
+        ? [
+            {
+              chapterNumber: chapterData.chapterNumber,
+              verseNumber: selectedVerse,
+              text: selected.text,
+            },
+          ]
+        : [];
     }
     return pericopeVerses
       .map(pv => {
-        if (pv.chapterNumber === chapterData.chapterNumber) {
-          return verses.find(v => v.verseNumber === pv.verseNumber)?.text;
-        }
-        return crossChapterVerseTexts.get(
-          `${pv.chapterNumber}:${pv.verseNumber}`,
-        );
+        const text =
+          pv.chapterNumber === chapterData.chapterNumber
+            ? verses.find(v => v.verseNumber === pv.verseNumber)?.text
+            : crossChapterVerseTexts.get(
+                `${pv.chapterNumber}:${pv.verseNumber}`,
+              );
+        return text
+          ? {
+              chapterNumber: pv.chapterNumber,
+              verseNumber: pv.verseNumber,
+              text,
+            }
+          : null;
       })
-      .filter((text): text is string => Boolean(text))
-      .join(' ');
+      .filter((v): v is VerseRunItem => v !== null);
   }, [
     draftingUnit,
     pericopeVerses,
     verses,
     selected,
     chapterData.chapterNumber,
+    selectedVerse,
     crossChapterVerseTexts,
   ]);
 
@@ -1340,7 +1349,7 @@ export function RecordTab({
         <SourceTextAccordion
           expanded={sourceExpanded}
           onToggle={() => setSourceExpanded(v => !v)}
-          text={sourceText}
+          verses={sourceVerses}
         />
       </ScrollView>
 

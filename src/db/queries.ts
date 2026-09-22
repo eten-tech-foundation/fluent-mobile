@@ -1034,22 +1034,43 @@ export async function isChapterFullyRecordedVerseMode(
   }
 }
 
-/** True when every pericope in the chapter has a full-range selected recording (pericope mode) — #542. */
+/** True when every pericope, and every chapter verse not covered by a pericope,
+ *  has a selected recording (pericope mode) — #542.
+ *  A pericope set may not cover every verse in the chapter (e.g. narrative
+ *  breaks, verses excluded from the harmony); those "ungrouped" verses must
+ *  independently satisfy the same per-verse check as verse mode, or a
+ *  chapter could report complete while a real verse has no take.
+ */
 export async function isChapterFullyRecordedPericopeMode(
   bibleId: number,
   bookId: number,
   chapterNumber: number,
   pericopeSetId: number,
 ): Promise<boolean> {
+  const chapterVerses = await getBibleTexts(bibleId, bookId, chapterNumber);
+  if (chapterVerses.length === 0) return false;
+
   const pericopes = await getPericopesForChapter(
     bookId,
     chapterNumber,
     pericopeSetId,
   );
-  if (pericopes.length === 0) return false;
+
+  const coveredVerseNumbers = new Set<number>();
+  for (const pericope of pericopes) {
+    for (const v of pericope.verses) {
+      if (v.chapterNumber === chapterNumber) {
+        coveredVerseNumbers.add(v.verseNumber);
+      }
+    }
+  }
+
+  const ungroupedVerseNumbers = chapterVerses
+    .map(v => v.verseNumber)
+    .filter(vn => !coveredVerseNumbers.has(vn));
 
   const coverages = await getSelectedTakeCoverages(bibleId, bookId);
-  return pericopes.every(pericope => {
+  const pericopesComplete = pericopes.every(pericope => {
     const first = pericope.verses[0];
     const last = pericope.verses[pericope.verses.length - 1];
     if (!first || !last) return false;
@@ -1061,4 +1082,14 @@ export async function isChapterFullyRecordedPericopeMode(
         c.endVerse === last.verseNumber,
     );
   });
+  if (!pericopesComplete) return false;
+
+  if (ungroupedVerseNumbers.length === 0) return true;
+
+  const recordedVerseNumbers = await getRecordedVerseNumbers(
+    bibleId,
+    bookId,
+    chapterNumber,
+  );
+  return ungroupedVerseNumbers.every(vn => recordedVerseNumbers.has(vn));
 }
