@@ -15,9 +15,9 @@ import { CloudSyncStatusIcon } from '../../components/ui/CloudSyncStatusIcon';
 import {
   formatUnuploadablePendingMessage,
   SYNC_NOW_CELLULAR_DISABLED_MESSAGE,
-  SYNC_NOW_OFFLINE_MESSAGE,
   SyncActionControls,
 } from '../../components/ui/SyncActionControls';
+import { TRANSFER_OFFLINE_MESSAGE } from '../../constants/messages';
 import { DownloadProgressSection } from '../../components/ui/DownloadProgressSection';
 import { useDownloadQueue } from '../../hooks/useDownloadQueue';
 import { formatSyncStatusLabel } from '../../utils/syncStatusState';
@@ -67,10 +67,18 @@ export default function SyncScreen() {
   const effectivelyOnline = isOnline && (isWifi || uploadOverCellular);
   const cellularBlocked = isOnline && !isWifi && !uploadOverCellular;
   const offlineBlocked = !isOnline;
-  const syncNowDisabled = cellularBlocked || offlineBlocked;
+  /** Worker would visit zero chapters — pericope/orphan only, not failed retry. */
+  const noUploadableChapters =
+    pendingChapterCount === 0 &&
+    (hasUnuploadablePending || hasPendingUploads) &&
+    !hasFailedUploads;
+  const syncNowDisabled =
+    cellularBlocked || offlineBlocked || noUploadableChapters;
   const syncNowDisabledHint = offlineBlocked
-    ? SYNC_NOW_OFFLINE_MESSAGE
-    : SYNC_NOW_CELLULAR_DISABLED_MESSAGE;
+    ? TRANSFER_OFFLINE_MESSAGE
+    : cellularBlocked
+      ? SYNC_NOW_CELLULAR_DISABLED_MESSAGE
+      : undefined;
 
   const { triggerSync, isSyncing, displayText, stateType } = useSync({
     onSyncComplete: () => {

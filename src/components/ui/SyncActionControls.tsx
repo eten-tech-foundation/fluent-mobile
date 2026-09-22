@@ -10,12 +10,18 @@ import {
 import { Pause, Play, X, type LucideIcon } from 'lucide-react-native';
 import { SyncPageStatus } from '../../types/sync/types';
 import { theme, listIconStrokeWidth } from '../../theme';
+import {
+  SYNC_NOW_CELLULAR_DISABLED_MESSAGE,
+  TRANSFER_OFFLINE_MESSAGE,
+} from '../../constants/messages';
 
-export const SYNC_NOW_CELLULAR_DISABLED_MESSAGE =
-  'Connect to WiFi to sync, or enable cellular uploads in Settings.';
+export {
+  SYNC_NOW_CELLULAR_DISABLED_MESSAGE,
+  TRANSFER_OFFLINE_MESSAGE,
+};
 
-export const SYNC_NOW_OFFLINE_MESSAGE =
-  'Connect to the internet to upload recordings.';
+/** @deprecated Prefer TRANSFER_OFFLINE_MESSAGE — identical string; kept for #545 call sites. */
+export const SYNC_NOW_OFFLINE_MESSAGE = TRANSFER_OFFLINE_MESSAGE;
 
 /** Generic copy; pericope upload support is #410. */
 export function formatUnuploadablePendingMessage(count: number): string {
@@ -45,7 +51,7 @@ export function SyncActionControls({
   onCancel,
   onSyncNow,
   syncNowDisabled = false,
-  syncNowDisabledHint = SYNC_NOW_CELLULAR_DISABLED_MESSAGE,
+  syncNowDisabledHint,
   busy = false,
   controlPending = false,
 }: SyncActionControlsProps) {
@@ -110,7 +116,7 @@ export function SyncActionControls({
             onPress={onSyncNow}
             testID="sync-action-sync-now"
           />
-          {syncNowDisabled ? (
+          {syncNowDisabled && syncNowDisabledHint ? (
             <Text
               style={styles.disabledHint}
               testID="sync-action-sync-now-disabled-hint"
@@ -136,7 +142,7 @@ export function SyncActionControls({
             onPress={onSyncNow}
             testID="sync-action-sync-now"
           />
-          {syncNowDisabled ? (
+          {syncNowDisabled && syncNowDisabledHint ? (
             <Text
               style={styles.disabledHint}
               testID="sync-action-sync-now-disabled-hint"

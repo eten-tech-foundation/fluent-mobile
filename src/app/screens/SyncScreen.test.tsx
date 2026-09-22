@@ -10,6 +10,7 @@ import {
   SYNC_NOW_OFFLINE_MESSAGE,
   formatUnuploadablePendingMessage,
 } from '../../components/ui/SyncActionControls';
+import { TRANSFER_OFFLINE_MESSAGE } from '../../constants/messages';
 import SyncScreen from './SyncScreen';
 
 const mockGoBack = jest.fn();
@@ -291,6 +292,10 @@ describe('SyncScreen', () => {
     expect(
       screen.queryByText('All work has been uploaded to Fluent.'),
     ).toBeNull();
+    expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
+    expect(
+      screen.queryByTestId('sync-action-sync-now-disabled-hint'),
+    ).toBeNull();
   });
 
   it('does not promise a successful upload when count>0 but chapters are empty', () => {
@@ -310,6 +315,10 @@ describe('SyncScreen', () => {
     expect(screen.queryByText('Work will upload shortly.')).toBeNull();
     expect(
       screen.queryByText('All work has been uploaded to Fluent.'),
+    ).toBeNull();
+    expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
+    expect(
+      screen.queryByTestId('sync-action-sync-now-disabled-hint'),
     ).toBeNull();
   });
 
