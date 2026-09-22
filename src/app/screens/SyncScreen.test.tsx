@@ -8,8 +8,8 @@ import {
 import {
   SYNC_NOW_CELLULAR_DISABLED_MESSAGE,
   SYNC_NOW_OFFLINE_MESSAGE,
-  formatUnuploadablePendingMessage,
 } from '../../components/ui/SyncActionControls';
+import { formatUnuploadablePendingMessage } from '../../constants/messages';
 import SyncScreen from './SyncScreen';
 
 const mockGoBack = jest.fn();
@@ -301,6 +301,8 @@ describe('SyncScreen', () => {
     };
     render(<SyncScreen />);
 
+    expect(screen.getByText("Online · some takes can't upload")).toBeTruthy();
+    expect(screen.queryByText('Online · upload pending')).toBeNull();
     expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
     fireEvent.press(screen.getByTestId('sync-action-sync-now'));
     expect(mockSyncNowFromHook).not.toHaveBeenCalled();

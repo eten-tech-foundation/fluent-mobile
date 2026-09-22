@@ -20,12 +20,6 @@ export { SYNC_NOW_CELLULAR_DISABLED_MESSAGE, TRANSFER_OFFLINE_MESSAGE };
 /** @deprecated Prefer TRANSFER_OFFLINE_MESSAGE — identical string; kept for #545 call sites. */
 export const SYNC_NOW_OFFLINE_MESSAGE = TRANSFER_OFFLINE_MESSAGE;
 
-/** Generic copy; pericope upload support is #410. */
-export function formatUnuploadablePendingMessage(count: number): string {
-  const noun = count === 1 ? 'recording' : 'recordings';
-  return `${count} ${noun} can't upload yet — missing bible text or pericope-only takes.`;
-}
-
 export interface SyncActionControlsProps {
   status: SyncPageStatus;
   onPause: () => void;

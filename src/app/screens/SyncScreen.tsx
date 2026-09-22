@@ -12,12 +12,12 @@ import { UploadProgressBar } from '../../components/ui/UploadProgressBar';
 import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
 import { SyncStatusIndicator } from '../../components/ui/SyncStatusIndicator';
 import { CloudSyncStatusIcon } from '../../components/ui/CloudSyncStatusIcon';
+import { SyncActionControls } from '../../components/ui/SyncActionControls';
 import {
   formatUnuploadablePendingMessage,
   SYNC_NOW_CELLULAR_DISABLED_MESSAGE,
-  SyncActionControls,
-} from '../../components/ui/SyncActionControls';
-import { TRANSFER_OFFLINE_MESSAGE } from '../../constants/messages';
+  TRANSFER_OFFLINE_MESSAGE,
+} from '../../constants/messages';
 import { DownloadProgressSection } from '../../components/ui/DownloadProgressSection';
 import { useDownloadQueue } from '../../hooks/useDownloadQueue';
 import { formatSyncStatusLabel } from '../../utils/syncStatusState';
@@ -255,7 +255,7 @@ function renderStatusLine(
     );
   }
 
-  if (hasFailedUploads && isOnline) {
+  if (hasFailedUploads && isOnline && pendingChapterCount > 0) {
     return (
       <>
         <Text style={styles.statusTitle}>Online · upload pending</Text>
