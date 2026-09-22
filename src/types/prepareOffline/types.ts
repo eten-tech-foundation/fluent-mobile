@@ -5,6 +5,7 @@ export interface PrepareOfflineChapterRow {
   bookName: string;
   chapterNumber: number;
   assignedUserId: number | null;
+  bibleId: number;
 }
 
 export interface PrepareOfflineBookGroup {
@@ -81,8 +82,7 @@ export interface PrepareOfflineCatalog {
 }
 
 export interface BuildPrepareOfflineCatalogInput {
-  projectId: number;
-  manifest: PrepareOfflineResourceManifestEntry[];
+  manifest: PrepareOfflineResourceManifestItem[];
   getResourceStatus: (resourceId: string) => PrepareOfflineResourceStatus;
   chapters: PrepareOfflineChapterRow[];
   selectedIds: Set<number>;

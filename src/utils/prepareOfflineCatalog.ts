@@ -1,30 +1,10 @@
 import {
   BuildPrepareOfflineCatalogInput,
   PrepareOfflineCatalog,
-  PrepareOfflineChapterRow,
   PrepareOfflineResourceGroup,
   PrepareOfflineResourceItem,
-  PrepareOfflineResourceManifestEntry,
-  PrepareOfflineResourceScope,
   PrepareOfflineResourceTier,
 } from '../types/prepareOffline/types';
-import {
-  kindLabel,
-  scopedPrepareOfflineResourceId,
-} from './prepareOfflineResourceId';
-
-function computeManifestBytes(
-  entry: PrepareOfflineResourceManifestEntry,
-  selectedChapters: PrepareOfflineChapterRow[],
-): number {
-  const bookIds = new Set(selectedChapters.map(ch => ch.bookId));
-  return computeManifestBytesForScope(
-    entry.scope,
-    entry.unitBytes,
-    selectedChapters.length,
-    bookIds.size,
-  );
-}
 
 function groupItemsByName(
   items: PrepareOfflineResourceItem[],
@@ -138,35 +118,26 @@ export function computeRemainingBytes(
 
 /** Pure catalog builder — manifest and status come from prepareOfflineResources service. */
 export function buildPrepareOfflineCatalog({
-  projectId,
   manifest,
   getResourceStatus,
   chapters,
   selectedIds,
 }: BuildPrepareOfflineCatalogInput): PrepareOfflineCatalog {
   const selectedChapters = chapters.filter(ch => selectedIds.has(ch.id));
+
   if (selectedChapters.length === 0 || manifest.length === 0) {
     return { items: [], groups: [] };
   }
 
-  const items: PrepareOfflineResourceItem[] = manifest.map(entry => {
-    const id = scopedPrepareOfflineResourceId(
-      projectId,
-      entry.tier,
-      entry.groupName,
-      entry.kind,
-    );
-
-    return {
-      id,
-      tier: entry.tier,
-      kind: entry.kind,
-      groupName: entry.groupName,
-      label: kindLabel(entry.kind),
-      bytes: computeManifestBytes(entry, selectedChapters),
-      status: getResourceStatus(id),
-    };
-  });
+  const items: PrepareOfflineResourceItem[] = manifest.map(entry => ({
+    id: entry.id,
+    tier: entry.tier,
+    kind: entry.kind,
+    groupName: entry.resourceName,
+    label: entry.label,
+    bytes: entry.bytesTotal,
+    status: getResourceStatus(entry.id),
+  }));
 
   return {
     items,
@@ -186,23 +157,4 @@ export function sortItemsForPrepareOfflineDownload(
   return [...items].sort(
     (a, b) => (indexById.get(a.id) ?? 0) - (indexById.get(b.id) ?? 0),
   );
-}
-
-/** Exported for tests — documents how manifest scope affects byte totals. */
-export function computeManifestBytesForScope(
-  scope: PrepareOfflineResourceScope,
-  unitBytes: number,
-  selectedChapterCount: number,
-  selectedBookCount: number,
-): number {
-  switch (scope) {
-    case 'project':
-      return unitBytes;
-    case 'chapter':
-      return unitBytes * selectedChapterCount;
-    case 'book':
-      return unitBytes * selectedBookCount;
-    default:
-      return unitBytes;
-  }
 }

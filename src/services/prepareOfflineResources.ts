@@ -1,35 +1,73 @@
 /**
- * Prepare for Offline — data access layer (#51 / #201).
+ * Prepare for Offline — data access layer (#51 / #201 / #504).
  *
  * Single entry point for manifest and on-device inventory. UI, catalog builder,
  * and download service import from here — never from `src/mocks/prepareOffline/`.
  *
- * Today: mock catalog + inventory until FluentAPI manifest is wired (#201 follow-up).
- * Replace internals here when the API contract lands; callers stay unchanged.
+ * Manifest: wired to the real FluentAPI translation-resources manifest (#504).
+ * Inventory/status/simulation: still mock-backed until #201's real worker lands —
+ * the API only replaces the manifest source, not the download/inventory architecture.
  */
+import { FluentAPI } from './api';
 import {
   clearMockPrepareOfflineRuntimeInventory,
   getDefaultDeselectedItemIdsForScenario,
   getMockPrepareOfflineResourceStatus,
   getPrepareOfflineMockInventoryScenario,
-  MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST,
   simulateMockPrepareOfflineDownload,
   subscribeMockPrepareOfflineInventory,
 } from '../mocks/prepareOffline';
+import type { ApiPrepareOfflineManifestItem } from '../types/api/translationResources';
 import {
-  PrepareOfflineResourceManifestEntry,
+  PrepareOfflineResourceManifestItem,
   PrepareOfflineResourceStatus,
 } from '../types/prepareOffline/types';
 import { unscopedPrepareOfflineResourceId } from '../utils/prepareOfflineResourceId';
 
 export type PrepareOfflineInventoryListener = () => void;
 
-/** Mock manifest until FluentAPI resource manifest is available. */
+/** Fluent API manifest resources whose tier mobile overrides regardless of server value. */
+const TIER_OVERRIDE_BY_COLLECTION_CODE: Record<string, 1 | 2 | 3> = {
+  // Translation Notes ships under Tier 2 server-side; mobile UI treats it as Tier 1.
+  UWTranslationNotes: 1,
+};
+
+function toMobileManifestItem(
+  apiItem: ApiPrepareOfflineManifestItem,
+): PrepareOfflineResourceManifestItem {
+  const tierOverride = apiItem.collectionCode
+    ? TIER_OVERRIDE_BY_COLLECTION_CODE[apiItem.collectionCode]
+    : undefined;
+
+  return {
+    ...apiItem,
+    tier: tierOverride ?? apiItem.tier,
+  };
+}
+
+export interface FetchPrepareOfflineManifestParams {
+  languageCode: string;
+  bookCode: string;
+  startChapter: number;
+  endChapter: number;
+}
+
+/** Real FluentAPI Prepare Offline resource manifest (#504). */
 export async function fetchPrepareOfflineManifest(
   projectId: number,
-): Promise<PrepareOfflineResourceManifestEntry[]> {
-  void projectId;
-  return MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST;
+  params: FetchPrepareOfflineManifestParams,
+): Promise<PrepareOfflineResourceManifestItem[]> {
+  const response = await FluentAPI.getPrepareOfflineManifest(projectId, params);
+
+  if (response.truncated) {
+    // Open question (#504): decide surfaced UX for truncated manifests.
+    // For now, don't silently treat it as complete — at least log it.
+    console.warn(
+      `[prepareOfflineResources] manifest truncated for project ${projectId}`,
+    );
+  }
+
+  return response.items.map(toMobileManifestItem);
 }
 
 /** On-device / in-flight status for one resource row. */

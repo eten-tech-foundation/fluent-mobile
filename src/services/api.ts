@@ -19,9 +19,10 @@ import type {
   GetChapterSourceAudioParams,
 } from '../types/api/sourceAudio';
 import type {
-  ApiTranslationImagesResponse,
   ApiTranslationNotesResponse,
+  ApiTranslationImagesResponse,
   ApiTranslationQuestionsResponse,
+  ApiPrepareOfflineManifestResponse,
 } from '../types/api/translationResources';
 import type {
   UploadVerseAudioParams,
@@ -60,6 +61,28 @@ function translationResourcesVersePath(
   return `/projects/${projectId}/translation-resources/${kind}/${encodeURIComponent(
     bookCode,
   )}/${chapter}/${verse}?${params.toString()}`;
+}
+
+function prepareOfflineManifestPath(
+  projectId: number,
+  params: {
+    languageCode: string;
+    bookCode: string;
+    startChapter: number;
+    endChapter: number;
+    includeContent?: boolean;
+  },
+): string {
+  const query = new URLSearchParams({
+    languageCode: params.languageCode,
+    bookCode: params.bookCode,
+    startChapter: String(params.startChapter),
+    endChapter: String(params.endChapter),
+  });
+  if (params.includeContent) {
+    query.set('includeContent', 'true');
+  }
+  return `/projects/${projectId}/translation-resources/manifest?${query.toString()}`;
 }
 
 function chapterSourceAudioPath(params: GetChapterSourceAudioParams): string {
@@ -307,6 +330,26 @@ export const FluentAPI = {
         languageCode,
       ),
     ),
+
+  /**
+   * Prepare Offline resource manifest — Tier 1/2/3 availability, sizes,
+   * and metadata for a project/chapter range (#504).
+   * Max 20 chapters per range. `includeContent` omitted/false for catalog
+   * loading — metadata and sizes only, not full text bodies.
+   */
+  getPrepareOfflineManifest: (
+    projectId: number,
+    params: {
+      languageCode: string;
+      bookCode: string;
+      startChapter: number;
+      endChapter: number;
+    },
+  ): Promise<ApiPrepareOfflineManifestResponse> =>
+    authedRequest<ApiPrepareOfflineManifestResponse>(
+      prepareOfflineManifestPath(projectId, params),
+    ),
+
   getPericopeSets: async (): Promise<ApiPericopeSet[]> => {
     const response = await publicRequest<PericopeSetsResponse>(
       '/pericope-sets',

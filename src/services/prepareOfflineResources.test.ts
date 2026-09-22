@@ -1,3 +1,4 @@
+import { FluentAPI } from './api';
 import {
   clearPrepareOfflineSessionInventory,
   fetchPrepareOfflineManifest,
@@ -7,23 +8,86 @@ import {
   subscribePrepareOfflineInventory,
 } from './prepareOfflineResources';
 import {
-  MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST,
   manifestEntryToResourceId,
   resetMockPrepareOfflineInventory,
   setMockPrepareOfflineResourceStatus,
   setPrepareOfflineMockInventoryScenario,
 } from '../mocks/prepareOffline';
 
+jest.mock('./api', () => ({
+  FluentAPI: { getPrepareOfflineManifest: jest.fn() },
+}));
+
 describe('prepareOfflineResources', () => {
   beforeEach(() => {
     resetMockPrepareOfflineInventory();
+    jest.clearAllMocks();
   });
 
   describe('fetchPrepareOfflineManifest', () => {
-    it('returns the mock manifest regardless of project id', async () => {
-      await expect(fetchPrepareOfflineManifest(99)).resolves.toBe(
-        MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST,
+    const params = {
+      languageCode: 'eng',
+      bookCode: 'MRK',
+      startChapter: 1,
+      endChapter: 3,
+    };
+
+    it('maps API items and calls FluentAPI with the given params', async () => {
+      const apiItem = {
+        id: 'r1',
+        tier: 3 as const,
+        kind: 'text' as const,
+        resourceName: 'Bible Commentary',
+        label: 'Commentary',
+        required: false,
+        removable: true,
+        bytesTotal: 1024,
+        fileExt: 'json',
+        languageCode: 'eng',
+      };
+      (FluentAPI.getPrepareOfflineManifest as jest.Mock).mockResolvedValue({
+        projectId: 99,
+        sourceLanguageCode: 'eng',
+        items: [apiItem],
+        totalBytes: 1024,
+        truncated: false,
+      });
+
+      const result = await fetchPrepareOfflineManifest(99, params);
+
+      expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledWith(
+        99,
+        params,
       );
+      expect(result).toEqual([apiItem]);
+    });
+
+    it('overrides Translation Notes to Tier 1 regardless of API tier', async () => {
+      (FluentAPI.getPrepareOfflineManifest as jest.Mock).mockResolvedValue({
+        projectId: 99,
+        sourceLanguageCode: 'eng',
+        items: [
+          {
+            id: 'tn1',
+            tier: 2,
+            kind: 'text',
+            resourceName: 'Translation Notes',
+            label: 'Translation Notes',
+            required: true,
+            removable: false,
+            bytesTotal: 512,
+            fileExt: 'json',
+            languageCode: 'eng',
+            collectionCode: 'UWTranslationNotes',
+          },
+        ],
+        totalBytes: 512,
+        truncated: false,
+      });
+
+      const result = await fetchPrepareOfflineManifest(99, params);
+
+      expect(result[0].tier).toBe(1);
     });
   });
 
