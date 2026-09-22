@@ -4,7 +4,6 @@ import {
   getConnectivitySnapshot,
   subscribeToConnectivity,
 } from '../services/connectivity';
-import { transportQaLog } from '../utils/transportQaLog';
 
 export function useConnectivity() {
   const [isOnline, setIsOnline] = useState(true);
@@ -32,14 +31,6 @@ export function useConnectivity() {
       setIsCellular(cellular);
       setConnectionType(type);
       setHasResolved(true);
-      transportQaLog(
-        'REDE',
-        online
-          ? `Conectividade atualizada — tipo "${type}", Wi-Fi=${
-              wifi ? 'sim' : 'não'
-            }, cellular=${cellular ? 'sim' : 'não'}`
-          : `Sem conectividade de rede (tipo "${type}")`,
-      );
     },
     [],
   );

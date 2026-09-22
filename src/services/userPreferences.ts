@@ -1,5 +1,4 @@
 import { kvStorage } from './storage';
-import { transportQaLog } from '../utils/transportQaLog';
 
 const PREFERENCE_KEYS = {
   UPLOAD_OVER_CELLULAR: 'pref_upload_over_cellular',
@@ -78,19 +77,9 @@ export function getUserPreferences(): UserPreferences {
 
 export function setUserPreferences(updates: Partial<UserPreferences>): void {
   if (updates.uploadOverCellular !== undefined) {
-    const anterior = getUserPreferenceValue('uploadOverCellular');
-    const novo = updates.uploadOverCellular;
-    if (anterior !== novo) {
-      transportQaLog(
-        'PREFERÊNCIA',
-        novo
-          ? 'Dados móveis LIGADOS — upload e download podem usar cellular'
-          : 'Dados móveis DESLIGADOS — só Wi-Fi/ethernet (salvo bloqueio de rede)',
-      );
-    }
     kvStorage.setItemSync(
       PREFERENCE_KEYS.UPLOAD_OVER_CELLULAR,
-      novo ? 'true' : 'false',
+      updates.uploadOverCellular ? 'true' : 'false',
     );
   }
 

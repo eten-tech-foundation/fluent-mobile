@@ -17,18 +17,13 @@ import {
   type TransportGate,
 } from '../utils/transportPolicy';
 import {
-  transportQaLog,
-  transportQaLogGate,
-  transportQaLogItensDownload,
-} from '../utils/transportQaLog';
+  getActiveUserId,
+  setPrepareOfflineDownloadStarted,
+} from '../services/storage';
 
 export type DownloadTransferResult =
   | { ok: true }
   | { ok: false; gate: TransportGate };
-import {
-  getActiveUserId,
-  setPrepareOfflineDownloadStarted,
-} from '../services/storage';
 
 const log = logger.create('useDownloadQueue');
 
@@ -262,17 +257,7 @@ export function useDownloadQueue() {
         connectionType: transportSnapshot.connectionType,
         uploadOverCellular,
       });
-      transportQaLogGate('fila de download (iniciar)', gate, {
-        isOnline: transportSnapshot.isOnline,
-        isWifi: transportSnapshot.isWifi,
-        connectionType: transportSnapshot.connectionType,
-        uploadOverCellular,
-      });
       if (gate !== 'ok') {
-        transportQaLog(
-          'DOWNLOAD',
-          'Início cancelado — política de transporte não permite agora',
-        );
         log.info('Download start skipped until transport allows transfer', {
           gate,
           isOnline: transportSnapshot.isOnline,
@@ -298,12 +283,9 @@ export function useDownloadQueue() {
         }
       }
 
-      transportQaLogItensDownload('Baixando agora', items);
-
       // Do not await the full queue — worker runs sequentially in the background
       // so UI can refresh progress and expose pause/cancel while downloading.
       void worker.start(items).finally(() => {
-        transportQaLog('DOWNLOAD', 'Worker da fila terminou uma execução');
         void refresh();
       });
 
@@ -314,7 +296,6 @@ export function useDownloadQueue() {
   );
 
   const pause = useCallback(async () => {
-    transportQaLog('DOWNLOAD', 'Usuário pausou a fila de download');
     await worker.pause();
     await refresh();
   }, [refresh, worker]);
@@ -328,17 +309,7 @@ export function useDownloadQueue() {
       connectionType: transportSnapshot.connectionType,
       uploadOverCellular,
     });
-    transportQaLogGate('fila de download (retomar)', gate, {
-      isOnline: transportSnapshot.isOnline,
-      isWifi: transportSnapshot.isWifi,
-      connectionType: transportSnapshot.connectionType,
-      uploadOverCellular,
-    });
     if (gate !== 'ok') {
-      transportQaLog(
-        'DOWNLOAD',
-        'Retomada cancelada — política de transporte não permite agora',
-      );
       log.info('Download resume skipped until transport allows transfer', {
         gate,
         isOnline: transportSnapshot.isOnline,
@@ -351,10 +322,6 @@ export function useDownloadQueue() {
     }
 
     if (worker.getState() === 'paused') {
-      transportQaLog(
-        'DOWNLOAD',
-        'Retomando worker que estava em pausa (mesma sessão)',
-      );
       void worker.resume().finally(() => {
         void refresh();
       });
@@ -363,7 +330,6 @@ export function useDownloadQueue() {
     }
 
     const items = await getResumableDownloadItems(true);
-    transportQaLogItensDownload('Retomando fila com itens pendentes', items);
     void worker.start(items).finally(() => {
       void refresh();
     });
@@ -372,7 +338,6 @@ export function useDownloadQueue() {
   }, [refresh, worker]);
 
   const cancel = useCallback(async () => {
-    transportQaLog('DOWNLOAD', 'Usuário cancelou a fila de download');
     await worker.cancel();
     await refresh();
   }, [refresh, worker]);

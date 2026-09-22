@@ -19,14 +19,8 @@ import { formatSyncStatusLabel } from '../../utils/syncStatusState';
 import {
   isEffectivelyOnlineForTransfer,
   isWaitingWifiForTransfer,
-  transportAllowsTransfer,
 } from '../../utils/transportPolicy';
 import { hrefs } from '../../navigation/hrefs';
-import {
-  transportQaLog,
-  transportQaLogClique,
-  transportQaLogGate,
-} from '../../utils/transportQaLog';
 import { SyncPageStatus } from '../../types/sync/types';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -88,58 +82,38 @@ export default function SyncScreen() {
 
   const handleUploadOverCellularChange = useCallback(
     (enabled: boolean) => {
-      transportQaLogClique(
-        'Toggle "Upload/Download over cellular" (tela Sync)',
-        enabled ? 'LIGANDO' : 'DESLIGANDO',
-      );
       setUploadOverCellular(enabled);
     },
     [setUploadOverCellular],
   );
 
   const runSyncNow = useCallback(async () => {
-    const gate = transportAllowsTransfer(transferTransport);
-    transportQaLogGate('Sync Now (toque do usuário)', gate, transferTransport);
-    if (connectivityPending) {
-      transportQaLog('SYNC', 'Sync Now bloqueado — ainda detectando rede');
-      return;
-    }
-    if (waitingWifi) {
-      transportQaLog(
-        'SYNC',
-        'Sync Now bloqueado — aguardando Wi-Fi ou toggle de dados móveis',
-      );
+    if (connectivityPending || waitingWifi) {
       return;
     }
 
-    transportQaLog('SYNC', 'Sync Now em andamento — envio de gravações');
     if (!isSyncing) {
       void triggerSync();
     }
     await syncNowUploads();
     setRefreshKey(key => key + 1);
-    transportQaLog('SYNC', 'Sync Now finalizou esta rodada');
   }, [
     connectivityPending,
     waitingWifi,
-    transferTransport,
     isSyncing,
     triggerSync,
     syncNowUploads,
   ]);
 
   const handlePause = useCallback(async () => {
-    transportQaLogClique('Botão Pause (tela Sync — upload)');
     await pause();
   }, [pause]);
 
   const handleResume = useCallback(async () => {
-    transportQaLogClique('Botão Resume (tela Sync — upload / Sync Now)');
     await runSyncNow();
   }, [runSyncNow]);
 
   const handleCancel = useCallback(async () => {
-    transportQaLogClique('Botão Cancel (tela Sync — upload)');
     await cancel();
     setRefreshKey(key => key + 1);
   }, [cancel]);
@@ -219,7 +193,6 @@ export default function SyncScreen() {
               void handleCancel();
             }}
             onSyncNow={() => {
-              transportQaLogClique('Botão Sync Now (tela Sync)');
               void runSyncNow();
             }}
             syncNowDisabled={waitingWifi || connectivityPending}

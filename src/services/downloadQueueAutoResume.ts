@@ -10,11 +10,6 @@ import {
 import { getSharedDownloadQueueWorker } from './downloadQueueWorkerSingleton';
 import { logger } from '../utils/logger';
 import {
-  transportQaLog,
-  transportQaLogGate,
-  transportQaLogItensDownload,
-} from '../utils/transportQaLog';
-import {
   getUploadOverCellular,
   subscribeToPreference,
 } from './userPreferences';
@@ -43,17 +38,7 @@ export function startDownloadQueueAutoResume(): () => void {
       };
 
       const gate = transportAllowsTransfer(transport);
-      transportQaLogGate('auto-retomar fila', gate, {
-        isOnline: transport.isOnline,
-        isWifi: transport.isWifi,
-        connectionType: transport.connectionType,
-        uploadOverCellular: transport.uploadOverCellular,
-      });
       if (gate !== 'ok') {
-        transportQaLog(
-          'DOWNLOAD',
-          'Auto-retomar ignorado — transporte não permite',
-        );
         return;
       }
 
@@ -61,10 +46,6 @@ export function startDownloadQueueAutoResume(): () => void {
       const workerState = worker.getState();
 
       if (workerState === 'downloading' || workerState === 'paused') {
-        transportQaLog(
-          'DOWNLOAD',
-          `Auto-retomar ignorado — worker em estado "${workerState}"`,
-        );
         return;
       }
 
@@ -79,14 +60,8 @@ export function startDownloadQueueAutoResume(): () => void {
         );
 
         if (resumable.length === 0) {
-          transportQaLog(
-            'DOWNLOAD',
-            'Auto-retomar: nenhum item elegível na fila',
-          );
           return;
         }
-
-        transportQaLogItensDownload('Auto-retomar iniciando', resumable);
 
         log.info(
           'Auto-resuming download queue when transport allows transfer',

@@ -23,15 +23,7 @@ import {
 } from '../utils/prepareOfflineCatalog';
 import { formatByteSize } from '../utils/formatByteSize';
 import { logger } from '../utils/logger';
-import {
-  isTransportBlockedForTransfer,
-  transportAllowsTransfer,
-} from '../utils/transportPolicy';
-import {
-  transportQaLog,
-  transportQaLogGate,
-  transportQaLogItensDownload,
-} from '../utils/transportQaLog';
+import { isTransportBlockedForTransfer } from '../utils/transportPolicy';
 import { useConnectivity } from './useConnectivity';
 import { usePreferences } from './usePreferences';
 import {
@@ -382,10 +374,6 @@ export function usePrepareOfflineDownload({
     }
 
     if (transportBlocked) {
-      transportQaLog(
-        'PREPARE_OFFLINE',
-        'Retomar download bloqueado — transporte não permite',
-      );
       log.info(
         'Prepare offline resume skipped until transport allows transfer',
       );
@@ -465,29 +453,6 @@ export function usePrepareOfflineDownload({
     }
 
     if (transportBlocked) {
-      if (connectivityPending) {
-        transportQaLog(
-          'PREPARE_OFFLINE',
-          'Download ignorado — ainda detectando rede',
-        );
-      } else {
-        const gate = transportAllowsTransfer({
-          isOnline,
-          isWifi,
-          connectionType,
-          uploadOverCellular,
-        });
-        transportQaLogGate('Prepare for offline (botão Download)', gate, {
-          isOnline,
-          isWifi,
-          connectionType,
-          uploadOverCellular,
-        });
-        transportQaLog(
-          'PREPARE_OFFLINE',
-          'Download ignorado — transporte bloqueado',
-        );
-      }
       log.info(
         'Prepare offline download skipped until transport allows transfer',
       );
@@ -498,10 +463,6 @@ export function usePrepareOfflineDownload({
       return;
     }
 
-    transportQaLog(
-      'PREPARE_OFFLINE',
-      `Usuário iniciou download do projeto ${projectId}`,
-    );
     downloadInFlightRef.current = true;
     setDownloadKickoff(true);
     setDownloadTransportError(null);
@@ -548,11 +509,6 @@ export function usePrepareOfflineDownload({
       ) {
         const startResult = await start(projectItems);
         if (!startResult.ok) {
-          transportQaLog(
-            'PREPARE_OFFLINE',
-            'Download revertido — fila não iniciou por bloqueio de transporte',
-            { motivo: startResult.gate },
-          );
           setSessionStarted(false);
           setForceIdle(true);
           if (projectId !== null) {
@@ -563,11 +519,6 @@ export function usePrepareOfflineDownload({
             startResult.gate === 'offline'
               ? TRANSFER_OFFLINE_MESSAGE
               : TRANSFER_WAITING_WIFI_MESSAGE,
-          );
-        } else {
-          transportQaLogItensDownload(
-            'Prepare for offline — fila aceita',
-            projectItems,
           );
         }
       }
@@ -584,12 +535,7 @@ export function usePrepareOfflineDownload({
     refresh,
     selectedItems,
     start,
-    connectivityPending,
-    connectionType,
-    isOnline,
-    isWifi,
     transportBlocked,
-    uploadOverCellular,
     userId,
   ]);
 
