@@ -1,7 +1,14 @@
 # Prefer EXPO_PUBLIC_E2E_MODE=1 on Debug+Metro so the menu never opens.
 # Optional taps tolerate delayed sheets; missing UI is a no-op when E2E mode suppresses it.
+# After clearState on a Debug client, history is empty — deep-link when the launcher
+# "DEVELOPMENT SERVERS" screen is shown (EAS e2e-test APK never shows this).
 appId: com.eten.fluent
 ---
+- runFlow:
+    when:
+      visible: 'DEVELOPMENT SERVERS'
+    commands:
+      - openLink: 'exp+fluent-mobile://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081'
 - tapOn:
     text: 'Continue'
     optional: true

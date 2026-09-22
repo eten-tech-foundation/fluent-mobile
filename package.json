@@ -26,6 +26,7 @@
     "maestro:test:smokes": "bash ./scripts/maestro-test.sh --config .maestro/config.yaml --include-tags smoke .maestro",
     "maestro:test:auth": "bash ./scripts/maestro-test.sh --config .maestro/config.yaml --include-tags auth .maestro",
     "maestro:test:nav": "bash ./scripts/maestro-test.sh --config .maestro/config.yaml --include-tags nav .maestro",
+    "maestro:test:drafting": "bash ./scripts/maestro-test.sh --config .maestro/config.yaml --include-tags drafting .maestro",
     "maestro:test:record": "bash ./scripts/maestro-test.sh --config .maestro/config.yaml --include-tags record .maestro",
     "maestro:test:sync": "bash ./scripts/maestro-test.sh --config .maestro/config.yaml --include-tags sync .maestro",
     "maestro:test:edges": "bash ./scripts/maestro-test.sh --config .maestro/config.yaml --include-tags edges .maestro",

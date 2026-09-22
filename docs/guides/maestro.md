@@ -18,6 +18,7 @@ Opt-in **Android-only** Maestro suite for Fluent Mobile ([#488](https://github.c
 | Cold launch → login screen | `flows/smoke-launch.yaml` | `npm run maestro:test:harness` |
 | Sign in / session restore / logout | `flows/android/smoke-auth.yaml` | `npm run maestro:test:auth` |
 | Home → My Work / Projects → drafting tabs | `flows/android/smoke-nav.yaml` | `npm run maestro:test:nav` |
+| Drafting shell (source-audio visibility, last-tab, shared verse) | `flows/android/smoke-drafting.yaml` | `npm run maestro:test:drafting` |
 | Record → stop → play → delete take | `flows/android/smoke-record.yaml` | `npm run maestro:test:record` |
 | Sync Now + Prepare for Offline chrome | `flows/android/smoke-sync-offline.yaml` | `npm run maestro:test:sync` |
 | Forgot password / legal / permission deny | `flows/android/smoke-edges.yaml` | `npm run maestro:test:edges` |
@@ -140,6 +141,7 @@ npm run maestro:test:harness   # flows/smoke-launch.yaml (login screen only)
 npm run maestro:test:smokes    # all flows tagged `smoke` (single-account)
 npm run maestro:test:auth      # include-tags auth
 npm run maestro:test:nav
+npm run maestro:test:drafting
 npm run maestro:test:record
 npm run maestro:test:sync
 npm run maestro:test:edges
@@ -152,6 +154,7 @@ npm run maestro:test           # workspace flows (excludes helpers, subflows, mu
 | `flows/smoke-launch.yaml` | `harness` | yes | Boot → `login-email-input` |
 | `flows/android/smoke-auth.yaml` | `smoke` `auth` | yes | Login, session restore, logout |
 | `flows/android/smoke-nav.yaml` | `smoke` `nav` | yes | My Work + Projects → drafting tabs |
+| `flows/android/smoke-drafting.yaml` | `smoke` `drafting` `nav` | yes | Shell: source-audio visibility, last-tab, verse→Record |
 | `flows/android/smoke-record.yaml` | `smoke` `record` | yes (+ mic allow) | Record → stop → play → delete take; no stage advance |
 | `flows/android/smoke-sync-offline.yaml` | `smoke` `sync` | yes | Sync Now; Prepare for Offline chrome |
 | `flows/android/smoke-edges.yaml` | `smoke` `edges` | yes | Forgot password, legal, mic/notification deny |

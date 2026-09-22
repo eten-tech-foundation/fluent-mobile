@@ -1,0 +1,125 @@
+# Drafting shell contract (#527): My Work entry, source-audio visibility,
+# last-tab restore, Bible→Record verse handoff, Projects entry.
+# Does not exercise Record capture / Resources content (sibling audits).
+appId: com.eten.fluent
+tags:
+  - smoke
+  - drafting
+  - nav
+---
+- runFlow: subflows/boot-to-login.yaml
+- runFlow: subflows/login.yaml
+- runFlow: subflows/wait-for-home.yaml
+
+# --- My Work → drafting shell chrome ---
+- runFlow: subflows/open-first-my-work-chapter.yaml
+- assertVisible:
+    id: 'drafting-tab-bar'
+- assertVisible:
+    id: 'drafting-tab-bible'
+- assertVisible:
+    id: 'drafting-tab-resources'
+- assertVisible:
+    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'bible-tab'
+- assertVisible:
+    id: 'source-audio-bar'
+- assertVisible:
+    id: 'home-sync-button'
+
+# Source-audio bar hidden on Resources; restored on Bible / Record
+- tapOn:
+    id: 'drafting-tab-resources'
+- assertVisible:
+    id: 'resources-tab'
+- assertNotVisible:
+    id: 'source-audio-bar'
+- tapOn:
+    id: 'drafting-tab-bible'
+- assertVisible:
+    id: 'bible-tab'
+- assertVisible:
+    id: 'source-audio-bar'
+- tapOn:
+    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'record-tab'
+- assertVisible:
+    id: 'source-audio-bar'
+
+# Last-tab restore: leave while on Record, re-open same chapter → Record
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 15000
+- runFlow: subflows/open-first-my-work-chapter.yaml
+- assertVisible:
+    id: 'record-tab'
+- assertVisible:
+    id: 'source-audio-bar'
+
+# Bible unit tap selects verse; open Record via tab (onOpenRecord wiring gap — see assessment).
+- tapOn:
+    id: 'drafting-tab-bible'
+- assertVisible:
+    id: 'bible-tab'
+- tapOn:
+    text: '3'
+- tapOn:
+    id: 'drafting-tab-record'
+- extendedWaitUntil:
+    visible:
+      id: 'record-tab'
+    timeout: 15000
+- assertVisible:
+    id: 'record-verse-reference'
+- assertVisible:
+    text: '.*:3'
+- tapOn:
+    id: 'drafting-tab-resources'
+- assertVisible:
+    id: 'resources-unit-.*-3'
+- assertNotVisible:
+    id: 'source-audio-bar'
+
+# Leave drafting → Home
+- tapOn:
+    text: 'Go back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 15000
+
+# --- Projects → drafting (default Bible for a fresh chapter visit memory) ---
+- tapOn:
+    id: 'home-tab-projects'
+- extendedWaitUntil:
+    visible:
+      id: 'project-row-.*'
+    timeout: 60000
+- tapOn:
+    id: 'project-row-.*'
+- extendedWaitUntil:
+    visible:
+      id: 'chapter-row-.*'
+    timeout: 60000
+- tapOn:
+    id: 'chapter-row-.*'
+- extendedWaitUntil:
+    visible:
+      id: 'drafting-tab-bar'
+    timeout: 60000
+- assertVisible:
+    id: 'drafting-tab-bible'
+- assertVisible:
+    id: 'drafting-tab-resources'
+- assertVisible:
+    id: 'drafting-tab-record'
+- tapOn:
+    text: 'Go back'
+- extendedWaitUntil:
+    visible:
+      id: 'chapter-row-.*'
+    timeout: 15000
