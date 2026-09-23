@@ -2,8 +2,10 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import {
   SYNC_NOW_CELLULAR_DISABLED_MESSAGE,
+  SYNC_NOW_OFFLINE_MESSAGE,
   SyncActionControls,
 } from './SyncActionControls';
+import { TRANSFER_OFFLINE_MESSAGE } from '../../constants/messages';
 
 describe('SyncActionControls', () => {
   const onPause = jest.fn();
@@ -65,8 +67,8 @@ describe('SyncActionControls', () => {
     expect(allComplete.toJSON()).toBeNull();
   });
 
-  it('disables Sync Now and shows explanation when syncNowDisabled', () => {
-    const { getByTestId, getByText } = renderControls({
+  it('disables Sync Now without hint when syncNowDisabled and no hint', () => {
+    const { getByTestId, queryByText } = renderControls({
       status: 'pending',
       syncNowDisabled: true,
     });
@@ -74,7 +76,35 @@ describe('SyncActionControls', () => {
     expect(
       getByTestId('sync-action-sync-now').props.accessibilityState,
     ).toEqual(expect.objectContaining({ disabled: true }));
+    expect(queryByText(SYNC_NOW_CELLULAR_DISABLED_MESSAGE)).toBeNull();
+  });
+
+  it('disables Sync Now and shows explanation when hint provided', () => {
+    const { getByTestId, getByText } = renderControls({
+      status: 'pending',
+      syncNowDisabled: true,
+      syncNowDisabledHint: SYNC_NOW_CELLULAR_DISABLED_MESSAGE,
+    });
+
+    expect(
+      getByTestId('sync-action-sync-now').props.accessibilityState,
+    ).toEqual(expect.objectContaining({ disabled: true }));
     expect(getByText(SYNC_NOW_CELLULAR_DISABLED_MESSAGE)).toBeTruthy();
+  });
+
+  it('disables Sync Now and shows a custom explanation when provided', () => {
+    const { getByTestId, getByText, queryByText } = renderControls({
+      status: 'pending',
+      syncNowDisabled: true,
+      syncNowDisabledHint: TRANSFER_OFFLINE_MESSAGE,
+    });
+
+    expect(
+      getByTestId('sync-action-sync-now').props.accessibilityState,
+    ).toEqual(expect.objectContaining({ disabled: true }));
+    expect(getByText(TRANSFER_OFFLINE_MESSAGE)).toBeTruthy();
+    expect(getByText(SYNC_NOW_OFFLINE_MESSAGE)).toBeTruthy();
+    expect(queryByText(SYNC_NOW_CELLULAR_DISABLED_MESSAGE)).toBeNull();
   });
 
   it('invokes callbacks for syncing controls', () => {

@@ -619,22 +619,107 @@ export async function getMyWorkChapters(
   }
 }
 
-/** Selected recordings not yet uploaded to the Fluent server. */
+/**
+ * Same eligibility as `getPendingRecordings` (verse, positive bible_text_id,
+ * INNER JOIN bible_texts). Active-user scope stays on these UI queries (#105).
+ * Pericope takes stay local until #410.
+ */
+const UPLOADABLE_PENDING_WHERE = `
+  r.is_selected = 1
+  AND IFNULL(r.granularity, 'verse') = 'verse'
+  AND r.sync_status NOT IN ('uploaded', 'conflicted')
+  AND r.bible_text_id > 0
+`;
+
+function recordedByUserPredicate(alias: string, userId: number | null): string {
+  return `${alias}.recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}`;
+}
+
+/** Selected recordings the upload orchestrator will actually process. */
 export async function getPendingUploadCount(): Promise<number> {
   const db = getDatabase();
   const userId = parseUserId();
   try {
     const result = await db.execute(
       `SELECT COUNT(*) AS count
-       FROM recordings
-       WHERE is_selected = 1 AND sync_status NOT IN ('uploaded', 'conflicted')
-         AND recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'};`,
+       FROM recordings r
+       JOIN bible_texts bt ON bt.id = r.bible_text_id
+       WHERE ${UPLOADABLE_PENDING_WHERE}
+         AND ${recordedByUserPredicate('r', userId)};`,
       userId === null ? [] : [userId],
     );
     return Number(result.rows?.[0]?.count) || 0;
   } catch (error) {
     log.error('Error fetching pending upload count', { error });
     return 0;
+  }
+}
+
+export type UnuploadablePendingSummary = {
+  orphanBibleText: number;
+  pericopeOnly: number;
+  other: number;
+  total: number;
+};
+
+const EMPTY_UNUPLOADABLE: UnuploadablePendingSummary = {
+  orphanBibleText: 0,
+  pericopeOnly: 0,
+  other: 0,
+  total: 0,
+};
+
+/**
+ * Pending selected takes that the worker will never process (silent no-op
+ * if we counted them as uploadable). Missing assignment is not a bucket —
+ * the worker attempts those rows and fails at runtime (#548).
+ */
+export async function getUnuploadablePendingSummary(): Promise<UnuploadablePendingSummary> {
+  const db = getDatabase();
+  const userId = parseUserId();
+  try {
+    const result = await db.execute(
+      `SELECT
+         COALESCE(SUM(CASE
+           WHEN r.bible_text_id IS NULL OR r.bible_text_id <= 0 OR bt.id IS NULL
+           THEN 1 ELSE 0 END), 0) AS orphan_bible_text,
+         COALESCE(SUM(CASE
+           WHEN bt.id IS NOT NULL AND r.bible_text_id > 0
+            AND IFNULL(r.granularity, 'verse') != 'verse'
+           THEN 1 ELSE 0 END), 0) AS pericope_only,
+         COALESCE(SUM(CASE
+           WHEN NOT (
+             r.bible_text_id IS NULL OR r.bible_text_id <= 0 OR bt.id IS NULL
+           ) AND NOT (
+             bt.id IS NOT NULL AND r.bible_text_id > 0
+             AND IFNULL(r.granularity, 'verse') != 'verse'
+           )
+           THEN 1 ELSE 0 END), 0) AS other
+       FROM recordings r
+       LEFT JOIN bible_texts bt ON bt.id = r.bible_text_id
+       WHERE r.is_selected = 1
+         AND r.sync_status NOT IN ('uploaded', 'conflicted')
+         AND ${recordedByUserPredicate('r', userId)}
+         AND NOT (
+           bt.id IS NOT NULL
+           AND r.bible_text_id > 0
+           AND IFNULL(r.granularity, 'verse') = 'verse'
+         )`,
+      userId === null ? [] : [userId],
+    );
+    const row = result.rows?.[0];
+    const orphanBibleText = Number(row?.orphan_bible_text) || 0;
+    const pericopeOnly = Number(row?.pericope_only) || 0;
+    const other = Number(row?.other) || 0;
+    return {
+      orphanBibleText,
+      pericopeOnly,
+      other,
+      total: orphanBibleText + pericopeOnly + other,
+    };
+  } catch (error) {
+    log.error('Error fetching unuploadable pending summary', { error });
+    return EMPTY_UNUPLOADABLE;
   }
 }
 
@@ -708,9 +793,9 @@ export type PendingUploadChapter = {
 };
 
 /**
- * Distinct chapters with at least one selected, non-uploaded recording for
- * the active user. Upload engine (#150) processes work per chapter, not per
- * verse.
+ * Distinct chapters with at least one upload-eligible take for the active
+ * user (verse, bible_text_id > 0, JOIN bible_texts — same as
+ * getPendingRecordings). Upload engine (#150) processes work per chapter.
  */
 export async function getPendingUploadChapters(): Promise<
   PendingUploadChapter[]
@@ -722,8 +807,8 @@ export async function getPendingUploadChapters(): Promise<
       `SELECT DISTINCT bt.book_id AS book_id, bt.chapter_number AS chapter_number
        FROM recordings r
        JOIN bible_texts bt ON bt.id = r.bible_text_id
-       WHERE r.is_selected = 1 AND r.sync_status NOT IN ('uploaded', 'conflicted')
-         AND r.recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}
+       WHERE ${UPLOADABLE_PENDING_WHERE}
+         AND ${recordedByUserPredicate('r', userId)}
        ORDER BY bt.book_id, bt.chapter_number`,
       userId === null ? [] : [userId],
     );
