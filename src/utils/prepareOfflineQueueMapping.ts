@@ -29,6 +29,7 @@ export function prepareOfflineItemToEnqueueInputs(
     sourceUrl: member.sourceUrl,
     fileExt: member.fileExt,
     bytesTotal: member.bytesTotal,
+    serializedContent: member.serializedContent,
   }));
 }
 

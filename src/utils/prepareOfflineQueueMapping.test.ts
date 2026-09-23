@@ -34,6 +34,8 @@ function item(
     label: 'Audio',
     bytes: 8 * 1024 * 1024,
     status: 'selected',
+    required: true,
+    removable: false,
     manifestMembers: members,
     ...overrides,
   };

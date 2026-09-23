@@ -5,6 +5,7 @@ import {
   fetchPrepareOfflineManifest,
   getDefaultPrepareOfflinePackageDeselects,
   getPrepareOfflineResourceStatus,
+  refreshPrepareOfflineInventory,
   subscribePrepareOfflineInventory,
 } from '../services/prepareOfflineResources';
 import {
@@ -15,9 +16,8 @@ import { buildManifestContexts } from '../utils/buildManifestContexts';
 
 /**
  * Loads Prepare for Offline manifest + inventory via the resources service.
- * Manifest is wired to the real FluentAPI endpoint (#504), fired once per
- * selected book/chapter-range chunk and merged; inventory stays mock-backed
- * until #201's real worker lands.
+ * Manifest is wired to the real FluentAPI endpoint (#504); inventory reads
+ * real download_queue status (#201).
  */
 export function usePrepareOfflineResourceData(
   projectId: number | null,
@@ -87,16 +87,21 @@ export function usePrepareOfflineResourceData(
     return () => {
       cancelled = true;
     };
-    // selectedIds and chapters are re-created each render in the caller, so
-    // their *contents* must drive re-fetch, not reference identity — otherwise
-    // the effect re-runs (and re-fetches) on every render and can loop.
-    // Using serialized forms as deps avoids re-fetching on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     projectId,
     [...selectedIds].sort().join(','),
     chapters.map(ch => `${ch.id}:${ch.bibleId}`).join(','),
   ]);
+
+  // Load real status from download_queue whenever the project changes, and
+  // re-load whenever the subscription fires (queue mutated elsewhere).
+  useEffect(() => {
+    if (projectId === null) {
+      return;
+    }
+    void refreshPrepareOfflineInventory(projectId);
+  }, [projectId, inventoryVersion]);
 
   useEffect(() => {
     return subscribePrepareOfflineInventory(() => {
@@ -116,7 +121,8 @@ export function usePrepareOfflineResourceData(
     error,
     inventoryVersion,
     getResourceStatus,
-    clearSessionInventory: clearPrepareOfflineSessionInventory,
+    clearSessionInventory: () =>
+      clearPrepareOfflineSessionInventory(projectId ?? undefined),
     getDefaultPackageDeselects: () =>
       getDefaultPrepareOfflinePackageDeselects(projectId),
   };

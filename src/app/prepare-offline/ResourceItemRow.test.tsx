@@ -45,6 +45,8 @@ const baseItem: PrepareOfflineResourceItem = {
   label: 'Text',
   bytes: 8 * 1024 * 1024,
   status: 'completed',
+  required: true,
+  removable: false,
   manifestMembers: noMembers,
 };
 

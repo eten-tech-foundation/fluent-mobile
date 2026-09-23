@@ -14,10 +14,6 @@ import {
 import { RESOURCES_EMPTY_MESSAGE } from '../../constants/messages';
 import { clearResourcesTabUiState } from '../../utils/resourcesTabUiState';
 import { VerseData } from '../../types/db/types';
-import {
-  clearMockPrepareOfflineRuntimeInventory,
-  setPrepareOfflineMockInventoryScenario,
-} from '../../mocks/prepareOffline';
 import { getDownloadedResourcesByProject } from '../../db/downloadQueueRepository';
 import { getMockTranslationNotes } from '../../mocks/resources/translationNotesMock';
 import { getMockTranslationQuestions } from '../../mocks/resources/translationQuestionsMock';
@@ -26,10 +22,40 @@ import { loadTranslationNotesForUnit } from '../../services/translationNotes';
 import { loadTranslationQuestionsForUnit } from '../../services/translationQuestions';
 import { loadImagesMapsForUnit } from '../../services/imagesMaps';
 import { useConnectivity } from '../../hooks/useConnectivity';
+import { RESOURCES_SECTION_INVENTORY_GATES } from '../../utils/resourcesSectionInventory';
+import { ResourceSectionId } from '../../types/resources/types';
+import { PrepareOfflineResourceStatus } from '../../types/prepareOffline/types';
 
 jest.mock('../../db/downloadQueueRepository', () => ({
   getDownloadedResourcesByProject: jest.fn(async () => []),
 }));
+
+/**
+ * Mock the Prepare Offline service boundary (consumed by resourcesInventory
+ * and the inventory hooks): statuses come from a controllable map instead of
+ * the deleted dev mock runtime (#504).
+ */
+const mockInventoryStatusMap = new Map<string, PrepareOfflineResourceStatus>();
+
+jest.mock('../../services/prepareOfflineResources', () => ({
+  getPrepareOfflineResourceStatus: jest.fn(
+    (_projectId: number, resourceId: string) =>
+      mockInventoryStatusMap.get(resourceId) ?? 'available',
+  ),
+  subscribePrepareOfflineInventory: jest.fn(() => jest.fn()),
+  refreshPrepareOfflineInventory: jest.fn(async () => undefined),
+  clearPrepareOfflineSessionInventory: jest.fn(),
+  getDefaultPrepareOfflinePackageDeselects: jest.fn(() => new Set<string>()),
+}));
+
+function markSectionsCompleted(sectionIds: ResourceSectionId[]) {
+  mockInventoryStatusMap.clear();
+  for (const gate of RESOURCES_SECTION_INVENTORY_GATES) {
+    if (sectionIds.includes(gate.sectionId)) {
+      mockInventoryStatusMap.set(gate.resourceId, 'completed');
+    }
+  }
+}
 
 jest.mock('react-native-gesture-handler', () => {
   const actualReact = jest.requireActual('react');
@@ -193,8 +219,8 @@ function mockOfflineConnectivity() {
 describe('ResourcesTab', () => {
   beforeEach(() => {
     clearResourcesTabUiState();
-    clearMockPrepareOfflineRuntimeInventory();
-    setPrepareOfflineMockInventoryScenario('fresh');
+    mockInventoryStatusMap.clear();
+    markSectionsCompleted([]);
     downloadedRows.mockResolvedValue([]);
     mockUseConnectivity.mockReturnValue({
       isOnline: true,
@@ -263,14 +289,18 @@ describe('ResourcesTab', () => {
   });
 
   it('shows empty when projectId is null', () => {
-    setPrepareOfflineMockInventoryScenario('all');
+    markSectionsCompleted([
+      'translationNotes',
+      'translationQuestions',
+      'imagesMaps',
+    ]);
     renderResources(1, null);
     expect(screen.getByText(RESOURCES_EMPTY_MESSAGE)).toBeTruthy();
   });
 
   it('shows Translation Notes only for tier1 inventory offline', () => {
     mockOfflineConnectivity();
-    setPrepareOfflineMockInventoryScenario('tier1');
+    markSectionsCompleted(['translationNotes']);
     renderResources(2);
     expect(screen.getByText('Mark 14:2')).toBeTruthy();
     expect(screen.getByText('Translation Notes')).toBeTruthy();
@@ -281,7 +311,7 @@ describe('ResourcesTab', () => {
 
   it('shows TN + TQ for tier1-tier2 inventory offline', () => {
     mockOfflineConnectivity();
-    setPrepareOfflineMockInventoryScenario('tier1-tier2');
+    markSectionsCompleted(['translationNotes', 'translationQuestions']);
     renderResources(1);
     expect(screen.getByText('Translation Notes')).toBeTruthy();
     expect(screen.getByText('Translation Questions')).toBeTruthy();
@@ -289,7 +319,11 @@ describe('ResourcesTab', () => {
   });
 
   it('shows all sections when all tiers are inventoried', async () => {
-    setPrepareOfflineMockInventoryScenario('all');
+    markSectionsCompleted([
+      'translationNotes',
+      'translationQuestions',
+      'imagesMaps',
+    ]);
     mockLoadImages.mockResolvedValue(getMockImagesMaps(99, 2));
     renderResources(3);
     expect(screen.getByText('Translation Notes')).toBeTruthy();
@@ -300,7 +334,7 @@ describe('ResourcesTab', () => {
   });
 
   it('updates the reference label when the selected verse changes', () => {
-    setPrepareOfflineMockInventoryScenario('tier1');
+    markSectionsCompleted(['translationNotes']);
     renderResources(1);
     expect(screen.getByText('Mark 14:1')).toBeTruthy();
     expect(screen.getByText('Translation Notes')).toBeTruthy();
@@ -313,7 +347,11 @@ describe('ResourcesTab', () => {
   });
 
   it('restores open accordion state when returning to a unit', async () => {
-    setPrepareOfflineMockInventoryScenario('all');
+    markSectionsCompleted([
+      'translationNotes',
+      'translationQuestions',
+      'imagesMaps',
+    ]);
     mockLoadImages.mockResolvedValue(getMockImagesMaps(99, 2));
     renderResources(2);
 
@@ -335,7 +373,11 @@ describe('ResourcesTab', () => {
 
   it('gates sections from offline inventory without verse-mock emptiness', async () => {
     mockOfflineConnectivity();
-    setPrepareOfflineMockInventoryScenario('all');
+    markSectionsCompleted([
+      'translationNotes',
+      'translationQuestions',
+      'imagesMaps',
+    ]);
     mockLoadImages.mockResolvedValue(getMockImagesMaps(99, 2));
     renderResources(3);
     // Verse 3 used to mean empty under verse % 3 mocks; inventory wins.

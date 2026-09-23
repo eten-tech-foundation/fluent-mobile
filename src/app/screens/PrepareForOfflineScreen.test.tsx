@@ -6,10 +6,6 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import PrepareForOfflineScreen from './PrepareForOfflineScreen';
-import {
-  resetMockPrepareOfflineInventory,
-  setPrepareOfflineMockInventoryScenario,
-} from '../../mocks/prepareOffline';
 
 const mockHandleDownload = jest.fn();
 
@@ -204,8 +200,6 @@ describe('PrepareForOfflineScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseLocalSearchParams.mockReturnValue({});
-    resetMockPrepareOfflineInventory();
-    setPrepareOfflineMockInventoryScenario('fresh');
     usePrepareOfflineSelection.mockImplementation(
       (projectId: number | null) => {
         if (!projectId) {

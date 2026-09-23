@@ -3,19 +3,13 @@ import { PrepareOfflineChapterRow } from '../types/prepareOffline/types';
 export interface PrepareOfflineManifestContext {
   languageCode: string;
   bookCode: string;
+  bookId: number;
   startChapter: number;
   endChapter: number;
   bibleId: number;
 }
-
 const MAX_CHAPTERS_PER_MANIFEST_CALL = 20;
 
-/**
- * Groups selected chapters by book and splits each book's range into
- * ≤20-chapter chunks (the API's manifest limit). May include unselected
- * chapters that fall inside a selected range — acceptable over-fetch since
- * the manifest is metadata/sizes only (#504).
- */
 export function buildManifestContexts(
   chapters: PrepareOfflineChapterRow[],
   selectedIds: Set<number>,
@@ -23,7 +17,7 @@ export function buildManifestContexts(
 ): PrepareOfflineManifestContext[] {
   const selectedByBook = new Map<
     string,
-    { chapterNumbers: number[]; bibleId: number }
+    { chapterNumbers: number[]; bibleId: number; bookId: number }
   >();
 
   for (const chapter of chapters) {
@@ -36,17 +30,26 @@ export function buildManifestContexts(
           `Inconsistent bibleId within book ${chapter.bookCode}: ${entry.bibleId} vs ${chapter.bibleId}`,
         );
       }
+      if (entry.bookId !== chapter.bookId) {
+        throw new Error(
+          `Inconsistent bookId within book ${chapter.bookCode}: ${entry.bookId} vs ${chapter.bookId}`,
+        );
+      }
     } else {
       selectedByBook.set(chapter.bookCode, {
         chapterNumbers: [chapter.chapterNumber],
         bibleId: chapter.bibleId,
+        bookId: chapter.bookId,
       });
     }
   }
 
   const contexts: PrepareOfflineManifestContext[] = [];
 
-  for (const [bookCode, { chapterNumbers, bibleId }] of selectedByBook) {
+  for (const [
+    bookCode,
+    { chapterNumbers, bibleId, bookId },
+  ] of selectedByBook) {
     const min = Math.min(...chapterNumbers);
     const max = Math.max(...chapterNumbers);
 
@@ -59,6 +62,7 @@ export function buildManifestContexts(
       contexts.push({
         languageCode: sourceLanguageCode,
         bookCode,
+        bookId,
         startChapter: start,
         endChapter: end,
         bibleId,

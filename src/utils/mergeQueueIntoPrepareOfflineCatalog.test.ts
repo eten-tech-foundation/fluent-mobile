@@ -42,6 +42,8 @@ function row(
     label: 'Audio',
     bytes: members.reduce((sum, m) => sum + m.bytesTotal, 0),
     status: 'selected',
+    required: true,
+    removable: false,
     manifestMembers: members,
     ...overrides,
   };

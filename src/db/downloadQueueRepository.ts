@@ -27,6 +27,7 @@ type DownloadQueueRow = {
   local_file_path: string | null;
   resume_data: string | null;
   queue_order: number;
+  serialized_content: string | null;
 };
 
 function newDownloadQueueId(): string {
@@ -51,6 +52,7 @@ function mapRow(row: DownloadQueueRow): DownloadQueueItem {
     bytesTotal: row.bytes_total ?? undefined,
     localFilePath: row.local_file_path ?? undefined,
     resumeData: row.resume_data ?? undefined,
+    serializedContent: row.serialized_content ?? undefined,
   };
 }
 
@@ -65,6 +67,7 @@ export type EnqueueDownloadItemInput = {
   sourceUrl?: string;
   fileExt?: string;
   bytesTotal?: number;
+  serializedContent?: string;
 };
 
 export async function enqueueDownloadItems(
@@ -112,6 +115,7 @@ export async function enqueueDownloadItems(
           nextOrder,
           now,
           now,
+          item.serializedContent ?? null,
         ],
       );
       if (result.rowsAffected > 0) {
@@ -322,4 +326,19 @@ export async function getDownloadedResourcesInventory(
       0,
     ),
   }));
+}
+
+export async function getDownloadQueueStatusMap(
+  projectId: number,
+): Promise<Map<string, DownloadQueueStatus>> {
+  const db = getDatabase();
+  const result = await db.execute(
+    `SELECT id, status FROM download_queue WHERE project_id = ?`,
+    [projectId],
+  );
+  const rows = (result.rows ?? []) as unknown as Array<{
+    id: string;
+    status: DownloadQueueStatus;
+  }>;
+  return new Map(rows.map(row => [row.id, row.status]));
 }

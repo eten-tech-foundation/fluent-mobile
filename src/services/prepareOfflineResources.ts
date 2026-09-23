@@ -1,29 +1,60 @@
-/**
- * Prepare for Offline — data access layer (#51 / #201 / #504).
- *
- * Single entry point for manifest and on-device inventory. UI, catalog builder,
- * and download service import from here — never from `src/mocks/prepareOffline/`.
- *
- * Manifest: real FluentAPI translation-resources + source-audio manifests (#504).
- * Download queue/worker/inventory: real since #201. The mock inventory runtime
- * remains only as the dev/QA status baseline behind this service boundary.
- */
 import { FluentAPI } from './api';
-import {
-  clearMockPrepareOfflineRuntimeInventory,
-  getMockPrepareOfflineResourceStatus,
-  subscribeMockPrepareOfflineInventory,
-} from '../mocks/prepareOffline';
+import { getDownloadQueueStatusMap } from '../db/downloadQueueRepository';
 import type { ApiPrepareOfflineManifestItem } from '../types/api/translationResources';
 import type { ApiSourceAudioResponse } from '../types/api/sourceAudio';
 import type { ApiSourceAudioManifestItem } from '../types/api/sourceAudio';
+import { unwrapApiListResponse } from '../types/api/responses';
+import type { ApiBook } from '../types/api/types';
 import {
   PrepareOfflineResourceManifestItem,
   PrepareOfflineResourceStatus,
 } from '../types/prepareOffline/types';
-import { unscopedPrepareOfflineResourceId } from '../utils/prepareOfflineResourceId';
+import type { DownloadQueueStatus } from '../types/download/types';
 
 export type PrepareOfflineInventoryListener = () => void;
+
+const inventoryListeners = new Set<PrepareOfflineInventoryListener>();
+const statusMapCache = new Map<number, Map<string, DownloadQueueStatus>>();
+
+function mapQueueStatusToResourceStatus(
+  status: DownloadQueueStatus | undefined,
+): PrepareOfflineResourceStatus {
+  switch (status) {
+    case 'completed':
+      return 'completed';
+    case 'downloading':
+      return 'downloading';
+    case 'paused':
+      return 'paused';
+    case 'queued':
+      return 'selected';
+    case 'failed':
+    case 'cancelled':
+    case undefined:
+    default:
+      return 'available';
+  }
+}
+
+function notifyInventoryListeners(): void {
+  for (const listener of inventoryListeners) {
+    listener();
+  }
+}
+
+/**
+ * Refresh the cached status map for a project from `download_queue` and
+ * notify subscribers. Call after any queue-mutating operation for the
+ * project (enqueue, worker progress/completion/failure) so status readers
+ * see current data.
+ */
+export async function refreshPrepareOfflineInventory(
+  projectId: number,
+): Promise<void> {
+  const map = await getDownloadQueueStatusMap(projectId);
+  statusMapCache.set(projectId, map);
+  notifyInventoryListeners();
+}
 
 /** Fluent API manifest resources whose tier mobile overrides regardless of server value. */
 const TIER_OVERRIDE_BY_COLLECTION_CODE: Record<string, 1 | 2 | 3> = {
@@ -65,6 +96,7 @@ function toSourceBibleAudioManifestItem(
     endChapter: response.chapter,
   };
 }
+
 /**
  * Tier 1 Source Bible audio — per-chapter fallback via the same fluent-api
  * endpoint the drafting dock uses (#282), which correctly resolves dbl vs
@@ -108,6 +140,67 @@ export async function fetchSourceBibleAudioManifest(
   );
 }
 
+/** Rough JSON byte size for a chapter's text content (no server-provided size field). */
+function estimateTextBytes(verses: unknown): number {
+  const json = JSON.stringify(verses);
+  return unescape(encodeURIComponent(json)).length;
+}
+
+function toSourceBibleTextManifestItem(
+  chapter: ApiBook,
+  bookCode: string,
+  languageCode: string,
+): PrepareOfflineResourceManifestItem {
+  return {
+    id: `source-bible-text-${bookCode}-${chapter.chapterNumber}`,
+    tier: 1,
+    kind: 'text',
+    resourceName: 'Source Bible',
+    label: 'Text',
+    required: true,
+    removable: false,
+    bytesTotal: estimateTextBytes(chapter.verses),
+    fileExt: 'json',
+    languageCode,
+    bookCode,
+    startChapter: chapter.chapterNumber,
+    endChapter: chapter.chapterNumber,
+  };
+}
+
+/**
+ * Tier 1 Source Bible text — single bulk POST for all selected chapters of
+ * one book, keyed by bookId (distinct from bookCode — unlike every other
+ * manifest call in this file). One failure must not sink the rest of the
+ * Prepare Offline package (#504).
+ */
+export async function fetchSourceBibleTextManifest(
+  bibleId: number,
+  bookId: number,
+  bookCode: string,
+  chapterNumbers: number[],
+  languageCode: string,
+): Promise<PrepareOfflineResourceManifestItem[]> {
+  try {
+    const response = await FluentAPI.getBibleTexts(
+      bibleId,
+      chapterNumbers.map(chapterNumber => ({ bookId, chapterNumber })),
+    );
+
+    const chapters = unwrapApiListResponse(response);
+
+    return chapters.map(chapter =>
+      toSourceBibleTextManifestItem(chapter, bookCode, languageCode),
+    );
+  } catch (error) {
+    console.warn(
+      `[prepareOfflineResources] source-text fetch failed for bible ${bibleId}, book ${bookCode}`,
+      error,
+    );
+    return [];
+  }
+}
+
 function toMobileManifestItem(
   apiItem: ApiPrepareOfflineManifestItem,
 ): PrepareOfflineResourceManifestItem {
@@ -146,25 +239,33 @@ function toMobileManifestItemFromSourceAudio(
 export interface FetchPrepareOfflineManifestParams {
   languageCode: string;
   bookCode: string;
+  bookId: number;
   startChapter: number;
   endChapter: number;
   bibleId: number;
 }
+
 export async function fetchPrepareOfflineManifest(
   projectId: number,
   params: FetchPrepareOfflineManifestParams,
 ): Promise<PrepareOfflineResourceManifestItem[]> {
-  const { bibleId, ...translationResourcesParams } = params;
+  const { bibleId, bookId, ...translationResourcesParams } = params;
 
-  const [translationResourcesResponse, sourceAudioResponse] = await Promise.all(
-    [
+  const [translationResourcesResponse, sourceAudioResponse, sourceTextItems] =
+    await Promise.all([
       FluentAPI.getPrepareOfflineManifest(
         projectId,
         translationResourcesParams,
       ),
       FluentAPI.getSourceAudioManifest(projectId, params),
-    ],
-  );
+      fetchSourceBibleTextManifest(
+        bibleId,
+        bookId,
+        params.bookCode,
+        range(params.startChapter, params.endChapter),
+        params.languageCode,
+      ),
+    ]);
 
   if (translationResourcesResponse.truncated) {
     console.warn(
@@ -190,36 +291,40 @@ export async function fetchPrepareOfflineManifest(
 
   return [
     ...translationResourcesResponse.items.map(toMobileManifestItem),
+    ...sourceTextItems,
     ...sourceAudioItems,
   ];
 }
 
-/** On-device / in-flight status for one resource row. */
+/** On-device / in-flight status for one resource row. Reads the last-refreshed cache; call refreshPrepareOfflineInventory(projectId) after queue mutations to keep it current. */
 export function getPrepareOfflineResourceStatus(
   projectId: number,
   resourceId: string,
 ): PrepareOfflineResourceStatus {
-  return getMockPrepareOfflineResourceStatus(
-    projectId,
-    unscopedPrepareOfflineResourceId(projectId, resourceId),
-  );
+  const status = statusMapCache.get(projectId)?.get(resourceId);
+  return mapQueueStatusToResourceStatus(status);
 }
 
-/** Subscribe to inventory changes (mock pub/sub baseline; queue events drive real progress). */
+/** Subscribe to inventory changes — fires after refreshPrepareOfflineInventory runs. */
 export function subscribePrepareOfflineInventory(
   listener: PrepareOfflineInventoryListener,
 ): () => void {
-  return subscribeMockPrepareOfflineInventory(listener);
+  inventoryListeners.add(listener);
+  return () => {
+    inventoryListeners.delete(listener);
+  };
 }
 
-/**
- * Clear runtime inventory overrides (tests / explicit reset).
- * Do not call on Prepare Offline remount — completed downloads must survive
- * navigation so Resources can read the same in-session inventory.
- */
-export function clearPrepareOfflineSessionInventory(): void {
-  clearMockPrepareOfflineRuntimeInventory();
+/** Clear cached inventory for a project (e.g. account switch); caller should refresh after. */
+export function clearPrepareOfflineSessionInventory(projectId?: number): void {
+  if (projectId === undefined) {
+    statusMapCache.clear();
+  } else {
+    statusMapCache.delete(projectId);
+  }
+  notifyInventoryListeners();
 }
+
 /**
  * Everything the real manifest returns is checked by default (#504) —
  * Tier 1 is never deselectable (locked in the catalog builder), so no

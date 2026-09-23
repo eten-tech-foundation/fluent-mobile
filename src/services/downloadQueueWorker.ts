@@ -196,6 +196,46 @@ export class DownloadQueueWorker {
     }
   }
 
+  /**
+   * Text items (Translation Notes/Words/Commentary) ship their content
+   * inline as `serializedContent` in the manifest — there is no sourceUrl
+   * to fetch. Write it straight to disk and mark complete, bypassing the
+   * resolver/resumable-download path entirely (#51 / download-queue text
+   * item bug).
+   */
+  private async processTextItem(next: DownloadQueueItem): Promise<void> {
+    try {
+      if (next.serializedContent === undefined) {
+        throw new Error(
+          `No serializedContent configured for text item ${next.id}.`,
+        );
+      }
+      await ensureDownloadsDir(next.projectId ?? 0);
+      const destPath =
+        next.localFilePath ??
+        downloadResourcePath(
+          next.projectId ?? 0,
+          next.id,
+          next.fileExt ?? 'json',
+        );
+      await markDownloadItemDownloading(next.id);
+      await FileSystem.writeAsStringAsync(destPath, next.serializedContent);
+      await this.handleItemComplete(next.id, destPath);
+    } catch (error) {
+      log.error('Failed to write text item', { error, itemId: next.id });
+      try {
+        await markDownloadItemFailed(next.id);
+      } catch (innerError) {
+        log.error('Failed to mark item failed after text write error', {
+          error: innerError,
+          itemId: next.id,
+        });
+      }
+      this.active = null;
+      await this.processNext();
+    }
+  }
+
   private async processNext(): Promise<void> {
     if (this.state !== 'downloading') {
       return;
@@ -203,6 +243,11 @@ export class DownloadQueueWorker {
     const next = this.queue.shift();
     if (!next) {
       this.state = 'idle';
+      return;
+    }
+
+    if (next.kind === 'text') {
+      await this.processTextItem(next);
       return;
     }
 

@@ -6,9 +6,9 @@ import {
 } from './resourcesInventory';
 import { getDownloadedResourcesByProject } from '../db/downloadQueueRepository';
 import {
-  clearMockPrepareOfflineRuntimeInventory,
-  setPrepareOfflineMockInventoryScenario,
-} from '../mocks/prepareOffline';
+  clearPrepareOfflineSessionInventory,
+  refreshPrepareOfflineInventory,
+} from './prepareOfflineResources';
 import { manifestEntryToResourceId } from '../utils/prepareOfflineResourceId';
 
 jest.mock('../db/downloadQueueRepository', () => ({
@@ -19,31 +19,56 @@ jest.mock('../db/downloadQueueRepository', () => ({
       kind: 'text',
     },
   ]),
+  // Also consumed by prepareOfflineResources (status cache refresh).
+  getDownloadQueueStatusMap: jest.fn(async () => new Map()),
 }));
+
+const downloadedRows = getDownloadedResourcesByProject as jest.MockedFunction<
+  typeof getDownloadedResourcesByProject
+>;
 
 describe('resourcesInventory', () => {
   const projectId = 42;
   const userId = 7;
 
   beforeEach(() => {
-    clearMockPrepareOfflineRuntimeInventory();
-    setPrepareOfflineMockInventoryScenario('fresh');
+    downloadedRows.mockResolvedValue([
+      {
+        status: 'completed',
+        resourceName: 'Translation Notes',
+        kind: 'text',
+      },
+    ] as never);
+    clearPrepareOfflineSessionInventory();
   });
 
-  it('reads status from Prepare Offline inventory (no Aquifer/FluentAPI)', () => {
-    setPrepareOfflineMockInventoryScenario('tier1');
-    const tnId = manifestEntryToResourceId(1, 'Translation Notes', 'text');
-    expect(getResourcesInventoryStatus(projectId, tnId)).toBe('completed');
+  it('reads status from the queue-backed Prepare Offline inventory', async () => {
+    // No inventory refreshed yet → available.
+    expect(
+      getResourcesInventoryStatus(
+        projectId,
+        manifestEntryToResourceId(1, 'Translation Notes', 'text'),
+      ),
+    ).toBe('available');
 
-    const tqId = manifestEntryToResourceId(2, 'Translation Questions', 'text');
-    expect(getResourcesInventoryStatus(projectId, tqId)).not.toBe('completed');
+    await refreshPrepareOfflineInventory(projectId);
+
+    // Still available: nothing in the queue for this project.
+    expect(
+      getResourcesInventoryStatus(
+        projectId,
+        manifestEntryToResourceId(1, 'Translation Notes', 'text'),
+      ),
+    ).toBe('available');
   });
 
-  it('notifies subscribers when inventory scenario changes', () => {
+  it('notifies subscribers when the inventory is refreshed', async () => {
     const listener = jest.fn();
     const unsubscribe = subscribeResourcesInventory(listener);
-    setPrepareOfflineMockInventoryScenario('all');
-    expect(listener).toHaveBeenCalled();
+
+    await refreshPrepareOfflineInventory(projectId);
+
+    expect(listener).toHaveBeenCalledTimes(1);
     unsubscribe();
   });
 
@@ -67,9 +92,7 @@ describe('resourcesInventory', () => {
   });
 
   it('returns no sections when the queue lookup fails', async () => {
-    (getDownloadedResourcesByProject as jest.Mock).mockRejectedValueOnce(
-      new Error('database not initialized'),
-    );
+    downloadedRows.mockRejectedValueOnce(new Error('database not initialized'));
     await expect(
       getDownloadedResourceSections(projectId, userId),
     ).resolves.toEqual([]);

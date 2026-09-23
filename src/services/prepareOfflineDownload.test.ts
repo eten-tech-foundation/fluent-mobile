@@ -1,14 +1,8 @@
 const mockEnqueueDownloadItems = jest.fn();
-const mockSimulateProgress = jest.fn();
 
 jest.mock('../db/repository', () => ({
   enqueueDownloadItems: (...args: unknown[]) =>
     mockEnqueueDownloadItems(...args),
-}));
-
-jest.mock('./prepareOfflineResources', () => ({
-  simulatePrepareOfflineDownloadProgress: (...args: unknown[]) =>
-    mockSimulateProgress(...args),
 }));
 
 jest.mock('../utils/logger', () => ({
@@ -57,6 +51,8 @@ function item(
     label: 'Audio',
     bytes: 1024,
     status: 'selected',
+    required: true,
+    removable: false,
     manifestMembers: members,
     ...overrides,
   };
@@ -65,7 +61,6 @@ function item(
 describe('enqueuePrepareOfflineDownload', () => {
   beforeEach(() => {
     mockEnqueueDownloadItems.mockReset();
-    mockSimulateProgress.mockReset();
   });
 
   it('enqueues one real row per manifest member and returns queue row ids', async () => {
@@ -92,7 +87,6 @@ describe('enqueuePrepareOfflineDownload', () => {
       }),
     ]);
     expect(ids).toEqual(['source-bible-audio-MRK-1']);
-    expect(mockSimulateProgress).not.toHaveBeenCalled();
   });
 
   it('returns an empty array when no items are selected', async () => {
@@ -106,22 +100,18 @@ describe('enqueuePrepareOfflineDownload', () => {
 
     expect(ids).toEqual([]);
     expect(mockEnqueueDownloadItems).toHaveBeenCalledWith([]);
-    expect(mockSimulateProgress).not.toHaveBeenCalled();
   });
 
-  it('falls back to mock simulation when enqueue throws', async () => {
+  it('surfaces enqueue failures to the caller (no fake downloads)', async () => {
     mockEnqueueDownloadItems.mockRejectedValue(new Error('db locked'));
 
-    const ids = await enqueuePrepareOfflineDownload({
-      userId: 7,
-      projectId: 5,
-      items: [item(), item({ id: 'Translation Words:text', tier: 2 })],
-    });
-
-    expect(ids).toEqual([]);
-    expect(mockSimulateProgress).toHaveBeenCalledWith(5, [
-      'Source Bible:audio',
-      'Translation Words:text',
-    ]);
+    await expect(
+      enqueuePrepareOfflineDownload({
+        userId: 7,
+        projectId: 5,
+        items: [item(), item({ id: 'Translation Words:text', tier: 2 })],
+      }),
+    ).rejects.toThrow('db locked');
+    expect(mockEnqueueDownloadItems).toHaveBeenCalledTimes(1);
   });
 });

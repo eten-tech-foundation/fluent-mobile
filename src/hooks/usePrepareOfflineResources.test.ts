@@ -6,20 +6,14 @@ import {
 import {
   PrepareOfflineChapterRow,
   PrepareOfflineResourceManifestItem,
+  PrepareOfflineResourceStatus,
 } from '../types/prepareOffline/types';
-import {
-  resetMockPrepareOfflineInventory,
-  setMockPrepareOfflineResourceStatus,
-  setPrepareOfflineMockInventoryScenario,
-  getMockPrepareOfflineResourceStatus,
-  DEV_MOCK_FILE_BYTES,
-} from '../mocks/prepareOffline';
-import { manifestEntryToResourceId } from '../utils/prepareOfflineResourceId';
 
-const TIER3_MOCK_TOTAL =
-  2 * DEV_MOCK_FILE_BYTES.text +
-  2 * DEV_MOCK_FILE_BYTES.audio +
-  DEV_MOCK_FILE_BYTES.image;
+const TEXT_BYTES = 1_000;
+const AUDIO_BYTES = 2_000;
+const IMAGE_BYTES = 4_000;
+
+const TOTAL_ALL_BYTES = 6 * TEXT_BYTES + 6 * AUDIO_BYTES + IMAGE_BYTES;
 
 function chapter(id: number): PrepareOfflineChapterRow {
   return {
@@ -33,169 +27,51 @@ function chapter(id: number): PrepareOfflineChapterRow {
   };
 }
 
+function manifestItem(
+  tier: 1 | 2 | 3,
+  resourceName: string,
+  kind: 'text' | 'audio' | 'image',
+): PrepareOfflineResourceManifestItem {
+  return {
+    id: `tier-${tier}-${resourceName
+      .toLowerCase()
+      .replace(/\s+/g, '-')}-${kind}`,
+    tier,
+    kind,
+    resourceName,
+    label: kind === 'text' ? 'Text' : kind === 'audio' ? 'Audio' : 'Image',
+    required: tier === 1,
+    removable: tier !== 1,
+    bytesTotal:
+      kind === 'audio'
+        ? AUDIO_BYTES
+        : kind === 'image'
+        ? IMAGE_BYTES
+        : TEXT_BYTES,
+    fileExt: kind === 'audio' ? 'mp3' : kind === 'image' ? 'png' : 'json',
+    languageCode: 'eng',
+  };
+}
+
 /**
- * Expands the static mock catalog into raw API-shaped manifest items (#504),
- * one per catalog entry, reusing catalog resource ids so mock inventory
- * lookups resolve.
+ * Inline manifest fixture replacing the deleted dev mock catalog (#504):
+ * full tier 1/2/3 shape with per-resource text + audio rows.
  */
 function buildManifestFixture(): PrepareOfflineResourceManifestItem[] {
   return [
-    {
-      id: manifestEntryToResourceId(1, 'Source Bible', 'text'),
-      tier: 1,
-      kind: 'text',
-      resourceName: 'Source Bible',
-      label: 'Text',
-      required: true,
-      removable: false,
-      bytesTotal: DEV_MOCK_FILE_BYTES.text,
-      fileExt: 'json',
-      languageCode: 'eng',
-    },
-    {
-      id: manifestEntryToResourceId(1, 'Source Bible', 'audio'),
-      tier: 1,
-      kind: 'audio',
-      resourceName: 'Source Bible',
-      label: 'Audio',
-      required: true,
-      removable: false,
-      bytesTotal: DEV_MOCK_FILE_BYTES.audio,
-      fileExt: 'mp3',
-      languageCode: 'eng',
-    },
-    {
-      id: manifestEntryToResourceId(1, 'Translation Notes', 'text'),
-      tier: 1,
-      kind: 'text',
-      resourceName: 'Translation Notes',
-      label: 'Text',
-      required: true,
-      removable: false,
-      bytesTotal: DEV_MOCK_FILE_BYTES.text,
-      fileExt: 'json',
-      languageCode: 'eng',
-    },
-    {
-      id: manifestEntryToResourceId(1, 'Translation Notes', 'audio'),
-      tier: 1,
-      kind: 'audio',
-      resourceName: 'Translation Notes',
-      label: 'Audio',
-      required: true,
-      removable: false,
-      bytesTotal: DEV_MOCK_FILE_BYTES.audio,
-      fileExt: 'mp3',
-      languageCode: 'eng',
-    },
-    {
-      id: manifestEntryToResourceId(2, 'Translation Words', 'text'),
-      tier: 2,
-      kind: 'text',
-      resourceName: 'Translation Words',
-      label: 'Text',
-      required: false,
-      removable: true,
-      bytesTotal: DEV_MOCK_FILE_BYTES.text,
-      fileExt: 'json',
-      languageCode: 'eng',
-    },
-    {
-      id: manifestEntryToResourceId(2, 'Translation Words', 'audio'),
-      tier: 2,
-      kind: 'audio',
-      resourceName: 'Translation Words',
-      label: 'Audio',
-      required: false,
-      removable: true,
-      bytesTotal: DEV_MOCK_FILE_BYTES.audio,
-      fileExt: 'mp3',
-      languageCode: 'eng',
-    },
-    {
-      id: manifestEntryToResourceId(2, 'Translation Questions', 'text'),
-      tier: 2,
-      kind: 'text',
-      resourceName: 'Translation Questions',
-      label: 'Text',
-      required: false,
-      removable: true,
-      bytesTotal: DEV_MOCK_FILE_BYTES.text,
-      fileExt: 'json',
-      languageCode: 'eng',
-    },
-    {
-      id: manifestEntryToResourceId(2, 'Translation Questions', 'audio'),
-      tier: 2,
-      kind: 'audio',
-      resourceName: 'Translation Questions',
-      label: 'Audio',
-      required: false,
-      removable: true,
-      bytesTotal: DEV_MOCK_FILE_BYTES.audio,
-      fileExt: 'mp3',
-      languageCode: 'eng',
-    },
-    {
-      id: manifestEntryToResourceId(3, 'Bible Commentary', 'text'),
-      tier: 3,
-      kind: 'text',
-      resourceName: 'Bible Commentary',
-      label: 'Text',
-      required: false,
-      removable: true,
-      bytesTotal: DEV_MOCK_FILE_BYTES.text,
-      fileExt: 'json',
-      languageCode: 'eng',
-    },
-    {
-      id: manifestEntryToResourceId(3, 'Bible Commentary', 'audio'),
-      tier: 3,
-      kind: 'audio',
-      resourceName: 'Bible Commentary',
-      label: 'Audio',
-      required: false,
-      removable: true,
-      bytesTotal: DEV_MOCK_FILE_BYTES.audio,
-      fileExt: 'mp3',
-      languageCode: 'eng',
-    },
-    {
-      id: manifestEntryToResourceId(3, 'Reference Images', 'image'),
-      tier: 3,
-      kind: 'image',
-      resourceName: 'Reference Images',
-      label: 'Image',
-      required: false,
-      removable: true,
-      bytesTotal: DEV_MOCK_FILE_BYTES.image,
-      fileExt: 'png',
-      languageCode: 'eng',
-    },
-    {
-      id: manifestEntryToResourceId(3, 'Alternate Translations', 'text'),
-      tier: 3,
-      kind: 'text',
-      resourceName: 'Alternate Translations',
-      label: 'Text',
-      required: false,
-      removable: true,
-      bytesTotal: DEV_MOCK_FILE_BYTES.text,
-      fileExt: 'json',
-      languageCode: 'eng',
-    },
-    {
-      id: manifestEntryToResourceId(3, 'Alternate Translations', 'audio'),
-      tier: 3,
-      kind: 'audio',
-      resourceName: 'Alternate Translations',
-      label: 'Audio',
-      required: false,
-      removable: true,
-      bytesTotal: DEV_MOCK_FILE_BYTES.audio,
-      fileExt: 'mp3',
-      languageCode: 'eng',
-    },
+    manifestItem(1, 'Source Bible', 'text'),
+    manifestItem(1, 'Source Bible', 'audio'),
+    manifestItem(1, 'Translation Notes', 'text'),
+    manifestItem(1, 'Translation Notes', 'audio'),
+    manifestItem(2, 'Translation Words', 'text'),
+    manifestItem(2, 'Translation Words', 'audio'),
+    manifestItem(2, 'Translation Questions', 'text'),
+    manifestItem(2, 'Translation Questions', 'audio'),
+    manifestItem(3, 'Bible Commentary', 'text'),
+    manifestItem(3, 'Bible Commentary', 'audio'),
+    manifestItem(3, 'Reference Images', 'image'),
+    manifestItem(3, 'Alternate Translations', 'text'),
+    manifestItem(3, 'Alternate Translations', 'audio'),
   ];
 }
 
@@ -210,6 +86,28 @@ const usePrepareOfflineResourceDataState: { current: unknown } = {
   current: null,
 };
 
+/**
+ * Mutable per-project status map standing in for the real download_queue
+ * status cache — tests flip entries directly, as the worker would.
+ */
+const statusMapByProject = new Map<
+  number,
+  Map<string, PrepareOfflineResourceStatus>
+>();
+
+function setResourceStatus(
+  projectId: number,
+  resourceId: string,
+  status: PrepareOfflineResourceStatus,
+) {
+  let map = statusMapByProject.get(projectId);
+  if (!map) {
+    map = new Map();
+    statusMapByProject.set(projectId, map);
+  }
+  map.set(resourceId, status);
+}
+
 function mockResourceData(overrides: Record<string, unknown> = {}) {
   usePrepareOfflineResourceDataState.current = {
     manifest: buildManifestFixture(),
@@ -217,7 +115,7 @@ function mockResourceData(overrides: Record<string, unknown> = {}) {
     error: null,
     inventoryVersion: 0,
     getResourceStatus: (resourceId: string) =>
-      getMockPrepareOfflineResourceStatus(1, resourceId),
+      statusMapByProject.get(1)?.get(resourceId) ?? 'available',
     clearSessionInventory: jest.fn(),
     getDefaultPackageDeselects: () => new Set<string>(),
     ...overrides,
@@ -249,8 +147,7 @@ function baseInput(
 describe('usePrepareOfflineResources', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    resetMockPrepareOfflineInventory();
-    setPrepareOfflineMockInventoryScenario('fresh');
+    statusMapByProject.clear();
     mockResourceData();
   });
 
@@ -301,7 +198,7 @@ describe('usePrepareOfflineResources', () => {
 
   it('updates pending bytes when tier 2/3 rows are deselected', async () => {
     const { result } = renderHook(() =>
-      usePrepareOfflineResources(baseInput({ projectId: 99 })),
+      usePrepareOfflineResources(baseInput()),
     );
 
     await waitForCatalogItems(result);
@@ -313,12 +210,8 @@ describe('usePrepareOfflineResources', () => {
       result.current.toggleItemSelected('Translation Questions:text');
     });
 
-    expect(result.current.pendingBytes).toBe(
-      initialPending - DEV_MOCK_FILE_BYTES.text,
-    );
-    expect(result.current.totalBytes).toBe(
-      initialTotal - DEV_MOCK_FILE_BYTES.text,
-    );
+    expect(result.current.pendingBytes).toBe(initialPending - TEXT_BYTES);
+    expect(result.current.totalBytes).toBe(initialTotal - TEXT_BYTES);
   });
 
   it('resets deselected items when project changes', async () => {
@@ -365,39 +258,26 @@ describe('usePrepareOfflineResources', () => {
     expect(result.current.isItemSelected('Bible Commentary:text')).toBe(true);
   });
 
-  it('preserves completed inventory after Prepare Offline remount', async () => {
-    setPrepareOfflineMockInventoryScenario('fresh');
-    const notesId = manifestEntryToResourceId(1, 'Translation Notes', 'text');
+  it('canDownload is false when every row is already completed', async () => {
+    const notesTextId = 'tier-1-translation-notes-text';
+    mockResourceData({
+      getResourceStatus: () => 'completed',
+    });
 
-    const { result, unmount } = renderHook(() =>
+    const { result } = renderHook(() =>
       usePrepareOfflineResources(baseInput({ projectId: 374 })),
     );
 
     await waitForCatalogItems(result);
 
-    act(() => {
-      setMockPrepareOfflineResourceStatus(374, notesId, 'completed');
-    });
-
-    expect(getMockPrepareOfflineResourceStatus(374, notesId)).toBe('completed');
-
-    unmount();
-
-    const remounted = renderHook(() =>
-      usePrepareOfflineResources(baseInput({ projectId: 374 })),
-    );
-
-    await waitForCatalogItems(remounted.result);
-
-    expect(getMockPrepareOfflineResourceStatus(374, notesId)).toBe('completed');
-    remounted.unmount();
+    expect(result.current.pendingBytes).toBe(0);
+    expect(result.current.canDownload).toBe(false);
+    void notesTextId;
   });
 
   it('includes every tier in the package by default (#504 — no scenario deselects)', async () => {
-    setPrepareOfflineMockInventoryScenario('tier1-tier2');
-
     const { result } = renderHook(() =>
-      usePrepareOfflineResources(baseInput({ projectId: 88 })),
+      usePrepareOfflineResources(baseInput()),
     );
 
     await waitForCatalogItems(result);
@@ -409,7 +289,7 @@ describe('usePrepareOfflineResources', () => {
         group => group.groupName === 'Bible Commentary',
       ),
     ).toBe(true);
-    expect(result.current.pendingBytes).toBe(TIER3_MOCK_TOTAL);
+    expect(result.current.pendingBytes).toBe(TOTAL_ALL_BYTES);
   });
 
   it('keeps tier 1 rows locked and tier 2/3 rows toggleable in customize', async () => {
@@ -438,5 +318,20 @@ describe('usePrepareOfflineResources', () => {
       result.current.toggleItemSelected(tier2Id);
     });
     expect(result.current.isItemSelected(tier2Id)).toBe(true);
+  });
+
+  it('locks completed tier 2 rows in customize instead of showing a toggle', async () => {
+    setResourceStatus(1, 'tier-2-translation-words-text', 'completed');
+    const { result } = renderHook(() =>
+      usePrepareOfflineResources(baseInput()),
+    );
+
+    await waitForCatalogItems(result);
+
+    act(() => {
+      result.current.toggleItemSelected('Translation Words:text');
+    });
+
+    expect(result.current.isItemSelected('Translation Words:text')).toBe(true);
   });
 });

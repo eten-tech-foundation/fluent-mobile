@@ -32,18 +32,22 @@ export function isTierLocked(tier: PrepareOfflineResourceTier): boolean {
   return tier === 1;
 }
 
-/** Tier 2/3 rows already on device cannot be toggled; in-flight/pending stay editable. */
+/** A row is locked if it's core Tier 1, required-and-non-removable, or already on device. */
 export function isItemCustomizeLocked(
   item: PrepareOfflineResourceItem,
 ): boolean {
-  return isTierLocked(item.tier) || item.status === 'completed';
+  return (
+    isTierLocked(item.tier) ||
+    (item.required && !item.removable) ||
+    item.status === 'completed'
+  );
 }
 
 export function isItemIncluded(
   item: PrepareOfflineResourceItem,
   deselectedItemIds: Set<string>,
 ): boolean {
-  if (isTierLocked(item.tier) || item.status === 'completed') {
+  if (isItemCustomizeLocked(item)) {
     return true;
   }
 
@@ -123,7 +127,8 @@ interface AggregatedRow {
   kind: PrepareOfflineResourceItem['kind'];
   tier: PrepareOfflineResourceTier;
   bytes: number;
-  /** Real manifest items merged into this row, for download enqueue. */
+  required: boolean;
+  removable: boolean;
   members: PrepareOfflineResourceManifestItem[];
 }
 
@@ -150,6 +155,8 @@ function aggregateManifestItems(
         kind: entry.kind,
         tier: entry.tier,
         bytes: entry.bytesTotal,
+        required: entry.required,
+        removable: entry.removable,
         members: [entry],
       });
     }
@@ -174,7 +181,35 @@ function aggregateStatus(
   return statuses[0];
 }
 
-/** Pure catalog builder — manifest and status come from prepareOfflineResources service. */
+/** Builds Tier 2/3 catalog rows from raw manifest items (one row per resource+kind). */
+function buildManifestRows(
+  manifest: PrepareOfflineResourceManifestItem[],
+  getResourceStatus: (resourceId: string) => PrepareOfflineResourceStatus,
+): PrepareOfflineResourceItem[] {
+  const aggregated = aggregateManifestItems(manifest);
+
+  return aggregated.map(row => ({
+    id: `${row.groupName}:${row.kind}`,
+    tier: row.tier,
+    kind: row.kind,
+    groupName: row.groupName,
+    required: row.required,
+    removable: row.removable,
+    label:
+      row.kind === 'text' ? 'Text' : row.kind === 'audio' ? 'Audio' : 'Image',
+    bytes: row.bytes,
+    status: aggregateStatus(row.members, getResourceStatus),
+    manifestMembers: row.members,
+  }));
+}
+
+/**
+ * Pure catalog builder — manifest (including Tier 1 Source Bible text/audio,
+ * merged in by prepareOfflineResources.fetchPrepareOfflineManifest) and
+ * status come from the prepareOfflineResources service. Tier 1 rows arrive
+ * through the same manifest array as Tier 2/3, so no separate core-items
+ * source is needed here (#504).
+ */
 export function buildPrepareOfflineCatalog({
   manifest,
   getResourceStatus,
@@ -183,23 +218,11 @@ export function buildPrepareOfflineCatalog({
 }: BuildPrepareOfflineCatalogInput): PrepareOfflineCatalog {
   const selectedChapters = chapters.filter(ch => selectedIds.has(ch.id));
 
-  if (selectedChapters.length === 0 || manifest.length === 0) {
+  if (selectedChapters.length === 0) {
     return { items: [], groups: [] };
   }
 
-  const aggregated = aggregateManifestItems(manifest);
-
-  const items: PrepareOfflineResourceItem[] = aggregated.map(row => ({
-    id: `${row.groupName}:${row.kind}`,
-    tier: row.tier,
-    kind: row.kind,
-    groupName: row.groupName,
-    label:
-      row.kind === 'text' ? 'Text' : row.kind === 'audio' ? 'Audio' : 'Image',
-    bytes: row.bytes,
-    status: aggregateStatus(row.members, getResourceStatus),
-    manifestMembers: row.members,
-  }));
+  const items = buildManifestRows(manifest, getResourceStatus);
 
   return {
     items,

@@ -70,6 +70,8 @@ export interface PrepareOfflineResourceItem {
   progress?: number;
   /** Real manifest items this display row aggregates, for download enqueue. */
   manifestMembers: PrepareOfflineResourceManifestItem[];
+  required: boolean;
+  removable: boolean;
 }
 
 export interface PrepareOfflineResourceGroup {
