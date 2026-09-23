@@ -18,6 +18,7 @@ Opt-in **Android-only** Maestro suite for Fluent Mobile ([#488](https://github.c
 | Cold launch → login screen | `flows/smoke-launch.yaml` | `npm run maestro:test:harness` |
 | Sign in / session restore / logout | `flows/android/smoke-auth.yaml` | `npm run maestro:test:auth` |
 | Home → My Work / Projects → drafting tabs | `flows/android/smoke-nav.yaml` | `npm run maestro:test:nav` |
+| Bible unit tap → Record tab | `flows/android/smoke-drafting.yaml` | tag `drafting` / `npm run maestro:test:smokes` |
 | Record → stop → play → delete take | `flows/android/smoke-record.yaml` | `npm run maestro:test:record` |
 | Sync Now + Prepare for Offline chrome | `flows/android/smoke-sync-offline.yaml` | `npm run maestro:test:sync` |
 | Forgot password / legal / permission deny | `flows/android/smoke-edges.yaml` | `npm run maestro:test:edges` |

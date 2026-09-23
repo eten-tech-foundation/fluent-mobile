@@ -60,7 +60,7 @@ function PericopeStatusIcon({
   );
 }
 
-export function BibleTab(_props: BibleTabProps = {}) {
+export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
   const {
     verses,
     selectedVerse,
@@ -120,8 +120,9 @@ export function BibleTab(_props: BibleTabProps = {}) {
       if (effectiveUnit === 'pericope') {
         setExpandedKey(current => (current === unit.key ? null : unit.key));
       }
+      onOpenRecord?.();
     },
-    [effectiveUnit, setSelectedVerse],
+    [effectiveUnit, onOpenRecord, setSelectedVerse],
   );
 
   const renderVerseRow = useCallback(
@@ -142,6 +143,7 @@ export function BibleTab(_props: BibleTabProps = {}) {
           accessibilityLabel={`Verse ${item.anchorVerse}${
             isSelected ? ', selected' : ''
           }`}
+          testID={`bible-verse-${item.anchorVerse}`}
         >
           <View style={styles.iconColumn}>
             <Text

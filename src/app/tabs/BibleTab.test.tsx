@@ -112,6 +112,67 @@ describe('BibleTab', () => {
     expect(screen.queryByTestId('bible-unit-recorded')).toBeNull();
   });
 
+  it('invokes onOpenRecord after selecting a verse unit', async () => {
+    const onOpenRecord = jest.fn();
+
+    render(
+      <DraftingProvider
+        verses={verses}
+        initialVerse={1}
+        chapterName="Mark 14"
+        bookName="Mark"
+      >
+        <BibleTab onOpenRecord={onOpenRecord} />
+      </DraftingProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Verse 2')).toBeTruthy();
+    });
+    fireEvent.press(screen.getByLabelText('Verse 2'));
+
+    expect(screen.getByLabelText('Verse 2, selected')).toBeTruthy();
+    expect(onOpenRecord).toHaveBeenCalledTimes(1);
+  });
+
+  it('invokes onOpenRecord after pressing a pericope unit', async () => {
+    const onOpenRecord = jest.fn();
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    jest.mocked(getPericopesForChapter).mockResolvedValue([
+      {
+        pericopeNumber: '1',
+        pericopeTitle: null,
+        section: 1,
+        verses: [
+          { chapterNumber: 14, verseNumber: 1 },
+          { chapterNumber: 14, verseNumber: 2 },
+        ],
+      },
+    ]);
+
+    render(
+      <DraftingProvider
+        verses={verses}
+        initialVerse={1}
+        projectId={9}
+        chapterName="Mark 14"
+        bookName="Mark"
+      >
+        <BibleTab onOpenRecord={onOpenRecord} />
+      </DraftingProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Mark 14:1–2, selected')).toBeTruthy();
+    });
+    fireEvent.press(screen.getByLabelText('Mark 14:1–2, selected'));
+
+    expect(onOpenRecord).toHaveBeenCalledTimes(1);
+  });
+
   it('shows a loading indicator instead of verse rows while coverage loads', () => {
     jest
       .mocked(getSelectedTakeCoverages)
