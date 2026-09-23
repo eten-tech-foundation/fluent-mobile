@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import { SyncStatus, SYNC_STATUS_LABELS } from '../../utils/syncStatusState';
+import { SyncStatus, formatSyncStatusLabel } from '../../utils/syncStatusState';
 import { CloudSyncStatusIcon } from '../ui/CloudSyncStatusIcon';
 import { theme } from '../../theme';
 import { iconSizes, touchHitSlop } from '../../theme/iconSpecs';
@@ -12,6 +12,7 @@ interface StackScreenHeaderProps {
   onBack: () => void;
   onSyncPress?: () => void;
   syncStatus?: SyncStatus;
+  failedErrorText?: string | null;
   subtitleLines?: number;
   backTestID?: string;
 }
@@ -22,6 +23,7 @@ export function StackScreenHeader({
   onBack,
   onSyncPress,
   syncStatus,
+  failedErrorText,
   subtitleLines = 1,
   backTestID,
 }: StackScreenHeaderProps) {
@@ -40,7 +42,9 @@ export function StackScreenHeader({
             hitSlop={touchHitSlop}
             style={styles.syncButton}
             accessibilityRole="button"
-            accessibilityLabel={SYNC_STATUS_LABELS[syncStatus]}
+            accessibilityLabel={formatSyncStatusLabel(syncStatus, {
+              failedErrorText,
+            })}
           >
             <CloudSyncStatusIcon status={syncStatus} decorative />
           </TouchableOpacity>

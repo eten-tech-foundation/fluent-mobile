@@ -190,4 +190,15 @@ describe('formatSyncStatusLabel', () => {
       '3 uploads failed. Open Sync page to retry.',
     );
   });
+
+  it('includes sanitized failure reason for online_failed a11y', () => {
+    expect(
+      formatSyncStatusLabel('online_failed', {
+        failedErrorText:
+          'Audio storage is currently unavailable. Try again later.',
+      }),
+    ).toBe(
+      'Upload failed. Open Sync page to retry. Audio storage is currently unavailable. Try again later.',
+    );
+  });
 });

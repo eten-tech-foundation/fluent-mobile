@@ -257,6 +257,21 @@ describe('useUploadSessionState', () => {
     expect(result.current.isStartControlPending).toBe(false);
   });
 
+  it('keeps pageStatus pending when only unuploadable takes remain after idle', async () => {
+    const { result } = renderHook(() =>
+      useUploadSessionState({
+        hasPendingUploads: false,
+        hasFailedUploads: false,
+        hasUnuploadablePending: true,
+        uploadProgress: null,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.pageStatus).toBe('pending');
+    });
+  });
+
   it('sets isControlPending while pause is in flight', async () => {
     let resolvePause: (() => void) | undefined;
     mockPauseUploadSession.mockImplementation(

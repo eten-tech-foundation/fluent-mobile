@@ -49,7 +49,7 @@ export default function ViewProject() {
   } = useProjectChapters(projectId);
 
   const isSyncing = useGlobalSyncStatus(reload);
-  const { status: syncStatus } = useSyncStatus({ isSyncing });
+  const { status: syncStatus, failedErrorText } = useSyncStatus({ isSyncing });
   const goBack = useCallback(() => router.back(), [router]);
 
   const handleSyncPress = useCallback(() => {
@@ -83,6 +83,7 @@ export default function ViewProject() {
       onBack={goBack}
       onSyncPress={handleSyncPress}
       syncStatus={syncStatus}
+      failedErrorText={failedErrorText}
     />
   );
 
