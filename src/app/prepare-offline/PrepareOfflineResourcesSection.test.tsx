@@ -11,6 +11,8 @@ import {
   setPrepareOfflineMockInventoryScenario,
 } from '../../mocks/prepareOffline';
 import { getPrepareOfflineResourceStatus } from '../../services/prepareOfflineResources';
+import { manifestEntryToResourceId } from '../../utils/prepareOfflineResourceId';
+import type { PrepareOfflineResourceManifestItem } from '../../types/prepareOffline/types';
 import { PrepareOfflineResourcesSection } from './PrepareOfflineResourcesSection';
 
 jest.mock('lucide-react-native', () => {
@@ -37,13 +39,39 @@ const chapters = [
     bookName: 'Genesis',
     chapterNumber: 1,
     assignedUserId: 42,
+    bibleId: 10,
   },
 ];
 
+/**
+ * Expands the static mock catalog into raw API-shaped manifest items (#504),
+ * one per catalog entry, reusing catalog resource ids so mock inventory
+ * lookups resolve.
+ */
+function buildManifestFixture(): PrepareOfflineResourceManifestItem[] {
+  return MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST.map(entry => ({
+    id: manifestEntryToResourceId(entry.tier, entry.groupName, entry.kind),
+    tier: entry.tier,
+    kind: entry.kind,
+    resourceName: entry.groupName,
+    label:
+      entry.kind === 'text'
+        ? 'Text'
+        : entry.kind === 'audio'
+        ? 'Audio'
+        : 'Image',
+    required: entry.tier === 1,
+    removable: entry.tier !== 1,
+    bytesTotal: entry.unitBytes,
+    fileExt:
+      entry.kind === 'audio' ? 'mp3' : entry.kind === 'image' ? 'png' : 'json',
+    languageCode: 'eng',
+  }));
+}
+
 function buildSectionCatalog(projectId = 1) {
   return buildPrepareOfflineCatalog({
-    projectId,
-    manifest: MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST,
+    manifest: buildManifestFixture(),
     getResourceStatus: (resourceId: string) =>
       getPrepareOfflineResourceStatus(projectId, resourceId),
     chapters,
@@ -154,7 +182,7 @@ describe('PrepareOfflineResourcesSection', () => {
 
     const accordion = screen.getByTestId('customize-download-accordion');
     const wordsTextRow = within(accordion).getByTestId(
-      'resource-row-1-tier-2-translation-words-text',
+      'resource-row-Translation Words:text',
     );
     fireEvent.press(wordsTextRow);
     fireEvent.press(wordsTextRow);

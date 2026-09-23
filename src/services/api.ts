@@ -16,7 +16,9 @@ import {
 } from '../types/api/responses';
 import type {
   ApiSourceAudioResponse,
+  ApiSourceAudioManifestResponse,
   GetChapterSourceAudioParams,
+  GetSourceAudioManifestParams,
 } from '../types/api/sourceAudio';
 import type {
   ApiTranslationNotesResponse,
@@ -153,6 +155,26 @@ async function claimChapterAssignmentRequest(
   );
 
   return normalizeClaimResponse(api);
+}
+
+function sourceAudioManifestPath(
+  projectId: number,
+  params: {
+    languageCode: string;
+    bibleId: number;
+    bookCode: string;
+    startChapter: number;
+    endChapter: number;
+  },
+): string {
+  const query = new URLSearchParams({
+    languageCode: params.languageCode,
+    bibleId: String(params.bibleId),
+    bookCode: params.bookCode,
+    startChapter: String(params.startChapter),
+    endChapter: String(params.endChapter),
+  });
+  return `/projects/${projectId}/source-audio/manifest?${query.toString()}`;
 }
 
 export const FluentAPI = {
@@ -357,6 +379,20 @@ export const FluentAPI = {
     const raw = unwrapApiListResponse(response);
     return Array.isArray(raw) ? raw : [];
   },
+
+  /**
+   * Prepare Offline Tier 1 source audio manifest — sizes/metadata for a
+   * project/bible/chapter range (#504 follow-on). Same 20-chapter-per-range
+   * cap as the translation-resources manifest; `bibleId` comes from the
+   * chapter assignment, not the project record.
+   */
+  getSourceAudioManifest: (
+    projectId: number,
+    params: GetSourceAudioManifestParams,
+  ): Promise<ApiSourceAudioManifestResponse> =>
+    authedRequest<ApiSourceAudioManifestResponse>(
+      sourceAudioManifestPath(projectId, params),
+    ),
 
   /**
    * Source/reference chapter audio for the drafting dock (fluent-api #282).

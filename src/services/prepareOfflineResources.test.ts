@@ -2,6 +2,7 @@ import { FluentAPI } from './api';
 import {
   clearPrepareOfflineSessionInventory,
   fetchPrepareOfflineManifest,
+  fetchSourceBibleAudioManifest,
   getDefaultPrepareOfflinePackageDeselects,
   getPrepareOfflineResourceStatus,
   simulatePrepareOfflineDownloadProgress,
@@ -15,8 +16,34 @@ import {
 } from '../mocks/prepareOffline';
 
 jest.mock('./api', () => ({
-  FluentAPI: { getPrepareOfflineManifest: jest.fn() },
+  FluentAPI: {
+    getPrepareOfflineManifest: jest.fn(),
+    getSourceAudioManifest: jest.fn(),
+    getChapterSourceAudio: jest.fn(),
+  },
 }));
+
+const FULL_PARAMS = {
+  languageCode: 'eng',
+  bookCode: 'MRK',
+  startChapter: 1,
+  endChapter: 3,
+  bibleId: 10,
+};
+
+function mockSourceAudioManifest(
+  items: unknown[],
+  overrides: Record<string, unknown> = {},
+) {
+  (FluentAPI.getSourceAudioManifest as jest.Mock).mockResolvedValue({
+    projectId: 99,
+    sourceLanguageCode: 'eng',
+    provider: 'aquifer',
+    items,
+    totalBytes: 0,
+    ...overrides,
+  });
+}
 
 describe('prepareOfflineResources', () => {
   beforeEach(() => {
@@ -25,14 +52,7 @@ describe('prepareOfflineResources', () => {
   });
 
   describe('fetchPrepareOfflineManifest', () => {
-    const params = {
-      languageCode: 'eng',
-      bookCode: 'MRK',
-      startChapter: 1,
-      endChapter: 3,
-    };
-
-    it('maps API items and calls FluentAPI with the given params', async () => {
+    it('maps API items and calls both manifests with the given params', async () => {
       const apiItem = {
         id: 'r1',
         tier: 3 as const,
@@ -52,13 +72,26 @@ describe('prepareOfflineResources', () => {
         totalBytes: 1024,
         truncated: false,
       });
+      mockSourceAudioManifest([]);
 
-      const result = await fetchPrepareOfflineManifest(99, params);
+      const { bibleId, ...translationResourcesParams } = FULL_PARAMS;
+      void bibleId;
 
-      expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledWith(
-        99,
-        params,
-      );
+      const result = await fetchPrepareOfflineManifest(99, FULL_PARAMS);
+
+      expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledWith(99, {
+        languageCode: 'eng',
+        bookCode: 'MRK',
+        startChapter: 1,
+        endChapter: 3,
+      });
+      expect(FluentAPI.getSourceAudioManifest).toHaveBeenCalledWith(99, {
+        languageCode: 'eng',
+        bookCode: 'MRK',
+        startChapter: 1,
+        endChapter: 3,
+        bibleId: 10,
+      });
       expect(result).toEqual([apiItem]);
     });
 
@@ -84,10 +117,126 @@ describe('prepareOfflineResources', () => {
         totalBytes: 512,
         truncated: false,
       });
+      mockSourceAudioManifest([]);
 
-      const result = await fetchPrepareOfflineManifest(99, params);
+      const result = await fetchPrepareOfflineManifest(99, FULL_PARAMS);
 
       expect(result[0].tier).toBe(1);
+    });
+
+    it('merges source-audio manifest items mapped to mobile shape', async () => {
+      (FluentAPI.getPrepareOfflineManifest as jest.Mock).mockResolvedValue({
+        projectId: 99,
+        sourceLanguageCode: 'eng',
+        items: [],
+        totalBytes: 0,
+        truncated: false,
+      });
+      mockSourceAudioManifest([
+        {
+          id: 'sa1',
+          tier: 1,
+          kind: 'audio',
+          resourceName: 'Source Bible',
+          label: 'Audio',
+          required: true,
+          removable: false,
+          bytesTotal: 8_945_229,
+          sourceUrl: 'https://example.com/mrk1.mp3',
+          fileExt: 'mp3',
+          languageCode: 'eng',
+          bookCode: 'MRK',
+          startChapter: 1,
+          endChapter: 3,
+          provider: 'aquifer',
+        },
+      ]);
+
+      const result = await fetchPrepareOfflineManifest(99, FULL_PARAMS);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        id: 'sa1',
+        tier: 1,
+        kind: 'audio',
+        sourceUrl: 'https://example.com/mrk1.mp3',
+      });
+      expect(FluentAPI.getChapterSourceAudio).not.toHaveBeenCalled();
+    });
+
+    it('falls back to per-chapter source-audio when the manifest returns nothing', async () => {
+      (FluentAPI.getPrepareOfflineManifest as jest.Mock).mockResolvedValue({
+        projectId: 99,
+        sourceLanguageCode: 'eng',
+        items: [],
+        totalBytes: 0,
+        truncated: false,
+      });
+      mockSourceAudioManifest([]);
+      (FluentAPI.getChapterSourceAudio as jest.Mock).mockImplementation(
+        (_projectId: number, ...rest: unknown[]) => {
+          void rest;
+          return Promise.resolve({
+            provider: 'dbl',
+            bible: { name: 'B', abbreviation: 'ENG', fluentBibleId: 10 },
+            bookCode: 'MRK',
+            chapter: 1,
+            items: [
+              {
+                format: 'mp3',
+                url: 'https://example.com/ch1.mp3',
+                sizeBytes: 1234,
+                scope: 'chapter',
+              },
+            ],
+          });
+        },
+      );
+
+      const result = await fetchPrepareOfflineManifest(99, FULL_PARAMS);
+
+      // One call per chapter in the 1–3 range.
+      expect(FluentAPI.getChapterSourceAudio).toHaveBeenCalledTimes(3);
+      expect(result).toHaveLength(3);
+      expect(result[0]).toMatchObject({
+        id: 'source-bible-audio-MRK-1',
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        bytesTotal: 1234,
+        sourceUrl: 'https://example.com/ch1.mp3',
+        fileExt: 'mp3',
+      });
+    });
+  });
+
+  describe('fetchSourceBibleAudioManifest', () => {
+    it('maps one manifest item per chapter with audio, skipping empty responses', async () => {
+      (FluentAPI.getChapterSourceAudio as jest.Mock).mockImplementation(
+        (_projectId: number, params: { bookCode: string; chapter: number }) => {
+          void params;
+          return Promise.resolve({
+            provider: 'dbl',
+            bible: { name: 'B', abbreviation: 'ENG' },
+            bookCode: 'MRK',
+            chapter: 1,
+            items: [],
+          });
+        },
+      );
+
+      const result = await fetchSourceBibleAudioManifest(
+        99,
+        [
+          { bookCode: 'MRK', chapterNumber: 1 },
+          { bookCode: 'MRK', chapterNumber: 2 },
+        ],
+        'eng',
+        10,
+      );
+
+      expect(FluentAPI.getChapterSourceAudio).toHaveBeenCalledTimes(2);
+      expect(result).toEqual([]);
     });
   });
 
@@ -111,27 +260,8 @@ describe('prepareOfflineResources', () => {
   });
 
   describe('getDefaultPrepareOfflinePackageDeselects', () => {
-    beforeEach(() => {
-      setPrepareOfflineMockInventoryScenario('tier1');
-    });
-
-    it('returns unscoped ids when projectId is null', () => {
-      const deselects = getDefaultPrepareOfflinePackageDeselects(null);
-
-      expect(deselects.size).toBeGreaterThan(0);
-      expect([...deselects].every(id => !/^\d+-/.test(id))).toBe(true);
-    });
-
-    it('prefixes ids with projectId when provided', () => {
-      const deselects = getDefaultPrepareOfflinePackageDeselects(5);
-
-      expect(deselects.size).toBeGreaterThan(0);
-      expect([...deselects].every(id => id.startsWith('5-'))).toBe(true);
-    });
-
-    it('returns an empty set when the scenario includes every tier', () => {
-      setPrepareOfflineMockInventoryScenario('fresh');
-
+    it('returns an empty set — all tiers checked by default (#504)', () => {
+      expect(getDefaultPrepareOfflinePackageDeselects(null).size).toBe(0);
       expect(getDefaultPrepareOfflinePackageDeselects(5).size).toBe(0);
     });
   });

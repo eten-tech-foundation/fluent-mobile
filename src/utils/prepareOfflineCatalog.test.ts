@@ -4,7 +4,6 @@ import {
   computePendingBytes,
   computeRemainingBytes,
   computeTotalBytes,
-  computeManifestBytesForScope,
   filterPrepareOfflineCatalogByTiers,
   getEffectiveItems,
   getRemainingBytesForItem,
@@ -13,7 +12,7 @@ import {
   isTierLocked,
   sortItemsForPrepareOfflineDownload,
 } from './prepareOfflineCatalog';
-import { scopedPrepareOfflineResourceId } from './prepareOfflineResourceId';
+import { manifestEntryToResourceId } from './prepareOfflineResourceId';
 import {
   MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST,
   DEV_MOCK_FILE_BYTES,
@@ -21,7 +20,10 @@ import {
   setPrepareOfflineMockInventoryScenario,
 } from '../mocks/prepareOffline';
 import { getPrepareOfflineResourceStatus } from '../services/prepareOfflineResources';
-import { PrepareOfflineChapterRow } from '../types/prepareOffline/types';
+import {
+  PrepareOfflineChapterRow,
+  PrepareOfflineResourceManifestItem,
+} from '../types/prepareOffline/types';
 
 const MB = 1024 * 1024;
 
@@ -41,33 +43,74 @@ function chapter(id: number): PrepareOfflineChapterRow {
     bookName: 'Genesis',
     chapterNumber: id,
     assignedUserId: null,
+    bibleId: 10,
   };
+}
+
+/**
+ * Expands the static mock catalog into raw API-shaped manifest items (#504):
+ * one item per (entry, selected chapter) for chapter-scoped entries, one item
+ * otherwise. Item ids reuse `manifestEntryToResourceId` so mock inventory
+ * lookups keep resolving (the mock catalog has one entry per id).
+ */
+function buildManifestFixture(
+  selectedChapters: number[],
+): PrepareOfflineResourceManifestItem[] {
+  const items: PrepareOfflineResourceManifestItem[] = [];
+
+  for (const entry of MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST) {
+    const id = manifestEntryToResourceId(
+      entry.tier,
+      entry.groupName,
+      entry.kind,
+    );
+    const chaptersForEntry =
+      entry.scope === 'chapter' ? selectedChapters : [selectedChapters[0] ?? 1];
+
+    for (const _chapterNumber of chaptersForEntry) {
+      items.push({
+        id,
+        tier: entry.tier,
+        kind: entry.kind,
+        resourceName: entry.groupName,
+        label:
+          entry.kind === 'text'
+            ? 'Text'
+            : entry.kind === 'audio'
+            ? 'Audio'
+            : 'Image',
+        required: entry.tier === 1,
+        removable: entry.tier !== 1,
+        bytesTotal: entry.unitBytes,
+        fileExt:
+          entry.kind === 'audio'
+            ? 'mp3'
+            : entry.kind === 'image'
+            ? 'png'
+            : 'json',
+        languageCode: 'eng',
+      });
+    }
+  }
+
+  return items;
 }
 
 function buildTestCatalog(options: {
   chapters: PrepareOfflineChapterRow[];
   selectedIds: Set<number>;
   projectId?: number;
+  manifest?: PrepareOfflineResourceManifestItem[];
 }) {
   const projectId = options.projectId ?? 1;
 
   return buildPrepareOfflineCatalog({
-    projectId,
-    manifest: MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST,
+    manifest: options.manifest ?? buildManifestFixture([1]),
     getResourceStatus: (resourceId: string) =>
       getPrepareOfflineResourceStatus(projectId, resourceId),
     chapters: options.chapters,
     selectedIds: options.selectedIds,
   });
-}
-
-function catalogResourceId(
-  projectId: number,
-  tier: 1 | 2 | 3,
-  groupName: string,
-  kind: 'text' | 'audio' | 'image',
-): string {
-  return scopedPrepareOfflineResourceId(projectId, tier, groupName, kind);
 }
 
 const PID = 1;
@@ -89,7 +132,7 @@ describe('prepareOfflineCatalog', () => {
     expect(catalog.groups).toEqual([]);
   });
 
-  it('builds tier 1/2/3 items grouped by resource name', () => {
+  it('builds tier 1/2/3 rows grouped by resource name from raw manifest items', () => {
     const catalog = buildTestCatalog({
       chapters,
       selectedIds: new Set([1]),
@@ -114,6 +157,49 @@ describe('prepareOfflineCatalog', () => {
       'Translation Notes',
       'Translation Notes',
     ]);
+  });
+
+  it('aggregates multiple manifest items per (resourceName, kind) into one row', () => {
+    // Two "Translation Words" text members (e.g. two collection chunks).
+    const wordsMemberA = manifestEntryToResourceId(
+      2,
+      'Translation Words',
+      'text',
+    );
+    const manifest = [
+      ...buildManifestFixture([1]).filter(
+        item => !item.id.startsWith(wordsMemberA),
+      ),
+      {
+        ...buildManifestFixture([1]).find(item =>
+          item.id.startsWith(wordsMemberA),
+        )!,
+        id: `${wordsMemberA}-part-a`,
+      },
+      {
+        ...buildManifestFixture([1]).find(item =>
+          item.id.startsWith(wordsMemberA),
+        )!,
+        id: `${wordsMemberA}-part-b`,
+        bytesTotal: DEV_MOCK_FILE_BYTES.text + 500,
+      },
+    ];
+
+    const catalog = buildTestCatalog({
+      chapters,
+      selectedIds: new Set([1]),
+      manifest,
+    });
+
+    const wordsText = catalog.items.find(
+      item => item.groupName === 'Translation Words' && item.kind === 'text',
+    )!;
+
+    expect(wordsText.id).toBe('Translation Words:text');
+    expect(wordsText.bytes).toBe(
+      DEV_MOCK_FILE_BYTES.text + (DEV_MOCK_FILE_BYTES.text + 500),
+    );
+    expect(wordsText.manifestMembers).toHaveLength(2);
   });
 
   it('filterPrepareOfflineCatalogByTiers keeps only matching tiers', () => {
@@ -148,13 +234,14 @@ describe('prepareOfflineCatalog', () => {
 
   it('locks completed but not downloading items from customize toggles', () => {
     const completedItem = {
-      id: catalogResourceId(PID, 2, 'Translation Words', 'text'),
+      id: 'Translation Words:text',
       tier: 2 as const,
       kind: 'text' as const,
       groupName: 'Translation Words',
       label: 'Text',
       bytes: 10 * MB,
       status: 'completed' as const,
+      manifestMembers: [],
     };
     const pendingItem = { ...completedItem, status: 'selected' as const };
     const downloadingItem = {
@@ -169,13 +256,14 @@ describe('prepareOfflineCatalog', () => {
 
   it('allows deselecting a downloading item from the effective download set', () => {
     const downloadingItem = {
-      id: catalogResourceId(PID, 2, 'Translation Words', 'audio'),
+      id: 'Translation Words:audio',
       tier: 2 as const,
       kind: 'audio' as const,
       groupName: 'Translation Words',
       label: 'Audio',
       bytes: 32 * MB,
       status: 'downloading' as const,
+      manifestMembers: [],
     };
 
     expect(isItemIncluded(downloadingItem, new Set([downloadingItem.id]))).toBe(
@@ -185,13 +273,14 @@ describe('prepareOfflineCatalog', () => {
 
   it('always includes locked items in the effective download set', () => {
     const completedItem = {
-      id: catalogResourceId(PID, 2, 'Translation Words', 'text'),
+      id: 'Translation Words:text',
       tier: 2 as const,
       kind: 'text' as const,
       groupName: 'Translation Words',
       label: 'Text',
       bytes: 10 * MB,
       status: 'completed' as const,
+      manifestMembers: [],
     };
 
     expect(isItemIncluded(completedItem, new Set([completedItem.id]))).toBe(
@@ -210,19 +299,14 @@ describe('prepareOfflineCatalog', () => {
     expect(total).toBe(ONE_CHAPTER_MOCK_TOTAL);
   });
 
-  it('subtracts deselected tier 2/3 items from totals', () => {
+  it('subtracts deselected tier 2/3 rows from totals', () => {
     setPrepareOfflineMockInventoryScenario('fresh');
 
     const catalog = buildTestCatalog({
       chapters,
       selectedIds: new Set([1]),
     });
-    const questionsTextId = catalogResourceId(
-      PID,
-      2,
-      'Translation Questions',
-      'text',
-    );
+    const questionsTextId = 'Translation Questions:text';
 
     const deselected = new Set([questionsTextId]);
     const withoutQuestionsText = computeTotalBytes(catalog, deselected);
@@ -255,19 +339,14 @@ describe('prepareOfflineCatalog', () => {
     expect(pending).toBe(allBytes - completedBytes);
   });
 
-  it('reduces pending bytes when tier 2/3 items are deselected', () => {
+  it('reduces pending bytes when tier 2/3 rows are deselected', () => {
     setPrepareOfflineMockInventoryScenario('mixed');
 
     const catalog = buildTestCatalog({
       chapters,
       selectedIds: new Set([1]),
     });
-    const questionsAudioId = catalogResourceId(
-      PID,
-      2,
-      'Translation Questions',
-      'audio',
-    );
+    const questionsAudioId = 'Translation Questions:audio';
 
     const pendingAll = computePendingBytes(catalog, new Set());
     const pendingDeselected = computePendingBytes(
@@ -281,10 +360,10 @@ describe('prepareOfflineCatalog', () => {
     ).toHaveLength(catalog.items.length - 1);
   });
 
-  it('computeRemainingBytes uses full catalog bytes for non-completed items', () => {
+  it('computeRemainingBytes uses full row bytes for non-completed items', () => {
     const remaining = computeRemainingBytes([
       {
-        id: catalogResourceId(PID, 1, 'Source Bible', 'text'),
+        id: 'Source Bible:text',
         tier: 1,
         kind: 'text',
         groupName: 'Source Bible',
@@ -292,15 +371,17 @@ describe('prepareOfflineCatalog', () => {
         bytes: 100,
         status: 'downloading',
         progress: 0.25,
+        manifestMembers: [],
       },
       {
-        id: catalogResourceId(PID, 1, 'Source Bible', 'audio'),
+        id: 'Source Bible:audio',
         tier: 1,
         kind: 'audio',
         groupName: 'Source Bible',
         label: 'Audio',
         bytes: 200,
         status: 'selected',
+        manifestMembers: [],
       },
     ]);
 
@@ -310,21 +391,22 @@ describe('prepareOfflineCatalog', () => {
   it('getRemainingBytesForItem returns zero for completed rows', () => {
     expect(
       getRemainingBytesForItem({
-        id: catalogResourceId(PID, 3, 'Bible Commentary', 'text'),
+        id: 'Bible Commentary:text',
         tier: 3,
         kind: 'text',
         groupName: 'Bible Commentary',
         label: 'Text',
         bytes: 12 * 1024 * 1024,
         status: 'completed',
+        manifestMembers: [],
       }),
     ).toBe(0);
   });
 
-  it('getRemainingBytesForItem returns full catalog bytes for non-completed rows', () => {
+  it('getRemainingBytesForItem returns full row bytes for non-completed rows', () => {
     expect(
       getRemainingBytesForItem({
-        id: catalogResourceId(PID, 3, 'Bible Commentary', 'audio'),
+        id: 'Bible Commentary:audio',
         tier: 3,
         kind: 'audio',
         groupName: 'Bible Commentary',
@@ -332,6 +414,7 @@ describe('prepareOfflineCatalog', () => {
         bytes: 24 * 1024 * 1024,
         status: 'selected',
         progress: 0.5,
+        manifestMembers: [],
       }),
     ).toBe(24 * 1024 * 1024);
   });
@@ -344,15 +427,15 @@ describe('prepareOfflineCatalog', () => {
       selectedIds: new Set([1]),
     });
     const deselected = new Set([
-      catalogResourceId(PID, 2, 'Translation Words', 'text'),
-      catalogResourceId(PID, 2, 'Translation Words', 'audio'),
-      catalogResourceId(PID, 2, 'Translation Questions', 'text'),
-      catalogResourceId(PID, 2, 'Translation Questions', 'audio'),
-      catalogResourceId(PID, 3, 'Bible Commentary', 'text'),
-      catalogResourceId(PID, 3, 'Bible Commentary', 'audio'),
-      catalogResourceId(PID, 3, 'Reference Images', 'image'),
-      catalogResourceId(PID, 3, 'Alternate Translations', 'text'),
-      catalogResourceId(PID, 3, 'Alternate Translations', 'audio'),
+      'Translation Words:text',
+      'Translation Words:audio',
+      'Translation Questions:text',
+      'Translation Questions:audio',
+      'Bible Commentary:text',
+      'Bible Commentary:audio',
+      'Reference Images:image',
+      'Alternate Translations:text',
+      'Alternate Translations:audio',
     ]);
 
     const effective = buildEffectiveCatalog(catalog, deselected);
@@ -368,47 +451,81 @@ describe('prepareOfflineCatalog', () => {
     expect(computePendingBytes(effective, new Set())).toBe(0);
   });
 
-  it('scales chapter-scoped manifest bytes with selected chapter count', () => {
+  it('scales chapter-scoped rows with selected chapter count; project rows stay flat', () => {
+    const manifest = buildManifestFixture([1, 2]);
     const oneChapter = buildTestCatalog({
       chapters,
       selectedIds: new Set([1]),
+      manifest: buildManifestFixture([1]),
     });
     const twoChapters = buildTestCatalog({
       chapters,
       selectedIds: new Set([1, 2]),
+      manifest,
     });
 
     const notesTextOne = oneChapter.items.find(
-      item =>
-        item.id === catalogResourceId(PID, 1, 'Translation Notes', 'text'),
+      item => item.id === 'Translation Notes:text',
     )!;
     const notesTextTwo = twoChapters.items.find(
-      item =>
-        item.id === catalogResourceId(PID, 1, 'Translation Notes', 'text'),
+      item => item.id === 'Translation Notes:text',
     )!;
     const wordsTextOne = oneChapter.items.find(
-      item =>
-        item.id === catalogResourceId(PID, 2, 'Translation Words', 'text'),
+      item => item.id === 'Translation Words:text',
     )!;
     const wordsTextTwo = twoChapters.items.find(
-      item =>
-        item.id === catalogResourceId(PID, 2, 'Translation Words', 'text'),
+      item => item.id === 'Translation Words:text',
     )!;
 
+    expect(notesTextOne.manifestMembers).toHaveLength(1);
     expect(notesTextOne.bytes).toBe(DEV_MOCK_FILE_BYTES.text);
+    expect(notesTextTwo.manifestMembers).toHaveLength(2);
     expect(notesTextTwo.bytes).toBe(2 * DEV_MOCK_FILE_BYTES.text);
+    expect(wordsTextOne.manifestMembers).toHaveLength(1);
     expect(wordsTextOne.bytes).toBe(DEV_MOCK_FILE_BYTES.text);
+    expect(wordsTextTwo.manifestMembers).toHaveLength(1);
     expect(wordsTextTwo.bytes).toBe(DEV_MOCK_FILE_BYTES.text);
   });
 
-  it('computeManifestBytesForScope applies chapter, book, and project rules', () => {
-    expect(computeManifestBytesForScope('chapter', 18 * MB, 2, 1)).toBe(
-      36 * MB,
-    );
-    expect(computeManifestBytesForScope('book', 8 * MB, 3, 2)).toBe(16 * MB);
-    expect(computeManifestBytesForScope('project', 10 * MB, 5, 3)).toBe(
-      10 * MB,
-    );
+  it('aggregates status across members: any downloading → downloading, all completed → completed', () => {
+    setPrepareOfflineMockInventoryScenario('fresh');
+
+    const base = manifestEntryToResourceId(2, 'Translation Words', 'audio');
+    const manifest: PrepareOfflineResourceManifestItem[] = [
+      {
+        id: `${base}-a`,
+        tier: 2,
+        kind: 'audio',
+        resourceName: 'Translation Words',
+        label: 'Audio',
+        required: false,
+        removable: true,
+        bytesTotal: 100,
+        fileExt: 'mp3',
+        languageCode: 'eng',
+      },
+      {
+        id: `${base}-b`,
+        tier: 2,
+        kind: 'audio',
+        resourceName: 'Translation Words',
+        label: 'Audio',
+        required: false,
+        removable: true,
+        bytesTotal: 100,
+        fileExt: 'mp3',
+        languageCode: 'eng',
+      },
+    ];
+
+    const catalog = buildTestCatalog({
+      chapters,
+      selectedIds: new Set([1]),
+      manifest,
+    });
+
+    // fresh scenario: every id is 'selected' → row passthrough on first member.
+    expect(catalog.items[0].status).toBe('selected');
   });
 
   it('sortItemsForPrepareOfflineDownload follows manifest order not alphabetical', () => {

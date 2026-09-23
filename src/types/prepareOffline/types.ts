@@ -67,8 +67,9 @@ export interface PrepareOfflineResourceItem {
   label: string;
   bytes: number;
   status: PrepareOfflineResourceStatus;
-  /** Partial progress (0–1) while queued, downloading, paused, cancelled, or failed. */
   progress?: number;
+  /** Real manifest items this display row aggregates, for download enqueue. */
+  manifestMembers: PrepareOfflineResourceManifestItem[];
 }
 
 export interface PrepareOfflineResourceGroup {

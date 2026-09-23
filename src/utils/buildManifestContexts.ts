@@ -5,6 +5,7 @@ export interface PrepareOfflineManifestContext {
   bookCode: string;
   startChapter: number;
   endChapter: number;
+  bibleId: number;
 }
 
 const MAX_CHAPTERS_PER_MANIFEST_CALL = 20;
@@ -20,18 +21,32 @@ export function buildManifestContexts(
   selectedIds: Set<number>,
   sourceLanguageCode: string,
 ): PrepareOfflineManifestContext[] {
-  const selectedByBook = new Map<string, number[]>();
+  const selectedByBook = new Map<
+    string,
+    { chapterNumbers: number[]; bibleId: number }
+  >();
 
   for (const chapter of chapters) {
     if (!selectedIds.has(chapter.id)) continue;
-    const list = selectedByBook.get(chapter.bookCode) ?? [];
-    list.push(chapter.chapterNumber);
-    selectedByBook.set(chapter.bookCode, list);
+    const entry = selectedByBook.get(chapter.bookCode);
+    if (entry) {
+      entry.chapterNumbers.push(chapter.chapterNumber);
+      if (entry.bibleId !== chapter.bibleId) {
+        throw new Error(
+          `Inconsistent bibleId within book ${chapter.bookCode}: ${entry.bibleId} vs ${chapter.bibleId}`,
+        );
+      }
+    } else {
+      selectedByBook.set(chapter.bookCode, {
+        chapterNumbers: [chapter.chapterNumber],
+        bibleId: chapter.bibleId,
+      });
+    }
   }
 
   const contexts: PrepareOfflineManifestContext[] = [];
 
-  for (const [bookCode, chapterNumbers] of selectedByBook) {
+  for (const [bookCode, { chapterNumbers, bibleId }] of selectedByBook) {
     const min = Math.min(...chapterNumbers);
     const max = Math.max(...chapterNumbers);
 
@@ -46,6 +61,7 @@ export function buildManifestContexts(
         bookCode,
         startChapter: start,
         endChapter: end,
+        bibleId,
       });
     }
   }

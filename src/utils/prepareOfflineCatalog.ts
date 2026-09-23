@@ -3,6 +3,8 @@ import {
   PrepareOfflineCatalog,
   PrepareOfflineResourceGroup,
   PrepareOfflineResourceItem,
+  PrepareOfflineResourceManifestItem,
+  PrepareOfflineResourceStatus,
   PrepareOfflineResourceTier,
 } from '../types/prepareOffline/types';
 
@@ -116,6 +118,62 @@ export function computeRemainingBytes(
   return items.reduce((sum, item) => sum + getRemainingBytesForItem(item), 0);
 }
 
+interface AggregatedRow {
+  groupName: string;
+  kind: PrepareOfflineResourceItem['kind'];
+  tier: PrepareOfflineResourceTier;
+  bytes: number;
+  /** Real manifest items merged into this row, for download enqueue. */
+  members: PrepareOfflineResourceManifestItem[];
+}
+
+/**
+ * Groups raw manifest items into one row per (groupName, kind) — e.g. all
+ * individual Translation Words entries collapse into a single "Text" row
+ * and a single "Audio" row, summing bytes. Mirrors the pre-aggregated shape
+ * the old static mock manifest provided directly (#504).
+ */
+function aggregateManifestItems(
+  manifest: PrepareOfflineResourceManifestItem[],
+): AggregatedRow[] {
+  const byKey = new Map<string, AggregatedRow>();
+
+  for (const entry of manifest) {
+    const key = `${entry.resourceName}:${entry.kind}`;
+    const existing = byKey.get(key);
+    if (existing) {
+      existing.bytes += entry.bytesTotal;
+      existing.members.push(entry);
+    } else {
+      byKey.set(key, {
+        groupName: entry.resourceName,
+        kind: entry.kind,
+        tier: entry.tier,
+        bytes: entry.bytesTotal,
+        members: [entry],
+      });
+    }
+  }
+
+  return [...byKey.values()];
+}
+
+/**
+ * Aggregate status across an aggregated row's members.
+ * Any item downloading → row shows downloading; all completed → completed;
+ * otherwise → available/selected passthrough on the first member.
+ */
+function aggregateStatus(
+  members: PrepareOfflineResourceManifestItem[],
+  getResourceStatus: (resourceId: string) => PrepareOfflineResourceStatus,
+): PrepareOfflineResourceStatus {
+  const statuses = members.map(m => getResourceStatus(m.id));
+  if (statuses.every(s => s === 'completed')) return 'completed';
+  if (statuses.some(s => s === 'downloading')) return 'downloading';
+  if (statuses.some(s => s === 'paused')) return 'paused';
+  return statuses[0];
+}
+
 /** Pure catalog builder — manifest and status come from prepareOfflineResources service. */
 export function buildPrepareOfflineCatalog({
   manifest,
@@ -129,14 +187,18 @@ export function buildPrepareOfflineCatalog({
     return { items: [], groups: [] };
   }
 
-  const items: PrepareOfflineResourceItem[] = manifest.map(entry => ({
-    id: entry.id,
-    tier: entry.tier,
-    kind: entry.kind,
-    groupName: entry.resourceName,
-    label: entry.label,
-    bytes: entry.bytesTotal,
-    status: getResourceStatus(entry.id),
+  const aggregated = aggregateManifestItems(manifest);
+
+  const items: PrepareOfflineResourceItem[] = aggregated.map(row => ({
+    id: `${row.groupName}:${row.kind}`,
+    tier: row.tier,
+    kind: row.kind,
+    groupName: row.groupName,
+    label:
+      row.kind === 'text' ? 'Text' : row.kind === 'audio' ? 'Audio' : 'Image',
+    bytes: row.bytes,
+    status: aggregateStatus(row.members, getResourceStatus),
+    manifestMembers: row.members,
   }));
 
   return {

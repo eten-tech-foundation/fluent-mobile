@@ -1,36 +1,35 @@
 import type { EnqueueDownloadItemInput } from '../db/downloadQueueRepository';
-import { getMockDownloadSource } from '../mocks/prepareOffline/mockDownloadSources';
 import { PrepareOfflineResourceItem } from '../types/prepareOffline/types';
 
 function queueKindForResource(
   kind: PrepareOfflineResourceItem['kind'],
 ): EnqueueDownloadItemInput['kind'] {
-  return kind === 'audio' ? 'audio' : 'text';
+  return kind;
 }
 
 /**
- * Maps a Prepare for Offline catalog row to a download_queue enqueue input.
- * Uses stable `item.id` as the queue primary key.
+ * Expands one Prepare for Offline catalog row (which may aggregate several
+ * real manifest items, e.g. every Translation Words entry) into one real
+ * download_queue enqueue input per underlying manifest item, using each
+ * item's real sourceUrl/fileExt/bytesTotal from the API manifest (#504).
  */
-export function prepareOfflineItemToEnqueueInput(
+export function prepareOfflineItemToEnqueueInputs(
   item: PrepareOfflineResourceItem,
   projectId: number,
   userId: number,
-): EnqueueDownloadItemInput {
-  const { sourceUrl, fileExt, bytesTotal } = getMockDownloadSource(item.kind);
-
-  return {
-    id: item.id,
+): EnqueueDownloadItemInput[] {
+  return item.manifestMembers.map(member => ({
+    id: member.id,
     projectId,
     userId,
     tier: item.tier,
     kind: queueKindForResource(item.kind),
     resourceName: item.groupName,
-    label: item.label,
-    sourceUrl,
-    fileExt,
-    bytesTotal,
-  };
+    label: member.label,
+    sourceUrl: member.sourceUrl,
+    fileExt: member.fileExt,
+    bytesTotal: member.bytesTotal,
+  }));
 }
 
 export function prepareOfflineItemsToEnqueueInputs(
@@ -38,7 +37,7 @@ export function prepareOfflineItemsToEnqueueInputs(
   projectId: number,
   userId: number,
 ): EnqueueDownloadItemInput[] {
-  return items.map(item =>
-    prepareOfflineItemToEnqueueInput(item, projectId, userId),
+  return items.flatMap(item =>
+    prepareOfflineItemToEnqueueInputs(item, projectId, userId),
   );
 }

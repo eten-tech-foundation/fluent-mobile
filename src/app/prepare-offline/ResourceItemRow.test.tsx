@@ -3,6 +3,8 @@ import { render, screen } from '@testing-library/react-native';
 import { ResourceItemRow } from './ResourceItemRow';
 import { PrepareOfflineResourceItem } from '../../types/prepareOffline/types';
 
+const noMembers: PrepareOfflineResourceItem['manifestMembers'] = [];
+
 jest.mock('lucide-react-native', () => {
   const MockReact = require('react');
   const { View } = require('react-native');
@@ -43,6 +45,7 @@ const baseItem: PrepareOfflineResourceItem = {
   label: 'Text',
   bytes: 8 * 1024 * 1024,
   status: 'completed',
+  manifestMembers: noMembers,
 };
 
 describe('ResourceItemRow', () => {

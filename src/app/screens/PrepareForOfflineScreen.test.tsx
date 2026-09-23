@@ -60,6 +60,84 @@ jest.mock('../../hooks/usePrepareOfflineSelection', () => ({
   usePrepareOfflineSelection: jest.fn(),
 }));
 
+// Mock the resources hook (data layer) so the screen test does not hit the
+// real manifest fetch / DB context (#504 aggregated catalog fixture).
+function mockCatalogItem(
+  tier: 1 | 2 | 3,
+  groupName: string,
+  kind: 'text' | 'audio' | 'image',
+) {
+  return {
+    id: `${groupName}:${kind}`,
+    tier,
+    kind,
+    groupName,
+    label: kind === 'text' ? 'Text' : kind === 'audio' ? 'Audio' : 'Image',
+    bytes: 1024,
+    status: 'selected' as const,
+    manifestMembers: [],
+  };
+}
+
+const mockCatalogItems = [
+  mockCatalogItem(1, 'Source Bible', 'text'),
+  mockCatalogItem(1, 'Source Bible', 'audio'),
+  mockCatalogItem(2, 'Translation Words', 'text'),
+  mockCatalogItem(3, 'Reference Images', 'image'),
+];
+
+jest.mock('../../hooks/usePrepareOfflineResources', () => ({
+  usePrepareOfflineResources: jest.fn(
+    ({
+      selectedCount,
+      isAssignedUser,
+    }: {
+      selectedCount: number;
+      isAssignedUser: boolean;
+    }) => {
+      const emptyCatalog = {
+        items: [],
+        groups: [],
+      };
+      // Real hook returns an empty catalog when no chapters are selected.
+      const catalog =
+        isAssignedUser || selectedCount > 0
+          ? {
+              items: mockCatalogItems,
+              groups: [
+                {
+                  groupName: 'Source Bible',
+                  items: mockCatalogItems.slice(0, 2),
+                },
+                {
+                  groupName: 'Translation Words',
+                  items: [mockCatalogItems[2]],
+                },
+                {
+                  groupName: 'Reference Images',
+                  items: [mockCatalogItems[3]],
+                },
+              ],
+            }
+          : emptyCatalog;
+
+      return {
+        catalog,
+        effectiveCatalog: catalog,
+        deselectedItemIds: new Set<string>(),
+        totalBytes: 4096,
+        pendingBytes: 4096,
+        selectedItems: catalog.items,
+        canDownload: isAssignedUser || selectedCount > 0,
+        manifestLoading: false,
+        manifestError: null,
+        isItemSelected: () => true,
+        toggleItemSelected: jest.fn(),
+      };
+    },
+  ),
+}));
+
 jest.mock('../../hooks/usePrepareOfflineDownload', () => ({
   usePrepareOfflineDownload: jest.fn(
     ({ catalog, canDownload }: { catalog: unknown; canDownload: boolean }) => ({

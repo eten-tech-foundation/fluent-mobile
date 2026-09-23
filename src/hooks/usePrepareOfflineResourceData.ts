@@ -87,11 +87,16 @@ export function usePrepareOfflineResourceData(
     return () => {
       cancelled = true;
     };
-    // selectedIds is a Set — re-created each render in the caller, so its
-    // *contents* must drive re-fetch, not reference identity. Using its
-    // serialized form as a dep avoids re-fetching on every render.
+    // selectedIds and chapters are re-created each render in the caller, so
+    // their *contents* must drive re-fetch, not reference identity — otherwise
+    // the effect re-runs (and re-fetches) on every render and can loop.
+    // Using serialized forms as deps avoids re-fetching on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, chapters, [...selectedIds].sort().join(',')]);
+  }, [
+    projectId,
+    [...selectedIds].sort().join(','),
+    chapters.map(ch => `${ch.id}:${ch.bibleId}`).join(','),
+  ]);
 
   useEffect(() => {
     return subscribePrepareOfflineInventory(() => {

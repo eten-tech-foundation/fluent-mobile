@@ -23,19 +23,41 @@ jest.mock('../utils/logger', () => ({
 }));
 
 import { enqueuePrepareOfflineDownload } from './prepareOfflineDownload';
-import type { PrepareOfflineResourceItem } from '../types/prepareOffline/types';
+import type {
+  PrepareOfflineResourceItem,
+  PrepareOfflineResourceManifestItem,
+} from '../types/prepareOffline/types';
+
+const MEMBER: PrepareOfflineResourceManifestItem = {
+  id: 'source-bible-audio-MRK-1',
+  tier: 1,
+  kind: 'audio',
+  resourceName: 'Source Bible',
+  label: 'Audio',
+  required: true,
+  removable: false,
+  bytesTotal: 1024,
+  sourceUrl: 'https://example.com/audio.mp3',
+  fileExt: 'mp3',
+  languageCode: 'eng',
+  bookCode: 'MRK',
+  startChapter: 1,
+  endChapter: 1,
+};
 
 function item(
   overrides: Partial<PrepareOfflineResourceItem> = {},
+  members: PrepareOfflineResourceManifestItem[] = [MEMBER],
 ): PrepareOfflineResourceItem {
   return {
-    id: 'tier-1-source-bible-text',
+    id: 'Source Bible:audio',
     tier: 1,
-    kind: 'text',
+    kind: 'audio',
     groupName: 'Source Bible',
-    label: 'Text',
+    label: 'Audio',
     bytes: 1024,
     status: 'selected',
+    manifestMembers: members,
     ...overrides,
   };
 }
@@ -46,8 +68,8 @@ describe('enqueuePrepareOfflineDownload', () => {
     mockSimulateProgress.mockReset();
   });
 
-  it('enqueues mapped items and returns queue row ids', async () => {
-    mockEnqueueDownloadItems.mockResolvedValue(['tier-1-source-bible-text']);
+  it('enqueues one real row per manifest member and returns queue row ids', async () => {
+    mockEnqueueDownloadItems.mockResolvedValue(['source-bible-audio-MRK-1']);
 
     const ids = await enqueuePrepareOfflineDownload({
       userId: 7,
@@ -57,16 +79,19 @@ describe('enqueuePrepareOfflineDownload', () => {
 
     expect(mockEnqueueDownloadItems).toHaveBeenCalledWith([
       expect.objectContaining({
-        id: 'tier-1-source-bible-text',
+        id: 'source-bible-audio-MRK-1',
         projectId: 5,
         userId: 7,
         tier: 1,
-        kind: 'text',
+        kind: 'audio',
         resourceName: 'Source Bible',
-        label: 'Text',
+        label: 'Audio',
+        sourceUrl: 'https://example.com/audio.mp3',
+        fileExt: 'mp3',
+        bytesTotal: 1024,
       }),
     ]);
-    expect(ids).toEqual(['tier-1-source-bible-text']);
+    expect(ids).toEqual(['source-bible-audio-MRK-1']);
     expect(mockSimulateProgress).not.toHaveBeenCalled();
   });
 
@@ -90,13 +115,13 @@ describe('enqueuePrepareOfflineDownload', () => {
     const ids = await enqueuePrepareOfflineDownload({
       userId: 7,
       projectId: 5,
-      items: [item(), item({ id: 'tier-2-translation-notes-text', tier: 2 })],
+      items: [item(), item({ id: 'Translation Words:text', tier: 2 })],
     });
 
     expect(ids).toEqual([]);
     expect(mockSimulateProgress).toHaveBeenCalledWith(5, [
-      'tier-1-source-bible-text',
-      'tier-2-translation-notes-text',
+      'Source Bible:audio',
+      'Translation Words:text',
     ]);
   });
 });

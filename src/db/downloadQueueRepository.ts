@@ -55,12 +55,11 @@ function mapRow(row: DownloadQueueRow): DownloadQueueItem {
 }
 
 export type EnqueueDownloadItemInput = {
-  /** Stable catalog resource id (e.g. tier-1-source-bible-text). */
   id?: string;
   projectId: number;
   userId: number;
   tier: DownloadTier;
-  kind: 'text' | 'audio';
+  kind: 'text' | 'audio' | 'image';
   resourceName: string;
   label: string;
   sourceUrl?: string;

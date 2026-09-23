@@ -1,6 +1,26 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { usePrepareOfflineDownload } from './usePrepareOfflineDownload';
-import { PrepareOfflineCatalog } from '../types/prepareOffline/types';
+import type {
+  PrepareOfflineCatalog,
+  PrepareOfflineResourceManifestItem,
+} from '../types/prepareOffline/types';
+
+const MANIFEST_MEMBER: PrepareOfflineResourceManifestItem = {
+  id: 'source-bible-audio-MRK-1',
+  tier: 1,
+  kind: 'audio',
+  resourceName: 'Source Bible',
+  label: 'Audio',
+  required: true,
+  removable: false,
+  bytesTotal: 1024,
+  sourceUrl: 'https://example.com/audio.mp3',
+  fileExt: 'mp3',
+  languageCode: 'eng',
+  bookCode: 'MRK',
+  startChapter: 1,
+  endChapter: 1,
+};
 
 const mockStart = jest.fn();
 const mockPause = jest.fn();
@@ -74,6 +94,7 @@ const catalog: PrepareOfflineCatalog = {
       label: 'Text',
       bytes: 1024,
       status: 'selected',
+      manifestMembers: [MANIFEST_MEMBER],
     },
   ],
   groups: [],
@@ -607,6 +628,7 @@ describe('usePrepareOfflineDownload', () => {
           label: 'Audio',
           bytes: 2048,
           status: 'selected',
+          manifestMembers: [MANIFEST_MEMBER],
         },
       ],
       groups: [],
