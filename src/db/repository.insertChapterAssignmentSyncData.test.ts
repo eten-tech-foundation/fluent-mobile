@@ -134,13 +134,14 @@ function createSyncTestDb() {
       }
 
       if (/^INSERT OR IGNORE INTO project_units/i.test(sql)) {
-        const [id, projectId, status] = params;
+        const [id, projectId, status, name] = params;
         const table = tables.get('project_units')!;
         if (!table.rows.some(r => r.id === id)) {
           const row = {
             id: id as number,
             project_id: projectId as number,
             status: status as string,
+            name: (name as string | undefined) ?? '',
           };
           assertForeignKeys('project_units', row, tables);
           table.rows.push(row);
@@ -155,6 +156,16 @@ function createSyncTestDb() {
         if (row) {
           row.project_id = projectId as number;
           assertForeignKeys('project_units', row, tables);
+        }
+        return { rows: [], rowsAffected: 1 };
+      }
+
+      if (/^UPDATE project_units SET name/i.test(sql)) {
+        const [name, id] = params;
+        const table = tables.get('project_units')!;
+        const row = table.rows.find(r => r.id === id);
+        if (row) {
+          row.name = name as string;
         }
         return { rows: [], rowsAffected: 1 };
       }
