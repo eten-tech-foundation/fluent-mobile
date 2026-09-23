@@ -2,6 +2,8 @@
 
 > Confirmed on device (#528 audit, B.6 and E.22).
 
+**GitHub issue:** #567
+
 ## Summary
 
 #49 requires that a paused take is flushed to disk and can be recovered after

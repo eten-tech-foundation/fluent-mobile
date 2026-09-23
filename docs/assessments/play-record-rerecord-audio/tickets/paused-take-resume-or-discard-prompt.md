@@ -2,6 +2,8 @@
 
 > Confirmed on device (#528 audit, B.7a). Discard copy and behavior need product confirmation.
 
+**GitHub issue:** #570
+
 ## Summary
 
 #49 specifies that navigating away from a paused take (prev/next verse, or

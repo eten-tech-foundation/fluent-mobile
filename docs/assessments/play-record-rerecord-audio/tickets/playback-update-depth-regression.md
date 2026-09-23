@@ -2,6 +2,8 @@
 
 > Confirmed on device (#528 audit, C.11 and D.13).
 
+**GitHub issue:** #569
+
 ## Summary
 
 React logs `Maximum update depth exceeded` during Record tab Review playback,

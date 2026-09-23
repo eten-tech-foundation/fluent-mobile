@@ -2,6 +2,8 @@
 
 > Confirmed on device (#528 audit, B.7b).
 
+**GitHub issue:** #568
+
 ## Summary
 
 `DraftingScreen` guards the ways out of the drafting page while a take is in

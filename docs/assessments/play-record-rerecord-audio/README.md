@@ -1,8 +1,7 @@
 # Play, Record, and Re-record Audio Audit
 
-> **Status: draft — device run complete, issues not yet filed.** Gaps 1–3
-> and 6 will be filed as new issues. Gaps 4–5 will be added to existing open
-> issues.
+> **Status: device run complete; gaps filed.** Gaps 1–3 and 6 are filed as
+> #567–#570 (sub-issues of #528). Gaps 4 and 5 were added to #544 and #411.
 
 ## Overview
 
@@ -11,7 +10,7 @@ multi-take list, take playback, scrubbing, select/delete, All Takes /
 canonical, verse vs pericope capture  
 **Auditor:** Jonathan Seehagen (`@JonathanSeehagen`)  
 **Date tested:** 2026-09-23  
-**Build/version:** Local run of merged `main` @ ⏳ (`expo-dev-client` + Metro), not a distributed build or the nightly APK  
+**Build/version:** Local run of merged `main` @ `d5b9e64` (`expo-dev-client` + Metro), not a distributed build or the nightly APK  
 **Environment:** `https://dev.api.fluent.bible`  
 **Device and OS:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), physical device  
 **Audit sub-issue:** [#528](https://github.com/eten-tech-foundation/fluent-mobile/issues/528) (epic [#526](https://github.com/eten-tech-foundation/fluent-mobile/issues/526))
@@ -183,7 +182,7 @@ discard, paused take, drawer, maximum update depth, scrub, seek, stitched).
 **Severity:** High (in-progress recordings are lost)  
 **Launch blocker:** To be decided with product  
 **Related issue:** [#49](https://github.com/eten-tech-foundation/fluent-mobile/issues/49), [#170](https://github.com/eten-tech-foundation/fluent-mobile/issues/170), [#176](https://github.com/eten-tech-foundation/fluent-mobile/issues/176)  
-**Development task:** [tickets/restore-kill-safe-paused-take-recovery.md](./tickets/restore-kill-safe-paused-take-recovery.md) · issue ⏳
+**Development task:** [#567](https://github.com/eten-tech-foundation/fluent-mobile/issues/567) · [tickets/restore-kill-safe-paused-take-recovery.md](./tickets/restore-kill-safe-paused-take-recovery.md)
 
 **Description:**  
 #49 requires two things. First, backgrounding the app auto-pauses the take.
@@ -210,7 +209,7 @@ the take is lost; the verse comes back with no takes.
 **Severity:** High (silent data loss)  
 **Launch blocker:** To be decided with product  
 **Related issue:** [#49](https://github.com/eten-tech-foundation/fluent-mobile/issues/49), [#47](https://github.com/eten-tech-foundation/fluent-mobile/issues/47)  
-**Development task:** [tickets/block-drawer-during-capture.md](./tickets/block-drawer-during-capture.md) · issue ⏳
+**Development task:** [#568](https://github.com/eten-tech-foundation/fluent-mobile/issues/568) · [tickets/block-drawer-during-capture.md](./tickets/block-drawer-during-capture.md)
 
 **Description:**  
 The drafting screen guards tab changes, header or system back, Sync, and
@@ -240,7 +239,7 @@ guard, while a take is recording or paused.
 reload)  
 **Launch blocker:** No  
 **Related issue:** [#298](https://github.com/eten-tech-foundation/fluent-mobile/issues/298) (closed), [#411](https://github.com/eten-tech-foundation/fluent-mobile/issues/411)  
-**Development task:** [tickets/playback-update-depth-regression.md](./tickets/playback-update-depth-regression.md) · issue ⏳
+**Development task:** [#569](https://github.com/eten-tech-foundation/fluent-mobile/issues/569) · [tickets/playback-update-depth-regression.md](./tickets/playback-update-depth-regression.md)
 
 **Description:**  
 React's `Maximum update depth exceeded` is raised when switching playback
@@ -266,7 +265,7 @@ the #411 stitching and `REHYDRATE` loop fixes in `RecordTab.tsx` and
 **Severity:** Medium  
 **Launch blocker:** No  
 **Related issue:** [#544](https://github.com/eten-tech-foundation/fluent-mobile/issues/544) (open, same interaction), [#176](https://github.com/eten-tech-foundation/fluent-mobile/issues/176); source-audio scrub on the Bible tab reported separately in [#408 QA](https://github.com/eten-tech-foundation/fluent-mobile/issues/408#issuecomment-5728779028)  
-**Development task:** add to #544 (existing open issue); no new issue
+**Development task:** [#544 comment](https://github.com/eten-tech-foundation/fluent-mobile/issues/544#issuecomment-5799518492) (existing open issue); no new issue
 
 **Description:**  
 Tapping the draft waveform now seeks to the tapped position, but playback
@@ -290,7 +289,7 @@ Play.
 **Severity:** Low (cosmetic)  
 **Launch blocker:** No  
 **Related issue:** [#411](https://github.com/eten-tech-foundation/fluent-mobile/issues/411) (open), [#474](https://github.com/eten-tech-foundation/fluent-mobile/issues/474)  
-**Development task:** add to #411 (open); no new issue
+**Development task:** [#411 comment](https://github.com/eten-tech-foundation/fluent-mobile/issues/411#issuecomment-5799518947) (open); no new issue
 
 **Description:**  
 In pericope view, the stitched row's waveform sits further right than a
@@ -313,7 +312,7 @@ trailing slot).
 **Severity:** Low / Medium  
 **Launch blocker:** No  
 **Related issue:** [#49](https://github.com/eten-tech-foundation/fluent-mobile/issues/49)  
-**Development task:** [tickets/paused-take-resume-or-discard-prompt.md](./tickets/paused-take-resume-or-discard-prompt.md) · issue ⏳
+**Development task:** [#570](https://github.com/eten-tech-foundation/fluent-mobile/issues/570) · [tickets/paused-take-resume-or-discard-prompt.md](./tickets/paused-take-resume-or-discard-prompt.md)
 
 **Description:**  
 #49 specifies a resume-or-discard prompt when a translator navigates away
@@ -377,7 +376,7 @@ The update-depth error was observed through the dev LogBox.
 
 **Follow-up required:**
 
-- [ ] All identified gaps have corresponding GitHub issues.
+- [x] All identified gaps have corresponding GitHub issues. _(#567–#570; #544 and #411 updated)_
 - [x] Mobile and API dependencies are cross-linked. _(none: local-only feature, no API gaps)_
 - [ ] Launch-blocking gaps are clearly identified.
 - [ ] Assessment has been reviewed and merged.
