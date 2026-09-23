@@ -1,0 +1,56 @@
+---
+description: Maestro/E2E + audit discipline — local lab first; no GitHub publish without a named ask
+alwaysApply: true
+---
+
+# Maestro QA (Fluent Mobile)
+
+When the task involves Maestro, E2E, Android emulator QA, feature audits, or Expo Dev Client bring-up, follow [`.claude/skills/fluent-maestro/SKILL.md`](../../.claude/skills/fluent-maestro/SKILL.md). Stabilize the lab and classify failures before product conclusions.
+
+## Local work is not permission to publish
+
+Reading GitHub / Project 4 does **not** authorize writes. Without an **explicit, named** mutation from the user in this conversation, do **not**:
+
+- create/open issues or PRs; comment; assign; label; close; merge
+- move Project 4 Status/Priority; push a branch; publish audit findings remotely
+
+“Audit #527” means inspect + test + report **in chat**. Proposed issue/PR bodies stay local until the user asks for that exact action (`/create-pr`, “open the PR”, “file an issue for …”). Self-initiated delivery ([delivery.mdc](./delivery.mdc)) loses to this rule until that ask.
+
+Finding format when a bug appears:
+
+```text
+Finding: …
+Evidence: …
+Suggested follow-up: … (optional)
+No GitHub changes made.
+```
+
+## Audit authorization includes lab recovery
+
+Once the user authorizes an audit/smoke/E2E task, **routine non-destructive infrastructure recovery is in scope** (reconnect Maestro MCP, reverse, Metro, relaunch app, hide Expo Tools FAB, bounded device recovery). Prefer [recovery.md](../../.claude/skills/fluent-maestro/references/recovery.md).
+
+Do **not** stop an authorized audit to ask “re-auth Maestro and continue?” — recover, prove hierarchy, resume the nearest checkpoint, or mark the scenario BLOCKED and continue others.
+
+Still ask when: missing credentials, destructive wipe that risks unrelated work, remote mutation, or ambiguous product decision.
+
+## Narrow instructions stay narrow
+
+A one-off like “kill mpix on 8081” authorizes that operation only. It is **not** a standing ban on starting Metro or other lab recovery. After the subtask, return to the broader task goal.
+
+## Env is command-scoped
+
+Do **not** `export` / `set -a` `EXPO_PUBLIC_*` E2E vars into a shell that later runs Jest, lint, or typecheck. Prefer:
+
+```bash
+EXPO_PUBLIC_E2E_MODE=1 npx expo start --port 8081
+```
+
+API base stays in `.env`; Jest defaults via `jest.env.cjs` (`localhost:9999`). If contaminated: `unset EXPO_PUBLIC_API_BASE_URL` before `npm test`.
+
+## Audit vs implement
+
+Audit default: **read + test + report**. Do not fix product bugs or silently rewrite a failing assertion into a pass. A workaround that continues the suite must be labeled as a workaround (e.g. Bible tap → Record **FAIL**; manual Record tab then shared-verse **PASS**).
+
+## Lab before product; classify failures
+
+Preflight before long flows. Classes: **PRODUCT** | **TEST** | **SELECTOR** | **STATE** | **ENVIRONMENT** | **MAESTRO INFRASTRUCTURE**. Dead Maestro driver / empty hierarchy = infrastructure, not a product bug — recover per skill recovery.md, then re-inspect. Prefer preserving authenticated session over `clearState`.

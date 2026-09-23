@@ -31,6 +31,8 @@
     "maestro:test:edges": "bash ./scripts/maestro-test.sh --config .maestro/config.yaml --include-tags edges .maestro",
     "maestro:test:multi-account": "bash ./scripts/maestro-test-multi-account.sh",
     "maestro:agent:up": "bash ./scripts/maestro-agent-up.sh",
+    "maestro:hide-expo-tools-fab": "bash ./scripts/maestro-hide-expo-tools-fab.sh",
+    "maestro:test:drafting": "bash ./scripts/maestro-test.sh --config .maestro/config.yaml --include-tags drafting .maestro",
     "maestro:eas": "npx --yes eas-cli@24.3.0 workflow:run .eas/workflows/maestro-android.yml"
   },
   "dependencies": {

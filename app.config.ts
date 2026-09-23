@@ -61,6 +61,19 @@ const config: ExpoConfig = {
   },
   plugins: [
     [
+      // Hide Expo Tools FAB in Debug / Dev Client — it overlaps header sync
+      // (`home-sync-button`) and steals Maestro taps. Dev Menu remains via
+      // shake / adb. Requires prebuild + Debug rebuild to take effect on device;
+      // existing installs: `npm run maestro:hide-expo-tools-fab`.
+      'expo-dev-client',
+      {
+        android: {
+          toolsButton: false,
+          skipOnboarding: true,
+        },
+      },
+    ],
+    [
       'expo-router',
       {
         // Keep existing `src/app/` screens/tabs; routes live in `src/routes/`.

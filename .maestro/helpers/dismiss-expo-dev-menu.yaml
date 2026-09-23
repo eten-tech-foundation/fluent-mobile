@@ -1,5 +1,7 @@
 # Prefer EXPO_PUBLIC_E2E_MODE=1 on Debug+Metro so the menu never opens.
 # Optional taps tolerate delayed sheets; missing UI is a no-op when E2E mode suppresses it.
+# Durable FAB hide: app.config expo-dev-client android.toolsButton=false + rebuild,
+# or npm run maestro:hide-expo-tools-fab on an existing Debug install.
 appId: com.eten.fluent
 ---
 - tapOn:
@@ -11,9 +13,18 @@ appId: com.eten.fluent
 - tapOn:
     text: 'Close'
     optional: true
+# Expo Tools bottom sheet (FAB opened) — Close control is often a11y-only
+- tapOn:
+    id: 'Close'
+    optional: true
 # pressKey cannot be optional; only send Back when Dev Menu chrome is present
 - runFlow:
     when:
       visible: 'Toggle performance monitor'
+    commands:
+      - pressKey: back
+- runFlow:
+    when:
+      visible: 'Open DevTools'
     commands:
       - pressKey: back

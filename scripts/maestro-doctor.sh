@@ -72,6 +72,51 @@ if [[ -n "${SERIAL}" ]]; then
   fi
 fi
 
+echo "==> Metro :8081 (identity)"
+METRO_PID=""
+if command -v lsof >/dev/null 2>&1; then
+  METRO_PID="$(lsof -nP -t -iTCP:8081 -sTCP:LISTEN 2>/dev/null | head -1 || true)"
+fi
+if [[ -z "${METRO_PID}" ]]; then
+  warn "nothing listening on :8081 — start: EXPO_PUBLIC_E2E_MODE=1 npx expo start --port 8081 (persistent terminal)"
+elif curl -sf "http://127.0.0.1:8081/status" 2>/dev/null | grep -q 'packager-status:running'; then
+  ok "packager-status:running (pid ${METRO_PID})"
+  METRO_CWD=""
+  if command -v lsof >/dev/null 2>&1; then
+    METRO_CWD="$(lsof -a -p "${METRO_PID}" -d cwd 2>/dev/null | awk 'NR==2 {print $NF}' || true)"
+  fi
+  if [[ -n "${METRO_CWD}" ]]; then
+    # Resolve both paths (ROOT may be a symlink)
+    root_real="$(cd "${ROOT}" && pwd -P 2>/dev/null || pwd)"
+    cwd_real="$(cd "${METRO_CWD}" 2>/dev/null && pwd -P 2>/dev/null || echo "${METRO_CWD}")"
+    if [[ "${cwd_real}" == "${root_real}" ]]; then
+      ok "listener cwd: ${METRO_CWD}"
+    else
+      fail "listener cwd is not this repo (${METRO_CWD}) — stop foreign Metro or use the fluent-mobile packager"
+    fi
+  else
+    warn "could not resolve listener cwd for pid ${METRO_PID}"
+  fi
+  # Foreign TCP clients (e.g. another app's simulator) — confuse Dev Client history / kill-port instincts
+  if command -v lsof >/dev/null 2>&1; then
+    foreign="$(
+      lsof -nP -iTCP:8081 2>/dev/null | awk -v listen_pid="${METRO_PID}" '
+        NR > 1 && $2 != listen_pid && $1 !~ /^(node|qemu-syst|adb)$/ && $8 ~ /ESTABLISHED|CLOSE_WAIT/ {
+          print $1 " pid=" $2
+        }
+      ' | sort -u || true
+    )"
+    if [[ -n "${foreign}" ]]; then
+      while IFS= read -r line; do
+        [[ -z "${line}" ]] && continue
+        warn "foreign client on :8081: ${line} — kill the client (not Fluent Metro) if Dev Client shows the wrong app"
+      done <<<"${foreign}"
+    fi
+  fi
+else
+  fail "port :8081 is in use (pid ${METRO_PID}) but /status is not packager-status:running — wrong process or Metro still starting"
+fi
+
 echo "==> Workspace"
 if [[ -f .maestro/config.yaml ]]; then
   ok ".maestro/config.yaml"
@@ -94,3 +139,5 @@ echo ""
 echo "doctor: OK"
 echo "Next: npm run maestro:android:up  # then Metro with EXPO_PUBLIC_E2E_MODE=1"
 echo "      npm run maestro:test:harness"
+echo "Agent: .claude/skills/fluent-maestro/SKILL.md  |  rule: .cursor/rules/maestro-qa.mdc"
+echo "Before product flows: Maestro MCP list_devices → inspect_screen (non-empty hierarchy)"

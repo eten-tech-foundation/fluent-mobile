@@ -103,7 +103,9 @@ EXPO_PUBLIC_E2E_MODE=1 npm start
 npm run android
 ```
 
-`EXPO_PUBLIC_E2E_MODE=1` (or `true`) suppresses the Expo Dev Menu in `__DEV__` so it does not steal Maestro taps. **Never** set this on production / preview / nightly EAS profiles.
+`EXPO_PUBLIC_E2E_MODE=1` (or `true`) suppresses the Expo Dev Menu **sheet** in `__DEV__` so it does not steal Maestro taps. **Never** set this on production / preview / nightly EAS profiles.
+
+The floating Expo **Tools** FAB is separate: it overlaps `home-sync-button` and steals taps. Durable hide: `expo-dev-client` plugin `android.toolsButton: false` in `app.config.ts` (requires prebuild + Debug rebuild). Existing Debug install without rebuild: `npm run maestro:hide-expo-tools-fab` (sets `showFab=false`, force-stops; relaunch without `clearState`).
 
 Flows also run [`.maestro/helpers/dismiss-expo-dev-menu.yaml`](../../.maestro/helpers/dismiss-expo-dev-menu.yaml) for residual launcher sheets (“Continue”, Metro URL, etc.).
 
@@ -172,17 +174,23 @@ Note: `platform.android.disableAnimations` in `.maestro/config.yaml` applies on 
 
 ## Agent / MCP loop (opt-in)
 
+Cursor agents: always-on [`.cursor/rules/maestro-qa.mdc`](../../.cursor/rules/maestro-qa.mdc) + skill [`.claude/skills/fluent-maestro/SKILL.md`](../../.claude/skills/fluent-maestro/SKILL.md) (bring-up, recovery budget, Dev Client, failure classes, audit mode, no GitHub publish without a named ask). Recovery detail: [`.claude/skills/fluent-maestro/references/recovery.md`](../../.claude/skills/fluent-maestro/references/recovery.md).
+
 ```bash
 npm run maestro:agent:up
 ```
 
-Then wire Cursor MCP from [`.cursor/mcp.maestro.example.json`](../../.cursor/mcp.maestro.example.json) so `command` is this repo’s `scripts/maestro-mcp.sh` (sets `PATH` / `JAVA_HOME` for `maestro mcp`).
+Then wire Cursor MCP from [`.cursor/mcp.maestro.example.json`](../../.cursor/mcp.maestro.example.json) so `command` is this repo’s `scripts/maestro-mcp.sh` (sets `PATH` / `JAVA_HOME` for `maestro mcp`). [`.cursor/mcp.json`](../../.cursor/mcp.json) already includes the `maestro` server when checked in for this workspace.
 
 Rules:
 
 - Opt-in only — do not require MCP for normal engineering.
-- During iteration: **no `clearState` / `clearKeychain`** (wipes session mid-loop).
+- During iteration / audit: **no `clearState` / `clearKeychain`** unless the scenario requires fresh login (wipes session mid-loop).
 - `clearState` belongs only in cold-start helpers / CI-shaped smokes (e.g. [`.maestro/helpers/launch-android.yaml`](../../.maestro/helpers/launch-android.yaml)).
+- Before product flows: `list_devices` → `inspect_screen` (non-empty). Dead driver / empty hierarchy = infrastructure — recover automatically (recovery.md), then re-inspect; do not ask the user for routine Maestro reconnect permission.
+- Prefer Maestro **MCP** for agent runs. Maestro **CLI** under Cursor’s default sandbox fails chmod on `~/.maestro/deps/applesimutils` (CLI static init, even for Android) — use unrestricted OS for `npm run maestro:test:*` or stick to MCP.
+- Scope `EXPO_PUBLIC_E2E_MODE=1` to the Metro command only — do not export into a shell that later runs Jest.
+- One BLOCKED scenario must not truncate an audit — continue independent scenarios.
 
 Useful MCP tools: `list_devices`, `inspect_screen`, `take_screenshot`, `run`, `cheat_sheet`.
 
@@ -208,12 +216,13 @@ Prefer Maestro `id:` matching React Native `testID`.
 | Script | Purpose |
 | --- | --- |
 | `maestro:install` | Install CLI |
-| `maestro:doctor` | Local health check |
+| `maestro:doctor` | Local health check (JDK, Maestro, adb, package, reverse, Metro :8081 identity) |
 | `maestro:android:up` | Device + `adb reverse` |
+| `maestro:hide-expo-tools-fab` | Pref `showFab=false` on installed Debug (force-stop; no clearState) |
 | `maestro:test` | Workspace flows (excludes helpers/subflows/`multi-account`) |
 | `maestro:test:harness` | Launch stub only |
 | `maestro:test:smokes` | All `smoke`-tagged flows |
-| `maestro:test:auth` / `:nav` / `:record` / `:sync` / `:edges` | Single smoke slice |
+| `maestro:test:auth` / `:nav` / `:drafting` / `:record` / `:sync` / `:edges` | Single smoke slice |
 | `maestro:test:multi-account` | Fail-fast A–D isolation (two credential pairs) |
 | `maestro:agent:up` | Device prep + MCP instructions |
 | `maestro:eas` | Hosted EAS Workflow (`-F suite=harness\|smokes\|multi-account`) |
