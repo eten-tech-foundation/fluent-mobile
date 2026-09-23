@@ -80,6 +80,7 @@ export function formatSyncStatusLabel(
     completed?: number;
     total?: number;
     failedCount?: number;
+    failedErrorText?: string | null;
   },
 ): string {
   if (
@@ -97,7 +98,17 @@ export function formatSyncStatusLabel(
     options.failedCount > 0
   ) {
     const n = options.failedCount;
-    return `${n} upload${n === 1 ? '' : 's'} failed. Open Sync page to retry.`;
+    const countLabel = `${n} upload${
+      n === 1 ? '' : 's'
+    } failed. Open Sync page to retry.`;
+    if (options.failedErrorText) {
+      return `${countLabel} ${options.failedErrorText}`;
+    }
+    return countLabel;
+  }
+
+  if (status === 'online_failed' && options?.failedErrorText) {
+    return `${SYNC_STATUS_LABELS[status]} ${options.failedErrorText}`;
   }
 
   return SYNC_STATUS_LABELS[status];

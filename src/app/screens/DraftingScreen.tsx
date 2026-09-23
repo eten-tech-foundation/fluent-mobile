@@ -101,7 +101,10 @@ export default function DraftingScreen() {
   const [accountSwitcherVisible, setAccountSwitcherVisible] = useState(false);
 
   const isSyncing = useGlobalSyncStatus(() => setRefreshKey(key => key + 1));
-  const { status: syncStatus } = useSyncStatus({ isSyncing, refreshKey });
+  const { status: syncStatus, failedErrorText } = useSyncStatus({
+    isSyncing,
+    refreshKey,
+  });
   const activeAccount = useActiveAccountSummary(refreshKey);
   const closeAccountSwitcher = useCallback(() => {
     setAccountSwitcherVisible(false);
@@ -154,6 +157,7 @@ export default function DraftingScreen() {
       title={chapterName}
       onBack={goBack}
       syncStatus={syncStatus}
+      failedErrorText={failedErrorText}
       onSyncPress={handleSyncPress}
       showAccountIndicator={activeAccount.hasMultipleAccounts}
       accountFirstName={activeAccount.firstName}

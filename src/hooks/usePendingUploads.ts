@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
 import {
   getFailedUploadCount,
+  getFailedUploadErrorSummary,
   getPendingUploadChapters,
   getPendingUploadCount,
+  getUnuploadablePendingSummary,
 } from '../db/queries';
 import {
   onUploadSessionEvent,
   type UploadSessionEvent,
 } from '../services/syncEvents';
 import { logger } from '../utils/logger';
+import { sanitizeUploadErrorForDisplay } from '../utils/sanitizeUploadError';
 
 const log = logger.create('usePendingUploads');
 
@@ -36,6 +39,38 @@ async function loadFailedUploadCount(): Promise<number> {
   }
 }
 
+async function loadUnuploadablePendingSummary() {
+  try {
+    return await getUnuploadablePendingSummary();
+  } catch (error) {
+    log.error('Failed to load unuploadable pending summary', { error });
+    return {
+      orphanBibleText: 0,
+      pericopeOnly: 0,
+      other: 0,
+      total: 0,
+    };
+  }
+}
+
+async function loadFailedUploadErrorText(): Promise<string | null> {
+  try {
+    const summary = await getFailedUploadErrorSummary();
+    if (!summary) {
+      return null;
+    }
+    const sanitized = sanitizeUploadErrorForDisplay(summary.latestMessage);
+    const suffix =
+      summary.extraDistinctCount > 0
+        ? ` (+${summary.extraDistinctCount} more)`
+        : '';
+    return `${sanitized}${suffix}`;
+  } catch (error) {
+    log.error('Failed to load failed upload error text', { error });
+    return null;
+  }
+}
+
 function progressFromEvent(event: UploadSessionEvent): UploadProgress | null {
   if (event.type === 'start') {
     return { completed: 0, total: event.totalChapters };
@@ -53,6 +88,8 @@ export function usePendingUploads(refreshKey = 0) {
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingChapterCount, setPendingChapterCount] = useState(0);
   const [failedCount, setFailedCount] = useState(0);
+  const [unuploadableCount, setUnuploadableCount] = useState(0);
+  const [failedErrorText, setFailedErrorText] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(
     null,
@@ -88,13 +125,17 @@ export function usePendingUploads(refreshKey = 0) {
     Promise.all([
       loadPendingUploadCount(),
       loadFailedUploadCount(),
+      loadFailedUploadErrorText(),
       getPendingUploadChapters(),
+      loadUnuploadablePendingSummary(),
     ])
-      .then(([pending, failed, chapters]) => {
+      .then(([pending, failed, failedError, chapters, unuploadable]) => {
         if (!cancelled) {
           setPendingCount(pending);
           setPendingChapterCount(chapters.length);
           setFailedCount(failed);
+          setFailedErrorText(failed > 0 ? failedError : null);
+          setUnuploadableCount(unuploadable.total);
         }
       })
       .catch(() => {
@@ -110,8 +151,11 @@ export function usePendingUploads(refreshKey = 0) {
     pendingCount,
     pendingChapterCount,
     failedCount,
+    unuploadableCount,
+    failedErrorText,
     hasPendingUploads: pendingCount > 0,
     hasFailedUploads: failedCount > 0,
+    hasUnuploadablePending: unuploadableCount > 0,
     isUploading,
     uploadProgress,
   };
