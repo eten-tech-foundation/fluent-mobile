@@ -40,6 +40,7 @@ export default function SyncScreen() {
     hasFailedUploads,
     failedCount,
     pendingCount,
+    failedErrorText,
     pendingChapterCount,
     unuploadableCount,
     hasUnuploadablePending,
@@ -156,6 +157,11 @@ export default function SyncScreen() {
               {formatUnuploadablePendingMessage(
                 unuploadableCount > 0 ? unuploadableCount : pendingCount,
               )}
+            </Text>
+          ) : null}
+          {hasFailedUploads && failedErrorText ? (
+            <Text style={styles.errorText} testID="sync-failed-error">
+              {failedErrorText}
             </Text>
           ) : null}
           {stateType === 'error' ? (

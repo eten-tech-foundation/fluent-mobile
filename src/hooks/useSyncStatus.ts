@@ -18,6 +18,7 @@ export function useSyncStatus({
   const {
     pendingCount,
     failedCount,
+    failedErrorText,
     hasPendingUploads,
     hasFailedUploads,
     isUploading,
@@ -40,6 +41,7 @@ export function useSyncStatus({
     isOnline: effectivelyOnline,
     pendingCount,
     failedCount,
+    failedErrorText,
     hasPendingUploads,
     hasFailedUploads,
     isUploading,
