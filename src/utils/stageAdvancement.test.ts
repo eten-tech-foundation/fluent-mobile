@@ -91,6 +91,7 @@ describe('getStageAdvanceVisibility', () => {
         currentUserId: 10,
         hasChapterRecording: true,
         hasConflict: false,
+        isOnLastUnit: true,
       }),
     ).toMatchObject({
       visible: true,
@@ -106,6 +107,7 @@ describe('getStageAdvanceVisibility', () => {
         currentUserId: 10,
         hasChapterRecording: false,
         hasConflict: false,
+        isOnLastUnit: true,
       }).visible,
     ).toBe(false);
   });
@@ -117,6 +119,7 @@ describe('getStageAdvanceVisibility', () => {
         currentUserId: 99,
         hasChapterRecording: true,
         hasConflict: false,
+        isOnLastUnit: true,
       }).visible,
     ).toBe(false);
   });
@@ -128,6 +131,7 @@ describe('getStageAdvanceVisibility', () => {
         currentUserId: 20,
         hasChapterRecording: false,
         hasConflict: false,
+        isOnLastUnit: true,
       }),
     ).toMatchObject({
       visible: true,
@@ -143,6 +147,7 @@ describe('getStageAdvanceVisibility', () => {
         currentUserId: 10,
         hasChapterRecording: true,
         hasConflict: false,
+        isOnLastUnit: true,
       }).visible,
     ).toBe(false);
   });
@@ -215,6 +220,7 @@ describe('getStageAdvanceVisibility', () => {
         currentUserId: 10,
         hasChapterRecording: true,
         hasConflict: true,
+        isOnLastUnit: true,
       }),
     ).toMatchObject({ visible: true, disabled: true });
   });
@@ -238,6 +244,7 @@ describe('getStageAdvanceVisibility', () => {
           currentUserId: 999,
           hasChapterRecording: false,
           hasConflict: false,
+          isOnLastUnit: true,
         }),
       ).toMatchObject({
         visible: true,
@@ -254,6 +261,7 @@ describe('getStageAdvanceVisibility', () => {
         currentUserId: 10,
         hasChapterRecording: true,
         hasConflict: false,
+        isOnLastUnit: true,
       }).visible,
     ).toBe(false);
   });
@@ -265,8 +273,72 @@ describe('getStageAdvanceVisibility', () => {
         currentUserId: 1,
         hasChapterRecording: false,
         hasConflict: true,
+        isOnLastUnit: true,
       }),
     ).toMatchObject({ visible: true, disabled: true });
+  });
+
+  describe('isOnLastUnit gate (#542)', () => {
+    it('hides an otherwise-visible drafting CTA when not on the last unit', () => {
+      expect(
+        getStageAdvanceVisibility({
+          chapterData: baseChapter,
+          currentUserId: 10,
+          hasChapterRecording: true,
+          hasConflict: false,
+          isOnLastUnit: false,
+        }).visible,
+      ).toBe(false);
+    });
+
+    it('hides an otherwise-visible peer_check CTA when not on the last unit', () => {
+      expect(
+        getStageAdvanceVisibility({
+          chapterData: { ...baseChapter, status: 'peer_check' },
+          currentUserId: 20,
+          hasChapterRecording: false,
+          hasConflict: false,
+          isOnLastUnit: false,
+        }).visible,
+      ).toBe(false);
+    });
+
+    it.each([
+      ['community_review', 'Send to Linguist Check'],
+      ['linguist_check', 'Send to Theological Check'],
+      ['theological_check', 'Send to Consultant Check'],
+      ['consultant_check', 'Send to Complete'],
+    ])(
+      'hides the %s CTA for any translator when not on the last unit',
+      status => {
+        expect(
+          getStageAdvanceVisibility({
+            chapterData: {
+              ...baseChapter,
+              status,
+              assignedUserId: undefined,
+              peerCheckerId: undefined,
+            },
+            currentUserId: 999,
+            hasChapterRecording: false,
+            hasConflict: false,
+            isOnLastUnit: false,
+          }).visible,
+        ).toBe(false);
+      },
+    );
+
+    it('applies before the assignee/recording checks — not-last-unit hides even for a non-assignee with no recordings', () => {
+      expect(
+        getStageAdvanceVisibility({
+          chapterData: baseChapter,
+          currentUserId: 999,
+          hasChapterRecording: false,
+          hasConflict: false,
+          isOnLastUnit: false,
+        }),
+      ).toMatchObject({ visible: false, disabled: false, destination: null });
+    });
   });
 });
 
