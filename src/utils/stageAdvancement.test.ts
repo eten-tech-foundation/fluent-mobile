@@ -163,6 +163,7 @@ describe('getStageAdvanceVisibility', () => {
         currentUserId: 10,
         hasChapterRecording: true,
         hasConflict: false,
+        isOnLastUnit: true,
       }).visible,
     ).toBe(false);
   });
@@ -178,6 +179,7 @@ describe('getStageAdvanceVisibility', () => {
         currentUserId: 99,
         hasChapterRecording: false,
         hasConflict: false,
+        isOnLastUnit: true,
       }),
     ).toMatchObject({
       visible: true,
@@ -193,6 +195,7 @@ describe('getStageAdvanceVisibility', () => {
         currentUserId: 99,
         hasChapterRecording: true,
         hasConflict: false,
+        isOnLastUnit: true,
       }).visible,
     ).toBe(false);
   });
@@ -209,6 +212,7 @@ describe('getStageAdvanceVisibility', () => {
         currentUserId: 99,
         hasChapterRecording: true,
         hasConflict: false,
+        isOnLastUnit: true,
       }).visible,
     ).toBe(false);
   });
