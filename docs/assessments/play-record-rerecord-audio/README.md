@@ -1,7 +1,7 @@
 # Play, Record, and Re-record Audio Audit
 
-> **Status: device run complete; gaps filed.** Gaps 1–3 and 6 are filed as
-> #567–#570 (sub-issues of #528). Gaps 4 and 5 were added to #544 and #411.
+> **Status: device run complete; gaps filed.** Gaps 1–3, 5 and 6 are filed
+> as #567–#571 (sub-issues of #528). Gap 4 was added to the open #544.
 
 ## Overview
 
@@ -288,8 +288,8 @@ Play.
 
 **Severity:** Low (cosmetic)  
 **Launch blocker:** No  
-**Related issue:** [#411](https://github.com/eten-tech-foundation/fluent-mobile/issues/411) (open), [#474](https://github.com/eten-tech-foundation/fluent-mobile/issues/474)  
-**Development task:** [#411 comment](https://github.com/eten-tech-foundation/fluent-mobile/issues/411#issuecomment-5799518947) (open); no new issue
+**Related issue:** [#411](https://github.com/eten-tech-foundation/fluent-mobile/issues/411) (merged in PR #506, passed QA), [#474](https://github.com/eten-tech-foundation/fluent-mobile/issues/474)  
+**Development task:** [#571](https://github.com/eten-tech-foundation/fluent-mobile/issues/571) · [tickets/align-stitched-take-row.md](./tickets/align-stitched-take-row.md)
 
 **Description:**  
 In pericope view, the stitched row's waveform sits further right than a
@@ -305,7 +305,7 @@ and the two rows no longer line up.
 **Expected behavior:** the waveforms line up across rows (reserve the
 trailing slot).  
 **Actual behavior:** the stitched waveform is offset.  
-**Evidence:** device run, G.28 (screenshot to be attached when commenting on #411).
+**Evidence:** device run, G.28 (screenshot attached on #571).
 
 ### Gap 6: Leaving during capture offers no Resume or Discard option
 
@@ -345,8 +345,9 @@ the copy).
 ## Open Questions
 
 - #410 and #411 are open, but their behavior (granularity subtitles,
-  stitched rows) is already in `RecordTab.tsx`. Are they waiting on QA, or
-  is scope still missing?
+  stitched rows) is already in `RecordTab.tsx`. #411 was merged in PR #506
+  and passed QA, so it is only waiting to be closed. Is #410 in the same
+  state?
 - #269 is open, but `record-taken-warning` and `record-conflict-warning`
   banners already render. Same question.
 - #176 describes ADTS `.aac` capture for kill safety, but `main` records
@@ -376,7 +377,7 @@ The update-depth error was observed through the dev LogBox.
 
 **Follow-up required:**
 
-- [x] All identified gaps have corresponding GitHub issues. _(#567–#570; #544 and #411 updated)_
+- [x] All identified gaps have corresponding GitHub issues. _(#567–#571; #544 updated)_
 - [x] Mobile and API dependencies are cross-linked. _(none: local-only feature, no API gaps)_
 - [ ] Launch-blocking gaps are clearly identified.
 - [ ] Assessment has been reviewed and merged.
