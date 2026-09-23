@@ -826,6 +826,31 @@ describe('usePrepareOfflineDownload', () => {
     expect(mockResume).not.toHaveBeenCalled();
   });
 
+  it('does not show the waiting-WiFi message while connectivity is still resolving', () => {
+    mockConnectivity = {
+      isOnline: true,
+      isWifi: true,
+      isCellular: false,
+      connectionType: 'wifi',
+      hasResolved: false,
+      connectivityPending: true,
+    };
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+      }),
+    );
+
+    expect(result.current.canDownload).toBe(false);
+    expect(result.current.transportBlocked).toBe(true);
+    expect(result.current.transportBlockedMessage).toBeUndefined();
+  });
+
   it('shows the offline message when prepare download is blocked without a link', () => {
     mockConnectivity = {
       isOnline: false,
@@ -877,6 +902,10 @@ describe('usePrepareOfflineDownload', () => {
     expect(result.current.transportBlocked).toBe(true);
     expect(result.current.transportBlockedMessage).toContain('WiFi');
     expect(result.current.session).toBe('idle');
+    const { setPrepareOfflineDownloadStarted } = jest.requireMock(
+      '../services/storage',
+    );
+    expect(setPrepareOfflineDownloadStarted).not.toHaveBeenCalled();
   });
 
   it('clears a start-gate transport error when the session changes', async () => {

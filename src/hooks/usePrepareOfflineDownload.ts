@@ -6,10 +6,7 @@ import {
 } from '../db/repository';
 import { useDownloadQueue } from './useDownloadQueue';
 import { enqueuePrepareOfflineDownload } from '../services/prepareOfflineDownload';
-import {
-  getPrepareOfflineDownloadStarted,
-  setPrepareOfflineDownloadStarted,
-} from '../services/storage';
+import { getPrepareOfflineDownloadStarted } from '../services/storage';
 import {
   PrepareOfflineCatalog,
   PrepareOfflineResourceItem,
@@ -124,7 +121,9 @@ export function usePrepareOfflineDownload({
   };
   const transportBlocked =
     connectivityPending || isTransportBlockedForTransfer(transferInput);
-  const transportBlockedMessage = transportBlocked
+  const transportBlockedMessage = connectivityPending
+    ? undefined
+    : transportBlocked
     ? !isOnline
       ? TRANSFER_OFFLINE_MESSAGE
       : TRANSFER_WAITING_WIFI_MESSAGE
@@ -479,7 +478,6 @@ export function usePrepareOfflineDownload({
       setForceIdle(false);
       userCancelledRef.current = false;
       setSessionStarted(true);
-      setPrepareOfflineDownloadStarted(String(userId), projectId);
 
       // Gate on canDownloadNow (real-queue-aware), not the raw canDownload
       // prop (mock-status-driven, never updated by cancel/download

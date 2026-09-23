@@ -106,13 +106,6 @@ export default function SyncScreen() {
     },
   });
 
-  const handleUploadOverCellularChange = useCallback(
-    (enabled: boolean) => {
-      setUploadOverCellular(enabled);
-    },
-    [setUploadOverCellular],
-  );
-
   const runSyncNow = useCallback(async () => {
     if (syncNowDisabled) {
       return;
@@ -255,7 +248,7 @@ export default function SyncScreen() {
             title="Upload/Download over cellular"
             subtitle="Use mobile data to upload recordings and download resources when WiFi isn't available."
             value={uploadOverCellular}
-            onValueChange={handleUploadOverCellularChange}
+            onValueChange={setUploadOverCellular}
           />
         </View>
       </ScrollView>

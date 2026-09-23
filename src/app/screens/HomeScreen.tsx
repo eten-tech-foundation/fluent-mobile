@@ -66,7 +66,6 @@ function HomeScreenBody({
   const {
     isOnline: connectivityIsOnline,
     isWifi,
-    isCellular,
     connectionType,
     hasResolved,
   } = useConnectivity();
@@ -77,7 +76,6 @@ function HomeScreenBody({
   const connectivityIsOnlineRef = useRef(connectivityIsOnline);
   const wasEligibleRef = useRef(false);
   const isFocusedRef = useRef(isFocused);
-  const isCellularRef = useRef(isCellular);
   const connectionTypeRef = useRef(connectionType);
   const hasResolvedRef = useRef(hasResolved);
   const uploadOverCellularRef = useRef(uploadOverCellular);
@@ -91,7 +89,6 @@ function HomeScreenBody({
   useEffect(() => {
     isWifiRef.current = isWifi;
     connectivityIsOnlineRef.current = connectivityIsOnline;
-    isCellularRef.current = isCellular;
     connectionTypeRef.current = connectionType;
     uploadOverCellularRef.current = uploadOverCellular;
     isFocusedRef.current = isFocused;
@@ -99,7 +96,6 @@ function HomeScreenBody({
   }, [
     connectivityIsOnline,
     isWifi,
-    isCellular,
     connectionType,
     uploadOverCellular,
     isFocused,

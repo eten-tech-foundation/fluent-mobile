@@ -46,12 +46,6 @@ export default function SettingsScreen() {
   const { signOut: onSignOut, notifyUserSwitched: onUserSwitched } =
     useAuthSession();
   const { uploadOverCellular, setUploadOverCellular } = usePreferences();
-  const handleUploadOverCellularChange = useCallback(
-    (enabled: boolean) => {
-      setUploadOverCellular(enabled);
-    },
-    [setUploadOverCellular],
-  );
   const { draftingUnit, setDraftingUnit } = useDraftingUnit();
   const { reauthRequired } = useReauthRequired({ refreshOnFocus: true });
   const [atAccountLimit, setAtAccountLimit] = useState(
@@ -191,7 +185,7 @@ export default function SettingsScreen() {
                     title="Upload/Download over cellular"
                     subtitle="Use mobile data to upload recordings when WiFi isn't available."
                     value={uploadOverCellular}
-                    onValueChange={handleUploadOverCellularChange}
+                    onValueChange={setUploadOverCellular}
                     testID="settings-upload-cellular"
                   />
                 </View>
