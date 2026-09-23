@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   getFailedUploadCount,
+  getFailedUploadErrorSummary,
   getPendingUploadChapters,
   getPendingUploadCount,
 } from '../db/queries';
@@ -9,6 +10,7 @@ import {
   type UploadSessionEvent,
 } from '../services/syncEvents';
 import { logger } from '../utils/logger';
+import { sanitizeUploadErrorForDisplay } from '../utils/sanitizeUploadError';
 
 const log = logger.create('usePendingUploads');
 
@@ -36,6 +38,24 @@ async function loadFailedUploadCount(): Promise<number> {
   }
 }
 
+async function loadFailedUploadErrorText(): Promise<string | null> {
+  try {
+    const summary = await getFailedUploadErrorSummary();
+    if (!summary) {
+      return null;
+    }
+    const sanitized = sanitizeUploadErrorForDisplay(summary.latestMessage);
+    const suffix =
+      summary.extraDistinctCount > 0
+        ? ` (+${summary.extraDistinctCount} more)`
+        : '';
+    return `${sanitized}${suffix}`;
+  } catch (error) {
+    log.error('Failed to load failed upload error text', { error });
+    return null;
+  }
+}
+
 function progressFromEvent(event: UploadSessionEvent): UploadProgress | null {
   if (event.type === 'start') {
     return { completed: 0, total: event.totalChapters };
@@ -53,6 +73,7 @@ export function usePendingUploads(refreshKey = 0) {
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingChapterCount, setPendingChapterCount] = useState(0);
   const [failedCount, setFailedCount] = useState(0);
+  const [failedErrorText, setFailedErrorText] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(
     null,
@@ -88,13 +109,15 @@ export function usePendingUploads(refreshKey = 0) {
     Promise.all([
       loadPendingUploadCount(),
       loadFailedUploadCount(),
+      loadFailedUploadErrorText(),
       getPendingUploadChapters(),
     ])
-      .then(([pending, failed, chapters]) => {
+      .then(([pending, failed, failedError, chapters]) => {
         if (!cancelled) {
           setPendingCount(pending);
           setPendingChapterCount(chapters.length);
           setFailedCount(failed);
+          setFailedErrorText(failed > 0 ? failedError : null);
         }
       })
       .catch(() => {
@@ -110,6 +133,7 @@ export function usePendingUploads(refreshKey = 0) {
     pendingCount,
     pendingChapterCount,
     failedCount,
+    failedErrorText,
     hasPendingUploads: pendingCount > 0,
     hasFailedUploads: failedCount > 0,
     isUploading,

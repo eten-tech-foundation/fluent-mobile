@@ -44,6 +44,7 @@ describe('useSyncStatus cellular gate', () => {
       failedCount: 0,
       hasPendingUploads: false,
       hasFailedUploads: false,
+      failedErrorText: null,
       isUploading: false,
       uploadProgress: null,
     });

@@ -34,6 +34,7 @@ export default function SyncScreen() {
     hasPendingUploads,
     hasFailedUploads,
     failedCount,
+    failedErrorText,
     pendingChapterCount,
     isUploading,
     uploadProgress,
@@ -128,6 +129,11 @@ export default function SyncScreen() {
             failedCount,
             isUploading,
           )}
+          {hasFailedUploads && failedErrorText ? (
+            <Text style={styles.errorText} testID="sync-failed-error">
+              {failedErrorText}
+            </Text>
+          ) : null}
           {stateType === 'error' ? (
             <Text style={styles.errorText} testID="sync-metadata-error">
               {displayText}
