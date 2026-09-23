@@ -30,6 +30,7 @@ function readSnapshot(): UploadOrchestratorSnapshot {
 export interface UseUploadSessionStateOptions {
   hasPendingUploads: boolean;
   hasFailedUploads: boolean;
+  hasUnuploadablePending?: boolean;
   uploadProgress: UploadProgress | null;
 }
 
@@ -50,6 +51,7 @@ export interface UseUploadSessionStateResult {
 export function useUploadSessionState({
   hasPendingUploads,
   hasFailedUploads,
+  hasUnuploadablePending = false,
   uploadProgress,
 }: UseUploadSessionStateOptions): UseUploadSessionStateResult {
   const [snapshot, setSnapshot] =
@@ -84,6 +86,7 @@ export function useUploadSessionState({
     effectivePhase,
     hasPendingUploads,
     hasFailedUploads,
+    hasUnuploadablePending,
   );
 
   const progressUploaded =

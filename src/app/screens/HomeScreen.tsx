@@ -125,6 +125,7 @@ function HomeScreenBody({
     status: syncStatus,
     needsDownloadSync,
     isOnline: syncIsOnline,
+    failedErrorText,
   } = useSyncStatus({
     isSyncing: isSyncing || isSyncingGlobal,
     refreshKey,
@@ -331,6 +332,7 @@ function HomeScreenBody({
         rightIcon={
           <PageHeaderSyncButton
             syncStatus={syncStatus}
+            failedErrorText={failedErrorText}
             onPress={handleSyncPress}
           />
         }

@@ -10,9 +10,15 @@ import {
 import { Pause, Play, X, type LucideIcon } from 'lucide-react-native';
 import { SyncPageStatus } from '../../types/sync/types';
 import { theme, listIconStrokeWidth } from '../../theme';
-import { SYNC_NOW_CELLULAR_DISABLED_MESSAGE } from '../../constants/messages';
+import {
+  SYNC_NOW_CELLULAR_DISABLED_MESSAGE,
+  TRANSFER_OFFLINE_MESSAGE,
+} from '../../constants/messages';
 
-export { SYNC_NOW_CELLULAR_DISABLED_MESSAGE };
+export { SYNC_NOW_CELLULAR_DISABLED_MESSAGE, TRANSFER_OFFLINE_MESSAGE };
+
+/** @deprecated Prefer TRANSFER_OFFLINE_MESSAGE — identical string; kept for #545 call sites. */
+export const SYNC_NOW_OFFLINE_MESSAGE = TRANSFER_OFFLINE_MESSAGE;
 
 export interface SyncActionControlsProps {
   status: SyncPageStatus;
@@ -21,6 +27,8 @@ export interface SyncActionControlsProps {
   onCancel: () => void;
   onSyncNow: () => void;
   syncNowDisabled?: boolean;
+  /** Overrides the default cellular hint when Sync Now is disabled. */
+  syncNowDisabledHint?: string;
   /** Blocks Sync Now in the pending state (e.g. upload or metadata sync active). */
   busy?: boolean;
   /** Blocks pause/cancel/resume/syncNow while an orchestrator control call is in flight. */
@@ -34,6 +42,7 @@ export function SyncActionControls({
   onCancel,
   onSyncNow,
   syncNowDisabled = false,
+  syncNowDisabledHint,
   busy = false,
   controlPending = false,
 }: SyncActionControlsProps) {
@@ -98,12 +107,12 @@ export function SyncActionControls({
             onPress={onSyncNow}
             testID="sync-action-sync-now"
           />
-          {syncNowDisabled ? (
+          {syncNowDisabled && syncNowDisabledHint ? (
             <Text
               style={styles.disabledHint}
               testID="sync-action-sync-now-disabled-hint"
             >
-              {SYNC_NOW_CELLULAR_DISABLED_MESSAGE}
+              {syncNowDisabledHint}
             </Text>
           ) : null}
         </View>
@@ -124,12 +133,12 @@ export function SyncActionControls({
             onPress={onSyncNow}
             testID="sync-action-sync-now"
           />
-          {syncNowDisabled ? (
+          {syncNowDisabled && syncNowDisabledHint ? (
             <Text
               style={styles.disabledHint}
               testID="sync-action-sync-now-disabled-hint"
             >
-              {SYNC_NOW_CELLULAR_DISABLED_MESSAGE}
+              {syncNowDisabledHint}
             </Text>
           ) : null}
         </View>

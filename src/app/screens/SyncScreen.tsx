@@ -13,6 +13,11 @@ import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
 import { SyncStatusIndicator } from '../../components/ui/SyncStatusIndicator';
 import { CloudSyncStatusIcon } from '../../components/ui/CloudSyncStatusIcon';
 import { SyncActionControls } from '../../components/ui/SyncActionControls';
+import {
+  formatUnuploadablePendingMessage,
+  SYNC_NOW_CELLULAR_DISABLED_MESSAGE,
+  TRANSFER_OFFLINE_MESSAGE,
+} from '../../constants/messages';
 import { DownloadProgressSection } from '../../components/ui/DownloadProgressSection';
 import { useDownloadQueue } from '../../hooks/useDownloadQueue';
 import { formatSyncStatusLabel } from '../../utils/syncStatusState';
@@ -39,7 +44,11 @@ export default function SyncScreen() {
     hasPendingUploads,
     hasFailedUploads,
     failedCount,
+    pendingCount,
+    failedErrorText,
     pendingChapterCount,
+    unuploadableCount,
+    hasUnuploadablePending,
     isUploading,
     uploadProgress,
   } = usePendingUploads(refreshKey);
@@ -57,6 +66,7 @@ export default function SyncScreen() {
   } = useUploadSessionState({
     hasPendingUploads,
     hasFailedUploads,
+    hasUnuploadablePending,
     uploadProgress,
   });
 
@@ -73,6 +83,22 @@ export default function SyncScreen() {
     !connectivityPending && isEffectivelyOnlineForTransfer(transferTransport);
   const waitingWifi =
     !connectivityPending && isWaitingWifiForTransfer(transferTransport);
+  const offlineBlocked = !connectivityPending && !isOnline;
+  /** Worker would visit zero chapters — pericope/orphan (incl. failed takes not in queue). */
+  const noUploadableChapters =
+    pendingChapterCount === 0 && (hasUnuploadablePending || hasPendingUploads);
+  const syncNowDisabled =
+    connectivityPending ||
+    waitingWifi ||
+    offlineBlocked ||
+    noUploadableChapters;
+  const syncNowDisabledHint = connectivityPending
+    ? undefined
+    : offlineBlocked
+    ? TRANSFER_OFFLINE_MESSAGE
+    : waitingWifi
+    ? SYNC_NOW_CELLULAR_DISABLED_MESSAGE
+    : undefined;
 
   const { triggerSync, isSyncing, displayText, stateType } = useSync({
     onSyncComplete: () => {
@@ -88,7 +114,7 @@ export default function SyncScreen() {
   );
 
   const runSyncNow = useCallback(async () => {
-    if (connectivityPending || waitingWifi) {
+    if (syncNowDisabled) {
       return;
     }
 
@@ -97,13 +123,7 @@ export default function SyncScreen() {
     }
     await syncNowUploads();
     setRefreshKey(key => key + 1);
-  }, [
-    connectivityPending,
-    waitingWifi,
-    isSyncing,
-    triggerSync,
-    syncNowUploads,
-  ]);
+  }, [syncNowDisabled, isSyncing, triggerSync, syncNowUploads]);
 
   const handlePause = useCallback(async () => {
     await pause();
@@ -156,7 +176,22 @@ export default function SyncScreen() {
             hasFailedUploads,
             failedCount,
             isUploading,
+            hasUnuploadablePending,
+            pendingChapterCount,
           )}
+          {pendingChapterCount === 0 &&
+          (hasUnuploadablePending || hasPendingUploads) ? (
+            <Text style={styles.errorText} testID="sync-unuploadable-error">
+              {formatUnuploadablePendingMessage(
+                unuploadableCount > 0 ? unuploadableCount : pendingCount,
+              )}
+            </Text>
+          ) : null}
+          {hasFailedUploads && failedErrorText ? (
+            <Text style={styles.errorText} testID="sync-failed-error">
+              {failedErrorText}
+            </Text>
+          ) : null}
           {stateType === 'error' ? (
             <Text style={styles.errorText} testID="sync-metadata-error">
               {displayText}
@@ -195,7 +230,8 @@ export default function SyncScreen() {
             onSyncNow={() => {
               void runSyncNow();
             }}
-            syncNowDisabled={waitingWifi || connectivityPending}
+            syncNowDisabled={syncNowDisabled}
+            syncNowDisabledHint={syncNowDisabledHint}
             busy={startBusy}
             controlPending={isControlPending}
           />
@@ -239,6 +275,8 @@ function renderStatusLine(
   hasFailedUploads: boolean,
   failedCount: number,
   isUploading: boolean,
+  hasUnuploadablePending: boolean,
+  pendingChapterCount: number,
 ) {
   if (status === 'syncing' || isUploading) {
     return (
@@ -251,7 +289,7 @@ function renderStatusLine(
     );
   }
 
-  if (hasFailedUploads && isOnline) {
+  if (hasFailedUploads && isOnline && pendingChapterCount > 0) {
     return (
       <>
         <Text style={styles.statusTitle}>Online · upload pending</Text>
@@ -262,7 +300,7 @@ function renderStatusLine(
     );
   }
 
-  if (hasPendingUploads) {
+  if (hasPendingUploads && pendingChapterCount > 0) {
     return (
       <>
         <Text style={styles.statusTitle}>
@@ -276,6 +314,22 @@ function renderStatusLine(
         {!isOnline && (
           <CantReachFluentPill hasPendingUploads={hasPendingUploads} />
         )}
+      </>
+    );
+  }
+
+  if (hasUnuploadablePending || hasPendingUploads) {
+    return (
+      <>
+        <Text style={styles.statusTitle}>
+          {isOnline
+            ? "Online · some takes can't upload"
+            : "Offline · some takes can't upload"}
+        </Text>
+        <Text style={styles.statusSubtitle}>
+          These recordings stay on this device until they can be uploaded.
+        </Text>
+        {!isOnline && <CantReachFluentPill hasPendingUploads={false} />}
       </>
     );
   }

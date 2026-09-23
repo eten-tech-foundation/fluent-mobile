@@ -6,8 +6,15 @@ export const TRANSFER_WAITING_WIFI_MESSAGE =
 export const SYNC_NOW_CELLULAR_DISABLED_MESSAGE =
   'Connect to WiFi to upload and download. Or use Upload/Download over cellular (toggle below or in Settings).';
 
+/** Sync / Prepare when blocked with no internet (transport gate). Same copy as PR #559 (#546). */
 export const TRANSFER_OFFLINE_MESSAGE =
   'Connect to the internet to upload and download.';
+
+/** Sync page — pending takes the worker will not upload (pericope/orphan). */
+export function formatUnuploadablePendingMessage(count: number): string {
+  const noun = count === 1 ? 'recording' : 'recordings';
+  return `${count} ${noun} can't upload yet — missing bible text or pericope-only takes.`;
+}
 
 export const PROJECTS_EMPTY_MESSAGE =
   'No projects are available right now. Connect to the internet to sync and find available work.';
