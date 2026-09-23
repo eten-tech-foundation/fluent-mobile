@@ -31,7 +31,26 @@ fi
 echo "==> Maestro CLI"
 if command -v maestro >/dev/null 2>&1; then
   ok "maestro: $(command -v maestro)"
-  maestro --version 2>/dev/null || true
+  version_err="$(mktemp)"
+  if ver_out="$(maestro --version 2>"${version_err}")"; then
+    ok "maestro --version: ${ver_out}"
+  else
+    err_blob="$(tr '\n' ' ' <"${version_err}" | sed 's/[[:space:]]*$//')"
+    if printf '%s' "${err_blob}" | grep -q 'applesimutils'; then
+      warn "HEALTHY INSTALL / AGENT SANDBOX LIMITATION: maestro --version failed (applesimutils / chmod outside workspace)"
+      warn "not an install failure if deps exist and Maestro MCP works — agents use MCP; humans/CI use Terminal CLI"
+      if [[ -x "${HOME}/.maestro/deps/applesimutils" ]]; then
+        ok "deps binary present: ${HOME}/.maestro/deps/applesimutils (mode $(stat -f '%Lp' "${HOME}/.maestro/deps/applesimutils" 2>/dev/null || echo '?'))"
+      else
+        fail "ACTUAL INSTALL PROBLEM: applesimutils missing under ${HOME}/.maestro/deps — run: npm run maestro:install"
+      fi
+    elif printf '%s' "${err_blob}" | grep -q 'sysconf(_SC_ARG_MAX)'; then
+      warn "HEALTHY INSTALL / AGENT SANDBOX LIMITATION: maestro launcher xargs failed (sysconf) — same agent constraint; use MCP"
+    else
+      warn "maestro --version failed (check whether this also fails in a normal Terminal — that would be an ACTUAL INSTALL PROBLEM): ${err_blob}"
+    fi
+  fi
+  rm -f "${version_err}"
 else
   fail "maestro missing — run: npm run maestro:install"
 fi

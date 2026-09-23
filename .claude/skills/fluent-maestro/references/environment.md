@@ -78,12 +78,13 @@ Contamination symptom: API unit tests call `https://dev.api.fluent.bible/...` in
 
 ## MCP vs CLI
 
-| Path | Role |
-| --- | --- |
-| Maestro MCP (`scripts/maestro-mcp.sh`) | **Preferred** for agent interactive audit |
-| `npm run maestro:test:*` / CLI | Fallback; Cursor agent Shell needs unrestricted OS (`all`) because CLI static-init chmod’s `~/.maestro/deps/applesimutils` even for Android |
+| Path | Who | Policy |
+| --- | --- | --- |
+| Maestro MCP (`scripts/maestro-mcp.sh`) | Cursor Agent interactive work | **Required** — recover MCP on failure; do not fall back to agent-shell CLI |
+| `npm run maestro:test:*` / direct CLI | Developer Terminal, CI, EAS | **Valid** and expected |
+| Same CLI from Cursor Agent Shell | — | **Not** a supported fallback (known sandbox limitation) |
 
-Details: [recovery.md](./recovery.md).
+If agent-shell CLI shows `applesimutils` / `sysconf(_SC_ARG_MAX)` / `getLocalHost` while doctor WARNs sandbox-only and MCP is healthy: stop; use MCP. Details: [recovery.md](./recovery.md).
 
 ## MCP
 

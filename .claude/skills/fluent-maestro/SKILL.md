@@ -31,8 +31,8 @@ Understand request
 → Stabilize local lab (Metro, adb, Dev Client)
 → Preflight (doctor + hierarchy gate)
 → Product contract (issue) vs current code vs existing flows
-→ Inspect live UI (Maestro MCP preferred)
-→ Execute by checkpoint; on infra failure → recover → prove → resume
+→ Inspect live UI (Maestro MCP — required in Cursor Agent)
+→ Execute by checkpoint; on infra failure → recover MCP → prove → resume
 → Continue independent scenarios after BLOCKED
 → Report (local) — product vs coverage vs infrastructure
 ```
@@ -53,29 +53,37 @@ Do **not** end an authorized audit with “Say if you want me to re-auth Maestro
 
 ## Preflight (fail fast, then recover)
 
-1. `npm run maestro:doctor`
+1. `npm run maestro:doctor` (WARN on agent-shell applesimutils = known sandbox; not a broken install)
 2. Metro: `curl -s http://127.0.0.1:8081/status` → `packager-status:running`; listener cwd = this repo
 3. `adb reverse tcp:8081`; package `com.eten.fluent` installed
 4. Maestro MCP: `list_devices` → `inspect_screen` (non-empty hierarchy)
-5. Cold-start sanity (optional): `npm run maestro:test:harness` → `login-email-input`
 
-If `inspect_screen` is empty or the device server is `UNAVAILABLE`: **MAESTRO INFRASTRUCTURE** — pause product flow; follow [recovery.md](./references/recovery.md); prove hierarchy; resume checkpoint. Do not raise product timeouts. Do not ask the user for routine recovery permission.
+If `inspect_screen` is empty or the device server is `UNAVAILABLE`: **MAESTRO INFRASTRUCTURE** — pause product flow; recover MCP/device per [recovery.md](./references/recovery.md); prove hierarchy; resume checkpoint. Do not raise product timeouts. Do not ask the user for routine recovery permission. Do **not** fall back to agent-shell CLI.
 
-## Execution path
+## Execution decision (Cursor Agent)
 
-1. **Preferred:** Maestro MCP  
-2. **Fallback:** `npm run maestro:test:*` (Cursor Shell: unrestricted OS / `all` — see recovery.md applesimutils note)  
-3. **Direct CLI:** same unrestricted OS requirement  
-4. Else: BLOCKED dependent scenarios; continue independent ones  
+```text
+Need Maestro inside Cursor Agent?
+→ Use Maestro MCP
+   → Healthy → continue
+   → Unhealthy → pause scenario → recover smallest MCP/device layer
+                → list_devices / inspect_screen → resume via MCP
+   → Repeated MCP failure after recovery budget
+                → BLOCKED for affected scenarios → continue independents → report infra
+```
+
+**Do not** use direct `maestro` / `npm run maestro:test:*` from the Cursor Agent shell as a fallback. That path hits a **known sandbox limitation** ([recovery.md](./references/recovery.md)). If you see `applesimutils` / `sysconf(_SC_ARG_MAX)` / `getLocalHost` there: stop diagnosing install; return to MCP.
+
+CLI is for **unrestricted** contexts only: developer Terminal, CI, EAS — not as the agent fallback.
 
 ## Flow development
 
 1. **Understand** — issue/spec, source, existing `.maestro/flows`, recent PRs if needed. State the behavior under test.
 2. **Prepare** — lab + app state (prefer no `clearState` mid-iteration; keep authenticated session).
-3. **Observe** — `inspect_screen` / screenshot; pick selectors ([selectors.md](./references/selectors.md)).
+3. **Observe** — MCP `inspect_screen` / screenshot; pick selectors ([selectors.md](./references/selectors.md)).
 4. **Implement minimally** — one happy path first.
-5. **Validate** — Maestro MCP `run` validates syntax; or CLI with proper OS perms.
-6. **Execute** — bounded waits; checkpointed; recover on infra failure.
+5. **Validate** — Maestro MCP `run` (syntax + execute).
+6. **Execute** — bounded waits; checkpointed; on infra failure → recover MCP → prove → resume.
 7. **Diagnose** — evidence + class ([debugging.md](./references/debugging.md)). One hypothesis per change.
 8. **Expand / regression** — related tagged smokes; continue after BLOCKED.
 9. **Report** — see template below. No remote publish.

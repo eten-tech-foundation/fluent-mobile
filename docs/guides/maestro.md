@@ -184,11 +184,11 @@ Then wire Cursor MCP from [`.cursor/mcp.maestro.example.json`](../../.cursor/mcp
 
 Rules:
 
-- Opt-in only — do not require MCP for normal engineering.
+- Opt-in only — do not require MCP for normal engineering (humans use CLI scripts in Terminal / CI / EAS as designed).
 - During iteration / audit: **no `clearState` / `clearKeychain`** unless the scenario requires fresh login (wipes session mid-loop).
 - `clearState` belongs only in cold-start helpers / CI-shaped smokes (e.g. [`.maestro/helpers/launch-android.yaml`](../../.maestro/helpers/launch-android.yaml)).
-- Before product flows: `list_devices` → `inspect_screen` (non-empty). Dead driver / empty hierarchy = infrastructure — recover automatically (recovery.md), then re-inspect; do not ask the user for routine Maestro reconnect permission.
-- Prefer Maestro **MCP** for agent runs. Maestro **CLI** under Cursor’s default sandbox fails chmod on `~/.maestro/deps/applesimutils` (CLI static init, even for Android) — use unrestricted OS for `npm run maestro:test:*` or stick to MCP.
+- Before product flows: `list_devices` → `inspect_screen` (non-empty). Dead driver / empty hierarchy = infrastructure — recover MCP automatically (recovery.md), then re-inspect; do not ask the user for routine Maestro reconnect permission.
+- **Cursor Agent:** Maestro **MCP** is the supported interactive path. Do **not** fall back to direct CLI in the agent Shell. Stock Maestro 2.10.0 still bootstraps `applesimutils` on every CLI start (including Android); the agent Shell often cannot complete that path (sandbox FS / launcher `xargs` / host lookup). That is a **documented agent-sandbox constraint**, not a broken Fluent or Maestro install when MCP and `maestro:doctor` are healthy. Do not loosen sandbox or patch Maestro jars to “fix” it.
 - Scope `EXPO_PUBLIC_E2E_MODE=1` to the Metro command only — do not export into a shell that later runs Jest.
 - One BLOCKED scenario must not truncate an audit — continue independent scenarios.
 

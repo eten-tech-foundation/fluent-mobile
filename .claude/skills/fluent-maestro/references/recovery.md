@@ -60,11 +60,11 @@ Still failing           → mark affected scenario(s) BLOCKED → continue indep
 Never                   → infinite restart loops or “ask user to re-auth Maestro”
 ```
 
-Prove health with the **smallest** check: MCP `inspect_screen` non-empty (or CLI hierarchy under the CLI rules below). Do not raise product timeouts as a substitute.
+Prove health with the **smallest** check: MCP `inspect_screen` non-empty. Do not raise product timeouts as a substitute. Do **not** prove health via agent-shell CLI.
 
 ## Maestro MCP device-server recovery (deterministic)
 
-Observed failure mode: `StatusRuntimeException: UNAVAILABLE` / “Device server died” after long idle, emulator reboot, or competing CLI `hierarchy`/`test` sessions. MCP Viewer may listen on `127.0.0.1:9999` or `:10000`; Android driver often uses port **7001**.
+Observed failure mode: `StatusRuntimeException: UNAVAILABLE` / “Device server died” after long idle, emulator reboot, or competing sessions. MCP Viewer may listen on `127.0.0.1:9999` or `:10000`; Android driver often uses port **7001**.
 
 ```text
 Maestro MCP unhealthy
@@ -80,7 +80,8 @@ inspect_screen — non-empty?
 if still UNAVAILABLE / empty:
   avoid pkill of the Cursor MCP host unless necessary
   prefer: new list_devices + inspect after adb is healthy
-  if driver wedged: maestro … hierarchy --reinstall-driver (CLI with all OS perms) OR stop stale java on :7001 only when identified
+  if driver wedged: recover device server / stop stale listeners on :7001 when identified
+  (driver reinstall belongs in an unrestricted Terminal — not agent-shell CLI)
 ↓
 prove inspect_screen
 ↓
@@ -89,29 +90,62 @@ resume nearest checkpoint (do not clearState)
 
 Do **not** reboot the emulator solely because MCP disconnected.
 
-Competing sessions: a hung `maestro hierarchy` / `maestro test` CLI and MCP can both stress the Android driver. Stop hung CLI before MCP recovery.
+Competing sessions: a hung host-side Maestro process and MCP can both stress the Android driver. Prefer stopping hung non-MCP Maestro work from an unrestricted Terminal before MCP recovery — not by launching CLI from the agent Shell.
 
 ## Execution path (MCP vs CLI)
 
-### Root cause: CLI + Cursor sandbox
-
-Maestro CLI **2.10.0** loads `maestro.cli.Dependencies` in a static initializer. That always calls `Unpacker.binaryDependency("applesimutils")`, which **chmod**s `~/.maestro/deps/applesimutils` — even for **Android-only** runs. Under the Cursor agent sandbox, chmod outside the workspace fails with `Operation not permitted` → `ExceptionInInitializerError` before any Android work.
-
-Maestro MCP (`scripts/maestro-mcp.sh` → `maestro mcp`) runs as a **separate** Cursor MCP process **outside** that sandbox, so it works when connected.
-
-### Ordering for agents
+### Cursor Agent policy (permanent)
 
 ```text
-1. Preferred: Maestro MCP (list_devices → inspect_screen → run)
-2. Fallback: npm run maestro:test:* / scripts/maestro-test.sh
-   — Shell tool must use required_permissions: ["all"] (or equivalent unrestricted OS)
-3. Direct: maestro CLI with the same unrestricted OS access
-4. If neither path can prove hierarchy after recovery budget:
-   classify MAESTRO INFRASTRUCTURE / BLOCKED for dependent scenarios
+Need Maestro execution?
+
+Are we inside Cursor Agent?
+|
++-- YES → Maestro MCP only
+|         Healthy → continue
+|         Unhealthy → recover MCP/device → verify hierarchy → resume via MCP
+|         Repeated failure → BLOCKED affected scenarios → continue independents
+|
++-- NO (developer Terminal / CI / EAS / unrestricted shell)
+        → Maestro CLI (`npm run maestro:test:*`, direct `maestro`) is valid
 ```
 
-Do not treat “CLI failed in sandbox” as “Maestro is broken on this machine.” Re-run CLI with full permissions or use MCP.
+**Do not** fall back to agent-shell CLI when MCP is unhealthy. Recover MCP instead.
 
+### Known agent-shell CLI limitation (investigation DONE when matched)
+
+Observed under Cursor Agent Shell (Maestro **2.10.0**):
+
+1. CLI loads `Dependencies`, which initializes `applesimutils` and runs POSIX permission setup on `$user.home/.maestro/deps/applesimutils` even for Android-only runs.
+2. There is no supported Android-only skip; reinstall does not remove this bootstrap.
+3. The install can still be healthy (`applesimutils` present, mode `700`, MCP works).
+
+Agent Shell layers that break direct CLI:
+
+| Layer | Symptom |
+| --- | --- |
+| A | `xargs: sysconf(_SC_ARG_MAX) failed` / launcher drops JVM opts |
+| B | `applesimutils` / chmod / `Operation not permitted` under `~/.maestro/deps` |
+| C | After workspace `user.home` experiments: `InetAddress.getLocalHost` / network-sandbox host resolution |
+
+**When all are true:** agent Shell + doctor healthy or sandbox WARN only + MCP lists devices / inspects hierarchy + CLI shows a known symptom above → **stop**. Do not reinstall, chmod, strip xattrs, patch jars, invent HOME wrappers, unsupported env vars, custom forks, or broaden sandbox. Return to MCP.
+
+This is **Cursor Agent sandbox + direct CLI**, not “Fluent + Maestro CLI is broken.” Humans and CI keep using CLI normally.
+
+### Observed vs inferred
+
+- **Observed:** MCP initializes and drives devices successfully from the Cursor MCP host while the same machine’s agent Shell cannot run stock `maestro` reliably.
+- **Do not** permanently claim speculative internals (e.g. “MCP chmods applesimutils successfully”) unless that step was measured. Prefer: the MCP host environment allows Maestro to start; the sandboxed Agent shell does not.
+
+### Path comparison
+
+| Path | Where | Agent policy |
+| --- | --- | --- |
+| Maestro MCP | Cursor MCP host | **Required** for interactive agent Maestro |
+| `npm run maestro:test:*` / direct CLI | Agent Shell | **Do not use** as fallback |
+| Same CLI scripts | Developer Terminal / CI / EAS | **Valid** and expected |
+
+If a check is CLI-only and cannot be done via MCP, report that limitation — do not re-investigate the known sandbox signature.
 ## Audit checkpoints (procedural)
 
 Long audits are not one fragile linear session. After recovery, resume the **nearest useful** checkpoint:

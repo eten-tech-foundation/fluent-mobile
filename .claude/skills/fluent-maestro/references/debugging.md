@@ -43,7 +43,7 @@ Follow the recovery budget in [recovery.md](./recovery.md) (Level 1 → Level 2;
 1. Stop the affected product flow (do not keep stacking 3-minute runs).  
 2. `adb devices` — device still `device`? reverse + Metro identity.  
 3. MCP `list_devices` / `mcp_auth` if Not connected; then `inspect_screen`.  
-4. If still dead: stop hung CLI sessions; optional CLI `--reinstall-driver` under unrestricted OS; avoid emulator reboot unless System UI is wedged.  
+4. If still dead: recover the device-server layer; avoid emulator reboot unless System UI is wedged. Do **not** switch to agent-shell CLI.  
 5. Prove **`inspect_screen`** non-empty.  
 6. Resume nearest checkpoint — **not** `clearState`. Prefer keeping authenticated session.
 
@@ -53,9 +53,16 @@ Empty hierarchy ≠ “app has no UI” — treat as toolchain warning first.
 
 Symptom: tap `home-sync-button` opens Expo Tools / Dev Menu instead of Sync. Class: **ENVIRONMENT**. Fix: `npm run maestro:hide-expo-tools-fab` (installed Debug) or rebuild after `app.config.ts` `expo-dev-client` `android.toolsButton: false`. Do not invent coordinate workarounds as the primary strategy.
 
-### CLI `applesimutils` / Operation not permitted
+### Known Cursor Agent Shell CLI limitation
 
-Symptom: `ExceptionInInitializerError` on `~/.maestro/deps/applesimutils` under Cursor sandbox. Class: **MAESTRO INFRASTRUCTURE** (agent sandbox), not a broken Maestro install. Use MCP, or re-run CLI with unrestricted OS permissions. See [recovery.md](./recovery.md).
+Recognize as the **same known sandbox class** (not a corrupt install):
+
+- `applesimutils` / chmod / POSIX permission failure under `~/.maestro/deps`
+- sandbox denial outside the workspace
+- `sysconf(_SC_ARG_MAX) failed` / launcher `xargs` / dropped JVM opts
+- `InetAddress.getLocalHost` / sandboxed host-resolution failure
+
+When seen **inside Cursor Agent** and doctor is healthy (or only WARNs sandbox) and MCP can list/inspect: match → **investigation DONE** → return to **Maestro MCP**. Do not reinstall, chmod repeatedly, strip xattrs, patch jars, invent HOME wrappers, or broaden sandbox. CLI remains valid in Terminal / CI / EAS. Details: [recovery.md](./recovery.md).
 
 ## Dev Client / Metro failure patterns
 

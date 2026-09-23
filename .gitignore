@@ -48,6 +48,8 @@ pnpm-lock.yaml
 .maestro/**/screenshots/
 .maestro/**/*.png
 .maestro/**/*.mp4
+.maestro-cli-home/
+.tmp/
 
 # Expo CNG — native projects are generated locally and in CI
 .expo/

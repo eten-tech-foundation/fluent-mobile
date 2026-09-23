@@ -54,3 +54,11 @@ Audit default: **read + test + report**. Do not fix product bugs or silently rew
 ## Lab before product; classify failures
 
 Preflight before long flows. Classes: **PRODUCT** | **TEST** | **SELECTOR** | **STATE** | **ENVIRONMENT** | **MAESTRO INFRASTRUCTURE**. Dead Maestro driver / empty hierarchy = infrastructure, not a product bug — recover per skill recovery.md, then re-inspect. Prefer preserving authenticated session over `clearState`.
+
+## Cursor Agent: Maestro MCP only (not agent-shell CLI)
+
+Inside **Cursor Agent**, interactive Maestro work uses **Maestro MCP**. Do **not** fall back to direct `maestro` / `npm run maestro:test:*` from the agent Shell when the known Cursor sandbox limitation is present.
+
+If agent-shell CLI fails with `applesimutils`, chmod/`~/.maestro/deps`, `sysconf(_SC_ARG_MAX)`, or `InetAddress.getLocalHost` — and `maestro:doctor` is healthy or only WARNs about sandbox, and MCP can list devices / inspect hierarchy — treat it as a **documented platform constraint**. Investigation is **done**. Do not reinstall Maestro, chmod deps, patch jars, invent HOME wrappers, or weaken sandbox.
+
+Recover unhealthy MCP (smallest layer → prove hierarchy → resume). Repeated MCP failure → mark scenarios BLOCKED; continue independents. Direct CLI remains valid in unrestricted developer terminals, CI, and EAS — not as the agent fallback. Details: [recovery.md](../../.claude/skills/fluent-maestro/references/recovery.md).
