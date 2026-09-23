@@ -2,12 +2,12 @@
 
 Android-only. Package **`com.eten.fluent`**. Scheme **`fluent`** / **`exp+fluent-mobile`** (`app.config.ts`). Local eng loop is **Debug / expo-dev-client + Metro**, not Expo Go. Hosted EAS `e2e-test` APK has **no Metro** and no `EXPO_PUBLIC_E2E_MODE`.
 
-Recovery levels, MCP vs CLI, and checkpoints: [recovery.md](./recovery.md).
+Recovery levels, MCP vs CLI, and checkpoints: [recovery.md](./recovery.md). Audit completion / issue suggestions: [audit-mode.md](./audit-mode.md).
 
 ## Bring-up sequence (proven)
 
-1. **`npm run maestro:doctor`** — JDK 17+, Maestro CLI, single adb device (`ANDROID_SERIAL` if many), app installed, reverse hint, Metro identity (see doctor).
-2. **Device** — one emulator/device online. Prefer the Maestro Pixel image used locally.
+1. **`npm run maestro:doctor`** — JDK 17+, Maestro CLI, single adb device (`ANDROID_SERIAL` if many), app installed, reverse hint, Metro identity, optional Maestro MCP host hygiene WARN (see doctor).
+2. **Device** — one emulator/device online. Prefer the Maestro Pixel image used locally. Keep the emulator in a **long-lived** process (persistent terminal / Cursor background shell with `block_until_ms: 0` + `exec`), not a short-lived command that exits and kills qemu.
 3. **Metro (persistent foreground terminal)**  
    ```bash
    EXPO_PUBLIC_E2E_MODE=1 npx expo start --port 8081
@@ -20,14 +20,26 @@ Recovery levels, MCP vs CLI, and checkpoints: [recovery.md](./recovery.md).
 
 API base for the app remains in `.env` (`EXPO_PUBLIC_API_BASE_URL`). Jest defaults via `jest.env.cjs` to `http://localhost:9999`.
 
+## Emulator lifecycle
+
+| Fact | Consequence |
+| --- | --- |
+| Emulator launched from an ephemeral agent shell that exits | qemu often dies with that shell — use a persistent background shell (`exec` emulator) |
+| Snapshot boot SIGABRT / corrupt `default_boot` | Cold boot is valid: `-no-snapshot-load` (or wipe snapshot in an unrestricted Terminal). Classify as **ENVIRONMENT** |
+| Emulator reboot | **Not** first-line for MCP `UNAVAILABLE` — recover MCP/device-server first ([recovery.md](./recovery.md)) |
+| Preferred AVD | Maestro Pixel images used locally (`Maestro_Pixel_6_API_33_1`, etc.) |
+
 ## Expo Dev Client behavior
 
 | Fact | Consequence |
 | --- | --- |
 | History survives killing Metro | Old URLs (e.g. mpix) can still appear in the launcher list |
 | `clearState` wipes auth **and** server history | App lands on **DEVELOPMENT SERVERS**, not Fluent login |
+| Cold boot / force-stop / `maestro:hide-expo-tools-fab` | May clear or empty server history → launcher with no `8081` entry |
 | Deep link needs Metro up | Link with Metro down → `unexpected end of stream` / “problem loading the project” |
 | Deep-link URL (local reverse) | `exp+fluent-mobile://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081` |
+
+Empty **DEVELOPMENT SERVERS** after a relevant restart is **ENVIRONMENT** recovery (deep-link / Continue), **not** a product failure. Do **not** use `clearState` merely to solve launcher connectivity.
 
 Helper: [`.maestro/helpers/dismiss-expo-dev-menu.yaml`](../../../.maestro/helpers/dismiss-expo-dev-menu.yaml) — when `DEVELOPMENT SERVERS` is visible, `openLink` the URL above; also optional Continue / `.*8081.*` / Close / dismiss Dev Menu. **Conditional** so EAS standalone APKs (no launcher) are unaffected.
 
@@ -53,6 +65,12 @@ Effects: wipes Secure Store session, Dev Client server history, and often leaves
 
 **Iteration / MCP / audit loop:** do **not** clearState / `pm clear` / uninstall mid-loop (`npm run maestro:agent:up` notes). Prefer Level-1/2 recovery ([recovery.md](./recovery.md)). Prefer **preserving authenticated session**.
 
+Destructive product scenarios (claim, conflict seeding, etc.): see safe-destructive policy in [audit-mode.md](./audit-mode.md) — **SKIPPED** when shared-data mutation is unsafe; do not omit forever without classifying.
+
+## Connectivity uncertainty
+
+If Fluent sync / header a11y reports **Offline** while the host shows Wi‑Fi, do **not** assume the app is online. For online-dependent scenarios (metadata refresh, online claim): verify app-observed connectivity; wait briefly for stability when reasonable; otherwise mark the scenario **BLOCKED**. Never claim online behavior was tested while the app said Offline.
+
 ## Env scoping (anti-leak)
 
 ```bash
@@ -70,7 +88,7 @@ Contamination symptom: API unit tests call `https://dev.api.fluent.bible/...` in
 
 | Check | Command / flow | Purpose |
 | --- | --- | --- |
-| Toolchain | `npm run maestro:doctor` | Lab health |
+| Toolchain | `npm run maestro:doctor` | Lab health + MCP host hygiene WARN |
 | Hierarchy gate | MCP `inspect_screen` | Prove Maestro ↔ device |
 | Hide Tools FAB (installed Debug) | `npm run maestro:hide-expo-tools-fab` | Stop FAB stealing header taps |
 | Cold start | `npm run maestro:test:harness` → `login-email-input` | clearState + connect + login chrome |
@@ -84,8 +102,8 @@ Contamination symptom: API unit tests call `https://dev.api.fluent.bible/...` in
 | `npm run maestro:test:*` / direct CLI | Developer Terminal, CI, EAS | **Valid** and expected |
 | Same CLI from Cursor Agent Shell | — | **Not** a supported fallback (known sandbox limitation) |
 
-If agent-shell CLI shows `applesimutils` / `sysconf(_SC_ARG_MAX)` / `getLocalHost` while doctor WARNs sandbox-only and MCP is healthy: stop; use MCP. Details: [recovery.md](./recovery.md).
+If agent-shell CLI shows `applesimutils` / `sysconf(_SC_ARG_MAX)` / `getLocalHost` while doctor WARNs sandbox-only and MCP is healthy: stop; use MCP. Details: [recovery.md](./recovery.md). Documented Cursor sandbox CLI limitation → usually **NO ISSUE NEEDED** for a new GitHub ticket unless there is concrete repo work.
 
 ## MCP
 
-Configured in [`.cursor/mcp.json`](../../../.cursor/mcp.json) → `scripts/maestro-mcp.sh` (`maestro mcp`). Useful tools: `list_devices`, `inspect_screen`, `take_screenshot`, `run`, `cheat_sheet`.
+Configured in [`.cursor/mcp.json`](../../../.cursor/mcp.json) → `scripts/maestro-mcp.sh` (`maestro mcp`). Useful tools: `list_devices`, `inspect_screen`, `take_screenshot`, `run`, `cheat_sheet`. Duplicate/stale MCP host recovery: [recovery.md](./recovery.md) (MCP host hygiene).

@@ -34,8 +34,9 @@ Distinguish:
 2. `adb devices` — serial still `device`?
 3. `adb reverse tcp:8081` if missing.
 4. Metro: `curl -s http://127.0.0.1:8081/status` → `packager-status:running`; cwd = this repo.
-5. Maestro MCP: `list_devices` → `inspect_screen` (non-empty). If MCP says Not connected / needsAuth → `mcp_auth` for the Maestro namespace once, then re-list.
-6. If hierarchy works → **resume nearest checkpoint**.
+5. Maestro MCP host hygiene — if duplicate `maestro.cli.AppKt mcp` hosts and MCP is unhealthy, see hygiene section below before looping forever.
+6. Maestro MCP: `list_devices` → `inspect_screen` (non-empty). If MCP says Not connected / needsAuth → `mcp_auth` for the Maestro namespace once, then re-list.
+7. If hierarchy works → **resume nearest checkpoint**.
 
 ### Level 2 — process / device (automatic when Level 1 fails and state risk is low)
 
@@ -73,6 +74,8 @@ stop active flow
 ↓
 adb devices (device online?) + reverse 8081 + Metro identity
 ↓
+MCP host hygiene check (below)
+↓
 MCP list_devices (reconnects session); if Not connected → mcp_auth once
 ↓
 inspect_screen — non-empty?
@@ -81,6 +84,7 @@ if still UNAVAILABLE / empty:
   avoid pkill of the Cursor MCP host unless necessary
   prefer: new list_devices + inspect after adb is healthy
   if driver wedged: recover device server / stop stale listeners on :7001 when identified
+  if duplicate stale Maestro MCP Java hosts (see hygiene): stop extras, mcp_auth, re-prove
   (driver reinstall belongs in an unrestricted Terminal — not agent-shell CLI)
 ↓
 prove inspect_screen
@@ -88,9 +92,31 @@ prove inspect_screen
 resume nearest checkpoint (do not clearState)
 ```
 
-Do **not** reboot the emulator solely because MCP disconnected.
+Do **not** reboot the emulator solely because MCP disconnected. Emulator reboot is Level 2 last-resort for a wedged device — not first-line for every Maestro failure ([environment.md](./environment.md)).
 
 Competing sessions: a hung host-side Maestro process and MCP can both stress the Android driver. Prefer stopping hung non-MCP Maestro work from an unrestricted Terminal before MCP recovery — not by launching CLI from the agent Shell.
+
+### MCP host hygiene (duplicate / stale hosts)
+
+Goal: **one** healthy expected Maestro MCP host for the Fluent Cursor project; avoid multi-hour dead channels and competing device servers.
+
+Lightweight check (also surfaced by `npm run maestro:doctor` when possible):
+
+```bash
+# Maestro MCP hosts only — do not treat every Java process as Maestro
+pgrep -fl 'maestro.cli.AppKt mcp' || true
+lsof -nP -iTCP:9999 -sTCP:LISTEN 2>/dev/null || true
+lsof -nP -iTCP:10000 -sTCP:LISTEN 2>/dev/null || true
+```
+
+| Observation | Action |
+| --- | --- |
+| Zero MCP hosts + MCP tools fail | `mcp_auth` / let Cursor respawn `scripts/maestro-mcp.sh`; re-list |
+| One MCP host + hierarchy OK | Healthy — continue |
+| Two+ `maestro.cli.AppKt mcp` (e.g. both `:9999` and `:10000`) **and** `UNAVAILABLE` / multi-hour connection age | Stale duplicate hosts — stop the **extra** Maestro MCP Java PIDs (not Metro, not qemu), `mcp_auth`, prove `inspect_screen` |
+| Many unrelated Java processes | **Do not** kill — only Maestro MCP (`maestro.cli.AppKt mcp`) |
+
+Do **not** aggressively kill processes merely because more than one Java process exists. Prefer `mcp_auth` + re-inspect before killing the active Cursor-attached host.
 
 ## Execution path (MCP vs CLI)
 
@@ -148,20 +174,22 @@ This is **Cursor Agent sandbox + direct CLI**, not “Fluent + Maestro CLI is br
 If a check is CLI-only and cannot be done via MCP, report that limitation — do not re-investigate the known sandbox signature.
 ## Audit checkpoints (procedural)
 
-Long audits are not one fragile linear session. After recovery, resume the **nearest useful** checkpoint:
+Long audits are not one fragile linear session. After recovery **or** a product FAIL, resume the **nearest useful** checkpoint:
 
 | Checkpoint | Proof |
 | --- | --- |
 | Environment healthy | doctor OK-ish + Metro + reverse + non-empty hierarchy |
 | Authenticated / Home | `home-tab-my-work` (or login chrome if session gone) |
+| My Work / Projects list | `home-tab-*` + row ids |
+| Project chapter list | `chapter-row-.*` |
 | Drafting shell | `drafting-tab-bar` + chapter chrome |
-| Navigation scenarios | My Work / Projects entry done |
+| Record tab | `record-tab` / `drafting-tab-record` |
 | Tab / state scenarios | source-audio visibility, last-tab, shared verse |
 | Recording scenarios | leave-guard / capture checks |
-| Regression / wrap-up | report |
+| Regression / wrap-up | report with exact scenario statuses |
 
 Preserve authenticated session across Level 1–2 when possible. Re-login via `.env.maestro` only when login UI is required.
 
-## Continue after BLOCKED
+## Continue after BLOCKED or FAIL
 
-One blocked scenario does **not** end the audit. Keep running independent scenarios. Report per scenario: **PASS** | **FAIL** | **BLOCKED** | **UNTESTED**.
+One blocked **or** product-failed scenario does **not** end the audit. Keep running independent scenarios. Every planned scenario must end as **PASS** | **FAIL** | **BLOCKED** | **SKIPPED** (exact counts; see [audit-mode.md](./audit-mode.md)). Do not use “UNTESTED” / “didn't get to…” as a terminal status.

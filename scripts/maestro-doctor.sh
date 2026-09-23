@@ -148,6 +148,26 @@ else
   fail "smoke-launch.yaml missing"
 fi
 
+echo "==> Maestro MCP hosts (hygiene)"
+# Count Maestro MCP Java hosts only — do not treat every Java process as Maestro.
+mcp_host_count=0
+if command -v pgrep >/dev/null 2>&1; then
+  # macOS pgrep -fl; tolerate empty
+  while IFS= read -r _line; do
+    [[ -z "${_line}" ]] && continue
+    mcp_host_count=$((mcp_host_count + 1))
+  done < <(pgrep -fl 'maestro.cli.AppKt mcp' 2>/dev/null || true)
+fi
+if [[ "${mcp_host_count}" -eq 0 ]]; then
+  warn "no maestro.cli.AppKt mcp process — Cursor will spawn one on first MCP use; if MCP is already UNAVAILABLE, mcp_auth / reconnect"
+elif [[ "${mcp_host_count}" -eq 1 ]]; then
+  ok "one Maestro MCP host (maestro.cli.AppKt mcp)"
+else
+  warn "duplicate Maestro MCP hosts (${mcp_host_count}× maestro.cli.AppKt mcp) — can wedge the Android device server after emulator reboot / long idle"
+  warn "if MCP inspect fails with UNAVAILABLE / multi-hour connection age: stop extra Maestro MCP PIDs, mcp_auth, re-prove hierarchy (see fluent-maestro recovery.md)"
+  pgrep -fl 'maestro.cli.AppKt mcp' 2>/dev/null || true
+fi
+
 if [[ "${status}" -ne 0 ]]; then
   echo ""
   echo "doctor: FAILED — fix FAIL lines above, then re-run npm run maestro:doctor"

@@ -174,7 +174,7 @@ Note: `platform.android.disableAnimations` in `.maestro/config.yaml` applies on 
 
 ## Agent / MCP loop (opt-in)
 
-Cursor agents: always-on [`.cursor/rules/maestro-qa.mdc`](../../.cursor/rules/maestro-qa.mdc) + skill [`.claude/skills/fluent-maestro/SKILL.md`](../../.claude/skills/fluent-maestro/SKILL.md) (bring-up, recovery budget, Dev Client, failure classes, audit mode, no GitHub publish without a named ask). Recovery detail: [`.claude/skills/fluent-maestro/references/recovery.md`](../../.claude/skills/fluent-maestro/references/recovery.md).
+Cursor agents: always-on [`.cursor/rules/maestro-qa.mdc`](../../.cursor/rules/maestro-qa.mdc) + skill [`.claude/skills/fluent-maestro/SKILL.md`](../../.claude/skills/fluent-maestro/SKILL.md) (bring-up, recovery budget, Dev Client, failure classes, audit mode, no GitHub publish without a named ask). Recovery detail: [`.claude/skills/fluent-maestro/references/recovery.md`](../../.claude/skills/fluent-maestro/references/recovery.md). Exhaustive audits (scenario inventory, FAIL-continues, PASS/FAIL/BLOCKED/SKIPPED completion, local issue suggestions): [`.claude/skills/fluent-maestro/references/audit-mode.md`](../../.claude/skills/fluent-maestro/references/audit-mode.md).
 
 ```bash
 npm run maestro:agent:up
@@ -190,7 +190,7 @@ Rules:
 - Before product flows: `list_devices` → `inspect_screen` (non-empty). Dead driver / empty hierarchy = infrastructure — recover MCP automatically (recovery.md), then re-inspect; do not ask the user for routine Maestro reconnect permission.
 - **Cursor Agent:** Maestro **MCP** is the supported interactive path. Do **not** fall back to direct CLI in the agent Shell. Stock Maestro 2.10.0 still bootstraps `applesimutils` on every CLI start (including Android); the agent Shell often cannot complete that path (sandbox FS / launcher `xargs` / host lookup). That is a **documented agent-sandbox constraint**, not a broken Fluent or Maestro install when MCP and `maestro:doctor` are healthy. Do not loosen sandbox or patch Maestro jars to “fix” it.
 - Scope `EXPO_PUBLIC_E2E_MODE=1` to the Metro command only — do not export into a shell that later runs Jest.
-- One BLOCKED scenario must not truncate an audit — continue independent scenarios.
+- One BLOCKED **or** PRODUCT FAIL scenario must not truncate an audit — continue independent scenarios until every inventory row is PASS / FAIL / BLOCKED / SKIPPED (exact counts). Suggested GitHub issues stay local until the user names a mutation.
 
 Useful MCP tools: `list_devices`, `inspect_screen`, `take_screenshot`, `run`, `cheat_sheet`.
 

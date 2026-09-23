@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Maestro QA (Fluent Mobile)
 
-When the task involves Maestro, E2E, Android emulator QA, feature audits, or Expo Dev Client bring-up, follow [`.claude/skills/fluent-maestro/SKILL.md`](../../.claude/skills/fluent-maestro/SKILL.md). Stabilize the lab and classify failures before product conclusions.
+When the task involves Maestro, E2E, Android emulator QA, feature audits, or Expo Dev Client bring-up, follow [`.claude/skills/fluent-maestro/SKILL.md`](../../.claude/skills/fluent-maestro/SKILL.md). Stabilize the lab and classify failures before product conclusions. Exhaustive audit completion (scenario inventory, failure-continuation, issue suggestions): [audit-mode.md](../../.claude/skills/fluent-maestro/references/audit-mode.md).
 
 ## Local work is not permission to publish
 
@@ -21,9 +21,15 @@ Finding format when a bug appears:
 ```text
 Finding: …
 Evidence: …
-Suggested follow-up: … (optional)
+Suggested follow-up: … (optional; suggestion only)
 No GitHub changes made.
 ```
+
+## One product failure does not stop the audit
+
+A failed expectation is usually a **local** blocker, not a global one. Capture evidence → classify → continue every remaining independently executable scenario → return to deeper diagnosis later if useful. Do **not** spend the rest of an audit on the first FAIL while other scenarios stay unexecuted.
+
+Every planned scenario must end as exactly one of: **PASS** | **FAIL** | **BLOCKED** | **SKIPPED**. Never silently drop a scenario (“didn't get to…”). Exact counts: PASS + FAIL + BLOCKED + SKIPPED = planned N. Details: [audit-mode.md](../../.claude/skills/fluent-maestro/references/audit-mode.md).
 
 ## Audit authorization includes lab recovery
 

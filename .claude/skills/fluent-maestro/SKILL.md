@@ -15,26 +15,48 @@ Senior React Native / Maestro QA for **Fluent Mobile** (Android-only, Expo Dev C
 
 References (read when needed):
 
-- [environment.md](./references/environment.md) — bring-up, Metro, Dev Client, env scoping, Expo Tools FAB
-- [recovery.md](./references/recovery.md) — recovery budget, levels, MCP vs CLI, checkpoints
+- [environment.md](./references/environment.md) — bring-up, Metro, Dev Client, emulator lifecycle, env scoping, Expo Tools FAB
+- [recovery.md](./references/recovery.md) — recovery budget, levels, MCP host hygiene, MCP vs CLI, checkpoints
 - [debugging.md](./references/debugging.md) — failure classes, waits, dead driver
 - [selectors.md](./references/selectors.md) — selector order + existing testIDs
-- [audit-mode.md](./references/audit-mode.md) — audit vs implement, contract disagreement, report semantics
+- [audit-mode.md](./references/audit-mode.md) — scenario inventory, failure-continuation, completion gate, issue suggestions, report format
 
 Hard constraints: [`.cursor/rules/maestro-qa.mdc`](../../.cursor/rules/maestro-qa.mdc). Human playbook: [docs/guides/maestro.md](../../../docs/guides/maestro.md).
 
 ## Operating loop
 
+### Audits (exhaustive)
+
+```text
+Understand request + authorization
+→ Build scenario inventory (behaviorally distinct states)
+→ Stabilize local lab (Metro, adb, Dev Client)
+→ Preflight (doctor + hierarchy gate + MCP host hygiene)
+→ Product contract (issue) vs code vs existing flows/tests
+→ For each scenario:
+     execute → PASS or FAIL (or BLOCKED/SKIPPED if justified)
+     record evidence; on PRODUCT FAIL do not stop the audit
+     restore nearest checkpoint; continue independents
+→ On infra failure → recover MCP/device → prove → resume
+→ Every inventory row has PASS|FAIL|BLOCKED|SKIPPED (exact counts)
+→ Inspect existing Maestro/unit coverage; note gaps
+→ Search GitHub; classify EXISTING vs NEW suggested issues (local only)
+→ Report (structured) — zero GitHub mutations
+```
+
+**FAILURE FOUND ≠ AUDIT FINISHED.** Continue independent scenarios. Details: [audit-mode.md](./references/audit-mode.md).
+
+### Flow development / smokes
+
 ```text
 Understand request
 → Classify what is authorized (local vs publish)
-→ Stabilize local lab (Metro, adb, Dev Client)
-→ Preflight (doctor + hierarchy gate)
-→ Product contract (issue) vs current code vs existing flows
+→ Stabilize local lab
+→ Preflight
 → Inspect live UI (Maestro MCP — required in Cursor Agent)
-→ Execute by checkpoint; on infra failure → recover MCP → prove → resume
-→ Continue independent scenarios after BLOCKED
-→ Report (local) — product vs coverage vs infrastructure
+→ Execute by checkpoint; on infra failure → recover → resume
+→ Continue independents after BLOCKED or FAIL
+→ Report (local)
 ```
 
 Do **not** jump from “audit #NNN” to create issue / open PR / comment / board move.
@@ -43,7 +65,7 @@ Do **not** jump from “audit #NNN” to create issue / open PR / comment / boar
 
 | Request shape | Allowed | Forbidden until named ask |
 | --- | --- | --- |
-| Audit / investigate / report | Read GitHub, run Maestro, **bounded lab recovery**, local files, local report | Issue/PR/comment/board/push/merge |
+| Audit / investigate / report | Read GitHub, run Maestro, **bounded lab recovery**, local files, local report + **suggested** issue drafts | Issue/PR/comment/board/push/merge |
 | Add Maestro coverage (+ local product/test changes) | Local code + flows + commits if asked | Remote publish |
 | “File an issue for …”, `/create-pr`, “open the PR” | That exact mutation | Anything else |
 
@@ -53,7 +75,7 @@ Do **not** end an authorized audit with “Say if you want me to re-auth Maestro
 
 ## Preflight (fail fast, then recover)
 
-1. `npm run maestro:doctor` (WARN on agent-shell applesimutils = known sandbox; not a broken install)
+1. `npm run maestro:doctor` (WARN on agent-shell applesimutils = known sandbox; not a broken install; heed duplicate Maestro MCP host WARNs)
 2. Metro: `curl -s http://127.0.0.1:8081/status` → `packager-status:running`; listener cwd = this repo
 3. `adb reverse tcp:8081`; package `com.eten.fluent` installed
 4. Maestro MCP: `list_devices` → `inspect_screen` (non-empty hierarchy)
@@ -84,25 +106,31 @@ CLI is for **unrestricted** contexts only: developer Terminal, CI, EAS — not a
 4. **Implement minimally** — one happy path first.
 5. **Validate** — Maestro MCP `run` (syntax + execute).
 6. **Execute** — bounded waits; checkpointed; on infra failure → recover MCP → prove → resume.
-7. **Diagnose** — evidence + class ([debugging.md](./references/debugging.md)). One hypothesis per change.
-8. **Expand / regression** — related tagged smokes; continue after BLOCKED.
-9. **Report** — see template below. No remote publish.
+7. **Diagnose** — evidence + class ([debugging.md](./references/debugging.md)). One hypothesis per change; do not abandon the rest of an audit for one PRODUCT FAIL ([audit-mode.md](./references/audit-mode.md)).
+8. **Expand / regression** — related tagged smokes; continue after BLOCKED **or** FAIL.
+9. **Report** — audit structure in [audit-mode.md](./references/audit-mode.md); smoke template below. No remote publish.
 
-## Report template (local)
+## Report templates (local)
+
+### Audits
+
+Use the structured audit report in [audit-mode.md](./references/audit-mode.md) (Product findings · Coverage with exact PASS/FAIL/BLOCKED/SKIPPED · Scenario matrix · Existing coverage · Gaps · Selectors · Infrastructure · Proposed GitHub issues · GitHub: None · Confidence). Run the audit self-check before finishing.
+
+### Smokes / harness
 
 ```text
 Environment: Debug Dev Client + Metro E2E | emulator | API target | session note
 Product findings: …
-Executed coverage: N/M planned scenarios
+Coverage: Planned N | Pass X | Fail Y | Blocked Z | Skipped W (X+Y+Z+W=N)
 Infrastructure: healthy | degraded (what) | recovered (what)
 
 Pass: …
 Fail: … (class + evidence)
 Workarounds (not passes): …
 Blocked: … (infra class + recovery attempts; no product conclusion)
-Untested: … (out of scope or not attempted)
+Skipped: … (justified)
 Files changed (local): …
 GitHub: untouched
 ```
 
-Use **Pass with gaps** only when coverage is sufficient to justify it. If harness failure left important scenarios blocked, prefer an **interim** wording that separates product findings from coverage completeness and infrastructure confidence. Never weaken a PRODUCT failure to green a smoke.
+Never weaken a PRODUCT failure to green a smoke. Prefer exact scenario counts over `~N/M`.
