@@ -5,6 +5,11 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
+import {
+  SYNC_NOW_CELLULAR_DISABLED_MESSAGE,
+  SYNC_NOW_OFFLINE_MESSAGE,
+} from '../../components/ui/SyncActionControls';
+import { formatUnuploadablePendingMessage } from '../../constants/messages';
 import SyncScreen from './SyncScreen';
 
 const mockGoBack = jest.fn();
@@ -17,13 +22,22 @@ const mockSyncNowUploads = jest.fn();
 let mockPageStatus = 'pending';
 let mockCellularBlocked = false;
 let mockIsOnline = true;
+let mockHasResolved = true;
 let mockIsSyncing = false;
 let mockDisplayText = 'Last synced: Just now';
 let mockStateType: 'normal' | 'syncing' | 'never' | 'error' = 'normal';
-let mockHasFailedUploads = false;
-let mockFailedCount = 0;
-let mockFailedErrorText: string | null = null;
-let mockHasPendingUploads = true;
+let mockPendingUploads = {
+  hasPendingUploads: true,
+  hasFailedUploads: false,
+  failedCount: 0,
+  failedErrorText: null as string | null,
+  pendingCount: 1,
+  pendingChapterCount: 1,
+  unuploadableCount: 0,
+  hasUnuploadablePending: false,
+  isUploading: false,
+  uploadProgress: null,
+};
 let mockSessionError: string | null = null;
 const mockPause = jest.fn();
 const mockCancel = jest.fn();
@@ -47,7 +61,8 @@ jest.mock('../../hooks/useDownloadQueue', () => ({
 jest.mock('../../hooks/useConnectivity', () => ({
   useConnectivity: () => ({
     isOnline: mockIsOnline,
-    isWifi: !mockCellularBlocked,
+    isWifi: mockIsOnline && !mockCellularBlocked,
+    hasResolved: mockHasResolved,
   }),
 }));
 
@@ -73,15 +88,7 @@ jest.mock('../../hooks/useSync', () => ({
 }));
 
 jest.mock('../../hooks/usePendingUploads', () => ({
-  usePendingUploads: () => ({
-    hasPendingUploads: mockHasPendingUploads,
-    hasFailedUploads: mockHasFailedUploads,
-    failedCount: mockFailedCount,
-    failedErrorText: mockFailedErrorText,
-    pendingChapterCount: 1,
-    isUploading: false,
-    uploadProgress: null,
-  }),
+  usePendingUploads: () => mockPendingUploads,
 }));
 
 jest.mock('../../hooks/useUploadSessionState', () => ({
@@ -154,13 +161,22 @@ describe('SyncScreen', () => {
     mockPageStatus = 'pending';
     mockCellularBlocked = false;
     mockIsOnline = true;
+    mockHasResolved = true;
     mockIsSyncing = false;
     mockDisplayText = 'Last synced: Just now';
     mockStateType = 'normal';
-    mockHasFailedUploads = false;
-    mockFailedCount = 0;
-    mockFailedErrorText = null;
-    mockHasPendingUploads = true;
+    mockPendingUploads = {
+      hasPendingUploads: true,
+      hasFailedUploads: false,
+      failedCount: 0,
+      failedErrorText: null,
+      pendingCount: 1,
+      pendingChapterCount: 1,
+      unuploadableCount: 0,
+      hasUnuploadablePending: false,
+      isUploading: false,
+      uploadProgress: null,
+    };
     mockSessionError = null;
     mockPause.mockResolvedValue(undefined);
     mockCancel.mockResolvedValue(undefined);
@@ -245,7 +261,103 @@ describe('SyncScreen', () => {
     expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
     expect(
       screen.getByTestId('sync-action-sync-now-disabled-hint'),
-    ).toBeTruthy();
+    ).toHaveTextContent(SYNC_NOW_CELLULAR_DISABLED_MESSAGE);
+  });
+
+  it('disables Sync Now with an offline reason when transport is offline', () => {
+    mockIsOnline = false;
+    render(<SyncScreen />);
+
+    expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
+    expect(
+      screen.getByTestId('sync-action-sync-now-disabled-hint'),
+    ).toHaveTextContent(SYNC_NOW_OFFLINE_MESSAGE);
+
+    fireEvent.press(screen.getByTestId('sync-action-sync-now'));
+    expect(mockSyncNowFromHook).not.toHaveBeenCalled();
+    expect(mockTriggerSync).not.toHaveBeenCalled();
+  });
+
+  it('disables Sync Now until connectivity has resolved', () => {
+    mockHasResolved = false;
+    render(<SyncScreen />);
+
+    expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
+    expect(
+      screen.queryByTestId('sync-action-sync-now-disabled-hint'),
+    ).toBeNull();
+
+    fireEvent.press(screen.getByTestId('sync-action-sync-now'));
+    expect(mockSyncNowFromHook).not.toHaveBeenCalled();
+  });
+
+  it('disables Sync Now when only failed unuploadable recordings remain', () => {
+    mockPendingUploads = {
+      ...mockPendingUploads,
+      hasPendingUploads: false,
+      hasFailedUploads: true,
+      failedCount: 1,
+      pendingCount: 0,
+      pendingChapterCount: 0,
+      unuploadableCount: 1,
+      hasUnuploadablePending: true,
+    };
+    render(<SyncScreen />);
+
+    expect(screen.getByText("Online · some takes can't upload")).toBeTruthy();
+    expect(screen.queryByText('Online · upload pending')).toBeNull();
+    expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
+    fireEvent.press(screen.getByTestId('sync-action-sync-now'));
+    expect(mockSyncNowFromHook).not.toHaveBeenCalled();
+  });
+
+  it('surfaces unuploadable pending instead of a successful no-op', () => {
+    mockPendingUploads = {
+      ...mockPendingUploads,
+      hasPendingUploads: false,
+      pendingCount: 0,
+      pendingChapterCount: 0,
+      unuploadableCount: 3,
+      hasUnuploadablePending: true,
+    };
+    render(<SyncScreen />);
+
+    expect(screen.getByTestId('sync-unuploadable-error')).toHaveTextContent(
+      formatUnuploadablePendingMessage(3),
+    );
+    expect(screen.queryByText('Work will upload shortly.')).toBeNull();
+    expect(screen.queryByText('Upload complete')).toBeNull();
+    expect(
+      screen.queryByText('All work has been uploaded to Fluent.'),
+    ).toBeNull();
+    expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
+    expect(
+      screen.queryByTestId('sync-action-sync-now-disabled-hint'),
+    ).toBeNull();
+  });
+
+  it('does not promise a successful upload when count>0 but chapters are empty', () => {
+    mockPendingUploads = {
+      ...mockPendingUploads,
+      hasPendingUploads: true,
+      pendingCount: 3,
+      pendingChapterCount: 0,
+      unuploadableCount: 3,
+      hasUnuploadablePending: true,
+    };
+    render(<SyncScreen />);
+
+    expect(screen.getByTestId('sync-unuploadable-error')).toHaveTextContent(
+      formatUnuploadablePendingMessage(3),
+    );
+    expect(screen.queryByText('Work will upload shortly.')).toBeNull();
+    expect(
+      screen.queryByText('All work has been uploaded to Fluent.'),
+    ).toBeNull();
+    expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
+    expect(
+      screen.queryByTestId('sync-action-sync-now-disabled-hint'),
+    ).toBeNull();
   });
 
   it('shows metadata sync failures from useSync', () => {
@@ -259,10 +371,13 @@ describe('SyncScreen', () => {
   });
 
   it('shows sanitized upload_error when selected takes have failed', () => {
-    mockHasFailedUploads = true;
-    mockFailedCount = 1;
-    mockFailedErrorText =
-      'Audio storage is currently unavailable. Try again later.';
+    mockPendingUploads = {
+      ...mockPendingUploads,
+      hasFailedUploads: true,
+      failedCount: 1,
+      failedErrorText:
+        'Audio storage is currently unavailable. Try again later.',
+    };
     render(<SyncScreen />);
 
     expect(screen.getByTestId('sync-failed-error')).toHaveTextContent(
@@ -271,9 +386,12 @@ describe('SyncScreen', () => {
   });
 
   it('does not show sync-failed-error when failed uploads have no upload_error text', () => {
-    mockHasFailedUploads = true;
-    mockFailedCount = 1;
-    mockFailedErrorText = null;
+    mockPendingUploads = {
+      ...mockPendingUploads,
+      hasFailedUploads: true,
+      failedCount: 1,
+      failedErrorText: null,
+    };
     render(<SyncScreen />);
 
     expect(screen.queryByTestId('sync-failed-error')).toBeNull();
@@ -281,11 +399,14 @@ describe('SyncScreen', () => {
 
   it('shows failed upload detail while offline', () => {
     mockIsOnline = false;
-    mockHasFailedUploads = true;
-    mockHasPendingUploads = false;
-    mockFailedCount = 1;
-    mockFailedErrorText =
-      'Missing projectUnitId for recording (no matching chapter assignment)';
+    mockPendingUploads = {
+      ...mockPendingUploads,
+      hasPendingUploads: false,
+      hasFailedUploads: true,
+      failedCount: 1,
+      failedErrorText:
+        'Missing projectUnitId for recording (no matching chapter assignment)',
+    };
     render(<SyncScreen />);
 
     expect(screen.getByTestId('sync-failed-error')).toHaveTextContent(
