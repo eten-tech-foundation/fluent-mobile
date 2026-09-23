@@ -7,6 +7,9 @@ in fluent-platform for the full rationale.
 - `features/<slug>/` — everything about one feature or initiative:
   `proposal.md`, `design.md`, `plan.md`, `tickets/`, `design/` (mockups).
   Only the stages that exist are present.
+- `assessments/<feature-name>/` — feature audit assessments from the Mobile
+  Feature Audit epic (#526): matrix results, Phase 7 reports, and gap task
+  docs under `tickets/`.
 - `runbooks/` — operational procedures (deploys, rollbacks, hotfixes). Not
   currently used in this repo, but part of the shared convention.
 - `guides/` — process/how-to docs not tied to one feature.
