@@ -1,6 +1,6 @@
 # Restore kill-safe recovery and background auto-pause for in-progress takes
 
-> Draft — pending device confirmation (#528 audit).
+> Confirmed on device (#528 audit, B.6 and E.22).
 
 ## Summary
 
@@ -27,9 +27,9 @@ unmerged when the Record tab was rebuilt. On `main`:
 
 ## Actual
 
-To confirm on device. The code suggests the in-progress take is lost
-silently after a kill, and that recording state after backgrounding does not
-match the UI.
+- B.6: pressing Home during recording does **not** pause the take.
+- E.22: after pause, kill, and relaunch, the take is lost; the verse comes
+  back with no takes and no recovery prompt.
 
 ## Steps to reproduce
 
@@ -38,8 +38,8 @@ match the UI.
 3. Relaunch the app and open the same verse.
 4. Observe: no recovery prompt, and no partial take.
 
-Background variant: while recording, press Home for 30 s, then return. Check
-the UI state against the audio that was actually captured.
+Background variant (B.6): while recording, press Home for 30 s, then
+return. Recording is still running and has not paused.
 
 ## Acceptance criteria
 

@@ -1,6 +1,6 @@
 # Offer Resume or Discard when leaving an in-progress take
 
-> Draft — pending device confirmation and product confirmation (#528 audit).
+> Confirmed on device (#528 audit, B.7a). Discard copy and behavior need product confirmation.
 
 ## Summary
 

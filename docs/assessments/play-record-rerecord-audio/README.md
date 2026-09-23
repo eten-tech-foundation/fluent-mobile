@@ -1,9 +1,8 @@
 # Play, Record, and Re-record Audio Audit
 
-> **Status: draft — device run pending.** Code review and issue history are
-> complete. Rows marked ⏳ still need to be run on an Android device, and the
-> "Candidate" gaps below must be confirmed on device before GitHub issues are
-> filed.
+> **Status: draft — device run complete, issues not yet filed.** Gaps 1–3
+> and 6 will be filed as new issues. Gaps 4–5 will be added to existing open
+> issues.
 
 ## Overview
 
@@ -11,10 +10,10 @@
 multi-take list, take playback, scrubbing, select/delete, All Takes /
 canonical, verse vs pericope capture  
 **Auditor:** Jonathan Seehagen (`@JonathanSeehagen`)  
-**Date tested:** ⏳  
-**Build/version:** ⏳ (nightly APK build number / commit)  
-**Environment:** ⏳ (`https://dev.api.fluent.bible` or other)  
-**Device and OS:** ⏳ (physical device model + Android version)  
+**Date tested:** 2026-09-23  
+**Build/version:** Local run of merged `main` @ ⏳ (`expo-dev-client` + Metro), not a distributed build or the nightly APK  
+**Environment:** `https://dev.api.fluent.bible`  
+**Device and OS:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), physical device  
 **Audit sub-issue:** [#528](https://github.com/eten-tech-foundation/fluent-mobile/issues/528) (epic [#526](https://github.com/eten-tech-foundation/fluent-mobile/issues/526))
 
 ## Related Issues
@@ -128,36 +127,38 @@ Read on `main` @ `d5b9e64`:
 
 ## Test Results
 
-| Scenario | Expected Result | Actual Result | Status |
-|---|---|---|---|
-| First record → mic prompt → allow | OS dialog; recording starts | ⏳ | ⏳ |
-| Mic denied / permanently denied | Explanation + "Go to Settings" deep link | ⏳ | ⏳ |
-| Idle state | Enlarged Record "Record <ref>", no waveform | ⏳ | ⏳ |
-| Record → timer + waveform | Counter increments; waveform centered (#485) | ⏳ | ⏳ |
-| Pause → wait 10s → Resume | Appends to same take, no audio error (#486) | ⏳ | ⏳ |
-| Pause → lock screen → unlock → Resume | Appends, no audio error (#486) | ⏳ | ⏳ |
-| Recording → press Home (background) → return | Take auto-paused (#49) | ⏳ | ⏳ |
-| Recording/paused → swipe app away (kill) → relaunch | Partial take recoverable (#49) | ⏳ | ⏳ |
-| Paused → prev/next verse | Resume or discard prompt (#49) | ⏳ | ⏳ |
-| Paused → tab / back / Sync / account | Leave blocked with prompt | ⏳ | ⏳ |
-| Stop | Take 1 listed + selected; verse does not advance | ⏳ | ⏳ |
-| Play take → plays to end | Pause icon while playing; resets at end | ⏳ | ⏳ |
-| Duration shown | Real duration, advancing time (#236) | ⏳ | ⏳ |
-| Record Take 2, play Take 1 then Take 2 | Exclusive playback; no update-depth crash (#298) | ⏳ | ⏳ |
-| Tap waveform mid-take | Seeks to tapped position (#544) | ⏳ | ⏳ |
-| Select an older take | Selection indicator moves; one selected | ⏳ | ⏳ |
-| Delete non-selected take | Removed immediately, no prompt | ⏳ | ⏳ |
-| Delete selected take | Confirm → next take selected | ⏳ | ⏳ |
-| Delete last take | Returns to Idle | ⏳ | ⏳ |
-| Take numbering after delete | Cumulative (no reuse) | ⏳ | ⏳ |
-| 5 takes recorded | "Record New Take" disabled | ⏳ | ⏳ |
-| Force an audio error, then play a take | Card shows Pause while playing | ⏳ | ⏳ |
-| Many takes + open Source Text | Single page scroll; nav pinned (#404) | ⏳ | ⏳ |
-| Second account records same verse | Toggle appears; All Takes grouped by account (#279) | ⏳ | ⏳ |
-| All Takes: designate canonical | Single canonical across accounts | ⏳ | ⏳ |
-| Pericope mode: record | Title = range + subtitle; take labeled Pericope (#409/#410) | ⏳ | ⏳ |
-| Pericope mode with verse takes | Stitched row plays verses in order (#411) | ⏳ | ⏳ |
-| Source audio playing → start recording | Source audio stops before capture | ⏳ | ⏳ |
+Scenario numbers match the device test script used for this audit
+(section letter + step).
+
+| # | Scenario | Expected Result | Actual Result | Status |
+|---|---|---|---|---|
+| A.1 | Mic denied → tap Record | Explanation + "Go to Settings" deep link | As expected | Pass |
+| A.2 | Mic allowed → Record; Idle state | Enlarged "Record <ref>", no waveform; capture starts | As expected | Pass |
+| B.3 | Recording chrome | Counter increments; waveform centered (#485); Pause + Stop | As expected | Pass |
+| B.4 | Pause → wait 10s → Resume | Appends to same take, no audio error (#486) | As expected | Pass |
+| B.5 | Pause → lock → unlock → Resume | Appends, no audio error (#486) | As expected | Pass |
+| B.6 | Recording → Home (background) → return | Take auto-paused (#49) | Recording does **not** pause | **Fail** → Gap 1 |
+| B.7a | Paused → prev/next, tab, back, Sync, account | Leave intercepted with a Resume/Discard prompt (#49) | Leave is blocked, but only by a "Recording in progress" alert with a single OK button | **Fail** → Gap 6 |
+| B.7b | Paused → swipe open drawer → Settings → Home | Leave intercepted | Drawer opens and navigates away; on return the in-progress take is gone | **Fail** → Gap 2 |
+| B.8 | Stop | Take 1 listed + selected; no auto-advance | As expected | Pass |
+| C.9–10 | Play to end / pause mid-take | Pause icon while playing; real duration; resets at end | As expected | Pass |
+| C.11 | Tap waveform mid-take | Seeks to tapped position (#544) | Seeks to the position, but playback auto-starts and the control stays **Play**. Also raises `Maximum update depth exceeded` | **Fail** → Gaps 3, 4 |
+| D.12 | Record New Take | List collapses; new take appended + selected | As expected | Pass |
+| D.13 | Alternate Take 1 / Take 2 playback ×5 | Exclusive playback; no update-depth error (#298) | Exclusive playback OK; switching takes raises `Maximum update depth exceeded` (dev LogBox, no functional UI error) | **Fail** → Gap 3 |
+| D.14 | Select an older take | One selected | As expected | Pass |
+| D.15 | Delete non-selected take | Immediate, no prompt | As expected | Pass |
+| D.16 | Delete selected take | Confirm → next take selected | As expected | Pass |
+| D.17 | Take numbering after delete | Cumulative | As expected | Pass |
+| D.18 | 5 takes recorded | "Record New Take" disabled | As expected | Pass |
+| D.19 | Many takes + Source Text | Single page scroll; nav pinned (#404) | As expected | Pass |
+| D.20 | Delete last take | Returns to Idle | As expected | Pass |
+| E.21–22 | Paused → kill app → relaunch | Partial take recoverable (#49) | Take lost; the verse comes back with no takes and no recovery prompt | **Fail** → Gap 1 |
+| F.23 | Account B opens verse recorded by account A | Toggle shown, defaults to My Takes (#279) | Toggle shown; My Takes empty with the Record button visible | Pass |
+| F.24–26 | All Takes grouping + canonical | Grouped by account; single canonical | As expected | Pass |
+| G.27 | Pericope capture | Range title + subtitle; "Pericope" take label (#409/#410) | As expected | Pass |
+| G.28 | Stitched row playback (#411) | Verse takes play in order | Plays correctly; stitched row waveform sits further right than the pericope row (no delete icon) | **Fail (cosmetic)** → Gap 5 |
+| H.29 | Source audio playing → Record | Source audio stops before capture | As expected | Pass |
+| J.32 | Audio error → play another take | Pause icon while playing | No audio error occurred during the run, so this could not be triggered | Blocked |
 
 ## Offline and Synchronization Results
 
@@ -166,43 +167,148 @@ sibling audits (#529, #530); only local behavior is checked here.
 
 | Scenario | Result | Notes |
 |---|---|---|
-| Feature used while offline | ⏳ | Record, play, select and delete in airplane mode |
-| App closed and reopened offline | ⏳ | Takes still listed and playable |
+| Feature used while offline | Pass | I.30 — record, play, select, delete in airplane mode |
+| App closed and reopened offline | Pass | I.31 — takes still listed and playable |
 | Device returns online | N/A | Covered by #530 |
 | Offline changes synchronize | N/A | Covered by #530 |
 | Conflicting changes are handled | N/A | #256 (open), sibling audits |
 
 ## Gaps Identified
 
-> Candidates from code review. Each needs device confirmation before an issue
-> is filed. No open issue covers them today (searched: kill, recover,
-> background, discard, paused take).
+Searched for existing issues before filing (kill, recover, background,
+discard, paused take, drawer, maximum update depth, scrub, seek, stitched).
 
-### Candidate: No kill-safe recovery or background auto-pause for in-progress takes
+### Gap 1: No background auto-pause or kill-safe recovery for in-progress takes
 
-**Severity:** High (data loss of in-progress recordings)  
+**Severity:** High (in-progress recordings are lost)  
 **Launch blocker:** To be decided with product  
 **Related issue:** [#49](https://github.com/eten-tech-foundation/fluent-mobile/issues/49), [#170](https://github.com/eten-tech-foundation/fluent-mobile/issues/170), [#176](https://github.com/eten-tech-foundation/fluent-mobile/issues/176)  
 **Development task:** [tickets/restore-kill-safe-paused-take-recovery.md](./tickets/restore-kill-safe-paused-take-recovery.md) · issue ⏳
 
 **Description:**  
-#49 requires that pausing flushes the partial take to disk and that the take
-can be recovered after the app is killed, and that backgrounding auto-pauses.
-On `main`, nothing writes paused-take markers and nothing pauses on
-background. Captures are `.m4a` (HIGH_QUALITY), which is not playable if the
-process dies before `stop()`.
+#49 requires two things. First, backgrounding the app auto-pauses the take.
+Second, a paused partial take is flushed to disk and can be recovered after
+an app kill. On `main`, nothing pauses on background and nothing writes
+paused-take markers (`upsertPausedTake` has no callers). Captures are
+`.m4a` (HIGH_QUALITY), which is not playable if the process dies before
+`stop()`.
 
 **Steps to reproduce:**
 
-1. Record a verse and pause after about 10 s.
-2. Swipe the app away from Recents.
-3. Relaunch and return to the verse.
+1. Record a verse and press Home. On return, recording is still running (B.6).
+2. Record a verse and pause after about 10 s.
+3. Swipe the app away from Recents, then relaunch it.
 
-**Expected behavior:** a recovery prompt resumes or discards the partial take.  
-**Actual behavior:** ⏳ (code suggests the take is lost silently).  
-**Evidence:** ⏳
+**Expected behavior:** backgrounding auto-pauses, and after relaunch a
+recovery prompt offers to resume or discard the partial take.  
+**Actual behavior:** recording continues in the background, and after a kill
+the take is lost; the verse comes back with no takes.  
+**Evidence:** device run, B.6 and E.22.
 
-### Candidate: Leaving during capture offers no Resume or Discard option
+### Gap 2: Drawer navigation bypasses the recording leave guard and discards the take
+
+**Severity:** High (silent data loss)  
+**Launch blocker:** To be decided with product  
+**Related issue:** [#49](https://github.com/eten-tech-foundation/fluent-mobile/issues/49), [#47](https://github.com/eten-tech-foundation/fluent-mobile/issues/47)  
+**Development task:** [tickets/block-drawer-during-capture.md](./tickets/block-drawer-during-capture.md) · issue ⏳
+
+**Description:**  
+The drafting screen guards tab changes, header or system back, Sync, and
+account switching while a take is recording or paused. The root drawer
+(`src/routes/(app)/_layout.tsx`, `swipeEnabled: true`) is not guarded, so a
+translator can open it and go to Settings, then Home. When the drafting
+screen unmounts (Settings returns Home via `router.replace(hrefs.home())`), `useRecordingEngine` stops the recorder without persisting
+the capture, and the take is discarded with no prompt. The same drawer
+also offers account switch (`resetNavigationAfterAccountSwitch` →
+`router.dismissAll()`), Add User, and Sign Out, and each of those also
+bypasses the drafting guards.
+
+**Steps to reproduce:**
+
+1. On the Record tab, record, then pause.
+2. Swipe from the left edge to open the drawer, go to Settings, then back to Home.
+3. Reopen the verse: the in-progress take is gone.
+
+**Expected behavior:** the drawer is disabled, or intercepted with the same
+guard, while a take is recording or paused.  
+**Actual behavior:** the app navigates away and the take is lost.  
+**Evidence:** device run, B.7b.
+
+### Gap 3: "Maximum update depth exceeded" during take playback (regression of #298)
+
+**Severity:** Medium (no visible UI error, but #298 reported slowdowns until
+reload)  
+**Launch blocker:** No  
+**Related issue:** [#298](https://github.com/eten-tech-foundation/fluent-mobile/issues/298) (closed), [#411](https://github.com/eten-tech-foundation/fluent-mobile/issues/411)  
+**Development task:** [tickets/playback-update-depth-regression.md](./tickets/playback-update-depth-regression.md) · issue ⏳
+
+**Description:**  
+React's `Maximum update depth exceeded` is raised when switching playback
+from one take to another (D.13) and when tapping the middle of a take's
+waveform to play from there (C.11). #298 fixed this path
+in August. Later changes to the playback and take-load effects (for example
+the #411 stitching and `REHYDRATE` loop fixes in `RecordTab.tsx` and
+`useVerseAudio.ts`) are the likely re-entry points.
+
+**Steps to reproduce:**
+
+1. Record Take 1 and Take 2 on a verse.
+2. Play Take 1, then switch to Take 2 (or tap the middle of a take's
+   waveform).
+3. Watch the dev LogBox or Metro logs.
+
+**Expected behavior:** no update-depth error.  
+**Actual behavior:** `Maximum update depth exceeded` is logged.  
+**Evidence:** device run, C.11 and D.13 (dev build LogBox).
+
+### Gap 4: Waveform tap auto-plays and the control stays on Play
+
+**Severity:** Medium  
+**Launch blocker:** No  
+**Related issue:** [#544](https://github.com/eten-tech-foundation/fluent-mobile/issues/544) (open, same interaction), [#176](https://github.com/eten-tech-foundation/fluent-mobile/issues/176); source-audio scrub on the Bible tab reported separately in [#408 QA](https://github.com/eten-tech-foundation/fluent-mobile/issues/408#issuecomment-5728779028)  
+**Development task:** add to #544 (existing open issue); no new issue
+
+**Description:**  
+Tapping the draft waveform now seeks to the tapped position, but playback
+starts on its own and the take control keeps showing **Play**. In
+`useVerseAudio.seek`, `playingTakeId` is set but no `PLAY` is dispatched,
+so the card's `isThisPlaying` (which requires `state === 'playing'`) stays
+false.
+
+**Steps to reproduce:**
+
+1. Record a take, then tap the middle of its waveform.
+
+**Expected behavior:** seek to the position, and the control reflects the
+real playback state.  
+**Actual behavior:** audio plays from the position while the control shows
+Play.  
+**Evidence:** device run, C.11.
+
+### Gap 5: Stitched take row waveform misaligned with pericope take rows
+
+**Severity:** Low (cosmetic)  
+**Launch blocker:** No  
+**Related issue:** [#411](https://github.com/eten-tech-foundation/fluent-mobile/issues/411) (open), [#474](https://github.com/eten-tech-foundation/fluent-mobile/issues/474)  
+**Development task:** add to #411 (open); no new issue
+
+**Description:**  
+In pericope view, the stitched row's waveform sits further right than a
+pericope take row's waveform. Stitched rows cannot be deleted, so they
+render without the trailing delete icon. The waveform then takes that space
+and the two rows no longer line up.
+
+**Steps to reproduce:**
+
+1. Record verse takes and a pericope take in the same pericope.
+2. Open pericope view and compare the waveform position of the two rows.
+
+**Expected behavior:** the waveforms line up across rows (reserve the
+trailing slot).  
+**Actual behavior:** the stitched waveform is offset.  
+**Evidence:** device run, G.28 (screenshot to be attached when commenting on #411).
+
+### Gap 6: Leaving during capture offers no Resume or Discard option
 
 **Severity:** Low / Medium  
 **Launch blocker:** No  
@@ -210,50 +316,31 @@ process dies before `stop()`.
 **Development task:** [tickets/paused-take-resume-or-discard-prompt.md](./tickets/paused-take-resume-or-discard-prompt.md) · issue ⏳
 
 **Description:**  
-#49 specifies a resume-or-discard prompt when navigating away from a paused
-take. The app shows an OK-only "Recording in progress" alert. The only
-exit is Stop, which always commits the take and counts it toward the
-5-take cap.
+#49 specifies a resume-or-discard prompt when a translator navigates away
+from a paused take. The app blocks the navigation, but only with a
+"Recording in progress" alert that has a single OK button. There is no
+discard path: Stop is the only exit, and it always commits a take that
+counts toward the 5-take cap.
 
 **Steps to reproduce:**
 
 1. Record, then pause.
-2. Tap the next-verse chevron or the back button.
+2. Tap the next-verse chevron, another tab, back, Sync, or the account
+   switcher.
 
-**Expected behavior:** a prompt to resume or discard.  
-**Actual behavior:** ⏳ (code: an "OK" alert only).  
-**Evidence:** ⏳
+**Expected behavior:** a prompt with Resume and Discard (product to confirm
+the copy).  
+**Actual behavior:** an alert with OK only.  
+**Evidence:** device run, B.7a.
 
-### Candidate: Take playback controls stuck after an audio error
+### Not confirmed (code-only)
 
-**Severity:** Medium  
-**Launch blocker:** No  
-**Related issue:** [#96](https://github.com/eten-tech-foundation/fluent-mobile/issues/96), [#298](https://github.com/eten-tech-foundation/fluent-mobile/issues/298)  
-**Development task:** [tickets/playback-controls-after-audio-error.md](./tickets/playback-controls-after-audio-error.md) · issue ⏳
-
-**Description:**  
-`verseAudioReducer` ignores `PLAY` unless the state is `recorded`. Once any
-audio error moves the machine to `error`, playing a take starts the audio,
-but the card keeps showing Play (not Pause) and the natural end is not
-processed. The state recovers only after a verse change, a delete (which
-dispatches `REHYDRATE` when other takes remain, or `DELETE` for the last
-take), or a new recording.
-
-**Steps to reproduce:**
-
-1. Trigger any audio error. For example, play a take whose file was removed
-   (`adb run-as`, which needs a debuggable `development` build), or hit a
-   resume error.
-2. Dismiss the alert and tap Play on another take.
-
-**Expected behavior:** the card shows Pause while playing, and resets at the
-end.  
-**Actual behavior:** ⏳  
-**Evidence:** ⏳
+- **Playback controls stuck after an audio error:** see the `verseAudioReducer`
+  bullet in Code Review Notes (pre-device). No audio error occurred during the device run (J.32),
+  so this stays a code-review finding with no ticket or issue.
 
 ### Already tracked (no new issue)
 
-- Waveform tap restarts instead of seeking — [#544](https://github.com/eten-tech-foundation/fluent-mobile/issues/544) (open).
 - Bible unit tap does not open Record — [#564](https://github.com/eten-tech-foundation/fluent-mobile/issues/564) (open, from #527).
 
 ## Open Questions
@@ -265,22 +352,33 @@ end.
   banners already render. Same question.
 - #176 describes ADTS `.aac` capture for kill safety, but `main` records
   `.m4a`. Was switching the capture format an intentional decision? It
-  affects the fix for the first gap.
+  affects the fix for Gap 1.
 - #49 says Re-record overwrites silently; #71 replaced it with "Record New
   Take". Confirm that "re-record" in this audit's scope means "Record New
   Take".
 
 ## Audit Summary
 
-**Overall result:** ⏳ (expected: Pass with gaps)
+**Overall result:** Pass with gaps
 
 **Summary:**  
-⏳ — fill after the device run.
+The core flows work on a physical Android 10 device: record, pause, resume
+(including after a screen lock), stop, multi-take playback, select, delete,
+the 5-take cap, All Takes and canonical, pericope capture and stitching, and
+offline use. The main risk is **losing in-progress recordings**: there is no
+background auto-pause and no kill-safe recovery (Gap 1), and the drawer lets
+a translator leave mid-take, which silently discards it (Gap 2). Both
+should be decided on as launch blockers before the November 2026 ETEN
+Summit. The #298 update-depth error has regressed (Gap 3). The rest are
+medium or low playback and UI issues (Gaps 4–6).
+
+The device run used a local run of merged `main` over Metro, not the nightly APK.
+The update-depth error was observed through the dev LogBox.
 
 **Follow-up required:**
 
 - [ ] All identified gaps have corresponding GitHub issues.
-- [ ] Mobile and API dependencies are cross-linked. _(none expected; local-only feature)_
+- [x] Mobile and API dependencies are cross-linked. _(none: local-only feature, no API gaps)_
 - [ ] Launch-blocking gaps are clearly identified.
 - [ ] Assessment has been reviewed and merged.
 
