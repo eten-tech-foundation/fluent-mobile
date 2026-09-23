@@ -3,11 +3,12 @@ import {
   isTransportBlockedForTransfer,
   isUnmeteredTransport,
   isWaitingWifiForTransfer,
+  transferInputFromLinkSnapshot,
   transportAllowsTransfer,
 } from './transportPolicy';
 
 describe('transportAllowsTransfer', () => {
-  it('returns offline when the server is unreachable', () => {
+  it('returns offline when the link is down', () => {
     expect(
       transportAllowsTransfer({
         isOnline: false,
@@ -111,5 +112,23 @@ describe('transport policy helpers', () => {
         uploadOverCellular: false,
       }),
     ).toBe(false);
+  });
+
+  it('maps a link snapshot onto transfer policy input', () => {
+    expect(
+      transferInputFromLinkSnapshot(
+        {
+          isLinkOnline: true,
+          isWifi: false,
+          connectionType: 'ethernet',
+        },
+        false,
+      ),
+    ).toEqual({
+      isOnline: true,
+      isWifi: false,
+      connectionType: 'ethernet',
+      uploadOverCellular: false,
+    });
   });
 });

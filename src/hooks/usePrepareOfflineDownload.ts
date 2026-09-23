@@ -20,7 +20,10 @@ import {
 } from '../utils/prepareOfflineCatalog';
 import { formatByteSize } from '../utils/formatByteSize';
 import { logger } from '../utils/logger';
-import { isTransportBlockedForTransfer } from '../utils/transportPolicy';
+import {
+  isTransportBlockedForTransfer,
+  type TransportGate,
+} from '../utils/transportPolicy';
 import { useConnectivity } from './useConnectivity';
 import { usePreferences } from './usePreferences';
 import {
@@ -37,6 +40,12 @@ export type PrepareOfflineDownloadSession =
   | 'complete';
 
 type PendingSessionAction = 'pause' | 'resume' | 'cancel';
+
+function messageForTransferGate(gate: TransportGate): string {
+  return gate === 'offline'
+    ? TRANSFER_OFFLINE_MESSAGE
+    : TRANSFER_WAITING_WIFI_MESSAGE;
+}
 
 export interface UsePrepareOfflineDownloadInput {
   projectId: number | null;
@@ -110,21 +119,21 @@ export function usePrepareOfflineDownload({
     refresh,
     workerSessionState,
   } = useDownloadQueue();
-  const { isOnline, isWifi, connectionType, connectivityPending } =
+  const { isLinkOnline, isWifi, connectionType, transferConnectivityPending } =
     useConnectivity();
   const { uploadOverCellular } = usePreferences();
   const transferInput = {
-    isOnline,
+    isOnline: isLinkOnline,
     isWifi,
     connectionType,
     uploadOverCellular,
   };
   const transportBlocked =
-    connectivityPending || isTransportBlockedForTransfer(transferInput);
-  const transportBlockedMessage = connectivityPending
+    transferConnectivityPending || isTransportBlockedForTransfer(transferInput);
+  const transportBlockedMessage = transferConnectivityPending
     ? undefined
     : transportBlocked
-    ? !isOnline
+    ? !isLinkOnline
       ? TRANSFER_OFFLINE_MESSAGE
       : TRANSFER_WAITING_WIFI_MESSAGE
     : undefined;
@@ -185,9 +194,9 @@ export function usePrepareOfflineDownload({
   useEffect(() => {
     setDownloadTransportError(null);
   }, [
-    connectivityPending,
+    transferConnectivityPending,
     connectionType,
-    isOnline,
+    isLinkOnline,
     isWifi,
     uploadOverCellular,
   ]);
@@ -385,7 +394,10 @@ export function usePrepareOfflineDownload({
     try {
       log.info('Prepare offline download resumed', { projectId });
       setForceIdle(false);
-      await resume();
+      const resumeResult = await resume();
+      if (!resumeResult.ok) {
+        setDownloadTransportError(messageForTransferGate(resumeResult.gate));
+      }
     } finally {
       releaseSessionAction();
     }
@@ -513,11 +525,7 @@ export function usePrepareOfflineDownload({
             await cancelProjectDownloadTransfers(projectId);
           }
           await refresh();
-          setDownloadTransportError(
-            startResult.gate === 'offline'
-              ? TRANSFER_OFFLINE_MESSAGE
-              : TRANSFER_WAITING_WIFI_MESSAGE,
-          );
+          setDownloadTransportError(messageForTransferGate(startResult.gate));
         }
       }
     } finally {

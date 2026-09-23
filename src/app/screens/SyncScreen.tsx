@@ -37,8 +37,14 @@ export default function SyncScreen() {
 
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const { isOnline, isWifi, connectionType, connectivityPending } =
-    useConnectivity();
+  const {
+    isOnline,
+    isLinkOnline,
+    isWifi,
+    connectionType,
+    connectivityPending,
+    transferConnectivityPending,
+  } = useConnectivity();
   const { uploadOverCellular, setUploadOverCellular } = usePreferences();
   const {
     hasPendingUploads,
@@ -72,33 +78,40 @@ export default function SyncScreen() {
 
   const transferTransport = useMemo(
     () => ({
-      isOnline,
+      isOnline: isLinkOnline,
       isWifi,
       connectionType,
       uploadOverCellular,
     }),
-    [isOnline, isWifi, connectionType, uploadOverCellular],
+    [isLinkOnline, isWifi, connectionType, uploadOverCellular],
   );
   const effectivelyOnline =
-    !connectivityPending && isEffectivelyOnlineForTransfer(transferTransport);
+    !connectivityPending &&
+    !transferConnectivityPending &&
+    isOnline &&
+    isEffectivelyOnlineForTransfer(transferTransport);
   const waitingWifi =
-    !connectivityPending && isWaitingWifiForTransfer(transferTransport);
-  const offlineBlocked = !connectivityPending && !isOnline;
+    !transferConnectivityPending && isWaitingWifiForTransfer(transferTransport);
+  const transportOffline = !transferConnectivityPending && !isLinkOnline;
+  const fluentUnreachable = !connectivityPending && !isOnline;
   /** Worker would visit zero chapters — pericope/orphan (incl. failed takes not in queue). */
   const noUploadableChapters =
     pendingChapterCount === 0 && (hasUnuploadablePending || hasPendingUploads);
   const syncNowDisabled =
     connectivityPending ||
+    transferConnectivityPending ||
     waitingWifi ||
-    offlineBlocked ||
+    transportOffline ||
+    fluentUnreachable ||
     noUploadableChapters;
-  const syncNowDisabledHint = connectivityPending
-    ? undefined
-    : offlineBlocked
-    ? TRANSFER_OFFLINE_MESSAGE
-    : waitingWifi
-    ? SYNC_NOW_CELLULAR_DISABLED_MESSAGE
-    : undefined;
+  const syncNowDisabledHint =
+    connectivityPending || transferConnectivityPending
+      ? undefined
+      : transportOffline
+      ? TRANSFER_OFFLINE_MESSAGE
+      : waitingWifi
+      ? SYNC_NOW_CELLULAR_DISABLED_MESSAGE
+      : undefined;
 
   const { triggerSync, isSyncing, displayText, stateType } = useSync({
     onSyncComplete: () => {

@@ -22,7 +22,9 @@ const mockSyncNowUploads = jest.fn();
 let mockPageStatus = 'pending';
 let mockCellularBlocked = false;
 let mockIsOnline = true;
+let mockIsLinkOnline = true;
 let mockConnectivityPending = false;
+let mockTransferConnectivityPending = false;
 let mockIsSyncing = false;
 let mockDisplayText = 'Last synced: Just now';
 let mockStateType: 'normal' | 'syncing' | 'never' | 'error' = 'normal';
@@ -61,10 +63,13 @@ jest.mock('../../hooks/useDownloadQueue', () => ({
 jest.mock('../../hooks/useConnectivity', () => ({
   useConnectivity: () => ({
     isOnline: mockIsOnline,
-    isWifi: mockIsOnline && !mockCellularBlocked,
+    isLinkOnline: mockIsLinkOnline,
+    isWifi: mockIsLinkOnline && !mockCellularBlocked,
     connectionType: mockCellularBlocked ? 'cellular' : 'wifi',
     connectivityPending: mockConnectivityPending,
+    transferConnectivityPending: mockTransferConnectivityPending,
     hasResolved: !mockConnectivityPending,
+    hasTransferResolved: !mockTransferConnectivityPending,
   }),
 }));
 
@@ -163,7 +168,9 @@ describe('SyncScreen', () => {
     mockPageStatus = 'pending';
     mockCellularBlocked = false;
     mockIsOnline = true;
+    mockIsLinkOnline = true;
     mockConnectivityPending = false;
+    mockTransferConnectivityPending = false;
     mockIsSyncing = false;
     mockDisplayText = 'Last synced: Just now';
     mockStateType = 'normal';
@@ -268,6 +275,7 @@ describe('SyncScreen', () => {
 
   it('disables Sync Now with an offline reason when transport is offline', () => {
     mockIsOnline = false;
+    mockIsLinkOnline = false;
     render(<SyncScreen />);
 
     expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
@@ -280,8 +288,20 @@ describe('SyncScreen', () => {
     expect(mockTriggerSync).not.toHaveBeenCalled();
   });
 
+  it('does not show the transport-offline hint when only Fluent health is down', () => {
+    mockIsOnline = false;
+    mockIsLinkOnline = true;
+    render(<SyncScreen />);
+
+    expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
+    expect(
+      screen.queryByTestId('sync-action-sync-now-disabled-hint'),
+    ).toBeNull();
+  });
+
   it('disables Sync Now until connectivity has resolved', () => {
     mockConnectivityPending = true;
+    mockTransferConnectivityPending = true;
     render(<SyncScreen />);
 
     expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
@@ -364,6 +384,7 @@ describe('SyncScreen', () => {
 
   it('does not start sync while connectivity is still pending', async () => {
     mockConnectivityPending = true;
+    mockTransferConnectivityPending = true;
     render(<SyncScreen />);
 
     fireEvent.press(screen.getByTestId('sync-action-sync-now'));
@@ -411,6 +432,7 @@ describe('SyncScreen', () => {
 
   it('shows failed upload detail while offline', () => {
     mockIsOnline = false;
+    mockIsLinkOnline = false;
     mockPendingUploads = {
       ...mockPendingUploads,
       hasPendingUploads: false,

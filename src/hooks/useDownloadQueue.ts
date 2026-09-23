@@ -13,6 +13,7 @@ import { getTransferTransportSnapshot } from '../services/connectivity';
 import { getUploadOverCellular } from '../services/userPreferences';
 import { logger } from '../utils/logger';
 import {
+  transferInputFromLinkSnapshot,
   transportAllowsTransfer,
   type TransportGate,
 } from '../utils/transportPolicy';
@@ -251,16 +252,13 @@ export function useDownloadQueue() {
     async (items: DownloadQueueItem[]): Promise<DownloadTransferResult> => {
       const transportSnapshot = await getTransferTransportSnapshot();
       const uploadOverCellular = getUploadOverCellular();
-      const gate = transportAllowsTransfer({
-        isOnline: transportSnapshot.isOnline,
-        isWifi: transportSnapshot.isWifi,
-        connectionType: transportSnapshot.connectionType,
-        uploadOverCellular,
-      });
+      const gate = transportAllowsTransfer(
+        transferInputFromLinkSnapshot(transportSnapshot, uploadOverCellular),
+      );
       if (gate !== 'ok') {
         log.info('Download start skipped until transport allows transfer', {
           gate,
-          isOnline: transportSnapshot.isOnline,
+          isLinkOnline: transportSnapshot.isLinkOnline,
           isWifi: transportSnapshot.isWifi,
           isCellular: transportSnapshot.isCellular,
           connectionType: transportSnapshot.connectionType,
@@ -303,16 +301,13 @@ export function useDownloadQueue() {
   const resume = useCallback(async (): Promise<DownloadTransferResult> => {
     const transportSnapshot = await getTransferTransportSnapshot();
     const uploadOverCellular = getUploadOverCellular();
-    const gate = transportAllowsTransfer({
-      isOnline: transportSnapshot.isOnline,
-      isWifi: transportSnapshot.isWifi,
-      connectionType: transportSnapshot.connectionType,
-      uploadOverCellular,
-    });
+    const gate = transportAllowsTransfer(
+      transferInputFromLinkSnapshot(transportSnapshot, uploadOverCellular),
+    );
     if (gate !== 'ok') {
       log.info('Download resume skipped until transport allows transfer', {
         gate,
-        isOnline: transportSnapshot.isOnline,
+        isLinkOnline: transportSnapshot.isLinkOnline,
         isWifi: transportSnapshot.isWifi,
         isCellular: transportSnapshot.isCellular,
         connectionType: transportSnapshot.connectionType,

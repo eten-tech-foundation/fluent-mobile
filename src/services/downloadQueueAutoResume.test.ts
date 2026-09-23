@@ -17,7 +17,7 @@ jest.mock('./userPreferences', () => ({
 }));
 
 jest.mock('./connectivity', () => ({
-  subscribeToConnectivity: (...args: unknown[]) => mockSubscribe(...args),
+  subscribeToTransferTransport: (...args: unknown[]) => mockSubscribe(...args),
   getTransferTransportSnapshot: jest.fn(),
 }));
 
@@ -53,7 +53,7 @@ describe('downloadQueueAutoResume', () => {
     });
     (getUploadOverCellular as jest.Mock).mockReturnValue(false);
     mockTransport({
-      isOnline: true,
+      isLinkOnline: true,
       isWifi: true,
       isCellular: false,
       connectionType: 'wifi',
@@ -70,7 +70,7 @@ describe('downloadQueueAutoResume', () => {
 
   it('does not resume when the link is offline', async () => {
     mockTransport({
-      isOnline: false,
+      isLinkOnline: false,
       isWifi: true,
       isCellular: false,
       connectionType: 'wifi',
@@ -84,7 +84,7 @@ describe('downloadQueueAutoResume', () => {
 
   it('does not resume on cellular when uploadOverCellular is false', async () => {
     mockTransport({
-      isOnline: true,
+      isLinkOnline: true,
       isWifi: false,
       isCellular: true,
       connectionType: 'cellular',
@@ -119,7 +119,7 @@ describe('downloadQueueAutoResume', () => {
   it('resumes on cellular when uploadOverCellular is enabled', async () => {
     (getUploadOverCellular as jest.Mock).mockReturnValue(true);
     mockTransport({
-      isOnline: true,
+      isLinkOnline: true,
       isWifi: false,
       isCellular: true,
       connectionType: 'cellular',
@@ -164,7 +164,7 @@ describe('downloadQueueAutoResume', () => {
 
     startDownloadQueueAutoResume();
     mockTransport({
-      isOnline: true,
+      isLinkOnline: true,
       isWifi: false,
       isCellular: true,
       connectionType: 'cellular',

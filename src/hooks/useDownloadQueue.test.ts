@@ -78,7 +78,7 @@ describe('useDownloadQueue transport gate', () => {
     });
     (getUploadOverCellular as jest.Mock).mockReturnValue(false);
     (getTransferTransportSnapshot as jest.Mock).mockResolvedValue({
-      isOnline: true,
+      isLinkOnline: true,
       isWifi: true,
       isCellular: false,
       connectionType: 'wifi',
@@ -87,7 +87,7 @@ describe('useDownloadQueue transport gate', () => {
 
   it('skips start on cellular when the toggle is off', async () => {
     (getTransferTransportSnapshot as jest.Mock).mockResolvedValue({
-      isOnline: true,
+      isLinkOnline: true,
       isWifi: false,
       isCellular: true,
       connectionType: 'cellular',
@@ -105,7 +105,7 @@ describe('useDownloadQueue transport gate', () => {
 
   it('skips start when the link is offline', async () => {
     (getTransferTransportSnapshot as jest.Mock).mockResolvedValue({
-      isOnline: false,
+      isLinkOnline: false,
       isWifi: true,
       isCellular: false,
       connectionType: 'wifi',
@@ -124,7 +124,7 @@ describe('useDownloadQueue transport gate', () => {
   it('does not resume a paused worker on cellular when the toggle is off', async () => {
     mockGetState.mockReturnValue('paused');
     (getTransferTransportSnapshot as jest.Mock).mockResolvedValue({
-      isOnline: true,
+      isLinkOnline: true,
       isWifi: false,
       isCellular: true,
       connectionType: 'cellular',
@@ -156,7 +156,7 @@ describe('useDownloadQueue transport gate', () => {
   it('starts on cellular when the toggle is on', async () => {
     (getUploadOverCellular as jest.Mock).mockReturnValue(true);
     (getTransferTransportSnapshot as jest.Mock).mockResolvedValue({
-      isOnline: true,
+      isLinkOnline: true,
       isWifi: false,
       isCellular: true,
       connectionType: 'cellular',
@@ -174,7 +174,7 @@ describe('useDownloadQueue transport gate', () => {
   it('resumes queued items on cellular when the toggle is on', async () => {
     (getUploadOverCellular as jest.Mock).mockReturnValue(true);
     (getTransferTransportSnapshot as jest.Mock).mockResolvedValue({
-      isOnline: true,
+      isLinkOnline: true,
       isWifi: false,
       isCellular: true,
       connectionType: 'cellular',
@@ -191,7 +191,7 @@ describe('useDownloadQueue transport gate', () => {
 
   it('starts on ethernet without the cellular toggle', async () => {
     (getTransferTransportSnapshot as jest.Mock).mockResolvedValue({
-      isOnline: true,
+      isLinkOnline: true,
       isWifi: false,
       isCellular: false,
       connectionType: 'ethernet',

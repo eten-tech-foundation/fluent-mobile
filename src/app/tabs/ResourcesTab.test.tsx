@@ -99,11 +99,14 @@ jest.mock('../../services/imagesMaps', () => {
 jest.mock('../../hooks/useConnectivity', () => ({
   useConnectivity: jest.fn(() => ({
     isOnline: true,
+    isLinkOnline: true,
     isWifi: true,
     isCellular: false,
     connectionType: 'wifi',
     hasResolved: true,
+    hasTransferResolved: true,
     connectivityPending: false,
+    transferConnectivityPending: false,
   })),
 }));
 
@@ -186,11 +189,14 @@ function renderResources(
 function mockOfflineConnectivity() {
   mockUseConnectivity.mockReturnValue({
     isOnline: false,
+    isLinkOnline: false,
     isWifi: false,
     isCellular: false,
     connectionType: 'none',
     hasResolved: true,
+    hasTransferResolved: true,
     connectivityPending: false,
+    transferConnectivityPending: false,
   });
 }
 
@@ -202,11 +208,14 @@ describe('ResourcesTab', () => {
     downloadedRows.mockResolvedValue([]);
     mockUseConnectivity.mockReturnValue({
       isOnline: true,
+      isLinkOnline: true,
       isWifi: true,
       isCellular: false,
       connectionType: 'wifi',
       hasResolved: true,
+      hasTransferResolved: true,
       connectivityPending: false,
+      transferConnectivityPending: false,
     });
     mockLoadNotes.mockImplementation(async ({ verseNumber }) =>
       getMockTranslationNotes(99, verseNumber),
@@ -259,11 +268,14 @@ describe('ResourcesTab', () => {
   it('shows the empty message while connectivity is unresolved', () => {
     mockUseConnectivity.mockReturnValue({
       isOnline: true,
+      isLinkOnline: true,
       isWifi: true,
       isCellular: false,
       connectionType: 'wifi',
       hasResolved: false,
+      hasTransferResolved: false,
       connectivityPending: true,
+      transferConnectivityPending: true,
     });
     renderResources(1);
     expect(screen.getByText(RESOURCES_EMPTY_MESSAGE)).toBeTruthy();

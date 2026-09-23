@@ -14,7 +14,14 @@ export function useSyncStatus({
   isSyncing,
   refreshKey = 0,
 }: UseSyncStatusOptions) {
-  const { isOnline, isWifi, connectionType, hasResolved } = useConnectivity();
+  const {
+    isOnline,
+    isLinkOnline,
+    isWifi,
+    connectionType,
+    hasResolved,
+    hasTransferResolved,
+  } = useConnectivity();
   const { uploadOverCellular } = usePreferences();
   const {
     pendingCount,
@@ -29,8 +36,10 @@ export function useSyncStatus({
 
   const effectivelyOnline =
     hasResolved &&
+    hasTransferResolved &&
+    isOnline &&
     isEffectivelyOnlineForTransfer({
-      isOnline,
+      isOnline: isLinkOnline,
       isWifi,
       uploadOverCellular,
       connectionType,

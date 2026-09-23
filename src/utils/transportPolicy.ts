@@ -1,12 +1,29 @@
 export type TransportGate = 'ok' | 'offline' | 'waiting_wifi';
 
 export type TransferTransportInput = {
+  /** Link-layer connected (`NetInfo.isConnected`), not Fluent `/health`. */
   isOnline: boolean;
   isWifi: boolean;
   uploadOverCellular: boolean;
   /** NetInfo `type` — used so ethernet can be unmetered without the cellular toggle. */
   connectionType?: string;
 };
+
+export function transferInputFromLinkSnapshot(
+  snapshot: {
+    isLinkOnline: boolean;
+    isWifi: boolean;
+    connectionType: string;
+  },
+  uploadOverCellular: boolean,
+): TransferTransportInput {
+  return {
+    isOnline: snapshot.isLinkOnline,
+    isWifi: snapshot.isWifi,
+    connectionType: snapshot.connectionType,
+    uploadOverCellular,
+  };
+}
 
 export function isUnmeteredTransport(
   isWifi: boolean,
@@ -42,7 +59,7 @@ export function isTransportBlockedForTransfer(
   return transportAllowsTransfer(input) !== 'ok';
 }
 
-/** Sync Now UI only — offline disable stays #545. */
+/** True when transfer is blocked on cellular (needs Wi-Fi or the cellular toggle). */
 export function isWaitingWifiForTransfer(
   input: TransferTransportInput,
 ): boolean {

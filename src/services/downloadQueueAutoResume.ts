@@ -1,11 +1,11 @@
 import { getResumableDownloadItems } from '../db/repository';
 import {
+  transferInputFromLinkSnapshot,
   transportAllowsTransfer,
-  type TransferTransportInput,
 } from '../utils/transportPolicy';
 import {
   getTransferTransportSnapshot,
-  subscribeToConnectivity,
+  subscribeToTransferTransport,
 } from './connectivity';
 import { getSharedDownloadQueueWorker } from './downloadQueueWorkerSingleton';
 import { logger } from '../utils/logger';
@@ -30,14 +30,9 @@ export function startDownloadQueueAutoResume(): () => void {
         return;
       }
 
-      const transport: TransferTransportInput = {
-        isOnline: snapshot.isOnline,
-        isWifi: snapshot.isWifi,
-        connectionType: snapshot.connectionType,
-        uploadOverCellular: getUploadOverCellular(),
-      };
-
-      const gate = transportAllowsTransfer(transport);
+      const gate = transportAllowsTransfer(
+        transferInputFromLinkSnapshot(snapshot, getUploadOverCellular()),
+      );
       if (gate !== 'ok') {
         return;
       }
@@ -76,7 +71,7 @@ export function startDownloadQueueAutoResume(): () => void {
     })();
   };
 
-  const unsubscribeConnectivity = subscribeToConnectivity(() => {
+  const unsubscribeConnectivity = subscribeToTransferTransport(() => {
     evaluate();
   });
 

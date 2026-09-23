@@ -27,11 +27,14 @@ let mockWorkerState: 'idle' | 'downloading' | 'paused' | 'cancelled' = 'idle';
 
 let mockConnectivity = {
   isOnline: true,
+  isLinkOnline: true,
   isWifi: true,
   isCellular: false,
   connectionType: 'wifi',
   hasResolved: true,
+  hasTransferResolved: true,
   connectivityPending: false,
+  transferConnectivityPending: false,
 };
 
 jest.mock('./useDownloadQueue', () => ({
@@ -115,15 +118,18 @@ describe('usePrepareOfflineDownload', () => {
     mockWorkerState = 'idle';
     mockConnectivity = {
       isOnline: true,
+      isLinkOnline: true,
       isWifi: true,
       isCellular: false,
       connectionType: 'wifi',
       hasResolved: true,
+      hasTransferResolved: true,
       connectivityPending: false,
+      transferConnectivityPending: false,
     };
     mockStart.mockResolvedValue({ ok: true });
     mockPause.mockResolvedValue(undefined);
-    mockResume.mockResolvedValue(undefined);
+    mockResume.mockResolvedValue({ ok: true });
     mockCancel.mockResolvedValue(undefined);
     mockRefresh.mockResolvedValue(undefined);
   });
@@ -746,11 +752,14 @@ describe('usePrepareOfflineDownload', () => {
   it('blocks download when transport is not allowed on cellular', () => {
     mockConnectivity = {
       isOnline: true,
+      isLinkOnline: true,
       isWifi: false,
       isCellular: true,
       connectionType: 'cellular',
       hasResolved: true,
+      hasTransferResolved: true,
       connectivityPending: false,
+      transferConnectivityPending: false,
     };
 
     const { result } = renderHook(() =>
@@ -774,11 +783,14 @@ describe('usePrepareOfflineDownload', () => {
     );
     mockConnectivity = {
       isOnline: true,
+      isLinkOnline: true,
       isWifi: false,
       isCellular: true,
       connectionType: 'cellular',
       hasResolved: true,
+      hasTransferResolved: true,
       connectivityPending: false,
+      transferConnectivityPending: false,
     };
 
     const { result } = renderHook(() =>
@@ -802,11 +814,14 @@ describe('usePrepareOfflineDownload', () => {
   it('does not resume when handleResume is invoked on cellular with toggle off', async () => {
     mockConnectivity = {
       isOnline: true,
+      isLinkOnline: true,
       isWifi: false,
       isCellular: true,
       connectionType: 'cellular',
       hasResolved: true,
+      hasTransferResolved: true,
       connectivityPending: false,
+      transferConnectivityPending: false,
     };
 
     const { result } = renderHook(() =>
@@ -826,14 +841,66 @@ describe('usePrepareOfflineDownload', () => {
     expect(mockResume).not.toHaveBeenCalled();
   });
 
+  it('surfaces a message when resume is rejected by the transfer gate', async () => {
+    mockResume.mockResolvedValue({ ok: false, gate: 'waiting_wifi' });
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.resume();
+    });
+
+    expect(mockResume).toHaveBeenCalled();
+    expect(result.current.transportBlocked).toBe(true);
+    expect(result.current.transportBlockedMessage).toContain('WiFi');
+  });
+
+  it('does not treat Fluent health-down as transport offline while the link is up', () => {
+    mockConnectivity = {
+      isOnline: false,
+      isLinkOnline: true,
+      isWifi: true,
+      isCellular: false,
+      connectionType: 'wifi',
+      hasResolved: true,
+      hasTransferResolved: true,
+      connectivityPending: false,
+      transferConnectivityPending: false,
+    };
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+      }),
+    );
+
+    expect(result.current.transportBlocked).toBe(false);
+    expect(result.current.transportBlockedMessage).toBeUndefined();
+  });
+
   it('does not show the waiting-WiFi message while connectivity is still resolving', () => {
     mockConnectivity = {
       isOnline: true,
+      isLinkOnline: true,
       isWifi: true,
       isCellular: false,
       connectionType: 'wifi',
       hasResolved: false,
+      hasTransferResolved: false,
       connectivityPending: true,
+      transferConnectivityPending: true,
     };
 
     const { result } = renderHook(() =>
@@ -854,11 +921,14 @@ describe('usePrepareOfflineDownload', () => {
   it('shows the offline message when prepare download is blocked without a link', () => {
     mockConnectivity = {
       isOnline: false,
+      isLinkOnline: false,
       isWifi: false,
       isCellular: false,
       connectionType: 'none',
       hasResolved: true,
+      hasTransferResolved: true,
       connectivityPending: false,
+      transferConnectivityPending: false,
     };
 
     const { result } = renderHook(() =>
