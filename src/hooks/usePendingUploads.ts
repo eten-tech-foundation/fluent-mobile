@@ -129,17 +129,15 @@ export function usePendingUploads(refreshKey = 0) {
       getPendingUploadChapters(),
       loadUnuploadablePendingSummary(),
     ])
-      .then(
-        ([pending, failed, failedError, chapters, unuploadable]) => {
-          if (!cancelled) {
-            setPendingCount(pending);
-            setPendingChapterCount(chapters.length);
-            setFailedCount(failed);
-            setFailedErrorText(failed > 0 ? failedError : null);
-            setUnuploadableCount(unuploadable.total);
-          }
-        },
-      )
+      .then(([pending, failed, failedError, chapters, unuploadable]) => {
+        if (!cancelled) {
+          setPendingCount(pending);
+          setPendingChapterCount(chapters.length);
+          setFailedCount(failed);
+          setFailedErrorText(failed > 0 ? failedError : null);
+          setUnuploadableCount(unuploadable.total);
+        }
+      })
       .catch(() => {
         // loaders already log and return 0
       });
