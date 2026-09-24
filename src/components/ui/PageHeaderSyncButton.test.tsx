@@ -39,4 +39,20 @@ describe('PageHeaderSyncButton', () => {
     fireEvent.press(screen.getByTestId('home-sync-button'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
+
+  it('includes sanitized failure reason in the a11y label when uploads failed', () => {
+    render(
+      <PageHeaderSyncButton
+        syncStatus="online_failed"
+        failedErrorText="Audio storage is currently unavailable. Try again later."
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByLabelText(
+        'Upload failed. Open Sync page to retry. Audio storage is currently unavailable. Try again later.',
+      ),
+    ).toBeTruthy();
+  });
 });

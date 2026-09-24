@@ -16,34 +16,6 @@ function dryRunPayload(env) {
 }
 
 describe('notify-slack-nightly', () => {
-  it('uses the skip-style card for STATUS=failure (no red X / incident copy)', () => {
-    const payload = dryRunPayload({
-      STATUS: 'failure',
-      TRIGGER: 'schedule',
-      BRANCH: 'main',
-      SHA: 'abc1234deadbeef',
-      RUN_URL: 'https://github.com/org/repo/actions/runs/1',
-      FAILED_STEP: 'nightly-preview',
-    });
-
-    expect(payload.text).toBe(':zzz: Fluent nightly skipped (no APK)');
-    expect(payload.attachments[0].color).toBe('#e8b339');
-    expect(payload.text).not.toMatch(/:x:/);
-
-    const body = payload.attachments[0].text;
-    expect(body).toMatch(/\*Status:\* skipped/);
-    expect(body).toMatch(/\*Trigger:\* schedule/);
-    expect(body).toMatch(/\*Branch:\* `main`/);
-    expect(body).toMatch(/\*Commit:\* `abc1234`/);
-    expect(body).toMatch(/Workflow run/);
-    expect(body).toMatch(/did not produce an APK/);
-    expect(body).toMatch(/nightly-preview/);
-    expect(body).not.toMatch(/failed/i);
-    expect(body).not.toMatch(/:x:/);
-    expect(body).not.toMatch(/#e01e5a/);
-    expect(body).not.toMatch(/Owner:/);
-  });
-
   it('keeps the existing no-new-commits skip card', () => {
     const payload = dryRunPayload({
       STATUS: 'skipped',
@@ -56,5 +28,62 @@ describe('notify-slack-nightly', () => {
     expect(payload.text).toBe(':zzz: Fluent nightly skipped (no new commits)');
     expect(payload.attachments[0].color).toBe('#e8b339');
     expect(payload.attachments[0].text).toMatch(/\*Status:\* skipped/);
+  });
+
+  it('names the failed gate step for STATUS=gate_failure', () => {
+    const payload = dryRunPayload({
+      STATUS: 'gate_failure',
+      TRIGGER: 'schedule',
+      BRANCH: 'main',
+      SHA: 'abc1234deadbeef',
+      RUN_URL: 'https://github.com/org/repo/actions/runs/1',
+      FAILED_STEP: 'Expo doctor',
+    });
+
+    expect(payload.text).toBe(':warning: Fluent nightly failed before APK build');
+    expect(payload.attachments[0].color).toBe('#e8b339');
+    expect(payload.text).not.toMatch(/:x:/);
+
+    const body = payload.attachments[0].text;
+    expect(body).toMatch(/\*Status:\* failed \(before APK\)/);
+    expect(body).toMatch(/\*Trigger:\* schedule/);
+    expect(body).toMatch(/\*Branch:\* `main`/);
+    expect(body).toMatch(/\*Commit:\* `abc1234`/);
+    expect(body).toMatch(/Workflow run/);
+    expect(body).toMatch(/Failed step: `Expo doctor`/);
+    expect(body).toMatch(/before EAS started/);
+    expect(body).not.toMatch(/skipped \(no APK\)/);
+    expect(body).not.toMatch(/Owner:/);
+  });
+
+  it('reports EAS failure for STATUS=build_failure', () => {
+    const payload = dryRunPayload({
+      STATUS: 'build_failure',
+      TRIGGER: 'schedule',
+      BRANCH: 'main',
+      SHA: 'abc1234deadbeef',
+      RUN_URL: 'https://github.com/org/repo/actions/runs/1',
+      FAILED_STEP: 'EAS nightly Android build (binary only)',
+    });
+
+    expect(payload.text).toBe(':warning: Fluent nightly APK build failed');
+    const body = payload.attachments[0].text;
+    expect(body).toMatch(/\*Status:\* failed \(EAS\)/);
+    expect(body).toMatch(/Failed step: `EAS nightly Android build \(binary only\)`/);
+    expect(body).not.toMatch(/skipped \(no APK\)/);
+  });
+
+  it('maps legacy STATUS=failure to build_failure copy', () => {
+    const payload = dryRunPayload({
+      STATUS: 'failure',
+      TRIGGER: 'schedule',
+      BRANCH: 'main',
+      SHA: 'abc1234deadbeef',
+      RUN_URL: 'https://github.com/org/repo/actions/runs/1',
+      FAILED_STEP: 'EAS nightly Android build (binary only)',
+    });
+
+    expect(payload.text).toBe(':warning: Fluent nightly APK build failed');
+    expect(payload.attachments[0].text).toMatch(/\*Status:\* failed \(EAS\)/);
   });
 });

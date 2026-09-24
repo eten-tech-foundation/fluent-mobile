@@ -9,6 +9,7 @@ export function deriveSyncPageStatus(
   phase: UploadPhase,
   hasPendingUploads: boolean,
   hasFailedUploads: boolean,
+  hasUnuploadablePending = false,
 ): SyncPageStatus {
   if (phase === 'syncing') {
     return 'syncing';
@@ -17,7 +18,8 @@ export function deriveSyncPageStatus(
     return 'paused';
   }
 
-  const hasWorkRemaining = hasPendingUploads || hasFailedUploads;
+  const hasWorkRemaining =
+    hasPendingUploads || hasFailedUploads || hasUnuploadablePending;
   if (hasWorkRemaining) {
     return 'pending';
   }

@@ -57,6 +57,7 @@ jest.mock('../../hooks/usePendingUploads', () => ({
     hasPendingUploads: false,
     hasFailedUploads: false,
     failedCount: 0,
+    failedErrorText: null,
     pendingChapterCount: 0,
     isUploading: false,
     uploadProgress: null,

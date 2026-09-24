@@ -619,22 +619,107 @@ export async function getMyWorkChapters(
   }
 }
 
-/** Selected recordings not yet uploaded to the Fluent server. */
+/**
+ * Same eligibility as `getPendingRecordings` (verse, positive bible_text_id,
+ * INNER JOIN bible_texts). Active-user scope stays on these UI queries (#105).
+ * Pericope takes stay local until #410.
+ */
+const UPLOADABLE_PENDING_WHERE = `
+  r.is_selected = 1
+  AND IFNULL(r.granularity, 'verse') = 'verse'
+  AND r.sync_status NOT IN ('uploaded', 'conflicted')
+  AND r.bible_text_id > 0
+`;
+
+function recordedByUserPredicate(alias: string, userId: number | null): string {
+  return `${alias}.recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}`;
+}
+
+/** Selected recordings the upload orchestrator will actually process. */
 export async function getPendingUploadCount(): Promise<number> {
   const db = getDatabase();
   const userId = parseUserId();
   try {
     const result = await db.execute(
       `SELECT COUNT(*) AS count
-       FROM recordings
-       WHERE is_selected = 1 AND sync_status NOT IN ('uploaded', 'conflicted')
-         AND recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'};`,
+       FROM recordings r
+       JOIN bible_texts bt ON bt.id = r.bible_text_id
+       WHERE ${UPLOADABLE_PENDING_WHERE}
+         AND ${recordedByUserPredicate('r', userId)};`,
       userId === null ? [] : [userId],
     );
     return Number(result.rows?.[0]?.count) || 0;
   } catch (error) {
     log.error('Error fetching pending upload count', { error });
     return 0;
+  }
+}
+
+export type UnuploadablePendingSummary = {
+  orphanBibleText: number;
+  pericopeOnly: number;
+  other: number;
+  total: number;
+};
+
+const EMPTY_UNUPLOADABLE: UnuploadablePendingSummary = {
+  orphanBibleText: 0,
+  pericopeOnly: 0,
+  other: 0,
+  total: 0,
+};
+
+/**
+ * Pending selected takes that the worker will never process (silent no-op
+ * if we counted them as uploadable). Missing assignment is not a bucket —
+ * the worker attempts those rows and fails at runtime (#548).
+ */
+export async function getUnuploadablePendingSummary(): Promise<UnuploadablePendingSummary> {
+  const db = getDatabase();
+  const userId = parseUserId();
+  try {
+    const result = await db.execute(
+      `SELECT
+         COALESCE(SUM(CASE
+           WHEN r.bible_text_id IS NULL OR r.bible_text_id <= 0 OR bt.id IS NULL
+           THEN 1 ELSE 0 END), 0) AS orphan_bible_text,
+         COALESCE(SUM(CASE
+           WHEN bt.id IS NOT NULL AND r.bible_text_id > 0
+            AND IFNULL(r.granularity, 'verse') != 'verse'
+           THEN 1 ELSE 0 END), 0) AS pericope_only,
+         COALESCE(SUM(CASE
+           WHEN NOT (
+             r.bible_text_id IS NULL OR r.bible_text_id <= 0 OR bt.id IS NULL
+           ) AND NOT (
+             bt.id IS NOT NULL AND r.bible_text_id > 0
+             AND IFNULL(r.granularity, 'verse') != 'verse'
+           )
+           THEN 1 ELSE 0 END), 0) AS other
+       FROM recordings r
+       LEFT JOIN bible_texts bt ON bt.id = r.bible_text_id
+       WHERE r.is_selected = 1
+         AND r.sync_status NOT IN ('uploaded', 'conflicted')
+         AND ${recordedByUserPredicate('r', userId)}
+         AND NOT (
+           bt.id IS NOT NULL
+           AND r.bible_text_id > 0
+           AND IFNULL(r.granularity, 'verse') = 'verse'
+         )`,
+      userId === null ? [] : [userId],
+    );
+    const row = result.rows?.[0];
+    const orphanBibleText = Number(row?.orphan_bible_text) || 0;
+    const pericopeOnly = Number(row?.pericope_only) || 0;
+    const other = Number(row?.other) || 0;
+    return {
+      orphanBibleText,
+      pericopeOnly,
+      other,
+      total: orphanBibleText + pericopeOnly + other,
+    };
+  } catch (error) {
+    log.error('Error fetching unuploadable pending summary', { error });
+    return EMPTY_UNUPLOADABLE;
   }
 }
 
@@ -657,15 +742,60 @@ export async function getFailedUploadCount(): Promise<number> {
   }
 }
 
+export type FailedUploadErrorSummary = {
+  latestMessage: string;
+  /** Distinct upload_error values among older failed rows (excluding latest). */
+  extraDistinctCount: number;
+};
+
+/**
+ * Latest selected failed `upload_error` for the active user.
+ * When several distinct messages exist, `extraDistinctCount` is the number of
+ * other distinct errors (caller appends “(+N more)” after sanitization).
+ */
+export async function getFailedUploadErrorSummary(): Promise<FailedUploadErrorSummary | null> {
+  const db = getDatabase();
+  const userId = parseUserId();
+  try {
+    const result = await db.execute(
+      `SELECT upload_error
+       FROM recordings
+       WHERE is_selected = 1 AND sync_status = 'failed'
+         AND upload_error IS NOT NULL AND TRIM(upload_error) != ''
+         AND recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}
+       ORDER BY updated_at DESC;`,
+      userId === null ? [] : [userId],
+    );
+    const rows = result.rows ?? [];
+    if (rows.length === 0) {
+      return null;
+    }
+
+    const messages = rows.map(row => String(row.upload_error).trim());
+    const latestMessage = messages[0];
+    const others = new Set(
+      messages.slice(1).filter(msg => msg !== latestMessage),
+    );
+
+    return {
+      latestMessage,
+      extraDistinctCount: others.size,
+    };
+  } catch (error) {
+    log.error('Error fetching failed upload error summary', { error });
+    return null;
+  }
+}
+
 export type PendingUploadChapter = {
   bookId: number;
   chapterNumber: number;
 };
 
 /**
- * Distinct chapters with at least one selected, non-uploaded recording for
- * the active user. Upload engine (#150) processes work per chapter, not per
- * verse.
+ * Distinct chapters with at least one upload-eligible take for the active
+ * user (verse, bible_text_id > 0, JOIN bible_texts — same as
+ * getPendingRecordings). Upload engine (#150) processes work per chapter.
  */
 export async function getPendingUploadChapters(): Promise<
   PendingUploadChapter[]
@@ -677,8 +807,8 @@ export async function getPendingUploadChapters(): Promise<
       `SELECT DISTINCT bt.book_id AS book_id, bt.chapter_number AS chapter_number
        FROM recordings r
        JOIN bible_texts bt ON bt.id = r.bible_text_id
-       WHERE r.is_selected = 1 AND r.sync_status NOT IN ('uploaded', 'conflicted')
-         AND r.recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}
+       WHERE ${UPLOADABLE_PENDING_WHERE}
+         AND ${recordedByUserPredicate('r', userId)}
        ORDER BY bt.book_id, bt.chapter_number`,
       userId === null ? [] : [userId],
     );
@@ -834,7 +964,7 @@ export async function getPericopesForChapter(
              AND (hit.section IS pv.section OR hit.section = pv.section)
              AND hit.chapter_number = ?
          )
-       ORDER BY pv.section, pv.pericope_number, pv.chapter_number, pv.verse_number`,
+       ORDER BY pv.chapter_number, pv.verse_number`,
       [bookId, pericopeSetId, chapterNumber],
     );
     const rows = (result.rows ?? []) as unknown as {
@@ -864,7 +994,18 @@ export async function getPericopesForChapter(
         });
       }
     }
-    return Array.from(groups.values());
+    // FCBH `section` is a harmony id, not reading order (Mark 1:16–20 is
+    // section 2; Mark 1:1–5 is section 51). Sort groups by first verse.
+    return Array.from(groups.values()).sort((a, b) => {
+      const av = a.verses[0];
+      const bv = b.verses[0];
+      if (!av) return 1;
+      if (!bv) return -1;
+      if (av.chapterNumber !== bv.chapterNumber) {
+        return av.chapterNumber - bv.chapterNumber;
+      }
+      return av.verseNumber - bv.verseNumber;
+    });
   } catch (error) {
     log.error('Error fetching pericopes for chapter', {
       error,
@@ -987,4 +1128,98 @@ export async function getPericopeForVerse(
     });
     return null;
   }
+}
+
+/** True when every verse in the chapter has a selected recording (verse mode) — #542. */
+export async function isChapterFullyRecordedVerseMode(
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+): Promise<boolean> {
+  const db = getDatabase();
+  const userId = parseUserId();
+  try {
+    const result = await db.execute(
+      `SELECT
+         COUNT(*) AS total,
+         COUNT(DISTINCT CASE WHEN r.id IS NOT NULL THEN bt.verse_number END) AS recorded
+       FROM bible_texts bt
+       LEFT JOIN recordings r
+         ON r.bible_text_id = bt.id
+         AND r.is_selected = 1
+         AND r.recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}
+       WHERE bt.bible_id = ? AND bt.book_id = ? AND bt.chapter_number = ?`,
+      userId === null
+        ? [bibleId, bookId, chapterNumber]
+        : [userId, bibleId, bookId, chapterNumber],
+    );
+    const row = result.rows?.[0] as
+      | { total: number; recorded: number }
+      | undefined;
+    if (!row || Number(row.total) === 0) return false;
+    return Number(row.recorded) === Number(row.total);
+  } catch (error) {
+    log.error('Error checking chapter verse-mode completeness', { error });
+    return false;
+  }
+}
+
+/** True when every pericope, and every chapter verse not covered by a pericope,
+ *  has a selected recording (pericope mode) — #542.
+ *  A pericope set may not cover every verse in the chapter (e.g. narrative
+ *  breaks, verses excluded from the harmony); those "ungrouped" verses must
+ *  independently satisfy the same per-verse check as verse mode, or a
+ *  chapter could report complete while a real verse has no take.
+ */
+export async function isChapterFullyRecordedPericopeMode(
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+  pericopeSetId: number,
+): Promise<boolean> {
+  const chapterVerses = await getBibleTexts(bibleId, bookId, chapterNumber);
+  if (chapterVerses.length === 0) return false;
+
+  const pericopes = await getPericopesForChapter(
+    bookId,
+    chapterNumber,
+    pericopeSetId,
+  );
+
+  const coveredVerseNumbers = new Set<number>();
+  for (const pericope of pericopes) {
+    for (const v of pericope.verses) {
+      if (v.chapterNumber === chapterNumber) {
+        coveredVerseNumbers.add(v.verseNumber);
+      }
+    }
+  }
+
+  const ungroupedVerseNumbers = chapterVerses
+    .map(v => v.verseNumber)
+    .filter(vn => !coveredVerseNumbers.has(vn));
+
+  const coverages = await getSelectedTakeCoverages(bibleId, bookId);
+  const pericopesComplete = pericopes.every(pericope => {
+    const first = pericope.verses[0];
+    const last = pericope.verses[pericope.verses.length - 1];
+    if (!first || !last) return false;
+    return coverages.some(
+      c =>
+        c.startChapter === first.chapterNumber &&
+        c.startVerse === first.verseNumber &&
+        c.endChapter === last.chapterNumber &&
+        c.endVerse === last.verseNumber,
+    );
+  });
+  if (!pericopesComplete) return false;
+
+  if (ungroupedVerseNumbers.length === 0) return true;
+
+  const recordedVerseNumbers = await getRecordedVerseNumbers(
+    bibleId,
+    bookId,
+    chapterNumber,
+  );
+  return ungroupedVerseNumbers.every(vn => recordedVerseNumbers.has(vn));
 }
