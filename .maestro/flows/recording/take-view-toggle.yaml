@@ -1,0 +1,33 @@
+# Take view toggle chrome when multiple recorders are present (optional).
+appId: com.eten.fluent
+tags:
+  - smoke
+  - record
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- runFlow: ../../shared/auth/login-translator.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- runFlow: ../../shared/nav/open-any-chapter.yaml
+- tapOn:
+    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'record-tab'
+- runFlow:
+    when:
+      visible:
+        id: 'take-view-toggle'
+    commands:
+      - tapOn:
+          id: 'take-view-all'
+      - assertVisible:
+          id: 'take-view-all'
+      - tapOn:
+          id: 'take-view-mine'
+      - assertVisible:
+          id: 'take-view-mine'
+- assertVisible:
+    id: 'record-tab'

@@ -1,0 +1,25 @@
+# Source audio dock chrome on drafting (when dock present).
+appId: com.eten.fluent
+tags:
+  - smoke
+  - drafting
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- runFlow: ../../shared/auth/login-translator.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- runFlow: ../../shared/nav/open-any-chapter.yaml
+- tapOn:
+    id: 'drafting-tab-bible'
+- runFlow:
+    when:
+      visible:
+        id: 'source-audio-time-elapsed'
+    commands:
+      - assertVisible:
+          id: 'source-audio-time-elapsed'
+- assertVisible:
+    id: 'bible-tab'

@@ -1,12 +1,25 @@
-# Android-only Maestro E2E on EAS Workflows (Expo-canonical — #516).
-# NOT a required PR / merge gate. Manual only.
-# Does not replace Needs QA? / @Roslin22 nightly handoff.
+# Android-only Maestro E2E on EAS Workflows (Expo-canonical).
+# NOT a required PR / merge gate. Does not replace Needs QA? / @Roslin22 nightly handoff.
 # Docs: https://docs.expo.dev/eas/workflows/examples/e2e-tests/
-# Run: npm run maestro:eas -- -F suite=harness
+# Local: npm run maestro:eas -- -F suite=harness
 name: Maestro Android (EAS)
-run_name: Maestro ${{ inputs.suite }}
+run_name: Maestro ${{ inputs.suite || 'nightly' }}
 
 on:
+  # After the GitHub nightly APK job typically lands (GMT). Idempotent flows required.
+  schedule:
+    - cron: '30 23 * * *'
+  pull_request:
+    branches: ['main']
+    paths:
+      - 'src/**'
+      - 'app.config.ts'
+      - 'eas.json'
+      - '.maestro/**'
+      - '.eas/workflows/maestro-android.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'modules/**'
   workflow_dispatch:
     inputs:
       suite:
@@ -18,10 +31,111 @@ on:
           - harness
           - smokes
           - multi-account
+          - nightly
 
 jobs:
+  # --- Nightly / scheduled: prefer the real nightly APK via fingerprint + get-build ---
+  fingerprint_nightly:
+    name: Fingerprint (preview / nightly)
+    if: ${{ github.event_name == 'schedule' || inputs.suite == 'nightly' }}
+    type: fingerprint
+    environment: preview
+
+  get_nightly_build:
+    name: Get nightly APK
+    needs: [fingerprint_nightly]
+    if: ${{ github.event_name == 'schedule' || inputs.suite == 'nightly' }}
+    type: get-build
+    params:
+      platform: android
+      profile: nightly
+      fingerprint_hash: ${{ needs.fingerprint_nightly.outputs.android_fingerprint_hash }}
+      wait_for_in_progress: true
+
+  build_e2e_fallback:
+    name: Build e2e-test APK (fallback)
+    needs: [get_nightly_build]
+    if: ${{ (github.event_name == 'schedule' || inputs.suite == 'nightly') && !needs.get_nightly_build.outputs.build_id }}
+    type: build
+    params:
+      platform: android
+      profile: e2e-test
+
+  maestro_nightly:
+    name: Maestro nightly smokes
+    needs: [get_nightly_build, build_e2e_fallback]
+    if: ${{ (github.event_name == 'schedule' || inputs.suite == 'nightly') && (needs.get_nightly_build.outputs.build_id || needs.build_e2e_fallback.outputs.build_id) }}
+    type: maestro
+    environment: preview
+    runs_on: linux-large-nested-virtualization
+    params:
+      build_id: ${{ needs.get_nightly_build.outputs.build_id || needs.build_e2e_fallback.outputs.build_id }}
+      flow_path: .maestro
+      include_tags: smoke
+      exclude_tags: offline,permissions
+      maestro_version: '2.10.0'
+      output_format: junit
+      retries: 1
+      retry_failed_only: true
+      record_screen: true
+      device_identifier: pixel_6
+      android_system_image_package: system-images;android-34;google_apis;x86_64
+    hooks:
+      before_maestro_tests:
+        - name: Require MAESTRO credentials
+          run: |
+            set -euo pipefail
+            export MAESTRO_LAUNCH_MODE=embedded
+            missing=()
+            [[ -n "${MAESTRO_EMAIL:-}" ]] || missing+=("MAESTRO_EMAIL")
+            [[ -n "${MAESTRO_PASSWORD:-}" ]] || missing+=("MAESTRO_PASSWORD")
+            if ((${#missing[@]} > 0)); then
+              echo "error: Missing EAS preview secrets: ${missing[*]}"
+              exit 1
+            fi
+            echo "Secrets OK for nightly smokes (MAESTRO_LAUNCH_MODE=embedded)."
+      after_maestro_tests:
+        - name: Scrub MAESTRO secrets from artifacts
+          run: bash scripts/maestro-scrub-artifacts.sh "$MAESTRO_TESTS_DIR"
+        - name: Post Maestro summary to Slack
+          run: bash scripts/maestro-eas-slack-summary.sh "$MAESTRO_TESTS_DIR"
+
+  # --- PR smoke: harness only (fast; no credentials) ---
+  build_android_e2e_pr:
+    name: Build Android e2e-test APK (PR)
+    if: ${{ github.event_name == 'pull_request' }}
+    type: build
+    params:
+      platform: android
+      profile: e2e-test
+
+  maestro_pr_harness:
+    name: Maestro PR harness
+    needs: [build_android_e2e_pr]
+    if: ${{ github.event_name == 'pull_request' }}
+    type: maestro
+    environment: preview
+    runs_on: linux-large-nested-virtualization
+    params:
+      build_id: ${{ needs.build_android_e2e_pr.outputs.build_id }}
+      flow_path: .maestro/flows/harness/launch.yaml
+      maestro_version: '2.10.0'
+      output_format: junit
+      device_identifier: pixel_6
+      android_system_image_package: system-images;android-34;google_apis;x86_64
+    hooks:
+      before_maestro_tests:
+        - name: Embedded launch mode (no Metro)
+          run: |
+            # Flows opt in to Metro only when MAESTRO_LAUNCH_MODE=metro.
+            # Unset/embedded → no openLink (correct for e2e-test APK).
+            export MAESTRO_LAUNCH_MODE=embedded
+            echo "MAESTRO_LAUNCH_MODE=embedded"
+
+  # --- Manual dispatch: build e2e-test then run selected suite ---
   build_android_e2e:
     name: Build Android e2e-test APK
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.suite != 'nightly' }}
     type: build
     params:
       platform: android
@@ -30,33 +144,40 @@ jobs:
   maestro_harness:
     name: Maestro harness
     needs: [build_android_e2e]
-    if: ${{ inputs.suite == 'harness' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.suite == 'harness' }}
     type: maestro
     environment: preview
     runs_on: linux-large-nested-virtualization
     params:
       build_id: ${{ needs.build_android_e2e.outputs.build_id }}
-      flow_path: .maestro/flows/smoke-launch.yaml
+      flow_path: .maestro/flows/harness/launch.yaml
       maestro_version: '2.10.0'
       output_format: junit
       device_identifier: pixel_6
       android_system_image_package: system-images;android-34;google_apis;x86_64
+    hooks:
+      before_maestro_tests:
+        - name: Embedded launch mode (no Metro)
+          run: |
+            export MAESTRO_LAUNCH_MODE=embedded
+            echo "MAESTRO_LAUNCH_MODE=embedded"
 
   maestro_smokes:
     name: Maestro smokes
     needs: [build_android_e2e]
-    if: ${{ inputs.suite == 'smokes' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.suite == 'smokes' }}
     type: maestro
     environment: preview
     runs_on: linux-large-nested-virtualization
-    # Requires EAS preview secrets: MAESTRO_EMAIL, MAESTRO_PASSWORD
     params:
       build_id: ${{ needs.build_android_e2e.outputs.build_id }}
-      # Directory + tags matches local `maestro:test:smokes` (new smoke flows auto-include).
       flow_path: .maestro
       include_tags: smoke
+      exclude_tags: offline,permissions
       maestro_version: '2.10.0'
       output_format: junit
+      retries: 1
+      retry_failed_only: true
       device_identifier: pixel_6
       android_system_image_package: system-images;android-34;google_apis;x86_64
     hooks:
@@ -64,31 +185,38 @@ jobs:
         - name: Require MAESTRO credentials
           run: |
             set -euo pipefail
+            export MAESTRO_LAUNCH_MODE=embedded
             missing=()
             [[ -n "${MAESTRO_EMAIL:-}" ]] || missing+=("MAESTRO_EMAIL")
             [[ -n "${MAESTRO_PASSWORD:-}" ]] || missing+=("MAESTRO_PASSWORD")
             if ((${#missing[@]} > 0)); then
               echo "error: Missing EAS preview secrets: ${missing[*]}"
-              echo "Add them under Environment variables (preview) — docs/guides/maestro.md (#516)."
+              echo "Add them under Environment variables (preview) — docs/guides/maestro.md."
               exit 1
             fi
-            echo "Secrets OK for smokes."
+            echo "Secrets OK for smokes (MAESTRO_LAUNCH_MODE=embedded)."
+      after_maestro_tests:
+        - name: Scrub MAESTRO secrets from artifacts
+          run: bash scripts/maestro-scrub-artifacts.sh "$MAESTRO_TESTS_DIR"
+        - name: Post Maestro summary to Slack
+          run: bash scripts/maestro-eas-slack-summary.sh "$MAESTRO_TESTS_DIR"
 
   maestro_multi_account:
     name: Maestro multi-account
     needs: [build_android_e2e]
-    if: ${{ inputs.suite == 'multi-account' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.suite == 'multi-account' }}
     type: maestro
     environment: preview
     runs_on: linux-large-nested-virtualization
-    # Requires EAS preview secrets: MAESTRO_EMAIL, MAESTRO_PASSWORD,
-    # MAESTRO_EMAIL_2, MAESTRO_PASSWORD_2
     params:
       build_id: ${{ needs.build_android_e2e.outputs.build_id }}
-      flow_path: .maestro/flows/android/smoke-multi-account.yaml
+      flow_path: .maestro/flows/accounts/multi-account-isolation.yaml
       include_tags: multi-account
       maestro_version: '2.10.0'
       output_format: junit
+      retries: 1
+      retry_failed_only: true
+      record_screen: true
       device_identifier: pixel_6
       android_system_image_package: system-images;android-34;google_apis;x86_64
     hooks:
@@ -96,6 +224,7 @@ jobs:
         - name: Require MAESTRO credentials (two accounts)
           run: |
             set -euo pipefail
+            export MAESTRO_LAUNCH_MODE=embedded
             missing=()
             [[ -n "${MAESTRO_EMAIL:-}" ]] || missing+=("MAESTRO_EMAIL")
             [[ -n "${MAESTRO_PASSWORD:-}" ]] || missing+=("MAESTRO_PASSWORD")
@@ -103,7 +232,12 @@ jobs:
             [[ -n "${MAESTRO_PASSWORD_2:-}" ]] || missing+=("MAESTRO_PASSWORD_2")
             if ((${#missing[@]} > 0)); then
               echo "error: Missing EAS preview secrets: ${missing[*]}"
-              echo "Add them under Environment variables (preview) — docs/guides/maestro.md (#516)."
+              echo "Add them under Environment variables (preview) — docs/guides/maestro.md."
               exit 1
             fi
-            echo "Secrets OK for multi-account."
+            echo "Secrets OK for multi-account (MAESTRO_LAUNCH_MODE=embedded)."
+      after_maestro_tests:
+        - name: Scrub MAESTRO secrets from artifacts
+          run: bash scripts/maestro-scrub-artifacts.sh "$MAESTRO_TESTS_DIR"
+        - name: Post Maestro summary to Slack
+          run: bash scripts/maestro-eas-slack-summary.sh "$MAESTRO_TESTS_DIR"

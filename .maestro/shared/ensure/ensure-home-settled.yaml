@@ -1,0 +1,23 @@
+# After auth: dismiss Prepare-for-Offline until Home tabs are visible.
+# HomeScreen can auto-push Prepare-for-Offline after login; waiting for
+# home-tab-my-work alone fails while that screen covers the tabs.
+appId: com.eten.fluent
+---
+- repeat:
+    times: 6
+    while:
+      notVisible:
+        id: 'home-tab-my-work'
+    commands:
+      - runFlow: ensure-no-modal.yaml
+      - waitForAnimationToEnd:
+          timeout: 1000
+- runFlow: ensure-no-modal.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 120000
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-tab-projects'

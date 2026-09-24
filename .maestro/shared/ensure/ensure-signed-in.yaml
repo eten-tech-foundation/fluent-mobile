@@ -1,0 +1,11 @@
+# Reach Home signed in as Account A. Logs in if login is visible.
+appId: com.eten.fluent
+---
+- runFlow: ensure-no-modal.yaml
+- runFlow:
+    when:
+      visible:
+        id: 'login-email-input'
+    commands:
+      - runFlow: ../auth/login-translator.yaml
+- runFlow: ensure-home-settled.yaml

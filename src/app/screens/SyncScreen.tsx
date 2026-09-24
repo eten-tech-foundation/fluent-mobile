@@ -262,6 +262,7 @@ export default function SyncScreen() {
             subtitle="Use mobile data to upload recordings and download resources when WiFi isn't available."
             value={uploadOverCellular}
             onValueChange={setUploadOverCellular}
+            testID="sync-upload-cellular"
           />
         </View>
       </ScrollView>

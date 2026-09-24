@@ -309,7 +309,10 @@ function HomeScreenBody({
   if (showLoading) {
     return (
       <ScreenContainer>
-        <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
+        <View
+          style={[styles.loadingContainer, { paddingTop: insets.top }]}
+          testID="home-loading"
+        >
           <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text style={styles.loadingText}>Syncing data...</Text>
         </View>
