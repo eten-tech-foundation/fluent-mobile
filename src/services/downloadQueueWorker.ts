@@ -197,11 +197,23 @@ export class DownloadQueueWorker {
   }
 
   /**
-   * Text items (Translation Notes/Words/Commentary) ship their content
-   * inline as `serializedContent` in the manifest — there is no sourceUrl
-   * to fetch. Write it straight to disk and mark complete, bypassing the
-   * resolver/resumable-download path entirely (#51 / download-queue text
-   * item bug).
+   * True when a text item carries its content inline as `serializedContent`
+   * (Translation Notes/Words shipped in the manifest). Text items WITHOUT
+   * inline content (e.g. commentary `.json` / `.pdf` members that only have a
+   * `sourceUrl`) must go through the resolver/resumable-download path instead.
+   * `typeof === 'string'` also rejects `null`, which SQLite-rehydrated queue
+   * rows may carry for a missing column.
+   */
+  private hasInlineContent(item: DownloadQueueItem): boolean {
+    return item.kind === 'text' && typeof item.serializedContent === 'string';
+  }
+
+  /**
+   * Text items with inline `serializedContent` in the manifest have no
+   * sourceUrl to fetch. Write the content straight to disk and mark complete,
+   * bypassing the resolver/resumable-download path (#51 / download-queue text
+   * item bug). Text items with only a `sourceUrl` are NOT handled here — see
+   * hasInlineContent() and processNext().
    */
   private async processTextItem(next: DownloadQueueItem): Promise<void> {
     try {
@@ -246,7 +258,9 @@ export class DownloadQueueWorker {
       return;
     }
 
-    if (next.kind === 'text') {
+    // Only inline-content text items are written directly. Text items that
+    // only have a sourceUrl fall through to the resolver/resumable path below.
+    if (this.hasInlineContent(next)) {
       await this.processTextItem(next);
       return;
     }

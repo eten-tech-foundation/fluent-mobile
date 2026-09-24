@@ -28,6 +28,7 @@ type DownloadQueueRow = {
   resume_data: string | null;
   queue_order: number;
   serialized_content: string | null;
+  resource_id: string | null;
 };
 
 function newDownloadQueueId(): string {
@@ -36,9 +37,26 @@ function newDownloadQueueId(): string {
     .slice(2, 10)}`;
 }
 
+/**
+ * Queue row identity: scoped by project and user so the same manifest
+ * resource (e.g. `source-bible-text-MRK-1`) can be queued independently by
+ * each project/user. Hyphen-separated (not `:`) because the id ends up in
+ * downloaded file names via downloadResourcePath. Keep in sync with the
+ * v18 migration in migrations.ts.
+ */
+export function buildDownloadQueueId(
+  projectId: number,
+  userId: number | null | undefined,
+  resourceId: string,
+): string {
+  return `${projectId}-${userId ?? 0}-${resourceId}`;
+}
+
 function mapRow(row: DownloadQueueRow): DownloadQueueItem {
   return {
     id: row.id,
+    // Raw manifest member id (falls back to id for rows without one).
+    resourceId: row.resource_id ?? row.id,
     tier: row.tier as DownloadTier,
     kind: row.kind as DownloadQueueItem['kind'],
     resourceName: row.resource_name,
@@ -57,7 +75,14 @@ function mapRow(row: DownloadQueueRow): DownloadQueueItem {
 }
 
 export type EnqueueDownloadItemInput = {
+  /**
+   * Raw resource/manifest id. The repository scopes it by project + user to
+   * build the stored queue `id`. Kept as `id` so existing callers are
+   * unchanged. Omit to get a generated queue id.
+   */
   id?: string;
+  /** Optional explicit raw resource id; defaults to `id`. */
+  resourceId?: string;
   projectId: number;
   userId: number;
   tier: DownloadTier;
@@ -70,6 +95,10 @@ export type EnqueueDownloadItemInput = {
   serializedContent?: string;
 };
 
+/**
+ * Returns the stored (scoped) queue ids of the rows actually inserted. Rows
+ * that already exist for the same project + user + resource are skipped.
+ */
 export async function enqueueDownloadItems(
   items: EnqueueDownloadItemInput[],
 ): Promise<string[]> {
@@ -92,15 +121,19 @@ export async function enqueueDownloadItems(
     const sorted = [...items].sort((a, b) => a.tier - b.tier);
 
     for (const item of sorted) {
-      const id = item.id ?? newDownloadQueueId();
+      const rawResourceId = item.resourceId ?? item.id;
+      const id = rawResourceId
+        ? buildDownloadQueueId(item.projectId, item.userId, rawResourceId)
+        : newDownloadQueueId();
+      const resourceId = rawResourceId ?? id;
 
       const result = await tx.execute(
         `INSERT INTO download_queue (
-           id, project_id, user_id, tier, kind, resource_name, label, source_url,
-           file_ext, status, progress, bytes_total, local_file_path, resume_data, queue_order,
-           created_at, updated_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued', 0, ?, NULL, NULL, ?, ?, ?)
-         ON CONFLICT DO NOTHING`,
+   id, project_id, user_id, tier, kind, resource_name, label, source_url,
+   file_ext, status, progress, bytes_total, local_file_path, resume_data, queue_order,
+   created_at, updated_at, serialized_content, resource_id
+ ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued', 0, ?, NULL, NULL, ?, ?, ?, ?, ?)
+ ON CONFLICT DO NOTHING`,
         [
           id,
           item.projectId,
@@ -116,6 +149,7 @@ export async function enqueueDownloadItems(
           now,
           now,
           item.serializedContent ?? null,
+          resourceId,
         ],
       );
       if (result.rowsAffected > 0) {
@@ -205,9 +239,10 @@ export async function markDownloadItemCompleted(
   const now = new Date().toISOString();
   await db.execute(
     `UPDATE download_queue
-     SET status = 'completed', progress = 1, local_file_path = ?,
-         bytes_total = COALESCE(?, bytes_total), resume_data = NULL, updated_at = ?
-     WHERE id = ?`,
+ SET status = 'completed', progress = 1, local_file_path = ?,
+     bytes_total = COALESCE(?, bytes_total), resume_data = NULL,
+     serialized_content = NULL, updated_at = ?
+ WHERE id = ?`,
     [localFilePath, bytesTotal ?? null, now, id],
   );
 }
@@ -328,17 +363,31 @@ export async function getDownloadedResourcesInventory(
   }));
 }
 
+/**
+ * Status by RAW resource id (manifest member id) for one project. Pass
+ * `userId` to restrict to that account's rows — without it, rows from every
+ * user on the device for this project are merged (last row wins).
+ */
 export async function getDownloadQueueStatusMap(
   projectId: number,
+  userId?: number,
 ): Promise<Map<string, DownloadQueueStatus>> {
   const db = getDatabase();
-  const result = await db.execute(
-    `SELECT id, status FROM download_queue WHERE project_id = ?`,
-    [projectId],
-  );
+  const result =
+    userId === undefined
+      ? await db.execute(
+          `SELECT COALESCE(resource_id, id) AS resource_id, status
+           FROM download_queue WHERE project_id = ?`,
+          [projectId],
+        )
+      : await db.execute(
+          `SELECT COALESCE(resource_id, id) AS resource_id, status
+           FROM download_queue WHERE project_id = ? AND user_id = ?`,
+          [projectId, userId],
+        );
   const rows = (result.rows ?? []) as unknown as Array<{
-    id: string;
+    resource_id: string;
     status: DownloadQueueStatus;
   }>;
-  return new Map(rows.map(row => [row.id, row.status]));
+  return new Map(rows.map(row => [row.resource_id, row.status]));
 }

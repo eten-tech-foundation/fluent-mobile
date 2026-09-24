@@ -366,6 +366,7 @@ export const FluentAPI = {
       bookCode: string;
       startChapter: number;
       endChapter: number;
+      includeContent?: boolean;
     },
   ): Promise<ApiPrepareOfflineManifestResponse> =>
     authedRequest<ApiPrepareOfflineManifestResponse>(

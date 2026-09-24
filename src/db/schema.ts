@@ -128,6 +128,13 @@ export const createTableQueries: string[] = [
 
   `CREATE INDEX IF NOT EXISTS idx_up_user ON user_projects(user_id);`,
 
+  /**
+   * `id` is the scoped queue identity `<projectId>-<userId>-<resourceId>` (see
+   * buildDownloadQueueId in downloadQueueRepository); `resource_id` is the raw
+   * manifest member id used for status lookups. There is one row per manifest
+   * member, so there is intentionally NO unique index on
+   * (user, project, kind, resource_name) — many members share those values.
+   */
   `CREATE TABLE IF NOT EXISTS download_queue (
     id              TEXT PRIMARY KEY,
     project_id      INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -145,14 +152,15 @@ export const createTableQueries: string[] = [
     resume_data     TEXT,
     queue_order     INTEGER NOT NULL,
     created_at      TEXT NOT NULL,
-    updated_at      TEXT NOT NULL
+    updated_at      TEXT NOT NULL,
+    serialized_content TEXT,
+    resource_id     TEXT
   );`,
 
   `CREATE INDEX IF NOT EXISTS idx_dq_project ON download_queue(project_id);`,
   `CREATE INDEX IF NOT EXISTS idx_dq_status ON download_queue(status);`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS idx_dq_active_resource
-    ON download_queue(user_id, project_id, kind, resource_name)
-    WHERE status != 'completed';`,
+  `CREATE INDEX IF NOT EXISTS idx_dq_project_user_resource
+    ON download_queue(project_id, user_id, resource_id);`,
 
   `CREATE TABLE IF NOT EXISTS chapter_claim_queue (
       id                    INTEGER PRIMARY KEY,

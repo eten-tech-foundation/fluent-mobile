@@ -84,47 +84,42 @@ const mockCatalogItems = [
 
 jest.mock('../../hooks/usePrepareOfflineResources', () => ({
   usePrepareOfflineResources: jest.fn(
-    ({
-      selectedCount,
-      isAssignedUser,
-    }: {
-      selectedCount: number;
-      isAssignedUser: boolean;
-    }) => {
+    ({ selectedCount }: { selectedCount: number }) => {
       const emptyCatalog = {
         items: [],
         groups: [],
       };
-      // Real hook returns an empty catalog when no chapters are selected.
-      const catalog =
-        isAssignedUser || selectedCount > 0
-          ? {
-              items: mockCatalogItems,
-              groups: [
-                {
-                  groupName: 'Source Bible',
-                  items: mockCatalogItems.slice(0, 2),
-                },
-                {
-                  groupName: 'Translation Words',
-                  items: [mockCatalogItems[2]],
-                },
-                {
-                  groupName: 'Reference Images',
-                  items: [mockCatalogItems[3]],
-                },
-              ],
-            }
-          : emptyCatalog;
+      // Real hook returns an empty catalog (and nothing to download) when no
+      // chapters are selected — regardless of whether the user is assigned.
+      const hasSelection = selectedCount > 0;
+      const catalog = hasSelection
+        ? {
+            items: mockCatalogItems,
+            groups: [
+              {
+                groupName: 'Source Bible',
+                items: mockCatalogItems.slice(0, 2),
+              },
+              {
+                groupName: 'Translation Words',
+                items: [mockCatalogItems[2]],
+              },
+              {
+                groupName: 'Reference Images',
+                items: [mockCatalogItems[3]],
+              },
+            ],
+          }
+        : emptyCatalog;
 
       return {
         catalog,
         effectiveCatalog: catalog,
         deselectedItemIds: new Set<string>(),
-        totalBytes: 4096,
-        pendingBytes: 4096,
+        totalBytes: hasSelection ? 4096 : 0,
+        pendingBytes: hasSelection ? 4096 : 0,
         selectedItems: catalog.items,
-        canDownload: isAssignedUser || selectedCount > 0,
+        canDownload: hasSelection,
         manifestLoading: false,
         manifestError: null,
         isItemSelected: () => true,
@@ -361,6 +356,61 @@ describe('PrepareForOfflineScreen', () => {
       expandedBookIds: new Set([1]),
       toggleBookExpanded: jest.fn(),
       accordionTitle: 'Selected chapters (0)',
+      toggleChapter: jest.fn(),
+      toggleBook: jest.fn(),
+      isBookFullySelected: () => false,
+      retry: jest.fn(),
+    }));
+
+    render(<PrepareForOfflineScreen />);
+
+    fireEvent.press(screen.getByText('Luke'));
+
+    await waitFor(() => {
+      const button = screen.getByTestId('prepare-offline-download-button');
+      expect(button.props.accessibilityState?.disabled).toBe(true);
+    });
+
+    expect(screen.queryByText('RESOURCES TO DOWNLOAD')).toBeNull();
+    expect(mockHandleDownload).not.toHaveBeenCalled();
+  });
+
+  it('shows disabled download button for assigned users who deselect every chapter', async () => {
+    usePrepareOfflineSelection.mockImplementation(() => ({
+      books: [
+        {
+          bookId: 1,
+          bookName: 'Genesis',
+          chapters: [
+            {
+              id: 100,
+              bookId: 1,
+              bookName: 'Genesis',
+              chapterNumber: 1,
+              assignedUserId: 42,
+            },
+          ],
+        },
+      ],
+      chapters: [
+        {
+          id: 100,
+          bookId: 1,
+          bookName: 'Genesis',
+          chapterNumber: 1,
+          assignedUserId: 42,
+        },
+      ],
+      loading: false,
+      error: null,
+      selectedIds: new Set<number>(),
+      selectedCount: 0,
+      isAssignedUser: true,
+      accordionExpanded: true,
+      setAccordionExpanded: jest.fn(),
+      expandedBookIds: new Set([1]),
+      toggleBookExpanded: jest.fn(),
+      accordionTitle: 'Assigned chapters (0)',
       toggleChapter: jest.fn(),
       toggleBook: jest.fn(),
       isBookFullySelected: () => false,

@@ -72,6 +72,8 @@ export interface PrepareOfflineResourceItem {
   manifestMembers: PrepareOfflineResourceManifestItem[];
   required: boolean;
   removable: boolean;
+  /** Replaces the byte size text, e.g. "Included" for rows handled by sync. */
+  displayValue?: string;
 }
 
 export interface PrepareOfflineResourceGroup {

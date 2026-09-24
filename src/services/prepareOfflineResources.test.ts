@@ -3,21 +3,21 @@ import {
   clearPrepareOfflineSessionInventory,
   fetchPrepareOfflineManifest,
   fetchSourceBibleAudioManifest,
-  fetchSourceBibleTextManifest,
   getDefaultPrepareOfflinePackageDeselects,
   getPrepareOfflineResourceStatus,
+  hydratePrepareOfflineTextContent,
   refreshPrepareOfflineInventory,
   subscribePrepareOfflineInventory,
 } from './prepareOfflineResources';
 import { getDownloadQueueStatusMap } from '../db/downloadQueueRepository';
 import type { DownloadQueueStatus } from '../types/download/types';
+import type { PrepareOfflineResourceItem } from '../types/prepareOffline/types';
 
 jest.mock('./api', () => ({
   FluentAPI: {
     getPrepareOfflineManifest: jest.fn(),
     getSourceAudioManifest: jest.fn(),
     getChapterSourceAudio: jest.fn(),
-    getBibleTexts: jest.fn(),
   },
 }));
 
@@ -58,13 +58,14 @@ function mockSourceAudioManifest(items: unknown[] = []) {
   });
 }
 
-function mockSourceTextChapters(chapterNumbers: number[]) {
-  (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
-    data: chapterNumbers.map(chapterNumber => ({
-      bookId: FULL_PARAMS.bookId,
-      chapterNumber,
-      verses: [{ text: `verse ${chapterNumber}` }],
-    })),
+/** Per-chapter audio fallback returns no audio (keeps tests quiet). */
+function mockEmptyChapterAudio() {
+  (FluentAPI.getChapterSourceAudio as jest.Mock).mockResolvedValue({
+    provider: 'dbl',
+    bible: { name: 'B', abbreviation: 'ENG' },
+    bookCode: 'MRK',
+    chapter: 1,
+    items: [],
   });
 }
 
@@ -76,7 +77,7 @@ describe('prepareOfflineResources', () => {
   });
 
   describe('fetchPrepareOfflineManifest', () => {
-    it('merges translation resources, source text, and source audio in order', async () => {
+    it('merges source audio and translation resources in order', async () => {
       const translationItem = {
         id: 'r1',
         tier: 3 as const,
@@ -108,7 +109,6 @@ describe('prepareOfflineResources', () => {
           endChapter: 3,
         },
       ]);
-      mockSourceTextChapters([1, 2, 3]);
 
       const result = await fetchPrepareOfflineManifest(99, FULL_PARAMS);
 
@@ -122,19 +122,8 @@ describe('prepareOfflineResources', () => {
         99,
         FULL_PARAMS,
       );
-      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(10, [
-        { bookId: 20, chapterNumber: 1 },
-        { bookId: 20, chapterNumber: 2 },
-        { bookId: 20, chapterNumber: 3 },
-      ]);
-
-      expect(result.map(item => item.id)).toEqual([
-        'r1',
-        'source-bible-text-MRK-1',
-        'source-bible-text-MRK-2',
-        'source-bible-text-MRK-3',
-        'sa1',
-      ]);
+      // Source Bible text is handled by sync, never by the manifest.
+      expect(result.map(item => item.id)).toEqual(['sa1', 'r1']);
     });
 
     it('overrides Translation Notes to Tier 1 regardless of API tier', async () => {
@@ -154,7 +143,7 @@ describe('prepareOfflineResources', () => {
         },
       ]);
       mockSourceAudioManifest([]);
-      mockSourceTextChapters([1]);
+      mockEmptyChapterAudio();
 
       const result = await fetchPrepareOfflineManifest(99, FULL_PARAMS);
 
@@ -165,7 +154,6 @@ describe('prepareOfflineResources', () => {
     it('falls back to per-chapter source-audio when the manifest returns nothing', async () => {
       mockTranslationManifest([]);
       mockSourceAudioManifest([]);
-      mockSourceTextChapters([1]);
       (FluentAPI.getChapterSourceAudio as jest.Mock).mockImplementation(
         (params: { bookCode: string; chapter: number }) =>
           Promise.resolve({
@@ -200,7 +188,7 @@ describe('prepareOfflineResources', () => {
       });
     });
 
-    it('keeps the rest of the package when the source-text bulk POST fails', async () => {
+    it('keeps the rest of the package when the audio fallback fails', async () => {
       const translationItem = {
         id: 'r1',
         tier: 2 as const,
@@ -215,15 +203,7 @@ describe('prepareOfflineResources', () => {
       };
       mockTranslationManifest([translationItem]);
       mockSourceAudioManifest([]);
-      // Empty fallback response so the per-chapter audio path yields nothing.
-      (FluentAPI.getChapterSourceAudio as jest.Mock).mockResolvedValue({
-        provider: 'dbl',
-        bible: { name: 'B', abbreviation: 'ENG' },
-        bookCode: 'MRK',
-        chapter: 1,
-        items: [],
-      });
-      (FluentAPI.getBibleTexts as jest.Mock).mockRejectedValue(
+      (FluentAPI.getChapterSourceAudio as jest.Mock).mockRejectedValue(
         new Error('network down'),
       );
 
@@ -233,54 +213,81 @@ describe('prepareOfflineResources', () => {
     });
   });
 
-  describe('fetchSourceBibleTextManifest', () => {
-    it('maps one text manifest item per chapter with an estimated byte size', async () => {
-      mockSourceTextChapters([1, 2]);
+  describe('hydratePrepareOfflineTextContent', () => {
+    function textRow(
+      status: PrepareOfflineResourceItem['status'],
+      memberIds: string[],
+    ): PrepareOfflineResourceItem {
+      return {
+        id: 'Translation Words:text',
+        tier: 2,
+        kind: 'text',
+        groupName: 'Translation Words',
+        label: 'Text',
+        bytes: 100,
+        status,
+        required: false,
+        removable: true,
+        manifestMembers: memberIds.map(id => ({
+          id,
+          tier: 2 as const,
+          kind: 'text' as const,
+          resourceName: 'Translation Words',
+          label: 'Text',
+          required: false,
+          removable: true,
+          bytesTotal: 50,
+          fileExt: 'json',
+          languageCode: 'eng',
+        })),
+      };
+    }
 
-      const result = await fetchSourceBibleTextManifest(
-        10,
-        20,
-        'MRK',
-        [1, 2],
-        'eng',
+    it('copies serializedContent onto matching members', async () => {
+      mockTranslationManifest([
+        { id: 'tw1', serializedContent: '{"a":1}' },
+        { id: 'tw2', serializedContent: '{"b":2}' },
+      ]);
+
+      const result = await hydratePrepareOfflineTextContent(
+        99,
+        [textRow('available', ['tw1', 'tw2'])],
+        [FULL_PARAMS],
       );
 
-      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(10, [
-        { bookId: 20, chapterNumber: 1 },
-        { bookId: 20, chapterNumber: 2 },
-      ]);
-      expect(result).toHaveLength(2);
-      expect(result[0]).toMatchObject({
-        id: 'source-bible-text-MRK-1',
-        tier: 1,
-        kind: 'text',
-        resourceName: 'Source Bible',
-        label: 'Text',
-        required: true,
-        removable: false,
-        fileExt: 'json',
+      expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledWith(99, {
         languageCode: 'eng',
         bookCode: 'MRK',
         startChapter: 1,
-        endChapter: 1,
+        endChapter: 3,
+        includeContent: true,
       });
-      expect(result[0].bytesTotal).toBeGreaterThan(0);
+      expect(
+        result[0].manifestMembers.map(member => member.serializedContent),
+      ).toEqual(['{"a":1}', '{"b":2}']);
     });
 
-    it('returns an empty list when the bulk POST fails', async () => {
-      (FluentAPI.getBibleTexts as jest.Mock).mockRejectedValue(
-        new Error('network down'),
-      );
+    it('throws when the server returns no content for a member', async () => {
+      mockTranslationManifest([{ id: 'tw1', serializedContent: '{"a":1}' }]);
 
-      const result = await fetchSourceBibleTextManifest(
-        10,
-        20,
-        'MRK',
-        [1],
-        'eng',
-      );
+      await expect(
+        hydratePrepareOfflineTextContent(
+          99,
+          [textRow('available', ['tw1', 'tw2'])],
+          [FULL_PARAMS],
+        ),
+      ).rejects.toThrow('No content returned for text item tw2');
+    });
 
-      expect(result).toEqual([]);
+    it('skips completed rows and makes no API call when nothing needs content', async () => {
+      const items = [textRow('completed', ['tw1'])];
+
+      const result = await hydratePrepareOfflineTextContent(99, items, [
+        FULL_PARAMS,
+      ]);
+
+      expect(FluentAPI.getPrepareOfflineManifest).not.toHaveBeenCalled();
+      expect(result).toEqual(items);
     });
   });
 
@@ -361,18 +368,27 @@ describe('prepareOfflineResources', () => {
   });
 
   describe('subscribePrepareOfflineInventory', () => {
-    it('notifies listeners when the inventory is refreshed', async () => {
+    it('notifies listeners only when the inventory actually changes', async () => {
       const listener = jest.fn();
       const unsubscribe = subscribePrepareOfflineInventory(listener);
 
       getQueueStatusMap.mockResolvedValue(new Map());
       await refreshPrepareOfflineInventory(5);
-
       expect(listener).toHaveBeenCalledTimes(1);
-      unsubscribe();
 
+      // Same (empty) map again: no change, no notification.
       await refreshPrepareOfflineInventory(5);
       expect(listener).toHaveBeenCalledTimes(1);
+
+      // Changed map: notifies again.
+      getQueueStatusMap.mockResolvedValue(new Map([['item-1', 'completed']]));
+      await refreshPrepareOfflineInventory(5);
+      expect(listener).toHaveBeenCalledTimes(2);
+
+      unsubscribe();
+      getQueueStatusMap.mockResolvedValue(new Map([['item-1', 'failed']]));
+      await refreshPrepareOfflineInventory(5);
+      expect(listener).toHaveBeenCalledTimes(2);
     });
   });
 

@@ -167,18 +167,25 @@ function aggregateManifestItems(
 
 /**
  * Aggregate status across an aggregated row's members.
- * Any item downloading → row shows downloading; all completed → completed;
- * otherwise → available/selected passthrough on the first member.
+ * - No members → available.
+ * - All completed → completed.
+ * - Any downloading → downloading; else any paused → paused.
+ * - Otherwise the row is only partly on device (or not at all), so it must
+ *   NOT report completed: return the first member status that isn't
+ *   completed (available/selected passthrough). Reporting completed here
+ *   would lock the row in customize and drop it from pending bytes, so the
+ *   remaining members would never be queued.
  */
 function aggregateStatus(
   members: PrepareOfflineResourceManifestItem[],
   getResourceStatus: (resourceId: string) => PrepareOfflineResourceStatus,
 ): PrepareOfflineResourceStatus {
   const statuses = members.map(m => getResourceStatus(m.id));
+  if (statuses.length === 0) return 'available';
   if (statuses.every(s => s === 'completed')) return 'completed';
   if (statuses.some(s => s === 'downloading')) return 'downloading';
   if (statuses.some(s => s === 'paused')) return 'paused';
-  return statuses[0];
+  return statuses.find(s => s !== 'completed') ?? 'available';
 }
 
 /** Builds Tier 2/3 catalog rows from raw manifest items (one row per resource+kind). */

@@ -62,6 +62,14 @@ jest.mock('../services/prepareOfflineDownload', () => ({
   ),
 }));
 
+jest.mock('../services/prepareOfflineResources', () => ({
+  hydratePrepareOfflineTextContent: jest.fn(async (_projectId, items) => items),
+}));
+
+jest.mock('../services/sync', () => ({
+  syncBibleTextsForChapters: jest.fn(async () => undefined),
+}));
+
 jest.mock('../services/storage', () => ({
   setPrepareOfflineDownloadStarted: jest.fn(),
   getPrepareOfflineDownloadStarted: jest.fn(() => false),
@@ -127,6 +135,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -163,6 +173,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -219,6 +231,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -281,6 +295,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -333,6 +349,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -366,6 +384,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -401,6 +421,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -435,6 +457,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -461,6 +485,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -483,6 +509,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -519,6 +547,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -563,6 +593,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -610,6 +642,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog: completedCatalog,
         selectedItems: completedCatalog.items,
         canDownload: false,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -670,6 +704,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog: multiItemCatalog,
         selectedItems: multiItemCatalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -719,6 +755,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: false, // stale mock-status value, as it would be post-cancel
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -756,6 +794,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 

@@ -12,7 +12,13 @@ import {
   PrepareOfflineChapterRow,
   PrepareOfflineResourceManifestItem,
 } from '../types/prepareOffline/types';
-import { buildManifestContexts } from '../utils/buildManifestContexts';
+import {
+  buildManifestContexts,
+  PrepareOfflineManifestContext,
+} from '../utils/buildManifestContexts';
+import { logger } from '../utils/logger';
+
+const log = logger.create('usePrepareOfflineResourceData');
 
 /**
  * Loads Prepare for Offline manifest + inventory via the resources service.
@@ -27,6 +33,9 @@ export function usePrepareOfflineResourceData(
   const [manifest, setManifest] = useState<
     PrepareOfflineResourceManifestItem[]
   >([]);
+  const [manifestContexts, setManifestContexts] = useState<
+    PrepareOfflineManifestContext[]
+  >([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [inventoryVersion, setInventoryVersion] = useState(0);
@@ -34,6 +43,7 @@ export function usePrepareOfflineResourceData(
   useEffect(() => {
     if (projectId === null || selectedIds.size === 0) {
       setManifest([]);
+      setManifestContexts([]);
       setLoading(false);
       setError(null);
       return;
@@ -64,6 +74,7 @@ export function usePrepareOfflineResourceData(
         );
 
         if (!cancelled) {
+          setManifestContexts(contexts);
           const byId = new Map<string, PrepareOfflineResourceManifestItem>();
           for (const items of responses) {
             for (const item of items) byId.set(item.id, item);
@@ -74,6 +85,7 @@ export function usePrepareOfflineResourceData(
         if (!cancelled) {
           setError(err);
           setManifest([]);
+          setManifestContexts([]);
         }
       } finally {
         if (!cancelled) {
@@ -100,7 +112,9 @@ export function usePrepareOfflineResourceData(
     if (projectId === null) {
       return;
     }
-    void refreshPrepareOfflineInventory(projectId);
+    refreshPrepareOfflineInventory(projectId).catch(error => {
+      log.warn('Inventory refresh failed', { error, projectId });
+    });
   }, [projectId, inventoryVersion]);
 
   useEffect(() => {
@@ -117,6 +131,7 @@ export function usePrepareOfflineResourceData(
 
   return {
     manifest,
+    manifestContexts,
     loading,
     error,
     inventoryVersion,

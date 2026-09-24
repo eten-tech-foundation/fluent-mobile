@@ -34,6 +34,7 @@ export function usePrepareOfflineResources({
 
   const {
     manifest,
+    manifestContexts,
     loading: manifestLoading,
     error: manifestError,
     inventoryVersion,
@@ -133,6 +134,7 @@ export function usePrepareOfflineResources({
     canDownload,
     manifestLoading,
     manifestError,
+    manifestContexts,
     isItemSelected,
     toggleItemSelected,
   };

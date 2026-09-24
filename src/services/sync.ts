@@ -1201,3 +1201,50 @@ export async function refreshChapterMetadataIfOnline(
   inFlightMetadataRefresh.set(userId, refreshPromise);
   return refreshPromise;
 }
+
+export async function syncBibleTextsForChapters(
+  chapters: Array<{ bibleId: number; bookId: number; chapterNumber: number }>,
+): Promise<void> {
+  if (chapters.length === 0) return;
+
+  // group chapters by bible
+  const groups: BibleChapterGroup = new Map();
+  for (const c of chapters) {
+    const list = groups.get(c.bibleId) ?? [];
+    list.push({ bookId: c.bookId, chapterNumber: c.chapterNumber });
+    groups.set(c.bibleId, list);
+  }
+
+  return retrySyncStep(
+    'Prepare offline bible text sync',
+    KV_KEYS.SYNC_ERROR_BIBLE_TEXTS,
+    async () => {
+      for (const [bibleId, list] of groups) {
+        for (let i = 0; i < list.length; i += BIBLE_TEXT_CHUNK_SIZE) {
+          const chunk = list.slice(i, i + BIBLE_TEXT_CHUNK_SIZE);
+          const response = await FluentAPI.getBibleTexts(bibleId, chunk);
+          const books: ApiBook[] = response.data;
+          if (!Array.isArray(books)) {
+            throw new Error(`Invalid bible text response for bible ${bibleId}`);
+          }
+
+          await insertBibleTexts(
+            books.map((book: ApiBook) => ({
+              bibleId,
+              bookId: book.bookId,
+              chapterNumber: book.chapterNumber,
+              verses: book.verses.map((verse: ApiVerse) => ({
+                id: verse.id,
+                bible_id: bibleId,
+                book_id: book.bookId,
+                chapter_number: book.chapterNumber,
+                verse_number: verse.verseNumber,
+                text: verse.text,
+              })),
+            })),
+          );
+        }
+      }
+    },
+  );
+}

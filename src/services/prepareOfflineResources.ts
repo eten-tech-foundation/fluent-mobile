@@ -3,9 +3,8 @@ import { getDownloadQueueStatusMap } from '../db/downloadQueueRepository';
 import type { ApiPrepareOfflineManifestItem } from '../types/api/translationResources';
 import type { ApiSourceAudioResponse } from '../types/api/sourceAudio';
 import type { ApiSourceAudioManifestItem } from '../types/api/sourceAudio';
-import { unwrapApiListResponse } from '../types/api/responses';
-import type { ApiBook } from '../types/api/types';
 import {
+  PrepareOfflineResourceItem,
   PrepareOfflineResourceManifestItem,
   PrepareOfflineResourceStatus,
 } from '../types/prepareOffline/types';
@@ -42,6 +41,17 @@ function notifyInventoryListeners(): void {
   }
 }
 
+function statusMapsEqual(
+  previous: Map<string, DownloadQueueStatus> | undefined,
+  next: Map<string, DownloadQueueStatus>,
+): boolean {
+  if (!previous || previous.size !== next.size) return false;
+  for (const [id, status] of next) {
+    if (previous.get(id) !== status) return false;
+  }
+  return true;
+}
+
 /**
  * Refresh the cached status map for a project from `download_queue` and
  * notify subscribers. Call after any queue-mutating operation for the
@@ -52,10 +62,12 @@ export async function refreshPrepareOfflineInventory(
   projectId: number,
 ): Promise<void> {
   const map = await getDownloadQueueStatusMap(projectId);
+  const previousMap = statusMapCache.get(projectId);
   statusMapCache.set(projectId, map);
-  notifyInventoryListeners();
+  if (!statusMapsEqual(previousMap, map)) {
+    notifyInventoryListeners();
+  }
 }
-
 /** Fluent API manifest resources whose tier mobile overrides regardless of server value. */
 const TIER_OVERRIDE_BY_COLLECTION_CODE: Record<string, 1 | 2 | 3> = {
   // Translation Notes ships under Tier 2 server-side; mobile UI treats it as Tier 1.
@@ -100,11 +112,11 @@ function toSourceBibleAudioManifestItem(
 /**
  * Tier 1 Source Bible audio — per-chapter fallback via the same fluent-api
  * endpoint the drafting dock uses (#282), which correctly resolves dbl vs
- * aquifer. Only called when source-audio/manifest returns nothing, since
- * that endpoint currently only queries Aquifer (confirmed gap — see wiring
- * notes). May over-fetch unselected chapters within the range; acceptable,
- * matches the existing over-fetch tolerance for the translation-resources
- * manifest.
+ * aquifer. Only called when source-audio/manifest returns nothing (or fails),
+ * since that endpoint currently only queries Aquifer (confirmed gap — see
+ * wiring notes). May over-fetch unselected chapters within the range;
+ * acceptable, matches the existing over-fetch tolerance for the
+ * translation-resources manifest.
  */
 export async function fetchSourceBibleAudioManifest(
   projectId: number,
@@ -138,67 +150,6 @@ export async function fetchSourceBibleAudioManifest(
   return settled.filter(
     (i): i is PrepareOfflineResourceManifestItem => i !== null,
   );
-}
-
-/** Rough JSON byte size for a chapter's text content (no server-provided size field). */
-function estimateTextBytes(verses: unknown): number {
-  const json = JSON.stringify(verses);
-  return unescape(encodeURIComponent(json)).length;
-}
-
-function toSourceBibleTextManifestItem(
-  chapter: ApiBook,
-  bookCode: string,
-  languageCode: string,
-): PrepareOfflineResourceManifestItem {
-  return {
-    id: `source-bible-text-${bookCode}-${chapter.chapterNumber}`,
-    tier: 1,
-    kind: 'text',
-    resourceName: 'Source Bible',
-    label: 'Text',
-    required: true,
-    removable: false,
-    bytesTotal: estimateTextBytes(chapter.verses),
-    fileExt: 'json',
-    languageCode,
-    bookCode,
-    startChapter: chapter.chapterNumber,
-    endChapter: chapter.chapterNumber,
-  };
-}
-
-/**
- * Tier 1 Source Bible text — single bulk POST for all selected chapters of
- * one book, keyed by bookId (distinct from bookCode — unlike every other
- * manifest call in this file). One failure must not sink the rest of the
- * Prepare Offline package (#504).
- */
-export async function fetchSourceBibleTextManifest(
-  bibleId: number,
-  bookId: number,
-  bookCode: string,
-  chapterNumbers: number[],
-  languageCode: string,
-): Promise<PrepareOfflineResourceManifestItem[]> {
-  try {
-    const response = await FluentAPI.getBibleTexts(
-      bibleId,
-      chapterNumbers.map(chapterNumber => ({ bookId, chapterNumber })),
-    );
-
-    const chapters = unwrapApiListResponse(response);
-
-    return chapters.map(chapter =>
-      toSourceBibleTextManifestItem(chapter, bookCode, languageCode),
-    );
-  } catch (error) {
-    console.warn(
-      `[prepareOfflineResources] source-text fetch failed for bible ${bibleId}, book ${bookCode}`,
-      error,
-    );
-    return [];
-  }
 }
 
 function toMobileManifestItem(
@@ -249,23 +200,26 @@ export async function fetchPrepareOfflineManifest(
   projectId: number,
   params: FetchPrepareOfflineManifestParams,
 ): Promise<PrepareOfflineResourceManifestItem[]> {
-  const { bibleId, bookId, ...translationResourcesParams } = params;
+  const { bibleId, bookId: _bookId, ...translationResourcesParams } = params;
 
-  const [translationResourcesResponse, sourceAudioResponse, sourceTextItems] =
-    await Promise.all([
+  const [translationResourcesResponse, sourceAudioResponse] = await Promise.all(
+    [
       FluentAPI.getPrepareOfflineManifest(
         projectId,
         translationResourcesParams,
       ),
-      FluentAPI.getSourceAudioManifest(projectId, params),
-      fetchSourceBibleTextManifest(
-        bibleId,
-        bookId,
-        params.bookCode,
-        range(params.startChapter, params.endChapter),
-        params.languageCode,
-      ),
-    ]);
+      // A source-audio manifest failure (e.g. 5xx / 502 from the Aquifer
+      // upstream) must not sink the rest of the package. Treat it as "no
+      // manifest" so the per-chapter fallback below runs instead (#504).
+      FluentAPI.getSourceAudioManifest(projectId, params).catch(error => {
+        console.warn(
+          `[prepareOfflineResources] source-audio manifest failed for ${params.bookCode}`,
+          error,
+        );
+        return undefined;
+      }),
+    ],
+  );
 
   if (translationResourcesResponse.truncated) {
     console.warn(
@@ -273,7 +227,7 @@ export async function fetchPrepareOfflineManifest(
     );
   }
 
-  let sourceAudioItems = sourceAudioResponse.items.map(
+  let sourceAudioItems = (sourceAudioResponse?.items ?? []).map(
     toMobileManifestItemFromSourceAudio,
   );
 
@@ -290,10 +244,71 @@ export async function fetchPrepareOfflineManifest(
   }
 
   return [
-    ...translationResourcesResponse.items.map(toMobileManifestItem),
-    ...sourceTextItems,
     ...sourceAudioItems,
+    ...translationResourcesResponse.items.map(toMobileManifestItem),
   ];
+}
+
+/**
+ * Re-fetches the manifest WITH content for the selected text rows and
+ * copies serializedContent onto each member. Called once at download time;
+ * the catalog stays metadata-only (#504).
+ *
+ * Text members that ship only a `sourceUrl` (e.g. commentary .json / .pdf)
+ * have no inline content; they are left untouched here and downloaded from
+ * their URL by the download worker.
+ */
+export async function hydratePrepareOfflineTextContent(
+  projectId: number,
+  items: PrepareOfflineResourceItem[],
+  contexts: FetchPrepareOfflineManifestParams[],
+): Promise<PrepareOfflineResourceItem[]> {
+  // Only text rows that still need downloading need content.
+  const needsContent = (item: PrepareOfflineResourceItem) =>
+    item.kind === 'text' && item.status !== 'completed';
+
+  if (!items.some(needsContent)) {
+    return items;
+  }
+
+  const responses = await Promise.all(
+    contexts.map(({ bibleId: _bibleId, bookId: _bookId, ...params }) =>
+      FluentAPI.getPrepareOfflineManifest(projectId, {
+        ...params,
+        includeContent: true,
+      }),
+    ),
+  );
+
+  const contentById = new Map<string, string>();
+  for (const response of responses) {
+    for (const member of response.items) {
+      if (member.serializedContent !== undefined) {
+        contentById.set(member.id, member.serializedContent);
+      }
+    }
+  }
+
+  return items.map(item => {
+    if (!needsContent(item)) return item;
+
+    const manifestMembers = item.manifestMembers.map(member => ({
+      ...member,
+      serializedContent: contentById.get(member.id) ?? member.serializedContent,
+    }));
+
+    // A member with neither inline content nor a sourceUrl can never be
+    // downloaded — that's a real error. A URL-only member is fine: the
+    // worker fetches it from sourceUrl.
+    const missing = manifestMembers.find(
+      m => m.serializedContent === undefined && !m.sourceUrl,
+    );
+    if (missing) {
+      throw new Error(`No content returned for text item ${missing.id}`);
+    }
+
+    return { ...item, manifestMembers };
+  });
 }
 
 /** On-device / in-flight status for one resource row. Reads the last-refreshed cache; call refreshPrepareOfflineInventory(projectId) after queue mutations to keep it current. */

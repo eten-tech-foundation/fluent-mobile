@@ -10,6 +10,7 @@ export type DownloadQueueStatus =
 
 export interface DownloadQueueItem {
   id: string;
+  resourceId?: string;
   tier: DownloadTier;
   kind?: 'text' | 'audio' | 'image';
   resourceName?: string;
