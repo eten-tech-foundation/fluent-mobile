@@ -2,6 +2,8 @@
 
 > Confirmed on device (#529 audit, B.7).
 
+**GitHub issue:** #580
+
 ## Summary
 
 For a translator with no assigned chapters in the project, #50 and #51

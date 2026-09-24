@@ -2,6 +2,8 @@
 
 > Confirmed on device (#529 audit, G.26).
 
+**GitHub issue:** #578
+
 ## Summary
 
 #192 requires Resources content (Translation Notes, Translation Questions,

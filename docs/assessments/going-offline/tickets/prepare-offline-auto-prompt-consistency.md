@@ -2,6 +2,8 @@
 
 > Confirmed on device (#529 audit, A.1–A.4, first run and isolated re-test).
 
+**GitHub issue:** #581
+
 ## Summary
 
 #39 requires Prepare for Offline to open automatically on Home when Wi-Fi is

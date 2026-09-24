@@ -1,8 +1,8 @@
 # Going Offline Audit
 
-> **Status: device run done; gaps not filed yet.** Gaps 1–7 are confirmed on
-> device: 1–4 will be new issues, and 5–7 comments on #504, #546 and #257.
-> E.19 is re-tested after PR #559 (#546) merges.
+> **Status: device run done; gaps filed.** Gaps 1–4 are filed as #578–#581
+> (sub-issues of #529). Gaps 5–7 were added to the open #504, #546 (and PR
+> #559) and #257. E.19 is re-tested after PR #559 (#546) merges.
 
 ## Overview
 
@@ -258,14 +258,14 @@ sibling audits (#530, #533).
 Existing issues were searched before routing (offline, prepare, download,
 manifest, resources offline, source audio, cellular, queue, accordion, stage
 advancement). Gaps 1–4 become new issues; Gaps 5–7 become comments on
-existing open issues. Nothing is filed yet.
+existing open issues. All are filed (see each gap's Development task).
 
 ### Gap 1: Downloaded resources are not shown offline in the Resources tab
 
 **Severity:** High (translators prepare for offline, then have no notes offline)  
 **Launch blocker:** To be decided with product  
 **Related issue:** [#192](https://github.com/eten-tech-foundation/fluent-mobile/issues/192) (closed), [#417](https://github.com/eten-tech-foundation/fluent-mobile/issues/417), [#504](https://github.com/eten-tech-foundation/fluent-mobile/issues/504)  
-**Development task:** [tickets/resources-read-downloaded-content-offline.md](./tickets/resources-read-downloaded-content-offline.md)
+**Development task:** [#578](https://github.com/eten-tech-foundation/fluent-mobile/issues/578) · [tickets/resources-read-downloaded-content-offline.md](./tickets/resources-read-downloaded-content-offline.md)
 
 **Description:**  
 #192 requires prepared Resources content to be available with no network
@@ -287,7 +287,7 @@ visible offline.
 **Severity:** High  
 **Launch blocker:** To be decided with product  
 **Related issue:** [#51](https://github.com/eten-tech-foundation/fluent-mobile/issues/51) (Tier 1 source audio), [#412](https://github.com/eten-tech-foundation/fluent-mobile/issues/412), [#504](https://github.com/eten-tech-foundation/fluent-mobile/issues/504)  
-**Development task:** [tickets/source-audio-offline-playback.md](./tickets/source-audio-offline-playback.md)
+**Development task:** [#579](https://github.com/eten-tech-foundation/fluent-mobile/issues/579) · [tickets/source-audio-offline-playback.md](./tickets/source-audio-offline-playback.md)
 
 **Description:**  
 Source audio is Tier 1 and always part of the download (#51), but the Bible
@@ -309,7 +309,7 @@ file.
 **Severity:** Medium  
 **Launch blocker:** No  
 **Related issue:** [#50](https://github.com/eten-tech-foundation/fluent-mobile/issues/50), [#51](https://github.com/eten-tech-foundation/fluent-mobile/issues/51), PR #341  
-**Development task:** [tickets/unassigned-chapter-selection-state.md](./tickets/unassigned-chapter-selection-state.md)
+**Development task:** [#580](https://github.com/eten-tech-foundation/fluent-mobile/issues/580) · [tickets/unassigned-chapter-selection-state.md](./tickets/unassigned-chapter-selection-state.md)
 
 **Description:**  
 For a translator with no assigned chapters, the chapter accordion must open
@@ -330,7 +330,7 @@ device showed the opposite for both.
 **Severity:** Medium (Settings → Prepare for Offline still works, A.5)  
 **Launch blocker:** No  
 **Related issue:** [#39](https://github.com/eten-tech-foundation/fluent-mobile/issues/39) (PR #242), [#483](https://github.com/eten-tech-foundation/fluent-mobile/issues/483), [#546](https://github.com/eten-tech-foundation/fluent-mobile/issues/546)  
-**Development task:** [tickets/prepare-offline-auto-prompt-consistency.md](./tickets/prepare-offline-auto-prompt-consistency.md)
+**Development task:** [#581](https://github.com/eten-tech-foundation/fluent-mobile/issues/581) · [tickets/prepare-offline-auto-prompt-consistency.md](./tickets/prepare-offline-auto-prompt-consistency.md)
 
 **Description:**  
 The prompt only runs on specific events (foreground, Home regaining focus
@@ -357,7 +357,7 @@ pattern.
 **Severity:** Medium (the fluent-api manifests exist; the fix is in progress)  
 **Launch blocker:** No  
 **Related issue:** [#504](https://github.com/eten-tech-foundation/fluent-mobile/issues/504) (open, PR #562 open), [#51](https://github.com/eten-tech-foundation/fluent-mobile/issues/51), [#446](https://github.com/eten-tech-foundation/fluent-mobile/issues/446)  
-**Development task:** comment on #504 (existing open issue); no new issue
+**Development task:** [#504 comment](https://github.com/eten-tech-foundation/fluent-mobile/issues/504#issuecomment-5815443171) (existing open issue; fix in progress in PR #562); no new issue
 
 **Description:**  
 Epic rule: mock data with a ready API is a gap. The catalog is
@@ -388,7 +388,7 @@ shows "Download complete".
 **Severity:** Medium  
 **Launch blocker:** No  
 **Related issue:** [#546](https://github.com/eten-tech-foundation/fluent-mobile/issues/546) (open, PR #559 open), [#146](https://github.com/eten-tech-foundation/fluent-mobile/issues/146)  
-**Development task:** comment on #546 (existing open issue); no new issue
+**Development task:** [#546 comment](https://github.com/eten-tech-foundation/fluent-mobile/issues/546#issuecomment-5815443528) and [PR #559 comment](https://github.com/eten-tech-foundation/fluent-mobile/pull/559#issuecomment-5815443946) (existing open issue; fix in progress in PR #559); no new issue
 
 **Description:**  
 Download `start` has no transport check
@@ -414,7 +414,7 @@ download continues when Wi-Fi returns (E.18). Offline, the items fail with
 **Severity:** Low  
 **Launch blocker:** No  
 **Related issue:** [#257](https://github.com/eten-tech-foundation/fluent-mobile/issues/257) (open), [#258](https://github.com/eten-tech-foundation/fluent-mobile/issues/258), [#505](https://github.com/eten-tech-foundation/fluent-mobile/issues/505)  
-**Development task:** comment on #257 (existing open issue); no new issue
+**Development task:** [#257 comment](https://github.com/eten-tech-foundation/fluent-mobile/issues/257#issuecomment-5815444391) (existing open issue; not started); no new issue
 
 **Description:**  
 The local stage update works: the Projects tab shows the chapter at Peer
@@ -493,7 +493,8 @@ used a local debug build of the same commit.
 
 **Follow-up required:**
 
-- [ ] All identified gaps have corresponding GitHub issues.
+- [x] All identified gaps have corresponding GitHub issues. _(#578–#581;
+      #504, #546 / PR #559 and #257 updated)_
 - [ ] Mobile and API dependencies are cross-linked. _(the fluent-api
       manifests already exist; mobile wiring is #504 / PR #562; no new API
       work found)_

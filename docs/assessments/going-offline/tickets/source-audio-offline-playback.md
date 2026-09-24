@@ -2,6 +2,8 @@
 
 > Confirmed on device (#529 audit, G.25).
 
+**GitHub issue:** #579
+
 ## Summary
 
 #51 puts source audio in Tier 1: it is always part of the Prepare for Offline
