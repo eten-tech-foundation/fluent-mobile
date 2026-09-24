@@ -7,11 +7,14 @@ import {
   View,
 } from 'react-native';
 import { TranslationQuestionAccordion } from './TranslationQuestionAccordion';
+import type { TranslationQuestionsLoadState } from '../../../hooks/useTranslationQuestionsForUnit';
 import { useTranslationQuestionsForUnit } from '../../../hooks/useTranslationQuestionsForUnit';
 import { TRANSLATION_QUESTIONS_LOAD_ERROR } from '../../../constants/messages';
 import { theme } from '../../../theme';
 
 type TranslationQuestionsSectionProps = {
+  state: TranslationQuestionsLoadState;
+  retry: () => void;
   projectId: number | null;
   bookCode: string;
   chapterNumber: number;
@@ -20,23 +23,15 @@ type TranslationQuestionsSectionProps = {
   sectionExpanded: boolean;
 };
 
-/**
- * Translation Questions body for the Resources tab (#190).
- * Nested Q→A accordions; section-scoped error + Retry.
- */
 export function TranslationQuestionsSection({
+  state,
+  retry,
   projectId,
   bookCode,
   chapterNumber,
   verseNumber,
   sectionExpanded,
 }: TranslationQuestionsSectionProps) {
-  const { state, retry } = useTranslationQuestionsForUnit({
-    projectId,
-    bookCode,
-    chapterNumber,
-    verseNumber,
-  });
   const [openQuestionIds, setOpenQuestionIds] = useState<Set<string>>(
     () => new Set(),
   );

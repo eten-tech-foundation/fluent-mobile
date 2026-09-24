@@ -25,6 +25,11 @@ export interface DownloadQueueItem {
   localFilePath?: string;
   resumeData?: string;
   serializedContent?: string;
+  bookCode?: string;
+  startChapter?: number;
+  endChapter?: number;
+  verseStart?: number;
+  verseEnd?: number;
 }
 
 export interface DownloadQueueSnapshot {

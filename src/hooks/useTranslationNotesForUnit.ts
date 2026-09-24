@@ -32,8 +32,15 @@ export type UseTranslationNotesForUnitParams = LoadTranslationNotesParams;
 export function useTranslationNotesForUnit(
   params: UseTranslationNotesForUnitParams,
 ) {
-  const { projectId, bookCode, chapterNumber, verseNumber, languageCode } =
-    params;
+  const {
+    projectId,
+    userId,
+    isOnline,
+    bookCode,
+    chapterNumber,
+    verseNumber,
+    languageCode,
+  } = params;
 
   const [tracked, setTracked] = useState<TrackedLoadState>({
     projectId,
@@ -56,6 +63,8 @@ export function useTranslationNotesForUnit(
     try {
       const notes = await loadTranslationNotesForUnit({
         projectId,
+        userId,
+        isOnline,
         bookCode,
         chapterNumber,
         verseNumber,
@@ -93,7 +102,15 @@ export function useTranslationNotesForUnit(
         },
       });
     }
-  }, [projectId, bookCode, chapterNumber, verseNumber, languageCode]);
+  }, [
+    projectId,
+    userId,
+    isOnline,
+    bookCode,
+    chapterNumber,
+    verseNumber,
+    languageCode,
+  ]);
 
   useEffect(() => {
     void load();

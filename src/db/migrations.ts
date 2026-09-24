@@ -514,6 +514,9 @@ async function markBibleTextsServerIdsRemap(db: SqlExecutor): Promise<void> {
  *   `ON CONFLICT DO NOTHING` silently drop every member after the first.
  *   Uniqueness now comes from the scoped primary key.
  * - Adds a plain lookup index for status reads.
+ * - Adds nullable scope columns (`book_code`, `start_chapter`, `end_chapter`,
+ *   `verse_start`, `verse_end`) so downloaded resources can be mapped back to
+ *   book/chapter/verse offline. NULL verse fields mean chapter-level.
  */
 async function scopeDownloadQueueIdentity(db: SqlExecutor): Promise<void> {
   const info = await db.execute('PRAGMA table_info(download_queue)');
@@ -521,16 +524,25 @@ async function scopeDownloadQueueIdentity(db: SqlExecutor): Promise<void> {
     return;
   }
   await addColumnIfMissing(db, 'download_queue', 'resource_id', 'TEXT');
+  await addColumnIfMissing(db, 'download_queue', 'book_code', 'TEXT');
+  await addColumnIfMissing(db, 'download_queue', 'start_chapter', 'INTEGER');
+  await addColumnIfMissing(db, 'download_queue', 'end_chapter', 'INTEGER');
+  await addColumnIfMissing(db, 'download_queue', 'verse_start', 'INTEGER');
+  await addColumnIfMissing(db, 'download_queue', 'verse_end', 'INTEGER');
   await db.execute(
     `UPDATE download_queue
-     SET resource_id = id,
-         id = project_id || '-' || COALESCE(user_id, 0) || '-' || id
-     WHERE resource_id IS NULL`,
+        SET resource_id = id,
+            id = project_id || '-' || COALESCE(user_id, 0) || '-' || id
+        WHERE resource_id IS NULL`,
   );
   await db.execute(`DROP INDEX IF EXISTS idx_dq_active_resource`);
   await db.execute(
     `CREATE INDEX IF NOT EXISTS idx_dq_project_user_resource
-     ON download_queue(project_id, user_id, resource_id)`,
+        ON download_queue(project_id, user_id, resource_id)`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_dq_scope
+        ON download_queue(project_id, user_id, resource_name, book_code, start_chapter)`,
   );
 }
 

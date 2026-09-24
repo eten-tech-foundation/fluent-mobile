@@ -33,8 +33,15 @@ export type UseTranslationQuestionsForUnitParams =
 export function useTranslationQuestionsForUnit(
   params: UseTranslationQuestionsForUnitParams,
 ) {
-  const { projectId, bookCode, chapterNumber, verseNumber, languageCode } =
-    params;
+  const {
+    projectId,
+    userId,
+    isOnline,
+    bookCode,
+    chapterNumber,
+    verseNumber,
+    languageCode,
+  } = params;
 
   const [tracked, setTracked] = useState<TrackedLoadState>({
     projectId,
@@ -57,6 +64,8 @@ export function useTranslationQuestionsForUnit(
     try {
       const questions = await loadTranslationQuestionsForUnit({
         projectId,
+        userId,
+        isOnline,
         bookCode,
         chapterNumber,
         verseNumber,
@@ -94,7 +103,15 @@ export function useTranslationQuestionsForUnit(
         },
       });
     }
-  }, [projectId, bookCode, chapterNumber, verseNumber, languageCode]);
+  }, [
+    projectId,
+    userId,
+    isOnline,
+    bookCode,
+    chapterNumber,
+    verseNumber,
+    languageCode,
+  ]);
 
   useEffect(() => {
     void load();

@@ -29,6 +29,11 @@ type DownloadQueueRow = {
   queue_order: number;
   serialized_content: string | null;
   resource_id: string | null;
+  book_code: string | null;
+  start_chapter: number | null;
+  end_chapter: number | null;
+  verse_start: number | null;
+  verse_end: number | null;
 };
 
 function newDownloadQueueId(): string {
@@ -71,6 +76,11 @@ function mapRow(row: DownloadQueueRow): DownloadQueueItem {
     localFilePath: row.local_file_path ?? undefined,
     resumeData: row.resume_data ?? undefined,
     serializedContent: row.serialized_content ?? undefined,
+    bookCode: row.book_code ?? undefined,
+    startChapter: row.start_chapter ?? undefined,
+    endChapter: row.end_chapter ?? undefined,
+    verseStart: row.verse_start ?? undefined,
+    verseEnd: row.verse_end ?? undefined,
   };
 }
 
@@ -93,6 +103,11 @@ export type EnqueueDownloadItemInput = {
   fileExt?: string;
   bytesTotal?: number;
   serializedContent?: string;
+  bookCode?: string;
+  startChapter?: number;
+  endChapter?: number;
+  verseStart?: number;
+  verseEnd?: number;
 };
 
 /**
@@ -129,11 +144,12 @@ export async function enqueueDownloadItems(
 
       const result = await tx.execute(
         `INSERT INTO download_queue (
-   id, project_id, user_id, tier, kind, resource_name, label, source_url,
-   file_ext, status, progress, bytes_total, local_file_path, resume_data, queue_order,
-   created_at, updated_at, serialized_content, resource_id
- ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued', 0, ?, NULL, NULL, ?, ?, ?, ?, ?)
- ON CONFLICT DO NOTHING`,
+     id, project_id, user_id, tier, kind, resource_name, label, source_url,
+     file_ext, status, progress, bytes_total, local_file_path, resume_data, queue_order,
+     created_at, updated_at, serialized_content, resource_id,
+     book_code, start_chapter, end_chapter, verse_start, verse_end
+   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued', 0, ?, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+   ON CONFLICT DO NOTHING`,
         [
           id,
           item.projectId,
@@ -150,6 +166,11 @@ export async function enqueueDownloadItems(
           now,
           item.serializedContent ?? null,
           resourceId,
+          item.bookCode ?? null,
+          item.startChapter ?? null,
+          item.endChapter ?? null,
+          item.verseStart ?? null,
+          item.verseEnd ?? null,
         ],
       );
       if (result.rowsAffected > 0) {
@@ -390,4 +411,25 @@ export async function getDownloadQueueStatusMap(
     status: DownloadQueueStatus;
   }>;
   return new Map(rows.map(row => [row.resource_id, row.status]));
+}
+
+export async function getDownloadedResourcesForChapter(
+  projectId: number,
+  userId: number,
+  resourceName: string,
+  kind: 'text' | 'audio' | 'image',
+  bookCode: string,
+  chapter: number,
+): Promise<DownloadQueueItem[]> {
+  const db = getDatabase();
+  const result = await db.execute(
+    `SELECT * FROM download_queue
+     WHERE project_id = ? AND user_id = ? AND status = 'completed'
+       AND resource_name = ? AND kind = ? AND book_code = ?
+       AND start_chapter <= ? AND end_chapter >= ?
+     ORDER BY verse_start IS NOT NULL, verse_start, queue_order`,
+    [projectId, userId, resourceName, kind, bookCode, chapter, chapter],
+  );
+  const rows = (result.rows ?? []) as unknown as DownloadQueueRow[];
+  return rows.map(mapRow);
 }
