@@ -182,7 +182,7 @@ discard, paused take, drawer, maximum update depth, scrub, seek, stitched).
 **Severity:** High (in-progress recordings are lost)  
 **Launch blocker:** To be decided with product  
 **Related issue:** [#49](https://github.com/eten-tech-foundation/fluent-mobile/issues/49), [#170](https://github.com/eten-tech-foundation/fluent-mobile/issues/170), [#176](https://github.com/eten-tech-foundation/fluent-mobile/issues/176)  
-**Development task:** [#567](https://github.com/eten-tech-foundation/fluent-mobile/issues/567) · [tickets/restore-kill-safe-paused-take-recovery.md](./tickets/restore-kill-safe-paused-take-recovery.md)
+**Development task:** [#567](https://github.com/eten-tech-foundation/fluent-mobile/issues/567)
 
 **Description:**  
 #49 requires two things. First, backgrounding the app auto-pauses the take.
@@ -209,7 +209,7 @@ the take is lost; the verse comes back with no takes.
 **Severity:** High (silent data loss)  
 **Launch blocker:** To be decided with product  
 **Related issue:** [#49](https://github.com/eten-tech-foundation/fluent-mobile/issues/49), [#47](https://github.com/eten-tech-foundation/fluent-mobile/issues/47)  
-**Development task:** [#568](https://github.com/eten-tech-foundation/fluent-mobile/issues/568) · [tickets/block-drawer-during-capture.md](./tickets/block-drawer-during-capture.md)
+**Development task:** [#568](https://github.com/eten-tech-foundation/fluent-mobile/issues/568)
 
 **Description:**  
 The drafting screen guards tab changes, header or system back, Sync, and
@@ -239,7 +239,7 @@ guard, while a take is recording or paused.
 reload)  
 **Launch blocker:** No  
 **Related issue:** [#298](https://github.com/eten-tech-foundation/fluent-mobile/issues/298) (closed), [#411](https://github.com/eten-tech-foundation/fluent-mobile/issues/411)  
-**Development task:** [#569](https://github.com/eten-tech-foundation/fluent-mobile/issues/569) · [tickets/playback-update-depth-regression.md](./tickets/playback-update-depth-regression.md)
+**Development task:** [#569](https://github.com/eten-tech-foundation/fluent-mobile/issues/569)
 
 **Description:**  
 React's `Maximum update depth exceeded` is raised when switching playback
@@ -289,7 +289,7 @@ Play.
 **Severity:** Low (cosmetic)  
 **Launch blocker:** No  
 **Related issue:** [#411](https://github.com/eten-tech-foundation/fluent-mobile/issues/411) (merged in PR #506, passed QA), [#474](https://github.com/eten-tech-foundation/fluent-mobile/issues/474)  
-**Development task:** [#571](https://github.com/eten-tech-foundation/fluent-mobile/issues/571) · [tickets/align-stitched-take-row.md](./tickets/align-stitched-take-row.md)
+**Development task:** [#571](https://github.com/eten-tech-foundation/fluent-mobile/issues/571)
 
 **Description:**  
 In pericope view, the stitched row's waveform sits further right than a
@@ -312,7 +312,7 @@ trailing slot).
 **Severity:** Low / Medium  
 **Launch blocker:** No  
 **Related issue:** [#49](https://github.com/eten-tech-foundation/fluent-mobile/issues/49)  
-**Development task:** [#570](https://github.com/eten-tech-foundation/fluent-mobile/issues/570) · [tickets/paused-take-resume-or-discard-prompt.md](./tickets/paused-take-resume-or-discard-prompt.md)
+**Development task:** [#570](https://github.com/eten-tech-foundation/fluent-mobile/issues/570)
 
 **Description:**  
 #49 specifies a resume-or-discard prompt when a translator navigates away
