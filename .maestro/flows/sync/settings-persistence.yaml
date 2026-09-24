@@ -1,0 +1,53 @@
+# Settings toggles persist across navigation (cellular + drafting unit).
+appId: com.eten.fluent
+tags:
+  - smoke
+  - settings
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- runFlow: ../../shared/ensure/ensure-signed-in.yaml
+- runFlow: ../../shared/nav/goto-settings.yaml
+- scrollUntilVisible:
+    element:
+      id: 'settings-upload-cellular'
+    direction: DOWN
+    timeout: 15000
+# Force known changed values, then leave and return to prove persistence
+- tapOn:
+    id: 'settings-upload-cellular-switch'
+- runFlow:
+    when:
+      visible:
+        id: 'settings-upload-cellular-switch'
+        checked: false
+    commands:
+      - tapOn:
+          id: 'settings-upload-cellular-switch'
+- tapOn:
+    id: 'settings-drafting-unit-verse'
+- tapOn:
+    id: 'settings-drafting-unit-pericope'
+- assertVisible:
+    id: 'settings-upload-cellular-switch'
+    checked: true
+- assertVisible:
+    id: 'settings-drafting-unit-pericope'
+    selected: true
+- back
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000
+- runFlow: ../../shared/nav/goto-settings.yaml
+- scrollUntilVisible:
+    element:
+      id: 'settings-upload-cellular'
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: 'settings-upload-cellular-switch'
+    checked: true
+- assertVisible:
+    id: 'settings-drafting-unit-pericope'
+    selected: true

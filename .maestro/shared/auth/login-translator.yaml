@@ -1,0 +1,8 @@
+# Sign in as Account A (translator shape) — MAESTRO_EMAIL / MAESTRO_PASSWORD.
+appId: com.eten.fluent
+---
+- runFlow:
+    file: login-as.yaml
+    env:
+      EMAIL: ${MAESTRO_EMAIL}
+      PASSWORD: ${MAESTRO_PASSWORD}

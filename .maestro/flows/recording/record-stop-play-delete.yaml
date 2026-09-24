@@ -1,0 +1,57 @@
+# Record → stop → play → delete (mic pre-granted). Cleans up the take created.
+appId: com.eten.fluent
+tags:
+  - smoke
+  - record
+---
+- runFlow: ../../helpers/launch-android-mic-allow.yaml
+- runFlow: ../../helpers/boot-past-dev-launcher.yaml
+- runFlow: ../../shared/auth/login-translator.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- runFlow: ../../shared/nav/open-any-chapter.yaml
+- tapOn:
+    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'record-tab'
+- runFlow: ../../shared/ensure/ensure-take-capacity.yaml
+- runFlow:
+    when:
+      visible:
+        id: 'record-start-button'
+        enabled: true
+    commands:
+      - tapOn:
+          id: 'record-start-button'
+- runFlow:
+    when:
+      visible:
+        id: 'record-new-take-button'
+        enabled: true
+    commands:
+      - tapOn:
+          id: 'record-new-take-button'
+- extendedWaitUntil:
+    visible:
+      id: 'record-stop-button'
+    timeout: 15000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'record-stop-button'
+- extendedWaitUntil:
+    visible:
+      id: 'record-play-button-.*'
+    timeout: 30000
+- tapOn:
+    id: 'record-play-button-.*'
+- assertVisible:
+    id: 'record-tab'
+- tapOn:
+    id: 'record-delete-selected-button-.*'
+- tapOn:
+    text: 'Delete'
+- assertVisible:
+    id: 'record-tab'

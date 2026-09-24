@@ -1,0 +1,71 @@
+# Record a take, Sync Now, assert Sync screen settles (upload path).
+appId: com.eten.fluent
+tags:
+  - smoke
+  - sync
+  - record
+---
+- runFlow: ../../helpers/launch-android-mic-allow.yaml
+- runFlow: ../../helpers/boot-past-dev-launcher.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'login-email-input'
+    timeout: 180000
+- runFlow: ../../shared/auth/login-translator.yaml
+- runFlow: ../../shared/ensure/ensure-home-settled.yaml
+- runFlow: ../../shared/nav/open-any-chapter.yaml
+- tapOn:
+    id: 'drafting-tab-record'
+- runFlow: ../../shared/ensure/ensure-take-capacity.yaml
+- runFlow:
+    when:
+      visible:
+        id: 'record-start-button'
+        enabled: true
+    commands:
+      - tapOn:
+          id: 'record-start-button'
+- runFlow:
+    when:
+      visible:
+        id: 'record-new-take-button'
+        enabled: true
+    commands:
+      - tapOn:
+          id: 'record-new-take-button'
+- extendedWaitUntil:
+    visible:
+      id: 'record-stop-button'
+    timeout: 15000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'record-stop-button'
+- extendedWaitUntil:
+    visible:
+      id: 'record-play-button-.*'
+    timeout: 30000
+- tapOn:
+    id: 'drafting-header-back'
+- runFlow: ../../shared/nav/goto-home.yaml
+# Require pending upload chrome before sync-now-and-return (helper's sync-now tap is optional)
+- runFlow: ../../shared/nav/goto-sync.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'sync-action-sync-now'
+    timeout: 60000
+- runFlow: ../../shared/nav/sync-now-and-return.yaml
+- assertVisible:
+    id: 'home-tab-my-work'
+# Cleanup: reopen chapter and delete the take we created when still present
+- runFlow: ../../shared/nav/open-any-chapter.yaml
+- tapOn:
+    id: 'drafting-tab-record'
+- runFlow:
+    when:
+      visible:
+        id: 'record-delete-selected-button-.*'
+    commands:
+      - tapOn:
+          id: 'record-delete-selected-button-.*'
+      - tapOn:
+          text: 'Delete'

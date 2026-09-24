@@ -1,0 +1,11 @@
+# Sync Now settles without metadata error.
+appId: com.eten.fluent
+tags:
+  - smoke
+  - sync
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- runFlow: ../../shared/ensure/ensure-signed-in.yaml
+- runFlow: ../../shared/nav/sync-now-and-return.yaml
+- assertVisible:
+    id: 'home-tab-my-work'

@@ -17,6 +17,7 @@ interface ListCardProps {
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
   testID?: string;
+  accessibilityLabel?: string;
 }
 
 export function ListCard({
@@ -27,6 +28,7 @@ export function ListCard({
   style,
   contentStyle,
   testID,
+  accessibilityLabel,
 }: ListCardProps) {
   const content = (
     <>
@@ -49,6 +51,8 @@ export function ListCard({
         onPress={onPress}
         activeOpacity={theme.listCard.activeOpacity}
         testID={testID}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
       >
         {content}
       </TouchableOpacity>

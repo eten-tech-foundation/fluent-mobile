@@ -1,0 +1,12 @@
+# On Record tab: fail fast if neither start nor enabled new-take is available (at cap).
+appId: com.eten.fluent
+---
+- runFlow:
+    when:
+      notVisible:
+        id: 'record-start-button'
+        enabled: true
+    commands:
+      - assertVisible:
+          id: 'record-new-take-button'
+          enabled: true
