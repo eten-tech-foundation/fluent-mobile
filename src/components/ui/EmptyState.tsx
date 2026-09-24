@@ -4,11 +4,12 @@ import { theme } from '../../theme';
 
 interface EmptyStateProps {
   message: string;
+  testID?: string;
 }
 
-export function EmptyState({ message }: EmptyStateProps) {
+export function EmptyState({ message, testID }: EmptyStateProps) {
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID={testID}>
       <Text style={styles.message}>{message}</Text>
     </View>
   );

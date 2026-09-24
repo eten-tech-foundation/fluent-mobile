@@ -1,0 +1,14 @@
+# Legacy fallback: type Metro URL into Dev Client launcher (prefer deep-link).
+# Kept for manual debugging when openLink fails. Emulator: 10.0.2.2 + adb reverse.
+appId: com.eten.fluent
+---
+- tapOn:
+    text: 'Fetch development servers'
+    optional: true
+- tapOn:
+    text: 'http://'
+    optional: true
+- inputText: '10.0.2.2:8081'
+- tapOn: 'Connect'
+- waitForAnimationToEnd:
+    timeout: 30000

@@ -271,24 +271,24 @@ export default function LoginScreen({
             <View style={styles.footer}>
               <Text style={styles.footerText}>
                 By continuing, you agree to the{' '}
-                <Text
-                  style={styles.footerLink}
-                  accessibilityRole="link"
-                  onPress={() => router.push(privacyHref)}
-                  testID="login-privacy-link"
-                >
-                  Privacy Policy
-                </Text>{' '}
-                and{' '}
-                <Text
-                  style={styles.footerLink}
-                  accessibilityRole="link"
-                  onPress={() => router.push(termsHref)}
-                  testID="login-terms-link"
-                >
-                  Terms.
-                </Text>
               </Text>
+              <TouchableOpacity
+                accessibilityRole="link"
+                accessibilityLabel="Privacy Policy"
+                onPress={() => router.push(privacyHref)}
+                testID="login-privacy-link"
+              >
+                <Text style={styles.footerLink}>Privacy Policy</Text>
+              </TouchableOpacity>
+              <Text style={styles.footerText}> and </Text>
+              <TouchableOpacity
+                accessibilityRole="link"
+                accessibilityLabel="Terms."
+                onPress={() => router.push(termsHref)}
+                testID="login-terms-link"
+              >
+                <Text style={styles.footerLink}>Terms.</Text>
+              </TouchableOpacity>
             </View>
           ) : null}
         </View>

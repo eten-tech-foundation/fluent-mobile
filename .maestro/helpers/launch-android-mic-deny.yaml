@@ -1,0 +1,9 @@
+# Cold-start with mic + notifications denied (permission edge).
+appId: com.eten.fluent
+---
+- launchApp:
+    clearState: true
+    permissions:
+      microphone: deny
+      notifications: deny
+- runFlow: open-metro-deeplink.yaml

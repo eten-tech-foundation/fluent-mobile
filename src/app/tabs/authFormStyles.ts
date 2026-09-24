@@ -183,9 +183,13 @@ export const authFormStyles = StyleSheet.create({
     fontWeight: theme.typography.weights.semibold,
   },
   footer: {
-    marginTop: 30,
+    marginTop: theme.spacing.xl + theme.spacing.md,
     width: '100%',
     paddingTop: theme.spacing.sm,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   footerText: {
     fontSize: theme.typography.sizes.xs,
@@ -193,5 +197,9 @@ export const authFormStyles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 16,
   },
-  footerLink: { color: theme.colors.primary },
+  footerLink: {
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.primary,
+    lineHeight: 16,
+  },
 });

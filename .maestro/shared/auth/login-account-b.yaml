@@ -1,0 +1,8 @@
+# Sign in as Account B (member-without-assignments) — MAESTRO_EMAIL_2 / MAESTRO_PASSWORD_2.
+appId: com.eten.fluent
+---
+- runFlow:
+    file: login-as.yaml
+    env:
+      EMAIL: ${MAESTRO_EMAIL_2}
+      PASSWORD: ${MAESTRO_PASSWORD_2}
