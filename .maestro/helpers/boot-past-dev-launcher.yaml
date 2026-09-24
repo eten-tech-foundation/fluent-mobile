@@ -1,0 +1,45 @@
+# After clearState + deep-link: reach app JS.
+# Prefer waiting for login/home. Only re-deep-link if still stuck on launcher
+# and MAESTRO_LAUNCH_MODE=metro. Embedded e2e/nightly: Connect never appears.
+appId: com.eten.fluent
+---
+# Fast path: JS already painting
+- extendedWaitUntil:
+    visible:
+      id: 'login-email-input'
+    timeout: 60000
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: 'auth-session-loading'
+    timeout: 5000
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 5000
+    optional: true
+# Stuck on error dialog from a bad prior connect (metro only)
+- runFlow:
+    when:
+      true: ${MAESTRO_LAUNCH_MODE == 'metro'}
+    commands:
+      - runFlow:
+          when:
+            visible: 'Error loading app'
+          commands:
+            - tapOn:
+                text: 'Close'
+                optional: true
+            - pressKey: Back
+            - openLink: ${MAESTRO_DEV_CLIENT_URL}
+            - waitForAnimationToEnd:
+                timeout: 30000
+      - runFlow:
+          when:
+            visible: 'Connect'
+          commands:
+            - openLink: ${MAESTRO_DEV_CLIENT_URL}
+            - waitForAnimationToEnd:
+                timeout: 30000
+- runFlow: dismiss-expo-dev-menu.yaml

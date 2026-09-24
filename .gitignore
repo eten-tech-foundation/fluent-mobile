@@ -42,6 +42,7 @@ pnpm-lock.yaml
 .env.*
 !.env.example
 !.env.maestro.example
+.envrc
 
 # Maestro E2E (local artifacts; flows under .maestro/ are committed)
 .maestro/test_output/
@@ -71,3 +72,5 @@ expo-env.d.ts
 
 # AI files
 .superpowers
+# Maestro CLI local --test-output-dir (may contain env in logs)
+test_output/

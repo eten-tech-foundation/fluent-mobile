@@ -1,0 +1,36 @@
+# Account B (member-without-assignments): Projects populated, My Work empty.
+# Uses MAESTRO_EMAIL_2 / MAESTRO_PASSWORD_2. Not tagged `smoke` (needs second pair).
+appId: com.eten.fluent
+tags:
+  - accounts
+  - empty-assignments
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- runFlow: ../../shared/auth/login-account-b.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+
+# Projects: membership should surface ≥1 project
+- tapOn:
+    id: 'home-tab-projects'
+- extendedWaitUntil:
+    visible:
+      id: 'project-row-.*'
+    timeout: 120000
+- assertVisible:
+    id: 'project-row-.*'
+
+# My Work: empty-assignment copy (no assignee/peer-checker rows)
+- tapOn:
+    id: 'home-tab-my-work'
+- extendedWaitUntil:
+    visible:
+      id: 'my-work-empty'
+    timeout: 60000
+- assertVisible:
+    id: 'my-work-empty'
+- assertNotVisible:
+    id: 'my-work-row-\d+$'

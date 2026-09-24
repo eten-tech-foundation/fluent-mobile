@@ -1,0 +1,29 @@
+# Home tab switching My Work ↔ Projects.
+appId: com.eten.fluent
+tags:
+  - smoke
+  - nav
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- runFlow: ../../shared/auth/login-translator.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- tapOn:
+    id: 'home-tab-projects'
+- extendedWaitUntil:
+    visible:
+      id: 'project-row-.*'
+    timeout: 60000
+- assertVisible:
+    id: 'project-row-.*'
+- tapOn:
+    id: 'home-tab-my-work'
+- extendedWaitUntil:
+    visible:
+      id: 'my-work-row-\d+$'
+    timeout: 60000
+- assertVisible:
+    id: 'my-work-row-\d+$'
