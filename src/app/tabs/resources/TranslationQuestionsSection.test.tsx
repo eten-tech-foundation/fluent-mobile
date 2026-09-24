@@ -13,6 +13,7 @@ import {
   setTranslationQuestionsLoadFailureForTests,
 } from '../../../services/translationQuestions';
 import { getMockTranslationQuestions } from '../../../mocks/resources/translationQuestionsMock';
+import { useTranslationQuestionsForUnit } from '../../../hooks/useTranslationQuestionsForUnit';
 
 jest.mock('../../../services/translationQuestions', () => {
   const actual = jest.requireActual('../../../services/translationQuestions');
@@ -25,6 +26,34 @@ jest.mock('../../../services/translationQuestions', () => {
 const mockLoad = loadTranslationQuestionsForUnit as jest.MockedFunction<
   typeof loadTranslationQuestionsForUnit
 >;
+
+function SectionHarness({
+  projectId,
+  verseNumber,
+  sectionExpanded = true,
+}: {
+  projectId: number;
+  verseNumber: number;
+  sectionExpanded?: boolean;
+}) {
+  const { state, retry } = useTranslationQuestionsForUnit({
+    projectId,
+    bookCode: 'MRK',
+    chapterNumber: 14,
+    verseNumber,
+  });
+  return (
+    <TranslationQuestionsSection
+      state={state}
+      retry={retry}
+      projectId={projectId}
+      bookCode="MRK"
+      chapterNumber={14}
+      verseNumber={verseNumber}
+      sectionExpanded={sectionExpanded}
+    />
+  );
+}
 
 describe('TranslationQuestionsSection', () => {
   beforeEach(() => {
@@ -39,15 +68,7 @@ describe('TranslationQuestionsSection', () => {
   });
 
   it('hides content when no questions are available', async () => {
-    render(
-      <TranslationQuestionsSection
-        projectId={7}
-        bookCode="MRK"
-        chapterNumber={14}
-        verseNumber={1}
-        sectionExpanded
-      />,
-    );
+    render(<SectionHarness projectId={7} verseNumber={1} />);
 
     await waitFor(() => {
       expect(screen.queryByTestId('translation-questions-loading')).toBeNull();
@@ -57,15 +78,7 @@ describe('TranslationQuestionsSection', () => {
   });
 
   it('keeps answers hidden until a question accordion is expanded', async () => {
-    render(
-      <TranslationQuestionsSection
-        projectId={7}
-        bookCode="MRK"
-        chapterNumber={14}
-        verseNumber={2}
-        sectionExpanded
-      />,
-    );
+    render(<SectionHarness projectId={7} verseNumber={2} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('translation-questions-list')).toBeTruthy();
@@ -94,13 +107,7 @@ describe('TranslationQuestionsSection', () => {
       'The passage describes the events surrounding this verse so the translator can check key meaning.';
 
     const { rerender } = render(
-      <TranslationQuestionsSection
-        projectId={7}
-        bookCode="MRK"
-        chapterNumber={14}
-        verseNumber={2}
-        sectionExpanded
-      />,
+      <SectionHarness projectId={7} verseNumber={2} />,
     );
 
     await waitFor(() => {
@@ -112,15 +119,7 @@ describe('TranslationQuestionsSection', () => {
     );
     expect(screen.getByText(answer)).toBeTruthy();
 
-    rerender(
-      <TranslationQuestionsSection
-        projectId={8}
-        bookCode="MRK"
-        chapterNumber={14}
-        verseNumber={2}
-        sectionExpanded
-      />,
-    );
+    rerender(<SectionHarness projectId={8} verseNumber={2} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('translation-questions-list')).toBeTruthy();
@@ -132,15 +131,7 @@ describe('TranslationQuestionsSection', () => {
     mockLoad.mockRejectedValueOnce(new Error('boom'));
     mockLoad.mockResolvedValueOnce(getMockTranslationQuestions(99, 2));
 
-    render(
-      <TranslationQuestionsSection
-        projectId={7}
-        bookCode="MRK"
-        chapterNumber={14}
-        verseNumber={2}
-        sectionExpanded
-      />,
-    );
+    render(<SectionHarness projectId={7} verseNumber={2} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('translation-questions-error')).toBeTruthy();
