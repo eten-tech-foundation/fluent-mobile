@@ -31,6 +31,7 @@ on:
           - harness
           - smokes
           - multi-account
+          - ownership
           - nightly
 
 jobs:
@@ -236,6 +237,62 @@ jobs:
               exit 1
             fi
             echo "Secrets OK for multi-account (MAESTRO_LAUNCH_MODE=embedded)."
+      after_maestro_tests:
+        - name: Scrub MAESTRO secrets from artifacts
+          run: bash scripts/maestro-scrub-artifacts.sh "$MAESTRO_TESTS_DIR"
+        - name: Post Maestro summary to Slack
+          run: bash scripts/maestro-eas-slack-summary.sh "$MAESTRO_TESTS_DIR"
+
+  maestro_ownership:
+    name: Maestro ownership
+    needs: [build_android_e2e]
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.suite == 'ownership' }}
+    type: maestro
+    environment: preview
+    runs_on: linux-large-nested-virtualization
+    # Requires EAS preview secrets: MAESTRO_EMAIL, MAESTRO_PASSWORD,
+    # MAESTRO_PM_EMAIL, MAESTRO_PM_PASSWORD, MAESTRO_FIXTURE_* labels.
+    # Seeds disposable project before flows (fail-closed — no claim rotation;
+    # update preview MAESTRO_FIXTURE_CLAIM_LABEL when the chapter is burned).
+    params:
+      build_id: ${{ needs.build_android_e2e.outputs.build_id }}
+      flow_path: .maestro
+      include_tags: ownership
+      exclude_tags: ownership-conflict,ownership-peer-check
+      maestro_version: '2.10.0'
+      output_format: junit
+      retries: 1
+      retry_failed_only: true
+      record_screen: true
+      device_identifier: pixel_6
+      android_system_image_package: system-images;android-34;google_apis;x86_64
+    hooks:
+      before_maestro_tests:
+        - name: Seed ownership fixtures + require env
+          run: |
+            set -euo pipefail
+            export MAESTRO_LAUNCH_MODE=embedded
+            missing=()
+            [[ -n "${MAESTRO_EMAIL:-}" ]] || missing+=("MAESTRO_EMAIL")
+            [[ -n "${MAESTRO_PASSWORD:-}" ]] || missing+=("MAESTRO_PASSWORD")
+            [[ -n "${MAESTRO_PM_EMAIL:-}" ]] || missing+=("MAESTRO_PM_EMAIL")
+            [[ -n "${MAESTRO_PM_PASSWORD:-}" ]] || missing+=("MAESTRO_PM_PASSWORD")
+            [[ -n "${MAESTRO_FIXTURE_PROJECT_NAME:-}" ]] || missing+=("MAESTRO_FIXTURE_PROJECT_NAME")
+            [[ -n "${MAESTRO_FIXTURE_MINE_LABEL:-}" ]] || missing+=("MAESTRO_FIXTURE_MINE_LABEL")
+            [[ -n "${MAESTRO_FIXTURE_OTHER_LABEL:-}" ]] || missing+=("MAESTRO_FIXTURE_OTHER_LABEL")
+            [[ -n "${MAESTRO_FIXTURE_UNASSIGNED_LABEL:-}" ]] || missing+=("MAESTRO_FIXTURE_UNASSIGNED_LABEL")
+            [[ -n "${MAESTRO_FIXTURE_CLAIM_LABEL:-}" ]] || missing+=("MAESTRO_FIXTURE_CLAIM_LABEL")
+            if ((${#missing[@]} > 0)); then
+              echo "error: Missing EAS preview secrets/vars: ${missing[*]}"
+              echo "Add them under Environment variables (preview) — docs/guides/maestro.md (#574)."
+              exit 1
+            fi
+            node ./scripts/maestro-ownership-fixtures.mjs seed
+            # Fail closed if MAESTRO_FIXTURE_CLAIM_LABEL is burned — do not rotate
+            # on EAS (preview secrets must be updated deliberately). Local suite
+            # uses MAESTRO_FIXTURE_ALLOW_CLAIM_ROTATE=1.
+            node ./scripts/maestro-ownership-fixtures.mjs verify
+            echo "Secrets + fixtures OK for ownership (MAESTRO_LAUNCH_MODE=embedded)."
       after_maestro_tests:
         - name: Scrub MAESTRO secrets from artifacts
           run: bash scripts/maestro-scrub-artifacts.sh "$MAESTRO_TESTS_DIR"

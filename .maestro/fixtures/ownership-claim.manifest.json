@@ -1,0 +1,50 @@
+{
+  "$schemaComment": "Disposable Maestro ownership/claim fixture roles (#574). Labels come from .env.maestro — never hardcode shared QA project chapters here.",
+  "version": 1,
+  "description": "Deterministic assignment roles for a dedicated disposable Fluent project. Run npm run maestro:fixtures:verify before ownership Maestro suites.",
+  "roles": {
+    "mine": {
+      "envLabel": "MAESTRO_FIXTURE_MINE_LABEL",
+      "expectedOwnership": "mine",
+      "expectedConflict": false,
+      "notes": "Assigned to MAESTRO_EMAIL (Draft or Not Started). Used for My Work + project-list mine icon."
+    },
+    "other": {
+      "envLabel": "MAESTRO_FIXTURE_OTHER_LABEL",
+      "expectedOwnership": "other",
+      "expectedConflict": false,
+      "notes": "Assigned to another translator (or peerChecker ≠ MAESTRO_EMAIL at Peer Check). Taken-warning Record path."
+    },
+    "unassigned": {
+      "envLabel": "MAESTRO_FIXTURE_UNASSIGNED_LABEL",
+      "expectedOwnership": "unassigned",
+      "expectedConflict": false,
+      "notes": "No assignee / open ownership. List shows no ownership icon; Record has no taken warning."
+    },
+    "claim": {
+      "envLabel": "MAESTRO_FIXTURE_CLAIM_LABEL",
+      "expectedOwnership": "unassigned",
+      "expectedConflict": false,
+      "notes": "Disposable unassigned chapter for online auto-claim. Reset after each claim run (Fluent web / admin)."
+    },
+    "conflict": {
+      "envLabel": "MAESTRO_FIXTURE_CONFLICT_LABEL",
+      "expectedOwnership": null,
+      "expectedConflict": true,
+      "optional": true,
+      "notes": "Chapter with hasConflict=true for list + Record conflict chrome. Optional until seed exists."
+    },
+    "openPeerCheck": {
+      "envLabel": "MAESTRO_FIXTURE_OPEN_PEER_CHECK_LABEL",
+      "expectedOwnership": "unassigned",
+      "expectedConflict": false,
+      "expectedStatus": "peer_check",
+      "optional": true,
+      "notes": "Peer Check with no peerChecker. Optional until seed exists."
+    }
+  },
+  "env": {
+    "projectName": "MAESTRO_FIXTURE_PROJECT_NAME",
+    "projectId": "MAESTRO_FIXTURE_PROJECT_ID"
+  }
+}

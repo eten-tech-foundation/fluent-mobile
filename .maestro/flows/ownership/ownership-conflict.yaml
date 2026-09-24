@@ -1,0 +1,44 @@
+# Conflict list indicator + Record conflict banner (#260 / #269 / #574). Optional.
+appId: com.eten.fluent
+tags:
+  - ownership
+  - ownership-conflict
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- runFlow: ../../shared/auth/login-translator.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- runFlow:
+    file: ../../shared/nav/open-fixture-chapter.yaml
+    env:
+      MAESTRO_FIXTURE_CHAPTER_LABEL: ${MAESTRO_FIXTURE_CONFLICT_LABEL}
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'chapter-row-.*'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: ${MAESTRO_FIXTURE_CONFLICT_LABEL}
+    direction: DOWN
+    timeout: 90000
+- assertVisible:
+    text: ${MAESTRO_FIXTURE_CONFLICT_LABEL}
+- assertVisible:
+    id: 'chapter-conflict-indicator'
+- assertVisible: 'Unresolved recording conflict'
+- tapOn:
+    text: ${MAESTRO_FIXTURE_CONFLICT_LABEL}
+- extendedWaitUntil:
+    visible:
+      id: 'drafting-tab-bar'
+    timeout: 60000
+- tapOn:
+    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'record-tab'
+- assertVisible:
+    id: 'record-conflict-warning'

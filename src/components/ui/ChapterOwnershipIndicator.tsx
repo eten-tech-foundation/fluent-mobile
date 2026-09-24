@@ -17,12 +17,11 @@ export function ChapterOwnershipIndicator({
     return null;
   }
 
+  const variant = ownershipState === 'mine' ? 'mine' : 'other';
+
   return (
-    <View style={styles.icon}>
-      <ChapterOwnershipIcon
-        size={size}
-        variant={ownershipState === 'mine' ? 'mine' : 'other'}
-      />
+    <View style={styles.icon} testID={`chapter-ownership-${variant}`}>
+      <ChapterOwnershipIcon size={size} variant={variant} />
     </View>
   );
 }

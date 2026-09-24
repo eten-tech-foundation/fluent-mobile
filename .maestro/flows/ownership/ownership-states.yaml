@@ -1,0 +1,73 @@
+# Ownership UI: mine / other / unassigned on project chapter list (#574).
+appId: com.eten.fluent
+tags:
+  - ownership
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- runFlow: ../../shared/auth/login-translator.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+
+- tapOn:
+    id: 'home-tab-projects'
+- extendedWaitUntil:
+    visible:
+      id: 'project-row-.*'
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      text: ${MAESTRO_FIXTURE_PROJECT_NAME}
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    text: ${MAESTRO_FIXTURE_PROJECT_NAME}
+- extendedWaitUntil:
+    visible:
+      id: 'chapter-row-.*'
+    timeout: 60000
+
+# Mine
+- scrollUntilVisible:
+    element:
+      text: ${MAESTRO_FIXTURE_MINE_LABEL}
+    direction: DOWN
+    timeout: 90000
+- assertVisible:
+    text: ${MAESTRO_FIXTURE_MINE_LABEL}
+- assertVisible:
+    id: 'chapter-ownership-mine'
+- assertVisible: 'Assigned to you'
+
+# Other
+- scrollUntilVisible:
+    element:
+      text: ${MAESTRO_FIXTURE_OTHER_LABEL}
+    direction: DOWN
+    timeout: 90000
+- assertVisible:
+    text: ${MAESTRO_FIXTURE_OTHER_LABEL}
+- assertVisible:
+    id: 'chapter-ownership-other'
+- assertVisible: 'Assigned to another translator'
+
+# Unassigned → Record: no taken warning
+- scrollUntilVisible:
+    element:
+      text: ${MAESTRO_FIXTURE_UNASSIGNED_LABEL}
+    direction: DOWN
+    timeout: 90000
+- tapOn:
+    text: ${MAESTRO_FIXTURE_UNASSIGNED_LABEL}
+- extendedWaitUntil:
+    visible:
+      id: 'drafting-tab-bar'
+    timeout: 60000
+- tapOn:
+    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'record-tab'
+- assertNotVisible:
+    id: 'record-taken-warning'

@@ -1,0 +1,41 @@
+# Taken-chapter Record warning (#269 / #574). Uses OTHER fixture chapter.
+appId: com.eten.fluent
+tags:
+  - ownership
+---
+- runFlow: ../../helpers/launch-android-mic-allow.yaml
+- runFlow: ../../helpers/boot-past-dev-launcher.yaml
+- runFlow: ../../shared/auth/login-translator.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- runFlow:
+    file: ../../shared/nav/open-fixture-chapter.yaml
+    env:
+      MAESTRO_FIXTURE_CHAPTER_LABEL: ${MAESTRO_FIXTURE_OTHER_LABEL}
+- tapOn:
+    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'record-tab'
+- assertVisible:
+    id: 'record-taken-warning'
+- runFlow:
+    when:
+      notVisible:
+        id: 'record-start-button'
+        enabled: true
+    commands:
+      - assertVisible:
+          id: 'record-new-take-button'
+          enabled: true
+- runFlow:
+    when:
+      visible:
+        id: 'record-start-button'
+        enabled: true
+    commands:
+      - assertVisible:
+          id: 'record-start-button'
+          enabled: true
