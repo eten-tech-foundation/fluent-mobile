@@ -93,9 +93,10 @@ const ASSIGNEE_GATED_STATUSES = new Set([
 ]);
 
 /**
- * Visibility / enablement for the Record-tab stage advancement CTA (#258, #443).
+ * Visibility / enablement for the Record-tab stage advancement CTA (#258, #443, #442).
  * Conflict disables (does not hide). Wrong assignee / no recordings / terminal
- * stage hide. Community Review and later stages are ungated — any translator.
+ * stage hide. Unassigned Peer Check is open to any non-drafter. Community Review
+ * and later stages are ungated — any translator.
  */
 export function getStageAdvanceVisibility({
   chapterData,
@@ -113,17 +114,28 @@ export function getStageAdvanceVisibility({
 
   if (ASSIGNEE_GATED_STATUSES.has(normalized)) {
     const isPeerCheck = normalized === 'peer_check';
-    const isAssignee = isPeerCheck
-      ? chapterData.peerCheckerId === currentUserId
-      : chapterData.assignedUserId === currentUserId;
 
-    if (!isAssignee) {
-      return { visible: false, disabled: false, destination: null };
-    }
+    if (isPeerCheck) {
+      const assignedUserId = chapterData.assignedUserId;
+      if (typeof assignedUserId !== 'number') {
+        return { visible: false, disabled: false, destination: null };
+      }
+      const isDrafter = assignedUserId === currentUserId;
+      const peerCheckerId = chapterData.peerCheckerId;
+      const isOpen = typeof peerCheckerId !== 'number';
+      const isAssignedPeerChecker = peerCheckerId === currentUserId;
+      if (isDrafter || (!isOpen && !isAssignedPeerChecker)) {
+        return { visible: false, disabled: false, destination: null };
+      }
+    } else {
+      if (chapterData.assignedUserId !== currentUserId) {
+        return { visible: false, disabled: false, destination: null };
+      }
 
-    // Drafting with no recordings: hide until at least one verse is recorded.
-    if (!isPeerCheck && !hasChapterRecording) {
-      return { visible: false, disabled: false, destination: null };
+      // Drafting with no recordings: hide until at least one verse is recorded.
+      if (!hasChapterRecording) {
+        return { visible: false, disabled: false, destination: null };
+      }
     }
   }
   // community_review, linguist_check, theological_check, consultant_check:
@@ -134,6 +146,57 @@ export function getStageAdvanceVisibility({
     disabled: hasConflict,
     destination,
   };
+}
+
+/**
+ * True when the drafter must not capture on open Peer Check (#442, fluent-api
+ * edit policy). PM-assigned Peer Check uses a different rule set.
+ */
+export function isDrafterBlockedFromOpenPeerCheckCapture(
+  chapterData: StageAdvanceChapterData,
+  currentUserId: number | null,
+): boolean {
+  if (currentUserId === null) {
+    return false;
+  }
+  if (normalizeAdvanceStatus(chapterData.status) !== 'peer_check') {
+    return false;
+  }
+  if (typeof chapterData.peerCheckerId === 'number') {
+    return false;
+  }
+  return chapterData.assignedUserId === currentUserId;
+}
+
+/**
+ * When advancing unassigned Peer Check → Community Review, the tapping peer
+ * becomes Peer Checker. Drafter and PM-assigned items do not assign here.
+ */
+export function resolvePeerCheckerAssignmentOnAdvance(params: {
+  chapterData: StageAdvanceChapterData;
+  currentUserId: number | null;
+  nextStatus: StageAdvanceStatus;
+}): number | undefined {
+  const { chapterData, currentUserId, nextStatus } = params;
+  if (nextStatus !== 'community_review') {
+    return undefined;
+  }
+  if (normalizeAdvanceStatus(chapterData.status) !== 'peer_check') {
+    return undefined;
+  }
+  if (currentUserId === null) {
+    return undefined;
+  }
+  if (typeof chapterData.assignedUserId !== 'number') {
+    return undefined;
+  }
+  if (chapterData.assignedUserId === currentUserId) {
+    return undefined;
+  }
+  if (typeof chapterData.peerCheckerId === 'number') {
+    return undefined;
+  }
+  return currentUserId;
 }
 
 export function stageAdvanceConfirmBody(
