@@ -1,0 +1,28 @@
+# Mic deny: reach Record without crash.
+appId: com.eten.fluent
+tags:
+  - edges
+  - permissions
+---
+- runFlow: ../../helpers/launch-android-mic-deny.yaml
+- runFlow: ../../helpers/boot-past-dev-launcher.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'login-email-input'
+    timeout: 180000
+- runFlow: ../../shared/auth/login-translator.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- runFlow: ../../shared/nav/open-any-chapter.yaml
+- tapOn:
+    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'record-tab'
+- tapOn:
+    id: 'record-start-button'
+    optional: true
+- assertVisible:
+    id: 'record-tab'

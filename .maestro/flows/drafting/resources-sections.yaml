@@ -1,0 +1,27 @@
+# Resources sections expand/collapse chrome.
+appId: com.eten.fluent
+tags:
+  - smoke
+  - drafting
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- runFlow: ../../shared/auth/login-translator.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- runFlow: ../../shared/nav/open-any-chapter.yaml
+- tapOn:
+    id: 'drafting-tab-resources'
+- assertVisible:
+    id: 'resources-tab'
+- runFlow:
+    when:
+      visible:
+        id: 'resources-section-.*-toggle'
+    commands:
+      - tapOn:
+          id: 'resources-section-.*-toggle'
+- assertVisible:
+    id: 'resources-tab'

@@ -1,0 +1,29 @@
+# Legal pages from login footer → back.
+appId: com.eten.fluent
+tags:
+  - smoke
+  - edges
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- tapOn:
+    id: 'login-privacy-link'
+- extendedWaitUntil:
+    visible:
+      id: 'privacy-policy-scroll'
+    timeout: 15000
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'login-email-input'
+    timeout: 15000
+- tapOn:
+    id: 'login-terms-link'
+- extendedWaitUntil:
+    visible:
+      id: 'terms-of-use-scroll'
+    timeout: 15000
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'login-email-input'
+    timeout: 15000

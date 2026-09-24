@@ -1,0 +1,28 @@
+# Bible unit tap opens Record (shell contract #47 / #564).
+# Asserts onOpenRecord without an extra drafting-tab-record tap.
+# Tap a visible verse-row ID (regex) — BibleTab may scroll past early completed verses.
+appId: com.eten.fluent
+tags:
+  - smoke
+  - drafting
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- runFlow: ../../shared/ensure/ensure-signed-in.yaml
+- runFlow: ../../shared/nav/open-any-chapter.yaml
+- tapOn:
+    id: 'drafting-tab-bible'
+- assertVisible:
+    id: 'bible-tab'
+- extendedWaitUntil:
+    visible:
+      id: 'bible-verse-row-[0-9]+'
+    timeout: 30000
+# Unit press must open Record without tapping drafting-tab-record
+- tapOn:
+    id: 'bible-verse-row-[0-9]+'
+- extendedWaitUntil:
+    visible:
+      id: 'record-tab'
+    timeout: 15000
+- assertVisible:
+    id: 'record-verse-reference'

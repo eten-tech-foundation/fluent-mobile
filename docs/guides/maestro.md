@@ -1,224 +1,179 @@
 # Maestro (Android E2E)
 
-Opt-in **Android-only** Maestro suite for Fluent Mobile ([#488](https://github.com/eten-tech-foundation/fluent-mobile/issues/488)): harness ([#489](https://github.com/eten-tech-foundation/fluent-mobile/issues/489)) + domain smokes ([#491](https://github.com/eten-tech-foundation/fluent-mobile/issues/491)) + multi-account isolation ([#495](https://github.com/eten-tech-foundation/fluent-mobile/issues/495)) + informational CI playbook ([#497](https://github.com/eten-tech-foundation/fluent-mobile/issues/497)).
+Opt-in **Android-only** Maestro suite for Fluent Mobile. Architecture: state-tolerant flows under `.maestro/flows/<area>/`, shared product steps in `.maestro/shared/`, device harness helpers in `.maestro/helpers/`.
 
-**Not** a `/create-pr` or required PR merge gate. Hosted runs: EAS Workflow [`.eas/workflows/maestro-android.yml`](../../.eas/workflows/maestro-android.yml) (`workflow_dispatch` / `eas workflow:run`). Needs QA? / `@Roslin22` nightly handoff is unchanged.
+**Not** a required PR merge gate. Hosted runs: EAS Workflow [`.eas/workflows/maestro-android.yml`](../../.eas/workflows/maestro-android.yml) (`schedule` nightly against the **nightly** APK when possible, paths-filtered PR harness, `workflow_dispatch`). Needs QA? / `@Roslin22` nightly handoff is unchanged — see [qa-process.md](qa-process.md).
 
 ## Playbook — eng vs QA
 
 | Audience | Use Maestro for | Still do manually |
 | --- | --- | --- |
-| **Engineering** | Local Debug + Metro (`maestro:android:up`, suite scripts) while building features; optional EAS Maestro dispatch (`npm run maestro:eas`) | Exploratory UX, hardware mics/cameras, store builds, anything not encoded below |
-| **QA** | Optional: same flows against a Debug client when debugging a Maestro failure | **Nightly APK** checklist and device QA per [qa-process.md](qa-process.md) — Maestro does **not** replace `@Roslin22` handoff |
+| **Engineering** | Local Debug + Metro (`maestro:android:up`, suite scripts) while building; optional EAS dispatch (`npm run maestro:eas`) | Exploratory UX, hardware mics/cameras, store builds |
+| **QA** | Optional: same flows when debugging a Maestro failure; EAS Insights Maestro tab for flake | **Nightly APK** checklist residue below — Maestro does **not** replace `@Roslin22` handoff |
 
 ### Journey → flow map
 
-| Human / QA journey | Maestro | Command / tag |
+| Human / QA journey | Maestro flow | Command / tag |
 | --- | --- | --- |
-| Cold launch → login screen | `flows/smoke-launch.yaml` | `npm run maestro:test:harness` |
-| Sign in / session restore / logout | `flows/android/smoke-auth.yaml` | `npm run maestro:test:auth` |
-| Home → My Work / Projects → drafting tabs | `flows/android/smoke-nav.yaml` | `npm run maestro:test:nav` |
-| Bible unit tap → Record tab | `flows/android/smoke-drafting.yaml` | tag `drafting` / `npm run maestro:test:smokes` |
-| Record → stop → play → delete take | `flows/android/smoke-record.yaml` | `npm run maestro:test:record` |
-| Sync Now + Prepare for Offline chrome | `flows/android/smoke-sync-offline.yaml` | `npm run maestro:test:sync` |
-| Forgot password / legal / permission deny | `flows/android/smoke-edges.yaml` | `npm run maestro:test:edges` |
-| Multi-account nightly A–D | `flows/android/smoke-multi-account.yaml` | `npm run maestro:test:multi-account` |
-| All single-account smokes | tag `smoke` | `npm run maestro:test:smokes` |
+| Cold launch → login | `flows/harness/launch.yaml` | `npm run maestro:test:harness` |
+| Login happy path | `flows/auth/login-happy-path.yaml` | `auth` / `smoke` |
+| Session restore | `flows/auth/session-restore.yaml` | `auth` / `smoke` |
+| Logout | `flows/auth/logout.yaml` | `auth` / `smoke` |
+| Tab switching | `flows/navigation/tab-switching.yaml` | `nav` / `smoke` |
+| My Work → drafting | `flows/navigation/my-work-to-drafting.yaml` | `nav` / `smoke` |
+| Projects → drafting | `flows/navigation/projects-to-drafting.yaml` | `nav` / `smoke` |
+| Empty assignments (Account B) | `flows/navigation/empty-assignments.yaml` | `npm run maestro:test:empty-assignments` |
+| Drafting tabs / Bible→Record / Resources | `flows/drafting/*` | `drafting` / `smoke` |
+| Record → stop → play → delete | `flows/recording/record-stop-play-delete.yaml` | `record` / `smoke` |
+| Recording nav guard | `flows/recording/recording-nav-guard.yaml` | `edges` / `record` |
+| Sync Now / prepare-offline / settings | `flows/sync/*` | `sync` / `smoke` |
+| Validation / wrong creds / forgot / legal | `flows/edges/*` | `edges` / `smoke` |
+| Mic denied | `flows/edges/mic-denied.yaml` | `permissions` (excluded from default) |
+| Offline login | `flows/offline/login-offline.yaml` | `npm run maestro:test:offline-login` |
+| Multi-account A–D | `flows/accounts/multi-account-isolation.yaml` | `npm run maestro:test:multi-account` |
+| Stage 1 batch (± repeats) | harness + auth + my-work + empty-assignments | `npm run maestro:test:stage1` / `… 5` |
 
-### Residual manual (not automated)
 
-- Exploratory / visual polish on the **nightly** APK
-- Hardware mic quality, Bluetooth, low-storage, OEM permission variants
-- Multi-account **A3** (3-account cap) and **E** (sign-out when another account remains) — see [qa-multi-account-nightly.md](qa-multi-account-nightly.md)
-- Forced reauth mid-session (needs a backend/session hook)
-- Production / Play Store builds (never set `EXPO_PUBLIC_E2E_MODE` on EAS production profiles)
-- Raising `MAX_DEVICE_ACCOUNTS` / account-cap product changes
+### Nightly QA checklist → automation map
 
-## Sources of truth (Expo MCP + Maestro)
+| Nightly checklist area | Automated by | Residual (manual) |
+| --- | --- | --- |
+| Cold launch / login chrome | `harness/launch`, `auth/login-happy-path` | Boot splash polish |
+| Session restore | `auth/session-restore` | — |
+| My Work / Projects → drafting | `navigation/*`, `drafting/tabs` | Visual polish |
+| Empty My Work (no assignments) | `navigation/empty-assignments` | — |
+| Record happy path | `recording/record-stop-play-delete` | Mic fidelity, Bluetooth |
+| Sync Now settles | `sync/sync-now` | — |
+| Record → upload | `sync/record-to-synced` | Foreground-service notification |
+| Prepare for Offline chrome | `sync/prepare-offline-entry` | Full download completion on slow networks |
+| Settings persistence | `sync/settings-persistence` | — |
+| Multi-account A–D | `accounts/multi-account-isolation` | A3 three-account cap; E sign-out-with-other-remaining |
+| Forgot password / legal | `edges/forgot-password`, `edges/legal-pages` | — |
+| Login validation | `edges/login-validation`, `edges/wrong-credentials` | — |
+| Mic permission deny | `edges/mic-denied` | OEM permission variants |
+| Offline login | `offline/login-offline` (+ adb helper) | Flaky airplane-mode OEMs |
+| Forced reauth mid-session | — (blocked) | Needs backend token-revoke / E2E hook |
+| Production / Play Store | — | Never set `EXPO_PUBLIC_E2E_MODE` on production |
 
-Prefer these over memory when changing Maestro or CI:
+## Layout
 
-| Topic | Canonical docs |
-| --- | --- |
-| Expo Maestro on EAS Workflows | [EAS Workflows E2E + Maestro](https://docs.expo.dev/eas/workflows/examples/e2e-tests/), [CI/CD tutorial E2E](https://docs.expo.dev/tutorial/cicd/e2e-tests/), [Maestro insights](https://docs.expo.dev/eas-insights/maestro/) |
-| CNG / prebuild (Android-only here) | [Continuous Native Generation](https://docs.expo.dev/workflow/continuous-native-generation/), local compile via [`npx expo run:android`](https://docs.expo.dev/more/expo-cli/#compiling) |
-| Maestro CLI / flows | [docs.maestro.dev](https://docs.maestro.dev/) — React Native `testID` → `id:`, `maestro test --format junit`, `--test-output-dir` (CI on Maestro **2.10.0**); `--debug-output` is separate and ignored when `--test-output-dir` is set on that pin |
-| Maestro Cloud | [Maestro Cloud docs](https://docs.maestro.dev/cloud/ci-cd-integration/github-actions) — we use EAS `type: maestro` (hosted emulator), **not** `maestro-cloud` |
+```
+.maestro/
+  config.yaml          # discovers flows/**; excludes helpers/** and shared/**
+  helpers/             # launch, boot-past-dev-launcher, connect-metro, dismiss-dev-menu
+  shared/
+    auth/              # login-as, login-translator, login-account-b, logout
+    nav/               # goto-home/sync/settings, open-any-chapter, sync-now-and-return
+    ensure/            # ensure-on-login, ensure-signed-in, ensure-home-settled, ensure-at-home, ensure-no-modal, ensure-take-capacity
+  flows/
+    harness|auth|navigation|drafting|recording|sync|offline|accounts|edges/
+```
 
-**This repo’s hosted path (#516):** EAS Workflow `type: build` (`e2e-test` profile) → `type: maestro` with `flow_path` / suite inputs. Android-only. **Not** a PR merge gate. Local Debug + Metro remains the day-to-day eng loop.
-
-Local eng still follows Maestro’s React Native guidance: Debug / standalone package (`appId: com.eten.fluent`), not Expo Go; prefer `testID` selectors.
+**Rules:** one flow = one user-visible outcome; setup via `shared/`; `testID` selectors only (Alert button text allowed); `extendedWaitUntil` on signals (no bare sleeps); `when:` only for tolerated variance (Prepare-Offline auto-push, dev launcher, optional upload controls).
 
 ## Hosted CI (EAS Workflows)
 
-[`.eas/workflows/maestro-android.yml`](../../.eas/workflows/maestro-android.yml) builds an Android **`e2e-test`** APK (`withoutCredentials`, `buildType: apk`, baked `EXPO_PUBLIC_API_BASE_URL=https://dev.api.fluent.bible`; **no Metro**, no `EXPO_PUBLIC_E2E_MODE`), then runs one Maestro suite on an EAS Android emulator (`linux-large-nested-virtualization`, Maestro **2.10.0**, Pixel 6 / API 34). **Not** required on PRs; **no** cron until stable.
+[`.eas/workflows/maestro-android.yml`](../../.eas/workflows/maestro-android.yml):
 
-| Input `suite` | EAS preview secrets required |
+| Trigger | What runs |
 | --- | --- |
-| `harness` | none |
-| `smokes` | `MAESTRO_EMAIL`, `MAESTRO_PASSWORD` |
-| `multi-account` | both pairs (`MAESTRO_EMAIL_2`, `MAESTRO_PASSWORD_2` too) |
+| `schedule` (`30 23 * * *` GMT) / `suite=nightly` | `fingerprint` → `get-build` (nightly profile) → fallback `e2e-test` build → `smoke` suite with `retries: 1`, `record_screen: true`, Slack `after_maestro_tests` |
+| `pull_request` (paths-filtered) | `e2e-test` APK + harness only |
+| `workflow_dispatch` `harness` / `smokes` / `multi-account` | `e2e-test` APK + selected suite |
+
+Maestro **2.10.0**, `output_format: junit` (required for [EAS Insights Maestro](https://docs.expo.dev/eas-insights/maestro/)). Secrets: `MAESTRO_*` as **Secret** visibility on EAS **preview**. Optional `SLACK_WEBHOOK_URL` for summaries.
 
 ```bash
-# From repo root (needs EXPO_TOKEN / logged-in eas CLI + project access)
 npm run maestro:eas -- -F suite=harness
-# or:
 npm run maestro:eas -- -F suite=smokes
+npm run maestro:eas -- -F suite=nightly
 ```
-
-Also runnable from the [EAS dashboard](https://expo.dev) → project **fluent-mobile** → Workflows → **Maestro Android (EAS)**.
-
-**One-time secrets:** add `MAESTRO_*` as **Secret** visibility (never Plain / never `EXPO_PUBLIC_*`) on the EAS project for the **preview** environment ([EAS env vars](https://docs.expo.dev/eas/environment-variables/)). Maestro jobs use `environment: preview`, and so do `preview` / `nightly` / `e2e-test` builds — those secrets are available on every preview-environment build/job VM, not Maestro alone. Variables prefixed `MAESTRO_` are visible to flows as `${MAESTRO_EMAIL}` etc.
-
-See also [docs/ci.md](../ci.md) and [`.eas/README.md`](../../.eas/README.md).
 
 ## Prerequisites
 
-- JDK **17+** (`JAVA_HOME`)
-- Android SDK `platform-tools` (`adb`)
-- Emulator or physical device (USB debugging)
-- **Local eng playbook:** Debug / expo-dev-client APK + Metro — not Expo Go, not store builds
-- **Informational CI (EAS):** `e2e-test` APK via EAS Workflows (no Metro / no `EXPO_PUBLIC_E2E_MODE`)
-- Dedicated **Maestro translator** on `dev.api.fluent.bible` with **≥1 chapter assignment** (My Work + project data for nav/record/sync smokes)
-- For multi-account: a **second** dedicated translator (`MAESTRO_EMAIL_2` / `MAESTRO_PASSWORD_2`), also with ≥1 assignment — prefer a **different** first My Work display label than account A (isolation assert C1–C3)
-
-## Install + doctor
+- JDK **17+**, Android SDK `platform-tools`, emulator/device
+- **Local:** Debug / expo-dev-client + Metro — not Expo Go
+- Maestro CLI **2.10.0** (`npm run maestro:install` upgrades if an older pin is present)
+- Account A (translator shape): `MAESTRO_EMAIL` / `MAESTRO_PASSWORD` — ≥1 chapter assignment, under 5-take cap
+- Account B (member-without-assignments): `MAESTRO_EMAIL_2` / `MAESTRO_PASSWORD_2` — project membership, no assignee rows
+- Optional aliases: `MAESTRO_TRANSLATOR_*`, `MAESTRO_PM_*` (resolved onto EMAIL(_2))
 
 ```bash
-npm run maestro:install   # pinned Maestro zip + SHA-256 verify → ~/.maestro/bin
-npm run maestro:doctor    # JDK 17+, maestro, single adb device, package, reverse hint
+npm run maestro:install
+npm run maestro:doctor
+cp .env.maestro.example .env.maestro   # fill credentials; never commit
 ```
-
-`maestro:install` downloads a pinned CLI release (`MAESTRO_VERSION`, default `2.10.0`) and verifies `maestro.zip` against `checksums_sha256.txt` — it does **not** pipe a remote install script to bash. Override with `MAESTRO_VERSION=x.y.z` when bumping deliberately.
-
-Add `~/.maestro/bin` to your shell `PATH` if needed.
-
-With multiple devices online, set `ANDROID_SERIAL` before `maestro:doctor` / `maestro:android:up`.
 
 ## Debug APK + Metro + reverse
 
 ```bash
-npm run maestro:android:up   # selects one device; adb -s … reverse tcp:8081
-EXPO_PUBLIC_E2E_MODE=1 npm start
-# separate terminal — install/run Debug client if needed:
-npm run android
+npm run maestro:android:up
+npm run maestro:metro        # EXPO_PUBLIC_E2E_MODE=1
+npm run android              # separate terminal if needed
 ```
 
-`EXPO_PUBLIC_E2E_MODE=1` (or `true`) suppresses the Expo Dev Menu in `__DEV__` so it does not steal Maestro taps. **Never** set this on production / preview / nightly EAS profiles.
+Without Metro + `adb reverse`, Debug APKs cannot load JS. Flows **deep-link** via
+`exp+fluent-mobile://expo-development-client/?url=http://10.0.2.2:8081…`
+([`open-metro-deeplink.yaml`](../../.maestro/helpers/open-metro-deeplink.yaml)) so the Dev Client
+launcher UI is skipped. Residual cleanup: [`boot-past-dev-launcher.yaml`](../../.maestro/helpers/boot-past-dev-launcher.yaml).
 
-Flows also run [`.maestro/helpers/dismiss-expo-dev-menu.yaml`](../../.maestro/helpers/dismiss-expo-dev-menu.yaml) for residual launcher sheets (“Continue”, Metro URL, etc.).
+**Do not** start Metro with `--localhost` / `--host localhost`. That binds IPv6
+`::1` only; the emulator's `10.0.2.2` then gets connection refused. Use
+`npm run maestro:metro` (listens on all interfaces / `*:8081`).
 
-## Credentials + seed
+### Embedded APK (no Metro) — matches EAS
 
 ```bash
-cp .env.maestro.example .env.maestro
-# fill MAESTRO_EMAIL / MAESTRO_PASSWORD — never commit .env.maestro
-# for multi-account (#495): also MAESTRO_EMAIL_2 / MAESTRO_PASSWORD_2
+MAESTRO_E2E_APK=/path/to/e2e.apk npm run maestro:android:e2e-up
+# or: npm run maestro:android:e2e-up -- --eas
+MAESTRO_LAUNCH_MODE=embedded npm run maestro:test:harness
+# shorthand: npm run maestro:test:harness:embedded
 ```
 
-`.env.maestro` is gitignored via `.env.*`. Only [`.env.maestro.example`](../../.env.maestro.example) is committed.
+Set `MAESTRO_LAUNCH_MODE=embedded` in `.env.maestro` to make it the local default.
 
-`scripts/maestro-test.sh` loads `.env.maestro` literally when present (no `source` / expansion; `MAESTRO_*` and related keys are exported for the Maestro CLI). `maestro:test:multi-account` **fail-fast** exits if either credential pair is missing.
+**Secret hygiene:** `scripts/maestro-test.sh` always passes `--test-output-dir` and scrubs `MAESTRO_*` values from `maestro.log` / `commands.json` via `scripts/maestro-scrub-artifacts.sh`. `test_output/` and `.maestro/test_output/` are gitignored.
 
-**Seed / assignment prerequisites (smokes):**
-
-1. Create a translator on hosted **dev** (`https://dev.api.fluent.bible`).
-2. Assign **≥1 chapter** so My Work shows a `my-work-row-*` and Projects has a matching `project-row-*` / `chapter-row-*`.
-3. Point Metro / Debug at the same API (`EXPO_PUBLIC_API_BASE_URL` in `.env` and `.env.maestro`).
-4. Prefer a dedicated Maestro account — the record smoke creates a take then **deletes it** (no `stage-advance-button`).
-5. Keep the assigned chapter **under the 5-take cap** before a run so Record shows an enabled `record-start-button` or `record-new-take-button` (smoke fails fast if neither is enabled).
-
-**Seed / assignment prerequisites (multi-account):**
-
-1. Provision **two** translators; put both pairs in `.env.maestro`.
-2. Assign ≥1 chapter to **each**; prefer distinct `displayLabel` values so C1–C3 can assert A’s first My Work row is absent while B is active.
-3. Run `npm run maestro:test:multi-account` (not part of `maestro:test:smokes`).
-
-## Harness vs product smokes
-
-```bash
-npm run maestro:test:harness   # flows/smoke-launch.yaml (login screen only)
-npm run maestro:test:smokes    # all flows tagged `smoke` (single-account)
-npm run maestro:test:auth      # include-tags auth
-npm run maestro:test:nav
-npm run maestro:test:record
-npm run maestro:test:sync
-npm run maestro:test:edges
-npm run maestro:test:multi-account  # A–D isolation; needs EMAIL_2 / PASSWORD_2
-npm run maestro:test           # workspace flows (excludes helpers, subflows, multi-account)
-```
-
-| Flow | Tag(s) | Clears state | Notes |
-| --- | --- | --- | --- |
-| `flows/smoke-launch.yaml` | `harness` | yes | Boot → `login-email-input` |
-| `flows/android/smoke-auth.yaml` | `smoke` `auth` | yes | Login, session restore, logout |
-| `flows/android/smoke-nav.yaml` | `smoke` `nav` | yes | My Work + Projects → drafting tabs |
-| `flows/android/smoke-record.yaml` | `smoke` `record` | yes (+ mic allow) | Record → stop → play → delete take; no stage advance |
-| `flows/android/smoke-sync-offline.yaml` | `smoke` `sync` | yes | Sync Now; Prepare for Offline chrome |
-| `flows/android/smoke-edges.yaml` | `smoke` `edges` | yes | Forgot password, legal, mic/notification deny |
-| `flows/android/smoke-multi-account.yaml` | `multi-account` | yes | Nightly checklist A–D; two accounts; not in `smokes` |
-
-Shared subflows live under [`.maestro/flows/android/subflows/`](../../.maestro/flows/android/subflows/) and are **excluded** from workspace discovery (`!flows/**/subflows/**` in config).
-
-Note: `platform.android.disableAnimations` in `.maestro/config.yaml` applies on **Maestro Cloud** only; local emulators ignore it.
-
-## Known flakes / residuals
-
-- **Post-login sync / downloads:** first Home after `clearState` can take a long time — subflows wait up to 180s for `home-tab-my-work`.
-- **Sync pause/resume:** only exercised when `sync-action-pause` appears (upload/metadata in flight); otherwise Sync Now + screen chrome is enough.
-- **Reauth forced path:** not automatable without a backend/session hook to invalidate the token mid-run. Residual: cover manually or when a hook exists; Settings shows `settings-reauth` only when `reauthRequired` is already true.
-- **Empty My Work:** nav/record/deny edges fail without an assignment — seed the Maestro account first.
-- **Record at 5-take cap:** `record-new-take-button` may still be mounted but **disabled** — smoke asserts an enabled start/new-take before waiting on stop. Delete takes on the seed chapter (or rely on smoke cleanup) before re-running.
-- **Multi-account identical My Work labels:** C1–C3 `assertNotVisible` / `assertVisible` on the copied Account A label is weak or false-fails if both users’ first row shares the same `displayLabel` — seed distinct chapters. A3 (3-account limit) and E (sign-out edge) are **not** automated (optional human checklist).
-
-## Agent / MCP loop (opt-in)
-
-```bash
-npm run maestro:agent:up
-```
-
-Then wire Cursor MCP from [`.cursor/mcp.maestro.example.json`](../../.cursor/mcp.maestro.example.json) so `command` is this repo’s `scripts/maestro-mcp.sh` (sets `PATH` / `JAVA_HOME` for `maestro mcp`).
-
-Rules:
-
-- Opt-in only — do not require MCP for normal engineering.
-- During iteration: **no `clearState` / `clearKeychain`** (wipes session mid-loop).
-- `clearState` belongs only in cold-start helpers / CI-shaped smokes (e.g. [`.maestro/helpers/launch-android.yaml`](../../.maestro/helpers/launch-android.yaml)).
-
-Useful MCP tools: `list_devices`, `inspect_screen`, `take_screenshot`, `run`, `cheat_sheet`.
-
-## Selector contract (kebab-case)
-
-Prefer Maestro `id:` matching React Native `testID`.
-
-| Surface | testID |
-| --- | --- |
-| Auth | `login-email-input`, `login-password-input`, `login-submit-button`, `login-forgot-password-link`, `login-privacy-link`, `login-terms-link`, forgot-password / legal scroll ids |
-| Home tabs | `home-tab-projects`, `home-tab-my-work` |
-| Open settings drawer | `home-settings-button` |
-| Open Sync | `home-sync-button` |
-| Project / chapter / My Work rows | `project-row-{id}`, `chapter-row-{id}`, `my-work-row-{id}`, `my-work-row-title-{id}` |
-| Drafting tabs | `drafting-tab-bar`, `drafting-tab-bible`, `drafting-tab-resources`, `drafting-tab-record` |
-| Drafting surfaces | `bible-tab`, `resources-tab`, `record-tab`, record control ids |
-| Sync / offline | `sync-screen`, `sync-action-*`, `prepare-offline-screen`, `prepare-offline-*` |
-| Settings | `settings-reauth`, `settings-prepare-offline`, `settings-upload-cellular` (+ `-switch`), `settings-drafting-unit` (+ segments), `settings-clear-cache`, `settings-add-user`, `settings-log-out` |
-| Drawer | `settings-menu-*` / `settings-drawer-content` |
+**Offline login:** `scripts/maestro-adb-network.sh` toggles airplane mode around `npm run maestro:test:offline-login`.
 
 ## npm scripts
 
 | Script | Purpose |
 | --- | --- |
-| `maestro:install` | Install CLI |
-| `maestro:doctor` | Local health check |
-| `maestro:android:up` | Device + `adb reverse` |
-| `maestro:test` | Workspace flows (excludes helpers/subflows/`multi-account`) |
-| `maestro:test:harness` | Launch stub only |
-| `maestro:test:smokes` | All `smoke`-tagged flows |
-| `maestro:test:auth` / `:nav` / `:record` / `:sync` / `:edges` | Single smoke slice |
-| `maestro:test:multi-account` | Fail-fast A–D isolation (two credential pairs) |
-| `maestro:agent:up` | Device prep + MCP instructions |
-| `maestro:eas` | Hosted EAS Workflow (`-F suite=harness\|smokes\|multi-account`) |
+| `maestro:install` / `maestro:doctor` | CLI pin + health |
+| `maestro:metro` / `maestro:android:up` | Local Debug + Metro deep-link loop |
+| `maestro:android:e2e-up` | Install embedded e2e/nightly APK (no Metro) |
+| `maestro:test` | Default workspace (excludes accounts / offline / permissions) |
+| `maestro:test:harness` | Cold launch (metro deep-link) |
+| `maestro:test:harness:embedded` / `:smokes:embedded` | Same with `MAESTRO_LAUNCH_MODE=embedded` |
+| `maestro:test:smokes` | All `smoke` tags |
+| `maestro:test:auth` / `:nav` / `:drafting` / `:record` / `:sync` / `:edges` | Area slices |
+| `maestro:test:empty-assignments` / `:pm` | Account B empty My Work |
+| `maestro:test:multi-account` | Isolation A–D |
+| `maestro:test:offline-login` | Airplane-mode login error |
+| `maestro:test:stage1` | Stage 1 batch (`5` = five consecutive passes) |
+| `maestro:eas` | Dispatch EAS workflow |
+
+## Selector contract (additions)
+
+| Surface | testID |
+| --- | --- |
+| Bible verses | `bible-verse-row-{n}` |
+| Take rows | `record-take-row-{id}`, `record-play-button-{id}`, `record-delete-*-{id}` |
+| Headers | `drafting-header-back`, `stack-header-back`, `stack-header-sync-button` |
+| Home loading | `home-loading` |
+| My Work empty | `my-work-empty` |
+| View project error | `view-project-retry` |
+| Sync cellular | `sync-upload-cellular` (+ `-switch`) |
+
+## Known flakes / residuals
+
+- First Home after `clearState`: wait up to 180s for `home-tab-my-work`.
+- Post-login Prepare-for-Offline auto-push: settle via `ensure-signed-in` / `ensure-home-settled` (dismiss PFO, then assert Home) — do not wait for `home-tab-my-work` alone before dismiss.
+- Reauth forced path: blocked without backend token-revoke — residual manual.
+- Three-account cap / sign-out-with-other-remaining: residual manual ([qa-multi-account-nightly.md](qa-multi-account-nightly.md)).
+- Record at 5-take cap: fail-fast via `ensure-take-capacity`.
 
 ## Out of scope
 
-Auth bypass, iOS, merge-gating Maestro, raising the 3-account device cap, replacing Needs QA? nightly handoff.
+Auth bypass, iOS, merge-gating Maestro as a required check, replacing Needs QA? nightly handoff.

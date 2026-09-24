@@ -19,10 +19,13 @@ MAESTRO_BIN="${MAESTRO_HOME}/bin"
 export PATH="${MAESTRO_BIN}:${PATH}"
 
 if command -v maestro >/dev/null 2>&1; then
-  echo "==> Maestro already on PATH: $(command -v maestro)"
-  maestro --version 2>/dev/null || maestro --help | head -5
-  echo "OK: maestro:install (already installed)"
-  exit 0
+  INSTALLED="$(maestro --version 2>/dev/null | head -1 || true)"
+  if [[ "${INSTALLED}" == *"${MAESTRO_VERSION}"* ]]; then
+    echo "==> Maestro ${MAESTRO_VERSION} already on PATH: $(command -v maestro)"
+    echo "OK: maestro:install (already installed)"
+    exit 0
+  fi
+  echo "==> Found Maestro (${INSTALLED:-unknown}) — upgrading to ${MAESTRO_VERSION}..."
 fi
 
 echo "==> Installing Maestro CLI ${MAESTRO_VERSION} (checksum-verified zip)..."

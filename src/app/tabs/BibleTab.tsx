@@ -143,7 +143,7 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
           accessibilityLabel={`Verse ${item.anchorVerse}${
             isSelected ? ', selected' : ''
           }`}
-          testID={`bible-verse-${item.anchorVerse}`}
+          testID={`bible-verse-row-${item.anchorVerse}`}
         >
           <View style={styles.iconColumn}>
             <Text

@@ -1,0 +1,37 @@
+# Projects → project → chapter → drafting.
+appId: com.eten.fluent
+tags:
+  - smoke
+  - nav
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- runFlow: ../../shared/auth/login-translator.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- tapOn:
+    id: 'home-tab-projects'
+- extendedWaitUntil:
+    visible:
+      id: 'project-row-.*'
+    timeout: 60000
+- tapOn:
+    id: 'project-row-.*'
+- extendedWaitUntil:
+    visible:
+      id: 'chapter-row-.*'
+    timeout: 60000
+- tapOn:
+    id: 'chapter-row-.*'
+- extendedWaitUntil:
+    visible:
+      id: 'drafting-tab-bar'
+    timeout: 60000
+- assertVisible:
+    id: 'drafting-tab-bible'
+- assertVisible:
+    id: 'drafting-tab-resources'
+- assertVisible:
+    id: 'drafting-tab-record'

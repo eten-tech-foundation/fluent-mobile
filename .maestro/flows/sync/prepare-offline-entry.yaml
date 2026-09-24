@@ -1,0 +1,40 @@
+# Prepare for Offline entry via Settings → project picker → resources chrome.
+appId: com.eten.fluent
+tags:
+  - smoke
+  - sync
+  - offline
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- runFlow: ../../shared/auth/login-translator.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- runFlow: ../../shared/nav/goto-settings.yaml
+- scrollUntilVisible:
+    element:
+      id: 'settings-prepare-offline'
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: 'settings-prepare-offline'
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-screen'
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      id: 'project-row-.*'
+    timeout: 60000
+- tapOn:
+    id: 'project-row-.*'
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-resources-section'
+    timeout: 60000
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-download-footer'
+    timeout: 60000

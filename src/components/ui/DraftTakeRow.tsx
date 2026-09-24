@@ -6,6 +6,7 @@ import { PlaybackProgressBar } from './PlaybackProgressBar';
 import { RecordCircleButton } from './RecordCircleButton';
 
 type DraftTakeRowProps = {
+  takeId: string;
   takeNumber: number;
   /** Full card label, e.g. "Take 1 - Verse - v. 3" (#410). */
   label?: string;
@@ -46,6 +47,7 @@ function formatDuration(ms: number): string {
  * 0:00.
  */
 export function DraftTakeRow({
+  takeId,
   takeNumber,
   label,
   positionMs,
@@ -70,7 +72,7 @@ export function DraftTakeRow({
         styles.row,
         leadingIndicator === 'selection' && isSelected && styles.rowSelected,
       ]}
-      testID="record-take-row"
+      testID={`record-take-row-${takeId}`}
     >
       {leadingIndicator === 'selection' && onSelect ? (
         <TouchableOpacity
@@ -81,7 +83,7 @@ export function DraftTakeRow({
           }
           accessibilityState={{ selected: isSelected }}
           hitSlop={8}
-          testID="record-take-select"
+          testID={`record-take-select-${takeId}`}
         >
           {isSelected ? (
             <CircleCheck
@@ -105,7 +107,7 @@ export function DraftTakeRow({
         size={theme.recordControlSizes.secondary}
         onPress={onPlayPause}
         accessibilityLabel={isPlaying ? 'Pause draft' : 'Play draft'}
-        testID="record-play-button"
+        testID={`record-play-button-${takeId}`}
       >
         {isPlaying ? (
           <Pause
@@ -126,14 +128,14 @@ export function DraftTakeRow({
           <Text
             style={styles.takeLabel}
             numberOfLines={1}
-            testID="record-take-badge"
+            testID={`record-take-badge-${takeId}`}
           >
             {label ?? `Take ${takeNumber}`}
           </Text>
           <Text
             style={styles.time}
             numberOfLines={1}
-            testID="record-take-time"
+            testID={`record-take-time-${takeId}`}
             accessibilityLabel={`Take time ${timeLabel}`}
           >
             {timeLabel}
@@ -152,7 +154,7 @@ export function DraftTakeRow({
       {leadingIndicator === 'canonicalReadOnly' && isCanonical ? (
         <View
           accessibilityLabel="Canonical take"
-          testID="record-take-canonical-readonly"
+          testID={`record-take-canonical-readonly-${takeId}`}
         >
           <CircleCheck
             size={iconSizes.chevron}
@@ -168,8 +170,8 @@ export function DraftTakeRow({
           accessibilityLabel="Delete take"
           testID={
             isSelected
-              ? 'record-delete-selected-button'
-              : 'record-delete-button'
+              ? `record-delete-selected-button-${takeId}`
+              : `record-delete-button-${takeId}`
           }
           hitSlop={8}
           style={styles.deleteHit}
