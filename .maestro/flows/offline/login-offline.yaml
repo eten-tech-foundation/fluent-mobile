@@ -1,0 +1,26 @@
+# Offline login: airplane mode → submit → connection error → restore network.
+# Requires scripts/maestro-adb-network.sh offline before this flow (shell wrapper).
+# Tagged offline — excluded from default smoke runs.
+appId: com.eten.fluent
+tags:
+  - offline
+  - edges
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- tapOn:
+    id: 'login-email-input'
+- eraseText
+- inputText: ${MAESTRO_EMAIL}
+- tapOn:
+    id: 'login-password-input'
+- eraseText
+- inputText: ${MAESTRO_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'login-submit-button'
+- extendedWaitUntil:
+    visible:
+      id: 'login-global-error'
+    timeout: 60000
+- assertVisible:
+    id: 'login-email-input'

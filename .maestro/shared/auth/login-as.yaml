@@ -1,0 +1,15 @@
+# Sign in with EMAIL / PASSWORD (defaults: Account A translator credentials).
+# Callers may override via runFlow env: { EMAIL, PASSWORD }.
+appId: com.eten.fluent
+---
+- tapOn:
+    id: 'login-email-input'
+- eraseText
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'login-password-input'
+- eraseText
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'login-submit-button'

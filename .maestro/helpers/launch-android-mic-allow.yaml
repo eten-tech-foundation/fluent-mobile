@@ -1,0 +1,9 @@
+# Cold-start with mic + notifications allowed (record flows).
+appId: com.eten.fluent
+---
+- launchApp:
+    clearState: true
+    permissions:
+      microphone: allow
+      notifications: allow
+- runFlow: open-metro-deeplink.yaml

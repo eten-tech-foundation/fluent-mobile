@@ -1,0 +1,14 @@
+# Sync screen cellular toggle is present (gate chrome).
+appId: com.eten.fluent
+tags:
+  - smoke
+  - sync
+  - edges
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- runFlow: ../../shared/ensure/ensure-signed-in.yaml
+- runFlow: ../../shared/nav/goto-sync.yaml
+- assertVisible:
+    id: 'sync-screen'
+- assertVisible:
+    id: 'sync-upload-cellular'
