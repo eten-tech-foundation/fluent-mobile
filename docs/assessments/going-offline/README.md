@@ -265,7 +265,7 @@ existing open issues. All are filed (see each gap's Development task).
 **Severity:** High (translators prepare for offline, then have no notes offline)  
 **Launch blocker:** To be decided with product  
 **Related issue:** [#192](https://github.com/eten-tech-foundation/fluent-mobile/issues/192) (closed), [#417](https://github.com/eten-tech-foundation/fluent-mobile/issues/417), [#504](https://github.com/eten-tech-foundation/fluent-mobile/issues/504)  
-**Development task:** [#578](https://github.com/eten-tech-foundation/fluent-mobile/issues/578) · [tickets/resources-read-downloaded-content-offline.md](./tickets/resources-read-downloaded-content-offline.md)
+**Development task:** [#578](https://github.com/eten-tech-foundation/fluent-mobile/issues/578)
 
 **Description:**  
 #192 requires prepared Resources content to be available with no network
@@ -287,7 +287,7 @@ visible offline.
 **Severity:** High  
 **Launch blocker:** To be decided with product  
 **Related issue:** [#51](https://github.com/eten-tech-foundation/fluent-mobile/issues/51) (Tier 1 source audio), [#412](https://github.com/eten-tech-foundation/fluent-mobile/issues/412), [#504](https://github.com/eten-tech-foundation/fluent-mobile/issues/504)  
-**Development task:** [#579](https://github.com/eten-tech-foundation/fluent-mobile/issues/579) · [tickets/source-audio-offline-playback.md](./tickets/source-audio-offline-playback.md)
+**Development task:** [#579](https://github.com/eten-tech-foundation/fluent-mobile/issues/579)
 
 **Description:**  
 Source audio is Tier 1 and always part of the download (#51), but the Bible
@@ -309,7 +309,7 @@ file.
 **Severity:** Medium  
 **Launch blocker:** No  
 **Related issue:** [#50](https://github.com/eten-tech-foundation/fluent-mobile/issues/50), [#51](https://github.com/eten-tech-foundation/fluent-mobile/issues/51), PR #341  
-**Development task:** [#580](https://github.com/eten-tech-foundation/fluent-mobile/issues/580) · [tickets/unassigned-chapter-selection-state.md](./tickets/unassigned-chapter-selection-state.md)
+**Development task:** [#580](https://github.com/eten-tech-foundation/fluent-mobile/issues/580)
 
 **Description:**  
 For a translator with no assigned chapters, the chapter accordion must open
@@ -330,7 +330,7 @@ device showed the opposite for both.
 **Severity:** Medium (Settings → Prepare for Offline still works, A.5)  
 **Launch blocker:** No  
 **Related issue:** [#39](https://github.com/eten-tech-foundation/fluent-mobile/issues/39) (PR #242), [#483](https://github.com/eten-tech-foundation/fluent-mobile/issues/483), [#546](https://github.com/eten-tech-foundation/fluent-mobile/issues/546)  
-**Development task:** [#581](https://github.com/eten-tech-foundation/fluent-mobile/issues/581) · [tickets/prepare-offline-auto-prompt-consistency.md](./tickets/prepare-offline-auto-prompt-consistency.md)
+**Development task:** [#581](https://github.com/eten-tech-foundation/fluent-mobile/issues/581)
 
 **Description:**  
 The prompt only runs on specific events (foreground, Home regaining focus
