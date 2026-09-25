@@ -1,8 +1,8 @@
 # Viewing and Listening to Resources Audit
 
-> **Status: device run complete.** Gaps 1–6 were observed on device
-> (Gap 6's trigger not isolated); Gap 7 is from file inspection. None are
-> filed as issues yet.
+> **Status: device run complete; gaps filed.** Gaps 1–7 are filed as
+> #591–#597 (sub-issues of #531). Gaps 1–6 were observed on device (Gap 6's
+> trigger not isolated); Gap 7 is from file inspection.
 
 ## Overview
 
@@ -242,7 +242,7 @@ images).
 **Severity:** Medium  
 **Launch blocker:** No  
 **Related issue:** [#188](https://github.com/eten-tech-foundation/fluent-mobile/issues/188), [#189](https://github.com/eten-tech-foundation/fluent-mobile/issues/189), [#190](https://github.com/eten-tech-foundation/fluent-mobile/issues/190)  
-**Development task:** ⏳
+**Development task:** [#591](https://github.com/eten-tech-foundation/fluent-mobile/issues/591)
 
 **Description:**  
 Online, TN and TQ always render (`resourcesSectionInventory.ts:84-86`,
@@ -270,7 +270,7 @@ in Mark 1: spinner, then nothing).
 **Severity:** Low  
 **Launch blocker:** No  
 **Related issue:** [#188](https://github.com/eten-tech-foundation/fluent-mobile/issues/188), [#192](https://github.com/eten-tech-foundation/fluent-mobile/issues/192)  
-**Development task:** ⏳
+**Development task:** [#592](https://github.com/eten-tech-foundation/fluent-mobile/issues/592)
 
 **Description:**  
 Until `useConnectivity` resolves, `ResourcesTab` treats the device as
@@ -294,7 +294,7 @@ shows until connectivity resolves. A unit test currently requires this
 **Severity:** High  
 **Launch blocker:** To be decided with product  
 **Related issue:** [#188](https://github.com/eten-tech-foundation/fluent-mobile/issues/188), [#189](https://github.com/eten-tech-foundation/fluent-mobile/issues/189), [#408](https://github.com/eten-tech-foundation/fluent-mobile/issues/408); API: [fluent-api#273](https://github.com/eten-tech-foundation/fluent-api/issues/273)  
-**Development task:** ⏳ — tracked in fluent-mobile for now; the fluent-api task (verse-range resources) will be opened at implementation time
+**Development task:** [#593](https://github.com/eten-tech-foundation/fluent-mobile/issues/593) — tracked in fluent-mobile for now; the fluent-api task (verse-range resources) will be opened at implementation time
 
 **Description:**  
 In pericope mode the Bible tab sets `selectedVerse` to the pericope's
@@ -319,7 +319,7 @@ every verse in it.
 **Launch blocker:** To be decided with product (image licenses may require
 attribution)  
 **Related issue:** [#191](https://github.com/eten-tech-foundation/fluent-mobile/issues/191); API: [fluent-api#273](https://github.com/eten-tech-foundation/fluent-api/issues/273)  
-**Development task:** ⏳ — tracked in fluent-mobile for now; the fluent-api task (image caption and attribution) will be opened at implementation time
+**Development task:** [#594](https://github.com/eten-tech-foundation/fluent-mobile/issues/594) — tracked in fluent-mobile for now; the fluent-api task (image caption and attribution) will be opened at implementation time
 
 **Description:**  
 fluent-api returns `id`, `title`, `localizedName`, `url`, `thumbnailUrl?`,
@@ -342,7 +342,7 @@ thumbnail loads the full image.
 **Severity:** High (listen-then-record works only per chapter)  
 **Launch blocker:** To be decided with product  
 **Related issue:** [#48](https://github.com/eten-tech-foundation/fluent-mobile/issues/48), [#235](https://github.com/eten-tech-foundation/fluent-mobile/issues/235), [#408](https://github.com/eten-tech-foundation/fluent-mobile/issues/408); API: [fluent-api#282](https://github.com/eten-tech-foundation/fluent-api/issues/282)  
-**Development task:** ⏳ — tracked in fluent-mobile for now; the fluent-api task (verse timestamps for launch projects) will be opened at implementation time
+**Development task:** [#595](https://github.com/eten-tech-foundation/fluent-mobile/issues/595) — tracked in fluent-mobile for now; the fluent-api task (verse timestamps for launch projects) will be opened at implementation time
 
 **Description:**  
 Verse seek and the playing-verse highlight rely on `verseTimestamps` from
@@ -369,7 +369,7 @@ highlight follows playback (#48).
 **Severity:** Medium  
 **Launch blocker:** No  
 **Related issue:** [#569](https://github.com/eten-tech-foundation/fluent-mobile/issues/569) (same error on draft take playback), [#412](https://github.com/eten-tech-foundation/fluent-mobile/issues/412)  
-**Development task:** ⏳
+**Development task:** [#596](https://github.com/eten-tech-foundation/fluent-mobile/issues/596)
 
 **Description:**  
 The dev LogBox showed `Maximum update depth exceeded` while only the
@@ -391,7 +391,7 @@ source player runs a separate path (`useSourceAudio`, `SourceAudioShell`).
 **Severity:** Low (test infra)  
 **Launch blocker:** No  
 **Related issue:** [#191](https://github.com/eten-tech-foundation/fluent-mobile/issues/191), [#491](https://github.com/eten-tech-foundation/fluent-mobile/issues/491)  
-**Development task:** ⏳
+**Development task:** [#597](https://github.com/eten-tech-foundation/fluent-mobile/issues/597)
 
 **Description:**  
 `.maestro/flows/drafting/images-fullscreen.yaml` waits for
@@ -469,8 +469,8 @@ nightly APK. The update-depth error was observed through the dev LogBox.
 
 **Follow-up required:**
 
-- [ ] All identified gaps have corresponding GitHub issues.
-- [ ] Mobile and API dependencies are cross-linked.
+- [x] All identified gaps have corresponding GitHub issues. _(#591–#597)_
+- [ ] Mobile and API dependencies are cross-linked. _(#593, #594, #595 need fluent-api work; the fluent-api tasks are opened at implementation time)_
 - [x] Launch-blocking gaps are clearly identified. _(Gaps 3, 4, 5: to be decided with product)_
 - [ ] Assessment has been reviewed and merged.
 
