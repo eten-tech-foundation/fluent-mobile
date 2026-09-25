@@ -3,9 +3,7 @@ import type { TranslationNoteItem } from '../types/resources/translationNotes';
 import { tipTapToPlainText } from '../utils/aquiferTipTapText';
 import { FluentAPI } from './api';
 import { findDownloadedRows, readDownloadedJson } from './offlineResources';
-import { logger } from '../utils/logger';
 
-const log = logger.create('translationNotes');
 const DEFAULT_TN_LANGUAGE_CODE = 'eng';
 
 export type LoadTranslationNotesParams = {
@@ -104,9 +102,11 @@ async function loadLocalTranslationNotes(
   if (rows === null) return null;
 
   const notes: TranslationNoteItem[] = [];
+  let readAnyRow = false;
   for (const row of rows) {
     const content = await readDownloadedJson(row);
     if (content === undefined) continue;
+    readAnyRow = true;
     const item = {
       id: row.resourceId ?? row.id,
       name: row.label,
@@ -117,12 +117,16 @@ async function loadLocalTranslationNotes(
     } as unknown as ApiTranslationNoteItem;
     notes.push(...parseTranslationNotesItem(item));
   }
-  return notes;
+  // Every downloaded file was unreadable (missing/corrupt): fall back to the
+  // API instead of showing an empty section.
+  return readAnyRow ? notes : null;
 }
 
 /**
- * Load uW Translation Notes for a drafting unit via fluent-api
- * translation-resources (fluent-api #274).
+ * Load uW Translation Notes for a drafting unit. Downloaded rows are used
+ * first (even online); the fluent-api translation-resources call
+ * (fluent-api #274) only runs when nothing usable is downloaded and the
+ * device is online.
  */
 export async function loadTranslationNotesForUnit(
   params: LoadTranslationNotesParams,

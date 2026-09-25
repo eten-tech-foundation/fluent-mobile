@@ -104,9 +104,11 @@ async function loadLocalTranslationQuestions(
   if (rows === null) return null;
 
   const questions: TranslationQuestionItem[] = [];
+  let readAnyRow = false;
   for (const row of rows) {
     const content = await readDownloadedJson(row);
     if (content === undefined) continue;
+    readAnyRow = true;
     const item = {
       id: row.resourceId ?? row.id,
       name: row.label,
@@ -117,13 +119,16 @@ async function loadLocalTranslationQuestions(
     } as unknown as ApiTranslationQuestionItem;
     questions.push(...parseTranslationQuestionsItem(item));
   }
-  return questions;
+  // Every downloaded file was unreadable (missing/corrupt): fall back to the
+  // API instead of showing an empty section.
+  return readAnyRow ? questions : null;
 }
 
 /**
  * Load uW Translation Questions for a drafting unit. Downloaded rows are
- * used first; the fluent-api translation-resources call (fluent-api #274)
- * is only used when nothing is downloaded and the device is online.
+ * used first (even online); the fluent-api translation-resources call
+ * (fluent-api #274) only runs when nothing usable is downloaded and the
+ * device is online.
  */
 export async function loadTranslationQuestionsForUnit(
   params: LoadTranslationQuestionsParams,

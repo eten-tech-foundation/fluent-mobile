@@ -27,7 +27,8 @@ export type UseTranslationNotesForUnitParams = LoadTranslationNotesParams;
 /**
  * Section-scoped TN loader (#189). Failures stay local — do not block TQ / Images.
  * Ignores stale responses when the active unit changes mid-load.
- * Loads via fluent-api translation-resources (fluent-api #274).
+ * Downloaded rows win; fluent-api translation-resources (fluent-api #274)
+ * is only hit when nothing usable is downloaded and the device is online.
  */
 export function useTranslationNotesForUnit(
   params: UseTranslationNotesForUnitParams,

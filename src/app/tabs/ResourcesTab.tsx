@@ -74,9 +74,11 @@ const SECTION_META: {
 ];
 
 /**
- * Resources tab host (#188 + #192): offline inventory gates which sections
- * appear on device. When online, all sections load via fluent-api
- * translation-resources (#381).
+ * Resources tab host (#188 + #192). Section content is download-first:
+ * downloaded rows are used whenever present (online or offline); the
+ * fluent-api translation-resources stream (#381) only fills in when nothing
+ * is downloaded and the device is online. On failure each section shows its
+ * own Retry.
  */
 export function ResourcesTab({
   chapterId,

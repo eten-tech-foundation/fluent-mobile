@@ -27,7 +27,8 @@ export type UseImagesMapsForUnitParams = LoadImagesMapsParams;
 /**
  * Section-scoped Images & Maps loader (#191). Failures stay local.
  * Ignores stale responses when the active unit changes mid-load.
- * Loads via fluent-api translation-resources (fluent-api #274).
+ * Downloaded rows win; fluent-api translation-resources (fluent-api #274)
+ * is only hit when nothing usable is downloaded and the device is online.
  */
 export function useImagesMapsForUnit(params: UseImagesMapsForUnitParams) {
   const {
