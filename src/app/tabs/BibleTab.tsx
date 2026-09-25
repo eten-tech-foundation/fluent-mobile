@@ -19,7 +19,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { iconSizes, listIconStrokeWidth, theme } from '../../theme';
+import {
+  iconSizes,
+  listIconStrokeWidth,
+  theme,
+  touchHitSlop,
+} from '../../theme';
 
 const playingVerseHighlight = `${theme.colors.primary}14`;
 
@@ -117,12 +122,18 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
   const handleUnitPress = useCallback(
     (unit: BibleTabUnitView) => {
       setSelectedVerse(unit.anchorVerse);
-      if (effectiveUnit === 'pericope') {
-        setExpandedKey(current => (current === unit.key ? null : unit.key));
-      }
       onOpenRecord?.();
     },
-    [effectiveUnit, onOpenRecord, setSelectedVerse],
+    [onOpenRecord, setSelectedVerse],
+  );
+
+  /** Pericope chevron only — expand/collapse without leaving Bible for Record. */
+  const handlePericopeExpandToggle = useCallback(
+    (unit: BibleTabUnitView) => {
+      setSelectedVerse(unit.anchorVerse);
+      setExpandedKey(current => (current === unit.key ? null : unit.key));
+    },
+    [setSelectedVerse],
   );
 
   const renderVerseRow = useCallback(
@@ -193,11 +204,21 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
           <View style={styles.cardHeader}>
             <PericopeStatusIcon status={item.recordedStatus} />
             <Text style={styles.cardTitle}>{item.title}</Text>
-            <Chevron
-              size={iconSizes.headerTab}
-              color={theme.colors.mutedForeground}
-              strokeWidth={listIconStrokeWidth}
-            />
+            <TouchableOpacity
+              onPress={() => handlePericopeExpandToggle(item)}
+              hitSlop={touchHitSlop}
+              accessibilityRole="button"
+              accessibilityLabel={`${expanded ? 'Collapse' : 'Expand'} ${
+                item.title
+              }`}
+              testID={`bible-pericope-expand-${item.key}`}
+            >
+              <Chevron
+                size={iconSizes.headerTab}
+                color={theme.colors.mutedForeground}
+                strokeWidth={listIconStrokeWidth}
+              />
+            </TouchableOpacity>
           </View>
           {expanded ? (
             <VerseRun verses={item.bodyVerses} />
@@ -209,7 +230,13 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
         </TouchableOpacity>
       );
     },
-    [chapterNumber, expandedKey, handleUnitPress, selectedVerse],
+    [
+      chapterNumber,
+      expandedKey,
+      handlePericopeExpandToggle,
+      handleUnitPress,
+      selectedVerse,
+    ],
   );
 
   if (unitsPending) {

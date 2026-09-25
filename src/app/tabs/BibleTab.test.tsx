@@ -171,6 +171,53 @@ describe('BibleTab', () => {
     fireEvent.press(screen.getByLabelText('Mark 14:1–2, selected'));
 
     expect(onOpenRecord).toHaveBeenCalledTimes(1);
+    // Card tap opens Record without expanding — expand is chevron-only.
+    expect(screen.queryByTestId('bible-pericope-verse-14-1')).toBeNull();
+  });
+
+  it('expands and collapses a pericope via chevron without opening Record', async () => {
+    const onOpenRecord = jest.fn();
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    jest.mocked(getPericopesForChapter).mockResolvedValue([
+      {
+        pericopeNumber: '1',
+        pericopeTitle: null,
+        section: 1,
+        verses: [
+          { chapterNumber: 14, verseNumber: 1 },
+          { chapterNumber: 14, verseNumber: 2 },
+        ],
+      },
+    ]);
+
+    render(
+      <DraftingProvider
+        verses={verses}
+        initialVerse={1}
+        projectId={9}
+        chapterName="Mark 14"
+        bookName="Mark"
+      >
+        <BibleTab onOpenRecord={onOpenRecord} />
+      </DraftingProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Expand Mark 14:1–2')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByLabelText('Expand Mark 14:1–2'));
+    expect(screen.getByTestId('bible-pericope-verse-14-1')).toBeTruthy();
+    expect(screen.getByTestId('bible-pericope-verse-14-2')).toBeTruthy();
+    expect(onOpenRecord).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByLabelText('Collapse Mark 14:1–2'));
+    expect(screen.queryByTestId('bible-pericope-verse-14-1')).toBeNull();
+    expect(screen.queryByTestId('bible-pericope-verse-14-2')).toBeNull();
+    expect(onOpenRecord).not.toHaveBeenCalled();
   });
 
   it('shows a loading indicator instead of verse rows while coverage loads', () => {
@@ -255,11 +302,11 @@ describe('BibleTab', () => {
     expect(screen.queryByTestId('bible-pericope-verse-14-1')).toBeNull();
     expect(screen.queryByTestId('bible-pericope-verse-14-2')).toBeNull();
 
-    fireEvent.press(screen.getByLabelText('Mark 14:1–2, selected'));
+    fireEvent.press(screen.getByLabelText('Expand Mark 14:1–2'));
     expect(screen.getByTestId('bible-pericope-verse-14-1')).toBeTruthy();
     expect(screen.getByTestId('bible-pericope-verse-14-2')).toBeTruthy();
 
-    fireEvent.press(screen.getByLabelText('Mark 14:1–2, selected'));
+    fireEvent.press(screen.getByLabelText('Collapse Mark 14:1–2'));
     expect(screen.getByLabelText('Mark 14:1–2, selected')).toBeTruthy();
     expect(screen.queryByTestId('bible-pericope-verse-14-1')).toBeNull();
     expect(screen.queryByTestId('bible-pericope-verse-14-2')).toBeNull();
@@ -340,7 +387,7 @@ describe('BibleTab', () => {
     expect(screen.queryByTestId('bible-pericope-verse-14-2')).toBeNull();
     expect(screen.queryByTestId('bible-pericope-verse-14-1')).toBeNull();
 
-    fireEvent.press(screen.getByLabelText('Mark 14:2, selected'));
+    fireEvent.press(screen.getByLabelText('Expand Mark 14:2'));
     expect(screen.getByTestId('bible-pericope-verse-14-2')).toBeTruthy();
     expect(screen.queryByTestId('bible-pericope-verse-14-1')).toBeNull();
   });
