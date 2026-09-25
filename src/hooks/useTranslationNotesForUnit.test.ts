@@ -5,7 +5,7 @@ import {
   setTranslationNotesLoadFailureForTests,
 } from '../services/translationNotes';
 import { TRANSLATION_NOTES_LOAD_ERROR } from '../constants/messages';
-import { getMockTranslationNotes } from '../mocks/resources/translationNotesMock';
+import { TranslationNoteItem } from '../types/resources/translationNotes';
 
 jest.mock('../services/translationNotes', () => {
   const actual = jest.requireActual('../services/translationNotes');
@@ -19,6 +19,16 @@ const mockLoad = loadTranslationNotesForUnit as jest.MockedFunction<
   typeof loadTranslationNotesForUnit
 >;
 
+// Fixed fixture — this suite only checks that notes are present, not their
+// specific content, so a single hardcoded note is enough.
+const SAMPLE_NOTES: TranslationNoteItem[] = [
+  {
+    id: 'tn-10-1-1',
+    title: 'connecting word',
+    body: 'This phrase connects the current verse to the previous one.',
+  },
+];
+
 describe('useTranslationNotesForUnit', () => {
   afterEach(() => {
     setTranslationNotesLoadFailureForTests(false);
@@ -26,7 +36,7 @@ describe('useTranslationNotesForUnit', () => {
   });
 
   it('loads notes for units that have TN content', async () => {
-    mockLoad.mockResolvedValue(getMockTranslationNotes(10, 1));
+    mockLoad.mockResolvedValue(SAMPLE_NOTES);
 
     const { result } = renderHook(() =>
       useTranslationNotesForUnit({
@@ -56,7 +66,7 @@ describe('useTranslationNotesForUnit', () => {
 
   it('exposes an error state that retry can clear', async () => {
     mockLoad.mockRejectedValueOnce(new Error('boom'));
-    mockLoad.mockResolvedValueOnce(getMockTranslationNotes(10, 1));
+    mockLoad.mockResolvedValueOnce(SAMPLE_NOTES);
 
     const { result } = renderHook(() =>
       useTranslationNotesForUnit({

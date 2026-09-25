@@ -144,6 +144,7 @@ export function mergeQueueIntoPrepareOfflineCatalog(
   catalog: PrepareOfflineCatalog,
   queueItems: DownloadQueueItem[],
   projectId: number | null,
+  userId?: number | null,
 ): PrepareOfflineCatalog {
   if (projectId === null) {
     return catalog;
@@ -151,9 +152,10 @@ export function mergeQueueIntoPrepareOfflineCatalog(
 
   const queueById = new Map<string, DownloadQueueItem>();
   for (const queueItem of queueItems) {
-    if (queueItem.projectId === projectId) {
-      queueById.set(queueItem.id, queueItem);
-    }
+    if (queueItem.projectId !== projectId) continue;
+    if (userId !== null && userId !== undefined && queueItem.userId !== userId)
+      continue;
+    queueById.set(queueItem.resourceId ?? queueItem.id, queueItem);
   }
 
   if (queueById.size === 0) {

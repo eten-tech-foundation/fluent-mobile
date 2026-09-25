@@ -29,6 +29,9 @@ const getQueueStatusMap = getDownloadQueueStatusMap as jest.MockedFunction<
   typeof getDownloadQueueStatusMap
 >;
 
+const USER_A = 1;
+const USER_B = 2;
+
 const FULL_PARAMS = {
   languageCode: 'eng',
   bookCode: 'MRK',
@@ -330,40 +333,62 @@ describe('prepareOfflineResources', () => {
         ['item-cancelled', 'cancelled'],
       ]);
       getQueueStatusMap.mockResolvedValue(queueStatuses);
-      await refreshPrepareOfflineInventory(5);
+      await refreshPrepareOfflineInventory(5, USER_A);
 
-      expect(getPrepareOfflineResourceStatus(5, 'item-completed')).toBe(
+      expect(getPrepareOfflineResourceStatus(5, USER_A, 'item-completed')).toBe(
         'completed',
       );
-      expect(getPrepareOfflineResourceStatus(5, 'item-downloading')).toBe(
-        'downloading',
+      expect(
+        getPrepareOfflineResourceStatus(5, USER_A, 'item-downloading'),
+      ).toBe('downloading');
+      expect(getPrepareOfflineResourceStatus(5, USER_A, 'item-paused')).toBe(
+        'paused',
       );
-      expect(getPrepareOfflineResourceStatus(5, 'item-paused')).toBe('paused');
-      expect(getPrepareOfflineResourceStatus(5, 'item-queued')).toBe(
+      expect(getPrepareOfflineResourceStatus(5, USER_A, 'item-queued')).toBe(
         'selected',
       );
-      expect(getPrepareOfflineResourceStatus(5, 'item-failed')).toBe(
+      expect(getPrepareOfflineResourceStatus(5, USER_A, 'item-failed')).toBe(
         'available',
       );
-      expect(getPrepareOfflineResourceStatus(5, 'item-cancelled')).toBe(
+      expect(getPrepareOfflineResourceStatus(5, USER_A, 'item-cancelled')).toBe(
         'available',
       );
     });
 
     it('returns available for resources with no queue row', async () => {
       getQueueStatusMap.mockResolvedValue(new Map());
-      await refreshPrepareOfflineInventory(5);
+      await refreshPrepareOfflineInventory(5, USER_A);
 
-      expect(getPrepareOfflineResourceStatus(5, 'missing-resource')).toBe(
-        'available',
-      );
+      expect(
+        getPrepareOfflineResourceStatus(5, USER_A, 'missing-resource'),
+      ).toBe('available');
     });
 
     it('does not leak statuses across projects', async () => {
       getQueueStatusMap.mockResolvedValue(new Map([['item-1', 'completed']]));
-      await refreshPrepareOfflineInventory(5);
+      await refreshPrepareOfflineInventory(5, USER_A);
 
-      expect(getPrepareOfflineResourceStatus(6, 'item-1')).toBe('available');
+      expect(getPrepareOfflineResourceStatus(6, USER_A, 'item-1')).toBe(
+        'available',
+      );
+    });
+
+    it('does not leak statuses across users on the same project', async () => {
+      getQueueStatusMap.mockResolvedValue(new Map([['item-1', 'completed']]));
+      await refreshPrepareOfflineInventory(5, USER_A);
+
+      // USER_B has never had its inventory refreshed for project 5, so it
+      // must not see USER_A's cached status.
+      expect(getPrepareOfflineResourceStatus(5, USER_B, 'item-1')).toBe(
+        'available',
+      );
+    });
+
+    it('passes userId through to the repository so results are pre-scoped at the query level', async () => {
+      getQueueStatusMap.mockResolvedValue(new Map());
+      await refreshPrepareOfflineInventory(5, USER_A);
+
+      expect(getQueueStatusMap).toHaveBeenCalledWith(5, USER_A);
     });
   });
 
@@ -373,51 +398,74 @@ describe('prepareOfflineResources', () => {
       const unsubscribe = subscribePrepareOfflineInventory(listener);
 
       getQueueStatusMap.mockResolvedValue(new Map());
-      await refreshPrepareOfflineInventory(5);
+      await refreshPrepareOfflineInventory(5, USER_A);
       expect(listener).toHaveBeenCalledTimes(1);
 
       // Same (empty) map again: no change, no notification.
-      await refreshPrepareOfflineInventory(5);
+      await refreshPrepareOfflineInventory(5, USER_A);
       expect(listener).toHaveBeenCalledTimes(1);
 
       // Changed map: notifies again.
       getQueueStatusMap.mockResolvedValue(new Map([['item-1', 'completed']]));
-      await refreshPrepareOfflineInventory(5);
+      await refreshPrepareOfflineInventory(5, USER_A);
       expect(listener).toHaveBeenCalledTimes(2);
 
       unsubscribe();
       getQueueStatusMap.mockResolvedValue(new Map([['item-1', 'failed']]));
-      await refreshPrepareOfflineInventory(5);
+      await refreshPrepareOfflineInventory(5, USER_A);
       expect(listener).toHaveBeenCalledTimes(2);
     });
   });
 
   describe('clearPrepareOfflineSessionInventory', () => {
-    it('clears one project without touching others', async () => {
+    it('clears one project+user without touching others', async () => {
       getQueueStatusMap.mockResolvedValue(new Map([['item-1', 'completed']]));
-      await refreshPrepareOfflineInventory(3);
-      await refreshPrepareOfflineInventory(4);
+      await refreshPrepareOfflineInventory(3, USER_A);
+      await refreshPrepareOfflineInventory(4, USER_A);
 
-      clearPrepareOfflineSessionInventory(3);
+      clearPrepareOfflineSessionInventory(3, USER_A);
 
-      expect(getPrepareOfflineResourceStatus(3, 'item-1')).toBe('available');
-      expect(getPrepareOfflineResourceStatus(4, 'item-1')).toBe('completed');
+      expect(getPrepareOfflineResourceStatus(3, USER_A, 'item-1')).toBe(
+        'available',
+      );
+      expect(getPrepareOfflineResourceStatus(4, USER_A, 'item-1')).toBe(
+        'completed',
+      );
     });
 
-    it('clears every project when called without an id', async () => {
+    it('clears one user without touching another user on the same project', async () => {
       getQueueStatusMap.mockResolvedValue(new Map([['item-1', 'completed']]));
-      await refreshPrepareOfflineInventory(3);
-      await refreshPrepareOfflineInventory(4);
+      await refreshPrepareOfflineInventory(3, USER_A);
+      await refreshPrepareOfflineInventory(3, USER_B);
+
+      clearPrepareOfflineSessionInventory(3, USER_A);
+
+      expect(getPrepareOfflineResourceStatus(3, USER_A, 'item-1')).toBe(
+        'available',
+      );
+      expect(getPrepareOfflineResourceStatus(3, USER_B, 'item-1')).toBe(
+        'completed',
+      );
+    });
+
+    it('clears every project and user when called without arguments', async () => {
+      getQueueStatusMap.mockResolvedValue(new Map([['item-1', 'completed']]));
+      await refreshPrepareOfflineInventory(3, USER_A);
+      await refreshPrepareOfflineInventory(4, USER_B);
 
       clearPrepareOfflineSessionInventory();
 
-      expect(getPrepareOfflineResourceStatus(3, 'item-1')).toBe('available');
-      expect(getPrepareOfflineResourceStatus(4, 'item-1')).toBe('available');
+      expect(getPrepareOfflineResourceStatus(3, USER_A, 'item-1')).toBe(
+        'available',
+      );
+      expect(getPrepareOfflineResourceStatus(4, USER_B, 'item-1')).toBe(
+        'available',
+      );
     });
   });
 
   describe('getDefaultPrepareOfflinePackageDeselects', () => {
-    it('returns an empty set — all tiers checked by default (#504)', () => {
+    it('returns no deselects until on-device inventory pre-checking is implemented (#201)', () => {
       expect(getDefaultPrepareOfflinePackageDeselects(null).size).toBe(0);
       expect(getDefaultPrepareOfflinePackageDeselects(5).size).toBe(0);
     });

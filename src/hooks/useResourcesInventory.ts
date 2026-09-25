@@ -64,15 +64,14 @@ export function useResourcesInventory(
 
   const getResourceStatus = useCallback(
     (resourceId: string): PrepareOfflineResourceStatus => {
-      if (projectId === null) {
+      if (projectId === null || userId === null) {
         return 'available';
       }
-      return getResourcesInventoryStatus(projectId, resourceId);
+      return getResourcesInventoryStatus(projectId, userId, resourceId);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [projectId, inventoryVersion],
+    [projectId, userId, inventoryVersion],
   );
-
   return {
     inventoryVersion,
     downloadedSections,

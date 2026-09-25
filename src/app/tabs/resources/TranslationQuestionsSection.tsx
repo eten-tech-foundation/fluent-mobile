@@ -8,7 +8,6 @@ import {
 } from 'react-native';
 import { TranslationQuestionAccordion } from './TranslationQuestionAccordion';
 import type { TranslationQuestionsLoadState } from '../../../hooks/useTranslationQuestionsForUnit';
-import { useTranslationQuestionsForUnit } from '../../../hooks/useTranslationQuestionsForUnit';
 import { TRANSLATION_QUESTIONS_LOAD_ERROR } from '../../../constants/messages';
 import { theme } from '../../../theme';
 

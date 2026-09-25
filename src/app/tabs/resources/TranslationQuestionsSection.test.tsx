@@ -12,7 +12,7 @@ import {
   loadTranslationQuestionsForUnit,
   setTranslationQuestionsLoadFailureForTests,
 } from '../../../services/translationQuestions';
-import { getMockTranslationQuestions } from '../../../mocks/resources/translationQuestionsMock';
+import { TranslationQuestionItem } from '../../../types/resources/translationQuestions';
 import { useTranslationQuestionsForUnit } from '../../../hooks/useTranslationQuestionsForUnit';
 
 jest.mock('../../../services/translationQuestions', () => {
@@ -26,6 +26,22 @@ jest.mock('../../../services/translationQuestions', () => {
 const mockLoad = loadTranslationQuestionsForUnit as jest.MockedFunction<
   typeof loadTranslationQuestionsForUnit
 >;
+
+// Fixed fixture for the verse numbers this suite exercises — no live mock
+// generator, so this test has no dependency on `mocks/resources`.
+function questionsForVerse(verseNumber: number): TranslationQuestionItem[] {
+  if (verseNumber !== 2) {
+    return [];
+  }
+  return [
+    {
+      id: 'tq-99-2-1',
+      question: 'What is happening in this verse?',
+      answer:
+        'The passage describes the events surrounding this verse so the translator can check key meaning.',
+    },
+  ];
+}
 
 function SectionHarness({
   projectId,
@@ -58,7 +74,7 @@ function SectionHarness({
 describe('TranslationQuestionsSection', () => {
   beforeEach(() => {
     mockLoad.mockImplementation(async ({ verseNumber }) =>
-      getMockTranslationQuestions(99, verseNumber),
+      questionsForVerse(verseNumber),
     );
   });
 
@@ -129,7 +145,7 @@ describe('TranslationQuestionsSection', () => {
 
   it('shows section-scoped error and recovers on Retry', async () => {
     mockLoad.mockRejectedValueOnce(new Error('boom'));
-    mockLoad.mockResolvedValueOnce(getMockTranslationQuestions(99, 2));
+    mockLoad.mockResolvedValueOnce(questionsForVerse(2));
 
     render(<SectionHarness projectId={7} verseNumber={2} />);
 

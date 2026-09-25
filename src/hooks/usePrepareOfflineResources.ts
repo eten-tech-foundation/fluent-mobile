@@ -40,7 +40,7 @@ export function usePrepareOfflineResources({
     inventoryVersion,
     getResourceStatus,
     getDefaultPackageDeselects,
-  } = usePrepareOfflineResourceData(projectId, chapters, selectedIds);
+  } = usePrepareOfflineResourceData(projectId, userId, chapters, selectedIds);
 
   const sessionKey =
     projectId !== null ? `${projectId}:${userId ?? 'none'}` : null;

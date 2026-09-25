@@ -23,10 +23,12 @@ const log = logger.create('usePrepareOfflineResourceData');
 /**
  * Loads Prepare for Offline manifest + inventory via the resources service.
  * Manifest is wired to the real FluentAPI endpoint (#504); inventory reads
- * real download_queue status (#201).
+ * real download_queue status (#201), scoped to the signed-in user so
+ * multiple accounts on one device don't see each other's queue state.
  */
 export function usePrepareOfflineResourceData(
   projectId: number | null,
+  userId: number | null,
   chapters: PrepareOfflineChapterRow[],
   selectedIds: Set<number>,
 ) {
@@ -106,16 +108,17 @@ export function usePrepareOfflineResourceData(
     chapters.map(ch => `${ch.id}:${ch.bibleId}`).join(','),
   ]);
 
-  // Load real status from download_queue whenever the project changes, and
-  // re-load whenever the subscription fires (queue mutated elsewhere).
+  // Load real status from download_queue whenever the project or user
+  // changes, and re-load whenever the subscription fires (queue mutated
+  // elsewhere).
   useEffect(() => {
-    if (projectId === null) {
+    if (projectId === null || userId === null) {
       return;
     }
-    refreshPrepareOfflineInventory(projectId).catch(error => {
-      log.warn('Inventory refresh failed', { error, projectId });
+    refreshPrepareOfflineInventory(projectId, userId).catch(error => {
+      log.warn('Inventory refresh failed', { error, projectId, userId });
     });
-  }, [projectId, inventoryVersion]);
+  }, [projectId, userId, inventoryVersion]);
 
   useEffect(() => {
     return subscribePrepareOfflineInventory(() => {
@@ -125,8 +128,8 @@ export function usePrepareOfflineResourceData(
 
   const getResourceStatus = useCallback(
     (resourceId: string) =>
-      getPrepareOfflineResourceStatus(projectId ?? 0, resourceId),
-    [projectId],
+      getPrepareOfflineResourceStatus(projectId ?? 0, userId ?? 0, resourceId),
+    [projectId, userId],
   );
 
   return {
@@ -137,7 +140,10 @@ export function usePrepareOfflineResourceData(
     inventoryVersion,
     getResourceStatus,
     clearSessionInventory: () =>
-      clearPrepareOfflineSessionInventory(projectId ?? undefined),
+      clearPrepareOfflineSessionInventory(
+        projectId ?? undefined,
+        userId ?? undefined,
+      ),
     getDefaultPackageDeselects: () =>
       getDefaultPrepareOfflinePackageDeselects(projectId),
   };

@@ -7,6 +7,7 @@ import {
   Migration,
   rebuildTable,
   renameRecordingsIsLatestToIsSelected,
+  scopeDownloadQueueIdentity,
   restoreChapterAssignmentAssignedUserIntegrity,
   restoreUserProjectsUserIntegrity,
   runMigrations,
@@ -286,7 +287,7 @@ function createFakeDb(initialVersion = 0) {
         /^ALTER\s+TABLE\s+(\w+)\s+ADD\s+COLUMN\s+(\w+)\s+(.+)$/i,
       );
       if (alter) {
-        const [, tableName, columnName] = alter;
+        const [, tableName, columnName, columnSql] = alter;
         const table = tables.get(tableName);
         if (!table) {
           throw new Error(`no such table: ${tableName}`);
@@ -295,8 +296,17 @@ function createFakeDb(initialVersion = 0) {
           throw new Error(`duplicate column name: ${columnName}`);
         }
         table.columns.add(columnName);
+        // Real SQLite backfills existing rows with the declared DEFAULT
+        // (NULL when there is none) — not 0.
+        const dflt = columnSql.match(/DEFAULT\s+('(?:[^']*)'|\S+)/i);
+        const fill: string | number | null = dflt
+          ? dflt[1].replace(/^'|'$/g, '')
+          : null;
+        if (dflt) {
+          table.defaults.set(columnName, fill as string);
+        }
         for (const row of table.rows) {
-          row[columnName] = 0;
+          row[columnName] = fill;
         }
         return emptyResult();
       }
@@ -416,6 +426,12 @@ function createFakeDb(initialVersion = 0) {
         return emptyResult();
       }
 
+      const dropIndex = sql.match(/^DROP\s+INDEX\s+IF\s+EXISTS\s+(\w+)/i);
+      if (dropIndex) {
+        indexes.delete(dropIndex[1]);
+        return emptyResult();
+      }
+
       const rename = sql.match(/^ALTER\s+TABLE\s+(\w+)\s+RENAME\s+TO\s+(\w+)/i);
       if (rename) {
         const [, from, to] = rename;
@@ -436,6 +452,21 @@ function createFakeDb(initialVersion = 0) {
       if (/^SELECT\s+\*\s+FROM\s+user_projects/i.test(sql)) {
         ensureOldUserProjects();
         return emptyResult(tables.get('user_projects')!.rows);
+      }
+
+      if (/^UPDATE\s+download_queue\b/i.test(sql)) {
+        // v18 id rewrite: resource_id = id, then id = scoped id. Both
+        // assignments read the OLD row values; guard makes it run once.
+        const dqTable = tables.get('download_queue');
+        if (dqTable) {
+          for (const row of dqTable.rows) {
+            if (row.resource_id === null || row.resource_id === undefined) {
+              row.resource_id = row.id;
+              row.id = `${row.project_id}-${row.user_id ?? 0}-${row.id}`;
+            }
+          }
+        }
+        return emptyResult();
       }
 
       if (/^UPDATE\s+recordings\b/i.test(sql)) {
@@ -1121,5 +1152,93 @@ describe('recordings granularity migration (#410)', () => {
     expect(row.end_chapter).toBe(14);
     expect(row.end_verse).toBe(3);
     await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
+  });
+});
+
+describe('download_queue scoped identity migration (#504)', () => {
+  it('baseline download_queue schema includes the scoped identity end-state', () => {
+    const downloadQueueSql = createTableQueries.find(q =>
+      q.includes('CREATE TABLE IF NOT EXISTS download_queue'),
+    );
+    expect(downloadQueueSql).toBeDefined();
+    expect(downloadQueueSql).toContain('resource_id');
+    expect(downloadQueueSql).toContain('serialized_content');
+    expect(downloadQueueSql).toContain('book_code');
+    expect(downloadQueueSql).toContain('verse_end');
+    expect(
+      createTableQueries.some(q => q.includes('idx_dq_project_user_resource')),
+    ).toBe(true);
+    expect(createTableQueries.some(q => q.includes('idx_dq_scope'))).toBe(true);
+  });
+
+  const preV18Columns = [
+    'id',
+    'project_id',
+    'user_id',
+    'tier',
+    'kind',
+    'resource_name',
+    'label',
+    'source_url',
+    'file_ext',
+    'status',
+    'progress',
+    'bytes_total',
+    'local_file_path',
+    'resume_data',
+    'queue_order',
+    'created_at',
+    'updated_at',
+  ];
+
+  it('adds serialized_content and scope columns when upgrading from v17', async () => {
+    const db = createFakeDb(17);
+    db._tables.set('download_queue', {
+      columns: new Set(preV18Columns),
+      rows: [
+        {
+          id: 'dlq_1',
+          project_id: 462,
+          user_id: 206,
+          tier: 2,
+          kind: 'text',
+          resource_name: 'Translation Notes',
+          label: 'Genesis 1:1 (#1)',
+          status: 'completed',
+        },
+      ],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+
+    expect(await columnExists(db, 'download_queue', 'serialized_content')).toBe(
+      false,
+    );
+
+    await runMigrations(db);
+
+    expect(await columnExists(db, 'download_queue', 'serialized_content')).toBe(
+      true,
+    );
+    expect(await columnExists(db, 'download_queue', 'resource_id')).toBe(true);
+    expect(await columnExists(db, 'download_queue', 'book_code')).toBe(true);
+    expect(await columnExists(db, 'download_queue', 'start_chapter')).toBe(
+      true,
+    );
+    expect(await columnExists(db, 'download_queue', 'end_chapter')).toBe(true);
+    expect(await columnExists(db, 'download_queue', 'verse_start')).toBe(true);
+    expect(await columnExists(db, 'download_queue', 'verse_end')).toBe(true);
+
+    // Existing row's id rewritten and old id preserved as resource_id.
+    const row = db._tables.get('download_queue')!.rows[0];
+    expect(row.resource_id).toBe('dlq_1');
+    expect(row.id).toBe('462-206-dlq_1');
+
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
+  });
+
+  it('is a no-op when there is no download_queue table', async () => {
+    const db = createFakeDb(17);
+    await expect(scopeDownloadQueueIdentity(db)).resolves.not.toThrow();
   });
 });

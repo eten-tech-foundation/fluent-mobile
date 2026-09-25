@@ -505,6 +505,10 @@ async function markBibleTextsServerIdsRemap(db: SqlExecutor): Promise<void> {
  * Scope `download_queue` identity by project + user (#504).
  *
  * - Adds `resource_id` (the raw manifest member id used for status lookups).
+ * - Adds `serialized_content` for installs that reached v8 before this column
+ *   existed there — `applyDownloadQueueTable` (v8) does not re-run on already-
+ *   upgraded devices, so it must also be added here or enqueueDownloadItems
+ *   fails with "no column named serialized_content" on every upgraded install.
  * - Rewrites existing `id`s to `<projectId>-<userId>-<oldId>` and keeps the
  *   old id in `resource_id`. Both assignments read the OLD row values, and
  *   the `resource_id IS NULL` guard makes the rewrite run once per row.
@@ -513,17 +517,21 @@ async function markBibleTextsServerIdsRemap(db: SqlExecutor): Promise<void> {
  *   (user, project, kind, resource_name), so that index made
  *   `ON CONFLICT DO NOTHING` silently drop every member after the first.
  *   Uniqueness now comes from the scoped primary key.
- * - Adds a plain lookup index for status reads.
+ * - Replaces it with a plain lookup index (`idx_dq_project_user_resource`)
+ *   plus a scope index (`idx_dq_scope`) for book/chapter lookups.
  * - Adds nullable scope columns (`book_code`, `start_chapter`, `end_chapter`,
  *   `verse_start`, `verse_end`) so downloaded resources can be mapped back to
  *   book/chapter/verse offline. NULL verse fields mean chapter-level.
  */
-async function scopeDownloadQueueIdentity(db: SqlExecutor): Promise<void> {
+export async function scopeDownloadQueueIdentity(
+  db: SqlExecutor,
+): Promise<void> {
   const info = await db.execute('PRAGMA table_info(download_queue)');
   if (!info.rows.length) {
     return;
   }
   await addColumnIfMissing(db, 'download_queue', 'resource_id', 'TEXT');
+  await addColumnIfMissing(db, 'download_queue', 'serialized_content', 'TEXT');
   await addColumnIfMissing(db, 'download_queue', 'book_code', 'TEXT');
   await addColumnIfMissing(db, 'download_queue', 'start_chapter', 'INTEGER');
   await addColumnIfMissing(db, 'download_queue', 'end_chapter', 'INTEGER');

@@ -47,16 +47,18 @@ describe('resourcesInventory', () => {
     expect(
       getResourcesInventoryStatus(
         projectId,
+        userId,
         manifestEntryToResourceId(1, 'Translation Notes', 'text'),
       ),
     ).toBe('available');
 
-    await refreshPrepareOfflineInventory(projectId);
+    await refreshPrepareOfflineInventory(projectId, userId);
 
     // Still available: nothing in the queue for this project.
     expect(
       getResourcesInventoryStatus(
         projectId,
+        userId,
         manifestEntryToResourceId(1, 'Translation Notes', 'text'),
       ),
     ).toBe('available');
@@ -66,7 +68,7 @@ describe('resourcesInventory', () => {
     const listener = jest.fn();
     const unsubscribe = subscribeResourcesInventory(listener);
 
-    await refreshPrepareOfflineInventory(projectId);
+    await refreshPrepareOfflineInventory(projectId, userId);
 
     expect(listener).toHaveBeenCalledTimes(1);
     unsubscribe();

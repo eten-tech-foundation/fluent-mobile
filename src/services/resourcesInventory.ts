@@ -13,9 +13,10 @@ const log = logger.create('resourcesInventory');
 
 export function getResourcesInventoryStatus(
   projectId: number,
+  userId: number,
   resourceId: string,
 ): PrepareOfflineResourceStatus {
-  return getPrepareOfflineResourceStatus(projectId, resourceId);
+  return getPrepareOfflineResourceStatus(projectId, userId, resourceId);
 }
 
 export function subscribeResourcesInventory(

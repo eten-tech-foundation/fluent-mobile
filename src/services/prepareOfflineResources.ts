@@ -13,7 +13,11 @@ import type { DownloadQueueStatus } from '../types/download/types';
 export type PrepareOfflineInventoryListener = () => void;
 
 const inventoryListeners = new Set<PrepareOfflineInventoryListener>();
-const statusMapCache = new Map<number, Map<string, DownloadQueueStatus>>();
+const statusMapCache = new Map<string, Map<string, DownloadQueueStatus>>();
+
+function cacheKey(projectId: number, userId: number): string {
+  return `${projectId}-${userId}`;
+}
 
 function mapQueueStatusToResourceStatus(
   status: DownloadQueueStatus | undefined,
@@ -53,17 +57,19 @@ function statusMapsEqual(
 }
 
 /**
- * Refresh the cached status map for a project from `download_queue` and
+ * Refresh the cached status map for a project+user from `download_queue` and
  * notify subscribers. Call after any queue-mutating operation for the
  * project (enqueue, worker progress/completion/failure) so status readers
  * see current data.
  */
 export async function refreshPrepareOfflineInventory(
   projectId: number,
+  userId: number,
 ): Promise<void> {
-  const map = await getDownloadQueueStatusMap(projectId);
-  const previousMap = statusMapCache.get(projectId);
-  statusMapCache.set(projectId, map);
+  const map = await getDownloadQueueStatusMap(projectId, userId);
+  const key = cacheKey(projectId, userId);
+  const previousMap = statusMapCache.get(key);
+  statusMapCache.set(key, map);
   if (!statusMapsEqual(previousMap, map)) {
     notifyInventoryListeners();
   }
@@ -311,12 +317,20 @@ export async function hydratePrepareOfflineTextContent(
   });
 }
 
-/** On-device / in-flight status for one resource row. Reads the last-refreshed cache; call refreshPrepareOfflineInventory(projectId) after queue mutations to keep it current. */
+/**
+ * On-device / in-flight status for one resource row, scoped to the current
+ * user. Reads the last-refreshed cache; call
+ * refreshPrepareOfflineInventory(projectId, userId) after queue mutations to
+ * keep it current.
+ */
 export function getPrepareOfflineResourceStatus(
   projectId: number,
+  userId: number,
   resourceId: string,
 ): PrepareOfflineResourceStatus {
-  const status = statusMapCache.get(projectId)?.get(resourceId);
+  const status = statusMapCache
+    .get(cacheKey(projectId, userId))
+    ?.get(resourceId);
   return mapQueueStatusToResourceStatus(status);
 }
 
@@ -330,12 +344,15 @@ export function subscribePrepareOfflineInventory(
   };
 }
 
-/** Clear cached inventory for a project (e.g. account switch); caller should refresh after. */
-export function clearPrepareOfflineSessionInventory(projectId?: number): void {
-  if (projectId === undefined) {
+/** Clear cached inventory for a project+user (e.g. account switch); caller should refresh after. */
+export function clearPrepareOfflineSessionInventory(
+  projectId?: number,
+  userId?: number,
+): void {
+  if (projectId === undefined || userId === undefined) {
     statusMapCache.clear();
   } else {
-    statusMapCache.delete(projectId);
+    statusMapCache.delete(cacheKey(projectId, userId));
   }
   notifyInventoryListeners();
 }
