@@ -195,20 +195,20 @@ The run is split across two environments:
 | C.14 | Dev | Next / Previous | Jump pericope to pericope; disabled at chapter bounds (#540) | As expected | Pass |
 | C.15 | Dev | Source text in pericope mode | All verses of the pericope (#540) | As expected | Pass |
 | C.16 | Dev | Draft waveform | Pericope: continuous, no ticks; Verse: ticks (#409) | No tick marks on the draft waveform in either mode. Pericope mode matches (continuous). Verse-mode ticks were deferred in PR #467 because every verse take is single-verse audio, so there is no boundary to mark; PR #467 said it would become buildable once #410 landed (it has, PR #473), and no follow-up was filed. See Open Questions | Pass |
-| D.17 | Dev | Record a pericope take | Label `Take N - Pericope - vv. X-Y`, full range, not truncated (format #410; "never truncated" #411) | Mark 1:1–13 pericope take: the label is cut to `Take N - Pericope - vv. …` on the phone width (`numberOfLines={1}` beside the timer in `DraftTakeRow`) | **Fail** → Candidate 6 |
+| D.17 | Dev | Record a pericope take | Label `Take N - Pericope - vv. X-Y`, full range, not truncated (format #410; "never truncated" #411) | Mark 1:1–13 pericope take: the label is cut to `Take N - Pericope - vv. …` on the phone width (`numberOfLines={1}` beside the timer in `DraftTakeRow`) | **Fail** → Gap 6 |
 | D.18 | Dev | Switch to Verse mode | Pericope take on every spanned verse, same label (#410, #411) | As expected | Pass |
 | D.19 | Dev | 5-take cap with a shared pericope take | Shared take counts on each verse; Record New Take disabled at 5 (#410) | As expected | Pass |
 | D.20 | Dev | Delete the shared take from one verse | Removed from every verse (#410) | As expected | Pass |
 | E.21 | Dev | Verse takes viewed in pericope mode | One `Stitched` row, plays in order, no delete (#411) | As expected; the #571 row misalignment was not reported in this run | Pass |
 | E.22 | Dev | Partial verse coverage in pericope mode | Plays recorded verses in order and stops; Bible shows amber icon (#408, #411) | As expected | Pass |
 | F.23a | Dev | Advance CTA, pericope takes on every pericope (do not tap) | CTA only on the last pericope, once all are recorded (#542) | CTA appears only on the last pericope once every pericope has a take | Pass |
-| F.23b | Local | Advance a chapter drafted only with pericope takes | Chapter does not reach Peer Check without its audio on the server | CTA appeared only on the last pericope (matches #542). Exodus 5 advanced; `chapter_assignments.chapter_status = peer_check` with no `verse_audio_recordings` rows for Exodus 5–6 | **Fail** → Candidate 2 |
-| F.24 | Dev | Chapter fully recorded verse-by-verse, then pericope mode (do not tap) | Bible shows checks; CTA on last pericope (see Open Questions) | Bible tab shows every pericope as recorded (green check); no advance CTA on the last pericope | **Fail** → Candidate 3 |
-| G.25 | Local | Pericope take → Sync page | Take uploads | The take was recorded (the only pending take was a pericope take). Sync header shows "Online · some takes can't upload", red "1 recording can't upload yet — missing bible text or pericope-only takes.", and Sync Now is disabled | **Fail** → Candidate 1 |
-| G.26 | Local | Pericope take in the backend database | Audio row exists for the take's verses | No `verse_audio_recordings` rows for Exodus 5–6 | **Fail** → Candidate 1 |
+| F.23b | Local | Advance a chapter drafted only with pericope takes | Chapter does not reach Peer Check without its audio on the server | CTA appeared only on the last pericope (matches #542). Exodus 5 advanced; `chapter_assignments.chapter_status = peer_check` with no `verse_audio_recordings` rows for Exodus 5–6 | **Fail** → Gap 2 |
+| F.24 | Dev | Chapter fully recorded verse-by-verse, then pericope mode (do not tap) | Bible shows checks; CTA on last pericope (see Open Questions) | Bible tab shows every pericope as recorded (green check); no advance CTA on the last pericope | **Fail** → Gap 3 |
+| G.25 | Local | Pericope take → Sync page | Take uploads | The take was recorded (the only pending take was a pericope take). Sync header shows "Online · some takes can't upload", red "1 recording can't upload yet — missing bible text or pericope-only takes.", and Sync Now is disabled | **Fail** → Gap 1 |
+| G.26 | Local | Pericope take in the backend database | Audio row exists for the take's verses | No `verse_audio_recordings` rows for Exodus 5–6 | **Fail** → Gap 1 |
 | H.27 | Dev | Airplane mode, pericope mode | Cards, titles, navigation, capture and stitched playback work offline | As expected | Pass |
 | H.28 | Dev | Kill and reopen offline in pericope mode | Mode and pericope data retained | As expected | Pass |
-| I.29a | Local | Project with `pericope_set_id = NULL` | Clear pericope behavior or a visible explanation; CTA still reachable | Genesis 1 with Settings on Pericope: Bible tab shows verse rows and Record shows a verse reference, with no message explaining that pericopes are unavailable. CTA step not run. Per code, a NULL set uses verse rules for the CTA; the hidden CTA applies only to a set id with no local rows (Code Review Notes) | **Fail** → Candidate 5 |
+| I.29a | Local | Project with `pericope_set_id = NULL` | Clear pericope behavior or a visible explanation; CTA still reachable | Genesis 1 with Settings on Pericope: Bible tab shows verse rows and Record shows a verse reference, with no message explaining that pericopes are unavailable. CTA step not run. Per code, a NULL set uses verse rules for the CTA; the hidden CTA applies only to a set id with no local rows (Code Review Notes) | **Fail** → Gap 5 |
 | I.29b | Local | Project on an unbundled set (id ≠ 1, 2) | Pericopes hydrate from `GET /pericope-sets/{id}` | Not run: needs a fabricated set in the local DB; the gap is established from code (endpoint on fluent-api `acc1404`, no mobile client) | Skipped |
 
 ## Offline and Synchronization Results
@@ -223,70 +223,164 @@ specific to this feature.
 | Feature used while offline | Pass | H.27 |
 | App closed and reopened offline | Pass | H.28 |
 | Device returns online | Fail | G.25 — pericope takes stay pending and Sync Now is disabled; verse takes → #530 |
-| Offline changes synchronize | Fail | G.25–G.26 — pericope takes never upload (Candidate 1) |
+| Offline changes synchronize | Fail | G.25–G.26 — pericope takes never upload (Gap 1) |
 | Conflicting changes are handled | N/A | #256 (open), sibling audits |
 
 ## Gaps Identified
 
-Each confirmed gap has a task document under [`tickets/`](./tickets/).
-One code-level candidate (cross-chapter text from an unassigned chapter) was
-not reproduced on device (B.12) and stays in Code Review Notes. Candidate 4
-is confirmed from code under the epic's rule (API ready, mobile not
-wired).
-
-Searched for existing issues before drafting (pericope, pericope upload,
+Existing issues were searched before filing (pericope, pericope upload,
 range take, pericope take, verse toggle, drafting unit, granularity, stitch,
-cross-granularity, mixed-mode).
+cross-granularity, mixed-mode). All six gaps are new issues, filed as
+sub-issues of #534 (see each gap's Development task). One code-level
+candidate (cross-chapter text from an unassigned chapter) was not reproduced
+on device (B.12) and stays in Code Review Notes.
 
-### Candidate 1: Pericope takes never upload to the server
+### Gap 1: Pericope takes never upload to the server
 
 **Severity:** High (drafted audio stays on the device)  
 **Launch blocker:** To be decided with product  
 **Related issue:** [#410](https://github.com/eten-tech-foundation/fluent-mobile/issues/410) (API gap noted, no follow-up filed)  
-**Development task:** [#584](https://github.com/eten-tech-foundation/fluent-mobile/issues/584) · [tickets/upload-pericope-takes.md](./tickets/upload-pericope-takes.md) — tracked in fluent-mobile for now; the fluent-api task (range-take upload) will be opened at implementation time, pending confirmation with the API owner  
-**Evidence:** G.25, G.26
+**Development task:** [#584](https://github.com/eten-tech-foundation/fluent-mobile/issues/584) — tracked in fluent-mobile for now; the fluent-api task (range-take upload) will be opened at implementation time, pending confirmation with the API owner
 
-### Candidate 2: Chapter can advance while its pericope takes cannot upload
+**Description:**  
+Takes recorded in pericope mode (#410) are stored locally with
+`granularity = 'pericope'` and a verse range, but they never upload. The
+upload worker and pending counts only accept verse takes
+(`UPLOADABLE_PENDING_WHERE` in `src/db/queries.ts`), and fluent-api's
+verse-audio routes are keyed by a single `bibleTextId`. When every pending
+take is a pericope take, Sync Now is also disabled (`noUploadableChapters`
+in `SyncScreen.tsx`), so the user cannot pull server changes from Sync Now
+either.
+
+**Steps to reproduce:**
+
+1. Settings → Drafting unit → Pericope, then record a pericope take.
+2. Go online and open Sync.
+3. Check the chapter's audio in the backend database or on web.
+
+**Expected behavior:** the take uploads and the server keeps its
+granularity and verse range.  
+**Actual behavior:** "Online · some takes can't upload", "1 recording can't
+upload yet — missing bible text or pericope-only takes.", Sync Now disabled,
+and no `verse_audio_recordings` rows.  
+**Evidence:** device run, G.25 and G.26 (local fluent-api).
+
+### Gap 2: Chapter can advance while its pericope takes cannot upload
 
 **Severity:** High  
 **Launch blocker:** To be decided with product  
-**Related issue:** [#542](https://github.com/eten-tech-foundation/fluent-mobile/issues/542)  
-**Development task:** [#585](https://github.com/eten-tech-foundation/fluent-mobile/issues/585) · [tickets/guard-advance-with-unuploadable-pericope-takes.md](./tickets/guard-advance-with-unuploadable-pericope-takes.md)  
-**Evidence:** F.23b, G.25
+**Related issue:** [#542](https://github.com/eten-tech-foundation/fluent-mobile/issues/542), [#584](https://github.com/eten-tech-foundation/fluent-mobile/issues/584)  
+**Development task:** [#585](https://github.com/eten-tech-foundation/fluent-mobile/issues/585)
 
-### Candidate 3: Verse takes do not count toward pericope-mode completeness
+**Description:**  
+In pericope mode the stage-advance CTA appears once every pericope has a
+take (#542). `confirmStageAdvancement` (`src/services/stageAdvance.ts`) then
+submits the chapter without checking upload state, so a chapter drafted
+only with pericope takes reaches Peer Check with no audio on the server.
+
+**Steps to reproduce:**
+
+1. In pericope mode, record a pericope take for every pericope of a chapter.
+2. On the last pericope, use the stage-advance CTA.
+3. Check the chapter status and audio in the backend database.
+
+**Expected behavior:** the chapter does not advance while its selected takes
+cannot reach the server, or the translator is warned.  
+**Actual behavior:** Exodus 5 moved to `peer_check` with no audio rows.  
+**Evidence:** device run, F.23b and G.25 (local fluent-api).
+
+### Gap 3: Verse takes do not count toward pericope-mode completeness
 
 **Severity:** Medium  
 **Launch blocker:** No  
 **Related issue:** [#542](https://github.com/eten-tech-foundation/fluent-mobile/issues/542), [#411](https://github.com/eten-tech-foundation/fluent-mobile/issues/411)  
-**Development task:** [#586](https://github.com/eten-tech-foundation/fluent-mobile/issues/586) · [tickets/pericope-completeness-counts-verse-takes.md](./tickets/pericope-completeness-counts-verse-takes.md)  
-**Evidence:** F.24
+**Development task:** [#586](https://github.com/eten-tech-foundation/fluent-mobile/issues/586)
 
-### Candidate 4: Mobile does not use the set-level pericope API
+**Description:**  
+`isChapterFullyRecordedPericopeMode` (`src/db/queries.ts`) counts a pericope
+as recorded only when a selected take's range equals it exactly, so a
+pericope recorded verse by verse (the stitched row) does not count. The
+Bible tab (`unitRecordedStatus`) counts verse coverage and shows it as
+recorded. Whether verse coverage should count is a product decision (see
+Open Questions).
+
+**Steps to reproduce:**
+
+1. In verse mode, record every verse of a chapter.
+2. Switch to pericope mode and open the last pericope on Record.
+
+**Expected behavior:** the Bible tab status and the advance gate agree.  
+**Actual behavior:** every card shows a green check, but there is no advance
+CTA.  
+**Evidence:** device run, F.24.
+
+### Gap 4: Mobile does not use the set-level pericope API
 
 **Severity:** Low (follow-up task; no user impact while projects use the bundled FCBH/FIA sets)  
 **Launch blocker:** No  
 **Related issue:** [#438](https://github.com/eten-tech-foundation/fluent-mobile/issues/438), [fluent-api#309](https://github.com/eten-tech-foundation/fluent-api/issues/309)  
-**Development task:** [#587](https://github.com/eten-tech-foundation/fluent-mobile/issues/587) · [tickets/wire-pericope-set-api.md](./tickets/wire-pericope-set-api.md)  
-**Evidence:** Code Review Notes (API ready, mobile not wired); not device-tested (I.29b skipped). Filed as a Task: the unfinished network half of #438, not a visible defect.
+**Development task:** [#587](https://github.com/eten-tech-foundation/fluent-mobile/issues/587) (Task)
 
-### Candidate 5: Pericope mode without local set data falls back silently
+**Description:**  
+`syncPericopes` (`src/services/sync.ts`) seeds only the APK-bundled FCBH
+(id 1) and FIA (id 2) sets; any other set logs "blocked on network path
+(fluent-api#309)" and gets no pericope data. `GET /pericope-sets/{id}` with
+ETag/304 is now on fluent-api `main` (PR #345), but mobile has no client for
+it. This is the unfinished network half of #438, not a visible defect today.
+
+**Expected behavior:** a set that is not bundled, or has a newer server
+version, hydrates with one set-level request (#438).  
+**Actual behavior:** no request is made; pericope mode shows verses.  
+**Evidence:** code review only; I.29b skipped (it needs a fabricated set).
+
+### Gap 5: Pericope mode without local set data falls back silently
 
 **Severity:** Medium  
 **Launch blocker:** No  
 **Related issue:** [#409](https://github.com/eten-tech-foundation/fluent-mobile/issues/409), [#542](https://github.com/eten-tech-foundation/fluent-mobile/issues/542)  
-**Development task:** [#588](https://github.com/eten-tech-foundation/fluent-mobile/issues/588) · [tickets/pericope-mode-without-set-data.md](./tickets/pericope-mode-without-set-data.md)  
-**Evidence:** I.29a
+**Development task:** [#588](https://github.com/eten-tech-foundation/fluent-mobile/issues/588)
 
-### Candidate 6: Pericope take label is truncated on the Record tab
+**Description:**  
+When the project has no `pericope_set_id`, or its set has no local rows, the
+Bible and Record tabs fall back to verse mode with no explanation
+(`effectiveUnit` in `src/hooks/useBibleTabUnits.ts`). From code, when a set
+id exists but has no rows, `isOnLastUnit` (`RecordTab.tsx`) never becomes
+true, so the stage-advance CTA never shows; this part was not
+device-tested.
+
+**Steps to reproduce:**
+
+1. Set the project's `pericope_set_id` to NULL.
+2. Settings → Drafting unit → Pericope and open a chapter.
+
+**Expected behavior:** the translator can tell pericopes are unavailable
+for this project.  
+**Actual behavior:** verse rows and a verse title, with no message.  
+**Evidence:** device run, I.29a (local fluent-api).
+
+### Gap 6: Pericope take label is truncated on the Record tab
 
 **Severity:** Low  
 **Launch blocker:** No  
 **Related issue:** [#410](https://github.com/eten-tech-foundation/fluent-mobile/issues/410), [#474](https://github.com/eten-tech-foundation/fluent-mobile/issues/474) (closed as opened by mistake)  
-**Development task:** [#589](https://github.com/eten-tech-foundation/fluent-mobile/issues/589) · [tickets/pericope-take-label-truncation.md](./tickets/pericope-take-label-truncation.md)  
-**Evidence:** D.17 (screenshot to attach on the issue)
+**Development task:** [#589](https://github.com/eten-tech-foundation/fluent-mobile/issues/589)
 
-Existing open issues re-checked on device (no new ticket unless the behavior
+**Description:**  
+The take label (`Take N - Pericope - vv. X-Y`) uses `numberOfLines={1}`
+beside the playback timer in `DraftTakeRow` / `SharedTakeRow`, so the verse
+range is cut on a phone. #411 requires the range to be "never truncated".
+
+**Steps to reproduce:**
+
+1. In pericope mode, record a take for Mark 1:1–13.
+2. Read the take card label on the Record tab.
+
+**Expected behavior:** the full label is readable and the timer stays
+visible.  
+**Actual behavior:** `Take N - Pericope - vv. …`.  
+**Evidence:** device run, D.17 (screenshot on #589).
+
+Existing open issues re-checked on device (no new issue unless the behavior
 differs): [#408](https://github.com/eten-tech-foundation/fluent-mobile/issues/408)
 source-audio scrub (B.9), [#564](https://github.com/eten-tech-foundation/fluent-mobile/issues/564)
 unit tap (B.10), [#571](https://github.com/eten-tech-foundation/fluent-mobile/issues/571)
@@ -301,14 +395,14 @@ stitched row alignment (E.21, not reported).
   intro says a chapter "should not advance until every verse has a
   recording", which supports counting verse coverage; #411 treats a stitched
   row as one playable recording. The Bible tab already shows it as recorded
-  (Candidate 3).
+  (Gap 3).
 - **Account sync of the drafting unit (#407).** Neither mobile, fluent-web
   nor fluent-api stores the preference on the account. Keep it per device,
   or add a key to `/self/settings` on both clients?
 - **Pericope takes and peer check.** Until range-take upload exists, should
   pericope capture be allowed at all in a build used for real drafting?
 - **Projects without a pericope set.** Should the Pericope option be hidden or
-  explained when the project has no set (Candidate 5)?
+  explained when the project has no set (Gap 5)?
 - **Titles for split FIA pericopes.** The bundled FIA data titles only the
   first part of a split pericope (Mark 29a has a title; 29b, 8:31–9:1, does
   not; 13 of 67 Mark pericopes are untitled). Should parts b/c/d show the
@@ -328,13 +422,13 @@ Pericope display works on device: the Settings toggle, Bible cards with
 range titles and recorded status, Record title and pericope navigation,
 mixed-mode labels, the shared 5-take cap, stitched playback and offline use
 all pass. The main risk is that pericope takes never reach the server
-(Candidate 1), yet a chapter drafted with them can still be sent to Peer
-Check (Candidate 2); whether pericope capture is acceptable for launch
-before range-take upload exists is a product decision, and Candidate 1 needs
+(Gap 1), yet a chapter drafted with them can still be sent to Peer
+Check (Gap 2); whether pericope capture is acceptable for launch
+before range-take upload exists is a product decision, and Gap 1 needs
 a fluent-api change. Pericope-mode completeness disagrees with the Bible tab
-status (Candidate 3). Projects on sets that are not bundled, or with no set,
-get a silent verse view (Candidates 4 and 5). Long pericope labels are
-truncated (Candidate 6). Unit tap does not open Record (B.10, existing #564;
+status (Gap 3). Projects on sets that are not bundled, or with no set,
+get a silent verse view (Gaps 4 and 5). Long pericope labels are
+truncated (Gap 6). Unit tap does not open Record (B.10, existing #564;
 fix in PR #573). Source-audio scrubbing (B.9) was inconclusive and remains
 tracked on #408.
 
