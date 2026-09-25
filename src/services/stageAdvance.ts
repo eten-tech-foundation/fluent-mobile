@@ -12,12 +12,14 @@ const log = logger.create('stageAdvance');
 export async function confirmStageAdvancement(params: {
   chapterAssignmentId: number;
   destination: StageAdvanceDestination;
+  assignPeerCheckerId?: number;
 }): Promise<void> {
-  const { chapterAssignmentId, destination } = params;
+  const { chapterAssignmentId, destination, assignPeerCheckerId } = params;
 
   await updateChapterAssignmentStatusLocally(
     chapterAssignmentId,
     destination.nextStatus,
+    assignPeerCheckerId,
   );
 
   try {
