@@ -5,6 +5,8 @@ import {
   setImagesMapsLoadFailureForTests,
 } from './imagesMaps';
 import { FluentAPI } from './api';
+import { findDownloadedRows } from './offlineResources';
+import type { DownloadQueueItem } from '../types/download/types';
 
 jest.mock('./api', () => ({
   FluentAPI: {
@@ -12,10 +14,31 @@ jest.mock('./api', () => ({
   },
 }));
 
+jest.mock('./offlineResources', () => ({
+  findDownloadedRows: jest.fn(),
+}));
+
+const mockFindRows = findDownloadedRows as jest.MockedFunction<
+  typeof findDownloadedRows
+>;
+
 const getTranslationImages =
   FluentAPI.getTranslationImages as jest.MockedFunction<
     typeof FluentAPI.getTranslationImages
   >;
+
+function downloadedRow(
+  overrides: Partial<DownloadQueueItem> = {},
+): DownloadQueueItem {
+  return {
+    id: '42-7-img-mrk-14',
+    tier: 3,
+    label: 'Jerusalem region map',
+    progress: 1,
+    status: 'completed',
+    ...overrides,
+  };
+}
 
 const sampleItem: ApiTranslationImageItem = {
   id: 279999,
@@ -46,9 +69,15 @@ describe('parseTranslationImageItem', () => {
 });
 
 describe('loadImagesMapsForUnit', () => {
+  beforeEach(() => {
+    // Default: nothing downloaded → the API path is exercised.
+    mockFindRows.mockResolvedValue(null);
+  });
+
   afterEach(() => {
     setImagesMapsLoadFailureForTests(false);
     getTranslationImages.mockReset();
+    mockFindRows.mockReset();
   });
 
   it('returns [] when projectId is null', async () => {
@@ -120,5 +149,55 @@ describe('loadImagesMapsForUnit', () => {
         verseNumber: 1,
       }),
     ).rejects.toThrow(/Failed to load Images & Maps/);
+  });
+
+  describe('download-first', () => {
+    it('uses downloaded images and skips the API, even when online', async () => {
+      mockFindRows.mockResolvedValue([
+        downloadedRow({ localFilePath: 'file:///downloads/map.png' }),
+      ]);
+      getTranslationImages.mockResolvedValue({ items: [sampleItem] });
+
+      await expect(
+        loadImagesMapsForUnit({
+          projectId: 7,
+          userId: 42,
+          isOnline: true,
+          bookCode: 'MRK',
+          chapterNumber: 14,
+          verseNumber: 2,
+        }),
+      ).resolves.toEqual([
+        {
+          id: 'img-local-42-7-img-mrk-14',
+          title: 'Jerusalem region map',
+          uri: 'file:///downloads/map.png',
+        },
+      ]);
+      expect(getTranslationImages).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the API when nothing is downloaded and online', async () => {
+      mockFindRows.mockResolvedValue(null);
+      getTranslationImages.mockResolvedValue({ items: [sampleItem] });
+
+      await expect(
+        loadImagesMapsForUnit({
+          projectId: 7,
+          userId: 42,
+          isOnline: true,
+          bookCode: 'MRK',
+          chapterNumber: 14,
+          verseNumber: 2,
+        }),
+      ).resolves.toEqual([
+        {
+          id: 'img-api-279999',
+          title: 'Locations in the Book of Mark',
+          uri: 'https://cdn.aquifer.bible/example.png',
+        },
+      ]);
+      expect(getTranslationImages).toHaveBeenCalledTimes(1);
+    });
   });
 });

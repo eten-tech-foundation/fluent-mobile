@@ -70,6 +70,7 @@ export default function PrepareForOfflineScreen() {
     canDownload,
     manifestLoading,
     manifestError,
+    manifestContexts,
     isItemSelected,
     toggleItemSelected,
   } = usePrepareOfflineResources({
@@ -80,6 +81,18 @@ export default function PrepareForOfflineScreen() {
     selectedCount,
     isAssignedUser,
   });
+
+  const bibleTextChapters = useMemo(
+    () =>
+      chapters
+        .filter(c => selectedIds.has(c.id))
+        .map(c => ({
+          bibleId: c.bibleId,
+          bookId: c.bookId,
+          chapterNumber: c.chapterNumber,
+        })),
+    [chapters, selectedIds],
+  );
 
   const {
     session,
@@ -98,6 +111,8 @@ export default function PrepareForOfflineScreen() {
     catalog,
     selectedItems,
     canDownload,
+    bibleTextChapters,
+    manifestContexts,
   });
 
   const goBack = useCallback(() => {

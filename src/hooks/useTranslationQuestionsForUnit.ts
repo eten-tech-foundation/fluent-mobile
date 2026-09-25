@@ -28,13 +28,21 @@ export type UseTranslationQuestionsForUnitParams =
 /**
  * Section-scoped TQ loader (#190). Failures stay local — do not block Notes / Images.
  * Ignores stale responses when the active unit changes mid-load.
- * Loads via fluent-api translation-resources (fluent-api #274).
+ * Downloaded rows win; fluent-api translation-resources (fluent-api #274)
+ * is only hit when nothing usable is downloaded and the device is online.
  */
 export function useTranslationQuestionsForUnit(
   params: UseTranslationQuestionsForUnitParams,
 ) {
-  const { projectId, bookCode, chapterNumber, verseNumber, languageCode } =
-    params;
+  const {
+    projectId,
+    userId,
+    isOnline,
+    bookCode,
+    chapterNumber,
+    verseNumber,
+    languageCode,
+  } = params;
 
   const [tracked, setTracked] = useState<TrackedLoadState>({
     projectId,
@@ -57,6 +65,8 @@ export function useTranslationQuestionsForUnit(
     try {
       const questions = await loadTranslationQuestionsForUnit({
         projectId,
+        userId,
+        isOnline,
         bookCode,
         chapterNumber,
         verseNumber,
@@ -94,7 +104,15 @@ export function useTranslationQuestionsForUnit(
         },
       });
     }
-  }, [projectId, bookCode, chapterNumber, verseNumber, languageCode]);
+  }, [
+    projectId,
+    userId,
+    isOnline,
+    bookCode,
+    chapterNumber,
+    verseNumber,
+    languageCode,
+  ]);
 
   useEffect(() => {
     void load();

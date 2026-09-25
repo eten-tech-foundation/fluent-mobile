@@ -861,8 +861,8 @@ describe('downloadQueueRepository', () => {
       },
     ]);
 
-    expect(userOneId).toBe('user-7-source-bible-text');
-    expect(userTwoId).toBe('user-99-source-bible-text');
+    expect(userOneId).toBe('1-7-user-7-source-bible-text');
+    expect(userTwoId).toBe('1-99-user-99-source-bible-text');
     expect(__getDownloadQueueRows()).toHaveLength(2);
   });
 

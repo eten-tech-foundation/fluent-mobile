@@ -6,10 +6,6 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import PrepareForOfflineScreen from './PrepareForOfflineScreen';
-import {
-  resetMockPrepareOfflineInventory,
-  setPrepareOfflineMockInventoryScenario,
-} from '../../mocks/prepareOffline';
 
 const mockHandleDownload = jest.fn();
 
@@ -58,6 +54,79 @@ jest.mock('../../hooks/useProjectsSummary', () => ({
 
 jest.mock('../../hooks/usePrepareOfflineSelection', () => ({
   usePrepareOfflineSelection: jest.fn(),
+}));
+
+// Mock the resources hook (data layer) so the screen test does not hit the
+// real manifest fetch / DB context (#504 aggregated catalog fixture).
+function mockCatalogItem(
+  tier: 1 | 2 | 3,
+  groupName: string,
+  kind: 'text' | 'audio' | 'image',
+) {
+  return {
+    id: `${groupName}:${kind}`,
+    tier,
+    kind,
+    groupName,
+    label: kind === 'text' ? 'Text' : kind === 'audio' ? 'Audio' : 'Image',
+    bytes: 1024,
+    status: 'selected' as const,
+    manifestMembers: [],
+  };
+}
+
+const mockCatalogItems = [
+  mockCatalogItem(1, 'Source Bible', 'text'),
+  mockCatalogItem(1, 'Source Bible', 'audio'),
+  mockCatalogItem(2, 'Translation Words', 'text'),
+  mockCatalogItem(3, 'Reference Images', 'image'),
+];
+
+jest.mock('../../hooks/usePrepareOfflineResources', () => ({
+  usePrepareOfflineResources: jest.fn(
+    ({ selectedCount }: { selectedCount: number }) => {
+      const emptyCatalog = {
+        items: [],
+        groups: [],
+      };
+      // Real hook returns an empty catalog (and nothing to download) when no
+      // chapters are selected — regardless of whether the user is assigned.
+      const hasSelection = selectedCount > 0;
+      const catalog = hasSelection
+        ? {
+            items: mockCatalogItems,
+            groups: [
+              {
+                groupName: 'Source Bible',
+                items: mockCatalogItems.slice(0, 2),
+              },
+              {
+                groupName: 'Translation Words',
+                items: [mockCatalogItems[2]],
+              },
+              {
+                groupName: 'Reference Images',
+                items: [mockCatalogItems[3]],
+              },
+            ],
+          }
+        : emptyCatalog;
+
+      return {
+        catalog,
+        effectiveCatalog: catalog,
+        deselectedItemIds: new Set<string>(),
+        totalBytes: hasSelection ? 4096 : 0,
+        pendingBytes: hasSelection ? 4096 : 0,
+        selectedItems: catalog.items,
+        canDownload: hasSelection,
+        manifestLoading: false,
+        manifestError: null,
+        isItemSelected: () => true,
+        toggleItemSelected: jest.fn(),
+      };
+    },
+  ),
 }));
 
 jest.mock('../../hooks/usePrepareOfflineDownload', () => ({
@@ -126,8 +195,6 @@ describe('PrepareForOfflineScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseLocalSearchParams.mockReturnValue({});
-    resetMockPrepareOfflineInventory();
-    setPrepareOfflineMockInventoryScenario('fresh');
     usePrepareOfflineSelection.mockImplementation(
       (projectId: number | null) => {
         if (!projectId) {
@@ -289,6 +356,61 @@ describe('PrepareForOfflineScreen', () => {
       expandedBookIds: new Set([1]),
       toggleBookExpanded: jest.fn(),
       accordionTitle: 'Selected chapters (0)',
+      toggleChapter: jest.fn(),
+      toggleBook: jest.fn(),
+      isBookFullySelected: () => false,
+      retry: jest.fn(),
+    }));
+
+    render(<PrepareForOfflineScreen />);
+
+    fireEvent.press(screen.getByText('Luke'));
+
+    await waitFor(() => {
+      const button = screen.getByTestId('prepare-offline-download-button');
+      expect(button.props.accessibilityState?.disabled).toBe(true);
+    });
+
+    expect(screen.queryByText('RESOURCES TO DOWNLOAD')).toBeNull();
+    expect(mockHandleDownload).not.toHaveBeenCalled();
+  });
+
+  it('shows disabled download button for assigned users who deselect every chapter', async () => {
+    usePrepareOfflineSelection.mockImplementation(() => ({
+      books: [
+        {
+          bookId: 1,
+          bookName: 'Genesis',
+          chapters: [
+            {
+              id: 100,
+              bookId: 1,
+              bookName: 'Genesis',
+              chapterNumber: 1,
+              assignedUserId: 42,
+            },
+          ],
+        },
+      ],
+      chapters: [
+        {
+          id: 100,
+          bookId: 1,
+          bookName: 'Genesis',
+          chapterNumber: 1,
+          assignedUserId: 42,
+        },
+      ],
+      loading: false,
+      error: null,
+      selectedIds: new Set<number>(),
+      selectedCount: 0,
+      isAssignedUser: true,
+      accordionExpanded: true,
+      setAccordionExpanded: jest.fn(),
+      expandedBookIds: new Set([1]),
+      toggleBookExpanded: jest.fn(),
+      accordionTitle: 'Assigned chapters (0)',
       toggleChapter: jest.fn(),
       toggleBook: jest.fn(),
       isBookFullySelected: () => false,

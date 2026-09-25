@@ -1,10 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { PrepareOfflineCatalog } from '../../types/prepareOffline/types';
+import {
+  PrepareOfflineCatalog,
+  PrepareOfflineResourceItem,
+} from '../../types/prepareOffline/types';
 import { filterPrepareOfflineCatalogByTiers } from '../../utils/prepareOfflineCatalog';
 import { theme } from '../../theme';
 import { CustomizeDownloadAccordion } from './CustomizeDownloadAccordion';
 import { PrepareOfflineResourceSummary } from './PrepareOfflineResourceSummary';
+
+const SOURCE_BIBLE_GROUP = 'Source Bible';
 
 interface PrepareOfflineResourcesSectionProps {
   catalog: PrepareOfflineCatalog;
@@ -19,10 +24,39 @@ export function PrepareOfflineResourcesSection({
 }: PrepareOfflineResourcesSectionProps) {
   const [customizeExpanded, setCustomizeExpanded] = useState(false);
 
-  const tier1Catalog = useMemo(
-    () => filterPrepareOfflineCatalogByTiers(catalog, [1]),
-    [catalog],
-  );
+  const tier1Catalog = useMemo(() => {
+    const base = filterPrepareOfflineCatalogByTiers(catalog, [1]);
+
+    // Display-only: Source Bible text is synced into bible_texts, not
+    // downloaded through the queue. Kept out of `items` so it never counts
+    // toward totals, the Download button, or completion.
+    const textRow: PrepareOfflineResourceItem = {
+      id: 'source-bible-text-synced',
+      tier: 1,
+      kind: 'text',
+      groupName: SOURCE_BIBLE_GROUP,
+      label: 'Text',
+      bytes: 0,
+      status: 'selected',
+      required: true,
+      removable: false,
+      manifestMembers: [],
+      displayValue: 'Included',
+    };
+
+    const existing = base.groups.find(
+      group => group.groupName === SOURCE_BIBLE_GROUP,
+    );
+    const groups = existing
+      ? base.groups.map(group =>
+          group === existing
+            ? { ...group, items: [textRow, ...group.items] }
+            : group,
+        )
+      : [{ groupName: SOURCE_BIBLE_GROUP, items: [textRow] }, ...base.groups];
+
+    return { items: base.items, groups };
+  }, [catalog]);
 
   const customizeCatalog = useMemo(
     () => filterPrepareOfflineCatalogByTiers(catalog, [2, 3]),

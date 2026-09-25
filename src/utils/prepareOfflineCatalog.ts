@@ -1,30 +1,12 @@
 import {
   BuildPrepareOfflineCatalogInput,
   PrepareOfflineCatalog,
-  PrepareOfflineChapterRow,
   PrepareOfflineResourceGroup,
   PrepareOfflineResourceItem,
-  PrepareOfflineResourceManifestEntry,
-  PrepareOfflineResourceScope,
+  PrepareOfflineResourceManifestItem,
+  PrepareOfflineResourceStatus,
   PrepareOfflineResourceTier,
 } from '../types/prepareOffline/types';
-import {
-  kindLabel,
-  scopedPrepareOfflineResourceId,
-} from './prepareOfflineResourceId';
-
-function computeManifestBytes(
-  entry: PrepareOfflineResourceManifestEntry,
-  selectedChapters: PrepareOfflineChapterRow[],
-): number {
-  const bookIds = new Set(selectedChapters.map(ch => ch.bookId));
-  return computeManifestBytesForScope(
-    entry.scope,
-    entry.unitBytes,
-    selectedChapters.length,
-    bookIds.size,
-  );
-}
 
 function groupItemsByName(
   items: PrepareOfflineResourceItem[],
@@ -50,18 +32,22 @@ export function isTierLocked(tier: PrepareOfflineResourceTier): boolean {
   return tier === 1;
 }
 
-/** Tier 2/3 rows already on device cannot be toggled; in-flight/pending stay editable. */
+/** A row is locked if it's core Tier 1, required-and-non-removable, or already on device. */
 export function isItemCustomizeLocked(
   item: PrepareOfflineResourceItem,
 ): boolean {
-  return isTierLocked(item.tier) || item.status === 'completed';
+  return (
+    isTierLocked(item.tier) ||
+    (item.required && !item.removable) ||
+    item.status === 'completed'
+  );
 }
 
 export function isItemIncluded(
   item: PrepareOfflineResourceItem,
   deselectedItemIds: Set<string>,
 ): boolean {
-  if (isTierLocked(item.tier) || item.status === 'completed') {
+  if (isItemCustomizeLocked(item)) {
     return true;
   }
 
@@ -136,37 +122,114 @@ export function computeRemainingBytes(
   return items.reduce((sum, item) => sum + getRemainingBytesForItem(item), 0);
 }
 
-/** Pure catalog builder — manifest and status come from prepareOfflineResources service. */
+interface AggregatedRow {
+  groupName: string;
+  kind: PrepareOfflineResourceItem['kind'];
+  tier: PrepareOfflineResourceTier;
+  bytes: number;
+  required: boolean;
+  removable: boolean;
+  members: PrepareOfflineResourceManifestItem[];
+}
+
+/**
+ * Groups raw manifest items into one row per (groupName, kind) — e.g. all
+ * individual Translation Words entries collapse into a single "Text" row
+ * and a single "Audio" row, summing bytes. Mirrors the pre-aggregated shape
+ * the old static mock manifest provided directly (#504).
+ */
+function aggregateManifestItems(
+  manifest: PrepareOfflineResourceManifestItem[],
+): AggregatedRow[] {
+  const byKey = new Map<string, AggregatedRow>();
+
+  for (const entry of manifest) {
+    const key = `${entry.resourceName}:${entry.kind}`;
+    const existing = byKey.get(key);
+    if (existing) {
+      existing.bytes += entry.bytesTotal;
+      existing.members.push(entry);
+    } else {
+      byKey.set(key, {
+        groupName: entry.resourceName,
+        kind: entry.kind,
+        tier: entry.tier,
+        bytes: entry.bytesTotal,
+        required: entry.required,
+        removable: entry.removable,
+        members: [entry],
+      });
+    }
+  }
+
+  return [...byKey.values()];
+}
+
+/**
+ * Aggregate status across an aggregated row's members.
+ * - No members → available.
+ * - All completed → completed.
+ * - Any downloading → downloading; else any paused → paused.
+ * - Otherwise the row is only partly on device (or not at all), so it must
+ *   NOT report completed: return the first member status that isn't
+ *   completed (available/selected passthrough). Reporting completed here
+ *   would lock the row in customize and drop it from pending bytes, so the
+ *   remaining members would never be queued.
+ */
+function aggregateStatus(
+  members: PrepareOfflineResourceManifestItem[],
+  getResourceStatus: (resourceId: string) => PrepareOfflineResourceStatus,
+): PrepareOfflineResourceStatus {
+  const statuses = members.map(m => getResourceStatus(m.id));
+  if (statuses.length === 0) return 'available';
+  if (statuses.every(s => s === 'completed')) return 'completed';
+  if (statuses.some(s => s === 'downloading')) return 'downloading';
+  if (statuses.some(s => s === 'paused')) return 'paused';
+  return statuses.find(s => s !== 'completed') ?? 'available';
+}
+
+/** Builds Tier 2/3 catalog rows from raw manifest items (one row per resource+kind). */
+function buildManifestRows(
+  manifest: PrepareOfflineResourceManifestItem[],
+  getResourceStatus: (resourceId: string) => PrepareOfflineResourceStatus,
+): PrepareOfflineResourceItem[] {
+  const aggregated = aggregateManifestItems(manifest);
+
+  return aggregated.map(row => ({
+    id: `${row.groupName}:${row.kind}`,
+    tier: row.tier,
+    kind: row.kind,
+    groupName: row.groupName,
+    required: row.required,
+    removable: row.removable,
+    label:
+      row.kind === 'text' ? 'Text' : row.kind === 'audio' ? 'Audio' : 'Image',
+    bytes: row.bytes,
+    status: aggregateStatus(row.members, getResourceStatus),
+    manifestMembers: row.members,
+  }));
+}
+
+/**
+ * Pure catalog builder — manifest (including Tier 1 Source Bible text/audio,
+ * merged in by prepareOfflineResources.fetchPrepareOfflineManifest) and
+ * status come from the prepareOfflineResources service. Tier 1 rows arrive
+ * through the same manifest array as Tier 2/3, so no separate core-items
+ * source is needed here (#504).
+ */
 export function buildPrepareOfflineCatalog({
-  projectId,
   manifest,
   getResourceStatus,
   chapters,
   selectedIds,
 }: BuildPrepareOfflineCatalogInput): PrepareOfflineCatalog {
   const selectedChapters = chapters.filter(ch => selectedIds.has(ch.id));
-  if (selectedChapters.length === 0 || manifest.length === 0) {
+
+  if (selectedChapters.length === 0) {
     return { items: [], groups: [] };
   }
 
-  const items: PrepareOfflineResourceItem[] = manifest.map(entry => {
-    const id = scopedPrepareOfflineResourceId(
-      projectId,
-      entry.tier,
-      entry.groupName,
-      entry.kind,
-    );
-
-    return {
-      id,
-      tier: entry.tier,
-      kind: entry.kind,
-      groupName: entry.groupName,
-      label: kindLabel(entry.kind),
-      bytes: computeManifestBytes(entry, selectedChapters),
-      status: getResourceStatus(id),
-    };
-  });
+  const items = buildManifestRows(manifest, getResourceStatus);
 
   return {
     items,
@@ -186,23 +249,4 @@ export function sortItemsForPrepareOfflineDownload(
   return [...items].sort(
     (a, b) => (indexById.get(a.id) ?? 0) - (indexById.get(b.id) ?? 0),
   );
-}
-
-/** Exported for tests — documents how manifest scope affects byte totals. */
-export function computeManifestBytesForScope(
-  scope: PrepareOfflineResourceScope,
-  unitBytes: number,
-  selectedChapterCount: number,
-  selectedBookCount: number,
-): number {
-  switch (scope) {
-    case 'project':
-      return unitBytes;
-    case 'chapter':
-      return unitBytes * selectedChapterCount;
-    case 'book':
-      return unitBytes * selectedBookCount;
-    default:
-      return unitBytes;
-  }
 }

@@ -51,3 +51,37 @@ export interface GetChapterSourceAudioParams {
   bibleId: number;
   verse?: number;
 }
+export interface ApiSourceAudioManifestItem {
+  id: string;
+  tier: 1;
+  kind: 'audio';
+  resourceName: string;
+  label: string;
+  required: boolean;
+  removable: boolean;
+  bytesTotal: number;
+  sourceUrl: string;
+  fileExt: string;
+  languageCode: string;
+  bookCode: string;
+  startChapter: number;
+  endChapter: number;
+  provider: ApiSourceAudioProvider;
+  aquiferBibleId?: number;
+}
+
+export interface ApiSourceAudioManifestResponse {
+  projectId: number;
+  sourceLanguageCode: string;
+  provider: ApiSourceAudioProvider;
+  items: ApiSourceAudioManifestItem[];
+  totalBytes: number;
+}
+
+export interface GetSourceAudioManifestParams {
+  languageCode: string;
+  bibleId: number;
+  bookCode: string;
+  startChapter: number;
+  endChapter: number;
+}

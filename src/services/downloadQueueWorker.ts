@@ -196,6 +196,58 @@ export class DownloadQueueWorker {
     }
   }
 
+  /**
+   * True when a text item carries its content inline as `serializedContent`
+   * (Translation Notes/Words shipped in the manifest). Text items WITHOUT
+   * inline content (e.g. commentary `.json` / `.pdf` members that only have a
+   * `sourceUrl`) must go through the resolver/resumable-download path instead.
+   * `typeof === 'string'` also rejects `null`, which SQLite-rehydrated queue
+   * rows may carry for a missing column.
+   */
+  private hasInlineContent(item: DownloadQueueItem): boolean {
+    return item.kind === 'text' && typeof item.serializedContent === 'string';
+  }
+
+  /**
+   * Text items with inline `serializedContent` in the manifest have no
+   * sourceUrl to fetch. Write the content straight to disk and mark complete,
+   * bypassing the resolver/resumable-download path (#51 / download-queue text
+   * item bug). Text items with only a `sourceUrl` are NOT handled here — see
+   * hasInlineContent() and processNext().
+   */
+  private async processTextItem(next: DownloadQueueItem): Promise<void> {
+    try {
+      if (next.serializedContent === undefined) {
+        throw new Error(
+          `No serializedContent configured for text item ${next.id}.`,
+        );
+      }
+      await ensureDownloadsDir(next.projectId ?? 0);
+      const destPath =
+        next.localFilePath ??
+        downloadResourcePath(
+          next.projectId ?? 0,
+          next.id,
+          next.fileExt ?? 'json',
+        );
+      await markDownloadItemDownloading(next.id);
+      await FileSystem.writeAsStringAsync(destPath, next.serializedContent);
+      await this.handleItemComplete(next.id, destPath);
+    } catch (error) {
+      log.error('Failed to write text item', { error, itemId: next.id });
+      try {
+        await markDownloadItemFailed(next.id);
+      } catch (innerError) {
+        log.error('Failed to mark item failed after text write error', {
+          error: innerError,
+          itemId: next.id,
+        });
+      }
+      this.active = null;
+      await this.processNext();
+    }
+  }
+
   private async processNext(): Promise<void> {
     if (this.state !== 'downloading') {
       return;
@@ -203,6 +255,13 @@ export class DownloadQueueWorker {
     const next = this.queue.shift();
     if (!next) {
       this.state = 'idle';
+      return;
+    }
+
+    // Only inline-content text items are written directly. Text items that
+    // only have a sourceUrl fall through to the resolver/resumable path below.
+    if (this.hasInlineContent(next)) {
+      await this.processTextItem(next);
       return;
     }
 

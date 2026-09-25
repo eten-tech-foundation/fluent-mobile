@@ -21,6 +21,9 @@ import {
   computeRemainingBytes,
   sortItemsForPrepareOfflineDownload,
 } from '../utils/prepareOfflineCatalog';
+import { hydratePrepareOfflineTextContent } from '../services/prepareOfflineResources';
+import type { PrepareOfflineManifestContext } from '../utils/buildManifestContexts';
+import { syncBibleTextsForChapters } from '../services/sync';
 import { formatByteSize } from '../utils/formatByteSize';
 import { logger } from '../utils/logger';
 
@@ -40,6 +43,12 @@ export interface UsePrepareOfflineDownloadInput {
   catalog: PrepareOfflineCatalog;
   selectedItems: PrepareOfflineResourceItem[];
   canDownload: boolean;
+  bibleTextChapters: Array<{
+    bibleId: number;
+    bookId: number;
+    chapterNumber: number;
+  }>;
+  manifestContexts: PrepareOfflineManifestContext[];
 }
 
 function deriveSession(
@@ -91,6 +100,8 @@ function deriveSession(
 }
 
 export function usePrepareOfflineDownload({
+  bibleTextChapters,
+  manifestContexts,
   projectId,
   userId,
   catalog,
@@ -185,8 +196,13 @@ export function usePrepareOfflineDownload({
 
   const catalogWithProgress = useMemo(
     () =>
-      mergeQueueIntoPrepareOfflineCatalog(catalog, allQueueItems, projectId),
-    [catalog, allQueueItems, projectId],
+      mergeQueueIntoPrepareOfflineCatalog(
+        catalog,
+        allQueueItems,
+        projectId,
+        userId,
+      ),
+    [catalog, allQueueItems, projectId, userId],
   );
 
   const mergedSelectedItems = useMemo(
@@ -417,6 +433,32 @@ export function usePrepareOfflineDownload({
       if (!canDownloadNow && existingProjectItems.length === 0) {
         return;
       }
+      try {
+        await syncBibleTextsForChapters(bibleTextChapters);
+      } catch (error) {
+        log.error('Bible text sync failed during prepare offline', {
+          error,
+          projectId,
+        });
+        return; // the finally block still resets the kickoff state
+      }
+      let itemsToEnqueue = sortItemsForPrepareOfflineDownload(
+        selectedItems,
+        catalog.items,
+      );
+      try {
+        itemsToEnqueue = await hydratePrepareOfflineTextContent(
+          projectId,
+          itemsToEnqueue,
+          manifestContexts,
+        );
+      } catch (error) {
+        log.error('Failed to load text content for download', {
+          error,
+          projectId,
+        });
+        return;
+      }
 
       setForceIdle(false);
       userCancelledRef.current = false;
@@ -431,10 +473,7 @@ export function usePrepareOfflineDownload({
         await enqueuePrepareOfflineDownload({
           userId,
           projectId,
-          items: sortItemsForPrepareOfflineDownload(
-            selectedItems,
-            catalog.items,
-          ),
+          items: itemsToEnqueue,
         });
       }
 
@@ -457,9 +496,11 @@ export function usePrepareOfflineDownload({
       await flushPendingSessionAction();
     }
   }, [
+    bibleTextChapters,
     canDownloadNow,
     catalog.items,
     flushPendingSessionAction,
+    manifestContexts,
     projectId,
     refresh,
     selectedItems,

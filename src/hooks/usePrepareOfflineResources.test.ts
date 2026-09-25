@@ -3,20 +3,17 @@ import {
   usePrepareOfflineResources,
   UsePrepareOfflineResourcesInput,
 } from './usePrepareOfflineResources';
-import { PrepareOfflineChapterRow } from '../types/prepareOffline/types';
 import {
-  resetMockPrepareOfflineInventory,
-  setMockPrepareOfflineResourceStatus,
-  setPrepareOfflineMockInventoryScenario,
-  getMockPrepareOfflineResourceStatus,
-  DEV_MOCK_FILE_BYTES,
-} from '../mocks/prepareOffline';
-import { scopedPrepareOfflineResourceId } from '../utils/prepareOfflineResourceId';
+  PrepareOfflineChapterRow,
+  PrepareOfflineResourceManifestItem,
+  PrepareOfflineResourceStatus,
+} from '../types/prepareOffline/types';
 
-const TIER3_MOCK_TOTAL =
-  2 * DEV_MOCK_FILE_BYTES.text +
-  2 * DEV_MOCK_FILE_BYTES.audio +
-  DEV_MOCK_FILE_BYTES.image;
+const TEXT_BYTES = 1_000;
+const AUDIO_BYTES = 2_000;
+const IMAGE_BYTES = 4_000;
+
+const TOTAL_ALL_BYTES = 6 * TEXT_BYTES + 6 * AUDIO_BYTES + IMAGE_BYTES;
 
 function chapter(id: number): PrepareOfflineChapterRow {
   return {
@@ -26,6 +23,102 @@ function chapter(id: number): PrepareOfflineChapterRow {
     bookName: 'Genesis',
     chapterNumber: id,
     assignedUserId: null,
+    bibleId: 10,
+  };
+}
+
+function manifestItem(
+  tier: 1 | 2 | 3,
+  resourceName: string,
+  kind: 'text' | 'audio' | 'image',
+): PrepareOfflineResourceManifestItem {
+  return {
+    id: `tier-${tier}-${resourceName
+      .toLowerCase()
+      .replace(/\s+/g, '-')}-${kind}`,
+    tier,
+    kind,
+    resourceName,
+    label: kind === 'text' ? 'Text' : kind === 'audio' ? 'Audio' : 'Image',
+    required: tier === 1,
+    removable: tier !== 1,
+    bytesTotal:
+      kind === 'audio'
+        ? AUDIO_BYTES
+        : kind === 'image'
+        ? IMAGE_BYTES
+        : TEXT_BYTES,
+    fileExt: kind === 'audio' ? 'mp3' : kind === 'image' ? 'png' : 'json',
+    languageCode: 'eng',
+  };
+}
+
+/**
+ * Inline manifest fixture replacing the deleted dev mock catalog (#504):
+ * full tier 1/2/3 shape with per-resource text + audio rows.
+ */
+function buildManifestFixture(): PrepareOfflineResourceManifestItem[] {
+  return [
+    manifestItem(1, 'Source Bible', 'text'),
+    manifestItem(1, 'Source Bible', 'audio'),
+    manifestItem(1, 'Translation Notes', 'text'),
+    manifestItem(1, 'Translation Notes', 'audio'),
+    manifestItem(2, 'Translation Words', 'text'),
+    manifestItem(2, 'Translation Words', 'audio'),
+    manifestItem(2, 'Translation Questions', 'text'),
+    manifestItem(2, 'Translation Questions', 'audio'),
+    manifestItem(3, 'Bible Commentary', 'text'),
+    manifestItem(3, 'Bible Commentary', 'audio'),
+    manifestItem(3, 'Reference Images', 'image'),
+    manifestItem(3, 'Alternate Translations', 'text'),
+    manifestItem(3, 'Alternate Translations', 'audio'),
+  ];
+}
+
+jest.mock('./usePrepareOfflineResourceData', () => ({
+  usePrepareOfflineResourceData: jest.fn(() => {
+    void usePrepareOfflineResourceDataState;
+    return usePrepareOfflineResourceDataState.current;
+  }),
+}));
+
+const usePrepareOfflineResourceDataState: { current: unknown } = {
+  current: null,
+};
+
+/**
+ * Mutable per-project status map standing in for the real download_queue
+ * status cache — tests flip entries directly, as the worker would.
+ */
+const statusMapByProject = new Map<
+  number,
+  Map<string, PrepareOfflineResourceStatus>
+>();
+
+function setResourceStatus(
+  projectId: number,
+  resourceId: string,
+  status: PrepareOfflineResourceStatus,
+) {
+  let map = statusMapByProject.get(projectId);
+  if (!map) {
+    map = new Map();
+    statusMapByProject.set(projectId, map);
+  }
+  map.set(resourceId, status);
+}
+
+function mockResourceData(overrides: Record<string, unknown> = {}) {
+  usePrepareOfflineResourceDataState.current = {
+    manifest: buildManifestFixture(),
+    loading: false,
+    error: null,
+    inventoryVersion: 0,
+    getResourceStatus: (resourceId: string) =>
+      statusMapByProject.get(1)?.get(resourceId) ?? 'available',
+    clearSessionInventory: jest.fn(),
+    getDefaultPackageDeselects: () => new Set<string>(),
+    ...overrides,
   };
 }
 
@@ -37,23 +130,32 @@ async function waitForCatalogItems(result: {
   });
 }
 
+function baseInput(
+  overrides: Partial<UsePrepareOfflineResourcesInput> = {},
+): UsePrepareOfflineResourcesInput {
+  return {
+    projectId: 1,
+    userId: 42,
+    chapters: [chapter(1)],
+    selectedIds: new Set([1]),
+    selectedCount: 1,
+    isAssignedUser: true,
+    ...overrides,
+  };
+}
+
 describe('usePrepareOfflineResources', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    resetMockPrepareOfflineInventory();
-    setPrepareOfflineMockInventoryScenario('fresh');
+    statusMapByProject.clear();
+    mockResourceData();
   });
 
   it('disables download for unassigned users with no chapter selection', () => {
     const { result } = renderHook(() =>
-      usePrepareOfflineResources({
-        projectId: 1,
-        userId: 42,
-        chapters: [chapter(1)],
-        selectedIds: new Set(),
-        selectedCount: 0,
-        isAssignedUser: false,
-      }),
+      usePrepareOfflineResources(
+        baseInput({ selectedIds: new Set<number>(), selectedCount: 0 }),
+      ),
     );
 
     expect(result.current.canDownload).toBe(false);
@@ -62,14 +164,7 @@ describe('usePrepareOfflineResources', () => {
 
   it('enables download for assigned users when catalog is valid', async () => {
     const { result } = renderHook(() =>
-      usePrepareOfflineResources({
-        projectId: 1,
-        userId: 42,
-        chapters: [chapter(1)],
-        selectedIds: new Set([1]),
-        selectedCount: 1,
-        isAssignedUser: true,
-      }),
+      usePrepareOfflineResources(baseInput()),
     );
 
     await waitForCatalogItems(result);
@@ -84,45 +179,26 @@ describe('usePrepareOfflineResources', () => {
       (props: UsePrepareOfflineResourcesInput) =>
         usePrepareOfflineResources(props),
       {
-        initialProps: {
-          projectId: 1,
-          userId: 42,
-          chapters: [chapter(1)],
+        initialProps: baseInput({
           selectedIds: new Set<number>(),
           selectedCount: 0,
           isAssignedUser: false,
-        },
+        }),
       },
     );
 
     expect(result.current.canDownload).toBe(false);
 
-    rerender({
-      projectId: 1,
-      userId: 42,
-      chapters: [chapter(1)],
-      selectedIds: new Set([1]),
-      selectedCount: 1,
-      isAssignedUser: false,
-    });
+    rerender(baseInput({ isAssignedUser: false }));
 
     await waitForCatalogItems(result);
 
     expect(result.current.canDownload).toBe(true);
   });
 
-  it('updates pending bytes when tier 2/3 items are deselected', async () => {
-    setPrepareOfflineMockInventoryScenario('mixed');
-
+  it('updates pending bytes when tier 2/3 rows are deselected', async () => {
     const { result } = renderHook(() =>
-      usePrepareOfflineResources({
-        projectId: 99,
-        userId: 42,
-        chapters: [chapter(1)],
-        selectedIds: new Set([1]),
-        selectedCount: 1,
-        isAssignedUser: true,
-      }),
+      usePrepareOfflineResources(baseInput()),
     );
 
     await waitForCatalogItems(result);
@@ -131,210 +207,131 @@ describe('usePrepareOfflineResources', () => {
     const initialTotal = result.current.totalBytes;
 
     act(() => {
-      result.current.toggleItemSelected(
-        scopedPrepareOfflineResourceId(99, 2, 'Translation Questions', 'text'),
-      );
+      result.current.toggleItemSelected('Translation Questions:text');
     });
 
-    expect(result.current.pendingBytes).toBe(
-      initialPending - DEV_MOCK_FILE_BYTES.text,
-    );
-    expect(result.current.totalBytes).toBe(
-      initialTotal - DEV_MOCK_FILE_BYTES.text,
-    );
+    expect(result.current.pendingBytes).toBe(initialPending - TEXT_BYTES);
+    expect(result.current.totalBytes).toBe(initialTotal - TEXT_BYTES);
   });
 
   it('resets deselected items when project changes', async () => {
-    setPrepareOfflineMockInventoryScenario('fresh');
-
     const { result, rerender } = renderHook(
       (props: UsePrepareOfflineResourcesInput) =>
         usePrepareOfflineResources(props),
-      {
-        initialProps: {
-          projectId: 1,
-          userId: 42,
-          chapters: [chapter(1)],
-          selectedIds: new Set([1]),
-          selectedCount: 1,
-          isAssignedUser: true,
-        },
-      },
+      { initialProps: baseInput() },
     );
 
     await waitForCatalogItems(result);
 
     act(() => {
-      result.current.toggleItemSelected(
-        scopedPrepareOfflineResourceId(1, 3, 'Bible Commentary', 'text'),
-      );
+      result.current.toggleItemSelected('Bible Commentary:text');
     });
 
-    expect(
-      result.current.isItemSelected(
-        scopedPrepareOfflineResourceId(1, 3, 'Bible Commentary', 'text'),
-      ),
-    ).toBe(false);
+    expect(result.current.isItemSelected('Bible Commentary:text')).toBe(false);
 
-    rerender({
-      projectId: 2,
-      userId: 42,
-      chapters: [chapter(2)],
-      selectedIds: new Set([2]),
-      selectedCount: 1,
-      isAssignedUser: true,
-    });
+    rerender(baseInput({ projectId: 2 }));
 
     await waitForCatalogItems(result);
 
-    expect(
-      result.current.isItemSelected(
-        scopedPrepareOfflineResourceId(2, 3, 'Bible Commentary', 'text'),
-      ),
-    ).toBe(true);
+    expect(result.current.isItemSelected('Bible Commentary:text')).toBe(true);
   });
 
   it('resets deselected items when account changes on the same project', async () => {
-    setPrepareOfflineMockInventoryScenario('fresh');
-
     const { result, rerender } = renderHook(
       (props: UsePrepareOfflineResourcesInput) =>
         usePrepareOfflineResources(props),
-      {
-        initialProps: {
-          projectId: 1,
-          userId: 42,
-          chapters: [chapter(1)],
-          selectedIds: new Set([1]),
-          selectedCount: 1,
-          isAssignedUser: true,
-        },
-      },
+      { initialProps: baseInput() },
     );
 
     await waitForCatalogItems(result);
 
     act(() => {
-      result.current.toggleItemSelected(
-        scopedPrepareOfflineResourceId(1, 3, 'Bible Commentary', 'text'),
-      );
+      result.current.toggleItemSelected('Bible Commentary:text');
     });
 
-    expect(
-      result.current.isItemSelected(
-        scopedPrepareOfflineResourceId(1, 3, 'Bible Commentary', 'text'),
-      ),
-    ).toBe(false);
+    expect(result.current.isItemSelected('Bible Commentary:text')).toBe(false);
 
-    rerender({
-      projectId: 1,
-      userId: 99,
-      chapters: [chapter(1)],
-      selectedIds: new Set([1]),
-      selectedCount: 1,
-      isAssignedUser: true,
-    });
+    rerender(baseInput({ userId: 99 }));
 
     await waitForCatalogItems(result);
 
-    expect(
-      result.current.isItemSelected(
-        scopedPrepareOfflineResourceId(1, 3, 'Bible Commentary', 'text'),
-      ),
-    ).toBe(true);
+    expect(result.current.isItemSelected('Bible Commentary:text')).toBe(true);
   });
 
-  it('preserves completed inventory after Prepare Offline remount', async () => {
-    setPrepareOfflineMockInventoryScenario('fresh');
-    const notesId = 'tier-1-translation-notes-text';
-
-    const { result, unmount } = renderHook(() =>
-      usePrepareOfflineResources({
-        projectId: 374,
-        userId: 42,
-        chapters: [chapter(1)],
-        selectedIds: new Set([1]),
-        selectedCount: 1,
-        isAssignedUser: true,
-      }),
-    );
-
-    await waitForCatalogItems(result);
-
-    act(() => {
-      setMockPrepareOfflineResourceStatus(374, notesId, 'completed');
+  it('canDownload is false when every row is already completed', async () => {
+    const notesTextId = 'tier-1-translation-notes-text';
+    mockResourceData({
+      getResourceStatus: () => 'completed',
     });
-
-    expect(getMockPrepareOfflineResourceStatus(374, notesId)).toBe('completed');
-
-    unmount();
-
-    const remounted = renderHook(() =>
-      usePrepareOfflineResources({
-        projectId: 374,
-        userId: 42,
-        chapters: [chapter(1)],
-        selectedIds: new Set([1]),
-        selectedCount: 1,
-        isAssignedUser: true,
-      }),
-    );
-
-    await waitForCatalogItems(remounted.result);
-
-    expect(getMockPrepareOfflineResourceStatus(374, notesId)).toBe('completed');
-    remounted.unmount();
-  });
-
-  it('deselects tier 3 by default in tier1-tier2 mock scenario', async () => {
-    setPrepareOfflineMockInventoryScenario('tier1-tier2');
 
     const { result } = renderHook(() =>
-      usePrepareOfflineResources({
-        projectId: 88,
-        userId: 42,
-        chapters: [chapter(1)],
-        selectedIds: new Set([1]),
-        selectedCount: 1,
-        isAssignedUser: true,
-      }),
+      usePrepareOfflineResources(baseInput({ projectId: 374 })),
     );
 
     await waitForCatalogItems(result);
 
-    expect(
-      result.current.isItemSelected(
-        scopedPrepareOfflineResourceId(88, 3, 'Bible Commentary', 'text'),
-      ),
-    ).toBe(false);
+    expect(result.current.pendingBytes).toBe(0);
+    expect(result.current.canDownload).toBe(false);
+    void notesTextId;
+  });
+
+  it('includes every tier in the package by default (#504 — no scenario deselects)', async () => {
+    const { result } = renderHook(() =>
+      usePrepareOfflineResources(baseInput()),
+    );
+
+    await waitForCatalogItems(result);
+
+    // All tiers checked by default now, including tier 3.
+    expect(result.current.isItemSelected('Bible Commentary:text')).toBe(true);
     expect(
       result.current.effectiveCatalog.groups.some(
         group => group.groupName === 'Bible Commentary',
       ),
-    ).toBe(false);
+    ).toBe(true);
+    expect(result.current.pendingBytes).toBe(TOTAL_ALL_BYTES);
   });
 
-  it('includes tier 3 in the package for tier1-tier2-tier3-pending scenario', async () => {
-    setPrepareOfflineMockInventoryScenario('tier1-tier2-tier3-pending');
-
+  it('keeps tier 1 rows locked and tier 2/3 rows toggleable in customize', async () => {
     const { result } = renderHook(() =>
-      usePrepareOfflineResources({
-        projectId: 77,
-        userId: 42,
-        chapters: [chapter(1)],
-        selectedIds: new Set([1]),
-        selectedCount: 1,
-        isAssignedUser: true,
-      }),
+      usePrepareOfflineResources(baseInput()),
     );
 
     await waitForCatalogItems(result);
 
-    expect(
-      result.current.isItemSelected(
-        scopedPrepareOfflineResourceId(77, 3, 'Bible Commentary', 'text'),
-      ),
-    ).toBe(true);
-    expect(result.current.pendingBytes).toBe(TIER3_MOCK_TOTAL);
+    const tier1Id = 'Source Bible:text';
+    const tier2Id = 'Translation Words:text';
+
+    // Tier 1 is locked — toggling must not change selection.
+    act(() => {
+      result.current.toggleItemSelected(tier1Id);
+    });
+    expect(result.current.isItemSelected(tier1Id)).toBe(true);
+
+    // Tier 2 toggles freely.
+    act(() => {
+      result.current.toggleItemSelected(tier2Id);
+    });
+    expect(result.current.isItemSelected(tier2Id)).toBe(false);
+
+    act(() => {
+      result.current.toggleItemSelected(tier2Id);
+    });
+    expect(result.current.isItemSelected(tier2Id)).toBe(true);
+  });
+
+  it('locks completed tier 2 rows in customize instead of showing a toggle', async () => {
+    setResourceStatus(1, 'tier-2-translation-words-text', 'completed');
+    const { result } = renderHook(() =>
+      usePrepareOfflineResources(baseInput()),
+    );
+
+    await waitForCatalogItems(result);
+
+    act(() => {
+      result.current.toggleItemSelected('Translation Words:text');
+    });
+
+    expect(result.current.isItemSelected('Translation Words:text')).toBe(true);
   });
 });

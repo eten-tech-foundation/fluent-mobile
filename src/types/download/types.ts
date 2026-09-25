@@ -10,8 +10,9 @@ export type DownloadQueueStatus =
 
 export interface DownloadQueueItem {
   id: string;
+  resourceId?: string;
   tier: DownloadTier;
-  kind?: 'text' | 'audio';
+  kind?: 'text' | 'audio' | 'image';
   resourceName?: string;
   label: string;
   progress: number;
@@ -23,6 +24,12 @@ export interface DownloadQueueItem {
   bytesTotal?: number;
   localFilePath?: string;
   resumeData?: string;
+  serializedContent?: string;
+  bookCode?: string;
+  startChapter?: number;
+  endChapter?: number;
+  verseStart?: number;
+  verseEnd?: number;
 }
 
 export interface DownloadQueueSnapshot {
