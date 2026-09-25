@@ -1,6 +1,7 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { usePrepareOfflineDownload } from './usePrepareOfflineDownload';
 import { PrepareOfflineCatalog } from '../types/prepareOffline/types';
+import { TRANSFER_OFFLINE_MESSAGE } from '../constants/messages';
 
 const mockStart = jest.fn();
 const mockPause = jest.fn();
@@ -24,6 +25,18 @@ let mockSnapshot = {
 
 let mockWorkerState: 'idle' | 'downloading' | 'paused' | 'cancelled' = 'idle';
 
+let mockConnectivity = {
+  isOnline: true,
+  isLinkOnline: true,
+  isWifi: true,
+  isCellular: false,
+  connectionType: 'wifi',
+  hasResolved: true,
+  hasTransferResolved: true,
+  connectivityPending: false,
+  transferConnectivityPending: false,
+};
+
 jest.mock('./useDownloadQueue', () => ({
   useDownloadQueue: () => ({
     snapshot: mockSnapshot,
@@ -33,6 +46,20 @@ jest.mock('./useDownloadQueue', () => ({
     resume: mockResume,
     cancel: mockCancel,
     refresh: mockRefresh,
+  }),
+}));
+
+jest.mock('./useConnectivity', () => ({
+  useConnectivity: () => mockConnectivity,
+}));
+
+jest.mock('./usePreferences', () => ({
+  usePreferences: () => ({
+    uploadOverCellular: false,
+    preferences: { uploadOverCellular: false },
+    setUploadOverCellular: jest.fn(),
+    setPreferences: jest.fn(),
+    reload: jest.fn(),
   }),
 }));
 
@@ -89,9 +116,20 @@ describe('usePrepareOfflineDownload', () => {
       aggregateProgress: 0,
     };
     mockWorkerState = 'idle';
-    mockStart.mockResolvedValue(undefined);
+    mockConnectivity = {
+      isOnline: true,
+      isLinkOnline: true,
+      isWifi: true,
+      isCellular: false,
+      connectionType: 'wifi',
+      hasResolved: true,
+      hasTransferResolved: true,
+      connectivityPending: false,
+      transferConnectivityPending: false,
+    };
+    mockStart.mockResolvedValue({ ok: true });
     mockPause.mockResolvedValue(undefined);
-    mockResume.mockResolvedValue(undefined);
+    mockResume.mockResolvedValue({ ok: true });
     mockCancel.mockResolvedValue(undefined);
     mockRefresh.mockResolvedValue(undefined);
   });
@@ -709,6 +747,291 @@ describe('usePrepareOfflineDownload', () => {
         items: catalog.items,
       }),
     );
+  });
+
+  it('blocks download when transport is not allowed on cellular', () => {
+    mockConnectivity = {
+      isOnline: true,
+      isLinkOnline: true,
+      isWifi: false,
+      isCellular: true,
+      connectionType: 'cellular',
+      hasResolved: true,
+      hasTransferResolved: true,
+      connectivityPending: false,
+      transferConnectivityPending: false,
+    };
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+      }),
+    );
+
+    expect(result.current.transportBlocked).toBe(true);
+    expect(result.current.canDownload).toBe(false);
+    expect(result.current.transportBlockedMessage).toContain('WiFi');
+  });
+
+  it('does not enqueue or start when handleDownload is invoked on cellular with toggle off', async () => {
+    const { enqueuePrepareOfflineDownload } = jest.requireMock(
+      '../services/prepareOfflineDownload',
+    );
+    mockConnectivity = {
+      isOnline: true,
+      isLinkOnline: true,
+      isWifi: false,
+      isCellular: true,
+      connectionType: 'cellular',
+      hasResolved: true,
+      hasTransferResolved: true,
+      connectivityPending: false,
+      transferConnectivityPending: false,
+    };
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(enqueuePrepareOfflineDownload).not.toHaveBeenCalled();
+    expect(mockStart).not.toHaveBeenCalled();
+  });
+
+  it('does not resume when handleResume is invoked on cellular with toggle off', async () => {
+    mockConnectivity = {
+      isOnline: true,
+      isLinkOnline: true,
+      isWifi: false,
+      isCellular: true,
+      connectionType: 'cellular',
+      hasResolved: true,
+      hasTransferResolved: true,
+      connectivityPending: false,
+      transferConnectivityPending: false,
+    };
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.resume();
+    });
+
+    expect(mockResume).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a message when resume is rejected by the transfer gate', async () => {
+    mockResume.mockResolvedValue({ ok: false, gate: 'waiting_wifi' });
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.resume();
+    });
+
+    expect(mockResume).toHaveBeenCalled();
+    expect(result.current.transportBlocked).toBe(true);
+    expect(result.current.transportBlockedMessage).toContain('WiFi');
+  });
+
+  it('does not treat Fluent health-down as transport offline while the link is up', () => {
+    mockConnectivity = {
+      isOnline: false,
+      isLinkOnline: true,
+      isWifi: true,
+      isCellular: false,
+      connectionType: 'wifi',
+      hasResolved: true,
+      hasTransferResolved: true,
+      connectivityPending: false,
+      transferConnectivityPending: false,
+    };
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+      }),
+    );
+
+    expect(result.current.transportBlocked).toBe(false);
+    expect(result.current.transportBlockedMessage).toBeUndefined();
+  });
+
+  it('does not show the waiting-WiFi message while connectivity is still resolving', () => {
+    mockConnectivity = {
+      isOnline: true,
+      isLinkOnline: true,
+      isWifi: true,
+      isCellular: false,
+      connectionType: 'wifi',
+      hasResolved: false,
+      hasTransferResolved: false,
+      connectivityPending: true,
+      transferConnectivityPending: true,
+    };
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+      }),
+    );
+
+    expect(result.current.canDownload).toBe(false);
+    expect(result.current.transportBlocked).toBe(true);
+    expect(result.current.transportBlockedMessage).toBeUndefined();
+  });
+
+  it('shows the offline message when prepare download is blocked without a link', () => {
+    mockConnectivity = {
+      isOnline: false,
+      isLinkOnline: false,
+      isWifi: false,
+      isCellular: false,
+      connectionType: 'none',
+      hasResolved: true,
+      hasTransferResolved: true,
+      connectivityPending: false,
+      transferConnectivityPending: false,
+    };
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+      }),
+    );
+
+    expect(result.current.transportBlocked).toBe(true);
+    expect(result.current.canDownload).toBe(false);
+    expect(result.current.transportBlockedMessage).toBe(
+      TRANSFER_OFFLINE_MESSAGE,
+    );
+    expect(result.current.transportBlockedMessage).not.toContain('WiFi');
+  });
+
+  it('rolls back and surfaces a message when start is blocked after enqueue', async () => {
+    const { cancelProjectDownloadTransfers } =
+      jest.requireMock('../db/repository');
+    mockStart.mockResolvedValue({ ok: false, gate: 'waiting_wifi' });
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(cancelProjectDownloadTransfers).toHaveBeenCalledWith(1);
+    expect(result.current.transportBlocked).toBe(true);
+    expect(result.current.transportBlockedMessage).toContain('WiFi');
+    expect(result.current.session).toBe('idle');
+    const { setPrepareOfflineDownloadStarted } = jest.requireMock(
+      '../services/storage',
+    );
+    expect(setPrepareOfflineDownloadStarted).not.toHaveBeenCalled();
+  });
+
+  it('clears a start-gate transport error when the session changes', async () => {
+    mockStart.mockResolvedValue({ ok: false, gate: 'waiting_wifi' });
+
+    const { result, rerender } = renderHook(
+      ({ projectId }: { projectId: number }) =>
+        usePrepareOfflineDownload({
+          projectId,
+          userId: 42,
+          catalog,
+          selectedItems: catalog.items,
+          canDownload: true,
+        }),
+      { initialProps: { projectId: 1 } },
+    );
+
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(result.current.transportBlocked).toBe(true);
+
+    rerender({ projectId: 2 });
+
+    expect(result.current.transportBlocked).toBe(false);
+    expect(result.current.transportBlockedMessage).toBeUndefined();
+  });
+
+  it('clears a start-gate transport error when connectivity changes', async () => {
+    mockStart.mockResolvedValue({ ok: false, gate: 'waiting_wifi' });
+
+    const { result, rerender } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(result.current.transportBlocked).toBe(true);
+
+    mockConnectivity = {
+      ...mockConnectivity,
+      connectionType: 'ethernet',
+    };
+    rerender({});
+
+    expect(result.current.transportBlocked).toBe(false);
+    expect(result.current.transportBlockedMessage).toBeUndefined();
   });
 
   it('uses full catalog size for download button label after cancel', async () => {

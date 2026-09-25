@@ -2,7 +2,9 @@ import NetInfo from '@react-native-community/netinfo';
 import { waitFor } from '@testing-library/react-native';
 import {
   getConnectivitySnapshot,
+  getTransferTransportSnapshot,
   subscribeToConnectivity,
+  subscribeToTransferTransport,
 } from './connectivity';
 
 jest.mock('@react-native-community/netinfo', () => ({
@@ -50,6 +52,36 @@ describe('connectivity', () => {
       isOnline: true,
       isWifi: true,
       isCellular: false,
+      connectionType: 'wifi',
+    });
+  });
+
+  it('getTransferTransportSnapshot uses link connectivity without server health', async () => {
+    fetchMock.mockResolvedValue({ ok: false });
+    mockNetInfo.fetch.mockResolvedValue({
+      isConnected: true,
+      type: 'wifi',
+    });
+
+    await expect(getTransferTransportSnapshot()).resolves.toEqual({
+      isLinkOnline: true,
+      isWifi: true,
+      isCellular: false,
+      connectionType: 'wifi',
+    });
+  });
+
+  it('getTransferTransportSnapshot reports ethernet', async () => {
+    mockNetInfo.fetch.mockResolvedValue({
+      isConnected: true,
+      type: 'ethernet',
+    });
+
+    await expect(getTransferTransportSnapshot()).resolves.toEqual({
+      isLinkOnline: true,
+      isWifi: false,
+      isCellular: false,
+      connectionType: 'ethernet',
     });
   });
 
@@ -63,6 +95,7 @@ describe('connectivity', () => {
       isOnline: true,
       isWifi: false,
       isCellular: true,
+      connectionType: 'cellular',
     });
   });
 
@@ -84,14 +117,39 @@ describe('connectivity', () => {
     const unsubscribe = subscribeToConnectivity(listener);
 
     await waitFor(() => {
-      expect(listener).toHaveBeenCalledWith(true, true, false);
+      expect(listener).toHaveBeenCalledWith(true, true, false, 'wifi');
     });
 
     handlers[0]?.({ isConnected: true, type: 'cellular' });
 
     await waitFor(() => {
-      expect(listener).toHaveBeenCalledWith(true, false, true);
+      expect(listener).toHaveBeenCalledWith(true, false, true, 'cellular');
     });
+
+    unsubscribe();
+  });
+
+  it('subscribeToTransferTransport emits link state without waiting on /health', async () => {
+    const listener = jest.fn();
+    fetchMock.mockResolvedValue({ ok: false });
+
+    mockNetInfo.fetch.mockResolvedValue({
+      isConnected: true,
+      type: 'wifi',
+    });
+    mockNetInfo.addEventListener.mockImplementation(() => jest.fn());
+
+    const unsubscribe = subscribeToTransferTransport(listener);
+
+    await waitFor(() => {
+      expect(listener).toHaveBeenCalledWith({
+        isLinkOnline: true,
+        isWifi: true,
+        isCellular: false,
+        connectionType: 'wifi',
+      });
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
 
     unsubscribe();
   });

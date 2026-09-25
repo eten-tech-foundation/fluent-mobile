@@ -30,6 +30,7 @@ import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
 import { onSyncComplete, onSyncStart } from '../../services/syncEvents';
 import { getPrepareOfflineDownloadStarted } from '../../services/storage';
 import { shouldPresentPrepareOffline } from '../../utils/prepareOfflineTrigger';
+import { isEffectivelyOnlineForTransfer } from '../../utils/transportPolicy';
 import {
   getProjectsWithSummary,
   isUserAssignedToProject,
@@ -62,21 +63,17 @@ function HomeScreenBody({
     () => parseOptionalBoolean(params.newUserLoading) === true,
   );
   const [isSyncingLocal, setIsSyncingLocal] = useState(false);
-  const {
-    isOnline: connectivityIsOnline,
-    isWifi,
-    isCellular,
-    hasResolved,
-  } = useConnectivity();
+  const { isLinkOnline, isWifi, connectionType, hasTransferResolved } =
+    useConnectivity();
   const { uploadOverCellular } = usePreferences();
   const isFocused = useIsFocused();
 
   const isWifiRef = useRef(isWifi);
-  const connectivityIsOnlineRef = useRef(connectivityIsOnline);
+  const isLinkOnlineRef = useRef(isLinkOnline);
   const wasEligibleRef = useRef(false);
   const isFocusedRef = useRef(isFocused);
-  const isCellularRef = useRef(isCellular);
-  const hasResolvedRef = useRef(hasResolved);
+  const connectionTypeRef = useRef(connectionType);
+  const hasTransferResolvedRef = useRef(hasTransferResolved);
   const uploadOverCellularRef = useRef(uploadOverCellular);
   const prepareOfflinePromptShownThisAppOpenRef = useRef(false);
   const isSettlingRef = useRef(false);
@@ -87,18 +84,18 @@ function HomeScreenBody({
 
   useEffect(() => {
     isWifiRef.current = isWifi;
-    connectivityIsOnlineRef.current = connectivityIsOnline;
-    isCellularRef.current = isCellular;
+    isLinkOnlineRef.current = isLinkOnline;
+    connectionTypeRef.current = connectionType;
     uploadOverCellularRef.current = uploadOverCellular;
     isFocusedRef.current = isFocused;
-    hasResolvedRef.current = hasResolved;
+    hasTransferResolvedRef.current = hasTransferResolved;
   }, [
-    connectivityIsOnline,
+    isLinkOnline,
     isWifi,
-    isCellular,
+    connectionType,
     uploadOverCellular,
     isFocused,
-    hasResolved,
+    hasTransferResolved,
   ]);
 
   const handleSyncComplete = useCallback(() => {
@@ -175,13 +172,17 @@ function HomeScreenBody({
 
   useEffect(() => {
     const evaluate = async () => {
-      if (!isFocusedRef.current || !hasResolvedRef.current) return;
+      if (!isFocusedRef.current || !hasTransferResolvedRef.current) return;
       if (isSettlingRef.current) return;
 
       const eligibleConnection =
-        connectivityIsOnlineRef.current &&
-        (isWifiRef.current ||
-          (uploadOverCellularRef.current && isCellularRef.current));
+        hasTransferResolvedRef.current &&
+        isEffectivelyOnlineForTransfer({
+          isOnline: isLinkOnlineRef.current,
+          isWifi: isWifiRef.current,
+          uploadOverCellular: uploadOverCellularRef.current,
+          connectionType: connectionTypeRef.current,
+        });
       if (!eligibleConnection) return;
       if (
         prepareOfflinePromptShownThisAppOpenRef.current ||
@@ -206,10 +207,10 @@ function HomeScreenBody({
           const present = shouldPresentPrepareOffline({
             connectivityProfile: project.connectivityProfile ?? null,
             isAssigned,
-            isOnline: connectivityIsOnlineRef.current,
+            isOnline: isLinkOnlineRef.current,
             isWifi: isWifiRef.current,
-            isCellular: isCellularRef.current,
             uploadOverCellular: uploadOverCellularRef.current,
+            connectionType: connectionTypeRef.current,
           });
 
           if (
@@ -245,9 +246,15 @@ function HomeScreenBody({
   }, [router]);
 
   useEffect(() => {
-    if (!hasResolved) return;
+    if (!hasTransferResolved) return;
     const eligibleConnection =
-      connectivityIsOnline && (isWifi || (uploadOverCellular && isCellular));
+      hasTransferResolved &&
+      isEffectivelyOnlineForTransfer({
+        isOnline: isLinkOnline,
+        isWifi,
+        uploadOverCellular,
+        connectionType,
+      });
 
     if (!isFocused) {
       wasEligibleRef.current = false;
@@ -260,12 +267,12 @@ function HomeScreenBody({
       void evaluateRef.current?.();
     }
   }, [
-    connectivityIsOnline,
+    isLinkOnline,
     isWifi,
-    isCellular,
+    connectionType,
     uploadOverCellular,
     isFocused,
-    hasResolved,
+    hasTransferResolved,
   ]);
 
   const { reauthRequired, refreshReauthRequired } = useReauthRequired({

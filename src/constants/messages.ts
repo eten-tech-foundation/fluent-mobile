@@ -1,3 +1,7 @@
+/** Prepare / download when blocked on cellular without the cellular toggle. */
+export const TRANSFER_WAITING_WIFI_MESSAGE =
+  'Connect to WiFi to upload and download. Or turn on Upload/Download over cellular in Settings.';
+
 /** Sync Now hint — toggle lives on the same screen and in Settings. */
 export const SYNC_NOW_CELLULAR_DISABLED_MESSAGE =
   'Connect to WiFi to upload and download. Or use Upload/Download over cellular (toggle below or in Settings).';

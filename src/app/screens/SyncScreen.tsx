@@ -1,5 +1,5 @@
 import { theme } from '../../theme';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useSync } from '../../hooks/useSync';
 import { useRouter } from 'expo-router';
 import { usePreferences } from '../../hooks/usePreferences';
@@ -21,6 +21,10 @@ import {
 import { DownloadProgressSection } from '../../components/ui/DownloadProgressSection';
 import { useDownloadQueue } from '../../hooks/useDownloadQueue';
 import { formatSyncStatusLabel } from '../../utils/syncStatusState';
+import {
+  isEffectivelyOnlineForTransfer,
+  isWaitingWifiForTransfer,
+} from '../../utils/transportPolicy';
 import { hrefs } from '../../navigation/hrefs';
 import { SyncPageStatus } from '../../types/sync/types';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -33,7 +37,14 @@ export default function SyncScreen() {
 
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const { isOnline, isWifi, hasResolved } = useConnectivity();
+  const {
+    isOnline,
+    isLinkOnline,
+    isWifi,
+    connectionType,
+    connectivityPending,
+    transferConnectivityPending,
+  } = useConnectivity();
   const { uploadOverCellular, setUploadOverCellular } = usePreferences();
   const {
     hasPendingUploads,
@@ -65,19 +76,42 @@ export default function SyncScreen() {
     uploadProgress,
   });
 
-  const effectivelyOnline = isOnline && (isWifi || uploadOverCellular);
-  const cellularBlocked = isOnline && !isWifi && !uploadOverCellular;
-  const offlineBlocked = !isOnline;
+  const transferTransport = useMemo(
+    () => ({
+      isOnline: isLinkOnline,
+      isWifi,
+      connectionType,
+      uploadOverCellular,
+    }),
+    [isLinkOnline, isWifi, connectionType, uploadOverCellular],
+  );
+  const effectivelyOnline =
+    !connectivityPending &&
+    !transferConnectivityPending &&
+    isOnline &&
+    isEffectivelyOnlineForTransfer(transferTransport);
+  const waitingWifi =
+    !transferConnectivityPending && isWaitingWifiForTransfer(transferTransport);
+  const transportOffline = !transferConnectivityPending && !isLinkOnline;
+  const fluentUnreachable = !connectivityPending && !isOnline;
   /** Worker would visit zero chapters — pericope/orphan (incl. failed takes not in queue). */
   const noUploadableChapters =
     pendingChapterCount === 0 && (hasUnuploadablePending || hasPendingUploads);
   const syncNowDisabled =
-    !hasResolved || cellularBlocked || offlineBlocked || noUploadableChapters;
-  const syncNowDisabledHint = offlineBlocked
-    ? TRANSFER_OFFLINE_MESSAGE
-    : cellularBlocked
-    ? SYNC_NOW_CELLULAR_DISABLED_MESSAGE
-    : undefined;
+    connectivityPending ||
+    transferConnectivityPending ||
+    waitingWifi ||
+    transportOffline ||
+    fluentUnreachable ||
+    noUploadableChapters;
+  const syncNowDisabledHint =
+    connectivityPending || transferConnectivityPending
+      ? undefined
+      : transportOffline
+      ? TRANSFER_OFFLINE_MESSAGE
+      : waitingWifi
+      ? SYNC_NOW_CELLULAR_DISABLED_MESSAGE
+      : undefined;
 
   const { triggerSync, isSyncing, displayText, stateType } = useSync({
     onSyncComplete: () => {
@@ -225,7 +259,7 @@ export default function SyncScreen() {
         <View style={styles.cellularSection}>
           <SettingsToggleRow
             title="Upload/Download over cellular"
-            subtitle="Use mobile data to upload recordings when WiFi isn't available."
+            subtitle="Use mobile data to upload recordings and download resources when WiFi isn't available."
             value={uploadOverCellular}
             onValueChange={setUploadOverCellular}
             testID="sync-upload-cellular"

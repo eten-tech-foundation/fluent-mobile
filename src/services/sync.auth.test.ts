@@ -162,6 +162,7 @@ describe('syncProjects / syncUserChapterWork reconciliation shape guard', () => 
       isOnline: true,
       isWifi: true,
       isCellular: false,
+      connectionType: 'wifi',
     });
     (getActiveUserId as jest.Mock).mockReturnValue('2');
     (getCredentials as jest.Mock).mockResolvedValue({ token: 'valid-token' });
@@ -248,6 +249,7 @@ describe('refreshChapterMetadataIfOnline', () => {
       isOnline: true,
       isWifi: true,
       isCellular: false,
+      connectionType: 'wifi',
     });
     (getActiveUserId as jest.Mock).mockReturnValue('2');
     (getCredentials as jest.Mock).mockResolvedValue({ token: 'valid-token' });
@@ -416,6 +418,7 @@ describe('refreshChapterMetadataIfOnline', () => {
       isOnline: false,
       isWifi: false,
       isCellular: false,
+      connectionType: 'none',
     });
 
     await refreshChapterMetadataIfOnline(2);
@@ -684,6 +687,7 @@ describe('syncAllData auth handling', () => {
       isOnline: true,
       isWifi: true,
       isCellular: false,
+      connectionType: 'wifi',
     });
     (getCredentials as jest.Mock).mockResolvedValue({ token: 'valid-token' });
     (getUserLastSyncedAt as jest.Mock).mockReturnValue(
