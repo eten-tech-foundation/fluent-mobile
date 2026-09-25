@@ -2,6 +2,8 @@
 
 > Confirmed on device (#534 audit, F.23b, G.25).
 
+**GitHub issue:** #585
+
 ## Summary
 
 In pericope mode the stage-advance CTA appears once every pericope has a

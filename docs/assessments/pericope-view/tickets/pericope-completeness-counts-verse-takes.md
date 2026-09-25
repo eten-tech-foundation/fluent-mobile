@@ -2,6 +2,8 @@
 
 > Confirmed on device (#534 audit, F.24).
 
+**GitHub issue:** #586
+
 ## Summary
 
 `isChapterFullyRecordedPericopeMode` (`src/db/queries.ts`) treats a

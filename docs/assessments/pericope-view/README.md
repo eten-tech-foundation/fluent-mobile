@@ -1,8 +1,8 @@
 # Pericope View Audit
 
-> **Status: device run complete; gaps not filed yet.** Six gaps are
-> confirmed (five on device, one from code). GitHub issues are pending
-> approval.
+> **Status: device run complete; gaps filed.** Six gaps are filed as #584–#589
+> (sub-issues of #534): five confirmed on device and one follow-up task from
+> code (#587).
 
 ## Overview
 
@@ -243,7 +243,7 @@ cross-granularity, mixed-mode).
 **Severity:** High (drafted audio stays on the device)  
 **Launch blocker:** To be decided with product  
 **Related issue:** [#410](https://github.com/eten-tech-foundation/fluent-mobile/issues/410) (API gap noted, no follow-up filed)  
-**Development task:** [tickets/upload-pericope-takes.md](./tickets/upload-pericope-takes.md) — tracked in fluent-mobile for now; the fluent-api task (range-take upload) will be opened at implementation time, pending confirmation with the API owner  
+**Development task:** [#584](https://github.com/eten-tech-foundation/fluent-mobile/issues/584) · [tickets/upload-pericope-takes.md](./tickets/upload-pericope-takes.md) — tracked in fluent-mobile for now; the fluent-api task (range-take upload) will be opened at implementation time, pending confirmation with the API owner  
 **Evidence:** G.25, G.26
 
 ### Candidate 2: Chapter can advance while its pericope takes cannot upload
@@ -251,7 +251,7 @@ cross-granularity, mixed-mode).
 **Severity:** High  
 **Launch blocker:** To be decided with product  
 **Related issue:** [#542](https://github.com/eten-tech-foundation/fluent-mobile/issues/542)  
-**Development task:** [tickets/guard-advance-with-unuploadable-pericope-takes.md](./tickets/guard-advance-with-unuploadable-pericope-takes.md)  
+**Development task:** [#585](https://github.com/eten-tech-foundation/fluent-mobile/issues/585) · [tickets/guard-advance-with-unuploadable-pericope-takes.md](./tickets/guard-advance-with-unuploadable-pericope-takes.md)  
 **Evidence:** F.23b, G.25
 
 ### Candidate 3: Verse takes do not count toward pericope-mode completeness
@@ -259,23 +259,23 @@ cross-granularity, mixed-mode).
 **Severity:** Medium  
 **Launch blocker:** No  
 **Related issue:** [#542](https://github.com/eten-tech-foundation/fluent-mobile/issues/542), [#411](https://github.com/eten-tech-foundation/fluent-mobile/issues/411)  
-**Development task:** [tickets/pericope-completeness-counts-verse-takes.md](./tickets/pericope-completeness-counts-verse-takes.md)  
+**Development task:** [#586](https://github.com/eten-tech-foundation/fluent-mobile/issues/586) · [tickets/pericope-completeness-counts-verse-takes.md](./tickets/pericope-completeness-counts-verse-takes.md)  
 **Evidence:** F.24
 
 ### Candidate 4: Mobile does not use the set-level pericope API
 
-**Severity:** Medium (projects on unbundled sets have no pericope view)  
+**Severity:** Low (follow-up task; no user impact while projects use the bundled FCBH/FIA sets)  
 **Launch blocker:** No  
 **Related issue:** [#438](https://github.com/eten-tech-foundation/fluent-mobile/issues/438), [fluent-api#309](https://github.com/eten-tech-foundation/fluent-api/issues/309)  
-**Development task:** [tickets/wire-pericope-set-api.md](./tickets/wire-pericope-set-api.md)  
-**Evidence:** Code Review Notes (API ready, mobile not wired); I.29b
+**Development task:** [#587](https://github.com/eten-tech-foundation/fluent-mobile/issues/587) · [tickets/wire-pericope-set-api.md](./tickets/wire-pericope-set-api.md)  
+**Evidence:** Code Review Notes (API ready, mobile not wired); not device-tested (I.29b skipped). Filed as a Task: the unfinished network half of #438, not a visible defect.
 
 ### Candidate 5: Pericope mode without local set data falls back silently
 
 **Severity:** Medium  
 **Launch blocker:** No  
 **Related issue:** [#409](https://github.com/eten-tech-foundation/fluent-mobile/issues/409), [#542](https://github.com/eten-tech-foundation/fluent-mobile/issues/542)  
-**Development task:** [tickets/pericope-mode-without-set-data.md](./tickets/pericope-mode-without-set-data.md)  
+**Development task:** [#588](https://github.com/eten-tech-foundation/fluent-mobile/issues/588) · [tickets/pericope-mode-without-set-data.md](./tickets/pericope-mode-without-set-data.md)  
 **Evidence:** I.29a
 
 ### Candidate 6: Pericope take label is truncated on the Record tab
@@ -283,7 +283,7 @@ cross-granularity, mixed-mode).
 **Severity:** Low  
 **Launch blocker:** No  
 **Related issue:** [#410](https://github.com/eten-tech-foundation/fluent-mobile/issues/410), [#474](https://github.com/eten-tech-foundation/fluent-mobile/issues/474) (closed as opened by mistake)  
-**Development task:** [tickets/pericope-take-label-truncation.md](./tickets/pericope-take-label-truncation.md)  
+**Development task:** [#589](https://github.com/eten-tech-foundation/fluent-mobile/issues/589) · [tickets/pericope-take-label-truncation.md](./tickets/pericope-take-label-truncation.md)  
 **Evidence:** D.17 (screenshot to attach on the issue)
 
 Existing open issues re-checked on device (no new ticket unless the behavior
@@ -340,7 +340,7 @@ tracked on #408.
 
 **Follow-up required:**
 
-- [ ] All identified gaps have corresponding GitHub issues.
+- [x] All identified gaps have corresponding GitHub issues.
 - [ ] Mobile and API dependencies are cross-linked.
 - [ ] Launch-blocking gaps are clearly identified.
 - [ ] Assessment has been reviewed and merged.

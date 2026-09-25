@@ -1,7 +1,10 @@
 # Hydrate unbundled pericope sets from GET /pericope-sets/{id}
 
 > Confirmed from code — API ready, mobile not wired (#534 audit; I.29b
-> skipped).
+> skipped). Follow-up task for the unfinished network half of #438; no user
+> impact while projects use the bundled FCBH/FIA sets.
+
+**GitHub issue:** #587
 
 ## Summary
 

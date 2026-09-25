@@ -2,6 +2,8 @@
 
 > Confirmed on device (#534 audit, G.25–G.26).
 
+**GitHub issue:** #584
+
 ## Summary
 
 Takes recorded in pericope mode (#410) are stored locally with

@@ -2,6 +2,8 @@
 
 > Confirmed on device (#534 audit, D.17).
 
+**GitHub issue:** #589
+
 ## Summary
 
 Pericope take cards (#410) show a subtitle such as

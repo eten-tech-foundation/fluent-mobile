@@ -3,6 +3,8 @@
 > Silent fallback confirmed on device (#534 audit, I.29a); hidden advance CTA
 > from code.
 
+**GitHub issue:** #588
+
 ## Summary
 
 When the project has no `pericope_set_id`, or its set has no local rows, the
