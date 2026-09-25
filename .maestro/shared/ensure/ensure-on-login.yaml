@@ -1,0 +1,9 @@
+# Cold-start to login screen (clearState). Local Debug needs Metro + boot helper.
+appId: com.eten.fluent
+---
+- runFlow: ../../helpers/launch-android.yaml
+- runFlow: ../../helpers/boot-past-dev-launcher.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'login-email-input'
+    timeout: 180000

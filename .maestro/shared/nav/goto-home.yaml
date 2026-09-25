@@ -1,0 +1,27 @@
+# Reach Home tabs from Sync / Settings / Prepare Offline / drafting.
+appId: com.eten.fluent
+---
+- runFlow: ../ensure/ensure-no-modal.yaml
+- runFlow:
+    when:
+      visible:
+        id: 'sync-screen'
+    commands:
+      - back
+- runFlow:
+    when:
+      visible:
+        id: 'drafting-tab-bar'
+    commands:
+      - back
+- runFlow:
+    when:
+      visible:
+        id: 'settings-prepare-offline'
+    commands:
+      - back
+- runFlow: ../ensure/ensure-no-modal.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000

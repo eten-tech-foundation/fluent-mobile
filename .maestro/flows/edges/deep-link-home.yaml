@@ -1,0 +1,27 @@
+# Deep link into app (fluent://) lands without crash — asserts Home or login chrome.
+appId: com.eten.fluent
+tags:
+  - edges
+  - deeplink
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- openLink: fluent://home
+- runFlow: ../../helpers/boot-past-dev-launcher.yaml
+- evalScript: ${output.deepLinkLanded = ''}
+- runFlow:
+    when:
+      visible:
+        id: 'login-email-input'
+    commands:
+      - evalScript: ${output.deepLinkLanded = 'login'}
+      - assertVisible:
+          id: 'login-email-input'
+- runFlow:
+    when:
+      visible:
+        id: 'home-tab-my-work'
+    commands:
+      - evalScript: ${output.deepLinkLanded = 'home'}
+      - assertVisible:
+          id: 'home-tab-my-work'
+- assertTrue: ${output.deepLinkLanded == 'login' || output.deepLinkLanded == 'home'}
