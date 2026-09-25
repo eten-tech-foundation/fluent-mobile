@@ -33,6 +33,7 @@ Opt-in **Android-only** Maestro suite for Fluent Mobile. Architecture: state-tol
 | Multi-account A–D | `flows/accounts/multi-account-isolation.yaml` | `npm run maestro:test:multi-account` |
 | Stage 1 batch (± repeats) | harness + auth + my-work + empty-assignments | `npm run maestro:test:stage1` / `… 5` |
 
+
 ### Nightly QA checklist → automation map
 
 | Nightly checklist area | Automated by | Residual (manual) |
