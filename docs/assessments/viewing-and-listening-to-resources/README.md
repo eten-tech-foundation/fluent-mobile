@@ -1,7 +1,8 @@
 # Viewing and Listening to Resources Audit
 
-> **Status: device run complete.** Gaps 1–7 are confirmed and not yet
-> filed as issues.
+> **Status: device run complete.** Gaps 1–6 were observed on device
+> (Gap 6's trigger not isolated); Gap 7 is from file inspection. None are
+> filed as issues yet.
 
 ## Overview
 
@@ -169,10 +170,10 @@ Read on `main` @ `fb634e5`:
 
 ## Test Results
 
-Scenario numbers match the device test script used for this audit
-(section letter + step). Scenarios run with no problem reported are Pass. A.7 was added during the
-run (not in the original script), and G.x is an extra observation; both are
-included in the counts.
+Scenario numbers match the device test script used for this audit (section
+letter + step). Scenarios run with no problem reported are Pass. A.7 was
+added during the run (not in the original script), and G.x is an extra
+observation; both are included in the counts.
 
 ### Coverage counts
 
@@ -211,9 +212,9 @@ was Blocked).
 | G.21 | Playing verse scrolls off-screen | List follows the playing row (#48) | Cannot be triggered without verse timestamps | Blocked |
 | G.22 | Play to the end of the chapter | Stops at the end, no loop; highlight clears (#48) | Stops at the end without looping; the button returns to Play, and Play starts again from the beginning. The waveform stays fully played with the playhead at the right edge and `5:42 / 5:42` (not reset to the start). The caption still reads `Verse 1 / 45` because nothing tracks the playing verse without timestamps (Gap 5) | Pass |
 | G.23 | Scrub the waveform (verse mode) | Seeks to the position; does not restart (#408 QA) | Scrubbing sometimes restarts; already reported on #408 (open) | Skipped (tracked: #408) |
-| G.24 | Playing → open Resources → back to Bible | Pauses when the bar is hidden; resumes from the same position | Source audio stops and resets when Resources opens (the player is disabled there, `SourceAudioShell.tsx:78`); back on Bible, Play starts from the beginning. The specs only require the bar on Bible and Record and stop/clear on leave (#235, #412), so this matches them; resuming is an open question | Pass |
+| G.24 | Playing → open Resources → back to Bible | Pauses when the bar is hidden; resumes from the same position | Source audio stops and resets when Resources opens (the player is disabled there, `SourceAudioShell.tsx:76-79`, and `useSourceAudio.ts:118-122` stops and clears it); back on Bible, Play starts from the beginning. The specs only require the bar on Bible and Record and stop/clear on leave (#235, #412), so this matches them; resuming is an open question | Pass |
 | G.25 | Playing → leave drafting (back) | Source audio stops (#235) | As expected | Pass |
-| G.26 | Record tab: source playing → play a take / record | Source stops; bar hidden during capture (#235) | Source stops when a take plays and during capture; afterwards the player is back at the start (stop, not pause). Matches #235; see Open Questions | Pass |
+| G.26 | Record tab: source playing → play a take / record | Source stops; bar hidden during capture (#235) | Source stops when a take plays and during capture; afterwards the player is back at the start (stop, not pause: `RecordTab.tsx:757-778` calls `stop`). Matches #235; see Open Questions | Pass |
 | G.27 | Project without source audio | "No source audio" state, no crash (#235) | As expected | Pass |
 | G.x | Source audio use (Bible tab only, no draft takes) | No React errors | `Maximum update depth exceeded` in the dev LogBox while using the source audio player; exact trigger not isolated | **Fail** → Gap 6 |
 
@@ -245,13 +246,13 @@ images).
 
 **Description:**  
 Online, TN and TQ always render (`resourcesSectionInventory.ts:84-86`,
-`ResourcesTab.tsx:175-188`), and only Images & Maps is hidden when empty.
-An empty TN or TQ expands to a blank body. TQ also loads only when its
-section is expanded, because `useTranslationQuestionsForUnit` runs inside
-the accordion body (`TranslationQuestionsSection.tsx:34-39`;
-`ResourceSectionAccordion.tsx:72` renders children only when expanded). So the tab cannot know that TQ is empty, and it refetches
-on every expand. As a result, #188's "No resources available for this
-verse" never appears online.
+`ResourcesTab.tsx:175-188`), and only Images & Maps is hidden when empty. An
+empty TN or TQ expands to a blank body. TQ also loads only when its section
+is expanded, because `useTranslationQuestionsForUnit` runs inside the
+accordion body (`TranslationQuestionsSection.tsx:34-39`;
+`ResourceSectionAccordion.tsx:72` renders children only when expanded). So
+the tab cannot know that TQ is empty, and it refetches on every expand. As a
+result, #188's "No resources available for this verse" never appears online.
 
 **Steps to reproduce:**
 
@@ -448,21 +449,20 @@ verse with images.
 **Overall result:** Pass with gaps
 
 **Summary:**  
-Online, the Resources tab works on a physical Android 10 device: tab
-order, unit sync, scroll and accordion restore, Translation Notes and
-Questions accordions, image zoom and fullscreen, and Retry after the
-network returns. The source audio player also passes its lifecycle
-checks: placement, play/pause, stopping on leave, exclusivity with draft
-takes, and the no-audio state. The main risks are content coverage: in pericope mode
-Resources shows only the first verse (Gap 3), and source audio cannot
-follow verses because no dev project has verse timestamps (Gap 5). Both
-need fluent-api work, tracked in fluent-mobile for now (as in the #534
-audit), and a product decision on launch blocking before the November 2026
-ETEN Summit. Images lack attribution (Gap 4), which may be a
-licensing question. The rest are empty and loading state issues (Gaps 1,
-2), an update-depth error in the source player (Gap 6), and a no-op
-Maestro smoke (Gap 7). Offline reading of prepared content stays with #578
-and #417.
+Online, the Resources tab works on a physical Android 10 device: tab order,
+unit sync, scroll and accordion restore, Translation Notes and Questions
+accordions, image zoom and fullscreen, and Retry after the network returns.
+The source audio player also passes its lifecycle checks: placement,
+play/pause, stopping on leave, exclusivity with draft takes, and the
+no-audio state. The main risks are content coverage: in pericope mode
+Resources shows only the first verse (Gap 3), and source audio cannot follow
+verses because no dev project has verse timestamps (Gap 5). Both need
+fluent-api work, tracked in fluent-mobile for now (as in the #534 audit),
+and a product decision on launch blocking before the November 2026 ETEN
+Summit. Images lack attribution (Gap 4), which may be a licensing question.
+The rest are empty and loading state issues (Gaps 1, 2), an update-depth
+error in the source player (Gap 6), and a no-op Maestro smoke (Gap 7).
+Offline reading of prepared content stays with #578 and #417.
 
 The device run used a local run of merged `main` over Metro, not the
 nightly APK. The update-depth error was observed through the dev LogBox.
