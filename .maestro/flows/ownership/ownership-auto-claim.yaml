@@ -1,0 +1,76 @@
+# Online first-recording auto-claim on disposable CLAIM fixture (#268 / #574).
+appId: com.eten.fluent
+tags:
+  - ownership
+  - ownership-claim
+---
+- runFlow: ../../helpers/launch-android-mic-allow.yaml
+- runFlow: ../../helpers/boot-past-dev-launcher.yaml
+- runFlow: ../../shared/auth/login-translator.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- runFlow:
+    file: ../../shared/nav/open-fixture-chapter.yaml
+    env:
+      MAESTRO_FIXTURE_CHAPTER_LABEL: ${MAESTRO_FIXTURE_CLAIM_LABEL}
+- tapOn:
+    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'record-tab'
+- assertNotVisible:
+    id: 'record-taken-warning'
+- runFlow: ../../shared/ensure/ensure-take-capacity.yaml
+- runFlow:
+    when:
+      visible:
+        id: 'record-start-button'
+        enabled: true
+    commands:
+      - tapOn:
+          id: 'record-start-button'
+- runFlow:
+    when:
+      visible:
+        id: 'record-new-take-button'
+        enabled: true
+    commands:
+      - tapOn:
+          id: 'record-new-take-button'
+- extendedWaitUntil:
+    visible:
+      id: 'record-stop-button'
+    timeout: 15000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'record-stop-button'
+- extendedWaitUntil:
+    visible:
+      id: 'record-play-button-.*'
+    timeout: 30000
+- tapOn:
+    id: 'record-delete-selected-button-.*'
+- tapOn:
+    text: 'Delete'
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'chapter-row-.*'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: ${MAESTRO_FIXTURE_CLAIM_LABEL}
+    direction: DOWN
+    timeout: 90000
+- assertVisible:
+    text: ${MAESTRO_FIXTURE_CLAIM_LABEL}
+- assertVisible:
+    id: 'chapter-ownership-mine'
+    below:
+      text: ${MAESTRO_FIXTURE_CLAIM_LABEL}
+- assertVisible:
+    text: 'Assigned to you'
+    below:
+      text: ${MAESTRO_FIXTURE_CLAIM_LABEL}

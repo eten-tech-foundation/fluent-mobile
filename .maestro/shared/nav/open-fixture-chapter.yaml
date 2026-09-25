@@ -1,0 +1,50 @@
+# Open Projects → disposable fixture project → chapter label → drafting.
+# Env: MAESTRO_FIXTURE_PROJECT_NAME, MAESTRO_FIXTURE_CHAPTER_LABEL
+appId: com.eten.fluent
+---
+- runFlow: goto-home.yaml
+- tapOn:
+    id: 'home-tab-projects'
+- extendedWaitUntil:
+    visible:
+      id: 'project-row-.*'
+    timeout: 60000
+- runFlow: ../ensure/ensure-no-modal.yaml
+- scrollUntilVisible:
+    element:
+      text: ${MAESTRO_FIXTURE_PROJECT_NAME}
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    text: ${MAESTRO_FIXTURE_PROJECT_NAME}
+- extendedWaitUntil:
+    visible:
+      id: 'chapter-row-.*'
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      text: ${MAESTRO_FIXTURE_CHAPTER_LABEL}
+    direction: DOWN
+    timeout: 90000
+- tapOn:
+    text: ${MAESTRO_FIXTURE_CHAPTER_LABEL}
+- repeat:
+    times: 8
+    while:
+      notVisible:
+        id: 'drafting-tab-bar'
+    commands:
+      - runFlow: ../ensure/ensure-no-modal.yaml
+      - runFlow:
+          when:
+            visible:
+              text: ${MAESTRO_FIXTURE_CHAPTER_LABEL}
+          commands:
+            - tapOn:
+                text: ${MAESTRO_FIXTURE_CHAPTER_LABEL}
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'drafting-tab-bar'
+    timeout: 60000

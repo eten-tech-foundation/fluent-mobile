@@ -10,7 +10,12 @@ is_supported_maestro_env_key() {
       MAESTRO_TRANSLATOR_EMAIL | MAESTRO_TRANSLATOR_PASSWORD | \
       MAESTRO_PM_EMAIL | MAESTRO_PM_PASSWORD | \
       MAESTRO_LAUNCH_MODE | MAESTRO_DEV_CLIENT_URL | \
-      EXPO_PUBLIC_API_BASE_URL | EXPO_PUBLIC_E2E_MODE)
+      EXPO_PUBLIC_API_BASE_URL | EXPO_PUBLIC_E2E_MODE | \
+      MAESTRO_FIXTURE_PROJECT_NAME | MAESTRO_FIXTURE_PROJECT_ID | \
+      MAESTRO_FIXTURE_MINE_LABEL | MAESTRO_FIXTURE_OTHER_LABEL | \
+      MAESTRO_FIXTURE_UNASSIGNED_LABEL | MAESTRO_FIXTURE_CLAIM_LABEL | \
+      MAESTRO_FIXTURE_CONFLICT_LABEL | MAESTRO_FIXTURE_OPEN_PEER_CHECK_LABEL | \
+      MAESTRO_FIXTURE_CHAPTER_LABEL | MAESTRO_FIXTURE_OTHER_USER_ID)
       return 0
       ;;
     *)
@@ -47,6 +52,11 @@ load_maestro_env_literal() {
       value="${BASH_REMATCH[1]}"
     elif [[ "${value}" =~ ^\'(.*)\'$ ]]; then
       value="${BASH_REMATCH[1]}"
+    fi
+
+    # Do not clobber vars already exported (ownership suite sets rotated claim).
+    if [[ -n "${!key:-}" ]]; then
+      continue
     fi
 
     export "${key}=${value}"
