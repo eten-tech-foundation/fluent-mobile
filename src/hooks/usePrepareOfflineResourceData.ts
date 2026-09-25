@@ -41,6 +41,13 @@ export function usePrepareOfflineResourceData(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [inventoryVersion, setInventoryVersion] = useState(0);
+  const selectedKey = [...selectedIds].sort((a, b) => a - b).join(',');
+  const chaptersKey = chapters
+    .map(
+      ch =>
+        `${ch.id}:${ch.bibleId}:${ch.bookCode}:${ch.bookId}:${ch.chapterNumber}`,
+    )
+    .join(',');
 
   useEffect(() => {
     if (projectId === null || selectedIds.size === 0) {
@@ -102,11 +109,7 @@ export function usePrepareOfflineResourceData(
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    projectId,
-    [...selectedIds].sort().join(','),
-    chapters.map(ch => `${ch.id}:${ch.bibleId}`).join(','),
-  ]);
+  }, [projectId, selectedKey, chaptersKey]);
 
   // Load real status from download_queue whenever the project or user
   // changes, and re-load whenever the subscription fires (queue mutated

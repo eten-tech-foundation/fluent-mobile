@@ -196,8 +196,13 @@ export function usePrepareOfflineDownload({
 
   const catalogWithProgress = useMemo(
     () =>
-      mergeQueueIntoPrepareOfflineCatalog(catalog, allQueueItems, projectId),
-    [catalog, allQueueItems, projectId],
+      mergeQueueIntoPrepareOfflineCatalog(
+        catalog,
+        allQueueItems,
+        projectId,
+        userId,
+      ),
+    [catalog, allQueueItems, projectId, userId],
   );
 
   const mergedSelectedItems = useMemo(
@@ -495,6 +500,7 @@ export function usePrepareOfflineDownload({
     canDownloadNow,
     catalog.items,
     flushPendingSessionAction,
+    manifestContexts,
     projectId,
     refresh,
     selectedItems,

@@ -214,6 +214,38 @@ describe('prepareOfflineResources', () => {
 
       expect(result).toEqual([translationItem]);
     });
+
+    it('rejects a truncated translation-resources manifest instead of returning a partial catalog', async () => {
+      (FluentAPI.getPrepareOfflineManifest as jest.Mock).mockResolvedValue({
+        projectId: 99,
+        sourceLanguageCode: 'eng',
+        items: [
+          {
+            id: 'tn1',
+            tier: 2,
+            kind: 'text',
+            resourceName: 'Translation Notes',
+            label: 'Translation Notes',
+            required: true,
+            removable: false,
+            bytesTotal: 512,
+            fileExt: 'json',
+            languageCode: 'eng',
+          },
+        ],
+        totalBytes: 512,
+        truncated: true,
+      });
+      mockSourceAudioManifest([]);
+
+      await expect(
+        fetchPrepareOfflineManifest(99, FULL_PARAMS),
+      ).rejects.toThrow('manifest truncated for project 99');
+
+      // The source-audio call still fires (Promise.all runs both), but the
+      // truncated check must reject before any fallback or merge happens.
+      expect(FluentAPI.getChapterSourceAudio).not.toHaveBeenCalled();
+    });
   });
 
   describe('hydratePrepareOfflineTextContent', () => {

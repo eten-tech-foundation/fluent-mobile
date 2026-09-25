@@ -583,6 +583,7 @@ describe('usePrepareOfflineDownload', () => {
         progress: 1,
         status: 'completed',
         projectId: 1,
+        userId: 42,
       },
     ]);
 
@@ -627,6 +628,7 @@ describe('usePrepareOfflineDownload', () => {
         progress: 1,
         status: 'completed',
         projectId: 1,
+        userId: 42,
       },
     ]);
 

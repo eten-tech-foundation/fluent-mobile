@@ -50,23 +50,40 @@ export function buildManifestContexts(
     bookCode,
     { chapterNumbers, bibleId, bookId },
   ] of selectedByBook) {
-    const min = Math.min(...chapterNumbers);
-    const max = Math.max(...chapterNumbers);
+    // Build contiguous runs from the selected chapter numbers before
+    // chunking, so a gap in selection (e.g. chapters 1 and 40) never
+    // produces a manifest request spanning the unselected chapters between
+    // them (#504 review).
+    const sorted = [...new Set(chapterNumbers)].sort((a, b) => a - b);
 
-    for (
-      let start = min;
-      start <= max;
-      start += MAX_CHAPTERS_PER_MANIFEST_CALL
-    ) {
-      const end = Math.min(start + MAX_CHAPTERS_PER_MANIFEST_CALL - 1, max);
-      contexts.push({
-        languageCode: sourceLanguageCode,
-        bookCode,
-        bookId,
-        startChapter: start,
-        endChapter: end,
-        bibleId,
-      });
+    for (let i = 0; i < sorted.length; ) {
+      let last = i;
+      while (
+        last + 1 < sorted.length &&
+        sorted[last + 1] === sorted[last] + 1
+      ) {
+        last++;
+      }
+
+      for (
+        let start = sorted[i];
+        start <= sorted[last];
+        start += MAX_CHAPTERS_PER_MANIFEST_CALL
+      ) {
+        contexts.push({
+          languageCode: sourceLanguageCode,
+          bookCode,
+          bookId,
+          startChapter: start,
+          endChapter: Math.min(
+            start + MAX_CHAPTERS_PER_MANIFEST_CALL - 1,
+            sorted[last],
+          ),
+          bibleId,
+        });
+      }
+
+      i = last + 1;
     }
   }
 

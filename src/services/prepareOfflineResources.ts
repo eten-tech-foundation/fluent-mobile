@@ -227,8 +227,12 @@ export async function fetchPrepareOfflineManifest(
     ],
   );
 
+  // A truncated manifest can omit required items (e.g. Translation Notes)
+  // that exceed the API's per-resource cap. Silently continuing would let
+  // downloads start from an incomplete catalog and mark the package
+  // "complete" while content is actually missing — reject instead (#504).
   if (translationResourcesResponse.truncated) {
-    console.warn(
+    throw new Error(
       `[prepareOfflineResources] manifest truncated for project ${projectId}`,
     );
   }
