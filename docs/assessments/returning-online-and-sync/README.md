@@ -114,6 +114,13 @@ Read on `main` + PR #559 @ `09ff2fd` (PR #559 head, which already contains
 run used a local build of `09ff2fd`, except B.7 and the second H.24 device
 (nightly; see Overview).
 
+**Why this build:** PR #559 (#546) was still waiting for approval and
+contains changes this audit depends on: one Wi-Fi / cellular transport rule
+for upload and download, the blocked-transport copy on the Sync page, and the
+split between link-layer connectivity and Fluent `/health` reachability.
+Testing `main` alone would have audited transport behavior that #559
+replaces.
+
 - **Mock data (epic rule): none.** No mocks, stubs or placeholders in the
   upload and sync path (`uploadOrchestrator*.ts`, `recordingSync.ts`,
   `sync.ts`, `chapterClaimSync.ts`, `stageAdvance.ts`, `SyncScreen.tsx`, the
