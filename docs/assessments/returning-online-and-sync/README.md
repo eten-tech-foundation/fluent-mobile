@@ -1,7 +1,8 @@
 # Returning Online and Synchronizing Changes Audit
 
-> **Status: device run done; gaps not filed yet.** Eleven gaps confirmed on a
-> physical device (G1–G11). Code read on `main` + PR #559 @ `09ff2fd`.
+> **Status: device run done; gaps filed.** Eleven gaps confirmed on a
+> physical device. Gaps 1–7 are #599–#605 (sub-issues of #530); Gaps 8–11
+> were added to the open #257, #271 and #147. Code read on `main` + PR #559 @ `09ff2fd`.
 
 ## Overview
 
@@ -228,15 +229,15 @@ claiming to #533.
 
 Existing issues were searched before routing (sync, upload, online,
 reconnect, pending, notification, conflict, stage, claim, cellular). Gaps 1–7
-become new issues; Gaps 8–11 become comments on existing open issues. Not
-filed yet.
+become new issues (#599–#605, sub-issues of #530); Gaps 8–11 became
+comments on the open #257, #271 and #147. All are filed.
 
 ### Gap 1: The upload foreground service crashes the app
 
 **Severity:** High  
 **Launch blocker:** To be decided with product  
 **Related issue:** [#152](https://github.com/eten-tech-foundation/fluent-mobile/issues/152) (closed), [#150](https://github.com/eten-tech-foundation/fluent-mobile/issues/150)  
-**Development task:** _(pending)_
+**Development task:** [#599](https://github.com/eten-tech-foundation/fluent-mobile/issues/599)
 
 **Description:**  
 Every notification `start` and `update` calls `startForegroundService()`
@@ -270,7 +271,7 @@ pairs within 200 ms. The device crash buffer holds the same exception on
 **Severity:** Medium  
 **Launch blocker:** No  
 **Related issue:** [#149](https://github.com/eten-tech-foundation/fluent-mobile/issues/149), [#152](https://github.com/eten-tech-foundation/fluent-mobile/issues/152) (closed)  
-**Development task:** _(pending)_
+**Development task:** [#600](https://github.com/eten-tech-foundation/fluent-mobile/issues/600)
 
 **Description:**  
 The orchestrator emits `start` / `progress` per chapter
@@ -298,7 +299,7 @@ restarts per chapter.
 **Severity:** Medium (to be confirmed with product: it can block auto-upload)  
 **Launch blocker:** No  
 **Related issue:** [#150](https://github.com/eten-tech-foundation/fluent-mobile/issues/150), [#38](https://github.com/eten-tech-foundation/fluent-mobile/issues/38) (closed), [#546](https://github.com/eten-tech-foundation/fluent-mobile/issues/546)  
-**Development task:** _(pending)_
+**Development task:** [#601](https://github.com/eten-tech-foundation/fluent-mobile/issues/601)
 
 **Description:**  
 Each NetInfo event starts a `/health` probe of up to 5 s
@@ -324,7 +325,7 @@ the cellular toggle on did not start the upload until reopening Sync.
 **Severity:** Low  
 **Launch blocker:** No  
 **Related issue:** [#470](https://github.com/eten-tech-foundation/fluent-mobile/issues/470) (closed), [#18](https://github.com/eten-tech-foundation/fluent-mobile/issues/18) (closed)  
-**Development task:** _(pending)_
+**Development task:** [#602](https://github.com/eten-tech-foundation/fluent-mobile/issues/602)
 
 **Description:**  
 A metadata step that fails on a flapping connection stores the DNS error as
@@ -351,7 +352,7 @@ succeeds; offline is shown as offline, not as a failure.
 **Severity:** Medium  
 **Launch blocker:** No  
 **Related issue:** [#38](https://github.com/eten-tech-foundation/fluent-mobile/issues/38), [#101](https://github.com/eten-tech-foundation/fluent-mobile/issues/101) (closed)  
-**Development task:** _(pending)_
+**Development task:** [#603](https://github.com/eten-tech-foundation/fluent-mobile/issues/603)
 
 **Description:**  
 Home, the chapter screen, ViewProject and Sync each run their own
@@ -378,7 +379,7 @@ shows a green check, Home a red arrow and the chapter screen green.
 **Severity:** Medium  
 **Launch blocker:** No  
 **Related issue:** [#150](https://github.com/eten-tech-foundation/fluent-mobile/issues/150), [#548](https://github.com/eten-tech-foundation/fluent-mobile/issues/548) (closed)  
-**Development task:** _(pending)_
+**Development task:** [#604](https://github.com/eten-tech-foundation/fluent-mobile/issues/604)
 
 **Description:**  
 The worker tries a network error 3 times (2 retries, 0.5 s and 1 s backoff),
@@ -402,7 +403,7 @@ resolve host …" on Sync; it clears after the automatic retry.
 **Severity:** Medium  
 **Launch blocker:** No  
 **Related issue:** [#150](https://github.com/eten-tech-foundation/fluent-mobile/issues/150) (closed)  
-**Development task:** _(pending)_
+**Development task:** [#605](https://github.com/eten-tech-foundation/fluent-mobile/issues/605)
 
 **Description:**  
 Sessions start only on a connectivity or cellular-toggle change, app start,
@@ -423,7 +424,7 @@ Saving a take, the end of the 24 h pause window and a failed session
 **Severity:** High (the handoff to the peer checker is lost with no warning)  
 **Launch blocker:** To be decided with product  
 **Related issue:** [#257](https://github.com/eten-tech-foundation/fluent-mobile/issues/257) (open, not built), [#258](https://github.com/eten-tech-foundation/fluent-mobile/issues/258), #529 Gap 7  
-**Development task:** _(pending: comment on #257; no new issue)_
+**Development task:** [#257 comment](https://github.com/eten-tech-foundation/fluent-mobile/issues/257#issuecomment-5874705843) (existing open issue; not built); no new issue
 
 **Description:**  
 The submit is skipped offline and never retried
@@ -446,7 +447,7 @@ button again; web shows Draft; Sync shows nothing pending.
 **Severity:** High  
 **Launch blocker:** To be decided with product  
 **Related issue:** [#271](https://github.com/eten-tech-foundation/fluent-mobile/issues/271) (open), [#270](https://github.com/eten-tech-foundation/fluent-mobile/issues/270), sibling audit [#533](https://github.com/eten-tech-foundation/fluent-mobile/issues/533)  
-**Development task:** _(pending: comment on #271; no new issue)_
+**Development task:** [#271 comment](https://github.com/eten-tech-foundation/fluent-mobile/issues/271#issuecomment-5874706180) (existing open issue); no new issue
 
 **Description:**  
 Uploads start on the reconnect edge, but offline claims are pushed only by
@@ -473,7 +474,7 @@ assignment 41863; HTTP 404, `retryable: false`).
 **Severity:** Low  
 **Launch blocker:** No  
 **Related issue:** [#147](https://github.com/eten-tech-foundation/fluent-mobile/issues/147) (open), [#503](https://github.com/eten-tech-foundation/fluent-mobile/issues/503) (closed)  
-**Development task:** _(pending: comment on #147, with Gap 11)_
+**Development task:** [#147 comment](https://github.com/eten-tech-foundation/fluent-mobile/issues/147#issuecomment-5874706590) (existing open issue, with Gap 11); no new issue
 
 **Description:**  
 Sync pushes Prepare for Offline with a `projectId`
@@ -492,7 +493,7 @@ back returns to Sync.
 **Severity:** Low  
 **Launch blocker:** No  
 **Related issue:** [#149](https://github.com/eten-tech-foundation/fluent-mobile/issues/149) (closed), [#147](https://github.com/eten-tech-foundation/fluent-mobile/issues/147) (open)  
-**Development task:** _(pending: comment on #147, with Gap 10)_
+**Development task:** [#147 comment](https://github.com/eten-tech-foundation/fluent-mobile/issues/147#issuecomment-5874706590) (existing open issue, with Gap 10); no new issue
 
 **Description:**  
 `deriveSyncPageStatus` never returns `allComplete` ("blocked on
@@ -544,7 +545,8 @@ Manage downloads (G10) and no "All synced" state (G11).
 
 **Follow-up required:**
 
-- [ ] All identified gaps have corresponding GitHub issues.
+- [x] All identified gaps have corresponding GitHub issues. _(#599–#605;
+      #257, #271 and #147 updated)_
 - [ ] Mobile and API dependencies are cross-linked. _(no new API work
       found; #256 server side is fluent-api#271)_
 - [x] Launch-blocking gaps are clearly identified. _(G1, G8, G9: to be
