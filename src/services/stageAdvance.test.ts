@@ -35,7 +35,22 @@ describe('confirmStageAdvancement', () => {
       },
     });
 
-    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'peer_check');
+    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'peer_check', undefined);
+    expect(mockSubmit).toHaveBeenCalledWith(7);
+  });
+
+  it('writes local Peer Checker when assigning on Send to Community Review', async () => {
+    await confirmStageAdvancement({
+      chapterAssignmentId: 7,
+      destination: {
+        nextStatus: 'community_review',
+        buttonLabel: 'Send to Community Review',
+        destinationLabel: 'Community Review',
+      },
+      assignPeerCheckerId: 99,
+    });
+
+    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'community_review', 99);
     expect(mockSubmit).toHaveBeenCalledWith(7);
   });
 
@@ -51,7 +66,11 @@ describe('confirmStageAdvancement', () => {
       },
     });
 
-    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'community_review');
+    expect(mockLocalUpdate).toHaveBeenCalledWith(
+      7,
+      'community_review',
+      undefined,
+    );
     expect(mockSubmit).not.toHaveBeenCalled();
   });
 
@@ -82,7 +101,7 @@ describe('confirmStageAdvancement', () => {
       },
     });
 
-    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'complete');
+    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'complete', undefined);
     expect(mockSubmit).toHaveBeenCalledWith(7);
   });
 });
