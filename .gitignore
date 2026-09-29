@@ -46,6 +46,7 @@ pnpm-lock.yaml
 
 # Maestro E2E (local artifacts; flows under .maestro/ are committed)
 .maestro/test_output/
+.maestro/fixtures/ownership-claim.state.json
 .maestro/**/screenshots/
 .maestro/**/*.png
 .maestro/**/*.mp4

@@ -35,7 +35,7 @@ jest.mock('./ChapterOwnershipIndicator', () => {
   const ReactNative = require('react-native');
   return {
     ChapterOwnershipIndicator: () => (
-      <ReactNative.View testID="chapter-ownership-indicator" />
+      <ReactNative.View testID="chapter-ownership-other" />
     ),
   };
 });
@@ -86,7 +86,7 @@ describe('ProjectChapterRow', () => {
     expect(
       getAllByTestId(/-indicator$/).map(node => node.props.testID),
     ).toEqual(['chapter-cloud-sync-indicator', 'chapter-conflict-indicator']);
-    expect(queryByTestId('chapter-ownership-indicator')).toBeNull();
+    expect(queryByTestId('chapter-ownership-other')).toBeNull();
   });
 
   it('shows the ownership indicator when there is no conflict', () => {
@@ -95,7 +95,9 @@ describe('ProjectChapterRow', () => {
     );
 
     expect(
-      getAllByTestId(/-indicator$/).map(node => node.props.testID),
-    ).toEqual(['chapter-cloud-sync-indicator', 'chapter-ownership-indicator']);
+      getAllByTestId(/chapter-(cloud-sync|ownership)-/).map(
+        node => node.props.testID,
+      ),
+    ).toEqual(['chapter-cloud-sync-indicator', 'chapter-ownership-other']);
   });
 });

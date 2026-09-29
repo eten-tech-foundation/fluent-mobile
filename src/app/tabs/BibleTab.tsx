@@ -19,7 +19,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { iconSizes, listIconStrokeWidth, theme } from '../../theme';
+import {
+  iconSizes,
+  listIconStrokeWidth,
+  theme,
+  touchHitSlop,
+} from '../../theme';
 
 const playingVerseHighlight = `${theme.colors.primary}14`;
 
@@ -60,7 +65,7 @@ function PericopeStatusIcon({
   );
 }
 
-export function BibleTab(_props: BibleTabProps = {}) {
+export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
   const {
     verses,
     selectedVerse,
@@ -117,11 +122,18 @@ export function BibleTab(_props: BibleTabProps = {}) {
   const handleUnitPress = useCallback(
     (unit: BibleTabUnitView) => {
       setSelectedVerse(unit.anchorVerse);
-      if (effectiveUnit === 'pericope') {
-        setExpandedKey(current => (current === unit.key ? null : unit.key));
-      }
+      onOpenRecord?.();
     },
-    [effectiveUnit, setSelectedVerse],
+    [onOpenRecord, setSelectedVerse],
+  );
+
+  /** Pericope chevron only — expand/collapse without leaving Bible for Record. */
+  const handlePericopeExpandToggle = useCallback(
+    (unit: BibleTabUnitView) => {
+      setSelectedVerse(unit.anchorVerse);
+      setExpandedKey(current => (current === unit.key ? null : unit.key));
+    },
+    [setSelectedVerse],
   );
 
   const renderVerseRow = useCallback(
@@ -177,38 +189,70 @@ export function BibleTab(_props: BibleTabProps = {}) {
       const expanded = expandedKey === item.key;
       const Chevron = expanded ? ChevronUp : ChevronDown;
 
+      // Card body and chevron are siblings so screen readers can focus Expand /
+      // Collapse separately from the open-Record action (nested touchables are
+      // often excluded from the accessibility tree on Android/iOS).
       return (
-        <TouchableOpacity
+        <View
           style={[
             styles.card,
             expanded ? styles.cardExpanded : styles.cardCollapsed,
           ]}
-          onPress={() => handleUnitPress(item)}
-          activeOpacity={theme.listCard.activeOpacity}
-          accessibilityRole="button"
-          accessibilityLabel={`${item.title}${isSelected ? ', selected' : ''}`}
           testID={`bible-pericope-${item.key}`}
         >
           <View style={styles.cardHeader}>
-            <PericopeStatusIcon status={item.recordedStatus} />
-            <Text style={styles.cardTitle}>{item.title}</Text>
-            <Chevron
-              size={iconSizes.headerTab}
-              color={theme.colors.mutedForeground}
-              strokeWidth={listIconStrokeWidth}
-            />
+            <TouchableOpacity
+              style={styles.cardMainPress}
+              onPress={() => handleUnitPress(item)}
+              activeOpacity={theme.listCard.activeOpacity}
+              accessibilityRole="button"
+              accessibilityLabel={`${item.title}${
+                isSelected ? ', selected' : ''
+              }`}
+            >
+              <PericopeStatusIcon status={item.recordedStatus} />
+              <Text style={styles.cardTitle}>{item.title}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => handlePericopeExpandToggle(item)}
+              hitSlop={touchHitSlop}
+              accessibilityRole="button"
+              accessibilityLabel={`${expanded ? 'Collapse' : 'Expand'} ${
+                item.title
+              }`}
+              testID={`bible-pericope-expand-${item.key}`}
+            >
+              <Chevron
+                size={iconSizes.headerTab}
+                color={theme.colors.mutedForeground}
+                strokeWidth={listIconStrokeWidth}
+              />
+            </TouchableOpacity>
           </View>
-          {expanded ? (
-            <VerseRun verses={item.bodyVerses} />
-          ) : (
-            <Text style={styles.cardPreview} numberOfLines={2}>
-              {item.previewText}
-            </Text>
-          )}
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => handleUnitPress(item)}
+            activeOpacity={theme.listCard.activeOpacity}
+            accessible={false}
+            importantForAccessibility="no"
+          >
+            {expanded ? (
+              <VerseRun verses={item.bodyVerses} />
+            ) : (
+              <Text style={styles.cardPreview} numberOfLines={2}>
+                {item.previewText}
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
       );
     },
-    [chapterNumber, expandedKey, handleUnitPress, selectedVerse],
+    [
+      chapterNumber,
+      expandedKey,
+      handlePericopeExpandToggle,
+      handleUnitPress,
+      selectedVerse,
+    ],
   );
 
   if (unitsPending) {
@@ -315,6 +359,12 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primary,
   },
   cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  cardMainPress: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.sm,
