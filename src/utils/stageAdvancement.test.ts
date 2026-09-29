@@ -2,6 +2,8 @@ import type { ChapterAssignmentData } from '../types/db/types';
 import {
   getStageAdvanceDestination,
   getStageAdvanceVisibility,
+  isDrafterBlockedFromOpenPeerCheckCapture,
+  resolvePeerCheckerAssignmentOnAdvance,
   stageAdvanceConfirmBody,
 } from './stageAdvancement';
 
@@ -150,6 +152,71 @@ describe('getStageAdvanceVisibility', () => {
     ).toBe(false);
   });
 
+  it('hides Send to Community Review from the drafter when Peer Check is unassigned', () => {
+    expect(
+      getStageAdvanceVisibility({
+        chapterData: {
+          ...baseChapter,
+          status: 'peer_check',
+          peerCheckerId: undefined,
+        },
+        currentUserId: 10,
+        hasChapterRecording: true,
+        hasConflict: false,
+        isOnLastUnit: true,
+      }).visible,
+    ).toBe(false);
+  });
+
+  it('shows Send to Community Review to any non-drafter when Peer Check is unassigned', () => {
+    expect(
+      getStageAdvanceVisibility({
+        chapterData: {
+          ...baseChapter,
+          status: 'peer_check',
+          peerCheckerId: undefined,
+        },
+        currentUserId: 99,
+        hasChapterRecording: false,
+        hasConflict: false,
+        isOnLastUnit: true,
+      }),
+    ).toMatchObject({
+      visible: true,
+      disabled: false,
+      destination: { buttonLabel: 'Send to Community Review' },
+    });
+  });
+
+  it('hides Send to Community Review from a non-assignee when a Peer Checker is PM-assigned', () => {
+    expect(
+      getStageAdvanceVisibility({
+        chapterData: { ...baseChapter, status: 'peer_check' },
+        currentUserId: 99,
+        hasChapterRecording: true,
+        hasConflict: false,
+        isOnLastUnit: true,
+      }).visible,
+    ).toBe(false);
+  });
+
+  it('hides Send to Community Review when Peer Check lacks a drafter id', () => {
+    expect(
+      getStageAdvanceVisibility({
+        chapterData: {
+          ...baseChapter,
+          status: 'peer_check',
+          assignedUserId: undefined,
+          peerCheckerId: undefined,
+        },
+        currentUserId: 99,
+        hasChapterRecording: true,
+        hasConflict: false,
+        isOnLastUnit: true,
+      }).visible,
+    ).toBe(false);
+  });
+
   it('disables when conflict is set without hiding', () => {
     expect(
       getStageAdvanceVisibility({
@@ -276,6 +343,129 @@ describe('getStageAdvanceVisibility', () => {
         }),
       ).toMatchObject({ visible: false, disabled: false, destination: null });
     });
+  });
+});
+
+describe('isDrafterBlockedFromOpenPeerCheckCapture', () => {
+  it('blocks the drafter on unassigned Peer Check', () => {
+    expect(
+      isDrafterBlockedFromOpenPeerCheckCapture(
+        {
+          status: 'peer_check',
+          assignedUserId: 10,
+          peerCheckerId: undefined,
+        },
+        10,
+      ),
+    ).toBe(true);
+  });
+
+  it('allows a non-drafter peer on unassigned Peer Check', () => {
+    expect(
+      isDrafterBlockedFromOpenPeerCheckCapture(
+        {
+          status: 'peer_check',
+          assignedUserId: 10,
+          peerCheckerId: undefined,
+        },
+        99,
+      ),
+    ).toBe(false);
+  });
+
+  it('allows the PM-assigned Peer Checker', () => {
+    expect(
+      isDrafterBlockedFromOpenPeerCheckCapture(
+        {
+          status: 'peer_check',
+          assignedUserId: 10,
+          peerCheckerId: 20,
+        },
+        20,
+      ),
+    ).toBe(false);
+  });
+
+  it('allows the drafter during Drafting', () => {
+    expect(
+      isDrafterBlockedFromOpenPeerCheckCapture(
+        {
+          status: 'draft',
+          assignedUserId: 10,
+        },
+        10,
+      ),
+    ).toBe(false);
+  });
+});
+
+describe('resolvePeerCheckerAssignmentOnAdvance', () => {
+  it('assigns the tapping peer when advancing unassigned Peer Check to Community Review', () => {
+    expect(
+      resolvePeerCheckerAssignmentOnAdvance({
+        chapterData: {
+          status: 'peer_check',
+          assignedUserId: 10,
+          peerCheckerId: undefined,
+        },
+        currentUserId: 99,
+        nextStatus: 'community_review',
+      }),
+    ).toBe(99);
+  });
+
+  it('does not assign the drafter', () => {
+    expect(
+      resolvePeerCheckerAssignmentOnAdvance({
+        chapterData: {
+          status: 'peer_check',
+          assignedUserId: 10,
+        },
+        currentUserId: 10,
+        nextStatus: 'community_review',
+      }),
+    ).toBeUndefined();
+  });
+
+  it('leaves an existing PM Peer Checker unchanged', () => {
+    expect(
+      resolvePeerCheckerAssignmentOnAdvance({
+        chapterData: {
+          status: 'peer_check',
+          assignedUserId: 10,
+          peerCheckerId: 20,
+        },
+        currentUserId: 20,
+        nextStatus: 'community_review',
+      }),
+    ).toBeUndefined();
+  });
+
+  it('does not assign when leaving Drafting for Peer Check', () => {
+    expect(
+      resolvePeerCheckerAssignmentOnAdvance({
+        chapterData: {
+          status: 'draft',
+          assignedUserId: 10,
+        },
+        currentUserId: 10,
+        nextStatus: 'peer_check',
+      }),
+    ).toBeUndefined();
+  });
+
+  it('does not assign when Peer Check lacks a drafter id', () => {
+    expect(
+      resolvePeerCheckerAssignmentOnAdvance({
+        chapterData: {
+          status: 'peer_check',
+          assignedUserId: undefined,
+          peerCheckerId: undefined,
+        },
+        currentUserId: 99,
+        nextStatus: 'community_review',
+      }),
+    ).toBeUndefined();
   });
 });
 

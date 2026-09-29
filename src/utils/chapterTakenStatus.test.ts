@@ -77,4 +77,46 @@ describe('isChapterTakenByOther', () => {
       isChapterTakenByOther({ ...baseChapter, assignedUserId: 99 }, null),
     ).toBe(false);
   });
+
+  it('returns false for a non-drafter on unassigned Peer Check', () => {
+    expect(
+      isChapterTakenByOther(
+        {
+          ...baseChapter,
+          status: 'peer_check',
+          assignedUserId: 99,
+          peerCheckerId: undefined,
+        },
+        currentUserId,
+      ),
+    ).toBe(false);
+  });
+
+  it('returns true for a non-assignee when Peer Check is PM-assigned', () => {
+    expect(
+      isChapterTakenByOther(
+        {
+          ...baseChapter,
+          status: 'peer_check',
+          assignedUserId: 7,
+          peerCheckerId: 99,
+        },
+        currentUserId,
+      ),
+    ).toBe(true);
+  });
+
+  it('returns false for the PM-assigned Peer Checker', () => {
+    expect(
+      isChapterTakenByOther(
+        {
+          ...baseChapter,
+          status: 'peer_check',
+          assignedUserId: 7,
+          peerCheckerId: currentUserId,
+        },
+        currentUserId,
+      ),
+    ).toBe(false);
+  });
 });
