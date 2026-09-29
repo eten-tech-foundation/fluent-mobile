@@ -50,8 +50,11 @@ fi
 
 echo "Seeding ownership fixtures against API…"
 # Local suite may rotate claim to the next pristine not_started chapter.
+# --yes / MAESTRO_FIXTURE_CONFIRM=1 required so seed cannot silently rewrite
+# a live project when someone points env at the wrong id.
 MAESTRO_FIXTURE_ALLOW_CLAIM_ROTATE=1 \
-  node "${ROOT}/scripts/maestro-ownership-fixtures.mjs" seed
+MAESTRO_FIXTURE_CONFIRM=1 \
+  node "${ROOT}/scripts/maestro-ownership-fixtures.mjs" seed --yes
 
 STATE_FILE="${ROOT}/.maestro/fixtures/ownership-claim.state.json"
 if [[ -f "${STATE_FILE}" ]]; then
@@ -68,6 +71,6 @@ node "${ROOT}/scripts/maestro-ownership-fixtures.mjs" verify
 exec bash "${ROOT}/scripts/maestro-test.sh" \
   --config .maestro/config.yaml \
   --include-tags ownership \
-  "${EXCLUDE_TAGS[@]}" \
+  ${EXCLUDE_TAGS[@]+"${EXCLUDE_TAGS[@]}"} \
   .maestro \
   "$@"

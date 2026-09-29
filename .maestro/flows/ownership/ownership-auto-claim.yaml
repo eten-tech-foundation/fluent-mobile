@@ -65,12 +65,12 @@ tags:
     direction: DOWN
     timeout: 90000
 - assertVisible:
-    text: ${MAESTRO_FIXTURE_CLAIM_LABEL}
+    id: 'chapter-row-.*'
+    containsDescendants:
+      - text: ${MAESTRO_FIXTURE_CLAIM_LABEL}
+      - id: 'chapter-ownership-mine'
 - assertVisible:
-    id: 'chapter-ownership-mine'
-    below:
-      text: ${MAESTRO_FIXTURE_CLAIM_LABEL}
-- assertVisible:
-    text: 'Assigned to you'
-    below:
-      text: ${MAESTRO_FIXTURE_CLAIM_LABEL}
+    id: 'chapter-row-.*'
+    containsDescendants:
+      - text: ${MAESTRO_FIXTURE_CLAIM_LABEL}
+      - text: 'Assigned to you'

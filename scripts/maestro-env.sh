@@ -54,8 +54,10 @@ load_maestro_env_literal() {
       value="${BASH_REMATCH[1]}"
     fi
 
-    # Do not clobber vars already exported (ownership suite sets rotated claim).
-    if [[ -n "${!key:-}" ]]; then
+    # Do not clobber MAESTRO_FIXTURE_* already exported (ownership suite rotates
+    # claim label after seed). Credentials / API URL still load from .env.maestro
+    # even when a stale shell export is present.
+    if [[ "${key}" == MAESTRO_FIXTURE_* && -n "${!key:-}" ]]; then
       continue
     fi
 

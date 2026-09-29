@@ -287,7 +287,7 @@ jobs:
               echo "Add them under Environment variables (preview) — docs/guides/maestro.md (#574)."
               exit 1
             fi
-            node ./scripts/maestro-ownership-fixtures.mjs seed
+            MAESTRO_FIXTURE_CONFIRM=1 node ./scripts/maestro-ownership-fixtures.mjs seed --yes
             # Fail closed if MAESTRO_FIXTURE_CLAIM_LABEL is burned — do not rotate
             # on EAS (preview secrets must be updated deliberately). Local suite
             # uses MAESTRO_FIXTURE_ALLOW_CLAIM_ROTATE=1.

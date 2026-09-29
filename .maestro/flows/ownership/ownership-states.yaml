@@ -36,9 +36,10 @@ tags:
     direction: DOWN
     timeout: 90000
 - assertVisible:
-    text: ${MAESTRO_FIXTURE_MINE_LABEL}
-- assertVisible:
-    id: 'chapter-ownership-mine'
+    id: 'chapter-row-.*'
+    containsDescendants:
+      - text: ${MAESTRO_FIXTURE_MINE_LABEL}
+      - id: 'chapter-ownership-mine'
 - assertVisible: 'Assigned to you'
 
 # Other
@@ -48,17 +49,32 @@ tags:
     direction: DOWN
     timeout: 90000
 - assertVisible:
-    text: ${MAESTRO_FIXTURE_OTHER_LABEL}
-- assertVisible:
-    id: 'chapter-ownership-other'
+    id: 'chapter-row-.*'
+    containsDescendants:
+      - text: ${MAESTRO_FIXTURE_OTHER_LABEL}
+      - id: 'chapter-ownership-other'
 - assertVisible: 'Assigned to another translator'
 
-# Unassigned → Record: no taken warning
+# Unassigned → no ownership icon on that row; Record has no taken warning
 - scrollUntilVisible:
     element:
       text: ${MAESTRO_FIXTURE_UNASSIGNED_LABEL}
     direction: DOWN
     timeout: 90000
+- assertVisible:
+    id: 'chapter-row-.*'
+    containsDescendants:
+      - text: ${MAESTRO_FIXTURE_UNASSIGNED_LABEL}
+- assertNotVisible:
+    id: 'chapter-row-.*'
+    containsDescendants:
+      - text: ${MAESTRO_FIXTURE_UNASSIGNED_LABEL}
+      - id: 'chapter-ownership-mine'
+- assertNotVisible:
+    id: 'chapter-row-.*'
+    containsDescendants:
+      - text: ${MAESTRO_FIXTURE_UNASSIGNED_LABEL}
+      - id: 'chapter-ownership-other'
 - tapOn:
     text: ${MAESTRO_FIXTURE_UNASSIGNED_LABEL}
 - extendedWaitUntil:

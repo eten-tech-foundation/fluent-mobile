@@ -25,7 +25,8 @@
       "envLabel": "MAESTRO_FIXTURE_CLAIM_LABEL",
       "expectedOwnership": "unassigned",
       "expectedConflict": false,
-      "notes": "Disposable unassigned chapter for online auto-claim. Reset after each claim run (Fluent web / admin)."
+      "expectedStatus": "not_started",
+      "notes": "Disposable unassigned chapter for online auto-claim. Must stay not_started — clear via API leaves draft and cannot be claimed. After a successful auto-claim run, rotate MAESTRO_FIXTURE_CLAIM_LABEL or reset Status in Fluent web; the suite does not restore burned chapters."
     },
     "conflict": {
       "envLabel": "MAESTRO_FIXTURE_CONFLICT_LABEL",

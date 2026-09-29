@@ -134,7 +134,11 @@ function deriveOwnership(assignedUserId, currentUserId) {
   if (assignedUserId === null || assignedUserId === undefined) {
     return 'unassigned';
   }
-  if (currentUserId !== null && assignedUserId === currentUserId) {
+  if (
+    currentUserId !== null &&
+    currentUserId !== undefined &&
+    Number(assignedUserId) === Number(currentUserId)
+  ) {
     return 'mine';
   }
   return 'other';
@@ -253,20 +257,41 @@ async function loadContext() {
   const projectName = optionalEnv('MAESTRO_FIXTURE_PROJECT_NAME');
   const projectIdEnv = optionalEnv('MAESTRO_FIXTURE_PROJECT_ID');
   let projectId = projectIdEnv ? Number(projectIdEnv) : null;
-  if (projectName && !projectId) {
+
+  if (projectIdEnv && Number.isNaN(projectId)) {
+    throw new Error(
+      `MAESTRO_FIXTURE_PROJECT_ID="${projectIdEnv}" is not a number`,
+    );
+  }
+
+  if (projectName) {
     const match = pmProjects.find(p => p.name === projectName);
     if (!match) {
       throw new Error(
         `MAESTRO_FIXTURE_PROJECT_NAME="${projectName}" not on PM projects`,
       );
     }
-    projectId = match.id;
+    if (projectId != null && Number(match.id) !== Number(projectId)) {
+      throw new Error(
+        `MAESTRO_FIXTURE_PROJECT_ID=${projectId} does not match name "${projectName}" (id=${match.id}). Refusing to mutate.`,
+      );
+    }
+    projectId = Number(match.id);
   }
+
   if (!projectId) {
     throw new Error(
       'Set MAESTRO_FIXTURE_PROJECT_ID or MAESTRO_FIXTURE_PROJECT_NAME',
     );
   }
+
+  const projectMeta = pmProjects.find(p => Number(p.id) === Number(projectId));
+  if (!projectMeta) {
+    throw new Error(
+      `MAESTRO_FIXTURE_PROJECT_ID=${projectId} is not in the PM's projects — refusing to mutate a project outside that list. Use a dedicated disposable fixture project.`,
+    );
+  }
+  const resolvedProjectName = projectMeta.name || projectName || String(projectId);
 
   const projectAssignments = unwrapList(
     (
@@ -328,10 +353,7 @@ async function loadContext() {
   return {
     baseUrl,
     projectId,
-    projectName:
-      projectName ||
-      pmProjects.find(p => p.id === projectId)?.name ||
-      String(projectId),
+    projectName: resolvedProjectName,
     translator,
     pm,
     pmToken,
@@ -411,6 +433,17 @@ function pickClaimChapter(ctx, preferredLabel, reservedLabels) {
 }
 
 async function seed() {
+  const confirmed =
+    process.env.MAESTRO_FIXTURE_CONFIRM === '1' ||
+    process.argv.includes('--yes');
+  if (!confirmed) {
+    throw new Error(
+      'Refusing to mutate project assignments without confirmation. ' +
+        'Re-run with --yes or MAESTRO_FIXTURE_CONFIRM=1 after checking the project id/name. ' +
+        'Use a dedicated disposable fixture project — never shared QA data.',
+    );
+  }
+
   const ctx = await loadContext();
   if (!ctx.otherUserId) {
     throw new Error(
@@ -470,6 +503,25 @@ async function seed() {
       `claim chapter "${claim.label}" status=${claim.status} (need not_started). Choose another unused chapter label.`,
     );
   }
+
+  console.log(
+    `About to mutate project ${ctx.projectId} ("${ctx.projectName}") via assign-selected:`,
+  );
+  console.log(
+    `  mine        ${mineLabel} (id=${mine.id}): ${mine.ownership}/${mine.status} → drafter=${ctx.translator.id}`,
+  );
+  console.log(
+    `  other       ${otherLabel} (id=${other.id}): ${other.ownership}/${other.status} → drafter=${ctx.otherUserId}`,
+  );
+  console.log(
+    `  unassigned  ${unassignedLabel} (id=${unassigned.id}): ${unassigned.ownership}/${unassigned.status} → clear assignees`,
+  );
+  console.log(
+    `  claim       ${claim.label} (id=${claim.id}): leave pristine not_started (no PATCH)`,
+  );
+  console.log(
+    'Note: burned claim chapters stay draft after auto-claim; API cannot restore not_started — rotate claim label or reset Status in Fluent web.',
+  );
 
   await assignSelected(ctx, assignments);
 
@@ -598,6 +650,7 @@ async function verify() {
     }
 
     if (role === 'claim' && row.status !== 'not_started') {
+      // expectedStatus on the claim role already fails hard; keep a loud note.
       warnings.push(
         `claim ("${label}") status=${row.status} (claim API requires not_started). Re-seed will pick another not_started chapter if available.`,
       );

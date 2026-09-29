@@ -115,7 +115,7 @@ Do **not** mutate shared QA projects. Use a dedicated project the PM owns (examp
 
 ```bash
 # .env.maestro needs MAESTRO_PM_* + MAESTRO_EMAIL + fixture labels
-npm run maestro:fixtures:seed    # PATCH .../assign-selected (same as Fluent web Assign)
+npm run maestro:fixtures:seed    # requires --yes / MAESTRO_FIXTURE_CONFIRM=1 (npm script passes --yes)
 npm run maestro:fixtures:verify
 npm run maestro:test:ownership
 ```
@@ -127,11 +127,13 @@ npm run maestro:test:ownership
 | unassigned | `Mark 4` | No assignee (ownership icon absent; Record has no taken warning) |
 | claim | `Mark 7` | Must stay **`not_started` + unassigned** for `POST /claim` / auto-claim. Local `maestro:test:ownership` may rotate to the next pristine chapter (`MAESTRO_FIXTURE_ALLOW_CLAIM_ROTATE=1`). EAS fails closed — update the preview `MAESTRO_FIXTURE_CLAIM_LABEL` secret when burned. |
 
+**Safety:** `seed` refuses to run without `--yes` / `MAESTRO_FIXTURE_CONFIRM=1`, and refuses a `MAESTRO_FIXTURE_PROJECT_ID` that is not on the PM's project list (or that disagrees with `MAESTRO_FIXTURE_PROJECT_NAME` when both are set). Point env only at a dedicated disposable fixture project.
+
 Endpoint used by seed (discovered from Fluent web Assign → Save):
 
 `PATCH /projects/:projectId/chapter-assignments/assign-selected`  
 `{ "assignments": [{ "chapterAssignmentId", "drafterId", "peerCheckerId" }] }`  
-Null `drafterId` / `peerCheckerId` clears assignees. Clearing a claimed chapter leaves status `draft` (claim pool is one-shot per chapter).
+Null `drafterId` / `peerCheckerId` clears assignees. Clearing a claimed chapter leaves status `draft` (claim pool is one-shot per chapter). After auto-claim, burned chapters stay assigned/`draft` — rotate `MAESTRO_FIXTURE_CLAIM_LABEL` or reset Status in Fluent web; the suite does not restore `not_started`.
 
 Manifest: [`.maestro/fixtures/ownership-claim.manifest.json`](../../.maestro/fixtures/ownership-claim.manifest.json).
 
