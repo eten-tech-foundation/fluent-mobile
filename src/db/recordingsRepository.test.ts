@@ -390,6 +390,7 @@ import {
   getTakesForVerse,
   selectRecordingTake,
 } from './recordingsRepository';
+import { getRecordingDataVersion } from '../services/recordingDataEvents';
 
 describe('recordingsRepository multi-take', () => {
   beforeEach(() => {
@@ -843,5 +844,37 @@ describe('recordingsRepository multi-take', () => {
       verseNumber: 5,
     });
     expect(atFive).toEqual([]);
+  });
+
+  it('bumps the shared sync-status store when a take is saved or deleted', async () => {
+    const versionBefore = getRecordingDataVersion();
+
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///signal.m4a',
+      id: 'signal-save',
+    });
+    expect(getRecordingDataVersion()).toBe(versionBefore + 1);
+
+    await deleteRecordingTake('signal-save');
+    expect(getRecordingDataVersion()).toBe(versionBefore + 2);
+  });
+
+  it('does not bump the store when a delete no-ops (missing or foreign take)', async () => {
+    const versionBefore = getRecordingDataVersion();
+
+    await deleteRecordingTake('missing-id');
+    expect(getRecordingDataVersion()).toBe(versionBefore);
+
+    __setMockActiveUserId('2');
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///foreign.m4a',
+      id: 'foreign',
+    });
+    __setMockActiveUserId('1');
+    await deleteRecordingTake('foreign');
+    // Only the add bumped it; the guarded delete did not.
+    expect(getRecordingDataVersion()).toBe(versionBefore + 1);
   });
 });

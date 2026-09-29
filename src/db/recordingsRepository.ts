@@ -1,4 +1,5 @@
 import { getDatabase } from './db';
+import { emitRecordingDataChanged } from '../services/recordingDataEvents';
 import { logger } from '../utils/logger';
 import type {
   Recording,
@@ -316,6 +317,9 @@ export async function addRecordingTake(
     bibleTextId: input.bibleTextId,
     recordedByUserId,
   });
+  // New take means new pending upload — refresh every sync-status consumer
+  // (headers, Sync page) without waiting for an upload session event (#530).
+  emitRecordingDataChanged();
   return id;
 }
 
@@ -622,5 +626,8 @@ export async function deleteRecordingTake(id: string): Promise<void> {
 
   if (applied) {
     log.info('Recording take deleted', { id });
+    // Deleting a pending/failed take must drop the pending/failed header
+    // state everywhere immediately (#530 A.1/A.2).
+    emitRecordingDataChanged();
   }
 }
