@@ -189,21 +189,30 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
       const expanded = expandedKey === item.key;
       const Chevron = expanded ? ChevronUp : ChevronDown;
 
+      // Card body and chevron are siblings so screen readers can focus Expand /
+      // Collapse separately from the open-Record action (nested touchables are
+      // often excluded from the accessibility tree on Android/iOS).
       return (
-        <TouchableOpacity
+        <View
           style={[
             styles.card,
             expanded ? styles.cardExpanded : styles.cardCollapsed,
           ]}
-          onPress={() => handleUnitPress(item)}
-          activeOpacity={theme.listCard.activeOpacity}
-          accessibilityRole="button"
-          accessibilityLabel={`${item.title}${isSelected ? ', selected' : ''}`}
           testID={`bible-pericope-${item.key}`}
         >
           <View style={styles.cardHeader}>
-            <PericopeStatusIcon status={item.recordedStatus} />
-            <Text style={styles.cardTitle}>{item.title}</Text>
+            <TouchableOpacity
+              style={styles.cardMainPress}
+              onPress={() => handleUnitPress(item)}
+              activeOpacity={theme.listCard.activeOpacity}
+              accessibilityRole="button"
+              accessibilityLabel={`${item.title}${
+                isSelected ? ', selected' : ''
+              }`}
+            >
+              <PericopeStatusIcon status={item.recordedStatus} />
+              <Text style={styles.cardTitle}>{item.title}</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={() => handlePericopeExpandToggle(item)}
               hitSlop={touchHitSlop}
@@ -220,14 +229,21 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
               />
             </TouchableOpacity>
           </View>
-          {expanded ? (
-            <VerseRun verses={item.bodyVerses} />
-          ) : (
-            <Text style={styles.cardPreview} numberOfLines={2}>
-              {item.previewText}
-            </Text>
-          )}
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => handleUnitPress(item)}
+            activeOpacity={theme.listCard.activeOpacity}
+            accessible={false}
+            importantForAccessibility="no"
+          >
+            {expanded ? (
+              <VerseRun verses={item.bodyVerses} />
+            ) : (
+              <Text style={styles.cardPreview} numberOfLines={2}>
+                {item.previewText}
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
       );
     },
     [
@@ -343,6 +359,12 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primary,
   },
   cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  cardMainPress: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.sm,
