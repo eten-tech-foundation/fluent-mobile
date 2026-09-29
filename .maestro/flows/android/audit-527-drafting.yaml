@@ -1,0 +1,91 @@
+# Interactive #527 drafting shell audit (no clearState — preserve Dev Client history).
+# Assumes app is on DEVELOPMENT SERVERS with http://127.0.0.1:8081 in Recently Opened,
+# OR already on login / Home.
+appId: com.eten.fluent
+tags:
+  - drafting
+  - audit
+---
+- runFlow:
+    when:
+      visible: 'DEVELOPMENT SERVERS'
+    commands:
+      - tapOn:
+          text: 'http://127.0.0.1:8081'
+          optional: true
+      - openLink: 'exp+fluent-mobile://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081'
+
+- runFlow:
+    when:
+      visible:
+        id: 'login-email-input'
+    commands:
+      - runFlow: subflows/login.yaml
+
+- runFlow: subflows/wait-for-home.yaml
+
+# --- S1: My Work → drafting shell chrome ---
+- runFlow: subflows/open-first-my-work-chapter.yaml
+- assertVisible:
+    id: 'drafting-tab-bar'
+- assertVisible:
+    id: 'drafting-tab-bible'
+- assertVisible:
+    id: 'drafting-tab-resources'
+- assertVisible:
+    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'bible-tab'
+- assertVisible:
+    id: 'source-audio-bar'
+- assertVisible:
+    id: 'home-sync-button'
+
+# --- S2: Source-audio visibility across tabs ---
+- tapOn:
+    id: 'drafting-tab-resources'
+- assertVisible:
+    id: 'resources-tab'
+- assertNotVisible:
+    id: 'source-audio-bar'
+- tapOn:
+    id: 'drafting-tab-bible'
+- assertVisible:
+    id: 'bible-tab'
+- assertVisible:
+    id: 'source-audio-bar'
+- tapOn:
+    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'record-tab'
+- assertVisible:
+    id: 'source-audio-bar'
+
+# --- S3: Last-tab restore ---
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 15000
+- runFlow: subflows/open-first-my-work-chapter.yaml
+- assertVisible:
+    id: 'record-tab'
+- assertVisible:
+    id: 'source-audio-bar'
+
+# --- S4: Bible unit tap → Record (PRODUCT contract #47 / #564) ---
+- tapOn:
+    id: 'drafting-tab-bible'
+- assertVisible:
+    id: 'bible-tab'
+- tapOn:
+    text: '3'
+# Expect Record tab to activate; if not, this assert fails → PRODUCT FAIL (#564)
+- extendedWaitUntil:
+    visible:
+      id: 'record-tab'
+    timeout: 5000
+- assertVisible:
+    id: 'record-verse-reference'
+- assertVisible:
+    text: '.*:3'
