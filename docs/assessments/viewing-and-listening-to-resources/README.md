@@ -179,12 +179,13 @@ observation; both are included in the counts.
 
 | Planned | Pass | Fail | Blocked | Skipped |
 |---|---|---|---|---|
-| 29 | 16 | 10 | 2 | 1 |
+| 29 | 16 | 11 | 2 | 0 |
 
 Failures and gaps do not map 1:1: A.6 and E.14 feed Gap 1, and G.18–G.20
 together are Gap 5. E.13 fails on behavior already tracked by #578 and
-#417, so it adds no gap; it counts once, as Fail (its isolation check
-was Blocked).
+#417, so it adds no gap; it counts once, as Fail (its isolation check could
+not be run, see Actual). G.23 fails on the scrub restart already tracked by
+#408, so it also adds no gap.
 
 | # | Scenario | Expected Result | Actual Result | Status |
 |---|---|---|---|---|
@@ -201,7 +202,7 @@ was Blocked).
 | D.10 | Expand Images & Maps | Thumbnails with title/caption and attribution (#191) | Title only (e.g. Mark 1 "Locations in the Book of Mark"); no caption or attribution | **Fail** → Gap 4 |
 | D.11 | Pinch a thumbnail | Zooms (#191) | As expected | Pass |
 | D.12 | Maximize → fullscreen | Pinch-zoom + pan; title; Close and Back exit (#191) | As expected; the title shows in the viewer header next to Close | Pass |
-| E.13 | Section load failure (prepared chapter, airplane mode) | Inline error + Retry per section; others unaffected (#189–#191, #348) | Mark 1:3: TN and TQ both show "Unable to load" + Retry; Images & Maps is hidden. Prepared content is not read offline (#578) and images are stored as `kind: text` (#417). Isolation could not be checked because every visible section failed | **Fail** (tracked: #578, #417) · Blocked (isolation) |
+| E.13 | Section load failure (prepared chapter, airplane mode) | Inline error + Retry per section; others unaffected (#189–#191, #348) | Mark 1:3: TN and TQ both show "Unable to load" + Retry; Images & Maps is hidden. Prepared content is not read offline (#578) and images are stored as `kind: text` (#417). Isolation could not be checked because every visible section failed | **Fail** (tracked: #578, #417) |
 | E.14 | Retry after the network returns | Section loads (#348) | Retry reloads each section and Images & Maps reappears. An empty TQ still expands to a blank body | **Fail** → Gap 1 |
 | F.15 | Pericope mode → Resources | Resources for the whole pericope; range in the header (#188, #189) | Bible and Record show pericopes, but Resources shows "Mark 1:1" and only verse 1's content, as in verse mode | **Fail** → Gap 3 |
 | G.16 | Player placement and label | Bar on Bible and Record, not on Resources; "<Bible> Source Audio · Verse N / M" (#412) | As expected | Pass |
@@ -211,7 +212,7 @@ was Blocked).
 | G.20 | Highlight during playback | Playing row highlighted, selected border separate; selection unchanged (#48) | Same as G.18: the highlight cannot follow playback without timestamps | **Fail** → Gap 5 |
 | G.21 | Playing verse scrolls off-screen | List follows the playing row (#48) | Cannot be triggered without verse timestamps | Blocked |
 | G.22 | Play to the end of the chapter | Stops at the end, no loop; highlight clears (#48) | Stops at the end without looping; the button returns to Play, and Play starts again from the beginning. The waveform stays fully played with the playhead at the right edge and `5:42 / 5:42` (not reset to the start). The caption still reads `Verse 1 / 45` because nothing tracks the playing verse without timestamps (Gap 5) | Pass |
-| G.23 | Scrub the waveform (verse mode) | Seeks to the position; does not restart (#408 QA) | Scrubbing sometimes restarts; already reported on #408 (open) | Skipped (tracked: #408) |
+| G.23 | Scrub the waveform (verse mode) | Seeks to the position; does not restart (#408 QA) | Scrubbing sometimes restarts; already reported on #408 (open) | **Fail** (tracked: #408) |
 | G.24 | Playing → open Resources → back to Bible | Pauses when the bar is hidden; resumes from the same position | Source audio stops and resets when Resources opens (the player is disabled there, `SourceAudioShell.tsx:76-79`, and `useSourceAudio.ts:118-122` stops and clears it); back on Bible, Play starts from the beginning. The specs only require the bar on Bible and Record and stop/clear on leave (#235, #412), so this matches them; resuming is an open question | Pass |
 | G.25 | Playing → leave drafting (back) | Source audio stops (#235) | As expected | Pass |
 | G.26 | Record tab: source playing → play a take / record | Source stops; bar hidden during capture (#235) | Source stops when a take plays and during capture; afterwards the player is back at the start (stop, not pause: `RecordTab.tsx:757-778` calls `stop`). Matches #235; see Open Questions | Pass |
