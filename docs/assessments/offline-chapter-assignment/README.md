@@ -1,9 +1,10 @@
 # Offline Chapter Assignment Audit
 
-> **Status: device run done; gaps filed.** Gaps 1 and 2 are filed as #610
-> and #611, and two related findings as #612 and #613 (all sub-issues of
-> #533). The stuck upload orchestrator and the duplicate-session crash were
-> added to #601 and #599, and the results to #271.
+> **Status: device run done; gaps filed.** Gaps 1–4 are filed as #610–#613
+> (sub-issues of #533). Gaps 3 and 4 are outside this audit's scope but were
+> confirmed during its run. The stuck upload orchestrator and the
+> duplicate-session crash were added to #601 and #599, and the results to
+> #271.
 
 ## Overview
 
@@ -207,6 +208,8 @@ reconnects and taps Sync Now), folded into E.5 and not counted.
 Failures and gaps do not map 1:1: three failures (C.1–C.3) are Gap 2, and
 five (D.8, E.5–E.8) are Gap 1. Gap 2 also shows up inside passing scenarios:
 D.3 and F-alt only passed after a manual Sync Now or a sign-out/sign-in.
+Gaps 3 and 4 come from observations during C.3, D.3 and I.3, not from separate
+failed scenarios.
 
 | # | Scenario | Expected Result | Actual Result | Status |
 |---|---|---|---|---|
@@ -244,7 +247,7 @@ D.3 and F-alt only passed after a manual Sync Now or a sign-out/sign-in.
 | H.1 | (Optional) PM unassigns a chapter already in Draft; A records on it offline, reconnects, Sync Now | Chapter claimed, or a clear message; no stuck claim | Web could not produce "Draft with no drafter": removing the assignment left another translator as drafter, so the app (correctly) showed "other" and did not claim | Blocked |
 | I.1 | Online: first take on an unassigned chapter (#268 regression check) | Claimed at once | Claimed within 2 s (Ruth 2 as one account, Ruth 3 as the other) | Pass |
 | I.2 | Row state after the online claim | "mine" at once | As expected | Pass |
-| I.3 | Take upload after the online claim | Take uploads | Uploaded on Sync Now on a project with a unique book (Numbers 3). No automatic upload after an online take (matches #150's triggers). An earlier try failed because of the cross-project upload bug (Related findings) | Pass |
+| I.3 | Take upload after the online claim | Take uploads | Uploaded on Sync Now on a project with a unique book (Numbers 3). No automatic upload after an online take (see #605). An earlier try failed because of the cross-project upload bug (Gap 4) | Pass |
 
 ## Offline and Synchronization Results
 
@@ -258,11 +261,13 @@ D.3 and F-alt only passed after a manual Sync Now or a sign-out/sign-in.
 
 ## Gaps Identified
 
-Both confirmed gaps share one root: an offline claim is a local-only promise
-that only the full sync pushes. The automatic upload, the chapter-list
-refresh and the Sync page act without it, and the API and the app each expect
-the other to detect reconnect conflicts. The sync problems listed under
-Related findings make both gaps worse but do not cause them.
+Gaps 1 and 2 share one root: an offline claim is a local-only promise that
+only the full sync pushes. The automatic upload, the chapter-list refresh and
+the Sync page act without it, and the API and the app each expect the other to
+detect reconnect conflicts. Gaps 3 and 4 were confirmed during the same run
+but belong to sync and upload in general (#530); Gap 3 makes Gaps 1 and 2
+worse. The other sync problems listed under Related findings were added to
+existing issues.
 
 ### Gap 1: Offline claim conflicts are not surfaced when a PM assigned the chapter or the offline window exceeds 5 minutes
 
@@ -352,6 +357,63 @@ cycle" on reconnect. The row stays "mine", and takes upload without errors.
 by the list refresh, and no UI to push claims when no uploads are pending.  
 **Evidence:** C.1–C.3 (Acts 1, 3, 6), D.3 (Numbers 6), F-alt (Titus 2).
 
+### Gap 3: Every Sync Now downloads all master data, and repeated taps overlap
+
+**Severity:** High  
+**Launch blocker:** To be decided with product  
+**Related issue:** [#530](https://github.com/eten-tech-foundation/fluent-mobile/issues/530), [#602](https://github.com/eten-tech-foundation/fluent-mobile/issues/602), [#470](https://github.com/eten-tech-foundation/fluent-mobile/issues/470) (outside this audit's scope: sync in general)  
+**Development task:** [#612](https://github.com/eten-tech-foundation/fluent-mobile/issues/612)
+
+**Description:**  
+Every full sync (Sync Now, login, Home auto-repair) first downloads all
+languages (7,629), books (85) and bibles (776) with no `updatedAfter`
+(`syncMasterData`, `src/services/sync.ts:217`), before user data and pending
+claims. This takes about 30 s on Wi-Fi, costs data, and delays every claim
+push (Gap 2, and Gap 1's 5-minute window). Repeated taps are not debounced:
+overlapping full syncs start, and the API answers HTTP 429 "Too many
+requests" (20 times in one burst), ending in "Sync all users failed".
+
+**Steps to reproduce:**
+
+1. Online, open Sync and tap Sync Now; the log shows languages, books and
+   bibles fetched in full before claims and assignments.
+2. Tap Sync Now several times in a row.
+
+**Expected behavior:** Sync Now is quick when little has changed, claims do
+not wait for master data, and a second tap does not start another sync.  
+**Actual behavior:** about 30 s of master data on every Sync Now before
+claims; overlapping syncs and HTTP 429 after repeated taps.  
+**Evidence:** observed during C.3, D.3 and I.3 (device log).
+
+### Gap 4: Takes can upload to the wrong project unit
+
+**Severity:** High  
+**Launch blocker:** To be decided with product  
+**Related issue:** [#333](https://github.com/eten-tech-foundation/fluent-mobile/issues/333), PR #552, [#528](https://github.com/eten-tech-foundation/fluent-mobile/issues/528), [#530](https://github.com/eten-tech-foundation/fluent-mobile/issues/530) (outside this audit's scope: upload)  
+**Development task:** [#613](https://github.com/eten-tech-foundation/fluent-mobile/issues/613)
+
+**Description:**  
+Recordings are keyed by `bible_text_id` only, and pending uploads resolve
+`project_unit_id` by bible + book + chapter with `ORDER BY ca.id LIMIT 1`
+(`src/db/repository.ts:993-1000`). When two projects (or, with Milestones
+#333, two units) share the target bible and book, the take uploads to the
+first matching unit: a 404 if the translator is not assigned there, or a
+silent upload to the wrong project if they are. PR #552 and a #333 comment
+note the display side of the same root as pre-existing.
+
+**Steps to reproduce:**
+
+1. Use two projects with the same target bible and book (e.g. Ruth), with
+   the translator assigned in the second one only.
+2. Record a take on Ruth 3 in the second project and tap Sync Now.
+
+**Expected behavior:** the take uploads to the project unit it was recorded
+in.  
+**Actual behavior:** the upload targets the first matching unit and fails
+with 404 (Ruth 3); a project with a unique book (Numbers 3) uploads
+correctly.  
+**Evidence:** I.3 (first attempt on Ruth 3).
+
 ### Not confirmed (code-only)
 
 - **Unassigned chapter already in Draft** (`src/hooks/useVerseAudio.ts:520`):
@@ -363,24 +425,9 @@ by the list refresh, and no UI to push claims when no uploads are pending.
 ## Related findings outside this audit's scope
 
 Found during the device run. They belong to upload and sync (#530) or other
-features, and they make the gaps above worse. Where they were filed is noted on
-each item.
+features and have no new issue from this audit (new issues are Gaps 3 and
+4). Where they were filed is noted on each item.
 
-- **High — full master data on every Sync Now** ([#612](https://github.com/eten-tech-foundation/fluent-mobile/issues/612)): every full sync
-  downloads all languages (7,629), books (85) and bibles (776) with no
-  `updatedAfter` (`syncMasterData`, `src/services/sync.ts:217`) before user
-  data and claims. This takes about 30 s on Wi-Fi, costs data, and delays
-  every claim push (Gap 2, and Gap 1's window). Repeated taps are not
-  debounced, overlapping full syncs start, and the API answers HTTP 429 "Too
-  many requests" (20 times in one burst), ending in "Sync all users failed".
-- **High — upload to the wrong project unit** ([#613](https://github.com/eten-tech-foundation/fluent-mobile/issues/613)): pending uploads resolve
-  `project_unit_id` by bible + book + chapter with `ORDER BY ca.id LIMIT 1`
-  (`src/db/repository.ts:993-1000`), because recordings are keyed by
-  `bible_text_id` only. When two projects (or, with Milestones #333, two
-  units) share the target bible and book, the upload goes to the wrong unit:
-  a 404, or a silent upload to the wrong project if both are assigned
-  (Ruth 3). PR #552 and a #333 comment note the display side as
-  pre-existing.
 - **Upload orchestrator gets stuck:** after a 404 and a brief connectivity
   flicker, the orchestrator logs "Upload paused silently (server
   unreachable)" and Sync Now no longer starts an upload session until the app
@@ -389,8 +436,9 @@ each item.
   failed and sometimes as "server unreachable". Added to #601.
 - **Several upload sessions per trigger and a foreground-service crash on
   reconnect** (single chapter, Acts 6): added to #599.
-- **No automatic upload for takes recorded online:** matches #150's
-  triggers (reconnect and app open only); covered by #605.
+- **No automatic upload for takes recorded online:** #150 only defines
+  reachability triggers (reconnect, app open), so whether this is expected is
+  a product question; the #530 audit filed it as #605.
 - **Local delete does not remove server audio:** there is no delete call, and
   a take deleted during an in-flight upload still lands on the server. Not
   filed; product question for #528 / #530.
@@ -417,7 +465,7 @@ each item.
   claim-conflict branch is reachable only through translator-versus-translator
   races (Gap 1).
 - In production, can two projects share the same target bible and book? This
-  sets the severity of the wrong-unit upload (Related findings).
+  sets the severity of the wrong-unit upload (Gap 4).
 
 ## Audit Summary
 
@@ -439,15 +487,18 @@ to push a claim except signing out (Gap 2). When the chapter was taken during
 the offline window, the conflict is lost unless another translator claimed it
 with no peer checker and the push happens within 5 minutes; a PM assignment
 or a longer offline window leaves a claim that fails on every sync and takes
-that can never upload (Gap 1, #610; Gap 2 is #611). Slow full syncs (all master data on every
-Sync Now, #612), a stuck upload orchestrator (#601) and duplicate upload
-sessions (#599) make both worse. Gaps 1 and 2 should be decided on as launch blockers before the
-November 2026 ETEN Summit. The PM resolution flow (F) is not built yet.
+that can never upload (Gap 1, #610; Gap 2 is #611). Slow full syncs (all
+master data on every Sync Now, Gap 3, #612), a stuck upload orchestrator
+(#601) and duplicate upload sessions (#599) make both worse. Outside this
+feature, takes can upload to the wrong project unit when two projects share a
+bible and book (Gap 4, #613). Gaps 1–4 should be decided on as launch
+blockers before the November 2026 ETEN Summit. The PM resolution flow (F) is
+not built yet.
 
 **Follow-up required:**
 
-- [x] All identified gaps have corresponding GitHub issues. _(#610, #611;
-      related #612, #613; #601, #599 and #271 updated)_
+- [x] All identified gaps have corresponding GitHub issues. _(#610–#613;
+      #601, #599 and #271 updated)_
 - [ ] Mobile and API dependencies are cross-linked. _(#610 and #612 may need
       fluent-api work; the developer opens the API issue at implementation)_
 - [ ] Launch-blocking gaps are clearly identified.
