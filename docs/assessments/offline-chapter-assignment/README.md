@@ -59,7 +59,7 @@ Adjacent (owned by sibling audits or other tickets, listed for cross-reference):
 
 - [#256](https://github.com/eten-tech-foundation/fluent-mobile/issues/256) — Conflict detection for offline audio takes (Open)
 - [#257](https://github.com/eten-tech-foundation/fluent-mobile/issues/257) — Local stage advancement queue (Open)
-- [#574](https://github.com/eten-tech-foundation/fluent-mobile/issues/574) — Maestro E2E and safe fixtures for ownership and online claim (Open; PR #582 open)
+- [#574](https://github.com/eten-tech-foundation/fluent-mobile/issues/574) — Maestro E2E and safe fixtures for ownership and online claim (Open; PR #582 merged)
 - [#599](https://github.com/eten-tech-foundation/fluent-mobile/issues/599) — Upload foreground-service crash on reconnect (Open; from the #530 audit)
 - [#532](https://github.com/eten-tech-foundation/fluent-mobile/issues/532) — Chapter assignment and claiming audit (deferred offline claim and reconnect here)
 - [#529](https://github.com/eten-tech-foundation/fluent-mobile/issues/529) / [#530](https://github.com/eten-tech-foundation/fluent-mobile/issues/530) — Going offline / Returning online audits
@@ -184,7 +184,10 @@ Read on fluent-mobile `main` @ `fb634e5` and fluent-api `main` @ `acc1404`.
   `chapterClaimsRepository.test.ts`, `useVerseAudio.offlineClaim.test.ts`,
   `sync.steps.test.ts`). No Maestro flow covers offline claim or reconnect
   (`.maestro/flows/offline/` covers login and storage only), so the device
-  script was fully manual.
+  script was fully manual. PR #582 (#574), merged after this run, adds
+  `.maestro/flows/ownership/`, including `ownership-conflict.yaml`, which
+  checks the conflict indicator and Record banner on a seeded conflict
+  fixture, not the offline claim or reconnect path.
 
 ## Test Results
 
