@@ -194,32 +194,32 @@ Scenario numbers match the device test script used for this audit
 
 | # | Scenario | Expected Result | Actual Result | Status |
 |---|---|---|---|---|
-| A.1 | Online on Wi-Fi, nothing pending | Header `cloud-check` green; Sync page "Upload complete" / "All synced", no controls (#38, #149, #151) | Opens with the header cloud gray (struck out), then turns green only after navigating back; once showed the offline-pending icon with Wi-Fi on | **Fail** → G3, G5 |
-| A.2 | Airplane mode, nothing pending | Header `cloud-check` gray (#38) | Sync page shows gray `cloud-check`; the header shows the struck-out cloud (`CloudOff`), not `cloud-check` | **Fail** → G5 |
-| B.3 | Offline: record takes in 2+ chapters | Header shows the gray pending variant; chapter rows show pending (#38, #257) | Home header keeps the struck-out cloud with no arrow; the chapter screen and the Sync page show the pending (arrow) variant. Home updates only after an app restart, also after deleting the take | **Fail** → G5 |
+| A.1 | Online on Wi-Fi, nothing pending | Header `cloud-check` green; Sync page "Upload complete" / "All synced", no controls (#38, #149, #151) | Opens with the header cloud gray (struck out), then turns green only after navigating back; once showed the offline-pending icon with Wi-Fi on | **Fail** → Gaps 3, 5 |
+| A.2 | Airplane mode, nothing pending | Header `cloud-check` gray (#38) | Sync page shows gray `cloud-check`; the header shows the struck-out cloud (`CloudOff`), not `cloud-check` | **Fail** → Gap 5 |
+| B.3 | Offline: record takes in 2+ chapters | Header shows the gray pending variant; chapter rows show pending (#38, #257) | Home header keeps the struck-out cloud with no arrow; the chapter screen and the Sync page show the pending (arrow) variant. Home updates only after an app restart, also after deleting the take | **Fail** → Gap 5 |
 | B.4 | Offline: open Sync page | Offline copy; Sync Now not actionable, with a reason (#545) | Sync page: offline, upload pending | Pass |
 | B.5 | Turn Wi-Fi on (toggle off), stay on Home | Upload starts on its own, no prompt; header shows syncing (#150, #38) | Upload started on its own | Pass |
-| B.6 | Open Sync page during upload | Animated icon; "Uploading"; "X of Y chapters uploaded" counts chapters and never goes backwards; Pause + Cancel (#149, #151) | App crashed: `RemoteServiceException: Context.startForegroundService() did not then call Service.startForeground()` (`UploadSyncForegroundService`). Counter showed "8 of 3 chapters uploaded" (267%) | **Fail** → G1, G2 |
-| B.7 | Background the app during upload | One persistent notification "Uploading your recordings" / "X of Y chapters uploaded", no flicker between chapters; tap opens Sync (#152) | Nightly (`main`, same notification code as `09ff2fd`): the notification appears but disappears and reappears during the upload; the count restarts (e.g. 0→5, then 0→1) | **Fail** → G1, G2 |
-| B.8 | Upload finishes | Notification clears; "Upload complete"; header `cloud-check` green; chapter rows synced (#149, #152, #38) | Debug run: no notification. After 7 chapters uploaded and Sync showed all synced, the My Work header still showed pending | **Fail** → G1, G5 |
+| B.6 | Open Sync page during upload | Animated icon; "Uploading"; "X of Y chapters uploaded" counts chapters and never goes backwards; Pause + Cancel (#149, #151) | App crashed: `RemoteServiceException: Context.startForegroundService() did not then call Service.startForeground()` (`UploadSyncForegroundService`). Counter showed "8 of 3 chapters uploaded" (267%) | **Fail** → Gaps 1, 2 |
+| B.7 | Background the app during upload | One persistent notification "Uploading your recordings" / "X of Y chapters uploaded", no flicker between chapters; tap opens Sync (#152) | Nightly (`main`, same notification code as `09ff2fd`): the notification appears but disappears and reappears during the upload; the count restarts (e.g. 0→5, then 0→1) | **Fail** → Gaps 1, 2 |
+| B.8 | Upload finishes | Notification clears; "Upload complete"; header `cloud-check` green; chapter rows synced (#149, #152, #38) | Debug run: no notification. After 7 chapters uploaded and Sync showed all synced, the My Work header still showed pending | **Fail** → Gaps 1, 5 |
 | C.9 | Pending takes, cellular only, toggle off | No upload; Sync Now disabled with "Connect to WiFi to sync, or enable cellular uploads in Settings." (#150, #151, #546) | As expected | Pass |
-| C.10 | Same, then turn the toggle on | Upload starts on its own (#150, #146) | Turning the toggle on during a pending upload on mobile data: the app closed with no error (second run). First run: upload started only after leaving and reopening Sync | **Fail** → G1 (probable), G3 |
-| C.11 | Pending takes, cellular, toggle off → Wi-Fi on | Upload starts on its own (#150) | Upload started; a red "Sync failed: master data" stayed on Sync and did not clear | Pass → G4 |
+| C.10 | Same, then turn the toggle on | Upload starts on its own (#150, #146) | Turning the toggle on during a pending upload on mobile data: the app closed with no error (second run). First run: upload started only after leaving and reopening Sync | **Fail** → Gaps 1 (probable), 3 |
+| C.11 | Pending takes, cellular, toggle off → Wi-Fi on | Upload starts on its own (#150) | Upload started; a red "Sync failed: master data" stayed on Sync and did not clear | Pass (see Gap 4) |
 | D.12 | Syncing → Pause | Bar frozen; "Paused"; "Resumes automatically in 23h …"; Resume + Sync Now + Cancel; notification clears (#149, #151, #152) | As expected; countdown starts at "24h 0m" | Pass |
 | D.13 | Paused → toggle airplane off/on | Stays paused, no upload (24 h window) (#150) | Not reported (as expected) | Pass |
-| D.14 | Paused → Resume (or Sync Now) | Upload restarts; pause window cleared (#150, #151) | Resume restarts the upload. Right after reconnecting on Sync, Resume/Sync Now became disabled with "Can't reach Fluent" until leaving and reopening the page | Pass → G3 |
+| D.14 | Paused → Resume (or Sync Now) | Upload restarts; pause window cleared (#150, #151) | Resume restarts the upload. Right after reconnecting on Sync, Resume/Sync Now became disabled with "Can't reach Fluent" until leaving and reopening the page | Pass (see Gap 3) |
 | D.15 | Syncing → Cancel | Stops at once; Sync Now shown; no automatic retry while connectivity stays the same (#150, #151) | Not reported (as expected) | Pass |
-| D.16 | After Cancel → airplane on, then off | Auto-upload fires again (#150) | Auto-upload fires again; the status flickers between states while it runs | Pass → G2 |
-| E.17 | Syncing → airplane mode for 30 s → off | Silent pause, no failed state or error; resumes on its own (#150) | Sync page shows the raw error "fetch failed: java.net.UnknownHostException: Unable to resolve host \"dev.api.fluent.bible\": No address associated with hostname"; when Wi-Fi returns the upload restarts on its own and the message clears | **Fail** → G6 |
-| E.18 | Syncing → kill the app → relaunch online | Upload resumes; no take stuck "uploading" (#150, #100) | Upload resumed; the percentage showed 133% | Pass → G2 |
-| E.19 | Already online: record a new take and wait 2 min on Home | Take uploads without any action (#150 auto-upload) | Waited 5 minutes: nothing uploaded; Sync page showed Sync Now enabled | **Fail** → G7 |
-| F.20 | A take failed to upload (if one occurs) | Sync page shows the failure reason; Sync Now retries and the error clears after success (#548, #101) | Covered by E.17: the failure reason showed on Sync and cleared after the automatic retry succeeded (the text is a raw technical message) | Pass → G6 |
+| D.16 | After Cancel → airplane on, then off | Auto-upload fires again (#150) | Auto-upload fires again; the status flickers between states while it runs | Pass (see Gap 2) |
+| E.17 | Syncing → airplane mode for 30 s → off | Silent pause, no failed state or error; resumes on its own (#150) | Sync page shows the raw error "fetch failed: java.net.UnknownHostException: Unable to resolve host \"dev.api.fluent.bible\": No address associated with hostname"; when Wi-Fi returns the upload restarts on its own and the message clears | **Fail** → Gap 6 |
+| E.18 | Syncing → kill the app → relaunch online | Upload resumes; no take stuck "uploading" (#150, #100) | Upload resumed; the percentage showed 133% | Pass (see Gap 2) |
+| E.19 | Already online: record a new take and wait 2 min on Home | Take uploads without any action (#150 auto-upload) | Waited 5 minutes: nothing uploaded; Sync page showed Sync Now enabled | **Fail** → Gap 7 |
+| F.20 | A take failed to upload (if one occurs) | Sync page shows the failure reason; Sync Now retries and the error clears after success (#548, #101) | Covered by E.17: the failure reason showed on Sync and cleared after the automatic retry succeeded (the text is a raw technical message) | Pass (see Gap 6) |
 | F.21 | Pending count vs Sync result | The count on Sync matches what uploads; nothing left pending after "Upload complete" (#545) | As expected | Pass |
-| G.22 | Offline: "Send to Peer Check" on a fully recorded chapter → reconnect (Wi-Fi) → Sync Now | The stage reaches the server (web / PM shows Peer Check); the local stage does not revert (#257, #258) | Offline: after Send, the chapter left My Work and Projects showed Peer Check. On Wi-Fi a sync ran on its own and the chapter returned to My Work as Draft with the Send to Peer Check button again; web also shows Draft; Sync shows nothing to upload and no Sync Now | **Fail** → G8 |
-| G.23 | Offline: claim an unassigned chapter by recording → reconnect | Claim reaches the server (owned by #533) | Seen during the H.24 attempt (debug build, 2026-09-28 log): a take recorded offline in an unclaimed Esther 4 chapter queued an offline claim (`Enqueued offline chapter claim`, assignment 41863). On reconnect the upload ran before the claim was pushed and failed with HTTP 404 "Verse audio recording not found" (`retryable: false`); the Sync page kept showing failed uploads until the takes were deleted or the user signed out and in | **Fail** → G9 |
-| H.24 | Two devices record the same verse offline → both reconnect | Conflict indicator on the chapter row; no silent overwrite (#256, #260) | Could not finish: the two-device setup hit G9 and stale sync errors ("Sync failed: pericope sets" / "bible texts" while offline) on the nightly device | Blocked (setup; re-run after G9) |
-| I.25 | Reconnect with the download queue non-empty | Downloads section below the controls with progress; hidden when empty (#147) | Downloads section shows below the controls with progress and "Manage downloads"; it hides once the queue is empty. Back from Manage downloads needs two taps (project screen, then the Prepare for Offline picker) to return to Sync | Pass → G10 |
-| I.26 | Uploads and downloads both done | "All synced" (#149) | "Upload complete" (with the "Online · all synced" title); the #149 "All synced" state never shows | **Fail** → G11 |
+| G.22 | Offline: "Send to Peer Check" on a fully recorded chapter → reconnect (Wi-Fi) → Sync Now | The stage reaches the server (web / PM shows Peer Check); the local stage does not revert (#257, #258) | Offline: after Send, the chapter left My Work and Projects showed Peer Check. On Wi-Fi a sync ran on its own and the chapter returned to My Work as Draft with the Send to Peer Check button again; web also shows Draft; Sync shows nothing to upload and no Sync Now | **Fail** → Gap 8 |
+| G.23 | Offline: claim an unassigned chapter by recording → reconnect | Claim reaches the server (owned by #533) | Seen during the H.24 attempt (debug build, 2026-09-28 log): a take recorded offline in an unclaimed Esther 4 chapter queued an offline claim (`Enqueued offline chapter claim`, assignment 41863). On reconnect the upload ran before the claim was pushed and failed with HTTP 404 "Verse audio recording not found" (`retryable: false`); the Sync page kept showing failed uploads until the takes were deleted or the user signed out and in | **Fail** → Gap 9 |
+| H.24 | Two devices record the same verse offline → both reconnect | Conflict indicator on the chapter row; no silent overwrite (#256, #260) | Could not finish: the two-device setup hit Gap 9 and stale sync errors ("Sync failed: pericope sets" / "bible texts" while offline) on the nightly device | Blocked (setup; re-run after Gap 9) |
+| I.25 | Reconnect with the download queue non-empty | Downloads section below the controls with progress; hidden when empty (#147) | Downloads section shows below the controls with progress and "Manage downloads"; it hides once the queue is empty. Back from Manage downloads needs two taps (project screen, then the Prepare for Offline picker) to return to Sync | Pass (see Gap 10) |
+| I.26 | Uploads and downloads both done | "All synced" (#149) | "Upload complete" (with the "Online · all synced" title); the #149 "All synced" state never shows | **Fail** → Gap 11 |
 
 ## Offline and Synchronization Results
 
@@ -230,9 +230,9 @@ claiming to #533.
 |---|---|---|
 | Feature used while offline | N/A | Covered by #529; B.3–B.4 only set up pending work |
 | App closed and reopened offline | N/A | Covered by #529 scenario G.23 |
-| Device returns online | Fail | Auto-upload starts (B.5, C.11, D.16), but reachability goes stale (G3), progress is wrong (G2), the notification crashes the app (G1), a drop mid-upload marks takes failed (G6) and takes recorded online never upload (G7) |
-| Offline changes synchronize | Fail | Takes upload (B.5–B.8, E.18); stage changes are lost (G.22, G8); takes in chapters claimed offline fail with 404 (G.23, G9) |
-| Conflicting changes are handled | Blocked | H.24 could not be set up (G9); claim conflicts #271 / #533 |
+| Device returns online | Fail | Auto-upload starts (B.5, C.11, D.16), but reachability goes stale (Gap 3), progress is wrong (Gap 2), the notification crashes the app (Gap 1), a drop mid-upload marks takes failed (Gap 6) and takes recorded online never upload (Gap 7) |
+| Offline changes synchronize | Fail | Takes upload (B.5–B.8, E.18); stage changes are lost (G.22, Gap 8); takes in chapters claimed offline fail with 404 (G.23, Gap 9) |
+| Conflicting changes are handled | Blocked | H.24 could not be set up (Gap 9); claim conflicts #271 / #533 |
 
 ## Gaps Identified
 
@@ -545,25 +545,25 @@ specified, an app kill resumes the upload, and the Downloads section
 renders.
 
 The sync is not reliable enough to trust, though. The upload notification
-crashes the app (G1, seen in the crash buffer since 2026-09-04), and one
+crashes the app (Gap 1, seen in the crash buffer since 2026-09-04), and one
 reconnect starts five concurrent upload sessions. Two kinds of offline work
 are lost or blocked on reconnect: an offline "Send to Peer Check" silently
-reverts to Draft on the device and never reaches the server (G8, #257), and
+reverts to Draft on the device and never reaches the server (Gap 8, #257), and
 takes in a chapter claimed offline fail with a 404 until the user deletes them
-(G9, #611). G1, G8 and G9 are High and should be decided on as launch
+(Gap 9, #611). Gaps 1, 8 and 9 are High and should be decided on as launch
 blockers before the November 2026 ETEN Summit. The rest degrade trust in the
-sync chrome: stale reachability (G3), wrong progress (G2), stale sync errors
-(G4), a stale header icon (G5), failures shown for a normal connection drop
-(G6), takes recorded online that never upload (G7), a double back from
-Manage downloads (G10) and no "All synced" state (G11).
+sync chrome: stale reachability (Gap 3), wrong progress (Gap 2), stale sync errors
+(Gap 4), a stale header icon (Gap 5), failures shown for a normal connection drop
+(Gap 6), takes recorded online that never upload (Gap 7), a double back from
+Manage downloads (Gap 10) and no "All synced" state (Gap 11).
 
 **Follow-up required:**
 
 - [x] All identified gaps have corresponding GitHub issues. _(#599–#605;
       #611 from #533 for Gap 9; #257, #271 and #147 updated)_
-- [ ] Mobile and API dependencies are cross-linked. _(no new API work
+- [x] Mobile and API dependencies are cross-linked. _(no new API work
       found; #256 server side is fluent-api#271)_
-- [x] Launch-blocking gaps are clearly identified. _(G1, G8, G9: to be
+- [x] Launch-blocking gaps are clearly identified. _(Gaps 1, 8, 9: to be
       decided with product)_
 - [ ] Assessment has been reviewed and merged.
 
