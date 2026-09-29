@@ -1,8 +1,10 @@
 # Returning Online and Synchronizing Changes Audit
 
 > **Status: device run done; gaps filed.** Eleven gaps confirmed on a
-> physical device. Gaps 1–7 are #599–#605 (sub-issues of #530); Gaps 8–11
-> were added to the open #257, #271 and #147. Code read on `main` + PR #559 @ `09ff2fd`.
+> physical device. Gaps 1–7 are #599–#605 (sub-issues of #530); Gaps 8, 10
+> and 11 were added to the open #257 and #147. Gap 9 was added to #271 and is
+> tracked in #611, filed by the #533 audit for the same behavior. Code read on
+> `main` + PR #559 @ `09ff2fd`.
 
 ## Overview
 
@@ -236,8 +238,10 @@ claiming to #533.
 
 Existing issues were searched before routing (sync, upload, online,
 reconnect, pending, notification, conflict, stage, claim, cellular). Gaps 1–7
-become new issues (#599–#605, sub-issues of #530); Gaps 8–11 became
-comments on the open #257, #271 and #147. All are filed.
+become new issues (#599–#605, sub-issues of #530); Gaps 8, 10 and 11 became
+comments on the open #257 and #147. Gap 9 was first added to #271; the
+offline chapter assignment audit (#533) then filed the same behavior as #611,
+which is its development task. All are filed.
 
 ### Gap 1: The upload foreground service crashes the app
 
@@ -454,7 +458,7 @@ button again; web shows Draft; Sync shows nothing pending.
 **Severity:** High  
 **Launch blocker:** To be decided with product  
 **Related issue:** [#271](https://github.com/eten-tech-foundation/fluent-mobile/issues/271) (open), [#270](https://github.com/eten-tech-foundation/fluent-mobile/issues/270), sibling audit [#533](https://github.com/eten-tech-foundation/fluent-mobile/issues/533)  
-**Development task:** [#271 comment](https://github.com/eten-tech-foundation/fluent-mobile/issues/271#issuecomment-5874706180) (existing open issue); no new issue
+**Development task:** [#611](https://github.com/eten-tech-foundation/fluent-mobile/issues/611) (filed by the #533 audit, which covers the same behavior in more depth); this audit's device evidence is on [#271](https://github.com/eten-tech-foundation/fluent-mobile/issues/271#issuecomment-5874706180)
 
 **Description:**  
 Uploads start on the reconnect edge, but offline claims are pushed only by
@@ -525,6 +529,9 @@ download-queue signal", `src/utils/deriveSyncPageStatus.ts:4-6`).
   and the notification count chapters (spec) or takes?
 - Should reconnect also run the metadata sync (claims, assignments), or only
   uploads? #271 says claims sync "as part of the standard sync cycle".
+- #150 defines upload triggers only on reachability events (reconnect, app
+  start). Should a take recorded while already online upload on its own
+  (Gap 7, #605)?
 
 ## Audit Summary
 
@@ -543,7 +550,7 @@ reconnect starts five concurrent upload sessions. Two kinds of offline work
 are lost or blocked on reconnect: an offline "Send to Peer Check" silently
 reverts to Draft on the device and never reaches the server (G8, #257), and
 takes in a chapter claimed offline fail with a 404 until the user deletes them
-(G9, #271). G1, G8 and G9 are High and should be decided on as launch
+(G9, #611). G1, G8 and G9 are High and should be decided on as launch
 blockers before the November 2026 ETEN Summit. The rest degrade trust in the
 sync chrome: stale reachability (G3), wrong progress (G2), stale sync errors
 (G4), a stale header icon (G5), failures shown for a normal connection drop
@@ -553,7 +560,7 @@ Manage downloads (G10) and no "All synced" state (G11).
 **Follow-up required:**
 
 - [x] All identified gaps have corresponding GitHub issues. _(#599–#605;
-      #257, #271 and #147 updated)_
+      #611 from #533 for Gap 9; #257, #271 and #147 updated)_
 - [ ] Mobile and API dependencies are cross-linked. _(no new API work
       found; #256 server side is fluent-api#271)_
 - [x] Launch-blocking gaps are clearly identified. _(G1, G8, G9: to be
