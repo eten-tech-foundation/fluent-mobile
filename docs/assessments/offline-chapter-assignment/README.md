@@ -1,8 +1,9 @@
 # Offline Chapter Assignment Audit
 
-> **Status: device run done; gaps not yet filed.** Two gaps are confirmed on
-> device (Gap 1 and Gap 2). Related sync problems found during the run are
-> listed separately, and their destination is decided when gaps are filed.
+> **Status: device run done; gaps filed.** Gaps 1 and 2 are filed as #610
+> and #611, and two related findings as #612 and #613 (all sub-issues of
+> #533). The stuck upload orchestrator and the duplicate-session crash were
+> added to #601 and #599, and the results to #271.
 
 ## Overview
 
@@ -265,7 +266,7 @@ Related findings make both gaps worse but do not cause them.
 **Severity:** High (the conflict #271 exists to surface is silently lost, and the offline translator's work is stranded)  
 **Launch blocker:** To be decided with product  
 **Related issue:** [#271](https://github.com/eten-tech-foundation/fluent-mobile/issues/271), [#470](https://github.com/eten-tech-foundation/fluent-mobile/issues/470), [#260](https://github.com/eten-tech-foundation/fluent-mobile/issues/260), [#269](https://github.com/eten-tech-foundation/fluent-mobile/issues/269), [fluent-api#272](https://github.com/eten-tech-foundation/fluent-api/issues/272)  
-**Development task:** ⏳
+**Development task:** [#610](https://github.com/eten-tech-foundation/fluent-mobile/issues/610)
 
 **Description:**  
 The claim API flags a conflict only when the chapter is `draft`, has no peer
@@ -309,7 +310,7 @@ the claimant and a full sync (F-alt).
 **Severity:** High  
 **Launch blocker:** To be decided with product  
 **Related issue:** [#271](https://github.com/eten-tech-foundation/fluent-mobile/issues/271), [#545](https://github.com/eten-tech-foundation/fluent-mobile/issues/545), [#273](https://github.com/eten-tech-foundation/fluent-mobile/issues/273), [#530](https://github.com/eten-tech-foundation/fluent-mobile/issues/530)  
-**Development task:** ⏳
+**Development task:** [#611](https://github.com/eten-tech-foundation/fluent-mobile/issues/611)
 
 **Description:**  
 Only the full sync (Sync Now, login, reauth, Home auto-repair) pushes pending
@@ -359,39 +360,40 @@ by the list refresh, and no UI to push claims when no uploads are pending.
 ## Related findings outside this audit's scope
 
 Found during the device run. They belong to upload and sync (#530) or other
-features, and they make the gaps above worse. Their destination (new issue
-or comment on an existing one) is decided when gaps are filed.
+features, and they make the gaps above worse. Where they were filed is noted on
+each item.
 
-- **Critical — full master data on every Sync Now:** every full sync
+- **High — full master data on every Sync Now** ([#612](https://github.com/eten-tech-foundation/fluent-mobile/issues/612)): every full sync
   downloads all languages (7,629), books (85) and bibles (776) with no
   `updatedAfter` (`syncMasterData`, `src/services/sync.ts:217`) before user
   data and claims. This takes about 30 s on Wi-Fi, costs data, and delays
   every claim push (Gap 2, and Gap 1's window). Repeated taps are not
   debounced, overlapping full syncs start, and the API answers HTTP 429 "Too
   many requests" (20 times in one burst), ending in "Sync all users failed".
-- **High — upload to the wrong project unit:** pending uploads resolve
+- **High — upload to the wrong project unit** ([#613](https://github.com/eten-tech-foundation/fluent-mobile/issues/613)): pending uploads resolve
   `project_unit_id` by bible + book + chapter with `ORDER BY ca.id LIMIT 1`
   (`src/db/repository.ts:993-1000`), because recordings are keyed by
   `bible_text_id` only. When two projects (or, with Milestones #333, two
   units) share the target bible and book, the upload goes to the wrong unit:
   a 404, or a silent upload to the wrong project if both are assigned
   (Ruth 3). PR #552 and a #333 comment note the display side as
-  pre-existing; no issue covers the upload.
+  pre-existing.
 - **Upload orchestrator gets stuck:** after a 404 and a brief connectivity
   flicker, the orchestrator logs "Upload paused silently (server
   unreachable)" and Sync Now no longer starts an upload session until the app
   is relaunched; the Home header keeps a syncing icon. Seen three times,
   including on the second device. The same 404 is sometimes classified as
-  failed and sometimes as "server unreachable".
+  failed and sometimes as "server unreachable". Added to #601.
 - **Several upload sessions per trigger and a foreground-service crash on
-  reconnect** (single chapter, Acts 6): same as #599.
+  reconnect** (single chapter, Acts 6): added to #599.
 - **No automatic upload for takes recorded online:** matches #150's
-  triggers (reconnect and app open only); product question for #530.
+  triggers (reconnect and app open only); covered by #605.
 - **Local delete does not remove server audio:** there is no delete call, and
-  a take deleted during an in-flight upload still lands on the server.
+  a take deleted during an in-flight upload still lands on the server. Not
+  filed; product question for #528 / #530.
 - **New project chapters missing for an existing account:** three new
   projects showed 0 chapters for an account with an existing sync cursor but
-  the right chapters for a fresh login. Cause not verified.
+  the right chapters for a fresh login. Cause not verified; not filed.
 - **Upload progress count:** "Upload failed" with "0 of 0 chapters", same as
   #600.
 
@@ -434,15 +436,17 @@ to push a claim except signing out (Gap 2). When the chapter was taken during
 the offline window, the conflict is lost unless another translator claimed it
 with no peer checker and the push happens within 5 minutes; a PM assignment
 or a longer offline window leaves a claim that fails on every sync and takes
-that can never upload (Gap 1). Slow full syncs (all master data on every
-Sync Now), a stuck upload orchestrator and duplicate upload sessions make
-both worse. Gaps 1 and 2 should be decided on as launch blockers before the
+that can never upload (Gap 1, #610; Gap 2 is #611). Slow full syncs (all master data on every
+Sync Now, #612), a stuck upload orchestrator (#601) and duplicate upload
+sessions (#599) make both worse. Gaps 1 and 2 should be decided on as launch blockers before the
 November 2026 ETEN Summit. The PM resolution flow (F) is not built yet.
 
 **Follow-up required:**
 
-- [ ] All identified gaps have corresponding GitHub issues.
-- [ ] Mobile and API dependencies are cross-linked.
+- [x] All identified gaps have corresponding GitHub issues. _(#610, #611;
+      related #612, #613; #601, #599 and #271 updated)_
+- [ ] Mobile and API dependencies are cross-linked. _(#610 and #612 may need
+      fluent-api work; the developer opens the API issue at implementation)_
 - [ ] Launch-blocking gaps are clearly identified.
 - [ ] Assessment has been reviewed and merged.
 
