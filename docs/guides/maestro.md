@@ -34,6 +34,7 @@ Opt-in **Android-only** Maestro suite for Fluent Mobile. Architecture: state-tol
 | Ownership / taken-warning / auto-claim | `flows/ownership/*` | `npm run maestro:fixtures:seed` then `npm run maestro:test:ownership` |
 | Stage 1 batch (± repeats) | harness + auth + my-work + empty-assignments | `npm run maestro:test:stage1` / `… 5` |
 
+
 ### Nightly QA checklist → automation map
 
 | Nightly checklist area | Automated by | Residual (manual) |
