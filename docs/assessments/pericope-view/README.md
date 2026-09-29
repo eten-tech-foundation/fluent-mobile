@@ -162,9 +162,9 @@ Read on `main` @ `4ebeae2`, plus `fluent-api` `main` @ `49929e7` and
 ## Test Results
 
 Scenario numbers match the device test script used for this audit
-(section letter + step). Statuses: Pass · Fail · Blocked (intended, could not
-be executed) · Inconclusive (executed, result unclear) · Skipped
-(deliberately not attempted).
+(section letter + step). Statuses: Pass · Fail · Blocked (intended, but
+could not be executed or gave no clear result) · Skipped (deliberately not
+attempted).
 
 The run is split across two environments:
 
@@ -186,9 +186,9 @@ The run is split across two environments:
 | B.5 | Dev | Expand / collapse a card | Expanded: superscript verse numbers, highlighted border; collapsed preview without numbers (#408) | As expected on `4ebeae2`. With PR #573 (fix for #564), tapping the card also opened Record, so a pericope could not be collapsed on the Bible tab (auditor's review on PR #573); PR #573 (merged 2026-09-29) splits the chevron from the card tap; not device-tested in this audit | Pass |
 | B.6 | Dev | Recorded status on cards | Green check (all verses), amber loader (some), none (#408) | As expected | Pass |
 | B.7 | Dev | Toggle Verse ↔ Pericope | List re-renders at the new unit; auto-select in pericope mode accepted as not required (#408) | As expected | Pass |
-| B.8 | Dev | Source audio caption and ticks | `Pericope N / total`; ticks only with verse timestamps (#408) | Caption `WEB-9879db Source Audio · Pericope 1 / 6`: the label is the project Bible abbreviation from dev data (`bibleAbbreviation`, `SourceAudioShell.tsx`). No source audio with verse timestamps was found, so ticks could not be checked | Pass (caption) · Blocked (ticks) |
-| B.9 | Dev | Scrub source audio in pericope mode | Seeks to position, does not restart (#408 QA) | Behavior varied between attempts; the auditor could not tell reliably whether scrubbing seeks or restarts. #408 QA reported the same intermittent restart | Inconclusive |
-| B.10 | Dev | Tap a pericope card | Selects it and opens Record (#47, #564) | Tapping a card selects it but does not open Record on `4ebeae2`. Fixed by PR #573 (merged 2026-09-29, confirmed on device by the auditor before merge); #564 awaits nightly QA | **Fail** → existing #564 |
+| B.8 | Dev | Source audio caption and ticks | `Pericope N / total`; ticks only with verse timestamps (#408) | Caption `WEB-9879db Source Audio · Pericope 1 / 6`: the label is the project Bible abbreviation from dev data (`bibleAbbreviation`, `SourceAudioShell.tsx`). No source audio with verse timestamps was found, so ticks could not be checked | Pass (ticks not checked: no verse timestamps) |
+| B.9 | Dev | Scrub source audio in pericope mode | Seeks to position, does not restart (#408 QA) | Behavior varied between attempts; the auditor could not tell reliably whether scrubbing seeks or restarts. #408 QA reported the same intermittent restart | Blocked (result unclear; tracked: #408) |
+| B.10 | Dev | Tap a pericope card | Selects it and opens Record (#47, #564) | Tapping a card selects it but does not open Record on `4ebeae2`. Fixed by PR #573 (merged 2026-09-29, confirmed on device by the auditor before merge); #564 awaits nightly QA | **Fail** (tracked: #564) |
 | B.11 | Dev | Cross-chapter pericope, both chapters assigned | Card in both chapters with full range; interactive from either (#408) | As expected | Pass |
 | B.12 | Local | Cross-chapter pericope, other chapter not assigned | Full source text for every verse in the range | New project with Exodus 5 assigned and Exodus 6 not: FIA pericope Exodus 5:22–6:13 shows the full text | Pass |
 | C.13 | Dev | Record tab title in pericope mode | Range title + pericope title subtitle (FIA); no "Pericope 1 of 7" (#409) | Range title shown, no counter. No subtitle on Mark 8:31–9:1: in the bundled FIA data only the first part of a split pericope has a title (29a "Jesus is the Messiah and must suffer and die"; 29b is null), and FCBH has no titles. Follows the spec ("when available"); see Open Questions | Pass |
@@ -429,14 +429,14 @@ a fluent-api change. Pericope-mode completeness disagrees with the Bible tab
 status (Gap 3). Projects on sets that are not bundled, or with no set,
 get a silent verse view (Gaps 4 and 5). Long pericope labels are
 truncated (Gap 6). Unit tap does not open Record (B.10, existing #564;
-fix merged in PR #573, awaiting QA). Source-audio scrubbing (B.9) was inconclusive and remains
+fix merged in PR #573, awaiting QA). Source-audio scrubbing (B.9) gave no clear result and remains
 tracked on #408.
 
 **Follow-up required:**
 
 - [x] All identified gaps have corresponding GitHub issues.
-- [ ] Mobile and API dependencies are cross-linked.
-- [ ] Launch-blocking gaps are clearly identified.
+- [ ] Mobile and API dependencies are cross-linked. _(#584 needs fluent-api work; the developer opens the API issue at implementation)_
+- [x] Launch-blocking gaps are clearly identified. _(Gaps 1, 2: to be decided with product)_
 - [ ] Assessment has been reviewed and merged.
 
 **Merged assessment:** _(pending PR merge; final link posted on #534)_
