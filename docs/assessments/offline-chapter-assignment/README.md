@@ -228,7 +228,7 @@ failed scenarios.
 | C.4 | Web: the claimed chapters | Assigned to translator A, status Draft | As expected (Acts 3, Acts 6) | Pass |
 | D.1 | Offline: A records on chapter Y | Y "mine" (provisional) | As expected (Numbers 6) | Pass |
 | D.2 | B records on Y **online** on a second device | B claims Y at once (no peer checker) | As expected; the server shows Y assigned to B, Draft | Pass |
-| D.3 | A reconnects within 5 min of D.2 → Sync Now | Claim conflict detected; no auto-assign (#271) | The API returned `hasClaimConflict`; `has_conflict = 1` stored and the queue row resolved (the claim reached the server about 3 min 53 s after B's claim). Passed only because Sync Now was tapped inside the window: the automatic upload got 404 and the list refresh turned the row gray first (Gap 2) | Pass |
+| D.3 | A reconnects within 5 min of D.2 → Sync Now | Claim conflict detected; no auto-assign (#271) | The API returned `hasClaimConflict`; `has_conflict = 1` stored and the queue row resolved (the claim reached the server about 3 min 53 s after B's claim). Passed only because Sync Now was tapped inside the window: the automatic upload got 404 and the list refresh turned the row gray first (Gap 2) | Pass (see Gap 2) |
 | D.4 | A: Projects → the project | Y shows the conflict indicator (#260) | As expected | Pass |
 | D.5 | A: open Y → Record | Conflict banner (#269) | Amber banner "Unresolved audio take conflict on this chapter/pericope." (audio-take copy for a claim conflict; see Open Questions) | Pass |
 | D.6 | A: Sync Now again | Conflict persists | As expected | Pass |
@@ -241,13 +241,13 @@ failed scenarios.
 | E.8 | A deletes the stuck take | The claim no longer blocks sync | Take deleted, but the claim row stays pending and fails on every full sync ("orphan" claim). Also on Numbers 5 | **Fail** → Gap 1 |
 | F.1 | PM resolves the conflict on web | Conflict clears silently; "mine" (#271) | Not run: the PM resolution flow is not implemented yet (#271 leaves it out of scope) | Skipped |
 | F.2 | PM resolves in favor of B | Conflict clears; row "other" | Not run (same reason) | Skipped |
-| F-alt | Stuck claim (E): PM assigns W to A → full sync | Claim accepted; error clears | Claim accepted and error cleared, but only after sign-out/sign-in: Sync Now was hidden because no uploads were pending, and the app has no other way to run a full sync (Gap 2) | Pass |
+| F-alt | Stuck claim (E): PM assigns W to A → full sync | Claim accepted; error clears | Claim accepted and error cleared, but only after sign-out/sign-in: Sync Now was hidden because no uploads were pending, and the app has no other way to run a full sync (Gap 2) | Pass (see Gap 2) |
 | G.1 | Record tab open on a chapter; a sync sets a conflict; go back to Record | Banner appears without reopening the chapter | As expected on Numbers 8 (second attempt): the amber conflict indicator showed after the sync. The first attempt (Numbers 7) produced no conflict: its claim reached the server outside the 5-minute window and got 404 (Gap 1) | Pass |
 | G.2 | Leave and reopen the chapter | Banner shown | As expected | Pass |
 | H.1 | (Optional) PM unassigns a chapter already in Draft; A records on it offline, reconnects, Sync Now | Chapter claimed, or a clear message; no stuck claim | Web could not produce "Draft with no drafter": removing the assignment left another translator as drafter, so the app (correctly) showed "other" and did not claim | Blocked |
 | I.1 | Online: first take on an unassigned chapter (#268 regression check) | Claimed at once | Claimed within 2 s (Ruth 2 as one account, Ruth 3 as the other) | Pass |
 | I.2 | Row state after the online claim | "mine" at once | As expected | Pass |
-| I.3 | Take upload after the online claim | Take uploads | Uploaded on Sync Now on a project with a unique book (Numbers 3). No automatic upload after an online take (see #605). An earlier try failed because of the cross-project upload bug (Gap 4) | Pass |
+| I.3 | Take upload after the online claim | Take uploads | Uploaded on Sync Now on a project with a unique book (Numbers 3). No automatic upload after an online take (see #605). An earlier try failed because of the cross-project upload bug (Gap 4) | Pass (see Gap 4) |
 
 ## Offline and Synchronization Results
 
@@ -501,7 +501,7 @@ not built yet.
       #601, #599 and #271 updated)_
 - [ ] Mobile and API dependencies are cross-linked. _(#610 and #612 may need
       fluent-api work; the developer opens the API issue at implementation)_
-- [ ] Launch-blocking gaps are clearly identified.
+- [x] Launch-blocking gaps are clearly identified. _(Gaps 1–4: to be decided with product)_
 - [ ] Assessment has been reviewed and merged.
 
 **Merged assessment:** _(pending PR merge; final link posted on #533)_
