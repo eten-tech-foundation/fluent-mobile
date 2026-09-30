@@ -1,0 +1,23 @@
+# Open Peer Check (no peerChecker): no taken warning on Record (#442 / #574). Optional.
+appId: com.eten.fluent
+tags:
+  - ownership
+  - ownership-peer-check
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- runFlow: ../../shared/auth/login-translator.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- runFlow:
+    file: ../../shared/nav/open-fixture-chapter.yaml
+    env:
+      MAESTRO_FIXTURE_CHAPTER_LABEL: ${MAESTRO_FIXTURE_OPEN_PEER_CHECK_LABEL}
+- tapOn:
+    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'record-tab'
+- assertNotVisible:
+    id: 'record-taken-warning'
