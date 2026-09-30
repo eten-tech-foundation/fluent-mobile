@@ -36,6 +36,10 @@ export function useTheme(): Theme {
  * Build StyleSheet styles from the active theme.
  * Use this instead of module-level `StyleSheet.create({ ...theme })` when
  * styles must follow Legacy ↔ Next switches at runtime.
+ *
+ * Memoizes on `activeTheme` only. Do **not** close over props or other
+ * changing state in `factory` — those values stay stale until the UI version
+ * changes. Pass theme-derived values only; read props outside and merge.
  */
 export function useThemedStyles<T extends NamedStyles<T>>(
   factory: (activeTheme: Theme) => T,
@@ -43,7 +47,7 @@ export function useThemedStyles<T extends NamedStyles<T>>(
   const activeTheme = useTheme();
   return useMemo(
     () => StyleSheet.create(factory(activeTheme)) as T,
-    // factory is expected to close over stable theme-driven values only.
+    // factory must be theme-only; see guide + JSDoc above.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- theme identity drives recompute
     [activeTheme],
   );

@@ -69,6 +69,18 @@ describe('nextTheme (Figma Foundations / Hardware)', () => {
     expect(nextTypeStyles.reading.size).toBe(42);
   });
 
+  it('re-derives listCard and headerLayout from resolved tokens', () => {
+    expect(nextTheme.listCard.backgroundColor).toBe(
+      nextTheme.colors.cardBackground,
+    );
+    expect(nextTheme.listCard.borderColor).toBe(nextTheme.colors.border);
+    expect(nextTheme.listCard.paddingHorizontal).toBe(nextTheme.spacing.lg);
+    expect(nextTheme.listCard.borderRadius).toBe(nextTheme.radius.sm);
+    expect(nextTheme.homeListContent.padding).toBe(nextTheme.spacing.lg);
+    expect(nextTheme.headerLayout.paddingHorizontal).toBe(nextTheme.spacing.lg);
+    expect(nextTheme.headerLayout.paddingVertical).toBe(nextTheme.spacing.md);
+  });
+
   it('keeps Legacy sync/warning colors until redesign defines them', () => {
     expect(nextTheme.colors.syncSynced).toBe(legacyTheme.colors.syncSynced);
     expect(nextTheme.colors.warning).toBe(legacyTheme.colors.warning);

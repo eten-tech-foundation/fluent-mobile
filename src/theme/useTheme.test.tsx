@@ -1,9 +1,9 @@
 import { renderHook, act } from '@testing-library/react-native';
 import { useTheme, useThemedStyles, useUiVersion } from './useTheme';
 import { setUiVersion } from '../services/userPreferences';
-import { kvStorage } from '../services/storage';
 import { legacyTheme } from './legacy';
 import { nextTheme } from './next';
+import { mockPreferenceStore } from '../test/mocks/preferenceStore';
 
 jest.mock('../services/storage', () => ({
   kvStorage: {
@@ -11,18 +11,6 @@ jest.mock('../services/storage', () => ({
     setItemSync: jest.fn(),
   },
 }));
-
-const mockGetItemSync = kvStorage.getItemSync as jest.Mock;
-const mockSetItemSync = kvStorage.setItemSync as jest.Mock;
-
-function mockPreferenceStore(initial: Record<string, string | null> = {}) {
-  const store: Record<string, string | null> = { ...initial };
-  mockGetItemSync.mockImplementation((key: string) => store[key] ?? null);
-  mockSetItemSync.mockImplementation((key: string, value: string) => {
-    store[key] = value;
-  });
-  return store;
-}
 
 describe('useUiVersion / useTheme', () => {
   beforeEach(() => {

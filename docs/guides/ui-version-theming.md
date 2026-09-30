@@ -20,7 +20,7 @@ This is **not** light/dark mode. Prefer structural/token changes over scattering
 | `src/theme/nextPrimitives.ts` | Next color ramps (bone / blue / red) from Figma |
 | `src/theme/nextRoles.ts` | Canvas / Hardware / Accent semantic roles |
 | `src/theme/nextFoundation.ts` | Next spacing, radius, type scale |
-| `src/theme/next.ts` | Hardware→`Theme` bridge + `nextTheme` |
+| `src/theme/next.ts` | Hardware→`Theme` bridge + deep-merge + layout derive |
 | `src/theme/uiVersionTypes.ts` | `UiVersion`, `DEFAULT_UI_VERSION`, `isUiVersion` (no theme object imports) |
 | `src/theme/uiVersion.ts` | `resolveTheme()` |
 | `src/theme/useTheme.ts` | `useUiVersion()`, `useTheme()`, `useThemedStyles()` — import from this module (not the `theme` barrel) so static consumers stay free of preference/storage |
@@ -63,14 +63,24 @@ Kept accessible on `nextSpace` / `nextRadiusScale` but not on `Theme` keys yet:
    section boundary.
 5. **Do not fork** domain behavior (sync, recording, DB, auth, etc.) by UI
    version.
+6. **`useThemedStyles` factory must be theme-only.** The hook memos on the
+   active theme identity, not on `factory`. Closing over props or other state
+   leaves those values stale until the UI version changes. Read props outside
+   the factory and merge into the returned styles if needed.
 
 ## Adding Next tokens
 
 1. Prefer updating `nextPrimitives` / `nextRoles` / `nextFoundation`, then the
    Hardware map in `next.ts` — not `tokens.ts`.
-2. If you need a **new** `Theme` key, add it to the Legacy theme with today's
+2. Overrides deep-merge into nested groups (`typography.sizes.lg` does not
+   require restating every sibling key). After merge, `homeListContent`,
+   `listCard`, and `headerLayout` are re-derived from the resolved
+   colors/spacing/radius so derived layout stays in sync.
+3. If you need a **new** `Theme` key, add it to the Legacy theme with today's
    value first, then override in Next — keeps `Theme` one shape.
-3. Migrate any StyleSheet that must show the new value onto `useThemedStyles`
+4. `iconSizes` and stroke-width constants in `iconSpecs.ts` are still
+   Legacy-only (not on `Theme`). Add them to `Theme` before overriding for Next.
+5. Migrate any StyleSheet that must show the new value onto `useThemedStyles`
    (module-level `StyleSheet.create({ …theme })` will not pick up Next).
 
 ## Deleting Legacy later

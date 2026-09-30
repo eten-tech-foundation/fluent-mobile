@@ -33,6 +33,12 @@ exports[`legacyTheme matches the frozen Legacy snapshot 1`] = `
     "workflowBadgePeerCheckBorder": "#EA580C",
     "workflowBadgePeerCheckText": "#1A1A1A",
   },
+  "headerLayout": {
+    "minHeight": 56,
+    "paddingHorizontal": 16,
+    "paddingVertical": 12,
+    "sideSlot": 40,
+  },
   "homeListContent": {
     "gap": 8,
     "padding": 16,

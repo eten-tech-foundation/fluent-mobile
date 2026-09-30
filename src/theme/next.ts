@@ -8,41 +8,116 @@ import {
 } from './nextRoles';
 
 /**
- * Loose override shape — Next values intentionally differ from Legacy literals.
- * Applied with a cast when building `nextTheme`.
+ * Widen `as const` string/number leaves so Next can supply different token
+ * values. Object keys and nested structure stay aligned with `Theme`.
  */
+type WidenTokens<T> = T extends string
+  ? string
+  : T extends number
+  ? number
+  : T extends boolean
+  ? boolean
+  : T extends null
+  ? null
+  : T extends readonly (infer U)[]
+  ? readonly WidenTokens<U>[]
+  : T extends object
+  ? { -readonly [K in keyof T]: WidenTokens<T[K]> }
+  : T;
+
+/** Shared theme shape — same keys as Theme, configurable leaves widened. */
+type ThemeShape = WidenTokens<Theme>;
+
 type ThemeOverrides = {
-  colors?: Partial<Record<keyof Theme['colors'], string>>;
-  spacing?: Partial<Record<keyof Theme['spacing'], number>>;
-  radius?: Partial<Record<keyof Theme['radius'], number>>;
-  typography?: {
-    fontFamily?: string;
-    sizes?: Partial<Record<keyof Theme['typography']['sizes'], number>>;
-    weights?: Partial<Record<keyof Theme['typography']['weights'], string>>;
-    lineHeights?: Partial<
-      Record<keyof Theme['typography']['lineHeights'], number>
-    >;
-  };
-  homeListContent?: Partial<Record<keyof Theme['homeListContent'], number>>;
-  listCard?: Partial<Record<keyof Theme['listCard'], string | number>>;
+  [K in keyof ThemeShape]?: DeepPartial<ThemeShape[K]>;
 };
 
+/** Nested partial so overrides can touch a single leaf under typography/sizes etc. */
+type DeepPartial<T> = T extends object
+  ? { [K in keyof T]?: DeepPartial<T[K]> }
+  : T;
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /**
- * Apply one-level-deep overrides onto the Legacy theme.
- * Groups not listed here stay shared with Legacy (no blind full-copy).
- * Always returns a new object so `nextTheme !== legacyTheme` (runtime switch identity).
+ * Deep-merge a partial onto a base group. Nested plain objects merge; arrays
+ * and primitives replace. Lets Next set `typography.sizes.lg` without
+ * restating every sibling key.
+ */
+function deepMergeGroup<T extends object>(base: T, partial: DeepPartial<T>): T {
+  const result: Record<string, unknown> = { ...(base as object) };
+  for (const [key, value] of Object.entries(partial as object)) {
+    if (value === undefined) continue;
+    const baseValue = (base as Record<string, unknown>)[key];
+    if (isPlainObject(baseValue) && isPlainObject(value)) {
+      result[key] = deepMergeGroup(baseValue, value);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result as T;
+}
+
+/**
+ * Rebuild layout groups that are derived from colors / spacing / radius so a
+ * Next color or spacing override does not leave stale Legacy-derived values.
+ * Explicit layout overrides in `overrides` are applied on top afterward.
+ */
+function deriveLayoutTokens(theme: Theme): Theme {
+  return {
+    ...theme,
+    homeListContent: {
+      padding: theme.spacing.lg,
+      gap: theme.spacing.sm,
+    },
+    listCard: {
+      ...theme.listCard,
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.md,
+      gap: theme.spacing.md,
+      borderRadius: theme.radius.sm,
+      backgroundColor: theme.colors.cardBackground,
+      borderColor: theme.colors.border,
+    },
+    headerLayout: {
+      ...theme.headerLayout,
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.md,
+    },
+  };
+}
+
+/**
+ * Apply deep overrides onto the Legacy theme, then re-derive layout tokens
+ * from the resolved colors/spacing/radius. Groups not listed stay shared with
+ * Legacy. Always returns a new object so `nextTheme !== legacyTheme`.
  */
 function applyThemeOverrides(base: Theme, overrides: ThemeOverrides): Theme {
-  const result: Record<string, unknown> = { ...base };
-  for (const key of Object.keys(overrides) as (keyof ThemeOverrides)[]) {
+  const merged: Record<string, unknown> = { ...base };
+  for (const key of Object.keys(overrides) as (keyof ThemeShape)[]) {
     const partial = overrides[key];
     if (!partial) continue;
-    result[key as string] = {
-      ...(base[key as keyof Theme] as object),
-      ...(partial as object),
+    merged[key as string] = deepMergeGroup(
+      base[key as keyof Theme] as object,
+      partial as object,
+    );
+  }
+  const withDerived = deriveLayoutTokens(merged as Theme);
+
+  // Re-apply explicit layout overrides so callers can still pin individual leaves.
+  const layoutKeys = ['homeListContent', 'listCard', 'headerLayout'] as const;
+  let result = withDerived;
+  for (const key of layoutKeys) {
+    const partial = overrides[key];
+    if (!partial) continue;
+    result = {
+      ...result,
+      [key]: deepMergeGroup(result[key] as object, partial as object),
     };
   }
-  return result as Theme;
+  return result;
 }
 
 /**
@@ -79,32 +154,9 @@ function buildNextOverrides(mode: NextColorRoleMode): ThemeOverrides {
     radius: { ...nextRadius },
     typography: {
       fontFamily: nextTypography.fontFamily,
-      sizes: {
-        ...legacyTheme.typography.sizes,
-        ...nextTypography.sizes,
-      },
-      weights: {
-        ...legacyTheme.typography.weights,
-        ...nextTypography.weights,
-      },
-      lineHeights: {
-        ...legacyTheme.typography.lineHeights,
-        ...nextTypography.lineHeights,
-      },
-    },
-    homeListContent: {
-      padding: nextSpacing.lg,
-      gap: nextSpacing.sm,
-    },
-    listCard: {
-      ...legacyTheme.listCard,
-      paddingHorizontal: nextSpacing.lg,
-      paddingVertical: nextSpacing.md,
-      gap: nextSpacing.md,
-      borderRadius: nextRadius.sm,
-      backgroundColor:
-        colors.cardBackground ?? legacyTheme.listCard.backgroundColor,
-      borderColor: colors.border ?? legacyTheme.listCard.borderColor,
+      sizes: { ...nextTypography.sizes },
+      weights: { ...nextTypography.weights },
+      lineHeights: { ...nextTypography.lineHeights },
     },
   };
 }
