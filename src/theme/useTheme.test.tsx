@@ -76,9 +76,13 @@ describe('useThemedStyles', () => {
       setUiVersion('next');
     });
 
-    // Next currently shares Legacy colors, but StyleSheet.create still runs again.
     expect(result.current).not.toBe(legacyStyles);
-    expect(result.current.screen).toEqual(legacyStyles.screen);
+    expect(result.current.screen.backgroundColor).toBe(
+      nextTheme.colors.background,
+    );
+    expect(legacyStyles.screen.backgroundColor).toBe(
+      legacyTheme.colors.background,
+    );
   });
 
   it('keeps the same style object when the theme does not change', () => {
