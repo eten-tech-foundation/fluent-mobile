@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -11,7 +11,7 @@ import {
 import { NavigationBar } from 'expo-navigation-bar';
 import { queryClient } from '../services/queryClient';
 import { appStyles } from '../app/appStyles';
-import { theme } from '../theme';
+import { useTheme } from '../theme/useTheme';
 import {
   AuthSessionProvider,
   useAuthSession,
@@ -22,15 +22,6 @@ import {
   classifyRouteGroups,
   getAuthGateDecision,
 } from '../navigation/authGate';
-
-const navigationTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    background: theme.colors.background,
-    card: theme.colors.background,
-  },
-};
 
 function UploadSyncNotificationTap() {
   useUploadSyncNotificationTap();
@@ -69,19 +60,38 @@ function RootNavigator() {
   );
 }
 
+function RootLayoutNav() {
+  const theme = useTheme();
+  const navigationTheme = useMemo(
+    () => ({
+      ...DefaultTheme,
+      colors: {
+        ...DefaultTheme.colors,
+        background: theme.colors.background,
+        card: theme.colors.background,
+      },
+    }),
+    [theme],
+  );
+
+  return (
+    <ThemeProvider value={navigationTheme}>
+      {/* Edge-to-edge: transparent system bars; dark icons on light chrome. */}
+      <NavigationBar style="dark" />
+      <AuthSessionProvider>
+        <E2eDevMenuGuard />
+        <UploadSyncNotificationTap />
+        <RootNavigator />
+      </AuthSessionProvider>
+    </ThemeProvider>
+  );
+}
+
 export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={appStyles.appRoot}>
-        <ThemeProvider value={navigationTheme}>
-          {/* Edge-to-edge: transparent system bars; dark icons on light chrome. */}
-          <NavigationBar style="dark" />
-          <AuthSessionProvider>
-            <E2eDevMenuGuard />
-            <UploadSyncNotificationTap />
-            <RootNavigator />
-          </AuthSessionProvider>
-        </ThemeProvider>
+        <RootLayoutNav />
       </GestureHandlerRootView>
     </QueryClientProvider>
   );

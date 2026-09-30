@@ -70,8 +70,10 @@ describe('useSyncStatus cellular gate', () => {
     });
     mockUsePreferences.mockReturnValue({
       uploadOverCellular: false,
-      preferences: { uploadOverCellular: false },
+      uiVersion: 'legacy',
+      preferences: { uploadOverCellular: false, uiVersion: 'legacy' },
       setUploadOverCellular: jest.fn(),
+      setUiVersion: jest.fn(),
       setPreferences: jest.fn(),
       reload: jest.fn(),
     });
@@ -100,8 +102,10 @@ describe('useSyncStatus cellular gate', () => {
     });
     mockUsePreferences.mockReturnValue({
       uploadOverCellular: false,
-      preferences: { uploadOverCellular: false },
+      uiVersion: 'legacy',
+      preferences: { uploadOverCellular: false, uiVersion: 'legacy' },
       setUploadOverCellular: jest.fn(),
+      setUiVersion: jest.fn(),
       setPreferences: jest.fn(),
       reload: jest.fn(),
     });
@@ -130,8 +134,10 @@ describe('useSyncStatus cellular gate', () => {
     });
     mockUsePreferences.mockReturnValue({
       uploadOverCellular: true,
-      preferences: { uploadOverCellular: true },
+      uiVersion: 'legacy',
+      preferences: { uploadOverCellular: true, uiVersion: 'legacy' },
       setUploadOverCellular: jest.fn(),
+      setUiVersion: jest.fn(),
       setPreferences: jest.fn(),
       reload: jest.fn(),
     });
