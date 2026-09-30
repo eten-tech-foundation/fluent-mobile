@@ -1,8 +1,9 @@
 # Pericope View Audit
 
-> **Status: device run complete; gaps filed.** Six gaps are filed as #584–#589
-> (sub-issues of #534): five confirmed on device and one follow-up task from
-> code (#587). Gap 7 was added after a re-test on 2026-09-30 (#623).
+> **Status: device run complete; gaps filed.** Seven gaps are filed as
+> #584–#589 and #623 (sub-issues of #534): five confirmed on device, one
+> follow-up task from code (#587), and Gap 7 from a re-test on 2026-09-30
+> (#623, confirmed on PR #559 head `ddfdaaa`).
 
 ## Overview
 
@@ -11,8 +12,8 @@ cards and source-audio caption, Record tab pericope title/navigation/source
 text, pericope capture and cross-granularity take labels, stitched playback,
 pericope-mode chapter advancement, and pericope boundary data (bundled sets)  
 **Auditor:** Jonathan Seehagen (`@JonathanSeehagen`)  
-**Date tested:** 2026-09-24 – 2026-09-25  
-**Build/version:** Local run of merged `main` @ `4ebeae2` (`expo-dev-client` + Metro)  
+**Date tested:** 2026-09-24 – 2026-09-25; re-test 2026-09-30 (Gap 7)  
+**Build/version:** Local run of merged `main` @ `4ebeae2` (`expo-dev-client` + Metro). Gap 7 re-test on PR #559 head `ddfdaaa`  
 **Environment:** Dev — `dev.api.fluent.bible`; Local — fluent-api `main` @ `acc1404` (Genesis, Exodus)  
 **Device and OS:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), physical device  
 **Audit sub-issue:** [#534](https://github.com/eten-tech-foundation/fluent-mobile/issues/534) (epic [#526](https://github.com/eten-tech-foundation/fluent-mobile/issues/526))
@@ -183,7 +184,7 @@ The run is split across two environments:
 | A.2 | Dev | Switch to Pericope → kill app → relaunch | Pericope retained (#407) | As expected | Pass |
 | A.3 | Dev | Second account on the device | Its own preference (default Verse) (#407) | As expected | Pass |
 | B.4 | Dev | Bible tab in pericope mode | Spinner then cards, no verse-row flash; range titles, never "Pericope N" (#408) | As expected | Pass |
-| B.5 | Dev | Expand / collapse a card | Expanded: superscript verse numbers, highlighted border; collapsed preview without numbers (#408) | As expected on `4ebeae2`. With PR #573 (fix for #564), tapping the card also opened Record, so a pericope could not be collapsed on the Bible tab (auditor's review on PR #573); PR #573 (merged 2026-09-29) splits the chevron from the card tap; not device-tested in this audit | Pass |
+| B.5 | Dev | Expand / collapse a card | Expanded: superscript verse numbers, highlighted border; collapsed preview without numbers (#408) | As expected on `4ebeae2`. With PR #573 (fix for #564), tapping the card also opened Record, so a pericope could not be collapsed on the Bible tab (auditor's review on PR #573); PR #573 (merged 2026-09-29) splits the chevron from the card tap; not device-tested in this audit | Pass (on `4ebeae2`; collapse after #573 not re-tested) |
 | B.6 | Dev | Recorded status on cards | Green check (all verses), amber loader (some), none (#408) | As expected | Pass |
 | B.7 | Dev | Toggle Verse ↔ Pericope | List re-renders at the new unit; auto-select in pericope mode accepted as not required (#408) | As expected | Pass |
 | B.8 | Dev | Source audio caption and ticks | `Pericope N / total`; ticks only with verse timestamps (#408) | Caption `WEB-9879db Source Audio · Pericope 1 / 6`: the label is the project Bible abbreviation from dev data (`bibleAbbreviation`, `SourceAudioShell.tsx`). No source audio with verse timestamps was found, so ticks could not be checked | Pass (ticks not checked: no verse timestamps) |
@@ -194,7 +195,7 @@ The run is split across two environments:
 | C.13 | Dev | Record tab title in pericope mode | Range title + pericope title subtitle (FIA); no "Pericope 1 of 7" (#409) | Range title shown, no counter. No subtitle on Mark 8:31–9:1: in the bundled FIA data only the first part of a split pericope has a title (29a "Jesus is the Messiah and must suffer and die"; 29b is null), and FCBH has no titles. Follows the spec ("when available"); see Open Questions | Pass |
 | C.14 | Dev | Next / Previous | Jump pericope to pericope; disabled at chapter bounds (#540) | As expected | Pass |
 | C.15 | Dev | Source text in pericope mode | All verses of the pericope (#540) | As expected | Pass |
-| C.16 | Dev | Draft waveform | Pericope: continuous, no ticks; Verse: ticks (#409) | No tick marks on the draft waveform in either mode. Pericope mode matches (continuous). Verse-mode ticks were deferred in PR #467 because every verse take is single-verse audio, so there is no boundary to mark; PR #467 said it would become buildable once #410 landed (it has, PR #473), and no follow-up was filed. See Open Questions | Pass |
+| C.16 | Dev | Draft waveform | Pericope: continuous, no ticks; Verse: ticks (#409) | No tick marks on the draft waveform in either mode. Pericope mode matches (continuous). Verse-mode ticks were deferred in PR #467 because every verse take is single-verse audio, so there is no boundary to mark; PR #467 said it would become buildable once #410 landed (it has, PR #473), and no follow-up was filed. See Open Questions | Pass (pericope); **Fail** (verse ticks missing; no follow-up) |
 | D.17 | Dev | Record a pericope take | Label `Take N - Pericope - vv. X-Y`, full range, not truncated (format #410; "never truncated" #411) | Mark 1:1–13 pericope take: the label is cut to `Take N - Pericope - vv. …` on the phone width (`numberOfLines={1}` beside the timer in `DraftTakeRow`) | **Fail** → Gap 6 |
 | D.18 | Dev | Switch to Verse mode | Pericope take on every spanned verse, same label (#410, #411) | As expected | Pass |
 | D.19 | Dev | 5-take cap with a shared pericope take | Shared take counts on each verse; Record New Take disabled at 5 (#410) | As expected | Pass |
@@ -208,7 +209,7 @@ The run is split across two environments:
 | G.26 | Local | Pericope take in the backend database | Audio row exists for the take's verses | No `verse_audio_recordings` rows for Exodus 5–6 | **Fail** → Gap 1 |
 | H.27 | Dev | Airplane mode, pericope mode | Cards, titles, navigation, capture and stitched playback work offline | As expected | Pass |
 | H.28 | Dev | Kill and reopen offline in pericope mode | Mode and pericope data retained | As expected | Pass |
-| I.29a | Local | Project with `pericope_set_id = NULL` | Clear pericope behavior or a visible explanation; CTA still reachable | Genesis 1 with Settings on Pericope: Bible tab shows verse rows and Record shows a verse reference, with no message explaining that pericopes are unavailable. CTA step not run. Per code, a NULL set uses verse rules for the CTA; the hidden CTA applies only to a set id with no local rows (Code Review Notes) | **Fail** → Gap 5 |
+| I.29a | Local | Project with `pericope_set_id = NULL` | Clear pericope behavior or a visible explanation; CTA still reachable | Genesis 1 with Settings on Pericope: Bible tab shows verse rows and Record shows a verse reference, with no message explaining that pericopes are unavailable. CTA step not run (Skipped — Fail is the silent verse fallback only). Per code, a NULL set uses verse rules for the CTA; the hidden CTA applies only to a set id with no local rows (Code Review Notes) | **Fail** → Gap 5 |
 | I.29b | Local | Project on an unbundled set (id ≠ 1, 2) | Pericopes hydrate from `GET /pericope-sets/{id}` | Not run: needs a fabricated set in the local DB; the gap is established from code (endpoint on fluent-api `acc1404`, no mobile client) | Skipped |
 
 ## Offline and Synchronization Results
@@ -230,7 +231,7 @@ specific to this feature.
 
 Existing issues were searched before filing (pericope, pericope upload,
 range take, pericope take, verse toggle, drafting unit, granularity, stitch,
-cross-granularity, mixed-mode). All six gaps are new issues, filed as
+cross-granularity, mixed-mode). Gaps 1–6 are new issues #584–#589, filed as
 sub-issues of #534 (see each gap's Development task). Gap 7 comes from a
 later re-test on 2026-09-30 (PR #559 head `ddfdaaa`) of a finding first seen
 in the PR #550 device QA; it is #623. One code-level
@@ -404,7 +405,8 @@ only the selected take gets the generic "Delete selected take?" alert.
 
 **Expected behavior:** a confirmation that names the full range.  
 **Actual behavior:** the take is deleted with no confirmation.  
-**Evidence:** device re-test on 2026-09-30.
+**Evidence:** device re-test on 2026-09-30 on PR #559 head `ddfdaaa`
+(original audit build was `main` @ `4ebeae2`).
 
 Existing open issues re-checked on device (no new issue unless the behavior
 differs): [#408](https://github.com/eten-tech-foundation/fluent-mobile/issues/408)
