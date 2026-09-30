@@ -1,11 +1,12 @@
 # Returning Online and Synchronizing Changes Audit
 
-> **Status: device run done; gaps filed.** Eleven gaps confirmed on a
+> **Status: device run done; gaps filed.** Fourteen gaps confirmed on a
 > physical device. Gaps 1–7 are #599–#605 (sub-issues of #530); Gaps 8, 10
 > and 11 were added to the open #257 and #147. Gap 9 was added to #271 and is
 > tracked in #611, filed by the #533 audit for the same behavior. Gaps 12–14
 > were added after a re-test on 2026-09-30 (#620–#622). Code read on `main` +
-> PR #559 @ `09ff2fd`.
+> PR #559 @ `09ff2fd`. File:line cites are against that SHA (Gaps 12–14 also
+> `ddfdaaa`) and will not match `main` until #559 merges.
 
 ## Overview
 
@@ -16,7 +17,7 @@ Pause / Resume / Cancel / Sync Now, failure copy), the background upload
 notification, the header cloud icon, and syncing other offline changes
 (stage advancement, claims, metadata) on reconnect  
 **Auditor:** Jonathan Seehagen (`@JonathanSeehagen`)  
-**Date tested:** 2026-09-25 to 2026-09-28  
+**Date tested:** 2026-09-25 to 2026-09-28; re-test 2026-09-30 (Gaps 12–14)  
 **Build/version:** local debug build (`npm run android`, USB + Metro) of `09ff2fd` (PR #559 head). B.7 and the second H.24 device used the nightly `1.0.0` of `main` (no #559). The notification path (`uploadProgressNotification.ts`, `recordingSync.ts`, the foreground module) is the same in both builds; the orchestrator, connectivity and Sync / Home screens differ  
 **Environment:** `https://dev.api.fluent.bible` (`.env`)  
 **Device and OS:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), physical device  
@@ -115,7 +116,9 @@ one, the later ticket wins (#546 extends #150's cellular gate to downloads).
 Read on `main` + PR #559 @ `09ff2fd` (PR #559 head, which already contains
 `main` @ `fb634e5`). PR #559 is open with changes requested, so the device
 run used a local build of `09ff2fd`, except B.7 and the second H.24 device
-(nightly; see Overview).
+(nightly; see Overview). **All `file:line` cites below are against `09ff2fd`
+unless a later SHA is named (Gaps 12–14: `ddfdaaa`). They do not match this
+PR's merge-base `main`.**
 
 **Why this build:** PR #559 (#546) was still waiting for approval and
 contains changes this audit depends on: one Wi-Fi / cellular transport rule
@@ -205,11 +208,11 @@ Scenario numbers match the device test script used for this audit
 | B.8 | Upload finishes | Notification clears; "Upload complete"; header `cloud-check` green; chapter rows synced (#149, #152, #38) | Debug run: no notification. After 7 chapters uploaded and Sync showed all synced, the My Work header still showed pending | **Fail** → Gaps 1, 5 |
 | C.9 | Pending takes, cellular only, toggle off | No upload; Sync Now disabled with "Connect to WiFi to sync, or enable cellular uploads in Settings." (#150, #151, #546) | As expected | Pass |
 | C.10 | Same, then turn the toggle on | Upload starts on its own (#150, #146) | Turning the toggle on during a pending upload on mobile data: the app closed with no error (second run). First run: upload started only after leaving and reopening Sync | **Fail** → Gaps 1 (probable), 3 |
-| C.11 | Pending takes, cellular, toggle off → Wi-Fi on | Upload starts on its own (#150) | Upload started; a red "Sync failed: master data" stayed on Sync and did not clear | Pass (see Gap 4) |
+| C.11 | Pending takes, cellular, toggle off → Wi-Fi on | Upload starts on its own (#150) | Upload started; a red "Sync failed: master data" stayed on Sync and did not clear | **Fail** → Gap 4 |
 | D.12 | Syncing → Pause | Bar frozen; "Paused"; "Resumes automatically in 23h …"; Resume + Sync Now + Cancel; notification clears (#149, #151, #152) | As expected; countdown starts at "24h 0m" | Pass |
-| D.13 | Paused → toggle airplane off/on | Stays paused, no upload (24 h window) (#150) | Not reported (as expected) | Pass |
+| D.13 | Paused → toggle airplane off/on | Stays paused, no upload (24 h window) (#150) | Not reported | Skipped |
 | D.14 | Paused → Resume (or Sync Now) | Upload restarts; pause window cleared (#150, #151) | Resume restarts the upload. Right after reconnecting on Sync, Resume/Sync Now became disabled with "Can't reach Fluent" until leaving and reopening the page | Pass (see Gap 3) |
-| D.15 | Syncing → Cancel | Stops at once; Sync Now shown; no automatic retry while connectivity stays the same (#150, #151) | Not reported (as expected) | Pass |
+| D.15 | Syncing → Cancel | Stops at once; Sync Now shown; no automatic retry while connectivity stays the same (#150, #151) | Not reported | Skipped |
 | D.16 | After Cancel → airplane on, then off | Auto-upload fires again (#150) | Auto-upload fires again; the status flickers between states while it runs | Pass (see Gap 2) |
 | E.17 | Syncing → airplane mode for 30 s → off | Silent pause, no failed state or error; resumes on its own (#150) | Sync page shows the raw error "fetch failed: java.net.UnknownHostException: Unable to resolve host \"dev.api.fluent.bible\": No address associated with hostname"; when Wi-Fi returns the upload restarts on its own and the message clears | **Fail** → Gap 6 |
 | E.18 | Syncing → kill the app → relaunch online | Upload resumes; no take stuck "uploading" (#150, #100) | Upload resumed; the percentage showed 133% | Pass (see Gap 2) |
@@ -293,7 +296,8 @@ The orchestrator emits `start` / `progress` per chapter
 types per take (`recordingSync.ts:348`, `:375-382`). The Sync page progress
 (`src/hooks/usePendingUploads.ts:74-117`) and the notification consume both.
 The status line falls back to "Online · all synced" whenever nothing is
-pending (`src/app/screens/SyncScreen.tsx:344-358`), even while the progress
+pending (`src/app/screens/SyncScreen.tsx:344-358` @ `09ff2fd`, the default
+return of `renderStatusLine`), even while the progress
 card shows Paused.
 
 **Steps to reproduce:**
@@ -605,7 +609,8 @@ label for both.
 **Summary:**  
 On a physical Android 10 device, the core reconnect path works: takes
 recorded offline upload on their own when Wi-Fi returns, the cellular gate
-from PR #559 holds (C.9, C.11), Pause / Resume / Cancel / Sync Now behave as
+from PR #559 holds (C.9; C.11 started the upload but left a sticky master-data
+error, Gap 4), Pause / Resume / Cancel / Sync Now behave as
 specified, an app kill resumes the upload, and the Downloads section
 renders.
 
