@@ -1,16 +1,3 @@
-import {
-  colors,
-  spacing,
-  radius,
-  typography,
-  workflowBadges,
-  workflowStages,
-  recordControlSizes,
-  shadows,
-  waveform,
-} from './tokens';
-import { homeListContent, listCard, workflowBadge } from './layout';
-
 export {
   colors,
   spacing,
@@ -37,19 +24,13 @@ export {
 } from './iconSpecs';
 export { homeListContent, listCard, workflowBadge } from './layout';
 
-export const theme = {
-  colors,
-  spacing,
-  radius,
-  typography,
-  workflowBadges,
-  workflowStages,
-  recordControlSizes,
-  shadows,
-  waveform,
-  homeListContent,
-  listCard,
-  workflowBadge,
-} as const;
+export { legacyTheme, theme, type Theme } from './legacy';
+export {
+  DEFAULT_UI_VERSION,
+  isUiVersion,
+  type UiVersion,
+} from './uiVersionTypes';
+export { resolveTheme } from './uiVersion';
 
-export type Theme = typeof theme;
+// Runtime hooks live in `./useTheme` — import them from there (not this barrel)
+// so static `theme` consumers do not pull preference/storage into the module graph.

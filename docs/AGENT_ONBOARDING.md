@@ -40,7 +40,7 @@ Recording follow-up: wire source audio dock to real fetch + playback ([#235](htt
 | [`src/app/screens/`](../src/app/screens/) | Screen components: Home, Settings, Sync, Drafting, PrepareForOffline |
 | [`src/app/tabs/`](../src/app/tabs/) | Nested surfaces: ProjectsTab, MyWorkTab, BibleTab, RecordTab, auth/legal |
 | [`src/components/`](../src/components/) | Shared `layout/` + `ui/` |
-| [`src/theme/`](../src/theme/) | Canonical design tokens (`theme` object) for new UI |
+| [`src/theme/`](../src/theme/) | Design tokens — static `theme` is Legacy-pinned; import `useTheme()` / `useThemedStyles()` from [`src/theme/useTheme`](../src/theme/useTheme.ts) for runtime Legacy/Next ([ui-version-theming.md](guides/ui-version-theming.md)) |
 | [`src/navigation/`](../src/navigation/) | Auth session provider, href helpers, auth gate |
 | [`src/services/api.ts`](../src/services/api.ts) | HTTP client (`FluentAPI`) — see [api-client-standard.md](guides/api-client-standard.md) |
 | [`src/services/sync.ts`](../src/services/sync.ts) | Sync orchestration, retries, KV counts |
@@ -194,7 +194,7 @@ Auth: email/password via `FluentAPI.signIn`; authenticated API calls use `Author
 - **Env:** `EXPO_PUBLIC_API_BASE_URL` in `.env`; read via `getApiBaseUrl()` from `src/config/apiBaseUrl.ts` — never commit `.env`. ESLint blocks direct `process.env` reads and legacy imports (`@env`, `react-native-fs`, `react-native-keychain`, Simform waveform) outside the config layer.
 - **Types:** API shapes in `src/types/api/`, DB in `src/types/db/`. Route hrefs/params in `src/navigation/hrefs.ts` / `routeParams.ts`.
 - **Prettier:** single quotes, trailing commas, `arrowParens: 'avoid'`.
-- **Styles:** **`src/theme` (`theme` object) is canonical for new UI.** Do not add new hardcoded hex colors in new StyleSheets. [`src/app/appStyles.ts`](../src/app/appStyles.ts) is legacy shared styles — migrate callers to tokens when you touch them; do not expand it with new hex.
+- **Styles:** Prefer **`useTheme()` / `useThemedStyles()` from `src/theme/useTheme`** for UI that must follow the active Legacy/Next UI version. The static **`theme`** export from `src/theme` is Legacy-pinned (existing module-level StyleSheets). Do not add new hardcoded hex colors in new StyleSheets. [`src/app/appStyles.ts`](../src/app/appStyles.ts) is legacy shared styles — migrate callers to tokens when you touch them; do not expand it with new hex. See [ui-version-theming.md](guides/ui-version-theming.md).
 - **SVG:** import as React components (Metro SVG transformer).
 
 Keep changes **small and scoped** — avoid drive-by refactors.

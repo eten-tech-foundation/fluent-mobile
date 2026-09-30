@@ -40,8 +40,8 @@ const baseUrl = getApiBaseUrl();
 ## React Native
 
 - Functional components + hooks.
-- **Styling:** use `theme` from `src/theme` for new UI (colors, spacing, radius, typography). Do **not** add new hardcoded hex values in new StyleSheets.
-- `src/app/appStyles.ts` is **legacy** shared styles — reuse existing keys if needed, but prefer tokens for anything new; migrate to `theme` when touching a file.
+- **Styling:** For UI that must follow the active Legacy/Next UI version, use `useTheme()` / `useThemedStyles()` from `src/theme/useTheme`. The static `theme` export from `src/theme` is **Legacy-pinned** (safe for existing module-level StyleSheets). Do **not** add new hardcoded hex values in new StyleSheets — put tokens in `src/theme/tokens.ts` (Legacy) or overrides in `src/theme/next.ts` (Next). See [docs/guides/ui-version-theming.md](../../docs/guides/ui-version-theming.md).
+- `src/app/appStyles.ts` is **legacy** shared styles — reuse existing keys if needed, but prefer tokens for anything new; migrate to `useTheme()` / `useThemedStyles()` from `src/theme/useTheme` when touching a file for Next-aware UI.
 - Icons: `@react-native-vector-icons/ionicons` and/or `lucide-react-native` (match neighbors).
 - SVG: default import as component (e.g. `FluentLogo`).
 

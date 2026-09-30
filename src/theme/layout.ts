@@ -1,3 +1,7 @@
+/**
+ * Legacy layout tokens — frozen baseline for the current UI.
+ * Redesign / Next overrides belong in `src/theme/next.ts`, not here.
+ */
 import { ViewStyle } from 'react-native';
 import { colors, radius, spacing } from './tokens';
 
