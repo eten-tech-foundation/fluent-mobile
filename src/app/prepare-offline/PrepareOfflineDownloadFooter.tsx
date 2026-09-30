@@ -25,6 +25,8 @@ interface PrepareOfflineDownloadFooterProps {
   downloadButtonLabel: string;
   session: PrepareOfflineDownloadSession;
   busy?: boolean;
+  transportBlocked?: boolean;
+  transportBlockedMessage?: string;
   onDownload: () => void;
   onPause: () => void;
   onResume: () => void;
@@ -37,12 +39,15 @@ export function PrepareOfflineDownloadFooter({
   downloadButtonLabel,
   session,
   busy = false,
+  transportBlocked = false,
+  transportBlockedMessage,
   onDownload,
   onPause,
   onResume,
   onCancel,
 }: PrepareOfflineDownloadFooterProps) {
   const disabled = busy;
+  const transferDisabled = busy || transportBlocked;
 
   return (
     <View style={styles.footer} testID="prepare-offline-download-footer">
@@ -94,7 +99,7 @@ export function PrepareOfflineDownloadFooter({
             label="Resume"
             Icon={Play}
             variant="primary"
-            disabled={disabled}
+            disabled={transferDisabled}
             onPress={onResume}
             testID="prepare-offline-download-resume"
           />
@@ -110,18 +115,20 @@ export function PrepareOfflineDownloadFooter({
         <TouchableOpacity
           style={[
             styles.downloadButton,
-            !canDownload && styles.downloadButtonDisabled,
+            (!canDownload || transportBlocked) && styles.downloadButtonDisabled,
           ]}
           onPress={onDownload}
-          disabled={!canDownload || disabled}
+          disabled={!canDownload || disabled || transportBlocked}
           accessibilityRole="button"
-          accessibilityState={{ disabled: !canDownload || disabled }}
+          accessibilityState={{
+            disabled: !canDownload || disabled || transportBlocked,
+          }}
           testID="prepare-offline-download-button"
         >
           <Download
             size={iconSizes.chapterSync}
             color={
-              canDownload
+              canDownload && !transportBlocked
                 ? theme.colors.primaryForeground
                 : theme.colors.mutedForeground
             }
@@ -130,13 +137,22 @@ export function PrepareOfflineDownloadFooter({
           <Text
             style={[
               styles.downloadButtonLabel,
-              !canDownload && styles.downloadButtonLabelDisabled,
+              (!canDownload || transportBlocked) &&
+                styles.downloadButtonLabelDisabled,
             ]}
           >
             {downloadButtonLabel}
           </Text>
         </TouchableOpacity>
       )}
+      {transportBlocked && transportBlockedMessage ? (
+        <Text
+          style={styles.blockedHint}
+          testID="prepare-offline-transport-blocked-hint"
+        >
+          {transportBlockedMessage}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -283,5 +299,10 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.sm,
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.syncSynced,
+  },
+  blockedHint: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.mutedForeground,
+    textAlign: 'center',
   },
 });

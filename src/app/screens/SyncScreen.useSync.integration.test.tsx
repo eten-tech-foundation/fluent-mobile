@@ -41,7 +41,14 @@ jest.mock('../../hooks/useDownloadQueue', () => ({
 jest.mock('../../hooks/useConnectivity', () => ({
   useConnectivity: () => ({
     isOnline: true,
+    isLinkOnline: true,
     isWifi: true,
+    isCellular: false,
+    connectionType: 'wifi',
+    hasResolved: true,
+    hasTransferResolved: true,
+    connectivityPending: false,
+    transferConnectivityPending: false,
   }),
 }));
 

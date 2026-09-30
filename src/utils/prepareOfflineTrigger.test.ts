@@ -78,6 +78,19 @@ describe('shouldPresentPrepareOffline', () => {
     ).toBe(false);
   });
 
+  it('presents on ethernet without the cellular toggle when internet is available', () => {
+    expect(
+      shouldPresentPrepareOffline({
+        connectivityProfile: 'rarely_connected',
+        isAssigned: false,
+        isOnline: true,
+        isWifi: false,
+        uploadOverCellular: false,
+        connectionType: 'ethernet',
+      }),
+    ).toBe(true);
+  });
+
   it('does not present on cellular when cellular upload is disabled, even with internet available', () => {
     expect(
       shouldPresentPrepareOffline({
