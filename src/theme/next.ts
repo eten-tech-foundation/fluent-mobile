@@ -1,7 +1,28 @@
 import { legacyTheme, type Theme } from './legacy';
 
+/**
+ * Widen `as const` string/number leaves so Next can supply different token
+ * values. Object keys and nested structure stay aligned with `Theme`.
+ */
+type WidenTokens<T> = T extends string
+  ? string
+  : T extends number
+  ? number
+  : T extends boolean
+  ? boolean
+  : T extends null
+  ? null
+  : T extends readonly (infer U)[]
+  ? readonly WidenTokens<U>[]
+  : T extends object
+  ? { -readonly [K in keyof T]: WidenTokens<T[K]> }
+  : T;
+
+/** Shared theme shape — same keys as Theme, configurable leaves widened. */
+type ThemeShape = WidenTokens<Theme>;
+
 type ThemeOverrides = {
-  [K in keyof Theme]?: Partial<Theme[K]>;
+  [K in keyof ThemeShape]?: Partial<ThemeShape[K]>;
 };
 
 /**
@@ -11,11 +32,11 @@ type ThemeOverrides = {
  */
 function applyThemeOverrides(base: Theme, overrides: ThemeOverrides): Theme {
   const result: Record<string, unknown> = { ...base };
-  for (const key of Object.keys(overrides) as (keyof Theme)[]) {
+  for (const key of Object.keys(overrides) as (keyof ThemeShape)[]) {
     const partial = overrides[key];
     if (!partial) continue;
     result[key as string] = {
-      ...(base[key] as object),
+      ...(base[key as keyof Theme] as object),
       ...(partial as object),
     };
   }
