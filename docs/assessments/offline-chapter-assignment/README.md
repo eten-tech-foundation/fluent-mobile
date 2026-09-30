@@ -241,7 +241,7 @@ failed scenarios.
 | E.8 | A deletes the stuck take | The claim no longer blocks sync | Take deleted, but the claim row stays pending and fails on every full sync ("orphan" claim). Also on Numbers 5 | **Fail** → Gap 1 |
 | F.1 | PM resolves the conflict on web | Conflict clears silently; "mine" (#271) | Not run: the PM resolution flow is not implemented yet (#271 leaves it out of scope) | Skipped |
 | F.2 | PM resolves in favor of B | Conflict clears; row "other" | Not run (same reason) | Skipped |
-| F-alt | Stuck claim (E): PM assigns W to A → full sync | Claim accepted; error clears | Claim accepted and error cleared, but only after sign-out/sign-in: Sync Now was hidden because no uploads were pending, and the app has no other way to run a full sync (Gap 2) | Pass (see Gap 2) |
+| F-alt | Stuck claim (E): PM assigns W to A → full sync | Claim accepted; error clears | Claim accepted and error cleared, but only after sign-out/sign-in: Sync Now was hidden because no uploads were pending, and Home auto-repair did not run (`needsDownloadSync` was false), so a full sync was not available from the Sync page (Gap 2) | Pass (see Gap 2) |
 | G.1 | Record tab open on a chapter; a sync sets a conflict; go back to Record | Banner appears without reopening the chapter | As expected on Numbers 8 (second attempt): the amber conflict indicator showed after the sync. The first attempt (Numbers 7) produced no conflict: its claim reached the server outside the 5-minute window and got 404 (Gap 1) | Pass |
 | G.2 | Leave and reopen the chapter | Banner shown | As expected | Pass |
 | H.1 | (Optional) PM unassigns a chapter already in Draft; A records on it offline, reconnects, Sync Now | Chapter claimed, or a clear message; no stuck claim | Web could not produce "Draft with no drafter": removing the assignment left another translator as drafter, so the app (correctly) showed "other" and did not claim | Blocked |
@@ -256,7 +256,7 @@ failed scenarios.
 | Feature used while offline | Pass | B.1–B.8 |
 | App closed and reopened offline | Pass | B.6 |
 | Device returns online | Fail | C.1–C.3: the automatic upload runs before the claim, and the list refresh clears the provisional claim (Gap 2) |
-| Offline changes synchronize | Fail | Claims reach the server only through a full sync (Sync Now, login, Home auto-repair). With no pending uploads Sync Now is hidden, so sign-out/sign-in is the only way (Gap 2). Audio upload itself is #530 |
+| Offline changes synchronize | Fail | Claims reach the server only through a full sync (Sync Now, login, Home auto-repair). With no pending uploads Sync Now is hidden; Home auto-repair only runs when `needsDownloadSync` is true, so this run had to sign out (Gap 2). Audio upload itself is #530 |
 | Conflicting changes are handled | Fail | The conflict UI works (D.4–D.7) when a translator claims first, with no peer checker, and a full sync runs within 5 min. A PM assignment (D.8) or a longer offline window (E) gives 404, a stuck claim and no conflict (Gap 1). Resolution not implemented (F). Audio-take conflicts are #256 |
 
 ## Gaps Identified
@@ -338,8 +338,10 @@ claims. The other online paths act without them:
   full sync (C.2).
 - **Sync page:** after a failed upload, Sync Now stays disabled until the
   page is reopened. When no uploads are pending, Sync Now is hidden even
-  while claims are pending or the chapter-claims error is shown, so the only
-  way to push a claim is to sign out and back in (F-alt).
+  while claims are pending or the chapter-claims error is shown. Home
+  auto-repair also runs `syncAllUsers` when `needsDownloadSync` is true.
+  In this run that path did not fire, so sign-out/sign-in was the remaining
+  way to push a claim (F-alt).
 
 In the conflict case, this delay also uses up the 5-minute window that
 Gap 1 depends on (D.3 only passed because Sync Now was tapped in time).
@@ -482,8 +484,9 @@ conflict persists across syncs. The online claim (#268) still works.
 
 The main risk is **sync on reconnect**. The offline claim is pushed only by
 the full sync, so the automatic upload fails before it, the list refresh
-clears the provisional "mine", and with no pending uploads there is no way
-to push a claim except signing out (Gap 2). When the chapter was taken during
+clears the provisional "mine", and with no pending uploads Sync Now is
+hidden. Home auto-repair can still push claims when `needsDownloadSync` is
+true; in this run it did not, so sign-out was the remaining path (Gap 2). When the chapter was taken during
 the offline window, the conflict is lost unless another translator claimed it
 with no peer checker and the push happens within 5 minutes; a PM assignment
 or a longer offline window leaves a claim that fails on every sync and takes
