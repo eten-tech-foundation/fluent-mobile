@@ -38,7 +38,9 @@ describe('DraftTakeRow trailing slot (#571)', () => {
     const { getByTestId } = render(
       <DraftTakeRow {...baseProps} leadingIndicator="none" />,
     );
-    const style = StyleSheet.flatten(getByTestId(SPACER_ID, hidden).props.style);
+    const style = StyleSheet.flatten(
+      getByTestId(SPACER_ID, hidden).props.style,
+    );
     expect(style.width).toBe(iconSizes.chevron + theme.spacing.xs * 2);
   });
 
