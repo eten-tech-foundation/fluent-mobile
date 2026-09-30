@@ -3,8 +3,9 @@
 > **Status: device run done; gaps filed.** Eleven gaps confirmed on a
 > physical device. Gaps 1–7 are #599–#605 (sub-issues of #530); Gaps 8, 10
 > and 11 were added to the open #257 and #147. Gap 9 was added to #271 and is
-> tracked in #611, filed by the #533 audit for the same behavior. Code read on
-> `main` + PR #559 @ `09ff2fd`.
+> tracked in #611, filed by the #533 audit for the same behavior. Gaps 12–14
+> were added after a re-test on 2026-09-30 (#620–#622). Code read on `main` +
+> PR #559 @ `09ff2fd`.
 
 ## Overview
 
@@ -241,7 +242,9 @@ reconnect, pending, notification, conflict, stage, claim, cellular). Gaps 1–7
 become new issues (#599–#605, sub-issues of #530); Gaps 8, 10 and 11 became
 comments on the open #257 and #147. Gap 9 was first added to #271; the
 offline chapter assignment audit (#533) then filed the same behavior as #611,
-which is its development task. All are filed.
+which is its development task. Gaps 12–14 come from a later re-test on
+2026-09-30 (PR #559 head `ddfdaaa`) of findings first seen in the PR #563
+device QA and review; they are #620–#622. All are filed.
 
 ### Gap 1: The upload foreground service crashes the app
 
@@ -515,6 +518,68 @@ download-queue signal", `src/utils/deriveSyncPageStatus.ts:4-6`).
 **Actual behavior:** "Upload complete".  
 **Evidence:** I.26.
 
+### Gap 12: A failed pending-count read shows "All synced"
+
+**Severity:** Medium  
+**Launch blocker:** No  
+**Related issue:** [#603](https://github.com/eten-tech-foundation/fluent-mobile/issues/603) (open), PR #563, PR #606  
+**Development task:** [#620](https://github.com/eten-tech-foundation/fluent-mobile/issues/620)
+
+**Description:**  
+`getPendingUploadCount()` (`src/db/queries.ts:639`) and
+`getUnuploadablePendingSummary()` (`:677`) catch database errors and return
+`0` / an empty summary, and `loadPendingUploadCount()`
+(`src/hooks/usePendingUploads.ts:24`) does the same for the log-out guard. A
+failed read looks like "nothing pending", so Sync derives `uploadComplete`.
+PR #606 moves the hook into a shared store but keeps these queries.
+
+**Steps to reproduce:** force a database read failure on the pending queries
+(not reproducible on a device through normal use).  
+**Expected behavior:** an unknown or error state, never "All synced".  
+**Actual behavior:** "All synced" and no log-out warning.  
+**Evidence:** code review (CodeRabbit thread on PR #563).
+
+### Gap 13: The Sync icon flashes "pending" before "All synced"
+
+**Severity:** Low  
+**Launch blocker:** No  
+**Related issue:** [#603](https://github.com/eten-tech-foundation/fluent-mobile/issues/603) (open), PR #606  
+**Development task:** [#621](https://github.com/eten-tech-foundation/fluent-mobile/issues/621)
+
+**Description:**  
+On `complete` / `idle`, `isUploading` is cleared at once while the pending
+counts still hold the pre-upload value; the new counts arrive only when the
+async SQLite refresh resolves. PR #606 keeps the same order in
+`syncStatusStore.ts`.
+
+**Steps to reproduce:** record a few verse takes, tap Sync Now, and watch
+the large icon when the upload ends.  
+**Expected behavior:** "Syncing…" goes straight to "All synced".  
+**Actual behavior:** the icon flashes pending for a moment first.  
+**Evidence:** device re-test on 2026-09-30.
+
+### Gap 14: The drawer Sign Out skips the unsynced-work warning
+
+**Severity:** Medium  
+**Launch blocker:** No  
+**Related issue:** [#584](https://github.com/eten-tech-foundation/fluent-mobile/issues/584) (open), [#568](https://github.com/eten-tech-foundation/fluent-mobile/issues/568) (open, different case)  
+**Development task:** [#622](https://github.com/eten-tech-foundation/fluent-mobile/issues/622)
+
+**Description:**  
+More Settings → "Log out" (`src/app/screens/SettingsScreen.tsx:83`) warns
+when `loadPendingUploadCount()` > 0, but the drawer "Sign Out"
+(`src/components/ui/UserSettingsMenu.tsx:145`) signs out with no check. The
+two entries also use different labels. The count ignores pericope takes
+(`granularity = 'verse'`), so neither entry warns when only pericope takes
+are pending. Recordings stay in the local database after sign out.
+
+**Steps to reproduce:** keep a verse take pending, open the drawer and tap
+Sign Out.  
+**Expected behavior:** the same warning as More Settings → Log out, and one
+label for both.  
+**Actual behavior:** signs out immediately.  
+**Evidence:** device re-test on 2026-09-30.
+
 ## Open Questions
 
 - #257 is open and not built. Is offline stage advancement in scope for the
@@ -555,12 +620,16 @@ blockers before the November 2026 ETEN Summit. The rest degrade trust in the
 sync chrome: stale reachability (Gap 3), wrong progress (Gap 2), stale sync errors
 (Gap 4), a stale header icon (Gap 5), failures shown for a normal connection drop
 (Gap 6), takes recorded online that never upload (Gap 7), a double back from
-Manage downloads (Gap 10) and no "All synced" state (Gap 11).
+Manage downloads (Gap 10) and no "All synced" state (Gap 11). A later
+re-test added three more: a failed pending-count read can show "All synced"
+(Gap 12), the Sync icon flashes pending before "All synced" (Gap 13), and the
+drawer Sign Out skips the unsynced-work warning (Gap 14).
 
 **Follow-up required:**
 
 - [x] All identified gaps have corresponding GitHub issues. _(#599–#605;
-      #611 from #533 for Gap 9; #257, #271 and #147 updated)_
+      #611 from #533 for Gap 9; #257, #271 and #147 updated; #620–#622 for
+      Gaps 12–14)_
 - [x] Mobile and API dependencies are cross-linked. _(no new API work
       found; #256 server side is fluent-api#271)_
 - [x] Launch-blocking gaps are clearly identified. _(Gaps 1, 8, 9: to be
