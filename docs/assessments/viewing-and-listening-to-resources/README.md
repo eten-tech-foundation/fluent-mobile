@@ -140,10 +140,13 @@ Read on `main` @ `fb634e5`:
   caption and attribution only when present (`ImageThumbnail.tsx:92-95`),
   so #191's attribution never shows. `thumbnailUrl` is ignored, so each
   thumbnail downloads the full image.
-- **Playing verse is not scrolled into view.** `BibleTab` scrolls only for
-  the initial index (`initialScrollIndex`, `BibleTab.tsx:230-235`); nothing
-  reacts to `currentlyPlayingVerse`. #48 asks to scroll the playing row into
-  view when it is off-screen.
+- **Playing verse highlight vs scroll.** `BibleTab` highlights the playing
+  row from `currentlyPlayingVerse`
+  (`isPlaying = item.anchorVerse === currentlyPlayingVerse`,
+  `BibleTab.tsx:130`). It scrolls only for the initial index
+  (`initialScrollIndex`, `BibleTab.tsx:230-235`); it does not scroll the
+  playing row into view. #48 asks to follow the playing row when it is
+  off-screen.
 - **Verse seek and highlight depend on API timestamps.** `verseStartMs`
   returns 0 without timestamps (`src/hooks/sourceAudioHelpers.ts:53-69`),
   and the playing-verse poll is skipped without them
@@ -172,7 +175,7 @@ Read on `main` @ `fb634e5`:
 
 Scenario numbers match the device test script used for this audit (section
 letter + step). Scenarios run with no problem reported are Pass. A.7 was
-added during the run (not in the original script), and G.x is an extra
+added during the run (not in the original script), and G.28 is an extra
 observation; both are included in the counts.
 
 ### Coverage counts
@@ -217,7 +220,7 @@ not be run, see Actual). G.23 fails on the scrub restart already tracked by
 | G.25 | Playing → leave drafting (back) | Source audio stops (#235) | As expected | Pass |
 | G.26 | Record tab: source playing → play a take / record | Source stops; bar hidden during capture (#235) | Source stops when a take plays and during capture; afterwards the player is back at the start (stop, not pause: `RecordTab.tsx:757-778` calls `stop`). Matches #235; see Open Questions | Pass |
 | G.27 | Project without source audio | "No source audio" state, no crash (#235) | As expected | Pass |
-| G.x | Source audio use (Bible tab only, no draft takes) | No React errors | `Maximum update depth exceeded` in the dev LogBox while using the source audio player; exact trigger not isolated | **Fail** → Gap 6 |
+| G.28 | Source audio use (Bible tab only, no draft takes) | No React errors | `Maximum update depth exceeded` in the dev LogBox while using the source audio player; exact trigger not isolated | **Fail** → Gap 6 |
 
 ## Offline and Synchronization Results
 
@@ -385,7 +388,7 @@ source player runs a separate path (`useSourceAudio`, `SourceAudioShell`).
 
 **Expected behavior:** no update-depth error.  
 **Actual behavior:** `Maximum update depth exceeded` is logged.  
-**Evidence:** device run, G.x (dev build LogBox); exact trigger not isolated.
+**Evidence:** device run, G.28 (dev build LogBox); exact trigger not isolated.
 
 ### Gap 7: Maestro images fullscreen smoke never opens fullscreen
 
@@ -411,8 +414,9 @@ verse with images.
 
 ### Not confirmed (code-only)
 
-- **Playing row not scrolled into view (#48):** no code reacts to
-  `currentlyPlayingVerse` (`BibleTab.tsx`), but G.21 could not be
+- **Playing row not scrolled into view (#48):** highlight uses
+  `currentlyPlayingVerse` (`BibleTab.tsx:130`); the list does not scroll
+  that row into view (`initialScrollIndex` only). G.21 could not be
   triggered without timestamps. Revisit with Gap 5.
 - **Signed source audio URL expiry** is rechecked only when the chapter key
   changes (`useSourceAudio.ts:153-161`). Not observed.
