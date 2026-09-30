@@ -13,12 +13,18 @@ jest.mock('../utils/logger', () => ({
   },
 }));
 
-type ConnListener = (isOnline: boolean, isWifi: boolean) => void;
+type ConnListener = (
+  isOnline: boolean,
+  isWifi: boolean,
+  isCellular?: boolean,
+  connectionType?: string,
+) => void;
 
 function createHarness(options?: {
   chapters?: PendingUploadChapter[];
   uploadOverCellular?: boolean;
   workerDelayMs?: number;
+  getSessionTransportSnapshot?: UploadOrchestratorDeps['getSessionTransportSnapshot'];
 }) {
   let connListener: ConnListener | null = null;
   let prefListener: ((value: boolean) => void) | null = null;
@@ -80,6 +86,7 @@ function createHarness(options?: {
     emit: event => {
       events.push(event);
     },
+    getSessionTransportSnapshot: options?.getSessionTransportSnapshot,
   };
 
   const orchestrator = createUploadOrchestrator(deps);
@@ -99,8 +106,12 @@ function createHarness(options?: {
       uploadOverCellular = value;
       prefListener?.(value);
     },
-    emitConnectivity: (isOnline: boolean, isWifi: boolean) => {
-      connListener?.(isOnline, isWifi);
+    emitConnectivity: (
+      isOnline: boolean,
+      isWifi: boolean,
+      connectionType?: string,
+    ) => {
+      connListener?.(isOnline, isWifi, undefined, connectionType);
     },
     getPausedUntilMs: () => pausedUntilMs,
     flush: async () => {
@@ -164,6 +175,26 @@ describe('uploadOrchestrator', () => {
     expect(h.events.some(e => e.type === 'complete')).toBe(true);
   });
 
+  it('does not auto-upload on non-wifi when connection type is omitted and toggle is off', async () => {
+    const h = createHarness({ uploadOverCellular: false });
+    h.emitConnectivity(true, false);
+    await h.flush();
+    await h.flush();
+
+    expect(h.uploaded).toHaveLength(0);
+    expect(h.events.some(e => e.type === 'waiting_wifi')).toBe(true);
+  });
+
+  it('auto-uploads on ethernet without the cellular toggle', async () => {
+    const h = createHarness({ uploadOverCellular: false });
+    h.emitConnectivity(true, false, 'ethernet');
+    await h.flush();
+    await h.flush();
+
+    expect(h.uploaded).toHaveLength(2);
+    expect(h.events.some(e => e.type === 'complete')).toBe(true);
+  });
+
   it('silently pauses mid-upload when server becomes unreachable and resumes on restore', async () => {
     const h = createHarness({ workerDelayMs: 40 });
     h.emitConnectivity(true, true);
@@ -204,6 +235,24 @@ describe('uploadOrchestrator', () => {
     h.setChapters([{ bookId: 2, chapterNumber: 1 }]);
     h.emitConnectivity(true, true);
     await h.waitFor(() => h.uploaded.some(c => c.bookId === 2));
+  });
+
+  it('Sync Now refreshes transport snapshot when orchestrator cache is stale offline', async () => {
+    const h = createHarness({
+      getSessionTransportSnapshot: async () => ({
+        isOnline: true,
+        isWifi: true,
+        connectionType: 'wifi',
+      }),
+    });
+    h.emitConnectivity(false, true);
+    await h.flush();
+
+    h.setChapters([{ bookId: 9, chapterNumber: 1 }]);
+    await h.orchestrator.syncNow();
+    await h.flush();
+
+    expect(h.uploaded.some(c => c.bookId === 9)).toBe(true);
   });
 
   it('pause blocks auto-upload for 24h; Sync Now clears the window', async () => {

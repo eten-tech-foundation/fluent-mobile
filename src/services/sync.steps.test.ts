@@ -168,6 +168,7 @@ describe('sync step orchestration', () => {
       isOnline: true,
       isWifi: true,
       isCellular: false,
+      connectionType: 'wifi',
     });
     syncPendingChapterClaimsMock.mockResolvedValue({
       synced: 0,
@@ -422,6 +423,7 @@ describe('sync step orchestration', () => {
         isOnline: false,
         isWifi: false,
         isCellular: false,
+        connectionType: 'none',
       });
 
       await expect(syncPendingChapterClaimsForUser(9)).resolves.toEqual({

@@ -53,43 +53,81 @@ export async function resolveServerOnline(
   return checkServerReachable();
 }
 
-async function resolveConnectivityState(state: {
+/** Fluent `/health` reachability plus NetInfo type. `isOnline` is not link-layer. */
+export type ServerReachabilitySnapshot = {
+  isOnline: boolean;
+  isWifi: boolean;
+  isCellular: boolean;
+  connectionType: string;
+};
+
+/** @deprecated Use ServerReachabilitySnapshot — `isOnline` means `/health`. */
+export type ConnectivitySnapshot = ServerReachabilitySnapshot;
+
+/** NetInfo link-layer only. `isLinkOnline` is `isConnected === true` (no `/health`). */
+export type TransferTransportSnapshot = {
+  isLinkOnline: boolean;
+  isWifi: boolean;
+  isCellular: boolean;
+  connectionType: string;
+};
+
+type NetInfoLinkState = {
   isConnected: boolean | null;
   type: string;
-}): Promise<{ isOnline: boolean; isWifi: boolean; isCellular: boolean }> {
+};
+
+async function resolveConnectivityState(
+  state: NetInfoLinkState,
+): Promise<ServerReachabilitySnapshot> {
   const isOnline = await resolveServerOnline(state.isConnected);
   return {
     isOnline,
     isWifi: state.type === 'wifi',
     isCellular: state.type === 'cellular',
+    connectionType: state.type,
   };
 }
 
-export async function getConnectivitySnapshot(): Promise<{
-  isOnline: boolean;
-  isWifi: boolean;
-  isCellular: boolean;
-}> {
+export async function getConnectivitySnapshot(): Promise<ServerReachabilitySnapshot> {
   ensureNetInfoConfigured();
   return resolveConnectivityState(await NetInfo.fetch());
 }
 
+/** Link-layer snapshot for transport gating (no `/health` reachability). */
+export function transferTransportFromNetInfoState(
+  state: NetInfoLinkState,
+): TransferTransportSnapshot {
+  return {
+    isLinkOnline: state.isConnected === true,
+    isWifi: state.type === 'wifi',
+    isCellular: state.type === 'cellular',
+    connectionType: state.type,
+  };
+}
+
+export async function getTransferTransportSnapshot(): Promise<TransferTransportSnapshot> {
+  ensureNetInfoConfigured();
+  return transferTransportFromNetInfoState(await NetInfo.fetch());
+}
+
 export function subscribeToConnectivity(
-  onChange: (isOnline: boolean, isWifi: boolean, isCellular: boolean) => void,
+  onChange: (
+    isOnline: boolean,
+    isWifi: boolean,
+    isCellular: boolean,
+    connectionType: string,
+  ) => void,
 ): () => void {
   ensureNetInfoConfigured();
 
   let cancelled = false;
 
-  const evaluate = async (state: {
-    isConnected: boolean | null;
-    type: string;
-  }) => {
-    const { isOnline, isWifi, isCellular } = await resolveConnectivityState(
-      state,
-    );
+  const evaluate = async (state: NetInfoLinkState) => {
+    const { isOnline, isWifi, isCellular, connectionType } =
+      await resolveConnectivityState(state);
     if (!cancelled) {
-      onChange(isOnline, isWifi, isCellular);
+      onChange(isOnline, isWifi, isCellular, connectionType);
     }
   };
 
@@ -98,6 +136,33 @@ export function subscribeToConnectivity(
   });
 
   void NetInfo.fetch().then(evaluate);
+
+  return () => {
+    cancelled = true;
+    unsubscribe();
+  };
+}
+
+export function subscribeToTransferTransport(
+  onChange: (snapshot: TransferTransportSnapshot) => void,
+): () => void {
+  ensureNetInfoConfigured();
+
+  let cancelled = false;
+
+  const emit = (state: NetInfoLinkState) => {
+    if (!cancelled) {
+      onChange(transferTransportFromNetInfoState(state));
+    }
+  };
+
+  const unsubscribe = NetInfo.addEventListener(state => {
+    emit(state);
+  });
+
+  void NetInfo.fetch().then(state => {
+    emit(state);
+  });
 
   return () => {
     cancelled = true;
