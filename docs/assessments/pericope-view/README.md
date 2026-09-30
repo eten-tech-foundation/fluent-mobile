@@ -2,7 +2,7 @@
 
 > **Status: device run complete; gaps filed.** Six gaps are filed as #584–#589
 > (sub-issues of #534): five confirmed on device and one follow-up task from
-> code (#587).
+> code (#587). Gap 7 was added after a re-test on 2026-09-30 (#623).
 
 ## Overview
 
@@ -231,7 +231,9 @@ specific to this feature.
 Existing issues were searched before filing (pericope, pericope upload,
 range take, pericope take, verse toggle, drafting unit, granularity, stitch,
 cross-granularity, mixed-mode). All six gaps are new issues, filed as
-sub-issues of #534 (see each gap's Development task). One code-level
+sub-issues of #534 (see each gap's Development task). Gap 7 comes from a
+later re-test on 2026-09-30 (PR #559 head `ddfdaaa`) of a finding first seen
+in the PR #550 device QA; it is #623. One code-level
 candidate (cross-chapter text from an unassigned chapter) was not reproduced
 on device (B.12) and stays in Code Review Notes.
 
@@ -380,6 +382,30 @@ visible.
 **Actual behavior:** `Take N - Pericope - vv. …`.  
 **Evidence:** device run, D.17 (screenshot on #589).
 
+### Gap 7: A pericope take can be deleted from Verse mode with no confirmation
+
+**Severity:** High  
+**Launch blocker:** To be decided with product  
+**Related issue:** [#410](https://github.com/eten-tech-foundation/fluent-mobile/issues/410), PR #550  
+**Development task:** [#623](https://github.com/eten-tech-foundation/fluent-mobile/issues/623)
+
+**Description:**  
+In Verse mode a pericope take shows on every verse it covers, and deleting
+it removes the whole multi-verse recording. `handleDeleteTake`
+(`src/app/tabs/RecordTab.tsx:687-690`) deletes a non-selected take at once;
+only the selected take gets the generic "Delete selected take?" alert.
+
+**Steps to reproduce:**
+
+1. In pericope mode, record a take for a pericope (for example vv. 1–5).
+2. Record a verse take on one of its verses so the pericope take is not
+   selected.
+3. Switch to Verse mode, open that verse and delete the pericope take.
+
+**Expected behavior:** a confirmation that names the full range.  
+**Actual behavior:** the take is deleted with no confirmation.  
+**Evidence:** device re-test on 2026-09-30.
+
 Existing open issues re-checked on device (no new issue unless the behavior
 differs): [#408](https://github.com/eten-tech-foundation/fluent-mobile/issues/408)
 source-audio scrub (B.9), [#564](https://github.com/eten-tech-foundation/fluent-mobile/issues/564)
@@ -428,7 +454,8 @@ before range-take upload exists is a product decision, and Gap 1 needs
 a fluent-api change. Pericope-mode completeness disagrees with the Bible tab
 status (Gap 3). Projects on sets that are not bundled, or with no set,
 get a silent verse view (Gaps 4 and 5). Long pericope labels are
-truncated (Gap 6). Unit tap does not open Record (B.10, existing #564;
+truncated (Gap 6). A later re-test found that a pericope take can be
+deleted from Verse mode with no confirmation (Gap 7). Unit tap does not open Record (B.10, existing #564;
 fix merged in PR #573, awaiting QA). Source-audio scrubbing (B.9) gave no clear result and remains
 tracked on #408.
 
@@ -436,7 +463,7 @@ tracked on #408.
 
 - [x] All identified gaps have corresponding GitHub issues.
 - [ ] Mobile and API dependencies are cross-linked. _(#584 needs fluent-api work; the developer opens the API issue at implementation)_
-- [x] Launch-blocking gaps are clearly identified. _(Gaps 1, 2: to be decided with product)_
+- [x] Launch-blocking gaps are clearly identified. _(Gaps 1, 2, 7: to be decided with product)_
 - [ ] Assessment has been reviewed and merged.
 
 **Merged assessment:** _(pending PR merge; final link posted on #534)_
