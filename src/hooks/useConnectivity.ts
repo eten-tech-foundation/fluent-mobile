@@ -2,44 +2,60 @@ import { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
   getConnectivitySnapshot,
+  getTransferTransportSnapshot,
   subscribeToConnectivity,
+  subscribeToTransferTransport,
+  type TransferTransportSnapshot,
 } from '../services/connectivity';
 
-export function useConnectivity() {
+export type UseConnectivityResult = {
+  /** Fluent `/health` reachability. */
+  isOnline: boolean;
+  /** NetInfo `isConnected === true` (no `/health`). */
+  isLinkOnline: boolean;
+  isWifi: boolean;
+  isCellular: boolean;
+  connectionType: string;
+  hasResolved: boolean;
+  hasTransferResolved: boolean;
+  connectivityPending: boolean;
+  transferConnectivityPending: boolean;
+};
+
+export function useConnectivity(): UseConnectivityResult {
   const [isOnline, setIsOnline] = useState(true);
+  const [isLinkOnline, setIsLinkOnline] = useState(false);
   const [isWifi, setIsWifi] = useState(true);
   const [isCellular, setIsCellular] = useState(false);
+  const [connectionType, setConnectionType] = useState('wifi');
   const [hasResolved, setHasResolved] = useState(false);
+  const [hasTransferResolved, setHasTransferResolved] = useState(false);
 
-  const updateConnectivity = useCallback(
-    ({
-      isOnline: online,
-      isWifi: wifi,
-      isCellular: cellular,
-    }: {
-      isOnline: boolean;
-      isWifi: boolean;
-      isCellular: boolean;
-    }) => {
-      setIsOnline(online);
-      setIsWifi(wifi);
-      setIsCellular(cellular);
-      setHasResolved(true);
-    },
-    [],
-  );
+  const connectivityPending = !hasResolved;
+  const transferConnectivityPending = !hasTransferResolved;
+
+  const applyReachability = useCallback((online: boolean) => {
+    setIsOnline(online);
+    setHasResolved(true);
+  }, []);
+
+  const applyTransfer = useCallback((snapshot: TransferTransportSnapshot) => {
+    setIsLinkOnline(snapshot.isLinkOnline);
+    setIsWifi(snapshot.isWifi);
+    setIsCellular(snapshot.isCellular);
+    setConnectionType(snapshot.connectionType);
+    setHasTransferResolved(true);
+  }, []);
 
   useEffect(
     () =>
-      subscribeToConnectivity((online, wifi, cellular) => {
-        updateConnectivity({
-          isOnline: online,
-          isWifi: wifi,
-          isCellular: cellular,
-        });
+      subscribeToConnectivity(online => {
+        applyReachability(online);
       }),
-    [updateConnectivity],
+    [applyReachability],
   );
+
+  useEffect(() => subscribeToTransferTransport(applyTransfer), [applyTransfer]);
 
   useFocusEffect(
     useCallback(() => {
@@ -47,15 +63,31 @@ export function useConnectivity() {
 
       void getConnectivitySnapshot().then(snapshot => {
         if (!cancelled) {
-          updateConnectivity(snapshot);
+          applyReachability(snapshot.isOnline);
+        }
+      });
+
+      void getTransferTransportSnapshot().then(snapshot => {
+        if (!cancelled) {
+          applyTransfer(snapshot);
         }
       });
 
       return () => {
         cancelled = true;
       };
-    }, [updateConnectivity]),
+    }, [applyReachability, applyTransfer]),
   );
 
-  return { isOnline, isWifi, isCellular, hasResolved };
+  return {
+    isOnline,
+    isLinkOnline,
+    isWifi,
+    isCellular,
+    connectionType,
+    hasResolved,
+    hasTransferResolved,
+    connectivityPending,
+    transferConnectivityPending,
+  };
 }

@@ -1,5 +1,8 @@
 import { getPendingUploadChapters } from '../db/queries';
-import { subscribeToConnectivity } from './connectivity';
+import {
+  getConnectivitySnapshot,
+  subscribeToConnectivity,
+} from './connectivity';
 import { emitUploadSessionEvent } from './syncEvents';
 import { getSyncPausedUntilMs, setSyncPausedUntilMs } from './storage';
 import {
@@ -68,6 +71,14 @@ export function startUploadOrchestrator(
     now: () => Date.now(),
     pauseWindowMs: PAUSE_WINDOW_MS,
     emit: emitUploadSessionEvent,
+    getSessionTransportSnapshot: async () => {
+      const snapshot = await getConnectivitySnapshot();
+      return {
+        isOnline: snapshot.isOnline,
+        isWifi: snapshot.isWifi,
+        connectionType: snapshot.connectionType,
+      };
+    },
     worker:
       overrides && 'worker' in overrides
         ? workerOverride ?? null

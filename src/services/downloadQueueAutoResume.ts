@@ -1,16 +1,39 @@
 import { getResumableDownloadItems } from '../db/repository';
-import { subscribeToConnectivity } from './connectivity';
+import {
+  transferInputFromLinkSnapshot,
+  transportAllowsTransfer,
+} from '../utils/transportPolicy';
+import {
+  getTransferTransportSnapshot,
+  subscribeToTransferTransport,
+} from './connectivity';
 import { getSharedDownloadQueueWorker } from './downloadQueueWorkerSingleton';
 import { logger } from '../utils/logger';
+import {
+  getUploadOverCellular,
+  subscribeToPreference,
+} from './userPreferences';
 
 const log = logger.create('downloadQueueAutoResume');
 
 export function startDownloadQueueAutoResume(): () => void {
   let disposed = false;
 
-  const unsubscribe = subscribeToConnectivity((isOnline, isWifi) => {
+  const evaluate = () => {
     void (async () => {
-      if (disposed || !isOnline || !isWifi) {
+      if (disposed) {
+        return;
+      }
+
+      const snapshot = await getTransferTransportSnapshot();
+      if (disposed) {
+        return;
+      }
+
+      const gate = transportAllowsTransfer(
+        transferInputFromLinkSnapshot(snapshot, getUploadOverCellular()),
+      );
+      if (gate !== 'ok') {
         return;
       }
 
@@ -35,19 +58,31 @@ export function startDownloadQueueAutoResume(): () => void {
           return;
         }
 
-        log.info('Auto-resuming download queue on Wi-Fi', {
-          count: resumable.length,
-        });
+        log.info(
+          'Auto-resuming download queue when transport allows transfer',
+          {
+            count: resumable.length,
+          },
+        );
         await worker.start(resumable);
       } catch (error) {
         log.error('Download queue auto-resume failed', { error });
       }
     })();
+  };
+
+  const unsubscribeConnectivity = subscribeToTransferTransport(() => {
+    evaluate();
+  });
+
+  const unsubscribePref = subscribeToPreference('uploadOverCellular', () => {
+    evaluate();
   });
 
   return () => {
     disposed = true;
-    unsubscribe();
+    unsubscribeConnectivity();
+    unsubscribePref();
   };
 }
 
