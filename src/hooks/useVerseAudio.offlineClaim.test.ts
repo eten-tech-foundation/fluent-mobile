@@ -111,6 +111,7 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
       isOnline: true,
       isWifi: true,
       isCellular: false,
+      connectionType: 'wifi',
     });
     mockClaimChapterOffline.mockResolvedValue(true);
     mockSyncChapterClaim.mockResolvedValue({
@@ -132,6 +133,7 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
         isOnline: false,
         isWifi: false,
         isCellular: false,
+        connectionType: 'none',
       });
     });
 
