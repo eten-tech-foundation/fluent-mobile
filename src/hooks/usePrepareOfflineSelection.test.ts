@@ -148,4 +148,91 @@ describe('usePrepareOfflineSelection', () => {
     });
     expect(result.current.isAssignedUser).toBe(false);
   });
+
+  it('re-opens the accordion for unassigned after leaving an assigned project', async () => {
+    mockGetChapters.mockResolvedValue([
+      {
+        id: 1,
+        bookId: 10,
+        bookName: 'Genesis',
+        chapterNumber: 1,
+        assignedUserId: 42,
+      },
+    ]);
+
+    const { result, rerender } = renderHook(
+      ({ projectId }: { projectId: number | null }) =>
+        usePrepareOfflineSelection(projectId, 42),
+      { initialProps: { projectId: 1 } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(result.current.accordionExpanded).toBe(false);
+
+    rerender({ projectId: null });
+
+    await waitFor(() => {
+      expect(result.current.accordionExpanded).toBe(true);
+    });
+
+    mockGetChapters.mockResolvedValue([
+      {
+        id: 2,
+        bookId: 11,
+        bookName: 'Exodus',
+        chapterNumber: 1,
+        assignedUserId: null,
+      },
+    ]);
+
+    rerender({ projectId: 2 });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(result.current.isAssignedUser).toBe(false);
+    expect(result.current.accordionExpanded).toBe(true);
+    expect(result.current.selectedIds.size).toBe(0);
+  });
+
+  it('re-opens the accordion when re-entering the same unassigned project after collapsing', async () => {
+    mockGetChapters.mockResolvedValue([
+      {
+        id: 1,
+        bookId: 10,
+        bookName: 'Genesis',
+        chapterNumber: 1,
+        assignedUserId: null,
+      },
+    ]);
+
+    const { result, rerender } = renderHook(
+      ({ projectId }: { projectId: number | null }) =>
+        usePrepareOfflineSelection(projectId, 42),
+      { initialProps: { projectId: 1 } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(result.current.accordionExpanded).toBe(true);
+
+    act(() => {
+      result.current.setAccordionExpanded(false);
+    });
+    expect(result.current.accordionExpanded).toBe(false);
+
+    rerender({ projectId: null });
+    await waitFor(() => {
+      expect(result.current.accordionExpanded).toBe(true);
+    });
+
+    rerender({ projectId: 1 });
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(result.current.accordionExpanded).toBe(true);
+  });
 });
