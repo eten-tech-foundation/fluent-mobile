@@ -835,6 +835,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -866,6 +868,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -897,6 +901,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -917,6 +923,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -949,6 +957,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -976,6 +986,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -1004,6 +1016,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -1027,6 +1041,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -1055,6 +1071,8 @@ describe('usePrepareOfflineDownload', () => {
           catalog,
           selectedItems: catalog.items,
           canDownload: true,
+          bibleTextChapters: [],
+          manifestContexts: [],
         }),
       { initialProps: { projectId: 1 } },
     );
@@ -1081,6 +1099,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
