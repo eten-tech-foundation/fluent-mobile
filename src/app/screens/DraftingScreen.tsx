@@ -36,6 +36,11 @@ import { syncBibleTexts, syncMasterData } from '../../services/sync';
 import { emitSyncComplete, emitSyncStart } from '../../services/syncEvents';
 import { hrefs } from '../../navigation/hrefs';
 import {
+  RECORDING_IN_PROGRESS_MESSAGE,
+  RECORDING_IN_PROGRESS_TITLE,
+  setRecordCaptureGate,
+} from '../../navigation/recordCaptureGate';
+import {
   parseRequiredNumber,
   parseRequiredString,
 } from '../../navigation/routeParams';
@@ -111,12 +116,18 @@ export default function DraftingScreen() {
   }, []);
 
   const alertRecordingInProgress = useCallback(() => {
-    Alert.alert(
-      'Recording in progress',
-      'Stop or finish the current take before leaving.',
-      [{ text: 'OK' }],
-    );
+    Alert.alert(RECORDING_IN_PROGRESS_TITLE, RECORDING_IN_PROGRESS_MESSAGE, [
+      { text: 'OK' },
+    ]);
   }, []);
+
+  // Publish capture state so the root drawer can disable swipe / menu exits (#568).
+  useEffect(() => {
+    setRecordCaptureGate(recordCaptureActive);
+    return () => {
+      setRecordCaptureGate(false);
+    };
+  }, [recordCaptureActive]);
 
   // Block header back, Android system back, and any other pop while capturing.
   useEffect(() => {
