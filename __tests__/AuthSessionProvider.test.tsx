@@ -57,6 +57,13 @@ jest.mock('../src/services/recordingSync', () => ({
   registerRecordingUploadWorker: jest.fn(),
 }));
 
+const mockRefreshSyncStatusStore = jest.fn(() => Promise.resolve());
+const mockResetSyncStatusStore = jest.fn();
+jest.mock('../src/services/syncStatusStore', () => ({
+  refreshSyncStatusStore: () => mockRefreshSyncStatusStore(),
+  resetSyncStatusStore: () => mockResetSyncStatusStore(),
+}));
+
 jest.mock('../src/services/uploadProgressNotification', () => ({
   startUploadProgressNotification: () => mockStartUploadProgressNotification(),
   stopUploadProgressNotification: () => mockStopUploadProgressNotification(),
@@ -68,8 +75,13 @@ import {
 } from '../src/navigation/AuthSessionProvider';
 
 function AuthProbe() {
-  const { isAuthenticated, postLoginSyncActive, signIn, signOut } =
-    useAuthSession();
+  const {
+    isAuthenticated,
+    postLoginSyncActive,
+    signIn,
+    signOut,
+    notifyUserSwitched,
+  } = useAuthSession();
   return (
     <>
       <Text testID="auth-flag">{isAuthenticated ? 'yes' : 'no'}</Text>
@@ -82,6 +94,9 @@ function AuthProbe() {
       </TouchableOpacity>
       <TouchableOpacity testID="sign-out" onPress={signOut}>
         <Text>Sign out</Text>
+      </TouchableOpacity>
+      <TouchableOpacity testID="switch-user" onPress={notifyUserSwitched}>
+        <Text>Switch user</Text>
       </TouchableOpacity>
     </>
   );
@@ -173,6 +188,66 @@ describe('AuthSessionProvider', () => {
     expect(getByTestId('auth-flag').props.children).toBe('no');
     expect(mockSignOut).toHaveBeenCalled();
     expect(mockStopUploadProgressNotification).toHaveBeenCalled();
+  });
+  
+    it('refreshes the sync-status store when a session starts', async () => {
+    mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
+    const { getByTestId } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+
+    await waitFor(() => {
+      expect(getByTestId('auth-flag').props.children).toBe('yes');
+    });
+    expect(mockRefreshSyncStatusStore).toHaveBeenCalled();
+  });
+
+  it('does not touch the sync-status store while signed out', async () => {
+    const { getByTestId } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+
+    await waitFor(() => {
+      expect(getByTestId('auth-flag').props.children).toBe('no');
+    });
+    expect(mockRefreshSyncStatusStore).not.toHaveBeenCalled();
+    expect(mockResetSyncStatusStore).not.toHaveBeenCalled();
+  });
+
+  it('resets the sync-status store on sign-out and on user switch', async () => {
+    mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
+    const { getByTestId } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+    await waitFor(() => {
+      expect(getByTestId('auth-flag').props.children).toBe('yes');
+    });
+    expect(mockResetSyncStatusStore).not.toHaveBeenCalled();
+
+    // User switch: reset the old user's counts, then reload for the new user.
+    const refreshesBefore = mockRefreshSyncStatusStore.mock.calls.length;
+    await act(async () => {
+      fireEvent.press(getByTestId('switch-user'));
+    });
+    expect(mockResetSyncStatusStore).toHaveBeenCalledTimes(1);
+    expect(mockRefreshSyncStatusStore.mock.calls.length).toBe(
+      refreshesBefore + 1,
+    );
+
+    // Sign-out: reset again, and nothing reloads for a signed-out app.
+    await act(async () => {
+      fireEvent.press(getByTestId('sign-out'));
+    });
+    expect(mockResetSyncStatusStore).toHaveBeenCalledTimes(2);
+    expect(mockRefreshSyncStatusStore.mock.calls.length).toBe(
+      refreshesBefore + 1,
+    );
   });
 
   it('shows init error when bootstrap fails', async () => {

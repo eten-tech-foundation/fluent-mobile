@@ -6,9 +6,12 @@ import {
 } from '../services/recordingDataEvents';
 import { emitUploadSessionEvent } from '../services/syncEvents';
 import {
+  EMPTY_SYNC_STATUS_SNAPSHOT,
   getSyncStatusSnapshot,
   refreshSyncStatusStore,
+  resetSyncStatusStore,
   resetSyncStatusStoreForTests,
+  subscribeToSyncStatusStore,
 } from '../services/syncStatusStore';
 
 jest.mock('expo-router', () => ({
@@ -61,6 +64,15 @@ function fireFocusEffect(): void {
   act(() => {
     effect?.();
   });
+}
+
+/** A promise the test resolves by hand, to hold a query in flight. */
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>(r => {
+    resolve = r;
+  });
+  return { promise, resolve };
 }
 
 describe('usePendingUploads (shared sync-status store)', () => {
@@ -264,6 +276,96 @@ describe('usePendingUploads (shared sync-status store)', () => {
     });
   });
 
+  it('does not flash stale pending counts when the upload completes (#621)', async () => {
+    mockGetPendingUploadCount.mockResolvedValueOnce(2); // initial load
+
+    const { result } = renderHook(() => usePendingUploads(0));
+
+    await waitFor(() => {
+      expect(result.current.pendingCount).toBe(2);
+    });
+
+    act(() => {
+      emitUploadSessionEvent({ type: 'start', totalChapters: 2 });
+    });
+    await waitFor(() => {
+      expect(result.current.isUploading).toBe(true);
+    });
+
+    // Worker marks a row uploaded; the event-triggered re-read sees 1 left.
+    mockGetPendingUploadCount.mockResolvedValue(1);
+    act(() => {
+      emitUploadSessionEvent({
+        type: 'progress',
+        completedChapters: 1,
+        totalChapters: 2,
+      });
+    });
+    await waitFor(() => {
+      expect(result.current.pendingCount).toBe(1);
+    });
+
+    // `complete` fires; the final re-read still has to resolve. Until it
+    // does, no snapshot may commit isUploading=false with the stale count —
+    // that frame is what made the header flash "pending" (QA #621).
+    mockGetPendingUploadCount.mockResolvedValue(0);
+    const snapshots: Array<{ isUploading: boolean; pendingCount: number }> = [];
+    const unsubscribe = subscribeToSyncStatusStore(() => {
+      const s = getSyncStatusSnapshot();
+      snapshots.push({
+        isUploading: s.isUploading,
+        pendingCount: s.pendingCount,
+      });
+    });
+    try {
+      act(() => {
+        emitUploadSessionEvent({ type: 'complete' });
+      });
+      await waitFor(() => {
+        expect(result.current.isUploading).toBe(false);
+        expect(result.current.uploadProgress).toBeNull();
+        expect(result.current.pendingCount).toBe(0);
+      });
+    } finally {
+      unsubscribe();
+    }
+
+    for (const s of snapshots) {
+      if (!s.isUploading) {
+        expect(s.pendingCount).toBe(0);
+      }
+    }
+  });
+
+  it('flips isUploading off immediately on paused/waiting_wifi and keeps progress', async () => {
+    const { result } = renderHook(() => usePendingUploads(0));
+
+    act(() => {
+      emitUploadSessionEvent({ type: 'start', totalChapters: 2 });
+    });
+    await waitFor(() => {
+      expect(result.current.isUploading).toBe(true);
+    });
+
+    act(() => {
+      emitUploadSessionEvent({ type: 'paused', reason: 'connectivity' });
+    });
+    expect(result.current.isUploading).toBe(false);
+    expect(result.current.uploadProgress).toEqual({ completed: 0, total: 2 });
+
+    act(() => {
+      emitUploadSessionEvent({ type: 'start', totalChapters: 2 });
+    });
+    await waitFor(() => {
+      expect(result.current.isUploading).toBe(true);
+    });
+
+    act(() => {
+      emitUploadSessionEvent({ type: 'waiting_wifi' });
+    });
+    expect(result.current.isUploading).toBe(false);
+  });
+
   it('exposes unuploadable pending when count is 0 but leftover takes remain', async () => {
     mockGetPendingUploadCount.mockResolvedValue(0);
     mockGetUnuploadablePendingSummary.mockResolvedValue({
@@ -342,6 +444,22 @@ describe('usePendingUploads (shared sync-status store)', () => {
     });
     expect(mockGetPendingUploadCount.mock.calls.length - callsBefore).toBe(1);
   });
+
+  it('resetSyncStatusStore clears mounted consumers (user switch)', async () => {
+    mockGetPendingUploadCount.mockResolvedValue(4);
+
+    const { result } = renderHook(() => usePendingUploads(0));
+    await waitFor(() => {
+      expect(result.current.pendingCount).toBe(4);
+    });
+
+    act(() => {
+      resetSyncStatusStore();
+    });
+
+    expect(result.current.pendingCount).toBe(0);
+    expect(result.current.hasPendingUploads).toBe(false);
+  });
 });
 
 describe('refreshSyncStatusStore', () => {
@@ -373,9 +491,59 @@ describe('refreshSyncStatusStore', () => {
     expect(getSyncStatusSnapshot().pendingCount).toBe(1);
   });
 
+  it('ends the upload when the final refresh rejects instead of wedging (#621)', async () => {
+    const { result } = renderHook(() => usePendingUploads(0));
+
+    act(() => {
+      emitUploadSessionEvent({ type: 'start', totalChapters: 1 });
+    });
+    await waitFor(() => {
+      expect(result.current.isUploading).toBe(true);
+    });
+
+    mockGetPendingUploadCount.mockRejectedValueOnce(new Error('db gone'));
+    act(() => {
+      emitUploadSessionEvent({ type: 'complete' });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isUploading).toBe(false);
+    });
+    expect(result.current.uploadProgress).toBeNull();
+
+    // A later re-read still lands the counts.
+    mockGetPendingUploadCount.mockResolvedValue(0);
+    await act(async () => {
+      await refreshSyncStatusStore();
+    });
+    expect(getSyncStatusSnapshot().pendingCount).toBe(0);
+  });
+
   it('does not throw when a count query rejects', async () => {
     mockGetPendingUploadChapters.mockRejectedValue(new Error('db gone'));
 
     await expect(refreshSyncStatusStore()).resolves.toBeUndefined();
+  });
+
+  it('resetSyncStatusStore returns the empty snapshot', async () => {
+    mockGetPendingUploadCount.mockResolvedValue(5);
+    await refreshSyncStatusStore();
+    expect(getSyncStatusSnapshot().pendingCount).toBe(5);
+
+    resetSyncStatusStore();
+
+    expect(getSyncStatusSnapshot()).toBe(EMPTY_SYNC_STATUS_SNAPSHOT);
+  });
+
+  it('drops a refresh that was in flight when the store was reset', async () => {
+    const gate = deferred<number>();
+    mockGetPendingUploadCount.mockReturnValue(gate.promise);
+    const inFlight = refreshSyncStatusStore();
+
+    resetSyncStatusStore();
+    gate.resolve(9);
+    await inFlight;
+
+    expect(getSyncStatusSnapshot()).toBe(EMPTY_SYNC_STATUS_SNAPSHOT);
   });
 });

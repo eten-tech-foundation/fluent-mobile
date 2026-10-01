@@ -515,6 +515,9 @@ export async function selectRecordingTake(id: string): Promise<void> {
 
   if (applied) {
     log.info('Recording take selected', { id });
+    // Counts filter on is_selected = 1, so selecting a take can change them.
+    // Remove with the is_selected filter if all takes become uploadable.
+    emitRecordingDataChanged();
   }
 }
 
