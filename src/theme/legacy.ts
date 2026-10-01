@@ -10,6 +10,7 @@ import {
   waveform,
 } from './tokens';
 import { homeListContent, listCard, workflowBadge } from './layout';
+import { headerLayout } from './iconSpecs';
 
 /** Frozen Legacy theme — matches today's shipped UI token values. */
 export const legacyTheme = {
@@ -25,6 +26,7 @@ export const legacyTheme = {
   homeListContent,
   listCard,
   workflowBadge,
+  headerLayout,
 } as const;
 
 export type Theme = typeof legacyTheme;

@@ -1,6 +1,9 @@
 /**
  * Legacy icon / header layout specs — frozen baseline for the current UI.
- * Redesign / Next overrides belong in `src/theme/next.ts`, not here.
+ * `headerLayout` is also on `Theme` and re-derived from spacing in `next.ts`
+ * when Next overrides spacing. `iconSizes` and stroke-width constants are
+ * Legacy-only until redesign adds them to `Theme` — do not edit them here for
+ * Next visuals.
  */
 import { spacing } from './tokens';
 
