@@ -463,6 +463,32 @@ export function useVerseAudio({
     }
   }, [recording]);
 
+  /**
+   * Abandon the in-progress capture (#49): stop the recorder, delete the temp
+   * file, persist nothing, and return the unit to its prior state (Idle when
+   * no takes remain, Review otherwise — same display rule as the capture
+   * views). Uses the recorder's native stop so the temp URI exists to delete;
+   * the alternative (`uri` is null) means the engine already dropped it.
+   */
+  const discardCapture = useCallback(async () => {
+    if (capturePersistRef.current === null) return;
+    try {
+      const { uri } = await recording.stop();
+      await deleteFile(uri).catch(() => {
+        // Best-effort: the take was never persisted, so a stray temp file
+        // must not block the discard or surface as an error state.
+      });
+    } catch (error) {
+      log.warn('discardCapture recorder stop failed', {
+        message: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      capturePersistRef.current = null;
+      setErrorMessage(null);
+      dispatch({ type: 'DISCARD' });
+    }
+  }, [recording]);
+
   const stop = useCallback(async () => {
     const snapshot = capturePersistRef.current;
     if (snapshot === null) return;
@@ -873,6 +899,7 @@ export function useVerseAudio({
     pause,
     resume,
     stop,
+    discardCapture,
     playTake,
     playStitched,
     seek,

@@ -59,6 +59,7 @@ import {
   RECORD_AUDIO_CONFLICT_WARNING,
   RECORD_TAKEN_CHAPTER_WARNING,
 } from '../../constants/messages';
+import type { CaptureControls } from '../../types/captureControls';
 import type { PericopeGroupResult } from '../../db/queries';
 import { ChapterAssignmentData } from '../../types/db/types';
 import { getProjectPericopeSetId } from '../../db/repository';
@@ -125,6 +126,13 @@ type RecordTabProps = {
   chapterData: ChapterAssignmentData;
   userId: number | null;
   onCaptureActiveChange?: (active: boolean) => void;
+  /**
+   * Called with Resume/Discard controls while a take is in progress
+   * (recording/paused) and with null when the capture ends (#49). Lets the
+   * screen offer the leave prompt on tab change, back, Sync, and account
+   * switch — not just the verse chevrons handled here.
+   */
+  onRegisterCaptureControls?: (controls: CaptureControls | null) => void;
   onChapterClaimed?: () => void;
 };
 
@@ -142,6 +150,7 @@ export function RecordTab({
   chapterData,
   userId,
   onCaptureActiveChange,
+  onRegisterCaptureControls,
   onChapterClaimed,
 }: RecordTabProps) {
   const router = useRouter();
@@ -656,6 +665,27 @@ export function RecordTab({
     Alert.alert('Audio error', verseAudio.errorMessage);
   }, [verseAudio.errorMessage]);
 
+  const captureActive =
+    verseAudio.state === 'recording' || verseAudio.state === 'paused';
+
+  useEffect(() => {
+    onCaptureActiveChange?.(captureActive);
+    return () => onCaptureActiveChange?.(false);
+  }, [captureActive, onCaptureActiveChange]);
+
+  const captureControls = useMemo(
+    () => ({
+      resume: verseAudio.resume,
+      discardCapture: verseAudio.discardCapture,
+    }),
+    [verseAudio.resume, verseAudio.discardCapture],
+  );
+
+  useEffect(() => {
+    onRegisterCaptureControls?.(captureActive ? captureControls : null);
+    return () => onRegisterCaptureControls?.(null);
+  }, [captureActive, captureControls, onRegisterCaptureControls]);
+
   const recordDisabled = captureBibleTextId === null;
   const syncingMessage = recordSourceTextHint(captureBibleTextId, isSyncing);
 
@@ -706,20 +736,36 @@ export function RecordTab({
     );
   }
 
-  function requestVerseChange(next: number) {
-    if (verseAudio.state === 'paused' || verseAudio.state === 'recording') {
-      Alert.alert(
-        'Recording in progress',
-        'Stop or finish the current take before changing verses.',
-        [{ text: 'OK' }],
-      );
-      return;
-    }
+  function changeVerse(next: number) {
     bibleTextRequestIdRef.current += 1;
     setBibleTextId(null);
     setBibleTextVerse(null);
     setRecordingUnit(null);
     setSelectedVerse(next);
+  }
+
+  /** #49: capture in progress — offer Resume or Discard, then proceed. */
+  function requestVerseChange(next: number) {
+    if (verseAudio.state === 'paused' || verseAudio.state === 'recording') {
+      Alert.alert(
+        'Recording in progress',
+        'You have a take in progress. What would you like to do?',
+        [
+          { text: 'Resume', style: 'cancel' },
+          {
+            text: 'Discard',
+            style: 'destructive',
+            onPress: () => {
+              void verseAudio.discardCapture().then(() => {
+                changeVerse(next);
+              });
+            },
+          },
+        ],
+      );
+      return;
+    }
+    changeVerse(next);
   }
 
   const showIdle =
