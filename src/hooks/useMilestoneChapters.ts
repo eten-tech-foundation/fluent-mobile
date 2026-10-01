@@ -8,9 +8,9 @@ import { getActiveUserId } from '../services/storage';
 import { useFocusEffect } from 'expo-router';
 import { logger } from '../utils/logger';
 
-const log = logger.create('useProjectChapters');
+const log = logger.create('useMilestoneChapters');
 
-export function useProjectChapters(projectUnitId: number, projectId: number) {
+export function useMilestoneChapters(projectUnitId: number, projectId: number) {
   const [chapters, setChapters] = useState<ProjectChapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

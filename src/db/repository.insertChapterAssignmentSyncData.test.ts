@@ -455,6 +455,23 @@ describe('insertChapterAssignmentSyncData', () => {
     expect(stub?.email).toBe('stub+777@fluent.local');
   });
 
+  it('keeps the stored milestone name when assignment sync omits name', async () => {
+    const db = createSyncTestDb();
+    setDatabase(db as never);
+    db.seed({
+      projects: [{ id: 100, name: 'P' }],
+      bibles: [{ id: 4, language_id: 1, name: 'B', abbreviation: 'B' }],
+      books: [{ id: 12, code: 'GEN', eng_display_name: 'Genesis' }],
+      project_units: [
+        { id: 10, project_id: 100, status: 'not_started', name: 'Mark' },
+      ],
+    });
+
+    await insertChapterAssignmentSyncData([validAssignment()]);
+
+    expect(db.table('project_units')[0].name).toBe('Mark');
+  });
+
   it('inserts assignment and upserts missing project unit from payload', async () => {
     const db = createSyncTestDb();
     setDatabase(db as never);

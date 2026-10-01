@@ -62,7 +62,11 @@ async function insertProjectUnitTx(
   tx: Transaction,
   unit: { id: number; projectId: number; name?: string | null },
 ) {
-  const name = unit.name?.trim() ?? '';
+  const suppliedName = unit.name;
+  const name =
+    suppliedName === undefined || suppliedName === null
+      ? ''
+      : suppliedName.trim();
   await tx.execute(
     `INSERT OR IGNORE INTO project_units (id, project_id, status, name) VALUES (?, ?, ?, ?)`,
     [unit.id, unit.projectId, 'not_started', name],
@@ -71,6 +75,9 @@ async function insertProjectUnitTx(
     unit.projectId,
     unit.id,
   ]);
+  if (suppliedName === undefined || suppliedName === null) {
+    return;
+  }
   await tx.execute(`UPDATE project_units SET name = ? WHERE id = ?`, [
     name,
     unit.id,
@@ -1341,6 +1348,16 @@ const PROJECT_UNIT_PENDING_UPLOAD_GUARD = `
     WHERE ca.project_unit_id = pu.id
   )`;
 
+// Shared project_units + ON DELETE CASCADE on chapter_assignments: a
+// single-account DELETE would wipe another local member's assignments.
+const PROJECT_UNIT_OTHER_LOCAL_MEMBER_GUARD = `
+  AND NOT EXISTS (
+    SELECT 1
+    FROM user_projects up2
+    WHERE up2.project_id = pu.project_id
+      AND up2.user_id != ?
+  )`;
+
 export async function reconcileUserMilestones(
   userId: number,
   currentUnitIds: number[],
@@ -1358,9 +1375,10 @@ export async function reconcileUserMilestones(
            INNER JOIN user_projects up ON up.project_id = pu.project_id
            WHERE up.user_id = ?
              AND pu.id NOT IN (${placeholders})
+             ${PROJECT_UNIT_OTHER_LOCAL_MEMBER_GUARD}
              ${PROJECT_UNIT_PENDING_UPLOAD_GUARD}
          )`,
-        [userId, ...currentUnitIds],
+        [userId, ...currentUnitIds, userId],
       );
     } else {
       result = await tx.execute(
@@ -1370,9 +1388,10 @@ export async function reconcileUserMilestones(
            FROM project_units pu
            INNER JOIN user_projects up ON up.project_id = pu.project_id
            WHERE up.user_id = ?
+             ${PROJECT_UNIT_OTHER_LOCAL_MEMBER_GUARD}
              ${PROJECT_UNIT_PENDING_UPLOAD_GUARD}
          )`,
-        [userId],
+        [userId, userId],
       );
     }
     if (result.rowsAffected) {

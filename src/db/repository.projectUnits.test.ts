@@ -65,12 +65,16 @@ async function mockExecute(
     return { rows: [] };
   }
 
-  if (
-    normalized.startsWith('DELETE FROM project_units') &&
-    normalized.includes('NOT IN')
-  ) {
+  if (normalized.startsWith('DELETE FROM project_units')) {
     const userId = params[0] as number;
-    const keepIds = new Set(params.slice(1) as number[]);
+    const keepIds = normalized.includes('NOT IN')
+      ? new Set(
+          (normalized.includes('up2')
+            ? params.slice(1, -1)
+            : params.slice(1)) as number[],
+        )
+      : new Set<number>();
+    const hasOtherMemberGuard = normalized.includes('up2');
     const memberProjectIds = new Set(
       userProjectRows
         .filter(row => row.user_id === userId)
@@ -82,31 +86,17 @@ async function mockExecute(
     const before = projectUnitRows.length;
     projectUnitRows = projectUnitRows.filter(row => {
       const isMemberUnit = memberProjectIds.has(row.project_id);
-      const isStale = isMemberUnit && !keepIds.has(row.id);
+      const isStale = normalized.includes('NOT IN')
+        ? isMemberUnit && !keepIds.has(row.id)
+        : isMemberUnit;
       const hasPendingUpload = pendingIds.has(row.id);
-      return !(isStale && !hasPendingUpload);
-    });
-    return { rows: [], rowsAffected: before - projectUnitRows.length };
-  }
-
-  if (
-    normalized.startsWith('DELETE FROM project_units') &&
-    !normalized.includes('NOT IN')
-  ) {
-    const userId = params[0] as number;
-    const memberProjectIds = new Set(
-      userProjectRows
-        .filter(row => row.user_id === userId)
-        .map(row => row.project_id),
-    );
-    const pendingIds = new Set(
-      pendingUploadUnits.map(row => row.project_unit_id),
-    );
-    const before = projectUnitRows.length;
-    projectUnitRows = projectUnitRows.filter(row => {
-      const isMemberUnit = memberProjectIds.has(row.project_id);
-      const hasPendingUpload = pendingIds.has(row.id);
-      return !(isMemberUnit && !hasPendingUpload);
+      const neededByOtherMember =
+        hasOtherMemberGuard &&
+        userProjectRows.some(
+          other =>
+            other.project_id === row.project_id && other.user_id !== userId,
+        );
+      return !(isStale && !hasPendingUpload && !neededByOtherMember);
     });
     return { rows: [], rowsAffected: before - projectUnitRows.length };
   }
@@ -125,7 +115,11 @@ jest.mock('./db', () => ({
   }),
 }));
 
-import { reconcileUserMilestones, upsertProjectUnits } from './repository';
+import {
+  insertProjectUnits,
+  reconcileUserMilestones,
+  upsertProjectUnits,
+} from './repository';
 
 describe('upsertProjectUnits', () => {
   beforeEach(() => {
@@ -147,15 +141,29 @@ describe('upsertProjectUnits', () => {
       ),
     ).toBe(true);
   });
+
+  it('keeps the stored name when assignment ingest omits name', async () => {
+    await upsertProjectUnits([{ id: 10, projectId: 1, name: 'Mark' }]);
+
+    await insertProjectUnits([
+      {
+        chapterAssignmentId: 1,
+        projectUnitId: 10,
+        projectId: 1,
+        bibleId: 1,
+        bookId: 1,
+        chapterNumber: 1,
+      },
+    ]);
+
+    expect(projectUnitRows.find(row => row.id === 10)?.name).toBe('Mark');
+  });
 });
 
 describe('reconcileUserMilestones', () => {
   beforeEach(() => {
     resetProjectUnitsDbMock();
-    userProjectRows = [
-      { user_id: 1, project_id: 100 },
-      { user_id: 2, project_id: 100 },
-    ];
+    userProjectRows = [{ user_id: 1, project_id: 100 }];
     projectUnitRows = [
       { id: 10, project_id: 100, status: 'not_started', name: 'Mark' },
       { id: 11, project_id: 100, status: 'not_started', name: 'Luke' },
@@ -167,6 +175,17 @@ describe('reconcileUserMilestones', () => {
     await reconcileUserMilestones(1, [10]);
 
     expect(projectUnitRows.map(row => row.id)).toEqual([10, 20]);
+  });
+
+  it('does not delete units still needed by another local project member', async () => {
+    userProjectRows = [
+      { user_id: 1, project_id: 100 },
+      { user_id: 2, project_id: 100 },
+    ];
+
+    await reconcileUserMilestones(1, [10]);
+
+    expect(projectUnitRows.map(row => row.id)).toEqual([10, 11, 20]);
   });
 
   it('keeps units with pending uploads even when they are absent from the server list', async () => {

@@ -16,7 +16,7 @@ import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { ProjectChapterRow } from '../../components/ui/ProjectChapterRow';
 import { PROJECT_CHAPTERS_EMPTY_MESSAGE } from '../../constants/messages';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
-import { useProjectChapters } from '../../hooks/useProjectChapters';
+import { useMilestoneChapters } from '../../hooks/useMilestoneChapters';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { hrefs } from '../../navigation/hrefs';
 import {
@@ -56,7 +56,7 @@ export default function ViewProject() {
     refresh,
     retry,
     reload,
-  } = useProjectChapters(projectUnitId, projectId);
+  } = useMilestoneChapters(projectUnitId, projectId);
 
   const isSyncing = useGlobalSyncStatus(reload);
   const { status: syncStatus, failedErrorText } = useSyncStatus({ isSyncing });

@@ -1,5 +1,5 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
-import { useProjectChapters } from './useProjectChapters';
+import { useMilestoneChapters } from './useMilestoneChapters';
 import { getMilestoneChapters } from '../db/queries';
 import { parseUserId } from '../utils/parseUserId';
 import type { ProjectChapter } from '../types/db/types';
@@ -59,7 +59,7 @@ function makeChapter(overrides: Partial<ProjectChapter> = {}): ProjectChapter {
   };
 }
 
-describe('useProjectChapters', () => {
+describe('useMilestoneChapters', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     mockParseUserId.mockReturnValue(1);
@@ -77,7 +77,7 @@ describe('useProjectChapters', () => {
         }),
     );
 
-    const { result } = renderHook(() => useProjectChapters(10, 100));
+    const { result } = renderHook(() => useMilestoneChapters(10, 100));
 
     let resolveFresh!: (v: ProjectChapter[]) => void;
     mockGetMilestoneChapters.mockImplementationOnce(
@@ -102,7 +102,7 @@ describe('useProjectChapters', () => {
     const chapters = [makeChapter()];
     mockGetMilestoneChapters.mockResolvedValue(chapters);
 
-    const { result } = renderHook(() => useProjectChapters(10, 100));
+    const { result } = renderHook(() => useMilestoneChapters(10, 100));
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.chapters).toEqual(chapters);
@@ -112,7 +112,7 @@ describe('useProjectChapters', () => {
   it('clears chapters and skips the query when there is no active user', async () => {
     mockParseUserId.mockReturnValue(null);
 
-    const { result } = renderHook(() => useProjectChapters(10, 100));
+    const { result } = renderHook(() => useMilestoneChapters(10, 100));
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.chapters).toEqual([]);

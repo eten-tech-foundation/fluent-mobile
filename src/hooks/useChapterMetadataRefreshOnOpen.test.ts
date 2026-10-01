@@ -5,7 +5,7 @@ import { getActiveUserId } from '../services/storage';
 import { refreshChapterMetadataIfOnline } from '../services/sync';
 import { parseUserId } from '../utils/parseUserId';
 import { useMyWorkChapters } from './useMyWorkChapters';
-import { useProjectChapters } from './useProjectChapters';
+import { useMilestoneChapters } from './useMilestoneChapters';
 
 let capturedFocusCallback: (() => void | (() => void)) | null = null;
 
@@ -105,7 +105,7 @@ describe('chapter metadata refresh on list open', () => {
       metadataRefresh.promise,
     );
 
-    renderHook(() => useProjectChapters(10, 3));
+    renderHook(() => useMilestoneChapters(10, 3));
 
     await waitFor(() => {
       expect(mockGetMilestoneChapters).toHaveBeenCalledTimes(1);
@@ -131,7 +131,7 @@ describe('chapter metadata refresh on list open', () => {
     );
     mockIsUserProjectMember.mockResolvedValueOnce(false);
 
-    const { result } = renderHook(() => useProjectChapters(10, 3));
+    const { result } = renderHook(() => useMilestoneChapters(10, 3));
 
     await waitFor(() => {
       expect(mockGetMilestoneChapters).toHaveBeenCalledTimes(1);
@@ -155,7 +155,7 @@ describe('chapter metadata refresh on list open', () => {
     const first = deferred<void>();
     mockRefreshChapterMetadataIfOnline.mockReturnValueOnce(first.promise);
 
-    const { result } = renderHook(() => useProjectChapters(10, 3));
+    const { result } = renderHook(() => useMilestoneChapters(10, 3));
 
     await act(async () => {
       first.resolve();

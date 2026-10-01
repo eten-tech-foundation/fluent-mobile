@@ -51,8 +51,8 @@ jest.mock('lucide-react-native', () => {
   };
 });
 
-jest.mock('../../hooks/useProjectChapters', () => ({
-  useProjectChapters: jest.fn(),
+jest.mock('../../hooks/useMilestoneChapters', () => ({
+  useMilestoneChapters: jest.fn(),
 }));
 
 jest.mock('../../hooks/useGlobalSyncStatus', () => ({
@@ -77,10 +77,10 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
-const { useProjectChapters } = jest.requireMock(
-  '../../hooks/useProjectChapters',
+const { useMilestoneChapters } = jest.requireMock(
+  '../../hooks/useMilestoneChapters',
 ) as {
-  useProjectChapters: jest.Mock;
+  useMilestoneChapters: jest.Mock;
 };
 
 const sampleChapter: ProjectChapter = {
@@ -104,7 +104,7 @@ describe('ViewProject', () => {
   });
 
   it('renders header and chapter rows', async () => {
-    useProjectChapters.mockReturnValue({
+    useMilestoneChapters.mockReturnValue({
       chapters: [sampleChapter],
       loading: false,
       refreshing: false,
@@ -123,7 +123,7 @@ describe('ViewProject', () => {
   });
 
   it('renders empty state when there are no chapters', async () => {
-    useProjectChapters.mockReturnValue({
+    useMilestoneChapters.mockReturnValue({
       chapters: [],
       loading: false,
       refreshing: false,
@@ -141,7 +141,7 @@ describe('ViewProject', () => {
 
   it('renders error state with try again', async () => {
     const retry = jest.fn();
-    useProjectChapters.mockReturnValue({
+    useMilestoneChapters.mockReturnValue({
       chapters: [],
       loading: false,
       refreshing: false,
