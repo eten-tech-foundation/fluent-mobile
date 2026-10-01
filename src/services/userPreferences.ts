@@ -1,15 +1,25 @@
 import { kvStorage } from './storage';
+import {
+  DEFAULT_UI_VERSION,
+  isUiVersion,
+  type UiVersion,
+} from '../theme/uiVersionTypes';
 
 const PREFERENCE_KEYS = {
   UPLOAD_OVER_CELLULAR: 'pref_upload_over_cellular',
+  UI_VERSION: 'pref_ui_version',
 } as const;
+
+export type { UiVersion };
 
 export type UserPreferences = {
   uploadOverCellular: boolean;
+  uiVersion: UiVersion;
 };
 
 const DEFAULT_USER_PREFERENCES: UserPreferences = {
   uploadOverCellular: false,
+  uiVersion: DEFAULT_UI_VERSION,
 };
 
 type PreferencesListener = () => void;
@@ -22,14 +32,23 @@ function readUploadOverCellularFromStorage(): boolean {
   return kvStorage.getItemSync(PREFERENCE_KEYS.UPLOAD_OVER_CELLULAR) === 'true';
 }
 
+function readUiVersionFromStorage(): UiVersion {
+  const raw = kvStorage.getItemSync(PREFERENCE_KEYS.UI_VERSION) ?? undefined;
+  return isUiVersion(raw) ? raw : DEFAULT_UI_VERSION;
+}
+
 function refreshCachedPreferences(): UserPreferences {
   const uploadOverCellular = readUploadOverCellularFromStorage();
+  const uiVersion = readUiVersionFromStorage();
 
-  if (cachedPreferences.uploadOverCellular === uploadOverCellular) {
+  if (
+    cachedPreferences.uploadOverCellular === uploadOverCellular &&
+    cachedPreferences.uiVersion === uiVersion
+  ) {
     return cachedPreferences;
   }
 
-  cachedPreferences = { uploadOverCellular };
+  cachedPreferences = { uploadOverCellular, uiVersion };
   return cachedPreferences;
 }
 
@@ -83,6 +102,10 @@ export function setUserPreferences(updates: Partial<UserPreferences>): void {
     );
   }
 
+  if (updates.uiVersion !== undefined) {
+    kvStorage.setItemSync(PREFERENCE_KEYS.UI_VERSION, updates.uiVersion);
+  }
+
   notifyUserPreferencesChanged();
 }
 
@@ -92,4 +115,12 @@ export function getUploadOverCellular(): boolean {
 
 export function setUploadOverCellular(enabled: boolean): void {
   setUserPreferences({ uploadOverCellular: enabled });
+}
+
+export function getUiVersion(): UiVersion {
+  return getUserPreferenceValue('uiVersion');
+}
+
+export function setUiVersion(version: UiVersion): void {
+  setUserPreferences({ uiVersion: version });
 }

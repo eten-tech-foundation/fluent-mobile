@@ -1,3 +1,7 @@
+/**
+ * Legacy icon / header layout specs — frozen baseline for the current UI.
+ * Redesign / Next overrides belong in `src/theme/next.ts`, not here.
+ */
 import { spacing } from './tokens';
 
 /** Progress ring stroke (`stroke-width="2.5"` in mock). */
