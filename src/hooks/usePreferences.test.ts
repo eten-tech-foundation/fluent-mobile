@@ -20,22 +20,35 @@ jest.mock('../services/storage', () => ({
 const mockGetItemSync = kvStorage.getItemSync as jest.Mock;
 const mockSetItemSync = kvStorage.setItemSync as jest.Mock;
 
+function mockPreferenceStore(initial: Record<string, string | null> = {}) {
+  const store: Record<string, string | null> = { ...initial };
+  mockGetItemSync.mockImplementation((key: string) => store[key] ?? null);
+  mockSetItemSync.mockImplementation((key: string, value: string) => {
+    store[key] = value;
+  });
+  return store;
+}
+
 describe('usePreferences', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetItemSync.mockReturnValue(null);
-    mockSetItemSync.mockImplementation((_key, value) => {
-      mockGetItemSync.mockReturnValue(value);
-    });
+    mockPreferenceStore();
   });
 
   it('returns preferences from storage', () => {
-    mockGetItemSync.mockReturnValue('true');
+    mockPreferenceStore({
+      pref_upload_over_cellular: 'true',
+      pref_ui_version: 'next',
+    });
 
     const { result } = renderHook(() => usePreferences());
 
     expect(result.current.uploadOverCellular).toBe(true);
-    expect(result.current.preferences).toEqual({ uploadOverCellular: true });
+    expect(result.current.uiVersion).toBe('next');
+    expect(result.current.preferences).toEqual({
+      uploadOverCellular: true,
+      uiVersion: 'next',
+    });
   });
 
   it('persists and updates upload over cellular', () => {
@@ -52,10 +65,23 @@ describe('usePreferences', () => {
     expect(result.current.uploadOverCellular).toBe(true);
   });
 
+  it('persists and updates uiVersion', () => {
+    const { result } = renderHook(() => usePreferences());
+
+    expect(result.current.uiVersion).toBe('legacy');
+
+    act(() => {
+      result.current.setUiVersion('next');
+    });
+
+    expect(mockSetItemSync).toHaveBeenCalledWith('pref_ui_version', 'next');
+    expect(result.current.uiVersion).toBe('next');
+  });
+
   it('reload refreshes preferences from storage', () => {
     const { result } = renderHook(() => usePreferences());
 
-    mockGetItemSync.mockReturnValue('true');
+    mockPreferenceStore({ pref_upload_over_cellular: 'true' });
 
     act(() => {
       result.current.reload();
@@ -68,14 +94,11 @@ describe('usePreferences', () => {
 describe('usePreference', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetItemSync.mockReturnValue(null);
-    mockSetItemSync.mockImplementation((_key, value) => {
-      mockGetItemSync.mockReturnValue(value);
-    });
+    mockPreferenceStore();
   });
 
   it('returns a single preference value', () => {
-    mockGetItemSync.mockReturnValue('true');
+    mockPreferenceStore({ pref_upload_over_cellular: 'true' });
 
     const { result } = renderHook(() => usePreference('uploadOverCellular'));
 

@@ -105,6 +105,8 @@ export default function PrepareForOfflineScreen() {
     pause,
     resume,
     cancel,
+    transportBlocked,
+    transportBlockedMessage,
   } = usePrepareOfflineDownload({
     projectId,
     userId,
@@ -204,6 +206,8 @@ export default function PrepareForOfflineScreen() {
               downloadButtonLabel={downloadButtonLabel}
               session={session}
               busy={busy}
+              transportBlocked={transportBlocked}
+              transportBlockedMessage={transportBlockedMessage}
               onDownload={() => void handleDownload()}
               onPause={() => void pause()}
               onResume={() => void resume()}

@@ -142,6 +142,8 @@ jest.mock('../../hooks/usePrepareOfflineDownload', () => ({
       pause: jest.fn(),
       resume: jest.fn(),
       cancel: jest.fn(),
+      transportBlocked: false,
+      transportBlockedMessage: '',
     }),
   ),
 }));

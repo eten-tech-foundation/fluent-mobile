@@ -32,6 +32,11 @@ const handoffAntiPatternImports = {
       message:
         'Do not import @react-navigation/* in app code. Use expo-router or expo-router/drawer only (SDK 56+ Metro rejects direct imports).',
     },
+    {
+      group: ['**/theme/next', '**/theme/next.*'],
+      message:
+        'Do not import Next theme tokens directly — use useTheme() / useThemedStyles() from src/theme/useTheme so runtime UI-version switching stays centralized.',
+    },
   ],
 };
 

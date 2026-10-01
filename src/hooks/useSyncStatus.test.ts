@@ -59,14 +59,21 @@ describe('useSyncStatus cellular gate', () => {
   it('treats cellular as offline for sync chrome when uploadOverCellular is off', async () => {
     mockUseConnectivity.mockReturnValue({
       isOnline: true,
+      isLinkOnline: true,
       isWifi: false,
       isCellular: true,
+      connectionType: 'cellular',
       hasResolved: true,
+      hasTransferResolved: true,
+      connectivityPending: false,
+      transferConnectivityPending: false,
     });
     mockUsePreferences.mockReturnValue({
       uploadOverCellular: false,
-      preferences: { uploadOverCellular: false },
+      uiVersion: 'legacy',
+      preferences: { uploadOverCellular: false, uiVersion: 'legacy' },
       setUploadOverCellular: jest.fn(),
+      setUiVersion: jest.fn(),
       setPreferences: jest.fn(),
       reload: jest.fn(),
     });
@@ -81,17 +88,56 @@ describe('useSyncStatus cellular gate', () => {
     });
   });
 
+  it('treats ethernet as online for sync chrome without the cellular toggle', async () => {
+    mockUseConnectivity.mockReturnValue({
+      isOnline: true,
+      isLinkOnline: true,
+      isWifi: false,
+      isCellular: false,
+      connectionType: 'ethernet',
+      hasResolved: true,
+      hasTransferResolved: true,
+      connectivityPending: false,
+      transferConnectivityPending: false,
+    });
+    mockUsePreferences.mockReturnValue({
+      uploadOverCellular: false,
+      uiVersion: 'legacy',
+      preferences: { uploadOverCellular: false, uiVersion: 'legacy' },
+      setUploadOverCellular: jest.fn(),
+      setUiVersion: jest.fn(),
+      setPreferences: jest.fn(),
+      reload: jest.fn(),
+    });
+
+    const { result } = renderHook(() =>
+      useSyncStatus({ isSyncing: false, refreshKey: 0 }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.isOnline).toBe(true);
+      expect(result.current.status).toBe('online_synced');
+    });
+  });
+
   it('allows cellular when uploadOverCellular is on', async () => {
     mockUseConnectivity.mockReturnValue({
       isOnline: true,
+      isLinkOnline: true,
       isWifi: false,
       isCellular: true,
+      connectionType: 'cellular',
       hasResolved: true,
+      hasTransferResolved: true,
+      connectivityPending: false,
+      transferConnectivityPending: false,
     });
     mockUsePreferences.mockReturnValue({
       uploadOverCellular: true,
-      preferences: { uploadOverCellular: true },
+      uiVersion: 'legacy',
+      preferences: { uploadOverCellular: true, uiVersion: 'legacy' },
       setUploadOverCellular: jest.fn(),
+      setUiVersion: jest.fn(),
       setPreferences: jest.fn(),
       reload: jest.fn(),
     });
