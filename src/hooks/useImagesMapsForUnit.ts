@@ -27,11 +27,19 @@ export type UseImagesMapsForUnitParams = LoadImagesMapsParams;
 /**
  * Section-scoped Images & Maps loader (#191). Failures stay local.
  * Ignores stale responses when the active unit changes mid-load.
- * Loads via fluent-api translation-resources (fluent-api #274).
+ * Downloaded rows win; fluent-api translation-resources (fluent-api #274)
+ * is only hit when nothing usable is downloaded and the device is online.
  */
 export function useImagesMapsForUnit(params: UseImagesMapsForUnitParams) {
-  const { projectId, bookCode, chapterNumber, verseNumber, languageCode } =
-    params;
+  const {
+    projectId,
+    userId,
+    isOnline,
+    bookCode,
+    chapterNumber,
+    verseNumber,
+    languageCode,
+  } = params;
 
   const [tracked, setTracked] = useState<TrackedLoadState>({
     projectId,
@@ -54,6 +62,8 @@ export function useImagesMapsForUnit(params: UseImagesMapsForUnitParams) {
     try {
       const items = await loadImagesMapsForUnit({
         projectId,
+        userId,
+        isOnline,
         bookCode,
         chapterNumber,
         verseNumber,
@@ -91,7 +101,15 @@ export function useImagesMapsForUnit(params: UseImagesMapsForUnitParams) {
         },
       });
     }
-  }, [projectId, bookCode, chapterNumber, verseNumber, languageCode]);
+  }, [
+    projectId,
+    userId,
+    isOnline,
+    bookCode,
+    chapterNumber,
+    verseNumber,
+    languageCode,
+  ]);
 
   useEffect(() => {
     void load();

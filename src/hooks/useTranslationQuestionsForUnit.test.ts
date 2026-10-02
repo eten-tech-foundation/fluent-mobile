@@ -5,7 +5,7 @@ import {
   setTranslationQuestionsLoadFailureForTests,
 } from '../services/translationQuestions';
 import { TRANSLATION_QUESTIONS_LOAD_ERROR } from '../constants/messages';
-import { getMockTranslationQuestions } from '../mocks/resources/translationQuestionsMock';
+import { TranslationQuestionItem } from '../types/resources/translationQuestions';
 
 jest.mock('../services/translationQuestions', () => {
   const actual = jest.requireActual('../services/translationQuestions');
@@ -19,6 +19,17 @@ const mockLoad = loadTranslationQuestionsForUnit as jest.MockedFunction<
   typeof loadTranslationQuestionsForUnit
 >;
 
+// Fixed fixture — this suite only checks that questions are present, not
+// their specific content, so a single hardcoded question is enough.
+const SAMPLE_QUESTIONS: TranslationQuestionItem[] = [
+  {
+    id: 'tq-10-2-1',
+    question: 'What is happening in this verse?',
+    answer:
+      'The passage describes the events surrounding this verse so the translator can check key meaning.',
+  },
+];
+
 describe('useTranslationQuestionsForUnit', () => {
   afterEach(() => {
     setTranslationQuestionsLoadFailureForTests(false);
@@ -26,7 +37,7 @@ describe('useTranslationQuestionsForUnit', () => {
   });
 
   it('loads questions for units that have TQ content', async () => {
-    mockLoad.mockResolvedValue(getMockTranslationQuestions(10, 2));
+    mockLoad.mockResolvedValue(SAMPLE_QUESTIONS);
 
     const { result } = renderHook(() =>
       useTranslationQuestionsForUnit({
@@ -56,7 +67,7 @@ describe('useTranslationQuestionsForUnit', () => {
 
   it('exposes an error state that retry can clear', async () => {
     mockLoad.mockRejectedValueOnce(new Error('boom'));
-    mockLoad.mockResolvedValueOnce(getMockTranslationQuestions(10, 2));
+    mockLoad.mockResolvedValueOnce(SAMPLE_QUESTIONS);
 
     const { result } = renderHook(() =>
       useTranslationQuestionsForUnit({
@@ -86,7 +97,7 @@ describe('useTranslationQuestionsForUnit', () => {
   });
 
   it('does not show the previous unit while the next load is still pending', async () => {
-    mockLoad.mockResolvedValue(getMockTranslationQuestions(10, 2));
+    mockLoad.mockResolvedValue(SAMPLE_QUESTIONS);
 
     const { result, rerender } = renderHook(
       ({

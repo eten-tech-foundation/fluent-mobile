@@ -37,6 +37,7 @@ import {
 } from '../../utils/resourcesTabUiState';
 import { getVisibleResourceSections } from '../../utils/resourcesSectionInventory';
 import { theme } from '../../theme';
+import { useTranslationQuestionsForUnit } from '../../hooks/useTranslationQuestionsForUnit';
 
 type ResourcesTabProps = {
   chapterId: number;
@@ -73,9 +74,11 @@ const SECTION_META: {
 ];
 
 /**
- * Resources tab host (#188 + #192): offline inventory gates which sections
- * appear on device. When online, all sections load via fluent-api
- * translation-resources (#381).
+ * Resources tab host (#188 + #192). Section content is download-first:
+ * downloaded rows are used whenever present (online or offline); the
+ * fluent-api translation-resources stream (#381) only fills in when nothing
+ * is downloaded and the device is online. On failure each section shows its
+ * own Retry.
  */
 export function ResourcesTab({
   chapterId,
@@ -87,6 +90,7 @@ export function ResourcesTab({
 }: ResourcesTabProps) {
   const { selectedVerse } = useDraftingContext();
   const { isOnline, hasResolved } = useConnectivity();
+  const online = hasResolved && isOnline;
   const scrollRef = useRef<ScrollView>(null);
   const scrollOffsetRef = useRef(0);
 
@@ -99,14 +103,28 @@ export function ResourcesTab({
 
   const { state: notesState, retry: retryNotes } = useTranslationNotesForUnit({
     projectId,
+    userId,
+    isOnline: online,
     bookCode,
     chapterNumber,
     verseNumber: selectedVerse,
   });
 
+  const { state: questionsState, retry: retryQuestions } =
+    useTranslationQuestionsForUnit({
+      projectId,
+      userId,
+      isOnline: online,
+      bookCode,
+      chapterNumber,
+      verseNumber: selectedVerse,
+    });
+
   const { state: imagesMapsState, retry: retryImagesMaps } =
     useImagesMapsForUnit({
       projectId,
+      userId,
+      isOnline: online,
       bookCode,
       chapterNumber,
       verseNumber: selectedVerse,
@@ -176,7 +194,21 @@ export function ResourcesTab({
     if (!availableSectionIds.includes(section.id)) {
       return false;
     }
-    // Hide Images & Maps only when load finished with nothing to show.
+    // Hide a section only once its load finished with nothing to show.
+    if (
+      section.id === 'translationNotes' &&
+      notesState.status === 'ready' &&
+      notesState.notes.length === 0
+    ) {
+      return false;
+    }
+    if (
+      section.id === 'translationQuestions' &&
+      questionsState.status === 'ready' &&
+      questionsState.questions.length === 0
+    ) {
+      return false;
+    }
     if (
       section.id === 'imagesMaps' &&
       imagesMapsState.status === 'ready' &&
@@ -238,6 +270,8 @@ export function ResourcesTab({
                 />
               ) : id === 'translationQuestions' ? (
                 <TranslationQuestionsSection
+                  state={questionsState}
+                  retry={retryQuestions}
                   projectId={projectId}
                   bookCode={bookCode}
                   chapterNumber={chapterNumber}

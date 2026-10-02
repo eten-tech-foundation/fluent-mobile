@@ -16,12 +16,15 @@ import {
 } from '../types/api/responses';
 import type {
   ApiSourceAudioResponse,
+  ApiSourceAudioManifestResponse,
   GetChapterSourceAudioParams,
+  GetSourceAudioManifestParams,
 } from '../types/api/sourceAudio';
 import type {
-  ApiTranslationImagesResponse,
   ApiTranslationNotesResponse,
+  ApiTranslationImagesResponse,
   ApiTranslationQuestionsResponse,
+  ApiPrepareOfflineManifestResponse,
 } from '../types/api/translationResources';
 import type {
   UploadVerseAudioParams,
@@ -60,6 +63,28 @@ function translationResourcesVersePath(
   return `/projects/${projectId}/translation-resources/${kind}/${encodeURIComponent(
     bookCode,
   )}/${chapter}/${verse}?${params.toString()}`;
+}
+
+function prepareOfflineManifestPath(
+  projectId: number,
+  params: {
+    languageCode: string;
+    bookCode: string;
+    startChapter: number;
+    endChapter: number;
+    includeContent?: boolean;
+  },
+): string {
+  const query = new URLSearchParams({
+    languageCode: params.languageCode,
+    bookCode: params.bookCode,
+    startChapter: String(params.startChapter),
+    endChapter: String(params.endChapter),
+  });
+  if (params.includeContent) {
+    query.set('includeContent', 'true');
+  }
+  return `/projects/${projectId}/translation-resources/manifest?${query.toString()}`;
 }
 
 function chapterSourceAudioPath(params: GetChapterSourceAudioParams): string {
@@ -130,6 +155,26 @@ async function claimChapterAssignmentRequest(
   );
 
   return normalizeClaimResponse(api);
+}
+
+function sourceAudioManifestPath(
+  projectId: number,
+  params: {
+    languageCode: string;
+    bibleId: number;
+    bookCode: string;
+    startChapter: number;
+    endChapter: number;
+  },
+): string {
+  const query = new URLSearchParams({
+    languageCode: params.languageCode,
+    bibleId: String(params.bibleId),
+    bookCode: params.bookCode,
+    startChapter: String(params.startChapter),
+    endChapter: String(params.endChapter),
+  });
+  return `/projects/${projectId}/source-audio/manifest?${query.toString()}`;
 }
 
 export const FluentAPI = {
@@ -307,6 +352,27 @@ export const FluentAPI = {
         languageCode,
       ),
     ),
+
+  /**
+   * Prepare Offline resource manifest — Tier 1/2/3 availability, sizes,
+   * and metadata for a project/chapter range (#504).
+   * Max 20 chapters per range. `includeContent` omitted/false for catalog
+   * loading — metadata and sizes only, not full text bodies.
+   */
+  getPrepareOfflineManifest: (
+    projectId: number,
+    params: {
+      languageCode: string;
+      bookCode: string;
+      startChapter: number;
+      endChapter: number;
+      includeContent?: boolean;
+    },
+  ): Promise<ApiPrepareOfflineManifestResponse> =>
+    authedRequest<ApiPrepareOfflineManifestResponse>(
+      prepareOfflineManifestPath(projectId, params),
+    ),
+
   getPericopeSets: async (): Promise<ApiPericopeSet[]> => {
     const response = await publicRequest<PericopeSetsResponse>(
       '/pericope-sets',
@@ -314,6 +380,20 @@ export const FluentAPI = {
     const raw = unwrapApiListResponse(response);
     return Array.isArray(raw) ? raw : [];
   },
+
+  /**
+   * Prepare Offline Tier 1 source audio manifest — sizes/metadata for a
+   * project/bible/chapter range (#504 follow-on). Same 20-chapter-per-range
+   * cap as the translation-resources manifest; `bibleId` comes from the
+   * chapter assignment, not the project record.
+   */
+  getSourceAudioManifest: (
+    projectId: number,
+    params: GetSourceAudioManifestParams,
+  ): Promise<ApiSourceAudioManifestResponse> =>
+    authedRequest<ApiSourceAudioManifestResponse>(
+      sourceAudioManifestPath(projectId, params),
+    ),
 
   /**
    * Source/reference chapter audio for the drafting dock (fluent-api #282).

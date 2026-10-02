@@ -149,7 +149,7 @@ export function ResourceItemRow({
           />
         ) : null}
         <Text style={styles.size} testID={`resource-row-size-${item.id}`}>
-          {formatByteSize(displayBytes)}
+          {item.displayValue ?? formatByteSize(displayBytes)}
         </Text>
       </View>
     </>

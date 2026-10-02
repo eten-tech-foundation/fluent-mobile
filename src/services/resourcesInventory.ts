@@ -1,9 +1,3 @@
-/**
- * Resources tab inventory facade (#192).
- *
- * Reuses Prepare Offline / #201 inventory — not metadata sync.ts and not a
- * parallel Resources sync stack. Callers must not fetch Aquifer/FluentAPI here.
- */
 import { getDownloadedResourcesByProject } from '../db/downloadQueueRepository';
 import {
   getPrepareOfflineResourceStatus,
@@ -19,9 +13,10 @@ const log = logger.create('resourcesInventory');
 
 export function getResourcesInventoryStatus(
   projectId: number,
+  userId: number,
   resourceId: string,
 ): PrepareOfflineResourceStatus {
-  return getPrepareOfflineResourceStatus(projectId, resourceId);
+  return getPrepareOfflineResourceStatus(projectId, userId, resourceId);
 }
 
 export function subscribeResourcesInventory(

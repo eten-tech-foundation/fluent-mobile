@@ -2,6 +2,7 @@ import type { ApiTranslationQuestionItem } from '../types/api/translationResourc
 import type { TranslationQuestionItem } from '../types/resources/translationQuestions';
 import { tipTapToPlainText } from '../utils/aquiferTipTapText';
 import { FluentAPI } from './api';
+import { findDownloadedRows, readDownloadedJson } from './offlineResources';
 
 const DEFAULT_TQ_LANGUAGE_CODE = 'eng';
 
@@ -13,6 +14,10 @@ export type LoadTranslationQuestionsParams = {
   verseNumber: number;
   /** Aquifer language for uW TQ (defaults to English source). */
   languageCode?: string;
+  /** Active user id, needed to find this user's downloaded rows. */
+  userId?: number | null;
+  /** False when offline, so we never call the API. */
+  isOnline?: boolean;
 };
 
 type TipTapContentItem = {
@@ -82,9 +87,48 @@ export function parseTranslationQuestionsItem(
   return questions;
 }
 
+/** Reads downloaded Translation Questions. Null = nothing downloaded. */
+async function loadLocalTranslationQuestions(
+  params: LoadTranslationQuestionsParams,
+  bookCode: string,
+): Promise<TranslationQuestionItem[] | null> {
+  const rows = await findDownloadedRows({
+    projectId: params.projectId,
+    userId: params.userId,
+    resourceName: 'Translation Questions',
+    kind: 'text',
+    bookCode,
+    chapterNumber: params.chapterNumber,
+    verseNumber: params.verseNumber,
+  });
+  if (rows === null) return null;
+
+  const questions: TranslationQuestionItem[] = [];
+  let readAnyRow = false;
+  for (const row of rows) {
+    const content = await readDownloadedJson(row);
+    if (content === undefined) continue;
+    readAnyRow = true;
+    const item = {
+      id: row.resourceId ?? row.id,
+      name: row.label,
+      localizedName: row.label,
+      // JSON.parse yields whatever was persisted — the API content shape is a
+      // TipTap block array, so rewrap non-arrays to keep the parser happy.
+      content: Array.isArray(content) ? content : [content],
+    } as unknown as ApiTranslationQuestionItem;
+    questions.push(...parseTranslationQuestionsItem(item));
+  }
+  // Every downloaded file was unreadable (missing/corrupt): fall back to the
+  // API instead of showing an empty section.
+  return readAnyRow ? questions : null;
+}
+
 /**
- * Load uW Translation Questions for a drafting unit via fluent-api
- * translation-resources (fluent-api #274).
+ * Load uW Translation Questions for a drafting unit. Downloaded rows are
+ * used first (even online); the fluent-api translation-resources call
+ * (fluent-api #274) only runs when nothing usable is downloaded and the
+ * device is online.
  */
 export async function loadTranslationQuestionsForUnit(
   params: LoadTranslationQuestionsParams,
@@ -99,6 +143,15 @@ export async function loadTranslationQuestionsForUnit(
 
   const bookCode = params.bookCode.trim();
   if (!bookCode) {
+    return [];
+  }
+
+  const local = await loadLocalTranslationQuestions(params, bookCode);
+  if (local !== null) {
+    return local;
+  }
+  // Offline and nothing downloaded: show empty, do not call the API.
+  if (params.isOnline === false) {
     return [];
   }
 

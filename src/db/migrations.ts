@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 17;
+export const CURRENT_SCHEMA_VERSION = 18;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -316,6 +316,7 @@ async function applyDownloadQueueTable(db: SqlExecutor): Promise<void> {
   await addColumnIfMissing(db, 'download_queue', 'source_url', 'TEXT');
   await addColumnIfMissing(db, 'download_queue', 'file_ext', 'TEXT');
   await addColumnIfMissing(db, 'download_queue', 'resume_data', 'TEXT');
+  await addColumnIfMissing(db, 'download_queue', 'serialized_content', 'TEXT');
 }
 
 async function addDownloadQueueUserId(db: SqlExecutor): Promise<void> {
@@ -500,6 +501,59 @@ async function markBibleTextsServerIdsRemap(db: SqlExecutor): Promise<void> {
   }
 }
 
+/**
+ * Scope `download_queue` identity by project + user (#504).
+ *
+ * - Adds `resource_id` (the raw manifest member id used for status lookups).
+ * - Adds `serialized_content` for installs that reached v8 before this column
+ *   existed there — `applyDownloadQueueTable` (v8) does not re-run on already-
+ *   upgraded devices, so it must also be added here or enqueueDownloadItems
+ *   fails with "no column named serialized_content" on every upgraded install.
+ * - Rewrites existing `id`s to `<projectId>-<userId>-<oldId>` and keeps the
+ *   old id in `resource_id`. Both assignments read the OLD row values, and
+ *   the `resource_id IS NULL` guard makes the rewrite run once per row.
+ * - Drops the unique `idx_dq_active_resource` index: after #504 there is one
+ *   queue row per manifest member, and many members share
+ *   (user, project, kind, resource_name), so that index made
+ *   `ON CONFLICT DO NOTHING` silently drop every member after the first.
+ *   Uniqueness now comes from the scoped primary key.
+ * - Replaces it with a plain lookup index (`idx_dq_project_user_resource`)
+ *   plus a scope index (`idx_dq_scope`) for book/chapter lookups.
+ * - Adds nullable scope columns (`book_code`, `start_chapter`, `end_chapter`,
+ *   `verse_start`, `verse_end`) so downloaded resources can be mapped back to
+ *   book/chapter/verse offline. NULL verse fields mean chapter-level.
+ */
+export async function scopeDownloadQueueIdentity(
+  db: SqlExecutor,
+): Promise<void> {
+  const info = await db.execute('PRAGMA table_info(download_queue)');
+  if (!info.rows.length) {
+    return;
+  }
+  await addColumnIfMissing(db, 'download_queue', 'resource_id', 'TEXT');
+  await addColumnIfMissing(db, 'download_queue', 'serialized_content', 'TEXT');
+  await addColumnIfMissing(db, 'download_queue', 'book_code', 'TEXT');
+  await addColumnIfMissing(db, 'download_queue', 'start_chapter', 'INTEGER');
+  await addColumnIfMissing(db, 'download_queue', 'end_chapter', 'INTEGER');
+  await addColumnIfMissing(db, 'download_queue', 'verse_start', 'INTEGER');
+  await addColumnIfMissing(db, 'download_queue', 'verse_end', 'INTEGER');
+  await db.execute(
+    `UPDATE download_queue
+        SET resource_id = id,
+            id = project_id || '-' || COALESCE(user_id, 0) || '-' || id
+        WHERE resource_id IS NULL`,
+  );
+  await db.execute(`DROP INDEX IF EXISTS idx_dq_active_resource`);
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_dq_project_user_resource
+        ON download_queue(project_id, user_id, resource_id)`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_dq_scope
+        ON download_queue(project_id, user_id, resource_name, book_code, start_chapter)`,
+  );
+}
+
 /** Ordered schema migrations. Version 1 = current CREATE IF NOT EXISTS baseline. */
 export const migrations: Migration[] = [
   {
@@ -586,6 +640,11 @@ export const migrations: Migration[] = [
     version: 17,
     name: 'recordings_granularity',
     up: addRecordingsGranularityColumns,
+  },
+  {
+    version: 18,
+    name: 'download_queue_scoped_identity',
+    up: scopeDownloadQueueIdentity,
   },
 ];
 

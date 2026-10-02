@@ -5,7 +5,7 @@ import {
   setImagesMapsLoadFailureForTests,
 } from '../services/imagesMaps';
 import { IMAGES_MAPS_LOAD_ERROR } from '../constants/messages';
-import { getMockImagesMaps } from '../mocks/resources/imagesMapsMock';
+import { ImagesMapsItem } from '../types/resources/imagesMaps';
 
 jest.mock('../services/imagesMaps', () => {
   const actual = jest.requireActual('../services/imagesMaps');
@@ -19,6 +19,18 @@ const mockLoad = loadImagesMapsForUnit as jest.MockedFunction<
   typeof loadImagesMapsForUnit
 >;
 
+// This suite only checks presence/absence of items, not their content, so a
+// single fixed item is enough — no dependency on `mocks/resources`.
+const SAMPLE_ITEMS: ImagesMapsItem[] = [
+  {
+    id: 'img-10-2-1',
+    title: 'Jerusalem region map',
+    caption: 'Overview of surrounding towns',
+    attribution: 'Aquifer / Bible Journey Maps',
+    uri: 'https://picsum.photos/seed/fluent-map-10-2/800/500',
+  },
+];
+
 describe('useImagesMapsForUnit', () => {
   afterEach(() => {
     setImagesMapsLoadFailureForTests(false);
@@ -26,7 +38,7 @@ describe('useImagesMapsForUnit', () => {
   });
 
   it('loads items for units that have Images & Maps', async () => {
-    mockLoad.mockResolvedValue(getMockImagesMaps(10, 2));
+    mockLoad.mockResolvedValue(SAMPLE_ITEMS);
 
     const { result } = renderHook(() =>
       useImagesMapsForUnit({
@@ -56,7 +68,7 @@ describe('useImagesMapsForUnit', () => {
 
   it('exposes an error state that retry can clear', async () => {
     mockLoad.mockRejectedValueOnce(new Error('boom'));
-    mockLoad.mockResolvedValueOnce(getMockImagesMaps(10, 2));
+    mockLoad.mockResolvedValueOnce(SAMPLE_ITEMS);
 
     const { result } = renderHook(() =>
       useImagesMapsForUnit({
@@ -86,7 +98,7 @@ describe('useImagesMapsForUnit', () => {
   });
 
   it('does not show the previous unit while the next load is still pending', async () => {
-    mockLoad.mockResolvedValue(getMockImagesMaps(10, 2));
+    mockLoad.mockResolvedValue(SAMPLE_ITEMS);
 
     const { result, rerender } = renderHook(
       ({

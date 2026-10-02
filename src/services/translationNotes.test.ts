@@ -6,6 +6,8 @@ import {
 } from './translationNotes';
 import { FluentAPI } from './api';
 import { ApiError } from './apiError';
+import { findDownloadedRows, readDownloadedJson } from './offlineResources';
+import type { DownloadQueueItem } from '../types/download/types';
 
 jest.mock('./api', () => ({
   FluentAPI: {
@@ -13,10 +15,35 @@ jest.mock('./api', () => ({
   },
 }));
 
+jest.mock('./offlineResources', () => ({
+  findDownloadedRows: jest.fn(),
+  readDownloadedJson: jest.fn(),
+}));
+
+const mockFindRows = findDownloadedRows as jest.MockedFunction<
+  typeof findDownloadedRows
+>;
+const mockReadJson = readDownloadedJson as jest.MockedFunction<
+  typeof readDownloadedJson
+>;
+
 const getTranslationNotes =
   FluentAPI.getTranslationNotes as jest.MockedFunction<
     typeof FluentAPI.getTranslationNotes
   >;
+
+function downloadedRow(
+  overrides: Partial<DownloadQueueItem> = {},
+): DownloadQueueItem {
+  return {
+    id: '42-7-tn-mrk-14-2',
+    tier: 1,
+    label: 'Mark 14:2',
+    progress: 1,
+    status: 'completed',
+    ...overrides,
+  };
+}
 
 const sampleItem: ApiTranslationNoteItem = {
   id: 12345,
@@ -59,9 +86,16 @@ describe('parseTranslationNotesItem', () => {
 });
 
 describe('loadTranslationNotesForUnit', () => {
+  beforeEach(() => {
+    // Default: nothing downloaded → the API path is exercised.
+    mockFindRows.mockResolvedValue(null);
+  });
+
   afterEach(() => {
     setTranslationNotesLoadFailureForTests(false);
     getTranslationNotes.mockReset();
+    mockFindRows.mockReset();
+    mockReadJson.mockReset();
   });
 
   it('returns [] when projectId is null', async () => {
@@ -164,5 +198,101 @@ describe('loadTranslationNotesForUnit', () => {
         verseNumber: 2,
       }),
     ).rejects.toThrow(/Failed to load Translation Notes/);
+  });
+
+  describe('download-first', () => {
+    it('uses downloaded rows and skips the API, even when online', async () => {
+      mockFindRows.mockResolvedValue([
+        downloadedRow({ localFilePath: 'file:///downloads/tn.json' }),
+      ]);
+      mockReadJson.mockResolvedValue(sampleItem.content);
+      getTranslationNotes.mockResolvedValue({ items: [sampleItem] });
+
+      await expect(
+        loadTranslationNotesForUnit({
+          projectId: 7,
+          userId: 42,
+          isOnline: true,
+          bookCode: 'MRK',
+          chapterNumber: 14,
+          verseNumber: 2,
+        }),
+      ).resolves.toEqual([
+        {
+          id: 'tn-api-42-7-tn-mrk-14-2-0',
+          title: 'Mark 14:2',
+          body: 'connecting word\nThis phrase connects the current verse to the previous one.',
+        },
+      ]);
+      expect(getTranslationNotes).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the API when nothing is downloaded and online', async () => {
+      mockFindRows.mockResolvedValue(null);
+      getTranslationNotes.mockResolvedValue({ items: [sampleItem] });
+
+      await expect(
+        loadTranslationNotesForUnit({
+          projectId: 7,
+          userId: 42,
+          isOnline: true,
+          bookCode: 'MRK',
+          chapterNumber: 14,
+          verseNumber: 2,
+        }),
+      ).resolves.toEqual([
+        {
+          id: 'tn-api-12345-0',
+          title: 'Mark 14:2',
+          body: 'connecting word\nThis phrase connects the current verse to the previous one.',
+        },
+      ]);
+      expect(getTranslationNotes).toHaveBeenCalledTimes(1);
+    });
+
+    it('falls back to the API when every downloaded file is unreadable', async () => {
+      mockFindRows.mockResolvedValue([
+        downloadedRow({ localFilePath: 'file:///downloads/tn.json' }),
+      ]);
+      mockReadJson.mockResolvedValue(undefined);
+      getTranslationNotes.mockResolvedValue({ items: [sampleItem] });
+
+      await expect(
+        loadTranslationNotesForUnit({
+          projectId: 7,
+          userId: 42,
+          isOnline: true,
+          bookCode: 'MRK',
+          chapterNumber: 14,
+          verseNumber: 2,
+        }),
+      ).resolves.toEqual([
+        {
+          id: 'tn-api-12345-0',
+          title: 'Mark 14:2',
+          body: 'connecting word\nThis phrase connects the current verse to the previous one.',
+        },
+      ]);
+      expect(getTranslationNotes).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not call the API offline when a downloaded row exists but its file is unreadable', async () => {
+      mockFindRows.mockResolvedValue([
+        downloadedRow({ localFilePath: 'file:///downloads/tn.json' }),
+      ]);
+      mockReadJson.mockResolvedValue(undefined);
+
+      await expect(
+        loadTranslationNotesForUnit({
+          projectId: 7,
+          userId: 42,
+          isOnline: false,
+          bookCode: 'MRK',
+          chapterNumber: 14,
+          verseNumber: 2,
+        }),
+      ).resolves.toEqual([]);
+      expect(getTranslationNotes).not.toHaveBeenCalled();
+    });
   });
 });
