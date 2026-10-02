@@ -390,6 +390,7 @@ import {
   getTakesForVerse,
   selectRecordingTake,
 } from './recordingsRepository';
+import { getRecordingDataVersion } from '../services/recordingDataEvents';
 
 describe('recordingsRepository multi-take', () => {
   beforeEach(() => {
@@ -843,5 +844,76 @@ describe('recordingsRepository multi-take', () => {
       verseNumber: 5,
     });
     expect(atFive).toEqual([]);
+  });
+
+  it('bumps the shared sync-status store when a take is saved or deleted', async () => {
+    const versionBefore = getRecordingDataVersion();
+
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///signal.m4a',
+      id: 'signal-save',
+    });
+    expect(getRecordingDataVersion()).toBe(versionBefore + 1);
+
+    await deleteRecordingTake('signal-save');
+    expect(getRecordingDataVersion()).toBe(versionBefore + 2);
+  });
+
+  it('does not bump the store when a delete no-ops (missing or foreign take)', async () => {
+    const versionBefore = getRecordingDataVersion();
+
+    await deleteRecordingTake('missing-id');
+    expect(getRecordingDataVersion()).toBe(versionBefore);
+
+    __setMockActiveUserId('2');
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///foreign.m4a',
+      id: 'foreign',
+    });
+    __setMockActiveUserId('1');
+    await deleteRecordingTake('foreign');
+    // Only the add bumped it; the guarded delete did not.
+    expect(getRecordingDataVersion()).toBe(versionBefore + 1);
+  });
+  it('bumps the store when select changes the active take, not when it no-ops', async () => {
+    await addRecordingTake({
+      bibleTextId: 30,
+      localFilePath: 'file:///s1.m4a',
+      id: 's1',
+    });
+    await addRecordingTake({
+      bibleTextId: 30,
+      localFilePath: 'file:///s2.m4a',
+      id: 's2',
+    });
+    const versionBefore = getRecordingDataVersion();
+
+    await selectRecordingTake('s1'); // s2 is selected, so this applies
+    expect(getRecordingDataVersion()).toBe(versionBefore + 1);
+
+    await selectRecordingTake('s1'); // already selected
+    await selectRecordingTake('missing-id'); // does not exist
+    expect(getRecordingDataVersion()).toBe(versionBefore + 1);
+  });
+
+  it('does not bump the store when selecting a take owned by another user', async () => {
+    __setMockActiveUserId('2');
+    await addRecordingTake({
+      bibleTextId: 31,
+      localFilePath: 'file:///a.m4a',
+      id: 'foreign-a',
+    });
+    await addRecordingTake({
+      bibleTextId: 31,
+      localFilePath: 'file:///b.m4a',
+      id: 'foreign-b',
+    });
+    __setMockActiveUserId('1');
+    const versionBefore = getRecordingDataVersion();
+
+    await selectRecordingTake('foreign-a');
+    expect(getRecordingDataVersion()).toBe(versionBefore);
   });
 });

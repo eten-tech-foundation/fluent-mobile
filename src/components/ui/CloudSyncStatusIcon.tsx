@@ -8,7 +8,6 @@ import {
   ViewStyle,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { CloudOff } from 'lucide-react-native';
 import CloudOffUnsynced from '../../assets/icons/cloud-off-unsynced.svg';
 import {
   iconSizes,
@@ -295,10 +294,11 @@ const GLYPHS: Record<
     />
   ),
   offline_synced: (size, options) => (
-    <CloudOff
+    // #38: offline with nothing pending is gray cloud-check, not cloud-off.
+    <CloudCheckGlyph
       size={size}
-      color={options?.cloudColor ?? theme.colors.syncStatusOffline}
-      strokeWidth={listIconStrokeWidth}
+      cloudColor={options?.cloudColor ?? theme.colors.syncStatusOffline}
+      checkColor={theme.colors.syncStatusOffline}
     />
   ),
   offline_pending: (size, options) => (
