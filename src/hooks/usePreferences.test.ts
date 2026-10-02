@@ -5,6 +5,7 @@ import {
   setUserPreferences,
 } from '../services/userPreferences';
 import { kvStorage } from '../services/storage';
+import { mockPreferenceStore } from '../test/mocks/preferenceStore';
 
 jest.mock('expo-router', () => ({
   useFocusEffect: jest.fn(),
@@ -17,17 +18,7 @@ jest.mock('../services/storage', () => ({
   },
 }));
 
-const mockGetItemSync = kvStorage.getItemSync as jest.Mock;
 const mockSetItemSync = kvStorage.setItemSync as jest.Mock;
-
-function mockPreferenceStore(initial: Record<string, string | null> = {}) {
-  const store: Record<string, string | null> = { ...initial };
-  mockGetItemSync.mockImplementation((key: string) => store[key] ?? null);
-  mockSetItemSync.mockImplementation((key: string, value: string) => {
-    store[key] = value;
-  });
-  return store;
-}
 
 describe('usePreferences', () => {
   beforeEach(() => {

@@ -8,6 +8,7 @@ import {
   subscribeToPreference,
 } from './userPreferences';
 import { kvStorage } from './storage';
+import { mockPreferenceStore } from '../test/mocks/preferenceStore';
 
 jest.mock('./storage', () => ({
   kvStorage: {
@@ -16,17 +17,7 @@ jest.mock('./storage', () => ({
   },
 }));
 
-const mockGetItemSync = kvStorage.getItemSync as jest.Mock;
 const mockSetItemSync = kvStorage.setItemSync as jest.Mock;
-
-function mockPreferenceStore(initial: Record<string, string | null> = {}) {
-  const store: Record<string, string | null> = { ...initial };
-  mockGetItemSync.mockImplementation((key: string) => store[key] ?? null);
-  mockSetItemSync.mockImplementation((key: string, value: string) => {
-    store[key] = value;
-  });
-  return store;
-}
 
 describe('userPreferences', () => {
   beforeEach(() => {
@@ -39,10 +30,6 @@ describe('userPreferences', () => {
       uploadOverCellular: false,
       uiVersion: 'legacy',
     });
-  });
-
-  it('defaults uiVersion to legacy', () => {
-    expect(getUiVersion()).toBe('legacy');
   });
 
   it('reads upload over cellular from storage', () => {
