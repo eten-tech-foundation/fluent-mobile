@@ -3,6 +3,7 @@ import { isAuthError, AuthError } from './authError';
 import { mapApiChapterAssignment } from './mapChapterAssignment';
 import { mapApiLanguage } from './mapApiLanguage';
 import { mapApiProject } from './mapApiProject';
+import { mapApiMilestone } from './mapApiMilestone';
 import {
   insertUser,
   insertMasterData,
@@ -17,6 +18,7 @@ import {
   userHasLocalChapterAssignments,
   userNeedsAssigneeRepair,
   reconcileUserChapterWork,
+  reconcileUserMilestones,
   reconcileUserProjects,
   insertPericopeSets,
   getProjectPericopeSetId,
@@ -24,10 +26,12 @@ import {
   upsertPericopeSet,
   getLocalProjectIds,
   hasLanguagesMissingIsoCode,
+  upsertProjectUnits,
 } from '../db/repository';
 import { logger } from '../utils/logger';
 import { getDatabase } from '../db/db';
 import { ApiBook, ApiVerse } from '../types/api/types';
+import { isApiError, isRetryableApiError } from '../types/api/errors';
 import { ApiUser, unwrapApiListResponse } from '../types/api/responses';
 import { getConnectivitySnapshot } from './connectivity';
 import {
@@ -296,6 +300,80 @@ export async function syncProjects(userId: number, sessionToken?: string) {
     },
     String(userId),
   );
+}
+
+export async function syncMilestones(userId: number, sessionToken?: string) {
+  log.info('Syncing milestones...', { userId });
+
+  for (let attempt = 1; attempt <= MAX_SYNC_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await FluentAPI.getUserMilestones(userId, sessionToken);
+      const raw = unwrapApiListResponse(response);
+      const isConfirmedShape = Array.isArray(raw);
+      const units = (isConfirmedShape ? raw : []).map(mapApiMilestone);
+
+      log.info('Milestones fetched', {
+        count: units.length,
+        isArray: isConfirmedShape,
+      });
+
+      if (!isConfirmedShape) {
+        const errorMessage = 'Invalid milestones response shape';
+        log.warn('Milestone sync failed: unexpected response shape', {
+          userId,
+        });
+        setSyncError(KV_KEYS.SYNC_ERROR_PROJECT_UNITS, errorMessage);
+        return;
+      }
+
+      await upsertProjectUnits(units);
+      await reconcileUserMilestones(
+        userId,
+        units.map(unit => unit.id),
+      );
+
+      clearSyncError(KV_KEYS.SYNC_ERROR_PROJECT_UNITS);
+      return;
+    } catch (error) {
+      const errorMessage = getErrorMessage(error);
+
+      if (isAuthError(error)) {
+        log.error('Milestone sync failed: session invalid', {
+          error: errorMessage,
+        });
+        setSyncError(KV_KEYS.SYNC_ERROR_PROJECT_UNITS, errorMessage);
+        await handleSyncAuthFailure(String(userId));
+        throw error;
+      }
+
+      // Pre-milestones APIs return 404 — list still works from assignment sync.
+      if (isApiError(error) && error.status === 404) {
+        clearSyncError(KV_KEYS.SYNC_ERROR_PROJECT_UNITS);
+        log.warn(
+          'Milestone endpoint unavailable; continuing without milestone ingest',
+          { userId },
+        );
+        return;
+      }
+
+      if (attempt < MAX_SYNC_ATTEMPTS && isRetryableApiError(error)) {
+        log.warn('Milestone sync failed, retrying', {
+          attempt,
+          maxAttempts: MAX_SYNC_ATTEMPTS,
+          error: errorMessage,
+        });
+        await delay(attempt * 500);
+        continue;
+      }
+
+      clearSyncError(KV_KEYS.SYNC_ERROR_PROJECT_UNITS);
+      log.warn('Milestone sync failed; continuing remaining sync steps', {
+        error: errorMessage,
+        userId,
+      });
+      return;
+    }
+  }
 }
 
 export async function syncPendingChapterClaimsForUser(userId: number) {
@@ -897,6 +975,7 @@ export async function syncAllUsers(): Promise<void> {
 
       try {
         await syncProjects(userIdNum, creds.token);
+        await syncMilestones(userIdNum, creds.token);
         await syncPendingChapterClaimsForUser(userIdNum);
         const { didFullSync, partialSkipWarning } =
           await syncChapterAssignmentsForUser(
@@ -1022,6 +1101,7 @@ export async function syncAllData(
     await syncMasterData();
     await syncPericopeSets();
     await syncProjects(userId, sessionToken);
+    await syncMilestones(userId, sessionToken);
     await syncPendingChapterClaimsForUser(userId);
 
     let assignmentPartialSkipWarning: string | undefined;
@@ -1175,6 +1255,7 @@ export async function refreshChapterMetadataIfOnline(
       // mapApiLanguage. Verse text stays on Sync Now / DraftingScreen ensure.
       await maybeBackfillMasterDataOnRefresh();
       await syncProjects(userId, sessionToken);
+      await syncMilestones(userId, sessionToken);
 
       const cursor = getUserLastSyncedAt(userIdStr) || undefined;
       const { syncedAt } = await syncChapterAssignmentsForUser(
