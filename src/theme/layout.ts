@@ -1,3 +1,8 @@
+/**
+ * Legacy layout tokens — frozen baseline for the current UI.
+ * These groups are on `Theme`; Next spacing/color overrides re-derive
+ * `homeListContent` / `listCard` in `src/theme/next.ts`.
+ */
 import { ViewStyle } from 'react-native';
 import { colors, radius, spacing } from './tokens';
 

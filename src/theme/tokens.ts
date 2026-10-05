@@ -1,3 +1,8 @@
+/**
+ * Legacy design tokens — frozen baseline for the current UI.
+ * Redesign / Next overrides belong in `src/theme/next.ts`, not here.
+ */
+
 /** Converts HSL (degrees, percent, percent) to hex for React Native StyleSheet. */
 export function hslToHex(h: number, s: number, l: number): string {
   const sat = s / 100;

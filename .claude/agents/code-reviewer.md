@@ -44,10 +44,15 @@ exact `file:line`, name the rule, and give a copy-pasteable fix.
    `.cursor/rules/android-only.mdc`.
 
 3. **Theme tokens.** New StyleSheets with hardcoded hex / raw color literals
-   should use `theme` from `src/theme/` (`colors`, `spacing`, `radius`,
-   `typography`). The only legitimate new hex is inside `src/theme/tokens.ts`
-   (or a documented token file). `src/app/appStyles.ts` is legacy — do not add
-   new keys there; prefer tokens when touching a file.
+   should use tokens from `src/theme/` (`colors`, `spacing`, `radius`,
+   `typography`). Prefer `useTheme()` / `useThemedStyles()` from
+   `src/theme/useTheme` for UI that must follow the active Legacy/Next UI
+   version; the static `theme` export from `src/theme` is Legacy-pinned. Do
+   **not** import `src/theme/next` directly — resolve via `useTheme()` /
+   `resolveTheme()`. The only legitimate new hex is inside
+   `src/theme/tokens.ts` (Legacy) or `src/theme/next.ts` overrides (Next).
+   `src/app/appStyles.ts` is legacy — do not add new keys there; prefer tokens
+   when touching a file. See `docs/guides/ui-version-theming.md`.
 
 4. **Logging.** `console.log` / `console.warn` / `console.error` in app code
    (not tests) → use `logger.create('Tag')` from `src/utils/logger.ts`.

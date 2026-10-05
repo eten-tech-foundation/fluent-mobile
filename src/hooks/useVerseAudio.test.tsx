@@ -156,6 +156,7 @@ describe('useVerseAudio', () => {
       isOnline: true,
       isWifi: true,
       isCellular: false,
+      connectionType: 'wifi',
     });
     loadTakes.mockResolvedValue([]);
     persistTake.mockResolvedValue({

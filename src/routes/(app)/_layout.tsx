@@ -9,7 +9,7 @@ import {
   drawerMenuItemStyle,
   drawerMenuLabelStyle,
 } from '../../components/ui/UserSettingsMenu';
-import { theme } from '../../theme';
+import { useTheme } from '../../theme/useTheme';
 
 function SettingsDrawerContent(props: DrawerContentComponentProps) {
   const { signOut, notifyUserSwitched } = useAuthSession();
@@ -30,6 +30,7 @@ function drawerIcon(name: React.ComponentProps<typeof Ionicons>['name']) {
 
 export default function AppDrawerLayout() {
   const { width } = useWindowDimensions();
+  const theme = useTheme();
   const drawerWidth = Math.min(320, width * 0.82);
 
   return (
