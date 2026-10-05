@@ -56,8 +56,10 @@ jest.mock('./useConnectivity', () => ({
 jest.mock('./usePreferences', () => ({
   usePreferences: () => ({
     uploadOverCellular: false,
-    preferences: { uploadOverCellular: false },
+    uiVersion: 'legacy',
+    preferences: { uploadOverCellular: false, uiVersion: 'legacy' },
     setUploadOverCellular: jest.fn(),
+    setUiVersion: jest.fn(),
     setPreferences: jest.fn(),
     reload: jest.fn(),
   }),
