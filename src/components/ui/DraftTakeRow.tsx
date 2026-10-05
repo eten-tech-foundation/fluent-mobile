@@ -182,7 +182,14 @@ export function DraftTakeRow({
             strokeWidth={listIconStrokeWidth}
           />
         </TouchableOpacity>
-      ) : null}
+      ) : (
+        <View
+          style={styles.deleteSlotSpacer}
+          testID={`record-take-delete-spacer-${takeId}`}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
+      )}
     </View>
   );
 }
@@ -239,5 +246,8 @@ const styles = StyleSheet.create({
   },
   deleteHit: {
     padding: theme.spacing.xs,
+  },
+  deleteSlotSpacer: {
+    width: iconSizes.chevron + theme.spacing.xs * 2,
   },
 });
