@@ -12,3 +12,4 @@ export {
   __setRecordingStatus,
   __setPlaybackStatus,
 } from './expo-audio';
+export { mockPreferenceStore } from './preferenceStore';
