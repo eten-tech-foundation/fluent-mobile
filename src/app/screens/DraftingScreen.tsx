@@ -72,6 +72,8 @@ export default function DraftingScreen() {
   const recoverVerse = rawParams.recoverVerse
     ? Number(rawParams.recoverVerse)
     : undefined;
+  const recoverVerseRef = useRef(recoverVerse);
+  recoverVerseRef.current = recoverVerse;
 
   const [activeTab, setActiveTabState] = useState<DraftingTab>(() =>
     recoverSessionKey ? 'record' : getLastActiveTab(chapterId) ?? 'bible',
@@ -306,10 +308,10 @@ export default function DraftingScreen() {
         );
         const defaultVerse =
           firstUnrecorded?.verseNumber ?? texts[0]?.verseNumber ?? 1;
+        const target = recoverVerseRef.current;
         const recoverTarget =
-          recoverVerse !== undefined &&
-          texts.some(v => v.verseNumber === recoverVerse)
-            ? recoverVerse
+          target !== undefined && texts.some(v => v.verseNumber === target)
+            ? target
             : defaultVerse;
         setInitialVerse(recoverTarget);
       } catch (error) {

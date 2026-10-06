@@ -39,10 +39,13 @@ export default function AppDrawerLayout() {
 
   useLaunchRecoveryPrompt({
     onResume: marker => {
-      if (marker.chapterAssignmentId == null || marker.verseNumber == null) {
+      const { chapterAssignmentId, verseNumber, sessionKey } = marker;
+      if (
+        typeof chapterAssignmentId !== 'number' ||
+        typeof verseNumber !== 'number'
+      ) {
         return;
       }
-      const { chapterAssignmentId, verseNumber, sessionKey } = marker;
       return (async () => {
         const assignment = await getChapterAssignmentById(chapterAssignmentId);
         if (!assignment) return;

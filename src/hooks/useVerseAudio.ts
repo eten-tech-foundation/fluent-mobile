@@ -51,6 +51,7 @@ import {
   clearPausedTake,
   listPausedTakes,
   upsertPausedTake,
+  type PausedTakeCapture,
 } from '../services/pausedTakes';
 import { decideRecovery } from '../services/pausedTakeRecovery';
 
@@ -196,6 +197,18 @@ function pausedTakeSessionKey(
     verseNumber !== undefined
     ? `${chapterAssignmentId}:${verseNumber}`
     : `bibleText:${bibleTextId}`;
+}
+
+/** Capture span stored in the paused-take marker (drops the view-only id). */
+function toMarkerCapture(snapshot: CapturePersistSnapshot): PausedTakeCapture {
+  return {
+    bibleTextId: snapshot.bibleTextId,
+    granularity: snapshot.granularity,
+    startChapter: snapshot.startChapter,
+    startVerse: snapshot.startVerse,
+    endChapter: snapshot.endChapter,
+    endVerse: snapshot.endVerse,
+  };
 }
 
 /**
@@ -616,16 +629,7 @@ export function useVerseAudio({
           verseNumber,
           // Freeze the capture span so recovery persists the same unit even if
           // the drafting mode changed before the take is resumed (#567).
-          capture: snapshot
-            ? {
-                bibleTextId: snapshot.bibleTextId,
-                granularity: snapshot.granularity,
-                startChapter: snapshot.startChapter,
-                startVerse: snapshot.startVerse,
-                endChapter: snapshot.endChapter,
-                endVerse: snapshot.endVerse,
-              }
-            : undefined,
+          capture: snapshot ? toMarkerCapture(snapshot) : undefined,
         });
       }
       dispatch({ type: 'PAUSE' });
@@ -691,7 +695,26 @@ export function useVerseAudio({
         viewBibleTextId: persistMeta.viewBibleTextId,
         durationMs: persistMeta.durationMs,
       });
-      await persistTake(persistMeta);
+      try {
+        await persistTake(persistMeta);
+      } catch (persistError) {
+        // Not committed: the segments are still on disk (intermediates are only
+        // deleted after the DB insert). The marker only knows the segments up to
+        // the last pause, so record the full list and duration — otherwise the
+        // audio since that pause cannot be recovered on the next launch (#567).
+        if (sessionKey !== null) {
+          upsertPausedTake({
+            sessionKey,
+            segments: tempUris,
+            elapsedMs: persistMeta.durationMs,
+            startedAt: new Date().toISOString(),
+            chapterAssignmentId: chapterAssignmentId ?? undefined,
+            verseNumber,
+            capture: toMarkerCapture(snapshot),
+          });
+        }
+        throw persistError;
+      }
       // The take is committed and its segments are gone — clear the marker now,
       // before claim sync / reload can throw and strand a dangling marker.
       if (sessionKey !== null) {
@@ -767,6 +790,7 @@ export function useVerseAudio({
     recording,
     sessionKey,
     userId,
+    verseNumber,
     refreshAllTakes,
   ]);
 
