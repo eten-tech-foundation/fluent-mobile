@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -8,7 +8,6 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { launchRecoveryGate } from '../../services/launchRecoveryGate';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
@@ -40,9 +39,6 @@ export default function PrepareForOfflineScreen() {
   // entered (in-screen tap or a `?projectId=` deep link e.g. from Sync).
   const [pickedProjectId, setPickedProjectId] = useState<number | null>(
     routeProjectId ?? null,
-  );
-  const [recoveryGateSettled, setRecoveryGateSettled] = useState(
-    launchRecoveryGate.isSettled(),
   );
 
   const projectId = pickedProjectId;
@@ -140,17 +136,6 @@ export default function PrepareForOfflineScreen() {
       />
     ) : null;
 
-  useEffect(() => {
-    if (recoveryGateSettled) return;
-    let cancelled = false;
-    void launchRecoveryGate.whenSettled().then(() => {
-      if (!cancelled) setRecoveryGateSettled(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [recoveryGateSettled]);
-
   let projectDetailBody: React.ReactNode = null;
 
   if (projectId !== null) {
@@ -218,23 +203,6 @@ export default function PrepareForOfflineScreen() {
         </ScrollView>
       );
     }
-  }
-  if (!recoveryGateSettled) {
-    return (
-      <ScreenContainer>
-        <View style={styles.screen} testID="prepare-offline-screen">
-          <StackScreenHeader
-            title="Prepare for Offline"
-            subtitle={INSTRUCTION}
-            onBack={goBack}
-            subtitleLines={2}
-          />
-          <View style={styles.centered}>
-            <LoadingSpinner />
-          </View>
-        </View>
-      </ScreenContainer>
-    );
   }
 
   return (

@@ -27,6 +27,7 @@ import { ProjectsTab } from '../tabs/ProjectsTab';
 import { useSync } from '../../hooks/useSync';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
+import { launchRecoveryGate } from '../../services/launchRecoveryGate';
 import { onSyncComplete, onSyncStart } from '../../services/syncEvents';
 import { getPrepareOfflineDownloadStarted } from '../../services/storage';
 import { shouldPresentPrepareOffline } from '../../utils/prepareOfflineTrigger';
@@ -174,6 +175,9 @@ function HomeScreenBody({
     const evaluate = async () => {
       if (!isFocusedRef.current || !hasTransferResolvedRef.current) return;
       if (isSettlingRef.current) return;
+      // Never present Prepare for Offline while the launch recovery prompt is
+      // unanswered (#567). The gate effect below re-runs evaluate once it settles.
+      if (!launchRecoveryGate.isSettled()) return;
 
       const eligibleConnection =
         hasTransferResolvedRef.current &&
@@ -217,6 +221,12 @@ function HomeScreenBody({
             present &&
             !getPrepareOfflineDownloadStarted(String(userId), project.id)
           ) {
+            // The awaits above can outlive the recovery flow or a Resume
+            // redirect to the Record tab. Re-check right before presenting;
+            // when Home regains focus the eligibility effect evaluates again.
+            if (!isFocusedRef.current || !launchRecoveryGate.isSettled()) {
+              return;
+            }
             prepareOfflinePromptShownThisAppOpenRef.current = true;
             router.push(hrefs.prepareForOffline());
             return;
@@ -244,6 +254,22 @@ function HomeScreenBody({
 
     return () => subscription.remove();
   }, [router]);
+
+  // Discard / nothing to recover: the gate settles while Home is focused, so
+  // Prepare for Offline may present immediately. Resume: the gate settles after
+  // the redirect to the Record tab, Home is blurred, evaluate bails on focus,
+  // and the eligibility effect below re-runs it when the user returns (#567).
+  useEffect(() => {
+    let cancelled = false;
+    void launchRecoveryGate.whenSettled().then(() => {
+      if (!cancelled) {
+        void evaluateRef.current?.();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!hasTransferResolved) return;

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Alert } from 'react-native';
+import { Alert, InteractionManager } from 'react-native';
 import { launchRecoveryGate } from './launchRecoveryGate';
 import { collectLaunchRecoveries } from '../services/pausedTakeLaunchRecovery';
 import { clearPausedTake, type PausedTakeMarker } from './pausedTakes';
@@ -18,6 +18,11 @@ type UseLaunchRecoveryPromptOptions = {
  * (#567). The alert is non-dismissable. Resume hands the marker to `onResume`;
  * markers not yet answered are prompted again on the next launch or when their
  * verse opens. Settles {@link launchRecoveryGate} when the flow is finished.
+ *
+ * Discard settles the gate straight away (Home is still focused, so Prepare for
+ * Offline may present). Resume settles it only after the redirect to the Record
+ * tab has finished, so Home is already blurred and Prepare for Offline waits
+ * until the user returns to Home.
  */
 export function useLaunchRecoveryPrompt({
   onResume,
@@ -77,11 +82,17 @@ export function useLaunchRecoveryPrompt({
             {
               text: 'Resume',
               onPress: () => {
-                void Promise.resolve(onResumeRef.current(marker)).finally(
-                  () => {
-                    launchRecoveryGate.settle();
-                  },
-                );
+                void Promise.resolve(onResumeRef.current(marker))
+                  .catch(error => {
+                    log.warn('Resume navigation failed', { error });
+                  })
+                  .finally(() => {
+                    // Wait for the redirect to finish so screens gated on
+                    // launchRecoveryGate see Home as blurred (#567).
+                    InteractionManager.runAfterInteractions(() => {
+                      launchRecoveryGate.settle();
+                    });
+                  });
               },
             },
           ],

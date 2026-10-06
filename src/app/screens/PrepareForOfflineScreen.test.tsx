@@ -1,13 +1,11 @@
 import React from 'react';
 import {
-  act,
   fireEvent,
   render,
   screen,
   waitFor,
 } from '@testing-library/react-native';
 import PrepareForOfflineScreen from './PrepareForOfflineScreen';
-import { launchRecoveryGate } from '../../services/launchRecoveryGate';
 import {
   resetMockPrepareOfflineInventory,
   setPrepareOfflineMockInventoryScenario,
@@ -129,10 +127,6 @@ const { usePrepareOfflineSelection } = jest.requireMock(
 describe('PrepareForOfflineScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // The launch recovery prompt is not part of these tests: start every
-    // test with the gate already settled so the screen renders normally.
-    launchRecoveryGate.reset();
-    launchRecoveryGate.settle();
     mockUseLocalSearchParams.mockReturnValue({});
     resetMockPrepareOfflineInventory();
     setPrepareOfflineMockInventoryScenario('fresh');
@@ -201,10 +195,6 @@ describe('PrepareForOfflineScreen', () => {
         };
       },
     );
-  });
-
-  afterEach(() => {
-    launchRecoveryGate.reset();
   });
 
   it('shows instruction and project picker when no project is selected', () => {
@@ -372,31 +362,6 @@ describe('PrepareForOfflineScreen', () => {
       fireEvent.press(screen.getByLabelText('Go back'));
 
       expect(mockGoBack).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('launch recovery gate', () => {
-    it('shows only a spinner until the launch recovery prompt settles', async () => {
-      launchRecoveryGate.reset();
-
-      render(<PrepareForOfflineScreen />);
-
-      expect(screen.getByTestId('prepare-offline-screen')).toBeTruthy();
-      expect(screen.queryByText('Select a project')).toBeNull();
-
-      await act(async () => {
-        launchRecoveryGate.settle();
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText('Select a project')).toBeTruthy();
-      });
-    });
-
-    it('renders the picker immediately when the gate is already settled', () => {
-      render(<PrepareForOfflineScreen />);
-
-      expect(screen.getByText('Select a project')).toBeTruthy();
     });
   });
 });
