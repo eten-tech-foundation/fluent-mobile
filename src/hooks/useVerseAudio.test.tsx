@@ -15,6 +15,30 @@ const mockPlaybackSeek = jest.fn();
 const mockFileExists = jest.fn();
 const mockFileSize = jest.fn();
 const mockDeleteFile = jest.fn();
+const mockPausedMarkers: unknown[] = [];
+const mockListPausedTakes = jest.fn(() => mockPausedMarkers);
+const mockUpsertPausedTake = jest.fn((marker: unknown) => {
+  const key = (marker as { sessionKey: string }).sessionKey;
+  const index = mockPausedMarkers.findIndex(
+    m => (m as { sessionKey: string }).sessionKey === key,
+  );
+  if (index >= 0) {
+    mockPausedMarkers[index] = marker;
+  } else {
+    mockPausedMarkers.push(marker);
+  }
+});
+const mockRecordingState = {
+  status: 'idle' as 'idle' | 'recording' | 'paused',
+};
+const mockClearPausedTake = jest.fn((sessionKey: string) => {
+  const index = mockPausedMarkers.findIndex(
+    m => (m as { sessionKey: string }).sessionKey === sessionKey,
+  );
+  if (index >= 0) {
+    mockPausedMarkers.splice(index, 1);
+  }
+});
 
 const playbackState = { status: 'idle' as 'idle' | 'playing' | 'paused' };
 
@@ -24,7 +48,9 @@ jest.mock('./useRecordingEngine', () => ({
     stop: mockRecordingStop,
     pause: mockRecordingPause,
     resume: mockRecordingResume,
-    status: 'idle',
+    get status() {
+      return mockRecordingState.status;
+    },
   }),
 }));
 
@@ -62,6 +88,18 @@ jest.mock('../utils/audioStorage', () => ({
 
 jest.mock('../services/connectivity', () => ({
   getConnectivitySnapshot: jest.fn(),
+}));
+
+jest.mock('../services/pausedTakes', () => ({
+  clearPausedTake: (sessionKey: string) => mockClearPausedTake(sessionKey),
+  isPausedTakeOrphaned: (marker: {
+    chapterAssignmentId?: number;
+    verseNumber?: number;
+  }) =>
+    marker.chapterAssignmentId === undefined ||
+    marker.verseNumber === undefined,
+  listPausedTakes: () => mockListPausedTakes(),
+  upsertPausedTake: (marker: unknown) => mockUpsertPausedTake(marker),
 }));
 
 jest.mock('../services/chapterClaimSync', () => ({
@@ -165,12 +203,18 @@ describe('useVerseAudio', () => {
     });
     deleteTake.mockResolvedValue(undefined);
     selectTake.mockResolvedValue(undefined);
-    mockRecordingStart.mockResolvedValue(undefined);
-    mockRecordingStop.mockResolvedValue({
-      uri: 'file:///tmp/take.m4a',
-      durationMs: 500,
+    mockRecordingState.status = 'idle';
+    mockRecordingStart.mockImplementation(async () => {
+      mockRecordingState.status = 'recording';
     });
-    mockRecordingPause.mockResolvedValue(undefined);
+    mockRecordingStop.mockImplementation(async () => {
+      mockRecordingState.status = 'idle';
+      return { uri: 'file:///tmp/take.m4a', durationMs: 500 };
+    });
+    mockRecordingPause.mockImplementation(async () => {
+      mockRecordingState.status = 'paused';
+      return { uri: 'file:///tmp/take.aac', durationMs: 500 };
+    });
     mockRecordingResume.mockResolvedValue(undefined);
     mockPlaybackPlay.mockResolvedValue(undefined);
     mockPlaybackStop.mockResolvedValue(undefined);
@@ -180,6 +224,7 @@ describe('useVerseAudio', () => {
     mockFileExists.mockResolvedValue(true);
     mockFileSize.mockResolvedValue(128);
     mockDeleteFile.mockResolvedValue(undefined);
+    mockPausedMarkers.splice(0, mockPausedMarkers.length);
   });
 
   it('rehydrates to idle when there are no takes', async () => {
@@ -265,6 +310,7 @@ describe('useVerseAudio', () => {
       bibleTextId: 42,
       viewBibleTextId: 42,
       tempUri: 'file:///tmp/take.m4a',
+      tempUris: ['file:///tmp/take.m4a'],
       durationMs: 500,
       granularity: 'verse',
       startChapter: 0,
@@ -274,6 +320,145 @@ describe('useVerseAudio', () => {
     });
     expect(result.current.state).toBe('recorded');
     expect(result.current.takes).toEqual([saved]);
+  });
+
+  it('writes a paused-take marker when recording is paused', async () => {
+    const { result } = renderHook(() =>
+      useVerseAudio({
+        ...verseAudioArgs(),
+        chapterAssignmentId: 7,
+        chapterNumber: 1,
+        verseNumber: 3,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.state).toBe('idle'));
+
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      await result.current.pause();
+    });
+
+    expect(mockUpsertPausedTake).toHaveBeenCalledWith({
+      sessionKey: '7:3',
+      segments: ['file:///tmp/take.aac'],
+      elapsedMs: 500,
+      startedAt: expect.any(String),
+      chapterAssignmentId: 7,
+      verseNumber: 3,
+      capture: {
+        bibleTextId: 42,
+        granularity: 'verse',
+        startChapter: 1,
+        startVerse: 3,
+        endChapter: 1,
+        endVerse: 3,
+      },
+    });
+    expect(result.current.state).toBe('paused');
+  });
+
+  const recoveredMarker = () => ({
+    sessionKey: '7:3',
+    segments: ['file:///old.aac'],
+    elapsedMs: 1000,
+    startedAt: '2026-10-05T10:00:00.000Z',
+    chapterAssignmentId: 7,
+    verseNumber: 3,
+  });
+
+  const recoveryArgs = () => ({
+    ...verseAudioArgs(),
+    chapterAssignmentId: 7,
+    chapterNumber: 1,
+    verseNumber: 3,
+  });
+
+  it('hydrates a recovered marker into paused without starting the recorder', async () => {
+    mockPausedMarkers.push(recoveredMarker());
+
+    const { result } = renderHook(() => useVerseAudio(recoveryArgs()));
+
+    await waitFor(() => {
+      expect(result.current.state).toBe('paused');
+    });
+    expect(result.current.recoveredElapsedMs).toBe(1000);
+    expect(mockRecordingStart).not.toHaveBeenCalled();
+  });
+
+  it('resumes a recovered take into a new segment and persists all segments on stop', async () => {
+    const saved = makeTake({ id: 'rec_new', isSelected: true });
+    mockPausedMarkers.push(recoveredMarker());
+    loadTakes.mockResolvedValueOnce([]).mockResolvedValueOnce([saved]);
+
+    const { result } = renderHook(() => useVerseAudio(recoveryArgs()));
+
+    await waitFor(() => expect(result.current.state).toBe('paused'));
+
+    await act(async () => {
+      await result.current.resume();
+    });
+
+    // No native recorder exists yet, so resume starts a fresh segment.
+    expect(mockRecordingStart).toHaveBeenCalledTimes(1);
+    expect(mockRecordingResume).not.toHaveBeenCalled();
+    expect(result.current.state).toBe('recording');
+
+    await act(async () => {
+      await result.current.stop();
+    });
+
+    expect(persistTake).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tempUri: 'file:///tmp/take.m4a',
+        tempUris: ['file:///old.aac', 'file:///tmp/take.m4a'],
+        durationMs: 1500,
+      }),
+    );
+    expect(mockClearPausedTake).toHaveBeenCalledWith('7:3');
+    expect(result.current.recoveredElapsedMs).toBe(0);
+    expect(result.current.state).toBe('recorded');
+  });
+
+  it('stops straight from the recovered state and saves only the recovered audio', async () => {
+    const saved = makeTake({ id: 'rec_new', isSelected: true });
+    mockPausedMarkers.push(recoveredMarker());
+    loadTakes.mockResolvedValueOnce([]).mockResolvedValueOnce([saved]);
+
+    const { result } = renderHook(() => useVerseAudio(recoveryArgs()));
+
+    await waitFor(() => expect(result.current.state).toBe('paused'));
+
+    await act(async () => {
+      await result.current.stop();
+    });
+
+    expect(mockRecordingStop).not.toHaveBeenCalled();
+    expect(persistTake).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tempUri: 'file:///old.aac',
+        tempUris: ['file:///old.aac'],
+        durationMs: 1000,
+      }),
+    );
+    expect(mockClearPausedTake).toHaveBeenCalledWith('7:3');
+    expect(result.current.state).toBe('recorded');
+  });
+
+  it('cleans up a marker whose segment files are gone instead of pausing', async () => {
+    mockPausedMarkers.push(recoveredMarker());
+    mockFileExists.mockResolvedValue(false);
+
+    const { result } = renderHook(() => useVerseAudio(recoveryArgs()));
+
+    await waitFor(() => {
+      expect(mockClearPausedTake).toHaveBeenCalledWith('7:3');
+    });
+    expect(mockDeleteFile).toHaveBeenCalledWith('file:///old.aac');
+    expect(result.current.state).toBe('idle');
+    expect(result.current.recoveredElapsedMs).toBe(0);
   });
 
   it('plays a take when the file exists', async () => {
@@ -502,6 +687,7 @@ describe('useVerseAudio', () => {
       bibleTextId: 103,
       viewBibleTextId: 105,
       tempUri: 'file:///tmp/take.m4a',
+      tempUris: ['file:///tmp/take.m4a'],
       durationMs: 2500,
       granularity: 'pericope',
       startChapter: 1,

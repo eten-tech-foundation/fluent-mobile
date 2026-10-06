@@ -16,8 +16,10 @@ import {
   fileExists,
   fileSize,
   recordingPath,
+  recordingsScratchPath,
 } from '../utils/audioStorage';
 import { getRemuxNativeModule } from '../audio/aacRemux';
+import { concatAdtsSegments } from '../audio/concatAdtsSegments';
 import { ensureSeekableTakeUri } from '../audio/ensureSeekableTakeUri';
 import { logger } from '../utils/logger';
 import { claimChapterOffline } from '../db/repository';
@@ -45,6 +47,12 @@ import {
   currentStitchUri,
   type StitchQueue,
 } from '../utils/stitchQueue';
+import {
+  clearPausedTake,
+  listPausedTakes,
+  upsertPausedTake,
+} from '../services/pausedTakes';
+import { decideRecovery } from '../services/pausedTakeRecovery';
 
 export type { RecordingUnitCapture };
 
@@ -64,6 +72,7 @@ export type CapturePersistSnapshot = {
 
 export type PersistTakeArgs = CapturePersistSnapshot & {
   tempUri: string;
+  tempUris?: string[];
   durationMs: number;
 };
 
@@ -100,7 +109,33 @@ export type UseVerseAudioArgs = {
   recordingUnit?: RecordingUnitCapture | null;
 } & VerseAudioPersistDeps;
 
-async function defaultPersistTake(
+/**
+ * Best-effort removal of the intermediates a commit leaves behind: the capture
+ * segments plus the scratch concat/remux outputs. A URI equal to the committed
+ * take is never deleted.
+ */
+async function deleteTakeIntermediates(
+  tempUris: readonly string[],
+  committedUri: string,
+  scratchUris: readonly string[],
+): Promise<void> {
+  const doomed = new Set<string>(scratchUris);
+  for (const uri of tempUris) {
+    doomed.add(uri);
+    // ensureSeekableTakeUri remuxes `<capture>.aac` to `<capture>.m4a`.
+    doomed.add(uri.replace(/\.aac$/i, '.m4a'));
+  }
+  doomed.delete(committedUri);
+  await Promise.all(
+    [...doomed].map(uri =>
+      deleteFile(uri).catch(error => {
+        log.warn('Failed to delete take intermediate file', { uri, error });
+      }),
+    ),
+  );
+}
+
+export async function defaultPersistTake(
   args: PersistTakeArgs,
 ): Promise<{ id: string; localFilePath: string }> {
   await ensureRecordingsDir();
@@ -108,18 +143,29 @@ async function defaultPersistTake(
     .toString(36)
     .slice(2, 10)}`;
   const dest = recordingPath(id);
+  const tempUris = args.tempUris?.length ? args.tempUris : [args.tempUri];
+  const scratchAac = recordingsScratchPath(id, '.aac');
+  const scratchM4a = recordingsScratchPath(id, '.m4a');
+  // Concatenate the kill-safe ADTS segments into scratch space — never into the
+  // final path, so the copy below is never a self-copy (#567).
+  const captureUri = await concatAdtsSegments(tempUris, scratchAac);
   // Inject native MediaMuxer remux when linked (#233); ADTS stays playable if missing.
   const seekableUri = await ensureSeekableTakeUri(
-    args.tempUri,
+    captureUri,
     getRemuxNativeModule(),
   );
-  await FileSystem.copyAsync({ from: seekableUri, to: dest });
-  const fileSizeBytes = await fileSize(dest);
+  const finalDest = seekableUri.toLowerCase().endsWith('.aac')
+    ? dest.replace(/\.m4a$/i, '.aac')
+    : dest;
+  if (seekableUri !== finalDest) {
+    await FileSystem.copyAsync({ from: seekableUri, to: finalDest });
+  }
+  const fileSizeBytes = await fileSize(finalDest);
   await addRecordingTake({
     id,
     bibleTextId: args.bibleTextId,
     viewBibleTextId: args.viewBibleTextId,
-    localFilePath: dest,
+    localFilePath: finalDest,
     durationMs: args.durationMs,
     fileSizeBytes,
     granularity: args.granularity,
@@ -128,7 +174,8 @@ async function defaultPersistTake(
     endChapter: args.endChapter,
     endVerse: args.endVerse,
   });
-  return { id, localFilePath: dest };
+  await deleteTakeIntermediates(tempUris, finalDest, [scratchAac, scratchM4a]);
+  return { id, localFilePath: finalDest };
 }
 
 async function defaultCountTakesAtView(view: VerseViewRef): Promise<number> {
@@ -137,6 +184,18 @@ async function defaultCountTakesAtView(view: VerseViewRef): Promise<number> {
     verseNumber: view.verseNumber,
   });
   return rows.length;
+}
+
+function pausedTakeSessionKey(
+  chapterAssignmentId: number | null | undefined,
+  verseNumber: number | undefined,
+  bibleTextId: number,
+): string {
+  return chapterAssignmentId !== null &&
+    chapterAssignmentId !== undefined &&
+    verseNumber !== undefined
+    ? `${chapterAssignmentId}:${verseNumber}`
+    : `bibleText:${bibleTextId}`;
 }
 
 /**
@@ -224,7 +283,17 @@ export function useVerseAudio({
     },
     [checkMultipleRecorders, chapterNumber, verseNumber],
   );
-  const recording = useRecordingEngine();
+
+  /**
+   * Auto-pause on background (#567). The engine calls `onAutoPause`; the ref
+   * indirection lets it reach `pause` (defined below) without a circular
+   * dependency. `autoPauseRef.current` is assigned right after `pause`.
+   */
+  const autoPauseRef = useRef<() => void>(() => {});
+  const onAutoPause = useCallback(() => {
+    autoPauseRef.current();
+  }, []);
+  const recording = useRecordingEngine({ onAutoPause });
   const playback = usePlaybackEngine();
   const [state, dispatch] = useReducer(
     verseAudioReducer,
@@ -242,6 +311,9 @@ export function useVerseAudio({
   const [loadedTakeId, setLoadedTakeId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const capturePersistRef = useRef<CapturePersistSnapshot | null>(null);
+  const [recoveredElapsedMs, setRecoveredElapsedMs] = useState(0);
+  const recoveredSegmentsRef = useRef<string[]>([]);
+  const recoveredElapsedMsRef = useRef(0);
   const allTakesRequestIdRef = useRef(0);
   const chapterAssignedRef = useRef(false);
   const activeBibleTextIdRef = useRef<number | null>(null);
@@ -309,6 +381,11 @@ export function useVerseAudio({
   const ownCanonicalTakeId =
     takes.find(t => t.isCanonical && isTakeInActiveView(t))?.id ?? null;
 
+  const sessionKey =
+    bibleTextId !== null
+      ? pausedTakeSessionKey(chapterAssignmentId, verseNumber, bibleTextId)
+      : null;
+
   const refreshAllTakes = useCallback(
     async (id: number) => {
       const requestId = ++allTakesRequestIdRef.current;
@@ -352,6 +429,58 @@ export function useVerseAudio({
         setTakes(rows);
         dispatch({ type: 'REHYDRATE', hasTake: rows.length > 0 });
         await refreshAllTakes(bibleTextId);
+        const key = pausedTakeSessionKey(
+          chapterAssignmentId,
+          verseNumber,
+          bibleTextId,
+        );
+        const marker = listPausedTakes().find(m => m.sessionKey === key);
+        if (!marker) {
+          return;
+        }
+        const existingFiles = new Set<string>();
+        await Promise.all(
+          marker.segments.map(async uri => {
+            if (await fileExists(uri)) {
+              existingFiles.add(uri);
+            }
+          }),
+        );
+        const decision = decideRecovery(marker, existingFiles);
+        if (decision.kind === 'prompt') {
+          // Already hydrated for this marker (effect can re-run) — don't redo.
+          if (recoveredSegmentsRef.current.length === 0) {
+            const m = decision.marker;
+            capturePersistRef.current = m.capture
+              ? { ...m.capture, viewBibleTextId: bibleTextId }
+              : {
+                  bibleTextId: recordingUnit?.anchorBibleTextId ?? bibleTextId,
+                  viewBibleTextId: bibleTextId,
+                  granularity: recordingUnit?.granularity ?? 'verse',
+                  startChapter:
+                    recordingUnit?.startChapter ?? chapterNumber ?? 0,
+                  startVerse: recordingUnit?.startVerse ?? verseNumber ?? 0,
+                  endChapter: recordingUnit?.endChapter ?? chapterNumber ?? 0,
+                  endVerse: recordingUnit?.endVerse ?? verseNumber ?? 0,
+                };
+            recoveredSegmentsRef.current = [...m.segments];
+            recoveredElapsedMsRef.current = m.elapsedMs;
+            setRecoveredElapsedMs(m.elapsedMs);
+            dispatch({ type: 'RECOVER' }); // idle/recorded -> paused
+          }
+          return;
+        }
+        clearPausedTake(marker.sessionKey);
+        await Promise.all(
+          marker.segments.map(uri =>
+            deleteFile(uri).catch(error => {
+              log.warn('Failed to delete unrecoverable paused segment', {
+                uri,
+                error,
+              });
+            }),
+          ),
+        );
       } catch (error) {
         log.error('Failed to load takes', { error });
         if (!cancelled) {
@@ -367,7 +496,14 @@ export function useVerseAudio({
     };
     // playback identity changes every render; stop() is bound to the stable engine.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- bibleTextId-driven reload
-  }, [bibleTextId, loadTakesFn, refreshAllTakes, clearStitchQueue]);
+  }, [
+    bibleTextId,
+    chapterAssignmentId,
+    verseNumber,
+    loadTakesFn,
+    refreshAllTakes,
+    clearStitchQueue,
+  ]);
 
   const start = useCallback(async () => {
     if (bibleTextId === null) return;
@@ -401,6 +537,26 @@ export function useVerseAudio({
       setPlayingTakeId(null);
       setLoadedTakeId(null);
       clearStitchQueue();
+      recoveredSegmentsRef.current = [];
+      recoveredElapsedMsRef.current = 0;
+      setRecoveredElapsedMs(0);
+      const staleMarker =
+        sessionKey !== null
+          ? listPausedTakes().find(m => m.sessionKey === sessionKey)
+          : undefined;
+      if (staleMarker) {
+        clearPausedTake(staleMarker.sessionKey);
+        await Promise.all(
+          staleMarker.segments.map(uri =>
+            deleteFile(uri).catch(error =>
+              log.warn('Failed to delete superseded paused segment', {
+                uri,
+                error,
+              }),
+            ),
+          ),
+        );
+      }
       const anchorBibleTextId = recordingUnit?.anchorBibleTextId ?? bibleTextId;
       capturePersistRef.current = {
         bibleTextId: anchorBibleTextId,
@@ -438,23 +594,61 @@ export function useVerseAudio({
     playback,
     recording,
     recordingUnit,
+    sessionKey,
     verseNumber,
   ]);
 
   const pause = useCallback(async () => {
     try {
-      await recording.pause();
+      const paused = await recording.pause();
+      if (paused && sessionKey !== null) {
+        const segments =
+          recoveredSegmentsRef.current.length > 0
+            ? [...recoveredSegmentsRef.current, paused.uri]
+            : [paused.uri];
+        const snapshot = capturePersistRef.current;
+        upsertPausedTake({
+          sessionKey,
+          segments,
+          elapsedMs: recoveredElapsedMsRef.current + paused.durationMs,
+          startedAt: new Date().toISOString(),
+          chapterAssignmentId: chapterAssignmentId ?? undefined,
+          verseNumber,
+          // Freeze the capture span so recovery persists the same unit even if
+          // the drafting mode changed before the take is resumed (#567).
+          capture: snapshot
+            ? {
+                bibleTextId: snapshot.bibleTextId,
+                granularity: snapshot.granularity,
+                startChapter: snapshot.startChapter,
+                startVerse: snapshot.startVerse,
+                endChapter: snapshot.endChapter,
+                endVerse: snapshot.endVerse,
+              }
+            : undefined,
+        });
+      }
       dispatch({ type: 'PAUSE' });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'pause failed';
       setErrorMessage(message);
       dispatch({ type: 'ERROR', message });
     }
-  }, [recording]);
+  }, [chapterAssignmentId, recording, sessionKey, verseNumber]);
+
+  // Background auto-pause runs the exact same path as the Pause button (#567).
+  autoPauseRef.current = () => {
+    void pause();
+  };
 
   const resume = useCallback(async () => {
     try {
-      await recording.resume();
+      if (recording.status === 'idle') {
+        // Recovered-paused: no native recorder yet, so start a new segment.
+        await recording.start();
+      } else {
+        await recording.resume();
+      }
       dispatch({ type: 'RESUME' });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'resume failed';
@@ -467,12 +661,28 @@ export function useVerseAudio({
     const snapshot = capturePersistRef.current;
     if (snapshot === null) return;
     try {
-      const { uri, durationMs } = await recording.stop();
+      const recoveredOnly =
+        recording.status === 'idle' && recoveredSegmentsRef.current.length > 0;
+      let tempUris: string[];
+      let uri: string;
+      let durationMs: number;
+      if (recoveredOnly) {
+        tempUris = [...recoveredSegmentsRef.current];
+        uri = tempUris[tempUris.length - 1]!;
+        durationMs = 0;
+      } else {
+        ({ uri, durationMs } = await recording.stop());
+        tempUris =
+          recoveredSegmentsRef.current.length > 0
+            ? [...recoveredSegmentsRef.current, uri]
+            : [uri];
+      }
       dispatch({ type: 'STOP' });
       const persistMeta = {
         ...snapshot,
         tempUri: uri,
-        durationMs,
+        tempUris,
+        durationMs: recoveredElapsedMsRef.current + durationMs,
       };
       log.debug('persisting take', {
         span: `${persistMeta.startChapter}:${persistMeta.startVerse}-${persistMeta.endChapter}:${persistMeta.endVerse}`,
@@ -482,6 +692,11 @@ export function useVerseAudio({
         durationMs: persistMeta.durationMs,
       });
       await persistTake(persistMeta);
+      // The take is committed and its segments are gone — clear the marker now,
+      // before claim sync / reload can throw and strand a dangling marker.
+      if (sessionKey !== null) {
+        clearPausedTake(sessionKey);
+      }
 
       try {
         if (
@@ -529,10 +744,16 @@ export function useVerseAudio({
       const rows = await loadTakesFn(snapshot.viewBibleTextId);
       setTakes(rows);
       await refreshAllTakes(snapshot.viewBibleTextId);
+      recoveredSegmentsRef.current = [];
+      recoveredElapsedMsRef.current = 0;
+      setRecoveredElapsedMs(0);
       capturePersistRef.current = null;
       dispatch({ type: 'SAVED' });
     } catch (error) {
       capturePersistRef.current = null;
+      recoveredSegmentsRef.current = [];
+      recoveredElapsedMsRef.current = 0;
+      setRecoveredElapsedMs(0);
       const message = error instanceof Error ? error.message : 'stop failed';
       setErrorMessage(message);
       dispatch({ type: 'ERROR', message });
@@ -544,6 +765,7 @@ export function useVerseAudio({
     onChapterClaimed,
     persistTake,
     recording,
+    sessionKey,
     userId,
     refreshAllTakes,
   ]);
@@ -867,6 +1089,7 @@ export function useVerseAudio({
     loadedTakeId,
     playbackStatus: playback.status,
     errorMessage,
+    recoveredElapsedMs,
     positionMs: playback.positionMs,
     durationMs: playback.durationMs,
     start,

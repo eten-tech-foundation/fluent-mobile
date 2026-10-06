@@ -62,6 +62,8 @@ export const hrefs = {
     chapterName: string;
     projectName: string;
     language: string;
+    recoverSessionKey?: string;
+    recoverVerse?: number;
   }) =>
     ({
       pathname: '/(app)/(stack)/verse-detail' as const,
@@ -70,6 +72,12 @@ export const hrefs = {
         chapterName: params.chapterName,
         projectName: params.projectName,
         language: params.language,
+        ...(params.recoverSessionKey
+          ? { recoverSessionKey: params.recoverSessionKey }
+          : {}),
+        ...(params.recoverVerse !== undefined
+          ? { recoverVerse: String(params.recoverVerse) }
+          : {}),
       },
     } as const),
   addUser: '/(app)/(stack)/add-user' as const,

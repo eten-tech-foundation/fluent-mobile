@@ -49,7 +49,7 @@ describe('Expo module mocks', () => {
       await recorder.prepareToRecordAsync();
       recorder.record();
       await recorder.stop();
-      expect(recorder.uri).toBe('file:///mock-recording.m4a');
+      expect(recorder.uri).toBe('file:///mock-recording.aac');
       expect(recorder.getStatus().isRecording).toBe(false);
     });
 

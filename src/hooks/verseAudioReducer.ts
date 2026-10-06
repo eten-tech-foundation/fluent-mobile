@@ -16,6 +16,7 @@ export type VerseAudioEvent =
   | { type: 'PLAY' }
   | { type: 'PLAYBACK_END' }
   | { type: 'DELETE' }
+  | { type: 'RECOVER' }
   | { type: 'REHYDRATE'; hasTake: boolean }
   | { type: 'ERROR'; message: string };
 
@@ -65,6 +66,11 @@ export function verseAudioReducer(
         state === 'error'
       ) {
         return 'idle';
+      }
+      return state;
+    case 'RECOVER':
+      if (state === 'idle' || state === 'recorded' || state === 'error') {
+        return 'paused';
       }
       return state;
     case 'ERROR':
