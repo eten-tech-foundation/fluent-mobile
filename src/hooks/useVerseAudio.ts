@@ -664,6 +664,7 @@ export function useVerseAudio({
   const stop = useCallback(async () => {
     const snapshot = capturePersistRef.current;
     if (snapshot === null) return;
+    capturePersistRef.current = null;
     try {
       const recoveredOnly =
         recording.status === 'idle' && recoveredSegmentsRef.current.length > 0;

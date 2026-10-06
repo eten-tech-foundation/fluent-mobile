@@ -14,6 +14,9 @@ import {
   drawerMenuLabelStyle,
 } from '../../components/ui/UserSettingsMenu';
 import { useTheme } from '../../theme/useTheme';
+import { logger } from '../../utils/logger';
+
+const log = logger.create('AppDrawerLayout');
 
 function SettingsDrawerContent(props: DrawerContentComponentProps) {
   const { signOut, notifyUserSwitched } = useAuthSession();
@@ -38,17 +41,17 @@ export default function AppDrawerLayout() {
   const router = useRouter();
 
   useLaunchRecoveryPrompt({
-    onResume: marker => {
+    onResume: async marker => {
       const { chapterAssignmentId, verseNumber, sessionKey } = marker;
       if (
         typeof chapterAssignmentId !== 'number' ||
         typeof verseNumber !== 'number'
       ) {
-        return;
+        return false;
       }
-      return (async () => {
+      try {
         const assignment = await getChapterAssignmentById(chapterAssignmentId);
-        if (!assignment) return;
+        if (!assignment) return false;
         router.navigate(
           hrefs.verseDetail({
             chapterId: chapterAssignmentId,
@@ -61,7 +64,11 @@ export default function AppDrawerLayout() {
             recoverVerse: verseNumber,
           }),
         );
-      })();
+        return true;
+      } catch (error) {
+        log.warn('Resume navigation failed', { error });
+        return false;
+      }
     },
   });
   const drawerWidth = Math.min(320, width * 0.82);
