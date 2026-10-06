@@ -8,6 +8,7 @@ import {
 import { createRecordingEngine } from '../audio/createRecordingEngine';
 import { requestMicPermission } from '../audio/micPermission';
 import type { RecorderApi, RecorderStatus } from '../audio/types';
+import { setMicActive } from '../audio/micActivity';
 
 export type UseRecordingEngineApi = RecorderApi & {
   requestMicPermission: typeof requestMicPermission;
@@ -41,7 +42,10 @@ export function useRecordingEngine(): UseRecordingEngineApi {
         recorder,
         prepareAudioMode: prepareRecordingAudioMode,
         releaseAudioMode: releaseRecordingAudioMode,
-        onStatusChange: setStatus,
+        onStatusChange: next => {
+          setMicActive('recording-engine', next === 'recording');
+          setStatus(next);
+        },
       }),
     [recorder],
   );

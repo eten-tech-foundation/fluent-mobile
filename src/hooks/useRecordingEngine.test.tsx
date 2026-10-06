@@ -7,6 +7,7 @@ import {
   resetAudioMock,
 } from '../test/mocks/expo-audio';
 import { useRecordingEngine } from './useRecordingEngine';
+import { isMicActive } from '../audio/micActivity';
 
 describe('useRecordingEngine', () => {
   let recorder: AudioRecorder;
@@ -60,6 +61,27 @@ describe('useRecordingEngine', () => {
       uri: 'file:///mock-recording.m4a',
       durationMs: 0,
     });
+  });
+
+  it('marks the mic active only while recording', async () => {
+    const { result } = renderHook(() => useRecordingEngine());
+    expect(isMicActive()).toBe(false);
+
+    await act(async () => {
+      await result.current.start();
+    });
+    expect(isMicActive()).toBe(true);
+
+    await act(async () => {
+      await result.current.pause();
+    });
+    expect(isMicActive()).toBe(false);
+
+    await act(async () => {
+      await result.current.resume();
+      await result.current.stop();
+    });
+    expect(isMicActive()).toBe(false);
   });
 
   it('throws when stop is called while idle', async () => {
