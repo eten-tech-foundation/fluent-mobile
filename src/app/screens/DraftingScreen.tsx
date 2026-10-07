@@ -378,6 +378,8 @@ export default function DraftingScreen() {
                   userId={userId}
                   bookCode={chapterData.bookCode ?? ''}
                   chapterNumber={chapterData.chapterNumber}
+                  bibleId={chapterData.bibleId}
+                  bookId={chapterData.bookId}
                 />
               </View>
               <View
