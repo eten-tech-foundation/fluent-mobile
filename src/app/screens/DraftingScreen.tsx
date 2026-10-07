@@ -357,6 +357,8 @@ export default function DraftingScreen() {
       <DraftingProvider
         verses={verses}
         initialVerse={initialVerse}
+        recoverVerse={recoverVerse}
+        recoverSessionKey={recoverSessionKey}
         projectId={chapterData.projectId}
         bookName={chapterData.bookName ?? ''}
         chapterName={chapterName}

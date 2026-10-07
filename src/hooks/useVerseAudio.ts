@@ -110,6 +110,11 @@ export type UseVerseAudioArgs = {
   recordingUnit?: RecordingUnitCapture | null;
 } & VerseAudioPersistDeps;
 
+/** Append a segment URI unless it is already the last one (pause/resume reuses the same file). */
+function appendSegment(list: readonly string[], uri: string): string[] {
+  return list[list.length - 1] === uri ? [...list] : [...list, uri];
+}
+
 /**
  * Best-effort removal of the intermediates a commit leaves behind: the capture
  * segments plus the scratch concat/remux outputs. A URI equal to the committed
@@ -615,10 +620,11 @@ export function useVerseAudio({
     try {
       const paused = await recording.pause();
       if (paused && sessionKey !== null) {
-        const segments =
-          recoveredSegmentsRef.current.length > 0
-            ? [...recoveredSegmentsRef.current, paused.uri]
-            : [paused.uri];
+        const segments = appendSegment(
+          recoveredSegmentsRef.current,
+          paused.uri,
+        );
+        recoveredSegmentsRef.current = segments;
         const snapshot = capturePersistRef.current;
         upsertPausedTake({
           sessionKey,
@@ -677,10 +683,7 @@ export function useVerseAudio({
         durationMs = 0;
       } else {
         ({ uri, durationMs } = await recording.stop());
-        tempUris =
-          recoveredSegmentsRef.current.length > 0
-            ? [...recoveredSegmentsRef.current, uri]
-            : [uri];
+        tempUris = appendSegment(recoveredSegmentsRef.current, uri);
       }
       dispatch({ type: 'STOP' });
       const persistMeta = {

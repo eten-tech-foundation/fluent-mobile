@@ -480,6 +480,118 @@ describe('useVerseAudio', () => {
     expect(result.current.loadedTakeId).toBe('rec_1');
   });
 
+  it('persists a single segment when pause/resume reuses the same file', async () => {
+    const uri = 'file:///tmp/take.aac';
+    mockRecordingPause.mockImplementation(async () => {
+      mockRecordingState.status = 'paused';
+      return { uri, durationMs: 500 };
+    });
+    mockRecordingResume.mockImplementation(async () => {
+      mockRecordingState.status = 'recording';
+    });
+    mockRecordingStop.mockImplementation(async () => {
+      mockRecordingState.status = 'idle';
+      return { uri, durationMs: 900 };
+    });
+
+    const { result } = renderHook(() => useVerseAudio(recoveryArgs()));
+    await waitFor(() => expect(result.current.state).toBe('idle'));
+
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      await result.current.pause();
+    });
+    await act(async () => {
+      await result.current.resume();
+    });
+    await act(async () => {
+      await result.current.stop();
+    });
+
+    expect(persistTake).toHaveBeenCalledWith(
+      expect.objectContaining({ tempUri: uri, tempUris: [uri] }),
+    );
+  });
+
+  it('keeps recovered segments plus one new segment across repeated pauses', async () => {
+    const uri = 'file:///tmp/new.aac';
+    mockPausedMarkers.push(recoveredMarker());
+    mockRecordingPause.mockImplementation(async () => {
+      mockRecordingState.status = 'paused';
+      return { uri, durationMs: 400 };
+    });
+    mockRecordingResume.mockImplementation(async () => {
+      mockRecordingState.status = 'recording';
+    });
+    mockRecordingStop.mockImplementation(async () => {
+      mockRecordingState.status = 'idle';
+      return { uri, durationMs: 700 };
+    });
+
+    const { result } = renderHook(() => useVerseAudio(recoveryArgs()));
+    await waitFor(() => expect(result.current.state).toBe('paused'));
+
+    await act(async () => {
+      await result.current.resume(); // idle recorder -> start() new segment
+    });
+    await act(async () => {
+      await result.current.pause();
+    });
+    await act(async () => {
+      await result.current.resume();
+    });
+    await act(async () => {
+      await result.current.pause();
+    });
+    await act(async () => {
+      await result.current.stop();
+    });
+
+    expect(persistTake).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tempUris: ['file:///old.aac', uri],
+      }),
+    );
+  });
+
+  it('does not re-hydrate the paused marker when the load effect re-runs mid-session', async () => {
+    const uri = 'file:///tmp/take.aac';
+    mockRecordingPause.mockImplementation(async () => {
+      mockRecordingState.status = 'paused';
+      return { uri, durationMs: 500 };
+    });
+
+    const { result, rerender } = renderHook(
+      ({ load }: { load: typeof loadTakes }) =>
+        useVerseAudio({ ...recoveryArgs(), loadTakes: load }),
+      { initialProps: { load: loadTakes } },
+    );
+    await waitFor(() => expect(result.current.state).toBe('idle'));
+
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      await result.current.pause();
+    });
+    mockFileExists.mockClear();
+
+    // New loadTakes identity re-runs the load effect, which finds the marker
+    // that pause() just wrote.
+    const reloaded = jest.fn().mockResolvedValue([]);
+    await act(async () => {
+      rerender({ load: reloaded });
+    });
+    await waitFor(() => expect(mockFileExists).toHaveBeenCalledWith(uri));
+    await act(async () => {});
+
+    // Hydration would copy the marker's 500ms into the recovered elapsed time
+    // and double count it on stop.
+    expect(result.current.recoveredElapsedMs).toBe(0);
+  });
+
   it('pausePlayback is a no-op when draft is not playing', async () => {
     const take = makeTake();
     loadTakes.mockResolvedValue([take]);

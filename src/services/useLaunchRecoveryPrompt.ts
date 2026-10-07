@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Alert, InteractionManager } from 'react-native';
 import { launchRecoveryGate } from './launchRecoveryGate';
-import { collectLaunchRecoveries } from '../services/pausedTakeLaunchRecovery';
+import { collectLaunchRecoveries } from './pausedTakeLaunchRecovery';
 import { clearPausedTake, type PausedTakeMarker } from './pausedTakes';
 import { deleteFile } from '../utils/audioStorage';
 import { logger } from '../utils/logger';
@@ -103,6 +103,9 @@ export function useLaunchRecoveryPrompt({
                     showNext(index, true);
                     return;
                   }
+                  // One resume per launch: remaining markers are not prompted
+                  // here. They stay on disk and recover (RECOVER → paused)
+                  // when their verse opens.
                   // Wait for the redirect to finish so screens gated on
                   // launchRecoveryGate see Home as blurred (#567).
                   InteractionManager.runAfterInteractions(() => {
