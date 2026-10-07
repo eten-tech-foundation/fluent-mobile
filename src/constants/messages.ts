@@ -44,7 +44,6 @@ export const ACCOUNT_SIGN_OUT_LABEL = 'Log out';
 export const LOGOUT_UNSYNCED_TITLE = 'Unsynced work on device';
 export const LOGOUT_UNSYNCED_MESSAGE =
   'You have recordings that have not been uploaded. Log out anyway?';
-export const LOGOUT_UNSYNCED_CONFIRM = ACCOUNT_SIGN_OUT_LABEL;
 export const LOGOUT_UNSYNCED_CANCEL = 'Cancel';
 
 export const REAUTH_PROMPT_TITLE = 'Session expired';
