@@ -29,9 +29,14 @@ export interface KeyProps {
   onPress?: (event: GestureResponderEvent) => void;
   /**
    * Latched: held down while on (e.g. Play while playing). Reported to
-   * TalkBack as `selected`, so keep the label fixed ("Play", not Play/Pause).
+   * TalkBack as `selected` unless `announceLatched` is false.
    */
   active?: boolean;
+  /**
+   * Set false when the label already names the action (Play / Pause), so
+   * TalkBack doesn't also say "selected".
+   */
+  announceLatched?: boolean;
   disabled?: boolean;
   /** Highlight lip along the bottom edge (Figma `Lip`). */
   lip?: boolean;
@@ -50,6 +55,7 @@ export function Key({
   accessibilityLabel,
   onPress,
   active = false,
+  announceLatched = true,
   disabled = false,
   lip = true,
   style,
@@ -166,7 +172,7 @@ export function Key({
       android_disableSound
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ disabled, selected: active }}
+      accessibilityState={{ disabled, selected: announceLatched && active }}
       style={[styles.key, style]}
       testID={testID}
     >

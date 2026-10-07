@@ -58,14 +58,28 @@ if (!response.ok) {
 }
 const spec = await response.json();
 
+const HTTP_METHODS = new Set([
+  'get',
+  'put',
+  'post',
+  'delete',
+  'options',
+  'head',
+  'patch',
+  'trace',
+]);
+
+// Path items can also carry `parameters`, `summary` etc.; only count operations.
 const rows = Object.entries(spec.paths).flatMap(([apiPath, ops]) =>
-  Object.entries(ops).map(([method, op]) => ({
-    called: clientPatterns.some(re => re.test(normalize(apiPath))),
-    method: method.toUpperCase(),
-    path: apiPath,
-    tags: (op.tags ?? []).join(', '),
-    summary: op.summary ?? '',
-  })),
+  Object.entries(ops)
+    .filter(([method]) => HTTP_METHODS.has(method))
+    .map(([method, op]) => ({
+      called: clientPatterns.some(re => re.test(normalize(apiPath))),
+      method: method.toUpperCase(),
+      path: apiPath,
+      tags: (op.tags ?? []).join(', '),
+      summary: op.summary ?? '',
+    })),
 );
 const filtered = rows.filter(
   r => !tagFilter || r.tags.toLowerCase().includes(tagFilter),

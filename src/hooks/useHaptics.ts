@@ -7,7 +7,7 @@ import { logger } from '../utils/logger';
 const log = logger.create('haptics');
 
 function perform(type: Haptics.AndroidHaptics): void {
-  // The motor is audible in recordings, so stay silent while the mic is open.
+  // The motor is audible in recordings, so stay silent for the whole take.
   if (isMicActive()) {
     return;
   }

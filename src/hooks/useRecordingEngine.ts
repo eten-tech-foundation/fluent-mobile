@@ -43,7 +43,11 @@ export function useRecordingEngine(): UseRecordingEngineApi {
         prepareAudioMode: prepareRecordingAudioMode,
         releaseAudioMode: releaseRecordingAudioMode,
         onStatusChange: next => {
-          setMicActive('recording-engine', next === 'recording');
+          // Silent for the whole take: a resume tap's haptic would land as capture restarts.
+          setMicActive(
+            'recording-engine',
+            next === 'recording' || next === 'paused',
+          );
           setStatus(next);
         },
       }),

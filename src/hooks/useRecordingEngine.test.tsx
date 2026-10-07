@@ -7,7 +7,7 @@ import {
   resetAudioMock,
 } from '../test/mocks/expo-audio';
 import { useRecordingEngine } from './useRecordingEngine';
-import { isMicActive } from '../audio/micActivity';
+import { isMicActive, setMicActive } from '../audio/micActivity';
 
 describe('useRecordingEngine', () => {
   let recorder: AudioRecorder;
@@ -15,6 +15,7 @@ describe('useRecordingEngine', () => {
   let stopSpy: jest.SpiedFunction<AudioRecorder['stop']>;
 
   beforeEach(() => {
+    setMicActive('recording-engine', false);
     resetAudioMock();
     recorder = new AudioRecorder();
     stopSpy = jest.spyOn(recorder, 'stop');
@@ -63,7 +64,7 @@ describe('useRecordingEngine', () => {
     });
   });
 
-  it('marks the mic active only while recording', async () => {
+  it('marks the mic active for the whole take, including pause', async () => {
     const { result } = renderHook(() => useRecordingEngine());
     expect(isMicActive()).toBe(false);
 
@@ -75,7 +76,7 @@ describe('useRecordingEngine', () => {
     await act(async () => {
       await result.current.pause();
     });
-    expect(isMicActive()).toBe(false);
+    expect(isMicActive()).toBe(true);
 
     await act(async () => {
       await result.current.resume();

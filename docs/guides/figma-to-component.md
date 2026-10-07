@@ -58,13 +58,13 @@ Put this in the issue or PR, short:
 
 | Field | Example (Transport key) |
 | --- | --- |
-| Props | `icon`, `onPress`, `active?`, `disabled?`, `accessibilityLabel` |
+| Props | `icon`, `onPress`, `active?`, `announceLatched?`, `disabled?`, `accessibilityLabel` |
 | Variants | `primary` (wide, shaded) · `secondary` |
 | States | default · pressed · latched (`active`) · disabled |
 | Modes | Canvas |
 | Motion | press-in `motion/press` · release `motion/release` · `ease-standard` |
-| Haptic | `press` on press-in · none while recording |
-| A11y | `role=button`, `state={ selected: active, disabled }`, 48dp target |
+| Haptic | `press` on press-in · none during a take |
+| A11y | `role=button`, action label (Play / Pause) with `announceLatched={false}` → `state={ disabled }`, 48dp target |
 | Signature moment | the key sinks `space/4` into an inset well |
 
 ### 3. Map every value to a token
@@ -145,6 +145,11 @@ Figma 07 · Tactile defines the state model. In code:
 - `boxShadow` (with `inset`) needs the New Architecture and parents with
   `overflow: 'visible'`. Check it on a low-end device; stacked inset shadows
   aren't free.
+- **Mind the Android floor.** The app's `minSdkVersion` is 24, but RN draws
+  outset `boxShadow` only on API 28+ and inset only on API 29+. Below that,
+  tactile components render flat: no crash, no depth. Make sure every state
+  still reads without shadows (color, icon, position), and smoke-test an
+  API 28 emulator before calling a tactile component done.
 - Gradients: hard-stop faces can be two stacked `View`s (no gradient needed).
   Real gradients: `expo-linear-gradient` (Expo-first) unless `react-native-svg`
   is already in the component.
@@ -176,9 +181,10 @@ Rules:
   `android.permission.VIBRATE` into the manifest; it's a normal permission,
   no prompt). `impactAsync` and friends use the raw `Vibrator` on Android and
   feel buzzy.
-- **No haptics while the mic is open.** The motor is audible in recordings.
-  Fire the record-start haptic *before* capture begins, and suppress
-  everything until capture stops. `useRecordingEngine` sets
+- **No haptics for the whole take, recording or paused.** The motor is
+  audible in recordings, and a haptic on the resume tap would land as capture
+  restarts. Fire the record-start haptic *before* capture begins, and
+  suppress everything until the take stops. `useRecordingEngine` sets
   `src/audio/micActivity.ts` and the helper checks it, so components don't
   have to remember.
 - Fire on **press-in** for keys (feels mechanical), on **commit** for
@@ -196,9 +202,17 @@ no static state grids. Build a small, realistic interaction that walks the
 component through its states, the way the Key's transport demo latches Play
 and disables the skip keys at the first and last verse. Each entry covers:
 
-- every state reachable through real use, including disabled and latched
+- every state in the contract reachable through real use, including disabled
+  and latched (the Switch demo disables "Loop this verse" while auto-play is
+  on). If a state or prop can't come up naturally, add a second small demo
+  rather than a static grid. If no Figma screen uses a prop value at all
+  (the Key's `Lip=false`), drop it from the ticket's AC instead of inventing
+  a demo for it. Keeping the prop itself is fine when it mirrors the Figma
+  component's API (the Key keeps `lip`, which Code Connect can map).
 - the sizes it's actually used at in Figma (the Key appears at 135 × 96
-  and 72 × 72)
+  and 72 × 72). Check the Figma instance at each size before assuming the
+  component scales: the 72 × 72 Key keeps the same 12 → 8 lip, so the
+  constants hold, but verify, don't assume.
 - long-text and Telugu samples for anything with text
 
 Put the Figma link as a comment on the entry in `entries/index.ts`, not in
@@ -208,7 +222,9 @@ the UI (it can't open on the phone).
 
 - Unit test with the [`write-test`](../../.claude/skills/write-test/SKILL.md)
   skill: renders each state, `accessibilityState` follows props, `onPress`
-  doesn't fire when disabled, haptic helper called on press-in (mock it).
+  doesn't fire when disabled, and the haptic method and trigger from the
+  component's contract (mock `useHaptics`): `press()` on press-in for a Key,
+  `toggle(on)` on commit for a Switch.
 - Legacy snapshot (`legacyTheme.test.ts`) may only change additively (new
   `Theme` groups); any changed or removed value is a regression.
 
@@ -220,7 +236,7 @@ emulator (haptics need a real device):
 - [ ] Gallery demos: every state matches Figma side by side (screenshot vs
       `get_screenshot`)
 - [ ] Press feels immediate; release settles; no flicker on fast taps
-- [ ] Haptics fire once, at the right moment, and not while recording
+- [ ] Haptics fire once, at the right moment, and not during a take (recording or paused)
 - [ ] Settings → Interface → UI version → Legacy: nothing changed
 - [ ] TalkBack: label, role and state read correctly; focus order sensible
 - [ ] Font size at largest + Display size at largest: nothing clips
@@ -233,6 +249,19 @@ Normal delivery: `/start-issue` → `/create-pr`, `Refs #NNN`, PR template. Mark
 **Needs QA? Yes** when the component adds haptics or touches recording, since
 those need a human on a device ([qa-process.md](qa-process.md)). Include
 before/after screenshots and the gallery path in "How to verify".
+
+Before asking for review (from the first component PR's feedback):
+
+- [ ] Branch rebased on `main`.
+- [ ] Every product rule the component relies on (e.g. haptics silent for the
+      whole take) is decided once and worded the same in code, guide and
+      skill. Ambiguous wording gets copied as two different behaviors.
+- [ ] Status docs you touched (like the theme audit) read correctly from the
+      top, not just in a status section at the end.
+- [ ] The Android floor is noted for any newer style feature (see
+      gotchas), with an API 28 smoke test for tactile components.
+- [ ] Tests reset all shared module state they touch (every mic owner, for
+      example), so one failure can't cascade.
 
 Optional once it's merged: map the Figma component to the code component with
 Code Connect, so future `get_design_context` calls return our component
@@ -342,7 +371,11 @@ its issue. Don't bury a gap in "known limitations" (AGENTS.md gate 1).
 **Visual effects**
 
 - `boxShadow` inset/outset: New Architecture only, parent `overflow: visible`,
-  watch performance on long lists.
+  watch performance on long lists. Outset needs API 28+, inset API 29+;
+  older devices (we support API 24) get no shadow at all.
+- Before using any newer RN style feature, check its Android floor against
+  `minSdkVersion` (24). The RN source says it plainly, e.g.
+  `MIN_INSET_BOX_SHADOW_SDK_VERSION` in `InsetBoxShadowDrawable.kt`.
 - Avoid `elevation` (the Android prop) on tactile components. It fights
   `boxShadow` and can't do inset.
 - Contrast: check the role pairs against Figma 09 · Contrast. `fg/inactive`
@@ -359,10 +392,14 @@ its issue. Don't bury a gap in "known limitations" (AGENTS.md gate 1).
   `accessibilityState` for `disabled`, `selected` (latched keys) or
   `checked` (switches).
 - Latched/toggle state can't be conveyed by color or depth alone.
+- Toggle-style controls get one pattern, not both: either a fixed label with
+  the latch announced (`selected` / `checked`), or a label that names the
+  action (Play / Pause) with the latch not announced (`announceLatched={false}`
+  on Key). Both together reads as "Pause, selected".
 
 **Audio app specifics**
 
-- No haptics, sounds or vibration while recording.
+- No haptics, sounds or vibration for the whole take (recording or paused).
 - `android_disableSound` on controls used during playback or record.
 - Transport controls must stay responsive while audio is loading. Show a
   state, don't block the press.

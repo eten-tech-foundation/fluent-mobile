@@ -40,7 +40,7 @@ Read it fully before step 1; this file is how an agent executes it.
   (`boxShadow` strings), `t.motion.*`, `t.opacity.disabled`,
   `t.controlSizes.*`, plus the existing `t.spacing` / `t.radius`.
 - Haptics: `useHaptics()` from `src/hooks/useHaptics.ts` (no-op in Legacy, silent
-  while `src/audio/micActivity.ts` says the mic is open).
+  for the whole take, recording or paused, via `src/audio/micActivity.ts`).
 - Reference implementations: `src/components/ui/Key.tsx` (pressable, latch)
   and `src/components/ui/Switch.tsx` (controlled value), with gallery entries
   in `src/app/gallery/entries/`. Copy their shape.
@@ -80,7 +80,11 @@ any undrawn states (ask, don't invent).
 
 Write the contract table from the guide (props, variants, states, modes,
 motion, haptic, a11y, signature moment). Get a yes from the user before
-building anything non-trivial.
+building anything non-trivial. Settle any product rule the component depends
+on (e.g. haptics silent for the whole take, recording or paused) here, and
+word it identically wherever it appears. For toggle-style controls, pick one
+a11y pattern: fixed label + announced latch, or action label (Play / Pause)
+with `announceLatched={false}`.
 
 ### 3. Token mapping report
 
@@ -105,6 +109,11 @@ no static state grids: a small realistic interaction that reaches every
 state (see the Key's transport demo), at the sizes Figma uses it, with
 long-text and Telugu samples for text. The gallery always renders Next
 (`UiVersionOverride`), so don't add a version toggle.
+Every state in the contract must be reachable in the demo (add a second small
+demo if needed; drop a prop from the AC if no Figma screen uses it). Check
+Figma's instance geometry at each size the component is used at.
+Check every RN style feature's Android floor against `minSdkVersion` 24
+(inset `boxShadow` needs API 29, outset 28) and note it in the PR.
 
 ### 5b. Screens only: wire to what exists
 
@@ -129,7 +138,8 @@ section "Screens: wire to what exists" before writing screen code:
 ### 6. Test and verify
 
 - Unit test via the `write-test` skill (states, a11y state, disabled
-  behavior, haptic on press-in with the helper mocked).
+  behavior, and the haptic method and trigger from the component's contract,
+  with `useHaptics` mocked).
 - `npm run typecheck && npm run lint && npm test -- <Name>`. The Legacy
   snapshot may only change additively (new `Theme` groups); anything else
   is a regression.
@@ -141,7 +151,10 @@ section "Screens: wire to what exists" before writing screen code:
 
 ### 7. Hand off
 
-Hand off to `/create-pr`. In the PR: Figma link, the token mapping report
+Before handing off, run the guide's "Before asking for review" checklist
+(rebased on `main`, product rules consistent, status docs correct from the
+top, Android floor noted, shared test state reset). Then hand off to
+`/create-pr`. In the PR: Figma link, the token mapping report
 (collapsed), gallery path under "How to verify", before/after screenshots,
 **Needs QA? Yes** if haptics or recording are involved. For screens, add the
 **Existing functionality** table (UI element · Status · Source with file or

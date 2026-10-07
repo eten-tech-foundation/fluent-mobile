@@ -91,6 +91,21 @@ describe('Key', () => {
     });
   });
 
+  it('can skip announcing the latch when the label names the action', () => {
+    render(
+      <Key
+        icon={ColorIcon}
+        accessibilityLabel="Pause"
+        onPress={jest.fn()}
+        active
+        announceLatched={false}
+      />,
+    );
+
+    const button = screen.getByRole('button', { name: 'Pause' });
+    expect(button.props.accessibilityState).toMatchObject({ selected: false });
+  });
+
   it('calls onPress and fires the press haptic on press-in', () => {
     const onPress = jest.fn();
     render(

@@ -98,7 +98,7 @@ function Gallery() {
             />
             <SettingsToggleRow
               title="Simulate recording"
-              subtitle="Haptics must stay silent while the mic is open."
+              subtitle="Haptics must stay silent for the whole take."
               value={simulateRecording}
               onValueChange={setSimulateRecording}
               testID="gallery-simulate-recording"

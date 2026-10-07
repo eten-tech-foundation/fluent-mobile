@@ -55,7 +55,8 @@ export function KeyEntry() {
         <KeyDeck>
           <Key
             icon={playing ? PauseIcon : PlayIcon}
-            accessibilityLabel="Play"
+            accessibilityLabel={playing ? 'Pause' : 'Play'}
+            announceLatched={false}
             active={playing}
             onPress={togglePlay}
             style={styles.transportKey}
@@ -87,7 +88,8 @@ export function KeyEntry() {
         <Text style={styles.demoTitle}>Now playing (72 × 72)</Text>
         <Key
           icon={playing ? PauseIcon : PlayIcon}
-          accessibilityLabel="Play"
+          accessibilityLabel={playing ? 'Pause' : 'Play'}
+          announceLatched={false}
           active={playing}
           onPress={togglePlay}
           style={styles.compactKey}

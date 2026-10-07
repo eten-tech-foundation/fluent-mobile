@@ -30,6 +30,7 @@ describe('useHaptics', () => {
     jest.clearAllMocks();
     mockPreferenceStore();
     setMicActive('test', false);
+    setMicActive('other', false);
   });
 
   it('is a no-op in Legacy', () => {
