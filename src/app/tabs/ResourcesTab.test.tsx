@@ -11,7 +11,10 @@ import {
   DraftingProvider,
   useDraftingContext,
 } from '../context/DraftingContext';
-import { RESOURCES_EMPTY_MESSAGE } from '../../constants/messages';
+import {
+  RESOURCES_EMPTY_MESSAGE,
+  RESOURCES_NONE_FOR_VERSE_MESSAGE,
+} from '../../constants/messages';
 import { clearResourcesTabUiState } from '../../utils/resourcesTabUiState';
 import { VerseData } from '../../types/db/types';
 import {
@@ -248,13 +251,77 @@ describe('ResourcesTab', () => {
     expect(screen.queryByText('Translation Notes')).toBeNull();
   });
 
-  it('shows all sections online when nothing is inventoried (fresh)', async () => {
+  it('shows non-empty sections online when nothing is inventoried (fresh)', async () => {
     renderResources(1);
-    expect(screen.getByText('Translation Notes')).toBeTruthy();
-    expect(screen.getByText('Translation Questions')).toBeTruthy();
+    // Verse 1 mock: TN only; TQ + Images hide after empty load (#591).
     await waitFor(() => {
+      expect(screen.getByText('Translation Notes')).toBeTruthy();
+    });
+    await waitFor(() => {
+      expect(screen.queryByText('Translation Questions')).toBeNull();
+      expect(screen.queryByText('Images & Maps')).toBeNull();
+    });
+    expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
+    expect(screen.queryByText(RESOURCES_NONE_FOR_VERSE_MESSAGE)).toBeNull();
+  });
+
+  it('loads Translation Questions with the tab, not on expand', async () => {
+    renderResources(2);
+    await waitFor(() => {
+      expect(mockLoadQuestions).toHaveBeenCalled();
+    });
+    expect(
+      mockLoadQuestions.mock.calls.some(([params]) => params.verseNumber === 2),
+    ).toBe(true);
+    // Section still collapsed — load must not wait on expand.
+    expect(
+      screen.queryByTestId('resources-section-translationQuestions-toggle'),
+    ).toBeTruthy();
+  });
+
+  it('hides Translation Notes when the unit loads empty online', async () => {
+    mockLoadNotes.mockImplementation(async () => []);
+    mockLoadQuestions.mockImplementation(async () =>
+      getMockTranslationQuestions(99, 2),
+    );
+    mockLoadImages.mockImplementation(async () => getMockImagesMaps(99, 2));
+    renderResources(2);
+
+    await waitFor(() => {
+      expect(mockLoadNotes).toHaveBeenCalled();
+      expect(mockLoadQuestions).toHaveBeenCalled();
+      expect(mockLoadImages).toHaveBeenCalled();
+    });
+    await waitFor(() => {
+      expect(screen.getByText('Translation Questions')).toBeTruthy();
       expect(screen.getByText('Images & Maps')).toBeTruthy();
     });
+    await waitFor(() => {
+      expect(screen.queryByText('Translation Notes')).toBeNull();
+    });
+  });
+
+  it('hides Translation Questions when the unit loads empty online', async () => {
+    // Default verse-1 mocks already return empty TQ + Images; assert hide-when-empty.
+    renderResources(1);
+
+    await waitFor(() => {
+      expect(screen.getByText('Translation Notes')).toBeTruthy();
+    });
+    await waitFor(() => {
+      expect(screen.queryByText('Translation Questions')).toBeNull();
+      expect(screen.queryByText('Images & Maps')).toBeNull();
+    });
+  });
+
+  it('shows the online empty message when every section loads empty', async () => {
+    renderResources(3);
+    await waitFor(() => {
+      expect(screen.getByText(RESOURCES_NONE_FOR_VERSE_MESSAGE)).toBeTruthy();
+    });
+    expect(screen.queryByText('Translation Notes')).toBeNull();
+    expect(screen.queryByText('Translation Questions')).toBeNull();
+    expect(screen.queryByText('Images & Maps')).toBeNull();
     expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
   });
 
@@ -265,7 +332,7 @@ describe('ResourcesTab', () => {
     expect(screen.queryByText('Translation Notes')).toBeNull();
   });
 
-  it('shows the empty message while connectivity is unresolved', () => {
+  it('shows a loading indicator while connectivity is unresolved', () => {
     mockUseConnectivity.mockReturnValue({
       isOnline: true,
       isLinkOnline: true,
@@ -278,7 +345,9 @@ describe('ResourcesTab', () => {
       transferConnectivityPending: true,
     });
     renderResources(1);
-    expect(screen.getByText(RESOURCES_EMPTY_MESSAGE)).toBeTruthy();
+    expect(screen.getByTestId('resources-tab-loading')).toBeTruthy();
+    expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
+    expect(screen.queryByText(RESOURCES_NONE_FOR_VERSE_MESSAGE)).toBeNull();
     expect(screen.queryByText('Translation Notes')).toBeNull();
   });
 
@@ -299,36 +368,44 @@ describe('ResourcesTab', () => {
     expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
   });
 
-  it('shows TN + TQ for tier1-tier2 inventory offline', () => {
+  it('shows TN + TQ for tier1-tier2 inventory offline', async () => {
     mockOfflineConnectivity();
     setPrepareOfflineMockInventoryScenario('tier1-tier2');
-    renderResources(1);
-    expect(screen.getByText('Translation Notes')).toBeTruthy();
-    expect(screen.getByText('Translation Questions')).toBeTruthy();
+    // Verse 2 mocks have TN + TQ content; empty sections hide after load (#591).
+    renderResources(2);
+    await waitFor(() => {
+      expect(screen.getByText('Translation Notes')).toBeTruthy();
+      expect(screen.getByText('Translation Questions')).toBeTruthy();
+    });
     expect(screen.queryByText('Images & Maps')).toBeNull();
   });
 
   it('shows all sections when all tiers are inventoried', async () => {
     setPrepareOfflineMockInventoryScenario('all');
     mockLoadImages.mockResolvedValue(getMockImagesMaps(99, 2));
-    renderResources(3);
-    expect(screen.getByText('Translation Notes')).toBeTruthy();
-    expect(screen.getByText('Translation Questions')).toBeTruthy();
+    // Verse 2 mocks have TN + TQ + Images content.
+    renderResources(2);
     await waitFor(() => {
+      expect(screen.getByText('Translation Notes')).toBeTruthy();
+      expect(screen.getByText('Translation Questions')).toBeTruthy();
       expect(screen.getByText('Images & Maps')).toBeTruthy();
     });
   });
 
-  it('updates the reference label when the selected verse changes', () => {
+  it('updates the reference label when the selected verse changes', async () => {
     setPrepareOfflineMockInventoryScenario('tier1');
     renderResources(1);
     expect(screen.getByText('Mark 14:1')).toBeTruthy();
-    expect(screen.getByText('Translation Notes')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText('Translation Notes')).toBeTruthy();
+    });
 
     fireEvent.press(screen.getByTestId('select-verse-3'));
     expect(screen.getByText('Mark 14:3')).toBeTruthy();
-    // Online: all sections visible regardless of verse mocks.
-    expect(screen.getByText('Translation Notes')).toBeTruthy();
+    // Verse 3 mocks are empty — online tab-wide empty (#591).
+    await waitFor(() => {
+      expect(screen.getByText(RESOURCES_NONE_FOR_VERSE_MESSAGE)).toBeTruthy();
+    });
     expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
   });
 
