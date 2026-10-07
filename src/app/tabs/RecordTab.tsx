@@ -56,6 +56,10 @@ import {
 import { WarningBanner } from '../../components/ui/WarningBanner';
 import { StageAdvanceConfirmSheet } from '../../components/ui/StageAdvanceConfirmSheet';
 import {
+  CAPTURE_LEAVE_DISCARD,
+  CAPTURE_LEAVE_MESSAGE,
+  CAPTURE_LEAVE_RESUME,
+  CAPTURE_LEAVE_TITLE,
   RECORD_AUDIO_CONFLICT_WARNING,
   RECORD_TAKEN_CHAPTER_WARNING,
 } from '../../constants/messages';
@@ -654,13 +658,6 @@ export function RecordTab({
   }, [verseAudio.state]);
 
   useEffect(() => {
-    const active =
-      verseAudio.state === 'recording' || verseAudio.state === 'paused';
-    onCaptureActiveChange?.(active);
-    return () => onCaptureActiveChange?.(false);
-  }, [verseAudio.state, onCaptureActiveChange]);
-
-  useEffect(() => {
     if (!verseAudio.errorMessage) return;
     Alert.alert('Audio error', verseAudio.errorMessage);
   }, [verseAudio.errorMessage]);
@@ -673,12 +670,26 @@ export function RecordTab({
     return () => onCaptureActiveChange?.(false);
   }, [captureActive, onCaptureActiveChange]);
 
-  const captureControls = useMemo(
+  // `useRecordingEngine` returns a fresh object every render, so
+  // `verseAudio.resume` / `discardCapture` change identity each render. Hand the
+  // parent one stable controls object that delegates to the latest callbacks via
+  // a ref, otherwise the registration effect below re-registers every render and
+  // loops through the parent's `setCaptureControls`.
+  const captureActionsRef = useRef({
+    resume: verseAudio.resume,
+    discardCapture: verseAudio.discardCapture,
+  });
+  captureActionsRef.current = {
+    resume: verseAudio.resume,
+    discardCapture: verseAudio.discardCapture,
+  };
+
+  const captureControls = useMemo<CaptureControls>(
     () => ({
-      resume: verseAudio.resume,
-      discardCapture: verseAudio.discardCapture,
+      resume: () => captureActionsRef.current.resume(),
+      discardCapture: () => captureActionsRef.current.discardCapture(),
     }),
-    [verseAudio.resume, verseAudio.discardCapture],
+    [],
   );
 
   useEffect(() => {
@@ -747,22 +758,18 @@ export function RecordTab({
   /** #49: capture in progress — offer Resume or Discard, then proceed. */
   function requestVerseChange(next: number) {
     if (verseAudio.state === 'paused' || verseAudio.state === 'recording') {
-      Alert.alert(
-        'Recording in progress',
-        'You have a take in progress. What would you like to do?',
-        [
-          { text: 'Resume', style: 'cancel' },
-          {
-            text: 'Discard',
-            style: 'destructive',
-            onPress: () => {
-              void verseAudio.discardCapture().then(() => {
-                changeVerse(next);
-              });
-            },
+      Alert.alert(CAPTURE_LEAVE_TITLE, CAPTURE_LEAVE_MESSAGE, [
+        { text: CAPTURE_LEAVE_RESUME, style: 'cancel' },
+        {
+          text: CAPTURE_LEAVE_DISCARD,
+          style: 'destructive',
+          onPress: () => {
+            void verseAudio.discardCapture().then(() => {
+              changeVerse(next);
+            });
           },
-        ],
-      );
+        },
+      ]);
       return;
     }
     changeVerse(next);

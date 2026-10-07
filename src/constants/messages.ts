@@ -78,3 +78,15 @@ export const RECORD_SOURCE_TEXT_SYNCING =
   'Source text still syncing for this verse — recording will unlock when ready.';
 export const RECORD_SOURCE_TEXT_UNAVAILABLE =
   "Source text isn't available for this verse yet. Open Sync and tap Sync Now, then return here.";
+
+/**
+ * Leave prompt shown when the user navigates away from an in-progress take
+ * (#49 / #570). Copy confirmed as final on #570. Every leave path (tabs, back,
+ * Sync, account chip, verse chevrons) reads from this one place — change the
+ * strings here only.
+ */
+export const CAPTURE_LEAVE_TITLE = 'Recording in progress';
+export const CAPTURE_LEAVE_MESSAGE =
+  'You have a take in progress. What would you like to do?';
+export const CAPTURE_LEAVE_RESUME = 'Resume';
+export const CAPTURE_LEAVE_DISCARD = 'Discard';

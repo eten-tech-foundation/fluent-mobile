@@ -39,6 +39,12 @@ import {
   parseRequiredNumber,
   parseRequiredString,
 } from '../../navigation/routeParams';
+import {
+  CAPTURE_LEAVE_DISCARD,
+  CAPTURE_LEAVE_MESSAGE,
+  CAPTURE_LEAVE_RESUME,
+  CAPTURE_LEAVE_TITLE,
+} from '../../constants/messages';
 import { parseUserId } from '../../utils/parseUserId';
 import type { CaptureControls } from '../../types/captureControls';
 
@@ -49,12 +55,9 @@ const CAPTURE_LEAVE_ALERT_BUTTONS = (
   style?: 'cancel' | 'destructive' | 'default';
   onPress?: () => void;
 }[] => [
-  { text: 'Resume', style: 'cancel' },
-  { text: 'Discard', style: 'destructive', onPress: discard },
+  { text: CAPTURE_LEAVE_RESUME, style: 'cancel' },
+  { text: CAPTURE_LEAVE_DISCARD, style: 'destructive', onPress: discard },
 ];
-
-const CAPTURE_LEAVE_ALERT_MESSAGE =
-  'You have a take in progress. What would you like to do?';
 
 const log = logger.create('DraftingScreen');
 
@@ -97,10 +100,16 @@ export default function DraftingScreen() {
       if (tab === activeTab) return;
       if (recordCaptureActive && activeTab === 'record' && tab !== 'record') {
         Alert.alert(
-          'Recording in progress',
-          CAPTURE_LEAVE_ALERT_MESSAGE,
+          CAPTURE_LEAVE_TITLE,
+          CAPTURE_LEAVE_MESSAGE,
           CAPTURE_LEAVE_ALERT_BUTTONS(() => {
-            void captureControls?.discardCapture().then(() => {
+            if (!captureControls) {
+              log.warn(
+                'Leave prompt: Discard pressed with no capture controls',
+              );
+              return;
+            }
+            void captureControls.discardCapture().then(() => {
               setActiveTabState(tab);
               setLastActiveTab(chapterId, tab);
             });
@@ -145,11 +154,15 @@ export default function DraftingScreen() {
   const alertRecordingInProgress = useCallback(
     (continueAfterDiscard?: () => void) => {
       Alert.alert(
-        'Recording in progress',
-        CAPTURE_LEAVE_ALERT_MESSAGE,
+        CAPTURE_LEAVE_TITLE,
+        CAPTURE_LEAVE_MESSAGE,
         CAPTURE_LEAVE_ALERT_BUTTONS(() => {
+          if (!captureControls) {
+            log.warn('Leave prompt: Discard pressed with no capture controls');
+            return;
+          }
           suppressNextBeforeRemove.current = true;
-          void captureControls?.discardCapture().then(() => {
+          void captureControls.discardCapture().then(() => {
             continueAfterDiscard?.();
           });
         }),
