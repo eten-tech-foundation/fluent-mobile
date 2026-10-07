@@ -536,4 +536,140 @@ describe('DownloadQueueWorker', () => {
       expect.any(Number),
     );
   });
+
+  describe('transport gate (#619)', () => {
+    it('pauses an in-flight download when transport becomes blocked and does not start the next item', async () => {
+      let resolveDownload!: (value: { uri: string }) => void;
+      const pending = new Promise<{ uri: string }>(resolve => {
+        resolveDownload = resolve;
+      });
+      const pauseAsync = jest.fn().mockResolvedValue({
+        url: 'https://example.com/x.mp3',
+        fileUri: 'file:///docs/downloads/1/item-1.mp3',
+        options: {},
+        resumeData: 'resume-token',
+      });
+      spyResumable({
+        downloadAsync: jest.fn().mockReturnValue(pending),
+        pauseAsync,
+      });
+
+      let transportAllowed = true;
+      const resolver = jest
+        .fn()
+        .mockResolvedValue({ url: 'https://example.com/x.mp3', ext: 'mp3' });
+      const worker = new DownloadQueueWorker(
+        resolver,
+        async () => transportAllowed,
+      );
+
+      const startPromise = worker.start([
+        makeItem({ id: 'item-1' }),
+        makeItem({ id: 'item-2' }),
+      ]);
+      await flushMicrotasks();
+      await flushMicrotasks();
+
+      expect(worker.getState()).toBe('downloading');
+      expect(resolver).toHaveBeenCalledTimes(1);
+
+      transportAllowed = false;
+      await worker.pause('transport');
+
+      expect(pauseAsync).toHaveBeenCalled();
+      expect(mockMarkDownloadItemPaused).toHaveBeenCalledWith(
+        'item-1',
+        expect.stringContaining('resume-token'),
+      );
+      expect(worker.getState()).toBe('paused');
+      expect(worker.getPauseReason()).toBe('transport');
+      expect(resolver).toHaveBeenCalledTimes(1);
+      expect(mockMarkDownloadItemFailed).not.toHaveBeenCalled();
+
+      resolveDownload({ uri: 'file:///docs/downloads/1/item-1.mp3' });
+      await startPromise;
+      expect(resolver).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not start the next queued item when transport is blocked after a success', async () => {
+      spyResumable();
+      let transportAllowed = true;
+      const resolver = jest.fn().mockImplementation(async () => {
+        // After the first item resolves, block transport before item 2 starts.
+        transportAllowed = false;
+        return { url: 'https://example.com/x.mp3', ext: 'mp3' };
+      });
+
+      const worker = new DownloadQueueWorker(
+        resolver,
+        async () => transportAllowed,
+      );
+      await worker.start([
+        makeItem({ id: 'item-1' }),
+        makeItem({ id: 'item-2' }),
+      ]);
+
+      expect(resolver).toHaveBeenCalledTimes(1);
+      expect(mockMarkDownloadItemCompleted).toHaveBeenCalledWith(
+        'item-1',
+        expect.any(String),
+        expect.any(Number),
+      );
+      expect(mockMarkDownloadItemFailed).not.toHaveBeenCalled();
+      expect(worker.getState()).toBe('paused');
+    });
+
+    it('promotes a transport pause to a user pause so auto-resume will not undo it', async () => {
+      spyResumable({
+        downloadAsync: jest.fn().mockReturnValue(new Promise(() => {})),
+      });
+      const worker = new DownloadQueueWorker(
+        async () => ({ url: 'https://example.com/x.mp3', ext: 'mp3' }),
+        async () => true,
+      );
+      void worker.start([makeItem()]);
+      await flushMicrotasks();
+      await flushMicrotasks();
+
+      await worker.pause('transport');
+      expect(worker.getPauseReason()).toBe('transport');
+
+      await worker.pause('user');
+      expect(worker.getState()).toBe('paused');
+      expect(worker.getPauseReason()).toBe('user');
+    });
+
+    it('marks paused instead of failed when a download errors while transport is blocked', async () => {
+      let transportAllowed = true;
+      const pauseAsync = jest.fn().mockResolvedValue({
+        url: 'https://example.com/x.mp3',
+        fileUri: 'file:///docs/downloads/1/item-1.mp3',
+        options: {},
+        resumeData: 'resume-token',
+      });
+      spyResumable({
+        downloadAsync: jest.fn().mockImplementation(async () => {
+          transportAllowed = false;
+          throw new Error('Software caused connection abort');
+        }),
+        pauseAsync,
+      });
+
+      const worker = new DownloadQueueWorker(
+        async () => ({ url: 'https://example.com/x.mp3', ext: 'mp3' }),
+        async () => transportAllowed,
+      );
+      await worker.start([
+        makeItem({ id: 'item-1' }),
+        makeItem({ id: 'item-2' }),
+      ]);
+
+      expect(mockMarkDownloadItemFailed).not.toHaveBeenCalled();
+      expect(mockMarkDownloadItemPaused).toHaveBeenCalledWith(
+        'item-1',
+        expect.stringContaining('resume-token'),
+      );
+      expect(worker.getState()).toBe('paused');
+    });
+  });
 });
