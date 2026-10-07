@@ -313,7 +313,7 @@ describe('SyncScreen', () => {
     expect(mockSyncNowFromHook).not.toHaveBeenCalled();
   });
 
-  it('disables Sync Now when only failed unuploadable recordings remain', () => {
+  it('keeps Sync Now enabled when only failed unuploadable recordings remain (#584)', async () => {
     mockPendingUploads = {
       ...mockPendingUploads,
       hasPendingUploads: false,
@@ -328,9 +328,12 @@ describe('SyncScreen', () => {
 
     expect(screen.getByText("Online · some takes can't upload")).toBeTruthy();
     expect(screen.queryByText('Online · upload pending')).toBeNull();
-    expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
+    expect(screen.getByTestId('sync-action-sync-now')).not.toBeDisabled();
     fireEvent.press(screen.getByTestId('sync-action-sync-now'));
-    expect(mockSyncNowFromHook).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockSyncNowFromHook).toHaveBeenCalledTimes(1);
+      expect(mockTriggerSync).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('surfaces unuploadable pending instead of a successful no-op', () => {
@@ -352,7 +355,8 @@ describe('SyncScreen', () => {
     expect(
       screen.queryByText('All work has been uploaded to Fluent.'),
     ).toBeNull();
-    expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
+    // Sync Now stays available for metadata/download sync (#584).
+    expect(screen.getByTestId('sync-action-sync-now')).not.toBeDisabled();
     expect(
       screen.queryByTestId('sync-action-sync-now-disabled-hint'),
     ).toBeNull();
@@ -376,7 +380,8 @@ describe('SyncScreen', () => {
     expect(
       screen.queryByText('All work has been uploaded to Fluent.'),
     ).toBeNull();
-    expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
+    // Sync Now stays available for metadata/download sync (#584).
+    expect(screen.getByTestId('sync-action-sync-now')).not.toBeDisabled();
     expect(
       screen.queryByTestId('sync-action-sync-now-disabled-hint'),
     ).toBeNull();

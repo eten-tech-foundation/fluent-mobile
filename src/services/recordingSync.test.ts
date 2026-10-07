@@ -93,6 +93,11 @@ function pendingRecording(
     chapterNumber: 1,
     projectUnitId: 12,
     recordedByUserId: null,
+    granularity: 'verse',
+    startChapter: null,
+    startVerse: null,
+    endChapter: null,
+    endVerse: null,
     ...overrides,
   };
 }
@@ -165,6 +170,63 @@ describe('recordingSync', () => {
     );
     expect(mockMarkRecordingConflicted).not.toHaveBeenCalled();
     expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+  });
+
+  it('uploads pericope takes with range fields and marks uploaded (#584)', async () => {
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({
+        id: 'rec-pericope',
+        granularity: 'pericope',
+        startChapter: 1,
+        startVerse: 1,
+        endChapter: 1,
+        endVerse: 8,
+      }),
+    ]);
+
+    const result = await syncPendingRecordings('tok-1', { delay });
+
+    expect(result).toEqual({ uploaded: 1, conflicted: 0, failed: 0 });
+    expect(mockUploadVerseAudio).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectUnitId: 12,
+        bibleTextId: 42,
+        granularity: 'pericope',
+        startChapter: 1,
+        startVerse: 1,
+        endChapter: 1,
+        endVerse: 8,
+      }),
+      'tok-1',
+    );
+    expect(mockMarkRecordingUploaded).toHaveBeenCalledWith(
+      'rec-pericope',
+      'unit-12/text-42',
+      2,
+    );
+    expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+  });
+
+  it('fails pericope takes with a zero/stub range without calling the API (#584)', async () => {
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({
+        id: 'rec-bad-range',
+        granularity: 'pericope',
+        startChapter: 0,
+        startVerse: 0,
+        endChapter: 0,
+        endVerse: 0,
+      }),
+    ]);
+
+    const result = await syncPendingRecordings('tok-1', { delay });
+
+    expect(result).toEqual({ uploaded: 0, conflicted: 0, failed: 1 });
+    expect(mockUploadVerseAudio).not.toHaveBeenCalled();
+    expect(mockMarkRecordingFailed).toHaveBeenCalledWith(
+      'rec-bad-range',
+      expect.stringMatching(/invalid pericope range/i),
+    );
   });
 
   it('sends baseVersionToken when a prior token exists locally', async () => {
