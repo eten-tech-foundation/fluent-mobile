@@ -400,37 +400,47 @@ describe('DraftingScreen onChapterClaimed', () => {
       });
     });
 
-    it('does not re-prompt when the deferred back races the discard window', async () => {
+    it('blocks a second back while discard is pending, then allows exactly one pop', async () => {
+      let resolveDiscard: () => void = () => {};
+      mockDiscard.mockImplementationOnce(
+        () =>
+          new Promise<void>(resolve => {
+            resolveDiscard = resolve;
+          }),
+      );
       await renderWithActiveCapture();
 
       const beforeRemoveCalls = mockAddListener.mock.calls.filter(
         call => call[0] === 'beforeRemove',
       );
-      expect(beforeRemoveCalls.length).toBeGreaterThan(0);
       const beforeRemove = beforeRemoveCalls[beforeRemoveCalls.length - 1][1];
 
-      const preventDefault = jest.fn();
-      beforeRemove({ preventDefault });
+      // 1st back → prompt → Discard (stop is now "in flight").
+      beforeRemove({ preventDefault: jest.fn() });
       expect(Alert.alert).toHaveBeenCalledTimes(1);
-
-      // Discard confirmed → capture ends → deferred back runs, but a slow
-      // async gap lets beforeRemove fire once more before it lands (#49).
       lastAlertButtons()
         .find(b => b.text === 'Discard')
         ?.onPress?.();
 
-      beforeRemove({ preventDefault: jest.fn() });
-      expect(Alert.alert).toHaveBeenCalledTimes(1); // no second prompt
-      expect(preventDefault).toHaveBeenCalledTimes(1); // pop allowed
+      // 2nd back while discard is pending: blocked, no new prompt, no pop.
+      const secondPrevent = jest.fn();
+      beforeRemove({ preventDefault: secondPrevent });
+      expect(secondPrevent).toHaveBeenCalledTimes(1);
+      expect(Alert.alert).toHaveBeenCalledTimes(1);
+      expect(mockBack).not.toHaveBeenCalled();
 
-      await waitFor(() => {
-        expect(mockDiscard).toHaveBeenCalledTimes(1);
-      });
+      // Discard finishes → the deferred back runs exactly once.
+      resolveDiscard();
       await waitFor(() => {
         expect(mockBack).toHaveBeenCalledTimes(1);
       });
-    });
 
+      // That pop passes the guard (one-shot suppress) and does not re-prompt.
+      const popPrevent = jest.fn();
+      beforeRemove({ preventDefault: popPrevent });
+      expect(popPrevent).not.toHaveBeenCalled();
+      expect(Alert.alert).toHaveBeenCalledTimes(1);
+    });
     it('Sync tap offers Resume/Discard; Discard pushes the Sync page', async () => {
       await renderWithActiveCapture();
 

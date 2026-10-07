@@ -150,6 +150,7 @@ export default function DraftingScreen() {
    * async gap must not let `beforeRemove` re-fire the prompt.
    */
   const suppressNextBeforeRemove = useRef(false);
+  const discardPendingBeforeRemove = useRef(false);
 
   const alertRecordingInProgress = useCallback(
     (continueAfterDiscard?: () => void) => {
@@ -161,8 +162,10 @@ export default function DraftingScreen() {
             log.warn('Leave prompt: Discard pressed with no capture controls');
             return;
           }
-          suppressNextBeforeRemove.current = true;
+          discardPendingBeforeRemove.current = true;
           void captureControls.discardCapture().then(() => {
+            discardPendingBeforeRemove.current = false;
+            suppressNextBeforeRemove.current = true;
             continueAfterDiscard?.();
           });
         }),
@@ -182,11 +185,14 @@ export default function DraftingScreen() {
   // Block header back, Android system back, and any other pop while capturing.
   useEffect(() => {
     return navigation.addListener('beforeRemove', e => {
+      if (discardPendingBeforeRemove.current) {
+        e.preventDefault();
+        return;
+      }
       if (!recordCaptureActive) {
         return;
       }
       if (suppressNextBeforeRemove.current) {
-        // Discard already confirmed the leave — let this pop through.
         suppressNextBeforeRemove.current = false;
         return;
       }

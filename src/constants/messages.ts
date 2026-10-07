@@ -81,9 +81,8 @@ export const RECORD_SOURCE_TEXT_UNAVAILABLE =
 
 /**
  * Leave prompt shown when the user navigates away from an in-progress take
- * (#49 / #570). Copy confirmed as final on #570. Every leave path (tabs, back,
- * Sync, account chip, verse chevrons) reads from this one place — change the
- * strings here only.
+ * (#49 / #570). Every leave path (tabs, back, Sync, account chip, verse
+ * chevrons) reads from this one place — change the strings here only.
  */
 export const CAPTURE_LEAVE_TITLE = 'Recording in progress';
 export const CAPTURE_LEAVE_MESSAGE =
