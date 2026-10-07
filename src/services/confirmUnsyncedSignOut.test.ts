@@ -33,12 +33,10 @@ describe('confirmUnsyncedSignOut', () => {
       expect.any(Array),
     );
 
-    const buttons = (
-      jest.mocked(Alert.alert).mock.calls[0]?.[2] as Array<{
-        text: string;
-        onPress?: () => void;
-      }>
-    );
+    const buttons = jest.mocked(Alert.alert).mock.calls[0]?.[2] as Array<{
+      text: string;
+      onPress?: () => void;
+    }>;
     buttons.find(button => button.text === 'Cancel')?.onPress?.();
     await expect(decision).resolves.toBe(false);
   });
@@ -49,12 +47,10 @@ describe('confirmUnsyncedSignOut', () => {
     const decision = confirmUnsyncedSignOut();
     await Promise.resolve();
 
-    const buttons = (
-      jest.mocked(Alert.alert).mock.calls[0]?.[2] as Array<{
-        text: string;
-        onPress?: () => void;
-      }>
-    );
+    const buttons = jest.mocked(Alert.alert).mock.calls[0]?.[2] as Array<{
+      text: string;
+      onPress?: () => void;
+    }>;
     buttons.find(button => button.text === 'Log out')?.onPress?.();
     await expect(decision).resolves.toBe(true);
   });

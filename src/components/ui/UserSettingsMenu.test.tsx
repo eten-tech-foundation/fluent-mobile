@@ -349,12 +349,10 @@ describe('UserSettingsMenu', () => {
     });
     expect(mockSignOutCurrentDeviceAccount).not.toHaveBeenCalled();
 
-    const buttons = (
-      jest.mocked(Alert.alert).mock.calls[0]?.[2] as Array<{
-        text: string;
-        onPress?: () => void;
-      }>
-    );
+    const buttons = jest.mocked(Alert.alert).mock.calls[0]?.[2] as Array<{
+      text: string;
+      onPress?: () => void;
+    }>;
     buttons.find(button => button.text === 'Cancel')?.onPress?.();
     expect(mockSignOutCurrentDeviceAccount).not.toHaveBeenCalled();
   });

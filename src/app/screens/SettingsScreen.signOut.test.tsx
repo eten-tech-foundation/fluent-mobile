@@ -71,8 +71,7 @@ jest.mock('../../components/layout/StackScreenHeader', () => {
 jest.mock('../../navigation/AuthSessionProvider', () => ({
   useAuthSession: () => ({
     signOut: (...args: unknown[]) => mockSignOut(...args),
-    notifyUserSwitched: (...args: unknown[]) =>
-      mockNotifyUserSwitched(...args),
+    notifyUserSwitched: (...args: unknown[]) => mockNotifyUserSwitched(...args),
   }),
 }));
 
@@ -146,12 +145,10 @@ describe('SettingsScreen log out', () => {
     });
     expect(mockSignOutCurrentDeviceAccount).not.toHaveBeenCalled();
 
-    const buttons = (
-      jest.mocked(Alert.alert).mock.calls[0]?.[2] as Array<{
-        text: string;
-        onPress?: () => void;
-      }>
-    );
+    const buttons = jest.mocked(Alert.alert).mock.calls[0]?.[2] as Array<{
+      text: string;
+      onPress?: () => void;
+    }>;
     buttons.find(button => button.text === 'Log out')?.onPress?.();
 
     await waitFor(() => {
