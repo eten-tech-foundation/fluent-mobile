@@ -14,6 +14,8 @@ export const KV_KEYS = {
   KNOWN_USER_IDS: 'known_user_ids',
   LAST_ASSIGNMENT_SYNC_AT: 'last_assignment_sync_at',
   LAST_SYNCED_AT: 'last_synced_at',
+  /** ISO timestamp of last successful languages/books/bibles sync. */
+  LAST_MASTER_DATA_SYNCED_AT: 'last_master_data_synced_at',
   SYNC_COUNT_PROJECTS: 'sync_count_projects',
   SYNC_COUNT_CHAPTERS: 'sync_count_chapters',
   SYNC_COUNT_BIBLES: 'sync_count_bibles',
@@ -48,6 +50,15 @@ export function getLastSyncedAt(): string {
 export function setLastSyncedAt(timestamp: string) {
   kvStorage.setItemSync(KV_KEYS.LAST_SYNCED_AT, timestamp);
   log.info('Last synced timestamp updated', { timestamp });
+}
+
+export function getMasterDataLastSyncedAt(): string {
+  return kvStorage.getItemSync(KV_KEYS.LAST_MASTER_DATA_SYNCED_AT) ?? '';
+}
+
+export function setMasterDataLastSyncedAt(timestamp: string) {
+  kvStorage.setItemSync(KV_KEYS.LAST_MASTER_DATA_SYNCED_AT, timestamp);
+  log.info('Master data last synced timestamp updated', { timestamp });
 }
 
 export function getSyncCount(

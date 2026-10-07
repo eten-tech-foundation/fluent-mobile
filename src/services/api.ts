@@ -75,6 +75,12 @@ function chapterSourceAudioPath(params: GetChapterSourceAudioParams): string {
   )}/${params.chapter}?${query.toString()}`;
 }
 
+function withUpdatedAfter(path: string, updatedAfter?: string): string {
+  if (!updatedAfter) return path;
+  const params = new URLSearchParams({ updatedAfter });
+  return `${path}?${params.toString()}`;
+}
+
 const MOBILE_HEADERS = {
   'x-client-type': 'mobile',
   'User-Agent': 'fluent-mobile',
@@ -151,13 +157,14 @@ export const FluentAPI = {
       headers: MOBILE_HEADERS,
     }),
 
-  getLanguages: (): Promise<ApiLanguage[]> =>
-    publicRequest<ApiLanguage[]>('/languages'),
+  getLanguages: (updatedAfter?: string): Promise<ApiLanguage[]> =>
+    publicRequest<ApiLanguage[]>(withUpdatedAfter('/languages', updatedAfter)),
 
-  getBooks: (): Promise<ApiBookMeta[]> =>
-    publicRequest<ApiBookMeta[]>('/books'),
+  getBooks: (updatedAfter?: string): Promise<ApiBookMeta[]> =>
+    publicRequest<ApiBookMeta[]>(withUpdatedAfter('/books', updatedAfter)),
 
-  getBibles: (): Promise<ApiBible[]> => publicRequest<ApiBible[]>('/bibles'),
+  getBibles: (updatedAfter?: string): Promise<ApiBible[]> =>
+    publicRequest<ApiBible[]>(withUpdatedAfter('/bibles', updatedAfter)),
 
   getUserByEmail: (email: string, token?: string): Promise<ApiUser> =>
     authedRequest<ApiUser>(

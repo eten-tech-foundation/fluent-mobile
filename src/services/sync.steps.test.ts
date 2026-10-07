@@ -12,6 +12,8 @@ import {
   setSyncError,
   isBibleTextsServerIdRemapPending,
   clearBibleTextsServerIdRemapPending,
+  getMasterDataLastSyncedAt,
+  setMasterDataLastSyncedAt,
 } from './storage';
 import { getDatabase } from '../db/db';
 import {
@@ -85,6 +87,8 @@ jest.mock('./storage', () => ({
   getUserEmailSync: jest.fn(),
   getLastSyncedAt: jest.fn(),
   getLastAssignmentSyncAt: jest.fn(),
+  getMasterDataLastSyncedAt: jest.fn().mockReturnValue(''),
+  setMasterDataLastSyncedAt: jest.fn(),
   getKnownUserIds: jest.fn(),
   getUserLastSyncedAt: jest.fn(),
   setUserLastSyncedAt: jest.fn(),
@@ -153,6 +157,8 @@ const isBibleTextsServerIdRemapPendingMock = jest.mocked(
 const clearBibleTextsServerIdRemapPendingMock = jest.mocked(
   clearBibleTextsServerIdRemapPending,
 );
+const getMasterDataLastSyncedAtMock = jest.mocked(getMasterDataLastSyncedAt);
+const setMasterDataLastSyncedAtMock = jest.mocked(setMasterDataLastSyncedAt);
 
 function mockDbCount(count: number) {
   (getDatabase as jest.Mock).mockReturnValue({
@@ -191,12 +197,16 @@ describe('sync step orchestration', () => {
     getChaptersToSyncMock.mockResolvedValue(new Map());
     getRecordingLinkedChaptersToSyncMock.mockResolvedValue(new Map());
     isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+    getMasterDataLastSyncedAtMock.mockReturnValue('');
   });
 
   describe('syncMasterData', () => {
     it('inserts languages, books, and bibles then clears the error key', async () => {
       await syncMasterData();
 
+      expect(FluentAPI.getLanguages).toHaveBeenCalledWith(undefined);
+      expect(FluentAPI.getBooks).toHaveBeenCalledWith(undefined);
+      expect(FluentAPI.getBibles).toHaveBeenCalledWith(undefined);
       expect(insertMasterDataMock).toHaveBeenCalledWith(
         [
           expect.objectContaining({
@@ -208,7 +218,38 @@ describe('sync step orchestration', () => {
         [{ id: 1, name: 'Genesis' }],
         [{ id: 10, name: 'Source' }],
       );
+      expect(setMasterDataLastSyncedAtMock).toHaveBeenCalledWith(
+        expect.any(String),
+      );
       expect(clearSyncErrorMock).toHaveBeenCalledWith('sync_error_master_data');
+    });
+
+    it('passes the stored cursor as updatedAfter for incremental sync', async () => {
+      const cursor = '2026-06-01T00:00:00.000Z';
+      getMasterDataLastSyncedAtMock.mockReturnValue(cursor);
+      (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([]);
+      (FluentAPI.getBooks as jest.Mock).mockResolvedValue([]);
+      (FluentAPI.getBibles as jest.Mock).mockResolvedValue([]);
+
+      await syncMasterData();
+
+      expect(FluentAPI.getLanguages).toHaveBeenCalledWith(cursor);
+      expect(FluentAPI.getBooks).toHaveBeenCalledWith(cursor);
+      expect(FluentAPI.getBibles).toHaveBeenCalledWith(cursor);
+      expect(insertMasterDataMock).toHaveBeenCalledWith([], [], []);
+      expect(setMasterDataLastSyncedAtMock).toHaveBeenCalledWith(
+        expect.any(String),
+      );
+    });
+
+    it('omits updatedAfter when forceFull is set', async () => {
+      getMasterDataLastSyncedAtMock.mockReturnValue('2026-06-01T00:00:00.000Z');
+
+      await syncMasterData({ forceFull: true });
+
+      expect(FluentAPI.getLanguages).toHaveBeenCalledWith(undefined);
+      expect(FluentAPI.getBooks).toHaveBeenCalledWith(undefined);
+      expect(FluentAPI.getBibles).toHaveBeenCalledWith(undefined);
     });
 
     it('retries non-auth failures then sets the sync error', async () => {
@@ -231,6 +272,7 @@ describe('sync step orchestration', () => {
           'network',
         );
         expect(insertMasterDataMock).not.toHaveBeenCalled();
+        expect(setMasterDataLastSyncedAtMock).not.toHaveBeenCalled();
       } finally {
         jest.useRealTimers();
       }

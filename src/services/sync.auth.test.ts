@@ -8,6 +8,7 @@ import {
   getTempCredentials,
 } from './keychain';
 import {
+  __resetFullSyncSingleFlightForTests,
   refreshChapterMetadataIfOnline,
   syncAllData,
   syncAllUsers,
@@ -80,6 +81,8 @@ jest.mock('./storage', () => ({
   getUserEmailSync: jest.fn(),
   getLastSyncedAt: jest.fn(),
   getLastAssignmentSyncAt: jest.fn(),
+  getMasterDataLastSyncedAt: jest.fn().mockReturnValue(''),
+  setMasterDataLastSyncedAt: jest.fn(),
   getKnownUserIds: jest.fn(),
   getUserLastSyncedAt: jest.fn(),
   setUserLastSyncedAt: jest.fn(),
@@ -466,6 +469,7 @@ describe('refreshChapterMetadataIfOnline', () => {
 describe('syncAllData auth handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __resetFullSyncSingleFlightForTests();
     jest.spyOn(syncEvents, 'emitAuthReauthRequired');
     jest.spyOn(syncEvents, 'emitSyncStart').mockImplementation(() => {});
     jest.spyOn(syncEvents, 'emitSyncComplete').mockImplementation(() => {});
@@ -485,6 +489,7 @@ describe('syncAllData auth handling', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+    __resetFullSyncSingleFlightForTests();
   });
 
   it('sets reauth required when incremental sync has no stored token', async () => {
@@ -726,6 +731,7 @@ describe('syncAllData auth handling', () => {
 describe('syncAllUsers auth handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __resetFullSyncSingleFlightForTests();
     jest.spyOn(syncEvents, 'emitAuthReauthRequired');
     jest.spyOn(syncEvents, 'emitSyncStart').mockImplementation(() => {});
     jest.spyOn(syncEvents, 'emitSyncComplete').mockImplementation(() => {});
@@ -739,6 +745,9 @@ describe('syncAllUsers auth handling', () => {
     (getUserLastSyncedAt as jest.Mock).mockReturnValue(
       '2026-06-01T00:00:00.000Z',
     );
+    (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([]);
+    (FluentAPI.getBooks as jest.Mock).mockResolvedValue([]);
+    (FluentAPI.getBibles as jest.Mock).mockResolvedValue([]);
     (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
     userHasLocalProjects.mockResolvedValue(true);
     userHasLocalChapterAssignments.mockResolvedValue(true);
@@ -747,6 +756,7 @@ describe('syncAllUsers auth handling', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+    __resetFullSyncSingleFlightForTests();
   });
 
   it('syncs every known user on the device', async () => {
@@ -946,6 +956,91 @@ describe('syncAllUsers auth handling', () => {
 
     expect(setUserLastSyncedAt).not.toHaveBeenCalled();
     expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
+  });
+
+  it('starts pending claim sync without waiting for master data', async () => {
+    let resolveLanguages: (value: unknown) => void = () => undefined;
+    (FluentAPI.getLanguages as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveLanguages = resolve;
+        }),
+    );
+    mockGetConnectivitySnapshot.mockResolvedValue({
+      isOnline: true,
+      isWifi: true,
+      isCellular: false,
+      connectionType: 'wifi',
+    });
+    (getKnownUserIds as jest.Mock).mockReturnValue(['2']);
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'user-2-token' });
+
+    const pending = syncAllUsers();
+
+    await waitFor(() => {
+      expect(syncPendingChapterClaims).toHaveBeenCalledWith(2);
+    });
+    expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
+
+    resolveLanguages([]);
+    await pending;
+
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2, 'user-2-token');
+    expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
+  });
+
+  it('enforces single-flight across overlapping syncAllUsers calls', async () => {
+    let resolveProjects: (value: unknown) => void = () => undefined;
+    (getKnownUserIds as jest.Mock).mockReturnValue(['2']);
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'user-2-token' });
+    (FluentAPI.getUserProjects as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveProjects = resolve;
+        }),
+    );
+
+    const first = syncAllUsers();
+    await waitFor(() => {
+      expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
+    });
+
+    const second = syncAllUsers();
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
+
+    resolveProjects({ data: [] });
+    await Promise.all([first, second]);
+
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
+    expect(syncEvents.emitSyncStart).toHaveBeenCalledTimes(1);
+    expect(syncEvents.emitSyncComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it('joins syncAllData into an in-flight syncAllUsers pass', async () => {
+    let resolveProjects: (value: unknown) => void = () => undefined;
+    (getKnownUserIds as jest.Mock).mockReturnValue(['2']);
+    (getUserIdSync as jest.Mock).mockReturnValue('2');
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'user-2-token' });
+    (FluentAPI.getUserProjects as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveProjects = resolve;
+        }),
+    );
+
+    const usersPass = syncAllUsers();
+    await waitFor(() => {
+      expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
+    });
+
+    const dataPass = syncAllData(true);
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
+
+    resolveProjects({ data: [] });
+    await Promise.all([usersPass, dataPass]);
+
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
+    expect(syncEvents.emitSyncStart).toHaveBeenCalledTimes(1);
   });
 });
 
