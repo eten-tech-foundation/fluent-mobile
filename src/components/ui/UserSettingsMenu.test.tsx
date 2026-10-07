@@ -94,6 +94,11 @@ jest.mock('../../services/storage', () => ({
 
 const mockSwitchToDeviceAccount = jest.fn();
 const mockSignOutCurrentDeviceAccount = jest.fn();
+const mockGetUnsyncedRecordingCount = jest.fn();
+jest.mock('../../db/queries', () => ({
+  getUnsyncedRecordingCount: (...args: unknown[]) =>
+    mockGetUnsyncedRecordingCount(...args),
+}));
 jest.mock('../../services/accountSession', () => ({
   switchToDeviceAccount: (...args: unknown[]) =>
     mockSwitchToDeviceAccount(...args),
@@ -178,6 +183,7 @@ describe('UserSettingsMenu', () => {
     mockCanDismiss.mockReturnValue(false);
 
     mockGetActiveUserId.mockReturnValue('active-1');
+    mockGetUnsyncedRecordingCount.mockResolvedValue(0);
     setDeviceAccountsResult();
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
@@ -220,7 +226,7 @@ describe('UserSettingsMenu', () => {
       tree.indexOf('Terms of Use'),
     );
     expect(tree.indexOf('Terms of Use')).toBeLessThan(tree.indexOf('Accounts'));
-    expect(tree.indexOf('Accounts')).toBeLessThan(tree.indexOf('Sign Out'));
+    expect(tree.indexOf('Accounts')).toBeLessThan(tree.indexOf('Log out'));
   });
 
   it('navigates to drawer routes when More Settings / legal items are pressed', () => {
@@ -328,6 +334,31 @@ describe('UserSettingsMenu', () => {
     expect(onUserSwitched).not.toHaveBeenCalled();
   });
 
+  it('warns and stays signed in when recordings are not on the server', async () => {
+    mockGetUnsyncedRecordingCount.mockResolvedValue(1);
+
+    const { getByText } = renderMenu();
+    fireEvent.press(getByText('Log out'));
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Unsynced work on device',
+        'You have recordings that have not been uploaded. Log out anyway?',
+        expect.any(Array),
+      );
+    });
+    expect(mockSignOutCurrentDeviceAccount).not.toHaveBeenCalled();
+
+    const buttons = (
+      jest.mocked(Alert.alert).mock.calls[0]?.[2] as Array<{
+        text: string;
+        onPress?: () => void;
+      }>
+    );
+    buttons.find(button => button.text === 'Cancel')?.onPress?.();
+    expect(mockSignOutCurrentDeviceAccount).not.toHaveBeenCalled();
+  });
+
   it('signs out and notifies when switched to another account', async () => {
     mockSignOutCurrentDeviceAccount.mockResolvedValueOnce({
       kind: 'switched',
@@ -335,7 +366,7 @@ describe('UserSettingsMenu', () => {
     });
 
     const { getByText } = renderMenu();
-    fireEvent.press(getByText('Sign Out'));
+    fireEvent.press(getByText('Log out'));
 
     await waitFor(() => {
       expect(mockSignOutCurrentDeviceAccount).toHaveBeenCalled();
@@ -353,7 +384,7 @@ describe('UserSettingsMenu', () => {
     });
 
     const { getByText } = renderMenu();
-    fireEvent.press(getByText('Sign Out'));
+    fireEvent.press(getByText('Log out'));
 
     await waitFor(() => {
       expect(onSignOut).toHaveBeenCalled();
@@ -364,7 +395,7 @@ describe('UserSettingsMenu', () => {
     mockSignOutCurrentDeviceAccount.mockRejectedValueOnce(new Error('boom'));
 
     const { getByText } = renderMenu();
-    fireEvent.press(getByText('Sign Out'));
+    fireEvent.press(getByText('Log out'));
 
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalledWith(

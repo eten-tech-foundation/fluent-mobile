@@ -655,6 +655,28 @@ export async function getPendingUploadCount(): Promise<number> {
   }
 }
 
+/**
+ * Recordings still only on this device (#622). Includes pericope and failed
+ * takes. The upload worker's verse-only count stays on getPendingUploadCount.
+ */
+export async function getUnsyncedRecordingCount(): Promise<number> {
+  const db = getDatabase();
+  const userId = parseUserId();
+  try {
+    const result = await db.execute(
+      `SELECT COUNT(*) AS count
+       FROM recordings r
+       WHERE r.sync_status NOT IN ('uploaded', 'conflicted')
+         AND ${recordedByUserPredicate('r', userId)};`,
+      userId === null ? [] : [userId],
+    );
+    return Number(result.rows?.[0]?.count) || 0;
+  } catch (error) {
+    log.error('Error fetching unsynced recording count', { error });
+    return 0;
+  }
+}
+
 export type UnuploadablePendingSummary = {
   orphanBibleText: number;
   pericopeOnly: number;

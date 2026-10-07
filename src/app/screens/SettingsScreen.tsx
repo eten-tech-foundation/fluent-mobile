@@ -18,17 +18,14 @@ import {
   SettingsToggleRow,
 } from '../../components/ui/SettingsListRow';
 import {
-  LOGOUT_UNSYNCED_CANCEL,
-  LOGOUT_UNSYNCED_CONFIRM,
-  LOGOUT_UNSYNCED_MESSAGE,
-  LOGOUT_UNSYNCED_TITLE,
+  ACCOUNT_SIGN_OUT_LABEL,
   REAUTH_PROMPT_TITLE,
   REAUTH_PROMPT_SUBTITLE,
 } from '../../constants/messages';
 import { signOutCurrentDeviceAccount } from '../../services/accountSession';
+import { confirmUnsyncedSignOut } from '../../services/confirmUnsyncedSignOut';
 import { clearAllPausedTakes } from '../../services/pausedTakes';
 import { getKnownUserIds, MAX_DEVICE_ACCOUNTS } from '../../services/storage';
-import { loadPendingUploadCount } from '../../hooks/usePendingUploads';
 import { usePreferences } from '../../hooks/usePreferences';
 import { useReauthRequired } from '../../hooks/useReauthRequired';
 import { hrefs } from '../../navigation/hrefs';
@@ -81,22 +78,10 @@ export default function SettingsScreen() {
   };
 
   const handleLogOut = async () => {
-    const pendingCount = await loadPendingUploadCount();
-
-    if (pendingCount > 0) {
-      Alert.alert(LOGOUT_UNSYNCED_TITLE, LOGOUT_UNSYNCED_MESSAGE, [
-        { text: LOGOUT_UNSYNCED_CANCEL, style: 'cancel' },
-        {
-          text: LOGOUT_UNSYNCED_CONFIRM,
-          style: 'destructive',
-          onPress: () => {
-            void performLogOut();
-          },
-        },
-      ]);
+    const confirmed = await confirmUnsyncedSignOut();
+    if (!confirmed) {
       return;
     }
-
     await performLogOut();
   };
 
@@ -259,7 +244,7 @@ export default function SettingsScreen() {
                 onPress={handleAddUser}
               />
               <SettingsDestructiveRow
-                title="Log out"
+                title={ACCOUNT_SIGN_OUT_LABEL}
                 testID="settings-log-out"
                 icon={
                   <LogOut

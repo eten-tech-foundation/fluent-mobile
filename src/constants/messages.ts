@@ -38,10 +38,13 @@ export const TRANSLATION_NOTE_EMPTY_BODY = 'No note text available.';
 export const TRANSLATION_QUESTIONS_LOAD_ERROR =
   'Unable to load Translation Questions.';
 
+/** One label for drawer Sign Out and More Settings Log out (#622). */
+export const ACCOUNT_SIGN_OUT_LABEL = 'Log out';
+
 export const LOGOUT_UNSYNCED_TITLE = 'Unsynced work on device';
 export const LOGOUT_UNSYNCED_MESSAGE =
   'You have recordings that have not been uploaded. Log out anyway?';
-export const LOGOUT_UNSYNCED_CONFIRM = 'Log out';
+export const LOGOUT_UNSYNCED_CONFIRM = ACCOUNT_SIGN_OUT_LABEL;
 export const LOGOUT_UNSYNCED_CANCEL = 'Cancel';
 
 export const REAUTH_PROMPT_TITLE = 'Session expired';
