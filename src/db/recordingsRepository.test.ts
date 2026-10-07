@@ -203,6 +203,7 @@ async function mockExecute(
       id,
       bibleTextId,
       recordedByUserId,
+      projectUnitId,
       localFilePath,
       durationMs,
       fileSizeBytes,
@@ -218,6 +219,7 @@ async function mockExecute(
     ] = params as [
       string,
       number,
+      number | null,
       number | null,
       string,
       number | null,
@@ -236,6 +238,7 @@ async function mockExecute(
       id,
       bible_text_id: bibleTextId,
       recorded_by_user_id: recordedByUserId,
+      project_unit_id: projectUnitId,
       local_file_path: localFilePath,
       blob_key: null,
       duration_ms: durationMs,
@@ -279,11 +282,19 @@ async function mockExecute(
   ) {
     const ownerFirst = normalized.includes('WHERE recorded_by_user_id');
     const parsed = parseViewBibleTextId(normalized, params, ownerFirst ? 1 : 0);
+    const unitFilter = normalized.includes('project_unit_id IS NULL');
+    const unitId = unitFilter
+      ? (params[params.length - 1] as number)
+      : undefined;
     const sorted = rows
       .filter(
         r =>
           matchesOwner(r, normalized, params, 0) &&
-          isVisibleAtVerse(r, parsed.bibleTextId, parsed.withView),
+          isVisibleAtVerse(r, parsed.bibleTextId, parsed.withView) &&
+          (!unitFilter ||
+            r.project_unit_id === null ||
+            r.project_unit_id === undefined ||
+            r.project_unit_id === unitId),
       )
       .sort((a, b) =>
         normalized.includes('ORDER BY created_at ASC')
@@ -422,6 +433,34 @@ describe('recordingsRepository multi-take', () => {
     expect(latest?.id).toBe('take-2');
     expect(latest?.takeNumber).toBe(2);
     expect(latest?.recordedByUserId).toBe(1);
+  });
+
+  it('persists projectUnitId and filters takes by unit (#613)', async () => {
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///a.m4a',
+      id: 'unit-473',
+      projectUnitId: 473,
+    });
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///b.m4a',
+      id: 'unit-12',
+      projectUnitId: 12,
+    });
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///legacy.m4a',
+      id: 'legacy-null',
+      projectUnitId: null,
+    });
+
+    const for473 = await getTakesForVerse(10, undefined, undefined, 473);
+    expect(for473.map(t => t.id).sort()).toEqual(['legacy-null', 'unit-473']);
+    expect(for473.find(t => t.id === 'unit-473')?.projectUnitId).toBe(473);
+
+    const for12 = await getTakesForVerse(10, undefined, undefined, 12);
+    expect(for12.map(t => t.id).sort()).toEqual(['legacy-null', 'unit-12']);
   });
 
   it('attributes new takes to the active user', async () => {

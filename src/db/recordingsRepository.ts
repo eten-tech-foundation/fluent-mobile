@@ -45,10 +45,19 @@ export function resolveRecordedByUserId(
 function mapRecordingRow(row: RecordingRow): Recording {
   const granularity: RecordingGranularity =
     row.granularity === 'pericope' ? 'pericope' : 'verse';
+  const projectUnitRaw = row.project_unit_id;
+  const projectUnitId =
+    projectUnitRaw === null || projectUnitRaw === undefined
+      ? null
+      : Number(projectUnitRaw);
   return {
     id: row.id,
     bibleTextId: row.bible_text_id,
     recordedByUserId: row.recorded_by_user_id,
+    projectUnitId:
+      projectUnitId !== null && Number.isFinite(projectUnitId)
+        ? projectUnitId
+        : null,
     localFilePath: row.local_file_path,
     blobKey: row.blob_key,
     durationMs: row.duration_ms,
@@ -122,6 +131,8 @@ export type AddRecordingTakeInput = {
    * Pass `null` explicitly only in tests for legacy unattributed rows.
    */
   recordedByUserId?: number | null;
+  /** Project unit the take was recorded in (#613). */
+  projectUnitId?: number | null;
   granularity?: RecordingGranularity;
   startChapter?: number;
   startVerse?: number;
@@ -285,16 +296,25 @@ export async function addRecordingTake(
     }
     const takeNumber = maxTake + 1;
 
+    const projectUnitId =
+      input.projectUnitId !== null &&
+      input.projectUnitId !== undefined &&
+      Number.isFinite(input.projectUnitId)
+        ? input.projectUnitId
+        : null;
+
     await tx.execute(
       `INSERT INTO recordings (
-         id, bible_text_id, recorded_by_user_id, local_file_path, duration_ms,
-         file_size_bytes, take_number, is_selected, sync_status, created_at,
-         updated_at, granularity, start_chapter, start_verse, end_chapter, end_verse
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         id, bible_text_id, recorded_by_user_id, project_unit_id, local_file_path,
+         duration_ms, file_size_bytes, take_number, is_selected, sync_status,
+         created_at, updated_at, granularity, start_chapter, start_verse,
+         end_chapter, end_verse
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         input.bibleTextId,
         recordedByUserId,
+        projectUnitId,
         input.localFilePath,
         input.durationMs ?? null,
         input.fileSizeBytes ?? null,
@@ -340,6 +360,7 @@ export async function getTakesForVerse(
   bibleTextId: number,
   recordedByUserId?: number | null,
   view?: VerseTakeView,
+  projectUnitId?: number | null,
 ): Promise<Recording[]> {
   const db = getDatabase();
   const ownerId = resolveRecordedByUserId(recordedByUserId);
@@ -348,11 +369,24 @@ export async function getTakesForVerse(
     ? `AND (bible_text_id = ? OR ${pericopeCoversViewSql()})`
     : 'AND bible_text_id = ?';
   const viewParams = view ? [bibleTextId, bibleTextId] : [bibleTextId];
+  // Prefer takes recorded in this unit; include null for pre-#613 rows (#613).
+  const unitSql =
+    projectUnitId !== null &&
+    projectUnitId !== undefined &&
+    Number.isFinite(projectUnitId)
+      ? 'AND (project_unit_id IS NULL OR project_unit_id = ?)'
+      : '';
+  const unitParams =
+    projectUnitId !== null &&
+    projectUnitId !== undefined &&
+    Number.isFinite(projectUnitId)
+      ? [projectUnitId]
+      : [];
   const result = await db.execute(
     `SELECT * FROM recordings
-     WHERE ${owner.sql} ${viewSql}
+     WHERE ${owner.sql} ${viewSql} ${unitSql}
      ORDER BY ${view ? 'created_at ASC' : 'take_number ASC, created_at ASC'}`,
-    [...owner.params, ...viewParams],
+    [...owner.params, ...viewParams, ...unitParams],
   );
   const rows = (result.rows ?? []) as unknown as RecordingRow[];
   return rows.map(mapRecordingRow);
@@ -361,21 +395,34 @@ export async function getTakesForVerse(
 export async function getAllTakesForVerse(
   bibleTextId: number,
   view?: VerseTakeView,
+  projectUnitId?: number | null,
 ): Promise<RecordingWithOwner[]> {
   const db = getDatabase();
   const viewSql = view
     ? `AND (r.bible_text_id = ? OR ${pericopeCoversViewSql('r')})`
     : 'AND r.bible_text_id = ?';
   const viewParams = view ? [bibleTextId, bibleTextId] : [bibleTextId];
+  const unitSql =
+    projectUnitId !== null &&
+    projectUnitId !== undefined &&
+    Number.isFinite(projectUnitId)
+      ? 'AND (r.project_unit_id IS NULL OR r.project_unit_id = ?)'
+      : '';
+  const unitParams =
+    projectUnitId !== null &&
+    projectUnitId !== undefined &&
+    Number.isFinite(projectUnitId)
+      ? [projectUnitId]
+      : [];
   const result = await db.execute(
     `SELECT r.*, u.first_name, u.last_name, u.username, u.email
      FROM recordings r
      LEFT JOIN users u ON u.id = r.recorded_by_user_id
-     WHERE 1 = 1 ${viewSql}
+     WHERE 1 = 1 ${viewSql} ${unitSql}
      ORDER BY r.recorded_by_user_id IS NOT NULL, r.recorded_by_user_id ASC, ${
        view ? 'r.created_at ASC' : 'r.take_number ASC'
      }`,
-    viewParams,
+    [...viewParams, ...unitParams],
   );
   const rows = (result.rows ?? []) as unknown as OwnerJoinRow[];
   return rows.map(mapRecordingWithOwnerRow);

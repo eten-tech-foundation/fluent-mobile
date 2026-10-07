@@ -199,6 +199,7 @@ export function RecordTab({
   const verseAudio = useVerseAudio({
     bibleTextId: captureBibleTextId,
     chapterAssignmentId: chapterData.id,
+    projectUnitId: chapterData.projectUnitId,
     userId,
     chapterClaim: {
       bibleId: chapterData.bibleId,

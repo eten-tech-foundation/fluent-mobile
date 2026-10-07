@@ -980,6 +980,9 @@ export async function getPendingRecordings(chapter?: {
     params.push(chapter.bookId, chapter.chapterNumber);
   }
 
+  // Prefer capture-time project_unit_id (#613). Fall back only when exactly
+  // one chapter_assignments row matches bible+book+chapter (never ORDER BY
+  // ca.id LIMIT 1 across multiple units — that uploaded to the wrong project).
   const result = await db.execute(
     `SELECT
        r.id AS id,
@@ -989,15 +992,25 @@ export async function getPendingRecordings(chapter?: {
        r.recorded_by_user_id AS recorded_by_user_id,
        bt.book_id AS book_id,
        bt.chapter_number AS chapter_number,
-       (
-         SELECT ca.project_unit_id
-         FROM chapter_assignments ca
-         WHERE ca.bible_id = bt.bible_id
-           AND ca.book_id = bt.book_id
-           AND ca.chapter_number = bt.chapter_number
-         ORDER BY ca.id
-         LIMIT 1
-       ) AS project_unit_id
+       CASE
+         WHEN r.project_unit_id IS NOT NULL AND r.project_unit_id > 0
+           THEN r.project_unit_id
+         ELSE (
+           SELECT ca.project_unit_id
+           FROM chapter_assignments ca
+           WHERE ca.bible_id = bt.bible_id
+             AND ca.book_id = bt.book_id
+             AND ca.chapter_number = bt.chapter_number
+             AND (
+               SELECT COUNT(DISTINCT ca2.project_unit_id)
+               FROM chapter_assignments ca2
+               WHERE ca2.bible_id = bt.bible_id
+                 AND ca2.book_id = bt.book_id
+                 AND ca2.chapter_number = bt.chapter_number
+             ) = 1
+           LIMIT 1
+         )
+       END AS project_unit_id
      FROM recordings r
      JOIN bible_texts bt ON bt.id = r.bible_text_id
      WHERE r.is_selected = 1
