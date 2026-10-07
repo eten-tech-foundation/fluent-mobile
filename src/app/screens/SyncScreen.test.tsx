@@ -39,6 +39,7 @@ let mockPendingUploads = {
   hasUnuploadablePending: false,
   isUploading: false,
   uploadProgress: null,
+  countsUnknown: false,
 };
 let mockSessionError: string | null = null;
 const mockPause = jest.fn();
@@ -185,6 +186,7 @@ describe('SyncScreen', () => {
       hasUnuploadablePending: false,
       isUploading: false,
       uploadProgress: null,
+      countsUnknown: false,
     };
     mockSessionError = null;
     mockPause.mockResolvedValue(undefined);
@@ -331,6 +333,27 @@ describe('SyncScreen', () => {
     expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
     fireEvent.press(screen.getByTestId('sync-action-sync-now'));
     expect(mockSyncNowFromHook).not.toHaveBeenCalled();
+  });
+
+  it('does not show All synced when pending counts are unknown', () => {
+    mockPageStatus = 'pending';
+    mockPendingUploads = {
+      ...mockPendingUploads,
+      hasPendingUploads: false,
+      pendingCount: 0,
+      pendingChapterCount: 0,
+      unuploadableCount: 0,
+      hasUnuploadablePending: false,
+      countsUnknown: true,
+    };
+    render(<SyncScreen />);
+
+    expect(screen.queryByText('Online · all synced')).toBeNull();
+    expect(screen.queryByText('Upload complete')).toBeNull();
+    expect(
+      screen.queryByText('All work has been uploaded to Fluent.'),
+    ).toBeNull();
+    expect(screen.getByText("Couldn't check pending uploads")).toBeTruthy();
   });
 
   it('surfaces unuploadable pending instead of a successful no-op', () => {

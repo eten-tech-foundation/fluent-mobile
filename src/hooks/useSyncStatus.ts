@@ -29,6 +29,7 @@ export function useSyncStatus({
     failedErrorText,
     hasPendingUploads,
     hasFailedUploads,
+    countsUnknown,
     isUploading,
     uploadProgress,
   } = usePendingUploads(refreshKey);
@@ -49,7 +50,7 @@ export function useSyncStatus({
     status: deriveSyncStatus({
       isOnline: effectivelyOnline,
       isSyncing,
-      hasPendingUploads,
+      hasPendingUploads: hasPendingUploads || countsUnknown,
       isUploading,
       hasFailedUploads,
       needsDownloadSync,

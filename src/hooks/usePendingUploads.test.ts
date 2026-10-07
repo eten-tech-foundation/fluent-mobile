@@ -57,9 +57,9 @@ describe('usePendingUploads', () => {
     await expect(loadPendingUploadCount()).resolves.toBe(3);
   });
 
-  it('loadPendingUploadCount returns 0 on failure', async () => {
+  it('loadPendingUploadCount rejects on failure', async () => {
     mockGetPendingUploadCount.mockRejectedValue(new Error('db'));
-    await expect(loadPendingUploadCount()).resolves.toBe(0);
+    await expect(loadPendingUploadCount()).rejects.toThrow('db');
   });
 
   it('exposes pending and failed counts from the queries', async () => {
@@ -135,6 +135,25 @@ describe('usePendingUploads', () => {
       expect(result.current.failedCount).toBe(0);
       expect(result.current.hasFailedUploads).toBe(false);
       expect(result.current.failedErrorText).toBeNull();
+    });
+  });
+
+  it('marks counts unknown when a pending query fails instead of treating it as zero', async () => {
+    mockGetPendingUploadCount.mockRejectedValue(new Error('db'));
+    const { result } = renderHook(() => usePendingUploads(0));
+
+    await waitFor(() => {
+      expect(result.current.countsUnknown).toBe(true);
+      expect(result.current.hasPendingUploads).toBe(false);
+    });
+  });
+
+  it('marks counts unknown when the unuploadable summary query fails', async () => {
+    mockGetUnuploadablePendingSummary.mockRejectedValue(new Error('db'));
+    const { result } = renderHook(() => usePendingUploads(0));
+
+    await waitFor(() => {
+      expect(result.current.countsUnknown).toBe(true);
     });
   });
 
