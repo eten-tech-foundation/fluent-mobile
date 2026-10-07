@@ -652,8 +652,10 @@ export function useVerseAudio({
   };
 
   const resume = useCallback(async () => {
+    const recovering = recording.status === 'idle';
+    setErrorMessage(null);
     try {
-      if (recording.status === 'idle') {
+      if (recovering) {
         // Recovered-paused: no native recorder yet, so start a new segment.
         await recording.start();
       } else {
@@ -663,7 +665,11 @@ export function useVerseAudio({
     } catch (error) {
       const message = error instanceof Error ? error.message : 'resume failed';
       setErrorMessage(message);
-      dispatch({ type: 'ERROR', message });
+      // A failed recovered-resume must stay paused so the user can retry or Stop
+      // and save the recovered segments; ERROR would strand them (#567).
+      if (!recovering) {
+        dispatch({ type: 'ERROR', message });
+      }
     }
   }, [recording]);
 

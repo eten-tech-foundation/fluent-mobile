@@ -592,6 +592,32 @@ describe('useVerseAudio', () => {
     expect(result.current.recoveredElapsedMs).toBe(0);
   });
 
+  it('stays paused when resuming a recovered take fails, and can still stop and save', async () => {
+    mockPausedMarkers.push(recoveredMarker());
+    mockRecordingStart.mockRejectedValue(new Error('mic revoked'));
+
+    const { result } = renderHook(() => useVerseAudio(recoveryArgs()));
+    await waitFor(() => expect(result.current.state).toBe('paused'));
+
+    await act(async () => {
+      await result.current.resume();
+    });
+
+    expect(result.current.state).toBe('paused');
+    expect(result.current.errorMessage).toBe('mic revoked');
+
+    await act(async () => {
+      await result.current.stop();
+    });
+
+    expect(persistTake).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tempUris: ['file:///old.aac'],
+        durationMs: 1000,
+      }),
+    );
+  });
+
   it('pausePlayback is a no-op when draft is not playing', async () => {
     const take = makeTake();
     loadTakes.mockResolvedValue([take]);
