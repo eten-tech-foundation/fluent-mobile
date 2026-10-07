@@ -10,6 +10,7 @@ import { RecordTab } from './RecordTab';
 import { DraftingProvider } from '../context/DraftingContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
+  PERICOPE_UNAVAILABLE_WARNING,
   RECORD_AUDIO_CONFLICT_WARNING,
   RECORD_TAKEN_CHAPTER_WARNING,
   RECORD_SOURCE_TEXT_UNAVAILABLE,
@@ -1172,6 +1173,28 @@ describe('RecordTab', () => {
       expect(screen.getByTestId('stage-advance-button')).toBeTruthy();
     });
     expect(screen.getByText('Send to Peer Check')).toBeTruthy();
+    expect(screen.getByText(PERICOPE_UNAVAILABLE_WARNING)).toBeTruthy();
+  });
+
+  it('shows stage advance CTA when a pericope set id exists but no local rows resolve (#588)', async () => {
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    // Default getPericopeForVerse → null and getPericopesForChapter → []
+    // simulate a set id with no bundled/local rows.
+    (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(7);
+
+    renderTab();
+
+    // Set id alone used to keep isOnLastUnit false forever (activePericope
+    // never resolves). Fall back to verse last-unit so the CTA appears.
+    await waitFor(() => {
+      expect(screen.getByTestId('stage-advance-button')).toBeTruthy();
+    });
+    expect(screen.getByText('Send to Peer Check')).toBeTruthy();
+    expect(screen.getByTestId('record-pericope-unavailable')).toBeTruthy();
+    expect(screen.getByText(PERICOPE_UNAVAILABLE_WARNING)).toBeTruthy();
   });
 
   describe('Mode-aware Current Unit Title (#409)', () => {
@@ -1202,9 +1225,10 @@ describe('RecordTab', () => {
       expect(
         screen.getByTestId('record-verse-reference-subtitle'),
       ).toHaveTextContent('The plot to kill Jesus; anointing at Bethany');
+      expect(screen.queryByTestId('record-pericope-unavailable')).toBeNull();
     });
 
-    it('falls back silently to the plain verse reference when no pericope set is configured', async () => {
+    it('falls back to the plain verse reference and explains when no pericope set is configured', async () => {
       mockUseDraftingUnit.mockReturnValue({
         draftingUnit: 'pericope',
         setDraftingUnit: jest.fn(),
@@ -1221,6 +1245,7 @@ describe('RecordTab', () => {
       expect(
         screen.queryByTestId('record-verse-reference-subtitle'),
       ).toBeNull();
+      expect(screen.getByText(PERICOPE_UNAVAILABLE_WARNING)).toBeTruthy();
     });
 
     it('uses verse completeness and navigation when no pericope set is configured', async () => {

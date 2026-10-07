@@ -73,6 +73,13 @@ export const RECORD_TAKEN_CHAPTER_WARNING =
 export const RECORD_AUDIO_CONFLICT_WARNING =
   'Unresolved audio take conflict on this chapter/pericope.';
 
+/**
+ * Settings is Pericope but the project has no usable local pericope data
+ * (#588) — Bible/Record fall back to verse units with this explanation.
+ */
+export const PERICOPE_UNAVAILABLE_WARNING =
+  "Pericopes aren't available for this project. Showing verses instead.";
+
 /** Record tab when local `bible_texts` row is missing (#448). */
 export const RECORD_SOURCE_TEXT_SYNCING =
   'Source text still syncing for this verse — recording will unlock when ready.';

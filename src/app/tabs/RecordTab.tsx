@@ -56,6 +56,7 @@ import {
 import { WarningBanner } from '../../components/ui/WarningBanner';
 import { StageAdvanceConfirmSheet } from '../../components/ui/StageAdvanceConfirmSheet';
 import {
+  PERICOPE_UNAVAILABLE_WARNING,
   RECORD_AUDIO_CONFLICT_WARNING,
   RECORD_TAKEN_CHAPTER_WARNING,
 } from '../../constants/messages';
@@ -238,8 +239,14 @@ export function RecordTab({
   ]);
 
   const [pericopeSetId, setPericopeSetId] = useState<number | null>(null);
+  const [pericopeSetResolved, setPericopeSetResolved] = useState(
+    chapterData.projectId === null,
+  );
   const [activePericope, setActivePericope] =
     useState<PericopeGroupResult | null>(null);
+  const [activePericopeResolved, setActivePericopeResolved] = useState(
+    draftingUnit !== 'pericope',
+  );
   const pericopeRequestIdRef = useRef(0);
   const [lastPericopeOfChapter, setLastPericopeOfChapter] =
     useState<PericopeGroupResult | null>(null);
@@ -290,11 +297,13 @@ export function RecordTab({
         ? `${firstPericopeVerse.chapterNumber}:${firstPericopeVerse.verseNumber}–${lastPericopeVerse.chapterNumber}:${lastPericopeVerse.verseNumber}`
         : `${firstPericopeVerse.verseNumber}–${lastPericopeVerse.verseNumber}`
       : null;
-  // Falls back to the verse reference silently whenever no pericope set/data
-  // is resolved (e.g. project has no pericope set configured) — see #409.
-  // Cross-chapter pericopes (e.g. Genesis 1→2) render with explicit chapter
-  // numbers on both endpoints rather than the "chapterName:range" shorthand,
-  // since a bare verse range would be ambiguous across chapters.
+  // Falls back to the verse reference whenever no pericope set/data resolves
+  // (null set or set id with no local rows) — see #409 / #588. A banner
+  // (PERICOPE_UNAVAILABLE_WARNING) explains the fallback once resolution
+  // finishes. Cross-chapter pericopes (e.g. Genesis 1→2) render with
+  // explicit chapter numbers on both endpoints rather than the
+  // "chapterName:range" shorthand, since a bare verse range would be
+  // ambiguous across chapters.
   const reference =
     draftingUnit === 'pericope' && pericopeRange
       ? pericopeSpansChapters
@@ -311,8 +320,8 @@ export function RecordTab({
    * pericope mode instead of stepping through each verse in the current one
    * (#540). Falls back to verse-by-verse stepping while pericope data is
    * still resolving (pericopeVerses is cleared on every mode/verse change —
-   * see the getPericopeForVerse effect below) or when no pericope set is
-   * configured, matching the same silent fallback used for `reference` above.
+   * see the getPericopeForVerse effect below) or when no local pericope
+   * data is available, matching the verse `reference` fallback above.
    */
   const isPericopeNav =
     draftingUnit === 'pericope' && pericopeVerses.length > 0;
@@ -426,11 +435,16 @@ export function RecordTab({
   useEffect(() => {
     if (chapterData.projectId === null) {
       setPericopeSetId(null);
+      setPericopeSetResolved(true);
       return;
     }
+    setPericopeSetResolved(false);
     let cancelled = false;
     void getProjectPericopeSetId(chapterData.projectId).then(id => {
-      if (!cancelled) setPericopeSetId(id);
+      if (!cancelled) {
+        setPericopeSetId(id);
+        setPericopeSetResolved(true);
+      }
     });
     return () => {
       cancelled = true;
@@ -439,11 +453,23 @@ export function RecordTab({
 
   useEffect(() => {
     const requestId = ++pericopeRequestIdRef.current;
-    if (draftingUnit !== 'pericope' || pericopeSetId === null) {
+    if (draftingUnit !== 'pericope') {
       setActivePericope(null);
+      setActivePericopeResolved(true);
+      return;
+    }
+    if (!pericopeSetResolved) {
+      setActivePericope(null);
+      setActivePericopeResolved(false);
+      return;
+    }
+    if (pericopeSetId === null) {
+      setActivePericope(null);
+      setActivePericopeResolved(true);
       return;
     }
     setActivePericope(null);
+    setActivePericopeResolved(false);
     void getPericopeForVerse(
       chapterData.bookId,
       chapterData.chapterNumber,
@@ -452,11 +478,13 @@ export function RecordTab({
     ).then(result => {
       if (requestId === pericopeRequestIdRef.current) {
         setActivePericope(result);
+        setActivePericopeResolved(true);
       }
     });
   }, [
     draftingUnit,
     pericopeSetId,
+    pericopeSetResolved,
     chapterData.bookId,
     chapterData.chapterNumber,
     selectedVerse,
@@ -790,31 +818,57 @@ export function RecordTab({
   const { hasConflict } = useChapterConflictStatus(chapterData.id);
   const chapterHasRecording = hasChapterRecording;
   const lastVerseNumber = verses[verses.length - 1]?.verseNumber ?? null;
+  /**
+   * Pericope last-unit rules apply only when local pericope rows resolve.
+   * While the set id or pericope rows are still loading, keep the CTA hidden
+   * (pre-#588). A set id with no rows (or a null set) falls back to verse
+   * rules so the stage-advance CTA remains reachable (#588).
+   */
   const isOnLastUnit = useMemo(() => {
-    if (draftingUnit === 'pericope' && pericopeSetId !== null) {
-      return (
-        activePericope !== null &&
-        lastPericopeOfChapter !== null &&
-        activePericope.verses.some(
-          v =>
-            v.chapterNumber === chapterData.chapterNumber &&
-            v.verseNumber === selectedVerse,
-        ) &&
-        activePericope.pericopeNumber ===
-          lastPericopeOfChapter.pericopeNumber &&
-        activePericope.section === lastPericopeOfChapter.section
-      );
+    if (draftingUnit === 'pericope') {
+      if (!pericopeSetResolved) {
+        return false;
+      }
+      if (pericopeSetId !== null) {
+        if (!activePericopeResolved) {
+          return false;
+        }
+        if (activePericope === null) {
+          return lastVerseNumber !== null && selectedVerse === lastVerseNumber;
+        }
+        if (lastPericopeOfChapter === null) {
+          return false;
+        }
+        return (
+          activePericope.verses.some(
+            v =>
+              v.chapterNumber === chapterData.chapterNumber &&
+              v.verseNumber === selectedVerse,
+          ) &&
+          activePericope.pericopeNumber ===
+            lastPericopeOfChapter.pericopeNumber &&
+          activePericope.section === lastPericopeOfChapter.section
+        );
+      }
     }
     return lastVerseNumber !== null && selectedVerse === lastVerseNumber;
   }, [
     draftingUnit,
+    pericopeSetResolved,
     pericopeSetId,
+    activePericopeResolved,
     activePericope,
     lastPericopeOfChapter,
     lastVerseNumber,
     selectedVerse,
     chapterData.chapterNumber,
   ]);
+
+  const pericopeUnavailable =
+    draftingUnit === 'pericope' &&
+    pericopeSetResolved &&
+    (pericopeSetId === null ||
+      (activePericopeResolved && activePericope === null));
 
   const stageAdvance = useMemo(
     () =>
@@ -909,6 +963,12 @@ export function RecordTab({
           variant="amber"
           icon={TriangleAlert}
           message={RECORD_AUDIO_CONFLICT_WARNING}
+        />
+      ) : null}
+      {pericopeUnavailable ? (
+        <WarningBanner
+          testID="record-pericope-unavailable"
+          message={PERICOPE_UNAVAILABLE_WARNING}
         />
       ) : null}
       <View style={styles.verseNav}>
