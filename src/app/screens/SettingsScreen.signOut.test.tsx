@@ -28,7 +28,6 @@ jest.mock('../../components/layout/ScreenContainer', () => {
 });
 
 jest.mock('../../components/ui/SettingsListRow', () => {
-  const React = require('react');
   const { Text, TouchableOpacity, View } = require('react-native');
   return {
     SettingsNavigationRow: ({
@@ -63,7 +62,6 @@ jest.mock('../../components/ui/SettingsListRow', () => {
 });
 
 jest.mock('../../components/layout/StackScreenHeader', () => {
-  const React = require('react');
   const { View } = require('react-native');
   return { StackScreenHeader: () => <View /> };
 });
