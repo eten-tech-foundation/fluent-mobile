@@ -57,6 +57,7 @@ import { WarningBanner } from '../../components/ui/WarningBanner';
 import { StageAdvanceConfirmSheet } from '../../components/ui/StageAdvanceConfirmSheet';
 import {
   RECORD_AUDIO_CONFLICT_WARNING,
+  RECORD_STAGE_ADVANCE_UNUPLOADABLE_WARNING,
   RECORD_TAKEN_CHAPTER_WARNING,
 } from '../../constants/messages';
 import type { PericopeGroupResult } from '../../db/queries';
@@ -79,6 +80,7 @@ import {
   getBibleTexts,
   getPericopeForVerse,
   getPericopesForChapter,
+  chapterHasUnuploadableSelectedTakes,
   isChapterFullyRecordedVerseMode,
   isChapterFullyRecordedPericopeMode,
 } from '../../db/queries';
@@ -156,6 +158,7 @@ export function RecordTab({
   const [elapsedMs, setElapsedMs] = useState(0);
   const [takeView, setTakeView] = useState<'mine' | 'all'>('mine');
   const [hasChapterRecording, setHasChapterRecording] = useState(false);
+  const [hasUnuploadableTakes, setHasUnuploadableTakes] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { draftingUnit } = useDraftingUnit();
@@ -610,8 +613,13 @@ export function RecordTab({
               chapterData.bookId,
               chapterData.chapterNumber,
             );
+      const unuploadable = await chapterHasUnuploadableSelectedTakes(
+        chapterData.bookId,
+        chapterData.chapterNumber,
+      );
       if (!cancelled) {
         setHasChapterRecording(complete);
+        setHasUnuploadableTakes(unuploadable);
       }
     })();
     return () => {
@@ -823,6 +831,7 @@ export function RecordTab({
         currentUserId,
         hasChapterRecording: chapterHasRecording,
         hasConflict,
+        hasUnuploadableTakes,
         isOnLastUnit,
       }),
     [
@@ -830,6 +839,7 @@ export function RecordTab({
       currentUserId,
       chapterHasRecording,
       hasConflict,
+      hasUnuploadableTakes,
       isOnLastUnit,
     ],
   );
@@ -1343,22 +1353,30 @@ export function RecordTab({
         </View>
 
         {stageAdvance.visible && stageAdvance.destination && !showCapture ? (
-          <TouchableOpacity
-            style={[
-              styles.stageAdvanceButton,
-              stageAdvance.disabled && styles.disabled,
-            ]}
-            onPress={handleOpenAdvanceSheet}
-            disabled={stageAdvance.disabled}
-            accessibilityRole="button"
-            accessibilityLabel={stageAdvance.destination.buttonLabel}
-            accessibilityState={{ disabled: stageAdvance.disabled }}
-            testID="stage-advance-button"
-          >
-            <Text style={styles.stageAdvanceLabel}>
-              {stageAdvance.destination.buttonLabel}
-            </Text>
-          </TouchableOpacity>
+          <>
+            {hasUnuploadableTakes && !hasConflict ? (
+              <WarningBanner
+                testID="stage-advance-unuploadable-warning"
+                message={RECORD_STAGE_ADVANCE_UNUPLOADABLE_WARNING}
+              />
+            ) : null}
+            <TouchableOpacity
+              style={[
+                styles.stageAdvanceButton,
+                stageAdvance.disabled && styles.disabled,
+              ]}
+              onPress={handleOpenAdvanceSheet}
+              disabled={stageAdvance.disabled}
+              accessibilityRole="button"
+              accessibilityLabel={stageAdvance.destination.buttonLabel}
+              accessibilityState={{ disabled: stageAdvance.disabled }}
+              testID="stage-advance-button"
+            >
+              <Text style={styles.stageAdvanceLabel}>
+                {stageAdvance.destination.buttonLabel}
+              </Text>
+            </TouchableOpacity>
+          </>
         ) : null}
 
         <SourceTextAccordion

@@ -13,6 +13,7 @@ import {
   RECORD_AUDIO_CONFLICT_WARNING,
   RECORD_TAKEN_CHAPTER_WARNING,
   RECORD_SOURCE_TEXT_UNAVAILABLE,
+  RECORD_STAGE_ADVANCE_UNUPLOADABLE_WARNING,
 } from '../../constants/messages';
 import { getProjectPericopeSetId } from '../../db/repository';
 import type {
@@ -21,6 +22,7 @@ import type {
 } from '../../hooks/useVerseAudio';
 import type { useDraftingUnit } from '../../hooks/useDraftingUnit';
 import {
+  chapterHasUnuploadableSelectedTakes,
   getBibleTextId,
   getPericopeForVerse,
   getPericopesForChapter,
@@ -57,6 +59,7 @@ jest.mock('../../db/queries', () => ({
   getPericopeForVerse: jest.fn(async () => null),
   getPericopesForChapter: jest.fn(async () => []),
   getSelectedTakeCoverages: jest.fn(async () => []),
+  chapterHasUnuploadableSelectedTakes: jest.fn(async () => false),
   isChapterFullyRecordedVerseMode: jest.fn(async () => true),
   isChapterFullyRecordedPericopeMode: jest.fn(async () => true),
 }));
@@ -64,6 +67,10 @@ jest.mock('../../db/queries', () => ({
 const mockGetBibleTextId = getBibleTextId as jest.MockedFunction<
   typeof getBibleTextId
 >;
+const mockChapterHasUnuploadableSelectedTakes =
+  chapterHasUnuploadableSelectedTakes as jest.MockedFunction<
+    typeof chapterHasUnuploadableSelectedTakes
+  >;
 const mockIsChapterFullyRecordedVerseMode =
   isChapterFullyRecordedVerseMode as jest.MockedFunction<
     typeof isChapterFullyRecordedVerseMode
@@ -277,6 +284,8 @@ describe('RecordTab', () => {
     // test's `.not.toHaveBeenCalled()` assertion.
     jest.clearAllMocks();
     mockResolveRecordingUnit.mockResolvedValue(null);
+    mockChapterHasUnuploadableSelectedTakes.mockResolvedValue(false);
+    mockIsChapterFullyRecordedVerseMode.mockResolvedValue(true);
     mockUseVerseAudio.mockReturnValue(idleAudio);
     mockUseSourceAudioControl.mockReturnValue({
       pause: jest.fn().mockResolvedValue(undefined),
@@ -1052,6 +1061,19 @@ describe('RecordTab', () => {
     await waitFor(() => {
       expect(screen.getByTestId('stage-advance-button')).toBeDisabled();
     });
+  });
+
+  it('disables stage advance CTA and explains when takes cannot upload (#585)', async () => {
+    mockChapterHasUnuploadableSelectedTakes.mockResolvedValue(true);
+
+    renderTab();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stage-advance-button')).toBeDisabled();
+    });
+    expect(
+      screen.getByTestId('stage-advance-unuploadable-warning'),
+    ).toHaveTextContent(RECORD_STAGE_ADVANCE_UNUPLOADABLE_WARNING);
   });
 
   it('hides stage advance CTA when current user is not the assignee', async () => {

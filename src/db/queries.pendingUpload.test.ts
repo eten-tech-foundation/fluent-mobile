@@ -31,6 +31,7 @@ jest.mock('../utils/logger', () => ({
 }));
 
 import {
+  chapterHasUnuploadableSelectedTakes,
   getPendingUploadChapters,
   getPendingUploadCount,
   getUnuploadablePendingSummary,
@@ -109,5 +110,37 @@ describe('pending upload queries (#545)', () => {
       other: 0,
       total: 0,
     });
+  });
+
+  it('chapterHasUnuploadableSelectedTakes is true when the chapter has non-verse pending (#585)', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ count: 2 }] });
+
+    await expect(chapterHasUnuploadableSelectedTakes(40, 1)).resolves.toBe(
+      true,
+    );
+
+    expect(mockExecute).toHaveBeenCalledWith(
+      expect.stringContaining('bt.book_id = ?'),
+      [40, 1, 7],
+    );
+    const sql = String(mockExecute.mock.calls[0]?.[0]);
+    expect(sql).toContain("IFNULL(r.granularity, 'verse') = 'verse'");
+    expect(sql).toContain('NOT (');
+  });
+
+  it('chapterHasUnuploadableSelectedTakes is false when count is zero', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ count: 0 }] });
+
+    await expect(chapterHasUnuploadableSelectedTakes(40, 1)).resolves.toBe(
+      false,
+    );
+  });
+
+  it('chapterHasUnuploadableSelectedTakes fails closed when the query errors', async () => {
+    mockExecute.mockRejectedValue(new Error('db'));
+
+    await expect(chapterHasUnuploadableSelectedTakes(40, 1)).resolves.toBe(
+      true,
+    );
   });
 });

@@ -670,6 +670,49 @@ const EMPTY_UNUPLOADABLE: UnuploadablePendingSummary = {
 };
 
 /**
+ * True when this chapter has selected pending takes outside the uploadable
+ * verse bucket (e.g. pericope-only until #584). Used to block stage advance
+ * (#585) so Peer Check is not entered without server audio.
+ */
+export async function chapterHasUnuploadableSelectedTakes(
+  bookId: number,
+  chapterNumber: number,
+): Promise<boolean> {
+  const db = getDatabase();
+  const userId = parseUserId();
+  try {
+    const params: number[] = [bookId, chapterNumber];
+    if (userId !== null) {
+      params.push(userId);
+    }
+    const result = await db.execute(
+      `SELECT COUNT(*) AS count
+       FROM recordings r
+       JOIN bible_texts bt ON bt.id = r.bible_text_id
+       WHERE r.is_selected = 1
+         AND r.sync_status NOT IN ('uploaded', 'conflicted')
+         AND bt.book_id = ?
+         AND bt.chapter_number = ?
+         AND ${recordedByUserPredicate('r', userId)}
+         AND NOT (
+           r.bible_text_id > 0
+           AND IFNULL(r.granularity, 'verse') = 'verse'
+         )`,
+      params,
+    );
+    return (Number(result.rows?.[0]?.count) || 0) > 0;
+  } catch (error) {
+    log.error('Error checking chapter unuploadable takes', {
+      error,
+      bookId,
+      chapterNumber,
+    });
+    // Fail closed: do not allow advance when we cannot verify uploadability.
+    return true;
+  }
+}
+
+/**
  * Pending selected takes that the worker will never process (silent no-op
  * if we counted them as uploadable). Missing assignment is not a bucket —
  * the worker attempts those rows and fails at runtime (#548).

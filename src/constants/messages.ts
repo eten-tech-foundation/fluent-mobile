@@ -73,6 +73,10 @@ export const RECORD_TAKEN_CHAPTER_WARNING =
 export const RECORD_AUDIO_CONFLICT_WARNING =
   'Unresolved audio take conflict on this chapter/pericope.';
 
+/** Stage advance blocked while selected takes cannot upload (#585). */
+export const RECORD_STAGE_ADVANCE_UNUPLOADABLE_WARNING =
+  "Can't advance yet — some takes on this chapter can't upload. Open Sync for details.";
+
 /** Record tab when local `bible_texts` row is missing (#448). */
 export const RECORD_SOURCE_TEXT_SYNCING =
   'Source text still syncing for this verse — recording will unlock when ready.';
