@@ -103,6 +103,9 @@ jest.mock('./chapterClaimSync', () => ({
     conflicts: 0,
     failed: 0,
   }),
+  reconcilePendingClaimsAfterAssignmentPull: jest
+    .fn()
+    .mockResolvedValue({ conflicts: 0 }),
 }));
 
 jest.mock('../db/repository', () => ({
