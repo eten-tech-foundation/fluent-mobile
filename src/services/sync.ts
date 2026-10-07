@@ -214,16 +214,16 @@ export async function syncUser(email?: string, preloadedUser?: ApiUser) {
   );
 }
 
-export async function syncMasterData() {
+export async function syncMasterData(sessionToken?: string) {
   return retrySyncStep(
     'Master data sync',
     KV_KEYS.SYNC_ERROR_MASTER_DATA,
     async () => {
       log.info('Syncing master data...');
 
-      const languages = await FluentAPI.getLanguages();
-      const books = await FluentAPI.getBooks();
-      const bibles = await FluentAPI.getBibles();
+      const languages = await FluentAPI.getLanguages(sessionToken);
+      const books = await FluentAPI.getBooks(sessionToken);
+      const bibles = await FluentAPI.getBibles(sessionToken);
 
       log.info('Master data fetched', {
         languagesCount: languages?.length,
@@ -732,12 +732,12 @@ export async function syncBibleTexts(updatedAfter?: string) {
   );
 }
 
-export async function syncPericopeSets() {
+export async function syncPericopeSets(sessionToken?: string) {
   return retrySyncStep(
     'Pericope sets sync',
     KV_KEYS.SYNC_ERROR_PERICOPE_SETS,
     async () => {
-      const sets = await FluentAPI.getPericopeSets();
+      const sets = await FluentAPI.getPericopeSets(sessionToken);
       await insertPericopeSets(sets);
       log.info('Pericope sets synced', { count: sets.length });
     },
@@ -874,8 +874,8 @@ export async function syncAllUsers(): Promise<void> {
     let oldestAssignmentCursor: string | undefined;
     const usersPendingCursorUpdate: string[] = [];
 
-    await syncMasterData();
-    await syncPericopeSets();
+    await syncMasterData(activeCreds?.token);
+    await syncPericopeSets(activeCreds?.token);
 
     for (const userId of userIdsToSync) {
       const creds = await getCredentials(userId);
@@ -1019,8 +1019,8 @@ export async function syncAllData(
     const userIdStr = String(userId);
     const userAssignmentCursor = getUserLastSyncedAt(userIdStr) || undefined;
 
-    await syncMasterData();
-    await syncPericopeSets();
+    await syncMasterData(sessionToken);
+    await syncPericopeSets(sessionToken);
     await syncProjects(userId, sessionToken);
     await syncPendingChapterClaimsForUser(userId);
 
