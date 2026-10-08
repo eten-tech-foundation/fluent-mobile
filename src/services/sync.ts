@@ -1459,6 +1459,9 @@ export async function refreshChapterMetadataIfOnline(
       }
 
       const sessionToken = creds.token;
+      // Push offline claims before assignment reconcile so list refresh does
+      // not clear provisional "mine" ahead of the claim POST (#611 / #273).
+      await syncPendingChapterClaimsForUser(userId);
       // One-shot ISO backfill for devices that synced languages before
       // mapApiLanguage. Verse text stays on Sync Now / DraftingScreen ensure.
       await maybeBackfillMasterDataOnRefresh(sessionToken);
