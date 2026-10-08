@@ -15,7 +15,7 @@ tags:
     id: 'home-tab-projects'
 - extendedWaitUntil:
     visible:
-      id: 'project-row-.*'
+      id: 'milestone-row-.*'
     timeout: 60000
 - scrollUntilVisible:
     element:
