@@ -81,12 +81,7 @@ async function resolveConnectivityState(
   state: NetInfoLinkState,
 ): Promise<ServerReachabilitySnapshot> {
   const isOnline = await resolveServerOnline(state.isConnected);
-  return {
-    isOnline,
-    isWifi: state.type === 'wifi',
-    isCellular: state.type === 'cellular',
-    connectionType: state.type,
-  };
+  return snapshotFromLinkState(state, isOnline);
 }
 
 export async function getConnectivitySnapshot(): Promise<ServerReachabilitySnapshot> {
@@ -111,6 +106,28 @@ export async function getTransferTransportSnapshot(): Promise<TransferTransportS
   return transferTransportFromNetInfoState(await NetInfo.fetch());
 }
 
+export type SubscribeToConnectivityOptions = {
+  delay?: (ms: number) => Promise<void>;
+};
+
+const REACHABILITY_RETRY_BACKOFF_MS = [250, 500, 1_000, 2_000, 4_000];
+
+function defaultDelay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function snapshotFromLinkState(
+  state: NetInfoLinkState,
+  isOnline: boolean,
+): ServerReachabilitySnapshot {
+  return {
+    isOnline,
+    isWifi: state.type === 'wifi',
+    isCellular: state.type === 'cellular',
+    connectionType: state.type,
+  };
+}
+
 export function subscribeToConnectivity(
   onChange: (
     isOnline: boolean,
@@ -118,16 +135,52 @@ export function subscribeToConnectivity(
     isCellular: boolean,
     connectionType: string,
   ) => void,
+  options?: SubscribeToConnectivityOptions,
 ): () => void {
   ensureNetInfoConfigured();
 
+  const delay = options?.delay ?? defaultDelay;
   let cancelled = false;
+  let generation = 0;
+  let lastEmittedKey: string | null = null;
+
+  const emit = (snapshot: ServerReachabilitySnapshot, gen: number) => {
+    if (cancelled || gen !== generation) {
+      return;
+    }
+    const key = `${snapshot.isOnline}:${snapshot.isWifi}:${snapshot.isCellular}:${snapshot.connectionType}`;
+    if (key === lastEmittedKey) {
+      return;
+    }
+    lastEmittedKey = key;
+    onChange(
+      snapshot.isOnline,
+      snapshot.isWifi,
+      snapshot.isCellular,
+      snapshot.connectionType,
+    );
+  };
 
   const evaluate = async (state: NetInfoLinkState) => {
-    const { isOnline, isWifi, isCellular, connectionType } =
-      await resolveConnectivityState(state);
-    if (!cancelled) {
-      onChange(isOnline, isWifi, isCellular, connectionType);
+    const gen = ++generation;
+    if (!state.isConnected) {
+      emit(snapshotFromLinkState(state, false), gen);
+      return;
+    }
+
+    let attempt = 0;
+    while (!cancelled && gen === generation) {
+      const snapshot = await resolveConnectivityState(state);
+      emit(snapshot, gen);
+      if (cancelled || gen !== generation || snapshot.isOnline) {
+        return;
+      }
+      const waitMs =
+        REACHABILITY_RETRY_BACKOFF_MS[
+          Math.min(attempt, REACHABILITY_RETRY_BACKOFF_MS.length - 1)
+        ];
+      attempt += 1;
+      await delay(waitMs);
     }
   };
 
