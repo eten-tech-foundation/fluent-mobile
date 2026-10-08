@@ -32,7 +32,10 @@ import { useVerseAudio } from '../../hooks/useVerseAudio';
 import type { VerseAudioState } from '../../hooks/verseAudioReducer';
 import { resolveRecordingUnit } from '../../hooks/resolveRecordingUnit';
 import { recordingUnitCapturesEqual } from '../../utils/recordingRange';
-import { formatTakeSubtitle } from '../../utils/takeSubtitle';
+import {
+  formatTakeSubtitle,
+  formatTakeVerseSpan,
+} from '../../utils/takeSubtitle';
 import {
   buildCrossGranularityRows,
   type StitchedTakeRow,
@@ -56,10 +59,15 @@ import {
 import { WarningBanner } from '../../components/ui/WarningBanner';
 import { StageAdvanceConfirmSheet } from '../../components/ui/StageAdvanceConfirmSheet';
 import {
+  CAPTURE_LEAVE_DISCARD,
+  CAPTURE_LEAVE_MESSAGE,
+  CAPTURE_LEAVE_RESUME,
+  CAPTURE_LEAVE_TITLE,
   PERICOPE_UNAVAILABLE_WARNING,
   RECORD_AUDIO_CONFLICT_WARNING,
   RECORD_TAKEN_CHAPTER_WARNING,
 } from '../../constants/messages';
+import type { CaptureControls } from '../../types/captureControls';
 import type { PericopeGroupResult } from '../../db/queries';
 import { ChapterAssignmentData } from '../../types/db/types';
 import { getProjectPericopeSetId } from '../../db/repository';
@@ -126,6 +134,13 @@ type RecordTabProps = {
   chapterData: ChapterAssignmentData;
   userId: number | null;
   onCaptureActiveChange?: (active: boolean) => void;
+  /**
+   * Called with Resume/Discard controls while a take is in progress
+   * (recording/paused) and with null when the capture ends (#49). Lets the
+   * screen offer the leave prompt on tab change, back, Sync, and account
+   * switch — not just the verse chevrons handled here.
+   */
+  onRegisterCaptureControls?: (controls: CaptureControls | null) => void;
   onChapterClaimed?: () => void;
 };
 
@@ -143,6 +158,7 @@ export function RecordTab({
   chapterData,
   userId,
   onCaptureActiveChange,
+  onRegisterCaptureControls,
   onChapterClaimed,
 }: RecordTabProps) {
   const router = useRouter();
@@ -163,6 +179,88 @@ export function RecordTab({
   const [recordingUnit, setRecordingUnit] =
     useState<RecordingUnitCapture | null>(null);
 
+  const [pericopeSetId, setPericopeSetId] = useState<number | null>(null);
+  const [pericopeSetResolved, setPericopeSetResolved] = useState(
+    chapterData.projectId === null,
+  );
+  const [activePericope, setActivePericope] =
+    useState<PericopeGroupResult | null>(null);
+  const [activePericopeResolved, setActivePericopeResolved] = useState(
+    draftingUnit !== 'pericope',
+  );
+  const pericopeRequestIdRef = useRef(0);
+
+  useEffect(() => {
+    if (chapterData.projectId === null) {
+      setPericopeSetId(null);
+      setPericopeSetResolved(true);
+      return;
+    }
+    setPericopeSetResolved(false);
+    let cancelled = false;
+    void getProjectPericopeSetId(chapterData.projectId).then(id => {
+      if (!cancelled) {
+        setPericopeSetId(id);
+        setPericopeSetResolved(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [chapterData.projectId]);
+
+  useEffect(() => {
+    const requestId = ++pericopeRequestIdRef.current;
+    if (draftingUnit !== 'pericope') {
+      setActivePericope(null);
+      setActivePericopeResolved(true);
+      return;
+    }
+    if (!pericopeSetResolved) {
+      setActivePericope(null);
+      setActivePericopeResolved(false);
+      return;
+    }
+    if (pericopeSetId === null) {
+      setActivePericope(null);
+      setActivePericopeResolved(true);
+      return;
+    }
+    setActivePericope(null);
+    setActivePericopeResolved(false);
+    void getPericopeForVerse(
+      chapterData.bookId,
+      chapterData.chapterNumber,
+      selectedVerse,
+      pericopeSetId,
+    ).then(result => {
+      if (requestId === pericopeRequestIdRef.current) {
+        setActivePericope(result);
+        setActivePericopeResolved(true);
+      }
+    });
+  }, [
+    draftingUnit,
+    pericopeSetId,
+    pericopeSetResolved,
+    chapterData.bookId,
+    chapterData.chapterNumber,
+    selectedVerse,
+  ]);
+
+  const pericopeUnavailable =
+    draftingUnit === 'pericope' &&
+    pericopeSetResolved &&
+    (pericopeSetId === null ||
+      (activePericopeResolved && activePericope === null));
+
+  /**
+   * Unit used for capture + My Takes rows. Settings may say 'pericope' while
+   * the project has no local pericope data (#588); in that case behave as verse
+   * mode so verse takes stay real, deletable rows instead of a stitched row.
+   */
+  const effectiveUnit = pericopeUnavailable ? 'verse' : draftingUnit;
+
   const captureBibleTextId = useMemo(() => {
     if (bibleTextId === null || bibleTextVerse !== selectedVerse) {
       return null;
@@ -174,7 +272,7 @@ export function RecordTab({
     if (captureBibleTextId === null) {
       return false;
     }
-    if (draftingUnit !== 'pericope') {
+    if (effectiveUnit !== 'pericope') {
       return true;
     }
     return (
@@ -189,13 +287,15 @@ export function RecordTab({
   }, [
     captureBibleTextId,
     chapterData.chapterNumber,
-    draftingUnit,
+    effectiveUnit,
     recordingUnit,
     selectedVerse,
   ]);
 
   const activeRecordingUnit =
-    draftingUnit === 'pericope' && recordingCaptureReady ? recordingUnit : null;
+    effectiveUnit === 'pericope' && recordingCaptureReady
+      ? recordingUnit
+      : null;
 
   const verseAudio = useVerseAudio({
     bibleTextId: captureBibleTextId,
@@ -210,7 +310,7 @@ export function RecordTab({
     onChapterClaimed,
     chapterNumber: chapterData.chapterNumber,
     verseNumber: selectedVerse,
-    draftingUnit,
+    draftingUnit: effectiveUnit,
     recordingUnit: activeRecordingUnit,
   });
   /**
@@ -238,16 +338,6 @@ export function RecordTab({
     selectedVerse,
   ]);
 
-  const [pericopeSetId, setPericopeSetId] = useState<number | null>(null);
-  const [pericopeSetResolved, setPericopeSetResolved] = useState(
-    chapterData.projectId === null,
-  );
-  const [activePericope, setActivePericope] =
-    useState<PericopeGroupResult | null>(null);
-  const [activePericopeResolved, setActivePericopeResolved] = useState(
-    draftingUnit !== 'pericope',
-  );
-  const pericopeRequestIdRef = useRef(0);
   const [lastPericopeOfChapter, setLastPericopeOfChapter] =
     useState<PericopeGroupResult | null>(null);
 
@@ -392,7 +482,7 @@ export function RecordTab({
   const displayRows = useMemo(
     () =>
       buildCrossGranularityRows({
-        draftingUnit,
+        draftingUnit: effectiveUnit,
         pericopeVerses: pericopeVerses.length
           ? pericopeVerses.map(verse => ({
               chapterNumber: verse.chapterNumber,
@@ -405,7 +495,7 @@ export function RecordTab({
         takes: verseAudio.takes,
       }),
     [
-      draftingUnit,
+      effectiveUnit,
       pericopeVerses,
       activeRecordingUnit?.coveredViews,
       verseAudio.takes,
@@ -431,64 +521,6 @@ export function RecordTab({
   }, [resolveBibleTextId, selectedVerse]);
 
   const isSyncing = useGlobalSyncStatus(refreshBibleTextId);
-
-  useEffect(() => {
-    if (chapterData.projectId === null) {
-      setPericopeSetId(null);
-      setPericopeSetResolved(true);
-      return;
-    }
-    setPericopeSetResolved(false);
-    let cancelled = false;
-    void getProjectPericopeSetId(chapterData.projectId).then(id => {
-      if (!cancelled) {
-        setPericopeSetId(id);
-        setPericopeSetResolved(true);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [chapterData.projectId]);
-
-  useEffect(() => {
-    const requestId = ++pericopeRequestIdRef.current;
-    if (draftingUnit !== 'pericope') {
-      setActivePericope(null);
-      setActivePericopeResolved(true);
-      return;
-    }
-    if (!pericopeSetResolved) {
-      setActivePericope(null);
-      setActivePericopeResolved(false);
-      return;
-    }
-    if (pericopeSetId === null) {
-      setActivePericope(null);
-      setActivePericopeResolved(true);
-      return;
-    }
-    setActivePericope(null);
-    setActivePericopeResolved(false);
-    void getPericopeForVerse(
-      chapterData.bookId,
-      chapterData.chapterNumber,
-      selectedVerse,
-      pericopeSetId,
-    ).then(result => {
-      if (requestId === pericopeRequestIdRef.current) {
-        setActivePericope(result);
-        setActivePericopeResolved(true);
-      }
-    });
-  }, [
-    draftingUnit,
-    pericopeSetId,
-    pericopeSetResolved,
-    chapterData.bookId,
-    chapterData.chapterNumber,
-    selectedVerse,
-  ]);
 
   useEffect(() => {
     const requestId = ++crossChapterTextRequestIdRef.current;
@@ -673,16 +705,44 @@ export function RecordTab({
   }, [verseAudio.state]);
 
   useEffect(() => {
-    const active =
-      verseAudio.state === 'recording' || verseAudio.state === 'paused';
-    onCaptureActiveChange?.(active);
-    return () => onCaptureActiveChange?.(false);
-  }, [verseAudio.state, onCaptureActiveChange]);
-
-  useEffect(() => {
     if (!verseAudio.errorMessage) return;
     Alert.alert('Audio error', verseAudio.errorMessage);
   }, [verseAudio.errorMessage]);
+
+  const captureActive =
+    verseAudio.state === 'recording' || verseAudio.state === 'paused';
+
+  useEffect(() => {
+    onCaptureActiveChange?.(captureActive);
+    return () => onCaptureActiveChange?.(false);
+  }, [captureActive, onCaptureActiveChange]);
+
+  // `useRecordingEngine` returns a fresh object every render, so
+  // `verseAudio.resume` / `discardCapture` change identity each render. Hand the
+  // parent one stable controls object that delegates to the latest callbacks via
+  // a ref, otherwise the registration effect below re-registers every render and
+  // loops through the parent's `setCaptureControls`.
+  const captureActionsRef = useRef({
+    resume: verseAudio.resume,
+    discardCapture: verseAudio.discardCapture,
+  });
+  captureActionsRef.current = {
+    resume: verseAudio.resume,
+    discardCapture: verseAudio.discardCapture,
+  };
+
+  const captureControls = useMemo<CaptureControls>(
+    () => ({
+      resume: () => captureActionsRef.current.resume(),
+      discardCapture: () => captureActionsRef.current.discardCapture(),
+    }),
+    [],
+  );
+
+  useEffect(() => {
+    onRegisterCaptureControls?.(captureActive ? captureControls : null);
+    return () => onRegisterCaptureControls?.(null);
+  }, [captureActive, captureControls, onRegisterCaptureControls]);
 
   const recordDisabled = captureBibleTextId === null;
   const syncingMessage = recordSourceTextHint(captureBibleTextId, isSyncing);
@@ -707,13 +767,36 @@ export function RecordTab({
   }
 
   /**
-   * Non-selected take: delete immediately, no prompt.
-   * Selected take: confirm first — deleting it hands off is_selected to the
-   * next-highest take_number (recordingsRepository#deleteRecordingTake), or
-   * returns the unit to Idle if it was the last one.
+   * Pericope take in Verse mode (#623): always confirm — delete removes the
+   * whole multi-verse recording from every verse it covers.
+   * Selected take (otherwise): confirm first — deleting it hands off
+   * is_selected to the next-highest take_number, or returns the unit to Idle.
+   * Non-selected verse take: delete immediately, no prompt.
    */
   function handleDeleteTake(take: Recording) {
     const isSelected = take.id === verseAudio.selectedTake?.id;
+    const isPericopeInVerseMode =
+      effectiveUnit === 'verse' && take.granularity === 'pericope';
+
+    if (isPericopeInVerseMode) {
+      const span = formatTakeVerseSpan(take);
+      Alert.alert(
+        'Delete pericope take?',
+        `This recording covers ${span}. Deleting it will remove the whole recording from every verse in that range.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => {
+              void verseAudio.deleteTake(take.id);
+            },
+          },
+        ],
+      );
+      return;
+    }
+
     if (!isSelected) {
       void verseAudio.deleteTake(take.id);
       return;
@@ -734,20 +817,32 @@ export function RecordTab({
     );
   }
 
-  function requestVerseChange(next: number) {
-    if (verseAudio.state === 'paused' || verseAudio.state === 'recording') {
-      Alert.alert(
-        'Recording in progress',
-        'Stop or finish the current take before changing verses.',
-        [{ text: 'OK' }],
-      );
-      return;
-    }
+  function changeVerse(next: number) {
     bibleTextRequestIdRef.current += 1;
     setBibleTextId(null);
     setBibleTextVerse(null);
     setRecordingUnit(null);
     setSelectedVerse(next);
+  }
+
+  /** #49: capture in progress — offer Resume or Discard, then proceed. */
+  function requestVerseChange(next: number) {
+    if (verseAudio.state === 'paused' || verseAudio.state === 'recording') {
+      Alert.alert(CAPTURE_LEAVE_TITLE, CAPTURE_LEAVE_MESSAGE, [
+        { text: CAPTURE_LEAVE_RESUME, style: 'cancel' },
+        {
+          text: CAPTURE_LEAVE_DISCARD,
+          style: 'destructive',
+          onPress: () => {
+            void verseAudio.discardCapture().then(() => {
+              changeVerse(next);
+            });
+          },
+        },
+      ]);
+      return;
+    }
+    changeVerse(next);
   }
 
   const showIdle =
@@ -863,12 +958,6 @@ export function RecordTab({
     selectedVerse,
     chapterData.chapterNumber,
   ]);
-
-  const pericopeUnavailable =
-    draftingUnit === 'pericope' &&
-    pericopeSetResolved &&
-    (pericopeSetId === null ||
-      (activePericopeResolved && activePericope === null));
 
   const stageAdvance = useMemo(
     () =>

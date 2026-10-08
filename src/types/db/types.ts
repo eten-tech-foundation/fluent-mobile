@@ -121,6 +121,17 @@ export interface ProjectSummary extends Project {
   connectivityProfile: ConnectivityProfile | null;
 }
 
+/** Home Milestones tab row — one `project_units` row plus parent project context. */
+export interface MilestoneSummary {
+  id: number;
+  name: string;
+  projectId: number;
+  projectName: string;
+  targetLanguageName: string;
+  milestoneCount: number;
+  syncState: ProjectSyncState;
+}
+
 /** Raw SQLite row shape for getProjectsWithSummary (snake_case columns). */
 export interface ProjectSummaryRow {
   id: number;
@@ -352,6 +363,12 @@ export interface PendingRecording {
   projectUnitId: number | null;
   /** Capture-time owner; upload prefers this account's token (#105). */
   recordedByUserId: number | null;
+  /** `verse` (default) or `pericope` — drives range upload (#584). */
+  granularity: 'verse' | 'pericope';
+  startChapter: number | null;
+  startVerse: number | null;
+  endChapter: number | null;
+  endVerse: number | null;
 }
 
 export const CHAPTER_ASSIGNMENT_STATUS = {

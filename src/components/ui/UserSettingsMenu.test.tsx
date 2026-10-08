@@ -3,6 +3,12 @@ import { Alert } from 'react-native';
 import { UserSettingsMenu } from './UserSettingsMenu';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { hrefs } from '../../navigation/hrefs';
+import {
+  RECORDING_IN_PROGRESS_MESSAGE,
+  RECORDING_IN_PROGRESS_TITLE,
+  resetRecordCaptureGateForTests,
+  setRecordCaptureGate,
+} from '../../navigation/recordCaptureGate';
 import type { DrawerContentComponentProps } from 'expo-router/drawer';
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -173,6 +179,7 @@ describe('UserSettingsMenu', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    resetRecordCaptureGateForTests();
     mockDrawerStatus = 'closed';
     mockReload.mockResolvedValue(undefined);
     mockCanDismiss.mockReturnValue(false);
@@ -180,6 +187,10 @@ describe('UserSettingsMenu', () => {
     mockGetActiveUserId.mockReturnValue('active-1');
     setDeviceAccountsResult();
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    resetRecordCaptureGateForTests();
   });
 
   function renderMenu() {
@@ -392,5 +403,48 @@ describe('UserSettingsMenu', () => {
     await waitFor(() => {
       expect(mockReload).toHaveBeenCalled();
     });
+  });
+
+  it('blocks drawer navigation, account switch, Add User, and Sign Out while recording', () => {
+    setRecordCaptureGate(true);
+    const { getByTestId, getByText } = renderMenu();
+
+    fireEvent.press(getByTestId('settings-menu-more-settings'));
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockCloseDrawer).toHaveBeenCalled();
+    expect(Alert.alert).toHaveBeenCalledWith(
+      RECORDING_IN_PROGRESS_TITLE,
+      RECORDING_IN_PROGRESS_MESSAGE,
+      [{ text: 'OK' }],
+    );
+
+    jest.mocked(Alert.alert).mockClear();
+    mockCloseDrawer.mockClear();
+
+    fireEvent.press(getByText('other@example.com'));
+    expect(mockSwitchToDeviceAccount).not.toHaveBeenCalled();
+    expect(Alert.alert).toHaveBeenCalledWith(
+      RECORDING_IN_PROGRESS_TITLE,
+      RECORDING_IN_PROGRESS_MESSAGE,
+      [{ text: 'OK' }],
+    );
+
+    jest.mocked(Alert.alert).mockClear();
+    fireEvent.press(getByTestId('settings-menu-add-user'));
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(Alert.alert).toHaveBeenCalledWith(
+      RECORDING_IN_PROGRESS_TITLE,
+      RECORDING_IN_PROGRESS_MESSAGE,
+      [{ text: 'OK' }],
+    );
+
+    jest.mocked(Alert.alert).mockClear();
+    fireEvent.press(getByTestId('settings-menu-sign-out'));
+    expect(mockSignOutCurrentDeviceAccount).not.toHaveBeenCalled();
+    expect(Alert.alert).toHaveBeenCalledWith(
+      RECORDING_IN_PROGRESS_TITLE,
+      RECORDING_IN_PROGRESS_MESSAGE,
+      [{ text: 'OK' }],
+    );
   });
 });

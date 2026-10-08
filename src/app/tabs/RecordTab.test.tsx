@@ -176,6 +176,7 @@ const idleAudio: VerseAudioApi = {
   pause: jest.fn(),
   resume: jest.fn(),
   stop: jest.fn(),
+  discardCapture: jest.fn().mockResolvedValue(undefined),
   playTake: jest.fn(),
   playStitched: jest.fn(),
   seek: jest.fn(),
@@ -229,6 +230,9 @@ type RenderTabOptions = {
   chapterData?: ChapterAssignmentData;
   userId?: number | null;
   onChapterClaimed?: () => void;
+  onRegisterCaptureControls?: (
+    controls: import('../../types/captureControls').CaptureControls | null,
+  ) => void;
 };
 
 function renderTab(
@@ -241,6 +245,7 @@ function renderTab(
         chapterData={options?.chapterData ?? chapterData}
         userId={options?.userId ?? 42}
         onCaptureActiveChange={onCaptureActiveChange}
+        onRegisterCaptureControls={options?.onRegisterCaptureControls}
         onChapterClaimed={options?.onChapterClaimed}
       />
     </DraftingProvider>,
@@ -556,6 +561,85 @@ describe('RecordTab', () => {
     expect(idleAudio.deleteTake).toHaveBeenCalledWith('rec_2');
   });
 
+  it('confirms before deleting a non-selected pericope take in Verse mode, naming the full range', () => {
+    const pericopeTake = makeTake({
+      id: 'pericope-1',
+      takeNumber: 1,
+      isSelected: false,
+      granularity: 'pericope',
+      startVerse: 1,
+      endVerse: 5,
+    });
+    const verseTake = makeTake({
+      id: 'verse-1',
+      takeNumber: 2,
+      isSelected: true,
+      startVerse: 3,
+      endVerse: 3,
+    });
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      state: 'recorded',
+      takes: [pericopeTake, verseTake],
+      selectedTake: verseTake,
+    });
+
+    renderTab();
+
+    fireEvent.press(screen.getByTestId('record-delete-button-pericope-1'));
+
+    expect(Alert.alert).toHaveBeenCalledTimes(1);
+    const [title, message, buttons] = (Alert.alert as jest.Mock).mock
+      .calls[0] as [string, string, { text: string; onPress?: () => void }[]];
+    expect(title).toBe('Delete pericope take?');
+    expect(message).toContain('vv. 1-5');
+    expect(message).toMatch(/whole recording/i);
+    expect(idleAudio.deleteTake).not.toHaveBeenCalled();
+
+    const confirmButton = buttons.find(b => b.text === 'Delete');
+    confirmButton?.onPress?.();
+
+    expect(idleAudio.deleteTake).toHaveBeenCalledWith('pericope-1');
+  });
+
+  it('keeps a pericope take when Verse-mode delete confirmation is cancelled', () => {
+    const pericopeTake = makeTake({
+      id: 'pericope-1',
+      takeNumber: 1,
+      isSelected: false,
+      granularity: 'pericope',
+      startVerse: 1,
+      endVerse: 5,
+    });
+    const verseTake = makeTake({
+      id: 'verse-1',
+      takeNumber: 2,
+      isSelected: true,
+      startVerse: 3,
+      endVerse: 3,
+    });
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      state: 'recorded',
+      takes: [pericopeTake, verseTake],
+      selectedTake: verseTake,
+    });
+
+    renderTab();
+
+    fireEvent.press(screen.getByTestId('record-delete-button-pericope-1'));
+
+    const [, , buttons] = (Alert.alert as jest.Mock).mock.calls[0] as [
+      string,
+      string,
+      { text: string; onPress?: () => void }[],
+    ];
+    const cancelButton = buttons.find(b => b.text === 'Cancel');
+    cancelButton?.onPress?.();
+
+    expect(idleAudio.deleteTake).not.toHaveBeenCalled();
+  });
+
   it('plays the tapped take and pauses when the same playing take is tapped again', async () => {
     const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isSelected: false });
     const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isSelected: true });
@@ -727,6 +811,90 @@ describe('RecordTab', () => {
 
     await waitFor(() => {
       expect(onCaptureActiveChange).toHaveBeenCalledWith(false);
+    });
+  });
+
+  // --- #49: leave prompt with Resume / Discard ------------------------------
+
+  describe('capture leave prompt (#49)', () => {
+    const twoVerseChapterVerses = [
+      ...verses,
+      { ...verses[0]!, verseNumber: 4, text: 'Verse four' },
+    ];
+
+    /** Capture the controls RecordTab registers while a capture is active. */
+    function renderCapturingTab() {
+      let controls:
+        | import('../../types/captureControls').CaptureControls
+        | null = null;
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'paused',
+      });
+      render(
+        <DraftingProvider verses={twoVerseChapterVerses} initialVerse={3}>
+          <RecordTab
+            chapterData={chapterData}
+            userId={42}
+            onRegisterCaptureControls={registered => {
+              controls = registered;
+            }}
+          />
+        </DraftingProvider>,
+      );
+      expect(controls).not.toBeNull();
+      return controls!;
+    }
+
+    it('registers Resume/Discard controls while a capture is active', () => {
+      renderCapturingTab();
+    });
+
+    it('next-verse chevron shows Resume/Discard; Discard drops no take and proceeds', async () => {
+      renderCapturingTab();
+      const discardCapture = idleAudio.discardCapture as jest.Mock;
+
+      fireEvent.press(screen.getByTestId('record-next-verse'));
+
+      expect(Alert.alert).toHaveBeenCalledTimes(1);
+      const [, , buttons] = (Alert.alert as jest.Mock).mock.calls[0] as [
+        string,
+        string,
+        { text: string; onPress?: () => void }[],
+      ];
+      expect(buttons.map(b => b.text)).toEqual(['Resume', 'Discard']);
+      expect(discardCapture).not.toHaveBeenCalled();
+
+      buttons.find(b => b.text === 'Discard')?.onPress?.();
+
+      await waitFor(() => {
+        expect(discardCapture).toHaveBeenCalledTimes(1);
+      });
+      // Verse changed after discard settled (#49 AC 3).
+      await waitFor(() => {
+        expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+          'Mark 14:4',
+        );
+      });
+      expect(idleAudio.stop).not.toHaveBeenCalled();
+    });
+
+    it('next-verse chevron keeps the capture on Resume', () => {
+      renderCapturingTab();
+
+      fireEvent.press(screen.getByTestId('record-next-verse'));
+
+      const [, , buttons] = (Alert.alert as jest.Mock).mock.calls[0] as [
+        string,
+        string,
+        { text: string; onPress?: () => void }[],
+      ];
+      buttons.find(b => b.text === 'Resume')?.onPress?.();
+
+      expect(idleAudio.discardCapture).not.toHaveBeenCalled();
+      expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+        'Mark 14:3',
+      );
     });
   });
 
@@ -1428,6 +1596,50 @@ describe('RecordTab', () => {
       expect(screen.getAllByTestId(/^record-take-row-/)).toHaveLength(1);
       expect(screen.queryByTestId(/^record-delete-button-/)).toBeNull();
       expect(screen.queryByTestId(/^record-take-select-/)).toBeNull();
+    });
+
+    it('treats a pericope set with no local rows as verse mode: real deletable rows, no stitched row (#588)', async () => {
+      mockUseDraftingUnit.mockReturnValue({
+        draftingUnit: 'pericope',
+        setDraftingUnit: jest.fn(),
+      });
+      // Set id resolves but getPericopeForVerse stays null (no local rows).
+      (getProjectPericopeSetId as jest.Mock).mockResolvedValue(7);
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [
+          makeTake({ id: 'v3', takeNumber: 1, startVerse: 3, endVerse: 3 }),
+          makeTake({ id: 'v4', takeNumber: 1, startVerse: 4, endVerse: 4 }),
+        ],
+      });
+
+      renderTab();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('record-pericope-unavailable')).toBeTruthy();
+      });
+
+      // Once unavailable, capture/rows use verse mode — not Settings' 'pericope'.
+      await waitFor(() => {
+        expect(mockUseVerseAudio).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            draftingUnit: 'verse',
+            recordingUnit: null,
+          }),
+        );
+      });
+      expect(screen.getAllByTestId(/^record-take-row-/)).toHaveLength(2);
+      expect(screen.getByTestId('record-delete-button-v3')).toBeTruthy();
+      expect(screen.getByTestId('record-delete-button-v4')).toBeTruthy();
+      expect(screen.queryByText(/Stitched/)).toBeNull();
+
+      // A stitched row would route through playStitched; real rows play takes.
+      fireEvent.press(screen.getByTestId('record-play-button-v3'));
+      expect(idleAudio.playStitched).not.toHaveBeenCalled();
+      expect(idleAudio.playTake).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'v3' }),
+      );
     });
 
     it('plays the stitched row with its segments in pericope order', async () => {
