@@ -152,13 +152,14 @@ export const FluentAPI = {
       headers: MOBILE_HEADERS,
     }),
 
-  getLanguages: (): Promise<ApiLanguage[]> =>
-    publicRequest<ApiLanguage[]>('/languages'),
+  getLanguages: (token?: string): Promise<ApiLanguage[]> =>
+    authedRequest<ApiLanguage[]>('/languages', undefined, token),
 
-  getBooks: (): Promise<ApiBookMeta[]> =>
-    publicRequest<ApiBookMeta[]>('/books'),
+  getBooks: (token?: string): Promise<ApiBookMeta[]> =>
+    authedRequest<ApiBookMeta[]>('/books', undefined, token),
 
-  getBibles: (): Promise<ApiBible[]> => publicRequest<ApiBible[]>('/bibles'),
+  getBibles: (token?: string): Promise<ApiBible[]> =>
+    authedRequest<ApiBible[]>('/bibles', undefined, token),
 
   getUserByEmail: (email: string, token?: string): Promise<ApiUser> =>
     authedRequest<ApiUser>(
@@ -318,9 +319,11 @@ export const FluentAPI = {
         languageCode,
       ),
     ),
-  getPericopeSets: async (): Promise<ApiPericopeSet[]> => {
-    const response = await publicRequest<PericopeSetsResponse>(
+  getPericopeSets: async (token?: string): Promise<ApiPericopeSet[]> => {
+    const response = await authedRequest<PericopeSetsResponse>(
       '/pericope-sets',
+      undefined,
+      token,
     );
     const raw = unwrapApiListResponse(response);
     return Array.isArray(raw) ? raw : [];
