@@ -12,7 +12,7 @@ import {
   loadTranslationNotesForUnit,
   setTranslationNotesLoadFailureForTests,
 } from '../../../services/translationNotes';
-import { getMockTranslationNotes } from '../../../mocks/resources/translationNotesMock';
+import { TranslationNoteItem } from '../../../types/resources/translationNotes';
 import { useTranslationNotesForUnit } from '../../../hooks/useTranslationNotesForUnit';
 
 jest.mock('../../../services/translationNotes', () => {
@@ -26,6 +26,25 @@ jest.mock('../../../services/translationNotes', () => {
 const mockLoad = loadTranslationNotesForUnit as jest.MockedFunction<
   typeof loadTranslationNotesForUnit
 >;
+
+// Fixed fixtures for the verse numbers this suite exercises — no live mock
+// generator, so this test has no dependency on `mocks/resources`.
+const NOTES_FOR_VERSE_1: TranslationNoteItem[] = [
+  {
+    id: 'tn-99-1-1',
+    title: 'connecting word',
+    body: 'This phrase connects the current verse to the previous one.',
+  },
+  {
+    id: 'tn-99-1-2',
+    title: 'Important name',
+    body: 'Translate this name consistently with earlier uses in the book.',
+  },
+];
+
+function notesForVerse(verseNumber: number): TranslationNoteItem[] {
+  return verseNumber === 3 ? [] : NOTES_FOR_VERSE_1;
+}
 
 function SectionHarness({
   verseNumber,
@@ -55,7 +74,7 @@ function SectionHarness({
 describe('TranslationNotesSection', () => {
   beforeEach(() => {
     mockLoad.mockImplementation(async ({ verseNumber }) =>
-      getMockTranslationNotes(99, verseNumber),
+      notesForVerse(verseNumber),
     );
   });
 
@@ -99,7 +118,7 @@ describe('TranslationNotesSection', () => {
 
   it('shows section-scoped error and recovers on Retry', async () => {
     mockLoad.mockRejectedValueOnce(new Error('boom'));
-    mockLoad.mockResolvedValueOnce(getMockTranslationNotes(99, 1));
+    mockLoad.mockResolvedValueOnce(NOTES_FOR_VERSE_1);
 
     render(<SectionHarness verseNumber={1} />);
 

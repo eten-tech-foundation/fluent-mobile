@@ -18,6 +18,9 @@ import {
   computeRemainingBytes,
   sortItemsForPrepareOfflineDownload,
 } from '../utils/prepareOfflineCatalog';
+import { hydratePrepareOfflineTextContent } from '../services/prepareOfflineResources';
+import type { PrepareOfflineManifestContext } from '../utils/buildManifestContexts';
+import { syncBibleTextsForChapters } from '../services/sync';
 import { formatByteSize } from '../utils/formatByteSize';
 import { logger } from '../utils/logger';
 import {
@@ -53,6 +56,12 @@ export interface UsePrepareOfflineDownloadInput {
   catalog: PrepareOfflineCatalog;
   selectedItems: PrepareOfflineResourceItem[];
   canDownload: boolean;
+  bibleTextChapters: Array<{
+    bibleId: number;
+    bookId: number;
+    chapterNumber: number;
+  }>;
+  manifestContexts: PrepareOfflineManifestContext[];
 }
 
 function deriveSession(
@@ -104,6 +113,8 @@ function deriveSession(
 }
 
 export function usePrepareOfflineDownload({
+  bibleTextChapters,
+  manifestContexts,
   projectId,
   userId,
   catalog,
@@ -230,8 +241,13 @@ export function usePrepareOfflineDownload({
 
   const catalogWithProgress = useMemo(
     () =>
-      mergeQueueIntoPrepareOfflineCatalog(catalog, allQueueItems, projectId),
-    [catalog, allQueueItems, projectId],
+      mergeQueueIntoPrepareOfflineCatalog(
+        catalog,
+        allQueueItems,
+        projectId,
+        userId,
+      ),
+    [catalog, allQueueItems, projectId, userId],
   );
 
   const mergedSelectedItems = useMemo(
@@ -485,6 +501,41 @@ export function usePrepareOfflineDownload({
     setDownloadKickoff(true);
     setDownloadTransportError(null);
     try {
+      const resumable = await getResumableDownloadItems(true);
+      const existingProjectItems = resumable.filter(
+        item => item.projectId === projectId,
+      );
+
+      if (!canDownloadNow && existingProjectItems.length === 0) {
+        return;
+      }
+      try {
+        await syncBibleTextsForChapters(bibleTextChapters);
+      } catch (error) {
+        log.error('Bible text sync failed during prepare offline', {
+          error,
+          projectId,
+        });
+        return; // the finally block still resets the kickoff state
+      }
+      let itemsToEnqueue = sortItemsForPrepareOfflineDownload(
+        selectedItems,
+        catalog.items,
+      );
+      try {
+        itemsToEnqueue = await hydratePrepareOfflineTextContent(
+          projectId,
+          itemsToEnqueue,
+          manifestContexts,
+        );
+      } catch (error) {
+        log.error('Failed to load text content for download', {
+          error,
+          projectId,
+        });
+        return;
+      }
+
       setForceIdle(false);
       userCancelledRef.current = false;
       setSessionStarted(true);
@@ -493,11 +544,13 @@ export function usePrepareOfflineDownload({
       // prop (mock-status-driven, never updated by cancel/download
       // activity) — otherwise newly selected resources after a cancel never
       // get written to download_queue and nothing new starts downloading.
-      await enqueuePrepareOfflineDownload({
-        userId,
-        projectId,
-        items: sortItemsForPrepareOfflineDownload(selectedItems, catalog.items),
-      });
+      if (canDownloadNow) {
+        await enqueuePrepareOfflineDownload({
+          userId,
+          projectId,
+          items: itemsToEnqueue,
+        });
+      }
 
       await refresh();
 
@@ -527,9 +580,11 @@ export function usePrepareOfflineDownload({
       await flushPendingSessionAction();
     }
   }, [
+    bibleTextChapters,
     canDownloadNow,
     catalog.items,
     flushPendingSessionAction,
+    manifestContexts,
     projectId,
     refresh,
     selectedItems,
