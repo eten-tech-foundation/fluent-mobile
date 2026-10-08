@@ -39,48 +39,69 @@ export function usePrepareOfflineSelection(
   const [expandedBookIds, setExpandedBookIds] = useState<Set<number>>(
     new Set(),
   );
+  const [reloadToken, setReloadToken] = useState(0);
   const initializedForKeyRef = useRef<string | null>(null);
 
-  const loadChapters = useCallback(async () => {
+  useEffect(() => {
     if (!projectId) {
       setChapters([]);
-      setLoading(false);
+      setSelectedIds(new Set());
+      setIsAssignedUser(false);
+      // Default open so the next unassigned project entry starts expanded
+      // even if the previous project was assigned/collapsed (#580).
+      setAccordionExpanded(true);
+      setExpandedBookIds(new Set());
       setError(null);
+      setLoading(false);
       initializedForKeyRef.current = null;
       return;
     }
 
     const initKey = `${projectId}:${userId ?? 'none'}`;
+    let cancelled = false;
 
-    try {
-      setError(null);
-      setLoading(true);
-      const rows = await getPrepareOfflineChapters(projectId);
-      setChapters(rows);
+    (async () => {
+      try {
+        setError(null);
+        setLoading(true);
+        const rows = await getPrepareOfflineChapters(projectId);
+        if (cancelled) {
+          return;
+        }
 
-      if (initializedForKeyRef.current !== initKey) {
-        const initial = buildInitialSelection(rows, userId);
-        setSelectedIds(initial.selectedIds);
-        setIsAssignedUser(initial.isAssignedUser);
-        setAccordionExpanded(!initial.isAssignedUser);
-        setExpandedBookIds(new Set());
-        initializedForKeyRef.current = initKey;
+        setChapters(rows);
+
+        if (initializedForKeyRef.current !== initKey) {
+          const initial = buildInitialSelection(rows, userId);
+          setSelectedIds(initial.selectedIds);
+          setIsAssignedUser(initial.isAssignedUser);
+          // Unassigned: accordion open (chapter selection required). Assigned:
+          // collapsed "Assigned chapters (n)" coverage treatment (#50 / #580).
+          setAccordionExpanded(!initial.isAssignedUser);
+          setExpandedBookIds(new Set());
+          initializedForKeyRef.current = initKey;
+        }
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+        log.error('Failed to load prepare offline chapters', {
+          error: err,
+          projectId,
+        });
+        setError(err);
+        setChapters([]);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    } catch (err) {
-      log.error('Failed to load prepare offline chapters', {
-        error: err,
-        projectId,
-      });
-      setError(err);
-      setChapters([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId, userId]);
+    })();
 
-  useEffect(() => {
-    void loadChapters();
-  }, [loadChapters]);
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, reloadToken, userId]);
 
   const books: PrepareOfflineBookGroup[] = useMemo(
     () => groupChaptersByBook(chapters),
@@ -125,8 +146,8 @@ export function usePrepareOfflineSelection(
 
   const retry = useCallback(async () => {
     setLoading(true);
-    await loadChapters();
-  }, [loadChapters]);
+    setReloadToken(token => token + 1);
+  }, []);
 
   const toggleBookExpanded = useCallback((bookId: number) => {
     setExpandedBookIds(prev => {
