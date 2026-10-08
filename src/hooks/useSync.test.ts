@@ -33,6 +33,10 @@ jest.mock('../utils/logger', () => ({
 
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { KV_KEYS } from '../services/storage';
+import {
+  emitSyncComplete,
+  emitUploadSessionEvent,
+} from '../services/syncEvents';
 import { useSync } from './useSync';
 
 describe('useSync', () => {
@@ -171,6 +175,73 @@ describe('useSync', () => {
 
     expect(onError).toHaveBeenCalledWith(expect.any(Error));
     expect(result.current.isSyncing).toBe(false);
+  });
+
+  it('clears error display when stored errors change after sync completes', () => {
+    mockGetSyncError.mockImplementation((key: string) =>
+      key === KV_KEYS.SYNC_ERROR_MASTER_DATA
+        ? 'Unable to resolve host'
+        : undefined,
+    );
+
+    const { result } = renderHook(() => useSync());
+
+    expect(result.current.stateType).toBe('error');
+    expect(result.current.displayText).toBe('Sync failed: master data');
+
+    mockGetSyncError.mockReturnValue(undefined);
+    mockGetSyncState.mockReturnValue({
+      lastSyncedAt: new Date().toISOString(),
+      projectsCount: 1,
+      chaptersCount: 1,
+      biblesCount: 1,
+    });
+
+    act(() => {
+      emitSyncComplete();
+    });
+
+    expect(result.current.stateType).toBe('normal');
+    expect(result.current.displayText).toBe('Last synced: Just now');
+  });
+
+  it('refreshes error text while in the error state on the interval', () => {
+    mockGetSyncError.mockImplementation((key: string) =>
+      key === KV_KEYS.SYNC_ERROR_PROJECTS ? 'catalog unavailable' : undefined,
+    );
+
+    const { result } = renderHook(() => useSync());
+
+    expect(result.current.stateType).toBe('error');
+
+    mockGetSyncError.mockReturnValue(undefined);
+
+    act(() => {
+      jest.advanceTimersByTime(60_000);
+    });
+
+    expect(result.current.stateType).toBe('never');
+    expect(result.current.displayText).toBe('Never synced');
+  });
+
+  it('refreshes metadata error text when an upload session completes', () => {
+    mockGetSyncError.mockImplementation((key: string) =>
+      key === KV_KEYS.SYNC_ERROR_BIBLE_TEXTS
+        ? 'Unable to resolve host'
+        : undefined,
+    );
+
+    const { result } = renderHook(() => useSync());
+
+    expect(result.current.displayText).toBe('Sync failed: bible texts');
+
+    mockGetSyncError.mockReturnValue(undefined);
+
+    act(() => {
+      emitUploadSessionEvent({ type: 'complete' });
+    });
+
+    expect(result.current.stateType).toBe('never');
   });
 
   it('refreshes relative time on the normal-state interval', () => {
