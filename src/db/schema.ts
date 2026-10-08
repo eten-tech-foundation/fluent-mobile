@@ -44,6 +44,7 @@ export const createTableQueries: string[] = [
       id         INTEGER PRIMARY KEY,
       project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
       status     TEXT NOT NULL DEFAULT 'not_started',
+      name       TEXT NOT NULL DEFAULT '',
       updated_at TEXT 
     );`,
 
