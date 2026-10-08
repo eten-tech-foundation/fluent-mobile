@@ -6,6 +6,7 @@ import React, {
   useState,
 } from 'react';
 import {
+  ActivityIndicator,
   NativeScrollEvent,
   NativeSyntheticEvent,
   ScrollView,
@@ -187,6 +188,15 @@ export function ResourcesTab({
     return true;
   });
 
+  // Avoid flashing the offline empty message before NetInfo resolves (#592).
+  if (!hasResolved) {
+    return (
+      <View style={styles.loading} testID="resources-tab-loading">
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
   if (visibleSections.length === 0) {
     return (
       <View style={styles.emptyHost} testID="resources-tab">
@@ -265,6 +275,12 @@ export function ResourcesTab({
 const styles = StyleSheet.create({
   emptyHost: {
     flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: theme.colors.background,
   },
   scroll: {

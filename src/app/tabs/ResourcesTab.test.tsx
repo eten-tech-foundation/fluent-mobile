@@ -265,7 +265,7 @@ describe('ResourcesTab', () => {
     expect(screen.queryByText('Translation Notes')).toBeNull();
   });
 
-  it('shows the empty message while connectivity is unresolved', () => {
+  it('shows a loading indicator while connectivity is unresolved', () => {
     mockUseConnectivity.mockReturnValue({
       isOnline: true,
       isLinkOnline: true,
@@ -278,7 +278,8 @@ describe('ResourcesTab', () => {
       transferConnectivityPending: true,
     });
     renderResources(1);
-    expect(screen.getByText(RESOURCES_EMPTY_MESSAGE)).toBeTruthy();
+    expect(screen.getByTestId('resources-tab-loading')).toBeTruthy();
+    expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
     expect(screen.queryByText('Translation Notes')).toBeNull();
   });
 
