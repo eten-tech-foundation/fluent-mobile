@@ -1,10 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TRANSLATION_QUESTIONS_LOAD_ERROR } from '../constants/messages';
 import {
   loadTranslationQuestionsForUnit,
   type LoadTranslationQuestionsParams,
 } from '../services/translationQuestions';
 import { TranslationQuestionItem } from '../types/resources/translationQuestions';
+import {
+  verseRefsFromChapter,
+  verseRefsKey,
+  type ResourceVerseRef,
+} from '../utils/loadResourcesForVerseRange';
 import { logger } from '../utils/logger';
 
 const log = logger.create('useTranslationQuestionsForUnit');
@@ -17,30 +22,79 @@ export type TranslationQuestionsLoadState =
 type TrackedLoadState = {
   projectId: number | null;
   bookCode: string;
-  chapterNumber: number;
-  verseNumber: number;
+  versesKey: string;
   value: TranslationQuestionsLoadState;
 };
 
 export type UseTranslationQuestionsForUnitParams =
   LoadTranslationQuestionsParams;
 
+function resolveRefs(
+  params: LoadTranslationQuestionsParams,
+): ResourceVerseRef[] {
+  if (params.verseRefs && params.verseRefs.length > 0) {
+    return params.verseRefs;
+  }
+  return verseRefsFromChapter(
+    params.chapterNumber,
+    params.verseNumber,
+    params.verseNumbers,
+  );
+}
+
+function verseNumbersKeySafe(verseNumbers: number[] | undefined): string {
+  if (!verseNumbers || verseNumbers.length === 0) {
+    return '';
+  }
+  return [...verseNumbers].sort((a, b) => a - b).join(',');
+}
+
 /**
  * Section-scoped TQ loader (#190). Failures stay local — do not block Notes / Images.
  * Ignores stale responses when the active unit changes mid-load.
- * Loads via fluent-api translation-resources (fluent-api #274).
+ * Loads via fluent-api translation-resources (fluent-api #274); pericope fan-out (#593).
  */
 export function useTranslationQuestionsForUnit(
   params: UseTranslationQuestionsForUnitParams,
 ) {
-  const { projectId, bookCode, chapterNumber, verseNumber, languageCode } =
-    params;
-
-  const [tracked, setTracked] = useState<TrackedLoadState>({
+  const {
     projectId,
     bookCode,
     chapterNumber,
     verseNumber,
+    verseNumbers,
+    verseRefs,
+    languageCode,
+  } = params;
+
+  const verseRefsSerialized = verseRefsKey(verseRefs ?? []);
+  const verseNumbersSerialized = verseNumbersKeySafe(verseNumbers);
+  const refs = useMemo(
+    () =>
+      resolveRefs({
+        projectId,
+        bookCode,
+        chapterNumber,
+        verseNumber,
+        verseNumbers,
+        verseRefs,
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      projectId,
+      bookCode,
+      chapterNumber,
+      verseNumber,
+      verseRefsSerialized,
+      verseNumbersSerialized,
+    ],
+  );
+  const versesKey = useMemo(() => verseRefsKey(refs), [refs]);
+
+  const [tracked, setTracked] = useState<TrackedLoadState>({
+    projectId,
+    bookCode,
+    versesKey,
     value: { status: 'loading' },
   });
   const requestIdRef = useRef(0);
@@ -50,8 +104,7 @@ export function useTranslationQuestionsForUnit(
     setTracked({
       projectId,
       bookCode,
-      chapterNumber,
-      verseNumber,
+      versesKey,
       value: { status: 'loading' },
     });
     try {
@@ -60,6 +113,7 @@ export function useTranslationQuestionsForUnit(
         bookCode,
         chapterNumber,
         verseNumber,
+        verseRefs: refs,
         languageCode,
       });
       if (requestId !== requestIdRef.current) {
@@ -68,8 +122,7 @@ export function useTranslationQuestionsForUnit(
       setTracked({
         projectId,
         bookCode,
-        chapterNumber,
-        verseNumber,
+        versesKey,
         value: { status: 'ready', questions },
       });
     } catch (error) {
@@ -79,27 +132,32 @@ export function useTranslationQuestionsForUnit(
       log.warn('Translation Questions load failed', {
         projectId,
         bookCode,
-        chapterNumber,
-        verseNumber,
+        versesKey,
         error: error instanceof Error ? error.message : String(error),
       });
       setTracked({
         projectId,
         bookCode,
-        chapterNumber,
-        verseNumber,
+        versesKey,
         value: {
           status: 'error',
           message: TRANSLATION_QUESTIONS_LOAD_ERROR,
         },
       });
     }
-  }, [projectId, bookCode, chapterNumber, verseNumber, languageCode]);
+  }, [
+    projectId,
+    bookCode,
+    chapterNumber,
+    verseNumber,
+    refs,
+    versesKey,
+    languageCode,
+  ]);
 
   useEffect(() => {
     void load();
     return () => {
-      // Invalidate in-flight work so a stale response cannot apply after unit change / unmount.
       requestIdRef.current += 1;
     };
   }, [load]);
@@ -107,8 +165,7 @@ export function useTranslationQuestionsForUnit(
   const state: TranslationQuestionsLoadState =
     tracked.projectId === projectId &&
     tracked.bookCode === bookCode &&
-    tracked.chapterNumber === chapterNumber &&
-    tracked.verseNumber === verseNumber
+    tracked.versesKey === versesKey
       ? tracked.value
       : { status: 'loading' };
 

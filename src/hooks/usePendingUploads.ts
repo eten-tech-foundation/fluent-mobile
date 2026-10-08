@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   getFailedUploadCount,
   getFailedUploadErrorSummary,
@@ -81,22 +81,28 @@ export function usePendingUploads(refreshKey = 0) {
     null,
   );
   const [eventTick, setEventTick] = useState(0);
+  const clearUploadingAfterRefreshRef = useRef(false);
 
   useEffect(() => {
     return onUploadSessionEvent(event => {
       const progress = progressFromEvent(event);
       if (progress) {
+        clearUploadingAfterRefreshRef.current = false;
         setIsUploading(true);
         setUploadProgress(progress);
+      } else if (event.type === 'complete') {
+        // Keep Syncing until counts refresh so we never flash pending.
+        clearUploadingAfterRefreshRef.current = true;
+        setUploadProgress(null);
       } else if (
-        event.type === 'complete' ||
         event.type === 'idle' ||
         event.type === 'cancelled' ||
         event.type === 'paused' ||
         event.type === 'waiting_wifi'
       ) {
+        clearUploadingAfterRefreshRef.current = false;
         setIsUploading(false);
-        if (event.type === 'complete' || event.type === 'idle') {
+        if (event.type === 'idle') {
           setUploadProgress(null);
         }
       }
@@ -107,6 +113,7 @@ export function usePendingUploads(refreshKey = 0) {
 
   useEffect(() => {
     let cancelled = false;
+    const shouldClearUploading = clearUploadingAfterRefreshRef.current;
 
     Promise.allSettled([
       loadPendingUploadCount(),
@@ -139,6 +146,10 @@ export function usePendingUploads(refreshKey = 0) {
       }
       if (unuploadable.status === 'fulfilled') {
         setUnuploadableCount(unuploadable.value.total);
+      }
+      if (shouldClearUploading) {
+        clearUploadingAfterRefreshRef.current = false;
+        setIsUploading(false);
       }
     });
 

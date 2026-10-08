@@ -96,16 +96,15 @@ export default function SyncScreen() {
     !transferConnectivityPending && isWaitingWifiForTransfer(transferTransport);
   const transportOffline = !transferConnectivityPending && !isLinkOnline;
   const fluentUnreachable = !connectivityPending && !isOnline;
-  /** Worker would visit zero chapters — pericope/orphan (incl. failed takes not in queue). */
-  const noUploadableChapters =
-    pendingChapterCount === 0 && (hasUnuploadablePending || hasPendingUploads);
+  // Do not gate Sync Now on unuploadable/pericope-only pending takes — users
+  // still need metadata/download sync (#584). Upload session no-ops when the
+  // chapter queue is empty.
   const syncNowDisabled =
     connectivityPending ||
     transferConnectivityPending ||
     waitingWifi ||
     transportOffline ||
-    fluentUnreachable ||
-    noUploadableChapters;
+    fluentUnreachable;
   const syncNowDisabledHint =
     connectivityPending || transferConnectivityPending
       ? undefined
@@ -295,6 +294,17 @@ function renderStatusLine(
         <Text style={styles.statusTitle}>Syncing…</Text>
         <Text style={styles.statusSubtitle}>
           Uploading your recordings to Fluent.
+        </Text>
+      </>
+    );
+  }
+
+  if (status === 'paused') {
+    return (
+      <>
+        <Text style={styles.statusTitle}>Paused</Text>
+        <Text style={styles.statusSubtitle}>
+          Upload will stay paused until you resume.
         </Text>
       </>
     );

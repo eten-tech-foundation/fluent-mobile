@@ -18,11 +18,12 @@ import {
   SettingsToggleRow,
 } from '../../components/ui/SettingsListRow';
 import {
+  ACCOUNT_SIGN_OUT_LABEL,
   REAUTH_PROMPT_TITLE,
   REAUTH_PROMPT_SUBTITLE,
 } from '../../constants/messages';
 import { signOutCurrentDeviceAccount } from '../../services/accountSession';
-import { confirmUnsyncedLogout } from '../../services/confirmUnsyncedLogout';
+import { confirmUnsyncedSignOut } from '../../services/confirmUnsyncedSignOut';
 import { clearAllPausedTakes } from '../../services/pausedTakes';
 import { getKnownUserIds, MAX_DEVICE_ACCOUNTS } from '../../services/storage';
 import { usePreferences } from '../../hooks/usePreferences';
@@ -77,11 +78,10 @@ export default function SettingsScreen() {
   };
 
   const handleLogOut = async () => {
-    const shouldSignOut = await confirmUnsyncedLogout();
-    if (!shouldSignOut) {
+    const confirmed = await confirmUnsyncedSignOut();
+    if (!confirmed) {
       return;
     }
-
     await performLogOut();
   };
 
@@ -244,7 +244,7 @@ export default function SettingsScreen() {
                 onPress={handleAddUser}
               />
               <SettingsDestructiveRow
-                title="Log out"
+                title={ACCOUNT_SIGN_OUT_LABEL}
                 testID="settings-log-out"
                 icon={
                   <LogOut
