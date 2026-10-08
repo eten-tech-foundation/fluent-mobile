@@ -18,6 +18,7 @@ import {
   deriveChapterOwnershipState,
   resolveStageAssigneeId,
 } from '../utils/chapterOwnershipState';
+import { unitRecordedStatus } from '../utils/bibleTabUnits';
 
 function parseConnectivityProfile(
   metadata: string | null,
@@ -1252,7 +1253,10 @@ export async function isChapterFullyRecordedVerseMode(
 }
 
 /** True when every pericope, and every chapter verse not covered by a pericope,
- *  has a selected recording (pericope mode) — #542.
+ *  has a selected recording (pericope mode) — #542 / #586.
+ *  Pericope completeness uses the same verse-coverage rule as Bible-tab
+ *  `unitRecordedStatus` (exact pericope-range take **or** stitched verse
+ *  takes that together cover every verse in the pericope).
  *  A pericope set may not cover every verse in the chapter (e.g. narrative
  *  breaks, verses excluded from the harmony); those "ungrouped" verses must
  *  independently satisfy the same per-verse check as verse mode, or a
@@ -1287,18 +1291,9 @@ export async function isChapterFullyRecordedPericopeMode(
     .filter(vn => !coveredVerseNumbers.has(vn));
 
   const coverages = await getSelectedTakeCoverages(bibleId, bookId);
-  const pericopesComplete = pericopes.every(pericope => {
-    const first = pericope.verses[0];
-    const last = pericope.verses[pericope.verses.length - 1];
-    if (!first || !last) return false;
-    return coverages.some(
-      c =>
-        c.startChapter === first.chapterNumber &&
-        c.startVerse === first.verseNumber &&
-        c.endChapter === last.chapterNumber &&
-        c.endVerse === last.verseNumber,
-    );
-  });
+  const pericopesComplete = pericopes.every(
+    pericope => unitRecordedStatus(pericope.verses, coverages) === 'recorded',
+  );
   if (!pericopesComplete) return false;
 
   if (ungroupedVerseNumbers.length === 0) return true;
