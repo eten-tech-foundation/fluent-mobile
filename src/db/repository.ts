@@ -1144,6 +1144,23 @@ export async function setChapterAssignmentConflict(
   });
 }
 
+/**
+ * Mark a queued claim as server-rejected (claim 404). Stops claim retries
+ * without dropping the row, so `has_conflict` can be persisted after the
+ * assignment pull (#610).
+ */
+export async function markChapterClaimQueueEntryRejected(
+  id: number,
+): Promise<void> {
+  const db = getDatabase();
+  await db.transaction(async (tx: Transaction) => {
+    await tx.execute(
+      `UPDATE chapter_claim_queue SET sync_status = 'claim_rejected' WHERE id = ?`,
+      [id],
+    );
+  });
+}
+
 export async function resolveChapterClaimQueueEntry(id: number): Promise<void> {
   const db = getDatabase();
   await db.transaction(async (tx: Transaction) => {

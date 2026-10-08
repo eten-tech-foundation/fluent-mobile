@@ -38,6 +38,9 @@ jest.mock('./connectivity', () => ({
 
 jest.mock('./chapterClaimSync', () => ({
   syncPendingChapterClaims: jest.fn(),
+  reconcilePendingClaimsAfterAssignmentPull: jest
+    .fn()
+    .mockResolvedValue({ conflicts: 0 }),
 }));
 
 jest.mock('./authToken', () => ({

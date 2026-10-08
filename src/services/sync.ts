@@ -36,6 +36,7 @@ import { isApiError, isRetryableApiError } from '../types/api/errors';
 import { ApiUser, unwrapApiListResponse } from '../types/api/responses';
 import { getConnectivitySnapshot } from './connectivity';
 import {
+  reconcilePendingClaimsAfterAssignmentPull,
   syncPendingChapterClaims,
   type SyncPendingChapterClaimsResult,
 } from './chapterClaimSync';
@@ -640,16 +641,20 @@ async function syncChapterAssignmentsForUser(
     };
   };
 
+  let result: {
+    didFullSync: boolean;
+    syncedAt?: string;
+    partialSkipWarning?: string;
+  };
+
   if (!getUserLastSyncedAt(userIdStr)) {
     log.info(
       'Forcing full chapter assignment sync — user has no per-user sync cursor',
       { userId },
     );
     const { syncedAt, partialSkipWarning } = await runFullProjectAssignments();
-    return { didFullSync: true, syncedAt, partialSkipWarning };
-  }
-
-  if (
+    result = { didFullSync: true, syncedAt, partialSkipWarning };
+  } else if (
     (updatedAfter && !(await userHasLocalChapterAssignments(userId))) ||
     (await userNeedsAssigneeRepair(userId))
   ) {
@@ -658,25 +663,30 @@ async function syncChapterAssignmentsForUser(
       { userId },
     );
     const { syncedAt, partialSkipWarning } = await runFullProjectAssignments();
-    return { didFullSync: true, syncedAt, partialSkipWarning };
+    result = { didFullSync: true, syncedAt, partialSkipWarning };
+  } else {
+    const projectResult = await syncChapterAssignments(
+      userId,
+      updatedAfter,
+      undefined,
+      sessionToken,
+    );
+    const workResult = await syncUserChapterWork(userId, sessionToken);
+    const partialSkipWarning = applyChapterAssignmentSkipWarning(
+      workResult.partialSkipWarning,
+      projectResult.partialSkipWarning,
+    );
+    result = {
+      didFullSync: !updatedAfter,
+      syncedAt: partialSkipWarning ? undefined : projectResult.syncedAt,
+      partialSkipWarning,
+    };
   }
 
-  const projectResult = await syncChapterAssignments(
-    userId,
-    updatedAfter,
-    undefined,
-    sessionToken,
-  );
-  const workResult = await syncUserChapterWork(userId, sessionToken);
-  const partialSkipWarning = applyChapterAssignmentSkipWarning(
-    workResult.partialSkipWarning,
-    projectResult.partialSkipWarning,
-  );
-  return {
-    didFullSync: !updatedAfter,
-    syncedAt: partialSkipWarning ? undefined : projectResult.syncedAt,
-    partialSkipWarning,
-  };
+  // Post-pull (#610): persist has_conflict for claim-404 rows (the pull above
+  // may have cleared it) and for pending claims now held by someone else.
+  await reconcilePendingClaimsAfterAssignmentPull(userId);
+  return result;
 }
 
 export async function syncBibleTexts(updatedAfter?: string) {
@@ -1314,6 +1324,8 @@ export async function syncAllData(
             projectResult.partialSkipWarning,
           );
           bibleTextUpdatedAfter = undefined;
+          // Raw assignment pull (not via syncChapterAssignmentsForUser) (#610).
+          await reconcilePendingClaimsAfterAssignmentPull(userId);
         } else {
           // Omit excludeProjectIds on re-login: the API can return [] when every
           // local project is excluded before checking newly assigned work.
