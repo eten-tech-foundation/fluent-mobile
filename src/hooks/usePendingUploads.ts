@@ -104,18 +104,21 @@ export function usePendingUploads(refreshKey = 0) {
         clearUploadingAfterRefreshRef.current = false;
         setIsUploading(true);
         setUploadProgress(progress);
-      } else if (event.type === 'complete' || event.type === 'idle') {
-        // Keep isUploading true until SQLite counts refresh so UI never
-        // snapshots false + stale pre-upload pendingCount.
+      } else if (event.type === 'complete') {
+        // Keep Syncing until counts refresh so we never flash pending.
         clearUploadingAfterRefreshRef.current = true;
         setUploadProgress(null);
       } else if (
+        event.type === 'idle' ||
         event.type === 'cancelled' ||
         event.type === 'paused' ||
         event.type === 'waiting_wifi'
       ) {
         clearUploadingAfterRefreshRef.current = false;
         setIsUploading(false);
+        if (event.type === 'idle') {
+          setUploadProgress(null);
+        }
       }
 
       setEventTick(tick => tick + 1);
@@ -147,8 +150,7 @@ export function usePendingUploads(refreshKey = 0) {
         }
       })
       .catch(() => {
-        // loaders already log and return 0; do not clear isUploading here
-        // or UI can snapshot false + stale pre-upload pendingCount.
+        // loaders already log and return 0
       });
 
     return () => {
