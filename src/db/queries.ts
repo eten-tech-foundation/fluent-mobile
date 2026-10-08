@@ -708,13 +708,13 @@ export async function getMyWorkChapters(
 }
 
 /**
- * Same eligibility as `getPendingRecordings` (verse, positive bible_text_id,
+ * Same eligibility as `getPendingRecordings` (positive bible_text_id,
  * INNER JOIN bible_texts). Active-user scope stays on these UI queries (#105).
- * Pericope takes stay local until #410.
+ * Verse and pericope takes are uploadable (#584); stitched display rows are not.
  */
 const UPLOADABLE_PENDING_WHERE = `
   r.is_selected = 1
-  AND IFNULL(r.granularity, 'verse') = 'verse'
+  AND IFNULL(r.granularity, 'verse') IN ('verse', 'pericope')
   AND r.sync_status NOT IN ('uploaded', 'conflicted')
   AND r.bible_text_id > 0
 `;
@@ -761,6 +761,9 @@ const EMPTY_UNUPLOADABLE: UnuploadablePendingSummary = {
  * Pending selected takes that the worker will never process (silent no-op
  * if we counted them as uploadable). Missing assignment is not a bucket —
  * the worker attempts those rows and fails at runtime (#548).
+ *
+ * `pericopeOnly` is a legacy field name: it now counts unsupported
+ * granularities (e.g. stitched), not uploadable pericope takes (#584).
  */
 export async function getUnuploadablePendingSummary(): Promise<UnuploadablePendingSummary> {
   const db = getDatabase();
@@ -773,14 +776,14 @@ export async function getUnuploadablePendingSummary(): Promise<UnuploadablePendi
            THEN 1 ELSE 0 END), 0) AS orphan_bible_text,
          COALESCE(SUM(CASE
            WHEN bt.id IS NOT NULL AND r.bible_text_id > 0
-            AND IFNULL(r.granularity, 'verse') != 'verse'
+            AND IFNULL(r.granularity, 'verse') NOT IN ('verse', 'pericope')
            THEN 1 ELSE 0 END), 0) AS pericope_only,
          COALESCE(SUM(CASE
            WHEN NOT (
              r.bible_text_id IS NULL OR r.bible_text_id <= 0 OR bt.id IS NULL
            ) AND NOT (
              bt.id IS NOT NULL AND r.bible_text_id > 0
-             AND IFNULL(r.granularity, 'verse') != 'verse'
+             AND IFNULL(r.granularity, 'verse') NOT IN ('verse', 'pericope')
            )
            THEN 1 ELSE 0 END), 0) AS other
        FROM recordings r
@@ -791,7 +794,7 @@ export async function getUnuploadablePendingSummary(): Promise<UnuploadablePendi
          AND NOT (
            bt.id IS NOT NULL
            AND r.bible_text_id > 0
-           AND IFNULL(r.granularity, 'verse') = 'verse'
+           AND IFNULL(r.granularity, 'verse') IN ('verse', 'pericope')
          )`,
       userId === null ? [] : [userId],
     );

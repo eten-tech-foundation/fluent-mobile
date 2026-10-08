@@ -46,6 +46,7 @@ import { createApiError } from './apiError';
 import { parseVerseAudioResponse } from './verseAudioContract';
 import {
   buildVerseAudioFormData,
+  verseAudioRangeUploadPath,
   verseAudioUploadPath,
 } from './verseAudioFormData';
 
@@ -113,8 +114,12 @@ async function uploadVerseAudioRequest(
   token?: string,
 ): Promise<VerseAudioResponse> {
   const formData = await buildVerseAudioFormData(params);
+  const path =
+    params.granularity === 'pericope'
+      ? verseAudioRangeUploadPath(params.projectUnitId)
+      : verseAudioUploadPath(params.projectUnitId, params.bibleTextId);
   const raw = await authedMultipartRequest<unknown>(
-    verseAudioUploadPath(params.projectUnitId, params.bibleTextId),
+    path,
     formData,
     { method: 'PUT' },
     token,

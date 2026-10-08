@@ -17,7 +17,7 @@ export const UPLOAD_NETWORK_ERROR_MESSAGE =
 /** Sync page — pending takes the worker will not upload (pericope/orphan). */
 export function formatUnuploadablePendingMessage(count: number): string {
   const noun = count === 1 ? 'recording' : 'recordings';
-  return `${count} ${noun} can't upload yet — missing bible text or pericope-only takes.`;
+  return `${count} ${noun} can't upload yet — missing bible text.`;
 }
 
 export const PROJECTS_EMPTY_MESSAGE =

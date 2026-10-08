@@ -19,7 +19,8 @@ export interface VerseAudioFilePart {
 }
 
 /**
- * Upload params for `PUT /verse-audio/{projectUnitId}/{bibleTextId}`.
+ * Upload params for `PUT /verse-audio/{projectUnitId}/{bibleTextId}` (verse)
+ * or `PUT /verse-audio/{projectUnitId}/range` (pericope — fluent-api#377 / #584).
  * IDs are path params only — never send user id in the multipart body.
  */
 export interface UploadVerseAudioParams {
@@ -37,6 +38,12 @@ export interface UploadVerseAudioParams {
    * unit or a legacy client. See fluent-api#271 / PR #281.
    */
   baseVersionToken?: number;
+  /** When `pericope`, upload uses the range path and form fields (#584). */
+  granularity?: 'verse' | 'pericope';
+  startChapter?: number;
+  startVerse?: number;
+  endChapter?: number;
+  endVerse?: number;
 }
 
 export type VerseAudioConflictStatus = 'clean' | 'conflict';
