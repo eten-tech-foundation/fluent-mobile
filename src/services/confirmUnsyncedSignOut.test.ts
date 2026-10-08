@@ -41,6 +41,26 @@ describe('confirmUnsyncedSignOut', () => {
     await expect(decision).resolves.toBe(false);
   });
 
+  it('warns when the unsynced count cannot be read', async () => {
+    mockGetUnsyncedRecordingCount.mockRejectedValue(new Error('db'));
+
+    const decision = confirmUnsyncedSignOut();
+    await Promise.resolve();
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Unsynced work on device',
+      'You have recordings that have not been uploaded. Log out anyway?',
+      expect.any(Array),
+    );
+
+    const buttons = jest.mocked(Alert.alert).mock.calls[0]?.[2] as Array<{
+      text: string;
+      onPress?: () => void;
+    }>;
+    buttons.find(button => button.text === 'Cancel')?.onPress?.();
+    await expect(decision).resolves.toBe(false);
+  });
+
   it('continues when the person confirms the warning', async () => {
     mockGetUnsyncedRecordingCount.mockResolvedValue(2);
 

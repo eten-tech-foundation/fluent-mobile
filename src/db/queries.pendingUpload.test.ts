@@ -71,6 +71,13 @@ describe('pending upload queries (#545)', () => {
     expect(sql).not.toContain('bible_texts');
   });
 
+  it('getUnsyncedRecordingCount does not treat a query failure as zero', async () => {
+    const failure = new Error('db');
+    mockExecute.mockRejectedValue(failure);
+
+    await expect(getUnsyncedRecordingCount()).rejects.toBe(failure);
+  });
+
   it('getPendingUploadChapters only lists chapters with upload-eligible verse takes', async () => {
     mockExecute.mockResolvedValue({
       rows: [{ book_id: 1, chapter_number: 3 }],

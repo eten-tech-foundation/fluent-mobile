@@ -10,11 +10,18 @@ import { getUnsyncedRecordingCount } from '../db/queries';
 /**
  * Shared sign-out guard (#622). Resolves true when sign-out should proceed.
  * A count of recordings not yet on the server, including pericope takes,
- * shows the same alert from the drawer and from More Settings.
+ * shows the same alert from the drawer and from More Settings. A failed
+ * count is treated as possible unsynced work.
  */
 export async function confirmUnsyncedSignOut(): Promise<boolean> {
-  const count = await getUnsyncedRecordingCount();
-  if (count <= 0) {
+  let count: number | null;
+  try {
+    count = await getUnsyncedRecordingCount();
+  } catch {
+    count = null;
+  }
+
+  if (count !== null && count <= 0) {
     return true;
   }
 

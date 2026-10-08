@@ -756,7 +756,7 @@ export async function getUnsyncedRecordingCount(): Promise<number> {
     return Number(result.rows?.[0]?.count) || 0;
   } catch (error) {
     log.error('Error fetching unsynced recording count', { error });
-    return 0;
+    throw error;
   }
 }
 
