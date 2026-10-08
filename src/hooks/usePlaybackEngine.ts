@@ -67,6 +67,11 @@ export function usePlaybackEngine(): UsePlaybackEngineApi {
     prevDidJustFinishRef.current = didJustFinish;
 
     if (finishEdge) {
+      // After a natural finish the native player can keep its play intent, so a
+      // later `seekTo` (waveform scrub in Review) restarts audio while the verse
+      // machine is already `recorded` and the row still shows Play. Clear it:
+      // scrubbing after the end must only move the position (#176).
+      player.pause();
       setStatus('idle');
       return;
     }
@@ -78,6 +83,7 @@ export function usePlaybackEngine(): UsePlaybackEngineApi {
     // unloaded/not playing; flipping to paused races PLAYBACK_END and freezes
     // the take UI at 0:00. Explicit pause/stop go through the engine.
   }, [
+    player,
     nativeStatus.currentTime,
     nativeStatus.duration,
     nativeStatus.playing,
