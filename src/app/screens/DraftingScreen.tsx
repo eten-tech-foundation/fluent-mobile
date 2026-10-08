@@ -306,7 +306,9 @@ export default function DraftingScreen() {
               projectId,
             });
             try {
-              await withSyncChrome(() => syncMasterData());
+              await withSyncChrome(() =>
+                syncMasterData(undefined, { forceFull: true }),
+              );
             } catch (masterError) {
               // Allow a later chapter open / refresh to retry.
               masterDataIsoEnsureAttempted.delete(projectId);
