@@ -17,7 +17,12 @@ export type TakeSubtitleInput = {
 };
 
 /** Cross-chapter spans carry chapter numbers; same-chapter spans do not. */
-function formatSpan(take: TakeSubtitleInput): string {
+export function formatTakeVerseSpan(
+  take: Pick<
+    TakeSubtitleInput,
+    'startChapter' | 'startVerse' | 'endChapter' | 'endVerse'
+  >,
+): string {
   return take.startChapter === take.endChapter
     ? `vv. ${take.startVerse}-${take.endVerse}`
     : `vv. ${take.startChapter}:${take.startVerse}-${take.endChapter}:${take.endVerse}`;
@@ -30,10 +35,10 @@ function formatSpan(take: TakeSubtitleInput): string {
 export function formatTakeSubtitle(take: TakeSubtitleInput): string {
   const n = take.takeNumber;
   if (take.granularity === 'stitched') {
-    return `Take ${n} - Stitched - ${formatSpan(take)}`;
+    return `Take ${n} - Stitched - ${formatTakeVerseSpan(take)}`;
   }
   if (take.granularity === 'pericope') {
-    return `Take ${n} - Pericope - ${formatSpan(take)}`;
+    return `Take ${n} - Pericope - ${formatTakeVerseSpan(take)}`;
   }
   return `Take ${n} - Verse - v. ${take.startVerse}`;
 }

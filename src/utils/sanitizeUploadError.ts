@@ -1,3 +1,6 @@
+import { UPLOAD_NETWORK_ERROR_MESSAGE } from '../constants/messages';
+import { isNetworkTransportErrorMessage } from './networkError';
+
 const MAX_DISPLAY_LENGTH = 200;
 
 const FILE_PATH_RE =
@@ -11,6 +14,10 @@ export function sanitizeUploadErrorForDisplay(raw: string): string {
 
   if (/audio storage is unavailable/i.test(trimmed)) {
     return 'Audio storage is currently unavailable. Try again later.';
+  }
+
+  if (isNetworkTransportErrorMessage(trimmed)) {
+    return UPLOAD_NETWORK_ERROR_MESSAGE;
   }
 
   if (/\b404\b/.test(trimmed)) {

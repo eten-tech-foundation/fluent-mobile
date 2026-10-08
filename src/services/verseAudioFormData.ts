@@ -69,15 +69,26 @@ type FormDataWithFilename = FormData & {
 };
 
 /**
- * Multipart body for `PUT /verse-audio/{projectUnitId}/{bibleTextId}`
- * (fluent-api PR #271). Path carries the IDs; body is `file` + optional
- * `durationSeconds` and `baseVersionToken`.
+ * Multipart body for verse-audio upload (fluent-api PR #271 / #377).
+ * Path carries projectUnitId (+ bibleTextId for verse); body is `file` +
+ * optional duration/token and pericope range fields (#584).
  */
 export async function buildVerseAudioFormData(
   params: Pick<
     UploadVerseAudioParams,
     'file' | 'durationSeconds' | 'baseVersionToken'
-  >,
+  > &
+    Partial<
+      Pick<
+        UploadVerseAudioParams,
+        | 'granularity'
+        | 'bibleTextId'
+        | 'startChapter'
+        | 'startVerse'
+        | 'endChapter'
+        | 'endVerse'
+      >
+    >,
 ): Promise<FormData> {
   const formData = new FormData() as FormDataWithFilename;
   const { blob, filename } = await verseAudioFileToBlob(params.file);
@@ -102,6 +113,29 @@ export async function buildVerseAudioFormData(
     formData.append('baseVersionToken', String(params.baseVersionToken));
   }
 
+  if (params.granularity === 'pericope') {
+    formData.append('granularity', 'pericope');
+    if (params.bibleTextId !== undefined) {
+      formData.append('bibleTextId', String(params.bibleTextId));
+    }
+    const rangeFields: Array<
+      [
+        'startChapter' | 'startVerse' | 'endChapter' | 'endVerse',
+        number | undefined,
+      ]
+    > = [
+      ['startChapter', params.startChapter],
+      ['startVerse', params.startVerse],
+      ['endChapter', params.endChapter],
+      ['endVerse', params.endVerse],
+    ];
+    for (const [name, value] of rangeFields) {
+      if (value !== undefined && Number.isFinite(value)) {
+        formData.append(name, String(value));
+      }
+    }
+  }
+
   return formData;
 }
 
@@ -110,4 +144,9 @@ export function verseAudioUploadPath(
   bibleTextId: number,
 ): string {
   return `/verse-audio/${projectUnitId}/${bibleTextId}`;
+}
+
+/** Pericope / range upload path (fluent-api#377). */
+export function verseAudioRangeUploadPath(projectUnitId: number): string {
+  return `/verse-audio/${projectUnitId}/range`;
 }
