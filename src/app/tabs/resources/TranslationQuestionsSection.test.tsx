@@ -1,76 +1,47 @@
 import React from 'react';
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { TranslationQuestionsSection } from './TranslationQuestionsSection';
 import { TRANSLATION_QUESTIONS_LOAD_ERROR } from '../../../constants/messages';
-import {
-  loadTranslationQuestionsForUnit,
-  setTranslationQuestionsLoadFailureForTests,
-} from '../../../services/translationQuestions';
 import { getMockTranslationQuestions } from '../../../mocks/resources/translationQuestionsMock';
+import type { TranslationQuestionsLoadState } from '../../../hooks/useTranslationQuestionsForUnit';
 
-jest.mock('../../../services/translationQuestions', () => {
-  const actual = jest.requireActual('../../../services/translationQuestions');
-  return {
-    ...actual,
-    loadTranslationQuestionsForUnit: jest.fn(),
-  };
-});
-
-const mockLoad = loadTranslationQuestionsForUnit as jest.MockedFunction<
-  typeof loadTranslationQuestionsForUnit
->;
+function renderSection(
+  state: TranslationQuestionsLoadState | undefined,
+  retry: () => void = jest.fn(),
+  overrides: Partial<{
+    bookCode: string;
+    chapterNumber: number;
+    verseNumber: number;
+    sectionExpanded: boolean;
+  }> = {},
+) {
+  return render(
+    <TranslationQuestionsSection
+      state={state}
+      retry={retry}
+      sectionExpanded={overrides.sectionExpanded ?? true}
+      bookCode={overrides.bookCode ?? 'MRK'}
+      chapterNumber={overrides.chapterNumber ?? 14}
+      verseNumber={overrides.verseNumber ?? 2}
+    />,
+  );
+}
 
 describe('TranslationQuestionsSection', () => {
-  beforeEach(() => {
-    mockLoad.mockImplementation(async ({ verseNumber }) =>
-      getMockTranslationQuestions(99, verseNumber),
-    );
-  });
-
-  afterEach(() => {
-    setTranslationQuestionsLoadFailureForTests(false);
-    mockLoad.mockReset();
-  });
-
-  it('hides content when no questions are available', async () => {
-    render(
-      <TranslationQuestionsSection
-        projectId={7}
-        bookCode="MRK"
-        chapterNumber={14}
-        verseNumber={1}
-        sectionExpanded
-      />,
-    );
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('translation-questions-loading')).toBeNull();
-    });
+  it('hides content when no questions are available', () => {
+    renderSection({ status: 'ready', questions: [] });
+    expect(screen.queryByTestId('translation-questions-loading')).toBeNull();
     expect(screen.queryByTestId('translation-questions-list')).toBeNull();
     expect(screen.queryByTestId('translation-questions-error')).toBeNull();
   });
 
-  it('keeps answers hidden until a question accordion is expanded', async () => {
-    render(
-      <TranslationQuestionsSection
-        projectId={7}
-        bookCode="MRK"
-        chapterNumber={14}
-        verseNumber={2}
-        sectionExpanded
-      />,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('translation-questions-list')).toBeTruthy();
+  it('keeps answers hidden until a question accordion is expanded', () => {
+    renderSection({
+      status: 'ready',
+      questions: getMockTranslationQuestions(99, 2),
     });
 
+    expect(screen.getByTestId('translation-questions-list')).toBeTruthy();
     expect(screen.getByText('What is happening in this verse?')).toBeTruthy();
     expect(
       screen.queryByText(
@@ -89,22 +60,14 @@ describe('TranslationQuestionsSection', () => {
     ).toBeTruthy();
   });
 
-  it('resets nested expansion when only projectId changes', async () => {
+  it('resets nested expansion when the unit identity changes', () => {
     const answer =
       'The passage describes the events surrounding this verse so the translator can check key meaning.';
+    const questions = getMockTranslationQuestions(99, 2);
 
-    const { rerender } = render(
-      <TranslationQuestionsSection
-        projectId={7}
-        bookCode="MRK"
-        chapterNumber={14}
-        verseNumber={2}
-        sectionExpanded
-      />,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('translation-questions-list')).toBeTruthy();
+    const { rerender } = renderSection({
+      status: 'ready',
+      questions,
     });
 
     fireEvent.press(
@@ -114,46 +77,52 @@ describe('TranslationQuestionsSection', () => {
 
     rerender(
       <TranslationQuestionsSection
-        projectId={8}
+        state={{ status: 'ready', questions }}
+        retry={jest.fn()}
+        sectionExpanded
         bookCode="MRK"
         chapterNumber={14}
-        verseNumber={2}
-        sectionExpanded
+        verseNumber={5}
       />,
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('translation-questions-list')).toBeTruthy();
-    });
+    expect(screen.getByTestId('translation-questions-list')).toBeTruthy();
     expect(screen.queryByText(answer)).toBeNull();
   });
 
-  it('shows section-scoped error and recovers on Retry', async () => {
-    mockLoad.mockRejectedValueOnce(new Error('boom'));
-    mockLoad.mockResolvedValueOnce(getMockTranslationQuestions(99, 2));
-
-    render(
-      <TranslationQuestionsSection
-        projectId={7}
-        bookCode="MRK"
-        chapterNumber={14}
-        verseNumber={2}
-        sectionExpanded
-      />,
+  it('shows section-scoped error and recovers on Retry', () => {
+    const retry = jest.fn();
+    const { rerender } = renderSection(
+      { status: 'error', message: TRANSLATION_QUESTIONS_LOAD_ERROR },
+      retry,
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('translation-questions-error')).toBeTruthy();
-    });
+    expect(screen.getByTestId('translation-questions-error')).toBeTruthy();
     expect(screen.getByText(TRANSLATION_QUESTIONS_LOAD_ERROR)).toBeTruthy();
     expect(screen.queryByTestId('translation-questions-list')).toBeNull();
 
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('translation-questions-retry'));
-    });
+    fireEvent.press(screen.getByTestId('translation-questions-retry'));
+    expect(retry).toHaveBeenCalledTimes(1);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('translation-questions-list')).toBeTruthy();
-    });
+    rerender(
+      <TranslationQuestionsSection
+        state={{
+          status: 'ready',
+          questions: getMockTranslationQuestions(99, 2),
+        }}
+        retry={retry}
+        sectionExpanded
+        bookCode="MRK"
+        chapterNumber={14}
+        verseNumber={2}
+      />,
+    );
+
+    expect(screen.getByTestId('translation-questions-list')).toBeTruthy();
+  });
+
+  it('treats a missing load state as loading instead of crashing', () => {
+    renderSection(undefined);
+    expect(screen.getByTestId('translation-questions-loading')).toBeTruthy();
   });
 });

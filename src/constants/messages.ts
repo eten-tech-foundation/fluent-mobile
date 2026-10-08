@@ -35,6 +35,10 @@ export const PROJECT_CHAPTERS_EMPTY_MESSAGE =
 export const RESOURCES_EMPTY_MESSAGE =
   'No resources are on this device yet. Download them from Prepare for Offline.';
 
+/** Online tab-wide empty when every section loaded with no content (#188 / #591). */
+export const RESOURCES_NONE_FOR_VERSE_MESSAGE =
+  'No resources available for this verse';
+
 /** Section-scoped Images & Maps failure copy (#191 / #348). */
 export const IMAGES_MAPS_LOAD_ERROR = 'Images unavailable';
 

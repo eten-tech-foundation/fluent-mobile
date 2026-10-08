@@ -23,16 +23,20 @@ import {
 import { useDraftingContext } from '../context/DraftingContext';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ResourceSectionAccordion } from '../../components/ui/ResourceSectionAccordion';
-import { RESOURCES_EMPTY_MESSAGE } from '../../constants/messages';
+import {
+  RESOURCES_EMPTY_MESSAGE,
+  RESOURCES_NONE_FOR_VERSE_MESSAGE,
+} from '../../constants/messages';
 import { useBibleTabUnits } from '../../hooks/useBibleTabUnits';
 import { useTranslationNotesForUnit } from '../../hooks/useTranslationNotesForUnit';
+import { useTranslationQuestionsForUnit } from '../../hooks/useTranslationQuestionsForUnit';
 import { useImagesMapsForUnit } from '../../hooks/useImagesMapsForUnit';
 import { useConnectivity } from '../../hooks/useConnectivity';
 import { useUnitResourcesAvailability } from '../../hooks/useUnitResourcesAvailability';
 import { ResourceSectionId } from '../../types/resources/types';
 import { ImagesMapsSectionHost } from './resources/ImagesMapsSectionHost';
 import { TranslationNotesSectionHost } from './resources/TranslationNotesSectionHost';
-import { TranslationQuestionsSection } from './resources/TranslationQuestionsSection';
+import { TranslationQuestionsSectionHost } from './resources/TranslationQuestionsSectionHost';
 import {
   getResourcesTabUiState,
   setResourcesTabUiState,
@@ -80,6 +84,7 @@ const SECTION_META: {
  * Resources tab host (#188 + #192): offline inventory gates which sections
  * appear on device. When online, all sections load via fluent-api
  * translation-resources (#381). Pericope mode fans out across the unit (#593).
+ * Empty sections hide after load (#591).
  */
 export function ResourcesTab({
   chapterId,
@@ -158,6 +163,15 @@ export function ResourcesTab({
     verseRefs,
   });
 
+  const { state: questionsState, retry: retryQuestions } =
+    useTranslationQuestionsForUnit({
+      projectId,
+      bookCode,
+      chapterNumber,
+      verseNumber: selectedVerse,
+      verseRefs,
+    });
+
   const { state: imagesMapsState, retry: retryImagesMaps } =
     useImagesMapsForUnit({
       projectId,
@@ -227,22 +241,40 @@ export function ResourcesTab({
     [hasResolved, isOnline, projectId, resources.sections],
   );
 
+  const isSectionEmptyAfterLoad = useCallback(
+    (sectionId: ResourceSectionId): boolean => {
+      if (sectionId === 'translationNotes') {
+        return notesState.status === 'ready' && notesState.notes.length === 0;
+      }
+      if (sectionId === 'translationQuestions') {
+        return (
+          questionsState.status === 'ready' &&
+          questionsState.questions.length === 0
+        );
+      }
+      if (sectionId === 'imagesMaps') {
+        return (
+          imagesMapsState.status === 'ready' &&
+          imagesMapsState.items.length === 0
+        );
+      }
+      return false;
+    },
+    [notesState, questionsState, imagesMapsState],
+  );
+
   const visibleSections = SECTION_META.filter(section => {
     if (!availableSectionIds.includes(section.id)) {
       return false;
     }
-    // Hide Images & Maps only when load finished with nothing to show.
-    if (
-      section.id === 'imagesMaps' &&
-      imagesMapsState.status === 'ready' &&
-      imagesMapsState.items.length === 0
-    ) {
+    // Hide a section only when its load finished with nothing to show (#591).
+    if (isSectionEmptyAfterLoad(section.id)) {
       return false;
     }
     return true;
   });
 
-  // Avoid flashing the offline empty message before NetInfo resolves (#592).
+  // Avoid flashing the offline empty message before NetInfo resolves (#592 / #591).
   if (!hasResolved) {
     return (
       <View style={styles.loading} testID="resources-tab-loading">
@@ -252,9 +284,15 @@ export function ResourcesTab({
   }
 
   if (visibleSections.length === 0) {
+    // Offline / no-inventory keeps the Prepare for Offline copy; otherwise the
+    // unit loaded empty (#188 online empty).
+    const emptyMessage =
+      availableSectionIds.length === 0
+        ? RESOURCES_EMPTY_MESSAGE
+        : RESOURCES_NONE_FOR_VERSE_MESSAGE;
     return (
       <View style={styles.emptyHost} testID="resources-tab">
-        <EmptyState message={RESOURCES_EMPTY_MESSAGE} />
+        <EmptyState message={emptyMessage} />
       </View>
     );
   }
@@ -302,13 +340,14 @@ export function ResourcesTab({
                   versesKey={verseRefsSerialized}
                 />
               ) : id === 'translationQuestions' ? (
-                <TranslationQuestionsSection
-                  projectId={projectId}
+                <TranslationQuestionsSectionHost
+                  state={questionsState}
+                  retry={retryQuestions}
+                  sectionExpanded={expanded}
                   bookCode={bookCode}
                   chapterNumber={chapterNumber}
                   verseNumber={selectedVerse}
-                  verseRefs={verseRefs}
-                  sectionExpanded={expanded}
+                  versesKey={verseRefsSerialized}
                 />
               ) : id === 'imagesMaps' ? (
                 <ImagesMapsSectionHost
