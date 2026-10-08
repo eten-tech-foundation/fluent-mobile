@@ -43,6 +43,29 @@ describe('verseAudioReducer', () => {
     expect(step('error', { type: 'DELETE' })).toBe('idle');
   });
 
+  it('DISCARD returns to idle from recording and paused (#49)', () => {
+    expect(step('recording', { type: 'DISCARD' })).toBe('idle');
+    expect(step('paused', { type: 'DISCARD' })).toBe('idle');
+  });
+
+  it('DISCARD is ignored outside an in-progress capture', () => {
+    expect(step('idle', { type: 'DISCARD' })).toBe('idle');
+    expect(step('recorded', { type: 'DISCARD' })).toBe('recorded');
+    expect(step('playing', { type: 'DISCARD' })).toBe('playing');
+    expect(step('saving', { type: 'DISCARD' })).toBe('saving');
+    expect(step('error', { type: 'DISCARD' })).toBe('error');
+  });
+
+  it('discarded capture does not count as a saved take (#49)', () => {
+    let s: VerseAudioState = 'idle';
+    s = step(s, { type: 'START' });
+    s = step(s, { type: 'PAUSE' });
+    s = step(s, { type: 'DISCARD' });
+    expect(s).toBe('idle');
+    // REHYDRATE then reflects the DB: no take was persisted by DISCARD.
+    expect(step(s, { type: 'REHYDRATE', hasTake: false })).toBe('idle');
+  });
+
   it('ERROR always transitions to error', () => {
     expect(step('recording', { type: 'ERROR', message: 'x' })).toBe('error');
     expect(step('idle', { type: 'ERROR', message: 'x' })).toBe('error');

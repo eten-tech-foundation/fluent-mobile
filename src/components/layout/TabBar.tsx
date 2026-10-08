@@ -11,7 +11,7 @@ interface TabBarProps {
 }
 
 const TABS: { id: HomeTab; label: string; Icon: LucideIcon }[] = [
-  { id: 'projects', label: 'Projects', Icon: BookOpen },
+  { id: 'projects', label: 'Milestones', Icon: BookOpen },
   { id: 'myWork', label: 'My Work', Icon: ListChecks },
 ];
 
