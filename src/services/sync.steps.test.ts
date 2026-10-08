@@ -1,3 +1,4 @@
+import { ApiError } from '../types/api/errors';
 import { FluentAPI } from './api';
 import {
   syncBibleTexts,
@@ -50,6 +51,7 @@ jest.mock('./api', () => ({
     getBibles: jest.fn().mockResolvedValue([]),
     getUserByEmail: jest.fn(),
     getUserProjects: jest.fn(),
+    getUserMilestones: jest.fn().mockResolvedValue([]),
     getChapterAssignments: jest.fn().mockResolvedValue({ data: [] }),
     getUserChapterAssignments: jest.fn().mockResolvedValue({
       assignedChapters: [],
@@ -103,6 +105,7 @@ jest.mock('../db/repository', () => ({
   insertMasterData: jest.fn().mockResolvedValue(undefined),
   insertProjects: jest.fn().mockResolvedValue(undefined),
   insertUserProjects: jest.fn().mockResolvedValue(undefined),
+  upsertProjectUnits: jest.fn().mockResolvedValue(undefined),
   reconcileUserProjects: jest.fn().mockResolvedValue(undefined),
   reconcileUserChapterWork: jest.fn().mockResolvedValue(undefined),
   ensureUserProjectMembership: jest.fn().mockResolvedValue(undefined),
@@ -214,12 +217,14 @@ describe('sync step orchestration', () => {
     it('retries non-auth failures then sets the sync error', async () => {
       jest.useFakeTimers();
       (FluentAPI.getLanguages as jest.Mock).mockRejectedValue(
-        new Error('network'),
+        new ApiError(500, 'catalog unavailable'),
       );
 
       try {
         const pending = syncMasterData();
-        const expectation = expect(pending).rejects.toThrow('network');
+        const expectation = expect(pending).rejects.toThrow(
+          'catalog unavailable',
+        );
 
         await jest.advanceTimersByTimeAsync(500);
         await jest.advanceTimersByTimeAsync(1000);
@@ -228,8 +233,32 @@ describe('sync step orchestration', () => {
         expect(FluentAPI.getLanguages).toHaveBeenCalledTimes(3);
         expect(setSyncErrorMock).toHaveBeenCalledWith(
           'sync_error_master_data',
-          'network',
+          'catalog unavailable',
         );
+        expect(insertMasterDataMock).not.toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('does not persist DNS/timeout transport failures as sync errors', async () => {
+      jest.useFakeTimers();
+      (FluentAPI.getLanguages as jest.Mock).mockRejectedValue(
+        new ApiError(0, 'Unable to resolve host api.fluent.bible'),
+      );
+
+      try {
+        const pending = syncMasterData();
+        const expectation = expect(pending).rejects.toThrow(
+          'Unable to resolve host api.fluent.bible',
+        );
+
+        await jest.advanceTimersByTimeAsync(500);
+        await jest.advanceTimersByTimeAsync(1000);
+        await expectation;
+
+        expect(FluentAPI.getLanguages).toHaveBeenCalledTimes(3);
+        expect(setSyncErrorMock).not.toHaveBeenCalled();
         expect(insertMasterDataMock).not.toHaveBeenCalled();
       } finally {
         jest.useRealTimers();
@@ -435,7 +464,7 @@ describe('sync step orchestration', () => {
       expect(syncPendingChapterClaimsMock).not.toHaveBeenCalled();
     });
 
-    it('retries non-auth failures then soft-fails without aborting', async () => {
+    it('does not persist transport failures when pending claim sync fails', async () => {
       jest.useFakeTimers();
       syncPendingChapterClaimsMock.mockRejectedValue(new Error('network'));
 
@@ -452,9 +481,34 @@ describe('sync step orchestration', () => {
         await expectation;
 
         expect(syncPendingChapterClaimsMock).toHaveBeenCalledTimes(3);
+        expect(setSyncErrorMock).not.toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('retries non-auth server failures then persists a sync error', async () => {
+      jest.useFakeTimers();
+      syncPendingChapterClaimsMock.mockRejectedValue(
+        new ApiError(500, 'catalog unavailable'),
+      );
+
+      try {
+        const pending = syncPendingChapterClaimsForUser(9);
+        const expectation = expect(pending).resolves.toEqual({
+          synced: 0,
+          conflicts: 0,
+          failed: 1,
+        });
+
+        await jest.advanceTimersByTimeAsync(500);
+        await jest.advanceTimersByTimeAsync(1000);
+        await expectation;
+
+        expect(syncPendingChapterClaimsMock).toHaveBeenCalledTimes(3);
         expect(setSyncErrorMock).toHaveBeenCalledWith(
           'sync_error_chapter_claims',
-          'network',
+          'catalog unavailable',
         );
       } finally {
         jest.useRealTimers();
