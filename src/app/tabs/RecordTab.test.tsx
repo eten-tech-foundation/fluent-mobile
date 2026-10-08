@@ -10,6 +10,7 @@ import { RecordTab } from './RecordTab';
 import { DraftingProvider } from '../context/DraftingContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
+  PERICOPE_UNAVAILABLE_WARNING,
   RECORD_AUDIO_CONFLICT_WARNING,
   RECORD_TAKEN_CHAPTER_WARNING,
   RECORD_SOURCE_TEXT_UNAVAILABLE,
@@ -1340,6 +1341,28 @@ describe('RecordTab', () => {
       expect(screen.getByTestId('stage-advance-button')).toBeTruthy();
     });
     expect(screen.getByText('Send to Peer Check')).toBeTruthy();
+    expect(screen.getByText(PERICOPE_UNAVAILABLE_WARNING)).toBeTruthy();
+  });
+
+  it('shows stage advance CTA when a pericope set id exists but no local rows resolve (#588)', async () => {
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    // Default getPericopeForVerse → null and getPericopesForChapter → []
+    // simulate a set id with no bundled/local rows.
+    (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(7);
+
+    renderTab();
+
+    // Set id alone used to keep isOnLastUnit false forever (activePericope
+    // never resolves). Fall back to verse last-unit so the CTA appears.
+    await waitFor(() => {
+      expect(screen.getByTestId('stage-advance-button')).toBeTruthy();
+    });
+    expect(screen.getByText('Send to Peer Check')).toBeTruthy();
+    expect(screen.getByTestId('record-pericope-unavailable')).toBeTruthy();
+    expect(screen.getByText(PERICOPE_UNAVAILABLE_WARNING)).toBeTruthy();
   });
 
   describe('Mode-aware Current Unit Title (#409)', () => {
@@ -1370,9 +1393,10 @@ describe('RecordTab', () => {
       expect(
         screen.getByTestId('record-verse-reference-subtitle'),
       ).toHaveTextContent('The plot to kill Jesus; anointing at Bethany');
+      expect(screen.queryByTestId('record-pericope-unavailable')).toBeNull();
     });
 
-    it('falls back silently to the plain verse reference when no pericope set is configured', async () => {
+    it('falls back to the plain verse reference and explains when no pericope set is configured', async () => {
       mockUseDraftingUnit.mockReturnValue({
         draftingUnit: 'pericope',
         setDraftingUnit: jest.fn(),
@@ -1389,6 +1413,7 @@ describe('RecordTab', () => {
       expect(
         screen.queryByTestId('record-verse-reference-subtitle'),
       ).toBeNull();
+      expect(screen.getByText(PERICOPE_UNAVAILABLE_WARNING)).toBeTruthy();
     });
 
     it('uses verse completeness and navigation when no pericope set is configured', async () => {
@@ -1405,6 +1430,7 @@ describe('RecordTab', () => {
           1,
           1,
           14,
+          1,
         );
         expect(screen.getByTestId('stage-advance-button')).toBeTruthy();
       });
@@ -1571,6 +1597,50 @@ describe('RecordTab', () => {
       expect(screen.getAllByTestId(/^record-take-row-/)).toHaveLength(1);
       expect(screen.queryByTestId(/^record-delete-button-/)).toBeNull();
       expect(screen.queryByTestId(/^record-take-select-/)).toBeNull();
+    });
+
+    it('treats a pericope set with no local rows as verse mode: real deletable rows, no stitched row (#588)', async () => {
+      mockUseDraftingUnit.mockReturnValue({
+        draftingUnit: 'pericope',
+        setDraftingUnit: jest.fn(),
+      });
+      // Set id resolves but getPericopeForVerse stays null (no local rows).
+      (getProjectPericopeSetId as jest.Mock).mockResolvedValue(7);
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [
+          makeTake({ id: 'v3', takeNumber: 1, startVerse: 3, endVerse: 3 }),
+          makeTake({ id: 'v4', takeNumber: 1, startVerse: 4, endVerse: 4 }),
+        ],
+      });
+
+      renderTab();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('record-pericope-unavailable')).toBeTruthy();
+      });
+
+      // Once unavailable, capture/rows use verse mode — not Settings' 'pericope'.
+      await waitFor(() => {
+        expect(mockUseVerseAudio).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            draftingUnit: 'verse',
+            recordingUnit: null,
+          }),
+        );
+      });
+      expect(screen.getAllByTestId(/^record-take-row-/)).toHaveLength(2);
+      expect(screen.getByTestId('record-delete-button-v3')).toBeTruthy();
+      expect(screen.getByTestId('record-delete-button-v4')).toBeTruthy();
+      expect(screen.queryByText(/Stitched/)).toBeNull();
+
+      // A stitched row would route through playStitched; real rows play takes.
+      fireEvent.press(screen.getByTestId('record-play-button-v3'));
+      expect(idleAudio.playStitched).not.toHaveBeenCalled();
+      expect(idleAudio.playTake).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'v3' }),
+      );
     });
 
     it('plays the stitched row with its segments in pericope order', async () => {

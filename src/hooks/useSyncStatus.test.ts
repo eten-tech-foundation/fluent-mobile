@@ -46,6 +46,7 @@ describe('useSyncStatus cellular gate', () => {
       hasPendingUploads: false,
       hasFailedUploads: false,
       hasUnuploadablePending: false,
+      countsUnknown: false,
       failedErrorText: null,
       isUploading: false,
       uploadProgress: null,
@@ -117,6 +118,51 @@ describe('useSyncStatus cellular gate', () => {
     await waitFor(() => {
       expect(result.current.isOnline).toBe(true);
       expect(result.current.status).toBe('online_synced');
+    });
+  });
+
+  it('does not report all-synced when pending counts are unknown', async () => {
+    mockUsePendingUploads.mockReturnValue({
+      pendingCount: 0,
+      pendingChapterCount: 0,
+      failedCount: 0,
+      unuploadableCount: 0,
+      hasPendingUploads: false,
+      hasFailedUploads: false,
+      hasUnuploadablePending: false,
+      countsUnknown: true,
+      failedErrorText: null,
+      isUploading: false,
+      uploadProgress: null,
+    });
+    mockUseConnectivity.mockReturnValue({
+      isOnline: true,
+      isLinkOnline: true,
+      isWifi: true,
+      isCellular: false,
+      connectionType: 'wifi',
+      hasResolved: true,
+      hasTransferResolved: true,
+      connectivityPending: false,
+      transferConnectivityPending: false,
+    });
+    mockUsePreferences.mockReturnValue({
+      uploadOverCellular: false,
+      uiVersion: 'legacy',
+      preferences: { uploadOverCellular: false, uiVersion: 'legacy' },
+      setUploadOverCellular: jest.fn(),
+      setUiVersion: jest.fn(),
+      setPreferences: jest.fn(),
+      reload: jest.fn(),
+    });
+
+    const { result } = renderHook(() =>
+      useSyncStatus({ isSyncing: false, refreshKey: 0 }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.status).not.toBe('online_synced');
+      expect(result.current.status).not.toBe('offline_synced');
     });
   });
 

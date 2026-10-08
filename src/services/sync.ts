@@ -65,6 +65,8 @@ import {
   setReauthRequired,
   isBibleTextsServerIdRemapPending,
   clearBibleTextsServerIdRemapPending,
+  getMasterDataLastSyncedAt,
+  setMasterDataLastSyncedAt,
 } from '../services/storage';
 import {
   clearTempCredentials,
@@ -222,21 +224,40 @@ export async function syncUser(email?: string, preloadedUser?: ApiUser) {
   );
 }
 
-export async function syncMasterData(sessionToken?: string) {
+export type SyncMasterDataOptions = {
+  /** Skip `updatedAfter` and pull the full catalogues (ISO backfill, etc.). */
+  forceFull?: boolean;
+};
+
+export async function syncMasterData(
+  sessionToken?: string,
+  options?: SyncMasterDataOptions,
+) {
   return retrySyncStep(
     'Master data sync',
     KV_KEYS.SYNC_ERROR_MASTER_DATA,
     async () => {
-      log.info('Syncing master data...');
+      const updatedAfter = options?.forceFull
+        ? undefined
+        : getMasterDataLastSyncedAt() || undefined;
 
-      const languages = await FluentAPI.getLanguages(sessionToken);
-      const books = await FluentAPI.getBooks(sessionToken);
-      const bibles = await FluentAPI.getBibles(sessionToken);
+      log.info('Syncing master data...', {
+        incremental: Boolean(updatedAfter),
+        updatedAfter,
+      });
+
+      const languages = await FluentAPI.getLanguages(
+        updatedAfter,
+        sessionToken,
+      );
+      const books = await FluentAPI.getBooks(updatedAfter, sessionToken);
+      const bibles = await FluentAPI.getBibles(updatedAfter, sessionToken);
 
       log.info('Master data fetched', {
         languagesCount: languages?.length,
         booksCount: books?.length,
         biblesCount: bibles?.length,
+        incremental: Boolean(updatedAfter),
       });
 
       await insertMasterData(
@@ -244,6 +265,7 @@ export async function syncMasterData(sessionToken?: string) {
         books,
         bibles,
       );
+      setMasterDataLastSyncedAt(new Date().toISOString());
       log.info('Master data sync completed');
     },
   );
@@ -928,144 +950,293 @@ export async function syncPericopes() {
   );
 }
 
-export async function syncAllUsers(): Promise<void> {
-  log.info('Syncing all users...');
-  clearAllSyncErrors();
-  emitSyncStart();
+type FullSyncKind = 'users' | 'incremental' | 'login';
 
-  const currentActiveUserId = getActiveUserId();
+type FullSyncEntry = {
+  kind: FullSyncKind;
+  /** User ids this pass covers, captured when the pass was enqueued. */
+  userIds: ReadonlySet<string>;
+  promise: Promise<void>;
+};
 
-  try {
-    const knownUserIds = getKnownUserIds();
-    const userIdsToSync =
-      knownUserIds.length > 0
-        ? knownUserIds
-        : currentActiveUserId
-        ? [currentActiveUserId]
-        : [];
+/**
+ * Most recently enqueued full sync (running or waiting its turn). Full syncs
+ * are serialized so Sync Now / login never overlap; only passes that would do
+ * identical work join an existing one.
+ */
+let latestFullSync: FullSyncEntry | null = null;
 
-    if (userIdsToSync.length === 0) {
-      throw new Error('No users to sync');
-    }
+function snapshotKnownUserIds(): Set<string> {
+  const known = getKnownUserIds();
+  if (known.length > 0) return new Set(known);
+  const activeUserId = getActiveUserId();
+  return new Set(activeUserId ? [activeUserId] : []);
+}
 
-    const activeCreds = currentActiveUserId
-      ? await getCredentials(currentActiveUserId)
-      : null;
-    if (currentActiveUserId && !activeCreds?.token) {
-      await handleSyncAuthFailure(currentActiveUserId);
-      throw new AuthError('No session token. Please sign in again.');
-    }
+function snapshotIncrementalUserIds(): Set<string> {
+  const userId = getUserIdSync();
+  return new Set(userId ? [userId] : []);
+}
 
-    const deviceHasLocalProjects = (await getLocalProjectIds()).length > 0;
-    const deviceLastSyncedAt = getLastSyncedAt() || undefined;
-    let activeUserSyncOk = true;
-    let activeUserAuthFailed = false;
-    let anyUserDidFullAssignmentSync = false;
-    let firstNonAuthSyncError: unknown;
-    let oldestAssignmentCursor: string | undefined;
-    const usersPendingCursorUpdate: string[] = [];
+function isSubset(
+  needed: ReadonlySet<string>,
+  covered: ReadonlySet<string>,
+): boolean {
+  if (needed.size === 0) return false;
+  for (const id of needed) {
+    if (!covered.has(id)) return false;
+  }
+  return true;
+}
 
-    await syncMasterData(activeCreds?.token);
-    await syncPericopeSets(activeCreds?.token);
+/**
+ * Join only a duplicate Sync Now / incremental pass whose user set is already
+ * covered. Login / add-account (`syncAllData(false)`) is never joined — it must
+ * run `syncUser` / `insertUser` for the new account.
+ */
+function canJoinFullSync(
+  existing: FullSyncEntry,
+  kind: FullSyncKind,
+  userIds: ReadonlySet<string>,
+): boolean {
+  if (kind === 'login' || existing.kind === 'login') return false;
+  if (kind === 'users' && existing.kind !== 'users') return false;
+  return isSubset(userIds, existing.userIds);
+}
 
-    for (const userId of userIdsToSync) {
-      const creds = await getCredentials(userId);
-      if (!creds?.token) {
-        log.warn('No credentials for user, skipping', { userId });
-        if (userId === currentActiveUserId) {
-          activeUserSyncOk = false;
-          activeUserAuthFailed = true;
-          await handleSyncAuthFailure(userId);
-        }
-        continue;
+function runFullSyncSingleFlight(
+  label: string,
+  kind: FullSyncKind,
+  userIds: ReadonlySet<string>,
+  run: () => Promise<void>,
+): Promise<void> {
+  const previous = latestFullSync;
+  if (previous && canJoinFullSync(previous, kind, userIds)) {
+    log.info(`${label} joined in-flight full sync`);
+    return previous.promise;
+  }
+
+  if (previous) {
+    log.info(`${label} waiting for in-flight full sync`);
+  }
+  const start = previous
+    ? previous.promise.then(
+        () => undefined,
+        () => undefined,
+      )
+    : Promise.resolve();
+
+  const entry: FullSyncEntry = {
+    kind,
+    userIds,
+    promise: start.then(run).finally(() => {
+      if (latestFullSync === entry) {
+        latestFullSync = null;
       }
+    }),
+  };
+  latestFullSync = entry;
+  return entry.promise;
+}
 
-      log.info('Syncing user', { userId });
-      const userIdNum = Number(userId);
-      const userLastSyncedAt = getUserLastSyncedAt(userId) || undefined;
-      const hasUserProjects = await userHasLocalProjects(userIdNum);
-      const assignmentCursor = hasUserProjects ? userLastSyncedAt : undefined;
+/** Test-only: clear single-flight state between cases. */
+export function __resetFullSyncSingleFlightForTests(): void {
+  latestFullSync = null;
+}
+
+/** Avoid unhandled rejection if a later sync step throws before awaiting master. */
+async function settleMasterPromise(
+  masterPromise: Promise<void> | undefined,
+): Promise<void> {
+  if (!masterPromise) return;
+  await masterPromise.catch(() => undefined);
+}
+
+export async function syncAllUsers(): Promise<void> {
+  return runFullSyncSingleFlight(
+    'syncAllUsers',
+    'users',
+    snapshotKnownUserIds(),
+    async () => {
+      log.info('Syncing all users...');
+      clearAllSyncErrors();
+      emitSyncStart();
+
+      const currentActiveUserId = getActiveUserId();
+      let masterPromise: Promise<void> | undefined;
 
       try {
-        await syncProjects(userIdNum, creds.token);
-        await syncMilestones(userIdNum, creds.token);
-        await syncPendingChapterClaimsForUser(userIdNum);
-        const { didFullSync, partialSkipWarning } =
-          await syncChapterAssignmentsForUser(
-            userIdNum,
-            assignmentCursor,
-            creds.token,
-          );
-        if (didFullSync) {
-          anyUserDidFullAssignmentSync = true;
+        const knownUserIds = getKnownUserIds();
+        const userIdsToSync =
+          knownUserIds.length > 0
+            ? knownUserIds
+            : currentActiveUserId
+            ? [currentActiveUserId]
+            : [];
+
+        if (userIdsToSync.length === 0) {
+          throw new Error('No users to sync');
         }
-        if (!partialSkipWarning) {
-          usersPendingCursorUpdate.push(userId);
+
+        const activeCreds = currentActiveUserId
+          ? await getCredentials(currentActiveUserId)
+          : null;
+        if (currentActiveUserId && !activeCreds?.token) {
+          await handleSyncAuthFailure(currentActiveUserId);
+          throw new AuthError('No session token. Please sign in again.');
         }
-        if (assignmentCursor) {
-          oldestAssignmentCursor =
-            oldestAssignmentCursor === undefined ||
-            assignmentCursor < oldestAssignmentCursor
-              ? assignmentCursor
-              : oldestAssignmentCursor;
+
+        const deviceHasLocalProjects = (await getLocalProjectIds()).length > 0;
+        const deviceLastSyncedAt = getLastSyncedAt() || undefined;
+        let activeUserSyncOk = true;
+        let activeUserAuthFailed = false;
+        let anyUserDidFullAssignmentSync = false;
+        let firstNonAuthSyncError: unknown;
+        let oldestAssignmentCursor: string | undefined;
+        const usersPendingCursorUpdate: string[] = [];
+
+        // Fetch master data in parallel with pending claims. Await it before
+        // projects/assignments — those inserts FK to languages/books/bibles.
+        masterPromise = syncMasterData(activeCreds?.token);
+
+        type UserCreds = { userId: string; userIdNum: number; token: string };
+        const usersWithCreds: UserCreds[] = [];
+
+        for (const userId of userIdsToSync) {
+          const creds = await getCredentials(userId);
+          if (!creds?.token) {
+            log.warn('No credentials for user, skipping', { userId });
+            if (userId === currentActiveUserId) {
+              activeUserSyncOk = false;
+              activeUserAuthFailed = true;
+              await handleSyncAuthFailure(userId);
+            }
+            continue;
+          }
+          usersWithCreds.push({
+            userId,
+            userIdNum: Number(userId),
+            token: creds.token,
+          });
+        }
+
+        for (const { userId, userIdNum } of usersWithCreds) {
+          try {
+            await syncPendingChapterClaimsForUser(userIdNum);
+          } catch (error) {
+            if (isAuthError(error)) {
+              if (userId === currentActiveUserId) {
+                activeUserSyncOk = false;
+                activeUserAuthFailed = true;
+              } else {
+                log.warn('Expired session credentials for user', { userId });
+              }
+            } else if (userId === currentActiveUserId) {
+              activeUserSyncOk = false;
+              if (firstNonAuthSyncError === undefined) {
+                firstNonAuthSyncError = error;
+              }
+            }
+            log.error('Claim sync failed for user', {
+              userId,
+              error: getErrorMessage(error),
+            });
+          }
+        }
+
+        await masterPromise;
+        await syncPericopeSets(activeCreds?.token);
+
+        for (const { userId, userIdNum, token } of usersWithCreds) {
+          log.info('Syncing user', { userId });
+          const userLastSyncedAt = getUserLastSyncedAt(userId) || undefined;
+          const hasUserProjects = await userHasLocalProjects(userIdNum);
+          const assignmentCursor = hasUserProjects
+            ? userLastSyncedAt
+            : undefined;
+
+          try {
+            await syncProjects(userIdNum, token);
+            await syncMilestones(userIdNum, token);
+            const { didFullSync, partialSkipWarning } =
+              await syncChapterAssignmentsForUser(
+                userIdNum,
+                assignmentCursor,
+                token,
+              );
+            if (didFullSync) {
+              anyUserDidFullAssignmentSync = true;
+            }
+            if (!partialSkipWarning) {
+              usersPendingCursorUpdate.push(userId);
+            }
+            if (assignmentCursor) {
+              oldestAssignmentCursor =
+                oldestAssignmentCursor === undefined ||
+                assignmentCursor < oldestAssignmentCursor
+                  ? assignmentCursor
+                  : oldestAssignmentCursor;
+            }
+          } catch (error) {
+            if (isAuthError(error)) {
+              if (userId === currentActiveUserId) {
+                activeUserSyncOk = false;
+                activeUserAuthFailed = true;
+              } else {
+                log.warn('Expired session credentials for user', { userId });
+              }
+            } else if (userId === currentActiveUserId) {
+              activeUserSyncOk = false;
+              if (firstNonAuthSyncError === undefined) {
+                firstNonAuthSyncError = error;
+              }
+            }
+            log.error('Sync failed for user', {
+              userId,
+              error: getErrorMessage(error),
+            });
+          }
+        }
+
+        const bibleTextUpdatedAfter = anyUserDidFullAssignmentSync
+          ? undefined
+          : oldestAssignmentCursor ??
+            (deviceHasLocalProjects ? deviceLastSyncedAt : undefined);
+
+        await syncPericopes();
+        await syncBibleTexts(bibleTextUpdatedAfter);
+
+        const userSyncCompletedAt = new Date().toISOString();
+        for (const userId of usersPendingCursorUpdate) {
+          setUserLastSyncedAt(userId, userSyncCompletedAt);
+        }
+
+        if (activeUserSyncOk) {
+          const now = new Date().toISOString();
+          setLastSyncedAt(now);
+          setLastAssignmentSyncAt(now);
+          log.info('All users synced successfully!');
+          return;
+        }
+
+        log.warn('Sync finished with errors for the active user');
+
+        if (activeUserAuthFailed) {
+          throw new AuthError('Session expired. Please sign in again.');
+        }
+
+        if (firstNonAuthSyncError !== undefined) {
+          throw firstNonAuthSyncError;
         }
       } catch (error) {
-        if (isAuthError(error)) {
-          if (userId === currentActiveUserId) {
-            activeUserSyncOk = false;
-            activeUserAuthFailed = true;
-          } else {
-            log.warn('Expired session credentials for user', { userId });
-          }
-        } else if (userId === currentActiveUserId) {
-          activeUserSyncOk = false;
-          if (firstNonAuthSyncError === undefined) {
-            firstNonAuthSyncError = error;
-          }
-        }
-        log.error('Sync failed for user', {
-          userId,
-          error: getErrorMessage(error),
-        });
+        await settleMasterPromise(masterPromise);
+        log.error('Sync all users failed', { error: getErrorMessage(error) });
+        throw error;
+      } finally {
+        emitSyncComplete();
       }
-    }
-
-    const bibleTextUpdatedAfter = anyUserDidFullAssignmentSync
-      ? undefined
-      : oldestAssignmentCursor ??
-        (deviceHasLocalProjects ? deviceLastSyncedAt : undefined);
-
-    await syncPericopes();
-    await syncBibleTexts(bibleTextUpdatedAfter);
-
-    const userSyncCompletedAt = new Date().toISOString();
-    for (const userId of usersPendingCursorUpdate) {
-      setUserLastSyncedAt(userId, userSyncCompletedAt);
-    }
-
-    if (activeUserSyncOk) {
-      const now = new Date().toISOString();
-      setLastSyncedAt(now);
-      setLastAssignmentSyncAt(now);
-      log.info('All users synced successfully!');
-      return;
-    }
-
-    log.warn('Sync finished with errors for the active user');
-
-    if (activeUserAuthFailed) {
-      throw new AuthError('Session expired. Please sign in again.');
-    }
-
-    if (firstNonAuthSyncError !== undefined) {
-      throw firstNonAuthSyncError;
-    }
-  } catch (error) {
-    log.error('Sync all users failed', { error: getErrorMessage(error) });
-    throw error;
-  } finally {
-    emitSyncComplete();
-  }
+    },
+  );
 }
 
 export async function syncAllData(
@@ -1073,139 +1244,160 @@ export async function syncAllData(
   email?: string,
   preloadedUser?: ApiUser,
 ) {
-  log.info('Starting sync...', { isIncremental });
-  clearAllSyncErrors();
-  emitSyncStart();
+  return runFullSyncSingleFlight(
+    'syncAllData',
+    isIncremental ? 'incremental' : 'login',
+    isIncremental ? snapshotIncrementalUserIds() : new Set<string>(),
+    async () => {
+      log.info('Starting sync...', { isIncremental });
+      clearAllSyncErrors();
+      emitSyncStart();
 
-  try {
-    let userId: number;
-    let sessionToken: string | undefined;
-    if (isIncremental) {
-      const existingUserIdStr = getUserIdSync();
-      if (!existingUserIdStr) throw new Error('No user ID found');
-      userId = Number(existingUserIdStr);
+      let masterPromise: Promise<void> | undefined;
 
-      const creds = await getCredentials(existingUserIdStr);
-      if (!creds?.token) {
-        await handleSyncAuthFailure(existingUserIdStr);
-        throw new AuthError('No session token. Please sign in again.');
-      }
-      sessionToken = creds.token;
-    } else {
-      const user = await syncUser(email, preloadedUser);
-      userId = user.id;
-      const userIdStr = String(userId);
-      const creds = await getCredentials(userIdStr);
-      if (!creds?.token) {
-        await handleSyncAuthFailure(userIdStr);
-        throw new AuthError('No session token for synced user.');
-      }
-      sessionToken = creds.token;
-    }
+      try {
+        let userId: number;
+        let sessionToken: string | undefined;
+        if (isIncremental) {
+          const existingUserIdStr = getUserIdSync();
+          if (!existingUserIdStr) throw new Error('No user ID found');
+          userId = Number(existingUserIdStr);
 
-    const localProjectIdsBefore = isIncremental
-      ? []
-      : await getLocalProjectIds();
+          const creds = await getCredentials(existingUserIdStr);
+          if (!creds?.token) {
+            await handleSyncAuthFailure(existingUserIdStr);
+            throw new AuthError('No session token. Please sign in again.');
+          }
+          sessionToken = creds.token;
+        } else {
+          const user = await syncUser(email, preloadedUser);
+          userId = user.id;
+          const userIdStr = String(userId);
+          const creds = await getCredentials(userIdStr);
+          if (!creds?.token) {
+            await handleSyncAuthFailure(userIdStr);
+            throw new AuthError('No session token for synced user.');
+          }
+          sessionToken = creds.token;
+        }
 
-    const lastSyncedAt = getLastSyncedAt() || undefined; // global
-    const userIdStr = String(userId);
-    const userAssignmentCursor = getUserLastSyncedAt(userIdStr) || undefined;
+        const localProjectIdsBefore = isIncremental
+          ? []
+          : await getLocalProjectIds();
 
-    await syncMasterData(sessionToken);
-    await syncPericopeSets(sessionToken);
-    await syncProjects(userId, sessionToken);
-    await syncMilestones(userId, sessionToken);
-    await syncPendingChapterClaimsForUser(userId);
+        const lastSyncedAt = getLastSyncedAt() || undefined; // global
+        const userIdStr = String(userId);
+        const userAssignmentCursor =
+          getUserLastSyncedAt(userIdStr) || undefined;
 
-    let assignmentPartialSkipWarning: string | undefined;
+        // Claims overlap master fetch; projects/assignments wait for FK parents.
+        masterPromise = syncMasterData(sessionToken);
+        await syncPendingChapterClaimsForUser(userId);
+        await masterPromise;
+        await syncPericopeSets(sessionToken);
+        await syncProjects(userId, sessionToken);
+        await syncMilestones(userId, sessionToken);
 
-    if (isIncremental) {
-      const assignmentCursor = userAssignmentCursor ?? lastSyncedAt;
-      const { didFullSync, partialSkipWarning } =
-        await syncChapterAssignmentsForUser(
-          userId,
-          assignmentCursor,
-          sessionToken,
+        let assignmentPartialSkipWarning: string | undefined;
+        let bibleTextUpdatedAfter: string | undefined;
+
+        if (isIncremental) {
+          const assignmentCursor = userAssignmentCursor ?? lastSyncedAt;
+          const { didFullSync, partialSkipWarning } =
+            await syncChapterAssignmentsForUser(
+              userId,
+              assignmentCursor,
+              sessionToken,
+            );
+          assignmentPartialSkipWarning = partialSkipWarning;
+          bibleTextUpdatedAfter = didFullSync ? undefined : assignmentCursor;
+        } else if (localProjectIdsBefore.length === 0) {
+          const projectResult = await syncChapterAssignments(
+            userId,
+            undefined,
+            undefined,
+            sessionToken,
+          );
+          const workResult = await syncUserChapterWork(userId, sessionToken);
+          assignmentPartialSkipWarning = applyChapterAssignmentSkipWarning(
+            workResult.partialSkipWarning,
+            projectResult.partialSkipWarning,
+          );
+          bibleTextUpdatedAfter = undefined;
+          // Raw assignment pull (not via syncChapterAssignmentsForUser) (#610).
+          await reconcilePendingClaimsAfterAssignmentPull(userId);
+        } else {
+          // Omit excludeProjectIds on re-login: the API can return [] when every
+          // local project is excluded before checking newly assigned work.
+          const { didFullSync, partialSkipWarning } =
+            await syncChapterAssignmentsForUser(
+              userId,
+              userAssignmentCursor,
+              sessionToken,
+            );
+          assignmentPartialSkipWarning = partialSkipWarning;
+          bibleTextUpdatedAfter = didFullSync
+            ? undefined
+            : userAssignmentCursor;
+        }
+
+        await syncPericopes();
+        await syncBibleTexts(bibleTextUpdatedAfter);
+
+        const now = new Date().toISOString();
+        setLastSyncedAt(now);
+        setLastAssignmentSyncAt(now);
+        if (!assignmentPartialSkipWarning) {
+          setUserLastSyncedAt(userIdStr, now);
+        }
+
+        const db = getDatabase();
+        const langCount = await db.execute(
+          'SELECT COUNT(*) as count FROM languages',
         );
-      assignmentPartialSkipWarning = partialSkipWarning;
-      await syncPericopes();
-      await syncBibleTexts(didFullSync ? undefined : assignmentCursor);
-    } else if (localProjectIdsBefore.length === 0) {
-      const projectResult = await syncChapterAssignments(
-        userId,
-        undefined,
-        undefined,
-        sessionToken,
-      );
-      const workResult = await syncUserChapterWork(userId, sessionToken);
-      assignmentPartialSkipWarning = applyChapterAssignmentSkipWarning(
-        workResult.partialSkipWarning,
-        projectResult.partialSkipWarning,
-      );
-      await reconcilePendingClaimsAfterAssignmentPull(userId);
-      await syncPericopes();
-      await syncBibleTexts();
-    } else {
-      // Omit excludeProjectIds on re-login: the API can return [] when every
-      // local project is excluded before checking newly assigned work.
-      const { didFullSync, partialSkipWarning } =
-        await syncChapterAssignmentsForUser(
-          userId,
-          userAssignmentCursor,
-          sessionToken,
+        const bookCount = await db.execute(
+          'SELECT COUNT(*) as count FROM books',
         );
-      assignmentPartialSkipWarning = partialSkipWarning;
-      await syncPericopes();
-      await syncBibleTexts(didFullSync ? undefined : userAssignmentCursor);
-    }
+        const bibleCount = await db.execute(
+          'SELECT COUNT(*) as count FROM bibles',
+        );
+        const projectCount = await db.execute(
+          'SELECT COUNT(*) as count FROM projects',
+        );
+        const unitCount = await db.execute(
+          'SELECT COUNT(*) as count FROM project_units',
+        );
+        const assignmentCount = await db.execute(
+          'SELECT COUNT(*) as count FROM chapter_assignments',
+        );
+        const textCount = await db.execute(
+          'SELECT COUNT(*) as count FROM bible_texts',
+        );
+        const userProjectCount = await db.execute(
+          'SELECT COUNT(*) as count FROM user_projects',
+        );
 
-    const now = new Date().toISOString();
-    setLastSyncedAt(now);
-    setLastAssignmentSyncAt(now);
-    if (!assignmentPartialSkipWarning) {
-      setUserLastSyncedAt(userIdStr, now);
-    }
+        log.info('DB row counts after sync', {
+          languages: langCount.rows[0]?.count,
+          books: bookCount.rows[0]?.count,
+          bibles: bibleCount.rows[0]?.count,
+          projects: projectCount.rows[0]?.count,
+          projectUnits: unitCount.rows[0]?.count,
+          chapterAssignments: assignmentCount.rows[0]?.count,
+          bibleTexts: textCount.rows[0]?.count,
+          userProjects: userProjectCount.rows[0]?.count,
+        });
 
-    const db = getDatabase();
-    const langCount = await db.execute(
-      'SELECT COUNT(*) as count FROM languages',
-    );
-    const bookCount = await db.execute('SELECT COUNT(*) as count FROM books');
-    const bibleCount = await db.execute('SELECT COUNT(*) as count FROM bibles');
-    const projectCount = await db.execute(
-      'SELECT COUNT(*) as count FROM projects',
-    );
-    const unitCount = await db.execute(
-      'SELECT COUNT(*) as count FROM project_units',
-    );
-    const assignmentCount = await db.execute(
-      'SELECT COUNT(*) as count FROM chapter_assignments',
-    );
-    const textCount = await db.execute(
-      'SELECT COUNT(*) as count FROM bible_texts',
-    );
-    const userProjectCount = await db.execute(
-      'SELECT COUNT(*) as count FROM user_projects',
-    );
-
-    log.info('DB row counts after sync', {
-      languages: langCount.rows[0]?.count,
-      books: bookCount.rows[0]?.count,
-      bibles: bibleCount.rows[0]?.count,
-      projects: projectCount.rows[0]?.count,
-      projectUnits: unitCount.rows[0]?.count,
-      chapterAssignments: assignmentCount.rows[0]?.count,
-      bibleTexts: textCount.rows[0]?.count,
-      userProjects: userProjectCount.rows[0]?.count,
-    });
-
-    log.info('Sync completed successfully!', { timestamp: now });
-  } catch (error) {
-    log.error('Sync failed', { error: getErrorMessage(error) });
-    throw error;
-  } finally {
-    emitSyncComplete();
-  }
+        log.info('Sync completed successfully!', { timestamp: now });
+      } catch (error) {
+        await settleMasterPromise(masterPromise);
+        log.error('Sync failed', { error: getErrorMessage(error) });
+        throw error;
+      } finally {
+        emitSyncComplete();
+      }
+    },
+  );
 }
 
 const inFlightMetadataRefresh = new Map<number, Promise<void>>();
@@ -1213,7 +1405,9 @@ const inFlightMetadataRefresh = new Map<number, Promise<void>>();
 /** Skip repeated full master-data pulls after a successful backfill this session. */
 let masterDataBackfilledThisSession = false;
 
-async function maybeBackfillMasterDataOnRefresh(): Promise<void> {
+async function maybeBackfillMasterDataOnRefresh(
+  sessionToken?: string,
+): Promise<void> {
   if (masterDataBackfilledThisSession) return;
   const needsIso = await hasLanguagesMissingIsoCode();
   if (!needsIso) {
@@ -1222,7 +1416,7 @@ async function maybeBackfillMasterDataOnRefresh(): Promise<void> {
   }
   emitSyncStart();
   try {
-    await syncMasterData();
+    await syncMasterData(sessionToken, { forceFull: true });
   } finally {
     emitSyncComplete();
   }
@@ -1267,7 +1461,7 @@ export async function refreshChapterMetadataIfOnline(
       const sessionToken = creds.token;
       // One-shot ISO backfill for devices that synced languages before
       // mapApiLanguage. Verse text stays on Sync Now / DraftingScreen ensure.
-      await maybeBackfillMasterDataOnRefresh();
+      await maybeBackfillMasterDataOnRefresh(sessionToken);
       await syncProjects(userId, sessionToken);
       await syncMilestones(userId, sessionToken);
 

@@ -49,10 +49,12 @@ export const TRANSLATION_NOTE_EMPTY_BODY = 'No note text available.';
 export const TRANSLATION_QUESTIONS_LOAD_ERROR =
   'Unable to load Translation Questions.';
 
+/** One label for drawer Sign Out and More Settings Log out (#622). */
+export const ACCOUNT_SIGN_OUT_LABEL = 'Log out';
+
 export const LOGOUT_UNSYNCED_TITLE = 'Unsynced work on device';
 export const LOGOUT_UNSYNCED_MESSAGE =
   'You have recordings that have not been uploaded. Log out anyway?';
-export const LOGOUT_UNSYNCED_CONFIRM = 'Log out';
 export const LOGOUT_UNSYNCED_CANCEL = 'Cancel';
 
 export const REAUTH_PROMPT_TITLE = 'Session expired';
@@ -83,6 +85,13 @@ export const RECORD_TAKEN_CHAPTER_WARNING =
   'This chapter is assigned to another translator.';
 export const RECORD_AUDIO_CONFLICT_WARNING =
   'Unresolved audio take conflict on this chapter/pericope.';
+
+/**
+ * Settings is Pericope but the project has no usable local pericope data
+ * (#588) — Bible/Record fall back to verse units with this explanation.
+ */
+export const PERICOPE_UNAVAILABLE_WARNING =
+  "Pericopes aren't available for this project. Showing verses instead.";
 
 /** Record tab when local `bible_texts` row is missing (#448). */
 export const RECORD_SOURCE_TEXT_SYNCING =
