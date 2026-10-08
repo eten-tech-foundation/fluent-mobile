@@ -294,9 +294,7 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
       initialScrollIndex={
         isPericopeList || initialIndex === 0 ? undefined : initialIndex
       }
-      onScrollToIndexFailed={
-        isPericopeList ? undefined : handleScrollToIndexFailed
-      }
+      onScrollToIndexFailed={handleScrollToIndexFailed}
       contentContainerStyle={
         isPericopeList ? styles.cardContent : styles.content
       }

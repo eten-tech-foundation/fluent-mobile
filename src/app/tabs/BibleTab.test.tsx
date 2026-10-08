@@ -510,4 +510,63 @@ describe('BibleTab', () => {
       spy.mockRestore();
     }
   });
+
+  it.each(['verse', 'pericope'] as const)(
+    'retries scrollToIndex on scroll failure in %s mode (#595)',
+    async mode => {
+      const scrollToIndex = jest.fn();
+      const spy = jest
+        .spyOn(FlatList.prototype, 'scrollToIndex')
+        .mockImplementation(scrollToIndex);
+      mockUseDraftingUnit.mockReturnValue({
+        draftingUnit: mode,
+        setDraftingUnit: jest.fn(),
+      });
+      jest.mocked(getPericopesForChapter).mockResolvedValue([
+        {
+          pericopeNumber: '1',
+          pericopeTitle: null,
+          section: 1,
+          verses: [
+            { chapterNumber: 14, verseNumber: 1 },
+            { chapterNumber: 14, verseNumber: 2 },
+          ],
+        },
+      ]);
+
+      try {
+        const { UNSAFE_getByType } = render(
+          <DraftingProvider
+            verses={verses}
+            initialVerse={1}
+            projectId={9}
+            chapterName="Mark 14"
+            bookName="Mark"
+          >
+            <BibleTab />
+          </DraftingProvider>,
+        );
+
+        await waitFor(() => {
+          expect(
+            UNSAFE_getByType(FlatList).props.onScrollToIndexFailed,
+          ).toEqual(expect.any(Function));
+        });
+
+        scrollToIndex.mockClear();
+        act(() => {
+          UNSAFE_getByType(FlatList).props.onScrollToIndexFailed({ index: 1 });
+        });
+
+        await waitFor(() => {
+          expect(scrollToIndex).toHaveBeenCalledWith({
+            index: 1,
+            animated: false,
+          });
+        });
+      } finally {
+        spy.mockRestore();
+      }
+    },
+  );
 });
