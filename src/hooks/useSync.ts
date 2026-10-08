@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { syncAllUsers } from '../services/sync';
 import { getSyncState, getSyncError, KV_KEYS } from '../services/storage';
+import {
+  onSyncComplete as subscribeSyncComplete,
+  onUploadSessionEvent,
+} from '../services/syncEvents';
 import { logger } from '../utils/logger';
 
 const log = logger.create('useSync');
@@ -93,11 +97,30 @@ export function useSync({
   }, [isSyncing, updateState]);
 
   useEffect(() => {
-    if (stateType !== 'normal') return;
+    const unsubscribeComplete = subscribeSyncComplete(() => {
+      updateState(isSyncing);
+    });
+    const unsubscribeUpload = onUploadSessionEvent(event => {
+      if (
+        event.type === 'complete' ||
+        event.type === 'idle' ||
+        event.type === 'paused'
+      ) {
+        updateState(isSyncing);
+      }
+    });
+    return () => {
+      unsubscribeComplete();
+      unsubscribeUpload();
+    };
+  }, [isSyncing, updateState]);
+
+  useEffect(() => {
+    if (isSyncing) return;
 
     const interval = setInterval(() => updateState(false), 60_000);
     return () => clearInterval(interval);
-  }, [stateType, updateState]);
+  }, [isSyncing, updateState]);
 
   const triggerSync = useCallback(async () => {
     try {
