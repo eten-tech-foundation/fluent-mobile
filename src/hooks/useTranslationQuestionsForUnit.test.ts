@@ -50,6 +50,7 @@ describe('useTranslationQuestionsForUnit', () => {
       bookCode: 'MRK',
       chapterNumber: 14,
       verseNumber: 2,
+      verseRefs: [{ chapterNumber: 14, verseNumber: 2 }],
       languageCode: undefined,
     });
   });
