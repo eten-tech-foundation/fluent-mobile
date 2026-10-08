@@ -31,6 +31,7 @@ export interface UseUploadSessionStateOptions {
   hasPendingUploads: boolean;
   hasFailedUploads: boolean;
   hasUnuploadablePending?: boolean;
+  countsUnknown?: boolean;
   uploadProgress: UploadProgress | null;
 }
 
@@ -52,6 +53,7 @@ export function useUploadSessionState({
   hasPendingUploads,
   hasFailedUploads,
   hasUnuploadablePending = false,
+  countsUnknown = false,
   uploadProgress,
 }: UseUploadSessionStateOptions): UseUploadSessionStateResult {
   const [snapshot, setSnapshot] =
@@ -87,6 +89,7 @@ export function useUploadSessionState({
     hasPendingUploads,
     hasFailedUploads,
     hasUnuploadablePending,
+    countsUnknown,
   );
 
   const progressUploaded =

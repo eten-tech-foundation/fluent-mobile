@@ -119,14 +119,15 @@ describe('pending upload queries (#545)', () => {
     expect(sql).not.toContain('missing_assignment');
   });
 
-  it('getUnuploadablePendingSummary returns zeros when the query fails', async () => {
+  it('getPendingUploadCount rejects when the query fails', async () => {
     mockExecute.mockRejectedValue(new Error('db'));
 
-    await expect(getUnuploadablePendingSummary()).resolves.toEqual({
-      orphanBibleText: 0,
-      pericopeOnly: 0,
-      other: 0,
-      total: 0,
-    });
+    await expect(getPendingUploadCount()).rejects.toThrow('db');
+  });
+
+  it('getUnuploadablePendingSummary rejects when the query fails', async () => {
+    mockExecute.mockRejectedValue(new Error('db'));
+
+    await expect(getUnuploadablePendingSummary()).rejects.toThrow('db');
   });
 });

@@ -739,7 +739,7 @@ export async function getPendingUploadCount(): Promise<number> {
     return Number(result.rows?.[0]?.count) || 0;
   } catch (error) {
     log.error('Error fetching pending upload count', { error });
-    return 0;
+    throw error;
   }
 }
 
@@ -770,13 +770,6 @@ export type UnuploadablePendingSummary = {
   pericopeOnly: number;
   other: number;
   total: number;
-};
-
-const EMPTY_UNUPLOADABLE: UnuploadablePendingSummary = {
-  orphanBibleText: 0,
-  pericopeOnly: 0,
-  other: 0,
-  total: 0,
 };
 
 /**
@@ -832,7 +825,7 @@ export async function getUnuploadablePendingSummary(): Promise<UnuploadablePendi
     };
   } catch (error) {
     log.error('Error fetching unuploadable pending summary', { error });
-    return EMPTY_UNUPLOADABLE;
+    throw error;
   }
 }
 
