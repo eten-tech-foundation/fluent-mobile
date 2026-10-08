@@ -286,7 +286,7 @@ function createFakeDb(initialVersion = 0) {
         /^ALTER\s+TABLE\s+(\w+)\s+ADD\s+COLUMN\s+(\w+)\s+(.+)$/i,
       );
       if (alter) {
-        const [, tableName, columnName] = alter;
+        const [, tableName, columnName, typeClause] = alter;
         const table = tables.get(tableName);
         if (!table) {
           throw new Error(`no such table: ${tableName}`);
@@ -295,8 +295,17 @@ function createFakeDb(initialVersion = 0) {
           throw new Error(`duplicate column name: ${columnName}`);
         }
         table.columns.add(columnName);
+        const dflt = typeClause.match(/DEFAULT\s+('(?:[^']*)'|\S+)/i);
+        let defaultValue: string | number | null = null;
+        if (dflt) {
+          const raw = dflt[1].replace(/^'|'$/g, '');
+          const num = Number(raw);
+          defaultValue = Number.isNaN(num) ? raw : num;
+          table.defaults.set(columnName, dflt[1].replace(/^'|'$/g, ''));
+        }
         for (const row of table.rows) {
-          row[columnName] = 0;
+          // SQLite applies DEFAULT when present; otherwise NULL.
+          row[columnName] = defaultValue;
         }
         return emptyResult();
       }
@@ -441,6 +450,7 @@ function createFakeDb(initialVersion = 0) {
       if (/^UPDATE\s+recordings\b/i.test(sql)) {
         const recTable = tables.get('recordings');
         const btTable = tables.get('bible_texts');
+        const caTable = tables.get('chapter_assignments');
         if (recTable) {
           for (const row of recTable.rows) {
             const granularity = row.granularity;
@@ -459,6 +469,33 @@ function createFakeDb(initialVersion = 0) {
                 row.start_verse = bt.verse_number;
                 row.end_chapter = bt.chapter_number;
                 row.end_verse = bt.verse_number;
+              }
+            }
+            // v18 (#613): backfill project_unit_id only when unique.
+            if (
+              sql.includes('project_unit_id') &&
+              (row.project_unit_id === null ||
+                row.project_unit_id === undefined)
+            ) {
+              const bt = btTable?.rows.find(
+                entry => entry.id === row.bible_text_id,
+              );
+              if (bt && caTable) {
+                const matching = [
+                  ...new Set(
+                    caTable.rows
+                      .filter(
+                        ca =>
+                          ca.bible_id === bt.bible_id &&
+                          ca.book_id === bt.book_id &&
+                          ca.chapter_number === bt.chapter_number,
+                      )
+                      .map(ca => ca.project_unit_id as number),
+                  ),
+                ];
+                if (matching.length === 1) {
+                  row.project_unit_id = matching[0]!;
+                }
               }
             }
           }
@@ -1120,6 +1157,142 @@ describe('recordings granularity migration (#410)', () => {
     expect(row.start_verse).toBe(3);
     expect(row.end_chapter).toBe(14);
     expect(row.end_verse).toBe(3);
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
+  });
+});
+
+describe('recordings project_unit_id migration (#613)', () => {
+  it('adds project_unit_id and backfills only unique assignments', async () => {
+    const db = createFakeDb(17);
+    db._tables.set('bible_texts', {
+      columns: new Set([
+        'id',
+        'bible_id',
+        'book_id',
+        'chapter_number',
+        'verse_number',
+        'text',
+      ]),
+      rows: [
+        {
+          id: 10,
+          bible_id: 1,
+          book_id: 8,
+          chapter_number: 3,
+          verse_number: 1,
+          text: 'unique',
+        },
+        {
+          id: 11,
+          bible_id: 1,
+          book_id: 8,
+          chapter_number: 4,
+          verse_number: 1,
+          text: 'ambiguous',
+        },
+      ],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+    db._tables.set('chapter_assignments', {
+      columns: new Set([
+        'id',
+        'project_unit_id',
+        'bible_id',
+        'book_id',
+        'chapter_number',
+        'assigned_user_id',
+        'status',
+        'updated_at',
+      ]),
+      rows: [
+        {
+          id: 1,
+          project_unit_id: 473,
+          bible_id: 1,
+          book_id: 8,
+          chapter_number: 3,
+          assigned_user_id: 5,
+          status: 'in_progress',
+          updated_at: '2026-01-01',
+        },
+        {
+          id: 2,
+          project_unit_id: 12,
+          bible_id: 1,
+          book_id: 8,
+          chapter_number: 4,
+          assigned_user_id: 5,
+          status: 'in_progress',
+          updated_at: '2026-01-01',
+        },
+        {
+          id: 3,
+          project_unit_id: 99,
+          bible_id: 1,
+          book_id: 8,
+          chapter_number: 4,
+          assigned_user_id: 5,
+          status: 'in_progress',
+          updated_at: '2026-01-01',
+        },
+      ],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+    db._tables.set('recordings', {
+      columns: new Set([
+        'id',
+        'bible_text_id',
+        'local_file_path',
+        'sync_status',
+        'updated_at',
+        'granularity',
+        'start_chapter',
+        'start_verse',
+        'end_chapter',
+        'end_verse',
+      ]),
+      rows: [
+        {
+          id: 'rec_unique',
+          bible_text_id: 10,
+          sync_status: 'pending',
+          granularity: 'verse',
+          start_chapter: 3,
+          start_verse: 1,
+          end_chapter: 3,
+          end_verse: 1,
+        },
+        {
+          id: 'rec_ambiguous',
+          bible_text_id: 11,
+          sync_status: 'pending',
+          granularity: 'verse',
+          start_chapter: 4,
+          start_verse: 1,
+          end_chapter: 4,
+          end_verse: 1,
+        },
+      ],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+
+    expect(await columnExists(db, 'recordings', 'project_unit_id')).toBe(false);
+
+    await runMigrations(db);
+
+    expect(await columnExists(db, 'recordings', 'project_unit_id')).toBe(true);
+    expect(db._indexes.has('idx_rec_project_unit')).toBe(true);
+    const unique = db._tables
+      .get('recordings')!
+      .rows.find(r => r.id === 'rec_unique')!;
+    const ambiguous = db._tables
+      .get('recordings')!
+      .rows.find(r => r.id === 'rec_ambiguous')!;
+    expect(unique.project_unit_id).toBe(473);
+    expect(ambiguous.project_unit_id).toBeNull();
     await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
   });
 });

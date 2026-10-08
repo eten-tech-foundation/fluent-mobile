@@ -12,6 +12,7 @@ import {
   DraftingProvider,
   useDraftingContext,
 } from '../context/DraftingContext';
+import { PERICOPE_UNAVAILABLE_WARNING } from '../../constants/messages';
 import { getProjectPericopeSetId } from '../../db/repository';
 import {
   getPericopesForChapter,
@@ -144,6 +145,34 @@ describe('BibleTab', () => {
 
     expect(screen.getByLabelText('Verse 2, selected')).toBeTruthy();
     expect(onOpenRecord).toHaveBeenCalledTimes(1);
+  });
+
+  it('explains when pericope mode falls back to verse rows with no local data (#588)', async () => {
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    jest.mocked(getProjectPericopeSetId).mockResolvedValue(null);
+    jest.mocked(getPericopesForChapter).mockResolvedValue([]);
+
+    render(
+      <DraftingProvider
+        verses={verses}
+        initialVerse={1}
+        projectId={9}
+        chapterName="Mark 14"
+        bookName="Mark"
+      >
+        <BibleTab />
+      </DraftingProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('bible-pericope-unavailable')).toBeTruthy();
+    });
+    expect(screen.getByText(PERICOPE_UNAVAILABLE_WARNING)).toBeTruthy();
+    expect(screen.getByLabelText('Verse 1, selected')).toBeTruthy();
+    expect(screen.queryByTestId('bible-pericope-1')).toBeNull();
   });
 
   it('invokes onOpenRecord after pressing a pericope unit', async () => {

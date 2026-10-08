@@ -306,7 +306,9 @@ export default function DraftingScreen() {
               projectId,
             });
             try {
-              await withSyncChrome(() => syncMasterData());
+              await withSyncChrome(() =>
+                syncMasterData(undefined, { forceFull: true }),
+              );
             } catch (masterError) {
               // Allow a later chapter open / refresh to retry.
               masterDataIsoEnsureAttempted.delete(projectId);
@@ -365,6 +367,7 @@ export default function DraftingScreen() {
           assignment.bibleId,
           assignment.bookId,
           assignment.chapterNumber,
+          assignment.projectUnitId,
         );
         if (ignore) return;
 
@@ -420,6 +423,7 @@ export default function DraftingScreen() {
         verses={verses}
         initialVerse={initialVerse}
         projectId={chapterData.projectId}
+        projectUnitId={chapterData.projectUnitId}
         bookName={chapterData.bookName ?? ''}
         chapterName={chapterName}
       >

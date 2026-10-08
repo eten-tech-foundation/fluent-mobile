@@ -27,6 +27,8 @@ export function useBibleTabUnits(args: {
   bookId: number;
   chapterNumber: number;
   projectId: number | null;
+  /** Chapter's project unit; scopes recorded coverage (#613). */
+  projectUnitId?: number | null;
   verses: VerseData[];
   chapterName: string;
   bookName: string;
@@ -148,18 +150,22 @@ export function useBibleTabUnits(args: {
 
   const refreshCoverages = useCallback(() => {
     const requestId = ++coverageRequestIdRef.current;
-    void getSelectedTakeCoverages(args.bibleId, args.bookId).then(rows => {
+    void getSelectedTakeCoverages(
+      args.bibleId,
+      args.bookId,
+      args.projectUnitId,
+    ).then(rows => {
       if (requestId !== coverageRequestIdRef.current) {
         return;
       }
       setCoverages(rows);
       setCoveragesResolved(true);
     });
-  }, [args.bibleId, args.bookId]);
+  }, [args.bibleId, args.bookId, args.projectUnitId]);
 
   useEffect(() => {
     setCoveragesResolved(false);
-  }, [args.bibleId, args.bookId]);
+  }, [args.bibleId, args.bookId, args.projectUnitId]);
 
   useEffect(() => {
     refreshCoverages();

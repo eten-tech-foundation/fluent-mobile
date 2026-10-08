@@ -301,6 +301,8 @@ export interface Recording {
   bibleTextId: number;
   /** Active-user id at capture time (#105); null for pre-attribution rows. */
   recordedByUserId?: number | null;
+  /** Project unit at capture time (#613); null for pre-migration / ambiguous rows. */
+  projectUnitId?: number | null;
   localFilePath: string;
   blobKey?: string | null;
   durationMs?: number | null;
@@ -325,6 +327,7 @@ export interface RecordingRow {
   id: string;
   bible_text_id: number;
   recorded_by_user_id: number | null;
+  project_unit_id: number | null;
   local_file_path: string;
   blob_key: string | null;
   duration_ms: number | null;
@@ -350,7 +353,8 @@ export type RecordingWithOwner = Recording & {
 
 /**
  * Latest non-uploaded recording row for the upload worker (#100).
- * `projectUnitId` comes from a matching `chapter_assignments` row.
+ * `projectUnitId` prefers the capture-time column (#613); falls back to a
+ * unique chapter_assignments match when the column is null.
  */
 export interface PendingRecording {
   id: string;
@@ -359,7 +363,7 @@ export interface PendingRecording {
   durationMs: number | null;
   bookId: number;
   chapterNumber: number;
-  /** Null when no chapter assignment maps this verse's chapter. */
+  /** Null when capture unit is unknown and no unique assignment maps the chapter. */
   projectUnitId: number | null;
   /** Capture-time owner; upload prefers this account's token (#105). */
   recordedByUserId: number | null;

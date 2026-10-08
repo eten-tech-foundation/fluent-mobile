@@ -129,6 +129,7 @@ export function SourceAudioProvider({
     bookId: chapterData.bookId,
     chapterNumber: chapterData.chapterNumber,
     projectId: chapterData.projectId ?? projectId,
+    projectUnitId: chapterData.projectUnitId,
     verses,
     chapterName:
       chapterName ||

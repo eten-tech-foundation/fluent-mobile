@@ -7,10 +7,12 @@ import {
   LoaderCircle,
 } from 'lucide-react-native';
 import { VerseRun } from '../../components/ui/VerseRun';
+import { WarningBanner } from '../../components/ui/WarningBanner';
 import { useDraftingContext } from '../context/DraftingContext';
 import { useBibleTabUnits } from '../../hooks/useBibleTabUnits';
 import type { BibleTabUnitView } from '../../hooks/useBibleTabUnits';
 import { unitContainsVerse } from '../../utils/bibleTabUnits';
+import { PERICOPE_UNAVAILABLE_WARNING } from '../../constants/messages';
 import {
   ActivityIndicator,
   FlatList,
@@ -73,6 +75,7 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
     currentlyPlayingVerse,
     recordedCoverageEpoch,
     projectId,
+    projectUnitId,
     bookName,
     chapterName,
   } = useDraftingContext();
@@ -84,6 +87,7 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
       bookId: first?.bookId ?? 0,
       chapterNumber,
       projectId,
+      projectUnitId,
       verses,
       chapterName,
       bookName,
@@ -283,30 +287,45 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
     );
   }
 
+  const pericopeUnavailable =
+    draftingUnit === 'pericope' && effectiveUnit === 'verse';
+
   return (
-    <FlatList
-      key={effectiveUnit}
-      ref={listRef}
-      data={units}
-      keyExtractor={item => item.key}
-      extraData={isPericopeList ? expandedKey : undefined}
-      renderItem={isPericopeList ? renderPericopeCard : renderVerseRow}
-      initialScrollIndex={
-        isPericopeList || initialIndex === 0 ? undefined : initialIndex
-      }
-      onScrollToIndexFailed={handleScrollToIndexFailed}
-      contentContainerStyle={
-        isPericopeList ? styles.cardContent : styles.content
-      }
-      style={styles.list}
-      removeClippedSubviews={isPericopeList ? false : undefined}
-      showsVerticalScrollIndicator={false}
-      testID="bible-tab"
-    />
+    <View style={styles.container}>
+      {pericopeUnavailable ? (
+        <WarningBanner
+          testID="bible-pericope-unavailable"
+          message={PERICOPE_UNAVAILABLE_WARNING}
+        />
+      ) : null}
+      <FlatList
+        key={effectiveUnit}
+        ref={listRef}
+        data={units}
+        keyExtractor={item => item.key}
+        extraData={isPericopeList ? expandedKey : undefined}
+        renderItem={isPericopeList ? renderPericopeCard : renderVerseRow}
+        initialScrollIndex={
+          isPericopeList || initialIndex === 0 ? undefined : initialIndex
+        }
+        onScrollToIndexFailed={handleScrollToIndexFailed}
+        contentContainerStyle={
+          isPericopeList ? styles.cardContent : styles.content
+        }
+        style={styles.list}
+        removeClippedSubviews={isPericopeList ? false : undefined}
+        showsVerticalScrollIndicator={false}
+        testID="bible-tab"
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
   list: {
     flex: 1,
     backgroundColor: theme.colors.background,

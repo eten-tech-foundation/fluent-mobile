@@ -40,6 +40,15 @@ describe('deriveSyncPageStatus', () => {
     },
   );
 
+  it.each(['idle', 'waiting_wifi', 'offline'] as const)(
+    'does not report uploadComplete when pending counts are unknown (phase=%s)',
+    phase => {
+      expect(deriveSyncPageStatus(phase, false, false, false, true)).toBe(
+        'pending',
+      );
+    },
+  );
+
   it('covers every UploadPhase value', () => {
     for (const phase of phases) {
       expect(() => deriveSyncPageStatus(phase, false, false)).not.toThrow();
