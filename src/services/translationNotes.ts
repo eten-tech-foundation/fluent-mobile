@@ -1,6 +1,11 @@
 import type { ApiTranslationNoteItem } from '../types/api/translationResources';
 import type { TranslationNoteItem } from '../types/resources/translationNotes';
 import { tipTapToPlainText } from '../utils/aquiferTipTapText';
+import {
+  loadResourcesForVerseRange,
+  verseRefsFromChapter,
+  type ResourceVerseRef,
+} from '../utils/loadResourcesForVerseRange';
 import { FluentAPI } from './api';
 
 const DEFAULT_TN_LANGUAGE_CODE = 'eng';
@@ -11,6 +16,13 @@ export type LoadTranslationNotesParams = {
   bookCode: string;
   chapterNumber: number;
   verseNumber: number;
+  /**
+   * Same-chapter verse list for fan-out (#593). Prefer `verseRefs` when the
+   * unit may span chapters.
+   */
+  verseNumbers?: number[];
+  /** Explicit chapter+verse refs (cross-chapter pericopes). */
+  verseRefs?: ResourceVerseRef[];
   /** Aquifer language for uW TN (defaults to English source). */
   languageCode?: string;
 };
@@ -83,7 +95,7 @@ export function parseTranslationNotesItem(
 
 /**
  * Load uW Translation Notes for a drafting unit via fluent-api
- * translation-resources (fluent-api #274).
+ * translation-resources (fluent-api #274). Pericope units fan out (#593).
  */
 export async function loadTranslationNotesForUnit(
   params: LoadTranslationNotesParams,
@@ -103,15 +115,25 @@ export async function loadTranslationNotesForUnit(
   }
 
   const languageCode = params.languageCode?.trim() || DEFAULT_TN_LANGUAGE_CODE;
+  const projectId = params.projectId;
+  const refs =
+    params.verseRefs && params.verseRefs.length > 0
+      ? params.verseRefs
+      : verseRefsFromChapter(
+          params.chapterNumber,
+          params.verseNumber,
+          params.verseNumbers,
+        );
 
-  const response = await FluentAPI.getTranslationNotes(
-    params.projectId,
-    bookCode,
-    params.chapterNumber,
-    params.verseNumber,
-    languageCode,
-  );
-
-  const items = Array.isArray(response?.items) ? response.items : [];
-  return items.flatMap(parseTranslationNotesItem);
+  return loadResourcesForVerseRange(refs, async ref => {
+    const response = await FluentAPI.getTranslationNotes(
+      projectId,
+      bookCode,
+      ref.chapterNumber,
+      ref.verseNumber,
+      languageCode,
+    );
+    const items = Array.isArray(response?.items) ? response.items : [];
+    return items.flatMap(parseTranslationNotesItem);
+  });
 }

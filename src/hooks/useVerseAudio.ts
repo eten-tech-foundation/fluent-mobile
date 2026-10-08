@@ -495,6 +495,44 @@ export function useVerseAudio({
     }
   }, [recording]);
 
+  /**
+   * Abandon the in-progress capture (#49): stop the recorder, delete the temp
+   * file, persist nothing, and return the unit to its prior state (Idle when
+   * no takes remain, Review otherwise — same display rule as the capture
+   * views). Uses the recorder's native stop so the temp URI exists to delete;
+   * the alternative (`uri` is null) means the engine already dropped it.
+   */
+  const discardCapture = useCallback(async () => {
+    if (capturePersistRef.current === null) return;
+    try {
+      const { uri } = await recording.stop();
+      await deleteFile(uri).catch(deleteError => {
+        // Best-effort: the take was never persisted, so a stray temp file
+        // must not block the discard or surface as an error state. Log it so
+        // leaked temp files are visible.
+        log.warn('discardCapture temp file delete failed', {
+          message:
+            deleteError instanceof Error
+              ? deleteError.message
+              : String(deleteError),
+        });
+      });
+    } catch (error) {
+      log.warn('discardCapture recorder stop failed', {
+        message: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      capturePersistRef.current = null;
+      setErrorMessage(null);
+      dispatch({ type: 'DISCARD' });
+      // DISCARD only reaches idle. Nothing was persisted, so `takes` is still the
+      // prior state: REHYDRATE restores Review when takes remain (same as
+      // deleteTake), otherwise it stays idle. Without it, Play is ignored — PLAY
+      // only fires from `recorded`.
+      dispatch({ type: 'REHYDRATE', hasTake: takes.length > 0 });
+    }
+  }, [recording, takes]);
+
   const stop = useCallback(async () => {
     const snapshot = capturePersistRef.current;
     if (snapshot === null) return;
@@ -905,6 +943,7 @@ export function useVerseAudio({
     pause,
     resume,
     stop,
+    discardCapture,
     playTake,
     playStitched,
     seek,

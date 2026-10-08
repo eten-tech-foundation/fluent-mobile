@@ -22,6 +22,10 @@ type RecordingRow = {
   updated_at: string;
   granularity?: string;
   project_unit_id?: number | null;
+  start_chapter?: number | null;
+  start_verse?: number | null;
+  end_chapter?: number | null;
+  end_verse?: number | null;
 };
 
 type BibleTextRow = {
@@ -135,7 +139,7 @@ function createRecordingConflictTestDb() {
             r.sync_status !== 'uploaded' &&
             r.sync_status !== 'conflicted' &&
             r.bible_text_id > 0 &&
-            (r.granularity ?? 'verse') !== 'pericope',
+            ['verse', 'pericope'].includes(r.granularity ?? 'verse'),
         )
         .map(r => {
           const bt = bibleTexts.find(b => b.id === r.bible_text_id)!;
@@ -168,6 +172,11 @@ function createRecordingConflictTestDb() {
             book_id: bt.book_id,
             chapter_number: bt.chapter_number,
             project_unit_id: stored ?? fallback,
+            granularity: r.granularity ?? 'verse',
+            start_chapter: r.start_chapter ?? null,
+            start_verse: r.start_verse ?? null,
+            end_chapter: r.end_chapter ?? null,
+            end_verse: r.end_verse ?? null,
           };
         });
       return { rows };
@@ -273,7 +282,7 @@ describe('recording upload conflict repository helpers (#256)', () => {
     expect(pending.map(r => r.id)).toEqual(['rec-pending']);
   });
 
-  it('getPendingRecordings excludes pericope takes (#410 upload waiver)', async () => {
+  it('getPendingRecordings includes pericope takes (#584)', async () => {
     const db = createRecordingConflictTestDb();
     db.__recordings.push({
       id: 'rec-pericope',
@@ -288,11 +297,26 @@ describe('recording upload conflict repository helpers (#256)', () => {
       upload_error: null,
       updated_at: '2026-01-07T00:00:00.000Z',
       granularity: 'pericope',
+      start_chapter: 1,
+      start_verse: 1,
+      end_chapter: 1,
+      end_verse: 8,
     });
     setDatabase(db as never);
 
     const pending = await getPendingRecordings();
-    expect(pending.map(r => r.id)).toEqual(['rec-pending']);
+    expect(pending.map(r => r.id)).toEqual(
+      expect.arrayContaining(['rec-pending', 'rec-pericope']),
+    );
+    expect(pending.find(r => r.id === 'rec-pericope')).toEqual(
+      expect.objectContaining({
+        granularity: 'pericope',
+        startChapter: 1,
+        startVerse: 1,
+        endChapter: 1,
+        endVerse: 8,
+      }),
+    );
   });
 
   it('getPendingRecordings prefers stored project_unit_id over lowest assignment (#613)', async () => {

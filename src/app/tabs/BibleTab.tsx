@@ -73,6 +73,7 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
     currentlyPlayingVerse,
     recordedCoverageEpoch,
     projectId,
+    projectUnitId,
     bookName,
     chapterName,
   } = useDraftingContext();
@@ -84,6 +85,7 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
       bookId: first?.bookId ?? 0,
       chapterNumber,
       projectId,
+      projectUnitId,
       verses,
       chapterName,
       bookName,

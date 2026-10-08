@@ -106,7 +106,7 @@ describe('MyWorkTab', () => {
     expect(screen.getByTestId('loading-spinner')).toBeTruthy();
     expect(
       screen.queryByText(
-        "You don't have any chapters to work on right now. Check the Projects tab to find available work.",
+        "You don't have any chapters to work on right now. Check the Milestones tab to find available work.",
       ),
     ).toBeNull();
   });
@@ -124,7 +124,7 @@ describe('MyWorkTab', () => {
     expect(await screen.findByTestId('my-work-empty')).toBeTruthy();
     expect(
       screen.getByText(
-        "You don't have any chapters to work on right now. Check the Projects tab to find available work.",
+        "You don't have any chapters to work on right now. Check the Milestones tab to find available work.",
       ),
     ).toBeTruthy();
   });

@@ -134,13 +134,14 @@ function createSyncTestDb() {
       }
 
       if (/^INSERT OR IGNORE INTO project_units/i.test(sql)) {
-        const [id, projectId, status] = params;
+        const [id, projectId, status, name] = params;
         const table = tables.get('project_units')!;
         if (!table.rows.some(r => r.id === id)) {
           const row = {
             id: id as number,
             project_id: projectId as number,
             status: status as string,
+            name: (name as string | undefined) ?? '',
           };
           assertForeignKeys('project_units', row, tables);
           table.rows.push(row);
@@ -155,6 +156,16 @@ function createSyncTestDb() {
         if (row) {
           row.project_id = projectId as number;
           assertForeignKeys('project_units', row, tables);
+        }
+        return { rows: [], rowsAffected: 1 };
+      }
+
+      if (/^UPDATE project_units SET name/i.test(sql)) {
+        const [name, id] = params;
+        const table = tables.get('project_units')!;
+        const row = table.rows.find(r => r.id === id);
+        if (row) {
+          row.name = name as string;
         }
         return { rows: [], rowsAffected: 1 };
       }
@@ -442,6 +453,23 @@ describe('insertChapterAssignmentSyncData', () => {
     expect(db.table('chapter_assignments')[0].peer_checker_id).toBe(777);
     const stub = db.table('users').find(u => u.id === 777);
     expect(stub?.email).toBe('stub+777@fluent.local');
+  });
+
+  it('keeps the stored milestone name when assignment sync omits name', async () => {
+    const db = createSyncTestDb();
+    setDatabase(db as never);
+    db.seed({
+      projects: [{ id: 100, name: 'P' }],
+      bibles: [{ id: 4, language_id: 1, name: 'B', abbreviation: 'B' }],
+      books: [{ id: 12, code: 'GEN', eng_display_name: 'Genesis' }],
+      project_units: [
+        { id: 10, project_id: 100, status: 'not_started', name: 'Mark' },
+      ],
+    });
+
+    await insertChapterAssignmentSyncData([validAssignment()]);
+
+    expect(db.table('project_units')[0].name).toBe('Mark');
   });
 
   it('inserts assignment and upserts missing project unit from payload', async () => {

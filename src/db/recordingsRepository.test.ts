@@ -106,6 +106,21 @@ function parseViewBibleTextId(
   return { bibleTextId, withView };
 }
 
+/** Matches `[r.]project_unit_id IS NULL` / `= ?` write scoping (#613). */
+function matchesWriteUnitScope(
+  row: Row,
+  sql: string,
+  params: unknown[],
+): boolean {
+  if (/\b(r\.)?project_unit_id IS NULL\b/.test(sql)) {
+    return row.project_unit_id === null || row.project_unit_id === undefined;
+  }
+  if (/\b(r\.)?project_unit_id = \?/.test(sql)) {
+    return row.project_unit_id === (params[params.length - 1] as number);
+  }
+  return true;
+}
+
 function matchesSameBibleBookSelection(
   row: Row,
   incomingBibleTextId: number,
@@ -113,12 +128,17 @@ function matchesSameBibleBookSelection(
   params: unknown[],
 ): boolean {
   if (!sql.includes('anchor_bt.bible_id = incoming_bt.bible_id')) {
-    return row.is_selected === 1 && matchesOwner(row, sql, params, 1);
+    return (
+      row.is_selected === 1 &&
+      matchesOwner(row, sql, params, 1) &&
+      matchesWriteUnitScope(row, sql, params)
+    );
   }
   return (
     row.is_selected === 1 &&
     sharesBibleBook(row.bible_text_id, incomingBibleTextId) &&
-    matchesOwner(row, sql, params, 1)
+    matchesOwner(row, sql, params, 1) &&
+    matchesWriteUnitScope(row, sql, params)
   );
 }
 
@@ -329,10 +349,51 @@ async function mockExecute(
               start_verse: match.start_verse,
               end_chapter: match.end_chapter,
               end_verse: match.end_verse,
+              project_unit_id: match.project_unit_id ?? null,
             },
           ]
         : [],
     };
+  }
+
+  if (
+    normalized.startsWith('SELECT bible_text_id, project_unit_id, is_canonical')
+  ) {
+    const id = params[0] as string;
+    const match = rows.find(r => r.id === id);
+    return {
+      rows: match
+        ? [
+            {
+              bible_text_id: match.bible_text_id,
+              project_unit_id: match.project_unit_id ?? null,
+              is_canonical: match.is_canonical,
+            },
+          ]
+        : [],
+    };
+  }
+
+  if (normalized.startsWith('UPDATE recordings SET is_canonical = 0')) {
+    const updatedAt = params[0] as string;
+    const bibleTextId = params[1] as number;
+    rows = rows.map(r =>
+      r.bible_text_id === bibleTextId &&
+      r.is_canonical === 1 &&
+      matchesWriteUnitScope(r, normalized, params)
+        ? { ...r, is_canonical: 0, updated_at: updatedAt }
+        : r,
+    );
+    return { rows: [] };
+  }
+
+  if (normalized.startsWith('UPDATE recordings SET is_canonical = 1')) {
+    const updatedAt = params[0] as string;
+    const id = params[1] as string;
+    rows = rows.map(r =>
+      r.id === id ? { ...r, is_canonical: 1, updated_at: updatedAt } : r,
+    );
+    return { rows: [] };
   }
 
   if (normalized.startsWith('DELETE FROM recordings WHERE id = ?')) {
@@ -353,7 +414,8 @@ async function mockExecute(
         .filter(
           r =>
             sharesBibleBook(r.bible_text_id, deletedBibleTextId) &&
-            matchesOwner(r, normalized, params, 1),
+            matchesOwner(r, normalized, params, 1) &&
+            matchesWriteUnitScope(r, normalized, params),
         )
         .map(r => ({
           id: r.id,
@@ -400,6 +462,7 @@ import {
   getLatestRecordingForVerse,
   getTakesForVerse,
   selectRecordingTake,
+  setCanonicalTake,
 } from './recordingsRepository';
 
 describe('recordingsRepository multi-take', () => {
@@ -461,6 +524,163 @@ describe('recordingsRepository multi-take', () => {
 
     const for12 = await getTakesForVerse(10, undefined, undefined, 12);
     expect(for12.map(t => t.id).sort()).toEqual(['legacy-null', 'unit-12']);
+  });
+
+  it('keeps one selected take per project unit on the same bible text (#613)', async () => {
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///u473.m4a',
+      id: 'unit-473',
+      projectUnitId: 473,
+    });
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///u12.m4a',
+      id: 'unit-12',
+      projectUnitId: 12,
+    });
+
+    const selected = (id: string) =>
+      __getRecordingRows().find(r => r.id === id)?.is_selected;
+    expect(selected('unit-473')).toBe(1);
+    expect(selected('unit-12')).toBe(1);
+
+    // A newer take in unit 473 replaces only unit 473's selection.
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///u473-b.m4a',
+      id: 'unit-473-b',
+      projectUnitId: 473,
+    });
+    expect(selected('unit-473')).toBe(0);
+    expect(selected('unit-473-b')).toBe(1);
+    expect(selected('unit-12')).toBe(1);
+  });
+
+  it('treats NULL project_unit_id as matching only other NULL rows (#613)', async () => {
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///legacy-a.m4a',
+      id: 'legacy-a',
+      projectUnitId: null,
+    });
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///u12.m4a',
+      id: 'unit-12',
+      projectUnitId: 12,
+    });
+    // Unit take does not clear the legacy NULL take.
+    expect(
+      __getRecordingRows().find(r => r.id === 'legacy-a')?.is_selected,
+    ).toBe(1);
+
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///legacy-b.m4a',
+      id: 'legacy-b',
+      projectUnitId: null,
+    });
+    const rows = __getRecordingRows();
+    expect(rows.find(r => r.id === 'legacy-a')?.is_selected).toBe(0);
+    expect(rows.find(r => r.id === 'legacy-b')?.is_selected).toBe(1);
+    expect(rows.find(r => r.id === 'unit-12')?.is_selected).toBe(1);
+  });
+
+  it('selecting a take only clears selection within its own unit (#613)', async () => {
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///a.m4a',
+      id: 'u473-a',
+      projectUnitId: 473,
+    });
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///b.m4a',
+      id: 'u473-b',
+      projectUnitId: 473,
+    });
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///c.m4a',
+      id: 'u12',
+      projectUnitId: 12,
+    });
+
+    await selectRecordingTake('u473-a');
+
+    const rows = __getRecordingRows();
+    expect(rows.find(r => r.id === 'u473-a')?.is_selected).toBe(1);
+    expect(rows.find(r => r.id === 'u473-b')?.is_selected).toBe(0);
+    expect(rows.find(r => r.id === 'u12')?.is_selected).toBe(1);
+  });
+
+  it('designating canonical only clears canonical within its own unit (#613)', async () => {
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///a.m4a',
+      id: 'u473',
+      projectUnitId: 473,
+    });
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///b.m4a',
+      id: 'u12',
+      projectUnitId: 12,
+    });
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///c.m4a',
+      id: 'u12-b',
+      projectUnitId: 12,
+    });
+
+    await setCanonicalTake('u473');
+    await setCanonicalTake('u12');
+    await setCanonicalTake('u12-b');
+
+    const canonical = (id: string) =>
+      __getRecordingRows().find(r => r.id === id)?.is_canonical;
+    expect(canonical('u473')).toBe(1);
+    expect(canonical('u12')).toBe(0);
+    expect(canonical('u12-b')).toBe(1);
+  });
+
+  it('deleting a selected take promotes only a take from the same unit (#613)', async () => {
+    // take_number is per owner + bible text: 1 (473), 2-3 (12), 4 (473).
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///a.m4a',
+      id: 'u473-old',
+      projectUnitId: 473,
+    });
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///b.m4a',
+      id: 'u12-1',
+      projectUnitId: 12,
+    });
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///c.m4a',
+      id: 'u12-2',
+      projectUnitId: 12,
+    });
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///d.m4a',
+      id: 'u473-new',
+      projectUnitId: 473,
+    });
+
+    await deleteRecordingTake('u473-new');
+
+    const rows = __getRecordingRows();
+    // Promote the highest remaining take in unit 473 — not unit 12's higher
+    // take_number, which would leave u473-old unselected.
+    expect(rows.find(r => r.id === 'u473-old')?.is_selected).toBe(1);
+    expect(rows.find(r => r.id === 'u12-2')?.is_selected).toBe(1);
+    expect(rows.find(r => r.id === 'u12-1')?.is_selected).toBe(0);
   });
 
   it('attributes new takes to the active user', async () => {

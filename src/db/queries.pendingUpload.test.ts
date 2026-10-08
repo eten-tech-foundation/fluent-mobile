@@ -37,7 +37,7 @@ import {
 } from './queries';
 
 const UPLOADABLE_PREDICATES = [
-  "IFNULL(r.granularity, 'verse') = 'verse'",
+  "IFNULL(r.granularity, 'verse') IN ('verse', 'pericope')",
   'r.bible_text_id > 0',
 ];
 
@@ -59,7 +59,7 @@ describe('pending upload queries (#545)', () => {
     expect(sql).not.toContain('project_unit_id');
   });
 
-  it('getPendingUploadChapters only lists chapters with upload-eligible verse takes', async () => {
+  it('getPendingUploadChapters only lists chapters with upload-eligible verse or pericope takes', async () => {
     mockExecute.mockResolvedValue({
       rows: [{ book_id: 1, chapter_number: 3 }],
     });

@@ -154,6 +154,30 @@ describe('loadTranslationNotesForUnit', () => {
     expect(getTranslationNotes).toHaveBeenCalledWith(7, 'MRK', 14, 2, 'eng');
   });
 
+  it('fans out across verseNumbers and dedupes by id (#593)', async () => {
+    getTranslationNotes.mockImplementation(async (_p, _b, _c, verse) => ({
+      items: [
+        {
+          ...sampleItem,
+          id: verse === 1 ? 111 : 222,
+          localizedName: `Mark 14:${verse}`,
+          name: `Mark 14:${verse}`,
+        },
+      ],
+    }));
+
+    const notes = await loadTranslationNotesForUnit({
+      projectId: 7,
+      bookCode: 'MRK',
+      chapterNumber: 14,
+      verseNumber: 1,
+      verseNumbers: [1, 2],
+    });
+
+    expect(getTranslationNotes).toHaveBeenCalledTimes(2);
+    expect(notes.map(n => n.id)).toEqual(['tn-api-111-0', 'tn-api-222-0']);
+  });
+
   it('throws when failure injection is enabled', async () => {
     setTranslationNotesLoadFailureForTests(true);
     await expect(
