@@ -1,7 +1,9 @@
 const mockClaimChapterAssignment = jest.fn();
 const mockSetChapterAssignmentConflict = jest.fn();
 const mockResolveChapterClaimQueueEntry = jest.fn();
+const mockMarkChapterClaimQueueEntryRejected = jest.fn();
 const mockGetPendingChapterClaims = jest.fn();
+const mockGetRejectedChapterClaims = jest.fn();
 const mockGetChapterAssignmentById = jest.fn();
 const mockFluentClaim = jest.fn();
 
@@ -18,11 +20,15 @@ jest.mock('../db/repository', () => ({
     mockSetChapterAssignmentConflict(...args),
   resolveChapterClaimQueueEntry: (...args: unknown[]) =>
     mockResolveChapterClaimQueueEntry(...args),
+  markChapterClaimQueueEntryRejected: (...args: unknown[]) =>
+    mockMarkChapterClaimQueueEntryRejected(...args),
 }));
 
 jest.mock('../db/queries', () => ({
   getPendingChapterClaims: (...args: unknown[]) =>
     mockGetPendingChapterClaims(...args),
+  getRejectedChapterClaims: (...args: unknown[]) =>
+    mockGetRejectedChapterClaims(...args),
   getChapterAssignmentById: (...args: unknown[]) =>
     mockGetChapterAssignmentById(...args),
 }));
@@ -165,7 +171,7 @@ describe('syncPendingChapterClaims', () => {
     expect(mockResolveChapterClaimQueueEntry).not.toHaveBeenCalled();
   });
 
-  it('treats claim 404 as conflict and resolves the queue row (#610)', async () => {
+  it('treats claim 404 as terminal: marks the row rejected, no pre-pull conflict write or resolve (#610)', async () => {
     mockGetPendingChapterClaims.mockResolvedValue([
       {
         id: 9,
@@ -183,8 +189,9 @@ describe('syncPendingChapterClaims', () => {
       conflicts: 1,
       failed: 0,
     });
-    expect(mockSetChapterAssignmentConflict).toHaveBeenCalledWith(18, true);
-    expect(mockResolveChapterClaimQueueEntry).toHaveBeenCalledWith(9);
+    expect(mockMarkChapterClaimQueueEntryRejected).toHaveBeenCalledWith(9);
+    expect(mockSetChapterAssignmentConflict).not.toHaveBeenCalled();
+    expect(mockResolveChapterClaimQueueEntry).not.toHaveBeenCalled();
   });
 
   it('resolves the queue row when another finite assignee wins without the flag', async () => {
@@ -310,7 +317,65 @@ describe('reconcilePendingClaimsAfterAssignmentPull', () => {
     mockResolveChapterClaimQueueEntry.mockResolvedValue(undefined);
     mockSetChapterAssignmentConflict.mockResolvedValue(undefined);
     mockGetPendingChapterClaims.mockResolvedValue([]);
+    mockGetRejectedChapterClaims.mockResolvedValue([]);
     mockGetChapterAssignmentById.mockResolvedValue(null);
+  });
+
+  it('persists conflict + resolves claim-404 rows after the pull, even when still unassigned (#610)', async () => {
+    mockGetRejectedChapterClaims.mockResolvedValue([
+      {
+        id: 30,
+        chapterAssignmentId: 40,
+        userId: 9,
+        claimedAt: '2026-08-28T00:00:00.000Z',
+      },
+    ]);
+
+    await expect(reconcilePendingClaimsAfterAssignmentPull(9)).resolves.toEqual(
+      { conflicts: 1 },
+    );
+    expect(mockSetChapterAssignmentConflict).toHaveBeenCalledWith(40, true);
+    expect(mockResolveChapterClaimQueueEntry).toHaveBeenCalledWith(30);
+    // Does not depend on pulled assignee for rejected rows.
+    expect(mockGetChapterAssignmentById).not.toHaveBeenCalled();
+  });
+
+  it('persists conflict for a claim-404 row after a PM-assign pull (assignee is someone else)', async () => {
+    mockGetRejectedChapterClaims.mockResolvedValue([
+      {
+        id: 31,
+        chapterAssignmentId: 41,
+        userId: 9,
+        claimedAt: '2026-08-28T00:00:00.000Z',
+      },
+    ]);
+    mockGetChapterAssignmentById.mockResolvedValue({
+      id: 41,
+      assignedUserId: 42,
+    });
+
+    await expect(reconcilePendingClaimsAfterAssignmentPull(9)).resolves.toEqual(
+      { conflicts: 1 },
+    );
+    expect(mockSetChapterAssignmentConflict).toHaveBeenCalledWith(41, true);
+    expect(mockResolveChapterClaimQueueEntry).toHaveBeenCalledWith(31);
+  });
+
+  it('skips claim-404 rows for other users', async () => {
+    mockGetRejectedChapterClaims.mockResolvedValue([
+      {
+        id: 32,
+        chapterAssignmentId: 42,
+        userId: 42,
+        claimedAt: '2026-08-28T00:00:00.000Z',
+      },
+    ]);
+
+    await expect(reconcilePendingClaimsAfterAssignmentPull(9)).resolves.toEqual(
+      { conflicts: 0 },
+    );
+    expect(mockSetChapterAssignmentConflict).not.toHaveBeenCalled();
+    expect(mockResolveChapterClaimQueueEntry).not.toHaveBeenCalled();
   });
 
   it('marks conflict when pulled assignee differs from claimant (#610)', async () => {

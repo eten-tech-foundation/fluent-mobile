@@ -661,7 +661,8 @@ async function syncChapterAssignmentsForUser(
     };
   }
 
-  // Pending offline claims whose chapter is now held by someone else (#610).
+  // Post-pull (#610): persist has_conflict for claim-404 rows (the pull above
+  // may have cleared it) and for pending claims now held by someone else.
   await reconcilePendingClaimsAfterAssignmentPull(userId);
   return result;
 }

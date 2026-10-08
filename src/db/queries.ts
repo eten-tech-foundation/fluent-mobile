@@ -471,6 +471,35 @@ export async function getPendingChapterClaims(): Promise<
   }
 }
 
+/**
+ * Claims the server rejected with 404 (`sync_status = 'claim_rejected'`).
+ * Kept after the claim POST so conflict can be persisted once the assignment
+ * pull has run — a pre-pull `has_conflict` write is overwritten by the pull (#610).
+ */
+export async function getRejectedChapterClaims(): Promise<
+  PendingChapterClaim[]
+> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT id, chapter_assignment_id, user_id, claimed_at
+       FROM chapter_claim_queue
+       WHERE sync_status = 'claim_rejected'
+       ORDER BY claimed_at ASC`,
+    );
+    const rows = result.rows ?? [];
+    return rows.map(row => ({
+      id: Number(row.id),
+      chapterAssignmentId: Number(row.chapter_assignment_id),
+      userId: Number(row.user_id),
+      claimedAt: String(row.claimed_at),
+    }));
+  } catch (error) {
+    log.error('Error fetching rejected chapter claims', { error });
+    throw error;
+  }
+}
+
 export async function getChapterHasConflict(
   chapterAssignmentId: number,
 ): Promise<boolean> {
