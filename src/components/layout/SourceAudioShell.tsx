@@ -97,20 +97,31 @@ export function SourceAudioProvider({
     pauseDraftPlaybackRef.current = bridge?.pausePlayback ?? (async () => {});
   }, []);
 
+  // Bind play/pause through refs so handlePlayPause stays identity-stable
+  // across positionMs ticks (#596). Context `value` still rebuilds when
+  // positionMs changes; the depth fix is integration effects not depending
+  // on the whole `ctx` object.
+  const isPlayingRef = useRef(sourceAudio.isPlaying);
+  const playRef = useRef(sourceAudio.play);
+  const pauseRef = useRef(sourceAudio.pause);
+  isPlayingRef.current = sourceAudio.isPlaying;
+  playRef.current = sourceAudio.play;
+  pauseRef.current = sourceAudio.pause;
+
   const handlePlayPause = useCallback(async () => {
-    if (sourceAudio.isPlaying) {
-      await sourceAudio.pause();
+    if (isPlayingRef.current) {
+      await pauseRef.current();
       return;
     }
     await pauseDraftPlaybackRef.current();
-    await sourceAudio.play();
-  }, [sourceAudio]);
+    await playRef.current();
+  }, []);
 
   useEffect(() => {
     if (!barVisible && sourceAudio.status !== 'idle') {
-      void sourceAudio.pause();
+      void pauseRef.current();
     }
-  }, [barVisible, sourceAudio.status, sourceAudio.pause]);
+  }, [barVisible, sourceAudio.status]);
 
   const lookupVerse = currentlyPlayingVerse ?? selectedVerse;
   const { unitCaption, boundaryVerses } = useBibleTabUnits({
@@ -242,21 +253,31 @@ export function useSourceAudioRecordTabIntegration({
   const ctx = useContext(SourceAudioShellContext);
   const pauseDraftPlaybackRef = useRef(pauseDraftPlayback);
   const stopSourceRef = useRef(ctx?.stop ?? (async () => {}));
+  const setRecordTabSourceEnabledRef = useRef(ctx?.setRecordTabSourceEnabled);
+  const setDraftBridgeRef = useRef(ctx?.setDraftBridge);
   const isPlaying = ctx?.isPlaying ?? false;
   const status = ctx?.status ?? 'idle';
 
   pauseDraftPlaybackRef.current = pauseDraftPlayback;
   stopSourceRef.current = ctx?.stop ?? (async () => {});
+  setRecordTabSourceEnabledRef.current = ctx?.setRecordTabSourceEnabled;
+  setDraftBridgeRef.current = ctx?.setDraftBridge;
+
+  // Depend on primitives / stable callbacks only — never the whole `ctx`
+  // object. Context value identity changes every positionMs tick; putting
+  // `ctx` in deps re-ran these effects and toggled recordTabSourceEnabled
+  // true↔false in cleanup/setup (#596 Maximum update depth).
+  useEffect(() => {
+    setRecordTabSourceEnabledRef.current?.(sourceEnabled);
+    return () => setRecordTabSourceEnabledRef.current?.(true);
+  }, [sourceEnabled]);
 
   useEffect(() => {
-    ctx?.setRecordTabSourceEnabled(sourceEnabled);
-    return () => ctx?.setRecordTabSourceEnabled(true);
-  }, [ctx, sourceEnabled]);
-
-  useEffect(() => {
-    ctx?.setDraftBridge({ pausePlayback: pauseDraftPlayback });
-    return () => ctx?.setDraftBridge(null);
-  }, [ctx, pauseDraftPlayback]);
+    setDraftBridgeRef.current?.({
+      pausePlayback: () => pauseDraftPlaybackRef.current(),
+    });
+    return () => setDraftBridgeRef.current?.(null);
+  }, []);
 
   useEffect(() => {
     if (!isPlaying) return;

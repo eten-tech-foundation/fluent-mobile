@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import { ProjectsTab } from './ProjectsTab';
-import { ProjectSummary } from '../../types/db/types';
+import { MilestoneSummary } from '../../types/db/types';
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({
@@ -26,32 +26,34 @@ jest.mock('lucide-react-native', () => {
   };
 });
 
-jest.mock('../../hooks/useProjectsSummary', () => ({
-  useProjectsSummary: jest.fn(),
+jest.mock('../../hooks/useMilestonesSummary', () => ({
+  useMilestonesSummary: jest.fn(),
 }));
 
-const { useProjectsSummary } = jest.requireMock(
-  '../../hooks/useProjectsSummary',
+const { useMilestonesSummary } = jest.requireMock(
+  '../../hooks/useMilestonesSummary',
 ) as {
-  useProjectsSummary: jest.Mock;
+  useMilestonesSummary: jest.Mock;
 };
 
-const sampleProjects: ProjectSummary[] = [
+const sampleMilestones: MilestoneSummary[] = [
   {
-    id: 1,
-    name: 'Gospel of Mark',
-    target_language_name: 'Baka',
-    chapterCount: 16,
+    id: 10,
+    name: 'Mark',
+    projectId: 1,
+    projectName: 'Baka NT',
+    targetLanguageName: 'Baka',
+    milestoneCount: 2,
     syncState: 'unsynced',
-    connectivityProfile: null,
   },
   {
-    id: 2,
+    id: 11,
     name: 'Genesis',
-    target_language_name: 'Baka',
-    chapterCount: 50,
+    projectId: 1,
+    projectName: 'Baka NT',
+    targetLanguageName: 'Baka',
+    milestoneCount: 2,
     syncState: 'none',
-    connectivityProfile: null,
   },
 ];
 
@@ -60,9 +62,9 @@ describe('ProjectsTab', () => {
     jest.clearAllMocks();
   });
 
-  it('renders empty state when there are no projects', async () => {
-    useProjectsSummary.mockReturnValue({
-      projects: [],
+  it('renders empty state when there are no milestones', async () => {
+    useMilestonesSummary.mockReturnValue({
+      milestones: [],
       loading: false,
       refreshing: false,
       refresh: jest.fn(),
@@ -72,14 +74,14 @@ describe('ProjectsTab', () => {
 
     expect(
       await screen.findByText(
-        'No projects are available right now. Connect to the internet to sync and find available work.',
+        'No milestones are available right now. Connect to the internet to sync and find available work.',
       ),
     ).toBeTruthy();
   });
 
-  it('renders project rows with language, chapter count, and title', async () => {
-    useProjectsSummary.mockReturnValue({
-      projects: sampleProjects,
+  it('renders milestone rows with project name and milestone count', async () => {
+    useMilestonesSummary.mockReturnValue({
+      milestones: sampleMilestones,
       loading: false,
       refreshing: false,
       refresh: jest.fn(),
@@ -87,9 +89,11 @@ describe('ProjectsTab', () => {
 
     render(<ProjectsTab />);
 
-    expect(await screen.findByText('Gospel of Mark')).toBeTruthy();
-    expect(await screen.findByText('Baka · 16 chapters')).toBeTruthy();
+    expect(await screen.findByText('Mark')).toBeTruthy();
+    expect(await screen.findAllByText('Baka NT · 2 milestones')).toHaveLength(
+      2,
+    );
     expect(await screen.findByText('Genesis')).toBeTruthy();
-    expect(await screen.findByText('Baka · 50 chapters')).toBeTruthy();
+    expect(screen.getByTestId('milestone-row-10')).toBeTruthy();
   });
 });

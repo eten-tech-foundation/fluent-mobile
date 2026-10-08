@@ -12,6 +12,11 @@ import {
 } from '../db/repository';
 import type { PendingRecording } from '../types/db/types';
 import { logger } from '../utils/logger';
+import {
+  isNetworkTransportError,
+  UploadNetworkInterruptedError,
+} from '../utils/networkError';
+import { hasUsableRecordingRange } from '../utils/recordingRange';
 import { FluentAPI } from './api';
 import { isAuthError } from './authError';
 import { authToken } from './authToken';
@@ -162,6 +167,45 @@ async function uploadOneRecording(
     return 'failed';
   }
 
+  const isPericope = recording.granularity === 'pericope';
+  let pericopeRange:
+    | {
+        startChapter: number;
+        startVerse: number;
+        endChapter: number;
+        endVerse: number;
+      }
+    | undefined;
+  if (isPericope) {
+    const startChapter = recording.startChapter ?? 0;
+    const startVerse = recording.startVerse ?? 0;
+    const endChapter = recording.endChapter ?? 0;
+    const endVerse = recording.endVerse ?? 0;
+    if (
+      !hasUsableRecordingRange({
+        startChapter,
+        startVerse,
+        endChapter,
+        endVerse,
+      }) ||
+      endChapter <= 0 ||
+      endVerse <= 0
+    ) {
+      const message =
+        'Missing or invalid pericope range for recording (start/end chapter and verse required)';
+      log.error(message, {
+        recordingId: recording.id,
+        startChapter: recording.startChapter,
+        startVerse: recording.startVerse,
+        endChapter: recording.endChapter,
+        endVerse: recording.endVerse,
+      });
+      await markRecordingFailed(recording.id, message);
+      return 'failed';
+    }
+    pericopeRange = { startChapter, startVerse, endChapter, endVerse };
+  }
+
   await setRecordingSyncStatus(recording.id, 'uploading');
 
   let lastMessage = 'Upload failed';
@@ -194,6 +238,9 @@ async function uploadOneRecording(
           },
           ...(durationSeconds !== undefined ? { durationSeconds } : {}),
           ...(baseVersionToken !== undefined ? { baseVersionToken } : {}),
+          ...(pericopeRange
+            ? { granularity: 'pericope' as const, ...pericopeRange }
+            : {}),
         },
         token,
       );
@@ -298,6 +345,16 @@ async function uploadOneRecording(
       }
 
       if (!outcome.retryable || attempt === maxAttempts) {
+        if (isNetworkTransportError(error)) {
+          log.info('Upload paused after network failure; leaving pending', {
+            recordingId: recording.id,
+            attempt,
+            message: lastMessage,
+          });
+          await setRecordingSyncStatus(recording.id, 'pending');
+          throw new UploadNetworkInterruptedError(lastMessage);
+        }
+
         log.error('Recording upload failed', {
           recordingId: recording.id,
           attempt,
