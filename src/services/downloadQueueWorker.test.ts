@@ -639,6 +639,70 @@ describe('DownloadQueueWorker', () => {
       expect(worker.getPauseReason()).toBe('user');
     });
 
+    it('claims resume synchronously so overlapping resume() calls resume the item once', async () => {
+      let resolveResume!: (value: { uri: string }) => void;
+      const resumeAsync = jest.fn().mockReturnValue(
+        new Promise<{ uri: string }>(resolve => {
+          resolveResume = resolve;
+        }),
+      );
+      spyResumable({
+        downloadAsync: jest.fn().mockReturnValue(new Promise(() => {})),
+        resumeAsync,
+      });
+      const worker = new DownloadQueueWorker(
+        async () => ({ url: 'https://example.com/x.mp3', ext: 'mp3' }),
+        async () => true,
+      );
+      void worker.start([makeItem()]);
+      await flushMicrotasks();
+      await flushMicrotasks();
+      await worker.pause('transport');
+
+      // Two NetInfo evaluations both observe `paused` before either awaits.
+      const first = worker.resume();
+      const second = worker.resume();
+      await flushMicrotasks();
+      await flushMicrotasks();
+
+      expect(resumeAsync).toHaveBeenCalledTimes(1);
+
+      resolveResume({ uri: 'file:///docs/downloads/1/item-1.mp3' });
+      await Promise.all([first, second]);
+
+      expect(mockMarkDownloadItemFailed).not.toHaveBeenCalled();
+    });
+
+    it('rolls back to paused with the original reason when resume() finds transport still blocked', async () => {
+      let transportAllowed = true;
+      const resumeAsync = jest.fn().mockResolvedValue({
+        uri: 'file:///docs/downloads/1/item-1.mp3',
+      });
+      spyResumable({
+        downloadAsync: jest.fn().mockReturnValue(new Promise(() => {})),
+        resumeAsync,
+      });
+      const worker = new DownloadQueueWorker(
+        async () => ({ url: 'https://example.com/x.mp3', ext: 'mp3' }),
+        async () => transportAllowed,
+      );
+      void worker.start([makeItem()]);
+      await flushMicrotasks();
+      await flushMicrotasks();
+      await worker.pause('transport');
+
+      transportAllowed = false;
+      await worker.resume();
+
+      expect(resumeAsync).not.toHaveBeenCalled();
+      expect(worker.getState()).toBe('paused');
+      expect(worker.getPauseReason()).toBe('transport');
+
+      transportAllowed = true;
+      await worker.resume();
+      expect(resumeAsync).toHaveBeenCalledTimes(1);
+    });
+
     it('marks paused instead of failed when a download errors while transport is blocked', async () => {
       let transportAllowed = true;
       const pauseAsync = jest.fn().mockResolvedValue({

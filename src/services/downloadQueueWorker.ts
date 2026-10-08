@@ -152,23 +152,37 @@ export class DownloadQueueWorker {
     if (this.state !== 'paused') {
       return;
     }
+    // Claim the resume synchronously, before any await, so overlapping
+    // NetInfo evaluations cannot both pass the `paused` guard and call
+    // resumeAsync() twice on the same in-flight item.
+    const reason = this.pauseReason;
+    this.pauseReason = null;
+    this.state = 'downloading';
+
     if (!(await this.transportAllows())) {
+      // Roll back only if nothing else (cancel()/pause()) changed state while
+      // the transport check was in flight.
+      if (this.state === 'downloading') {
+        this.pauseReason = reason;
+        this.state = 'paused';
+      }
       log.info('resume() skipped until transport allows transfer');
+      return;
+    }
+
+    // cancel() or pause() ran while the transport check was in flight.
+    if (this.state !== 'downloading') {
       return;
     }
 
     // Paused with no in-flight resumable (blocked before the next queued item).
     if (!this.active) {
-      this.pauseReason = null;
-      this.state = 'downloading';
       await this.processNext();
       return;
     }
 
     const activeAtStart = this.active;
     const { itemId, resumable } = activeAtStart;
-    this.pauseReason = null;
-    this.state = 'downloading';
     try {
       await markDownloadItemDownloading(itemId);
       const result = await resumable.resumeAsync();
