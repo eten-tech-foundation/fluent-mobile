@@ -355,8 +355,11 @@ export function usePrepareOfflineDownload({
     [projectId, snapshot.items],
   );
 
+  // Leftover queue rows alone must not enable Download when there is nothing
+  // selected to fetch (unassigned + 0 chapters → pendingBytes 0). Resume those
+  // rows via pause/resume controls instead (#580 / #50 / #51).
   const canDownloadNow =
-    (canDownload && pendingBytes > 0) || hasResumableQueueWork;
+    pendingBytes > 0 && (canDownload || hasResumableQueueWork);
 
   const handlePause = useCallback(async () => {
     if (downloadInFlightRef.current) {
@@ -474,19 +477,14 @@ export function usePrepareOfflineDownload({
       return;
     }
 
+    if (!canDownloadNow) {
+      return;
+    }
+
     downloadInFlightRef.current = true;
     setDownloadKickoff(true);
     setDownloadTransportError(null);
     try {
-      const resumable = await getResumableDownloadItems(true);
-      const existingProjectItems = resumable.filter(
-        item => item.projectId === projectId,
-      );
-
-      if (!canDownloadNow && existingProjectItems.length === 0) {
-        return;
-      }
-
       setForceIdle(false);
       userCancelledRef.current = false;
       setSessionStarted(true);
@@ -495,16 +493,11 @@ export function usePrepareOfflineDownload({
       // prop (mock-status-driven, never updated by cancel/download
       // activity) — otherwise newly selected resources after a cancel never
       // get written to download_queue and nothing new starts downloading.
-      if (canDownloadNow) {
-        await enqueuePrepareOfflineDownload({
-          userId,
-          projectId,
-          items: sortItemsForPrepareOfflineDownload(
-            selectedItems,
-            catalog.items,
-          ),
-        });
-      }
+      await enqueuePrepareOfflineDownload({
+        userId,
+        projectId,
+        items: sortItemsForPrepareOfflineDownload(selectedItems, catalog.items),
+      });
 
       await refresh();
 

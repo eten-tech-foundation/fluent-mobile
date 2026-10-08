@@ -29,8 +29,8 @@ import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
 import { onSyncComplete, onSyncStart } from '../../services/syncEvents';
 import { getPrepareOfflineDownloadStarted } from '../../services/storage';
-import { shouldPresentPrepareOffline } from '../../utils/prepareOfflineTrigger';
 import { isEffectivelyOnlineForTransfer } from '../../utils/transportPolicy';
+import { createPrepareOfflineAutoPromptController } from '../../utils/prepareOfflineAutoPrompt';
 import {
   getProjectsWithSummary,
   isUserAssignedToProject,
@@ -75,12 +75,48 @@ function HomeScreenBody({
   const connectionTypeRef = useRef(connectionType);
   const hasTransferResolvedRef = useRef(hasTransferResolved);
   const uploadOverCellularRef = useRef(uploadOverCellular);
-  const prepareOfflinePromptShownThisAppOpenRef = useRef(false);
   const isSettlingRef = useRef(false);
-
-  const evaluateRef = useRef<(() => Promise<void>) | undefined>(undefined);
+  const routerRef = useRef(router);
   const appStateRef = useRef(AppState.currentState);
-  const evaluateInFlightRef = useRef(false);
+
+  const autoPromptRef = useRef<ReturnType<
+    typeof createPrepareOfflineAutoPromptController
+  > | null>(null);
+  if (autoPromptRef.current === null) {
+    autoPromptRef.current = createPrepareOfflineAutoPromptController({
+      isFocused: () => isFocusedRef.current,
+      hasTransferResolved: () => hasTransferResolvedRef.current,
+      isSettling: () => isSettlingRef.current,
+      getTransport: () => ({
+        isOnline: isLinkOnlineRef.current,
+        isWifi: isWifiRef.current,
+        uploadOverCellular: uploadOverCellularRef.current,
+        connectionType: connectionTypeRef.current,
+      }),
+      getUserId: () => parseUserId(),
+      getProjects: async userId => {
+        const projects = await getProjectsWithSummary(userId, {
+          throwOnError: true,
+        });
+        return projects.map(project => ({
+          id: project.id,
+          name: project.name,
+          connectivityProfile: project.connectivityProfile ?? null,
+        }));
+      },
+      isAssigned: isUserAssignedToProject,
+      hasDownloadStarted: getPrepareOfflineDownloadStarted,
+      present: project => {
+        routerRef.current.push(
+          hrefs.prepareForOffline({
+            projectId: project.id,
+            projectName: project.name,
+          }),
+        );
+      },
+    });
+  }
+  const autoPrompt = autoPromptRef.current;
 
   useEffect(() => {
     isWifiRef.current = isWifi;
@@ -89,6 +125,7 @@ function HomeScreenBody({
     uploadOverCellularRef.current = uploadOverCellular;
     isFocusedRef.current = isFocused;
     hasTransferResolvedRef.current = hasTransferResolved;
+    routerRef.current = router;
   }, [
     isLinkOnline,
     isWifi,
@@ -96,18 +133,19 @@ function HomeScreenBody({
     uploadOverCellular,
     isFocused,
     hasTransferResolved,
+    router,
   ]);
 
   const handleSyncComplete = useCallback(() => {
     setIsNewUserLoading(false);
     setIsSyncingLocal(false);
-    void evaluateRef.current?.();
-  }, []);
+    autoPrompt.request();
+  }, [autoPrompt]);
 
   const isSyncingGlobal = useGlobalSyncStatus(() => {
     setIsNewUserLoading(false);
     setRefreshKey(key => key + 1);
-    void evaluateRef.current?.();
+    autoPrompt.request();
   });
   const { isSyncing, triggerSync } = useSync({
     onSyncComplete: handleSyncComplete,
@@ -125,17 +163,21 @@ function HomeScreenBody({
 
   const autoRepairSyncAttempted = useRef(false);
 
+  const isSettling =
+    isNewUserLoading || postLoginSyncActive || isSyncingLocal || isSyncing;
+  // Keep settling readable at evaluate time (not only after a later effect).
+  isSettlingRef.current = isSettling;
+
   useEffect(() => {
-    isSettlingRef.current =
-      isNewUserLoading || postLoginSyncActive || isSyncingLocal || isSyncing;
-  }, [isNewUserLoading, postLoginSyncActive, isSyncingLocal, isSyncing]);
+    autoPrompt.notifySettlingChanged();
+  }, [isSettling, autoPrompt]);
 
   useEffect(() => {
     const unsubscribeComplete = onSyncComplete(() => {
       setIsNewUserLoading(false);
       setIsSyncingLocal(false);
       setRefreshKey(key => key + 1);
-      void evaluateRef.current?.();
+      autoPrompt.request();
     });
     const unsubscribeStart = onSyncStart(() => {
       setIsSyncingLocal(true);
@@ -145,7 +187,7 @@ function HomeScreenBody({
       unsubscribeComplete();
       unsubscribeStart();
     };
-  }, []);
+  }, [autoPrompt]);
 
   useEffect(() => {
     if (
@@ -171,79 +213,22 @@ function HomeScreenBody({
   ]);
 
   useEffect(() => {
-    const evaluate = async () => {
-      if (!isFocusedRef.current || !hasTransferResolvedRef.current) return;
-      if (isSettlingRef.current) return;
-
-      const eligibleConnection =
-        hasTransferResolvedRef.current &&
-        isEffectivelyOnlineForTransfer({
-          isOnline: isLinkOnlineRef.current,
-          isWifi: isWifiRef.current,
-          uploadOverCellular: uploadOverCellularRef.current,
-          connectionType: connectionTypeRef.current,
-        });
-      if (!eligibleConnection) return;
-      if (
-        prepareOfflinePromptShownThisAppOpenRef.current ||
-        evaluateInFlightRef.current
-      ) {
-        return;
-      }
-
-      evaluateInFlightRef.current = true;
-      try {
-        const userId = parseUserId();
-        if (!userId) return;
-
-        const projects = await getProjectsWithSummary(userId);
-
-        if (prepareOfflinePromptShownThisAppOpenRef.current) {
-          return;
-        }
-
-        for (const project of projects) {
-          const isAssigned = await isUserAssignedToProject(userId, project.id);
-          const present = shouldPresentPrepareOffline({
-            connectivityProfile: project.connectivityProfile ?? null,
-            isAssigned,
-            isOnline: isLinkOnlineRef.current,
-            isWifi: isWifiRef.current,
-            uploadOverCellular: uploadOverCellularRef.current,
-            connectionType: connectionTypeRef.current,
-          });
-
-          if (
-            present &&
-            !getPrepareOfflineDownloadStarted(String(userId), project.id)
-          ) {
-            prepareOfflinePromptShownThisAppOpenRef.current = true;
-            router.push(hrefs.prepareForOffline());
-            return;
-          }
-        }
-      } finally {
-        evaluateInFlightRef.current = false;
-      }
-    };
-    evaluateRef.current = evaluate;
-
     const subscription = AppState.addEventListener('change', nextState => {
       const previousState = appStateRef.current;
       appStateRef.current = nextState;
 
       if (nextState === 'active' && previousState !== 'active') {
-        prepareOfflinePromptShownThisAppOpenRef.current = false;
-        void evaluate();
+        autoPrompt.resetShownThisAppOpen();
+        autoPrompt.request();
       }
     });
 
     if (AppState.currentState === 'active') {
-      void evaluate();
+      autoPrompt.request();
     }
 
     return () => subscription.remove();
-  }, [router]);
+  }, [autoPrompt]);
 
   useEffect(() => {
     if (!hasTransferResolved) return;
@@ -264,7 +249,7 @@ function HomeScreenBody({
     const wasEligible = wasEligibleRef.current;
     wasEligibleRef.current = eligibleConnection;
     if (eligibleConnection && !wasEligible) {
-      void evaluateRef.current?.();
+      autoPrompt.request();
     }
   }, [
     isLinkOnline,
@@ -273,6 +258,7 @@ function HomeScreenBody({
     uploadOverCellular,
     isFocused,
     hasTransferResolved,
+    autoPrompt,
   ]);
 
   const { reauthRequired, refreshReauthRequired } = useReauthRequired({

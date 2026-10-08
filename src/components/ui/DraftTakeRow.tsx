@@ -125,11 +125,7 @@ export function DraftTakeRow({
       </RecordCircleButton>
       <View style={styles.middleColumn}>
         <View style={styles.topRow}>
-          <Text
-            style={styles.takeLabel}
-            numberOfLines={1}
-            testID={`record-take-badge-${takeId}`}
-          >
+          <Text style={styles.takeLabel} testID={`record-take-badge-${takeId}`}>
             {label ?? `Take ${takeNumber}`}
           </Text>
           <Text
@@ -182,7 +178,14 @@ export function DraftTakeRow({
             strokeWidth={listIconStrokeWidth}
           />
         </TouchableOpacity>
-      ) : null}
+      ) : (
+        <View
+          style={styles.deleteSlotSpacer}
+          testID={`record-take-delete-spacer-${takeId}`}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
+      )}
     </View>
   );
 }
@@ -213,7 +216,7 @@ const styles = StyleSheet.create({
   },
   topRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
   },
   takeLabel: {
@@ -221,6 +224,7 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.foreground,
     flex: 1,
+    minWidth: 0,
     marginRight: theme.spacing.sm,
   },
   waveform: {
@@ -239,5 +243,8 @@ const styles = StyleSheet.create({
   },
   deleteHit: {
     padding: theme.spacing.xs,
+  },
+  deleteSlotSpacer: {
+    width: iconSizes.chevron + theme.spacing.xs * 2,
   },
 });

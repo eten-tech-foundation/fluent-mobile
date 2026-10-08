@@ -110,6 +110,57 @@ jest.mock('../../hooks/useConnectivity', () => ({
   })),
 }));
 
+type BibleTabUnitsMock = {
+  draftingUnit: 'verse' | 'pericope';
+  effectiveUnit: 'verse' | 'pericope';
+  unitsPending: boolean;
+  units: Array<{
+    key: string;
+    draftingUnit: 'verse' | 'pericope';
+    verses: Array<{ chapterNumber: number; verseNumber: number }>;
+    title: string;
+    anchorVerse: number;
+    previewText: string;
+    bodyVerses: never[];
+    recordedStatus: 'none';
+  }>;
+  activeIndex: number;
+  unitCaption: string;
+  lastUnrecorded: null;
+  boundaryVerses: number[];
+  refreshCoverages: jest.Mock;
+};
+
+const mockUseBibleTabUnits = jest.fn(
+  ({ selectedVerse }: { selectedVerse: number }): BibleTabUnitsMock => ({
+    draftingUnit: 'verse',
+    effectiveUnit: 'verse',
+    unitsPending: false,
+    units: [
+      {
+        key: `verse:${selectedVerse}`,
+        draftingUnit: 'verse',
+        verses: [{ chapterNumber: 14, verseNumber: selectedVerse }],
+        title: `Mark 14:${selectedVerse}`,
+        anchorVerse: selectedVerse,
+        previewText: '',
+        bodyVerses: [],
+        recordedStatus: 'none',
+      },
+    ],
+    activeIndex: 0,
+    unitCaption: `Verse ${selectedVerse} / 3`,
+    lastUnrecorded: null,
+    boundaryVerses: [],
+    refreshCoverages: jest.fn(),
+  }),
+);
+
+jest.mock('../../hooks/useBibleTabUnits', () => ({
+  useBibleTabUnits: (args: { selectedVerse: number }) =>
+    mockUseBibleTabUnits(args),
+}));
+
 const downloadedRows = getDownloadedResourcesByProject as jest.Mock;
 const mockLoadNotes = loadTranslationNotesForUnit as jest.MockedFunction<
   typeof loadTranslationNotesForUnit
@@ -181,6 +232,8 @@ function renderResources(
         userId={userId}
         bookCode="MRK"
         chapterNumber={14}
+        bibleId={1}
+        bookId={41}
       />
     </DraftingProvider>,
   );
@@ -206,6 +259,30 @@ describe('ResourcesTab', () => {
     clearMockPrepareOfflineRuntimeInventory();
     setPrepareOfflineMockInventoryScenario('fresh');
     downloadedRows.mockResolvedValue([]);
+    mockUseBibleTabUnits.mockImplementation(
+      ({ selectedVerse }: { selectedVerse: number }): BibleTabUnitsMock => ({
+        draftingUnit: 'verse',
+        effectiveUnit: 'verse',
+        unitsPending: false,
+        units: [
+          {
+            key: `verse:${selectedVerse}`,
+            draftingUnit: 'verse',
+            verses: [{ chapterNumber: 14, verseNumber: selectedVerse }],
+            title: `Mark 14:${selectedVerse}`,
+            anchorVerse: selectedVerse,
+            previewText: '',
+            bodyVerses: [],
+            recordedStatus: 'none',
+          },
+        ],
+        activeIndex: 0,
+        unitCaption: `Verse ${selectedVerse} / 3`,
+        lastUnrecorded: null,
+        boundaryVerses: [],
+        refreshCoverages: jest.fn(),
+      }),
+    );
     mockUseConnectivity.mockReturnValue({
       isOnline: true,
       isLinkOnline: true,
@@ -265,7 +342,7 @@ describe('ResourcesTab', () => {
     expect(screen.queryByText('Translation Notes')).toBeNull();
   });
 
-  it('shows the empty message while connectivity is unresolved', () => {
+  it('shows a loading indicator while connectivity is unresolved', () => {
     mockUseConnectivity.mockReturnValue({
       isOnline: true,
       isLinkOnline: true,
@@ -278,7 +355,8 @@ describe('ResourcesTab', () => {
       transferConnectivityPending: true,
     });
     renderResources(1);
-    expect(screen.getByText(RESOURCES_EMPTY_MESSAGE)).toBeTruthy();
+    expect(screen.getByTestId('resources-tab-loading')).toBeTruthy();
+    expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
     expect(screen.queryByText('Translation Notes')).toBeNull();
   });
 
@@ -364,5 +442,86 @@ describe('ResourcesTab', () => {
       expect(screen.getByText('Images & Maps')).toBeTruthy();
     });
     expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
+  });
+
+  it('keeps chapter:verse header in verse mode when unit title is bare (#593)', () => {
+    mockUseBibleTabUnits.mockImplementation(
+      ({ selectedVerse }: { selectedVerse: number }): BibleTabUnitsMock => ({
+        draftingUnit: 'verse',
+        effectiveUnit: 'verse',
+        unitsPending: false,
+        units: [
+          {
+            key: `verse:${selectedVerse}`,
+            draftingUnit: 'verse',
+            verses: [{ chapterNumber: 14, verseNumber: selectedVerse }],
+            // Real buildBibleUnits verse title is just the number.
+            title: String(selectedVerse),
+            anchorVerse: selectedVerse,
+            previewText: '',
+            bodyVerses: [],
+            recordedStatus: 'none',
+          },
+        ],
+        activeIndex: 0,
+        unitCaption: `Verse ${selectedVerse} / 3`,
+        lastUnrecorded: null,
+        boundaryVerses: [],
+        refreshCoverages: jest.fn(),
+      }),
+    );
+    setPrepareOfflineMockInventoryScenario('tier1');
+    renderResources(2);
+    expect(screen.getByText('Mark 14:2')).toBeTruthy();
+    expect(screen.queryByText('2')).toBeNull();
+  });
+
+  it('shows pericope range and fans out verseRefs (#593)', async () => {
+    mockUseBibleTabUnits.mockImplementation(
+      (): BibleTabUnitsMock => ({
+        draftingUnit: 'pericope',
+        effectiveUnit: 'pericope',
+        unitsPending: false,
+        units: [
+          {
+            key: 'pericope:1',
+            draftingUnit: 'pericope',
+            verses: [
+              { chapterNumber: 14, verseNumber: 1 },
+              { chapterNumber: 14, verseNumber: 2 },
+              { chapterNumber: 14, verseNumber: 3 },
+            ],
+            title: 'Mark 14:1–3',
+            anchorVerse: 1,
+            previewText: '',
+            bodyVerses: [],
+            recordedStatus: 'none',
+          },
+        ],
+        activeIndex: 0,
+        unitCaption: 'Pericope 1 / 1',
+        lastUnrecorded: null,
+        boundaryVerses: [2, 3],
+        refreshCoverages: jest.fn(),
+      }),
+    );
+    setPrepareOfflineMockInventoryScenario('tier1');
+    renderResources(1);
+
+    expect(screen.getByText('Mark 14:1–3')).toBeTruthy();
+    expect(screen.getByTestId('resources-unit-99-pericope:1')).toBeTruthy();
+
+    await waitFor(() => {
+      expect(mockLoadNotes).toHaveBeenCalledWith(
+        expect.objectContaining({
+          verseNumber: 1,
+          verseRefs: [
+            { chapterNumber: 14, verseNumber: 1 },
+            { chapterNumber: 14, verseNumber: 2 },
+            { chapterNumber: 14, verseNumber: 3 },
+          ],
+        }),
+      );
+    });
   });
 });

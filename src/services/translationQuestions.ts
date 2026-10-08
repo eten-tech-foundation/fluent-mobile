@@ -1,6 +1,11 @@
 import type { ApiTranslationQuestionItem } from '../types/api/translationResources';
 import type { TranslationQuestionItem } from '../types/resources/translationQuestions';
 import { tipTapToPlainText } from '../utils/aquiferTipTapText';
+import {
+  loadResourcesForVerseRange,
+  verseRefsFromChapter,
+  type ResourceVerseRef,
+} from '../utils/loadResourcesForVerseRange';
 import { FluentAPI } from './api';
 
 const DEFAULT_TQ_LANGUAGE_CODE = 'eng';
@@ -11,6 +16,10 @@ export type LoadTranslationQuestionsParams = {
   bookCode: string;
   chapterNumber: number;
   verseNumber: number;
+  /** Same-chapter verse list for fan-out (#593). Prefer `verseRefs` for ranges. */
+  verseNumbers?: number[];
+  /** Explicit chapter+verse refs (cross-chapter pericopes). */
+  verseRefs?: ResourceVerseRef[];
   /** Aquifer language for uW TQ (defaults to English source). */
   languageCode?: string;
 };
@@ -84,7 +93,7 @@ export function parseTranslationQuestionsItem(
 
 /**
  * Load uW Translation Questions for a drafting unit via fluent-api
- * translation-resources (fluent-api #274).
+ * translation-resources (fluent-api #274). Pericope units fan out (#593).
  */
 export async function loadTranslationQuestionsForUnit(
   params: LoadTranslationQuestionsParams,
@@ -103,15 +112,25 @@ export async function loadTranslationQuestionsForUnit(
   }
 
   const languageCode = params.languageCode?.trim() || DEFAULT_TQ_LANGUAGE_CODE;
+  const projectId = params.projectId;
+  const refs =
+    params.verseRefs && params.verseRefs.length > 0
+      ? params.verseRefs
+      : verseRefsFromChapter(
+          params.chapterNumber,
+          params.verseNumber,
+          params.verseNumbers,
+        );
 
-  const response = await FluentAPI.getTranslationQuestions(
-    params.projectId,
-    bookCode,
-    params.chapterNumber,
-    params.verseNumber,
-    languageCode,
-  );
-
-  const items = Array.isArray(response?.items) ? response.items : [];
-  return items.flatMap(parseTranslationQuestionsItem);
+  return loadResourcesForVerseRange(refs, async ref => {
+    const response = await FluentAPI.getTranslationQuestions(
+      projectId,
+      bookCode,
+      ref.chapterNumber,
+      ref.verseNumber,
+      languageCode,
+    );
+    const items = Array.isArray(response?.items) ? response.items : [];
+    return items.flatMap(parseTranslationQuestionsItem);
+  });
 }
