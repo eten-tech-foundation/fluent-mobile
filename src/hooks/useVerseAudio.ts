@@ -741,6 +741,7 @@ export function useVerseAudio({
         stitchRowIdRef.current = row.id;
         stitchQueueRef.current = { uris, index };
         setStitchBaseMs(base);
+        setLoadedTakeId(null);
         await playback.load(uris[index]); // no-op when already loaded
         if (isStale()) return;
         await playback.seek(offset);
