@@ -34,10 +34,22 @@ describe('hrefs', () => {
       params: { newUserLoading: 'true' },
     });
     expect(
-      hrefs.chapters({ projectId: 9, projectName: 'Mark', language: 'en' }),
+      hrefs.chapters({
+        projectId: 9,
+        projectUnitId: 12,
+        projectName: 'Baka NT',
+        milestoneName: 'Mark',
+        language: 'en',
+      }),
     ).toEqual({
       pathname: '/(app)/(stack)/chapters',
-      params: { projectId: '9', projectName: 'Mark', language: 'en' },
+      params: {
+        projectId: '9',
+        projectUnitId: '12',
+        projectName: 'Baka NT',
+        milestoneName: 'Mark',
+        language: 'en',
+      },
     });
   });
 });
