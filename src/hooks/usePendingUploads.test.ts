@@ -223,4 +223,65 @@ describe('usePendingUploads', () => {
       expect(result.current.uploadProgress).toBeNull();
     });
   });
+
+  it('does not expose isUploading false with pre-upload pendingCount after complete', async () => {
+    let resolveCompletePending: (count: number) => void = () => {};
+    const completePending = new Promise<number>(resolve => {
+      resolveCompletePending = resolve;
+    });
+
+    mockGetPendingUploadCount
+      .mockResolvedValueOnce(3)
+      .mockResolvedValueOnce(3)
+      .mockReturnValueOnce(completePending);
+
+    const snapshots: Array<{
+      isUploading: boolean;
+      pendingCount: number;
+    }> = [];
+    const { result } = renderHook(() => {
+      const value = usePendingUploads(0);
+      snapshots.push({
+        isUploading: value.isUploading,
+        pendingCount: value.pendingCount,
+      });
+      return value;
+    });
+
+    await waitFor(() => {
+      expect(result.current.pendingCount).toBe(3);
+    });
+
+    act(() => {
+      emitUploadSessionEvent({ type: 'start', totalChapters: 3 });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isUploading).toBe(true);
+      expect(result.current.pendingCount).toBe(3);
+    });
+
+    snapshots.length = 0;
+
+    act(() => {
+      emitUploadSessionEvent({ type: 'complete' });
+    });
+
+    expect(result.current.isUploading).toBe(true);
+    expect(result.current.pendingCount).toBe(3);
+    expect(
+      snapshots.some(
+        snapshot => !snapshot.isUploading && snapshot.pendingCount === 3,
+      ),
+    ).toBe(false);
+
+    await act(async () => {
+      resolveCompletePending(0);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isUploading).toBe(false);
+      expect(result.current.pendingCount).toBe(0);
+    });
+  });
 });
