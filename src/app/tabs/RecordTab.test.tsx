@@ -560,6 +560,85 @@ describe('RecordTab', () => {
     expect(idleAudio.deleteTake).toHaveBeenCalledWith('rec_2');
   });
 
+  it('confirms before deleting a non-selected pericope take in Verse mode, naming the full range', () => {
+    const pericopeTake = makeTake({
+      id: 'pericope-1',
+      takeNumber: 1,
+      isSelected: false,
+      granularity: 'pericope',
+      startVerse: 1,
+      endVerse: 5,
+    });
+    const verseTake = makeTake({
+      id: 'verse-1',
+      takeNumber: 2,
+      isSelected: true,
+      startVerse: 3,
+      endVerse: 3,
+    });
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      state: 'recorded',
+      takes: [pericopeTake, verseTake],
+      selectedTake: verseTake,
+    });
+
+    renderTab();
+
+    fireEvent.press(screen.getByTestId('record-delete-button-pericope-1'));
+
+    expect(Alert.alert).toHaveBeenCalledTimes(1);
+    const [title, message, buttons] = (Alert.alert as jest.Mock).mock
+      .calls[0] as [string, string, { text: string; onPress?: () => void }[]];
+    expect(title).toBe('Delete pericope take?');
+    expect(message).toContain('vv. 1-5');
+    expect(message).toMatch(/whole recording/i);
+    expect(idleAudio.deleteTake).not.toHaveBeenCalled();
+
+    const confirmButton = buttons.find(b => b.text === 'Delete');
+    confirmButton?.onPress?.();
+
+    expect(idleAudio.deleteTake).toHaveBeenCalledWith('pericope-1');
+  });
+
+  it('keeps a pericope take when Verse-mode delete confirmation is cancelled', () => {
+    const pericopeTake = makeTake({
+      id: 'pericope-1',
+      takeNumber: 1,
+      isSelected: false,
+      granularity: 'pericope',
+      startVerse: 1,
+      endVerse: 5,
+    });
+    const verseTake = makeTake({
+      id: 'verse-1',
+      takeNumber: 2,
+      isSelected: true,
+      startVerse: 3,
+      endVerse: 3,
+    });
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      state: 'recorded',
+      takes: [pericopeTake, verseTake],
+      selectedTake: verseTake,
+    });
+
+    renderTab();
+
+    fireEvent.press(screen.getByTestId('record-delete-button-pericope-1'));
+
+    const [, , buttons] = (Alert.alert as jest.Mock).mock.calls[0] as [
+      string,
+      string,
+      { text: string; onPress?: () => void }[],
+    ];
+    const cancelButton = buttons.find(b => b.text === 'Cancel');
+    cancelButton?.onPress?.();
+
+    expect(idleAudio.deleteTake).not.toHaveBeenCalled();
+  });
+
   it('plays the tapped take and pauses when the same playing take is tapped again', async () => {
     const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isSelected: false });
     const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isSelected: true });
