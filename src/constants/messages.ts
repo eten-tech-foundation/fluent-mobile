@@ -17,7 +17,7 @@ export const UPLOAD_NETWORK_ERROR_MESSAGE =
 /** Sync page — pending takes the worker will not upload (pericope/orphan). */
 export function formatUnuploadablePendingMessage(count: number): string {
   const noun = count === 1 ? 'recording' : 'recordings';
-  return `${count} ${noun} can't upload yet — missing bible text or pericope-only takes.`;
+  return `${count} ${noun} can't upload yet — missing bible text.`;
 }
 
 export const PROJECTS_EMPTY_MESSAGE =
@@ -35,6 +35,10 @@ export const PROJECT_CHAPTERS_EMPTY_MESSAGE =
 export const RESOURCES_EMPTY_MESSAGE =
   'No resources are on this device yet. Download them from Prepare for Offline.';
 
+/** Online tab-wide empty when every section loaded with no content (#188 / #591). */
+export const RESOURCES_NONE_FOR_VERSE_MESSAGE =
+  'No resources available for this verse';
+
 /** Section-scoped Images & Maps failure copy (#191 / #348). */
 export const IMAGES_MAPS_LOAD_ERROR = 'Images unavailable';
 
@@ -45,10 +49,12 @@ export const TRANSLATION_NOTE_EMPTY_BODY = 'No note text available.';
 export const TRANSLATION_QUESTIONS_LOAD_ERROR =
   'Unable to load Translation Questions.';
 
+/** One label for drawer Sign Out and More Settings Log out (#622). */
+export const ACCOUNT_SIGN_OUT_LABEL = 'Log out';
+
 export const LOGOUT_UNSYNCED_TITLE = 'Unsynced work on device';
 export const LOGOUT_UNSYNCED_MESSAGE =
   'You have recordings that have not been uploaded. Log out anyway?';
-export const LOGOUT_UNSYNCED_CONFIRM = 'Log out';
 export const LOGOUT_UNSYNCED_CANCEL = 'Cancel';
 
 export const REAUTH_PROMPT_TITLE = 'Session expired';
@@ -79,6 +85,13 @@ export const RECORD_TAKEN_CHAPTER_WARNING =
   'This chapter is assigned to another translator.';
 export const RECORD_AUDIO_CONFLICT_WARNING =
   'Unresolved audio take conflict on this chapter/pericope.';
+
+/**
+ * Settings is Pericope but the project has no usable local pericope data
+ * (#588) — Bible/Record fall back to verse units with this explanation.
+ */
+export const PERICOPE_UNAVAILABLE_WARNING =
+  "Pericopes aren't available for this project. Showing verses instead.";
 
 /** Record tab when local `bible_texts` row is missing (#448). */
 export const RECORD_SOURCE_TEXT_SYNCING =

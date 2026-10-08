@@ -56,15 +56,17 @@ describe('stableTrackWidth', () => {
     expect(stableTrackWidth(60, 60)).toBe(60);
   });
 
-  it('ignores ±1–2px Yoga jitter that previously looped onLayout (#298)', () => {
+  it('ignores Yoga jitter inside the stability window (#298 / #596)', () => {
     expect(stableTrackWidth(60, 58)).toBe(60);
     expect(stableTrackWidth(60, 62)).toBe(60);
-    expect(stableTrackWidth(60, 59)).toBe(60);
+    expect(stableTrackWidth(60, 55)).toBe(60);
+    expect(stableTrackWidth(60, 65)).toBe(60);
   });
 
   it('accepts a real resize beyond the stability window', () => {
     expect(stableTrackWidth(60, 80)).toBe(80);
     expect(stableTrackWidth(60, 40)).toBe(40);
+    expect(stableTrackWidth(60, 66)).toBe(66);
   });
 });
 
@@ -103,19 +105,51 @@ describe('PlaybackProgressBar', () => {
   });
 
   it('survives alternating near-equal onLayout widths without throwing', () => {
-    // Repro sketch for #298: content-vs-constraint measure jitter used to
-    // setState → layout → setState until Maximum update depth exceeded.
+    // Repro sketch for #298 / #596: content-vs-constraint measure jitter used
+    // to setState → layout → setState until Maximum update depth exceeded.
     render(
       <PlaybackProgressBar positionMs={0} durationMs={2000} barCount={24} />,
     );
     const bar = screen.getByTestId('playback-progress');
     for (let i = 0; i < 40; i += 1) {
-      const width = i % 2 === 0 ? 60 : 58;
+      const width = i % 2 === 0 ? 60 : 55;
       fireEvent(bar, 'layout', {
         nativeEvent: { layout: { x: 0, y: 0, width, height: 28 } },
       });
     }
     expect(screen.getByTestId('playback-progress')).toBeTruthy();
+  });
+
+  it('survives source-dock barCount + playhead layout jitter without throwing (#596)', () => {
+    const { rerender } = render(
+      <PlaybackProgressBar
+        positionMs={0}
+        durationMs={60_000}
+        barCount={56}
+        showPlayhead
+        onSeek={() => undefined}
+      />,
+    );
+    const bar = screen.getByTestId('playback-progress');
+    fireEvent(bar, 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 280, height: 36 } },
+    });
+    for (let i = 0; i < 60; i += 1) {
+      rerender(
+        <PlaybackProgressBar
+          positionMs={i * 100}
+          durationMs={60_000}
+          barCount={56}
+          showPlayhead
+          onSeek={() => undefined}
+        />,
+      );
+      const width = i % 2 === 0 ? 280 : 276;
+      fireEvent(bar, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width, height: 36 } },
+      });
+    }
+    expect(screen.getByTestId('playback-progress-playhead')).toBeTruthy();
   });
 
   it('invokes onSeek from responder grant when scrubbing is enabled', () => {

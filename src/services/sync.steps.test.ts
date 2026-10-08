@@ -1,5 +1,6 @@
 import { ApiError } from '../types/api/errors';
 import { FluentAPI } from './api';
+import { AuthError } from './authError';
 import {
   syncBibleTexts,
   syncChapterAssignments,
@@ -198,8 +199,11 @@ describe('sync step orchestration', () => {
 
   describe('syncMasterData', () => {
     it('inserts languages, books, and bibles then clears the error key', async () => {
-      await syncMasterData();
+      await syncMasterData('session-tok');
 
+      expect(FluentAPI.getLanguages).toHaveBeenCalledWith('session-tok');
+      expect(FluentAPI.getBooks).toHaveBeenCalledWith('session-tok');
+      expect(FluentAPI.getBibles).toHaveBeenCalledWith('session-tok');
       expect(insertMasterDataMock).toHaveBeenCalledWith(
         [
           expect.objectContaining({
@@ -239,6 +243,24 @@ describe('sync step orchestration', () => {
       } finally {
         jest.useRealTimers();
       }
+    });
+
+    it('does not retry AuthError and stores the sync error once', async () => {
+      (FluentAPI.getLanguages as jest.Mock).mockRejectedValue(
+        new AuthError('User not authenticated'),
+      );
+
+      await expect(syncMasterData('session-tok')).rejects.toBeInstanceOf(
+        AuthError,
+      );
+
+      expect(FluentAPI.getLanguages).toHaveBeenCalledTimes(1);
+      expect(FluentAPI.getLanguages).toHaveBeenCalledWith('session-tok');
+      expect(setSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_master_data',
+        'User not authenticated',
+      );
+      expect(insertMasterDataMock).not.toHaveBeenCalled();
     });
 
     it('does not persist DNS/timeout transport failures as sync errors', async () => {

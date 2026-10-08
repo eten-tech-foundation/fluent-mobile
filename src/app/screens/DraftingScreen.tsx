@@ -35,6 +35,7 @@ import {
 import { syncBibleTexts, syncMasterData } from '../../services/sync';
 import { emitSyncComplete, emitSyncStart } from '../../services/syncEvents';
 import { hrefs } from '../../navigation/hrefs';
+import { setRecordCaptureGate } from '../../navigation/recordCaptureGate';
 import {
   parseRequiredNumber,
   parseRequiredString,
@@ -180,6 +181,14 @@ export default function DraftingScreen() {
     if (recordCaptureActive) {
       suppressNextBeforeRemove.current = false;
     }
+  }, [recordCaptureActive]);
+
+  // Publish capture state so the root drawer can disable swipe / menu exits (#568).
+  useEffect(() => {
+    setRecordCaptureGate(recordCaptureActive);
+    return () => {
+      setRecordCaptureGate(false);
+    };
   }, [recordCaptureActive]);
 
   // Block header back, Android system back, and any other pop while capturing.
@@ -450,6 +459,8 @@ export default function DraftingScreen() {
                   userId={userId}
                   bookCode={chapterData.bookCode ?? ''}
                   chapterNumber={chapterData.chapterNumber}
+                  bibleId={chapterData.bibleId}
+                  bookId={chapterData.bookId}
                 />
               </View>
               <View

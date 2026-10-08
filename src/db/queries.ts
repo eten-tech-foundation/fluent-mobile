@@ -18,6 +18,7 @@ import {
   deriveChapterOwnershipState,
   resolveStageAssigneeId,
 } from '../utils/chapterOwnershipState';
+import { unitRecordedStatus } from '../utils/bibleTabUnits';
 
 function parseConnectivityProfile(
   metadata: string | null,
@@ -214,6 +215,7 @@ async function fetchProjectRecordingCounts(
 
 export async function getProjectsWithSummary(
   userId: number,
+  options?: { throwOnError?: boolean },
 ): Promise<DBTypes.ProjectSummary[]> {
   try {
     await ensureUserProjectMembership(userId);
@@ -240,6 +242,9 @@ export async function getProjectsWithSummary(
     log.error('Error fetching projects with summary', {
       error: error instanceof Error ? error.message : String(error),
     });
+    if (options?.throwOnError) {
+      throw error instanceof Error ? error : new Error(String(error));
+    }
     return [];
   }
 }
@@ -703,13 +708,13 @@ export async function getMyWorkChapters(
 }
 
 /**
- * Same eligibility as `getPendingRecordings` (verse, positive bible_text_id,
+ * Same eligibility as `getPendingRecordings` (positive bible_text_id,
  * INNER JOIN bible_texts). Active-user scope stays on these UI queries (#105).
- * Pericope takes stay local until #410.
+ * Verse and pericope takes are uploadable (#584); stitched display rows are not.
  */
 const UPLOADABLE_PENDING_WHERE = `
   r.is_selected = 1
-  AND IFNULL(r.granularity, 'verse') = 'verse'
+  AND IFNULL(r.granularity, 'verse') IN ('verse', 'pericope')
   AND r.sync_status NOT IN ('uploaded', 'conflicted')
   AND r.bible_text_id > 0
 `;
@@ -734,7 +739,29 @@ export async function getPendingUploadCount(): Promise<number> {
     return Number(result.rows?.[0]?.count) || 0;
   } catch (error) {
     log.error('Error fetching pending upload count', { error });
-    return 0;
+    throw error;
+  }
+}
+
+/**
+ * Recordings still only on this device (#622). Includes pericope and failed
+ * takes. The upload worker's verse-only count stays on getPendingUploadCount.
+ */
+export async function getUnsyncedRecordingCount(): Promise<number> {
+  const db = getDatabase();
+  const userId = parseUserId();
+  try {
+    const result = await db.execute(
+      `SELECT COUNT(*) AS count
+       FROM recordings r
+       WHERE r.sync_status NOT IN ('uploaded', 'conflicted')
+         AND ${recordedByUserPredicate('r', userId)};`,
+      userId === null ? [] : [userId],
+    );
+    return Number(result.rows?.[0]?.count) || 0;
+  } catch (error) {
+    log.error('Error fetching unsynced recording count', { error });
+    throw error;
   }
 }
 
@@ -745,17 +772,13 @@ export type UnuploadablePendingSummary = {
   total: number;
 };
 
-const EMPTY_UNUPLOADABLE: UnuploadablePendingSummary = {
-  orphanBibleText: 0,
-  pericopeOnly: 0,
-  other: 0,
-  total: 0,
-};
-
 /**
  * Pending selected takes that the worker will never process (silent no-op
  * if we counted them as uploadable). Missing assignment is not a bucket —
  * the worker attempts those rows and fails at runtime (#548).
+ *
+ * `pericopeOnly` is a legacy field name: it now counts unsupported
+ * granularities (e.g. stitched), not uploadable pericope takes (#584).
  */
 export async function getUnuploadablePendingSummary(): Promise<UnuploadablePendingSummary> {
   const db = getDatabase();
@@ -768,14 +791,14 @@ export async function getUnuploadablePendingSummary(): Promise<UnuploadablePendi
            THEN 1 ELSE 0 END), 0) AS orphan_bible_text,
          COALESCE(SUM(CASE
            WHEN bt.id IS NOT NULL AND r.bible_text_id > 0
-            AND IFNULL(r.granularity, 'verse') != 'verse'
+            AND IFNULL(r.granularity, 'verse') NOT IN ('verse', 'pericope')
            THEN 1 ELSE 0 END), 0) AS pericope_only,
          COALESCE(SUM(CASE
            WHEN NOT (
              r.bible_text_id IS NULL OR r.bible_text_id <= 0 OR bt.id IS NULL
            ) AND NOT (
              bt.id IS NOT NULL AND r.bible_text_id > 0
-             AND IFNULL(r.granularity, 'verse') != 'verse'
+             AND IFNULL(r.granularity, 'verse') NOT IN ('verse', 'pericope')
            )
            THEN 1 ELSE 0 END), 0) AS other
        FROM recordings r
@@ -786,7 +809,7 @@ export async function getUnuploadablePendingSummary(): Promise<UnuploadablePendi
          AND NOT (
            bt.id IS NOT NULL
            AND r.bible_text_id > 0
-           AND IFNULL(r.granularity, 'verse') = 'verse'
+           AND IFNULL(r.granularity, 'verse') IN ('verse', 'pericope')
          )`,
       userId === null ? [] : [userId],
     );
@@ -802,7 +825,7 @@ export async function getUnuploadablePendingSummary(): Promise<UnuploadablePendi
     };
   } catch (error) {
     log.error('Error fetching unuploadable pending summary', { error });
-    return EMPTY_UNUPLOADABLE;
+    throw error;
   }
 }
 
@@ -1248,7 +1271,10 @@ export async function isChapterFullyRecordedVerseMode(
 }
 
 /** True when every pericope, and every chapter verse not covered by a pericope,
- *  has a selected recording (pericope mode) — #542.
+ *  has a selected recording (pericope mode) — #542 / #586.
+ *  Pericope completeness uses the same verse-coverage rule as Bible-tab
+ *  `unitRecordedStatus` (exact pericope-range take **or** stitched verse
+ *  takes that together cover every verse in the pericope).
  *  A pericope set may not cover every verse in the chapter (e.g. narrative
  *  breaks, verses excluded from the harmony); those "ungrouped" verses must
  *  independently satisfy the same per-verse check as verse mode, or a
@@ -1283,18 +1309,9 @@ export async function isChapterFullyRecordedPericopeMode(
     .filter(vn => !coveredVerseNumbers.has(vn));
 
   const coverages = await getSelectedTakeCoverages(bibleId, bookId);
-  const pericopesComplete = pericopes.every(pericope => {
-    const first = pericope.verses[0];
-    const last = pericope.verses[pericope.verses.length - 1];
-    if (!first || !last) return false;
-    return coverages.some(
-      c =>
-        c.startChapter === first.chapterNumber &&
-        c.startVerse === first.verseNumber &&
-        c.endChapter === last.chapterNumber &&
-        c.endVerse === last.verseNumber,
-    );
-  });
+  const pericopesComplete = pericopes.every(
+    pericope => unitRecordedStatus(pericope.verses, coverages) === 'recorded',
+  );
   if (!pericopesComplete) return false;
 
   if (ungroupedVerseNumbers.length === 0) return true;
