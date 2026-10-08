@@ -1,6 +1,7 @@
 import React from 'react';
-import { Pressable } from 'react-native';
+import { FlatList, Pressable } from 'react-native';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -74,6 +75,16 @@ function RefreshRecordedButton() {
       onPress={() => {
         void refreshRecordedVerses();
       }}
+    />
+  );
+}
+
+function SetPlayingVerseButton({ verse }: { verse: number }) {
+  const { setCurrentlyPlayingVerse } = useDraftingContext();
+  return (
+    <Pressable
+      testID={`set-playing-${verse}`}
+      onPress={() => setCurrentlyPlayingVerse(verse)}
     />
   );
 }
@@ -483,4 +494,108 @@ describe('BibleTab', () => {
       ).toBeGreaterThan(0);
     });
   });
+
+  it('scrolls the playing verse into view when currentlyPlayingVerse changes (#595)', async () => {
+    const scrollToIndex = jest.fn();
+    const spy = jest
+      .spyOn(FlatList.prototype, 'scrollToIndex')
+      .mockImplementation(scrollToIndex);
+
+    try {
+      const manyVerses = Array.from({ length: 12 }, (_, i) => ({
+        bibleId: 1,
+        bookId: 1,
+        chapterNumber: 14,
+        verseNumber: i + 1,
+        text: `Verse ${i + 1} text`,
+      }));
+
+      render(
+        <DraftingProvider
+          verses={manyVerses}
+          initialVerse={1}
+          chapterName="Mark 14"
+          bookName="Mark"
+        >
+          <SetPlayingVerseButton verse={8} />
+          <BibleTab />
+        </DraftingProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Verse 8')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('set-playing-8'));
+      });
+
+      await waitFor(() => {
+        expect(scrollToIndex).toHaveBeenCalledWith(
+          expect.objectContaining({ index: 7, animated: true }),
+        );
+      });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it.each(['verse', 'pericope'] as const)(
+    'retries scrollToIndex on scroll failure in %s mode (#595)',
+    async mode => {
+      const scrollToIndex = jest.fn();
+      const spy = jest
+        .spyOn(FlatList.prototype, 'scrollToIndex')
+        .mockImplementation(scrollToIndex);
+      mockUseDraftingUnit.mockReturnValue({
+        draftingUnit: mode,
+        setDraftingUnit: jest.fn(),
+      });
+      jest.mocked(getPericopesForChapter).mockResolvedValue([
+        {
+          pericopeNumber: '1',
+          pericopeTitle: null,
+          section: 1,
+          verses: [
+            { chapterNumber: 14, verseNumber: 1 },
+            { chapterNumber: 14, verseNumber: 2 },
+          ],
+        },
+      ]);
+
+      try {
+        const { UNSAFE_getByType } = render(
+          <DraftingProvider
+            verses={verses}
+            initialVerse={1}
+            projectId={9}
+            chapterName="Mark 14"
+            bookName="Mark"
+          >
+            <BibleTab />
+          </DraftingProvider>,
+        );
+
+        await waitFor(() => {
+          expect(
+            UNSAFE_getByType(FlatList).props.onScrollToIndexFailed,
+          ).toEqual(expect.any(Function));
+        });
+
+        scrollToIndex.mockClear();
+        act(() => {
+          UNSAFE_getByType(FlatList).props.onScrollToIndexFailed({ index: 1 });
+        });
+
+        await waitFor(() => {
+          expect(scrollToIndex).toHaveBeenCalledWith({
+            index: 1,
+            animated: false,
+          });
+        });
+      } finally {
+        spy.mockRestore();
+      }
+    },
+  );
 });

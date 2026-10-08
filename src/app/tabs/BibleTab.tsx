@@ -123,6 +123,26 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
     });
   }, []);
 
+  // Keep the playing row on-screen while source audio advances (#48 / #595).
+  useEffect(() => {
+    if (currentlyPlayingVerse === null) {
+      return;
+    }
+    const playingIndex = units.findIndex(unit =>
+      unitContainsVerse(unit, chapterNumber, currentlyPlayingVerse),
+    );
+    if (playingIndex < 0) {
+      return;
+    }
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToIndex({
+        index: playingIndex,
+        animated: true,
+        viewPosition: 0.35,
+      });
+    });
+  }, [currentlyPlayingVerse, units, chapterNumber]);
+
   const handleUnitPress = useCallback(
     (unit: BibleTabUnitView) => {
       setSelectedVerse(unit.anchorVerse);
@@ -288,9 +308,7 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
         initialScrollIndex={
           isPericopeList || initialIndex === 0 ? undefined : initialIndex
         }
-        onScrollToIndexFailed={
-          isPericopeList ? undefined : handleScrollToIndexFailed
-        }
+        onScrollToIndexFailed={handleScrollToIndexFailed}
         contentContainerStyle={
           isPericopeList ? styles.cardContent : styles.content
         }
