@@ -73,15 +73,16 @@ async function getBookIdByCode(bookCode: string): Promise<number | null> {
 
 /**
  * Upserts one book's worth of bundled or API-fetched pericope verses for
- * a given set (#447 write path). Verses are already normalized to the
- * common shape by the caller (bundled loader, or later fluent-api#309's
- * response) -- this function only handles the SQLite write.
+ * a given set (#447 / #587 write path). Verses are already normalized to
+ * the common shape by the caller (bundled loader or
+ * `flattenApiPericopeSetGroups`) — this function only handles the SQLite
+ * write.
  *
- * `version` is stored in KV storage (services/storage.ts), not a
+ * `version` / ETag is stored in KV storage (services/storage.ts), not a
  * pericope_sets column -- avoids a schema migration + the
- * multiple-in-flight-branch version-collision risk. #438's sync step
- * reads it back via getPericopeSetVersion() to decide whether a reseed
- * is needed on the next run.
+ * multiple-in-flight-branch version-collision risk. #438 / #587 sync
+ * reads it back via getPericopeBookVersion() to decide whether a reseed
+ * or If-None-Match revalidation is needed on the next run.
  */
 export async function upsertPericopeSet(
   pericopeSetId: number,

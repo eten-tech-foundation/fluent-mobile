@@ -52,6 +52,7 @@ jest.mock('./api', () => ({
     }),
     getBibleTexts: jest.fn(),
     getPericopeSets: jest.fn().mockResolvedValue([]),
+    getPericopeSet: jest.fn().mockResolvedValue({ status: 304, etag: null }),
   },
 }));
 
