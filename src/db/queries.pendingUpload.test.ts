@@ -33,6 +33,7 @@ jest.mock('../utils/logger', () => ({
 import {
   getPendingUploadChapters,
   getPendingUploadCount,
+  getUnsyncedRecordingCount,
   getUnuploadablePendingSummary,
 } from './queries';
 
@@ -57,6 +58,24 @@ describe('pending upload queries (#545)', () => {
     }
     expect(sql).toContain('JOIN bible_texts');
     expect(sql).not.toContain('project_unit_id');
+  });
+
+  it('getUnsyncedRecordingCount includes pericope takes not yet on the server', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ count: 1 }] });
+
+    await expect(getUnsyncedRecordingCount()).resolves.toBe(1);
+
+    const sql = String(mockExecute.mock.calls[0]?.[0]);
+    expect(sql).toContain("sync_status NOT IN ('uploaded', 'conflicted')");
+    expect(sql).not.toContain('granularity');
+    expect(sql).not.toContain('bible_texts');
+  });
+
+  it('getUnsyncedRecordingCount does not treat a query failure as zero', async () => {
+    const failure = new Error('db');
+    mockExecute.mockRejectedValue(failure);
+
+    await expect(getUnsyncedRecordingCount()).rejects.toBe(failure);
   });
 
   it('getPendingUploadChapters only lists chapters with upload-eligible verse or pericope takes', async () => {
