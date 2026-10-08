@@ -101,7 +101,8 @@ export const PERICOPE_UNAVAILABLE_WARNING =
 export const RECORD_SOURCE_TEXT_SYNCING =
   'Source text still syncing for this verse — recording will unlock when ready.';
 export const RECORD_SOURCE_TEXT_UNAVAILABLE =
-  "Source text isn't available for this verse yet. Open Sync and tap Sync Now, then return here.";
+  "Source text isn't available for this verse yet.";
+export const RECORD_SOURCE_TEXT_OPEN_SYNC = 'Open Sync';
 
 /**
  * Leave prompt shown when the user navigates away from an in-progress take
