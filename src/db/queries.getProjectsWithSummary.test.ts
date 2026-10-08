@@ -181,4 +181,13 @@ describe('getProjectsWithSummary', () => {
     expect(recordingSql).toContain('INNER JOIN bible_texts bt_r');
     expect(recordingSql).not.toContain('LEFT JOIN bible_texts');
   });
+
+  it('returns [] on error by default but rethrows when throwOnError is set', async () => {
+    mockExecute.mockRejectedValue(new Error('sqlite busy'));
+
+    await expect(getProjectsWithSummary(1)).resolves.toEqual([]);
+    await expect(
+      getProjectsWithSummary(1, { throwOnError: true }),
+    ).rejects.toThrow('sqlite busy');
+  });
 });

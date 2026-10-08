@@ -121,4 +121,28 @@ describe('loadImagesMapsForUnit', () => {
       }),
     ).rejects.toThrow(/Failed to load Images & Maps/);
   });
+
+  it('fans out across verseNumbers and dedupes by id (#593)', async () => {
+    getTranslationImages.mockImplementation(async (_p, _b, _c, verse) => ({
+      items: [
+        {
+          ...sampleItem,
+          id: verse === 1 ? 100 : 200,
+          title: `Image ${verse}`,
+          localizedName: `Image ${verse}`,
+        },
+      ],
+    }));
+
+    const items = await loadImagesMapsForUnit({
+      projectId: 7,
+      bookCode: 'MRK',
+      chapterNumber: 1,
+      verseNumber: 1,
+      verseNumbers: [1, 2],
+    });
+
+    expect(getTranslationImages).toHaveBeenCalledTimes(2);
+    expect(items.map(i => i.id)).toEqual(['img-api-100', 'img-api-200']);
+  });
 });

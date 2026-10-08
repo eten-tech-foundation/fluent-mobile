@@ -63,11 +63,7 @@ export function SharedTakeRow({
       </RecordCircleButton>
       <View style={styles.middleColumn}>
         <View style={styles.topRow}>
-          <Text
-            style={styles.takeLabel}
-            numberOfLines={1}
-            testID="shared-take-badge"
-          >
+          <Text style={styles.takeLabel} testID="shared-take-badge">
             {label ?? `Take ${takeNumber}`}
           </Text>
           <Text
@@ -134,7 +130,7 @@ const styles = StyleSheet.create({
   },
   topRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
   },
   takeLabel: {
@@ -142,6 +138,7 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.foreground,
     flex: 1,
+    minWidth: 0,
     marginRight: theme.spacing.sm,
   },
   waveform: {
