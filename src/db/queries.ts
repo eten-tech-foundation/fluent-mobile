@@ -675,28 +675,43 @@ const EMPTY_UNUPLOADABLE: UnuploadablePendingSummary = {
  * (#585) so Peer Check is not entered without server audio.
  */
 export async function chapterHasUnuploadableSelectedTakes(
+  bibleId: number,
   bookId: number,
   chapterNumber: number,
 ): Promise<boolean> {
   const db = getDatabase();
   const userId = parseUserId();
   try {
-    const params: number[] = [bookId, chapterNumber];
-    if (userId !== null) {
-      params.push(userId);
-    }
+    // The chapter overlaps a take when it is the anchor chapter or falls inside
+    // the stored range (cross-chapter pericopes anchored in an earlier chapter).
+    const params: number[] = [
+      bibleId,
+      bookId,
+      ...(userId !== null ? [userId] : []),
+      chapterNumber,
+      chapterNumber,
+      chapterNumber,
+    ];
     const result = await db.execute(
       `SELECT COUNT(*) AS count
        FROM recordings r
        JOIN bible_texts bt ON bt.id = r.bible_text_id
        WHERE r.is_selected = 1
          AND r.sync_status NOT IN ('uploaded', 'conflicted')
+         AND bt.bible_id = ?
          AND bt.book_id = ?
-         AND bt.chapter_number = ?
          AND ${recordedByUserPredicate('r', userId)}
          AND NOT (
            r.bible_text_id > 0
            AND IFNULL(r.granularity, 'verse') = 'verse'
+         )
+         AND (
+           bt.chapter_number = ?
+           OR (
+             r.start_chapter > 0
+             AND r.start_chapter <= ?
+             AND r.end_chapter >= ?
+           )
          )`,
       params,
     );

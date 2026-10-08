@@ -614,6 +614,7 @@ export function RecordTab({
               chapterData.chapterNumber,
             );
       const unuploadable = await chapterHasUnuploadableSelectedTakes(
+        chapterData.bibleId,
         chapterData.bookId,
         chapterData.chapterNumber,
       );

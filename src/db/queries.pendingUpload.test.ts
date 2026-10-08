@@ -115,23 +115,40 @@ describe('pending upload queries (#545)', () => {
   it('chapterHasUnuploadableSelectedTakes is true when the chapter has non-verse pending (#585)', async () => {
     mockExecute.mockResolvedValue({ rows: [{ count: 2 }] });
 
-    await expect(chapterHasUnuploadableSelectedTakes(40, 1)).resolves.toBe(
+    await expect(chapterHasUnuploadableSelectedTakes(9, 40, 1)).resolves.toBe(
       true,
     );
 
     expect(mockExecute).toHaveBeenCalledWith(
       expect.stringContaining('bt.book_id = ?'),
-      [40, 1, 7],
+      [9, 40, 7, 1, 1, 1],
     );
     const sql = String(mockExecute.mock.calls[0]?.[0]);
+    expect(sql).toContain('bt.bible_id = ?');
     expect(sql).toContain("IFNULL(r.granularity, 'verse') = 'verse'");
     expect(sql).toContain('NOT (');
+  });
+
+  it('chapterHasUnuploadableSelectedTakes detects a take anchored in ch.1 spanning into ch.2 (#585)', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ count: 1 }] });
+
+    await expect(chapterHasUnuploadableSelectedTakes(9, 40, 2)).resolves.toBe(
+      true,
+    );
+
+    const [sql, params] = mockExecute.mock.calls[0] as [string, number[]];
+    expect(sql).toContain('bt.chapter_number = ?');
+    expect(sql).toContain('r.start_chapter > 0');
+    expect(sql).toContain('r.start_chapter <= ?');
+    expect(sql).toContain('r.end_chapter >= ?');
+    // bible, book, user, then chapter for anchor + start<=ch + end>=ch.
+    expect(params).toEqual([9, 40, 7, 2, 2, 2]);
   });
 
   it('chapterHasUnuploadableSelectedTakes is false when count is zero', async () => {
     mockExecute.mockResolvedValue({ rows: [{ count: 0 }] });
 
-    await expect(chapterHasUnuploadableSelectedTakes(40, 1)).resolves.toBe(
+    await expect(chapterHasUnuploadableSelectedTakes(9, 40, 1)).resolves.toBe(
       false,
     );
   });
@@ -139,7 +156,7 @@ describe('pending upload queries (#545)', () => {
   it('chapterHasUnuploadableSelectedTakes fails closed when the query errors', async () => {
     mockExecute.mockRejectedValue(new Error('db'));
 
-    await expect(chapterHasUnuploadableSelectedTakes(40, 1)).resolves.toBe(
+    await expect(chapterHasUnuploadableSelectedTakes(9, 40, 1)).resolves.toBe(
       true,
     );
   });
