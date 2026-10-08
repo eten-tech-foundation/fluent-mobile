@@ -1,4 +1,8 @@
-import { ApiError, isRetryableApiError } from './errors';
+import {
+  ApiError,
+  isRetryableApiError,
+  isTransientTransportFailure,
+} from './errors';
 
 describe('ApiError', () => {
   it('classifies 5xx responses as retryable', () => {
@@ -12,6 +16,38 @@ describe('ApiError', () => {
     const error = new ApiError(0, 'Network request failed');
     expect(error.isRetryable).toBe(true);
     expect(error.isTerminal).toBe(false);
+  });
+
+  it('treats status-0, timeout, and DNS errors as transient transport failures', () => {
+    expect(
+      isTransientTransportFailure(new ApiError(0, 'Unable to resolve host')),
+    ).toBe(true);
+    expect(isTransientTransportFailure(new Error('Request timed out'))).toBe(
+      true,
+    );
+    expect(
+      isTransientTransportFailure(
+        new Error('Unable to resolve host api.fluent.bible'),
+      ),
+    ).toBe(true);
+    const abort = new Error('Aborted');
+    abort.name = 'AbortError';
+    expect(isTransientTransportFailure(abort)).toBe(true);
+  });
+
+  it('does not treat auth or server errors as transient transport failures', () => {
+    expect(isTransientTransportFailure(new ApiError(401, 'Unauthorized'))).toBe(
+      false,
+    );
+    expect(isTransientTransportFailure(new ApiError(500, 'Internal'))).toBe(
+      false,
+    );
+    expect(
+      isTransientTransportFailure(new ApiError(504, 'Gateway timeout')),
+    ).toBe(false);
+    expect(
+      isTransientTransportFailure(new Error('Failed to sync 1 pending claim')),
+    ).toBe(false);
   });
 
   it('classifies 4xx responses as terminal and not retryable', () => {

@@ -44,6 +44,7 @@ jest.mock('./api', () => ({
     getBibles: jest.fn().mockResolvedValue([]),
     getUserByEmail: jest.fn(),
     getUserProjects: jest.fn(),
+    getUserMilestones: jest.fn().mockResolvedValue([]),
     getChapterAssignments: jest.fn().mockResolvedValue({ data: [] }),
     getUserChapterAssignments: jest.fn().mockResolvedValue({
       assignedChapters: [],
@@ -112,6 +113,7 @@ jest.mock('../db/repository', () => ({
   insertMasterData: jest.fn().mockResolvedValue(undefined),
   insertProjects: jest.fn().mockResolvedValue(undefined),
   insertUserProjects: jest.fn().mockResolvedValue(undefined),
+  upsertProjectUnits: jest.fn().mockResolvedValue(undefined),
   ensureUserProjectMembership: jest.fn().mockResolvedValue(undefined),
   insertChapterAssignmentSyncData: jest.fn().mockResolvedValue({
     insertedCount: 1,
@@ -127,6 +129,7 @@ jest.mock('../db/repository', () => ({
   userNeedsAssigneeRepair: jest.fn().mockResolvedValue(false),
   insertUser: jest.fn().mockResolvedValue(undefined),
   reconcileUserProjects: jest.fn().mockResolvedValue(undefined),
+  reconcileUserMilestones: jest.fn().mockResolvedValue(undefined),
   reconcileUserChapterWork: jest.fn().mockResolvedValue(undefined),
   insertPericopeSets: jest.fn().mockResolvedValue(undefined),
   getProjectPericopeSetId: jest.fn().mockResolvedValue(null),
@@ -140,7 +143,9 @@ const {
   userHasLocalChapterAssignments,
   userNeedsAssigneeRepair,
   insertChapterAssignmentSyncData,
+  insertUser,
 } = jest.requireMock('../db/repository') as {
+  insertUser: jest.Mock;
   getChaptersToSync: jest.Mock;
   userHasLocalProjects: jest.Mock;
   userHasLocalChapterAssignments: jest.Mock;
@@ -1041,6 +1046,78 @@ describe('syncAllUsers auth handling', () => {
 
     expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
     expect(syncEvents.emitSyncStart).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs a login/add-account syncAllData after an in-flight syncAllUsers instead of joining it', async () => {
+    let resolveProjects: (value: unknown) => void = () => undefined;
+    const newUser = { id: 3, email: 'new@example.com' };
+    (getKnownUserIds as jest.Mock).mockReturnValue(['2']);
+    (getTempCredentials as jest.Mock).mockResolvedValue({
+      token: 'user-3-token',
+    });
+    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+      userId === '3' ? { token: 'user-3-token' } : { token: 'user-2-token' },
+    );
+    (FluentAPI.getUserProjects as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveProjects = resolve;
+        }),
+    );
+
+    const usersPass = syncAllUsers();
+    await waitFor(() => {
+      expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
+    });
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2, 'user-2-token');
+
+    const loginPass = syncAllData(false, newUser.email, newUser);
+
+    // Login must wait for the in-flight pass, not run concurrently or be dropped.
+    await Promise.resolve();
+    expect(insertUser).not.toHaveBeenCalled();
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
+
+    resolveProjects({ data: [] });
+    await Promise.all([usersPass, loginPass]);
+
+    expect(insertUser).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 3, email: newUser.email }),
+    );
+    expect(registerKnownUser).toHaveBeenCalledWith('3', newUser.email);
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(2);
+    expect(FluentAPI.getUserProjects).toHaveBeenLastCalledWith(
+      3,
+      'user-3-token',
+    );
+  });
+
+  it('still runs the next full sync after the in-flight pass fails', async () => {
+    let rejectProjects: (reason: unknown) => void = () => undefined;
+    (getKnownUserIds as jest.Mock).mockReturnValue(['2']);
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'user-2-token' });
+    (FluentAPI.getUserProjects as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectProjects = reject;
+        }),
+    );
+
+    const usersPass = syncAllUsers();
+    await waitFor(() => {
+      expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
+    });
+    const loginPass = syncAllData(false, 'new@example.com', {
+      id: 3,
+      email: 'new@example.com',
+    });
+    const usersResult = usersPass.catch((error: unknown) => error);
+
+    rejectProjects(new Error('boom'));
+    await usersResult;
+    await loginPass;
+
+    expect(insertUser).toHaveBeenCalled();
   });
 });
 
