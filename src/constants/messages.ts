@@ -10,6 +10,10 @@ export const SYNC_NOW_CELLULAR_DISABLED_MESSAGE =
 export const TRANSFER_OFFLINE_MESSAGE =
   'Connect to the internet to upload and download.';
 
+/** Sync page fallback when a network/transport error leaks as a failed take (#604). */
+export const UPLOAD_NETWORK_ERROR_MESSAGE =
+  "Couldn't reach the server. We'll retry when you're back online.";
+
 /** Sync page — pending takes the worker will not upload (pericope/orphan). */
 export function formatUnuploadablePendingMessage(count: number): string {
   const noun = count === 1 ? 'recording' : 'recordings';
