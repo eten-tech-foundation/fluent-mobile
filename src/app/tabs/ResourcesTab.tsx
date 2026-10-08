@@ -6,6 +6,7 @@ import React, {
   useState,
 } from 'react';
 import {
+  ActivityIndicator,
   NativeScrollEvent,
   NativeSyntheticEvent,
   ScrollView,
@@ -22,15 +23,20 @@ import {
 import { useDraftingContext } from '../context/DraftingContext';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ResourceSectionAccordion } from '../../components/ui/ResourceSectionAccordion';
-import { RESOURCES_EMPTY_MESSAGE } from '../../constants/messages';
+import {
+  RESOURCES_EMPTY_MESSAGE,
+  RESOURCES_NONE_FOR_VERSE_MESSAGE,
+} from '../../constants/messages';
+import { useBibleTabUnits } from '../../hooks/useBibleTabUnits';
 import { useTranslationNotesForUnit } from '../../hooks/useTranslationNotesForUnit';
+import { useTranslationQuestionsForUnit } from '../../hooks/useTranslationQuestionsForUnit';
 import { useImagesMapsForUnit } from '../../hooks/useImagesMapsForUnit';
 import { useConnectivity } from '../../hooks/useConnectivity';
 import { useUnitResourcesAvailability } from '../../hooks/useUnitResourcesAvailability';
 import { ResourceSectionId } from '../../types/resources/types';
 import { ImagesMapsSectionHost } from './resources/ImagesMapsSectionHost';
 import { TranslationNotesSectionHost } from './resources/TranslationNotesSectionHost';
-import { TranslationQuestionsSection } from './resources/TranslationQuestionsSection';
+import { TranslationQuestionsSectionHost } from './resources/TranslationQuestionsSectionHost';
 import {
   getResourcesTabUiState,
   setResourcesTabUiState,
@@ -48,6 +54,8 @@ type ResourcesTabProps = {
   /** USFM book code for translation-resources lookup (e.g. MRK). */
   bookCode: string;
   chapterNumber: number;
+  bibleId: number;
+  bookId: number;
 };
 
 const SECTION_META: {
@@ -75,7 +83,8 @@ const SECTION_META: {
 /**
  * Resources tab host (#188 + #192): offline inventory gates which sections
  * appear on device. When online, all sections load via fluent-api
- * translation-resources (#381).
+ * translation-resources (#381). Pericope mode fans out across the unit (#593).
+ * Empty sections hide after load (#591).
  */
 export function ResourcesTab({
   chapterId,
@@ -84,11 +93,54 @@ export function ResourcesTab({
   userId,
   bookCode,
   chapterNumber,
+  bibleId,
+  bookId,
 }: ResourcesTabProps) {
-  const { selectedVerse } = useDraftingContext();
+  const {
+    selectedVerse,
+    verses,
+    projectId: contextProjectId,
+    bookName,
+    chapterName: contextChapterName,
+    recordedCoverageEpoch,
+  } = useDraftingContext();
   const { isOnline, hasResolved } = useConnectivity();
   const scrollRef = useRef<ScrollView>(null);
   const scrollOffsetRef = useRef(0);
+
+  const { units, activeIndex, unitsPending, effectiveUnit } = useBibleTabUnits({
+    bibleId,
+    bookId,
+    chapterNumber,
+    projectId: projectId ?? contextProjectId,
+    verses,
+    chapterName: contextChapterName || chapterName,
+    bookName,
+    selectedVerse,
+    coverageEpoch: recordedCoverageEpoch,
+  });
+
+  const activeUnit = units[activeIndex] ?? null;
+  const unitKey = activeUnit?.key ?? `verse:${selectedVerse}`;
+  // Serialize refs so a new `units` array identity each render (or mock)
+  // does not retrigger TN/TQ/Images load effects.
+  const verseRefsSerialized = activeUnit
+    ? activeUnit.verses
+        .map(v => `${v.chapterNumber}:${v.verseNumber}`)
+        .join(',')
+    : `${chapterNumber}:${selectedVerse}`;
+  const verseRefs = useMemo(() => {
+    if (!verseRefsSerialized) {
+      return [{ chapterNumber, verseNumber: selectedVerse }];
+    }
+    return verseRefsSerialized.split(',').map(part => {
+      const [ch, vs] = part.split(':');
+      return {
+        chapterNumber: Number(ch) || chapterNumber,
+        verseNumber: Number(vs) || selectedVerse,
+      };
+    });
+  }, [verseRefsSerialized, chapterNumber, selectedVerse]);
 
   const resources = useUnitResourcesAvailability({
     projectId,
@@ -97,12 +149,28 @@ export function ResourcesTab({
     verseNumber: selectedVerse,
   });
 
+  // Verse-mode BibleUnit.title is just the verse number; keep chapter:verse label.
+  const referenceLabel =
+    !unitsPending && effectiveUnit === 'pericope' && activeUnit?.title
+      ? activeUnit.title
+      : resources.referenceLabel;
+
   const { state: notesState, retry: retryNotes } = useTranslationNotesForUnit({
     projectId,
     bookCode,
     chapterNumber,
     verseNumber: selectedVerse,
+    verseRefs,
   });
+
+  const { state: questionsState, retry: retryQuestions } =
+    useTranslationQuestionsForUnit({
+      projectId,
+      bookCode,
+      chapterNumber,
+      verseNumber: selectedVerse,
+      verseRefs,
+    });
 
   const { state: imagesMapsState, retry: retryImagesMaps } =
     useImagesMapsForUnit({
@@ -110,15 +178,16 @@ export function ResourcesTab({
       bookCode,
       chapterNumber,
       verseNumber: selectedVerse,
+      verseRefs,
     });
 
   const [openAccordionIds, setOpenAccordionIds] = useState<Set<string>>(
-    () => getResourcesTabUiState(chapterId, selectedVerse).openAccordionIds,
+    () => getResourcesTabUiState(chapterId, unitKey).openAccordionIds,
   );
   const openIdsRef = useRef(openAccordionIds);
 
   useEffect(() => {
-    const saved = getResourcesTabUiState(chapterId, selectedVerse);
+    const saved = getResourcesTabUiState(chapterId, unitKey);
     openIdsRef.current = saved.openAccordionIds;
     setOpenAccordionIds(saved.openAccordionIds);
     scrollOffsetRef.current = saved.scrollOffset;
@@ -126,16 +195,16 @@ export function ResourcesTab({
       y: saved.scrollOffset,
       animated: false,
     });
-  }, [chapterId, selectedVerse]);
+  }, [chapterId, unitKey]);
 
   const persistUiState = useCallback(
     (nextOpenIds: Set<string>, scrollOffset: number) => {
-      setResourcesTabUiState(chapterId, selectedVerse, {
+      setResourcesTabUiState(chapterId, unitKey, {
         openAccordionIds: nextOpenIds,
         scrollOffset,
       });
     },
-    [chapterId, selectedVerse],
+    [chapterId, unitKey],
   );
 
   const handleToggle = useCallback(
@@ -172,25 +241,58 @@ export function ResourcesTab({
     [hasResolved, isOnline, projectId, resources.sections],
   );
 
+  const isSectionEmptyAfterLoad = useCallback(
+    (sectionId: ResourceSectionId): boolean => {
+      if (sectionId === 'translationNotes') {
+        return notesState.status === 'ready' && notesState.notes.length === 0;
+      }
+      if (sectionId === 'translationQuestions') {
+        return (
+          questionsState.status === 'ready' &&
+          questionsState.questions.length === 0
+        );
+      }
+      if (sectionId === 'imagesMaps') {
+        return (
+          imagesMapsState.status === 'ready' &&
+          imagesMapsState.items.length === 0
+        );
+      }
+      return false;
+    },
+    [notesState, questionsState, imagesMapsState],
+  );
+
   const visibleSections = SECTION_META.filter(section => {
     if (!availableSectionIds.includes(section.id)) {
       return false;
     }
-    // Hide Images & Maps only when load finished with nothing to show.
-    if (
-      section.id === 'imagesMaps' &&
-      imagesMapsState.status === 'ready' &&
-      imagesMapsState.items.length === 0
-    ) {
+    // Hide a section only when its load finished with nothing to show (#591).
+    if (isSectionEmptyAfterLoad(section.id)) {
       return false;
     }
     return true;
   });
 
+  // Avoid flashing the offline empty message before NetInfo resolves (#592 / #591).
+  if (!hasResolved) {
+    return (
+      <View style={styles.loading} testID="resources-tab-loading">
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
   if (visibleSections.length === 0) {
+    // Offline / no-inventory keeps the Prepare for Offline copy; otherwise the
+    // unit loaded empty (#188 online empty).
+    const emptyMessage =
+      availableSectionIds.length === 0
+        ? RESOURCES_EMPTY_MESSAGE
+        : RESOURCES_NONE_FOR_VERSE_MESSAGE;
     return (
       <View style={styles.emptyHost} testID="resources-tab">
-        <EmptyState message={RESOURCES_EMPTY_MESSAGE} />
+        <EmptyState message={emptyMessage} />
       </View>
     );
   }
@@ -207,9 +309,9 @@ export function ResourcesTab({
     >
       <View
         style={styles.header}
-        testID={`resources-unit-${chapterId}-${selectedVerse}`}
+        testID={`resources-unit-${chapterId}-${unitKey}`}
       >
-        <Text style={styles.reference}>{resources.referenceLabel}</Text>
+        <Text style={styles.reference}>{referenceLabel}</Text>
         {resources.passageTitle ? (
           <Text style={styles.passageTitle}>{resources.passageTitle}</Text>
         ) : null}
@@ -220,7 +322,7 @@ export function ResourcesTab({
           const expanded = openAccordionIds.has(id);
           return (
             <ResourceSectionAccordion
-              key={`${chapterId}-${selectedVerse}-${id}`}
+              key={`${chapterId}-${unitKey}-${id}`}
               label={label}
               Icon={Icon}
               expanded={expanded}
@@ -235,14 +337,17 @@ export function ResourcesTab({
                   bookCode={bookCode}
                   chapterNumber={chapterNumber}
                   verseNumber={selectedVerse}
+                  versesKey={verseRefsSerialized}
                 />
               ) : id === 'translationQuestions' ? (
-                <TranslationQuestionsSection
-                  projectId={projectId}
+                <TranslationQuestionsSectionHost
+                  state={questionsState}
+                  retry={retryQuestions}
+                  sectionExpanded={expanded}
                   bookCode={bookCode}
                   chapterNumber={chapterNumber}
                   verseNumber={selectedVerse}
-                  sectionExpanded={expanded}
+                  versesKey={verseRefsSerialized}
                 />
               ) : id === 'imagesMaps' ? (
                 <ImagesMapsSectionHost
@@ -265,6 +370,12 @@ export function ResourcesTab({
 const styles = StyleSheet.create({
   emptyHost: {
     flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: theme.colors.background,
   },
   scroll: {

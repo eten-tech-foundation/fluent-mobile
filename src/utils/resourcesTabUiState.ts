@@ -10,11 +10,13 @@ const DEFAULT_STATE: ResourcesTabUiState = {
 
 const stateByUnit = new Map<string, ResourcesTabUiState>();
 
-export function resourcesUnitKey(
-  chapterId: number,
-  verseNumber: number,
-): string {
-  return `${chapterId}:${verseNumber}`;
+/**
+ * Persist accordion/scroll per drafting unit (#593).
+ * Prefer BibleUnit.key (`verse:3`, `pericope:…`) so pericope mode does not
+ * share state with the anchor verse alone.
+ */
+export function resourcesUnitKey(chapterId: number, unitKey: string): string {
+  return `${chapterId}:${unitKey}`;
 }
 
 function cloneState(state: ResourcesTabUiState): ResourcesTabUiState {
@@ -26,18 +28,18 @@ function cloneState(state: ResourcesTabUiState): ResourcesTabUiState {
 
 export function getResourcesTabUiState(
   chapterId: number,
-  verseNumber: number,
+  unitKey: string,
 ): ResourcesTabUiState {
-  const existing = stateByUnit.get(resourcesUnitKey(chapterId, verseNumber));
+  const existing = stateByUnit.get(resourcesUnitKey(chapterId, unitKey));
   return existing ? cloneState(existing) : cloneState(DEFAULT_STATE);
 }
 
 export function setResourcesTabUiState(
   chapterId: number,
-  verseNumber: number,
+  unitKey: string,
   state: ResourcesTabUiState,
 ): void {
-  stateByUnit.set(resourcesUnitKey(chapterId, verseNumber), cloneState(state));
+  stateByUnit.set(resourcesUnitKey(chapterId, unitKey), cloneState(state));
 }
 
 /** Test helper — clears in-memory UI state between cases. */

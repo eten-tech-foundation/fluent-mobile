@@ -1,3 +1,4 @@
+import { UPLOAD_NETWORK_ERROR_MESSAGE } from '../constants/messages';
 import { sanitizeUploadErrorForDisplay } from './sanitizeUploadError';
 
 describe('sanitizeUploadErrorForDisplay', () => {
@@ -5,6 +6,14 @@ describe('sanitizeUploadErrorForDisplay', () => {
     expect(sanitizeUploadErrorForDisplay('Audio storage is unavailable')).toBe(
       'Audio storage is currently unavailable. Try again later.',
     );
+  });
+
+  it('maps Android UnknownHost / fetch-failed copy to a friendly fallback', () => {
+    expect(
+      sanitizeUploadErrorForDisplay(
+        'fetch failed: java.net.UnknownHostException: Unable to resolve host "dev.api.fluent.bible": No address associated with hostname',
+      ),
+    ).toBe(UPLOAD_NETWORK_ERROR_MESSAGE);
   });
 
   it('maps 404 / assignment auth-mask text to a friendly fallback', () => {
