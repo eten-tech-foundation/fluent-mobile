@@ -64,7 +64,7 @@ Add the **`preview-build`** label to a pull request. GitHub Actions (`.github/wo
 - Start a **fresh Android `preview` internal APK** for that PR commit (binary only — no `eas update` / shared OTA channel)
 - Post an install comment on the **PR only** (does **not** move Project 4 or start the QA queue)
 
-Each labeled PR forces a new build so multiple debug APKs can exist at once. Preview profile has Expo Updates **disabled** (same idea as nightly). Re-request after fixes: remove and re-add the label.
+Each labeled PR forces a new build so multiple debug APKs can exist at once. Preview profile has Expo Updates **disabled** (same idea as nightly) and bakes `EXPO_PUBLIC_API_BASE_URL=https://qa.api.fluent.bible` (matching web: https://qa.app.fluent.bible/). Re-request after fixes: remove and re-add the label.
 
 **Default QA path** is post-merge **nightly** — [docs/guides/qa-process.md](../docs/guides/qa-process.md).
 
@@ -76,7 +76,7 @@ Uses the latest git tag for runtime version when available; otherwise falls back
 
 GitHub Actions [`.github/workflows/nightly-preview.yml`](../.github/workflows/nightly-preview.yml) builds a fresh Android **internal APK** with the EAS **`nightly`** profile each night (or on `workflow_dispatch`).
 
-- Bakes `EXPO_PUBLIC_API_BASE_URL=https://dev.api.fluent.bible`
+- Bakes `EXPO_PUBLIC_API_BASE_URL=https://qa.api.fluent.bible` (matching web: https://qa.app.fluent.bible/)
 - **No Updates channel** and **no `eas update`** — what you install is what you run
 - Does **not** require the Expo GitHub App (uses `EXPO_TOKEN`, same as PR preview)
 - Comments install links on issues with a recent post-merge QA handoff

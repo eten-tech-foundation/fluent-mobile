@@ -53,7 +53,7 @@ BUILD_ID="${BUILD_ID:-}"
 CHANGELOG="${CHANGELOG:-}"
 RUN_URL="${RUN_URL:-}"
 FAILED_STEP="${FAILED_STEP:-}"
-API_BASE_URL="${API_BASE_URL:-https://dev.api.fluent.bible}"
+API_BASE_URL="${API_BASE_URL:-https://qa.api.fluent.bible}"
 FEEDBACK_URL="${FEEDBACK_URL:-https://github.com/eten-tech-foundation/fluent-mobile/issues/new}"
 
 SHORT_SHA="${SHA:0:7}"
@@ -69,7 +69,7 @@ case "${STATUS}" in
     DETAIL_LINES=$(cat <<EOF
 *Status:* success (binary APK — no OTA)
 *Platform:* ${PLATFORM}
-*Environment:* development API (\`${API_BASE_URL}\`)
+*Environment:* QA API (\`${API_BASE_URL}\`)
 *EAS profile:* \`${PROFILE}\`
 *Trigger:* ${TRIGGER}
 *Branch:* \`${BRANCH}\`
