@@ -33,14 +33,53 @@ export function startDownloadQueueAutoResume(): () => void {
       const gate = transportAllowsTransfer(
         transferInputFromLinkSnapshot(snapshot, getUploadOverCellular()),
       );
-      if (gate !== 'ok') {
-        return;
-      }
-
       const worker = getSharedDownloadQueueWorker();
       const workerState = worker.getState();
 
-      if (workerState === 'downloading' || workerState === 'paused') {
+      if (gate !== 'ok') {
+        // Pause in-flight work when Wi-Fi drops / cellular is blocked (#619).
+        if (workerState === 'downloading') {
+          log.info(
+            'Pausing download queue — transport no longer allows transfer',
+            {
+              gate,
+              isLinkOnline: snapshot.isLinkOnline,
+              isWifi: snapshot.isWifi,
+              connectionType: snapshot.connectionType,
+            },
+          );
+          try {
+            await worker.pause('transport');
+          } catch (error) {
+            log.error('Failed to pause download queue on transport loss', {
+              error,
+            });
+          }
+        }
+        return;
+      }
+
+      if (workerState === 'downloading') {
+        return;
+      }
+
+      // Only auto-resume transport pauses — do not undo an intentional UI Pause.
+      if (workerState === 'paused') {
+        if (worker.getPauseReason() !== 'transport') {
+          return;
+        }
+        log.info('Auto-resuming paused download queue when transport allows', {
+          isLinkOnline: snapshot.isLinkOnline,
+          isWifi: snapshot.isWifi,
+          connectionType: snapshot.connectionType,
+        });
+        try {
+          await worker.resume();
+        } catch (error) {
+          log.error('Download queue auto-resume (paused worker) failed', {
+            error,
+          });
+        }
         return;
       }
 

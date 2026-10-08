@@ -187,7 +187,7 @@ describe('FluentAPI auth', () => {
       headers: { get: () => null },
     });
 
-    await FluentAPI.getLanguages('explicit-token');
+    await FluentAPI.getLanguages(undefined, 'explicit-token');
 
     expect(fetchMock).toHaveBeenCalledWith(
       'http://localhost:9999/languages',

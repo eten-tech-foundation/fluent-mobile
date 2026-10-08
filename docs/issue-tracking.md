@@ -72,7 +72,7 @@ See [`.claude/commands/create-pr-branch.md`](../.claude/commands/create-pr-branc
   - **Assignee:** agents must assign the PR to the author (`--assignee @me`)
   - **Development sidebar:** closing keywords are the only API-friendly way to auto-populate GitHub’s “linked issues” widget; we refuse those keywords, so link `#NNN` manually in the PR sidebar when the widget is empty (or ask a human). `Refs #NNN` still cross-references the issue in timelines.
   - For related / stacked work that is not the full ticket, say “Part of #NNN” in prose, or link manually in the PR sidebar
-- After opening a PR, set Project 4 Status to **`In PR Review`** via `node .github/scripts/project-board-cli.cjs set-status --issue NNN --to "In PR Review"`
+- After opening a PR, set Project 4 Status to **`In PR Review`** via `node .github/scripts/project-board-cli.cjs set-status --issue NNN --to "In PR Review" --allow-product-owned` (named ticket only; see [guides/project-board.md](guides/project-board.md))
 - If the PR **Needs QA** ([guides/qa-process.md](guides/qa-process.md)): check **Needs QA? Yes**. After merge, Status → **`In QA`** (automation). QA tests the nightly — merge is **not** blocked on QA. Leave the GitHub issue **open**
 - Engineering-only PRs: check **Needs QA? No**. After merge, Status → **`Done`** and the issue is **closed** (automation)
 - **Template source of truth:** [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md) — also required by [delivery.mdc](../.cursor/rules/delivery.mdc); generate with `/generate-pr-description` or `/create-pr`

@@ -47,9 +47,39 @@ const BIBLE_TEXTS_MATCH_CA = `
   AND bt.chapter_number = ca.chapter_number
 `;
 
+/**
+ * A take counts toward a chapter assignment only when it was recorded in that
+ * assignment's project unit, or is a legacy (pre-#613) row with no unit. The
+ * same bible+book+chapter can be assigned in several units (#613).
+ * Requires `ca` in scope.
+ */
+const RECORDING_IN_ASSIGNMENT_UNIT = `(r.project_unit_id IS NULL OR r.project_unit_id = ca.project_unit_id)`;
+
+/**
+ * Optional `AND (project_unit_id IS NULL OR project_unit_id = ?)` for queries
+ * scoped to one chapter's unit (#613). Empty when the unit is unknown.
+ */
+function recordingUnitScope(
+  projectUnitId: number | null | undefined,
+  alias = 'r',
+): { sql: string; params: number[] } {
+  if (
+    projectUnitId === null ||
+    projectUnitId === undefined ||
+    !Number.isFinite(projectUnitId)
+  ) {
+    return { sql: '', params: [] };
+  }
+  return {
+    sql: `AND (${alias}.project_unit_id IS NULL OR ${alias}.project_unit_id = ?)`,
+    params: [projectUnitId],
+  };
+}
+
 /** Recordings are keyed by bible_text_id; join verses for the chapter assignment.
  * Bound `recorded_by_user_id = ?` scopes aggregates to the active account (#105).
  * `is_selected` marks the take chosen as the active draft (#71).
+ * Takes are further scoped to the assignment's project unit (#613).
  */
 export const RECORDINGS_JOIN_CA = `
   LEFT JOIN bible_texts bt_r
@@ -58,6 +88,7 @@ export const RECORDINGS_JOIN_CA = `
     AND bt_r.chapter_number = ca.chapter_number
   LEFT JOIN recordings r ON r.bible_text_id = bt_r.id
     AND r.is_selected = 1
+    AND ${RECORDING_IN_ASSIGNMENT_UNIT}
     AND r.recorded_by_user_id = ?`;
 
 const RECORDING_AGGREGATES = `
@@ -194,6 +225,7 @@ async function fetchProjectRecordingCounts(
      INNER JOIN user_projects up ON up.project_id = pu.project_id
      WHERE up.user_id = ?
        AND r.is_selected = 1
+       AND ${RECORDING_IN_ASSIGNMENT_UNIT}
        AND r.recorded_by_user_id = ?
      GROUP BY pu.project_id;`,
     [userId, userId],
@@ -313,6 +345,7 @@ export async function getMilestonesWithSummary(
          AND bt_r.chapter_number = ca.chapter_number
        LEFT JOIN recordings r ON r.bible_text_id = bt_r.id
          AND r.is_selected = 1
+         AND ${RECORDING_IN_ASSIGNMENT_UNIT}
          AND r.recorded_by_user_id = ?
        WHERE up.user_id = ?
        GROUP BY pu.id
@@ -467,6 +500,35 @@ export async function getPendingChapterClaims(): Promise<
     }));
   } catch (error) {
     log.error('Error fetching pending chapter claims', { error });
+    throw error;
+  }
+}
+
+/**
+ * Claims the server rejected with 404 (`sync_status = 'claim_rejected'`).
+ * Kept after the claim POST so conflict can be persisted once the assignment
+ * pull has run — a pre-pull `has_conflict` write is overwritten by the pull (#610).
+ */
+export async function getRejectedChapterClaims(): Promise<
+  PendingChapterClaim[]
+> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT id, chapter_assignment_id, user_id, claimed_at
+       FROM chapter_claim_queue
+       WHERE sync_status = 'claim_rejected'
+       ORDER BY claimed_at ASC`,
+    );
+    const rows = result.rows ?? [];
+    return rows.map(row => ({
+      id: Number(row.id),
+      chapterAssignmentId: Number(row.chapter_assignment_id),
+      userId: Number(row.user_id),
+      claimedAt: String(row.claimed_at),
+    }));
+  } catch (error) {
+    log.error('Error fetching rejected chapter claims', { error });
     throw error;
   }
 }
@@ -739,7 +801,29 @@ export async function getPendingUploadCount(): Promise<number> {
     return Number(result.rows?.[0]?.count) || 0;
   } catch (error) {
     log.error('Error fetching pending upload count', { error });
-    return 0;
+    throw error;
+  }
+}
+
+/**
+ * Recordings still only on this device (#622). Includes pericope and failed
+ * takes. The upload worker's verse-only count stays on getPendingUploadCount.
+ */
+export async function getUnsyncedRecordingCount(): Promise<number> {
+  const db = getDatabase();
+  const userId = parseUserId();
+  try {
+    const result = await db.execute(
+      `SELECT COUNT(*) AS count
+       FROM recordings r
+       WHERE r.sync_status NOT IN ('uploaded', 'conflicted')
+         AND ${recordedByUserPredicate('r', userId)};`,
+      userId === null ? [] : [userId],
+    );
+    return Number(result.rows?.[0]?.count) || 0;
+  } catch (error) {
+    log.error('Error fetching unsynced recording count', { error });
+    throw error;
   }
 }
 
@@ -748,13 +832,6 @@ export type UnuploadablePendingSummary = {
   pericopeOnly: number;
   other: number;
   total: number;
-};
-
-const EMPTY_UNUPLOADABLE: UnuploadablePendingSummary = {
-  orphanBibleText: 0,
-  pericopeOnly: 0,
-  other: 0,
-  total: 0,
 };
 
 /**
@@ -868,7 +945,7 @@ export async function getUnuploadablePendingSummary(): Promise<UnuploadablePendi
     };
   } catch (error) {
     log.error('Error fetching unuploadable pending summary', { error });
-    return EMPTY_UNUPLOADABLE;
+    throw error;
   }
 }
 
@@ -1011,9 +1088,11 @@ export async function getRecordedVerseNumbers(
   bibleId: number,
   bookId: number,
   chapterNumber: number,
+  projectUnitId?: number | null,
 ): Promise<Set<number>> {
   const db = getDatabase();
   const userId = parseUserId();
+  const unit = recordingUnitScope(projectUnitId);
   try {
     const result = await db.execute(
       `SELECT bt.verse_number
@@ -1023,10 +1102,15 @@ export async function getRecordedVerseNumbers(
          AND bt.book_id = ?
          AND bt.chapter_number = ?
          AND r.is_selected = 1
-         AND r.recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}`,
-      userId === null
-        ? [bibleId, bookId, chapterNumber]
-        : [bibleId, bookId, chapterNumber, userId],
+         AND r.recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}
+         ${unit.sql}`,
+      [
+        bibleId,
+        bookId,
+        chapterNumber,
+        ...(userId === null ? [] : [userId]),
+        ...unit.params,
+      ],
     );
 
     const rows = (result?.rows as unknown as { verse_number: number }[]) || [];
@@ -1170,6 +1254,7 @@ export async function getPericopesForChapter(
 export async function getSelectedTakeCoverages(
   bibleId: number,
   bookId: number,
+  projectUnitId?: number | null,
 ): Promise<
   {
     startChapter: number;
@@ -1180,6 +1265,7 @@ export async function getSelectedTakeCoverages(
 > {
   const db = getDatabase();
   const userId = parseUserId();
+  const unit = recordingUnitScope(projectUnitId);
   try {
     const result = await db.execute(
       `SELECT r.granularity,
@@ -1194,8 +1280,9 @@ export async function getSelectedTakeCoverages(
        WHERE bt.bible_id = ?
          AND bt.book_id = ?
          AND r.is_selected = 1
-         AND r.recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}`,
-      userId === null ? [bibleId, bookId] : [bibleId, bookId, userId],
+         AND r.recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}
+         ${unit.sql}`,
+      [bibleId, bookId, ...(userId === null ? [] : [userId]), ...unit.params],
     );
     const rows =
       (result?.rows as unknown as {
@@ -1284,9 +1371,11 @@ export async function isChapterFullyRecordedVerseMode(
   bibleId: number,
   bookId: number,
   chapterNumber: number,
+  projectUnitId?: number | null,
 ): Promise<boolean> {
   const db = getDatabase();
   const userId = parseUserId();
+  const unit = recordingUnitScope(projectUnitId);
   try {
     const result = await db.execute(
       `SELECT
@@ -1297,10 +1386,15 @@ export async function isChapterFullyRecordedVerseMode(
          ON r.bible_text_id = bt.id
          AND r.is_selected = 1
          AND r.recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}
+         ${unit.sql}
        WHERE bt.bible_id = ? AND bt.book_id = ? AND bt.chapter_number = ?`,
-      userId === null
-        ? [bibleId, bookId, chapterNumber]
-        : [userId, bibleId, bookId, chapterNumber],
+      [
+        ...(userId === null ? [] : [userId]),
+        ...unit.params,
+        bibleId,
+        bookId,
+        chapterNumber,
+      ],
     );
     const row = result.rows?.[0] as
       | { total: number; recorded: number }
@@ -1328,6 +1422,7 @@ export async function isChapterFullyRecordedPericopeMode(
   bookId: number,
   chapterNumber: number,
   pericopeSetId: number,
+  projectUnitId?: number | null,
 ): Promise<boolean> {
   const chapterVerses = await getBibleTexts(bibleId, bookId, chapterNumber);
   if (chapterVerses.length === 0) return false;
@@ -1351,7 +1446,11 @@ export async function isChapterFullyRecordedPericopeMode(
     .map(v => v.verseNumber)
     .filter(vn => !coveredVerseNumbers.has(vn));
 
-  const coverages = await getSelectedTakeCoverages(bibleId, bookId);
+  const coverages = await getSelectedTakeCoverages(
+    bibleId,
+    bookId,
+    projectUnitId,
+  );
   const pericopesComplete = pericopes.every(
     pericope => unitRecordedStatus(pericope.verses, coverages) === 'recorded',
   );
@@ -1363,6 +1462,7 @@ export async function isChapterFullyRecordedPericopeMode(
     bibleId,
     bookId,
     chapterNumber,
+    projectUnitId,
   );
   return ungroupedVerseNumbers.every(vn => recordedVerseNumbers.has(vn));
 }

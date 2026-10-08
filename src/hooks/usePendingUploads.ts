@@ -22,12 +22,7 @@ export interface UploadProgress {
 
 /** One-shot pending upload count for UI (logout gates, sync completion). */
 export async function loadPendingUploadCount(): Promise<number> {
-  try {
-    return await getPendingUploadCount();
-  } catch (error) {
-    log.error('Failed to load pending upload count', { error });
-    return 0;
-  }
+  return await getPendingUploadCount();
 }
 
 async function loadFailedUploadCount(): Promise<number> {
@@ -40,17 +35,7 @@ async function loadFailedUploadCount(): Promise<number> {
 }
 
 async function loadUnuploadablePendingSummary() {
-  try {
-    return await getUnuploadablePendingSummary();
-  } catch (error) {
-    log.error('Failed to load unuploadable pending summary', { error });
-    return {
-      orphanBibleText: 0,
-      pericopeOnly: 0,
-      other: 0,
-      total: 0,
-    };
-  }
+  return await getUnuploadablePendingSummary();
 }
 
 async function loadFailedUploadErrorText(): Promise<string | null> {
@@ -89,6 +74,7 @@ export function usePendingUploads(refreshKey = 0) {
   const [pendingChapterCount, setPendingChapterCount] = useState(0);
   const [failedCount, setFailedCount] = useState(0);
   const [unuploadableCount, setUnuploadableCount] = useState(0);
+  const [countsUnknown, setCountsUnknown] = useState(false);
   const [failedErrorText, setFailedErrorText] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(
@@ -129,29 +115,43 @@ export function usePendingUploads(refreshKey = 0) {
     let cancelled = false;
     const shouldClearUploading = clearUploadingAfterRefreshRef.current;
 
-    Promise.all([
+    Promise.allSettled([
       loadPendingUploadCount(),
       loadFailedUploadCount(),
       loadFailedUploadErrorText(),
       getPendingUploadChapters(),
       loadUnuploadablePendingSummary(),
-    ])
-      .then(([pending, failed, failedError, chapters, unuploadable]) => {
-        if (!cancelled) {
-          setPendingCount(pending);
-          setPendingChapterCount(chapters.length);
-          setFailedCount(failed);
-          setFailedErrorText(failed > 0 ? failedError : null);
-          setUnuploadableCount(unuploadable.total);
-          if (shouldClearUploading) {
-            clearUploadingAfterRefreshRef.current = false;
-            setIsUploading(false);
-          }
-        }
-      })
-      .catch(() => {
-        // loaders already log and return 0
-      });
+    ]).then(([pending, failed, failedError, chapters, unuploadable]) => {
+      if (cancelled) {
+        return;
+      }
+
+      const pendingUnknown = pending.status === 'rejected';
+      const unuploadableUnknown = unuploadable.status === 'rejected';
+      setCountsUnknown(pendingUnknown || unuploadableUnknown);
+
+      if (pending.status === 'fulfilled') {
+        setPendingCount(pending.value);
+      }
+      if (chapters.status === 'fulfilled') {
+        setPendingChapterCount(chapters.value.length);
+      }
+      if (failed.status === 'fulfilled') {
+        setFailedCount(failed.value);
+        setFailedErrorText(
+          failed.value > 0 && failedError.status === 'fulfilled'
+            ? failedError.value
+            : null,
+        );
+      }
+      if (unuploadable.status === 'fulfilled') {
+        setUnuploadableCount(unuploadable.value.total);
+      }
+      if (shouldClearUploading) {
+        clearUploadingAfterRefreshRef.current = false;
+        setIsUploading(false);
+      }
+    });
 
     return () => {
       cancelled = true;
@@ -164,6 +164,7 @@ export function usePendingUploads(refreshKey = 0) {
     failedCount,
     unuploadableCount,
     failedErrorText,
+    countsUnknown,
     hasPendingUploads: pendingCount > 0,
     hasFailedUploads: failedCount > 0,
     hasUnuploadablePending: unuploadableCount > 0,

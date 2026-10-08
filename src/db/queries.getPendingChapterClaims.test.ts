@@ -21,7 +21,7 @@ jest.mock('../utils/parseUserId', () => ({
   parseUserId: jest.fn(),
 }));
 
-import { getPendingChapterClaims } from './queries';
+import { getPendingChapterClaims, getRejectedChapterClaims } from './queries';
 
 describe('getPendingChapterClaims', () => {
   beforeEach(() => {
@@ -68,5 +68,35 @@ describe('getPendingChapterClaims', () => {
   it('rethrows when the query throws', async () => {
     mockExecute.mockRejectedValue(new Error('db unavailable'));
     await expect(getPendingChapterClaims()).rejects.toThrow('db unavailable');
+  });
+
+  it('getRejectedChapterClaims reads only claim_rejected rows (#610)', async () => {
+    mockExecute.mockResolvedValue({
+      rows: [
+        {
+          id: 3,
+          chapter_assignment_id: 12,
+          user_id: 9,
+          claimed_at: '2026-08-28T00:00:02.000Z',
+        },
+      ],
+    });
+
+    await expect(getRejectedChapterClaims()).resolves.toEqual([
+      {
+        id: 3,
+        chapterAssignmentId: 12,
+        userId: 9,
+        claimedAt: '2026-08-28T00:00:02.000Z',
+      },
+    ]);
+    expect(mockExecute).toHaveBeenCalledWith(
+      expect.stringContaining("sync_status = 'claim_rejected'"),
+    );
+  });
+
+  it('getRejectedChapterClaims rethrows when the query throws', async () => {
+    mockExecute.mockRejectedValue(new Error('db unavailable'));
+    await expect(getRejectedChapterClaims()).rejects.toThrow('db unavailable');
   });
 });

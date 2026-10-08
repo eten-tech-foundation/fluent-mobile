@@ -28,7 +28,9 @@ import {
 } from '../../navigation/recordCaptureGate';
 import { resetNavigationAfterAccountSwitch } from '../../navigation/resetNavigationAfterAccountSwitch';
 import { useRecordCaptureGate } from '../../navigation/useRecordCaptureGate';
+import { ACCOUNT_SIGN_OUT_LABEL } from '../../constants/messages';
 import { getActiveUserId } from '../../services/storage';
+import { confirmUnsyncedSignOut } from '../../services/confirmUnsyncedSignOut';
 import {
   signOutCurrentDeviceAccount,
   switchToDeviceAccount,
@@ -175,6 +177,10 @@ export function UserSettingsMenu({
 
   const handleSignOut = async () => {
     if (blockIfRecording()) {
+      return;
+    }
+    const confirmed = await confirmUnsyncedSignOut();
+    if (!confirmed) {
       return;
     }
     closeDrawer();
@@ -378,7 +384,7 @@ export function UserSettingsMenu({
         >
           <View style={[appStyles.menuDivider, styles.panelDivider]} />
           <DrawerItem
-            label="Sign Out"
+            label={ACCOUNT_SIGN_OUT_LABEL}
             inactiveTintColor={theme.colors.destructive}
             activeBackgroundColor="transparent"
             inactiveBackgroundColor="transparent"
@@ -394,7 +400,7 @@ export function UserSettingsMenu({
                 color={color}
               />
             )}
-            accessibilityLabel="Sign Out"
+            accessibilityLabel={ACCOUNT_SIGN_OUT_LABEL}
             testID="settings-menu-sign-out"
           />
         </View>

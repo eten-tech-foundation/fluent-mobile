@@ -55,6 +55,7 @@ export default function SyncScreen() {
     pendingChapterCount,
     unuploadableCount,
     hasUnuploadablePending,
+    countsUnknown,
     isUploading,
     uploadProgress,
   } = usePendingUploads(refreshKey);
@@ -73,6 +74,7 @@ export default function SyncScreen() {
     hasPendingUploads,
     hasFailedUploads,
     hasUnuploadablePending,
+    countsUnknown,
     uploadProgress,
   });
 
@@ -169,7 +171,7 @@ export default function SyncScreen() {
           <SyncStatusIndicator
             status={status}
             isOnline={effectivelyOnline}
-            hasPendingUploads={hasPendingUploads}
+            hasPendingUploads={hasPendingUploads || countsUnknown}
             hasFailedUploads={hasFailedUploads}
             isUploading={isUploading}
           />
@@ -183,6 +185,7 @@ export default function SyncScreen() {
             isUploading,
             hasUnuploadablePending,
             pendingChapterCount,
+            countsUnknown,
           )}
           {pendingChapterCount === 0 &&
           (hasUnuploadablePending || hasPendingUploads) ? (
@@ -283,6 +286,7 @@ function renderStatusLine(
   isUploading: boolean,
   hasUnuploadablePending: boolean,
   pendingChapterCount: number,
+  countsUnknown: boolean,
 ) {
   if (status === 'syncing' || isUploading) {
     return (
@@ -301,6 +305,17 @@ function renderStatusLine(
         <Text style={styles.statusTitle}>Paused</Text>
         <Text style={styles.statusSubtitle}>
           Upload will stay paused until you resume.
+        </Text>
+      </>
+    );
+  }
+
+  if (countsUnknown) {
+    return (
+      <>
+        <Text style={styles.statusTitle}>Couldn't check pending uploads</Text>
+        <Text style={styles.statusSubtitle}>
+          Pending work on this device could not be counted. Try again later.
         </Text>
       </>
     );
