@@ -177,6 +177,8 @@ const idleAudio: VerseAudioApi = {
   stop: jest.fn(),
   playTake: jest.fn(),
   playStitched: jest.fn(),
+  stitchPositionMs: 0,
+  seekStitched: jest.fn(),
   seek: jest.fn(),
   pausePlayback: jest.fn(),
   selectTake: jest.fn(),
@@ -1569,6 +1571,61 @@ describe('RecordTab', () => {
       expect(badges).toHaveLength(2);
       expect(badges[0]).toHaveTextContent('Take 1 - Verse - v. 3');
       expect(screen.getAllByTestId(/^record-delete-button-/)).toHaveLength(2);
+    });
+    it('scrubs the stitched row as one timeline using the total duration (#544)', async () => {
+      mockPericopeVerses3to5();
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [
+          makeTake({ id: 'v3', startVerse: 3, endVerse: 3, durationMs: 13000 }),
+          makeTake({ id: 'v4', startVerse: 4, endVerse: 4, durationMs: 13000 }),
+        ],
+      });
+
+      renderTab();
+
+      await waitFor(() => {
+        expect(screen.getByTestId(/^record-take-badge-/)).toHaveTextContent(
+          'Take 1 - Stitched - vv. 3-4',
+        );
+      });
+
+      const scrubber = screen.getByLabelText('Draft waveform scrubber');
+      fireEvent(scrubber, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
+      });
+      fireEvent(scrubber, 'responderGrant', {
+        nativeEvent: { locationX: 50 },
+      });
+
+      // Middle of the whole 26s row, not of a single segment.
+      expect(idleAudio.seekStitched).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: 'stitched' }),
+        13000,
+      );
+      expect(idleAudio.seek).not.toHaveBeenCalled();
+    });
+
+    it('shows continuous stitched progress against the row total duration (#544)', async () => {
+      mockPericopeVerses3to5();
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'playing',
+        takes: [
+          makeTake({ id: 'v3', startVerse: 3, endVerse: 3, durationMs: 13000 }),
+          makeTake({ id: 'v4', startVerse: 4, endVerse: 4, durationMs: 13000 }),
+        ],
+        playingTakeId: 'stitched:14:3-14:4',
+        // 13s into the first verse's end + 2s into the second verse.
+        stitchPositionMs: 15000,
+      });
+
+      renderTab();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Take time 0:15 / 0:26')).toBeTruthy();
+      });
     });
   });
   describe('Pericope navigation and source text (#540)', () => {

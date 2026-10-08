@@ -1168,10 +1168,11 @@ export function RecordTab({
                         const isThisPlaying =
                           verseAudio.playingTakeId === row.id &&
                           verseAudio.state === 'playing';
+                        // playingTakeId stays set while paused or scrubbed and
+                        // clears when the row ends (#544).
                         const showStitchedProgress =
-                          verseAudio.playingTakeId === row.id &&
-                          (verseAudio.state === 'playing' ||
-                            verseAudio.playbackStatus === 'paused');
+                          verseAudio.playingTakeId === row.id;
+                        const stitchedDurationMs = row.durationMs;
                         return (
                           <View key={row.id} style={styles.takeItemSpacing}>
                             <DraftTakeRow
@@ -1188,23 +1189,30 @@ export function RecordTab({
                               isSelected={false}
                               isPlaying={isThisPlaying}
                               leadingIndicator="none"
-                              // Progress is segment-local while playing:
-                              // continuous scrub across segments is out of
-                              // scope for #411.
+                              // One timeline across all segments (#544): position
+                              // is the current segment's start offset plus the
+                              // engine position; duration is the row total.
                               positionMs={
-                                showStitchedProgress ? verseAudio.positionMs : 0
+                                showStitchedProgress
+                                  ? Math.min(
+                                      verseAudio.stitchPositionMs,
+                                      stitchedDurationMs ?? Infinity,
+                                    )
+                                  : 0
                               }
-                              durationMs={
-                                showStitchedProgress &&
-                                verseAudio.durationMs > 0
-                                  ? verseAudio.durationMs
-                                  : row.durationMs ?? 0
-                              }
+                              durationMs={stitchedDurationMs ?? 0}
                               onPlayPause={() => {
                                 void (isThisPlaying
                                   ? verseAudio.pausePlayback()
                                   : handlePlayStitched(row));
                               }}
+                              onSeek={
+                                stitchedDurationMs !== null
+                                  ? ms => {
+                                      void verseAudio.seekStitched(row, ms);
+                                    }
+                                  : undefined
+                              }
                             />
                           </View>
                         );

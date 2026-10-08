@@ -258,11 +258,44 @@ export function useVerseAudio({
   const stitchRowIdRef = useRef<string | null>(null);
   /** Bumped when the stitch queue is cleared so in-flight segment loads abort. */
   const stitchPlaybackGenerationRef = useRef(0);
+  /** Per-segment durations of the active stitched row, in queue order (#544). */
+  const stitchDurationsRef = useRef<number[]>([]);
+  /** Start offset (ms) of the current segment within the whole stitched row (#544). */
+  const [stitchBaseMs, setStitchBaseMs] = useState(0);
 
   const clearStitchQueue = useCallback(() => {
     stitchPlaybackGenerationRef.current += 1;
     stitchQueueRef.current = null;
     stitchRowIdRef.current = null;
+    stitchDurationsRef.current = [];
+    setStitchBaseMs(0);
+  }, []);
+
+  /** Recompute the current segment's start offset for queue position `index`. */
+  const syncStitchBase = useCallback((index: number) => {
+    setStitchBaseMs(
+      stitchDurationsRef.current.slice(0, index).reduce((a, d) => a + d, 0),
+    );
+  }, []);
+
+  /**
+   * Counts in-flight stitched-segment loads. While > 0 the row's position is
+   * held at the segment's start, so the bar doesn't show the previous segment's
+   * stale end position (or its reset to 0) during the file swap (#544).
+   */
+  const stitchLoadsRef = useRef(0);
+  const [stitchSegmentLoading, setStitchSegmentLoading] = useState(false);
+
+  const beginStitchLoad = useCallback(() => {
+    stitchLoadsRef.current += 1;
+    setStitchSegmentLoading(true);
+  }, []);
+
+  const endStitchLoad = useCallback(() => {
+    stitchLoadsRef.current = Math.max(0, stitchLoadsRef.current - 1);
+    if (stitchLoadsRef.current === 0) {
+      setStitchSegmentLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -598,6 +631,7 @@ export function useVerseAudio({
       const generation = stitchPlaybackGenerationRef.current;
       const isStale = () => generation !== stitchPlaybackGenerationRef.current;
       playbackLoadInFlightRef.current = true;
+      beginStitchLoad();
       try {
         if (isStale()) {
           return;
@@ -608,7 +642,8 @@ export function useVerseAudio({
           return;
         }
         setPlayingTakeId(rowId);
-        // Stitched rows are not seekable — no single file backs the row.
+        // Stitched rows are not seekable via a single file — scrubbing goes
+        // through seekStitched.
         setLoadedTakeId(null);
         dispatch({ type: 'PLAY' });
       } catch (error) {
@@ -623,20 +658,22 @@ export function useVerseAudio({
         dispatch({ type: 'ERROR', message });
       } finally {
         playbackLoadInFlightRef.current = false;
+        endStitchLoad();
         setPlaybackLoadGate(n => n + 1);
       }
     },
-    [clearStitchQueue, playUri],
+    [beginStitchLoad, clearStitchQueue, endStitchLoad, playUri],
   );
 
   /** Play a synthetic stitched row's verse takes back to back (#411). */
   const playStitched = useCallback(
     async (row: StitchedTakeRow) => {
-      // Resume mid-row after pause — keep queue position and segment file.
+      // Resume mid-row after a pause or a scrub — keep queue position and
+      // segment. play(uri) skips `replace` when that file is already loaded,
+      // so playback continues from the current position (#544).
       if (
         stitchRowIdRef.current === row.id &&
-        stitchQueueRef.current !== null &&
-        playback.status === 'paused'
+        stitchQueueRef.current !== null
       ) {
         const resumeUri = currentStitchUri(stitchQueueRef.current);
         if (resumeUri !== null) {
@@ -656,9 +693,74 @@ export function useVerseAudio({
       }
       stitchQueueRef.current = queue;
       stitchRowIdRef.current = row.id;
+      stitchDurationsRef.current = row.segments.map(
+        segment => segment.durationMs ?? 0,
+      );
+      syncStitchBase(0);
       await playStitchedSegment(uri, row.id);
     },
-    [playStitchedSegment, playback.status],
+    [playStitchedSegment, syncStitchBase],
+  );
+
+  /**
+   * Scrub a stitched row as one timeline (#544). Maps `ms` (position within the
+   * whole row) to a segment + offset using cumulative segment durations, then
+   * loads that segment and seeks inside it. Playing stays playing and the
+   * remaining queue follows; paused/idle stays put.
+   */
+  const seekStitched = useCallback(
+    async (row: StitchedTakeRow, ms: number) => {
+      // Unknown segment durations: the timeline can't be mapped.
+      if (row.durationMs === null) return;
+      const durations = row.segments.map(segment => segment.durationMs ?? 0);
+      const uris = row.segments.map(segment => segment.localFilePath);
+      const target = Math.min(Math.max(0, ms), row.durationMs);
+
+      let index = 0;
+      let base = 0;
+      while (
+        index < durations.length - 1 &&
+        target >= base + durations[index]
+      ) {
+        base += durations[index];
+        index += 1;
+      }
+      const offset = Math.min(target - base, durations[index]);
+      const wasPlaying = state === 'playing';
+
+      // Abort any in-flight segment load, and mark the load gap so the
+      // natural-end effect doesn't read it as end-of-playback (#298).
+      stitchPlaybackGenerationRef.current += 1;
+      const generation = stitchPlaybackGenerationRef.current;
+      const isStale = () => generation !== stitchPlaybackGenerationRef.current;
+      playbackLoadInFlightRef.current = true;
+      beginStitchLoad();
+      try {
+        setErrorMessage(null);
+        stitchDurationsRef.current = durations;
+        stitchRowIdRef.current = row.id;
+        stitchQueueRef.current = { uris, index };
+        setStitchBaseMs(base);
+        await playback.load(uris[index]); // no-op when already loaded
+        if (isStale()) return;
+        await playback.seek(offset);
+        if (isStale()) return;
+        setPlayingTakeId(row.id);
+        if (wasPlaying) {
+          await playStitchedSegment(uris[index], row.id);
+        }
+      } catch (error) {
+        if (isStale()) return;
+        const message = error instanceof Error ? error.message : 'seek failed';
+        setErrorMessage(message);
+        dispatch({ type: 'ERROR', message });
+      } finally {
+        playbackLoadInFlightRef.current = false;
+        endStitchLoad();
+        setPlaybackLoadGate(n => n + 1);
+      }
+    },
+    [beginStitchLoad, endStitchLoad, playback, playStitchedSegment, state],
   );
 
   /**
@@ -749,6 +851,7 @@ export function useVerseAudio({
     const rowId = stitchRowIdRef.current;
     if (nextQueue && nextUri !== null && rowId !== null) {
       stitchQueueRef.current = nextQueue;
+      syncStitchBase(nextQueue.index);
       void playStitchedSegment(nextUri, rowId);
       return;
     }
@@ -761,6 +864,7 @@ export function useVerseAudio({
     playbackLoadGate,
     clearStitchQueue,
     playStitchedSegment,
+    syncStitchBase,
   ]);
 
   const deleteTake = useCallback(
@@ -875,6 +979,9 @@ export function useVerseAudio({
     stop,
     playTake,
     playStitched,
+    stitchPositionMs:
+      stitchBaseMs + (stitchSegmentLoading ? 0 : playback.positionMs),
+    seekStitched,
     seek,
     pausePlayback,
     selectTake,
