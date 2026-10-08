@@ -835,6 +835,64 @@ export type UnuploadablePendingSummary = {
 };
 
 /**
+ * True when this chapter has selected pending takes outside the uploadable
+ * verse bucket (e.g. pericope-only until #584). Used to block stage advance
+ * (#585) so Peer Check is not entered without server audio.
+ */
+export async function chapterHasUnuploadableSelectedTakes(
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+): Promise<boolean> {
+  const db = getDatabase();
+  const userId = parseUserId();
+  try {
+    // The chapter overlaps a take when it is the anchor chapter or falls inside
+    // the stored range (cross-chapter pericopes anchored in an earlier chapter).
+    const params: number[] = [
+      bibleId,
+      bookId,
+      ...(userId !== null ? [userId] : []),
+      chapterNumber,
+      chapterNumber,
+      chapterNumber,
+    ];
+    const result = await db.execute(
+      `SELECT COUNT(*) AS count
+       FROM recordings r
+       JOIN bible_texts bt ON bt.id = r.bible_text_id
+       WHERE r.is_selected = 1
+         AND r.sync_status NOT IN ('uploaded', 'conflicted')
+         AND bt.bible_id = ?
+         AND bt.book_id = ?
+         AND ${recordedByUserPredicate('r', userId)}
+         AND NOT (
+           r.bible_text_id > 0
+           AND IFNULL(r.granularity, 'verse') = 'verse'
+         )
+         AND (
+           bt.chapter_number = ?
+           OR (
+             r.start_chapter > 0
+             AND r.start_chapter <= ?
+             AND r.end_chapter >= ?
+           )
+         )`,
+      params,
+    );
+    return (Number(result.rows?.[0]?.count) || 0) > 0;
+  } catch (error) {
+    log.error('Error checking chapter unuploadable takes', {
+      error,
+      bookId,
+      chapterNumber,
+    });
+    // Fail closed: do not allow advance when we cannot verify uploadability.
+    return true;
+  }
+}
+
+/**
  * Pending selected takes that the worker will never process (silent no-op
  * if we counted them as uploadable). Missing assignment is not a bucket —
  * the worker attempts those rows and fails at runtime (#548).

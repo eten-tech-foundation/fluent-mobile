@@ -86,6 +86,10 @@ export const RECORD_TAKEN_CHAPTER_WARNING =
 export const RECORD_AUDIO_CONFLICT_WARNING =
   'Unresolved audio take conflict on this chapter/pericope.';
 
+/** Stage advance blocked while selected takes cannot upload (#585). */
+export const RECORD_STAGE_ADVANCE_UNUPLOADABLE_WARNING =
+  "Can't advance yet — some takes on this chapter can't upload. Open Sync for details.";
+
 /**
  * Settings is Pericope but the project has no usable local pericope data
  * (#588) — Bible/Record fall back to verse units with this explanation.
