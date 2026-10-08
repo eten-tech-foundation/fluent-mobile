@@ -67,7 +67,7 @@ JSON matching `verseAudioResponseSchema`: `id`, `projectUnitId`, `bibleTextId`, 
 | `POST /recordings/sync` | `PUT /verse-audio/{projectUnitId}/{bibleTextId}` (+ range path for pericopes) |
 | Form fields `bible_text_id`, `take_number`, `relative_path`, … | Path IDs + multipart `file` / optional `durationSeconds` / `baseVersionToken` |
 | Response `{ blob_key }` | Full metadata + `downloadUrl`; local `blob_key` = deterministic `unit-…/text-…` |
-| R2 env vars on the **client** | R2 stays **server-only** (`R2_*` in fluent-api). Historical Azure keys are obsolete for this path. |
+| R2 env vars **server-side only** (never in mobile / `EXPO_PUBLIC_*`) | Same on shipped `main` (`R2_*` in fluent-api). Historical Azure keys obsolete for this path. |
 
 ## Out of scope here
 
