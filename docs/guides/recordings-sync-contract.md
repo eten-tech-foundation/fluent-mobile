@@ -14,18 +14,20 @@ Frozen client contract for uploading translator verse audio. Refs GitHub [#102](
 
 **Server owns storage secrets.** Mobile never ships `AZURE_STORAGE_CONNECTION_STRING`, `AUDIO_CONTAINER`, or any `R2_*` keys. Do not add them to this app’s `.env` / `EXPO_PUBLIC_*`.
 
-## Upload endpoint (#224)
+## Upload endpoints (#224 verse, #377 / mobile #584 range)
 
-| | |
-| --- | --- |
-| Method / path | `PUT /verse-audio/{projectUnitId}/{bibleTextId}` |
-| Content-Type | `multipart/form-data` (omit manual `Content-Type`; runtime sets boundary) |
-| Auth | Bearer session + server `CONTENT_UPDATE` / chapter-assignment edit gate |
-| Body | `file` (required), `durationSeconds` (optional positive number as text) |
-| IDs | Path only — no user id in the body. **`bibleTextId` must be the Fluent API `bible_texts.id`** (same as bulk-texts `verses[].id`). Local SQLite `bible_texts.id` is that server id (#469), not an autoincrement surrogate. |
-| Client | `FluentAPI.uploadVerseAudio()` → `src/services/api.ts` |
-| Types | `src/types/api/verseAudio.ts` |
-| Outcome helpers | `src/services/verseAudioContract.ts` |
+| | Verse | Pericope / range |
+| --- | --- | --- |
+| Method / path | `PUT /verse-audio/{projectUnitId}/{bibleTextId}` | `PUT /verse-audio/{projectUnitId}/range` ([fluent-api#377](https://github.com/eten-tech-foundation/fluent-api/issues/377)) |
+| Content-Type | `multipart/form-data` (omit manual `Content-Type`; runtime sets boundary) | same |
+| Auth | Bearer session + server `CONTENT_UPDATE` / chapter-assignment edit gate | same |
+| Body | `file` (required), `durationSeconds` / `baseVersionToken` (optional) | same + `granularity=pericope`, `bibleTextId`, `startChapter`, `startVerse`, `endChapter`, `endVerse` |
+| IDs | Path carries `projectUnitId` + `bibleTextId`. **`bibleTextId` must be the Fluent API `bible_texts.id`** (same as bulk-texts `verses[].id`). Local SQLite `bible_texts.id` is that server id (#469), not an autoincrement surrogate. | Path carries `projectUnitId` only; `bibleTextId` + range in multipart |
+| Client | `FluentAPI.uploadVerseAudio()` → `src/services/api.ts` (`verseAudioUploadPath` / `verseAudioRangeUploadPath`) | same |
+| Types | `src/types/api/verseAudio.ts` | same |
+| Outcome helpers | `src/services/verseAudioContract.ts` | same |
+
+**Dependency:** pericope uploads require fluent-api#377 deployed. Until then, Sync Now still runs metadata sync; range PUTs will fail terminal until the API lands.
 
 ### Success (`200`)
 

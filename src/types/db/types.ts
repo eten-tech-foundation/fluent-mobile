@@ -363,6 +363,12 @@ export interface PendingRecording {
   projectUnitId: number | null;
   /** Capture-time owner; upload prefers this account's token (#105). */
   recordedByUserId: number | null;
+  /** `verse` (default) or `pericope` — drives range upload (#584). */
+  granularity: 'verse' | 'pericope';
+  startChapter: number | null;
+  startVerse: number | null;
+  endChapter: number | null;
+  endVerse: number | null;
 }
 
 export const CHAPTER_ASSIGNMENT_STATUS = {

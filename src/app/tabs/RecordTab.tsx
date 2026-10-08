@@ -32,7 +32,10 @@ import { useVerseAudio } from '../../hooks/useVerseAudio';
 import type { VerseAudioState } from '../../hooks/verseAudioReducer';
 import { resolveRecordingUnit } from '../../hooks/resolveRecordingUnit';
 import { recordingUnitCapturesEqual } from '../../utils/recordingRange';
-import { formatTakeSubtitle } from '../../utils/takeSubtitle';
+import {
+  formatTakeSubtitle,
+  formatTakeVerseSpan,
+} from '../../utils/takeSubtitle';
 import {
   buildCrossGranularityRows,
   type StitchedTakeRow,
@@ -720,13 +723,36 @@ export function RecordTab({
   }
 
   /**
-   * Non-selected take: delete immediately, no prompt.
-   * Selected take: confirm first — deleting it hands off is_selected to the
-   * next-highest take_number (recordingsRepository#deleteRecordingTake), or
-   * returns the unit to Idle if it was the last one.
+   * Pericope take in Verse mode (#623): always confirm — delete removes the
+   * whole multi-verse recording from every verse it covers.
+   * Selected take (otherwise): confirm first — deleting it hands off
+   * is_selected to the next-highest take_number, or returns the unit to Idle.
+   * Non-selected verse take: delete immediately, no prompt.
    */
   function handleDeleteTake(take: Recording) {
     const isSelected = take.id === verseAudio.selectedTake?.id;
+    const isPericopeInVerseMode =
+      draftingUnit === 'verse' && take.granularity === 'pericope';
+
+    if (isPericopeInVerseMode) {
+      const span = formatTakeVerseSpan(take);
+      Alert.alert(
+        'Delete pericope take?',
+        `This recording covers ${span}. Deleting it will remove the whole recording from every verse in that range.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => {
+              void verseAudio.deleteTake(take.id);
+            },
+          },
+        ],
+      );
+      return;
+    }
+
     if (!isSelected) {
       void verseAudio.deleteTake(take.id);
       return;

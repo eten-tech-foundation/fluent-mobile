@@ -22,7 +22,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../theme';
 import { appStyles } from '../../app/appStyles';
 import { hrefs } from '../../navigation/hrefs';
+import {
+  RECORDING_IN_PROGRESS_MESSAGE,
+  RECORDING_IN_PROGRESS_TITLE,
+} from '../../navigation/recordCaptureGate';
 import { resetNavigationAfterAccountSwitch } from '../../navigation/resetNavigationAfterAccountSwitch';
+import { useRecordCaptureGate } from '../../navigation/useRecordCaptureGate';
 import { ACCOUNT_SIGN_OUT_LABEL } from '../../constants/messages';
 import { getActiveUserId } from '../../services/storage';
 import { confirmUnsyncedSignOut } from '../../services/confirmUnsyncedSignOut';
@@ -92,11 +97,32 @@ export function UserSettingsMenu({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const drawerStatus = useDrawerStatus();
+  const recordCaptureActive = useRecordCaptureGate();
   const { accounts, hasAccountLimit, loading, reload } =
     useDeviceAccounts(true);
   const [switchingUserId, setSwitchingUserId] = useState<string | null>(null);
   const focusedRouteName =
     drawerProps.state.routes[drawerProps.state.index]?.name;
+
+  const closeDrawer = () => {
+    drawerProps.navigation.closeDrawer();
+  };
+
+  const alertRecordingInProgress = () => {
+    Alert.alert(RECORDING_IN_PROGRESS_TITLE, RECORDING_IN_PROGRESS_MESSAGE, [
+      { text: 'OK' },
+    ]);
+  };
+
+  /** Block drawer exits that would unmount drafting mid-take (#568). */
+  const blockIfRecording = (): boolean => {
+    if (!recordCaptureActive) {
+      return false;
+    }
+    closeDrawer();
+    alertRecordingInProgress();
+    return true;
+  };
 
   useEffect(() => {
     if (drawerStatus === 'open') {
@@ -104,21 +130,26 @@ export function UserSettingsMenu({
     }
   }, [drawerStatus, reload]);
 
-  const closeDrawer = () => {
-    drawerProps.navigation.closeDrawer();
-  };
-
   const navigateDrawerRoute = (routeName: string) => {
+    if (blockIfRecording()) {
+      return;
+    }
     drawerProps.navigation.navigate(routeName as never);
   };
 
   const handleAddUser = () => {
     if (hasAccountLimit) return;
+    if (blockIfRecording()) {
+      return;
+    }
     closeDrawer();
     router.push(hrefs.addUser);
   };
 
   const handleSwitchUser = async (userId: string) => {
+    if (blockIfRecording()) {
+      return;
+    }
     if (userId === getActiveUserId() || switchingUserId) {
       closeDrawer();
       return;
@@ -145,6 +176,9 @@ export function UserSettingsMenu({
   };
 
   const handleSignOut = async () => {
+    if (blockIfRecording()) {
+      return;
+    }
     const confirmed = await confirmUnsyncedSignOut();
     if (!confirmed) {
       return;

@@ -989,8 +989,8 @@ export async function userHasLocalChapterAssignments(
  * TODO(#71 follow-up): only the selected take per verse is upload-eligible.
  * All audio recoridngs takes needs to be uploaded.
  *
- * Pericope takes (#410) stay local until fluent-api supports verse-range
- * translator recordings — do not map them onto PUT /verse-audio/{bibleTextId}.
+ * Pericope takes (#584) upload via PUT /verse-audio/{projectUnitId}/range
+ * (fluent-api#377); verse takes keep the single-bibleTextId path.
  */
 export async function getPendingRecordings(chapter?: {
   bookId: number;
@@ -1011,6 +1011,11 @@ export async function getPendingRecordings(chapter?: {
        r.local_file_path AS local_file_path,
        r.duration_ms AS duration_ms,
        r.recorded_by_user_id AS recorded_by_user_id,
+       IFNULL(r.granularity, 'verse') AS granularity,
+       r.start_chapter AS start_chapter,
+       r.start_verse AS start_verse,
+       r.end_chapter AS end_chapter,
+       r.end_verse AS end_verse,
        bt.book_id AS book_id,
        bt.chapter_number AS chapter_number,
        (
@@ -1025,7 +1030,7 @@ export async function getPendingRecordings(chapter?: {
      FROM recordings r
      JOIN bible_texts bt ON bt.id = r.bible_text_id
      WHERE r.is_selected = 1
-       AND IFNULL(r.granularity, 'verse') = 'verse'
+       AND IFNULL(r.granularity, 'verse') IN ('verse', 'pericope')
        AND r.sync_status NOT IN ('uploaded', 'conflicted')
        AND r.bible_text_id > 0
        ${chapterFilter}
@@ -1034,6 +1039,13 @@ export async function getPendingRecordings(chapter?: {
   );
 
   const rows = result.rows ?? [];
+  const toNullableInt = (value: unknown): number | null => {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  };
   return rows.map(row => {
     const projectUnitRaw = row.project_unit_id;
     const projectUnitId =
@@ -1046,6 +1058,11 @@ export async function getPendingRecordings(chapter?: {
       recordedByRaw === null || recordedByRaw === undefined
         ? null
         : Number(recordedByRaw);
+    const granularityRaw = String(row.granularity ?? 'verse');
+    const granularity =
+      granularityRaw === 'pericope'
+        ? ('pericope' as const)
+        : ('verse' as const);
     return {
       id: String(row.id),
       bibleTextId: Number(row.bible_text_id),
@@ -1064,6 +1081,11 @@ export async function getPendingRecordings(chapter?: {
         recordedByUserId !== null && Number.isFinite(recordedByUserId)
           ? recordedByUserId
           : null,
+      granularity,
+      startChapter: toNullableInt(row.start_chapter),
+      startVerse: toNullableInt(row.start_verse),
+      endChapter: toNullableInt(row.end_chapter),
+      endVerse: toNullableInt(row.end_verse),
     };
   });
 }

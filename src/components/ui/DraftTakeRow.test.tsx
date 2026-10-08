@@ -56,3 +56,38 @@ describe('DraftTakeRow trailing slot (#571)', () => {
     expect(getByTestId(SPACER_ID, hidden)).toBeTruthy();
   });
 });
+
+describe('DraftTakeRow long take labels (#589)', () => {
+  const longPericopeLabel = 'Take 1 - Pericope - vv. 8:31-9:1';
+
+  it('renders the full pericope label without a single-line clamp', () => {
+    const { getByTestId, getByText } = render(
+      <DraftTakeRow {...baseProps} label={longPericopeLabel} />,
+    );
+
+    const badge = getByTestId('record-take-badge-t1');
+    expect(getByText(longPericopeLabel)).toBeTruthy();
+    expect(badge.props.numberOfLines).toBeUndefined();
+  });
+
+  it('keeps the playback timer visible beside a long label', () => {
+    const { getByTestId } = render(
+      <DraftTakeRow
+        {...baseProps}
+        label={longPericopeLabel}
+        positionMs={1000}
+        durationMs={13000}
+      />,
+    );
+
+    expect(getByTestId('record-take-time-t1')).toHaveTextContent('0:01 / 0:13');
+  });
+
+  it('still renders short verse labels', () => {
+    const verseLabel = 'Take 2 - Verse - v. 3';
+    const { getByText } = render(
+      <DraftTakeRow {...baseProps} label={verseLabel} />,
+    );
+    expect(getByText(verseLabel)).toBeTruthy();
+  });
+});
