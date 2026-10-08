@@ -27,6 +27,11 @@ type ConnectivityState = {
   type: string;
 };
 
+const flushAsync = () =>
+  new Promise<void>(resolve => {
+    setImmediate(resolve);
+  });
+
 describe('connectivity', () => {
   const fetchMock = jest.fn();
 
@@ -125,6 +130,137 @@ describe('connectivity', () => {
     await waitFor(() => {
       expect(listener).toHaveBeenCalledWith(true, false, true, 'cellular');
     });
+
+    unsubscribe();
+  });
+
+  it('drops a stale /health probe that finishes after a newer one', async () => {
+    const listener = jest.fn();
+    const handlers: Array<(state: ConnectivityState) => void> = [];
+    const pendingProbes: Array<(ok: boolean) => void> = [];
+
+    fetchMock.mockImplementation(
+      () =>
+        new Promise<{ ok: boolean }>(resolve => {
+          pendingProbes.push(ok => resolve({ ok }));
+        }),
+    );
+    mockNetInfo.fetch.mockResolvedValue({
+      isConnected: true,
+      type: 'wifi',
+    });
+    mockNetInfo.addEventListener.mockImplementation(
+      (handler: (state: ConnectivityState) => void) => {
+        handlers.push(handler);
+        return jest.fn();
+      },
+    );
+
+    const unsubscribe = subscribeToConnectivity(listener);
+
+    await waitFor(() => {
+      expect(pendingProbes.length).toBe(1);
+    });
+
+    handlers[0]?.({ isConnected: true, type: 'wifi' });
+
+    await waitFor(() => {
+      expect(pendingProbes.length).toBe(2);
+    });
+
+    pendingProbes[1]?.(true);
+
+    await waitFor(() => {
+      expect(listener).toHaveBeenCalledWith(true, true, false, 'wifi');
+    });
+
+    pendingProbes[0]?.(false);
+    await flushAsync();
+    await flushAsync();
+
+    expect(listener).not.toHaveBeenCalledWith(false, true, false, 'wifi');
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    unsubscribe();
+  });
+
+  it('retries a failed /health probe after reconnect until it succeeds', async () => {
+    const listener = jest.fn();
+    const handlers: Array<(state: ConnectivityState) => void> = [];
+    fetchMock.mockResolvedValueOnce({ ok: true });
+    mockNetInfo.fetch.mockResolvedValue({
+      isConnected: true,
+      type: 'wifi',
+    });
+    mockNetInfo.addEventListener.mockImplementation(
+      (handler: (state: ConnectivityState) => void) => {
+        handlers.push(handler);
+        return jest.fn();
+      },
+    );
+
+    const unsubscribe = subscribeToConnectivity(listener, {
+      delay: async () => undefined,
+    });
+
+    await waitFor(() => {
+      expect(listener).toHaveBeenCalledWith(true, true, false, 'wifi');
+    });
+
+    fetchMock
+      .mockResolvedValueOnce({ ok: false })
+      .mockResolvedValueOnce({ ok: true });
+    handlers[0]?.({ isConnected: true, type: 'wifi' });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(listener).toHaveBeenCalledWith(false, true, false, 'wifi');
+      expect(listener).toHaveBeenLastCalledWith(true, true, false, 'wifi');
+    });
+
+    unsubscribe();
+  });
+
+  it('stops retrying when the link drops', async () => {
+    const listener = jest.fn();
+    const handlers: Array<(state: ConnectivityState) => void> = [];
+    let releaseBackoff: () => void = () => undefined;
+    const backoffGate = new Promise<void>(resolve => {
+      releaseBackoff = resolve;
+    });
+
+    fetchMock.mockResolvedValue({ ok: false });
+    mockNetInfo.fetch.mockResolvedValue({
+      isConnected: true,
+      type: 'wifi',
+    });
+    mockNetInfo.addEventListener.mockImplementation(
+      (handler: (state: ConnectivityState) => void) => {
+        handlers.push(handler);
+        return jest.fn();
+      },
+    );
+
+    const unsubscribe = subscribeToConnectivity(listener, {
+      delay: () => backoffGate,
+    });
+
+    await waitFor(() => {
+      expect(listener).toHaveBeenCalledWith(false, true, false, 'wifi');
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    handlers[0]?.({ isConnected: false, type: 'none' });
+
+    await waitFor(() => {
+      expect(listener).toHaveBeenCalledWith(false, false, false, 'none');
+    });
+
+    releaseBackoff();
+    await flushAsync();
+    await flushAsync();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
 
     unsubscribe();
   });
