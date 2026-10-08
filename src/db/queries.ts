@@ -214,6 +214,7 @@ async function fetchProjectRecordingCounts(
 
 export async function getProjectsWithSummary(
   userId: number,
+  options?: { throwOnError?: boolean },
 ): Promise<DBTypes.ProjectSummary[]> {
   try {
     await ensureUserProjectMembership(userId);
@@ -240,6 +241,9 @@ export async function getProjectsWithSummary(
     log.error('Error fetching projects with summary', {
       error: error instanceof Error ? error.message : String(error),
     });
+    if (options?.throwOnError) {
+      throw error instanceof Error ? error : new Error(String(error));
+    }
     return [];
   }
 }
