@@ -1,4 +1,5 @@
 import { FluentAPI } from './api';
+import { isTransientTransportFailure } from '../types/api/errors';
 import { isAuthError, AuthError } from './authError';
 import { mapApiChapterAssignment } from './mapChapterAssignment';
 import { mapApiLanguage } from './mapApiLanguage';
@@ -151,7 +152,9 @@ async function retrySyncStep<T>(
         log.error(`${stepName} failed after ${MAX_SYNC_ATTEMPTS} attempts`, {
           error: errorMessage,
         });
-        setSyncError(errorKey, errorMessage);
+        if (!isTransientTransportFailure(error)) {
+          setSyncError(errorKey, errorMessage);
+        }
         break;
       }
 
