@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
-  getConnectivitySnapshot,
   getTransferTransportSnapshot,
   subscribeToConnectivity,
   subscribeToTransferTransport,
@@ -61,12 +60,6 @@ export function useConnectivity(): UseConnectivityResult {
     useCallback(() => {
       let cancelled = false;
 
-      void getConnectivitySnapshot().then(snapshot => {
-        if (!cancelled) {
-          applyReachability(snapshot.isOnline);
-        }
-      });
-
       void getTransferTransportSnapshot().then(snapshot => {
         if (!cancelled) {
           applyTransfer(snapshot);
@@ -76,7 +69,7 @@ export function useConnectivity(): UseConnectivityResult {
       return () => {
         cancelled = true;
       };
-    }, [applyReachability, applyTransfer]),
+    }, [applyTransfer]),
   );
 
   return {

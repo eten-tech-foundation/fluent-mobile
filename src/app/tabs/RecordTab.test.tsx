@@ -175,6 +175,7 @@ const idleAudio: VerseAudioApi = {
   pause: jest.fn(),
   resume: jest.fn(),
   stop: jest.fn(),
+  discardCapture: jest.fn().mockResolvedValue(undefined),
   playTake: jest.fn(),
   playStitched: jest.fn(),
   seek: jest.fn(),
@@ -228,6 +229,9 @@ type RenderTabOptions = {
   chapterData?: ChapterAssignmentData;
   userId?: number | null;
   onChapterClaimed?: () => void;
+  onRegisterCaptureControls?: (
+    controls: import('../../types/captureControls').CaptureControls | null,
+  ) => void;
 };
 
 function renderTab(
@@ -240,6 +244,7 @@ function renderTab(
         chapterData={options?.chapterData ?? chapterData}
         userId={options?.userId ?? 42}
         onCaptureActiveChange={onCaptureActiveChange}
+        onRegisterCaptureControls={options?.onRegisterCaptureControls}
         onChapterClaimed={options?.onChapterClaimed}
       />
     </DraftingProvider>,
@@ -726,6 +731,90 @@ describe('RecordTab', () => {
 
     await waitFor(() => {
       expect(onCaptureActiveChange).toHaveBeenCalledWith(false);
+    });
+  });
+
+  // --- #49: leave prompt with Resume / Discard ------------------------------
+
+  describe('capture leave prompt (#49)', () => {
+    const twoVerseChapterVerses = [
+      ...verses,
+      { ...verses[0]!, verseNumber: 4, text: 'Verse four' },
+    ];
+
+    /** Capture the controls RecordTab registers while a capture is active. */
+    function renderCapturingTab() {
+      let controls:
+        | import('../../types/captureControls').CaptureControls
+        | null = null;
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'paused',
+      });
+      render(
+        <DraftingProvider verses={twoVerseChapterVerses} initialVerse={3}>
+          <RecordTab
+            chapterData={chapterData}
+            userId={42}
+            onRegisterCaptureControls={registered => {
+              controls = registered;
+            }}
+          />
+        </DraftingProvider>,
+      );
+      expect(controls).not.toBeNull();
+      return controls!;
+    }
+
+    it('registers Resume/Discard controls while a capture is active', () => {
+      renderCapturingTab();
+    });
+
+    it('next-verse chevron shows Resume/Discard; Discard drops no take and proceeds', async () => {
+      renderCapturingTab();
+      const discardCapture = idleAudio.discardCapture as jest.Mock;
+
+      fireEvent.press(screen.getByTestId('record-next-verse'));
+
+      expect(Alert.alert).toHaveBeenCalledTimes(1);
+      const [, , buttons] = (Alert.alert as jest.Mock).mock.calls[0] as [
+        string,
+        string,
+        { text: string; onPress?: () => void }[],
+      ];
+      expect(buttons.map(b => b.text)).toEqual(['Resume', 'Discard']);
+      expect(discardCapture).not.toHaveBeenCalled();
+
+      buttons.find(b => b.text === 'Discard')?.onPress?.();
+
+      await waitFor(() => {
+        expect(discardCapture).toHaveBeenCalledTimes(1);
+      });
+      // Verse changed after discard settled (#49 AC 3).
+      await waitFor(() => {
+        expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+          'Mark 14:4',
+        );
+      });
+      expect(idleAudio.stop).not.toHaveBeenCalled();
+    });
+
+    it('next-verse chevron keeps the capture on Resume', () => {
+      renderCapturingTab();
+
+      fireEvent.press(screen.getByTestId('record-next-verse'));
+
+      const [, , buttons] = (Alert.alert as jest.Mock).mock.calls[0] as [
+        string,
+        string,
+        { text: string; onPress?: () => void }[],
+      ];
+      buttons.find(b => b.text === 'Resume')?.onPress?.();
+
+      expect(idleAudio.discardCapture).not.toHaveBeenCalled();
+      expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
+        'Mark 14:3',
+      );
     });
   });
 
