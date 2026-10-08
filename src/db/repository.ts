@@ -60,14 +60,26 @@ async function insertBibleTx(tx: Transaction, bible: DBTypes.Bible) {
 
 async function insertProjectUnitTx(
   tx: Transaction,
-  unit: { id: number; projectId: number },
+  unit: { id: number; projectId: number; name?: string | null },
 ) {
+  const suppliedName = unit.name;
+  const name =
+    suppliedName === undefined || suppliedName === null
+      ? ''
+      : suppliedName.trim();
   await tx.execute(
-    `INSERT OR IGNORE INTO project_units (id, project_id, status) VALUES (?, ?, ?)`,
-    [unit.id, unit.projectId, 'not_started'],
+    `INSERT OR IGNORE INTO project_units (id, project_id, status, name) VALUES (?, ?, ?, ?)`,
+    [unit.id, unit.projectId, 'not_started', name],
   );
   await tx.execute(`UPDATE project_units SET project_id = ? WHERE id = ?`, [
     unit.projectId,
+    unit.id,
+  ]);
+  if (suppliedName === undefined || suppliedName === null) {
+    return;
+  }
+  await tx.execute(`UPDATE project_units SET name = ? WHERE id = ?`, [
+    name,
     unit.id,
   ]);
 }
@@ -525,6 +537,18 @@ export async function insertProjectUnits(
       }
     });
   }
+}
+
+export async function upsertProjectUnits(
+  units: Array<{ id: number; projectId: number; name: string }>,
+) {
+  if (units.length === 0) return;
+  const db = getDatabase();
+  await db.transaction(async (tx: Transaction) => {
+    for (const unit of units) {
+      await insertProjectUnitTx(tx, unit);
+    }
+  });
 }
 
 export type InsertChapterAssignmentSyncResult = {
@@ -1330,6 +1354,75 @@ export async function userNeedsAssigneeRepair(
   const total = Number(row?.total ?? 0);
   const withRole = Number(row?.with_role ?? 0);
   return total > 0 && withRole === 0;
+}
+
+const PROJECT_UNIT_PENDING_UPLOAD_GUARD = `
+  AND NOT EXISTS (
+    SELECT 1
+    FROM chapter_assignments ca
+    INNER JOIN bible_texts bt
+      ON bt.bible_id = ca.bible_id
+      AND bt.book_id = ca.book_id
+      AND bt.chapter_number = ca.chapter_number
+    INNER JOIN recordings r ON r.bible_text_id = bt.id
+      AND r.is_selected = 1
+      AND r.sync_status NOT IN ('uploaded', 'conflicted')
+    WHERE ca.project_unit_id = pu.id
+  )`;
+
+// Shared project_units + ON DELETE CASCADE on chapter_assignments: a
+// single-account DELETE would wipe another local member's assignments.
+const PROJECT_UNIT_OTHER_LOCAL_MEMBER_GUARD = `
+  AND NOT EXISTS (
+    SELECT 1
+    FROM user_projects up2
+    WHERE up2.project_id = pu.project_id
+      AND up2.user_id != ?
+  )`;
+
+export async function reconcileUserMilestones(
+  userId: number,
+  currentUnitIds: number[],
+): Promise<void> {
+  const db = getDatabase();
+  await db.transaction(async (tx: Transaction) => {
+    let result;
+    if (currentUnitIds.length > 0) {
+      const placeholders = currentUnitIds.map(() => '?').join(',');
+      result = await tx.execute(
+        `DELETE FROM project_units
+         WHERE id IN (
+           SELECT pu.id
+           FROM project_units pu
+           INNER JOIN user_projects up ON up.project_id = pu.project_id
+           WHERE up.user_id = ?
+             AND pu.id NOT IN (${placeholders})
+             ${PROJECT_UNIT_OTHER_LOCAL_MEMBER_GUARD}
+             ${PROJECT_UNIT_PENDING_UPLOAD_GUARD}
+         )`,
+        [userId, ...currentUnitIds, userId],
+      );
+    } else {
+      result = await tx.execute(
+        `DELETE FROM project_units
+         WHERE id IN (
+           SELECT pu.id
+           FROM project_units pu
+           INNER JOIN user_projects up ON up.project_id = pu.project_id
+           WHERE up.user_id = ?
+             ${PROJECT_UNIT_OTHER_LOCAL_MEMBER_GUARD}
+             ${PROJECT_UNIT_PENDING_UPLOAD_GUARD}
+         )`,
+        [userId, userId],
+      );
+    }
+    if (result.rowsAffected) {
+      log.info('Reconciled stale project_units', {
+        userId,
+        removedCount: result.rowsAffected,
+      });
+    }
+  });
 }
 
 export async function reconcileUserProjects(

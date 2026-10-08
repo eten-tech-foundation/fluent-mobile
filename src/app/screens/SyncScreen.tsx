@@ -295,6 +295,17 @@ function renderStatusLine(
     );
   }
 
+  if (status === 'paused') {
+    return (
+      <>
+        <Text style={styles.statusTitle}>Paused</Text>
+        <Text style={styles.statusSubtitle}>
+          Upload will stay paused until you resume.
+        </Text>
+      </>
+    );
+  }
+
   if (hasFailedUploads && isOnline && pendingChapterCount > 0) {
     return (
       <>

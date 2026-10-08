@@ -73,6 +73,32 @@ describe('isChapterFullyRecordedPericopeMode (#542)', () => {
     );
   });
 
+  it('is true when pericopes are covered only by verse takes (#586)', async () => {
+    // Pericope 0 = 1:1–1:2, pericope 1 = 1:3 — verse-by-verse coverage matches
+    // Bible-tab unitRecordedStatus (stitched row), not an exact range take.
+    execute
+      .mockResolvedValueOnce({ rows: chapterOneFullyGrouped })
+      .mockResolvedValueOnce({ rows: chapterOnePericopes })
+      .mockResolvedValueOnce({
+        rows: [cov(1, 1, 1, 1), cov(1, 2, 1, 2), cov(1, 3, 1, 3)],
+      });
+    await expect(isChapterFullyRecordedPericopeMode(1, 2, 1, 7)).resolves.toBe(
+      true,
+    );
+  });
+
+  it('is false when verse takes only partially cover a pericope (#586)', async () => {
+    execute
+      .mockResolvedValueOnce({ rows: chapterOneFullyGrouped })
+      .mockResolvedValueOnce({ rows: chapterOnePericopes })
+      .mockResolvedValueOnce({
+        rows: [cov(1, 1, 1, 1), cov(1, 3, 1, 3)], // 1:2 missing from pericope 0
+      });
+    await expect(isChapterFullyRecordedPericopeMode(1, 2, 1, 7)).resolves.toBe(
+      false,
+    );
+  });
+
   it('is false when one pericope has no take', async () => {
     execute
       .mockResolvedValueOnce({ rows: chapterOneFullyGrouped })

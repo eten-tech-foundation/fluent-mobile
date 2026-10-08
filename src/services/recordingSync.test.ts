@@ -413,6 +413,44 @@ describe('recordingSync', () => {
     );
   });
 
+  it('leaves the take pending after exhausting network errors (#604)', async () => {
+    mockUploadVerseAudio.mockRejectedValue(
+      new ApiError(
+        0,
+        'fetch failed: java.net.UnknownHostException: Unable to resolve host "dev.api.fluent.bible": No address associated with hostname',
+      ),
+    );
+
+    await expect(
+      syncPendingRecordings('tok-1', {
+        delay,
+        maxAttempts: MAX_UPLOAD_ATTEMPTS,
+      }),
+    ).rejects.toMatchObject({ name: 'UploadNetworkInterruptedError' });
+
+    expect(mockUploadVerseAudio).toHaveBeenCalledTimes(MAX_UPLOAD_ATTEMPTS);
+    expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+    expect(mockSetRecordingSyncStatus).toHaveBeenCalledWith('rec-1', 'pending');
+  });
+
+  it('does not start later takes after a mid-pass network drop (#604)', async () => {
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ id: 'rec-1' }),
+      pendingRecording({ id: 'rec-2', bibleTextId: 43 }),
+    ]);
+    mockUploadVerseAudio.mockRejectedValue(new ApiError(0, 'network down'));
+
+    await expect(
+      syncPendingRecordings('tok-1', { delay, maxAttempts: 1 }),
+    ).rejects.toMatchObject({ name: 'UploadNetworkInterruptedError' });
+
+    expect(mockSetRecordingSyncStatus).not.toHaveBeenCalledWith(
+      'rec-2',
+      'uploading',
+    );
+    expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+  });
+
   it('marks failed after exhausting retryable attempts', async () => {
     mockUploadVerseAudio.mockRejectedValue(new ApiError(500, 'server boom'));
 

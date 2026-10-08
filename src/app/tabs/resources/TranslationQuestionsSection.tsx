@@ -9,6 +9,7 @@ import {
 import { TranslationQuestionAccordion } from './TranslationQuestionAccordion';
 import { useTranslationQuestionsForUnit } from '../../../hooks/useTranslationQuestionsForUnit';
 import { TRANSLATION_QUESTIONS_LOAD_ERROR } from '../../../constants/messages';
+import type { ResourceVerseRef } from '../../../utils/loadResourcesForVerseRange';
 import { theme } from '../../../theme';
 
 type TranslationQuestionsSectionProps = {
@@ -16,6 +17,9 @@ type TranslationQuestionsSectionProps = {
   bookCode: string;
   chapterNumber: number;
   verseNumber: number;
+  /** Pericope fan-out (#593); omit for single-verse units. */
+  verseNumbers?: number[];
+  verseRefs?: ResourceVerseRef[];
   /** Reset nested open state when the parent section collapses or unit changes. */
   sectionExpanded: boolean;
 };
@@ -29,6 +33,8 @@ export function TranslationQuestionsSection({
   bookCode,
   chapterNumber,
   verseNumber,
+  verseNumbers,
+  verseRefs,
   sectionExpanded,
 }: TranslationQuestionsSectionProps) {
   const { state, retry } = useTranslationQuestionsForUnit({
@@ -36,14 +42,21 @@ export function TranslationQuestionsSection({
     bookCode,
     chapterNumber,
     verseNumber,
+    verseNumbers,
+    verseRefs,
   });
   const [openQuestionIds, setOpenQuestionIds] = useState<Set<string>>(
     () => new Set(),
   );
 
+  const versesKey =
+    verseRefs && verseRefs.length > 0
+      ? verseRefs.map(r => `${r.chapterNumber}:${r.verseNumber}`).join(',')
+      : (verseNumbers ?? [verseNumber]).join(',');
+
   useEffect(() => {
     setOpenQuestionIds(new Set());
-  }, [projectId, bookCode, chapterNumber, verseNumber]);
+  }, [projectId, bookCode, chapterNumber, versesKey]);
 
   useEffect(() => {
     if (!sectionExpanded) {

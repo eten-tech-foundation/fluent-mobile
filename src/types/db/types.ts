@@ -121,6 +121,17 @@ export interface ProjectSummary extends Project {
   connectivityProfile: ConnectivityProfile | null;
 }
 
+/** Home Milestones tab row — one `project_units` row plus parent project context. */
+export interface MilestoneSummary {
+  id: number;
+  name: string;
+  projectId: number;
+  projectName: string;
+  targetLanguageName: string;
+  milestoneCount: number;
+  syncState: ProjectSyncState;
+}
+
 /** Raw SQLite row shape for getProjectsWithSummary (snake_case columns). */
 export interface ProjectSummaryRow {
   id: number;

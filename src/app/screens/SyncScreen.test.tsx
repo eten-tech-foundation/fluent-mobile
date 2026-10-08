@@ -226,6 +226,24 @@ describe('SyncScreen', () => {
     });
   });
 
+  it('shows Paused instead of All synced when the session is paused', () => {
+    mockPageStatus = 'paused';
+    mockPendingUploads = {
+      ...mockPendingUploads,
+      hasPendingUploads: false,
+      pendingCount: 0,
+      pendingChapterCount: 0,
+      isUploading: false,
+    };
+    render(<SyncScreen />);
+
+    expect(screen.getAllByText('Paused').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Online · all synced')).toBeNull();
+    expect(
+      screen.queryByText('All work has been uploaded to Fluent.'),
+    ).toBeNull();
+  });
+
   it('calls syncNowUploads and triggerSync when Resume is pressed', async () => {
     mockPageStatus = 'paused';
     render(<SyncScreen />);

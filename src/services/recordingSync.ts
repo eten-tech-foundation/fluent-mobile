@@ -12,6 +12,10 @@ import {
 } from '../db/repository';
 import type { PendingRecording } from '../types/db/types';
 import { logger } from '../utils/logger';
+import {
+  isNetworkTransportError,
+  UploadNetworkInterruptedError,
+} from '../utils/networkError';
 import { hasUsableRecordingRange } from '../utils/recordingRange';
 import { FluentAPI } from './api';
 import { isAuthError } from './authError';
@@ -341,6 +345,16 @@ async function uploadOneRecording(
       }
 
       if (!outcome.retryable || attempt === maxAttempts) {
+        if (isNetworkTransportError(error)) {
+          log.info('Upload paused after network failure; leaving pending', {
+            recordingId: recording.id,
+            attempt,
+            message: lastMessage,
+          });
+          await setRecordingSyncStatus(recording.id, 'pending');
+          throw new UploadNetworkInterruptedError(lastMessage);
+        }
+
         log.error('Recording upload failed', {
           recordingId: recording.id,
           attempt,

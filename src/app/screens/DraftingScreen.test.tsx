@@ -1,4 +1,5 @@
 import React from 'react';
+import { Alert } from 'react-native';
 import {
   fireEvent,
   render,
@@ -6,11 +7,32 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import DraftingScreen from './DraftingScreen';
-
+import { hrefs } from '../../navigation/hrefs';
+import { setLastActiveTab } from '../../utils/draftingTabState';
 const mockBack = jest.fn();
 const mockPush = jest.fn();
+type BeforeRemoveListener = (event: { preventDefault: () => void }) => void;
+const mockAddListener = jest.fn<jest.Mock, [string, BeforeRemoveListener]>(() =>
+  jest.fn(),
+);
 
 let capturedOnChapterClaimed: (() => void) | undefined;
+let capturedRecordTabHandlers: {
+  onCaptureActiveChange?: (active: boolean) => void;
+  onRegisterCaptureControls?: (
+    controls: import('../../types/captureControls').CaptureControls | null,
+  ) => void;
+} | null = null;
+let capturedHeaderHandlers: {
+  onSyncPress?: () => void;
+  onAccountPress?: () => void;
+} | null = null;
+let capturedTabBarHandlers: {
+  onTabChange?: (tab: 'bible' | 'resources' | 'record') => void;
+} | null = null;
+
+const mockResume = jest.fn().mockResolvedValue(undefined);
+const mockDiscard = jest.fn().mockResolvedValue(undefined);
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({
@@ -18,7 +40,7 @@ jest.mock('expo-router', () => ({
     push: mockPush,
   }),
   useNavigation: () => ({
-    addListener: jest.fn(() => jest.fn()),
+    addListener: mockAddListener,
   }),
   useLocalSearchParams: () => ({
     chapterId: '5',
@@ -76,8 +98,13 @@ jest.mock('../../components/layout/DraftingHeader', () => {
   const MockReact = require('react');
   const { View } = require('react-native');
   return {
-    DraftingHeader: () =>
-      MockReact.createElement(View, { testID: 'drafting-header' }),
+    DraftingHeader: (props: {
+      onSyncPress?: () => void;
+      onAccountPress?: () => void;
+    }) => {
+      capturedHeaderHandlers = props;
+      return MockReact.createElement(View, { testID: 'drafting-header' });
+    },
   };
 });
 
@@ -85,8 +112,12 @@ jest.mock('../../components/layout/DraftingTabBar', () => {
   const MockReact = require('react');
   const { View } = require('react-native');
   return {
-    DraftingTabBar: () =>
-      MockReact.createElement(View, { testID: 'drafting-tab-bar' }),
+    DraftingTabBar: (props: {
+      onTabChange?: (tab: 'bible' | 'resources' | 'record') => void;
+    }) => {
+      capturedTabBarHandlers = props;
+      return MockReact.createElement(View, { testID: 'drafting-tab-bar' });
+    },
   };
 });
 
@@ -110,17 +141,52 @@ jest.mock('../../components/ui/AccountSwitcherPanel', () => {
 
 jest.mock('../tabs/RecordTab', () => {
   const MockReact = require('react');
-  const { Pressable, Text } = require('react-native');
+  const { Pressable, Text, View } = require('react-native');
   return {
-    RecordTab: ({ onChapterClaimed }: { onChapterClaimed?: () => void }) => {
+    RecordTab: ({
+      onChapterClaimed,
+      onCaptureActiveChange,
+      onRegisterCaptureControls,
+    }: {
+      onChapterClaimed?: () => void;
+      onCaptureActiveChange?: (active: boolean) => void;
+      onRegisterCaptureControls?: (
+        controls: import('../../types/captureControls').CaptureControls | null,
+      ) => void;
+    }) => {
       capturedOnChapterClaimed = onChapterClaimed;
+      capturedRecordTabHandlers = {
+        onCaptureActiveChange,
+        onRegisterCaptureControls,
+      };
       return MockReact.createElement(
-        Pressable,
-        {
-          testID: 'mock-record-tab-claim',
-          onPress: () => onChapterClaimed?.(),
-        },
-        MockReact.createElement(Text, null, 'Mock Record'),
+        View,
+        null,
+        MockReact.createElement(
+          Pressable,
+          {
+            testID: 'mock-record-tab-claim',
+            onPress: () => onChapterClaimed?.(),
+          },
+          MockReact.createElement(Text, null, 'Mock Record'),
+        ),
+        MockReact.createElement(Pressable, {
+          testID: 'mock-record-tab-activate',
+          onPress: () => {
+            onCaptureActiveChange?.(true);
+            onRegisterCaptureControls?.({
+              resume: mockResume,
+              discardCapture: mockDiscard,
+            });
+          },
+        }),
+        MockReact.createElement(Pressable, {
+          testID: 'mock-record-tab-deactivate',
+          onPress: () => {
+            onCaptureActiveChange?.(false);
+            onRegisterCaptureControls?.(null);
+          },
+        }),
       );
     },
   };
@@ -188,6 +254,10 @@ describe('DraftingScreen onChapterClaimed', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     capturedOnChapterClaimed = undefined;
+    capturedRecordTabHandlers = null;
+    capturedHeaderHandlers = null;
+    capturedTabBarHandlers = null;
+    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     mockGetChapterAssignmentById
       .mockResolvedValueOnce(baseAssignment)
       .mockResolvedValueOnce({
@@ -233,6 +303,196 @@ describe('DraftingScreen onChapterClaimed', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('source-audio-bar-slot')).toBeTruthy();
+    });
+  });
+
+  // --- #49: leave prompt with Resume / Discard ------------------------------
+
+  describe('capture leave prompt (#49)', () => {
+    /** Render with an active capture and return the discard handler. */
+    async function renderWithActiveCapture() {
+      render(<DraftingScreen />);
+      await waitFor(() => {
+        expect(screen.getByTestId('mock-record-tab-activate')).toBeTruthy();
+      });
+      fireEvent.press(screen.getByTestId('mock-record-tab-activate'));
+      expect(
+        capturedRecordTabHandlers?.onRegisterCaptureControls,
+      ).toBeDefined();
+      expect(mockDiscard).not.toHaveBeenCalled();
+      return mockDiscard;
+    }
+
+    function lastAlertButtons(): { text: string; onPress?: () => void }[] {
+      const calls = (Alert.alert as jest.Mock).mock.calls;
+      const last = calls[calls.length - 1] as [
+        string,
+        string,
+        { text: string; onPress?: () => void }[],
+      ];
+      return last[2];
+    }
+
+    it('tab change away from Record offers Resume/Discard; Discard proceeds', async () => {
+      await renderWithActiveCapture();
+
+      capturedTabBarHandlers?.onTabChange?.('bible');
+
+      expect(Alert.alert).toHaveBeenCalledTimes(1);
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Recording in progress',
+        expect.any(String),
+        expect.arrayContaining([
+          expect.objectContaining({ text: 'Resume' }),
+          expect.objectContaining({ text: 'Discard' }),
+        ]),
+      );
+      expect(mockDiscard).not.toHaveBeenCalled();
+
+      lastAlertButtons()
+        .find(b => b.text === 'Discard')
+        ?.onPress?.();
+
+      await waitFor(() => {
+        expect(mockDiscard).toHaveBeenCalledTimes(1);
+      });
+      await waitFor(() => {
+        expect(setLastActiveTab).toHaveBeenCalledWith(5, 'bible');
+      });
+    });
+
+    it('tab change keeps the capture on Resume', async () => {
+      await renderWithActiveCapture();
+
+      capturedTabBarHandlers?.onTabChange?.('bible');
+
+      lastAlertButtons()
+        .find(b => b.text === 'Resume')
+        ?.onPress?.();
+
+      expect(mockDiscard).not.toHaveBeenCalled();
+      expect(setLastActiveTab).not.toHaveBeenCalled();
+    });
+
+    it('header back offers Resume/Discard; Discard navigates back', async () => {
+      await renderWithActiveCapture(); // The guard re-registers when recordCaptureActive flips — use the
+      // latest registration (closes over recordCaptureActive=true).
+      const beforeRemoveCalls = mockAddListener.mock.calls.filter(
+        call => call[0] === 'beforeRemove',
+      );
+      expect(beforeRemoveCalls.length).toBeGreaterThan(0);
+      const beforeRemove = beforeRemoveCalls[beforeRemoveCalls.length - 1][1];
+
+      const preventDefault = jest.fn();
+      beforeRemove({ preventDefault });
+
+      expect(preventDefault).toHaveBeenCalledTimes(1);
+      expect(Alert.alert).toHaveBeenCalledTimes(1);
+      lastAlertButtons()
+        .find(b => b.text === 'Discard')
+        ?.onPress?.();
+
+      await waitFor(() => {
+        expect(mockDiscard).toHaveBeenCalledTimes(1);
+      });
+      await waitFor(() => {
+        expect(mockBack).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('blocks a second back while discard is pending, then allows exactly one pop', async () => {
+      let resolveDiscard: () => void = () => {};
+      mockDiscard.mockImplementationOnce(
+        () =>
+          new Promise<void>(resolve => {
+            resolveDiscard = resolve;
+          }),
+      );
+      await renderWithActiveCapture();
+
+      const beforeRemoveCalls = mockAddListener.mock.calls.filter(
+        call => call[0] === 'beforeRemove',
+      );
+      const beforeRemove = beforeRemoveCalls[beforeRemoveCalls.length - 1][1];
+
+      // 1st back → prompt → Discard (stop is now "in flight").
+      beforeRemove({ preventDefault: jest.fn() });
+      expect(Alert.alert).toHaveBeenCalledTimes(1);
+      lastAlertButtons()
+        .find(b => b.text === 'Discard')
+        ?.onPress?.();
+
+      // 2nd back while discard is pending: blocked, no new prompt, no pop.
+      const secondPrevent = jest.fn();
+      beforeRemove({ preventDefault: secondPrevent });
+      expect(secondPrevent).toHaveBeenCalledTimes(1);
+      expect(Alert.alert).toHaveBeenCalledTimes(1);
+      expect(mockBack).not.toHaveBeenCalled();
+
+      // Discard finishes → the deferred back runs exactly once.
+      resolveDiscard();
+      await waitFor(() => {
+        expect(mockBack).toHaveBeenCalledTimes(1);
+      });
+
+      // That pop passes the guard (one-shot suppress) and does not re-prompt.
+      const popPrevent = jest.fn();
+      beforeRemove({ preventDefault: popPrevent });
+      expect(popPrevent).not.toHaveBeenCalled();
+      expect(Alert.alert).toHaveBeenCalledTimes(1);
+    });
+    it('Sync tap offers Resume/Discard; Discard pushes the Sync page', async () => {
+      await renderWithActiveCapture();
+
+      capturedHeaderHandlers?.onSyncPress?.();
+
+      expect(Alert.alert).toHaveBeenCalledTimes(1);
+
+      lastAlertButtons()
+        .find(b => b.text === 'Discard')
+        ?.onPress?.();
+
+      await waitFor(() => {
+        expect(mockDiscard).toHaveBeenCalledTimes(1);
+      });
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith(hrefs.sync);
+      });
+    });
+
+    it('account switcher offers Resume/Discard; Discard opens the switcher', async () => {
+      await renderWithActiveCapture();
+
+      capturedHeaderHandlers?.onAccountPress?.();
+
+      expect(Alert.alert).toHaveBeenCalledTimes(1);
+
+      lastAlertButtons()
+        .find(b => b.text === 'Discard')
+        ?.onPress?.();
+
+      await waitFor(() => {
+        expect(mockDiscard).toHaveBeenCalledTimes(1);
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('account-switcher-panel')).toBeTruthy();
+      });
+    });
+
+    it('inactive capture leaves navigation unguarded', async () => {
+      render(<DraftingScreen />);
+      await waitFor(() => {
+        expect(screen.getByTestId('mock-record-tab-deactivate')).toBeTruthy();
+      });
+
+      fireEvent.press(screen.getByTestId('mock-record-tab-deactivate'));
+
+      capturedTabBarHandlers?.onTabChange?.('bible');
+      capturedHeaderHandlers?.onSyncPress?.();
+
+      expect(Alert.alert).not.toHaveBeenCalled();
+      expect(setLastActiveTab).toHaveBeenCalledWith(5, 'bible');
+      expect(mockPush).toHaveBeenCalledWith(hrefs.sync);
     });
   });
 });

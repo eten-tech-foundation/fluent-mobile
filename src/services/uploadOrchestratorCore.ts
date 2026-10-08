@@ -1,5 +1,6 @@
 import type { PendingUploadChapter } from '../db/queries';
 import { logger } from '../utils/logger';
+import { isUploadNetworkInterruptedError } from '../utils/networkError';
 import { transportAllowsTransfer } from '../utils/transportPolicy';
 import type { UploadSessionEvent } from './syncEvents';
 
@@ -209,6 +210,12 @@ export function createUploadOrchestrator(
         }
       } catch (error) {
         if (abort.signal.aborted) {
+          return;
+        }
+        if (isUploadNetworkInterruptedError(error)) {
+          log.info('Upload session paused after network drop', { error });
+          phase = 'idle';
+          deps.emit({ type: 'idle' });
           return;
         }
         log.error('Upload session failed', { error });
