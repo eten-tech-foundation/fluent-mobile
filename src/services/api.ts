@@ -12,6 +12,7 @@ import {
   SignOutResponse,
   UserChapterAssignmentsResponse,
   UserProjectsResponse,
+  UserMilestonesResponse,
   unwrapApiListResponse,
 } from '../types/api/responses';
 import type {
@@ -172,6 +173,16 @@ export const FluentAPI = {
   ): Promise<UserProjectsResponse> =>
     authedRequest<UserProjectsResponse>(
       `/users/${userId}/projects`,
+      undefined,
+      token,
+    ),
+
+  getUserMilestones: (
+    userId: number,
+    token?: string,
+  ): Promise<UserMilestonesResponse> =>
+    authedRequest<UserMilestonesResponse>(
+      `/users/${userId}/milestones`,
       undefined,
       token,
     ),
