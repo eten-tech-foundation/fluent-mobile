@@ -300,6 +300,7 @@ export function RecordTab({
   const verseAudio = useVerseAudio({
     bibleTextId: captureBibleTextId,
     chapterAssignmentId: chapterData.id,
+    projectUnitId: chapterData.projectUnitId,
     userId,
     chapterClaim: {
       bibleId: chapterData.bibleId,
@@ -659,16 +660,19 @@ export function RecordTab({
                 chapterData.bookId,
                 chapterData.chapterNumber,
                 pericopeSetId,
+                chapterData.projectUnitId,
               )
             : await isChapterFullyRecordedVerseMode(
                 chapterData.bibleId,
                 chapterData.bookId,
                 chapterData.chapterNumber,
+                chapterData.projectUnitId,
               )
           : await isChapterFullyRecordedVerseMode(
               chapterData.bibleId,
               chapterData.bookId,
               chapterData.chapterNumber,
+              chapterData.projectUnitId,
             );
       if (!cancelled) {
         setHasChapterRecording(complete);
@@ -681,6 +685,7 @@ export function RecordTab({
     chapterData.bibleId,
     chapterData.bookId,
     chapterData.chapterNumber,
+    chapterData.projectUnitId,
     draftingUnit,
     pericopeSetId,
     verseAudio.state,

@@ -1430,6 +1430,7 @@ describe('RecordTab', () => {
           1,
           1,
           14,
+          1,
         );
         expect(screen.getByTestId('stage-advance-button')).toBeTruthy();
       });

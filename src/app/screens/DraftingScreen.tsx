@@ -367,6 +367,7 @@ export default function DraftingScreen() {
           assignment.bibleId,
           assignment.bookId,
           assignment.chapterNumber,
+          assignment.projectUnitId,
         );
         if (ignore) return;
 
@@ -422,6 +423,7 @@ export default function DraftingScreen() {
         verses={verses}
         initialVerse={initialVerse}
         projectId={chapterData.projectId}
+        projectUnitId={chapterData.projectUnitId}
         bookName={chapterData.bookName ?? ''}
         chapterName={chapterName}
       >
