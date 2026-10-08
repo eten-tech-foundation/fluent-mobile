@@ -1,4 +1,28 @@
-import { formatTakeSubtitle } from './takeSubtitle';
+import { formatTakeSubtitle, formatTakeVerseSpan } from './takeSubtitle';
+
+describe('formatTakeVerseSpan', () => {
+  it('formats a same-chapter span', () => {
+    expect(
+      formatTakeVerseSpan({
+        startChapter: 14,
+        startVerse: 1,
+        endChapter: 14,
+        endVerse: 5,
+      }),
+    ).toBe('vv. 1-5');
+  });
+
+  it('formats a cross-chapter span with chapter numbers', () => {
+    expect(
+      formatTakeVerseSpan({
+        startChapter: 1,
+        startVerse: 30,
+        endChapter: 2,
+        endVerse: 5,
+      }),
+    ).toBe('vv. 1:30-2:5');
+  });
+});
 
 describe('formatTakeSubtitle', () => {
   it('formats a verse take', () => {

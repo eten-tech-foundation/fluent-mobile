@@ -27,6 +27,7 @@ import {
   RESOURCES_EMPTY_MESSAGE,
   RESOURCES_NONE_FOR_VERSE_MESSAGE,
 } from '../../constants/messages';
+import { useBibleTabUnits } from '../../hooks/useBibleTabUnits';
 import { useTranslationNotesForUnit } from '../../hooks/useTranslationNotesForUnit';
 import { useTranslationQuestionsForUnit } from '../../hooks/useTranslationQuestionsForUnit';
 import { useImagesMapsForUnit } from '../../hooks/useImagesMapsForUnit';
@@ -53,6 +54,8 @@ type ResourcesTabProps = {
   /** USFM book code for translation-resources lookup (e.g. MRK). */
   bookCode: string;
   chapterNumber: number;
+  bibleId: number;
+  bookId: number;
 };
 
 const SECTION_META: {
@@ -80,7 +83,8 @@ const SECTION_META: {
 /**
  * Resources tab host (#188 + #192): offline inventory gates which sections
  * appear on device. When online, all sections load via fluent-api
- * translation-resources (#381). Empty sections hide after load (#591).
+ * translation-resources (#381). Pericope mode fans out across the unit (#593).
+ * Empty sections hide after load (#591).
  */
 export function ResourcesTab({
   chapterId,
@@ -89,11 +93,54 @@ export function ResourcesTab({
   userId,
   bookCode,
   chapterNumber,
+  bibleId,
+  bookId,
 }: ResourcesTabProps) {
-  const { selectedVerse } = useDraftingContext();
+  const {
+    selectedVerse,
+    verses,
+    projectId: contextProjectId,
+    bookName,
+    chapterName: contextChapterName,
+    recordedCoverageEpoch,
+  } = useDraftingContext();
   const { isOnline, hasResolved } = useConnectivity();
   const scrollRef = useRef<ScrollView>(null);
   const scrollOffsetRef = useRef(0);
+
+  const { units, activeIndex, unitsPending, effectiveUnit } = useBibleTabUnits({
+    bibleId,
+    bookId,
+    chapterNumber,
+    projectId: projectId ?? contextProjectId,
+    verses,
+    chapterName: contextChapterName || chapterName,
+    bookName,
+    selectedVerse,
+    coverageEpoch: recordedCoverageEpoch,
+  });
+
+  const activeUnit = units[activeIndex] ?? null;
+  const unitKey = activeUnit?.key ?? `verse:${selectedVerse}`;
+  // Serialize refs so a new `units` array identity each render (or mock)
+  // does not retrigger TN/TQ/Images load effects.
+  const verseRefsSerialized = activeUnit
+    ? activeUnit.verses
+        .map(v => `${v.chapterNumber}:${v.verseNumber}`)
+        .join(',')
+    : `${chapterNumber}:${selectedVerse}`;
+  const verseRefs = useMemo(() => {
+    if (!verseRefsSerialized) {
+      return [{ chapterNumber, verseNumber: selectedVerse }];
+    }
+    return verseRefsSerialized.split(',').map(part => {
+      const [ch, vs] = part.split(':');
+      return {
+        chapterNumber: Number(ch) || chapterNumber,
+        verseNumber: Number(vs) || selectedVerse,
+      };
+    });
+  }, [verseRefsSerialized, chapterNumber, selectedVerse]);
 
   const resources = useUnitResourcesAvailability({
     projectId,
@@ -102,11 +149,18 @@ export function ResourcesTab({
     verseNumber: selectedVerse,
   });
 
+  // Verse-mode BibleUnit.title is just the verse number; keep chapter:verse label.
+  const referenceLabel =
+    !unitsPending && effectiveUnit === 'pericope' && activeUnit?.title
+      ? activeUnit.title
+      : resources.referenceLabel;
+
   const { state: notesState, retry: retryNotes } = useTranslationNotesForUnit({
     projectId,
     bookCode,
     chapterNumber,
     verseNumber: selectedVerse,
+    verseRefs,
   });
 
   const { state: questionsState, retry: retryQuestions } =
@@ -115,6 +169,7 @@ export function ResourcesTab({
       bookCode,
       chapterNumber,
       verseNumber: selectedVerse,
+      verseRefs,
     });
 
   const { state: imagesMapsState, retry: retryImagesMaps } =
@@ -123,15 +178,16 @@ export function ResourcesTab({
       bookCode,
       chapterNumber,
       verseNumber: selectedVerse,
+      verseRefs,
     });
 
   const [openAccordionIds, setOpenAccordionIds] = useState<Set<string>>(
-    () => getResourcesTabUiState(chapterId, selectedVerse).openAccordionIds,
+    () => getResourcesTabUiState(chapterId, unitKey).openAccordionIds,
   );
   const openIdsRef = useRef(openAccordionIds);
 
   useEffect(() => {
-    const saved = getResourcesTabUiState(chapterId, selectedVerse);
+    const saved = getResourcesTabUiState(chapterId, unitKey);
     openIdsRef.current = saved.openAccordionIds;
     setOpenAccordionIds(saved.openAccordionIds);
     scrollOffsetRef.current = saved.scrollOffset;
@@ -139,16 +195,16 @@ export function ResourcesTab({
       y: saved.scrollOffset,
       animated: false,
     });
-  }, [chapterId, selectedVerse]);
+  }, [chapterId, unitKey]);
 
   const persistUiState = useCallback(
     (nextOpenIds: Set<string>, scrollOffset: number) => {
-      setResourcesTabUiState(chapterId, selectedVerse, {
+      setResourcesTabUiState(chapterId, unitKey, {
         openAccordionIds: nextOpenIds,
         scrollOffset,
       });
     },
-    [chapterId, selectedVerse],
+    [chapterId, unitKey],
   );
 
   const handleToggle = useCallback(
@@ -253,9 +309,9 @@ export function ResourcesTab({
     >
       <View
         style={styles.header}
-        testID={`resources-unit-${chapterId}-${selectedVerse}`}
+        testID={`resources-unit-${chapterId}-${unitKey}`}
       >
-        <Text style={styles.reference}>{resources.referenceLabel}</Text>
+        <Text style={styles.reference}>{referenceLabel}</Text>
         {resources.passageTitle ? (
           <Text style={styles.passageTitle}>{resources.passageTitle}</Text>
         ) : null}
@@ -266,7 +322,7 @@ export function ResourcesTab({
           const expanded = openAccordionIds.has(id);
           return (
             <ResourceSectionAccordion
-              key={`${chapterId}-${selectedVerse}-${id}`}
+              key={`${chapterId}-${unitKey}-${id}`}
               label={label}
               Icon={Icon}
               expanded={expanded}
@@ -281,6 +337,7 @@ export function ResourcesTab({
                   bookCode={bookCode}
                   chapterNumber={chapterNumber}
                   verseNumber={selectedVerse}
+                  versesKey={verseRefsSerialized}
                 />
               ) : id === 'translationQuestions' ? (
                 <TranslationQuestionsSectionHost
@@ -290,6 +347,7 @@ export function ResourcesTab({
                   bookCode={bookCode}
                   chapterNumber={chapterNumber}
                   verseNumber={selectedVerse}
+                  versesKey={verseRefsSerialized}
                 />
               ) : id === 'imagesMaps' ? (
                 <ImagesMapsSectionHost

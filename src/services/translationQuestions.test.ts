@@ -137,4 +137,28 @@ describe('loadTranslationQuestionsForUnit', () => {
       }),
     ).rejects.toThrow('Failed to load Translation Questions');
   });
+
+  it('fans out across verseNumbers and dedupes by id (#593)', async () => {
+    getTranslationQuestions.mockImplementation(async (_p, _b, _c, verse) => ({
+      items: [
+        {
+          ...sampleItem,
+          id: verse === 1 ? 10 : 20,
+          name: `Q${verse}`,
+          localizedName: `Q${verse}`,
+        },
+      ],
+    }));
+
+    const questions = await loadTranslationQuestionsForUnit({
+      projectId: 7,
+      bookCode: 'MRK',
+      chapterNumber: 14,
+      verseNumber: 1,
+      verseNumbers: [1, 2],
+    });
+
+    expect(getTranslationQuestions).toHaveBeenCalledTimes(2);
+    expect(questions.map(q => q.id)).toEqual(['tq-api-10-0', 'tq-api-20-0']);
+  });
 });

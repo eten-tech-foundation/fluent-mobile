@@ -19,6 +19,8 @@ type TranslationQuestionsSectionProps = {
   bookCode: string;
   chapterNumber: number;
   verseNumber: number;
+  /** Prefer over verseNumber alone so pericope ranges reset nested state (#593). */
+  versesKey?: string;
 };
 
 /**
@@ -33,14 +35,16 @@ export function TranslationQuestionsSection({
   bookCode,
   chapterNumber,
   verseNumber,
+  versesKey,
 }: TranslationQuestionsSectionProps) {
   const [openQuestionIds, setOpenQuestionIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const unitKey = versesKey ?? String(verseNumber);
 
   useEffect(() => {
     setOpenQuestionIds(new Set());
-  }, [bookCode, chapterNumber, verseNumber]);
+  }, [bookCode, chapterNumber, unitKey]);
 
   useEffect(() => {
     if (!sectionExpanded) {

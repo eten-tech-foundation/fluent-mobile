@@ -10,17 +10,24 @@ export const SYNC_NOW_CELLULAR_DISABLED_MESSAGE =
 export const TRANSFER_OFFLINE_MESSAGE =
   'Connect to the internet to upload and download.';
 
+/** Sync page fallback when a network/transport error leaks as a failed take (#604). */
+export const UPLOAD_NETWORK_ERROR_MESSAGE =
+  "Couldn't reach the server. We'll retry when you're back online.";
+
 /** Sync page — pending takes the worker will not upload (pericope/orphan). */
 export function formatUnuploadablePendingMessage(count: number): string {
   const noun = count === 1 ? 'recording' : 'recordings';
-  return `${count} ${noun} can't upload yet — missing bible text or pericope-only takes.`;
+  return `${count} ${noun} can't upload yet — missing bible text.`;
 }
 
 export const PROJECTS_EMPTY_MESSAGE =
   'No projects are available right now. Connect to the internet to sync and find available work.';
 
+export const MILESTONES_EMPTY_MESSAGE =
+  'No milestones are available right now. Connect to the internet to sync and find available work.';
+
 export const MY_WORK_EMPTY_MESSAGE =
-  "You don't have any chapters to work on right now. Check the Projects tab to find available work.";
+  "You don't have any chapters to work on right now. Check the Milestones tab to find available work.";
 
 export const PROJECT_CHAPTERS_EMPTY_MESSAGE =
   'No chapters are available in this project yet.';
@@ -82,3 +89,14 @@ export const RECORD_SOURCE_TEXT_SYNCING =
   'Source text still syncing for this verse — recording will unlock when ready.';
 export const RECORD_SOURCE_TEXT_UNAVAILABLE =
   "Source text isn't available for this verse yet. Open Sync and tap Sync Now, then return here.";
+
+/**
+ * Leave prompt shown when the user navigates away from an in-progress take
+ * (#49 / #570). Every leave path (tabs, back, Sync, account chip, verse
+ * chevrons) reads from this one place — change the strings here only.
+ */
+export const CAPTURE_LEAVE_TITLE = 'Recording in progress';
+export const CAPTURE_LEAVE_MESSAGE =
+  'You have a take in progress. What would you like to do?';
+export const CAPTURE_LEAVE_RESUME = 'Resume';
+export const CAPTURE_LEAVE_DISCARD = 'Discard';

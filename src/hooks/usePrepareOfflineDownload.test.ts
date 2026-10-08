@@ -134,6 +134,27 @@ describe('usePrepareOfflineDownload', () => {
     mockResume.mockResolvedValue({ ok: true });
     mockCancel.mockResolvedValue(undefined);
     mockRefresh.mockResolvedValue(undefined);
+
+    const { enqueuePrepareOfflineDownload } = jest.requireMock(
+      '../services/prepareOfflineDownload',
+    );
+    enqueuePrepareOfflineDownload.mockResolvedValue([
+      'tier-1-source-bible-text',
+    ]);
+
+    const { getResumableDownloadItems, getDownloadedResourcesByProject } =
+      jest.requireMock('../db/repository');
+    getResumableDownloadItems.mockResolvedValue([
+      {
+        id: 'tier-1-source-bible-text',
+        tier: 1,
+        label: 'Text',
+        progress: 0,
+        status: 'queued',
+        projectId: 1,
+      },
+    ]);
+    getDownloadedResourcesByProject.mockResolvedValue([]);
   });
 
   it('starts in idle session', () => {
@@ -151,27 +172,17 @@ describe('usePrepareOfflineDownload', () => {
   });
 
   it('shows downloading session immediately when handleDownload starts', async () => {
-    const { getResumableDownloadItems } = jest.requireMock('../db/repository');
-    let resolveFirstFetch: ((items: unknown[]) => void) | undefined;
+    const { enqueuePrepareOfflineDownload } = jest.requireMock(
+      '../services/prepareOfflineDownload',
+    );
+    let resolveEnqueue: ((value: string[]) => void) | undefined;
 
-    getResumableDownloadItems.mockImplementation(() => {
-      if (resolveFirstFetch) {
-        return Promise.resolve([
-          {
-            id: 'tier-1-source-bible-text',
-            tier: 1,
-            label: 'Text',
-            progress: 0,
-            status: 'queued',
-            projectId: 1,
-          },
-        ]);
-      }
-
-      return new Promise(resolve => {
-        resolveFirstFetch = resolve;
-      });
-    });
+    enqueuePrepareOfflineDownload.mockImplementation(
+      () =>
+        new Promise<string[]>(resolve => {
+          resolveEnqueue = resolve;
+        }),
+    );
 
     const { result } = renderHook(() =>
       usePrepareOfflineDownload({
@@ -192,42 +203,23 @@ describe('usePrepareOfflineDownload', () => {
     expect(result.current.busy).toBe(false);
 
     await act(async () => {
-      resolveFirstFetch?.([
-        {
-          id: 'tier-1-source-bible-text',
-          tier: 1,
-          label: 'Text',
-          progress: 0,
-          status: 'queued',
-          projectId: 1,
-        },
-      ]);
+      resolveEnqueue?.(['tier-1-source-bible-text']);
       await downloadPromise;
     });
   });
 
   it('runs a cancel tapped during kickoff after enqueue finishes without starting the worker', async () => {
-    const { getResumableDownloadItems } = jest.requireMock('../db/repository');
-    let resolveFirstFetch: ((items: unknown[]) => void) | undefined;
+    const { enqueuePrepareOfflineDownload } = jest.requireMock(
+      '../services/prepareOfflineDownload',
+    );
+    let resolveEnqueue: ((value: string[]) => void) | undefined;
 
-    getResumableDownloadItems.mockImplementation(() => {
-      if (resolveFirstFetch) {
-        return Promise.resolve([
-          {
-            id: 'tier-1-source-bible-text',
-            tier: 1,
-            label: 'Text',
-            progress: 0,
-            status: 'queued',
-            projectId: 1,
-          },
-        ]);
-      }
-
-      return new Promise(resolve => {
-        resolveFirstFetch = resolve;
-      });
-    });
+    enqueuePrepareOfflineDownload.mockImplementation(
+      () =>
+        new Promise<string[]>(resolve => {
+          resolveEnqueue = resolve;
+        }),
+    );
 
     const { result } = renderHook(() =>
       usePrepareOfflineDownload({
@@ -251,16 +243,7 @@ describe('usePrepareOfflineDownload', () => {
     });
 
     await act(async () => {
-      resolveFirstFetch?.([
-        {
-          id: 'tier-1-source-bible-text',
-          tier: 1,
-          label: 'Text',
-          progress: 0,
-          status: 'queued',
-          projectId: 1,
-        },
-      ]);
+      resolveEnqueue?.(['tier-1-source-bible-text']);
       await downloadPromise;
     });
 
@@ -269,27 +252,17 @@ describe('usePrepareOfflineDownload', () => {
   });
 
   it('runs a pause tapped during kickoff after enqueue finishes without starting the worker', async () => {
-    const { getResumableDownloadItems } = jest.requireMock('../db/repository');
-    let resolveFirstFetch: ((items: unknown[]) => void) | undefined;
+    const { enqueuePrepareOfflineDownload } = jest.requireMock(
+      '../services/prepareOfflineDownload',
+    );
+    let resolveEnqueue: ((value: string[]) => void) | undefined;
 
-    getResumableDownloadItems.mockImplementation(() => {
-      if (resolveFirstFetch) {
-        return Promise.resolve([
-          {
-            id: 'tier-1-source-bible-text',
-            tier: 1,
-            label: 'Text',
-            progress: 0,
-            status: 'queued',
-            projectId: 1,
-          },
-        ]);
-      }
-
-      return new Promise(resolve => {
-        resolveFirstFetch = resolve;
-      });
-    });
+    enqueuePrepareOfflineDownload.mockImplementation(
+      () =>
+        new Promise<string[]>(resolve => {
+          resolveEnqueue = resolve;
+        }),
+    );
 
     const { result } = renderHook(() =>
       usePrepareOfflineDownload({
@@ -313,16 +286,7 @@ describe('usePrepareOfflineDownload', () => {
     });
 
     await act(async () => {
-      resolveFirstFetch?.([
-        {
-          id: 'tier-1-source-bible-text',
-          tier: 1,
-          label: 'Text',
-          progress: 0,
-          status: 'queued',
-          projectId: 1,
-        },
-      ]);
+      resolveEnqueue?.(['tier-1-source-bible-text']);
       await downloadPromise;
     });
 
@@ -749,6 +713,82 @@ describe('usePrepareOfflineDownload', () => {
         items: catalog.items,
       }),
     );
+  });
+
+  it('keeps Download disabled for unassigned zero-chapter selection even with leftover resumable queue rows', () => {
+    // #580 / B.7: leftover queued/cancelled/failed/paused rows must not
+    // enable Download when pendingBytes is 0 (no chapter selected). Resume
+    // those rows through pause/resume controls instead.
+    mockSnapshot.items = [
+      {
+        id: 'tier-1-source-bible-text',
+        tier: 1,
+        label: 'Text',
+        progress: 0.25,
+        status: 'cancelled',
+        projectId: 1,
+      },
+      {
+        id: 'tier-1-source-bible-audio',
+        tier: 1,
+        label: 'Audio',
+        progress: 0,
+        status: 'queued',
+        projectId: 1,
+      },
+    ];
+
+    const emptyCatalog: PrepareOfflineCatalog = { items: [], groups: [] };
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog: emptyCatalog,
+        selectedItems: [],
+        canDownload: false,
+      }),
+    );
+
+    expect(result.current.canDownload).toBe(false);
+    expect(result.current.downloadButtonLabel).toBe('Download 0 B');
+  });
+
+  it('does not start the worker when Download is tapped with zero pending bytes and leftover queue', async () => {
+    const { enqueuePrepareOfflineDownload } = jest.requireMock(
+      '../services/prepareOfflineDownload',
+    );
+
+    mockSnapshot.items = [
+      {
+        id: 'tier-1-source-bible-text',
+        tier: 1,
+        label: 'Text',
+        progress: 0,
+        status: 'cancelled',
+        projectId: 1,
+      },
+    ];
+
+    const emptyCatalog: PrepareOfflineCatalog = { items: [], groups: [] };
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog: emptyCatalog,
+        selectedItems: [],
+        canDownload: false,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(enqueuePrepareOfflineDownload).not.toHaveBeenCalled();
+    expect(mockStart).not.toHaveBeenCalled();
+    expect(result.current.canDownload).toBe(false);
   });
 
   it('blocks download when transport is not allowed on cellular', () => {

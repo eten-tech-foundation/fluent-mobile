@@ -8,6 +8,8 @@ type TranslationQuestionsSectionHostProps = {
   bookCode: string;
   chapterNumber: number;
   verseNumber: number;
+  /** Stable unit key for nested open-state reset (#593). */
+  versesKey?: string;
 };
 
 /**
