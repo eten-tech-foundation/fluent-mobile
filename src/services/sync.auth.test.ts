@@ -43,6 +43,7 @@ jest.mock('./api', () => ({
     getBibles: jest.fn().mockResolvedValue([]),
     getUserByEmail: jest.fn(),
     getUserProjects: jest.fn(),
+    getUserMilestones: jest.fn().mockResolvedValue([]),
     getChapterAssignments: jest.fn().mockResolvedValue({ data: [] }),
     getUserChapterAssignments: jest.fn().mockResolvedValue({
       assignedChapters: [],
@@ -109,6 +110,7 @@ jest.mock('../db/repository', () => ({
   insertMasterData: jest.fn().mockResolvedValue(undefined),
   insertProjects: jest.fn().mockResolvedValue(undefined),
   insertUserProjects: jest.fn().mockResolvedValue(undefined),
+  upsertProjectUnits: jest.fn().mockResolvedValue(undefined),
   ensureUserProjectMembership: jest.fn().mockResolvedValue(undefined),
   insertChapterAssignmentSyncData: jest.fn().mockResolvedValue({
     insertedCount: 1,

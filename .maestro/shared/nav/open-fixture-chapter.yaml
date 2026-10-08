@@ -7,7 +7,7 @@ appId: com.eten.fluent
     id: 'home-tab-projects'
 - extendedWaitUntil:
     visible:
-      id: 'project-row-.*'
+      id: 'milestone-row-.*'
     timeout: 60000
 - runFlow: ../ensure/ensure-no-modal.yaml
 - scrollUntilVisible:
