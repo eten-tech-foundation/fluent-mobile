@@ -12,6 +12,7 @@ import {
   insertChapterAssignmentSyncData,
   insertBibleTexts,
   getChaptersToSync,
+  getMyWorkChaptersToSync,
   getRecordingLinkedChaptersToSync,
   insertUserProjects,
   ensureUserProjectMembership,
@@ -690,7 +691,15 @@ async function syncChapterAssignmentsForUser(
   return result;
 }
 
-export async function syncBibleTexts(updatedAfter?: string) {
+export type SyncBibleTextsOptions = {
+  /** When set, sync only these chapters instead of all local assignments (#670). */
+  chapterGroups?: BibleChapterGroup;
+};
+
+export async function syncBibleTexts(
+  updatedAfter?: string,
+  options?: SyncBibleTextsOptions,
+) {
   return retrySyncStep(
     'Bible text sync',
     KV_KEYS.SYNC_ERROR_BIBLE_TEXTS,
@@ -708,7 +717,7 @@ export async function syncBibleTexts(updatedAfter?: string) {
         cursorForSync = undefined;
       }
 
-      const bibleGroups = await getChaptersToSync();
+      const bibleGroups = options?.chapterGroups ?? (await getChaptersToSync());
       // #469: remap must cover recording-linked verses even when the chapter is
       // no longer in chapter_assignments. Clear the pending flag only after
       // those chapters are fetched and upserted below.
@@ -1259,10 +1268,19 @@ export async function syncAllUsers(): Promise<void> {
   );
 }
 
+export type SyncAllDataOptions = {
+  /**
+   * Fired after Tier 1 (My Work usable) on login so Home can clear the
+   * full-screen spinner while Tier 2 continues (#670).
+   */
+  onTier1Complete?: () => void;
+};
+
 export async function syncAllData(
   isIncremental = false,
   email?: string,
   preloadedUser?: ApiUser,
+  options?: SyncAllDataOptions,
 ) {
   return runFullSyncSingleFlight(
     'syncAllData',
@@ -1274,6 +1292,12 @@ export async function syncAllData(
       emitSyncStart();
 
       let masterPromise: Promise<void> | undefined;
+      let tier1Notified = false;
+      const notifyTier1Complete = () => {
+        if (tier1Notified) return;
+        tier1Notified = true;
+        options?.onTier1Complete?.();
+      };
 
       try {
         let userId: number;
@@ -1311,6 +1335,8 @@ export async function syncAllData(
           getUserLastSyncedAt(userIdStr) || undefined;
 
         // Claims overlap master fetch; projects/assignments wait for FK parents.
+        // Full catalogue still runs in Tier 1 until fluent-api offers scoped
+        // master data (fluent-api#373 / #670 follow-up).
         masterPromise = syncMasterData(sessionToken);
         await syncPendingChapterClaimsForUser(userId);
         await masterPromise;
@@ -1331,21 +1357,37 @@ export async function syncAllData(
             );
           assignmentPartialSkipWarning = partialSkipWarning;
           bibleTextUpdatedAfter = didFullSync ? undefined : assignmentCursor;
+          await syncPericopes();
+          await syncBibleTexts(bibleTextUpdatedAfter);
+          notifyTier1Complete();
         } else if (localProjectIdsBefore.length === 0) {
+          // Tier 1 (#670): My Work assignments + texts only — unblock Home.
+          const workResult = await syncUserChapterWork(userId, sessionToken);
+          assignmentPartialSkipWarning = applyChapterAssignmentSkipWarning(
+            workResult.partialSkipWarning,
+          );
+          bibleTextUpdatedAfter = undefined;
+          await reconcilePendingClaimsAfterAssignmentPull(userId);
+          await syncPericopes();
+          await syncBibleTexts(undefined, {
+            chapterGroups: await getMyWorkChaptersToSync(userId),
+          });
+          notifyTier1Complete();
+
+          // Tier 2: full project assignment catalogue + remaining bible texts.
+          log.info('Login Tier 2: project assignments + remaining bible texts');
           const projectResult = await syncChapterAssignments(
             userId,
             undefined,
             undefined,
             sessionToken,
           );
-          const workResult = await syncUserChapterWork(userId, sessionToken);
           assignmentPartialSkipWarning = applyChapterAssignmentSkipWarning(
-            workResult.partialSkipWarning,
+            assignmentPartialSkipWarning,
             projectResult.partialSkipWarning,
           );
-          bibleTextUpdatedAfter = undefined;
-          // Raw assignment pull (not via syncChapterAssignmentsForUser) (#610).
           await reconcilePendingClaimsAfterAssignmentPull(userId);
+          await syncBibleTexts(undefined);
         } else {
           // Omit excludeProjectIds on re-login: the API can return [] when every
           // local project is excluded before checking newly assigned work.
@@ -1359,10 +1401,14 @@ export async function syncAllData(
           bibleTextUpdatedAfter = didFullSync
             ? undefined
             : userAssignmentCursor;
+          await syncPericopes();
+          await syncBibleTexts(bibleTextUpdatedAfter, {
+            chapterGroups: await getMyWorkChaptersToSync(userId),
+          });
+          notifyTier1Complete();
+          // Tier 2: remaining assignment chapters (Projects browse).
+          await syncBibleTexts(bibleTextUpdatedAfter);
         }
-
-        await syncPericopes();
-        await syncBibleTexts(bibleTextUpdatedAfter);
 
         const now = new Date().toISOString();
         setLastSyncedAt(now);
@@ -1409,8 +1455,10 @@ export async function syncAllData(
         });
 
         log.info('Sync completed successfully!', { timestamp: now });
+        notifyTier1Complete();
       } catch (error) {
         await settleMasterPromise(masterPromise);
+        notifyTier1Complete();
         log.error('Sync failed', { error: getErrorMessage(error) });
         throw error;
       } finally {

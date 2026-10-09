@@ -125,6 +125,7 @@ jest.mock('../db/repository', () => ({
   }),
   insertBibleTexts: jest.fn().mockResolvedValue(undefined),
   getChaptersToSync: jest.fn().mockResolvedValue(new Map()),
+  getMyWorkChaptersToSync: jest.fn().mockResolvedValue(new Map()),
   getRecordingLinkedChaptersToSync: jest.fn().mockResolvedValue(new Map()),
   getLocalProjectIds: jest.fn().mockResolvedValue([1]),
   hasLanguagesMissingIsoCode: jest.fn().mockResolvedValue(false),
@@ -143,6 +144,8 @@ jest.mock('../db/repository', () => ({
 
 const {
   getChaptersToSync,
+  getMyWorkChaptersToSync,
+  getLocalProjectIds,
   userHasLocalProjects,
   userHasLocalChapterAssignments,
   userNeedsAssigneeRepair,
@@ -151,6 +154,8 @@ const {
 } = jest.requireMock('../db/repository') as {
   insertUser: jest.Mock;
   getChaptersToSync: jest.Mock;
+  getMyWorkChaptersToSync: jest.Mock;
+  getLocalProjectIds: jest.Mock;
   userHasLocalProjects: jest.Mock;
   userHasLocalChapterAssignments: jest.Mock;
   userNeedsAssigneeRepair: jest.Mock;
@@ -1143,6 +1148,90 @@ describe('syncAllUsers auth handling', () => {
     await loginPass;
 
     expect(insertUser).toHaveBeenCalled();
+  });
+});
+
+describe('syncAllData progressive login (#670)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    __resetFullSyncSingleFlightForTests();
+    jest.spyOn(syncEvents, 'emitAuthReauthRequired');
+    jest.spyOn(syncEvents, 'emitSyncStart').mockImplementation(() => {});
+    jest.spyOn(syncEvents, 'emitSyncComplete').mockImplementation(() => {});
+
+    (getUserIdSync as jest.Mock).mockReturnValue('2');
+    (getActiveUserId as jest.Mock).mockReturnValue('2');
+    (getLastSyncedAt as jest.Mock).mockReturnValue('');
+    (getLastAssignmentSyncAt as jest.Mock).mockReturnValue('');
+    (getUserLastSyncedAt as jest.Mock).mockReturnValue('');
+    (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
+    (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([]);
+    (FluentAPI.getBooks as jest.Mock).mockResolvedValue([]);
+    (FluentAPI.getBibles as jest.Mock).mockResolvedValue([]);
+    (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({ data: [] });
+    userHasLocalProjects.mockResolvedValue(false);
+    userHasLocalChapterAssignments.mockResolvedValue(false);
+    userNeedsAssigneeRepair.mockResolvedValue(false);
+    getLocalProjectIds.mockResolvedValue([]);
+    getChaptersToSync.mockResolvedValue(new Map());
+    getMyWorkChaptersToSync.mockResolvedValue(
+      new Map([[10, [{ bookId: 41, chapterNumber: 1 }]]]),
+    );
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    __resetFullSyncSingleFlightForTests();
+  });
+
+  it('unblocks Tier 1 before full project assignments and scopes bible texts to My Work', async () => {
+    const preloadedUser = { id: 2, email: 'user2@test.com' };
+    (getTempCredentials as jest.Mock).mockResolvedValue({
+      token: 'new-user-token',
+    });
+    (getCredentials as jest.Mock).mockResolvedValue({
+      token: 'new-user-token',
+    });
+
+    let resolveAssignments: (value: unknown) => void = () => undefined;
+    (FluentAPI.getChapterAssignments as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveAssignments = resolve;
+        }),
+    );
+
+    const onTier1Complete = jest.fn();
+    const pending = syncAllData(false, preloadedUser.email, preloadedUser, {
+      onTier1Complete,
+    });
+
+    await waitFor(() => {
+      expect(FluentAPI.getUserChapterAssignments).toHaveBeenCalledWith(
+        2,
+        'new-user-token',
+      );
+      expect(getMyWorkChaptersToSync).toHaveBeenCalledWith(2);
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 41, chapterNumber: 1 }],
+        undefined,
+      );
+      expect(onTier1Complete).toHaveBeenCalledTimes(1);
+    });
+
+    // Tier 2 not finished yet — full catalogue still pending.
+    expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+    resolveAssignments({ data: [] });
+    await pending;
+
+    expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
+      2,
+      undefined,
+      undefined,
+      'new-user-token',
+    );
+    expect(onTier1Complete).toHaveBeenCalledTimes(1);
   });
 });
 
