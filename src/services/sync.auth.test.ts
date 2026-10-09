@@ -52,6 +52,7 @@ jest.mock('./api', () => ({
     }),
     getBibleTexts: jest.fn(),
     getPericopeSets: jest.fn().mockResolvedValue([]),
+    getPericopeSet: jest.fn().mockResolvedValue({ status: 304, etag: null }),
   },
 }));
 
@@ -210,6 +211,18 @@ describe('syncProjects / syncUserChapterWork reconciliation shape guard', () => 
     expect(reconcileUserProjects).toHaveBeenCalledWith(2, [5]);
   });
 
+  it('pushes pending claims before chapter assignment refresh (#611)', async () => {
+    (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(syncPendingChapterClaims).toHaveBeenCalledWith(2);
+    const claimsOrder = syncPendingChapterClaims.mock.invocationCallOrder[0];
+    const projectsOrder = (FluentAPI.getUserProjects as jest.Mock).mock
+      .invocationCallOrder[0];
+    expect(claimsOrder).toBeLessThan(projectsOrder);
+  });
+
   it('runs chapter-work reconciliation with empty lists when the response is validly empty', async () => {
     (FluentAPI.getUserChapterAssignments as jest.Mock).mockResolvedValue({
       assignedChapters: [],
@@ -287,7 +300,8 @@ describe('refreshChapterMetadataIfOnline', () => {
     await refreshChapterMetadataIfOnline(2);
     await refreshChapterMetadataIfOnline(2);
 
-    expect(mockGetConnectivitySnapshot).toHaveBeenCalledTimes(2);
+    // Each refresh snapshots once for the gate + once inside claim push (#611).
+    expect(mockGetConnectivitySnapshot).toHaveBeenCalledTimes(4);
     expect(FluentAPI.getLanguages).not.toHaveBeenCalled();
     expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(2);
     expect(FluentAPI.getChapterAssignments).toHaveBeenNthCalledWith(
@@ -415,13 +429,21 @@ describe('refreshChapterMetadataIfOnline', () => {
     const first = refreshChapterMetadataIfOnline(2);
     const second = refreshChapterMetadataIfOnline(2);
 
-    await waitFor(() => {
-      expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
-    });
-    expect(mockGetConnectivitySnapshot).toHaveBeenCalledTimes(1);
+    try {
+      await waitFor(() => {
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+      });
+      // Initial refresh + syncPendingChapterClaimsForUser (#611) each snapshot.
+      expect(
+        mockGetConnectivitySnapshot.mock.calls.length,
+      ).toBeGreaterThanOrEqual(1);
 
-    releaseAssignments();
-    await Promise.all([first, second]);
+      releaseAssignments();
+      await Promise.all([first, second]);
+    } finally {
+      releaseAssignments?.();
+      await Promise.allSettled([first, second]);
+    }
   });
 
   it('does not call the server when offline', async () => {

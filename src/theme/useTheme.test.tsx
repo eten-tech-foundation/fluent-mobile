@@ -1,8 +1,14 @@
+import React from 'react';
 import { renderHook, act } from '@testing-library/react-native';
-import { useTheme, useThemedStyles, useUiVersion } from './useTheme';
+import {
+  ColorModeScope,
+  useTheme,
+  useThemedStyles,
+  useUiVersion,
+} from './useTheme';
 import { setUiVersion } from '../services/userPreferences';
 import { legacyTheme } from './legacy';
-import { nextTheme } from './next';
+import { nextTheme, nextThemes } from './next';
 import { mockPreferenceStore } from '../test/mocks/preferenceStore';
 
 jest.mock('../services/storage', () => ({
@@ -83,5 +89,37 @@ describe('useThemedStyles', () => {
     const first = result.current;
     rerender({});
     expect(result.current).toBe(first);
+  });
+});
+
+describe('ColorModeScope', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockPreferenceStore();
+  });
+
+  const canvasWrapper = ({ children }: { children: React.ReactNode }) => (
+    <ColorModeScope value="canvas">{children}</ColorModeScope>
+  );
+
+  it('resolves the Canvas theme for its subtree in Next', () => {
+    act(() => {
+      setUiVersion('next');
+    });
+    const { result } = renderHook(() => useTheme(), { wrapper: canvasWrapper });
+    expect(result.current).toBe(nextThemes.canvas);
+  });
+
+  it('stays on Legacy when the UI version is Legacy', () => {
+    const { result } = renderHook(() => useTheme(), { wrapper: canvasWrapper });
+    expect(result.current).toBe(legacyTheme);
+  });
+
+  it('defaults to Hardware without a scope', () => {
+    act(() => {
+      setUiVersion('next');
+    });
+    const { result } = renderHook(() => useTheme());
+    expect(result.current).toBe(nextTheme);
   });
 });

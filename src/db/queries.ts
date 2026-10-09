@@ -504,6 +504,26 @@ export async function getPendingChapterClaims(): Promise<
   }
 }
 
+/** True when the active user still has offline claims to push (#611). */
+export async function hasPendingChapterClaimsForUser(
+  userId: number,
+): Promise<boolean> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT 1 AS present
+       FROM chapter_claim_queue
+       WHERE sync_status = 'pending' AND user_id = ?
+       LIMIT 1`,
+      [userId],
+    );
+    return (result.rows?.length ?? 0) > 0;
+  } catch (error) {
+    log.error('Error checking pending chapter claims', { error, userId });
+    throw error;
+  }
+}
+
 /**
  * Claims the server rejected with 404 (`sync_status = 'claim_rejected'`).
  * Kept after the claim POST so conflict can be persisted once the assignment

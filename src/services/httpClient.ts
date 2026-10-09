@@ -105,6 +105,7 @@ async function executeRequest<T>(
   logLabel: string,
   apiBaseUrl = getApiBaseUrl(),
   returnResponse = false,
+  allowNotModified = false,
 ): Promise<T | HttpResponse<T>> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -126,6 +127,13 @@ async function executeRequest<T>(
       ...requestOptions,
       signal: controller.signal,
     });
+
+    if (allowNotModified && res.status === 304) {
+      if (returnResponse) {
+        return { data: undefined as T, response: res };
+      }
+      return undefined as T;
+    }
 
     if (!res.ok) {
       await handleErrorResponse(res, logLabel, auth);
@@ -217,6 +225,43 @@ export async function authedRequest<T>(
     true,
     'API error',
   ) as Promise<T>;
+}
+
+/** Result of a Bearer GET that may revalidate with If-None-Match (#587). */
+export type ConditionalGetResult<T> =
+  | { status: 200; data: T; etag: string | null }
+  | { status: 304; etag: string | null };
+
+/**
+ * Authenticated GET that treats HTTP 304 as success (empty body).
+ * Used for ETag revalidation (e.g. GET /pericope-sets/{id}).
+ */
+export async function authedConditionalGet<T>(
+  endpoint: string,
+  options?: RequestInit,
+  bearerToken?: string | null,
+): Promise<ConditionalGetResult<T>> {
+  const { data, response } = (await executeRequest<T>(
+    endpoint,
+    {
+      ...options,
+      headers: {
+        ...buildHeaders(undefined, bearerToken),
+        ...options?.headers,
+      },
+    },
+    true,
+    'API error',
+    getApiBaseUrl(),
+    true,
+    true,
+  )) as HttpResponse<T>;
+
+  const etag = response.headers.get('ETag');
+  if (response.status === 304) {
+    return { status: 304, etag };
+  }
+  return { status: 200, data, etag };
 }
 
 /** Authenticated multipart POST/PUT — do not set JSON Content-Type. */

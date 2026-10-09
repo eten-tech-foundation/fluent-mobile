@@ -34,6 +34,7 @@ function createHarness(options?: {
   workerDelayMs?: number;
   failUploads?: () => boolean;
   getSessionTransportSnapshot?: UploadOrchestratorDeps['getSessionTransportSnapshot'];
+  pushPendingClaimsBeforeUpload?: UploadOrchestratorDeps['pushPendingClaimsBeforeUpload'];
 }) {
   let connListener: ConnListener | null = null;
   let prefListener: ((value: boolean) => void) | null = null;
@@ -108,6 +109,7 @@ function createHarness(options?: {
         timer.cancelled = true;
       };
     },
+    pushPendingClaimsBeforeUpload: options?.pushPendingClaimsBeforeUpload,
   };
 
   const orchestrator = createUploadOrchestrator(deps);
@@ -185,6 +187,90 @@ describe('uploadOrchestrator', () => {
     expect(h.events.some(e => e.type === 'start')).toBe(true);
     expect(h.events.some(e => e.type === 'complete')).toBe(true);
     expect(h.orchestrator.getSnapshot().phase).toBe('idle');
+  });
+
+  it('pushes pending claims before uploading chapters (#611)', async () => {
+    let releaseClaims!: () => void;
+    const pushPendingClaimsBeforeUpload = jest.fn(
+      () =>
+        new Promise<void>(resolve => {
+          releaseClaims = resolve;
+        }),
+    );
+    const h = createHarness({
+      pushPendingClaimsBeforeUpload,
+      chapters: [{ bookId: 1, chapterNumber: 1 }],
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(
+      () => pushPendingClaimsBeforeUpload.mock.calls.length === 1,
+    );
+    await h.flush();
+    expect(h.uploaded).toEqual([]);
+    releaseClaims();
+    await h.waitFor(() => h.uploaded.length === 1);
+    expect(h.uploaded).toEqual([{ bookId: 1, chapterNumber: 1 }]);
+  });
+
+  it('still uploads when claim push rejects (#611 soft-continue)', async () => {
+    const pushPendingClaimsBeforeUpload = jest
+      .fn()
+      .mockRejectedValue(new Error('claim network'));
+    const h = createHarness({
+      pushPendingClaimsBeforeUpload,
+      chapters: [{ bookId: 3, chapterNumber: 2 }],
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => h.uploaded.length === 1);
+    expect(pushPendingClaimsBeforeUpload).toHaveBeenCalledTimes(1);
+    expect(h.uploaded).toEqual([{ bookId: 3, chapterNumber: 2 }]);
+  });
+
+  it('cancel during claim push aborts before uploading (#611)', async () => {
+    let releaseClaims!: () => void;
+    const pushPendingClaimsBeforeUpload = jest.fn(
+      () =>
+        new Promise<void>(resolve => {
+          releaseClaims = resolve;
+        }),
+    );
+    const h = createHarness({
+      pushPendingClaimsBeforeUpload,
+      chapters: [{ bookId: 1, chapterNumber: 1 }],
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => h.orchestrator.getSnapshot().phase === 'syncing');
+    await h.waitFor(
+      () => pushPendingClaimsBeforeUpload.mock.calls.length === 1,
+    );
+    await h.orchestrator.cancel();
+    releaseClaims();
+    await h.waitFor(() => h.events.some(e => e.type === 'cancelled'));
+    expect(h.uploaded).toEqual([]);
+  });
+
+  it('does not start a second auto session while claims are in flight (#611)', async () => {
+    let releaseClaims!: () => void;
+    const pushPendingClaimsBeforeUpload = jest.fn(
+      () =>
+        new Promise<void>(resolve => {
+          releaseClaims = resolve;
+        }),
+    );
+    const h = createHarness({
+      pushPendingClaimsBeforeUpload,
+      chapters: [{ bookId: 1, chapterNumber: 1 }],
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(
+      () => pushPendingClaimsBeforeUpload.mock.calls.length === 1,
+    );
+    // Another online evaluate must not open a parallel session.
+    h.emitConnectivity(true, true);
+    await h.flush();
+    expect(pushPendingClaimsBeforeUpload).toHaveBeenCalledTimes(1);
+    releaseClaims();
+    await h.waitFor(() => h.uploaded.length === 1);
   });
 
   it('does not auto-upload on cellular when uploadOverCellular is false', async () => {

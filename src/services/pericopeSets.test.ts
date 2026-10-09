@@ -1,6 +1,8 @@
 import {
+  flattenApiPericopeSetGroups,
   loadBundledPericopeSet,
   getBundledPericopeSetVersion,
+  parseApiPericopeIdentity,
 } from './pericopeSets';
 
 describe('loadBundledPericopeSet', () => {
@@ -77,6 +79,52 @@ describe('loadBundledPericopeSet', () => {
 
     it('returns null for an unmapped pericopeSetId', () => {
       expect(getBundledPericopeSetVersion(999)).toBeNull();
+    });
+  });
+
+  describe('parseApiPericopeIdentity / flattenApiPericopeSetGroups', () => {
+    it('splits FCBH section_number identity', () => {
+      expect(parseApiPericopeIdentity('51_3')).toEqual({
+        section: 51,
+        pericopeNumber: '3',
+      });
+    });
+
+    it('keeps FIA-style numbers without a section', () => {
+      expect(parseApiPericopeIdentity('1.2')).toEqual({
+        section: null,
+        pericopeNumber: '1.2',
+      });
+    });
+
+    it('flattens API groups into per-verse rows (#587)', () => {
+      const verses = flattenApiPericopeSetGroups([
+        {
+          bookCode: 'MRK',
+          pericopeNumber: '5_1',
+          pericopeTitle: null,
+          verses: [
+            { chapterNumber: 1, verseNumber: 2 },
+            { chapterNumber: 1, verseNumber: 1 },
+          ],
+        },
+      ]);
+      expect(verses).toEqual([
+        {
+          chapterNumber: 1,
+          verseNumber: 1,
+          section: 5,
+          pericopeNumber: '1',
+          pericopeTitle: null,
+        },
+        {
+          chapterNumber: 1,
+          verseNumber: 2,
+          section: 5,
+          pericopeNumber: '1',
+          pericopeTitle: null,
+        },
+      ]);
     });
   });
 });

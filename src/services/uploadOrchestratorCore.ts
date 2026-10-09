@@ -69,6 +69,11 @@ export type UploadOrchestratorDeps = {
    * Defaults to setTimeout; tests inject a manual scheduler.
    */
   schedule?: (callback: () => void, delayMs: number) => () => void;
+  /**
+   * Push offline chapter claims before uploading takes (#611).
+   * Soft-fail / auth behavior is owned by the injected implementation.
+   */
+  pushPendingClaimsBeforeUpload?: () => Promise<void>;
 };
 
 export type UploadOrchestratorSnapshot = {
@@ -264,6 +269,8 @@ export function createUploadOrchestrator(
       sessionAbort = abort;
       completedChapters = 0;
       totalChapters = chapters.length;
+      // Lock the session before awaiting claims so Cancel/parallel Sync Now
+      // cannot start a second runSession during the claim round-trip (#611).
       phase = 'syncing';
       deps.emit({ type: 'start', totalChapters: chapters.length });
       log.info('Upload session started', {
@@ -273,6 +280,40 @@ export function createUploadOrchestrator(
 
       const work = (async () => {
         try {
+          // Claims must land before takes — reconnect auto-upload and Sync Now
+          // otherwise race the full sync's claim step (~30s of master data) (#611).
+          // Race abort so Cancel/pause do not hang on the claim round-trip.
+          if (deps.pushPendingClaimsBeforeUpload) {
+            try {
+              await Promise.race([
+                deps.pushPendingClaimsBeforeUpload(),
+                new Promise<never>((_, reject) => {
+                  if (abort.signal.aborted) {
+                    reject(new Error('aborted'));
+                    return;
+                  }
+                  abort.signal.addEventListener(
+                    'abort',
+                    () => {
+                      reject(new Error('aborted'));
+                    },
+                    { once: true },
+                  );
+                }),
+              ]);
+            } catch (error) {
+              if (abort.signal.aborted) {
+                return;
+              }
+              log.warn('Pending claim push before upload failed; continuing', {
+                reason,
+                error,
+              });
+            }
+          }
+          if (abort.signal.aborted) {
+            return;
+          }
           for (const chapter of chapters) {
             if (abort.signal.aborted) {
               return;
