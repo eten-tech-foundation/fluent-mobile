@@ -133,68 +133,79 @@ export function createUploadOrchestrator(
     }
   };
 
-  const runSession = async (reason: 'auto' | 'sync_now'): Promise<void> => {
+  const runSession = (reason: 'auto' | 'sync_now'): Promise<void> => {
     if (sessionPromise) {
-      return;
-    }
-    if (!deps.worker) {
-      log.info('No chapter upload worker registered; skipping session', {
-        reason,
-      });
-      phase = isUserPaused() ? 'paused' : 'idle';
-      deps.emit({ type: 'idle' });
-      return;
+      return Promise.resolve();
     }
 
-    await applyFreshTransportSnapshot();
-
-    const uploadOverCellular = deps.getUploadOverCellular();
-    const gate = transportAllowsTransfer({
-      isOnline,
-      isWifi,
-      connectionType,
-      uploadOverCellular,
-    });
-    if (gate === 'offline') {
-      phase = 'offline';
-      return;
-    }
-    if (gate === 'waiting_wifi') {
-      phase = 'waiting_wifi';
-      deps.emit({ type: 'waiting_wifi' });
-      return;
-    }
-    if (reason === 'auto' && isUserPaused()) {
-      phase = 'paused';
-      deps.emit({ type: 'paused', reason: 'user' });
-      return;
-    }
-    if (reason === 'auto' && suppressAutoUntilOnlineEdge) {
-      return;
-    }
-
-    const chapters = await deps.getPendingUploadChapters();
-    if (chapters.length === 0) {
-      phase = 'idle';
-      deps.emit({ type: 'idle' });
-      return;
-    }
-
+    // Reserve the in-flight slot before any await. evaluateAuto does not
+    // await runSession, and the transport probe / chapter query yield;
+    // a second connectivity event in that window used to start another
+    // session and thrash the foreground service (#599).
     const abort = new AbortController();
     sessionAbort = abort;
-    completedChapters = 0;
-    totalChapters = chapters.length;
-    // Lock the session before awaiting claims so Cancel/parallel Sync Now
-    // cannot start a second runSession during the claim round-trip (#611).
-    phase = 'syncing';
-    deps.emit({ type: 'start', totalChapters: chapters.length });
-    log.info('Upload session started', {
-      reason,
-      totalChapters: chapters.length,
-    });
 
     const work = (async () => {
+      const worker = deps.worker;
+      if (!worker) {
+        log.info('No chapter upload worker registered; skipping session', {
+          reason,
+        });
+        phase = isUserPaused() ? 'paused' : 'idle';
+        deps.emit({ type: 'idle' });
+        return;
+      }
+
       try {
+        await applyFreshTransportSnapshot();
+        if (abort.signal.aborted) {
+          return;
+        }
+
+        const uploadOverCellular = deps.getUploadOverCellular();
+        const gate = transportAllowsTransfer({
+          isOnline,
+          isWifi,
+          connectionType,
+          uploadOverCellular,
+        });
+        if (gate === 'offline') {
+          phase = 'offline';
+          return;
+        }
+        if (gate === 'waiting_wifi') {
+          phase = 'waiting_wifi';
+          deps.emit({ type: 'waiting_wifi' });
+          return;
+        }
+        if (reason === 'auto' && isUserPaused()) {
+          phase = 'paused';
+          deps.emit({ type: 'paused', reason: 'user' });
+          return;
+        }
+        if (reason === 'auto' && suppressAutoUntilOnlineEdge) {
+          return;
+        }
+
+        const chapters = await deps.getPendingUploadChapters();
+        if (abort.signal.aborted) {
+          return;
+        }
+        if (chapters.length === 0) {
+          phase = 'idle';
+          deps.emit({ type: 'idle' });
+          return;
+        }
+
+        completedChapters = 0;
+        totalChapters = chapters.length;
+        phase = 'syncing';
+        deps.emit({ type: 'start', totalChapters: chapters.length });
+        log.info('Upload session started', {
+          reason,
+          totalChapters: chapters.length,
+        });
+
         // Claims must land before takes — reconnect auto-upload and Sync Now
         // otherwise race the full sync's claim step (~30s of master data) (#611).
         // Race abort so Cancel/pause do not hang on the claim round-trip.
@@ -233,7 +244,7 @@ export function createUploadOrchestrator(
           if (abort.signal.aborted) {
             return;
           }
-          await deps.worker!.uploadChapter(chapter, abort.signal);
+          await worker.uploadChapter(chapter, abort.signal);
           if (abort.signal.aborted) {
             return;
           }
@@ -272,7 +283,7 @@ export function createUploadOrchestrator(
       }
     });
 
-    await sessionPromise;
+    return sessionPromise;
   };
 
   const evaluateAuto = (): void => {

@@ -241,6 +241,37 @@ describe('uploadOrchestrator', () => {
     await h.waitFor(() => h.uploaded.length === 1);
   });
 
+  it('starts one session when connectivity events overlap the transport probe (#599)', async () => {
+    let releaseSnapshot!: () => void;
+    let snapshotCalls = 0;
+    const h = createHarness({
+      getSessionTransportSnapshot: () => {
+        snapshotCalls += 1;
+        return new Promise(resolve => {
+          releaseSnapshot = () =>
+            resolve({
+              isOnline: true,
+              isWifi: true,
+              connectionType: 'wifi',
+            });
+        });
+      },
+    });
+
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => snapshotCalls === 1);
+    h.emitConnectivity(true, true);
+    h.emitConnectivity(true, true);
+    await h.flush();
+    expect(snapshotCalls).toBe(1);
+
+    releaseSnapshot();
+    await h.waitFor(() => h.events.some(e => e.type === 'complete'));
+    expect(h.events.filter(e => e.type === 'start')).toHaveLength(1);
+    expect(h.events.filter(e => e.type === 'complete')).toHaveLength(1);
+    expect(h.uploaded).toHaveLength(2);
+  });
+
   it('does not auto-upload on cellular when uploadOverCellular is false', async () => {
     const h = createHarness({ uploadOverCellular: false });
     h.emitConnectivity(true, false);
