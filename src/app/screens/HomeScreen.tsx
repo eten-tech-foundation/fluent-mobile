@@ -88,7 +88,8 @@ function HomeScreenBody({
       isFocused: () => isFocusedRef.current,
       hasTransferResolved: () => hasTransferResolvedRef.current,
       // Hold the auto-prompt while the launch recovery prompt is unanswered (#567).
-      isSettling: () => isSettlingRef.current || !launchRecoveryGate.isSettled(),
+      isSettling: () =>
+        isSettlingRef.current || !launchRecoveryGate.isSettled(),
       getTransport: () => ({
         isOnline: isLinkOnlineRef.current,
         isWifi: isWifiRef.current,

@@ -13,6 +13,7 @@ export type VerseAudioEvent =
   | { type: 'RESUME' }
   | { type: 'STOP' }
   | { type: 'SAVED' }
+  | { type: 'SAVE_FAILED' }
   | { type: 'DISCARD' }
   | { type: 'PLAY' }
   | { type: 'PLAYBACK_END' }
@@ -55,6 +56,11 @@ export function verseAudioReducer(
       return state;
     case 'SAVED':
       return state === 'saving' ? 'recorded' : state;
+    case 'SAVE_FAILED':
+      // Persist failed after STOP: segments are kept on disk and in the hook's
+      // refs, so return to paused and let the user retry Stop, Resume, or
+      // Discard instead of dropping to error/idle (#567).
+      return state === 'saving' ? 'paused' : state;
     case 'DISCARD':
       // Abandoned capture (#49): drop the in-progress take without persisting.
       // Prior review state (takes list) is restored by REHYDRATE in the hook.

@@ -619,6 +619,132 @@ describe('useVerseAudio', () => {
     );
   });
 
+  it('stays paused when persist fails, keeps the marker and segments, and retries Stop', async () => {
+    persistTake.mockRejectedValueOnce(new Error('disk full'));
+
+    const { result } = renderHook(() => useVerseAudio(recoveryArgs()));
+    await waitFor(() => expect(result.current.state).toBe('idle'));
+
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      await result.current.stop();
+    });
+
+    // Not error/idle: the Record buttons stay hidden, so start() cannot run.
+    expect(result.current.state).toBe('paused');
+    expect(result.current.errorMessage).toBe('disk full');
+    expect(mockPausedMarkers).toEqual([
+      expect.objectContaining({
+        sessionKey: '7:3',
+        segments: ['file:///tmp/take.m4a'],
+        elapsedMs: 500,
+      }),
+    ]);
+    expect(mockClearPausedTake).not.toHaveBeenCalled();
+    expect(mockDeleteFile).not.toHaveBeenCalled();
+
+    // Retry: the recorder is already stopped, so this saves the kept segments.
+    await act(async () => {
+      await result.current.stop();
+    });
+
+    expect(mockRecordingStop).toHaveBeenCalledTimes(1);
+    expect(persistTake).toHaveBeenCalledTimes(2);
+    expect(persistTake).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        tempUris: ['file:///tmp/take.m4a'],
+        durationMs: 500,
+      }),
+    );
+    expect(mockClearPausedTake).toHaveBeenCalledWith('7:3');
+    expect(result.current.state).toBe('recorded');
+  });
+
+  it('refuses start() while recovered audio is pending and deletes nothing', async () => {
+    mockPausedMarkers.push(recoveredMarker());
+
+    const { result } = renderHook(() => useVerseAudio(recoveryArgs()));
+    await waitFor(() => expect(result.current.state).toBe('paused'));
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(mockRecordingStart).not.toHaveBeenCalled();
+    expect(mockDeleteFile).not.toHaveBeenCalled();
+    expect(mockClearPausedTake).not.toHaveBeenCalled();
+    expect(mockPausedMarkers).toHaveLength(1);
+    expect(result.current.errorMessage).toMatch(/Save or discard/);
+    expect(result.current.state).toBe('paused');
+  });
+
+  it('discarding a recovered take clears its marker and deletes its segments', async () => {
+    mockPausedMarkers.push(recoveredMarker());
+    // The real engine throws when stopped while idle (no native recorder yet).
+    mockRecordingStop.mockRejectedValue(
+      new Error('Cannot stop recorder while idle'),
+    );
+
+    const { result } = renderHook(() => useVerseAudio(recoveryArgs()));
+    await waitFor(() => expect(result.current.state).toBe('paused'));
+
+    await act(async () => {
+      await result.current.discardCapture();
+    });
+
+    expect(mockClearPausedTake).toHaveBeenCalledWith('7:3');
+    expect(mockDeleteFile).toHaveBeenCalledWith('file:///old.aac');
+    expect(mockPausedMarkers).toHaveLength(0);
+    expect(persistTake).not.toHaveBeenCalled();
+    expect(result.current.state).toBe('idle');
+  });
+
+  it('ignores a stale hydration when the verse changes mid-check', async () => {
+    mockPausedMarkers.push(recoveredMarker());
+    let releaseFileCheck!: (exists: boolean) => void;
+    mockFileExists.mockReturnValueOnce(
+      new Promise<boolean>(resolve => {
+        releaseFileCheck = resolve;
+      }),
+    );
+
+    const { result, rerender } = renderHook(
+      ({ id, verse }: { id: number; verse: number }) =>
+        useVerseAudio({
+          ...recoveryArgs(),
+          bibleTextId: id,
+          verseNumber: verse,
+        }),
+      { initialProps: { id: 42, verse: 3 } },
+    );
+    // Verse A's run is now parked on its segment file check.
+    await waitFor(() => expect(mockFileExists).toHaveBeenCalled());
+
+    await act(async () => {
+      rerender({ id: 43, verse: 4 });
+    });
+    await waitFor(() => expect(loadTakes).toHaveBeenCalledWith(43));
+
+    // Verse A's check finishes late. It must not write refs or dispatch RECOVER.
+    await act(async () => {
+      releaseFileCheck(true);
+    });
+
+    expect(result.current.state).not.toBe('paused');
+    expect(result.current.recoveredElapsedMs).toBe(0);
+    expect(mockClearPausedTake).not.toHaveBeenCalled();
+
+    // Refs are clean, so verse B can record without being refused.
+    await act(async () => {
+      await result.current.start();
+    });
+    expect(mockRecordingStart).toHaveBeenCalled();
+    expect(result.current.errorMessage).toBeNull();
+    expect(result.current.state).toBe('recording');
+  });
+
   it('pausePlayback is a no-op when draft is not playing', async () => {
     const take = makeTake();
     loadTakes.mockResolvedValue([take]);

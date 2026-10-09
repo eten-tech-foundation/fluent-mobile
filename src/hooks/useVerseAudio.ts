@@ -456,6 +456,13 @@ export function useVerseAudio({
 
   useEffect(() => {
     let cancelled = false;
+    // `activeBibleTextIdRef` is assigned synchronously below, so a newer run
+    // overwrites it before this run's awaits resume. `cancelled` additionally
+    // covers re-runs that keep the same bibleTextId (verseNumber /
+    // chapterAssignmentId changes).
+    const isStale = () =>
+      cancelled || activeBibleTextIdRef.current !== bibleTextId;
+
     setLoadedTakeId(null);
     setPlayingTakeId(null);
     clearStitchQueue();
@@ -473,10 +480,11 @@ export function useVerseAudio({
       }
       try {
         const rows = await loadTakesFn(bibleTextId);
-        if (cancelled) return;
+        if (isStale()) return;
         setTakes(rows);
         dispatch({ type: 'REHYDRATE', hasTake: rows.length > 0 });
         await refreshAllTakes(bibleTextId);
+        if (isStale()) return;
         const key = pausedTakeSessionKey(
           chapterAssignmentId,
           verseNumber,
@@ -494,6 +502,11 @@ export function useVerseAudio({
             }
           }),
         );
+        // Critical: nothing below may write refs, dispatch RECOVER, or clear a
+        // marker for a run that is no longer the active verse. No await sits
+        // between this check and the ref writes (decideRecovery is sync).
+        if (isStale()) return;
+
         const decision = decideRecovery(marker, existingFiles);
         if (decision.kind === 'prompt') {
           // Already hydrated for this marker (effect can re-run) — don't redo.
@@ -532,7 +545,7 @@ export function useVerseAudio({
         );
       } catch (error) {
         log.error('Failed to load takes', { error });
-        if (!cancelled) {
+        if (!isStale()) {
           dispatch({
             type: 'ERROR',
             message: error instanceof Error ? error.message : 'load failed',
@@ -558,6 +571,14 @@ export function useVerseAudio({
     if (bibleTextId === null) return;
     // Wait until capture metadata resolves so pericope mode cannot persist as verse.
     if (draftingUnit === 'pericope' && recordingUnit === null) return;
+
+    // Unsaved recovered audio (hydrated from a paused-take marker, or kept
+    // after a failed persist in stop()) must be saved or explicitly discarded.
+    // start() never deletes a marker or its segments (#567).
+    if (recoveredSegmentsRef.current.length > 0) {
+      setErrorMessage('Save or discard the paused recording first.');
+      return;
+    }
 
     if (draftingUnit === 'pericope' && recordingUnit?.coveredViews.length) {
       const counts = await Promise.all(
@@ -586,26 +607,6 @@ export function useVerseAudio({
       setPlayingTakeId(null);
       setLoadedTakeId(null);
       clearStitchQueue();
-      recoveredSegmentsRef.current = [];
-      recoveredElapsedMsRef.current = 0;
-      setRecoveredElapsedMs(0);
-      const staleMarker =
-        sessionKey !== null
-          ? listPausedTakes().find(m => m.sessionKey === sessionKey)
-          : undefined;
-      if (staleMarker) {
-        clearPausedTake(staleMarker.sessionKey);
-        await Promise.all(
-          staleMarker.segments.map(uri =>
-            deleteFile(uri).catch(error =>
-              log.warn('Failed to delete superseded paused segment', {
-                uri,
-                error,
-              }),
-            ),
-          ),
-        );
-      }
       const anchorBibleTextId = recordingUnit?.anchorBibleTextId ?? bibleTextId;
       capturePersistRef.current = {
         bibleTextId: anchorBibleTextId,
@@ -645,7 +646,6 @@ export function useVerseAudio({
     projectUnitId,
     recording,
     recordingUnit,
-    sessionKey,
     verseNumber,
   ]);
 
@@ -712,6 +712,9 @@ export function useVerseAudio({
    * no takes remain, Review otherwise — same display rule as the capture
    * views). Uses the recorder's native stop so the temp URI exists to delete;
    * the alternative (`uri` is null) means the engine already dropped it.
+   *
+   * Discard is also the one explicit place that throws away recovered /
+   * paused segments and their marker (#567): `start()` no longer does.
    */
   const discardCapture = useCallback(async () => {
     if (capturePersistRef.current === null) return;
@@ -733,6 +736,25 @@ export function useVerseAudio({
         message: error instanceof Error ? error.message : String(error),
       });
     } finally {
+      const pending = recoveredSegmentsRef.current;
+      recoveredSegmentsRef.current = [];
+      recoveredElapsedMsRef.current = 0;
+      setRecoveredElapsedMs(0);
+      if (sessionKey !== null) {
+        clearPausedTake(sessionKey);
+      }
+      await Promise.all(
+        pending.map(segmentUri =>
+          deleteFile(segmentUri).catch(deleteError => {
+            log.warn('discardCapture paused segment delete failed', {
+              message:
+                deleteError instanceof Error
+                  ? deleteError.message
+                  : String(deleteError),
+            });
+          }),
+        ),
+      );
       capturePersistRef.current = null;
       setErrorMessage(null);
       dispatch({ type: 'DISCARD' });
@@ -742,7 +764,7 @@ export function useVerseAudio({
       // only fires from `recorded`.
       dispatch({ type: 'REHYDRATE', hasTake: takes.length > 0 });
     }
-  }, [recording, takes]);
+  }, [recording, sessionKey, takes]);
 
   const stop = useCallback(async () => {
     const snapshot = capturePersistRef.current;
@@ -794,7 +816,23 @@ export function useVerseAudio({
             capture: toMarkerCapture(snapshot),
           });
         }
-        throw persistError;
+        // Keep everything needed to retry Stop (or Resume) and stay paused,
+        // like a failed recovered-resume. Do NOT dispatch ERROR: it drops the
+        // UI to idle/review, where Record -> start() would orphan this audio.
+        // `recording.status` is idle after recording.stop(), so a retried
+        // stop() takes the recoveredOnly branch with the full segment list.
+        capturePersistRef.current = snapshot;
+        recoveredSegmentsRef.current = tempUris;
+        recoveredElapsedMsRef.current = persistMeta.durationMs;
+        setRecoveredElapsedMs(persistMeta.durationMs);
+        setErrorMessage(
+          persistError instanceof Error ? persistError.message : 'save failed',
+        );
+        // STOP already moved the reducer to `saving`; RECOVER is ignored there.
+        dispatch({ type: 'SAVE_FAILED' }); // saving -> paused
+        // Return from inside the outer try so its catch (which clears all
+        // recovery state and dispatches ERROR) is skipped.
+        return;
       }
       // The take is committed and its segments are gone — clear the marker now,
       // before claim sync / reload can throw and strand a dangling marker.
