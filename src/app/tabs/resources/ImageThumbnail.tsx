@@ -29,10 +29,12 @@ export function ImageThumbnail({
   const [imageLoading, setImageLoading] = useState(true);
   const [imageFailed, setImageFailed] = useState(false);
 
+  const previewUri = item.thumbnailUri?.trim() || item.uri;
+
   useEffect(() => {
     setImageLoading(true);
     setImageFailed(false);
-  }, [item.id, item.uri]);
+  }, [item.id, previewUri]);
 
   const handleLoadError = () => {
     setImageLoading(false);
@@ -53,7 +55,7 @@ export function ImageThumbnail({
         ) : (
           <>
             <ZoomableImage
-              uri={item.uri}
+              uri={previewUri}
               accessibilityLabel={item.title}
               style={styles.zoomHost}
               contentFit="cover"

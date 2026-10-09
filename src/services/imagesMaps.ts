@@ -1,4 +1,7 @@
-import type { ApiTranslationImageItem } from '../types/api/translationResources';
+import type {
+  ApiTranslationImageItem,
+  ApiTranslationImageLicenseInfo,
+} from '../types/api/translationResources';
 import type { ImagesMapsItem } from '../types/resources/imagesMaps';
 import {
   loadResourcesForVerseRange,
@@ -31,9 +34,38 @@ export function setImagesMapsLoadFailureForTests(shouldFail: boolean): void {
 }
 
 /**
- * Map one fluent-api image item into a Resources-tab item.
- * fluent-api #274 returns title/url only (no caption/attribution); UI treats
- * those fields as optional.
+ * Build a short attribution line from fluent-api / Aquifer licenseInfo (#594).
+ * Returns undefined when nothing useful is present.
+ */
+export function formatImageLicenseAttribution(
+  licenseInfo: ApiTranslationImageItem['licenseInfo'],
+): string | undefined {
+  if (!licenseInfo || typeof licenseInfo !== 'object') {
+    return undefined;
+  }
+  const info = licenseInfo as ApiTranslationImageLicenseInfo;
+  const parts: string[] = [];
+  if (typeof info.title === 'string' && info.title.trim()) {
+    parts.push(info.title.trim());
+  }
+  const holder = info.copyright?.holder?.name;
+  if (typeof holder === 'string' && holder.trim()) {
+    parts.push(holder.trim());
+  }
+  const dates = info.copyright?.dates;
+  if (typeof dates === 'string' && dates.trim()) {
+    parts.push(dates.trim());
+  }
+  if (parts.length === 0) {
+    return undefined;
+  }
+  return parts.join(' · ');
+}
+
+/**
+ * Map one fluent-api image item into a Resources-tab item (#191 / #594).
+ * Caption / attribution / licenseInfo are optional until fluent-api exposes
+ * them on the verse images endpoint; thumbnailUrl is used for list previews.
  */
 export function parseTranslationImageItem(
   item: ApiTranslationImageItem,
@@ -48,10 +80,18 @@ export function parseTranslationImageItem(
     return null;
   }
 
+  const caption = item.caption?.trim() || undefined;
+  const attribution =
+    item.attribution?.trim() || formatImageLicenseAttribution(item.licenseInfo);
+  const thumbnailUri = item.thumbnailUrl?.trim() || undefined;
+
   return {
     id: `img-api-${item.id}`,
     title,
     uri,
+    ...(caption ? { caption } : {}),
+    ...(attribution ? { attribution } : {}),
+    ...(thumbnailUri && thumbnailUri !== uri ? { thumbnailUri } : {}),
   };
 }
 
