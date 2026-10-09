@@ -29,6 +29,12 @@ export interface SyncStatusSnapshot {
   failedCount: number;
   unuploadableCount: number;
   failedErrorText: string | null;
+  /**
+   * #620: true when the pending or unuploadable count read failed. The counts
+   * above are then the last known values, not fresh ones, so consumers must
+   * not present them as "All synced".
+   */
+  countsUnknown: boolean;
   isUploading: boolean;
   uploadProgress: UploadProgress | null;
 }
@@ -39,6 +45,7 @@ export const EMPTY_SYNC_STATUS_SNAPSHOT: SyncStatusSnapshot = {
   failedCount: 0,
   unuploadableCount: 0,
   failedErrorText: null,
+  countsUnknown: false,
   isUploading: false,
   uploadProgress: null,
 };
@@ -67,6 +74,7 @@ function snapshotEquals(a: SyncStatusSnapshot, b: SyncStatusSnapshot): boolean {
     a.failedCount === b.failedCount &&
     a.unuploadableCount === b.unuploadableCount &&
     a.failedErrorText === b.failedErrorText &&
+    a.countsUnknown === b.countsUnknown &&
     a.isUploading === b.isUploading &&
     a.uploadProgress?.completed === b.uploadProgress?.completed &&
     a.uploadProgress?.total === b.uploadProgress?.total
@@ -130,6 +138,15 @@ function progressFromEvent(event: UploadSessionEvent): UploadProgress | null {
   return null;
 }
 
+async function loadFailedUploadCount(): Promise<number> {
+  try {
+    return await getFailedUploadCount();
+  } catch (error) {
+    log.error('Failed to load failed upload count', { error });
+    return 0;
+  }
+}
+
 async function loadFailedUploadErrorText(): Promise<string | null> {
   try {
     const summary = await getFailedUploadErrorSummary();
@@ -176,14 +193,18 @@ function applyUploadSessionEvent(event: UploadSessionEvent): void {
 /**
  * Re-read pending/failed upload counts from SQLite into the shared snapshot.
  * Concurrent calls are safe: only the newest generation may commit.
+ *
+ * #620: reads are settled independently. A rejected pending or unuploadable
+ * read keeps its last known value and sets `countsUnknown`, instead of being
+ * treated as zero.
  */
 export async function refreshSyncStatusStore(): Promise<void> {
   const generation = ++refreshGeneration;
   try {
     const [pending, failed, failedError, chapters, unuploadable] =
-      await Promise.all([
+      await Promise.allSettled([
         getPendingUploadCount(),
-        getFailedUploadCount(),
+        loadFailedUploadCount(),
         loadFailedUploadErrorText(),
         getPendingUploadChapters(),
         getUnuploadablePendingSummary(),
@@ -191,12 +212,32 @@ export async function refreshSyncStatusStore(): Promise<void> {
     if (generation !== refreshGeneration) {
       return;
     }
+
+    let failedCount = snapshot.failedCount;
+    let failedErrorText = snapshot.failedErrorText;
+    if (failed.status === 'fulfilled') {
+      failedCount = failed.value;
+      failedErrorText =
+        failed.value > 0 && failedError.status === 'fulfilled'
+          ? failedError.value
+          : null;
+    }
+
     commit({
-      pendingCount: pending,
-      pendingChapterCount: chapters.length,
-      failedCount: failed,
-      failedErrorText: failed > 0 ? failedError : null,
-      unuploadableCount: unuploadable.total,
+      pendingCount:
+        pending.status === 'fulfilled' ? pending.value : snapshot.pendingCount,
+      pendingChapterCount:
+        chapters.status === 'fulfilled'
+          ? chapters.value.length
+          : snapshot.pendingChapterCount,
+      failedCount,
+      failedErrorText,
+      unuploadableCount:
+        unuploadable.status === 'fulfilled'
+          ? unuploadable.value.total
+          : snapshot.unuploadableCount,
+      countsUnknown:
+        pending.status === 'rejected' || unuploadable.status === 'rejected',
       isUploading: pendingFinalRefresh ? false : snapshot.isUploading,
       uploadProgress: snapshot.uploadProgress,
     });
