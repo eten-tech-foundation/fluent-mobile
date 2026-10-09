@@ -25,6 +25,7 @@ import { syncChapterClaim } from '../services/chapterClaimSync';
 import { usePlaybackEngine } from './usePlaybackEngine';
 import { useRecordingEngine } from './useRecordingEngine';
 import { getConnectivitySnapshot } from '../services/connectivity';
+import { notifyPendingUploads } from '../services/uploadOrchestrator';
 import { shouldEndPlaybackOnIdle } from './playbackStatusGuards';
 import { verseAudioReducer, type VerseAudioState } from './verseAudioReducer';
 import { MAX_RECORDING_TAKES } from '../constants/recordingTakes';
@@ -595,6 +596,8 @@ export function useVerseAudio({
           stack: claimError instanceof Error ? claimError.stack : undefined,
         });
       }
+
+      notifyPendingUploads();
 
       const rows = await loadTakesFn(snapshot.viewBibleTextId);
       setTakes(rows);
