@@ -73,6 +73,8 @@ export function createUploadOrchestrator(
   let phase: UploadPhase = 'idle';
   let completedChapters = 0;
   let totalChapters = 0;
+  /** Chapters that belong to the current pause/resume session (`bookId:chapterNumber`). */
+  let sessionKeys = new Set<string>();
   let isOnline = false;
   let isWifi = false;
   let connectionType = '';
@@ -98,9 +100,34 @@ export function createUploadOrchestrator(
     return until !== null && deps.now() < until;
   };
 
+  const chapterKey = (chapter: PendingUploadChapter): string =>
+    `${chapter.bookId}:${chapter.chapterNumber}`;
+
   const clearSessionCounts = (): void => {
     completedChapters = 0;
     totalChapters = 0;
+    sessionKeys = new Set();
+  };
+
+  /**
+   * Fold the latest pending set into the frozen session. Completed is how many
+   * session keys are no longer pending, and it never drops below the last
+   * value. New pending keys join the session so Y can grow without resetting
+   * X to 0 (#600).
+   */
+  const applyPendingChapters = (pending: PendingUploadChapter[]): void => {
+    const pendingKeys = new Set(pending.map(chapterKey));
+    for (const key of pendingKeys) {
+      sessionKeys.add(key);
+    }
+    let finished = 0;
+    for (const key of sessionKeys) {
+      if (!pendingKeys.has(key)) {
+        finished += 1;
+      }
+    }
+    completedChapters = Math.max(completedChapters, finished);
+    totalChapters = sessionKeys.size;
   };
 
   const abortActiveSession = async (): Promise<void> => {
@@ -184,15 +211,12 @@ export function createUploadOrchestrator(
 
     const abort = new AbortController();
     sessionAbort = abort;
-    // Pause/Resume continues the same session. Re-querying the pending set
-    // would shrink Y when the in-flight chapter already uploaded, and a fresh
-    // `start` would reset X to 0 (#600).
-    const resumePausedSession =
-      phase === 'paused' &&
-      totalChapters > 0 &&
-      chapters.length <= totalChapters;
+    // Pause/Resume continues the same chapter keys. Counting `pending.length`
+    // treats a failed chapter that stayed queued, or a chapter recorded during
+    // the pause, as a smaller X (#600).
+    const resumePausedSession = phase === 'paused' && sessionKeys.size > 0;
     if (resumePausedSession) {
-      completedChapters = totalChapters - chapters.length;
+      applyPendingChapters(chapters);
       phase = 'syncing';
       deps.emit({
         type: 'progress',
@@ -205,13 +229,14 @@ export function createUploadOrchestrator(
         totalChapters,
       });
     } else {
+      sessionKeys = new Set();
       completedChapters = 0;
-      totalChapters = chapters.length;
+      applyPendingChapters(chapters);
       phase = 'syncing';
-      deps.emit({ type: 'start', totalChapters: chapters.length });
+      deps.emit({ type: 'start', totalChapters });
       log.info('Upload session started', {
         reason,
-        totalChapters: chapters.length,
+        totalChapters,
       });
     }
 
@@ -225,12 +250,15 @@ export function createUploadOrchestrator(
           if (abort.signal.aborted) {
             return;
           }
-          completedChapters += 1;
-          deps.emit({
-            type: 'progress',
-            completedChapters,
-            totalChapters,
-          });
+          const before = completedChapters;
+          applyPendingChapters(await deps.getPendingUploadChapters());
+          if (completedChapters > before) {
+            deps.emit({
+              type: 'progress',
+              completedChapters,
+              totalChapters,
+            });
+          }
         }
         if (!abort.signal.aborted) {
           phase = 'idle';
