@@ -1,4 +1,9 @@
-import { useMemo, useSyncExternalStore } from 'react';
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useSyncExternalStore,
+} from 'react';
 import {
   StyleSheet,
   type ImageStyle,
@@ -12,24 +17,51 @@ import {
 } from '../services/userPreferences';
 import type { Theme } from './legacy';
 import { resolveTheme } from './uiVersion';
+import { DEFAULT_COLOR_MODE, type ColorMode } from './uiVersionTypes';
 
 type NamedStyles<T> = { [P in keyof T]: ViewStyle | TextStyle | ImageStyle };
 
+const UiVersionOverrideContext = createContext<UiVersion | null>(null);
+
 /**
- * Active UI version from device preferences.
+ * Pins a subtree to one UI version regardless of the device preference.
+ * Only the component gallery uses this (it always reviews Next).
+ */
+export const UiVersionOverride = UiVersionOverrideContext.Provider;
+
+/**
+ * Active UI version from device preferences (or a `UiVersionOverride`).
  * Safe outside navigators (no useFocusEffect) — usable from root layouts.
  */
 export function useUiVersion(): UiVersion {
-  return useSyncExternalStore(
+  const stored = useSyncExternalStore(
     subscribeToUserPreferences,
     () => getUserPreferenceValue('uiVersion'),
     () => getUserPreferenceValue('uiVersion'),
   );
+  return useContext(UiVersionOverrideContext) ?? stored;
 }
 
-/** Theme for the active UI version — re-renders when the preference changes. */
+const ColorModeContext = createContext<ColorMode>(DEFAULT_COLOR_MODE);
+
+/**
+ * Renders a subtree in one Foundations color mode (Canvas, Hardware, Accent).
+ * `useTheme()` below it returns that mode's roles, elevation and mapped colors
+ * in Next. Hardware is the default; Legacy ignores modes.
+ */
+export const ColorModeScope = ColorModeContext.Provider;
+
+/** Color mode for this subtree (Hardware unless a `ColorModeScope` sets it). */
+export function useColorMode(): ColorMode {
+  return useContext(ColorModeContext);
+}
+
+/**
+ * Theme for the active UI version and color mode — re-renders when the
+ * preference changes.
+ */
 export function useTheme(): Theme {
-  return resolveTheme(useUiVersion());
+  return resolveTheme(useUiVersion(), useColorMode());
 }
 
 /**
