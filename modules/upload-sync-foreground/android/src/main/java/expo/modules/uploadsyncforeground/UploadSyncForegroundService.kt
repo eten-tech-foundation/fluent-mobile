@@ -17,13 +17,29 @@ import android.os.IBinder
  * uploads can continue while the app is backgrounded (#152).
  */
 class UploadSyncForegroundService : Service() {
+  private var shownTitle = DEFAULT_TITLE
+  private var shownBody = ""
+
   override fun onBind(intent: Intent?): IBinder? = null
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-    val title = intent?.getStringExtra(EXTRA_TITLE) ?: DEFAULT_TITLE
-    val body = intent?.getStringExtra(EXTRA_BODY) ?: ""
-    val notification = buildNotification(title, body)
-    startAsForeground(notification)
+    val isStop = intent?.action == ACTION_STOP
+    if (!isStop) {
+      shownTitle = intent?.getStringExtra(EXTRA_TITLE) ?: DEFAULT_TITLE
+      shownBody = intent?.getStringExtra(EXTRA_BODY) ?: ""
+    }
+
+    // Always promote first. A stop that arrives before the original start
+    // command still calls startForeground(), which is the contract Android
+    // enforces with RemoteServiceException (#599).
+    startAsForeground(buildNotification(shownTitle, shownBody))
+
+    if (isStop) {
+      stopForeground(STOP_FOREGROUND_REMOVE)
+      stopSelf()
+      return START_NOT_STICKY
+    }
+
     return START_REDELIVER_INTENT
   }
 
@@ -98,6 +114,7 @@ class UploadSyncForegroundService : Service() {
   }
 
   companion object {
+    const val ACTION_STOP = "expo.modules.uploadsyncforeground.STOP"
     const val EXTRA_TITLE = "title"
     const val EXTRA_BODY = "body"
     const val CHANNEL_ID = "upload-sync"
@@ -116,6 +133,8 @@ class UploadSyncForegroundService : Service() {
       }
 
     fun stopIntent(context: Context): Intent =
-      Intent(context, UploadSyncForegroundService::class.java)
+      Intent(context, UploadSyncForegroundService::class.java).apply {
+        action = ACTION_STOP
+      }
   }
 }
