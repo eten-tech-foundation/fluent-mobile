@@ -21,7 +21,7 @@ jq -n \
   --arg CHANGELOG "${CHANGELOG:-}" \
   --arg RUN_URL "${RUN_URL:-}" \
   --arg FAILED_STEP "${FAILED_STEP:-}" \
-  --arg API_BASE_URL "${API_BASE_URL:-https://dev.api.fluent.bible}" \
+  --arg API_BASE_URL "${API_BASE_URL:-https://qa.api.fluent.bible}" \
   --arg FEEDBACK_URL "${FEEDBACK_URL:-https://github.com/eten-tech-foundation/fluent-mobile/issues/new}" \
   '{
     STATUS: $STATUS,

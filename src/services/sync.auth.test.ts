@@ -8,6 +8,7 @@ import {
   getTempCredentials,
 } from './keychain';
 import {
+  __resetFullSyncSingleFlightForTests,
   refreshChapterMetadataIfOnline,
   syncAllData,
   syncAllUsers,
@@ -81,6 +82,8 @@ jest.mock('./storage', () => ({
   getUserEmailSync: jest.fn(),
   getLastSyncedAt: jest.fn(),
   getLastAssignmentSyncAt: jest.fn(),
+  getMasterDataLastSyncedAt: jest.fn().mockReturnValue(''),
+  setMasterDataLastSyncedAt: jest.fn(),
   getKnownUserIds: jest.fn(),
   getUserLastSyncedAt: jest.fn(),
   setUserLastSyncedAt: jest.fn(),
@@ -104,6 +107,9 @@ jest.mock('./chapterClaimSync', () => ({
     conflicts: 0,
     failed: 0,
   }),
+  reconcilePendingClaimsAfterAssignmentPull: jest
+    .fn()
+    .mockResolvedValue({ conflicts: 0 }),
 }));
 
 jest.mock('../db/repository', () => ({
@@ -126,6 +132,7 @@ jest.mock('../db/repository', () => ({
   userNeedsAssigneeRepair: jest.fn().mockResolvedValue(false),
   insertUser: jest.fn().mockResolvedValue(undefined),
   reconcileUserProjects: jest.fn().mockResolvedValue(undefined),
+  reconcileUserMilestones: jest.fn().mockResolvedValue(undefined),
   reconcileUserChapterWork: jest.fn().mockResolvedValue(undefined),
   insertPericopeSets: jest.fn().mockResolvedValue(undefined),
   getProjectPericopeSetId: jest.fn().mockResolvedValue(null),
@@ -139,7 +146,9 @@ const {
   userHasLocalChapterAssignments,
   userNeedsAssigneeRepair,
   insertChapterAssignmentSyncData,
+  insertUser,
 } = jest.requireMock('../db/repository') as {
+  insertUser: jest.Mock;
   getChaptersToSync: jest.Mock;
   userHasLocalProjects: jest.Mock;
   userHasLocalChapterAssignments: jest.Mock;
@@ -468,6 +477,7 @@ describe('refreshChapterMetadataIfOnline', () => {
 describe('syncAllData auth handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __resetFullSyncSingleFlightForTests();
     jest.spyOn(syncEvents, 'emitAuthReauthRequired');
     jest.spyOn(syncEvents, 'emitSyncStart').mockImplementation(() => {});
     jest.spyOn(syncEvents, 'emitSyncComplete').mockImplementation(() => {});
@@ -487,6 +497,7 @@ describe('syncAllData auth handling', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+    __resetFullSyncSingleFlightForTests();
   });
 
   it('sets reauth required when incremental sync has no stored token', async () => {
@@ -728,6 +739,7 @@ describe('syncAllData auth handling', () => {
 describe('syncAllUsers auth handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __resetFullSyncSingleFlightForTests();
     jest.spyOn(syncEvents, 'emitAuthReauthRequired');
     jest.spyOn(syncEvents, 'emitSyncStart').mockImplementation(() => {});
     jest.spyOn(syncEvents, 'emitSyncComplete').mockImplementation(() => {});
@@ -741,6 +753,9 @@ describe('syncAllUsers auth handling', () => {
     (getUserLastSyncedAt as jest.Mock).mockReturnValue(
       '2026-06-01T00:00:00.000Z',
     );
+    (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([]);
+    (FluentAPI.getBooks as jest.Mock).mockResolvedValue([]);
+    (FluentAPI.getBibles as jest.Mock).mockResolvedValue([]);
     (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
     userHasLocalProjects.mockResolvedValue(true);
     userHasLocalChapterAssignments.mockResolvedValue(true);
@@ -749,6 +764,7 @@ describe('syncAllUsers auth handling', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+    __resetFullSyncSingleFlightForTests();
   });
 
   it('syncs every known user on the device', async () => {
@@ -948,6 +964,163 @@ describe('syncAllUsers auth handling', () => {
 
     expect(setUserLastSyncedAt).not.toHaveBeenCalled();
     expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
+  });
+
+  it('starts pending claim sync without waiting for master data', async () => {
+    let resolveLanguages: (value: unknown) => void = () => undefined;
+    (FluentAPI.getLanguages as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveLanguages = resolve;
+        }),
+    );
+    mockGetConnectivitySnapshot.mockResolvedValue({
+      isOnline: true,
+      isWifi: true,
+      isCellular: false,
+      connectionType: 'wifi',
+    });
+    (getKnownUserIds as jest.Mock).mockReturnValue(['2']);
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'user-2-token' });
+
+    const pending = syncAllUsers();
+
+    await waitFor(() => {
+      expect(syncPendingChapterClaims).toHaveBeenCalledWith(2);
+    });
+    expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
+
+    resolveLanguages([]);
+    await pending;
+
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2, 'user-2-token');
+    expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
+  });
+
+  it('enforces single-flight across overlapping syncAllUsers calls', async () => {
+    let resolveProjects: (value: unknown) => void = () => undefined;
+    (getKnownUserIds as jest.Mock).mockReturnValue(['2']);
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'user-2-token' });
+    (FluentAPI.getUserProjects as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveProjects = resolve;
+        }),
+    );
+
+    const first = syncAllUsers();
+    await waitFor(() => {
+      expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
+    });
+
+    const second = syncAllUsers();
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
+
+    resolveProjects({ data: [] });
+    await Promise.all([first, second]);
+
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
+    expect(syncEvents.emitSyncStart).toHaveBeenCalledTimes(1);
+    expect(syncEvents.emitSyncComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it('joins syncAllData into an in-flight syncAllUsers pass', async () => {
+    let resolveProjects: (value: unknown) => void = () => undefined;
+    (getKnownUserIds as jest.Mock).mockReturnValue(['2']);
+    (getUserIdSync as jest.Mock).mockReturnValue('2');
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'user-2-token' });
+    (FluentAPI.getUserProjects as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveProjects = resolve;
+        }),
+    );
+
+    const usersPass = syncAllUsers();
+    await waitFor(() => {
+      expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
+    });
+
+    const dataPass = syncAllData(true);
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
+
+    resolveProjects({ data: [] });
+    await Promise.all([usersPass, dataPass]);
+
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
+    expect(syncEvents.emitSyncStart).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs a login/add-account syncAllData after an in-flight syncAllUsers instead of joining it', async () => {
+    let resolveProjects: (value: unknown) => void = () => undefined;
+    const newUser = { id: 3, email: 'new@example.com' };
+    (getKnownUserIds as jest.Mock).mockReturnValue(['2']);
+    (getTempCredentials as jest.Mock).mockResolvedValue({
+      token: 'user-3-token',
+    });
+    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+      userId === '3' ? { token: 'user-3-token' } : { token: 'user-2-token' },
+    );
+    (FluentAPI.getUserProjects as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveProjects = resolve;
+        }),
+    );
+
+    const usersPass = syncAllUsers();
+    await waitFor(() => {
+      expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
+    });
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2, 'user-2-token');
+
+    const loginPass = syncAllData(false, newUser.email, newUser);
+
+    // Login must wait for the in-flight pass, not run concurrently or be dropped.
+    await Promise.resolve();
+    expect(insertUser).not.toHaveBeenCalled();
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
+
+    resolveProjects({ data: [] });
+    await Promise.all([usersPass, loginPass]);
+
+    expect(insertUser).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 3, email: newUser.email }),
+    );
+    expect(registerKnownUser).toHaveBeenCalledWith('3', newUser.email);
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(2);
+    expect(FluentAPI.getUserProjects).toHaveBeenLastCalledWith(
+      3,
+      'user-3-token',
+    );
+  });
+
+  it('still runs the next full sync after the in-flight pass fails', async () => {
+    let rejectProjects: (reason: unknown) => void = () => undefined;
+    (getKnownUserIds as jest.Mock).mockReturnValue(['2']);
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'user-2-token' });
+    (FluentAPI.getUserProjects as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectProjects = reject;
+        }),
+    );
+
+    const usersPass = syncAllUsers();
+    await waitFor(() => {
+      expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
+    });
+    const loginPass = syncAllData(false, 'new@example.com', {
+      id: 3,
+      email: 'new@example.com',
+    });
+    const usersResult = usersPass.catch((error: unknown) => error);
+
+    rejectProjects(new Error('boom'));
+    await usersResult;
+    await loginPass;
+
+    expect(insertUser).toHaveBeenCalled();
   });
 });
 

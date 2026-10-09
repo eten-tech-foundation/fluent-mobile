@@ -229,6 +229,36 @@ describe('getStageAdvanceVisibility', () => {
     ).toMatchObject({ visible: true, disabled: true });
   });
 
+  it('disables when the chapter has unuploadable selected takes (#585)', () => {
+    expect(
+      getStageAdvanceVisibility({
+        chapterData: baseChapter,
+        currentUserId: 10,
+        hasChapterRecording: true,
+        hasConflict: false,
+        hasUnuploadableTakes: true,
+        isOnLastUnit: true,
+      }),
+    ).toMatchObject({
+      visible: true,
+      disabled: true,
+      destination: { buttonLabel: 'Send to Peer Check' },
+    });
+  });
+
+  it('stays enabled for verse-mode chapters with no unuploadable takes (#585)', () => {
+    expect(
+      getStageAdvanceVisibility({
+        chapterData: baseChapter,
+        currentUserId: 10,
+        hasChapterRecording: true,
+        hasConflict: false,
+        hasUnuploadableTakes: false,
+        isOnLastUnit: true,
+      }),
+    ).toMatchObject({ visible: true, disabled: false });
+  });
+
   it.each([
     ['community_review', 'Send to Linguist Check'],
     ['linguist_check', 'Send to Theological Check'],

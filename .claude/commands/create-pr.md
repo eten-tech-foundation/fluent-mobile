@@ -195,8 +195,10 @@ Skip entirely when the body has `Refs: none` (no-ticket chore).
 
 1. Parse `Refs #NNN` from the PR body (fall back to `NNN` in the branch name).
    If `Refs: none`, skip this step.
-2. Do **not** move Product-owned columns (`In Progress (Product)`,
-   `Product Ready`, `Sprint Shaping`).
+2. Use `--allow-product-owned` so a ticket still stuck in a Product column
+   (e.g. claimed via `/start-issue NNN` while Product-owned) can move to
+   **In PR Review**. Do **not** use that flag for board sweeps or unnamed
+   tickets.
 3. If the assigned issue is missing from Project 4, the CLI **adds it**, then
    sets Status to **`In PR Review`**.
 
@@ -205,7 +207,7 @@ Skip entirely when the body has `Refs: none` (no-ticket chore).
 ```bash
 ISSUE=<NNN>
 node .github/scripts/project-board-cli.cjs set-status \
-  --issue "$ISSUE" --to "In PR Review"
+  --issue "$ISSUE" --to "In PR Review" --allow-product-owned
 ```
 
 ### 7. Wait for CI — **not done until green**

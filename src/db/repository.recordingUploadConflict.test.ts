@@ -21,6 +21,7 @@ type RecordingRow = {
   upload_error: string | null;
   updated_at: string;
   granularity?: string;
+  project_unit_id?: number | null;
   start_chapter?: number | null;
   start_verse?: number | null;
   end_chapter?: number | null;
@@ -142,6 +143,26 @@ function createRecordingConflictTestDb() {
         )
         .map(r => {
           const bt = bibleTexts.find(b => b.id === r.bible_text_id)!;
+          const stored =
+            r.project_unit_id !== null &&
+            r.project_unit_id !== undefined &&
+            r.project_unit_id > 0
+              ? r.project_unit_id
+              : null;
+          const matchingUnits = [
+            ...new Set(
+              chapterAssignments
+                .filter(
+                  ca =>
+                    ca.bible_id === bt.bible_id &&
+                    ca.book_id === bt.book_id &&
+                    ca.chapter_number === bt.chapter_number,
+                )
+                .map(ca => ca.project_unit_id),
+            ),
+          ];
+          const fallback =
+            matchingUnits.length === 1 ? matchingUnits[0]! : null;
           return {
             id: r.id,
             bible_text_id: r.bible_text_id,
@@ -150,7 +171,7 @@ function createRecordingConflictTestDb() {
             recorded_by_user_id: r.recorded_by_user_id,
             book_id: bt.book_id,
             chapter_number: bt.chapter_number,
-            project_unit_id: 12,
+            project_unit_id: stored ?? fallback,
             granularity: r.granularity ?? 'verse',
             start_chapter: r.start_chapter ?? null,
             start_verse: r.start_verse ?? null,
@@ -296,6 +317,46 @@ describe('recording upload conflict repository helpers (#256)', () => {
         endVerse: 8,
       }),
     );
+  });
+
+  it('getPendingRecordings prefers stored project_unit_id over lowest assignment (#613)', async () => {
+    const db = createRecordingConflictTestDb();
+    db.__chapterAssignments.push({
+      id: 8,
+      bible_id: 1,
+      book_id: 40,
+      chapter_number: 1,
+      project_unit_id: 99,
+      has_conflict: 0,
+      updated_at: '2026-01-01T00:00:00.000Z',
+    });
+    const pendingRow = db.__recordings.find(r => r.id === 'rec-pending')!;
+    pendingRow.project_unit_id = 99;
+    setDatabase(db as never);
+
+    const pending = await getPendingRecordings();
+    expect(pending).toEqual([
+      expect.objectContaining({ id: 'rec-pending', projectUnitId: 99 }),
+    ]);
+  });
+
+  it('getPendingRecordings leaves projectUnitId null when assignment is ambiguous (#613)', async () => {
+    const db = createRecordingConflictTestDb();
+    db.__chapterAssignments.push({
+      id: 8,
+      bible_id: 1,
+      book_id: 40,
+      chapter_number: 1,
+      project_unit_id: 99,
+      has_conflict: 0,
+      updated_at: '2026-01-01T00:00:00.000Z',
+    });
+    setDatabase(db as never);
+
+    const pending = await getPendingRecordings();
+    expect(pending).toEqual([
+      expect.objectContaining({ id: 'rec-pending', projectUnitId: null }),
+    ]);
   });
 
   it('markRecordingUploaded persists version_token', async () => {
