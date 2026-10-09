@@ -1,4 +1,6 @@
-# Images & Maps fullscreen close when a thumbnail is available (optional).
+# Images & Maps fullscreen open/close on a fixture chapter known to have images.
+# Requires MAESTRO_FIXTURE_PROJECT_NAME + MAESTRO_FIXTURE_MINE_LABEL (Mark 1 in the
+# disposable ownership fixture — assessment confirmed images on Mark 1).
 appId: com.eten.fluent
 tags:
   - smoke
@@ -11,30 +13,32 @@ tags:
       id: 'home-tab-my-work'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
-- runFlow: ../../shared/nav/open-any-chapter.yaml
+- runFlow:
+    file: ../../shared/nav/open-fixture-chapter.yaml
+    env:
+      MAESTRO_FIXTURE_CHAPTER_LABEL: ${MAESTRO_FIXTURE_MINE_LABEL}
 - tapOn:
     id: 'drafting-tab-resources'
 - assertVisible:
     id: 'resources-tab'
-- runFlow:
-    when:
-      visible:
-        id: 'resources-section-imagesMaps-toggle'
-    commands:
-      - tapOn:
-          id: 'resources-section-imagesMaps-toggle'
-- runFlow:
-    when:
-      visible:
-        id: 'images-maps-thumbnail-.*'
-    commands:
-      - tapOn:
-          id: 'images-maps-thumbnail-.*'
-      - extendedWaitUntil:
-          visible:
-            id: 'images-maps-fullscreen-close'
-          timeout: 15000
-      - tapOn:
-          id: 'images-maps-fullscreen-close'
+- extendedWaitUntil:
+    visible:
+      id: 'resources-section-imagesMaps-toggle'
+    timeout: 30000
+- tapOn:
+    id: 'resources-section-imagesMaps-toggle'
+# Maximize control (not the removed images-maps-thumbnail-* id) — required (#597).
+- extendedWaitUntil:
+    visible:
+      id: 'images-maps-maximize-.*'
+    timeout: 30000
+- tapOn:
+    id: 'images-maps-maximize-.*'
+- extendedWaitUntil:
+    visible:
+      id: 'images-maps-fullscreen-close'
+    timeout: 15000
+- tapOn:
+    id: 'images-maps-fullscreen-close'
 - assertVisible:
     id: 'resources-tab'
