@@ -21,12 +21,14 @@ import {
   clearUserSession,
   getActiveUserId,
   getKnownUserIds,
+  getMasterDataLastSyncedAt,
   getUserEmail,
   getUserEmailSync,
   KV_KEYS,
   MAX_DEVICE_ACCOUNTS,
   registerKnownUser,
   setActiveUserId,
+  setMasterDataLastSyncedAt,
   setUserEmail,
   setUserSync,
   switchActiveUser,
@@ -209,6 +211,17 @@ describe('storage (KV wrapper)', () => {
       // ACTIVE_USER_ID specifically.
       expect(getActiveUserId()).toBe('1');
       expect(getKnownUserIds()).toEqual(['1']);
+    });
+  });
+
+  describe('master data sync cursor', () => {
+    it('returns empty when unset and round-trips a timestamp', () => {
+      expect(getMasterDataLastSyncedAt()).toBe('');
+      setMasterDataLastSyncedAt('2026-06-01T00:00:00.000Z');
+      expect(getMasterDataLastSyncedAt()).toBe('2026-06-01T00:00:00.000Z');
+      expect(mockKv.get(KV_KEYS.LAST_MASTER_DATA_SYNCED_AT)).toBe(
+        '2026-06-01T00:00:00.000Z',
+      );
     });
   });
 });

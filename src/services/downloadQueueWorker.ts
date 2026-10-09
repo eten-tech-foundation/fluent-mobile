@@ -19,9 +19,15 @@ export type WorkerSessionState =
   | 'paused'
   | 'cancelled';
 
+/** Distinguishes intentional UI pause from transport-loss pause (#619). */
+export type DownloadPauseReason = 'user' | 'transport';
+
 export type ResourceResolver = (
   item: DownloadQueueItem,
 ) => Promise<{ url: string; ext: string }>;
+
+/** Returns true when Wi-Fi / cellular policy allows a transfer (#546 / #619). */
+export type TransportAllowsFn = () => Promise<boolean>;
 
 type ActiveDownload = {
   itemId: string;
@@ -70,18 +76,31 @@ function parseDownloadState(
   }
 }
 
+const alwaysAllowTransport: TransportAllowsFn = async () => true;
+
 export class DownloadQueueWorker {
   private state: WorkerSessionState = 'idle';
+  private pauseReason: DownloadPauseReason | null = null;
   private active: ActiveDownload | null = null;
   private queue: DownloadQueueItem[] = [];
   private resolver: ResourceResolver;
+  private transportAllows: TransportAllowsFn;
 
-  constructor(resolver: ResourceResolver) {
+  constructor(
+    resolver: ResourceResolver,
+    transportAllows: TransportAllowsFn = alwaysAllowTransport,
+  ) {
     this.resolver = resolver;
+    this.transportAllows = transportAllows;
   }
 
   getState(): WorkerSessionState {
     return this.state;
+  }
+
+  /** Why the worker is paused, or null when not paused. */
+  getPauseReason(): DownloadPauseReason | null {
+    return this.state === 'paused' ? this.pauseReason : null;
   }
 
   async start(items: DownloadQueueItem[]): Promise<void> {
@@ -90,15 +109,28 @@ export class DownloadQueueWorker {
       return;
     }
     this.queue = [...items];
+    this.pauseReason = null;
     this.state = 'downloading';
     await this.processNext();
   }
 
-  async pause(): Promise<void> {
-    if (this.state !== 'downloading' || !this.active) {
+  async pause(reason: DownloadPauseReason = 'user'): Promise<void> {
+    // Promote a transport pause to a user pause so auto-resume will not undo it.
+    if (this.state === 'paused' && reason === 'user') {
+      this.pauseReason = 'user';
+      return;
+    }
+    if (this.state !== 'downloading') {
+      return;
+    }
+    if (!this.active) {
+      // Waiting between items (UI pause or transport blocked before start).
+      this.pauseReason = reason;
+      this.state = 'paused';
       return;
     }
     const previousState = this.state;
+    this.pauseReason = reason;
     this.state = 'paused';
     try {
       const pauseState = await this.active.resumable.pauseAsync();
@@ -111,17 +143,46 @@ export class DownloadQueueWorker {
       log.error('Failed to pause active download', { error });
       // The native transfer may still be running — don't report a paused
       // state that doesn't reflect reality.
+      this.pauseReason = null;
       this.state = previousState;
     }
   }
 
   async resume(): Promise<void> {
-    if (this.state !== 'paused' || !this.active) {
+    if (this.state !== 'paused') {
       return;
     }
+    // Claim the resume synchronously, before any await, so overlapping
+    // NetInfo evaluations cannot both pass the `paused` guard and call
+    // resumeAsync() twice on the same in-flight item.
+    const reason = this.pauseReason;
+    this.pauseReason = null;
+    this.state = 'downloading';
+
+    if (!(await this.transportAllows())) {
+      // Roll back only if nothing else (cancel()/pause()) changed state while
+      // the transport check was in flight.
+      if (this.state === 'downloading') {
+        this.pauseReason = reason;
+        this.state = 'paused';
+      }
+      log.info('resume() skipped until transport allows transfer');
+      return;
+    }
+
+    // cancel() or pause() ran while the transport check was in flight.
+    if (this.state !== 'downloading') {
+      return;
+    }
+
+    // Paused with no in-flight resumable (blocked before the next queued item).
+    if (!this.active) {
+      await this.processNext();
+      return;
+    }
+
     const activeAtStart = this.active;
     const { itemId, resumable } = activeAtStart;
-    this.state = 'downloading';
     try {
       await markDownloadItemDownloading(itemId);
       const result = await resumable.resumeAsync();
@@ -140,6 +201,10 @@ export class DownloadQueueWorker {
     } catch (error) {
       log.error('Failed to resume download', { error, itemId });
       if (activeAtStart.cancelled) {
+        return;
+      }
+      if (!(await this.transportAllows())) {
+        await this.pauseAfterTransportLoss(activeAtStart, itemId);
         return;
       }
       try {
@@ -167,6 +232,7 @@ export class DownloadQueueWorker {
     }
 
     this.state = 'cancelled';
+    this.pauseReason = null;
     this.queue = [];
 
     try {
@@ -206,10 +272,35 @@ export class DownloadQueueWorker {
       return;
     }
 
+    if (!(await this.transportAllows())) {
+      log.info('Transport blocked before next download item; pausing queue', {
+        itemId: next.id,
+      });
+      this.queue.unshift(next);
+      // Do not overwrite a concurrent user pause reason.
+      if (this.state === 'downloading') {
+        this.pauseReason = 'transport';
+        this.state = 'paused';
+      }
+      return;
+    }
+
+    // Concurrent pause() may have won while we awaited transport.
+    if (this.state !== 'downloading') {
+      this.queue.unshift(next);
+      return;
+    }
+
     let activeAtStart: ActiveDownload | undefined;
     try {
       const saved = parseDownloadState(next.resumeData);
       const { url, ext } = await this.resolver(next);
+
+      if (this.state !== 'downloading') {
+        this.queue.unshift(next);
+        return;
+      }
+
       await ensureDownloadsDir(next.projectId ?? 0);
       const destPath =
         saved?.fileUri ??
@@ -237,6 +328,11 @@ export class DownloadQueueWorker {
         saved?.resumeData,
       );
 
+      if (this.state !== 'downloading') {
+        this.queue.unshift(next);
+        return;
+      }
+
       activeAtStart = { itemId: next.id, resumable };
       this.active = activeAtStart;
       await markDownloadItemDownloading(next.id);
@@ -251,12 +347,26 @@ export class DownloadQueueWorker {
       if (activeAtStart.cancelled) {
         return;
       }
+      // A finished transfer should complete even if pause() raced — otherwise
+      // pauseAsync failure can leave a stuck downloading+active state.
       if (result) {
         await this.handleItemComplete(next.id, result.uri);
       }
     } catch (error) {
       log.error('Failed to download item', { error, itemId: next.id });
       if (activeAtStart?.cancelled) {
+        return;
+      }
+      if (!(await this.transportAllows())) {
+        if (!activeAtStart) {
+          this.queue.unshift(next);
+          if (this.state === 'downloading') {
+            this.pauseReason = 'transport';
+            this.state = 'paused';
+          }
+          return;
+        }
+        await this.pauseAfterTransportLoss(activeAtStart, next.id);
         return;
       }
       try {
@@ -269,6 +379,52 @@ export class DownloadQueueWorker {
       }
       this.active = null;
       await this.processNext();
+    }
+  }
+
+  /**
+   * Persist a pause (with resume data when possible) instead of marking the
+   * item failed when the link no longer allows transfer (#619).
+   */
+  private async pauseAfterTransportLoss(
+    active: ActiveDownload | undefined,
+    itemId: string,
+  ): Promise<void> {
+    // Preserve an intentional UI pause if it won the race.
+    if (this.state === 'paused' && this.pauseReason === 'user') {
+      if (!active) {
+        return;
+      }
+    } else {
+      this.pauseReason = 'transport';
+      this.state = 'paused';
+    }
+    if (!active) {
+      return;
+    }
+    try {
+      const pauseState = await active.resumable.pauseAsync();
+      const serialized = serializeDownloadState(pauseState);
+      if (serialized) {
+        active.savedPauseState = serialized;
+      }
+      await markDownloadItemPaused(itemId, serialized);
+    } catch (pauseError) {
+      log.warn(
+        'pauseAsync failed after transport loss; marking paused anyway',
+        {
+          error: pauseError,
+          itemId,
+        },
+      );
+      try {
+        await markDownloadItemPaused(itemId, active.savedPauseState);
+      } catch (innerError) {
+        log.error('Failed to mark item paused after transport loss', {
+          error: innerError,
+          itemId,
+        });
+      }
     }
   }
 

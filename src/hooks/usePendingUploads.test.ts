@@ -1,5 +1,5 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
-import { usePendingUploads } from './usePendingUploads';
+import { loadPendingUploadCount, usePendingUploads } from './usePendingUploads';
 import {
   emitRecordingDataChanged,
   getRecordingDataVersion,
@@ -89,6 +89,16 @@ describe('usePendingUploads (shared sync-status store)', () => {
       other: 0,
       total: 0,
     });
+  });
+
+  it('loadPendingUploadCount returns the query count', async () => {
+    mockGetPendingUploadCount.mockResolvedValue(3);
+    await expect(loadPendingUploadCount()).resolves.toBe(3);
+  });
+
+  it('loadPendingUploadCount rejects on failure', async () => {
+    mockGetPendingUploadCount.mockRejectedValue(new Error('db'));
+    await expect(loadPendingUploadCount()).rejects.toThrow('db');
   });
 
   it('loads counts from the shared store on mount', async () => {
@@ -366,6 +376,25 @@ describe('usePendingUploads (shared sync-status store)', () => {
     expect(result.current.isUploading).toBe(false);
   });
 
+  it('marks counts unknown when a pending query fails instead of treating it as zero', async () => {
+    mockGetPendingUploadCount.mockRejectedValue(new Error('db'));
+    const { result } = renderHook(() => usePendingUploads(0));
+
+    await waitFor(() => {
+      expect(result.current.countsUnknown).toBe(true);
+      expect(result.current.hasPendingUploads).toBe(false);
+    });
+  });
+
+  it('marks counts unknown when the unuploadable summary query fails', async () => {
+    mockGetUnuploadablePendingSummary.mockRejectedValue(new Error('db'));
+    const { result } = renderHook(() => usePendingUploads(0));
+
+    await waitFor(() => {
+      expect(result.current.countsUnknown).toBe(true);
+    });
+  });
+
   it('exposes unuploadable pending when count is 0 but leftover takes remain', async () => {
     mockGetPendingUploadCount.mockResolvedValue(0);
     mockGetUnuploadablePendingSummary.mockResolvedValue({
@@ -545,5 +574,66 @@ describe('refreshSyncStatusStore', () => {
     await inFlight;
 
     expect(getSyncStatusSnapshot()).toBe(EMPTY_SYNC_STATUS_SNAPSHOT);
+  });
+
+  it('does not expose isUploading false with pre-upload pendingCount after complete', async () => {
+    let resolveCompletePending: (count: number) => void = () => {};
+    const completePending = new Promise<number>(resolve => {
+      resolveCompletePending = resolve;
+    });
+
+    mockGetPendingUploadCount
+      .mockResolvedValueOnce(3)
+      .mockResolvedValueOnce(3)
+      .mockReturnValueOnce(completePending);
+
+    const snapshots: Array<{
+      isUploading: boolean;
+      pendingCount: number;
+    }> = [];
+    const { result } = renderHook(() => {
+      const value = usePendingUploads(0);
+      snapshots.push({
+        isUploading: value.isUploading,
+        pendingCount: value.pendingCount,
+      });
+      return value;
+    });
+
+    await waitFor(() => {
+      expect(result.current.pendingCount).toBe(3);
+    });
+
+    act(() => {
+      emitUploadSessionEvent({ type: 'start', totalChapters: 3 });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isUploading).toBe(true);
+      expect(result.current.pendingCount).toBe(3);
+    });
+
+    snapshots.length = 0;
+
+    act(() => {
+      emitUploadSessionEvent({ type: 'complete' });
+    });
+
+    expect(result.current.isUploading).toBe(true);
+    expect(result.current.pendingCount).toBe(3);
+    expect(
+      snapshots.some(
+        snapshot => !snapshot.isUploading && snapshot.pendingCount === 3,
+      ),
+    ).toBe(false);
+
+    await act(async () => {
+      resolveCompletePending(0);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isUploading).toBe(false);
+      expect(result.current.pendingCount).toBe(0);
+    });
   });
 });

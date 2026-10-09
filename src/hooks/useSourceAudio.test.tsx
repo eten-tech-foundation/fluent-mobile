@@ -608,6 +608,51 @@ describe('useSourceAudio', () => {
     expect(mockPlaybackPlay).not.toHaveBeenCalled();
   });
 
+  it('keeps position when verse changes without timestamps (#595)', async () => {
+    fetchChapterSourceAudio.mockResolvedValue({
+      provider: 'aquifer',
+      bible: { name: 'BSB', abbreviation: 'BSB' },
+      bookCode: 'MRK',
+      chapter: 1,
+      items: [
+        {
+          format: 'mp3',
+          url: 'https://cdn.example/ch.mp3',
+          scope: 'chapter',
+        },
+      ],
+      // No verseTimestamps — API often returns none on DEV (#235 / #595).
+    });
+
+    const { result, rerender } = renderHook(
+      (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
+      { initialProps: baseArgs() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.loadState).toBe('ready');
+    });
+
+    await act(async () => {
+      await result.current.play();
+    });
+    playbackState.positionMs = 12_500;
+    await act(async () => {
+      await result.current.pause();
+    });
+
+    mockPlaybackSeek.mockClear();
+    onPlayingVerseChange.mockClear();
+
+    rerender({ ...baseArgs(), verse: 5 });
+
+    await waitFor(() => {
+      expect(onPlayingVerseChange).toHaveBeenCalledWith(5);
+    });
+    // Without timestamps, seeking to verseStartMs(0) would restart the chapter.
+    expect(mockPlaybackSeek).not.toHaveBeenCalled();
+  });
+
   it('updates playing verse as playback position advances', async () => {
     fetchChapterSourceAudio.mockResolvedValue({
       provider: 'aquifer',

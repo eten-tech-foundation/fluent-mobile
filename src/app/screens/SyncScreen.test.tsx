@@ -39,6 +39,7 @@ let mockPendingUploads = {
   hasUnuploadablePending: false,
   isUploading: false,
   uploadProgress: null,
+  countsUnknown: false,
 };
 let mockSessionError: string | null = null;
 const mockPause = jest.fn();
@@ -185,6 +186,7 @@ describe('SyncScreen', () => {
       hasUnuploadablePending: false,
       isUploading: false,
       uploadProgress: null,
+      countsUnknown: false,
     };
     mockSessionError = null;
     mockPause.mockResolvedValue(undefined);
@@ -224,6 +226,24 @@ describe('SyncScreen', () => {
     await waitFor(() => {
       expect(mockCancel).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('shows Paused instead of All synced when the session is paused', () => {
+    mockPageStatus = 'paused';
+    mockPendingUploads = {
+      ...mockPendingUploads,
+      hasPendingUploads: false,
+      pendingCount: 0,
+      pendingChapterCount: 0,
+      isUploading: false,
+    };
+    render(<SyncScreen />);
+
+    expect(screen.getAllByText('Paused').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Online · all synced')).toBeNull();
+    expect(
+      screen.queryByText('All work has been uploaded to Fluent.'),
+    ).toBeNull();
   });
 
   it('calls syncNowUploads and triggerSync when Resume is pressed', async () => {
@@ -313,7 +333,7 @@ describe('SyncScreen', () => {
     expect(mockSyncNowFromHook).not.toHaveBeenCalled();
   });
 
-  it('disables Sync Now when only failed unuploadable recordings remain', () => {
+  it('keeps Sync Now enabled when only failed unuploadable recordings remain (#584)', async () => {
     mockPendingUploads = {
       ...mockPendingUploads,
       hasPendingUploads: false,
@@ -328,9 +348,33 @@ describe('SyncScreen', () => {
 
     expect(screen.getByText("Online · some takes can't upload")).toBeTruthy();
     expect(screen.queryByText('Online · upload pending')).toBeNull();
-    expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
+    expect(screen.getByTestId('sync-action-sync-now')).not.toBeDisabled();
     fireEvent.press(screen.getByTestId('sync-action-sync-now'));
-    expect(mockSyncNowFromHook).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockSyncNowFromHook).toHaveBeenCalledTimes(1);
+      expect(mockTriggerSync).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('does not show All synced when pending counts are unknown', () => {
+    mockPageStatus = 'pending';
+    mockPendingUploads = {
+      ...mockPendingUploads,
+      hasPendingUploads: false,
+      pendingCount: 0,
+      pendingChapterCount: 0,
+      unuploadableCount: 0,
+      hasUnuploadablePending: false,
+      countsUnknown: true,
+    };
+    render(<SyncScreen />);
+
+    expect(screen.queryByText('Online · all synced')).toBeNull();
+    expect(screen.queryByText('Upload complete')).toBeNull();
+    expect(
+      screen.queryByText('All work has been uploaded to Fluent.'),
+    ).toBeNull();
+    expect(screen.getByText("Couldn't check pending uploads")).toBeTruthy();
   });
 
   it('surfaces unuploadable pending instead of a successful no-op', () => {
@@ -352,7 +396,8 @@ describe('SyncScreen', () => {
     expect(
       screen.queryByText('All work has been uploaded to Fluent.'),
     ).toBeNull();
-    expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
+    // Sync Now stays available for metadata/download sync (#584).
+    expect(screen.getByTestId('sync-action-sync-now')).not.toBeDisabled();
     expect(
       screen.queryByTestId('sync-action-sync-now-disabled-hint'),
     ).toBeNull();
@@ -376,7 +421,8 @@ describe('SyncScreen', () => {
     expect(
       screen.queryByText('All work has been uploaded to Fluent.'),
     ).toBeNull();
-    expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
+    // Sync Now stays available for metadata/download sync (#584).
+    expect(screen.getByTestId('sync-action-sync-now')).not.toBeDisabled();
     expect(
       screen.queryByTestId('sync-action-sync-now-disabled-hint'),
     ).toBeNull();

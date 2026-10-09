@@ -7,20 +7,12 @@ import {
   subscribeToSyncStatusStore,
 } from '../services/syncStatusStore';
 import type { SyncStatusSnapshot } from '../services/syncStatusStore';
-import { logger } from '../utils/logger';
-
-const log = logger.create('usePendingUploads');
 
 export type { UploadProgress } from '../services/syncStatusStore';
 
 /** One-shot pending upload count for UI (logout gates, sync completion). */
 export async function loadPendingUploadCount(): Promise<number> {
-  try {
-    return await getPendingUploadCount();
-  } catch (error) {
-    log.error('Failed to load pending upload count', { error });
-    return 0;
-  }
+  return await getPendingUploadCount();
 }
 
 export function usePendingUploads(refreshKey = 0): SyncStatusSnapshot & {
@@ -54,6 +46,7 @@ export function usePendingUploads(refreshKey = 0): SyncStatusSnapshot & {
     failedCount: snapshot.failedCount,
     unuploadableCount: snapshot.unuploadableCount,
     failedErrorText: snapshot.failedErrorText,
+    countsUnknown: snapshot.countsUnknown,
     hasPendingUploads: snapshot.pendingCount > 0,
     hasFailedUploads: snapshot.failedCount > 0,
     hasUnuploadablePending: snapshot.unuploadableCount > 0,

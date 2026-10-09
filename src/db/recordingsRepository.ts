@@ -46,10 +46,19 @@ export function resolveRecordedByUserId(
 function mapRecordingRow(row: RecordingRow): Recording {
   const granularity: RecordingGranularity =
     row.granularity === 'pericope' ? 'pericope' : 'verse';
+  const projectUnitRaw = row.project_unit_id;
+  const projectUnitId =
+    projectUnitRaw === null || projectUnitRaw === undefined
+      ? null
+      : Number(projectUnitRaw);
   return {
     id: row.id,
     bibleTextId: row.bible_text_id,
     recordedByUserId: row.recorded_by_user_id,
+    projectUnitId:
+      projectUnitId !== null && Number.isFinite(projectUnitId)
+        ? projectUnitId
+        : null,
     localFilePath: row.local_file_path,
     blobKey: row.blob_key,
     durationMs: row.duration_ms,
@@ -103,6 +112,28 @@ function recordedByClause(
   return { sql: `${column} = ?`, params: [userId] };
 }
 
+/**
+ * SQL predicate + params scoping a write to one project unit (#613).
+ * A concrete unit matches only that unit; `null` (legacy, pre-#613 rows) matches
+ * only other `NULL` rows — never a different unit's takes — so recording the
+ * same bible text in two units keeps one selected take per unit.
+ */
+function projectUnitClause(
+  projectUnitId: number | null,
+  column = 'project_unit_id',
+): { sql: string; params: (number | null)[] } {
+  if (projectUnitId === null) {
+    return { sql: `${column} IS NULL`, params: [] };
+  }
+  return { sql: `${column} = ?`, params: [projectUnitId] };
+}
+
+function normalizeProjectUnitId(raw: unknown): number | null {
+  if (raw === null || raw === undefined) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
 export type VerseTakeView = {
   chapterNumber: number;
   verseNumber: number;
@@ -123,6 +154,8 @@ export type AddRecordingTakeInput = {
    * Pass `null` explicitly only in tests for legacy unattributed rows.
    */
   recordedByUserId?: number | null;
+  /** Project unit the take was recorded in (#613). */
+  projectUnitId?: number | null;
   granularity?: RecordingGranularity;
   startChapter?: number;
   startVerse?: number;
@@ -198,9 +231,12 @@ async function clearOverlappingSelectedTakes(
     id?: string;
     bibleTextId: number;
     range: RecordingVerseRange;
+    /** Only takes in this unit are cleared (#613); `null` = legacy rows. */
+    projectUnitId: number | null;
   },
   now: string,
 ): Promise<void> {
+  const unit = projectUnitClause(incoming.projectUnitId, 'r.project_unit_id');
   const selected = await tx.execute(
     `SELECT r.id, r.bible_text_id, r.start_chapter, r.start_verse, r.end_chapter, r.end_verse
      FROM recordings r
@@ -211,9 +247,10 @@ async function clearOverlappingSelectedTakes(
          'recorded_by_user_id',
          'r.recorded_by_user_id',
        )}
+       AND ${unit.sql}
        AND anchor_bt.bible_id = incoming_bt.bible_id
        AND anchor_bt.book_id = incoming_bt.book_id`,
-    [incoming.bibleTextId, ...owner.params],
+    [incoming.bibleTextId, ...owner.params, ...unit.params],
   );
   const rows = (selected.rows ?? []) as unknown as {
     id: string;
@@ -244,7 +281,8 @@ async function clearOverlappingSelectedTakes(
 }
 
 /**
- * Insert a new take for a verse: clear prior `is_selected` for this user, bump
+ * Insert a new take for a verse: clear prior `is_selected` for this user **in
+ * the same project unit** (#613; `NULL` unit matches only `NULL`), bump
  * per-user `take_number`, insert with `is_selected = 1` in one transaction.
  *
  * Linkage is verse-based (`bible_text_id`) — see #98 / #99. Shared-device
@@ -263,10 +301,11 @@ export async function addRecordingTake(
   await db.transaction(async (tx: Transaction) => {
     const range = rangeFromInput(input);
     const granularity: RecordingGranularity = input.granularity ?? 'verse';
+    const projectUnitId = normalizeProjectUnitId(input.projectUnitId);
     await clearOverlappingSelectedTakes(
       tx,
       owner,
-      { bibleTextId: input.bibleTextId, range },
+      { bibleTextId: input.bibleTextId, range, projectUnitId },
       now,
     );
 
@@ -288,14 +327,16 @@ export async function addRecordingTake(
 
     await tx.execute(
       `INSERT INTO recordings (
-         id, bible_text_id, recorded_by_user_id, local_file_path, duration_ms,
-         file_size_bytes, take_number, is_selected, sync_status, created_at,
-         updated_at, granularity, start_chapter, start_verse, end_chapter, end_verse
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         id, bible_text_id, recorded_by_user_id, project_unit_id, local_file_path,
+         duration_ms, file_size_bytes, take_number, is_selected, sync_status,
+         created_at, updated_at, granularity, start_chapter, start_verse,
+         end_chapter, end_verse
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         input.bibleTextId,
         recordedByUserId,
+        projectUnitId,
         input.localFilePath,
         input.durationMs ?? null,
         input.fileSizeBytes ?? null,
@@ -344,6 +385,7 @@ export async function getTakesForVerse(
   bibleTextId: number,
   recordedByUserId?: number | null,
   view?: VerseTakeView,
+  projectUnitId?: number | null,
 ): Promise<Recording[]> {
   const db = getDatabase();
   const ownerId = resolveRecordedByUserId(recordedByUserId);
@@ -352,11 +394,24 @@ export async function getTakesForVerse(
     ? `AND (bible_text_id = ? OR ${pericopeCoversViewSql()})`
     : 'AND bible_text_id = ?';
   const viewParams = view ? [bibleTextId, bibleTextId] : [bibleTextId];
+  // Prefer takes recorded in this unit; include null for pre-#613 rows (#613).
+  const unitSql =
+    projectUnitId !== null &&
+    projectUnitId !== undefined &&
+    Number.isFinite(projectUnitId)
+      ? 'AND (project_unit_id IS NULL OR project_unit_id = ?)'
+      : '';
+  const unitParams =
+    projectUnitId !== null &&
+    projectUnitId !== undefined &&
+    Number.isFinite(projectUnitId)
+      ? [projectUnitId]
+      : [];
   const result = await db.execute(
     `SELECT * FROM recordings
-     WHERE ${owner.sql} ${viewSql}
+     WHERE ${owner.sql} ${viewSql} ${unitSql}
      ORDER BY ${view ? 'created_at ASC' : 'take_number ASC, created_at ASC'}`,
-    [...owner.params, ...viewParams],
+    [...owner.params, ...viewParams, ...unitParams],
   );
   const rows = (result.rows ?? []) as unknown as RecordingRow[];
   return rows.map(mapRecordingRow);
@@ -365,21 +420,34 @@ export async function getTakesForVerse(
 export async function getAllTakesForVerse(
   bibleTextId: number,
   view?: VerseTakeView,
+  projectUnitId?: number | null,
 ): Promise<RecordingWithOwner[]> {
   const db = getDatabase();
   const viewSql = view
     ? `AND (r.bible_text_id = ? OR ${pericopeCoversViewSql('r')})`
     : 'AND r.bible_text_id = ?';
   const viewParams = view ? [bibleTextId, bibleTextId] : [bibleTextId];
+  const unitSql =
+    projectUnitId !== null &&
+    projectUnitId !== undefined &&
+    Number.isFinite(projectUnitId)
+      ? 'AND (r.project_unit_id IS NULL OR r.project_unit_id = ?)'
+      : '';
+  const unitParams =
+    projectUnitId !== null &&
+    projectUnitId !== undefined &&
+    Number.isFinite(projectUnitId)
+      ? [projectUnitId]
+      : [];
   const result = await db.execute(
     `SELECT r.*, u.first_name, u.last_name, u.username, u.email
      FROM recordings r
      LEFT JOIN users u ON u.id = r.recorded_by_user_id
-     WHERE 1 = 1 ${viewSql}
+     WHERE 1 = 1 ${viewSql} ${unitSql}
      ORDER BY r.recorded_by_user_id IS NOT NULL, r.recorded_by_user_id ASC, ${
        view ? 'r.created_at ASC' : 'r.take_number ASC'
      }`,
-    viewParams,
+    [...viewParams, ...unitParams],
   );
   const rows = (result.rows ?? []) as unknown as OwnerJoinRow[];
   return rows.map(mapRecordingWithOwnerRow);
@@ -416,20 +484,27 @@ export async function setCanonicalTake(id: string): Promise<void> {
 
   await db.transaction(async (tx: Transaction) => {
     const existing = await tx.execute(
-      `SELECT bible_text_id, is_canonical FROM recordings WHERE id = ?`,
+      `SELECT bible_text_id, project_unit_id, is_canonical FROM recordings WHERE id = ?`,
       [id],
     );
     const row = existing.rows?.[0] as
-      | { bible_text_id: number; is_canonical: number }
+      | {
+          bible_text_id: number;
+          project_unit_id?: number | null;
+          is_canonical: number;
+        }
       | undefined;
     if (!row || row.is_canonical === 1) {
       return;
     }
 
+    // Canonical is per unit: another unit's canonical take on the same bible
+    // text must stay canonical (#613).
+    const unit = projectUnitClause(normalizeProjectUnitId(row.project_unit_id));
     await tx.execute(
       `UPDATE recordings SET is_canonical = 0, updated_at = ?
-       WHERE bible_text_id = ? AND is_canonical = 1`,
-      [now, row.bible_text_id],
+       WHERE bible_text_id = ? AND is_canonical = 1 AND ${unit.sql}`,
+      [now, row.bible_text_id, ...unit.params],
     );
     await tx.execute(
       `UPDATE recordings SET is_canonical = 1, updated_at = ? WHERE id = ?`,
@@ -461,7 +536,7 @@ export async function selectRecordingTake(id: string): Promise<void> {
   await db.transaction(async (tx: Transaction) => {
     const existing = await tx.execute(
       `SELECT id, bible_text_id, recorded_by_user_id, is_selected,
-              start_chapter, start_verse, end_chapter, end_verse
+              start_chapter, start_verse, end_chapter, end_verse, project_unit_id
        FROM recordings WHERE id = ?`,
       [id],
     );
@@ -475,6 +550,7 @@ export async function selectRecordingTake(id: string): Promise<void> {
           start_verse: number | null;
           end_chapter: number | null;
           end_verse: number | null;
+          project_unit_id?: number | null;
         }
       | undefined;
     if (!row || row.is_selected === 1) {
@@ -503,6 +579,7 @@ export async function selectRecordingTake(id: string): Promise<void> {
         id: row.id,
         bibleTextId: row.bible_text_id,
         range: rowRange(row),
+        projectUnitId: normalizeProjectUnitId(row.project_unit_id),
       },
       now,
     );
@@ -538,7 +615,7 @@ export async function deleteRecordingTake(id: string): Promise<void> {
   await db.transaction(async (tx: Transaction) => {
     const existing = await tx.execute(
       `SELECT bible_text_id, recorded_by_user_id, is_selected,
-              start_chapter, start_verse, end_chapter, end_verse
+              start_chapter, start_verse, end_chapter, end_verse, project_unit_id
        FROM recordings WHERE id = ?`,
       [id],
     );
@@ -551,6 +628,7 @@ export async function deleteRecordingTake(id: string): Promise<void> {
           start_verse: number | null;
           end_chapter: number | null;
           end_verse: number | null;
+          project_unit_id?: number | null;
         }
       | undefined;
     if (!row) {
@@ -574,6 +652,10 @@ export async function deleteRecordingTake(id: string): Promise<void> {
     const bibleTextId = row.bible_text_id;
     const deletedRange = rowRange(row);
     const owner = recordedByClause(row.recorded_by_user_id);
+    const unit = projectUnitClause(
+      normalizeProjectUnitId(row.project_unit_id),
+      'r.project_unit_id',
+    );
 
     await tx.execute(`DELETE FROM recordings WHERE id = ?`, [id]);
     applied = true;
@@ -593,8 +675,9 @@ export async function deleteRecordingTake(id: string): Promise<void> {
          AND ${owner.sql.replaceAll(
            'recorded_by_user_id',
            'r.recorded_by_user_id',
-         )}`,
-      [bibleTextId, ...owner.params],
+         )}
+         AND ${unit.sql}`,
+      [bibleTextId, ...owner.params, ...unit.params],
     );
     const priorId = (
       (candidates.rows ?? []) as {

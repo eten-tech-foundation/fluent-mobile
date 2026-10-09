@@ -150,14 +150,16 @@ describe('SourceAudioBarSlot', () => {
 function IntegrationProbe({
   sourceEnabled,
   verseAudioState,
+  pauseDraftPlayback = jest.fn().mockResolvedValue(undefined),
 }: {
   sourceEnabled: boolean;
   verseAudioState: string;
+  pauseDraftPlayback?: () => Promise<void>;
 }) {
   useSourceAudioRecordTabIntegration({
     sourceEnabled,
     verseAudioState,
-    pauseDraftPlayback: jest.fn().mockResolvedValue(undefined),
+    pauseDraftPlayback,
   });
   return null;
 }
@@ -194,5 +196,72 @@ describe('useSourceAudioRecordTabIntegration', () => {
     );
 
     expect(mockStop).toHaveBeenCalled();
+  });
+
+  it('does not re-enable source audio on positionMs ticks while disabled (#596)', () => {
+    // Context value used to change every positionMs tick; effects depended on
+    // `ctx` and toggled recordTabSourceEnabled in cleanup/setup → depth error.
+    // On the Record tab, enabled mirrors recordTabSourceEnabled — assert it
+    // stays false across ticks instead of flipping true↔false.
+    let positionMs = 0;
+    mockUseSourceAudio.mockImplementation(() => ({
+      loadState: 'ready',
+      status: 'idle',
+      get positionMs() {
+        return positionMs;
+      },
+      durationMs: 60000,
+      isPlaying: false,
+      play: mockPlay,
+      pause: mockPause,
+      seek: jest.fn(),
+      stop: mockStop,
+      retry: jest.fn(),
+    }));
+
+    const pauseDraft = jest.fn().mockResolvedValue(undefined);
+
+    const { rerender } = render(
+      <DraftingProvider verses={verses} initialVerse={3}>
+        <SourceAudioProvider
+          chapterData={chapterData}
+          activeTab="record"
+          recordCaptureActive={false}
+        >
+          <IntegrationProbe
+            sourceEnabled={false}
+            verseAudioState="recording"
+            pauseDraftPlayback={pauseDraft}
+          />
+        </SourceAudioProvider>
+      </DraftingProvider>,
+    );
+
+    mockUseSourceAudio.mockClear();
+
+    for (let i = 1; i <= 50; i += 1) {
+      positionMs = i * 100;
+      rerender(
+        <DraftingProvider verses={verses} initialVerse={3}>
+          <SourceAudioProvider
+            chapterData={chapterData}
+            activeTab="record"
+            recordCaptureActive={false}
+          >
+            <IntegrationProbe
+              sourceEnabled={false}
+              verseAudioState="recording"
+              pauseDraftPlayback={pauseDraft}
+            />
+          </SourceAudioProvider>
+        </DraftingProvider>,
+      );
+    }
+
+    const enabledFlags = mockUseSourceAudio.mock.calls.map(
+      call => (call[0] as { enabled?: boolean }).enabled,
+    );
+    expect(enabledFlags.length).toBeGreaterThan(0);
+    expect(enabledFlags.every(flag => flag === false)).toBe(true);
   });
 });

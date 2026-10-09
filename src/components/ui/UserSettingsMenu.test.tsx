@@ -3,6 +3,12 @@ import { Alert } from 'react-native';
 import { UserSettingsMenu } from './UserSettingsMenu';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { hrefs } from '../../navigation/hrefs';
+import {
+  RECORDING_IN_PROGRESS_MESSAGE,
+  RECORDING_IN_PROGRESS_TITLE,
+  resetRecordCaptureGateForTests,
+  setRecordCaptureGate,
+} from '../../navigation/recordCaptureGate';
 import type { DrawerContentComponentProps } from 'expo-router/drawer';
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -94,6 +100,11 @@ jest.mock('../../services/storage', () => ({
 
 const mockSwitchToDeviceAccount = jest.fn();
 const mockSignOutCurrentDeviceAccount = jest.fn();
+const mockGetUnsyncedRecordingCount = jest.fn();
+jest.mock('../../db/queries', () => ({
+  getUnsyncedRecordingCount: (...args: unknown[]) =>
+    mockGetUnsyncedRecordingCount(...args),
+}));
 jest.mock('../../services/accountSession', () => ({
   switchToDeviceAccount: (...args: unknown[]) =>
     mockSwitchToDeviceAccount(...args),
@@ -173,13 +184,19 @@ describe('UserSettingsMenu', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    resetRecordCaptureGateForTests();
     mockDrawerStatus = 'closed';
     mockReload.mockResolvedValue(undefined);
     mockCanDismiss.mockReturnValue(false);
 
     mockGetActiveUserId.mockReturnValue('active-1');
+    mockGetUnsyncedRecordingCount.mockResolvedValue(0);
     setDeviceAccountsResult();
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    resetRecordCaptureGateForTests();
   });
 
   function renderMenu() {
@@ -220,7 +237,7 @@ describe('UserSettingsMenu', () => {
       tree.indexOf('Terms of Use'),
     );
     expect(tree.indexOf('Terms of Use')).toBeLessThan(tree.indexOf('Accounts'));
-    expect(tree.indexOf('Accounts')).toBeLessThan(tree.indexOf('Sign Out'));
+    expect(tree.indexOf('Accounts')).toBeLessThan(tree.indexOf('Log out'));
   });
 
   it('navigates to drawer routes when More Settings / legal items are pressed', () => {
@@ -328,6 +345,29 @@ describe('UserSettingsMenu', () => {
     expect(onUserSwitched).not.toHaveBeenCalled();
   });
 
+  it('warns and stays signed in when recordings are not on the server', async () => {
+    mockGetUnsyncedRecordingCount.mockResolvedValue(1);
+
+    const { getByText } = renderMenu();
+    fireEvent.press(getByText('Log out'));
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Unsynced work on device',
+        'You have recordings that have not been uploaded. Log out anyway?',
+        expect.any(Array),
+      );
+    });
+    expect(mockSignOutCurrentDeviceAccount).not.toHaveBeenCalled();
+
+    const buttons = jest.mocked(Alert.alert).mock.calls[0]?.[2] as Array<{
+      text: string;
+      onPress?: () => void;
+    }>;
+    buttons.find(button => button.text === 'Cancel')?.onPress?.();
+    expect(mockSignOutCurrentDeviceAccount).not.toHaveBeenCalled();
+  });
+
   it('signs out and notifies when switched to another account', async () => {
     mockSignOutCurrentDeviceAccount.mockResolvedValueOnce({
       kind: 'switched',
@@ -335,7 +375,7 @@ describe('UserSettingsMenu', () => {
     });
 
     const { getByText } = renderMenu();
-    fireEvent.press(getByText('Sign Out'));
+    fireEvent.press(getByText('Log out'));
 
     await waitFor(() => {
       expect(mockSignOutCurrentDeviceAccount).toHaveBeenCalled();
@@ -353,7 +393,7 @@ describe('UserSettingsMenu', () => {
     });
 
     const { getByText } = renderMenu();
-    fireEvent.press(getByText('Sign Out'));
+    fireEvent.press(getByText('Log out'));
 
     await waitFor(() => {
       expect(onSignOut).toHaveBeenCalled();
@@ -364,7 +404,7 @@ describe('UserSettingsMenu', () => {
     mockSignOutCurrentDeviceAccount.mockRejectedValueOnce(new Error('boom'));
 
     const { getByText } = renderMenu();
-    fireEvent.press(getByText('Sign Out'));
+    fireEvent.press(getByText('Log out'));
 
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalledWith(
@@ -392,5 +432,48 @@ describe('UserSettingsMenu', () => {
     await waitFor(() => {
       expect(mockReload).toHaveBeenCalled();
     });
+  });
+
+  it('blocks drawer navigation, account switch, Add User, and Sign Out while recording', () => {
+    setRecordCaptureGate(true);
+    const { getByTestId, getByText } = renderMenu();
+
+    fireEvent.press(getByTestId('settings-menu-more-settings'));
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockCloseDrawer).toHaveBeenCalled();
+    expect(Alert.alert).toHaveBeenCalledWith(
+      RECORDING_IN_PROGRESS_TITLE,
+      RECORDING_IN_PROGRESS_MESSAGE,
+      [{ text: 'OK' }],
+    );
+
+    jest.mocked(Alert.alert).mockClear();
+    mockCloseDrawer.mockClear();
+
+    fireEvent.press(getByText('other@example.com'));
+    expect(mockSwitchToDeviceAccount).not.toHaveBeenCalled();
+    expect(Alert.alert).toHaveBeenCalledWith(
+      RECORDING_IN_PROGRESS_TITLE,
+      RECORDING_IN_PROGRESS_MESSAGE,
+      [{ text: 'OK' }],
+    );
+
+    jest.mocked(Alert.alert).mockClear();
+    fireEvent.press(getByTestId('settings-menu-add-user'));
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(Alert.alert).toHaveBeenCalledWith(
+      RECORDING_IN_PROGRESS_TITLE,
+      RECORDING_IN_PROGRESS_MESSAGE,
+      [{ text: 'OK' }],
+    );
+
+    jest.mocked(Alert.alert).mockClear();
+    fireEvent.press(getByTestId('settings-menu-sign-out'));
+    expect(mockSignOutCurrentDeviceAccount).not.toHaveBeenCalled();
+    expect(Alert.alert).toHaveBeenCalledWith(
+      RECORDING_IN_PROGRESS_TITLE,
+      RECORDING_IN_PROGRESS_MESSAGE,
+      [{ text: 'OK' }],
+    );
   });
 });

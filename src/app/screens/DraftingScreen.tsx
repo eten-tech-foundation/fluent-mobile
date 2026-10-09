@@ -35,11 +35,30 @@ import {
 import { syncBibleTexts, syncMasterData } from '../../services/sync';
 import { emitSyncComplete, emitSyncStart } from '../../services/syncEvents';
 import { hrefs } from '../../navigation/hrefs';
+import { setRecordCaptureGate } from '../../navigation/recordCaptureGate';
 import {
   parseRequiredNumber,
   parseRequiredString,
 } from '../../navigation/routeParams';
+import {
+  CAPTURE_LEAVE_DISCARD,
+  CAPTURE_LEAVE_MESSAGE,
+  CAPTURE_LEAVE_RESUME,
+  CAPTURE_LEAVE_TITLE,
+} from '../../constants/messages';
 import { parseUserId } from '../../utils/parseUserId';
+import type { CaptureControls } from '../../types/captureControls';
+
+const CAPTURE_LEAVE_ALERT_BUTTONS = (
+  discard: () => void,
+): {
+  text: string;
+  style?: 'cancel' | 'destructive' | 'default';
+  onPress?: () => void;
+}[] => [
+  { text: CAPTURE_LEAVE_RESUME, style: 'cancel' },
+  { text: CAPTURE_LEAVE_DISCARD, style: 'destructive', onPress: discard },
+];
 
 const log = logger.create('DraftingScreen');
 
@@ -72,6 +91,9 @@ export default function DraftingScreen() {
   );
   /** True while Record tab has an in-progress take (recording/paused). */
   const [recordCaptureActive, setRecordCaptureActive] = useState(false);
+  /** #49: Resume/Discard controls for the in-progress capture, when active. */
+  const [captureControls, setCaptureControls] =
+    useState<CaptureControls | null>(null);
   const bibleTextEnsureForChapterRef = useRef<number | null>(null);
 
   const setActiveTab = useCallback(
@@ -79,16 +101,27 @@ export default function DraftingScreen() {
       if (tab === activeTab) return;
       if (recordCaptureActive && activeTab === 'record' && tab !== 'record') {
         Alert.alert(
-          'Recording in progress',
-          'Stop or finish the current take before leaving the Record tab.',
-          [{ text: 'OK' }],
+          CAPTURE_LEAVE_TITLE,
+          CAPTURE_LEAVE_MESSAGE,
+          CAPTURE_LEAVE_ALERT_BUTTONS(() => {
+            if (!captureControls) {
+              log.warn(
+                'Leave prompt: Discard pressed with no capture controls',
+              );
+              return;
+            }
+            void captureControls.discardCapture().then(() => {
+              setActiveTabState(tab);
+              setLastActiveTab(chapterId, tab);
+            });
+          }),
         );
         return;
       }
       setActiveTabState(tab);
       setLastActiveTab(chapterId, tab);
     },
-    [activeTab, chapterId, recordCaptureActive],
+    [activeTab, captureControls, chapterId, recordCaptureActive],
   );
 
   const [verses, setVerses] = useState<VerseData[]>([]);
@@ -110,24 +143,72 @@ export default function DraftingScreen() {
     setAccountSwitcherVisible(false);
   }, []);
 
-  const alertRecordingInProgress = useCallback(() => {
-    Alert.alert(
-      'Recording in progress',
-      'Stop or finish the current take before leaving.',
-      [{ text: 'OK' }],
-    );
-  }, []);
+  /**
+   * #49 leave prompt: Resume keeps the capture, Discard drops it and then
+   * runs the originally requested action (back / Sync / account switcher).
+   * `suppressNextBeforeRemove` covers the discard→proceed window: the capture
+   * ends (guard deactivates) before the deferred navigation runs, so a slow
+   * async gap must not let `beforeRemove` re-fire the prompt.
+   */
+  const suppressNextBeforeRemove = useRef(false);
+  const discardPendingBeforeRemove = useRef(false);
+
+  const alertRecordingInProgress = useCallback(
+    (continueAfterDiscard?: () => void) => {
+      Alert.alert(
+        CAPTURE_LEAVE_TITLE,
+        CAPTURE_LEAVE_MESSAGE,
+        CAPTURE_LEAVE_ALERT_BUTTONS(() => {
+          if (!captureControls) {
+            log.warn('Leave prompt: Discard pressed with no capture controls');
+            return;
+          }
+          discardPendingBeforeRemove.current = true;
+          void captureControls.discardCapture().then(() => {
+            discardPendingBeforeRemove.current = false;
+            suppressNextBeforeRemove.current = true;
+            continueAfterDiscard?.();
+          });
+        }),
+      );
+    },
+    [captureControls],
+  );
+
+  // A fresh capture re-arms the guard even if a previous discard never
+  // consumed its suppression (e.g. discard via tab change — no pop follows).
+  useEffect(() => {
+    if (recordCaptureActive) {
+      suppressNextBeforeRemove.current = false;
+    }
+  }, [recordCaptureActive]);
+
+  // Publish capture state so the root drawer can disable swipe / menu exits (#568).
+  useEffect(() => {
+    setRecordCaptureGate(recordCaptureActive);
+    return () => {
+      setRecordCaptureGate(false);
+    };
+  }, [recordCaptureActive]);
 
   // Block header back, Android system back, and any other pop while capturing.
   useEffect(() => {
     return navigation.addListener('beforeRemove', e => {
+      if (discardPendingBeforeRemove.current) {
+        e.preventDefault();
+        return;
+      }
       if (!recordCaptureActive) {
         return;
       }
+      if (suppressNextBeforeRemove.current) {
+        suppressNextBeforeRemove.current = false;
+        return;
+      }
       e.preventDefault();
-      alertRecordingInProgress();
+      alertRecordingInProgress(() => router.back());
     });
-  }, [alertRecordingInProgress, navigation, recordCaptureActive]);
+  }, [alertRecordingInProgress, navigation, recordCaptureActive, router]);
 
   const goBack = useCallback(() => {
     router.back();
@@ -135,7 +216,7 @@ export default function DraftingScreen() {
 
   const handleAccountPress = useCallback(() => {
     if (recordCaptureActive) {
-      alertRecordingInProgress();
+      alertRecordingInProgress(() => setAccountSwitcherVisible(true));
       return;
     }
     setAccountSwitcherVisible(true);
@@ -146,7 +227,7 @@ export default function DraftingScreen() {
   // Sync pushes another route (beforeRemove may not fire) — guard explicitly.
   const handleSyncPress = useCallback(() => {
     if (recordCaptureActive) {
-      alertRecordingInProgress();
+      alertRecordingInProgress(() => router.push(hrefs.sync));
       return;
     }
     router.push(hrefs.sync);
@@ -225,7 +306,9 @@ export default function DraftingScreen() {
               projectId,
             });
             try {
-              await withSyncChrome(() => syncMasterData());
+              await withSyncChrome(() =>
+                syncMasterData(undefined, { forceFull: true }),
+              );
             } catch (masterError) {
               // Allow a later chapter open / refresh to retry.
               masterDataIsoEnsureAttempted.delete(projectId);
@@ -284,6 +367,7 @@ export default function DraftingScreen() {
           assignment.bibleId,
           assignment.bookId,
           assignment.chapterNumber,
+          assignment.projectUnitId,
         );
         if (ignore) return;
 
@@ -339,6 +423,7 @@ export default function DraftingScreen() {
         verses={verses}
         initialVerse={initialVerse}
         projectId={chapterData.projectId}
+        projectUnitId={chapterData.projectUnitId}
         bookName={chapterData.bookName ?? ''}
         chapterName={chapterName}
       >
@@ -378,6 +463,8 @@ export default function DraftingScreen() {
                   userId={userId}
                   bookCode={chapterData.bookCode ?? ''}
                   chapterNumber={chapterData.chapterNumber}
+                  bibleId={chapterData.bibleId}
+                  bookId={chapterData.bookId}
                 />
               </View>
               <View
@@ -391,6 +478,7 @@ export default function DraftingScreen() {
                   chapterData={chapterData}
                   userId={userId}
                   onCaptureActiveChange={setRecordCaptureActive}
+                  onRegisterCaptureControls={setCaptureControls}
                   onChapterClaimed={handleChapterClaimed}
                 />
               </View>

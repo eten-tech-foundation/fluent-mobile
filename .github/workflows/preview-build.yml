@@ -12,7 +12,7 @@ env:
   EAS_PROJECT_ID: 'b0919574-f268-4768-b3bd-7cfa5172bbab'
   APP_SLUG: 'fluent-mobile'
   EXPO_ACCOUNT: 'teamgloo'
-  EXPO_PUBLIC_API_BASE_URL: https://dev.api.fluent.bible
+  EXPO_PUBLIC_API_BASE_URL: https://qa.api.fluent.bible
   QA_GUIDE_URL: https://github.com/${{ github.event.pull_request.head.repo.full_name || github.repository }}/blob/${{ github.event.pull_request.head.sha }}/docs/guides/qa-preview-testing.md
 
 jobs:

@@ -55,6 +55,8 @@ export type CapturePersistSnapshot = {
   bibleTextId: number;
   /** Active verse view — mixed take_number cap/list scope (#410). */
   viewBibleTextId: number;
+  /** Project unit at capture (#613). */
+  projectUnitId: number | null;
   granularity: RecordingGranularity;
   startChapter: number;
   startVerse: number;
@@ -90,6 +92,8 @@ export type ChapterClaimContext = {
 export type UseVerseAudioArgs = {
   bibleTextId: number | null;
   chapterAssignmentId?: number | null;
+  /** Project unit for this chapter assignment — persisted on each take (#613). */
+  projectUnitId?: number | null;
   userId?: number | null;
   /** When set, first recording on an unassigned chapter triggers claim (#268/#270). */
   chapterClaim?: ChapterClaimContext | null;
@@ -119,6 +123,7 @@ async function defaultPersistTake(
     id,
     bibleTextId: args.bibleTextId,
     viewBibleTextId: args.viewBibleTextId,
+    projectUnitId: args.projectUnitId,
     localFilePath: dest,
     durationMs: args.durationMs,
     fileSizeBytes,
@@ -131,14 +136,6 @@ async function defaultPersistTake(
   return { id, localFilePath: dest };
 }
 
-async function defaultCountTakesAtView(view: VerseViewRef): Promise<number> {
-  const rows = await getTakesForVerse(view.bibleTextId, undefined, {
-    chapterNumber: view.chapterNumber,
-    verseNumber: view.verseNumber,
-  });
-  return rows.length;
-}
-
 /**
  * Composes recorder (#95) + player (#96) + storage (#94) + multi-take (#98)
  * behind the pure {@link verseAudioReducer}. Permission/Alert UX stays in the screen.
@@ -146,6 +143,7 @@ async function defaultCountTakesAtView(view: VerseViewRef): Promise<number> {
 export function useVerseAudio({
   bibleTextId,
   chapterAssignmentId = null,
+  projectUnitId = null,
   userId = null,
   chapterClaim = null,
   onChapterClaimed,
@@ -157,11 +155,29 @@ export function useVerseAudio({
   loadTakes,
   loadAllTakes,
   checkMultipleRecorders,
-  countTakesAtView = defaultCountTakesAtView,
+  countTakesAtView: countTakesAtViewArg,
   deleteTake: deleteTakeFn = deleteRecordingTake,
   selectTake: selectTakeFn = selectRecordingTake,
   designateCanonical: designateCanonicalFn = setCanonicalTake,
 }: UseVerseAudioArgs) {
+  const countTakesAtView = useCallback(
+    async (view: VerseViewRef): Promise<number> => {
+      if (countTakesAtViewArg) {
+        return countTakesAtViewArg(view);
+      }
+      const rows = await getTakesForVerse(
+        view.bibleTextId,
+        undefined,
+        {
+          chapterNumber: view.chapterNumber,
+          verseNumber: view.verseNumber,
+        },
+        projectUnitId,
+      );
+      return rows.length;
+    },
+    [countTakesAtViewArg, projectUnitId],
+  );
   const coveredViews = recordingUnit?.coveredViews;
   /**
    * Stable dep for the take load: the capture unit is re-resolved (new array
@@ -184,10 +200,15 @@ export function useVerseAudio({
       if (draftingUnit === 'pericope' && coveredViewsKey !== '') {
         const groups = await Promise.all(
           (coveredViews ?? []).map(covered =>
-            getTakesForVerse(covered.bibleTextId, undefined, {
-              chapterNumber: covered.chapterNumber,
-              verseNumber: covered.verseNumber,
-            }),
+            getTakesForVerse(
+              covered.bibleTextId,
+              undefined,
+              {
+                chapterNumber: covered.chapterNumber,
+                verseNumber: covered.verseNumber,
+              },
+              projectUnitId,
+            ),
           ),
         );
         return uniqueTakesById(groups);
@@ -196,11 +217,18 @@ export function useVerseAudio({
         typeof chapterNumber === 'number' && typeof verseNumber === 'number'
           ? { chapterNumber, verseNumber }
           : undefined;
-      return getTakesForVerse(id, undefined, view);
+      return getTakesForVerse(id, undefined, view, projectUnitId);
     },
     // coveredViewsKey tracks span content; omit coveredViews to avoid identity-only array churn (#411).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loadTakes, chapterNumber, verseNumber, draftingUnit, coveredViewsKey],
+    [
+      loadTakes,
+      chapterNumber,
+      verseNumber,
+      draftingUnit,
+      coveredViewsKey,
+      projectUnitId,
+    ],
   );
   const loadAllTakesFn = useCallback(
     (id: number) => {
@@ -208,9 +236,11 @@ export function useVerseAudio({
         typeof chapterNumber === 'number' && typeof verseNumber === 'number'
           ? { chapterNumber, verseNumber }
           : undefined;
-      return loadAllTakes ? loadAllTakes(id) : getAllTakesForVerse(id, view);
+      return loadAllTakes
+        ? loadAllTakes(id)
+        : getAllTakesForVerse(id, view, projectUnitId);
     },
-    [loadAllTakes, chapterNumber, verseNumber],
+    [loadAllTakes, chapterNumber, verseNumber, projectUnitId],
   );
   const checkMultipleRecordersFn = useCallback(
     (id: number) => {
@@ -405,6 +435,7 @@ export function useVerseAudio({
       capturePersistRef.current = {
         bibleTextId: anchorBibleTextId,
         viewBibleTextId: bibleTextId,
+        projectUnitId,
         granularity: recordingUnit?.granularity ?? 'verse',
         startChapter: recordingUnit?.startChapter ?? chapterNumber ?? 0,
         startVerse: recordingUnit?.startVerse ?? verseNumber ?? 0,
@@ -436,6 +467,7 @@ export function useVerseAudio({
     countTakesAtView,
     draftingUnit,
     playback,
+    projectUnitId,
     recording,
     recordingUnit,
     verseNumber,
@@ -462,6 +494,44 @@ export function useVerseAudio({
       dispatch({ type: 'ERROR', message });
     }
   }, [recording]);
+
+  /**
+   * Abandon the in-progress capture (#49): stop the recorder, delete the temp
+   * file, persist nothing, and return the unit to its prior state (Idle when
+   * no takes remain, Review otherwise — same display rule as the capture
+   * views). Uses the recorder's native stop so the temp URI exists to delete;
+   * the alternative (`uri` is null) means the engine already dropped it.
+   */
+  const discardCapture = useCallback(async () => {
+    if (capturePersistRef.current === null) return;
+    try {
+      const { uri } = await recording.stop();
+      await deleteFile(uri).catch(deleteError => {
+        // Best-effort: the take was never persisted, so a stray temp file
+        // must not block the discard or surface as an error state. Log it so
+        // leaked temp files are visible.
+        log.warn('discardCapture temp file delete failed', {
+          message:
+            deleteError instanceof Error
+              ? deleteError.message
+              : String(deleteError),
+        });
+      });
+    } catch (error) {
+      log.warn('discardCapture recorder stop failed', {
+        message: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      capturePersistRef.current = null;
+      setErrorMessage(null);
+      dispatch({ type: 'DISCARD' });
+      // DISCARD only reaches idle. Nothing was persisted, so `takes` is still the
+      // prior state: REHYDRATE restores Review when takes remain (same as
+      // deleteTake), otherwise it stays idle. Without it, Play is ignored — PLAY
+      // only fires from `recorded`.
+      dispatch({ type: 'REHYDRATE', hasTake: takes.length > 0 });
+    }
+  }, [recording, takes]);
 
   const stop = useCallback(async () => {
     const snapshot = capturePersistRef.current;
@@ -873,6 +943,7 @@ export function useVerseAudio({
     pause,
     resume,
     stop,
+    discardCapture,
     playTake,
     playStitched,
     seek,

@@ -44,6 +44,7 @@ export const createTableQueries: string[] = [
       id         INTEGER PRIMARY KEY,
       project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
       status     TEXT NOT NULL DEFAULT 'not_started',
+      name       TEXT NOT NULL DEFAULT '',
       updated_at TEXT 
     );`,
 
@@ -96,6 +97,7 @@ export const createTableQueries: string[] = [
       id                    TEXT PRIMARY KEY,
       bible_text_id         INTEGER NOT NULL REFERENCES bible_texts(id),
       recorded_by_user_id   INTEGER REFERENCES users(id),
+      project_unit_id       INTEGER REFERENCES project_units(id),
       local_file_path       TEXT NOT NULL,
       blob_key              TEXT,
       duration_ms           INTEGER,
@@ -118,6 +120,7 @@ export const createTableQueries: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_rec_verse      ON recordings(bible_text_id, is_selected);`,
   `CREATE INDEX IF NOT EXISTS idx_rec_verse_user ON recordings(bible_text_id, recorded_by_user_id, is_selected);`,
   `CREATE INDEX IF NOT EXISTS idx_rec_canonical  ON recordings(bible_text_id, is_canonical);`,
+  `CREATE INDEX IF NOT EXISTS idx_rec_project_unit ON recordings(project_unit_id);`,
   `CREATE INDEX IF NOT EXISTS idx_rec_pending    ON recordings(sync_status) WHERE sync_status != 'uploaded';`,
 
   `CREATE TABLE IF NOT EXISTS user_projects (

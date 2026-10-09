@@ -50,6 +50,7 @@ describe('useImagesMapsForUnit', () => {
       bookCode: 'MRK',
       chapterNumber: 1,
       verseNumber: 2,
+      verseRefs: [{ chapterNumber: 1, verseNumber: 2 }],
       languageCode: undefined,
     });
   });
