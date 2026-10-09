@@ -1,5 +1,4 @@
 import { enqueueDownloadItems } from '../db/repository';
-import { simulatePrepareOfflineDownloadProgress } from './prepareOfflineResources';
 import { PrepareOfflineResourceItem } from '../types/prepareOffline/types';
 import { logger } from '../utils/logger';
 import { prepareOfflineItemsToEnqueueInputs } from '../utils/prepareOfflineQueueMapping';
@@ -39,16 +38,12 @@ export async function enqueuePrepareOfflineDownload(
     });
     return ids;
   } catch (error) {
-    log.error(
-      'Failed to enqueue prepare offline download; falling back to mock simulation',
-      {
-        error,
-        projectId: input.projectId,
-      },
-    );
-
-    const tierOrderedIds = input.items.map(item => item.id);
-    simulatePrepareOfflineDownloadProgress(input.projectId, tierOrderedIds);
-    return [];
+    // Real queue (since #201): surface enqueue failures to the caller instead
+    // of simulating progress — the UI must not show fake downloads.
+    log.error('Failed to enqueue prepare offline download', {
+      error,
+      projectId: input.projectId,
+    });
+    throw error;
   }
 }

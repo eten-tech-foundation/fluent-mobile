@@ -52,13 +52,17 @@ function verseNumbersKeySafe(verseNumbers: number[] | undefined): string {
 /**
  * Section-scoped TQ loader (#190). Failures stay local — do not block Notes / Images.
  * Ignores stale responses when the active unit changes mid-load.
- * Loads via fluent-api translation-resources (fluent-api #274); pericope fan-out (#593).
+ * Downloaded rows win; fluent-api translation-resources (fluent-api #274)
+ * is only hit when nothing usable is downloaded and the device is online.
+ * Online pericope units fan out across their verse refs (#593).
  */
 export function useTranslationQuestionsForUnit(
   params: UseTranslationQuestionsForUnitParams,
 ) {
   const {
     projectId,
+    userId,
+    isOnline,
     bookCode,
     chapterNumber,
     verseNumber,
@@ -110,6 +114,8 @@ export function useTranslationQuestionsForUnit(
     try {
       const questions = await loadTranslationQuestionsForUnit({
         projectId,
+        userId,
+        isOnline,
         bookCode,
         chapterNumber,
         verseNumber,
@@ -147,6 +153,8 @@ export function useTranslationQuestionsForUnit(
     }
   }, [
     projectId,
+    userId,
+    isOnline,
     bookCode,
     chapterNumber,
     verseNumber,
