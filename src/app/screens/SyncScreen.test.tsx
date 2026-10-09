@@ -293,15 +293,18 @@ describe('SyncScreen', () => {
       hasPendingUploads: false,
       pendingCount: 0,
       pendingChapterCount: 0,
-      isUploading: false,
+      isUploading: true,
     };
     render(<SyncScreen />);
 
     expect(screen.getAllByText('Paused').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Syncing…')).toBeNull();
     expect(screen.queryByText('Online · all synced')).toBeNull();
     expect(
       screen.queryByText('All work has been uploaded to Fluent.'),
     ).toBeNull();
+    expect(screen.getByTestId('sync-action-resume')).toBeTruthy();
+    expect(screen.getByTestId('sync-action-controls-paused')).toBeTruthy();
   });
 
   it('calls syncNowUploads and triggerSync when Resume is pressed', async () => {

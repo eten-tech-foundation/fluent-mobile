@@ -32,6 +32,12 @@ function createHarness(options?: {
   chapters?: PendingUploadChapter[];
   uploadOverCellular?: boolean;
   workerDelayMs?: number;
+  /** Drop the first chapter, then block until abort (it already left the pending set). */
+  holdFirstChapterUntilAbort?: boolean;
+  /** Leave these chapters pending after uploadChapter returns (failed take still queued). */
+  retainPending?: PendingUploadChapter[];
+  /** Block this chapter until abort without removing it from the pending set. */
+  holdChapterNumber?: number;
   failUploads?: () => boolean;
   getSessionTransportSnapshot?: UploadOrchestratorDeps['getSessionTransportSnapshot'];
   pushPendingClaimsBeforeUpload?: UploadOrchestratorDeps['pushPendingClaimsBeforeUpload'];
@@ -48,12 +54,48 @@ function createHarness(options?: {
     { bookId: 1, chapterNumber: 2 },
   ];
 
+  let heldFirstChapter = false;
+  let heldChapterNumber = false;
+  const sameChapter = (
+    left: PendingUploadChapter,
+    right: PendingUploadChapter,
+  ) =>
+    left.bookId === right.bookId && left.chapterNumber === right.chapterNumber;
+  const dropChapter = (chapter: PendingUploadChapter) => {
+    chapters = chapters.filter(item => !sameChapter(item, chapter));
+  };
+  const waitForAbort = (signal: AbortSignal) =>
+    new Promise<void>((_resolve, reject) => {
+      if (signal.aborted) {
+        reject(new Error('aborted'));
+        return;
+      }
+      signal.addEventListener('abort', () => reject(new Error('aborted')), {
+        once: true,
+      });
+    });
   const timers: ScheduledTimer[] = [];
 
   const worker: ChapterUploadWorker = {
     uploadChapter: async (chapter, signal) => {
       if (options?.failUploads?.()) {
         throw new Error('upload failed');
+      }
+      if (options?.holdFirstChapterUntilAbort && !heldFirstChapter) {
+        heldFirstChapter = true;
+        dropChapter(chapter);
+        uploaded.push(chapter);
+        await waitForAbort(signal);
+        return;
+      }
+      if (
+        options?.holdChapterNumber === chapter.chapterNumber &&
+        !heldChapterNumber
+      ) {
+        heldChapterNumber = true;
+        uploaded.push(chapter);
+        await waitForAbort(signal);
+        return;
       }
       if (options?.workerDelayMs) {
         await new Promise<void>((resolve, reject) => {
@@ -73,6 +115,12 @@ function createHarness(options?: {
         throw new Error('aborted');
       }
       uploaded.push(chapter);
+      const retained = options?.retainPending?.some(item =>
+        sameChapter(item, chapter),
+      );
+      if (!retained) {
+        dropChapter(chapter);
+      }
     },
   };
 
@@ -187,6 +235,113 @@ describe('uploadOrchestrator', () => {
     expect(h.events.some(e => e.type === 'start')).toBe(true);
     expect(h.events.some(e => e.type === 'complete')).toBe(true);
     expect(h.orchestrator.getSnapshot().phase).toBe('idle');
+  });
+
+  it('emits a fixed, monotonic chapter total for a multi-chapter session (#600)', async () => {
+    const h = createHarness({
+      chapters: [
+        { bookId: 1, chapterNumber: 1 },
+        { bookId: 1, chapterNumber: 2 },
+        { bookId: 1, chapterNumber: 3 },
+      ],
+    });
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    expect(h.events).toEqual([
+      { type: 'start', totalChapters: 3 },
+      { type: 'progress', completedChapters: 1, totalChapters: 3 },
+      { type: 'progress', completedChapters: 2, totalChapters: 3 },
+      { type: 'progress', completedChapters: 3, totalChapters: 3 },
+      { type: 'complete' },
+    ]);
+  });
+
+  it('keeps the session total when Resume follows a pause that finished the in-flight chapter (#600)', async () => {
+    const h = createHarness({
+      chapters: [
+        { bookId: 1, chapterNumber: 1 },
+        { bookId: 1, chapterNumber: 2 },
+        { bookId: 1, chapterNumber: 3 },
+      ],
+      holdFirstChapterUntilAbort: true,
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => h.uploaded.length === 1);
+
+    await h.orchestrator.pause();
+
+    expect(h.events).toEqual([
+      { type: 'start', totalChapters: 3 },
+      { type: 'paused', reason: 'user' },
+    ]);
+
+    await h.orchestrator.syncNow();
+    await h.waitFor(() => h.events.some(event => event.type === 'complete'));
+
+    expect(h.events).toEqual([
+      { type: 'start', totalChapters: 3 },
+      { type: 'paused', reason: 'user' },
+      { type: 'progress', completedChapters: 1, totalChapters: 3 },
+      { type: 'progress', completedChapters: 2, totalChapters: 3 },
+      { type: 'progress', completedChapters: 3, totalChapters: 3 },
+      { type: 'complete' },
+    ]);
+  });
+
+  it('does not rewind progress when a failed chapter stays pending across pause (#600)', async () => {
+    const h = createHarness({
+      chapters: [
+        { bookId: 1, chapterNumber: 1 },
+        { bookId: 1, chapterNumber: 2 },
+      ],
+      retainPending: [{ bookId: 1, chapterNumber: 1 }],
+      holdChapterNumber: 2,
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => h.uploaded.length === 2);
+
+    await h.orchestrator.pause();
+
+    await h.orchestrator.syncNow();
+    await h.waitFor(() => h.events.some(event => event.type === 'complete'));
+
+    const progress = h.events.filter(event => event.type === 'progress');
+    expect(progress.map(event => event.completedChapters)).toEqual([0, 1]);
+    expect(progress.every(event => event.totalChapters === 2)).toBe(true);
+  });
+
+  it('keeps completed chapters when a new chapter is recorded during pause (#600)', async () => {
+    const h = createHarness({
+      chapters: [
+        { bookId: 1, chapterNumber: 1 },
+        { bookId: 1, chapterNumber: 2 },
+        { bookId: 1, chapterNumber: 3 },
+      ],
+      holdFirstChapterUntilAbort: true,
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => h.uploaded.length === 1);
+    await h.orchestrator.pause();
+
+    h.setChapters([
+      { bookId: 1, chapterNumber: 2 },
+      { bookId: 1, chapterNumber: 3 },
+      { bookId: 1, chapterNumber: 4 },
+    ]);
+    await h.orchestrator.syncNow();
+    await h.waitFor(() => h.events.some(event => event.type === 'complete'));
+
+    expect(h.events).toEqual([
+      { type: 'start', totalChapters: 3 },
+      { type: 'paused', reason: 'user' },
+      { type: 'progress', completedChapters: 1, totalChapters: 4 },
+      { type: 'progress', completedChapters: 2, totalChapters: 4 },
+      { type: 'progress', completedChapters: 3, totalChapters: 4 },
+      { type: 'progress', completedChapters: 4, totalChapters: 4 },
+      { type: 'complete' },
+    ]);
   });
 
   it('pushes pending claims before uploading chapters (#611)', async () => {

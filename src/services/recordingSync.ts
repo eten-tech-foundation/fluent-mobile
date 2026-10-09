@@ -26,7 +26,11 @@ import {
   blobKeyFromVerseAudioResponse,
   outcomeFromVerseAudioFailure,
 } from './verseAudioContract';
-import { emitAuthReauthRequired, emitUploadSessionEvent } from './syncEvents';
+import {
+  emitAuthReauthRequired,
+  emitUploadSessionEvent,
+  type UploadSessionEvent,
+} from './syncEvents';
 import {
   setChapterUploadWorker,
   type ChapterUploadWorker,
@@ -383,6 +387,11 @@ async function uploadOneRecording(
   return 'failed';
 }
 
+/** Distinct chapter in a pending pass. Orchestrator sessions key the same way. */
+function chapterKey(recording: PendingRecording): string {
+  return `${recording.bookId}:${recording.chapterNumber}`;
+}
+
 async function runUploadPass(
   token: string,
   options: RecordingSyncOptions = {},
@@ -399,15 +408,32 @@ async function runUploadPass(
     chapter: options.chapter ?? null,
   });
 
-  const total = pending.length;
-  // Per-recording lifecycle events so UI can refresh without a manual bump.
-  // Chapter-scoped orchestrator sessions also emit; listeners treat both as refresh signals.
-  emitUploadSessionEvent({ type: 'start', totalChapters: total });
+  // Chapter-scoped passes run inside an orchestrator session. That session
+  // already emits start/progress/complete per chapter. Emitting the same
+  // events here (per take, including complete) resets the Sync page and the
+  // notification and can report more takes than chapters (#600).
+  const orchestratorOwnsSession = options.chapter !== undefined;
+  const emitPassEvent = (event: UploadSessionEvent): void => {
+    if (orchestratorOwnsSession) {
+      return;
+    }
+    emitUploadSessionEvent(event);
+  };
+
+  const takesLeftByChapter = new Map<string, number>();
+  if (!orchestratorOwnsSession) {
+    for (const recording of pending) {
+      const key = chapterKey(recording);
+      takesLeftByChapter.set(key, (takesLeftByChapter.get(key) ?? 0) + 1);
+    }
+  }
+  const totalChapters = takesLeftByChapter.size;
+  let completedChapters = 0;
+  emitPassEvent({ type: 'start', totalChapters });
 
   let uploaded = 0;
   let conflicted = 0;
   let failed = 0;
-  let completed = 0;
 
   try {
     for (const recording of pending) {
@@ -428,15 +454,24 @@ async function runUploadPass(
       } else {
         failed += 1;
       }
-      completed += 1;
-      emitUploadSessionEvent({
-        type: 'progress',
-        completedChapters: completed,
-        totalChapters: total,
-      });
+
+      if (orchestratorOwnsSession) {
+        continue;
+      }
+      const key = chapterKey(recording);
+      const left = (takesLeftByChapter.get(key) ?? 1) - 1;
+      takesLeftByChapter.set(key, left);
+      if (left === 0) {
+        completedChapters += 1;
+        emitPassEvent({
+          type: 'progress',
+          completedChapters,
+          totalChapters,
+        });
+      }
     }
 
-    emitUploadSessionEvent({ type: 'complete' });
+    emitPassEvent({ type: 'complete' });
     log.info('Recording upload pass complete', {
       uploaded,
       conflicted,
@@ -445,9 +480,9 @@ async function runUploadPass(
     return { uploaded, conflicted, failed };
   } catch (error) {
     if (isAbortError(error) || options.signal?.aborted) {
-      emitUploadSessionEvent({ type: 'cancelled' });
+      emitPassEvent({ type: 'cancelled' });
     } else {
-      emitUploadSessionEvent({ type: 'idle' });
+      emitPassEvent({ type: 'idle' });
     }
     throw error;
   }
