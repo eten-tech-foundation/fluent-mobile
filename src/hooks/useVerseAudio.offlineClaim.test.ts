@@ -27,6 +27,10 @@ jest.mock('../services/connectivity', () => ({
   getConnectivitySnapshot: jest.fn(),
 }));
 
+jest.mock('../services/uploadOrchestrator', () => ({
+  notifyPendingUploads: jest.fn(),
+}));
+
 jest.mock('./useRecordingEngine');
 jest.mock('./usePlaybackEngine');
 

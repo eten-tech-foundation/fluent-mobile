@@ -8,6 +8,22 @@ const log = logger.create('UploadOrchestrator');
 
 export const PAUSE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Failed-session retries use #150's existing silent-retry default: three
+ * attempts, delay `attempt * 500` ms (same as recording upload and metadata
+ * sync). Longer escalation stays out of scope.
+ */
+export const SESSION_RETRY_MAX_ATTEMPTS = 3;
+
+export function sessionRetryDelayMs(attempt: number): number {
+  return attempt * 500;
+}
+
+function defaultSchedule(callback: () => void, delayMs: number): () => void {
+  const handle = setTimeout(callback, delayMs);
+  return () => clearTimeout(handle);
+}
+
 export type UploadPhase =
   | 'idle'
   | 'syncing'
@@ -48,6 +64,11 @@ export type UploadOrchestratorDeps = {
     isWifi: boolean;
     connectionType: string;
   }>;
+  /**
+   * Pause-window expiry and failed-session retry.
+   * Defaults to setTimeout; tests inject a manual scheduler.
+   */
+  schedule?: (callback: () => void, delayMs: number) => () => void;
 };
 
 export type UploadOrchestratorSnapshot = {
@@ -63,6 +84,8 @@ export type UploadOrchestrator = {
   pause: () => Promise<void>;
   cancel: () => Promise<void>;
   syncNow: () => Promise<void>;
+  /** A take was saved (or other pending work appeared) while the app is open. */
+  notifyPendingWork: () => void;
   getSnapshot: () => UploadOrchestratorSnapshot;
 };
 
@@ -85,6 +108,24 @@ export function createUploadOrchestrator(
   let suppressAutoUntilOnlineEdge = false;
   let wasOnline = false;
   let evaluateChain: Promise<void> = Promise.resolve();
+  const schedule = deps.schedule ?? defaultSchedule;
+  let pauseTimerCancel: (() => void) | null = null;
+  let retryTimerCancel: (() => void) | null = null;
+  let sessionFailures = 0;
+  /** True from the moment a session begins until it fully unwinds. */
+  let sessionOpen = false;
+  /** Take saved (or similar) while a session was in flight. */
+  let rerunAfterSession = false;
+
+  const clearPauseTimer = (): void => {
+    pauseTimerCancel?.();
+    pauseTimerCancel = null;
+  };
+
+  const clearRetryTimer = (): void => {
+    retryTimerCancel?.();
+    retryTimerCancel = null;
+  };
 
   const snapshot = (): UploadOrchestratorSnapshot => ({
     phase,
@@ -128,110 +169,170 @@ export function createUploadOrchestrator(
     }
   };
 
-  const runSession = async (reason: 'auto' | 'sync_now'): Promise<void> => {
-    if (sessionPromise) {
+  function armPauseTimer(): void {
+    clearPauseTimer();
+    const until = deps.getPausedUntilMs();
+    if (until === null) {
       return;
     }
-    if (!deps.worker) {
-      log.info('No chapter upload worker registered; skipping session', {
-        reason,
+    const delay = until - deps.now();
+    if (delay <= 0) {
+      return;
+    }
+    pauseTimerCancel = schedule(() => {
+      pauseTimerCancel = null;
+      evaluateAuto();
+    }, delay);
+  }
+
+  function scheduleSessionRetry(): boolean {
+    clearRetryTimer();
+    if (sessionFailures >= SESSION_RETRY_MAX_ATTEMPTS) {
+      log.info('Upload session retry budget exhausted', {
+        attempts: sessionFailures,
       });
-      phase = isUserPaused() ? 'paused' : 'idle';
-      deps.emit({ type: 'idle' });
-      return;
+      return false;
     }
-
-    await applyFreshTransportSnapshot();
-
-    const uploadOverCellular = deps.getUploadOverCellular();
-    const gate = transportAllowsTransfer({
-      isOnline,
-      isWifi,
-      connectionType,
-      uploadOverCellular,
+    const delayMs = sessionRetryDelayMs(sessionFailures);
+    log.info('Scheduling upload session retry', {
+      attempt: sessionFailures,
+      delayMs,
     });
-    if (gate === 'offline') {
-      phase = 'offline';
-      return;
-    }
-    if (gate === 'waiting_wifi') {
-      phase = 'waiting_wifi';
-      deps.emit({ type: 'waiting_wifi' });
-      return;
-    }
-    if (reason === 'auto' && isUserPaused()) {
-      phase = 'paused';
-      deps.emit({ type: 'paused', reason: 'user' });
-      return;
-    }
-    if (reason === 'auto' && suppressAutoUntilOnlineEdge) {
-      return;
-    }
+    retryTimerCancel = schedule(() => {
+      retryTimerCancel = null;
+      evaluateAuto();
+    }, delayMs);
+    return true;
+  }
 
-    const chapters = await deps.getPendingUploadChapters();
-    if (chapters.length === 0) {
-      phase = 'idle';
-      deps.emit({ type: 'idle' });
+  const runSession = async (reason: 'auto' | 'sync_now'): Promise<void> => {
+    if (sessionPromise || sessionOpen) {
+      rerunAfterSession = true;
       return;
     }
+    sessionOpen = true;
+    // Object so the async work closure can publish the outcome. A bare `let`
+    // is narrowed to its initializer at `finally`, which hides the assignment.
+    const sessionResult: { followUp: 'none' | 'retry' } = { followUp: 'none' };
 
-    const abort = new AbortController();
-    sessionAbort = abort;
-    completedChapters = 0;
-    totalChapters = chapters.length;
-    phase = 'syncing';
-    deps.emit({ type: 'start', totalChapters: chapters.length });
-    log.info('Upload session started', {
-      reason,
-      totalChapters: chapters.length,
-    });
+    try {
+      if (!deps.worker) {
+        log.info('No chapter upload worker registered; skipping session', {
+          reason,
+        });
+        phase = isUserPaused() ? 'paused' : 'idle';
+        deps.emit({ type: 'idle' });
+        return;
+      }
 
-    const work = (async () => {
-      try {
-        for (const chapter of chapters) {
-          if (abort.signal.aborted) {
-            return;
-          }
-          await deps.worker!.uploadChapter(chapter, abort.signal);
-          if (abort.signal.aborted) {
-            return;
-          }
-          completedChapters += 1;
-          deps.emit({
-            type: 'progress',
-            completedChapters,
-            totalChapters,
-          });
-        }
-        if (!abort.signal.aborted) {
-          phase = 'idle';
-          deps.emit({ type: 'complete' });
-          log.info('Upload session complete', { totalChapters });
-        }
-      } catch (error) {
-        if (abort.signal.aborted) {
-          return;
-        }
-        if (isUploadNetworkInterruptedError(error)) {
-          log.info('Upload session paused after network drop', { error });
-          phase = 'idle';
-          deps.emit({ type: 'idle' });
-          return;
-        }
-        log.error('Upload session failed', { error });
+      await applyFreshTransportSnapshot();
+
+      const uploadOverCellular = deps.getUploadOverCellular();
+      const gate = transportAllowsTransfer({
+        isOnline,
+        isWifi,
+        connectionType,
+        uploadOverCellular,
+      });
+      if (gate === 'offline') {
+        phase = 'offline';
+        return;
+      }
+      if (gate === 'waiting_wifi') {
+        phase = 'waiting_wifi';
+        deps.emit({ type: 'waiting_wifi' });
+        return;
+      }
+      if (reason === 'auto' && isUserPaused()) {
+        phase = 'paused';
+        deps.emit({ type: 'paused', reason: 'user' });
+        armPauseTimer();
+        return;
+      }
+      if (reason === 'auto' && suppressAutoUntilOnlineEdge) {
+        return;
+      }
+
+      const chapters = await deps.getPendingUploadChapters();
+      if (chapters.length === 0) {
         phase = 'idle';
         deps.emit({ type: 'idle' });
+        return;
       }
-    })();
 
-    sessionPromise = work.finally(() => {
-      if (sessionAbort === abort) {
-        sessionAbort = null;
-        sessionPromise = null;
+      const abort = new AbortController();
+      sessionAbort = abort;
+      completedChapters = 0;
+      totalChapters = chapters.length;
+      phase = 'syncing';
+      deps.emit({ type: 'start', totalChapters: chapters.length });
+      log.info('Upload session started', {
+        reason,
+        totalChapters: chapters.length,
+      });
+
+      const work = (async () => {
+        try {
+          for (const chapter of chapters) {
+            if (abort.signal.aborted) {
+              return;
+            }
+            await deps.worker!.uploadChapter(chapter, abort.signal);
+            if (abort.signal.aborted) {
+              return;
+            }
+            completedChapters += 1;
+            deps.emit({
+              type: 'progress',
+              completedChapters,
+              totalChapters,
+            });
+          }
+          if (!abort.signal.aborted) {
+            phase = 'idle';
+            deps.emit({ type: 'complete' });
+            log.info('Upload session complete', { totalChapters });
+            sessionFailures = 0;
+            clearRetryTimer();
+          }
+        } catch (error) {
+          if (abort.signal.aborted) {
+            return;
+          }
+          if (isUploadNetworkInterruptedError(error)) {
+            log.info('Upload session paused after network drop', { error });
+            phase = 'idle';
+            deps.emit({ type: 'idle' });
+            return;
+          }
+          log.error('Upload session failed', { error });
+          phase = 'idle';
+          deps.emit({ type: 'idle' });
+          sessionFailures += 1;
+          sessionResult.followUp = 'retry';
+        }
+      })();
+
+      sessionPromise = work.finally(() => {
+        if (sessionAbort === abort) {
+          sessionAbort = null;
+          sessionPromise = null;
+        }
+      });
+
+      await sessionPromise;
+    } finally {
+      sessionOpen = false;
+      const shouldRerun = rerunAfterSession;
+      rerunAfterSession = false;
+      const retryArmed =
+        sessionResult.followUp === 'retry' ? scheduleSessionRetry() : false;
+      // A retry timer already covers work saved during the session. If the
+      // budget is spent, that timer is not armed — still start the save.
+      if (shouldRerun && !retryArmed) {
+        evaluateAuto();
       }
-    });
-
-    await sessionPromise;
+    }
   };
 
   const evaluateAuto = (): void => {
@@ -258,6 +359,8 @@ export function createUploadOrchestrator(
 
         if (isUserPaused()) {
           phase = 'paused';
+          clearRetryTimer();
+          armPauseTimer();
           return;
         }
 
@@ -288,6 +391,8 @@ export function createUploadOrchestrator(
     connectionType = type ?? (wifi ? 'wifi' : '');
 
     if (!online) {
+      clearRetryTimer();
+      sessionFailures = 0;
       // Interrupt mid-upload immediately — do not wait on the evaluate chain.
       void (async () => {
         if (sessionPromise) {
@@ -319,6 +424,7 @@ export function createUploadOrchestrator(
       unsubPrefs = deps.subscribeToUploadOverCellular(() => {
         evaluateAuto();
       });
+      armPauseTimer();
       log.info('Upload orchestrator started');
     },
 
@@ -331,6 +437,10 @@ export function createUploadOrchestrator(
       unsubPrefs?.();
       unsubConnectivity = null;
       unsubPrefs = null;
+      clearPauseTimer();
+      clearRetryTimer();
+      sessionFailures = 0;
+      rerunAfterSession = false;
       void abortActiveSession();
       phase = 'idle';
       log.info('Upload orchestrator stopped');
@@ -339,9 +449,13 @@ export function createUploadOrchestrator(
     async pause() {
       const until = deps.now() + deps.pauseWindowMs;
       deps.setPausedUntilMs(until);
+      clearRetryTimer();
+      sessionFailures = 0;
+      rerunAfterSession = false;
       await abortActiveSession();
       phase = 'paused';
       deps.emit({ type: 'paused', reason: 'user' });
+      armPauseTimer();
       log.info('Upload paused by user', {
         until: new Date(until).toISOString(),
       });
@@ -350,6 +464,10 @@ export function createUploadOrchestrator(
     async cancel() {
       deps.setPausedUntilMs(null);
       suppressAutoUntilOnlineEdge = true;
+      clearPauseTimer();
+      clearRetryTimer();
+      sessionFailures = 0;
+      rerunAfterSession = false;
       await abortActiveSession();
       phase = 'idle';
       deps.emit({ type: 'cancelled' });
@@ -359,8 +477,23 @@ export function createUploadOrchestrator(
     async syncNow() {
       deps.setPausedUntilMs(null);
       suppressAutoUntilOnlineEdge = false;
+      clearPauseTimer();
+      clearRetryTimer();
+      sessionFailures = 0;
+      rerunAfterSession = false;
       await abortActiveSession();
       await runSession('sync_now');
+    },
+
+    notifyPendingWork() {
+      if (!started) {
+        return;
+      }
+      if (sessionPromise || sessionOpen) {
+        rerunAfterSession = true;
+        return;
+      }
+      evaluateAuto();
     },
 
     getSnapshot: snapshot,

@@ -21,6 +21,8 @@ import {
 export {
   createUploadOrchestrator,
   PAUSE_WINDOW_MS,
+  SESSION_RETRY_MAX_ATTEMPTS,
+  sessionRetryDelayMs,
   type ChapterUploadWorker,
   type UploadOrchestrator,
   type UploadOrchestratorDeps,
@@ -111,4 +113,15 @@ export async function syncNowUploads(): Promise<void> {
 
 export function getUploadSessionSnapshot(): UploadOrchestratorSnapshot {
   return getUploadOrchestrator().getSnapshot();
+}
+
+/**
+ * A take was saved while the app is open. Starts an upload when transport
+ * allows it, or queues one behind the in-flight session. No-op before start.
+ */
+export function notifyPendingUploads(): void {
+  if (!singleton) {
+    return;
+  }
+  singleton.notifyPendingWork();
 }
