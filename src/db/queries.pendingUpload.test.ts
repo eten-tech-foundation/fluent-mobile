@@ -31,8 +31,10 @@ jest.mock('../utils/logger', () => ({
 }));
 
 import {
+  chapterHasUnuploadableSelectedTakes,
   getPendingUploadChapters,
   getPendingUploadCount,
+  getUnsyncedRecordingCount,
   getUnuploadablePendingSummary,
 } from './queries';
 
@@ -57,6 +59,24 @@ describe('pending upload queries (#545)', () => {
     }
     expect(sql).toContain('JOIN bible_texts');
     expect(sql).not.toContain('project_unit_id');
+  });
+
+  it('getUnsyncedRecordingCount includes pericope takes not yet on the server', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ count: 1 }] });
+
+    await expect(getUnsyncedRecordingCount()).resolves.toBe(1);
+
+    const sql = String(mockExecute.mock.calls[0]?.[0]);
+    expect(sql).toContain("sync_status NOT IN ('uploaded', 'conflicted')");
+    expect(sql).not.toContain('granularity');
+    expect(sql).not.toContain('bible_texts');
+  });
+
+  it('getUnsyncedRecordingCount does not treat a query failure as zero', async () => {
+    const failure = new Error('db');
+    mockExecute.mockRejectedValue(failure);
+
+    await expect(getUnsyncedRecordingCount()).rejects.toBe(failure);
   });
 
   it('getPendingUploadChapters only lists chapters with upload-eligible verse or pericope takes', async () => {
@@ -100,14 +120,64 @@ describe('pending upload queries (#545)', () => {
     expect(sql).not.toContain('missing_assignment');
   });
 
-  it('getUnuploadablePendingSummary returns zeros when the query fails', async () => {
+  it('getPendingUploadCount rejects when the query fails', async () => {
     mockExecute.mockRejectedValue(new Error('db'));
 
-    await expect(getUnuploadablePendingSummary()).resolves.toEqual({
-      orphanBibleText: 0,
-      pericopeOnly: 0,
-      other: 0,
-      total: 0,
-    });
+    await expect(getPendingUploadCount()).rejects.toThrow('db');
+  });
+
+  it('getUnuploadablePendingSummary rejects when the query fails', async () => {
+    mockExecute.mockRejectedValue(new Error('db'));
+
+    await expect(getUnuploadablePendingSummary()).rejects.toThrow('db');
+  });
+
+  it('chapterHasUnuploadableSelectedTakes is true when the chapter has non-verse pending (#585)', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ count: 2 }] });
+
+    await expect(chapterHasUnuploadableSelectedTakes(9, 40, 1)).resolves.toBe(
+      true,
+    );
+
+    expect(mockExecute).toHaveBeenCalledWith(
+      expect.stringContaining('bt.book_id = ?'),
+      [9, 40, 7, 1, 1, 1],
+    );
+    const sql = String(mockExecute.mock.calls[0]?.[0]);
+    expect(sql).toContain('bt.bible_id = ?');
+    expect(sql).toContain("IFNULL(r.granularity, 'verse') = 'verse'");
+    expect(sql).toContain('NOT (');
+  });
+
+  it('chapterHasUnuploadableSelectedTakes detects a take anchored in ch.1 spanning into ch.2 (#585)', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ count: 1 }] });
+
+    await expect(chapterHasUnuploadableSelectedTakes(9, 40, 2)).resolves.toBe(
+      true,
+    );
+
+    const [sql, params] = mockExecute.mock.calls[0] as [string, number[]];
+    expect(sql).toContain('bt.chapter_number = ?');
+    expect(sql).toContain('r.start_chapter > 0');
+    expect(sql).toContain('r.start_chapter <= ?');
+    expect(sql).toContain('r.end_chapter >= ?');
+    // bible, book, user, then chapter for anchor + start<=ch + end>=ch.
+    expect(params).toEqual([9, 40, 7, 2, 2, 2]);
+  });
+
+  it('chapterHasUnuploadableSelectedTakes is false when count is zero', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ count: 0 }] });
+
+    await expect(chapterHasUnuploadableSelectedTakes(9, 40, 1)).resolves.toBe(
+      false,
+    );
+  });
+
+  it('chapterHasUnuploadableSelectedTakes fails closed when the query errors', async () => {
+    mockExecute.mockRejectedValue(new Error('db'));
+
+    await expect(chapterHasUnuploadableSelectedTakes(9, 40, 1)).resolves.toBe(
+      true,
+    );
   });
 });

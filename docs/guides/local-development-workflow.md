@@ -9,7 +9,9 @@ Pick **one** API path by setting `EXPO_PUBLIC_API_BASE_URL` in `.env`. No code c
 | **Hosted dev** | See shared remote data; no Docker |
 | **Local Docker** | Seed your own Postgres; iterate on API locally; work offline from the API |
 
-Web app (login / project UI in browser): https://dev.app.fluent.bible
+Web app for **Path A (hosted dev)** login / project UI: https://dev.app.fluent.bible
+
+Preview / nightly APKs (QA testers) use **QA** instead — API `https://qa.api.fluent.bible`, web [https://qa.app.fluent.bible/](https://qa.app.fluent.bible/). Local engineering defaults below are unchanged.
 
 ---
 

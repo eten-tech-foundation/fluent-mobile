@@ -119,12 +119,16 @@ Best-effort warn-and-continue on failure (except the Product-column STOP
 above). **Do not paste GraphQL** — use the shared CLI:
 
 ```bash
+# /start-issue <n> names the issue — allow claiming out of Product columns.
 node .github/scripts/project-board-cli.cjs set-status \
-  --issue "$CHOSEN" --to "In Progress (Dev)"
+  --issue "$CHOSEN" --to "In Progress (Dev)" --allow-product-owned
 ```
 
-The CLI adds the issue to Project 4 when missing, refuses Product-owned
-columns, and prints `WARN:` instead of failing the kickoff.
+The CLI adds the issue to Project 4 when missing. Without
+`--allow-product-owned` it refuses Product-owned columns (`WARN:`). This
+command always passes the flag because `$ARGUMENTS` / `$CHOSEN` is an
+explicit named-issue ask.
+
 #### 4c. Branch from `main`
 
 If a local or `origin` branch matching `*/${CHOSEN}-*` already exists: **resume**

@@ -43,8 +43,11 @@ When implementing the **assigned** ticket only:
 - Set that issue to **`In Progress (Dev)`** when starting work (`/start-issue`) and **`In PR Review`** when the PR is open (`/create-pr`) via:
 
   ```bash
-  node .github/scripts/project-board-cli.cjs set-status --issue NNN --to "In Progress (Dev)"
-  node .github/scripts/project-board-cli.cjs set-status --issue NNN --to "In PR Review"
+  # Named-issue escape hatch: /start-issue NNN and ticketed /create-pr may claim
+  # out of Product-owned columns with --allow-product-owned. Never use that flag
+  # for sweeps or issues the user did not name.
+  node .github/scripts/project-board-cli.cjs set-status --issue NNN --to "In Progress (Dev)" --allow-product-owned
+  node .github/scripts/project-board-cli.cjs set-status --issue NNN --to "In PR Review" --allow-product-owned
   ```
 
 - If the PR **Needs QA** ([qa-process.md](qa-process.md)): check **Needs QA? Yes** in the PR body. After merge, automation moves → **`In QA`** and assigns QA. Agents must **not** treat QA as a merge blocker — engineer approval + CI is enough to merge (humans merge; agents do not). Leave the GitHub issue **open** until QA finishes.

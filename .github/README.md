@@ -15,7 +15,7 @@ Workflows for Fluent Mobile (**Android-only**).
 | `eas-build.yml` | push tag `v*` | Sync `APP_VERSION_FALLBACK` in `app.config.ts` with tag; hand off to EAS |
 | `preview-build.yml` | PR label `preview-build` | Optional isolated Android preview APK (**PR comment only** — debug) |
 | `qa-handoff.yml` | PR merged | Needs QA? Yes → issue handoff + assign Roslin + Project 4 `In QA` |
-| `nightly-preview.yml` | cron 15:17 PT + `workflow_dispatch` | Nightly **binary-only** Android internal APK (dev API); cron identity trusted when GitHub delays; Slack in the same run |
+| `nightly-preview.yml` | cron 15:17 PT + `workflow_dispatch` | Nightly **binary-only** Android internal APK (QA API); cron identity trusted when GitHub delays; Slack in the same run |
 
 Maestro E2E is **not** a GitHub Action — use EAS Workflow [`.eas/workflows/maestro-android.yml`](../.eas/workflows/maestro-android.yml) (`npm run maestro:eas`). See [docs/guides/maestro.md](../docs/guides/maestro.md).
 
@@ -58,7 +58,7 @@ Requires `EXPO_TOKEN` in repository secrets. Optional: `PROJECT_BOARD_TOKEN` (PA
 
 Scheduled (and manually dispatchable) workflow [`.github/workflows/nightly-preview.yml`](workflows/nightly-preview.yml):
 
-- Always starts a **new** EAS Android build with profile **`nightly`** (internal APK, baked `https://dev.api.fluent.bible`).
+- Always starts a **new** EAS Android build with profile **`nightly`** (internal APK, baked `https://qa.api.fluent.bible`; matching web https://qa.app.fluent.bible/).
 - **No OTA** (`eas update` is not used). Expo Updates stay disabled for `nightly` so the APK is self-contained.
 - Skips when `main` HEAD matches the last successful nightly unless `force_build` is set.
 - Single schedule cron intended ~**15:17 America/Los_Angeles** (~16:17 MT). GitHub often delays fires by ~3–5 hours; after lag the notice aims for late evening Mountain / early India morning (~06:30–09:00 IST). The workflow trusts `github.event.schedule == 17 15 * * *` so delayed fires still build; unknown/legacy cron strings are ignored. Green ignored-schedule no-ops do not count as the last nightly SHA for skip-if-unchanged.

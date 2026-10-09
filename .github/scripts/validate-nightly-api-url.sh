@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Fail if the nightly EAS profile would bake a non-dev / production-like API URL.
+# Fail if the nightly EAS profile would bake a non-QA / production-like API URL.
 # Requires: jq, eas.json at repo root.
 set -euo pipefail
 
-EXPECTED_URL="${EXPECTED_DEV_API_URL:-https://dev.api.fluent.bible}"
+EXPECTED_URL="${EXPECTED_QA_API_URL:-https://qa.api.fluent.bible}"
 EAS_JSON="${EAS_JSON_PATH:-eas.json}"
 
 if [ ! -f "${EAS_JSON}" ]; then
@@ -24,12 +24,12 @@ if [ "${URL}" != "${EXPECTED_URL}" ]; then
   exit 1
 fi
 
-# Extra guard: reject hostnames that look like production (no "dev." subdomain).
+# Extra guard: reject hostnames that look like production (no "qa." subdomain).
 HOST=$(printf '%s' "${URL}" | sed -E 's|^https?://([^/]+).*|\1|')
 case "${HOST}" in
-  dev.api.fluent.bible) ;;
+  qa.api.fluent.bible) ;;
   *api.fluent.bible*)
-    echo "❌ Nightly API host looks like production: ${HOST}"
+    echo "❌ Nightly API host must be qa.api.fluent.bible (rejected: ${HOST})"
     exit 1
     ;;
 esac

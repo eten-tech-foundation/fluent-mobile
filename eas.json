@@ -28,7 +28,7 @@
       "environment": "preview",
       "env": {
         "EAS_USE_CACHE": "1",
-        "EXPO_PUBLIC_API_BASE_URL": "https://dev.api.fluent.bible",
+        "EXPO_PUBLIC_API_BASE_URL": "https://qa.api.fluent.bible",
         "EXPO_PUBLIC_COMPONENT_GALLERY": "true"
       },
       "android": {
@@ -41,7 +41,7 @@
       "environment": "preview",
       "env": {
         "EAS_USE_CACHE": "1",
-        "EXPO_PUBLIC_API_BASE_URL": "https://dev.api.fluent.bible",
+        "EXPO_PUBLIC_API_BASE_URL": "https://qa.api.fluent.bible",
         "EXPO_PUBLIC_COMPONENT_GALLERY": "true"
       },
       "android": {

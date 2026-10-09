@@ -5,11 +5,16 @@
  * Usage:
  *   node .github/scripts/project-board-cli.cjs set-status --issue 464 --to "In Progress (Dev)"
  *   node .github/scripts/project-board-cli.cjs set-status --issue 464 --to "In PR Review"
+ *   node .github/scripts/project-board-cli.cjs set-status --issue 464 --to "In Progress (Dev)" \
+ *     --allow-product-owned
  *
  * Auth: uses `gh` (GITHUB_TOKEN or `gh auth login`). Soft-fails with WARN exit 0
  * unless --strict is passed.
  *
- * Never moves Product-owned columns. Adds the issue to Project 4 when missing.
+ * By default refuses Product-owned columns. Pass `--allow-product-owned` only when
+ * the user explicitly named this issue (e.g. `/start-issue 464` / ticketed
+ * `/create-pr`) so eng can claim it into In Progress (Dev) / In PR Review.
+ * Adds the issue to Project 4 when missing.
  */
 
 'use strict';
@@ -32,14 +37,21 @@ class UsageError extends Error {}
 
 function usage() {
   return `Usage:
-  node .github/scripts/project-board-cli.cjs set-status --issue <n> --to <Status> [--strict]
+  node .github/scripts/project-board-cli.cjs set-status --issue <n> --to <Status> [--strict] [--allow-product-owned]
 
 Known statuses: ${Object.keys(STATUS_OPTIONS).join(', ')}
-Presets: "In Progress (Dev)", "In PR Review"`;
+Presets: "In Progress (Dev)", "In PR Review"
+--allow-product-owned: override Product-column refuse + target allowlist (named-issue claims only)`;
 }
 
 function parseArgs(argv) {
-  const args = { command: null, issue: null, to: null, strict: false };
+  const args = {
+    command: null,
+    issue: null,
+    to: null,
+    strict: false,
+    allowProductOwned: false,
+  };
   const rest = [...argv];
   args.command = rest.shift() || null;
   while (rest.length) {
@@ -47,6 +59,7 @@ function parseArgs(argv) {
     if (flag === '--issue') args.issue = Number(rest.shift());
     else if (flag === '--to') args.to = rest.shift();
     else if (flag === '--strict') args.strict = true;
+    else if (flag === '--allow-product-owned') args.allowProductOwned = true;
     else throw new UsageError(`Unknown argument: ${flag}`);
   }
   return args;
@@ -66,7 +79,7 @@ function allowlistForTarget(target) {
   return null;
 }
 
-async function setStatus({ issue, to, strict }) {
+async function setStatus({ issue, to, strict, allowProductOwned }) {
   if (!Number.isInteger(issue) || issue <= 0) {
     throw new UsageError('--issue must be a positive integer');
   }
@@ -186,16 +199,23 @@ async function setStatus({ issue, to, strict }) {
     return;
   }
 
-  if (PRODUCT_OWNED_STATUSES.has(current)) {
+  const fromProduct = PRODUCT_OWNED_STATUSES.has(current);
+  if (fromProduct && !allowProductOwned) {
     console.warn(
-      `WARN: #${issue} Status is Product-owned ("${current}") — not moving.`,
+      `WARN: #${issue} Status is Product-owned ("${current}") — not moving. ` +
+        `Re-run with --allow-product-owned only when this issue was explicitly named ` +
+        `(e.g. /start-issue ${issue}).`,
     );
     if (strict) process.exit(1);
     return;
   }
 
   const allowed = allowlistForTarget(to);
-  if (allowed && !allowed.has(current)) {
+  // Product → eng handoff is outside the normal allowlists. Only skip the
+  // allowlist when --allow-product-owned is set AND the card is Product-owned;
+  // non-Product sources still respect IN_PROGRESS_FROM / IN_PR_REVIEW_FROM.
+  const skipAllowlistForProductClaim = allowProductOwned && fromProduct;
+  if (!skipAllowlistForProductClaim && allowed && !allowed.has(current)) {
     console.warn(
       `WARN: #${issue} Status is "${
         current || '(none)'
@@ -203,6 +223,12 @@ async function setStatus({ issue, to, strict }) {
     );
     if (strict) process.exit(1);
     return;
+  }
+
+  if (skipAllowlistForProductClaim) {
+    console.log(
+      `#${issue}: allowing Product-owned move ("${current}" → "${to}") via --allow-product-owned`,
+    );
   }
 
   ghJson([
@@ -258,4 +284,8 @@ async function main() {
   }
 }
 
-main();
+if (require.main === module) {
+  main();
+} else {
+  module.exports = { parseArgs, allowlistForTarget, usage };
+}
