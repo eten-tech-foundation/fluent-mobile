@@ -44,5 +44,5 @@ untouched copies of the source exports.
 As of this writing, both source files cover the same 34 books (not the
 full 66-book canon) — confirm with product/API before assuming full
 coverage. `loadBundledPericopeSet()` returns `null` for any book not
-present in the export, so sync falls through safely to the network path
-(fluent-api#309) once available.
+present in the export, so sync falls through to
+`FluentAPI.getPericopeSet()` (`GET /pericope-sets/{id}`, #587).
