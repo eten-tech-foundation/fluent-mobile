@@ -4,11 +4,17 @@ import {
   subscribeToConnectivity,
 } from './connectivity';
 import { emitUploadSessionEvent } from './syncEvents';
-import { getSyncPausedUntilMs, setSyncPausedUntilMs } from './storage';
+import {
+  getActiveUserId,
+  getSyncPausedUntilMs,
+  setSyncPausedUntilMs,
+} from './storage';
+import { syncPendingChapterClaimsForUser } from './sync';
 import {
   getUploadOverCellular,
   subscribeToPreference,
 } from './userPreferences';
+import { logger } from '../utils/logger';
 import {
   createUploadOrchestrator,
   PAUSE_WINDOW_MS,
@@ -17,6 +23,20 @@ import {
   type UploadOrchestratorDeps,
   type UploadOrchestratorSnapshot,
 } from './uploadOrchestratorCore';
+
+const log = logger.create('UploadOrchestrator');
+
+async function pushPendingClaimsBeforeUpload(): Promise<void> {
+  const activeUserId = getActiveUserId();
+  const userId = Number(activeUserId);
+  if (!Number.isFinite(userId) || userId <= 0) {
+    log.warn('Skipping claim push before upload — no active user', {
+      activeUserId,
+    });
+    return;
+  }
+  await syncPendingChapterClaimsForUser(userId);
+}
 
 export {
   createUploadOrchestrator,
@@ -83,6 +103,7 @@ export function startUploadOrchestrator(
       overrides && 'worker' in overrides
         ? workerOverride ?? null
         : chapterUploadWorker,
+    pushPendingClaimsBeforeUpload,
     ...restOverrides,
   };
 

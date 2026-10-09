@@ -21,7 +21,11 @@ jest.mock('../utils/parseUserId', () => ({
   parseUserId: jest.fn(),
 }));
 
-import { getPendingChapterClaims, getRejectedChapterClaims } from './queries';
+import {
+  getPendingChapterClaims,
+  getRejectedChapterClaims,
+  hasPendingChapterClaimsForUser,
+} from './queries';
 
 describe('getPendingChapterClaims', () => {
   beforeEach(() => {
@@ -98,5 +102,19 @@ describe('getPendingChapterClaims', () => {
   it('getRejectedChapterClaims rethrows when the query throws', async () => {
     mockExecute.mockRejectedValue(new Error('db unavailable'));
     await expect(getRejectedChapterClaims()).rejects.toThrow('db unavailable');
+  });
+
+  it('hasPendingChapterClaimsForUser is true when a pending row exists', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ present: 1 }] });
+    await expect(hasPendingChapterClaimsForUser(9)).resolves.toBe(true);
+    expect(mockExecute).toHaveBeenCalledWith(
+      expect.stringContaining('user_id = ?'),
+      [9],
+    );
+  });
+
+  it('hasPendingChapterClaimsForUser is false when no pending rows exist', async () => {
+    mockExecute.mockResolvedValue({ rows: [] });
+    await expect(hasPendingChapterClaimsForUser(9)).resolves.toBe(false);
   });
 });
