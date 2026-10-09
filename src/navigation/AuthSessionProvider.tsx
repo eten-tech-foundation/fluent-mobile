@@ -129,7 +129,10 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
 
   const runPostLoginSync = useCallback(
     (email: string, preloadedUser?: ApiUser, onComplete?: () => void) => {
-      syncAllData(false, email, preloadedUser)
+      syncAllData(false, email, preloadedUser, {
+        // Clear Home full-screen spinner after Tier 1; Tier 2 keeps running (#670).
+        onTier1Complete: onComplete,
+      })
         .catch(e => {
           log.error('Post-login sync failed:', { error: e });
         })
