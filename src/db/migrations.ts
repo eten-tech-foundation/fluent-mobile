@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 17;
+export const CURRENT_SCHEMA_VERSION = 19;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -426,6 +426,20 @@ async function addRecordingsVersionToken(db: SqlExecutor): Promise<void> {
  *
  * KV is required dynamically so migrations.test does not load native Storage.
  */
+/** Named project units (milestones) for Home #333. Empty name displays as parent project. */
+async function addProjectUnitsNameColumn(db: SqlExecutor): Promise<void> {
+  const info = await db.execute('PRAGMA table_info(project_units)');
+  if (!info.rows.length) {
+    return;
+  }
+  await addColumnIfMissing(
+    db,
+    'project_units',
+    'name',
+    "TEXT NOT NULL DEFAULT ''",
+  );
+}
+
 async function addRecordingsGranularityColumns(db: SqlExecutor): Promise<void> {
   const info = await db.execute('PRAGMA table_info(recordings)');
   if (!info.rows.length) {
@@ -587,7 +601,58 @@ export const migrations: Migration[] = [
     name: 'recordings_granularity',
     up: addRecordingsGranularityColumns,
   },
+  {
+    version: 18,
+    name: 'project_units_name',
+    up: addProjectUnitsNameColumn,
+  },
+  {
+    version: 19,
+    name: 'recordings_project_unit_id',
+    up: addRecordingsProjectUnitId,
+  },
 ];
+
+/**
+ * Persist the project unit a take was recorded in so upload does not pick the
+ * lowest matching chapter_assignments.id when two units share bible+book (#613).
+ * Backfill only when exactly one assignment matches (fail closed on ambiguity).
+ */
+async function addRecordingsProjectUnitId(db: SqlExecutor): Promise<void> {
+  const info = await db.execute('PRAGMA table_info(recordings)');
+  if (!info.rows.length) {
+    return;
+  }
+  await addColumnIfMissing(
+    db,
+    'recordings',
+    'project_unit_id',
+    'INTEGER REFERENCES project_units(id)',
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_rec_project_unit ON recordings(project_unit_id)`,
+  );
+  await db.execute(
+    `UPDATE recordings
+     SET project_unit_id = (
+       SELECT ca.project_unit_id
+       FROM chapter_assignments ca
+       JOIN bible_texts bt ON bt.id = recordings.bible_text_id
+       WHERE ca.bible_id = bt.bible_id
+         AND ca.book_id = bt.book_id
+         AND ca.chapter_number = bt.chapter_number
+         AND (
+           SELECT COUNT(DISTINCT ca2.project_unit_id)
+           FROM chapter_assignments ca2
+           WHERE ca2.bible_id = bt.bible_id
+             AND ca2.book_id = bt.book_id
+             AND ca2.chapter_number = bt.chapter_number
+         ) = 1
+       LIMIT 1
+     )
+     WHERE project_unit_id IS NULL`,
+  );
+}
 
 /**
  * Apply migrations with `version > PRAGMA user_version`, each once, in order.

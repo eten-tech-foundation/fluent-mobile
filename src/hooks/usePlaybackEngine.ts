@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   createAudioPlayer,
   setAudioModeAsync,
@@ -67,6 +67,11 @@ export function usePlaybackEngine(): UsePlaybackEngineApi {
     prevDidJustFinishRef.current = didJustFinish;
 
     if (finishEdge) {
+      // After a natural finish the native player can keep its play intent, so a
+      // later `seekTo` (waveform scrub in Review) restarts audio while the verse
+      // machine is already `recorded` and the row still shows Play. Clear it:
+      // scrubbing after the end must only move the position (#176).
+      player.pause();
       setStatus('idle');
       return;
     }
@@ -78,6 +83,7 @@ export function usePlaybackEngine(): UsePlaybackEngineApi {
     // unloaded/not playing; flipping to paused races PLAYBACK_END and freezes
     // the take UI at 0:00. Explicit pause/stop go through the engine.
   }, [
+    player,
     nativeStatus.currentTime,
     nativeStatus.duration,
     nativeStatus.playing,
@@ -90,22 +96,41 @@ export function usePlaybackEngine(): UsePlaybackEngineApi {
     };
   }, [player]);
 
-  return {
-    status,
-    positionMs,
-    durationMs,
-    load: uri => {
+  // Stable method identities so deps on `playback.pause` / `.play` / etc. do
+  // not rebind every positionMs tick (#298 / #596). The returned object still
+  // changes when status/position/duration change — callers that put the whole
+  // `playback` bag in a dep list will still re-run.
+  const load = useCallback(
+    (uri: string) => {
       // Consume a sticky Android didJustFinish across replace so it cannot
       // re-edge to idle mid-load; the next false→true finish still fires (#298).
       prevDidJustFinishRef.current = true;
       return engine.load(uri);
     },
-    play: uri => {
+    [engine],
+  );
+  const play = useCallback(
+    (uri: string) => {
       prevDidJustFinishRef.current = true;
       return engine.play(uri);
     },
-    pause: () => engine.pause(),
-    seek: ms => engine.seek(ms),
-    stop: () => engine.stop(),
-  };
+    [engine],
+  );
+  const pause = useCallback(() => engine.pause(), [engine]);
+  const seek = useCallback((ms: number) => engine.seek(ms), [engine]);
+  const stop = useCallback(() => engine.stop(), [engine]);
+
+  return useMemo(
+    () => ({
+      status,
+      positionMs,
+      durationMs,
+      load,
+      play,
+      pause,
+      seek,
+      stop,
+    }),
+    [status, positionMs, durationMs, load, play, pause, seek, stop],
+  );
 }

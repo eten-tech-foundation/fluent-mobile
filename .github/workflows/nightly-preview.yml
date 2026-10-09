@@ -1,6 +1,6 @@
 name: Nightly Preview
 
-# Binary-only Android internal APK for internal testers (dev API).
+# Binary-only Android internal APK for internal testers (QA API).
 # Does not use OTA / eas update. Does not require the Expo GitHub App —
 # only secrets.EXPO_TOKEN (same pattern as preview-build.yml).
 
@@ -41,7 +41,7 @@ permissions:
 
 env:
   EAS_PROJECT_ID: 'b0919574-f268-4768-b3bd-7cfa5172bbab'
-  EXPECTED_DEV_API_URL: https://dev.api.fluent.bible
+  EXPECTED_QA_API_URL: https://qa.api.fluent.bible
   EAS_PROFILE: nightly
 
 jobs:
@@ -272,7 +272,7 @@ jobs:
             echo "| | |"
             echo "|---|---|"
             echo "| Platform | Android |"
-            echo "| Environment | development API (\`${{ steps.api-url.outputs.api_base_url }}\`) |"
+            echo "| Environment | QA API (\`${{ steps.api-url.outputs.api_base_url }}\`) |"
             echo "| EAS profile | \`${{ env.EAS_PROFILE }}\` |"
             echo "| Expo Updates | disabled (binary only — no OTA) |"
             echo "| Trigger | \`${{ steps.meta.outputs.trigger }}\` |"

@@ -215,7 +215,9 @@ export function useSourceAudio({
     };
   }, []);
 
-  // Playing or paused: verse navigation seeks to that verse's start immediately.
+  // Playing or paused: verse navigation seeks to that verse's start when the
+  // API provided timestamps. Without timestamps, `verseStartMs` is always 0
+  // and seeking would restart the chapter (#595) — keep position instead.
   useEffect(() => {
     if (!uri) {
       return;
@@ -226,8 +228,10 @@ export function useSourceAudio({
     }
     if (playingVerseRef.current === verse) return;
     playingVerseRef.current = verse;
-    const startMs = verseStartMs(verse, verseTimestamps, dblAudioBibleId);
-    void playbackRef.current.seek(startMs);
+    if (verseTimestamps?.length) {
+      const startMs = verseStartMs(verse, verseTimestamps, dblAudioBibleId);
+      void playbackRef.current.seek(startMs);
+    }
     onPlayingVerseChangeRef.current?.(verse);
   }, [verse, playback.status, uri, verseTimestamps, dblAudioBibleId]);
 

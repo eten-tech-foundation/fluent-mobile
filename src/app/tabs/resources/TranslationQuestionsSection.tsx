@@ -7,43 +7,44 @@ import {
   View,
 } from 'react-native';
 import { TranslationQuestionAccordion } from './TranslationQuestionAccordion';
-import { useTranslationQuestionsForUnit } from '../../../hooks/useTranslationQuestionsForUnit';
+import type { TranslationQuestionsLoadState } from '../../../hooks/useTranslationQuestionsForUnit';
 import { TRANSLATION_QUESTIONS_LOAD_ERROR } from '../../../constants/messages';
 import { theme } from '../../../theme';
 
 type TranslationQuestionsSectionProps = {
-  projectId: number | null;
+  state: TranslationQuestionsLoadState | undefined;
+  retry: () => void;
+  /** Reset nested open state when the parent section collapses or unit changes. */
+  sectionExpanded: boolean;
   bookCode: string;
   chapterNumber: number;
   verseNumber: number;
-  /** Reset nested open state when the parent section collapses or unit changes. */
-  sectionExpanded: boolean;
+  /** Prefer over verseNumber alone so pericope ranges reset nested state (#593). */
+  versesKey?: string;
 };
 
 /**
  * Translation Questions body for the Resources tab (#190).
  * Nested Q→A accordions; section-scoped error + Retry.
+ * Load state is owned by ResourcesTab so TQ fetches with the tab (#591).
  */
 export function TranslationQuestionsSection({
-  projectId,
+  state,
+  retry,
+  sectionExpanded,
   bookCode,
   chapterNumber,
   verseNumber,
-  sectionExpanded,
+  versesKey,
 }: TranslationQuestionsSectionProps) {
-  const { state, retry } = useTranslationQuestionsForUnit({
-    projectId,
-    bookCode,
-    chapterNumber,
-    verseNumber,
-  });
   const [openQuestionIds, setOpenQuestionIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const unitKey = versesKey ?? String(verseNumber);
 
   useEffect(() => {
     setOpenQuestionIds(new Set());
-  }, [projectId, bookCode, chapterNumber, verseNumber]);
+  }, [bookCode, chapterNumber, unitKey]);
 
   useEffect(() => {
     if (!sectionExpanded) {
@@ -63,7 +64,7 @@ export function TranslationQuestionsSection({
     });
   }, []);
 
-  if (state.status === 'loading') {
+  if (!state || state.status === 'loading') {
     return (
       <View style={styles.centered} testID="translation-questions-loading">
         <ActivityIndicator color={theme.colors.primary} />

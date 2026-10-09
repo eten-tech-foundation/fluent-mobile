@@ -131,7 +131,7 @@ Process: [`docs/guides/qa-process.md`](guides/qa-process.md). Install steps: [`d
    - **`.fingerprintignore`:** excludes `docs/**/*` and `.github/**/*` (among other non-native paths) from EAS build fingerprint hashing.
    - **`eas.json` / production skip:** `preview` and `development` set **`EAS_USE_CACHE: "1"`**; `production` sets **`EAS_SAVE_CACHE: "1"`** and **`EAS_RESTORE_CACHE: "0"`**.
 
-Requires `EXPO_TOKEN` in GitHub repository secrets. Preview/nightly profiles are internal distribution with Expo Updates **disabled**. Local `.env` keeps emulator localhost; `dev.app.fluent.bible` is the web app, not the mobile API host. Local/engineering builds use profile `development` (`developmentClient: true`).
+Requires `EXPO_TOKEN` in GitHub repository secrets. Preview/nightly profiles are internal distribution with Expo Updates **disabled** and bake `https://qa.api.fluent.bible` (matching web: `qa.app.fluent.bible`). Local `.env` keeps emulator localhost or hosted Dev for engineers; `*.app.fluent.bible` is the web app, not the mobile API host. Local/engineering builds use profile `development` (`developmentClient: true`).
 
 ## Architecture and data flow
 

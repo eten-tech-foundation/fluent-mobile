@@ -1,5 +1,10 @@
 import type { ApiTranslationImageItem } from '../types/api/translationResources';
 import type { ImagesMapsItem } from '../types/resources/imagesMaps';
+import {
+  loadResourcesForVerseRange,
+  verseRefsFromChapter,
+  type ResourceVerseRef,
+} from '../utils/loadResourcesForVerseRange';
 import { FluentAPI } from './api';
 
 const DEFAULT_IMAGES_LANGUAGE_CODE = 'eng';
@@ -10,6 +15,10 @@ export type LoadImagesMapsParams = {
   bookCode: string;
   chapterNumber: number;
   verseNumber: number;
+  /** Same-chapter verse list for fan-out (#593). Prefer `verseRefs` for ranges. */
+  verseNumbers?: number[];
+  /** Explicit chapter+verse refs (cross-chapter pericopes). */
+  verseRefs?: ResourceVerseRef[];
   /** Aquifer language for Images (defaults to English source). */
   languageCode?: string;
 };
@@ -48,8 +57,8 @@ export function parseTranslationImageItem(
 
 /**
  * Load Images & Maps for a drafting unit via fluent-api translation-resources
- * (fluent-api #274). Aquifer verse vs chapter search scope is owned by the API
- * (client no longer falls back to chapter-wide search).
+ * (fluent-api #274). Pericope units fan out (#593). Aquifer verse vs chapter
+ * search scope is owned by the API.
  */
 export async function loadImagesMapsForUnit(
   params: LoadImagesMapsParams,
@@ -69,17 +78,27 @@ export async function loadImagesMapsForUnit(
 
   const languageCode =
     params.languageCode?.trim() || DEFAULT_IMAGES_LANGUAGE_CODE;
+  const projectId = params.projectId;
+  const refs =
+    params.verseRefs && params.verseRefs.length > 0
+      ? params.verseRefs
+      : verseRefsFromChapter(
+          params.chapterNumber,
+          params.verseNumber,
+          params.verseNumbers,
+        );
 
-  const response = await FluentAPI.getTranslationImages(
-    params.projectId,
-    bookCode,
-    params.chapterNumber,
-    params.verseNumber,
-    languageCode,
-  );
-
-  const items = Array.isArray(response?.items) ? response.items : [];
-  return items
-    .map(parseTranslationImageItem)
-    .filter((item): item is ImagesMapsItem => item !== null);
+  return loadResourcesForVerseRange(refs, async ref => {
+    const response = await FluentAPI.getTranslationImages(
+      projectId,
+      bookCode,
+      ref.chapterNumber,
+      ref.verseNumber,
+      languageCode,
+    );
+    const items = Array.isArray(response?.items) ? response.items : [];
+    return items
+      .map(parseTranslationImageItem)
+      .filter((item): item is ImagesMapsItem => item !== null);
+  });
 }

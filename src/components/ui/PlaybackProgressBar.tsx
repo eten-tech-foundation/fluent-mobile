@@ -70,10 +70,13 @@ const MIN_FITTED_BARS = 6;
 
 /**
  * Ignore Yoga sub-pixel / content-vs-constraint width jitter. Alternating
- * onLayout widths (±1–2px) used to re-enter setState → layout → setState and
- * throw "Maximum update depth exceeded" on physical Android (#298).
+ * onLayout widths used to re-enter setState → layout → setState and throw
+ * "Maximum update depth exceeded" on physical Android (#298 take rows;
+ * #596 source dock with 56 bars + playhead). Cap below one bar pitch
+ * (`barMinWidth` + `barGap` = 6) so hysteresis cannot hide a real fitted
+ * bar-count change.
  */
-export const LAYOUT_WIDTH_STABILITY_PX = 2;
+export const LAYOUT_WIDTH_STABILITY_PX = 5;
 
 /** Minimum spacing between scrub seeks while dragging. */
 const SEEK_SAMPLE_MS = 80;
@@ -105,8 +108,8 @@ export function fittedBarCount(
 }
 
 /**
- * Stabilize measured track width against ±1–2px layout jitter.
- * Returns `prev` when the change is not meaningful.
+ * Stabilize measured track width against layout jitter within
+ * `LAYOUT_WIDTH_STABILITY_PX`. Returns `prev` when the change is not meaningful.
  */
 export function stableTrackWidth(prev: number, next: number): number {
   if (prev === next) {
@@ -284,12 +287,15 @@ export function PlaybackProgressBar({
       onLayout={(e: LayoutChangeEvent) => {
         const next = Math.round(e.nativeEvent.layout.width);
         // Keep the scrub ref aligned with the hysteretic state — raw Yoga
-        // jitter must not drive seeks to a width we rejected for render (#298).
-        setTrackWidth(prev => {
-          const accepted = stableTrackWidth(prev, next);
-          trackWidthRef.current = accepted;
-          return accepted;
-        });
+        // jitter must not drive seeks to a width we rejected for render
+        // (#298 / #596). Bail before setState when the width is unchanged so
+        // positionMs re-renders cannot re-enter the layout updater.
+        const accepted = stableTrackWidth(trackWidthRef.current, next);
+        if (accepted === trackWidthRef.current) {
+          return;
+        }
+        trackWidthRef.current = accepted;
+        setTrackWidth(accepted);
       }}
       onStartShouldSetResponder={() => seekable}
       onMoveShouldSetResponder={() => seekable}

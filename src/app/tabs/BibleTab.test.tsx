@@ -1,6 +1,7 @@
 import React from 'react';
-import { Pressable } from 'react-native';
+import { FlatList, Pressable } from 'react-native';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -11,6 +12,7 @@ import {
   DraftingProvider,
   useDraftingContext,
 } from '../context/DraftingContext';
+import { PERICOPE_UNAVAILABLE_WARNING } from '../../constants/messages';
 import { getProjectPericopeSetId } from '../../db/repository';
 import {
   getPericopesForChapter,
@@ -77,6 +79,16 @@ function RefreshRecordedButton() {
   );
 }
 
+function SetPlayingVerseButton({ verse }: { verse: number }) {
+  const { setCurrentlyPlayingVerse } = useDraftingContext();
+  return (
+    <Pressable
+      testID={`set-playing-${verse}`}
+      onPress={() => setCurrentlyPlayingVerse(verse)}
+    />
+  );
+}
+
 describe('BibleTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -133,6 +145,34 @@ describe('BibleTab', () => {
 
     expect(screen.getByLabelText('Verse 2, selected')).toBeTruthy();
     expect(onOpenRecord).toHaveBeenCalledTimes(1);
+  });
+
+  it('explains when pericope mode falls back to verse rows with no local data (#588)', async () => {
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    jest.mocked(getProjectPericopeSetId).mockResolvedValue(null);
+    jest.mocked(getPericopesForChapter).mockResolvedValue([]);
+
+    render(
+      <DraftingProvider
+        verses={verses}
+        initialVerse={1}
+        projectId={9}
+        chapterName="Mark 14"
+        bookName="Mark"
+      >
+        <BibleTab />
+      </DraftingProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('bible-pericope-unavailable')).toBeTruthy();
+    });
+    expect(screen.getByText(PERICOPE_UNAVAILABLE_WARNING)).toBeTruthy();
+    expect(screen.getByLabelText('Verse 1, selected')).toBeTruthy();
+    expect(screen.queryByTestId('bible-pericope-1')).toBeNull();
   });
 
   it('invokes onOpenRecord after pressing a pericope unit', async () => {
@@ -454,4 +494,108 @@ describe('BibleTab', () => {
       ).toBeGreaterThan(0);
     });
   });
+
+  it('scrolls the playing verse into view when currentlyPlayingVerse changes (#595)', async () => {
+    const scrollToIndex = jest.fn();
+    const spy = jest
+      .spyOn(FlatList.prototype, 'scrollToIndex')
+      .mockImplementation(scrollToIndex);
+
+    try {
+      const manyVerses = Array.from({ length: 12 }, (_, i) => ({
+        bibleId: 1,
+        bookId: 1,
+        chapterNumber: 14,
+        verseNumber: i + 1,
+        text: `Verse ${i + 1} text`,
+      }));
+
+      render(
+        <DraftingProvider
+          verses={manyVerses}
+          initialVerse={1}
+          chapterName="Mark 14"
+          bookName="Mark"
+        >
+          <SetPlayingVerseButton verse={8} />
+          <BibleTab />
+        </DraftingProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Verse 8')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('set-playing-8'));
+      });
+
+      await waitFor(() => {
+        expect(scrollToIndex).toHaveBeenCalledWith(
+          expect.objectContaining({ index: 7, animated: true }),
+        );
+      });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it.each(['verse', 'pericope'] as const)(
+    'retries scrollToIndex on scroll failure in %s mode (#595)',
+    async mode => {
+      const scrollToIndex = jest.fn();
+      const spy = jest
+        .spyOn(FlatList.prototype, 'scrollToIndex')
+        .mockImplementation(scrollToIndex);
+      mockUseDraftingUnit.mockReturnValue({
+        draftingUnit: mode,
+        setDraftingUnit: jest.fn(),
+      });
+      jest.mocked(getPericopesForChapter).mockResolvedValue([
+        {
+          pericopeNumber: '1',
+          pericopeTitle: null,
+          section: 1,
+          verses: [
+            { chapterNumber: 14, verseNumber: 1 },
+            { chapterNumber: 14, verseNumber: 2 },
+          ],
+        },
+      ]);
+
+      try {
+        const { UNSAFE_getByType } = render(
+          <DraftingProvider
+            verses={verses}
+            initialVerse={1}
+            projectId={9}
+            chapterName="Mark 14"
+            bookName="Mark"
+          >
+            <BibleTab />
+          </DraftingProvider>,
+        );
+
+        await waitFor(() => {
+          expect(
+            UNSAFE_getByType(FlatList).props.onScrollToIndexFailed,
+          ).toEqual(expect.any(Function));
+        });
+
+        scrollToIndex.mockClear();
+        act(() => {
+          UNSAFE_getByType(FlatList).props.onScrollToIndexFailed({ index: 1 });
+        });
+
+        await waitFor(() => {
+          expect(scrollToIndex).toHaveBeenCalledWith({
+            index: 1,
+            animated: false,
+          });
+        });
+      } finally {
+        spy.mockRestore();
+      }
+    },
+  );
 });
