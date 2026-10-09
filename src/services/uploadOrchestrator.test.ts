@@ -520,7 +520,28 @@ describe('uploadOrchestrator', () => {
     await h.flush();
     await h.flush();
 
+    expect(h.getPausedUntilMs()).toBeNull();
     expect(h.uploaded.some(chapter => chapter.bookId === 5)).toBe(true);
+  });
+
+  it('clears an expired pause while offline instead of staying paused', async () => {
+    const h = createHarness({ chapters: [] });
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.orchestrator.pause();
+    h.setChapters([{ bookId: 5, chapterNumber: 1 }]);
+    h.emitConnectivity(false, false);
+    await h.flush();
+
+    expect(h.orchestrator.getSnapshot().phase).toBe('paused');
+
+    h.setNow(1_000_000 + PAUSE_WINDOW_MS);
+    h.fireTimer(PAUSE_WINDOW_MS);
+    await h.flush();
+
+    expect(h.getPausedUntilMs()).toBeNull();
+    expect(h.orchestrator.getSnapshot().phase).toBe('offline');
+    expect(h.uploaded).toEqual([]);
   });
 
   it('schedules an automatic retry after a failed session using the #150 delay', async () => {

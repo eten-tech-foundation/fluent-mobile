@@ -182,10 +182,13 @@ export function createUploadOrchestrator(
     }
     const delay = until - deps.now();
     if (delay <= 0) {
+      deps.setPausedUntilMs(null);
+      evaluateAuto();
       return;
     }
     pauseTimerCancel = schedule(() => {
       pauseTimerCancel = null;
+      deps.setPausedUntilMs(null);
       evaluateAuto();
     }, delay);
   }
@@ -388,8 +391,13 @@ export function createUploadOrchestrator(
 
         if (gate === 'offline') {
           // Offline transitions are handled immediately in onConnectivity.
-          if (phase !== 'paused') {
+          // An expired pause must not keep the Sync page on Paused.
+          if (phase !== 'paused' || !isUserPaused()) {
+            const leftPause = phase === 'paused';
             phase = 'offline';
+            if (leftPause) {
+              deps.emit({ type: 'idle' });
+            }
           }
           return;
         }
