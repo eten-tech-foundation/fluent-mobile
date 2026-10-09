@@ -19,9 +19,11 @@ This is **not** light/dark mode. Prefer structural/token changes over scattering
 | `src/theme/legacy.ts` | Assembled `legacyTheme` (+ static `theme` alias) |
 | `src/theme/nextPrimitives.ts` | Next color ramps (bone / blue / red) from Figma |
 | `src/theme/nextRoles.ts` | Canvas / Hardware / Accent semantic roles |
-| `src/theme/nextFoundation.ts` | Next spacing, radius, type scale |
-| `src/theme/next.ts` | Hardware→`Theme` bridge + deep-merge + layout derive |
-| `src/theme/uiVersionTypes.ts` | `UiVersion`, `DEFAULT_UI_VERSION`, `isUiVersion` (no theme object imports) |
+| `src/theme/nextFoundation.ts` | Next spacing, radius, type scale, motion, opacity, control sizes |
+| `src/theme/next.ts` | Per-mode `nextThemes` (Canvas / Hardware / Accent) + deep-merge + layout derive |
+| `src/theme/legacyRoles.ts` | Nearest Legacy colors for the Foundations role names (`theme.roles` in Legacy) |
+| `src/theme/elevation.ts` | Effect styles as `boxShadow` strings, built from roles |
+| `src/theme/uiVersionTypes.ts` | `UiVersion`, `DEFAULT_UI_VERSION`, `isUiVersion`, `ColorMode`, `DEFAULT_COLOR_MODE` (no theme object imports) |
 | `src/theme/uiVersion.ts` | `resolveTheme()` |
 | `src/theme/useTheme.ts` | `useUiVersion()`, `useTheme()`, `useThemedStyles()` — import from this module (not the `theme` barrel) so static consumers stay free of preference/storage |
 | `src/services/userPreferences.ts` | Device-level `pref_ui_version` (default `legacy`) |
@@ -35,18 +37,25 @@ Foundations page: [ETEN × Fluent · Foundations](https://www.figma.com/design/V
 | Mode | Use |
 | --- | --- |
 | **Hardware** (default) | App chrome — lists, settings, drawers. Mapped onto `Theme` via `nextTheme`. |
-| **Canvas** | Dark reading / drafting surface — available as `nextColorRoles.canvas` for future screens |
-| **Accent** | Blue note overlays — `nextColorRoles.accent` |
+| **Canvas** | Dark reading / drafting / recording surface — wrap the subtree in `<ColorModeScope value="canvas">` |
+| **Accent** | Blue note overlays — `<ColorModeScope value="accent">` |
 
-Do **not** import `src/theme/next*` from app/UI code (ESLint bans `theme/next`). Use `useTheme()` / `resolveTheme()` for Hardware-mapped values. For Canvas/Accent in a future screen, export a small resolver from `src/theme` (or extend `useTheme`) rather than importing role tables in screens.
+Do **not** import `src/theme/next*` from app/UI code (ESLint bans `theme/next`). Use `useTheme()` / `resolveTheme(version, mode)`. To render part of a screen in Canvas or Accent, wrap it in `ColorModeScope` (from `src/theme/useTheme`); everything below resolves that mode's `roles`, `elevation` and mapped `colors`. Hardware is the default, and Legacy ignores modes. Set status / nav bar icon style per screen to match (light icons on Canvas).
+
+### Foundations groups on `Theme`
+
+For Next components, `Theme` also carries `roles` (Foundations role names,
+Hardware in Next, nearest Legacy colors in Legacy), `elevation` (effect
+styles as `boxShadow` strings built from roles), `motion`, `opacity` and
+`controlSizes`, plus `radius.xs`. They're added in `legacy.ts` and overridden
+in `next.ts`; `tokens.ts` is untouched.
 
 ### Unmapped Foundations steps
 
 Kept accessible on `nextSpace` / `nextRadiusScale` but not on `Theme` keys yet:
 
-- `space-2`, `space-32`
-- `radius-xs` (4)
-- Effects / tactile / gradients (follow-up)
+- `space-32`
+- Not encoded yet: `space-48`, gradients, `stroke/*` (follow-up)
 
 `Theme.spacing.xl` (20) has no Foundations step — left at 20 until design assigns one.
 
@@ -83,6 +92,12 @@ Kept accessible on `nextSpace` / `nextRadiusScale` but not on `Theme` keys yet:
 5. Migrate any StyleSheet that must show the new value onto `useThemedStyles`
    (module-level `StyleSheet.create({ …theme })` will not pick up Next).
 
+## Building Next components from Figma
+
+Follow [figma-to-component.md](figma-to-component.md) (agents: the
+`figma-component` skill). Known gaps between this theme and Figma are tracked
+in [theme-figma-audit.md](../features/next-ui-redesign/theme-figma-audit.md).
+
 ## Deleting Legacy later
 
 1. Fold Next overrides / primitives / roles / foundation into the token files
@@ -92,6 +107,6 @@ Kept accessible on `nextSpace` / `nextRadiusScale` but not on `Theme` keys yet:
 
 ## Tests
 
-- `src/theme/legacyTheme.test.ts` — Legacy snapshot + Next Hardware mapping.
-- `src/theme/useTheme.test.tsx` — runtime switch + `useThemedStyles`.
+- `src/theme/legacyTheme.test.ts` — Legacy snapshot + Next mapping per mode + roles/elevation.
+- `src/theme/useTheme.test.tsx` — runtime switch + `useThemedStyles` + `ColorModeScope`.
 - `src/services/userPreferences.test.ts` — default / persist / invalid fallback.

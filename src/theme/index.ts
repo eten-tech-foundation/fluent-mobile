@@ -26,8 +26,10 @@ export { homeListContent, listCard, workflowBadge } from './layout';
 
 export { legacyTheme, theme, type Theme } from './legacy';
 export {
+  DEFAULT_COLOR_MODE,
   DEFAULT_UI_VERSION,
   isUiVersion,
+  type ColorMode,
   type UiVersion,
 } from './uiVersionTypes';
 export { resolveTheme } from './uiVersion';
