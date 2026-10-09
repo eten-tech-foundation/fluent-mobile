@@ -727,9 +727,11 @@ export function useVerseAudio({
         setErrorMessage(message);
         dispatch({ type: 'ERROR', message });
       } finally {
-        playbackLoadInFlightRef.current = false;
         endStitchLoad();
-        setPlaybackLoadGate(n => n + 1);
+        if (!isStale()) {
+          playbackLoadInFlightRef.current = false;
+          setPlaybackLoadGate(n => n + 1);
+        }
       }
     },
     [beginStitchLoad, clearStitchQueue, endStitchLoad, playUri],
@@ -826,9 +828,11 @@ export function useVerseAudio({
         setErrorMessage(message);
         dispatch({ type: 'ERROR', message });
       } finally {
-        playbackLoadInFlightRef.current = false;
         endStitchLoad();
-        setPlaybackLoadGate(n => n + 1);
+        if (!isStale()) {
+          playbackLoadInFlightRef.current = false;
+          setPlaybackLoadGate(n => n + 1);
+        }
       }
     },
     [beginStitchLoad, endStitchLoad, playback, playStitchedSegment, state],
