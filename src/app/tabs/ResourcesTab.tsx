@@ -53,6 +53,8 @@ type ResourcesTabProps = {
   userId: number | null;
   /** USFM book code for translation-resources lookup (e.g. MRK). */
   bookCode: string;
+  /** Source language ISO for fluent-api fallback when nothing is downloaded. */
+  languageCode?: string;
   chapterNumber: number;
   bibleId: number;
   bookId: number;
@@ -95,6 +97,7 @@ export function ResourcesTab({
   projectId,
   userId,
   bookCode,
+  languageCode,
   chapterNumber,
   bibleId,
   bookId,
@@ -169,6 +172,7 @@ export function ResourcesTab({
     chapterNumber,
     verseNumber: selectedVerse,
     verseRefs,
+    languageCode,
   });
 
   const { state: questionsState, retry: retryQuestions } =
@@ -180,6 +184,7 @@ export function ResourcesTab({
       chapterNumber,
       verseNumber: selectedVerse,
       verseRefs,
+      languageCode,
     });
 
   const { state: imagesMapsState, retry: retryImagesMaps } =
@@ -191,6 +196,7 @@ export function ResourcesTab({
       chapterNumber,
       verseNumber: selectedVerse,
       verseRefs,
+      languageCode,
     });
 
   const [openAccordionIds, setOpenAccordionIds] = useState<Set<string>>(
