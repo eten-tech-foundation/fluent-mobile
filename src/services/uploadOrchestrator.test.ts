@@ -1,6 +1,8 @@
 import {
   createUploadOrchestrator,
   PAUSE_WINDOW_MS,
+  SESSION_RETRY_MAX_ATTEMPTS,
+  sessionRetryDelayMs,
   type ChapterUploadWorker,
   type UploadOrchestratorDeps,
 } from './uploadOrchestratorCore';
@@ -20,10 +22,17 @@ type ConnListener = (
   connectionType?: string,
 ) => void;
 
+type ScheduledTimer = {
+  callback: () => void;
+  delayMs: number;
+  cancelled: boolean;
+};
+
 function createHarness(options?: {
   chapters?: PendingUploadChapter[];
   uploadOverCellular?: boolean;
   workerDelayMs?: number;
+  failUploads?: () => boolean;
   getSessionTransportSnapshot?: UploadOrchestratorDeps['getSessionTransportSnapshot'];
   pushPendingClaimsBeforeUpload?: UploadOrchestratorDeps['pushPendingClaimsBeforeUpload'];
 }) {
@@ -39,8 +48,13 @@ function createHarness(options?: {
     { bookId: 1, chapterNumber: 2 },
   ];
 
+  const timers: ScheduledTimer[] = [];
+
   const worker: ChapterUploadWorker = {
     uploadChapter: async (chapter, signal) => {
+      if (options?.failUploads?.()) {
+        throw new Error('upload failed');
+      }
       if (options?.workerDelayMs) {
         await new Promise<void>((resolve, reject) => {
           const timer = setTimeout(resolve, options.workerDelayMs);
@@ -88,6 +102,13 @@ function createHarness(options?: {
       events.push(event);
     },
     getSessionTransportSnapshot: options?.getSessionTransportSnapshot,
+    schedule: (callback, delayMs) => {
+      const timer: ScheduledTimer = { callback, delayMs, cancelled: false };
+      timers.push(timer);
+      return () => {
+        timer.cancelled = true;
+      };
+    },
     pushPendingClaimsBeforeUpload: options?.pushPendingClaimsBeforeUpload,
   };
 
@@ -116,6 +137,17 @@ function createHarness(options?: {
       connListener?.(isOnline, isWifi, undefined, connectionType);
     },
     getPausedUntilMs: () => pausedUntilMs,
+    pendingTimers: () => timers.filter(timer => !timer.cancelled),
+    fireTimer: (delayMs: number) => {
+      const timer = timers.find(
+        entry => !entry.cancelled && entry.delayMs === delayMs,
+      );
+      if (!timer) {
+        throw new Error(`no timer scheduled for ${delayMs}ms`);
+      }
+      timer.cancelled = true;
+      timer.callback();
+    },
     flush: async () => {
       await new Promise<void>(resolve => {
         setTimeout(resolve, 0);
@@ -447,5 +479,174 @@ describe('uploadOrchestrator', () => {
 
     expect(events.some(e => e.type === 'idle')).toBe(true);
     expect(orchestrator.getSnapshot().phase).toBe('idle');
+  });
+
+  it('starts an upload when a take is saved while already online', async () => {
+    const h = createHarness({ chapters: [] });
+    h.emitConnectivity(true, true);
+    await h.flush();
+    expect(h.uploaded).toEqual([]);
+
+    h.setChapters([{ bookId: 8, chapterNumber: 4 }]);
+    h.orchestrator.notifyPendingWork();
+    await h.flush();
+    await h.flush();
+
+    expect(h.uploaded).toEqual([{ bookId: 8, chapterNumber: 4 }]);
+    expect(h.events.filter(event => event.type === 'start')).toHaveLength(1);
+  });
+
+  it('uploads a take saved during an in-flight session without a new connectivity event', async () => {
+    const h = createHarness({
+      workerDelayMs: 30,
+      chapters: [{ bookId: 1, chapterNumber: 1 }],
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => h.orchestrator.getSnapshot().phase === 'syncing');
+
+    h.setChapters([
+      { bookId: 1, chapterNumber: 1 },
+      { bookId: 1, chapterNumber: 7 },
+    ]);
+    h.orchestrator.notifyPendingWork();
+
+    await h.waitFor(() =>
+      h.uploaded.some(chapter => chapter.chapterNumber === 7),
+    );
+    expect(
+      h.events.filter(event => event.type === 'start').length,
+    ).toBeGreaterThan(1);
+  });
+
+  it('does not upload a saved take while the pause window is active', async () => {
+    const h = createHarness({ chapters: [] });
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.orchestrator.pause();
+
+    h.setChapters([{ bookId: 6, chapterNumber: 1 }]);
+    h.orchestrator.notifyPendingWork();
+    await h.flush();
+
+    expect(h.uploaded).toEqual([]);
+    expect(h.orchestrator.getSnapshot().phase).toBe('paused');
+  });
+
+  it('resumes auto-upload when the pause window ends without a connectivity change', async () => {
+    const h = createHarness();
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    h.setChapters([{ bookId: 5, chapterNumber: 1 }]);
+    await h.orchestrator.pause();
+
+    expect(
+      h.pendingTimers().some(timer => timer.delayMs === PAUSE_WINDOW_MS),
+    ).toBe(true);
+    expect(h.uploaded.some(chapter => chapter.bookId === 5)).toBe(false);
+
+    h.setNow(1_000_000 + PAUSE_WINDOW_MS);
+    h.fireTimer(PAUSE_WINDOW_MS);
+    await h.flush();
+    await h.flush();
+
+    expect(h.getPausedUntilMs()).toBeNull();
+    expect(h.uploaded.some(chapter => chapter.bookId === 5)).toBe(true);
+  });
+
+  it('clears an expired pause while offline instead of staying paused', async () => {
+    const h = createHarness({ chapters: [] });
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.orchestrator.pause();
+    h.setChapters([{ bookId: 5, chapterNumber: 1 }]);
+    h.emitConnectivity(false, false);
+    await h.flush();
+
+    expect(h.orchestrator.getSnapshot().phase).toBe('paused');
+
+    h.setNow(1_000_000 + PAUSE_WINDOW_MS);
+    h.fireTimer(PAUSE_WINDOW_MS);
+    await h.flush();
+
+    expect(h.getPausedUntilMs()).toBeNull();
+    expect(h.orchestrator.getSnapshot().phase).toBe('offline');
+    expect(h.uploaded).toEqual([]);
+  });
+
+  it('schedules an automatic retry after a failed session using the #150 delay', async () => {
+    let fail = true;
+    const h = createHarness({
+      failUploads: () => fail,
+    });
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    expect(h.uploaded).toEqual([]);
+    expect(h.pendingTimers().map(timer => timer.delayMs)).toEqual([
+      sessionRetryDelayMs(1),
+    ]);
+
+    fail = false;
+    h.fireTimer(sessionRetryDelayMs(1));
+    await h.flush();
+    await h.flush();
+
+    expect(h.uploaded).toHaveLength(2);
+    expect(h.events.some(event => event.type === 'complete')).toBe(true);
+  });
+
+  it('stops scheduling retries after the default attempt budget', async () => {
+    const h = createHarness({ failUploads: () => true });
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    for (let attempt = 1; attempt < SESSION_RETRY_MAX_ATTEMPTS; attempt += 1) {
+      expect(h.pendingTimers().map(timer => timer.delayMs)).toContain(
+        sessionRetryDelayMs(attempt),
+      );
+      h.fireTimer(sessionRetryDelayMs(attempt));
+      await h.flush();
+      await h.flush();
+    }
+
+    expect(h.pendingTimers()).toEqual([]);
+    expect(h.uploaded).toEqual([]);
+  });
+
+  it('uploads a take saved during the last failed attempt without a connectivity event', async () => {
+    let calls = 0;
+    let harness: ReturnType<typeof createHarness> | null = null;
+    const h = createHarness({
+      chapters: [{ bookId: 1, chapterNumber: 1 }],
+      failUploads: () => {
+        calls += 1;
+        if (calls === SESSION_RETRY_MAX_ATTEMPTS && harness) {
+          harness.setChapters([
+            { bookId: 1, chapterNumber: 1 },
+            { bookId: 9, chapterNumber: 2 },
+          ]);
+          harness.orchestrator.notifyPendingWork();
+        }
+        return calls <= SESSION_RETRY_MAX_ATTEMPTS;
+      },
+    });
+    harness = h;
+
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    for (let attempt = 1; attempt < SESSION_RETRY_MAX_ATTEMPTS; attempt += 1) {
+      h.fireTimer(sessionRetryDelayMs(attempt));
+      await h.flush();
+      await h.flush();
+    }
+
+    expect(h.pendingTimers()).toEqual([]);
+    expect(h.uploaded.some(chapter => chapter.chapterNumber === 2)).toBe(true);
   });
 });
