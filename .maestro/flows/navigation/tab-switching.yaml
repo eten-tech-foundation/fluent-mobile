@@ -1,4 +1,4 @@
-# Home tab switching My Work ↔ Projects.
+# Home tab switching My Work ↔ Milestones.
 appId: com.eten.fluent
 tags:
   - smoke
@@ -15,10 +15,10 @@ tags:
     id: 'home-tab-projects'
 - extendedWaitUntil:
     visible:
-      id: 'project-row-.*'
+      id: 'milestone-row-.*'
     timeout: 60000
 - assertVisible:
-    id: 'project-row-.*'
+    id: 'milestone-row-.*'
 - tapOn:
     id: 'home-tab-my-work'
 - extendedWaitUntil:

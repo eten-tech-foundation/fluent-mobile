@@ -257,6 +257,22 @@ describe('useUploadSessionState', () => {
     expect(result.current.isStartControlPending).toBe(false);
   });
 
+  it('does not report uploadComplete when pending counts are unknown', async () => {
+    const { result } = renderHook(() =>
+      useUploadSessionState({
+        hasPendingUploads: false,
+        hasFailedUploads: false,
+        hasUnuploadablePending: false,
+        countsUnknown: true,
+        uploadProgress: null,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.pageStatus).toBe('pending');
+    });
+  });
+
   it('keeps pageStatus pending when only unuploadable takes remain after idle', async () => {
     const { result } = renderHook(() =>
       useUploadSessionState({

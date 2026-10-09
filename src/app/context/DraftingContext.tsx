@@ -17,6 +17,8 @@ interface DraftingContextValue {
   setSelectedVerse: (verseNumber: number) => void;
   verses: VerseData[];
   projectId: number | null;
+  /** Chapter's project unit; scopes recorded-status queries (#613). */
+  projectUnitId: number | null;
   bookName: string;
   chapterName: string;
   /**
@@ -47,6 +49,7 @@ interface DraftingProviderProps {
   verses: VerseData[];
   initialVerse: number;
   projectId?: number | null;
+  projectUnitId?: number | null;
   bookName?: string;
   chapterName?: string;
   recoverVerse?: number;
@@ -58,6 +61,7 @@ export function DraftingProvider({
   verses,
   initialVerse,
   projectId = null,
+  projectUnitId = null,
   bookName = '',
   chapterName = '',
   recoverVerse,
@@ -92,6 +96,7 @@ export function DraftingProvider({
         first.bibleId,
         first.bookId,
         first.chapterNumber,
+        projectUnitId,
       );
       if (requestId !== recordedVersesRequestIdRef.current) {
         return;
@@ -104,12 +109,12 @@ export function DraftingProvider({
       }
       log.error('Failed to load recorded verse numbers', { error });
     }
-  }, [verses]);
+  }, [verses, projectUnitId]);
 
   useEffect(() => {
     refreshRecordedVerses();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chapterKey]);
+  }, [chapterKey, projectUnitId]);
 
   const versesRef = useRef(verses);
   versesRef.current = verses;
@@ -128,6 +133,7 @@ export function DraftingProvider({
       setSelectedVerse,
       verses,
       projectId,
+      projectUnitId,
       bookName,
       chapterName,
       currentlyPlayingVerse,
@@ -140,6 +146,7 @@ export function DraftingProvider({
       selectedVerse,
       verses,
       projectId,
+      projectUnitId,
       bookName,
       chapterName,
       currentlyPlayingVerse,

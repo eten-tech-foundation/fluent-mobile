@@ -1,5 +1,6 @@
 import { setDatabase } from './db';
 import {
+  markChapterClaimQueueEntryRejected,
   resolveChapterClaimQueueEntry,
   setChapterAssignmentConflict,
 } from './repository';
@@ -52,6 +53,31 @@ describe('setChapterAssignmentConflict', () => {
     await setChapterAssignmentConflict(7, true);
 
     expect(db.__chapterAssignments[0]).toEqual({ id: 7, has_conflict: 1 });
+  });
+});
+
+describe('markChapterClaimQueueEntryRejected', () => {
+  it('flips sync_status to claim_rejected without deleting the row (#610)', async () => {
+    const executeCalls: Array<[string, unknown[]]> = [];
+    const execute = async (query: string, params: unknown[] = []) => {
+      executeCalls.push([query.replace(/\s+/g, ' ').trim(), params]);
+      return { rows: [] };
+    };
+    setDatabase({
+      execute,
+      transaction: async (
+        fn: (tx: { execute: typeof execute }) => Promise<void>,
+      ) => fn({ execute }),
+    } as never);
+
+    await markChapterClaimQueueEntryRejected(3);
+
+    expect(executeCalls).toEqual([
+      [
+        "UPDATE chapter_claim_queue SET sync_status = 'claim_rejected' WHERE id = ?",
+        [3],
+      ],
+    ]);
   });
 });
 

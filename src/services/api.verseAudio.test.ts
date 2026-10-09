@@ -9,6 +9,7 @@ import { authToken } from './authToken';
 import { parseApiErrorBody } from './apiError';
 import {
   buildVerseAudioFormData,
+  verseAudioRangeUploadPath,
   verseAudioUploadPath,
 } from './verseAudioFormData';
 import {
@@ -55,6 +56,10 @@ describe('verseAudioFormData helpers', () => {
 
   it('builds the PUT path from path params only', () => {
     expect(verseAudioUploadPath(12, 3401)).toBe('/verse-audio/12/3401');
+  });
+
+  it('builds the pericope range PUT path (#584)', () => {
+    expect(verseAudioRangeUploadPath(12)).toBe('/verse-audio/12/range');
   });
 
   it('appends file and optional durationSeconds', async () => {
@@ -104,6 +109,34 @@ describe('verseAudioFormData helpers', () => {
         'baseVersionToken',
         expect.anything(),
       );
+    } finally {
+      g.FormData = OriginalFormData;
+    }
+  });
+
+  it('appends pericope granularity, bibleTextId, and range fields (#584)', async () => {
+    const append = jest.fn();
+    const g = globalThis as GlobalWithFormData;
+    const OriginalFormData = g.FormData;
+    g.FormData = jest.fn(() => ({ append })) as unknown as typeof g.FormData;
+
+    try {
+      const blob = { __blob: true } as unknown as Blob;
+      await buildVerseAudioFormData({
+        file: blob,
+        granularity: 'pericope',
+        bibleTextId: 3401,
+        startChapter: 1,
+        startVerse: 1,
+        endChapter: 1,
+        endVerse: 8,
+      });
+      expect(append).toHaveBeenCalledWith('granularity', 'pericope');
+      expect(append).toHaveBeenCalledWith('bibleTextId', '3401');
+      expect(append).toHaveBeenCalledWith('startChapter', '1');
+      expect(append).toHaveBeenCalledWith('startVerse', '1');
+      expect(append).toHaveBeenCalledWith('endChapter', '1');
+      expect(append).toHaveBeenCalledWith('endVerse', '8');
     } finally {
       g.FormData = OriginalFormData;
     }
@@ -227,6 +260,28 @@ describe('FluentAPI.uploadVerseAudio', () => {
     const headers = init.headers as Record<string, string>;
     expect(headers.Authorization).toBe('Bearer session-token');
     expect(headers['Content-Type']).toBeUndefined();
+  });
+
+  it('PUTs pericope takes to /verse-audio/{projectUnitId}/range (#584)', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      text: async () => JSON.stringify(successBody),
+    });
+
+    await FluentAPI.uploadVerseAudio({
+      projectUnitId: 12,
+      bibleTextId: 3401,
+      file: sampleFile,
+      granularity: 'pericope',
+      startChapter: 1,
+      startVerse: 1,
+      endChapter: 1,
+      endVerse: 8,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('http://localhost:9999/verse-audio/12/range');
   });
 
   it('throws when a 200 body is missing required fields', async () => {

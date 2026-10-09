@@ -89,6 +89,36 @@ describe('moveIssueStatus guardrails', () => {
     expect(graphql).toHaveBeenCalledTimes(1);
   });
 
+  it('moves Product-owned columns when refuseProductOwned is false', async () => {
+    const graphql = jest
+      .fn()
+      .mockResolvedValueOnce(
+        projectItemResponse({
+          itemId: 'item-1',
+          statusName: 'In Progress (Product)',
+        }),
+      )
+      .mockResolvedValueOnce({
+        updateProjectV2ItemFieldValue: { projectV2Item: { id: 'item-1' } },
+      });
+    const core = createCore();
+    // Agent CLI --allow-product-owned skips both Product refuse and allowlist;
+    // library callers that opt out of refuseProductOwned must omit allowedFrom
+    // (or include Product) for the same effect.
+    const result = await moveIssueStatus({
+      github: { graphql },
+      core,
+      issueNumber: 1,
+      targetStatus: 'In Progress (Dev)',
+      refuseProductOwned: false,
+    });
+    expect(result).toEqual({
+      ok: true,
+      from: 'In Progress (Product)',
+    });
+    expect(graphql).toHaveBeenCalledTimes(2);
+  });
+
   it('refuses statuses outside the allowlist without mutating Status', async () => {
     const graphql = jest.fn().mockResolvedValueOnce(
       projectItemResponse({

@@ -9,7 +9,10 @@ import {
 const mockSubscribe = jest.fn();
 const mockGetResumable = jest.fn();
 const mockWorkerStart = jest.fn();
+const mockWorkerPause = jest.fn();
+const mockWorkerResume = jest.fn();
 const mockGetState = jest.fn();
+const mockGetPauseReason = jest.fn();
 
 jest.mock('./userPreferences', () => ({
   getUploadOverCellular: jest.fn(() => false),
@@ -46,10 +49,16 @@ describe('downloadQueueAutoResume', () => {
     mockSubscribe.mockReturnValue(jest.fn());
     mockGetResumable.mockResolvedValue([]);
     mockWorkerStart.mockResolvedValue(undefined);
+    mockWorkerPause.mockResolvedValue(undefined);
+    mockWorkerResume.mockResolvedValue(undefined);
     mockGetState.mockReturnValue('idle');
+    mockGetPauseReason.mockReturnValue(null);
     (getSharedDownloadQueueWorker as jest.Mock).mockReturnValue({
       getState: mockGetState,
+      getPauseReason: mockGetPauseReason,
       start: mockWorkerStart,
+      pause: mockWorkerPause,
+      resume: mockWorkerResume,
     });
     (getUploadOverCellular as jest.Mock).mockReturnValue(false);
     mockTransport({
@@ -179,12 +188,49 @@ describe('downloadQueueAutoResume', () => {
     expect(mockWorkerStart).toHaveBeenCalled();
   });
 
-  it('skips auto-resume while worker is actively downloading', async () => {
+  it('skips auto-resume while worker is actively downloading on allowed transport', async () => {
     mockGetState.mockReturnValue('downloading');
 
     await fireConnectivity();
 
     expect(mockGetResumable).not.toHaveBeenCalled();
+    expect(mockWorkerStart).not.toHaveBeenCalled();
+    expect(mockWorkerPause).not.toHaveBeenCalled();
+  });
+
+  it('pauses an active download when transport becomes blocked', async () => {
+    mockGetState.mockReturnValue('downloading');
+    mockTransport({
+      isLinkOnline: true,
+      isWifi: false,
+      isCellular: true,
+      connectionType: 'cellular',
+    });
+
+    await fireConnectivity();
+
+    expect(mockWorkerPause).toHaveBeenCalledWith('transport');
+    expect(mockWorkerStart).not.toHaveBeenCalled();
+    expect(mockGetResumable).not.toHaveBeenCalled();
+  });
+
+  it('resumes a transport-paused worker when transport allows transfer again', async () => {
+    mockGetState.mockReturnValue('paused');
+    mockGetPauseReason.mockReturnValue('transport');
+
+    await fireConnectivity();
+
+    expect(mockWorkerResume).toHaveBeenCalled();
+    expect(mockWorkerStart).not.toHaveBeenCalled();
+  });
+
+  it('does not auto-resume a user-paused worker when transport allows transfer', async () => {
+    mockGetState.mockReturnValue('paused');
+    mockGetPauseReason.mockReturnValue('user');
+
+    await fireConnectivity();
+
+    expect(mockWorkerResume).not.toHaveBeenCalled();
     expect(mockWorkerStart).not.toHaveBeenCalled();
   });
 

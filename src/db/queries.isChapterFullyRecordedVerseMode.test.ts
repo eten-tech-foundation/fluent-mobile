@@ -56,6 +56,34 @@ describe('isChapterFullyRecordedVerseMode (#542)', () => {
     expect(params).toEqual([7, 1, 2, 3]);
   });
 
+  it("scopes recordings to the chapter's project unit or legacy NULL (#613)", async () => {
+    execute.mockResolvedValueOnce({ rows: [{ total: 1, recorded: 1 }] });
+    await isChapterFullyRecordedVerseMode(1, 2, 3, 473);
+    const [sql, params] = execute.mock.calls[0];
+    expect(sql).toContain(
+      '(r.project_unit_id IS NULL OR r.project_unit_id = ?)',
+    );
+    // user, unit (both in the LEFT JOIN ON), then the chapter WHERE.
+    expect(params).toEqual([7, 473, 1, 2, 3]);
+  });
+
+  it('does not add a unit predicate when the unit is unknown', async () => {
+    execute.mockResolvedValueOnce({ rows: [{ total: 1, recorded: 1 }] });
+    await isChapterFullyRecordedVerseMode(1, 2, 3, null);
+    const [sql, params] = execute.mock.calls[0];
+    expect(sql).not.toContain('project_unit_id');
+    expect(params).toEqual([7, 1, 2, 3]);
+  });
+
+  it('binds the unit with IS NULL owner when there is no active user (#613)', async () => {
+    (parseUserId as jest.Mock).mockReturnValue(null);
+    execute.mockResolvedValueOnce({ rows: [{ total: 1, recorded: 1 }] });
+    await isChapterFullyRecordedVerseMode(1, 2, 3, 12);
+    const [sql, params] = execute.mock.calls[0];
+    expect(sql).toContain('recorded_by_user_id IS NULL');
+    expect(params).toEqual([12, 1, 2, 3]);
+  });
+
   it('uses IS NULL when there is no active user', async () => {
     (parseUserId as jest.Mock).mockReturnValue(null);
     execute.mockResolvedValueOnce({ rows: [{ total: 1, recorded: 1 }] });

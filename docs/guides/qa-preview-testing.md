@@ -6,6 +6,8 @@ Plain-language guide for QA and reviewers. **No developer tools** — just an An
 
 **Default for QA:** install the **nightly** Fluent APK (main). Isolated PR `preview-build` APKs are **optional** for developers debugging a branch — they do not start the QA queue.
 
+**Environment:** preview and nightly APKs talk to the **QA** API (`qa.api.fluent.bible`). Use the matching web app at [https://qa.app.fluent.bible/](https://qa.app.fluent.bible/) (not Dev). Ask your team for QA test accounts.
+
 **Multi-account regression:** use the checklist in [qa-multi-account-nightly.md](qa-multi-account-nightly.md) when testing account switcher / session / sync isolation on a shared device.
 
 ## Quick start (QA — nightly)
@@ -34,7 +36,7 @@ Nightlies are a **standalone internal APK** for `main` (no over-the-air update).
    - Allow your **browser** or **Files** app to install APKs
 7. Open **Fluent** from your home screen.
 8. The app should open normally (sign-in / home) — **not** a Metro dev launcher and **not** Expo Go.
-9. Sign in and test.
+9. Sign in with a **QA** account and test (same backend as [qa.app.fluent.bible](https://qa.app.fluent.bible/)).
 
 Scheduled nightlies aim for ~**15:17 America/Los_Angeles** (3:17pm Pacific / ~4:17pm Mountain). GitHub often starts the job **several hours late** (~3–5h); after lag, Slack + install notices usually land late evening Mountain / early India morning. Slack posts in the **same** workflow run as the build or skip (no separate morning job). If nothing new landed on `main`, the nightly may skip a build — wait for the next run that includes your merge.
 

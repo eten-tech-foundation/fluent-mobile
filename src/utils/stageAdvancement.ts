@@ -72,6 +72,11 @@ export type StageAdvanceVisibilityInput = {
   currentUserId: number | null;
   hasChapterRecording: boolean;
   hasConflict: boolean;
+  /**
+   * True when this chapter has selected takes the upload worker will never
+   * process (unuploadable bucket — e.g. pericope-only until #584). #585.
+   */
+  hasUnuploadableTakes?: boolean;
   /** True only when the verse/pericope currently displayed is the last unit
    *  in the chapter. The CTA never renders elsewhere, at any stage — #542. */
   isOnLastUnit: boolean;
@@ -103,6 +108,7 @@ export function getStageAdvanceVisibility({
   currentUserId,
   hasChapterRecording,
   hasConflict,
+  hasUnuploadableTakes = false,
   isOnLastUnit,
 }: StageAdvanceVisibilityInput): StageAdvanceVisibility {
   const destination = getStageAdvanceDestination(chapterData.status);
@@ -143,7 +149,7 @@ export function getStageAdvanceVisibility({
 
   return {
     visible: true,
-    disabled: hasConflict,
+    disabled: hasConflict || hasUnuploadableTakes,
     destination,
   };
 }

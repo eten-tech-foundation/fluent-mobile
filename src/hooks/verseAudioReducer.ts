@@ -13,6 +13,7 @@ export type VerseAudioEvent =
   | { type: 'RESUME' }
   | { type: 'STOP' }
   | { type: 'SAVED' }
+  | { type: 'DISCARD' }
   | { type: 'PLAY' }
   | { type: 'PLAYBACK_END' }
   | { type: 'DELETE' }
@@ -54,6 +55,13 @@ export function verseAudioReducer(
       return state;
     case 'SAVED':
       return state === 'saving' ? 'recorded' : state;
+    case 'DISCARD':
+      // Abandoned capture (#49): drop the in-progress take without persisting.
+      // Prior review state (takes list) is restored by REHYDRATE in the hook.
+      if (state === 'recording' || state === 'paused') {
+        return 'idle';
+      }
+      return state;
     case 'PLAY':
       return state === 'recorded' ? 'playing' : state;
     case 'PLAYBACK_END':

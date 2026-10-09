@@ -309,6 +309,7 @@ describe('useVerseAudio', () => {
     expect(persistTake).toHaveBeenCalledWith({
       bibleTextId: 42,
       viewBibleTextId: 42,
+      projectUnitId: null,
       tempUri: 'file:///tmp/take.m4a',
       tempUris: ['file:///tmp/take.m4a'],
       durationMs: 500,
@@ -824,6 +825,7 @@ describe('useVerseAudio', () => {
     expect(persistTake).toHaveBeenCalledWith({
       bibleTextId: 103,
       viewBibleTextId: 105,
+      projectUnitId: null,
       tempUri: 'file:///tmp/take.m4a',
       tempUris: ['file:///tmp/take.m4a'],
       durationMs: 2500,
@@ -833,6 +835,30 @@ describe('useVerseAudio', () => {
       endChapter: 1,
       endVerse: 7,
     });
+  });
+
+  it('freezes projectUnitId into the capture persist snapshot (#613)', async () => {
+    loadTakes.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+    const { result } = renderHook(() =>
+      useVerseAudio({
+        ...verseAudioArgs(),
+        projectUnitId: 473,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.state).toBe('idle'));
+
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      await result.current.stop();
+    });
+
+    expect(persistTake).toHaveBeenCalledWith(
+      expect.objectContaining({ projectUnitId: 473, bibleTextId: 42 }),
+    );
   });
 
   it('blocks pericope capture when another spanned verse is already at the cap', async () => {
@@ -914,14 +940,24 @@ describe('useVerseAudio', () => {
 
     await waitFor(() => expect(result.current.takes).toHaveLength(2));
 
-    expect(getTakesForVerse).toHaveBeenCalledWith(103, undefined, {
-      chapterNumber: 1,
-      verseNumber: 3,
-    });
-    expect(getTakesForVerse).toHaveBeenCalledWith(104, undefined, {
-      chapterNumber: 1,
-      verseNumber: 4,
-    });
+    expect(getTakesForVerse).toHaveBeenCalledWith(
+      103,
+      undefined,
+      {
+        chapterNumber: 1,
+        verseNumber: 3,
+      },
+      null,
+    );
+    expect(getTakesForVerse).toHaveBeenCalledWith(
+      104,
+      undefined,
+      {
+        chapterNumber: 1,
+        verseNumber: 4,
+      },
+      null,
+    );
     expect(result.current.takes.map(take => take.id)).toEqual([
       'pericope-take',
       'v4',
@@ -1202,5 +1238,123 @@ describe('useVerseAudio', () => {
 
     expect(getTakesForVerse.mock.calls).toHaveLength(loadsBefore);
     expect(mockPlaybackStop.mock.calls).toHaveLength(stopsBefore);
+  });
+
+  // --- #49: discard an in-progress capture ---------------------------------
+
+  describe('discardCapture (#49)', () => {
+    it('stops the recorder, deletes the temp file, persists nothing, and lands in idle', async () => {
+      const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+
+      await waitFor(() => expect(result.current.state).toBe('idle'));
+
+      await act(async () => {
+        await result.current.start();
+      });
+      await act(async () => {
+        await result.current.pause();
+      });
+      expect(result.current.state).toBe('paused');
+
+      await act(async () => {
+        await result.current.discardCapture();
+      });
+
+      expect(mockRecordingStop).toHaveBeenCalledTimes(1);
+      expect(mockDeleteFile).toHaveBeenCalledWith('file:///tmp/take.m4a');
+      expect(persistTake).not.toHaveBeenCalled();
+      expect(loadTakes).toHaveBeenCalledTimes(1); // initial load only
+      expect(result.current.state).toBe('idle');
+      expect(result.current.errorMessage).toBeNull();
+    });
+
+    it('discards from recording (not just paused)', async () => {
+      const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+
+      await waitFor(() => expect(result.current.state).toBe('idle'));
+
+      await act(async () => {
+        await result.current.start();
+      });
+      expect(result.current.state).toBe('recording');
+
+      await act(async () => {
+        await result.current.discardCapture();
+      });
+
+      expect(mockRecordingStop).toHaveBeenCalledTimes(1);
+      expect(mockDeleteFile).toHaveBeenCalledWith('file:///tmp/take.m4a');
+      expect(persistTake).not.toHaveBeenCalled();
+      expect(result.current.state).toBe('idle');
+    });
+
+    it('does not fire the chapter-claim flow on discard', async () => {
+      const { claimChapterOffline } = jest.requireMock('../db/repository');
+      const { syncChapterClaim } = jest.requireMock(
+        '../services/chapterClaimSync',
+      );
+
+      const { result } = renderHook(() =>
+        useVerseAudio({
+          ...verseAudioArgs(),
+          chapterAssignmentId: 5,
+          userId: 99,
+          chapterClaim: {
+            bibleId: 1,
+            bookId: 40,
+            chapterNumber: 14,
+            assignedUserId: null,
+          },
+        }),
+      );
+
+      await waitFor(() => expect(result.current.state).toBe('idle'));
+
+      await act(async () => {
+        await result.current.start();
+      });
+      await act(async () => {
+        await result.current.discardCapture();
+      });
+
+      expect(claimChapterOffline).not.toHaveBeenCalled();
+      expect(syncChapterClaim).not.toHaveBeenCalled();
+      expect(persistTake).not.toHaveBeenCalled();
+      expect(result.current.state).toBe('idle');
+    });
+
+    it('is a no-op when no capture is in progress', async () => {
+      const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+
+      await waitFor(() => expect(result.current.state).toBe('idle'));
+
+      await act(async () => {
+        await result.current.discardCapture();
+      });
+
+      expect(mockRecordingStop).not.toHaveBeenCalled();
+      expect(mockDeleteFile).not.toHaveBeenCalled();
+      expect(persistTake).not.toHaveBeenCalled();
+      expect(result.current.state).toBe('idle');
+    });
+
+    it('still resets to idle when the recorder stop fails (best-effort discard)', async () => {
+      mockRecordingStop.mockRejectedValue(new Error('native stop failed'));
+
+      const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+
+      await waitFor(() => expect(result.current.state).toBe('idle'));
+
+      await act(async () => {
+        await result.current.start();
+      });
+      await act(async () => {
+        await result.current.discardCapture();
+      });
+
+      expect(result.current.state).toBe('idle');
+      expect(result.current.errorMessage).toBeNull();
+      expect(persistTake).not.toHaveBeenCalled();
+    });
   });
 });

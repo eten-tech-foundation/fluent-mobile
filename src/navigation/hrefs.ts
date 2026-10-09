@@ -46,14 +46,18 @@ export const hrefs = {
   },
   chapters: (params: {
     projectId: number;
+    projectUnitId: number;
     projectName: string;
+    milestoneName: string;
     language: string;
   }) =>
     ({
       pathname: '/(app)/(stack)/chapters' as const,
       params: {
         projectId: String(params.projectId),
+        projectUnitId: String(params.projectUnitId),
         projectName: params.projectName,
+        milestoneName: params.milestoneName,
         language: params.language,
       },
     } as const),

@@ -12,6 +12,7 @@ import {
   SignOutResponse,
   UserChapterAssignmentsResponse,
   UserProjectsResponse,
+  UserMilestonesResponse,
   unwrapApiListResponse,
 } from '../types/api/responses';
 import type {
@@ -45,6 +46,7 @@ import { createApiError } from './apiError';
 import { parseVerseAudioResponse } from './verseAudioContract';
 import {
   buildVerseAudioFormData,
+  verseAudioRangeUploadPath,
   verseAudioUploadPath,
 } from './verseAudioFormData';
 
@@ -73,6 +75,12 @@ function chapterSourceAudioPath(params: GetChapterSourceAudioParams): string {
   return `/projects/${params.projectId}/source-audio/${encodeURIComponent(
     params.bookCode,
   )}/${params.chapter}?${query.toString()}`;
+}
+
+function withUpdatedAfter(path: string, updatedAfter?: string): string {
+  if (!updatedAfter) return path;
+  const params = new URLSearchParams({ updatedAfter });
+  return `${path}?${params.toString()}`;
 }
 
 const MOBILE_HEADERS = {
@@ -112,8 +120,12 @@ async function uploadVerseAudioRequest(
   token?: string,
 ): Promise<VerseAudioResponse> {
   const formData = await buildVerseAudioFormData(params);
+  const path =
+    params.granularity === 'pericope'
+      ? verseAudioRangeUploadPath(params.projectUnitId)
+      : verseAudioUploadPath(params.projectUnitId, params.bibleTextId);
   const raw = await authedMultipartRequest<unknown>(
-    verseAudioUploadPath(params.projectUnitId, params.bibleTextId),
+    path,
     formData,
     { method: 'PUT' },
     token,
@@ -151,13 +163,29 @@ export const FluentAPI = {
       headers: MOBILE_HEADERS,
     }),
 
-  getLanguages: (): Promise<ApiLanguage[]> =>
-    publicRequest<ApiLanguage[]>('/languages'),
+  getLanguages: (
+    updatedAfter?: string,
+    token?: string,
+  ): Promise<ApiLanguage[]> =>
+    authedRequest<ApiLanguage[]>(
+      withUpdatedAfter('/languages', updatedAfter),
+      undefined,
+      token,
+    ),
 
-  getBooks: (): Promise<ApiBookMeta[]> =>
-    publicRequest<ApiBookMeta[]>('/books'),
+  getBooks: (updatedAfter?: string, token?: string): Promise<ApiBookMeta[]> =>
+    authedRequest<ApiBookMeta[]>(
+      withUpdatedAfter('/books', updatedAfter),
+      undefined,
+      token,
+    ),
 
-  getBibles: (): Promise<ApiBible[]> => publicRequest<ApiBible[]>('/bibles'),
+  getBibles: (updatedAfter?: string, token?: string): Promise<ApiBible[]> =>
+    authedRequest<ApiBible[]>(
+      withUpdatedAfter('/bibles', updatedAfter),
+      undefined,
+      token,
+    ),
 
   getUserByEmail: (email: string, token?: string): Promise<ApiUser> =>
     authedRequest<ApiUser>(
@@ -172,6 +200,16 @@ export const FluentAPI = {
   ): Promise<UserProjectsResponse> =>
     authedRequest<UserProjectsResponse>(
       `/users/${userId}/projects`,
+      undefined,
+      token,
+    ),
+
+  getUserMilestones: (
+    userId: number,
+    token?: string,
+  ): Promise<UserMilestonesResponse> =>
+    authedRequest<UserMilestonesResponse>(
+      `/users/${userId}/milestones`,
       undefined,
       token,
     ),
@@ -307,9 +345,11 @@ export const FluentAPI = {
         languageCode,
       ),
     ),
-  getPericopeSets: async (): Promise<ApiPericopeSet[]> => {
-    const response = await publicRequest<PericopeSetsResponse>(
+  getPericopeSets: async (token?: string): Promise<ApiPericopeSet[]> => {
+    const response = await authedRequest<PericopeSetsResponse>(
       '/pericope-sets',
+      undefined,
+      token,
     );
     const raw = unwrapApiListResponse(response);
     return Array.isArray(raw) ? raw : [];

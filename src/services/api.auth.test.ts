@@ -117,4 +117,85 @@ describe('FluentAPI auth', () => {
       message: 'Invalid or revoked session token',
     });
   });
+
+  it.each([
+    ['getLanguages', '/languages', []],
+    ['getBooks', '/books', []],
+    ['getBibles', '/bibles', []],
+  ] as const)(
+    '%s sends Authorization bearer and throws AuthError on 401',
+    async (method, path, okBody) => {
+      authToken.set('catalog-token');
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(okBody),
+        headers: { get: () => null },
+      });
+
+      await FluentAPI[method]();
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:9999${path}`,
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer catalog-token',
+          }),
+        }),
+      );
+
+      fetchMock.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        text: async () => JSON.stringify({ message: 'User not authenticated' }),
+      });
+
+      await expect(FluentAPI[method]()).rejects.toMatchObject({
+        name: 'AuthError',
+        message: 'User not authenticated',
+      });
+    },
+  );
+
+  it('getPericopeSets sends Authorization bearer', async () => {
+    authToken.set('catalog-token');
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ data: [] }),
+      headers: { get: () => null },
+    });
+
+    await FluentAPI.getPericopeSets();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:9999/pericope-sets',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer catalog-token',
+        }),
+      }),
+    );
+  });
+
+  it('catalog methods prefer an explicit bearer over the global token', async () => {
+    authToken.set('global-token');
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify([]),
+      headers: { get: () => null },
+    });
+
+    await FluentAPI.getLanguages(undefined, 'explicit-token');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:9999/languages',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer explicit-token',
+        }),
+      }),
+    );
+  });
 });

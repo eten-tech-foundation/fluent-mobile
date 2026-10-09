@@ -6,6 +6,7 @@ import { useWindowDimensions, type ColorValue } from 'react-native';
 import { Drawer, type DrawerContentComponentProps } from 'expo-router/drawer';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useAuthSession } from '../../navigation/AuthSessionProvider';
+import { useRecordCaptureGate } from '../../navigation/useRecordCaptureGate';
 import { useLaunchRecoveryPrompt } from '../../services/useLaunchRecoveryPrompt';
 import {
   DRAWER_MENU_ICON_SIZE,
@@ -72,6 +73,7 @@ export default function AppDrawerLayout() {
     },
   });
   const drawerWidth = Math.min(320, width * 0.82);
+  const recordCaptureActive = useRecordCaptureGate();
 
   return (
     <Drawer
@@ -79,7 +81,8 @@ export default function AppDrawerLayout() {
       screenOptions={{
         headerShown: false,
         drawerType: 'front',
-        swipeEnabled: true,
+        // Disabled while a take is recording/paused so swipe cannot leave drafting (#568).
+        swipeEnabled: !recordCaptureActive,
         // Drawer draws under the status bar; content pads via DrawerContentScrollView.
         overlayColor: theme.colors.drawerOverlay,
         drawerActiveTintColor: theme.colors.primary,
