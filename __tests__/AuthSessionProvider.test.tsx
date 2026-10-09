@@ -156,6 +156,39 @@ describe('AuthSessionProvider', () => {
     });
   });
 
+  it('clears postLoginSyncActive on Tier 1 before syncAllData finishes (#670)', async () => {
+    let resolveSync: (() => void) | undefined;
+    mockSyncAllData.mockImplementationOnce((...args: unknown[]) => {
+      const options = args[3] as { onTier1Complete?: () => void } | undefined;
+      return new Promise<void>(resolve => {
+        resolveSync = () => resolve();
+        Promise.resolve().then(() => options?.onTier1Complete?.());
+      });
+    });
+
+    const { getByTestId } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+    await waitFor(() => {
+      expect(getByTestId('auth-flag').props.children).toBe('no');
+    });
+
+    await act(async () => {
+      fireEvent.press(getByTestId('sign-in'));
+    });
+
+    await waitFor(() => {
+      expect(getByTestId('sync-flag').props.children).toBe('no');
+    });
+    expect(resolveSync).toBeDefined();
+
+    await act(async () => {
+      resolveSync?.();
+    });
+  });
+
   it('signOut clears auth', async () => {
     mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
     const { getByTestId } = render(

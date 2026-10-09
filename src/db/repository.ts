@@ -668,6 +668,33 @@ export async function getChaptersToSync() {
 }
 
 /**
+ * My Work chapters only (assigned or peer-check) for progressive login Tier 1 (#670).
+ */
+export async function getMyWorkChaptersToSync(
+  userId: number,
+): Promise<BibleChapterGroup> {
+  const db = getDatabase();
+
+  try {
+    const result = await db.execute(
+      `
+      SELECT DISTINCT bible_id, book_id, chapter_number
+      FROM chapter_assignments
+      WHERE assigned_user_id = ? OR peer_checker_id = ?
+      ORDER BY bible_id, book_id, chapter_number
+    `,
+      [userId, userId],
+    );
+
+    const rows = result.rows as unknown as DBTypes.ChapterRow[];
+    return chapterRowsToBibleGroups(rows);
+  } catch (error) {
+    log.error('Error getting My Work chapters to sync:', { error });
+    return new Map();
+  }
+}
+
+/**
  * Chapters referenced by local recordings (#469 remap). Includes verses whose
  * chapter is no longer in chapter_assignments so recording-linked ids still remap.
  */
