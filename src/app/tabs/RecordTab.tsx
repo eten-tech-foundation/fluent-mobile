@@ -346,6 +346,12 @@ export function RecordTab({
     useState<PericopeGroupResult | null>(null);
 
   useEffect(() => {
+    if (verseAudio.recoveredElapsedMs > 0) {
+      setElapsedMs(verseAudio.recoveredElapsedMs);
+    }
+  }, [verseAudio.recoveredElapsedMs]);
+
+  useEffect(() => {
     if (draftingUnit !== 'pericope' || pericopeSetId === null) {
       setLastPericopeOfChapter(null);
       return;

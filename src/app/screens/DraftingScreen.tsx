@@ -82,12 +82,20 @@ export default function DraftingScreen() {
   const rawParams = useLocalSearchParams<{
     chapterId?: string;
     chapterName?: string;
+    recoverSessionKey?: string;
+    recoverVerse?: string;
   }>();
   const chapterId = parseRequiredNumber(rawParams.chapterId, 'chapterId');
   const chapterName = parseRequiredString(rawParams.chapterName, 'chapterName');
+  const recoverSessionKey = rawParams.recoverSessionKey || undefined;
+  const recoverVerse = rawParams.recoverVerse
+    ? Number(rawParams.recoverVerse)
+    : undefined;
+  const recoverVerseRef = useRef(recoverVerse);
+  recoverVerseRef.current = recoverVerse;
 
-  const [activeTab, setActiveTabState] = useState<DraftingTab>(
-    () => getLastActiveTab(chapterId) ?? 'bible',
+  const [activeTab, setActiveTabState] = useState<DraftingTab>(() =>
+    recoverSessionKey ? 'record' : getLastActiveTab(chapterId) ?? 'bible',
   );
   /** True while Record tab has an in-progress take (recording/paused). */
   const [recordCaptureActive, setRecordCaptureActive] = useState(false);
@@ -190,6 +198,12 @@ export default function DraftingScreen() {
       setRecordCaptureGate(false);
     };
   }, [recordCaptureActive]);
+
+  useEffect(() => {
+    if (recoverSessionKey) {
+      setActiveTabState('record');
+    }
+  }, [recoverSessionKey]);
 
   // Block header back, Android system back, and any other pop while capturing.
   useEffect(() => {
@@ -378,7 +392,12 @@ export default function DraftingScreen() {
         );
         const defaultVerse =
           firstUnrecorded?.verseNumber ?? texts[0]?.verseNumber ?? 1;
-        setInitialVerse(defaultVerse);
+        const target = recoverVerseRef.current;
+        const recoverTarget =
+          target !== undefined && texts.some(v => v.verseNumber === target)
+            ? target
+            : defaultVerse;
+        setInitialVerse(recoverTarget);
       } catch (error) {
         log.error('Error loading verses', { error });
       } finally {
@@ -422,6 +441,8 @@ export default function DraftingScreen() {
       <DraftingProvider
         verses={verses}
         initialVerse={initialVerse}
+        recoverVerse={recoverVerse}
+        recoverSessionKey={recoverSessionKey}
         projectId={chapterData.projectId}
         projectUnitId={chapterData.projectUnitId}
         bookName={chapterData.bookName ?? ''}

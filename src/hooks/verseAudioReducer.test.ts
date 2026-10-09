@@ -8,6 +8,20 @@ describe('verseAudioReducer', () => {
   const step = (from: VerseAudioState, event: VerseAudioEvent) =>
     verseAudioReducer(from, event);
 
+  it('SAVE_FAILED returns saving to paused and is ignored elsewhere', () => {
+    expect(step('saving', { type: 'SAVE_FAILED' })).toBe('paused');
+    for (const s of [
+      'idle',
+      'recording',
+      'paused',
+      'recorded',
+      'playing',
+      'error',
+    ] as const) {
+      expect(step(s, { type: 'SAVE_FAILED' })).toBe(s);
+    }
+  });
+
   it('idle → recording → paused → recording → saving → recorded', () => {
     let s: VerseAudioState = 'idle';
     s = step(s, { type: 'START' });

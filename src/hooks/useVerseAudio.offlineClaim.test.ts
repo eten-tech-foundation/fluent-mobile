@@ -4,6 +4,7 @@ import { useRecordingEngine } from './useRecordingEngine';
 import { usePlaybackEngine } from './usePlaybackEngine';
 import { claimChapterOffline } from '../db/repository';
 import { syncChapterClaim } from '../services/chapterClaimSync';
+import { listPausedTakes } from '../services/pausedTakes';
 import { useVerseAudio } from './useVerseAudio';
 import { logger } from '../utils/logger';
 
@@ -27,12 +28,22 @@ jest.mock('../services/connectivity', () => ({
   getConnectivitySnapshot: jest.fn(),
 }));
 
+// useVerseAudio imports pausedTakes -> storage -> native op-sqlite, which Jest
+// cannot parse. Mock it (#567).
+jest.mock('../services/pausedTakes', () => ({
+  clearPausedTake: jest.fn(),
+  isPausedTakeOrphaned: jest.fn(() => false),
+  listPausedTakes: jest.fn(() => []),
+  upsertPausedTake: jest.fn(),
+}));
+
 jest.mock('./useRecordingEngine');
 jest.mock('./usePlaybackEngine');
 
 const mockClaimChapterOffline = claimChapterOffline as jest.Mock;
 const mockSyncChapterClaim = syncChapterClaim as jest.Mock;
 const mockGetConnectivitySnapshot = getConnectivitySnapshot as jest.Mock;
+const mockListPausedTakes = listPausedTakes as jest.Mock;
 const mockUseRecordingEngine = useRecordingEngine as jest.Mock;
 const mockUsePlaybackEngine = usePlaybackEngine as jest.Mock;
 
@@ -102,6 +113,9 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     setupEngines();
+    // resetAllMocks clears the factory implementation; the hook's load effect
+    // calls listPausedTakes().find(...), so it must return an array.
+    mockListPausedTakes.mockReturnValue([]);
     persistTake.mockResolvedValue({
       id: 'rec_1',
       localFilePath: 'file:///rec_1.m4a',

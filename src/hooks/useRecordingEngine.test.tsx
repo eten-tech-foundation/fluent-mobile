@@ -57,9 +57,25 @@ describe('useRecordingEngine', () => {
     });
     expect(result.current.status).toBe('idle');
     expect(stopResult).toEqual({
-      uri: 'file:///mock-recording.m4a',
+      uri: 'file:///mock-recording.aac',
       durationMs: 0,
     });
+  });
+
+  it('uses document-backed ADTS AAC capture for kill-safe paused takes', () => {
+    renderHook(() => useRecordingEngine());
+
+    expect(ExpoAudio.useAudioRecorder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        directory: 'document',
+        extension: '.aac',
+        android: expect.objectContaining({
+          extension: '.aac',
+          outputFormat: 'aac_adts',
+          audioEncoder: 'aac',
+        }),
+      }),
+    );
   });
 
   it('throws when stop is called while idle', async () => {

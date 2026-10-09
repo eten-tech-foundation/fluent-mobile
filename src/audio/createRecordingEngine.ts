@@ -1,4 +1,12 @@
-import type { RecorderApi, RecorderStatus, StopResult } from './types';
+import { logger } from '../utils/logger';
+import type {
+  PauseResult,
+  RecorderApi,
+  RecorderStatus,
+  StopResult,
+} from './types';
+
+const log = logger.create('recordingEngine');
 
 /** Minimal recorder surface matching expo-audio's AudioRecorder methods we use. */
 export type EngineRecorder = {
@@ -84,12 +92,22 @@ export function createRecordingEngine(
       recorder.record();
       setStatus('recording');
     },
-    async pause() {
+    async pause(): Promise<PauseResult | null> {
       if (status !== 'recording') {
-        return;
+        return null;
       }
       recorder.pause();
       setStatus('paused');
+      if (!recorder.uri) {
+        // Pause must still succeed so the mic session is not bricked; without a
+        // URI there is simply nothing to mark for kill-safe recovery (#567).
+        log.warn('Recording paused without a file URI');
+        return null;
+      }
+      return {
+        uri: recorder.uri,
+        durationMs: Math.max(0, Math.round(recorder.currentTime * 1000)),
+      };
     },
     async resume() {
       if (status !== 'paused') {

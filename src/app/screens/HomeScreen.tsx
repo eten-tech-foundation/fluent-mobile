@@ -27,6 +27,7 @@ import { ProjectsTab } from '../tabs/ProjectsTab';
 import { useSync } from '../../hooks/useSync';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
+import { launchRecoveryGate } from '../../services/launchRecoveryGate';
 import { onSyncComplete, onSyncStart } from '../../services/syncEvents';
 import { getPrepareOfflineDownloadStarted } from '../../services/storage';
 import { isEffectivelyOnlineForTransfer } from '../../utils/transportPolicy';
@@ -86,7 +87,9 @@ function HomeScreenBody({
     autoPromptRef.current = createPrepareOfflineAutoPromptController({
       isFocused: () => isFocusedRef.current,
       hasTransferResolved: () => hasTransferResolvedRef.current,
-      isSettling: () => isSettlingRef.current,
+      // Hold the auto-prompt while the launch recovery prompt is unanswered (#567).
+      isSettling: () =>
+        isSettlingRef.current || !launchRecoveryGate.isSettled(),
       getTransport: () => ({
         isOnline: isLinkOnlineRef.current,
         isWifi: isWifiRef.current,
@@ -228,6 +231,22 @@ function HomeScreenBody({
     }
 
     return () => subscription.remove();
+  }, [autoPrompt]);
+
+  // Discard / nothing to recover: the gate settles while Home is focused, so
+  // Prepare for Offline may present immediately. Resume: the gate settles after
+  // the redirect to the Record tab, Home is blurred, evaluate bails on focus,
+  // and the eligibility effect below re-runs it when the user returns (#567).
+  useEffect(() => {
+    let cancelled = false;
+    void launchRecoveryGate.whenSettled().then(() => {
+      if (!cancelled) {
+        autoPrompt.request();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [autoPrompt]);
 
   useEffect(() => {

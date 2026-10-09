@@ -52,6 +52,8 @@ interface DraftingProviderProps {
   projectUnitId?: number | null;
   bookName?: string;
   chapterName?: string;
+  recoverVerse?: number;
+  recoverSessionKey?: string;
 }
 
 export function DraftingProvider({
@@ -62,6 +64,8 @@ export function DraftingProvider({
   projectUnitId = null,
   bookName = '',
   chapterName = '',
+  recoverVerse,
+  recoverSessionKey,
 }: DraftingProviderProps) {
   const [selectedVerse, setSelectedVerse] = useState<number>(initialVerse);
   const [currentlyPlayingVerse, setCurrentlyPlayingVerse] = useState<
@@ -111,6 +115,17 @@ export function DraftingProvider({
     refreshRecordedVerses();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterKey, projectUnitId]);
+
+  const versesRef = useRef(verses);
+  versesRef.current = verses;
+
+  // Resume can land on an already-mounted verse-detail with new params;
+  // useState(initialVerse) only seeds once, so apply the recover target here.
+  useEffect(() => {
+    if (recoverVerse === undefined) return;
+    if (!versesRef.current.some(v => v.verseNumber === recoverVerse)) return;
+    setSelectedVerse(recoverVerse);
+  }, [recoverVerse, recoverSessionKey]);
 
   const value = useMemo(
     () => ({
