@@ -288,23 +288,25 @@ function renderStatusLine(
   pendingChapterCount: number,
   countsUnknown: boolean,
 ) {
-  if (status === 'syncing' || isUploading) {
-    return (
-      <>
-        <Text style={styles.statusTitle}>Syncing…</Text>
-        <Text style={styles.statusSubtitle}>
-          Uploading your recordings to Fluent.
-        </Text>
-      </>
-    );
-  }
-
+  // Paused wins over a lingering take-upload flag so the status line, the
+  // progress card, and the controls all describe the same state (#600).
   if (status === 'paused') {
     return (
       <>
         <Text style={styles.statusTitle}>Paused</Text>
         <Text style={styles.statusSubtitle}>
           Upload will stay paused until you resume.
+        </Text>
+      </>
+    );
+  }
+
+  if (status === 'syncing' || isUploading) {
+    return (
+      <>
+        <Text style={styles.statusTitle}>Syncing…</Text>
+        <Text style={styles.statusSubtitle}>
+          Uploading your recordings to Fluent.
         </Text>
       </>
     );

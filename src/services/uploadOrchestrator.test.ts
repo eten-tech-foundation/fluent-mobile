@@ -24,6 +24,8 @@ function createHarness(options?: {
   chapters?: PendingUploadChapter[];
   uploadOverCellular?: boolean;
   workerDelayMs?: number;
+  /** Drop each chapter from the pending list once its upload starts, and block the first one until abort. */
+  holdFirstChapterUntilAbort?: boolean;
   getSessionTransportSnapshot?: UploadOrchestratorDeps['getSessionTransportSnapshot'];
 }) {
   let connListener: ConnListener | null = null;
@@ -38,8 +40,32 @@ function createHarness(options?: {
     { bookId: 1, chapterNumber: 2 },
   ];
 
+  let heldFirstChapter = false;
   const worker: ChapterUploadWorker = {
     uploadChapter: async (chapter, signal) => {
+      if (options?.holdFirstChapterUntilAbort) {
+        chapters = chapters.filter(
+          item =>
+            item.bookId !== chapter.bookId ||
+            item.chapterNumber !== chapter.chapterNumber,
+        );
+        uploaded.push(chapter);
+        if (!heldFirstChapter) {
+          heldFirstChapter = true;
+          await new Promise<void>((_resolve, reject) => {
+            if (signal.aborted) {
+              reject(new Error('aborted'));
+              return;
+            }
+            signal.addEventListener(
+              'abort',
+              () => reject(new Error('aborted')),
+              { once: true },
+            );
+          });
+        }
+        return;
+      }
       if (options?.workerDelayMs) {
         await new Promise<void>((resolve, reject) => {
           const timer = setTimeout(resolve, options.workerDelayMs);
@@ -153,6 +179,59 @@ describe('uploadOrchestrator', () => {
     expect(h.events.some(e => e.type === 'start')).toBe(true);
     expect(h.events.some(e => e.type === 'complete')).toBe(true);
     expect(h.orchestrator.getSnapshot().phase).toBe('idle');
+  });
+
+  it('emits a fixed, monotonic chapter total for a multi-chapter session (#600)', async () => {
+    const h = createHarness({
+      chapters: [
+        { bookId: 1, chapterNumber: 1 },
+        { bookId: 1, chapterNumber: 2 },
+        { bookId: 1, chapterNumber: 3 },
+      ],
+    });
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    expect(h.events).toEqual([
+      { type: 'start', totalChapters: 3 },
+      { type: 'progress', completedChapters: 1, totalChapters: 3 },
+      { type: 'progress', completedChapters: 2, totalChapters: 3 },
+      { type: 'progress', completedChapters: 3, totalChapters: 3 },
+      { type: 'complete' },
+    ]);
+  });
+
+  it('keeps the session total when Resume follows a pause that finished the in-flight chapter (#600)', async () => {
+    const h = createHarness({
+      chapters: [
+        { bookId: 1, chapterNumber: 1 },
+        { bookId: 1, chapterNumber: 2 },
+        { bookId: 1, chapterNumber: 3 },
+      ],
+      holdFirstChapterUntilAbort: true,
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => h.uploaded.length === 1);
+
+    await h.orchestrator.pause();
+
+    expect(h.events).toEqual([
+      { type: 'start', totalChapters: 3 },
+      { type: 'paused', reason: 'user' },
+    ]);
+
+    await h.orchestrator.syncNow();
+    await h.waitFor(() => h.events.some(event => event.type === 'complete'));
+
+    expect(h.events).toEqual([
+      { type: 'start', totalChapters: 3 },
+      { type: 'paused', reason: 'user' },
+      { type: 'progress', completedChapters: 1, totalChapters: 3 },
+      { type: 'progress', completedChapters: 2, totalChapters: 3 },
+      { type: 'progress', completedChapters: 3, totalChapters: 3 },
+      { type: 'complete' },
+    ]);
   });
 
   it('does not auto-upload on cellular when uploadOverCellular is false', async () => {

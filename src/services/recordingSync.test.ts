@@ -172,6 +172,63 @@ describe('recordingSync', () => {
     expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
   });
 
+  it('reports chapter progress, not take counts, for a multi-chapter pass (#600)', async () => {
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ id: 'a', bookId: 1, chapterNumber: 1 }),
+      pendingRecording({
+        id: 'b',
+        bookId: 1,
+        chapterNumber: 1,
+        bibleTextId: 43,
+      }),
+      pendingRecording({
+        id: 'c',
+        bookId: 1,
+        chapterNumber: 2,
+        bibleTextId: 44,
+      }),
+      pendingRecording({
+        id: 'd',
+        bookId: 1,
+        chapterNumber: 3,
+        bibleTextId: 45,
+      }),
+    ]);
+
+    await syncPendingRecordings('tok-1', { delay });
+
+    expect(mockEmitUploadSessionEvent.mock.calls.map(call => call[0])).toEqual([
+      { type: 'start', totalChapters: 3 },
+      { type: 'progress', completedChapters: 1, totalChapters: 3 },
+      { type: 'progress', completedChapters: 2, totalChapters: 3 },
+      { type: 'progress', completedChapters: 3, totalChapters: 3 },
+      { type: 'complete' },
+    ]);
+  });
+
+  it('does not emit session events for a chapter-scoped orchestrator pass (#600)', async () => {
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ id: 'a', bookId: 40, chapterNumber: 1 }),
+      pendingRecording({
+        id: 'b',
+        bookId: 40,
+        chapterNumber: 1,
+        bibleTextId: 43,
+      }),
+    ]);
+
+    await syncPendingRecordings('tok-1', {
+      delay,
+      chapter: { bookId: 40, chapterNumber: 1 },
+    });
+
+    expect(mockGetPendingRecordings).toHaveBeenCalledWith({
+      bookId: 40,
+      chapterNumber: 1,
+    });
+    expect(mockEmitUploadSessionEvent).not.toHaveBeenCalled();
+  });
+
   it('uploads pericope takes with range fields and marks uploaded (#584)', async () => {
     mockGetPendingRecordings.mockResolvedValue([
       pendingRecording({

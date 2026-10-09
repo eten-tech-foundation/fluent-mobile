@@ -98,6 +98,11 @@ export function createUploadOrchestrator(
     return until !== null && deps.now() < until;
   };
 
+  const clearSessionCounts = (): void => {
+    completedChapters = 0;
+    totalChapters = 0;
+  };
+
   const abortActiveSession = async (): Promise<void> => {
     if (sessionAbort) {
       sessionAbort.abort();
@@ -137,6 +142,7 @@ export function createUploadOrchestrator(
         reason,
       });
       phase = isUserPaused() ? 'paused' : 'idle';
+      clearSessionCounts();
       deps.emit({ type: 'idle' });
       return;
     }
@@ -171,20 +177,43 @@ export function createUploadOrchestrator(
     const chapters = await deps.getPendingUploadChapters();
     if (chapters.length === 0) {
       phase = 'idle';
+      clearSessionCounts();
       deps.emit({ type: 'idle' });
       return;
     }
 
     const abort = new AbortController();
     sessionAbort = abort;
-    completedChapters = 0;
-    totalChapters = chapters.length;
-    phase = 'syncing';
-    deps.emit({ type: 'start', totalChapters: chapters.length });
-    log.info('Upload session started', {
-      reason,
-      totalChapters: chapters.length,
-    });
+    // Pause/Resume continues the same session. Re-querying the pending set
+    // would shrink Y when the in-flight chapter already uploaded, and a fresh
+    // `start` would reset X to 0 (#600).
+    const resumePausedSession =
+      phase === 'paused' &&
+      totalChapters > 0 &&
+      chapters.length <= totalChapters;
+    if (resumePausedSession) {
+      completedChapters = totalChapters - chapters.length;
+      phase = 'syncing';
+      deps.emit({
+        type: 'progress',
+        completedChapters,
+        totalChapters,
+      });
+      log.info('Upload session resumed', {
+        reason,
+        completedChapters,
+        totalChapters,
+      });
+    } else {
+      completedChapters = 0;
+      totalChapters = chapters.length;
+      phase = 'syncing';
+      deps.emit({ type: 'start', totalChapters: chapters.length });
+      log.info('Upload session started', {
+        reason,
+        totalChapters: chapters.length,
+      });
+    }
 
     const work = (async () => {
       try {
@@ -205,8 +234,9 @@ export function createUploadOrchestrator(
         }
         if (!abort.signal.aborted) {
           phase = 'idle';
-          deps.emit({ type: 'complete' });
           log.info('Upload session complete', { totalChapters });
+          deps.emit({ type: 'complete' });
+          clearSessionCounts();
         }
       } catch (error) {
         if (abort.signal.aborted) {
@@ -215,11 +245,13 @@ export function createUploadOrchestrator(
         if (isUploadNetworkInterruptedError(error)) {
           log.info('Upload session paused after network drop', { error });
           phase = 'idle';
+          clearSessionCounts();
           deps.emit({ type: 'idle' });
           return;
         }
         log.error('Upload session failed', { error });
         phase = 'idle';
+        clearSessionCounts();
         deps.emit({ type: 'idle' });
       }
     })();
@@ -353,6 +385,7 @@ export function createUploadOrchestrator(
       await abortActiveSession();
       phase = 'idle';
       deps.emit({ type: 'cancelled' });
+      clearSessionCounts();
       log.info('Upload cancelled by user');
     },
 
