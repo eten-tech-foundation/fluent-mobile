@@ -42,4 +42,18 @@ describe('ImageThumbnail', () => {
       screen.queryByTestId(`images-maps-image-loading-${item.id}`),
     ).toBeNull();
   });
+
+  it('prefers thumbnailUri for the list preview (#594)', () => {
+    const item = {
+      ...getMockImagesMaps(99, 2)[0],
+      uri: 'https://cdn.example/full.png',
+      thumbnailUri: 'https://cdn.example/thumb.png',
+    };
+
+    render(<ImageThumbnail item={item} onOpenFullscreen={() => undefined} />);
+
+    expect(mockZoomableImage.mock.calls[0]?.[0]?.uri).toBe(
+      'https://cdn.example/thumb.png',
+    );
+  });
 });

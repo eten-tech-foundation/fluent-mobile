@@ -1,5 +1,6 @@
 import type { ApiTranslationImageItem } from '../types/api/translationResources';
 import {
+  formatImageLicenseAttribution,
   loadImagesMapsForUnit,
   parseTranslationImageItem,
   setImagesMapsLoadFailureForTests,
@@ -27,8 +28,64 @@ const sampleItem: ApiTranslationImageItem = {
 };
 
 describe('parseTranslationImageItem', () => {
-  it('maps API image items to Resources items', () => {
+  it('maps API image items to Resources items with thumbnailUri (#594)', () => {
     expect(parseTranslationImageItem(sampleItem)).toEqual({
+      id: 'img-api-279999',
+      title: 'Locations in the Book of Mark',
+      uri: 'https://cdn.aquifer.bible/example.png',
+      thumbnailUri: 'https://cdn.aquifer.bible/example-thumb.png',
+    });
+  });
+
+  it('maps caption and attribution when present (#594)', () => {
+    expect(
+      parseTranslationImageItem({
+        ...sampleItem,
+        caption: '  Map of the region  ',
+        attribution: ' Aquifer Images ',
+      }),
+    ).toEqual({
+      id: 'img-api-279999',
+      title: 'Locations in the Book of Mark',
+      uri: 'https://cdn.aquifer.bible/example.png',
+      thumbnailUri: 'https://cdn.aquifer.bible/example-thumb.png',
+      caption: 'Map of the region',
+      attribution: 'Aquifer Images',
+    });
+  });
+
+  it('derives attribution from licenseInfo when attribution is omitted (#594)', () => {
+    expect(
+      parseTranslationImageItem({
+        ...sampleItem,
+        licenseInfo: {
+          title: 'CC BY-SA 4.0',
+          copyright: { holder: { name: 'UnfoldingWord' }, dates: '2020' },
+        },
+      })?.attribution,
+    ).toBe('CC BY-SA 4.0 · UnfoldingWord · 2020');
+  });
+
+  it('prefers explicit attribution over licenseInfo (#594)', () => {
+    expect(
+      parseTranslationImageItem({
+        ...sampleItem,
+        attribution: 'Explicit credit',
+        licenseInfo: {
+          title: 'CC BY-SA 4.0',
+          copyright: { holder: { name: 'UnfoldingWord' }, dates: '2020' },
+        },
+      })?.attribution,
+    ).toBe('Explicit credit');
+  });
+
+  it('omits thumbnailUri when thumbnailUrl matches url (#594)', () => {
+    expect(
+      parseTranslationImageItem({
+        ...sampleItem,
+        thumbnailUrl: sampleItem.url,
+      }),
+    ).toEqual({
       id: 'img-api-279999',
       title: 'Locations in the Book of Mark',
       uri: 'https://cdn.aquifer.bible/example.png',
@@ -42,6 +99,14 @@ describe('parseTranslationImageItem', () => {
         url: '  ',
       }),
     ).toBeNull();
+  });
+});
+
+describe('formatImageLicenseAttribution', () => {
+  it('returns undefined for empty or non-object licenseInfo', () => {
+    expect(formatImageLicenseAttribution(undefined)).toBeUndefined();
+    expect(formatImageLicenseAttribution(null)).toBeUndefined();
+    expect(formatImageLicenseAttribution('cc')).toBeUndefined();
   });
 });
 
@@ -104,6 +169,7 @@ describe('loadImagesMapsForUnit', () => {
         id: 'img-api-279999',
         title: 'Locations in the Book of Mark',
         uri: 'https://cdn.aquifer.bible/example.png',
+        thumbnailUri: 'https://cdn.aquifer.bible/example-thumb.png',
       },
     ]);
 
