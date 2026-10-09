@@ -10,6 +10,7 @@ import {
   subscribePrepareOfflineInventory,
 } from './prepareOfflineResources';
 import { getDownloadQueueStatusMap } from '../db/downloadQueueRepository';
+import { persistSourceAudioChapterMeta } from './offlineSourceAudio';
 import type { DownloadQueueStatus } from '../types/download/types';
 import type { PrepareOfflineResourceItem } from '../types/prepareOffline/types';
 
@@ -21,12 +22,19 @@ jest.mock('./api', () => ({
   },
 }));
 
+jest.mock('./offlineSourceAudio', () => ({
+  persistSourceAudioChapterMeta: jest.fn(async () => undefined),
+}));
+
 jest.mock('../db/downloadQueueRepository', () => ({
   getDownloadQueueStatusMap: jest.fn(),
 }));
 
 const getQueueStatusMap = getDownloadQueueStatusMap as jest.MockedFunction<
   typeof getDownloadQueueStatusMap
+>;
+const persistMeta = persistSourceAudioChapterMeta as jest.MockedFunction<
+  typeof persistSourceAudioChapterMeta
 >;
 
 const USER_A = 1;
@@ -113,6 +121,8 @@ describe('prepareOfflineResources', () => {
         },
       ]);
 
+      mockEmptyChapterAudio();
+
       const result = await fetchPrepareOfflineManifest(99, FULL_PARAMS);
 
       expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledWith(99, {
@@ -127,6 +137,9 @@ describe('prepareOfflineResources', () => {
       );
       // Source Bible text is handled by sync, never by the manifest.
       expect(result.map(item => item.id)).toEqual(['sa1', 'r1']);
+      // Multi-chapter manifest member expands to one meta fetch per chapter (#579).
+      expect(FluentAPI.getChapterSourceAudio).toHaveBeenCalledTimes(3);
+      expect(persistMeta).toHaveBeenCalledTimes(3);
     });
 
     it('overrides Translation Notes to Tier 1 regardless of API tier', async () => {
@@ -179,6 +192,7 @@ describe('prepareOfflineResources', () => {
 
       // One call per chapter in the 1–3 range.
       expect(FluentAPI.getChapterSourceAudio).toHaveBeenCalledTimes(3);
+      expect(persistMeta).toHaveBeenCalledTimes(3);
       expect(result.filter(item => item.kind === 'audio')).toHaveLength(3);
       expect(result.find(item => item.kind === 'audio')).toMatchObject({
         id: 'source-bible-audio-MRK-1',

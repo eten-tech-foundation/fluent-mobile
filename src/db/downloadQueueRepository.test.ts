@@ -412,7 +412,8 @@ describe('downloadQueueRepository', () => {
         fileExt: 'mp3',
       },
     ]);
-    expect(changed).toEqual(['aquifer-1-audio']);
+    // Queue id is project+user scoped (#504); URL-change still re-queues (#446).
+    expect(changed).toEqual([`1-${TEST_USER_ID}-aquifer-1-audio`]);
     const row = __getDownloadQueueRows()[0];
     expect(row.status).toBe('queued');
     expect(row.progress).toBe(0);

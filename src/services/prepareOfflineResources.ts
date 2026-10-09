@@ -9,6 +9,10 @@ import {
   PrepareOfflineResourceStatus,
 } from '../types/prepareOffline/types';
 import type { DownloadQueueStatus } from '../types/download/types';
+import { persistSourceAudioChapterMeta } from './offlineSourceAudio';
+import { logger } from '../utils/logger';
+
+const log = logger.create('prepareOfflineResources');
 
 export type PrepareOfflineInventoryListener = () => void;
 
@@ -140,14 +144,17 @@ export async function fetchSourceBibleAudioManifest(
           languageCode,
           bibleId,
         });
+        // Persist verse timestamps during Prepare so offline seek works (#579).
+        await persistSourceAudioChapterMeta(projectId, response);
         return toSourceBibleAudioManifestItem(response);
       } catch (error) {
         // Fallback path: one missing chapter must not reject the whole
         // manifest — skip it and keep the rest of the package (#504).
-        console.warn(
-          `[prepareOfflineResources] source-audio fallback failed for ${ch.bookCode} ${ch.chapterNumber}`,
+        log.warn('source-audio fallback failed', {
+          bookCode: ch.bookCode,
+          chapter: ch.chapterNumber,
           error,
-        );
+        });
         return null;
       }
     }),
@@ -218,10 +225,10 @@ export async function fetchPrepareOfflineManifest(
       // upstream) must not sink the rest of the package. Treat it as "no
       // manifest" so the per-chapter fallback below runs instead (#504).
       FluentAPI.getSourceAudioManifest(projectId, params).catch(error => {
-        console.warn(
-          `[prepareOfflineResources] source-audio manifest failed for ${params.bookCode}`,
+        log.warn('source-audio manifest failed', {
+          bookCode: params.bookCode,
           error,
-        );
+        });
         return undefined;
       }),
     ],
@@ -251,12 +258,65 @@ export async function fetchPrepareOfflineManifest(
       params.languageCode,
       bibleId,
     );
+  } else {
+    // Manifest path has sizes/URLs but not verse timestamps — fetch chapter
+    // metadata once per chapter so offline play can seek after Prepare (#579).
+    await persistSourceAudioMetaForManifestChapters(
+      projectId,
+      sourceAudioItems,
+      params.languageCode,
+      bibleId,
+    );
   }
 
   return [
     ...sourceAudioItems,
     ...translationResourcesResponse.items.map(toMobileManifestItem),
   ];
+}
+
+/**
+ * Best-effort verse-timestamp cache for chapters listed in the source-audio
+ * manifest. Failures are logged and ignored — download enqueue must not fail
+ * because metadata persistence failed (#579).
+ */
+async function persistSourceAudioMetaForManifestChapters(
+  projectId: number,
+  items: PrepareOfflineResourceManifestItem[],
+  languageCode: string,
+  bibleId: number,
+): Promise<void> {
+  const chapters = new Map<string, { bookCode: string; chapter: number }>();
+  for (const item of items) {
+    const bookCode = item.bookCode?.trim();
+    const start = item.startChapter;
+    if (!bookCode || start === undefined) continue;
+    const end = item.endChapter ?? start;
+    for (const chapter of range(start, end)) {
+      chapters.set(`${bookCode}:${chapter}`, { bookCode, chapter });
+    }
+  }
+
+  await Promise.all(
+    [...chapters.values()].map(async ({ bookCode, chapter }) => {
+      try {
+        const response = await FluentAPI.getChapterSourceAudio({
+          projectId,
+          bookCode,
+          chapter,
+          languageCode,
+          bibleId,
+        });
+        await persistSourceAudioChapterMeta(projectId, response);
+      } catch (error) {
+        log.warn('source-audio meta persist failed', {
+          bookCode,
+          chapter,
+          error,
+        });
+      }
+    }),
+  );
 }
 
 /**
