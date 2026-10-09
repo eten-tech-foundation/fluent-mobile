@@ -553,7 +553,6 @@ export function useVerseAudio({
         durationMs: persistMeta.durationMs,
       });
       await persistTake(persistMeta);
-      notifyPendingUploads();
 
       try {
         if (
@@ -597,6 +596,8 @@ export function useVerseAudio({
           stack: claimError instanceof Error ? claimError.stack : undefined,
         });
       }
+
+      notifyPendingUploads();
 
       const rows = await loadTakesFn(snapshot.viewBibleTextId);
       setTakes(rows);
