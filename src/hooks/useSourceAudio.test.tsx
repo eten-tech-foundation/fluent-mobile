@@ -2,6 +2,11 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { useSourceAudio } from './useSourceAudio';
 import { ApiError } from '../types/api/errors';
 
+jest.mock('../services/offlineSourceAudio', () => ({
+  resolveLocalChapterSourceAudio: jest.fn(async () => null),
+  persistSourceAudioChapterMeta: jest.fn(async () => undefined),
+}));
+
 const mockPlaybackPlay = jest.fn();
 const mockPlaybackStop = jest.fn();
 const mockPlaybackPause = jest.fn();
@@ -58,6 +63,8 @@ jest.mock('./usePlaybackEngine', () => {
 
 describe('useSourceAudio', () => {
   const fetchChapterSourceAudio = jest.fn();
+  const resolveLocalSourceAudio = jest.fn();
+  const persistSourceAudioMeta = jest.fn();
   const onPlayingVerseChange = jest.fn();
 
   const baseArgs = () => ({
@@ -68,8 +75,11 @@ describe('useSourceAudio', () => {
     languageCode: 'eng',
     verse: 1,
     enabled: true,
+    isOnline: true,
     onPlayingVerseChange,
     fetchChapterSourceAudio,
+    resolveLocalSourceAudio,
+    persistSourceAudioMeta,
   });
 
   beforeEach(() => {
@@ -82,6 +92,8 @@ describe('useSourceAudio', () => {
     playbackState.status = 'idle';
     playbackState.positionMs = 0;
     playbackState.durationMs = 0;
+    resolveLocalSourceAudio.mockResolvedValue(null);
+    persistSourceAudioMeta.mockResolvedValue(undefined);
   });
 
   it('sets empty when project id is missing', async () => {
@@ -167,6 +179,85 @@ describe('useSourceAudio', () => {
     await waitFor(() => {
       expect(result.current.loadState).toBe('empty');
     });
+  });
+
+  it('plays a downloaded local file before calling the API (#579)', async () => {
+    const localUri = 'file:///downloads/1/source-bible-audio-MRK-1.mp3';
+    resolveLocalSourceAudio.mockResolvedValue({
+      provider: 'aquifer',
+      bible: { name: 'BSB', abbreviation: 'BSB' },
+      bookCode: 'MRK',
+      chapter: 1,
+      items: [
+        {
+          format: 'mp3',
+          url: localUri,
+          scope: 'chapter',
+          durationSeconds: 30,
+        },
+      ],
+      verseTimestamps: [
+        { verse: 1, startSeconds: 0 },
+        { verse: 2, startSeconds: 4 },
+      ],
+    });
+
+    const { result, rerender } = renderHook(
+      (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
+      { initialProps: baseArgs() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.loadState).toBe('ready');
+    });
+    expect(fetchChapterSourceAudio).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.play();
+    });
+    expect(mockPlaybackLoad).toHaveBeenCalledWith(localUri);
+
+    rerender({ ...baseArgs(), verse: 2 });
+    await waitFor(() => {
+      expect(mockPlaybackSeek).toHaveBeenCalledWith(4000);
+    });
+  });
+
+  it('shows empty offline when nothing is downloaded (#579 G.27)', async () => {
+    resolveLocalSourceAudio.mockResolvedValue(null);
+
+    const { result } = renderHook(() =>
+      useSourceAudio({ ...baseArgs(), isOnline: false }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.loadState).toBe('empty');
+    });
+    expect(fetchChapterSourceAudio).not.toHaveBeenCalled();
+  });
+
+  it('persists chapter metadata after a successful online fetch (#579)', async () => {
+    const data = {
+      provider: 'aquifer' as const,
+      bible: { name: 'BSB', abbreviation: 'BSB' },
+      bookCode: 'MRK',
+      chapter: 1,
+      items: [
+        {
+          format: 'mp3' as const,
+          url: 'https://cdn.example/ch.mp3',
+          scope: 'chapter' as const,
+        },
+      ],
+    };
+    fetchChapterSourceAudio.mockResolvedValue(data);
+
+    const { result } = renderHook(() => useSourceAudio(baseArgs()));
+
+    await waitFor(() => {
+      expect(result.current.loadState).toBe('ready');
+    });
+    expect(persistSourceAudioMeta).toHaveBeenCalledWith(1, data);
   });
 
   it('sets error on API failure and retry refetches', async () => {

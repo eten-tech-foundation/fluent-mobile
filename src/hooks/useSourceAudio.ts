@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FluentAPI } from '../services/api';
+import {
+  persistSourceAudioChapterMeta,
+  resolveLocalChapterSourceAudio,
+} from '../services/offlineSourceAudio';
 import { isApiError } from '../types/api/errors';
 import type { ApiSourceAudioResponse } from '../types/api/sourceAudio';
 import { logger } from '../utils/logger';
@@ -24,13 +28,24 @@ export type UseSourceAudioArgs = {
   languageCode: string | undefined;
   verse: number;
   enabled?: boolean;
+  /**
+   * When false, never call the API — local download or empty (#579).
+   * Pass `hasResolved && isOnline` from the shell (false until /health
+   * resolves), matching the Resources tab.
+   */
+  isOnline?: boolean;
+  /** Active user for download_queue lookup; pass from the shell (null skips local resolve). */
+  userId?: number | null;
   onPlayingVerseChange?: (verse: number | null) => void;
   fetchChapterSourceAudio?: typeof FluentAPI.getChapterSourceAudio;
+  resolveLocalSourceAudio?: typeof resolveLocalChapterSourceAudio;
+  persistSourceAudioMeta?: typeof persistSourceAudioChapterMeta;
 };
 
 /**
  * Chapter-level source/reference audio for the drafting dock (#235).
  * Own playback engine — distinct from draft takes in useVerseAudio.
+ * Local Prepare-for-Offline files win over the network (#579).
  */
 export function useSourceAudio({
   projectId,
@@ -40,8 +55,12 @@ export function useSourceAudio({
   languageCode,
   verse,
   enabled = true,
+  isOnline = true,
+  userId,
   onPlayingVerseChange,
   fetchChapterSourceAudio = FluentAPI.getChapterSourceAudio,
+  resolveLocalSourceAudio = resolveLocalChapterSourceAudio,
+  persistSourceAudioMeta = persistSourceAudioChapterMeta,
 }: UseSourceAudioArgs) {
   const playback = usePlaybackEngine();
   const playbackRef = useRef(playback);
@@ -169,6 +188,25 @@ export function useSourceAudio({
 
     (async () => {
       try {
+        const local = await resolveLocalSourceAudio({
+          projectId,
+          userId: userId ?? null,
+          bookCode,
+          chapter,
+        });
+        if (requestId !== requestIdRef.current) return;
+        if (local) {
+          responseCacheRef.current.set(cacheKey, local);
+          applyResponse(local);
+          return;
+        }
+
+        // Offline with nothing downloaded: unavailable, not Retry (#579 G.27).
+        if (isOnline === false) {
+          setLoadState('empty');
+          return;
+        }
+
         const data = await fetchChapterSourceAudio({
           projectId,
           bookCode,
@@ -179,6 +217,7 @@ export function useSourceAudio({
         if (requestId !== requestIdRef.current) return;
         responseCacheRef.current.set(cacheKey, data);
         applyResponse(data);
+        void persistSourceAudioMeta(projectId, data);
       } catch (error) {
         if (requestId !== requestIdRef.current) return;
         log.error('Failed to load source audio', {
@@ -188,7 +227,8 @@ export function useSourceAudio({
         setVerseTimestamps(undefined);
         setDblAudioBibleId(undefined);
         setCatalogDurationMs(0);
-        setLoadState('error');
+        // Treat confirmed offline failures as unavailable rather than Retry.
+        setLoadState(isOnline === false ? 'empty' : 'error');
       }
     })();
   }, [
@@ -198,11 +238,15 @@ export function useSourceAudio({
     chapter,
     enabled,
     fetchChapterSourceAudio,
+    isOnline,
     languageCode,
+    persistSourceAudioMeta,
     projectId,
     resetLoadChrome,
+    resolveLocalSourceAudio,
     retryToken,
     stopAndClearPlaying,
+    userId,
   ]);
 
   useEffect(() => {

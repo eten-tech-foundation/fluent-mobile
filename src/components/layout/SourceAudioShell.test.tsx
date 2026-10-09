@@ -25,6 +25,24 @@ jest.mock('../../hooks/useDraftingUnit', () => ({
   }),
 }));
 
+jest.mock('../../hooks/useConnectivity', () => ({
+  useConnectivity: () => ({
+    isOnline: true,
+    hasResolved: true,
+    isLinkOnline: true,
+    isWifi: true,
+    isCellular: false,
+    connectionType: 'wifi',
+    hasTransferResolved: true,
+    connectivityPending: false,
+    transferConnectivityPending: false,
+  }),
+}));
+
+jest.mock('../../services/storage', () => ({
+  getActiveUserId: () => '1',
+}));
+
 const mockUseSourceAudio = jest.fn();
 const mockPause = jest.fn().mockResolvedValue(undefined);
 const mockStop = jest.fn().mockResolvedValue(undefined);
@@ -142,6 +160,8 @@ describe('SourceAudioBarSlot', () => {
         languageCode: undefined,
         verse: 3,
         enabled: true,
+        isOnline: true,
+        userId: 1,
       }),
     );
   });

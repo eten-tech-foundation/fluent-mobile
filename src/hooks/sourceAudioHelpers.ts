@@ -117,5 +117,9 @@ export function isCachedSourceAudioResponseValid(
 ): boolean {
   const item = pickSourceAudioItem(response.items);
   if (!item) return true;
+  // Local Prepare-for-Offline files never expire (#579).
+  if (item.url.startsWith('file://') || item.url.startsWith('/')) {
+    return true;
+  }
   return !isSourceAudioItemExpired(item, nowMs);
 }
