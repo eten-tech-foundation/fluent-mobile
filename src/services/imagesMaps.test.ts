@@ -199,6 +199,22 @@ describe('loadImagesMapsForUnit', () => {
       ]);
       expect(getTranslationImages).toHaveBeenCalledTimes(1);
     });
+
+    it('returns empty offline when nothing is downloaded (#578)', async () => {
+      mockFindRows.mockResolvedValue(null);
+
+      await expect(
+        loadImagesMapsForUnit({
+          projectId: 7,
+          userId: 42,
+          isOnline: false,
+          bookCode: 'MRK',
+          chapterNumber: 14,
+          verseNumber: 2,
+        }),
+      ).resolves.toEqual([]);
+      expect(getTranslationImages).not.toHaveBeenCalled();
+    });
   });
 
   it('fans out across verseNumbers and dedupes by id (#593)', async () => {

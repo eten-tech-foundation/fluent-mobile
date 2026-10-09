@@ -222,6 +222,22 @@ describe('loadTranslationQuestionsForUnit', () => {
       expect(getTranslationQuestions).toHaveBeenCalledTimes(1);
     });
 
+    it('returns empty offline when nothing is downloaded (#578)', async () => {
+      mockFindRows.mockResolvedValue(null);
+
+      await expect(
+        loadTranslationQuestionsForUnit({
+          projectId: 7,
+          userId: 42,
+          isOnline: false,
+          bookCode: 'MRK',
+          chapterNumber: 14,
+          verseNumber: 2,
+        }),
+      ).resolves.toEqual([]);
+      expect(getTranslationQuestions).not.toHaveBeenCalled();
+    });
+
     it('falls back to the API when every downloaded file is unreadable', async () => {
       mockFindRows.mockResolvedValue([
         downloadedRow({ localFilePath: 'file:///downloads/tq.json' }),
