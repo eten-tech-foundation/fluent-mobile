@@ -11,6 +11,7 @@ function chapter(
     bookName: 'Genesis',
     chapterNumber: 1,
     assignedUserId: null,
+    bibleId: 10,
     ...overrides,
   };
 }

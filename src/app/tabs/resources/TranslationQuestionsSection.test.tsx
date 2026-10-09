@@ -2,8 +2,18 @@ import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { TranslationQuestionsSection } from './TranslationQuestionsSection';
 import { TRANSLATION_QUESTIONS_LOAD_ERROR } from '../../../constants/messages';
-import { getMockTranslationQuestions } from '../../../mocks/resources/translationQuestionsMock';
+import type { TranslationQuestionItem } from '../../../types/resources/translationQuestions';
 import type { TranslationQuestionsLoadState } from '../../../hooks/useTranslationQuestionsForUnit';
+
+// Fixed fixture — no dependency on `mocks/resources`.
+const SAMPLE_QUESTIONS: TranslationQuestionItem[] = [
+  {
+    id: 'tq-99-2-1',
+    question: 'What is happening in this verse?',
+    answer:
+      'The passage describes the events surrounding this verse so the translator can check key meaning.',
+  },
+];
 
 function renderSection(
   state: TranslationQuestionsLoadState | undefined,
@@ -38,7 +48,7 @@ describe('TranslationQuestionsSection', () => {
   it('keeps answers hidden until a question accordion is expanded', () => {
     renderSection({
       status: 'ready',
-      questions: getMockTranslationQuestions(99, 2),
+      questions: SAMPLE_QUESTIONS,
     });
 
     expect(screen.getByTestId('translation-questions-list')).toBeTruthy();
@@ -63,7 +73,7 @@ describe('TranslationQuestionsSection', () => {
   it('resets nested expansion when the unit identity changes', () => {
     const answer =
       'The passage describes the events surrounding this verse so the translator can check key meaning.';
-    const questions = getMockTranslationQuestions(99, 2);
+    const questions = SAMPLE_QUESTIONS;
 
     const { rerender } = renderSection({
       status: 'ready',
@@ -108,7 +118,7 @@ describe('TranslationQuestionsSection', () => {
       <TranslationQuestionsSection
         state={{
           status: 'ready',
-          questions: getMockTranslationQuestions(99, 2),
+          questions: SAMPLE_QUESTIONS,
         }}
         retry={retry}
         sectionExpanded
