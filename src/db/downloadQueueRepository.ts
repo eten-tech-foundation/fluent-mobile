@@ -92,13 +92,25 @@ export async function enqueueDownloadItems(
     for (const item of sorted) {
       const id = item.id ?? newDownloadQueueId();
 
+      // Same catalog id + same URL → keep existing row (incl. completed).
+      // Same id + changed URL → reset to queued so Aquifer re-uploads refetch (#446).
       const result = await tx.execute(
         `INSERT INTO download_queue (
            id, project_id, user_id, tier, kind, resource_name, label, source_url,
            file_ext, status, progress, bytes_total, local_file_path, resume_data, queue_order,
            created_at, updated_at
          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued', 0, ?, NULL, NULL, ?, ?, ?)
-         ON CONFLICT DO NOTHING`,
+         ON CONFLICT(id) DO UPDATE SET
+           source_url = excluded.source_url,
+           file_ext = excluded.file_ext,
+           bytes_total = excluded.bytes_total,
+           status = 'queued',
+           progress = 0,
+           local_file_path = NULL,
+           resume_data = NULL,
+           updated_at = excluded.updated_at
+         WHERE download_queue.source_url IS NOT excluded.source_url
+           AND download_queue.status != 'downloading'`,
         [
           id,
           item.projectId,

@@ -35,11 +35,17 @@ import {
 } from '../types/api/chapterClaim';
 import type { SubmitChapterAssignmentResponse } from '../types/api/submitChapterAssignment';
 import { checkServerReachable } from './connectivity';
+import type {
+  ApiPericopeSetPayload,
+  GetPericopeSetOptions,
+} from '../types/api/pericopeSets';
 import {
+  authedConditionalGet,
   authedMultipartRequest,
   authedRequest,
   publicRequest,
   publicRequestWithResponse,
+  type ConditionalGetResult,
 } from './httpClient';
 import { resolveSessionToken } from './sessionToken';
 import { createApiError } from './apiError';
@@ -353,6 +359,31 @@ export const FluentAPI = {
     );
     const raw = unwrapApiListResponse(response);
     return Array.isArray(raw) ? raw : [];
+  },
+
+  /**
+   * Set-level (or book-scoped) pericope hydrate with ETag revalidation (#587).
+   * 200 returns groups; 304 means local KV ETag still matches.
+   */
+  getPericopeSet: async (
+    id: number,
+    options?: GetPericopeSetOptions,
+    token?: string,
+  ): Promise<ConditionalGetResult<ApiPericopeSetPayload>> => {
+    const params = new URLSearchParams();
+    if (options?.bookCode) {
+      params.set('bookCode', options.bookCode);
+    }
+    const query = params.toString();
+    const endpoint = `/pericope-sets/${id}${query ? `?${query}` : ''}`;
+    const etag = options?.etag?.trim();
+    return authedConditionalGet<ApiPericopeSetPayload>(
+      endpoint,
+      {
+        headers: etag ? { 'If-None-Match': etag } : undefined,
+      },
+      token,
+    );
   },
 
   /**

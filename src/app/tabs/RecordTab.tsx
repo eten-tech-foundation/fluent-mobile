@@ -26,7 +26,12 @@ import {
   TriangleAlert,
 } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
+import {
+  theme,
+  iconSizes,
+  listIconStrokeWidth,
+  touchHitSlop,
+} from '../../theme';
 import { useDraftingContext } from '../context/DraftingContext';
 import { useVerseAudio } from '../../hooks/useVerseAudio';
 import type { VerseAudioState } from '../../hooks/verseAudioReducer';
@@ -65,6 +70,7 @@ import {
   CAPTURE_LEAVE_TITLE,
   PERICOPE_UNAVAILABLE_WARNING,
   RECORD_AUDIO_CONFLICT_WARNING,
+  RECORD_SOURCE_TEXT_OPEN_SYNC,
   RECORD_STAGE_ADVANCE_UNUPLOADABLE_WARNING,
   RECORD_TAKEN_CHAPTER_WARNING,
 } from '../../constants/messages';
@@ -74,6 +80,7 @@ import { ChapterAssignmentData } from '../../types/db/types';
 import { getProjectPericopeSetId } from '../../db/repository';
 import { type VerseRunItem } from '../../components/ui/VerseRun';
 import { parseRequiredString } from '../../navigation/routeParams';
+import { hrefs } from '../../navigation/hrefs';
 import { useChapterConflictStatus } from '../../hooks/useChapterConflictStatus';
 import { isChapterTakenByOther } from '../../utils/chapterTakenStatus';
 import type { Recording, RecordingWithOwner } from '../../types/db/types';
@@ -1229,9 +1236,27 @@ export function RecordTab({
 
         <View style={styles.controls}>
           {syncingMessage ? (
-            <Text style={styles.syncHint} testID="record-syncing-hint">
-              {syncingMessage}
-            </Text>
+            <View style={styles.syncHintGroup}>
+              <Text style={styles.syncHint} testID="record-syncing-hint">
+                {syncingMessage}
+              </Text>
+              {recordDisabled && !isSyncing ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    router.push(hrefs.sync);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={RECORD_SOURCE_TEXT_OPEN_SYNC}
+                  testID="record-open-sync-button"
+                  hitSlop={touchHitSlop}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.syncHintAction}>
+                    {RECORD_SOURCE_TEXT_OPEN_SYNC}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
           ) : null}
 
           {showIdle ? (
@@ -1600,9 +1625,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.sm,
   },
   controls: { alignItems: 'center', gap: theme.spacing.md, width: '100%' },
+  syncHintGroup: {
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
+  },
   syncHint: {
     color: theme.colors.mutedForeground,
     fontSize: theme.typography.sizes.sm,
+    textAlign: 'center',
+  },
+  syncHintAction: {
+    color: theme.colors.primary,
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.medium,
     textAlign: 'center',
   },
   idleGroup: { alignItems: 'center', gap: theme.spacing.md },
