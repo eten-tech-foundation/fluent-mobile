@@ -1,174 +1,56 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useSyncExternalStore } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { getPendingUploadCount } from '../db/queries';
 import {
-  getFailedUploadCount,
-  getFailedUploadErrorSummary,
-  getPendingUploadChapters,
-  getPendingUploadCount,
-  getUnuploadablePendingSummary,
-} from '../db/queries';
-import {
-  onUploadSessionEvent,
-  type UploadSessionEvent,
-} from '../services/syncEvents';
-import { logger } from '../utils/logger';
-import { sanitizeUploadErrorForDisplay } from '../utils/sanitizeUploadError';
+  getSyncStatusSnapshot,
+  refreshSyncStatusStore,
+  subscribeToSyncStatusStore,
+} from '../services/syncStatusStore';
+import type { SyncStatusSnapshot } from '../services/syncStatusStore';
 
-const log = logger.create('usePendingUploads');
-
-export interface UploadProgress {
-  completed: number;
-  total: number;
-}
+export type { UploadProgress } from '../services/syncStatusStore';
 
 /** One-shot pending upload count for UI (logout gates, sync completion). */
 export async function loadPendingUploadCount(): Promise<number> {
   return await getPendingUploadCount();
 }
 
-async function loadFailedUploadCount(): Promise<number> {
-  try {
-    return await getFailedUploadCount();
-  } catch (error) {
-    log.error('Failed to load failed upload count', { error });
-    return 0;
-  }
-}
-
-async function loadUnuploadablePendingSummary() {
-  return await getUnuploadablePendingSummary();
-}
-
-async function loadFailedUploadErrorText(): Promise<string | null> {
-  try {
-    const summary = await getFailedUploadErrorSummary();
-    if (!summary) {
-      return null;
-    }
-    const sanitized = sanitizeUploadErrorForDisplay(summary.latestMessage);
-    const suffix =
-      summary.extraDistinctCount > 0
-        ? ` (+${summary.extraDistinctCount} more)`
-        : '';
-    return `${sanitized}${suffix}`;
-  } catch (error) {
-    log.error('Failed to load failed upload error text', { error });
-    return null;
-  }
-}
-
-function progressFromEvent(event: UploadSessionEvent): UploadProgress | null {
-  if (event.type === 'start') {
-    return { completed: 0, total: event.totalChapters };
-  }
-  if (event.type === 'progress') {
-    return {
-      completed: event.completedChapters,
-      total: event.totalChapters,
-    };
-  }
-  return null;
-}
-
-export function usePendingUploads(refreshKey = 0) {
-  const [pendingCount, setPendingCount] = useState(0);
-  const [pendingChapterCount, setPendingChapterCount] = useState(0);
-  const [failedCount, setFailedCount] = useState(0);
-  const [unuploadableCount, setUnuploadableCount] = useState(0);
-  const [countsUnknown, setCountsUnknown] = useState(false);
-  const [failedErrorText, setFailedErrorText] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(
-    null,
+export function usePendingUploads(refreshKey = 0): SyncStatusSnapshot & {
+  hasPendingUploads: boolean;
+  hasFailedUploads: boolean;
+  hasUnuploadablePending: boolean;
+} {
+  // Shared store (#530): every consumer — Home, chapter screen, ViewProject,
+  // Sync page — reads the same snapshot, so headers can never disagree.
+  const snapshot = useSyncExternalStore(
+    subscribeToSyncStatusStore,
+    getSyncStatusSnapshot,
   );
-  const [eventTick, setEventTick] = useState(0);
-  const clearUploadingAfterRefreshRef = useRef(false);
 
-  useEffect(() => {
-    return onUploadSessionEvent(event => {
-      const progress = progressFromEvent(event);
-      if (progress) {
-        clearUploadingAfterRefreshRef.current = false;
-        setIsUploading(true);
-        setUploadProgress(progress);
-      } else if (event.type === 'complete') {
-        // Keep Syncing until counts refresh so we never flash pending.
-        clearUploadingAfterRefreshRef.current = true;
-        setUploadProgress(null);
-      } else if (
-        event.type === 'idle' ||
-        event.type === 'cancelled' ||
-        event.type === 'paused' ||
-        event.type === 'waiting_wifi'
-      ) {
-        clearUploadingAfterRefreshRef.current = false;
-        setIsUploading(false);
-        if (event.type === 'idle') {
-          setUploadProgress(null);
-        }
-      }
-
-      setEventTick(tick => tick + 1);
-    });
+  const refresh = useCallback(() => {
+    void refreshSyncStatusStore();
   }, []);
 
+  // Refresh when a screen regains focus (returning from Sync, tab switch).
+  useFocusEffect(refresh);
+
+  // Refresh on mount and whenever the parent bumps refreshKey (sync complete,
+  // user switch — counts are active-user scoped so a switch must re-read).
   useEffect(() => {
-    let cancelled = false;
-    const shouldClearUploading = clearUploadingAfterRefreshRef.current;
-
-    Promise.allSettled([
-      loadPendingUploadCount(),
-      loadFailedUploadCount(),
-      loadFailedUploadErrorText(),
-      getPendingUploadChapters(),
-      loadUnuploadablePendingSummary(),
-    ]).then(([pending, failed, failedError, chapters, unuploadable]) => {
-      if (cancelled) {
-        return;
-      }
-
-      const pendingUnknown = pending.status === 'rejected';
-      const unuploadableUnknown = unuploadable.status === 'rejected';
-      setCountsUnknown(pendingUnknown || unuploadableUnknown);
-
-      if (pending.status === 'fulfilled') {
-        setPendingCount(pending.value);
-      }
-      if (chapters.status === 'fulfilled') {
-        setPendingChapterCount(chapters.value.length);
-      }
-      if (failed.status === 'fulfilled') {
-        setFailedCount(failed.value);
-        setFailedErrorText(
-          failed.value > 0 && failedError.status === 'fulfilled'
-            ? failedError.value
-            : null,
-        );
-      }
-      if (unuploadable.status === 'fulfilled') {
-        setUnuploadableCount(unuploadable.value.total);
-      }
-      if (shouldClearUploading) {
-        clearUploadingAfterRefreshRef.current = false;
-        setIsUploading(false);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [refreshKey, eventTick]);
+    refresh();
+  }, [refresh, refreshKey]);
 
   return {
-    pendingCount,
-    pendingChapterCount,
-    failedCount,
-    unuploadableCount,
-    failedErrorText,
-    countsUnknown,
-    hasPendingUploads: pendingCount > 0,
-    hasFailedUploads: failedCount > 0,
-    hasUnuploadablePending: unuploadableCount > 0,
-    isUploading,
-    uploadProgress,
+    pendingCount: snapshot.pendingCount,
+    pendingChapterCount: snapshot.pendingChapterCount,
+    failedCount: snapshot.failedCount,
+    unuploadableCount: snapshot.unuploadableCount,
+    failedErrorText: snapshot.failedErrorText,
+    countsUnknown: snapshot.countsUnknown,
+    hasPendingUploads: snapshot.pendingCount > 0,
+    hasFailedUploads: snapshot.failedCount > 0,
+    hasUnuploadablePending: snapshot.unuploadableCount > 0,
+    isUploading: snapshot.isUploading,
+    uploadProgress: snapshot.uploadProgress,
   };
 }
