@@ -249,21 +249,15 @@ export async function fetchPrepareOfflineManifest(
   );
 
   if (sourceAudioItems.length === 0) {
+    // Empty-manifest fallback still needs per-chapter getChapterSourceAudio
+    // to build catalog rows (URLs/sizes). Verse-timestamp persistence for the
+    // successful-manifest path happens at download time instead (#579 review).
     sourceAudioItems = await fetchSourceBibleAudioManifest(
       projectId,
       range(params.startChapter, params.endChapter).map(chapterNumber => ({
         bookCode: params.bookCode,
         chapterNumber,
       })),
-      params.languageCode,
-      bibleId,
-    );
-  } else {
-    // Manifest path has sizes/URLs but not verse timestamps — fetch chapter
-    // metadata once per chapter so offline play can seek after Prepare (#579).
-    await persistSourceAudioMetaForManifestChapters(
-      projectId,
-      sourceAudioItems,
       params.languageCode,
       bibleId,
     );
@@ -276,46 +270,64 @@ export async function fetchPrepareOfflineManifest(
 }
 
 /**
- * Best-effort verse-timestamp cache for chapters listed in the source-audio
- * manifest. Failures are logged and ignored — download enqueue must not fail
- * because metadata persistence failed (#579).
+ * Best-effort verse-timestamp cache for selected Prepare Offline chapters.
+ * Call at download time (not catalog load) so chapter toggles do not fan out
+ * one getChapterSourceAudio per chapter. Failures are logged and ignored —
+ * download enqueue must not fail because metadata persistence failed (#579).
  */
-async function persistSourceAudioMetaForManifestChapters(
+export async function persistSourceAudioMetaForManifestContexts(
   projectId: number,
-  items: PrepareOfflineResourceManifestItem[],
-  languageCode: string,
-  bibleId: number,
+  contexts: Array<{
+    languageCode: string;
+    bookCode: string;
+    startChapter: number;
+    endChapter: number;
+    bibleId: number;
+  }>,
 ): Promise<void> {
-  const chapters = new Map<string, { bookCode: string; chapter: number }>();
-  for (const item of items) {
-    const bookCode = item.bookCode?.trim();
-    const start = item.startChapter;
-    if (!bookCode || start === undefined) continue;
-    const end = item.endChapter ?? start;
-    for (const chapter of range(start, end)) {
-      chapters.set(`${bookCode}:${chapter}`, { bookCode, chapter });
+  const chapters = new Map<
+    string,
+    {
+      bookCode: string;
+      chapter: number;
+      languageCode: string;
+      bibleId: number;
+    }
+  >();
+  for (const ctx of contexts) {
+    const bookCode = ctx.bookCode?.trim();
+    if (!bookCode) continue;
+    for (const chapter of range(ctx.startChapter, ctx.endChapter)) {
+      chapters.set(`${ctx.bibleId}:${bookCode}:${chapter}`, {
+        bookCode,
+        chapter,
+        languageCode: ctx.languageCode,
+        bibleId: ctx.bibleId,
+      });
     }
   }
 
   await Promise.all(
-    [...chapters.values()].map(async ({ bookCode, chapter }) => {
-      try {
-        const response = await FluentAPI.getChapterSourceAudio({
-          projectId,
-          bookCode,
-          chapter,
-          languageCode,
-          bibleId,
-        });
-        await persistSourceAudioChapterMeta(projectId, response);
-      } catch (error) {
-        log.warn('source-audio meta persist failed', {
-          bookCode,
-          chapter,
-          error,
-        });
-      }
-    }),
+    [...chapters.values()].map(
+      async ({ bookCode, chapter, languageCode, bibleId }) => {
+        try {
+          const response = await FluentAPI.getChapterSourceAudio({
+            projectId,
+            bookCode,
+            chapter,
+            languageCode,
+            bibleId,
+          });
+          await persistSourceAudioChapterMeta(projectId, response);
+        } catch (error) {
+          log.warn('source-audio meta persist failed', {
+            bookCode,
+            chapter,
+            error,
+          });
+        }
+      },
+    ),
   );
 }
 
