@@ -42,6 +42,7 @@ import {
 } from './chapterClaimSync';
 import { getPericopeBookVersion, setPericopeBookVersion } from './storage';
 import {
+  flattenApiPericopeSetGroups,
   loadBundledPericopeSet,
   getBundledPericopeSetVersion,
 } from './pericopeSets';
@@ -858,17 +859,12 @@ export async function syncPericopeSets(sessionToken?: string) {
 }
 
 /**
- * Set-level pericope hydrate (Refs #438).
+ * Set-level pericope hydrate (Refs #438 / #587).
  *
- * Per-chapter GETs were removed here: the amended #438 bandwidth contract
- * forbids one HTTP call per assigned chapter on mobile sync. The intended
- * replacement — bundled-asset seed (#447) with a set-level API fallback
- * (fluent-api#309) — has no implementation to call yet, since neither
- * ticket has landed. This step derives the distinct pericope_set_ids in
- * play and no-ops with a clear log per set until a hydrate source exists.
- *
- * Follow-up: #TBD — wire loadBundledPericopeSet() (#447) and
- * FluentAPI.getPericopeSet() (fluent-api#309) into this function.
+ * Per-chapter GETs are forbidden by the #438 bandwidth contract. Prefer the
+ * APK-bundled FCBH/FIA assets (#447); for any other `pericope_set_id` (or a
+ * book missing from the bundle), call `GET /pericope-sets/{id}?bookCode=` with
+ * `If-None-Match` against the KV book version (stored ETag).
  */
 export async function syncPericopes() {
   return retrySyncStep(
@@ -907,15 +903,6 @@ export async function syncPericopes() {
 
       for (const [pericopeSetId, setChapters] of chaptersBySetId) {
         const bundledVersion = getBundledPericopeSetVersion(pericopeSetId);
-
-        if (!bundledVersion) {
-          log.info(
-            'No bundled source for this set — blocked on network path (fluent-api#309)',
-            { pericopeSetId },
-          );
-          continue;
-        }
-
         const distinctBookCodes = [
           ...new Set(setChapters.map(c => c.bookCode)),
         ];
@@ -925,25 +912,58 @@ export async function syncPericopes() {
             pericopeSetId,
             bookCode,
           );
-          if (storedBookVersion === bundledVersion) {
-            log.info('Pericope book already current, skipping reseed', {
+
+          if (bundledVersion) {
+            if (storedBookVersion === bundledVersion) {
+              log.info('Pericope book already current, skipping reseed', {
+                pericopeSetId,
+                bookCode,
+              });
+              continue;
+            }
+
+            const verses = loadBundledPericopeSet(pericopeSetId, bookCode);
+            if (verses) {
+              await upsertPericopeSet(pericopeSetId, bookCode, verses);
+              setPericopeBookVersion(pericopeSetId, bookCode, bundledVersion);
+              continue;
+            }
+
+            log.info(
+              'Book missing from bundled set — falling back to GET /pericope-sets/{id}',
+              { pericopeSetId, bookCode },
+            );
+          }
+
+          const result = await FluentAPI.getPericopeSet(pericopeSetId, {
+            bookCode,
+            etag: storedBookVersion || null,
+          });
+
+          if (result.status === 304) {
+            log.info('Pericope book not modified (304)', {
               pericopeSetId,
               bookCode,
             });
+            if (result.etag) {
+              setPericopeBookVersion(pericopeSetId, bookCode, result.etag);
+            }
             continue;
           }
 
-          const verses = loadBundledPericopeSet(pericopeSetId, bookCode);
-          if (!verses) {
-            log.warn(
-              'No bundled data for book in this set — will retry next sync',
-              { pericopeSetId, bookCode },
-            );
-            continue;
+          const groups = Array.isArray(result.data) ? result.data : [];
+          const verses = flattenApiPericopeSetGroups(groups);
+          if (verses.length > 0) {
+            await upsertPericopeSet(pericopeSetId, bookCode, verses);
           }
-
-          await upsertPericopeSet(pericopeSetId, bookCode, verses);
-          setPericopeBookVersion(pericopeSetId, bookCode, bundledVersion);
+          if (result.etag) {
+            setPericopeBookVersion(pericopeSetId, bookCode, result.etag);
+          } else {
+            log.warn('Pericope set 200 missing ETag — will refetch next sync', {
+              pericopeSetId,
+              bookCode,
+            });
+          }
         }
       }
     },
@@ -1459,6 +1479,9 @@ export async function refreshChapterMetadataIfOnline(
       }
 
       const sessionToken = creds.token;
+      // Push offline claims before assignment reconcile so list refresh does
+      // not clear provisional "mine" ahead of the claim POST (#611 / #273).
+      await syncPendingChapterClaimsForUser(userId);
       // One-shot ISO backfill for devices that synced languages before
       // mapApiLanguage. Verse text stays on Sync Now / DraftingScreen ensure.
       await maybeBackfillMasterDataOnRefresh(sessionToken);

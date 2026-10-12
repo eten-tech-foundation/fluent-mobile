@@ -11,6 +11,8 @@ export function deriveSyncPageStatus(
   hasFailedUploads: boolean,
   hasUnuploadablePending = false,
   countsUnknown = false,
+  /** Pending offline claims or Sync metadata errors that need Sync Now (#611). */
+  hasClaimsOrSyncRetryWork = false,
 ): SyncPageStatus {
   if (phase === 'syncing') {
     return 'syncing';
@@ -23,7 +25,8 @@ export function deriveSyncPageStatus(
     hasPendingUploads ||
     hasFailedUploads ||
     hasUnuploadablePending ||
-    countsUnknown;
+    countsUnknown ||
+    hasClaimsOrSyncRetryWork;
   if (hasWorkRemaining) {
     return 'pending';
   }

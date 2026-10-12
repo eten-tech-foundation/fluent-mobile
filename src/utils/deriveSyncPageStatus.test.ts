@@ -49,6 +49,15 @@ describe('deriveSyncPageStatus', () => {
     },
   );
 
+  it.each(['idle', 'waiting_wifi', 'offline'] as const)(
+    'does not report uploadComplete when claims/sync retry work remains (phase=%s)',
+    phase => {
+      expect(
+        deriveSyncPageStatus(phase, false, false, false, false, true),
+      ).toBe('pending');
+    },
+  );
+
   it('covers every UploadPhase value', () => {
     for (const phase of phases) {
       expect(() => deriveSyncPageStatus(phase, false, false)).not.toThrow();

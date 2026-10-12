@@ -5,12 +5,20 @@ interface UserProjectRow {
   project_id: number;
 }
 
+interface ChapterClaimQueueRow {
+  chapter_assignment_id: number;
+  user_id: number;
+  sync_status: string;
+}
+
 let userProjectRows: UserProjectRow[] = [];
 let chapterAssignmentRows: ChapterAssignmentRow[] = [];
+let chapterClaimQueueRows: ChapterClaimQueueRow[] = [];
 
 function resetReconcileDbMock(): void {
   userProjectRows = [];
   chapterAssignmentRows = [];
+  chapterClaimQueueRows = [];
 }
 
 type ExecuteResult = { rows: unknown[]; rowsAffected?: number };
@@ -51,14 +59,30 @@ async function mockExecute(
     normalized.includes('NOT IN')
   ) {
     const userId = params[0] as number;
-    const keepIds = new Set(params.slice(1) as number[]);
+    // SQL binds [userId, ...keepIds, userId] when the claim-queue guard is present.
+    const hasClaimGuard = normalized.includes('chapter_claim_queue');
+    const keepIds = new Set(
+      (hasClaimGuard ? params.slice(1, -1) : params.slice(1)) as number[],
+    );
+    const claimUserId = hasClaimGuard
+      ? (params[params.length - 1] as number)
+      : userId;
     let count = 0;
     chapterAssignmentRows = chapterAssignmentRows.map(r => {
-      if (r.assigned_user_id === userId && !keepIds.has(r.id)) {
-        count += 1;
-        return { ...r, assigned_user_id: undefined };
+      if (r.assigned_user_id !== userId || keepIds.has(r.id)) {
+        return r;
       }
-      return r;
+      const hasPendingClaim = chapterClaimQueueRows.some(
+        q =>
+          q.chapter_assignment_id === r.id &&
+          q.user_id === claimUserId &&
+          q.sync_status === 'pending',
+      );
+      if (hasPendingClaim) {
+        return r;
+      }
+      count += 1;
+      return { ...r, assigned_user_id: undefined };
     });
     return { rows: [], rowsAffected: count };
   }
@@ -247,6 +271,37 @@ describe('reconcileUserChapterWork', () => {
     expect(
       chapterAssignmentRows.find(r => r.id === 104)?.assigned_user_id,
     ).toBe(2);
+  });
+
+  it('keeps assigned_user_id when a pending offline claim exists (#611)', async () => {
+    chapterClaimQueueRows = [
+      {
+        chapter_assignment_id: 101,
+        user_id: 1,
+        sync_status: 'pending',
+      },
+    ];
+    await reconcileUserChapterWork(1, [100], [102, 103]);
+    expect(
+      chapterAssignmentRows.find(r => r.id === 101)?.assigned_user_id,
+    ).toBe(1);
+    expect(
+      chapterAssignmentRows.find(r => r.id === 100)?.assigned_user_id,
+    ).toBe(1);
+  });
+
+  it('clears assigned_user_id when the claim queue row is not pending', async () => {
+    chapterClaimQueueRows = [
+      {
+        chapter_assignment_id: 101,
+        user_id: 1,
+        sync_status: 'claim_rejected',
+      },
+    ];
+    await reconcileUserChapterWork(1, [100], [102, 103]);
+    expect(
+      chapterAssignmentRows.find(r => r.id === 101)?.assigned_user_id,
+    ).toBeUndefined();
   });
 });
 

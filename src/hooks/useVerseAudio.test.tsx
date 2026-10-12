@@ -39,6 +39,7 @@ const mockClearPausedTake = jest.fn((sessionKey: string) => {
     mockPausedMarkers.splice(index, 1);
   }
 });
+const mockNotifyPendingUploads = jest.fn();
 
 const playbackState = { status: 'idle' as 'idle' | 'playing' | 'paused' };
 
@@ -100,6 +101,11 @@ jest.mock('../services/pausedTakes', () => ({
     marker.verseNumber === undefined,
   listPausedTakes: () => mockListPausedTakes(),
   upsertPausedTake: (marker: unknown) => mockUpsertPausedTake(marker),
+}));
+
+jest.mock('../services/uploadOrchestrator', () => ({
+  notifyPendingUploads: (...args: unknown[]) =>
+    mockNotifyPendingUploads(...args),
 }));
 
 jest.mock('../services/chapterClaimSync', () => ({
@@ -319,6 +325,7 @@ describe('useVerseAudio', () => {
       endChapter: 0,
       endVerse: 0,
     });
+    expect(mockNotifyPendingUploads).toHaveBeenCalledTimes(1);
     expect(result.current.state).toBe('recorded');
     expect(result.current.takes).toEqual([saved]);
   });

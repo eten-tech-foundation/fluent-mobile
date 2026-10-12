@@ -68,6 +68,9 @@ export interface PrepareOfflineResourceItem {
   status: PrepareOfflineResourceStatus;
   /** Partial progress (0–1) while queued, downloading, paused, cancelled, or failed. */
   progress?: number;
+  /** When set, enqueue uses this URL instead of the mock fixture (#446). */
+  sourceUrl?: string;
+  fileExt?: string;
 }
 
 export interface PrepareOfflineResourceGroup {

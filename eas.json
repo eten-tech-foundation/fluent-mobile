@@ -15,7 +15,8 @@
       "distribution": "internal",
       "environment": "development",
       "env": {
-        "EAS_USE_CACHE": "1"
+        "EAS_USE_CACHE": "1",
+        "EXPO_PUBLIC_COMPONENT_GALLERY": "true"
       },
       "android": {
         "buildType": "apk"
@@ -27,7 +28,8 @@
       "environment": "preview",
       "env": {
         "EAS_USE_CACHE": "1",
-        "EXPO_PUBLIC_API_BASE_URL": "https://qa.api.fluent.bible"
+        "EXPO_PUBLIC_API_BASE_URL": "https://qa.api.fluent.bible",
+        "EXPO_PUBLIC_COMPONENT_GALLERY": "true"
       },
       "android": {
         "buildType": "apk"
@@ -39,7 +41,8 @@
       "environment": "preview",
       "env": {
         "EAS_USE_CACHE": "1",
-        "EXPO_PUBLIC_API_BASE_URL": "https://qa.api.fluent.bible"
+        "EXPO_PUBLIC_API_BASE_URL": "https://qa.api.fluent.bible",
+        "EXPO_PUBLIC_COMPONENT_GALLERY": "true"
       },
       "android": {
         "buildType": "apk"
@@ -50,7 +53,8 @@
       "environment": "production",
       "env": {
         "EAS_RESTORE_CACHE": "0",
-        "EAS_SAVE_CACHE": "1"
+        "EAS_SAVE_CACHE": "1",
+        "EXPO_PUBLIC_COMPONENT_GALLERY": "false"
       },
       "android": {
         "buildType": "app-bundle",

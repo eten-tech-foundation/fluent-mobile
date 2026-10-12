@@ -1,5 +1,5 @@
 import { theme } from '../../theme';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSync } from '../../hooks/useSync';
 import { useRouter } from 'expo-router';
 import { usePreferences } from '../../hooks/usePreferences';
@@ -20,6 +20,8 @@ import {
 } from '../../constants/messages';
 import { DownloadProgressSection } from '../../components/ui/DownloadProgressSection';
 import { useDownloadQueue } from '../../hooks/useDownloadQueue';
+import { hasPendingChapterClaimsForUser } from '../../db/queries';
+import { getActiveUserId } from '../../services/storage';
 import { formatSyncStatusLabel } from '../../utils/syncStatusState';
 import {
   isEffectivelyOnlineForTransfer,
@@ -29,6 +31,9 @@ import { hrefs } from '../../navigation/hrefs';
 import { SyncPageStatus } from '../../types/sync/types';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { logger } from '../../utils/logger';
+
+const log = logger.create('SyncScreen');
 
 export default function SyncScreen() {
   const router = useRouter();
@@ -36,6 +41,7 @@ export default function SyncScreen() {
   const { snapshot, hasDownloads } = useDownloadQueue();
 
   const [refreshKey, setRefreshKey] = useState(0);
+  const [hasPendingClaims, setHasPendingClaims] = useState(false);
 
   const {
     isOnline,
@@ -59,6 +65,17 @@ export default function SyncScreen() {
     isUploading,
     uploadProgress,
   } = usePendingUploads(refreshKey);
+
+  const { triggerSync, isSyncing, displayText, stateType } = useSync({
+    onSyncComplete: () => {
+      setRefreshKey(key => key + 1);
+    },
+  });
+
+  // Keep Sync Now visible while claims (or any Sync metadata error) still need
+  // a push — otherwise uploadComplete hides the only way to retry (#611 F-alt).
+  const hasClaimsOrSyncRetryWork = hasPendingClaims || stateType === 'error';
+
   const {
     pageStatus,
     progressUploaded,
@@ -75,8 +92,36 @@ export default function SyncScreen() {
     hasFailedUploads,
     hasUnuploadablePending,
     countsUnknown,
+    hasClaimsOrSyncRetryWork,
     uploadProgress,
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    const activeUserId = Number(getActiveUserId());
+    if (!Number.isFinite(activeUserId) || activeUserId <= 0) {
+      setHasPendingClaims(false);
+      return;
+    }
+    void hasPendingChapterClaimsForUser(activeUserId)
+      .then(pending => {
+        if (!cancelled) {
+          setHasPendingClaims(pending);
+        }
+      })
+      .catch(error => {
+        log.warn('Failed to load pending chapter claims for Sync UI', {
+          error,
+        });
+        // Fail open so a transient DB error cannot hide Sync Now (#611).
+        if (!cancelled) {
+          setHasPendingClaims(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey]);
 
   const transferTransport = useMemo(
     () => ({
@@ -113,12 +158,6 @@ export default function SyncScreen() {
       : waitingWifi
       ? SYNC_NOW_CELLULAR_DISABLED_MESSAGE
       : undefined;
-
-  const { triggerSync, isSyncing, displayText, stateType } = useSync({
-    onSyncComplete: () => {
-      setRefreshKey(key => key + 1);
-    },
-  });
 
   const runSyncNow = useCallback(async () => {
     if (syncNowDisabled) {

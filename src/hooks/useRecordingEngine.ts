@@ -10,6 +10,7 @@ import { createRecordingEngine } from '../audio/createRecordingEngine';
 import { requestMicPermission } from '../audio/micPermission';
 import { handleRecordingAppStateChange } from '../audio/recordingAppState';
 import type { RecorderApi, RecorderStatus } from '../audio/types';
+import { setMicActive } from '../audio/micActivity';
 
 export type UseRecordingEngineApi = RecorderApi & {
   requestMicPermission: typeof requestMicPermission;
@@ -73,7 +74,14 @@ export function useRecordingEngine({
         recorder,
         prepareAudioMode: prepareRecordingAudioMode,
         releaseAudioMode: releaseRecordingAudioMode,
-        onStatusChange: setStatus,
+        onStatusChange: next => {
+          // Silent for the whole take: a resume tap's haptic would land as capture restarts.
+          setMicActive(
+            'recording-engine',
+            next === 'recording' || next === 'paused',
+          );
+          setStatus(next);
+        },
       }),
     [recorder],
   );

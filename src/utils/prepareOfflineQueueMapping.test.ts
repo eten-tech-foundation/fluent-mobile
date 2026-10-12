@@ -80,4 +80,19 @@ describe('prepareOfflineQueueMapping', () => {
     expect(input.fileExt).toEqual(expect.any(String));
     expect(input.sourceUrl?.length).toBeGreaterThan(0);
   });
+
+  it('prefers item.sourceUrl / fileExt over mock fixtures (#446)', () => {
+    const input = prepareOfflineItemToEnqueueInput(
+      {
+        ...baseItem,
+        sourceUrl: 'https://cdn.example/audio_v2.mp3',
+        fileExt: 'mp3',
+      },
+      1,
+      TEST_USER_ID,
+    );
+
+    expect(input.sourceUrl).toBe('https://cdn.example/audio_v2.mp3');
+    expect(input.fileExt).toBe('mp3');
+  });
 });

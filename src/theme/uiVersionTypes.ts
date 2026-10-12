@@ -12,3 +12,12 @@ export const DEFAULT_UI_VERSION: UiVersion = 'legacy';
 export function isUiVersion(value: string | undefined): value is UiVersion {
   return value === 'legacy' || value === 'next';
 }
+
+/**
+ * Foundations color-role mode (Figma Roles collection). Canvas is the dark
+ * reading / recording surface, Hardware the light chrome, Accent the blue
+ * note overlays. Only applies in Next; Legacy has no modes.
+ */
+export type ColorMode = 'canvas' | 'hardware' | 'accent';
+
+export const DEFAULT_COLOR_MODE: ColorMode = 'hardware';

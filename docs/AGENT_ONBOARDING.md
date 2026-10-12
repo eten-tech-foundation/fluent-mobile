@@ -63,7 +63,7 @@ Recording follow-up: wire source audio dock to real fetch + playback ([#235](htt
 | [`.cursor/rules/`](../.cursor/rules/) | Cursor agent rules |
 | [`docs/guides/dependabot-process.md`](guides/dependabot-process.md) | Safe Dependabot merge process |
 | [`docs/guides/local-development-workflow.md`](guides/local-development-workflow.md) | Hosted dev + local Docker API paths |
-| [`docs/guides/recordings-sync-contract.md`](guides/recordings-sync-contract.md) | Verse audio upload contract (#102 / fluent-api #224) |
+| [`docs/guides/recordings-sync-contract.md`](guides/recordings-sync-contract.md) | Verse audio upload contract (fluent-api `main` `/verse-audio` + R2; #102 / #547) — **not** Azure / open PR #224 |
 | [`.claude/commands/`](../.claude/commands/) | Canonical slash commands (`/start-issue`, `/create-pr`, …) |
 | [`.cursor/commands/`](../.cursor/commands/) | Cursor `/` palette shims (point at `.claude/commands/`) |
 
