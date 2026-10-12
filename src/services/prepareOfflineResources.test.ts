@@ -25,6 +25,7 @@ jest.mock('./api', () => ({
 
 jest.mock('./offlineSourceAudio', () => ({
   persistSourceAudioChapterMeta: jest.fn(async () => undefined),
+  SOURCE_BIBLE_RESOURCE_NAME: 'Source Bible Audio',
 }));
 
 jest.mock('../db/downloadQueueRepository', () => ({
@@ -108,7 +109,7 @@ describe('prepareOfflineResources', () => {
           id: 'sa1',
           tier: 1,
           kind: 'audio',
-          resourceName: 'Source Bible',
+          resourceName: 'Source Bible Audio',
           label: 'Audio',
           required: true,
           removable: false,
@@ -233,7 +234,7 @@ describe('prepareOfflineResources', () => {
         id: 'source-bible-audio-MRK-1',
         tier: 1,
         kind: 'audio',
-        resourceName: 'Source Bible',
+        resourceName: 'Source Bible Audio',
         bytesTotal: 1234,
         sourceUrl: 'https://example.com/ch1.mp3',
         fileExt: 'mp3',

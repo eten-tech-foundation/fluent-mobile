@@ -9,7 +9,10 @@ import {
   PrepareOfflineResourceStatus,
 } from '../types/prepareOffline/types';
 import type { DownloadQueueStatus } from '../types/download/types';
-import { persistSourceAudioChapterMeta } from './offlineSourceAudio';
+import {
+  persistSourceAudioChapterMeta,
+  SOURCE_BIBLE_RESOURCE_NAME,
+} from './offlineSourceAudio';
 import { logger } from '../utils/logger';
 
 const log = logger.create('prepareOfflineResources');
@@ -105,7 +108,7 @@ function toSourceBibleAudioManifestItem(
     id: `source-bible-audio-${response.bookCode}-${response.chapter}`,
     tier: 1,
     kind: 'audio',
-    resourceName: 'Source Bible',
+    resourceName: SOURCE_BIBLE_RESOURCE_NAME,
     label: 'Audio',
     required: true,
     removable: false,
