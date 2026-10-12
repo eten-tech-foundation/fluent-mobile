@@ -201,27 +201,19 @@ export const FluentAPI = {
     ),
 
   getUserProjects: (
-    userId: number,
+    _userId: number,
     token?: string,
   ): Promise<UserProjectsResponse> =>
-    authedRequest<UserProjectsResponse>(
-      `/users/${userId}/projects`,
-      undefined,
-      token,
-    ),
+    authedRequest<UserProjectsResponse>('/self/projects', undefined, token),
 
   getUserMilestones: (
-    userId: number,
+    _userId: number,
     token?: string,
   ): Promise<UserMilestonesResponse> =>
-    authedRequest<UserMilestonesResponse>(
-      `/users/${userId}/milestones`,
-      undefined,
-      token,
-    ),
+    authedRequest<UserMilestonesResponse>('/self/milestones', undefined, token),
 
   getChapterAssignments: (
-    userId: number,
+    _userId: number,
     updatedAfter?: string,
     excludeProjectIds?: number[],
     token?: string,
@@ -233,7 +225,7 @@ export const FluentAPI = {
     }
     const query = params.toString();
     return authedRequest<ChapterAssignmentsResponse>(
-      `/users/${userId}/chapter-assignments/all${query ? `?${query}` : ''}`,
+      `/self/chapter-assignments/all${query ? `?${query}` : ''}`,
       undefined,
       token,
     );
@@ -241,11 +233,11 @@ export const FluentAPI = {
 
   /** Role-filtered assignments — matches web My Work / My History. */
   getUserChapterAssignments: (
-    userId: number,
+    _userId: number,
     token?: string,
   ): Promise<UserChapterAssignmentsResponse> =>
     authedRequest<UserChapterAssignmentsResponse>(
-      `/users/${userId}/chapter-assignments`,
+      '/self/chapter-assignments',
       undefined,
       token,
     ),
