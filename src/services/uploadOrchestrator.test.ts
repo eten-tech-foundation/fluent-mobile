@@ -485,6 +485,40 @@ describe('uploadOrchestrator', () => {
     await h.waitFor(() => h.events.some(e => e.type === 'complete'));
   });
 
+  it('resumes offline sessions with existing keys instead of resetting progress (#600)', async () => {
+    const h = createHarness({
+      chapters: [
+        { bookId: 1, chapterNumber: 1 },
+        { bookId: 1, chapterNumber: 2 },
+      ],
+      holdFirstChapterUntilAbort: true,
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => h.uploaded.length === 1);
+    // Keys locked at start; mid-chapter abort has not yet folded completed.
+    expect(h.orchestrator.getSnapshot().totalChapters).toBe(2);
+
+    h.emitConnectivity(false, true);
+    await h.waitFor(() => h.orchestrator.getSnapshot().phase === 'offline');
+    expect(h.orchestrator.getSnapshot().totalChapters).toBe(2);
+
+    const eventsBeforeResume = h.events.length;
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => h.events.some(e => e.type === 'complete'));
+
+    const resumeEvents = h.events.slice(eventsBeforeResume);
+    // Must reuse session (progress), not emit a fresh start that zeroes X.
+    expect(resumeEvents.some(e => e.type === 'start')).toBe(false);
+    expect(
+      resumeEvents.some(
+        e =>
+          e.type === 'progress' &&
+          e.completedChapters >= 1 &&
+          e.totalChapters >= 2,
+      ),
+    ).toBe(true);
+  });
+
   it('cancel stops upload and does not auto-retry until a new online edge', async () => {
     const h = createHarness({ workerDelayMs: 40 });
     h.emitConnectivity(true, true);

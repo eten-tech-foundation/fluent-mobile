@@ -229,6 +229,52 @@ describe('recordingSync', () => {
     expect(mockEmitUploadSessionEvent).not.toHaveBeenCalled();
   });
 
+  it('does not count a failed take as a completed chapter (#600)', async () => {
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ id: 'ok', bookId: 1, chapterNumber: 1 }),
+      pendingRecording({
+        id: 'bad',
+        bookId: 1,
+        chapterNumber: 2,
+        projectUnitId: null,
+      }),
+    ]);
+
+    const result = await syncPendingRecordings('tok-1', { delay });
+
+    expect(result).toEqual({ uploaded: 1, conflicted: 0, failed: 1 });
+    expect(mockEmitUploadSessionEvent.mock.calls.map(call => call[0])).toEqual([
+      { type: 'start', totalChapters: 2 },
+      { type: 'progress', completedChapters: 1, totalChapters: 2 },
+      { type: 'complete' },
+    ]);
+  });
+
+  it('still counts successful chapters when a sibling chapter fails (#600)', async () => {
+    mockUploadVerseAudio
+      .mockResolvedValueOnce(successResponse())
+      .mockRejectedValueOnce(new ApiError(400, 'bad request'));
+
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ id: 'a', bookId: 1, chapterNumber: 1 }),
+      pendingRecording({
+        id: 'b',
+        bookId: 1,
+        chapterNumber: 2,
+        bibleTextId: 43,
+      }),
+    ]);
+
+    const result = await syncPendingRecordings('tok-1', { delay });
+
+    expect(result).toEqual({ uploaded: 1, conflicted: 0, failed: 1 });
+    expect(mockEmitUploadSessionEvent.mock.calls.map(call => call[0])).toEqual([
+      { type: 'start', totalChapters: 2 },
+      { type: 'progress', completedChapters: 1, totalChapters: 2 },
+      { type: 'complete' },
+    ]);
+  });
+
   it('uploads pericope takes with range fields and marks uploaded (#584)', async () => {
     mockGetPendingRecordings.mockResolvedValue([
       pendingRecording({

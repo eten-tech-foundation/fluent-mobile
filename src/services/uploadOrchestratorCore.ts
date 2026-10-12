@@ -305,9 +305,12 @@ export function createUploadOrchestrator(
       sessionAbort = abort;
       // Pause/Resume continues the same chapter keys. Counting `pending.length`
       // treats a failed chapter that stayed queued, or a chapter recorded during
-      // the pause, as a smaller X (#600). Lock syncing before the claim push
-      // so Cancel cannot start a second session (#611).
-      const resumePausedSession = phase === 'paused' && sessionKeys.size > 0;
+      // the pause, as a smaller X (#600). Connectivity abort sets phase to
+      // `offline` while keeping sessionKeys — resume that too so progress is
+      // not reset to zero (#600). Lock syncing before the claim push so Cancel
+      // cannot start a second session (#611).
+      const resumePausedSession =
+        (phase === 'paused' || phase === 'offline') && sessionKeys.size > 0;
       if (resumePausedSession) {
         applyPendingChapters(chapters);
         phase = 'syncing';

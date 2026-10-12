@@ -455,7 +455,9 @@ async function runUploadPass(
         failed += 1;
       }
 
-      if (orchestratorOwnsSession) {
+      // Chapter workers never own session progress (#600 / #682). Failed takes
+      // stay pending — do not count the chapter complete on a failed result.
+      if (orchestratorOwnsSession || result === 'failed') {
         continue;
       }
       const key = chapterKey(recording);
