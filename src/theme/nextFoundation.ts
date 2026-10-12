@@ -16,12 +16,25 @@ export const nextSpace = {
   32: 32,
 } as const;
 
+/** Figma `motion/*`, `opacity/disabled` and `size/*` (04 · Spacing). */
+export const nextMotion = {
+  pressMs: 80,
+  releaseMs: 180,
+  easeStandard: { x1: 0.2, y1: 0, x2: 0, y2: 1 },
+} as const;
+
+export const nextOpacity = { disabled: 0.4 } as const;
+
+export const nextControlSizes = { icon24: 24, icon32: 32 } as const;
+
 /**
  * Map onto existing `Theme.spacing` keys.
- * Unmapped Figma steps: `space-2`, `space-32` (use `nextSpace` directly when needed).
+ * Unmapped Figma steps: `space-32` (use `nextSpace` directly when needed);
+ * `space-48` isn't encoded yet.
  * `xl` (20) has no Foundations step — kept at 20 until design assigns one.
  */
 export const nextSpacing = {
+  xxs: nextSpace[2],
   xs: nextSpace[4],
   sm: nextSpace[8],
   md: nextSpace[12],
@@ -39,11 +52,9 @@ export const nextRadiusScale = {
   full: 999,
 } as const;
 
-/**
- * Map onto existing `Theme.radius` keys.
- * Unmapped: `radius-xs` (4) — use `nextRadiusScale.xs` when needed.
- */
+/** Map onto existing `Theme.radius` keys. */
 export const nextRadius = {
+  xs: nextRadiusScale.xs,
   sm: nextRadiusScale.sm,
   md: nextRadiusScale.md,
   lg: nextRadiusScale.lg,

@@ -7,6 +7,7 @@ import {
   nextRadius,
   nextSpace,
   nextTheme,
+  nextThemes,
   nextTypeStyles,
 } from './next';
 import { resolveTheme } from './uiVersion';
@@ -84,6 +85,50 @@ describe('nextTheme (Figma Foundations / Hardware)', () => {
   it('keeps Legacy sync/warning colors until redesign defines them', () => {
     expect(nextTheme.colors.syncSynced).toBe(legacyTheme.colors.syncSynced);
     expect(nextTheme.colors.warning).toBe(legacyTheme.colors.warning);
+  });
+
+  it('exposes Hardware roles, role-built elevation and Foundations motion', () => {
+    const hardware = nextColorRoles.hardware;
+    expect(nextTheme.roles).toEqual(hardware);
+    expect(nextTheme.elevation.raised).toBe(
+      `inset 0px 2px 2px ${hardware.borderHighlight}, inset 0px -2px 1px ${hardware.borderShadow}, 0px 3px 6px ${hardware.shadowCast}`,
+    );
+    expect(nextTheme.elevation.inset).toContain(hardware.shadowEdge);
+    expect(nextTheme.motion).toEqual({
+      pressMs: 80,
+      releaseMs: 180,
+      easeStandard: { x1: 0.2, y1: 0, x2: 0, y2: 1 },
+    });
+    expect(nextTheme.opacity.disabled).toBe(0.4);
+    expect(nextTheme.controlSizes.icon32).toBe(32);
+    expect(nextTheme.radius.xs).toBe(4);
+  });
+
+  it('keeps the same role keys in Legacy so components never branch', () => {
+    expect(Object.keys(legacyTheme.roles).sort()).toEqual(
+      Object.keys(nextTheme.roles).sort(),
+    );
+  });
+
+  it('uses the Figma record red per mode', () => {
+    expect(nextColorRoles.canvas.accentRecord).toBe(nextPrimitives.red[500]);
+    expect(nextColorRoles.hardware.accentRecord).toBe(nextPrimitives.red[600]);
+    expect(nextColorRoles.accent.accentRecord).toBe(nextPrimitives.red[300]);
+  });
+
+  it('resolves a Next theme per color mode, and ignores modes in Legacy', () => {
+    for (const mode of ['canvas', 'hardware', 'accent'] as const) {
+      const resolved = resolveTheme('next', mode);
+      expect(resolved).toBe(nextThemes[mode]);
+      expect(resolved.roles).toEqual(nextColorRoles[mode]);
+      expect(resolved.colors.background).toBe(nextColorRoles[mode].bgDefault);
+      expect(resolved.elevation.raised).toContain(
+        nextColorRoles[mode].borderHighlight,
+      );
+      expect(resolveTheme('legacy', mode)).toBe(legacyTheme);
+    }
+    expect(resolveTheme('next')).toBe(nextThemes.hardware);
+    expect(nextTheme).toBe(nextThemes.hardware);
   });
 
   it('exposes Canvas and Accent role tables for future surfaces', () => {

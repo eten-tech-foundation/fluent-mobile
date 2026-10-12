@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   AlertCircle,
   HardDrive,
+  LayoutGrid,
   LogOut,
   Trash2,
   UserPlus,
@@ -29,6 +30,7 @@ import { getKnownUserIds, MAX_DEVICE_ACCOUNTS } from '../../services/storage';
 import { usePreferences } from '../../hooks/usePreferences';
 import { useReauthRequired } from '../../hooks/useReauthRequired';
 import { hrefs } from '../../navigation/hrefs';
+import { isComponentGalleryEnabled } from '../../config/componentGallery';
 import { useAuthSession } from '../../navigation/AuthSessionProvider';
 import { resetNavigationAfterAccountSwitch } from '../../navigation/resetNavigationAfterAccountSwitch';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
@@ -155,6 +157,21 @@ export default function SettingsScreen() {
                 onValueChange={setUiVersion}
                 testID="settings-ui-version"
               />
+              {isComponentGalleryEnabled() ? (
+                <SettingsNavigationRow
+                  title="Component gallery"
+                  subtitle="Review Next UI components in isolation"
+                  testID="settings-component-gallery"
+                  icon={
+                    <LayoutGrid
+                      size={iconSizes.headerTab}
+                      color={iconColor}
+                      strokeWidth={listIconStrokeWidth}
+                    />
+                  }
+                  onPress={() => router.push(hrefs.gallery)}
+                />
+              ) : null}
             </View>
           </View>
           <View style={styles.section}>

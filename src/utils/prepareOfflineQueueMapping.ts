@@ -10,14 +10,18 @@ function queueKindForResource(
 
 /**
  * Maps a Prepare for Offline catalog row to a download_queue enqueue input.
- * Uses stable `item.id` as the queue primary key.
+ * Uses stable `item.id` as the queue primary key. Prefer a real `sourceUrl`
+ * when present; fall back to mock fixtures until the catalog carries
+ * manifest URLs (#446).
  */
 export function prepareOfflineItemToEnqueueInput(
   item: PrepareOfflineResourceItem,
   projectId: number,
   userId: number,
 ): EnqueueDownloadItemInput {
-  const { sourceUrl, fileExt, bytesTotal } = getMockDownloadSource(item.kind);
+  const mock = getMockDownloadSource(item.kind);
+  const sourceUrl = item.sourceUrl?.trim() || mock.sourceUrl;
+  const fileExt = item.fileExt?.trim() || mock.fileExt;
 
   return {
     id: item.id,
@@ -29,7 +33,7 @@ export function prepareOfflineItemToEnqueueInput(
     label: item.label,
     sourceUrl,
     fileExt,
-    bytesTotal,
+    bytesTotal: mock.bytesTotal,
   };
 }
 

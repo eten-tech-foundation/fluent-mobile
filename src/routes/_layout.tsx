@@ -12,6 +12,7 @@ import { NavigationBar } from 'expo-navigation-bar';
 import { queryClient } from '../services/queryClient';
 import { appStyles } from '../app/appStyles';
 import { useTheme } from '../theme/useTheme';
+import { isComponentGalleryEnabled } from '../config/componentGallery';
 import {
   AuthSessionProvider,
   useAuthSession,
@@ -54,6 +55,9 @@ function RootNavigator() {
       </Stack.Protected>
       <Stack.Protected guard={!isAuthenticated}>
         <Stack.Screen name="(auth)" />
+      </Stack.Protected>
+      <Stack.Protected guard={isComponentGalleryEnabled()}>
+        <Stack.Screen name="gallery" />
       </Stack.Protected>
       <Stack.Screen name="index" />
     </Stack>

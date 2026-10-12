@@ -1,4 +1,5 @@
 import { nextPrimitives } from './nextPrimitives';
+import { DEFAULT_COLOR_MODE, type ColorMode } from './uiVersionTypes';
 
 const { bone, blue, red, white, black, opacity } = nextPrimitives;
 
@@ -15,7 +16,7 @@ function withAlpha(hex: string, alpha: number): string {
  * Three modes: Canvas (dark reading), Hardware (light chrome), Accent (blue overlays).
  * Values resolve to primitives (or transparent / alpha composites).
  */
-export type NextColorRoleMode = 'canvas' | 'hardware' | 'accent';
+export type NextColorRoleMode = ColorMode;
 
 export type NextColorRoles = {
   bgDefault: string;
@@ -63,7 +64,7 @@ export const nextColorRoles = {
     shadowEdge: withAlpha(black, opacity[12]),
     shadowDish: withAlpha(black, opacity[8]),
     accentPrimary: blue[700],
-    accentRecord: red[600],
+    accentRecord: red[500],
   },
   hardware: {
     bgDefault: bone[50],
@@ -109,9 +110,9 @@ export const nextColorRoles = {
     shadowEdge: withAlpha(black, opacity[12]),
     shadowDish: withAlpha(black, opacity[8]),
     accentPrimary: bone[100],
-    accentRecord: red[600],
+    accentRecord: red[300],
   },
 } as const satisfies Record<NextColorRoleMode, NextColorRoles>;
 
 /** Default Next chrome mode for app shell (Settings, lists, drawers). */
-export const NEXT_DEFAULT_COLOR_MODE: NextColorRoleMode = 'hardware';
+export const NEXT_DEFAULT_COLOR_MODE: NextColorRoleMode = DEFAULT_COLOR_MODE;

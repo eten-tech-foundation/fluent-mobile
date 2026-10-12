@@ -1,5 +1,13 @@
 import { legacyTheme, type Theme } from './legacy';
-import { nextSpacing, nextRadius, nextTypography } from './nextFoundation';
+import { buildElevation } from './elevation';
+import {
+  nextControlSizes,
+  nextMotion,
+  nextOpacity,
+  nextSpacing,
+  nextRadius,
+  nextTypography,
+} from './nextFoundation';
 import {
   NEXT_DEFAULT_COLOR_MODE,
   nextColorRoles,
@@ -150,6 +158,11 @@ function buildNextOverrides(mode: NextColorRoleMode): ThemeOverrides {
 
   return {
     colors,
+    roles: { ...roles },
+    elevation: buildElevation(roles),
+    motion: { ...nextMotion, easeStandard: { ...nextMotion.easeStandard } },
+    opacity: { ...nextOpacity },
+    controlSizes: { ...nextControlSizes },
     spacing: { ...nextSpacing },
     radius: { ...nextRadius },
     typography: {
@@ -162,18 +175,20 @@ function buildNextOverrides(mode: NextColorRoleMode): ThemeOverrides {
 }
 
 /**
- * Next theme overrides from Figma Foundations.
- * Default chrome mode is Hardware (light panels / screens).
- * Canvas / Accent remain available via `nextColorRoles` for drafting overlays.
+ * Next themes from Figma Foundations, one per color-role mode. Hardware is
+ * the default app chrome; Canvas (dark reading / recording) and Accent (blue
+ * note overlays) apply to subtrees wrapped in `ColorModeScope`.
  *
  * Source: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2308-6
  */
-const nextOverrides: ThemeOverrides = buildNextOverrides(
-  NEXT_DEFAULT_COLOR_MODE,
-);
+export const nextThemes: Record<NextColorRoleMode, Theme> = {
+  canvas: applyThemeOverrides(legacyTheme, buildNextOverrides('canvas')),
+  hardware: applyThemeOverrides(legacyTheme, buildNextOverrides('hardware')),
+  accent: applyThemeOverrides(legacyTheme, buildNextOverrides('accent')),
+};
 
-/** Resolved Next theme — Legacy baseline + Foundations (Hardware) overrides. */
-export const nextTheme: Theme = applyThemeOverrides(legacyTheme, nextOverrides);
+/** Resolved Next theme in the default (Hardware) mode. */
+export const nextTheme: Theme = nextThemes[NEXT_DEFAULT_COLOR_MODE];
 
 export { nextPrimitives } from './nextPrimitives';
 export {

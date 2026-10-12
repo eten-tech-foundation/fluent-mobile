@@ -4,11 +4,17 @@ import {
   subscribeToConnectivity,
 } from './connectivity';
 import { emitUploadSessionEvent } from './syncEvents';
-import { getSyncPausedUntilMs, setSyncPausedUntilMs } from './storage';
+import {
+  getActiveUserId,
+  getSyncPausedUntilMs,
+  setSyncPausedUntilMs,
+} from './storage';
+import { syncPendingChapterClaimsForUser } from './sync';
 import {
   getUploadOverCellular,
   subscribeToPreference,
 } from './userPreferences';
+import { logger } from '../utils/logger';
 import {
   createUploadOrchestrator,
   PAUSE_WINDOW_MS,
@@ -18,9 +24,25 @@ import {
   type UploadOrchestratorSnapshot,
 } from './uploadOrchestratorCore';
 
+const log = logger.create('UploadOrchestrator');
+
+async function pushPendingClaimsBeforeUpload(): Promise<void> {
+  const activeUserId = getActiveUserId();
+  const userId = Number(activeUserId);
+  if (!Number.isFinite(userId) || userId <= 0) {
+    log.warn('Skipping claim push before upload — no active user', {
+      activeUserId,
+    });
+    return;
+  }
+  await syncPendingChapterClaimsForUser(userId);
+}
+
 export {
   createUploadOrchestrator,
   PAUSE_WINDOW_MS,
+  SESSION_RETRY_MAX_ATTEMPTS,
+  sessionRetryDelayMs,
   type ChapterUploadWorker,
   type UploadOrchestrator,
   type UploadOrchestratorDeps,
@@ -83,6 +105,7 @@ export function startUploadOrchestrator(
       overrides && 'worker' in overrides
         ? workerOverride ?? null
         : chapterUploadWorker,
+    pushPendingClaimsBeforeUpload,
     ...restOverrides,
   };
 
@@ -111,4 +134,15 @@ export async function syncNowUploads(): Promise<void> {
 
 export function getUploadSessionSnapshot(): UploadOrchestratorSnapshot {
   return getUploadOrchestrator().getSnapshot();
+}
+
+/**
+ * A take was saved while the app is open. Starts an upload when transport
+ * allows it, or queues one behind the in-flight session. No-op before start.
+ */
+export function notifyPendingUploads(): void {
+  if (!singleton) {
+    return;
+  }
+  singleton.notifyPendingWork();
 }
