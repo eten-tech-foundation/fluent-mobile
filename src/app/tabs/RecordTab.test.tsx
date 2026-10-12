@@ -1427,6 +1427,104 @@ describe('RecordTab', () => {
     expect(screen.getByText(PERICOPE_UNAVAILABLE_WARNING)).toBeTruthy();
   });
 
+  describe('Complete stage recording lock', () => {
+    const completeChapter = {
+      ...chapterData,
+      status: 'complete',
+      assignedUserId: 42,
+    };
+
+    /** captureBibleTextId reaches useVerseAudio as `bibleTextId` once resolved. */
+    async function waitForCaptureReady() {
+      await waitFor(() => {
+        expect(mockUseVerseAudio).toHaveBeenLastCalledWith(
+          expect.objectContaining({ bibleTextId: expect.any(Number) }),
+        );
+      });
+    }
+
+    it('disables the idle record button at Complete', async () => {
+      renderTab(undefined, { chapterData: completeChapter });
+
+      await waitForCaptureReady();
+      expect(screen.getByTestId('record-start-button')).toBeDisabled();
+    });
+
+    it('disables Record New Take at Complete', async () => {
+      const take = makeTake();
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [take],
+        selectedTake: take,
+      });
+
+      renderTab(undefined, { chapterData: completeChapter });
+
+      await waitForCaptureReady();
+      expect(screen.getByTestId('record-new-take-button')).toBeDisabled();
+    });
+    it('hides delete and select controls at Complete but keeps playback', () => {
+      const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isSelected: false });
+      const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isSelected: true });
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [take1, take2],
+        selectedTake: take2,
+      });
+
+      renderTab(undefined, { chapterData: completeChapter });
+
+      expect(screen.queryByTestId('record-delete-button-rec_1')).toBeNull();
+      expect(
+        screen.queryByTestId('record-delete-selected-button-rec_2'),
+      ).toBeNull();
+      expect(screen.queryByTestId('record-take-select-rec_1')).toBeNull();
+      expect(screen.queryByTestId('record-take-select-rec_2')).toBeNull();
+      expect(screen.getByTestId('record-play-button-rec_1')).toBeTruthy();
+      expect(screen.getByTestId('record-play-button-rec_2')).toBeTruthy();
+    });
+
+    it('still plays a take at Complete', async () => {
+      const take = makeTake();
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [take],
+        selectedTake: take,
+      });
+
+      renderTab(undefined, { chapterData: completeChapter });
+
+      fireEvent.press(screen.getByTestId('record-play-button-rec_1'));
+      await waitFor(() => {
+        expect(idleAudio.playTake).toHaveBeenCalledWith(take);
+      });
+    });
+
+    it('keeps delete, select and record enabled one stage earlier (consultant_check)', async () => {
+      const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isSelected: false });
+      const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isSelected: true });
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [take1, take2],
+        selectedTake: take2,
+      });
+
+      renderTab(undefined, {
+        chapterData: { ...completeChapter, status: 'consultant_check' },
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('record-new-take-button')).toBeEnabled();
+      });
+      expect(screen.getByTestId('record-delete-button-rec_1')).toBeTruthy();
+      expect(screen.getByTestId('record-take-select-rec_1')).toBeTruthy();
+    });
+  });
+
   describe('Mode-aware Current Unit Title (#409)', () => {
     it('shows the pericope range and title as a subtitle when a pericope resolves', async () => {
       mockUseDraftingUnit.mockReturnValue({
