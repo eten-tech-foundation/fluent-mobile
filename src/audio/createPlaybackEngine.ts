@@ -163,6 +163,35 @@ export function createPlaybackEngine(deps: PlaybackEngineDeps): PlaybackEngine {
       setStatus('playing');
       emitPosition();
     },
+    async resume(positionMs?: number, uri?: string) {
+      await ensureMode();
+      await loadQueue;
+      if (uri !== undefined && loadedUri !== uri) {
+        await load(uri);
+      }
+      if (!player.isLoaded) {
+        if (uri === undefined) {
+          throw new Error('Nothing is loaded to resume. Re-select the take.');
+        }
+        await load(uri);
+      }
+      if (positionMs !== undefined) {
+        await player.seekTo(positionMs / 1000);
+      }
+      player.play();
+      if (positionMs !== undefined) {
+        const target = positionMs / 1000;
+        // The native player can drop the pre-play seek; check twice and restore it.
+        for (let i = 0; i < 2; i++) {
+          await delayMs(80);
+          if (Math.abs(player.currentTime - target) > 0.05) {
+            await player.seekTo(target);
+          }
+        }
+      }
+      setStatus('playing');
+      emitPosition();
+    },
     async pause() {
       if (status !== 'playing') {
         return;

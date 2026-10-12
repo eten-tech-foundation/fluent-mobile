@@ -8,6 +8,7 @@ const mockRecordingStop = jest.fn();
 const mockRecordingPause = jest.fn();
 const mockRecordingResume = jest.fn();
 const mockPlaybackPlay = jest.fn();
+const mockPlaybackResume = jest.fn();
 const mockPlaybackStop = jest.fn();
 const mockPlaybackPause = jest.fn();
 const mockPlaybackLoad = jest.fn();
@@ -34,6 +35,10 @@ jest.mock('./usePlaybackEngine', () => ({
     play: async (...args: unknown[]) => {
       playbackState.status = 'playing';
       return mockPlaybackPlay(...args);
+    },
+    resume: async (...args: unknown[]) => {
+      playbackState.status = 'playing';
+      return mockPlaybackResume(...args);
     },
     stop: async (...args: unknown[]) => {
       playbackState.status = 'idle';
@@ -176,6 +181,7 @@ describe('useVerseAudio', () => {
       uri: 'file:///tmp/take.m4a',
       durationMs: 500,
     });
+    mockPlaybackResume.mockResolvedValue(undefined);
     mockRecordingPause.mockResolvedValue(undefined);
     mockRecordingResume.mockResolvedValue(undefined);
     mockPlaybackPlay.mockResolvedValue(undefined);
@@ -921,6 +927,130 @@ describe('useVerseAudio', () => {
 
     expect(getTakesForVerse.mock.calls).toHaveLength(loadsBefore);
     expect(mockPlaybackStop.mock.calls).toHaveLength(stopsBefore);
+  });
+  describe('seekStitched', () => {
+    it('while playing: load + seek, then resume without play/replace', async () => {
+      loadTakes.mockResolvedValue([makeTake()]);
+      const stitchedRow = makeStitchedRow();
+
+      const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+      await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+      await act(async () => {
+        await result.current.playStitched(stitchedRow);
+      });
+      expect(result.current.state).toBe('playing');
+      mockPlaybackPlay.mockClear();
+      mockPlaybackLoad.mockClear();
+
+      await act(async () => {
+        await result.current.seekStitched(stitchedRow, 500);
+      });
+
+      expect(mockPlaybackLoad).toHaveBeenCalledWith('/recordings/v3.m4a');
+      expect(mockPlaybackSeek).toHaveBeenCalledWith(500);
+      expect(mockPlaybackResume).toHaveBeenCalledWith(
+        500,
+        '/recordings/v3.m4a',
+      );
+      expect(mockPlaybackPlay).not.toHaveBeenCalled();
+      expect(mockPlaybackSeek.mock.invocationCallOrder[0]).toBeLessThan(
+        mockPlaybackResume.mock.invocationCallOrder[0],
+      );
+      expect(result.current.stitchPositionMs).toBe(500);
+      expect(result.current.state).toBe('playing');
+    });
+
+    it('maps a tap in the second segment to that file and offset', async () => {
+      loadTakes.mockResolvedValue([makeTake()]);
+      const stitchedRow = makeStitchedRow();
+
+      const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+      await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+      await act(async () => {
+        await result.current.playStitched(stitchedRow);
+      });
+      mockPlaybackPlay.mockClear();
+
+      await act(async () => {
+        await result.current.seekStitched(stitchedRow, 1500);
+      });
+
+      expect(mockPlaybackLoad).toHaveBeenLastCalledWith('/recordings/v4.m4a');
+      expect(mockPlaybackSeek).toHaveBeenLastCalledWith(500);
+      expect(mockPlaybackResume).toHaveBeenCalledWith(
+        500,
+        '/recordings/v4.m4a',
+      );
+      expect(mockPlaybackPlay).not.toHaveBeenCalled();
+      expect(result.current.stitchPositionMs).toBe(1500);
+    });
+
+    it('while not playing: seeks but does not resume', async () => {
+      loadTakes.mockResolvedValue([makeTake()]);
+      const stitchedRow = makeStitchedRow();
+
+      const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+      await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+      await act(async () => {
+        await result.current.seekStitched(stitchedRow, 500);
+      });
+
+      expect(mockPlaybackSeek).toHaveBeenCalledWith(500);
+      expect(mockPlaybackResume).not.toHaveBeenCalled();
+      expect(mockPlaybackPlay).not.toHaveBeenCalled();
+    });
+
+    it('a superseded seek does not resume or release the in-flight flag', async () => {
+      loadTakes.mockResolvedValue([makeTake()]);
+      const stitchedRow = makeStitchedRow();
+
+      const { result, rerender } = renderHook(() =>
+        useVerseAudio(verseAudioArgs()),
+      );
+      await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+      await act(async () => {
+        await result.current.playStitched(stitchedRow);
+      });
+
+      // First seek's load is held open.
+      let releaseFirstLoad!: () => void;
+      mockPlaybackLoad.mockImplementationOnce(
+        () =>
+          new Promise<void>(r => {
+            releaseFirstLoad = r;
+          }),
+      );
+      let first!: Promise<void>;
+      act(() => {
+        first = result.current.seekStitched(stitchedRow, 300);
+      });
+
+      // Second seek supersedes it.
+      await act(async () => {
+        await result.current.seekStitched(stitchedRow, 1200);
+      });
+      mockPlaybackResume.mockClear();
+
+      await act(async () => {
+        releaseFirstLoad();
+        await first;
+      });
+
+      // Stale first seek must not seek/resume after the newer one.
+      expect(mockPlaybackSeek).not.toHaveBeenLastCalledWith(300);
+      expect(mockPlaybackResume).not.toHaveBeenCalled();
+
+      // Natural end right after must not skip the tapped segment
+      playbackState.status = 'idle';
+      await act(async () => {
+        rerender(undefined);
+      });
+      expect(result.current.state).toBe('recorded');
+    });
   });
 
   // --- #49: discard an in-progress capture ---------------------------------

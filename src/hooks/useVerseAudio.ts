@@ -293,6 +293,13 @@ export function useVerseAudio({
   const stitchDurationsRef = useRef<number[]>([]);
   /** Start offset (ms) of the current segment within the whole stitched row (#544). */
   const [stitchBaseMs, setStitchBaseMs] = useState(0);
+  /** Where the bar sits while a segment load is in flight (the scrub target offset). */
+  const [stitchHoldMs, setStitchHoldMs] = useState(0);
+  /**
+   * Keep the scrubbed offset visible until the native position stream catches
+   * up. Android can report 0 briefly after play/seek around segment swaps.
+   */
+  const [stitchSeekHoldMs, setStitchSeekHoldMs] = useState<number | null>(null);
 
   const clearStitchQueue = useCallback(() => {
     stitchPlaybackGenerationRef.current += 1;
@@ -300,6 +307,8 @@ export function useVerseAudio({
     stitchRowIdRef.current = null;
     stitchDurationsRef.current = [];
     setStitchBaseMs(0);
+    setStitchHoldMs(0);
+    setStitchSeekHoldMs(null);
   }, []);
 
   /** Recompute the current segment's start offset for queue position `index`. */
@@ -328,6 +337,15 @@ export function useVerseAudio({
       setStitchSegmentLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (stitchSeekHoldMs === null) {
+      return;
+    }
+    if (Math.abs(playback.positionMs - stitchSeekHoldMs) <= 50) {
+      setStitchSeekHoldMs(null);
+    }
+  }, [playback.positionMs, stitchSeekHoldMs]);
 
   useEffect(() => {
     chapterAssignedRef.current = false;
@@ -656,7 +674,7 @@ export function useVerseAudio({
 
   /** File checks + engine play, shared by single takes and stitched segments. */
   const playUri = useCallback(
-    async (path: string) => {
+    async (path: string, isStale?: () => boolean) => {
       const exists = await fileExists(path);
       if (!exists) {
         throw new Error('Take file is missing on disk. Re-record this verse.');
@@ -665,6 +683,7 @@ export function useVerseAudio({
       if (size === undefined || size <= 0) {
         throw new Error('Take file is empty (0 bytes). Re-record this verse.');
       }
+      if (isStale?.()) return;
       await playback.play(path);
     },
     [playback],
@@ -709,8 +728,10 @@ export function useVerseAudio({
         if (isStale()) {
           return;
         }
+        setStitchHoldMs(0);
+        setStitchSeekHoldMs(null);
         setErrorMessage(null);
-        await playUri(uri);
+        await playUri(uri, isStale);
         if (isStale()) {
           return;
         }
@@ -801,7 +822,7 @@ export function useVerseAudio({
         index += 1;
       }
       const offset = Math.min(target - base, durations[index]);
-      const wasPlaying = state === 'playing';
+      const wasPlaying = state === 'playing' || playback.status === 'playing';
 
       // Abort any in-flight segment load, and mark the load gap so the
       // natural-end effect doesn't read it as end-of-playback (#298).
@@ -816,6 +837,8 @@ export function useVerseAudio({
         stitchRowIdRef.current = row.id;
         stitchQueueRef.current = { uris, index };
         setStitchBaseMs(base);
+        setStitchHoldMs(offset);
+        setStitchSeekHoldMs(offset);
         setLoadedTakeId(null);
         await playback.load(uris[index]); // no-op when already loaded
         if (isStale()) return;
@@ -823,7 +846,9 @@ export function useVerseAudio({
         if (isStale()) return;
         setPlayingTakeId(row.id);
         if (wasPlaying) {
-          await playStitchedSegment(uris[index], row.id);
+          await playback.resume(offset, uris[index]);
+          if (isStale()) return;
+          dispatch({ type: 'PLAY' });
         }
       } catch (error) {
         if (isStale()) return;
@@ -838,7 +863,7 @@ export function useVerseAudio({
         }
       }
     },
-    [beginStitchLoad, endStitchLoad, playback, playStitchedSegment, state],
+    [beginStitchLoad, endStitchLoad, playback, state],
   );
 
   /**
@@ -1059,7 +1084,9 @@ export function useVerseAudio({
     playTake,
     playStitched,
     stitchPositionMs:
-      stitchBaseMs + (stitchSegmentLoading ? 0 : playback.positionMs),
+      stitchBaseMs +
+      (stitchSeekHoldMs ??
+        (stitchSegmentLoading ? stitchHoldMs : playback.positionMs)),
     seekStitched,
     seek,
     pausePlayback,
