@@ -448,4 +448,60 @@ describe('createPlaybackEngine', () => {
     expect(player.calls).not.toContain('play');
     expect(engine.getStatus()).toBe('idle');
   });
+
+  it('cancels a stale resume when a newer load starts mid-resume', async () => {
+    const player = makeFakePlayer({ durationSec: 3 });
+    const statuses: string[] = [];
+    const delayReleases: Array<() => void> = [];
+    const engine = createPlaybackEngine({
+      player,
+      onStatusChange: s => statuses.push(s),
+      delayMs: () =>
+        new Promise<void>(resolve => {
+          delayReleases.push(resolve);
+        }),
+    });
+
+    await engine.load('file:///take-a.m4a');
+    const resuming = engine.resume(500);
+
+    // Wait until resume has played and parked on the first post-play delay.
+    await new Promise<void>((resolve, reject) => {
+      const started = Date.now();
+      const tick = () => {
+        if (delayReleases.length > 0 && player.calls.includes('play')) {
+          resolve();
+          return;
+        }
+        if (Date.now() - started > 2000) {
+          reject(new Error('resume never reached post-play delay'));
+          return;
+        }
+        setImmediate(tick);
+      };
+      tick();
+    });
+
+    await engine.load('file:///take-b.m4a');
+    expect(player.loadedSource).toBe('file:///take-b.m4a');
+
+    const playCallsBeforeRelease = player.calls.filter(
+      c => c === 'play',
+    ).length;
+    // Drain every delayed tick the stale resume may still be waiting on.
+    while (delayReleases.length > 0) {
+      const release = delayReleases.shift()!;
+      release();
+      await new Promise<void>(r => setImmediate(r));
+    }
+    await resuming;
+
+    expect(player.calls.filter(c => c === 'play').length).toBe(
+      playCallsBeforeRelease,
+    );
+    expect(player.loadedSource).toBe('file:///take-b.m4a');
+    // Stale resume must not promote status to playing after B replaced A.
+    expect(statuses).not.toContain('playing');
+    expect(engine.getStatus()).toBe('idle');
+  });
 });

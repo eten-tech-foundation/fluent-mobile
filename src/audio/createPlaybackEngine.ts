@@ -56,6 +56,11 @@ export function createPlaybackEngine(deps: PlaybackEngineDeps): PlaybackEngine {
   let pendingLoad: { uri: string; promise: Promise<void> } | null = null;
   /** Tail of the load queue — one player, so `replace` calls must not overlap. */
   let loadQueue: Promise<void> = Promise.resolve();
+  /**
+   * Bumped at the start of every `load`. Stale `resume` calls that awaited
+   * across a newer load must not seek/play/setStatus after the replacement.
+   */
+  let loadGeneration = 0;
 
   function setStatus(next: PlayerStatus): void {
     status = next;
@@ -105,6 +110,7 @@ export function createPlaybackEngine(deps: PlaybackEngineDeps): PlaybackEngine {
    * the other one.
    */
   async function load(uri: string): Promise<void> {
+    ++loadGeneration;
     await ensureMode();
     if (pendingLoad?.uri === uri) {
       await pendingLoad.promise;
@@ -164,19 +170,30 @@ export function createPlaybackEngine(deps: PlaybackEngineDeps): PlaybackEngine {
       emitPosition();
     },
     async resume(positionMs?: number, uri?: string) {
+      const resumeGeneration = loadGeneration;
       await ensureMode();
       await loadQueue;
+      if (loadGeneration !== resumeGeneration) return;
+      let operationGeneration = resumeGeneration;
       if (uri !== undefined && loadedUri !== uri) {
+        const expectedGeneration = loadGeneration + 1;
         await load(uri);
+        if (loadGeneration !== expectedGeneration) return;
+        operationGeneration = expectedGeneration;
       }
       if (!player.isLoaded) {
         if (uri === undefined) {
           throw new Error('Nothing is loaded to resume. Re-select the take.');
         }
+        const expectedGeneration = loadGeneration + 1;
         await load(uri);
+        if (loadGeneration !== expectedGeneration) return;
+        operationGeneration = expectedGeneration;
       }
+      if (loadGeneration !== operationGeneration) return;
       if (positionMs !== undefined) {
         await player.seekTo(positionMs / 1000);
+        if (loadGeneration !== operationGeneration) return;
       }
       player.play();
       if (positionMs !== undefined) {
@@ -184,11 +201,13 @@ export function createPlaybackEngine(deps: PlaybackEngineDeps): PlaybackEngine {
         // The native player can drop the pre-play seek; check twice and restore it.
         for (let i = 0; i < 2; i++) {
           await delayMs(80);
+          if (loadGeneration !== operationGeneration) return;
           if (Math.abs(player.currentTime - target) > 0.05) {
             await player.seekTo(target);
           }
         }
       }
+      if (loadGeneration !== operationGeneration) return;
       setStatus('playing');
       emitPosition();
     },
