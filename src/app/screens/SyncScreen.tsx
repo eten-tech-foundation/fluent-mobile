@@ -93,6 +93,7 @@ export default function SyncScreen() {
     hasUnuploadablePending,
     countsUnknown,
     hasClaimsOrSyncRetryWork,
+    hasDownloads,
     uploadProgress,
   });
 

@@ -1,4 +1,5 @@
 import { getDatabase } from './db';
+import { emitDownloadQueueChanged } from '../utils/downloadQueueEvents';
 import { logger } from '../utils/logger';
 import type { Transaction } from '@op-engineering/op-sqlite';
 import type {
@@ -135,18 +136,24 @@ export async function enqueueDownloadItems(
   });
 
   log.info('Enqueued download items', { count: ids.length });
+  if (ids.length > 0) {
+    emitDownloadQueueChanged();
+  }
   return ids;
 }
 
 export async function markDownloadItemDownloading(id: string): Promise<void> {
   const db = getDatabase();
   const now = new Date().toISOString();
-  await db.execute(
+  const result = await db.execute(
     `UPDATE download_queue
      SET status = 'downloading', updated_at = ?
      WHERE id = ? AND status != 'completed'`,
     [now, id],
   );
+  if ((result.rowsAffected ?? 0) > 0) {
+    emitDownloadQueueChanged();
+  }
 }
 
 export async function updateDownloadItemProgress(
@@ -169,12 +176,15 @@ export async function markDownloadItemPaused(
 ): Promise<void> {
   const db = getDatabase();
   const now = new Date().toISOString();
-  await db.execute(
+  const result = await db.execute(
     `UPDATE download_queue
      SET status = 'paused', resume_data = COALESCE(?, resume_data), updated_at = ?
      WHERE id = ? AND status IN ('queued', 'downloading', 'paused')`,
     [resumeData ?? null, now, id],
   );
+  if ((result.rowsAffected ?? 0) > 0) {
+    emitDownloadQueueChanged();
+  }
 }
 
 export async function markDownloadItemCancelled(
@@ -183,12 +193,15 @@ export async function markDownloadItemCancelled(
 ): Promise<void> {
   const db = getDatabase();
   const now = new Date().toISOString();
-  await db.execute(
+  const result = await db.execute(
     `UPDATE download_queue
      SET status = 'cancelled', resume_data = COALESCE(?, resume_data), updated_at = ?
      WHERE id = ? AND status != 'completed'`,
     [resumeData ?? null, now, id],
   );
+  if ((result.rowsAffected ?? 0) > 0) {
+    emitDownloadQueueChanged();
+  }
 }
 
 /** Persist cancel for in-flight project rows when the worker lost its active handle. */
@@ -197,12 +210,15 @@ export async function cancelProjectDownloadTransfers(
 ): Promise<void> {
   const db = getDatabase();
   const now = new Date().toISOString();
-  await db.execute(
+  const result = await db.execute(
     `UPDATE download_queue
      SET status = 'cancelled', updated_at = ?
      WHERE project_id = ? AND status IN ('downloading', 'paused')`,
     [now, projectId],
   );
+  if ((result.rowsAffected ?? 0) > 0) {
+    emitDownloadQueueChanged();
+  }
 }
 
 export async function markDownloadItemCompleted(
@@ -212,22 +228,28 @@ export async function markDownloadItemCompleted(
 ): Promise<void> {
   const db = getDatabase();
   const now = new Date().toISOString();
-  await db.execute(
+  const result = await db.execute(
     `UPDATE download_queue
      SET status = 'completed', progress = 1, local_file_path = ?,
          bytes_total = COALESCE(?, bytes_total), resume_data = NULL, updated_at = ?
      WHERE id = ?`,
     [localFilePath, bytesTotal ?? null, now, id],
   );
+  if ((result.rowsAffected ?? 0) > 0) {
+    emitDownloadQueueChanged();
+  }
 }
 
 export async function markDownloadItemFailed(id: string): Promise<void> {
   const db = getDatabase();
   const now = new Date().toISOString();
-  await db.execute(
+  const result = await db.execute(
     `UPDATE download_queue SET status = 'failed', updated_at = ? WHERE id = ?`,
     [now, id],
   );
+  if ((result.rowsAffected ?? 0) > 0) {
+    emitDownloadQueueChanged();
+  }
 }
 
 export async function getResumableDownloadItems(
@@ -250,14 +272,24 @@ export async function getResumableDownloadItems(
 
 export async function deleteDownloadItem(id: string): Promise<void> {
   const db = getDatabase();
-  await db.execute(`DELETE FROM download_queue WHERE id = ?`, [id]);
+  const result = await db.execute(`DELETE FROM download_queue WHERE id = ?`, [
+    id,
+  ]);
+  if ((result.rowsAffected ?? 0) > 0) {
+    emitDownloadQueueChanged();
+  }
 }
 
+/**
+ * Active + failed rows for Sync / Prepare Offline UI. Completed and cancelled
+ * are omitted from `items` and from aggregate totals so cancelled work cannot
+ * inflate remaining counts or keep the Downloads section visible (#147).
+ */
 export async function getDownloadQueueSnapshot(): Promise<DownloadQueueSnapshot> {
   const db = getDatabase();
   const result = await db.execute(
     `SELECT * FROM download_queue
-     WHERE status != 'completed'
+     WHERE status NOT IN ('completed', 'cancelled')
      ORDER BY queue_order ASC`,
   );
   const rows = (result.rows ?? []) as unknown as DownloadQueueRow[];
@@ -267,7 +299,8 @@ export async function getDownloadQueueSnapshot(): Promise<DownloadQueueSnapshot>
     `SELECT
        COUNT(*) AS total,
        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed
-     FROM download_queue`,
+     FROM download_queue
+     WHERE status != 'cancelled'`,
   );
   const counts = countResult.rows?.[0] as
     | { total: number; completed: number }
