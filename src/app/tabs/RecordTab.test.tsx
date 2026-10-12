@@ -13,9 +13,12 @@ import {
   PERICOPE_UNAVAILABLE_WARNING,
   RECORD_AUDIO_CONFLICT_WARNING,
   RECORD_TAKEN_CHAPTER_WARNING,
+  RECORD_SOURCE_TEXT_OPEN_SYNC,
+  RECORD_SOURCE_TEXT_SYNCING,
   RECORD_SOURCE_TEXT_UNAVAILABLE,
   RECORD_STAGE_ADVANCE_UNUPLOADABLE_WARNING,
 } from '../../constants/messages';
+import { hrefs } from '../../navigation/hrefs';
 import { getProjectPericopeSetId } from '../../db/repository';
 import type {
   useVerseAudio,
@@ -35,11 +38,14 @@ import type {
   ChapterAssignmentData,
 } from '../../types/db/types';
 
+const mockPush = jest.fn();
+
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({ chapterName: 'Mark 14' }),
   useRouter: () => ({
     back: jest.fn(),
     canGoBack: () => true,
+    push: mockPush,
   }),
 }));
 
@@ -98,8 +104,10 @@ jest.mock('../../components/layout/SourceAudioShell', () => ({
   SourceAudioBarSlot: () => null,
 }));
 
+let mockIsSyncing = false;
+
 jest.mock('../../hooks/useGlobalSyncStatus', () => ({
-  useGlobalSyncStatus: () => false,
+  useGlobalSyncStatus: () => mockIsSyncing,
 }));
 
 jest.mock('../../audio/micPermission', () => ({
@@ -289,6 +297,7 @@ describe('RecordTab', () => {
     // earlier test's call (e.g. deleteTake('rec_1')) leaks into the next
     // test's `.not.toHaveBeenCalled()` assertion.
     jest.clearAllMocks();
+    mockIsSyncing = false;
     mockResolveRecordingUnit.mockResolvedValue(null);
     mockChapterHasUnuploadableSelectedTakes.mockResolvedValue(false);
     mockIsChapterFullyRecordedVerseMode.mockResolvedValue(true);
@@ -395,6 +404,37 @@ describe('RecordTab', () => {
         RECORD_SOURCE_TEXT_UNAVAILABLE,
       );
     });
+    expect(screen.getByTestId('record-open-sync-button')).toHaveTextContent(
+      RECORD_SOURCE_TEXT_OPEN_SYNC,
+    );
+  });
+
+  it('says text is still syncing when bible text is missing and sync is in flight', async () => {
+    mockIsSyncing = true;
+    mockGetBibleTextId.mockResolvedValueOnce(null);
+
+    renderTab();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('record-syncing-hint')).toHaveTextContent(
+        RECORD_SOURCE_TEXT_SYNCING,
+      );
+    });
+    expect(screen.queryByTestId('record-open-sync-button')).toBeNull();
+  });
+
+  it('opens Sync when source text is unavailable and Open Sync is pressed', async () => {
+    mockGetBibleTextId.mockResolvedValueOnce(null);
+
+    renderTab();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('record-open-sync-button')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('record-open-sync-button'));
+
+    expect(mockPush).toHaveBeenCalledWith(hrefs.sync);
   });
 
   it('registers shell source-audio integration for idle record chrome', () => {

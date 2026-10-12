@@ -1493,11 +1493,18 @@ export async function reconcileUserChapterWork(
   await db.transaction(async (tx: Transaction) => {
     if (currentAssignedIds.length > 0) {
       const placeholders = currentAssignedIds.map(() => '?').join(',');
+      // Keep provisional "mine" while an offline claim is still queued (#611).
       const result = await tx.execute(
         `UPDATE chapter_assignments
          SET assigned_user_id = NULL
-         WHERE assigned_user_id = ? AND id NOT IN (${placeholders})`,
-        [userId, ...currentAssignedIds],
+         WHERE assigned_user_id = ? AND id NOT IN (${placeholders})
+           AND NOT EXISTS (
+             SELECT 1 FROM chapter_claim_queue ccq
+             WHERE ccq.chapter_assignment_id = chapter_assignments.id
+               AND ccq.user_id = ?
+               AND ccq.sync_status = 'pending'
+           )`,
+        [userId, ...currentAssignedIds, userId],
       );
       if (result.rowsAffected) {
         log.info('Reconciled stale assigned_user_id', {

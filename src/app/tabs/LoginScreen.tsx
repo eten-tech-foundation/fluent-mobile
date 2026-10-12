@@ -18,6 +18,7 @@ import { useLogin } from '../../hooks/useLogin';
 import { AuthFormError } from '../../components/ui/AuthFormError';
 import { REAUTH_SUBMIT_BUTTON } from '../../constants/messages';
 import { hrefs } from '../../navigation/hrefs';
+import { isComponentGalleryEnabled } from '../../config/componentGallery';
 import { useAuthSession } from '../../navigation/AuthSessionProvider';
 import { authFormStyles as styles } from './authFormStyles';
 
@@ -288,6 +289,18 @@ export default function LoginScreen({
                 testID="login-terms-link"
               >
                 <Text style={styles.footerLink}>Terms.</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+          {!isReauth && isComponentGalleryEnabled() ? (
+            <View style={styles.footer}>
+              <TouchableOpacity
+                accessibilityRole="link"
+                accessibilityLabel="Component gallery"
+                onPress={() => router.push(hrefs.gallery)}
+                testID="login-component-gallery-link"
+              >
+                <Text style={styles.footerLink}>Component gallery</Text>
               </TouchableOpacity>
             </View>
           ) : null}

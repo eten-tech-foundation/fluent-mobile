@@ -18,6 +18,11 @@ jest.mock('../../services/storage', () => ({
   },
   getSyncError: (key: string) => mockGetSyncError(key),
   getSyncState: () => mockGetSyncState(),
+  getActiveUserId: () => '1',
+}));
+
+jest.mock('../../db/queries', () => ({
+  hasPendingChapterClaimsForUser: jest.fn().mockResolvedValue(false),
 }));
 
 jest.mock('../../services/sync', () => ({

@@ -82,6 +82,8 @@ export const hrefs = {
       pathname: '/(app)/(stack)/reauth' as const,
       params: params?.returnTo ? { returnTo: params.returnTo } : undefined,
     } as const),
+  /** Next UI component gallery; only registered when the flag is on. */
+  gallery: '/gallery' as const,
   privacyPolicyApp: '/(app)/privacy-policy' as const,
   termsOfUseApp: '/(app)/terms-of-use' as const,
   forgotPasswordApp: (params?: { initialEmail?: string }) =>

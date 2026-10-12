@@ -4,6 +4,7 @@ import { useRecordingEngine } from './useRecordingEngine';
 import { usePlaybackEngine } from './usePlaybackEngine';
 import { claimChapterOffline } from '../db/repository';
 import { syncChapterClaim } from '../services/chapterClaimSync';
+import { notifyPendingUploads } from '../services/uploadOrchestrator';
 import { useVerseAudio } from './useVerseAudio';
 import { logger } from '../utils/logger';
 
@@ -27,11 +28,16 @@ jest.mock('../services/connectivity', () => ({
   getConnectivitySnapshot: jest.fn(),
 }));
 
+jest.mock('../services/uploadOrchestrator', () => ({
+  notifyPendingUploads: jest.fn(),
+}));
+
 jest.mock('./useRecordingEngine');
 jest.mock('./usePlaybackEngine');
 
 const mockClaimChapterOffline = claimChapterOffline as jest.Mock;
 const mockSyncChapterClaim = syncChapterClaim as jest.Mock;
+const mockNotifyPendingUploads = notifyPendingUploads as jest.Mock;
 const mockGetConnectivitySnapshot = getConnectivitySnapshot as jest.Mock;
 const mockUseRecordingEngine = useRecordingEngine as jest.Mock;
 const mockUsePlaybackEngine = usePlaybackEngine as jest.Mock;
@@ -211,6 +217,47 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
   });
 
   describe('online (#268)', () => {
+    it('does not notify pending uploads until the online claim settles', async () => {
+      let releaseClaim: (value: {
+        hasClaimConflict: boolean;
+        assignedUserId: number;
+      }) => void = () => {};
+      mockSyncChapterClaim.mockImplementation(
+        () =>
+          new Promise(resolve => {
+            releaseClaim = resolve;
+          }),
+      );
+
+      const { result } = renderHook(() =>
+        useVerseAudio({
+          ...verseAudioArgs(),
+          persistTake,
+          loadTakes,
+        }),
+      );
+
+      await act(async () => {
+        await result.current.start();
+      });
+
+      let stopPromise!: Promise<void>;
+      await act(async () => {
+        stopPromise = result.current.stop();
+        await waitFor(() =>
+          expect(mockSyncChapterClaim).toHaveBeenCalledTimes(1),
+        );
+      });
+      expect(mockNotifyPendingUploads).not.toHaveBeenCalled();
+
+      await act(async () => {
+        releaseClaim({ hasClaimConflict: false, assignedUserId: USER_ID });
+        await stopPromise;
+      });
+
+      expect(mockNotifyPendingUploads).toHaveBeenCalledTimes(1);
+    });
+
     it('syncs claim when the chapter is unassigned and online', async () => {
       const onChapterClaimed = jest.fn();
       const { result } = renderHook(() =>

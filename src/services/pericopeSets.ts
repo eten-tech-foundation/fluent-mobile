@@ -6,6 +6,7 @@ import {
   FCBH_SET_ID,
   FIA_SET_ID,
 } from '../../assets/pericope-sets/pericopeSetVersions';
+import type { ApiPericopeSetGroup } from '../types/api/pericopeSets';
 import type {
   BundledPericopeVerse,
   RawFcbhPericopeRow,
@@ -58,8 +59,8 @@ function normalizeFiaRow(row: RawFiaPericopeRow): BundledPericopeVerse {
  * the APK-bundled FCBH-All-Books.json / FIA-All-Books.json (#447). Pure
  * and synchronous -- no HTTP, no SQLite access. Returns null when the
  * set isn't bundled or the book isn't present in that set's export, so
- * callers (sync.ts, per #438) can fall through to the network path
- * (fluent-api#309) once that exists.
+ * callers (sync.ts, per #438 / #587) can fall through to
+ * `FluentAPI.getPericopeSet()`.
  *
  * Filters + normalizes at call time rather than at build time, so the
  * bundled assets stay an unmodified copy of the source exports (matches
@@ -102,4 +103,41 @@ function sortByChapterVerse(
     return a.chapterNumber - b.chapterNumber;
   }
   return a.verseNumber - b.verseNumber;
+}
+
+/**
+ * Split API public identity (`section_number` for FCBH) back into the
+ * SQLite `section` + `pericope_number` columns used by bundled seeders.
+ */
+export function parseApiPericopeIdentity(pericopeNumber: string): {
+  section: number | null;
+  pericopeNumber: string;
+} {
+  const match = /^(\d+)_(.+)$/.exec(pericopeNumber);
+  if (match) {
+    return { section: Number(match[1]), pericopeNumber: match[2] };
+  }
+  return { section: null, pericopeNumber };
+}
+
+/** Flatten GET /pericope-sets/{id} groups into per-verse rows for upsert. */
+export function flattenApiPericopeSetGroups(
+  groups: ApiPericopeSetGroup[],
+): BundledPericopeVerse[] {
+  const verses: BundledPericopeVerse[] = [];
+  for (const group of groups) {
+    const { section, pericopeNumber } = parseApiPericopeIdentity(
+      group.pericopeNumber,
+    );
+    for (const ref of group.verses) {
+      verses.push({
+        chapterNumber: ref.chapterNumber,
+        verseNumber: ref.verseNumber,
+        section,
+        pericopeNumber,
+        pericopeTitle: group.pericopeTitle,
+      });
+    }
+  }
+  return verses.sort(sortByChapterVerse);
 }

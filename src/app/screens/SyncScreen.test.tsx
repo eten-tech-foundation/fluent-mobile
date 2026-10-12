@@ -18,6 +18,8 @@ const mockTriggerSync = jest.fn();
 const mockPauseUploadSession = jest.fn();
 const mockCancelUploadSession = jest.fn();
 const mockSyncNowUploads = jest.fn();
+const mockHasPendingChapterClaimsForUser = jest.fn();
+const mockGetActiveUserId = jest.fn();
 
 let mockPageStatus = 'pending';
 let mockCellularBlocked = false;
@@ -100,8 +102,12 @@ jest.mock('../../hooks/usePendingUploads', () => ({
 }));
 
 jest.mock('../../hooks/useUploadSessionState', () => ({
-  useUploadSessionState: () => ({
-    pageStatus: mockPageStatus,
+  useUploadSessionState: (opts?: { hasClaimsOrSyncRetryWork?: boolean }) => ({
+    pageStatus:
+      opts?.hasClaimsOrSyncRetryWork &&
+      (mockPageStatus === 'uploadComplete' || mockPageStatus === 'allComplete')
+        ? 'pending'
+        : mockPageStatus,
     progressUploaded: 0,
     progressTotal: 3,
     nextRetryAt: undefined,
@@ -113,6 +119,15 @@ jest.mock('../../hooks/useUploadSessionState', () => ({
     resumeUploads: mockResumeUploads,
     syncNowUploads: mockSyncNowFromHook,
   }),
+}));
+
+jest.mock('../../db/queries', () => ({
+  hasPendingChapterClaimsForUser: (...args: unknown[]) =>
+    mockHasPendingChapterClaimsForUser(...args),
+}));
+
+jest.mock('../../services/storage', () => ({
+  getActiveUserId: () => mockGetActiveUserId(),
 }));
 
 jest.mock('../../services/uploadOrchestrator', () => ({
@@ -193,6 +208,49 @@ describe('SyncScreen', () => {
     mockCancel.mockResolvedValue(undefined);
     mockResumeUploads.mockResolvedValue(undefined);
     mockSyncNowFromHook.mockResolvedValue(undefined);
+    mockGetActiveUserId.mockReturnValue('1');
+    mockHasPendingChapterClaimsForUser.mockResolvedValue(false);
+  });
+
+  it('shows Sync Now when only pending chapter claims remain (#611)', async () => {
+    mockPageStatus = 'uploadComplete';
+    mockPendingUploads = {
+      ...mockPendingUploads,
+      hasPendingUploads: false,
+      pendingCount: 0,
+      pendingChapterCount: 0,
+    };
+    mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
+
+    render(<SyncScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('sync-action-sync-now')).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId('sync-action-sync-now'));
+    await waitFor(() => {
+      expect(mockSyncNowFromHook).toHaveBeenCalledTimes(1);
+      expect(mockTriggerSync).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('shows Sync Now when a Sync metadata error remains with no uploads (#611)', async () => {
+    mockPageStatus = 'uploadComplete';
+    mockStateType = 'error';
+    mockDisplayText = 'Sync failed: chapter claims';
+    mockPendingUploads = {
+      ...mockPendingUploads,
+      hasPendingUploads: false,
+      pendingCount: 0,
+      pendingChapterCount: 0,
+    };
+
+    render(<SyncScreen />);
+
+    expect(screen.getByTestId('sync-action-sync-now')).toBeTruthy();
+    expect(screen.getByTestId('sync-metadata-error')).toHaveTextContent(
+      'Sync failed: chapter claims',
+    );
   });
 
   it('calls syncNowUploads and triggerSync when Sync Now is pressed', async () => {

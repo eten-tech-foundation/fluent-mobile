@@ -81,6 +81,26 @@ async function mockExecute(
       string,
       string,
     ];
+    const existing = rows.find(r => r.id === id);
+    if (existing) {
+      // Mirrors ON CONFLICT(id) DO UPDATE … WHERE source_url IS NOT excluded
+      // AND status != 'downloading' (#446).
+      if (
+        existing.source_url === sourceUrl ||
+        existing.status === 'downloading'
+      ) {
+        return { rows: [], rowsAffected: 0 };
+      }
+      existing.source_url = sourceUrl;
+      existing.file_ext = fileExt;
+      existing.bytes_total = bytesTotal;
+      existing.status = 'queued';
+      existing.progress = 0;
+      existing.local_file_path = null;
+      existing.resume_data = null;
+      existing.updated_at = updatedAt;
+      return { rows: [], rowsAffected: 1 };
+    }
     rows.push({
       id,
       project_id: projectId,
@@ -345,6 +365,59 @@ const TEST_USER_ID = 7;
 describe('downloadQueueRepository', () => {
   beforeEach(() => {
     resetDownloadQueueDbMock();
+  });
+
+  it('re-queues a completed row when sourceUrl changes under the same id (#446)', async () => {
+    const [id] = await enqueueDownloadItems([
+      {
+        id: 'aquifer-1-audio',
+        projectId: 1,
+        userId: TEST_USER_ID,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Audio',
+        sourceUrl: 'https://cdn.example/a_v1.mp3',
+        fileExt: 'mp3',
+      },
+    ]);
+    await markDownloadItemCompleted(id, 'file:///local/a_v1.mp3');
+
+    const sameUrl = await enqueueDownloadItems([
+      {
+        id: 'aquifer-1-audio',
+        projectId: 1,
+        userId: TEST_USER_ID,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Audio',
+        sourceUrl: 'https://cdn.example/a_v1.mp3',
+        fileExt: 'mp3',
+      },
+    ]);
+    expect(sameUrl).toEqual([]);
+    expect(__getDownloadQueueRows()[0].status).toBe('completed');
+
+    const changed = await enqueueDownloadItems([
+      {
+        id: 'aquifer-1-audio',
+        projectId: 1,
+        userId: TEST_USER_ID,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Audio',
+        sourceUrl: 'https://cdn.example/a_v2.mp3',
+        fileExt: 'mp3',
+      },
+    ]);
+    expect(changed).toEqual(['aquifer-1-audio']);
+    const row = __getDownloadQueueRows()[0];
+    expect(row.status).toBe('queued');
+    expect(row.progress).toBe(0);
+    expect(row.source_url).toBe('https://cdn.example/a_v2.mp3');
+    expect(row.local_file_path).toBeNull();
   });
 
   it('enqueues items in tier order regardless of input array order', async () => {

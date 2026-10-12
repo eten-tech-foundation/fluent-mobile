@@ -44,7 +44,7 @@ Both `publicRequest` and `authedRequest` log sanitized metadata via `summarizeAp
 4. If sync needs the data, call the new method from `src/services/sync.ts` and persist via `repository.ts`.
 5. Unit-test with mocked `fetch` (see `src/services/api.auth.test.ts`, `api.verseAudio.test.ts`).
 
-Verse audio upload contract (#102): [recordings-sync-contract.md](./recordings-sync-contract.md).
+Verse audio upload contract (#102 / #547 — fluent-api `main` `/verse-audio` + R2): [recordings-sync-contract.md](./recordings-sync-contract.md).
 
 ## Testing
 

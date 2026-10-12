@@ -38,11 +38,17 @@ import {
 } from '../types/api/chapterClaim';
 import type { SubmitChapterAssignmentResponse } from '../types/api/submitChapterAssignment';
 import { checkServerReachable } from './connectivity';
+import type {
+  ApiPericopeSetPayload,
+  GetPericopeSetOptions,
+} from '../types/api/pericopeSets';
 import {
+  authedConditionalGet,
   authedMultipartRequest,
   authedRequest,
   publicRequest,
   publicRequestWithResponse,
+  type ConditionalGetResult,
 } from './httpClient';
 import { resolveSessionToken } from './sessionToken';
 import { createApiError } from './apiError';
@@ -421,7 +427,7 @@ export const FluentAPI = {
     return Array.isArray(raw) ? raw : [];
   },
 
-  /**
+   /**
    * Prepare Offline Tier 1 source audio manifest — sizes/metadata for a
    * project/bible/chapter range (#504 follow-on). Same 20-chapter-per-range
    * cap as the translation-resources manifest; `bibleId` comes from the
@@ -434,6 +440,31 @@ export const FluentAPI = {
     authedRequest<ApiSourceAudioManifestResponse>(
       sourceAudioManifestPath(projectId, params),
     ),
+
+  /**
+   * Set-level (or book-scoped) pericope hydrate with ETag revalidation (#587).
+   * 200 returns groups; 304 means local KV ETag still matches.
+   */
+  getPericopeSet: async (
+    id: number,
+    options?: GetPericopeSetOptions,
+    token?: string,
+  ): Promise<ConditionalGetResult<ApiPericopeSetPayload>> => {
+    const params = new URLSearchParams();
+    if (options?.bookCode) {
+      params.set('bookCode', options.bookCode);
+    }
+    const query = params.toString();
+    const endpoint = `/pericope-sets/${id}${query ? `?${query}` : ''}`;
+    const etag = options?.etag?.trim();
+    return authedConditionalGet<ApiPericopeSetPayload>(
+      endpoint,
+      {
+        headers: etag ? { 'If-None-Match': etag } : undefined,
+      },
+      token,
+    );
+  },
 
   /**
    * Source/reference chapter audio for the drafting dock (fluent-api #282).
