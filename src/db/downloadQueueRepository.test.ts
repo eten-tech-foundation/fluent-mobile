@@ -412,7 +412,7 @@ describe('downloadQueueRepository', () => {
         fileExt: 'mp3',
       },
     ]);
-    expect(changed).toEqual(['aquifer-1-audio']);
+    expect(changed).toEqual([id]);
     const row = __getDownloadQueueRows()[0];
     expect(row.status).toBe('queued');
     expect(row.progress).toBe(0);

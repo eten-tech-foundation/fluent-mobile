@@ -427,7 +427,7 @@ export const FluentAPI = {
     return Array.isArray(raw) ? raw : [];
   },
 
-   /**
+  /**
    * Prepare Offline Tier 1 source audio manifest — sizes/metadata for a
    * project/bible/chapter range (#504 follow-on). Same 20-chapter-per-range
    * cap as the translation-resources manifest; `bibleId` comes from the
