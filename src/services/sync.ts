@@ -1387,6 +1387,9 @@ export async function syncAllData(
             projectResult.partialSkipWarning,
           );
           await reconcilePendingClaimsAfterAssignmentPull(userId);
+          // Catalogue books from Tier 2 assignments need pericopes too (#670).
+          // Already-current books skip via stored pericope book version.
+          await syncPericopes();
           await syncBibleTexts(undefined);
         } else {
           // Omit excludeProjectIds on re-login: the API can return [] when every
@@ -1407,6 +1410,8 @@ export async function syncAllData(
           });
           notifyTier1Complete();
           // Tier 2: remaining assignment chapters (Projects browse).
+          // Re-login already pulled all assignments before Tier 1 pericopes,
+          // so no second syncPericopes here (unlike fresh-install Tier 2).
           await syncBibleTexts(bibleTextUpdatedAfter);
         }
 

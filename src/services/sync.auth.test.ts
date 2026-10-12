@@ -77,6 +77,7 @@ jest.mock('./storage', () => ({
     SYNC_ERROR_CHAPTER_CLAIMS: 'sync_error_chapter_claims',
     SYNC_ERROR_PROJECT_UNITS: 'sync_error_project_units',
     SYNC_ERROR_BIBLE_TEXTS: 'sync_error_bible_texts',
+    SYNC_ERROR_PERICOPES: 'sync_error_pericopes',
   },
   getUserIdSync: jest.fn(),
   getActiveUserId: jest.fn(),
@@ -100,6 +101,8 @@ jest.mock('./storage', () => ({
   isReauthRequired: jest.fn(),
   isBibleTextsServerIdRemapPending: jest.fn().mockReturnValue(false),
   clearBibleTextsServerIdRemapPending: jest.fn(),
+  getPericopeBookVersion: jest.fn().mockReturnValue(''),
+  setPericopeBookVersion: jest.fn(),
 }));
 
 jest.mock('./chapterClaimSync', () => ({
@@ -146,6 +149,9 @@ const {
   getChaptersToSync,
   getMyWorkChaptersToSync,
   getLocalProjectIds,
+  getChaptersNeedingPericopeSync,
+  getProjectPericopeSetId,
+  upsertPericopeSet,
   userHasLocalProjects,
   userHasLocalChapterAssignments,
   userNeedsAssigneeRepair,
@@ -156,6 +162,9 @@ const {
   getChaptersToSync: jest.Mock;
   getMyWorkChaptersToSync: jest.Mock;
   getLocalProjectIds: jest.Mock;
+  getChaptersNeedingPericopeSync: jest.Mock;
+  getProjectPericopeSetId: jest.Mock;
+  upsertPericopeSet: jest.Mock;
   userHasLocalProjects: jest.Mock;
   userHasLocalChapterAssignments: jest.Mock;
   userNeedsAssigneeRepair: jest.Mock;
@@ -1159,6 +1168,12 @@ describe('syncAllData progressive login (#670)', () => {
     jest.spyOn(syncEvents, 'emitSyncStart').mockImplementation(() => {});
     jest.spyOn(syncEvents, 'emitSyncComplete').mockImplementation(() => {});
 
+    mockGetConnectivitySnapshot.mockResolvedValue({
+      isOnline: true,
+      isWifi: true,
+      isCellular: false,
+      connectionType: 'wifi',
+    });
     (getUserIdSync as jest.Mock).mockReturnValue('2');
     (getActiveUserId as jest.Mock).mockReturnValue('2');
     (getLastSyncedAt as jest.Mock).mockReturnValue('');
@@ -1193,6 +1208,39 @@ describe('syncAllData progressive login (#670)', () => {
       token: 'new-user-token',
     });
 
+    // Fresh install: Tier 1 only has My Work (MRK); Tier 2 catalogue adds PSA.
+    // Unbundled set id so GET /pericope-sets/{id} is the persist path.
+    const myWorkChapter = {
+      projectId: 10,
+      bookId: 41,
+      bookCode: 'MRK',
+      chapterNumber: 1,
+    };
+    const catalogueChapter = {
+      projectId: 10,
+      bookId: 19,
+      bookCode: 'PSA',
+      chapterNumber: 1,
+    };
+    getProjectPericopeSetId.mockResolvedValue(99);
+    getChaptersNeedingPericopeSync
+      .mockResolvedValueOnce([myWorkChapter])
+      .mockResolvedValueOnce([catalogueChapter]);
+    (FluentAPI.getPericopeSet as jest.Mock).mockImplementation(
+      async (_setId: number, opts: { bookCode: string }) => ({
+        status: 200,
+        etag: `"etag-${opts.bookCode}"`,
+        data: [
+          {
+            bookCode: opts.bookCode,
+            pericopeNumber: '1',
+            pericopeTitle: null,
+            verses: [{ chapterNumber: 1, verseNumber: 1 }],
+          },
+        ],
+      }),
+    );
+
     let resolveAssignments: (value: unknown) => void = () => undefined;
     (FluentAPI.getChapterAssignments as jest.Mock).mockImplementationOnce(
       () =>
@@ -1220,6 +1268,28 @@ describe('syncAllData progressive login (#670)', () => {
       expect(onTier1Complete).toHaveBeenCalledTimes(1);
     });
 
+    // Tier 1 unblocked: My Work pericopes persisted; catalogue PSA not yet.
+    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(99, {
+      bookCode: 'MRK',
+      etag: null,
+    });
+    expect(upsertPericopeSet).toHaveBeenCalledWith(
+      99,
+      'MRK',
+      expect.arrayContaining([
+        expect.objectContaining({ chapterNumber: 1, verseNumber: 1 }),
+      ]),
+    );
+    expect(FluentAPI.getPericopeSet).not.toHaveBeenCalledWith(
+      99,
+      expect.objectContaining({ bookCode: 'PSA' }),
+    );
+    expect(upsertPericopeSet).not.toHaveBeenCalledWith(
+      99,
+      'PSA',
+      expect.anything(),
+    );
+
     // Tier 2 not finished yet — full catalogue still pending.
     expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
     resolveAssignments({ data: [] });
@@ -1232,6 +1302,18 @@ describe('syncAllData progressive login (#670)', () => {
       'new-user-token',
     );
     expect(onTier1Complete).toHaveBeenCalledTimes(1);
+    // After Tier 2 assignments, catalogue PSA pericopes are fetched + persisted.
+    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(99, {
+      bookCode: 'PSA',
+      etag: null,
+    });
+    expect(upsertPericopeSet).toHaveBeenCalledWith(
+      99,
+      'PSA',
+      expect.arrayContaining([
+        expect.objectContaining({ chapterNumber: 1, verseNumber: 1 }),
+      ]),
+    );
   });
 });
 
