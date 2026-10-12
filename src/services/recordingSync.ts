@@ -516,7 +516,11 @@ export async function syncPendingRecordings(
   return inFlight;
 }
 
-/** Chapter worker entry used by `uploadOrchestrator` (#150). */
+/**
+ * Direct chapter upload helper (tests / ad-hoc callers). Production wires
+ * `createChapterUploadWorker` via `registerRecordingUploadWorker` (#150).
+ * Same failed-count contract as the registered worker.
+ */
 export async function uploadChapterRecordings(
   chapter: PendingUploadChapter,
   signal: AbortSignal,
@@ -526,7 +530,10 @@ export async function uploadChapterRecordings(
   if (!resolved) {
     throw new Error('No auth token available for chapter upload');
   }
-  await syncPendingRecordings(resolved, { chapter, signal });
+  const result = await syncPendingRecordings(resolved, { chapter, signal });
+  if (result.failed > 0) {
+    throw new Error(`Chapter upload failed for ${result.failed} recording(s)`);
+  }
 }
 
 export function createChapterUploadWorker(

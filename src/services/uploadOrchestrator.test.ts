@@ -420,6 +420,106 @@ describe('uploadOrchestrator', () => {
     });
   });
 
+  it('recovers from thrown network interrupt via bounded recheck without NetInfo (#600)', async () => {
+    const h = createHarness({
+      chapters: [
+        { bookId: 1, chapterNumber: 1 },
+        { bookId: 1, chapterNumber: 2 },
+      ],
+      networkInterruptOnChapter: 2,
+      // Snapshot still reports online — no emitConnectivity after interrupt.
+      getSessionTransportSnapshot: async () => ({
+        isOnline: true,
+        isWifi: true,
+        connectionType: 'wifi',
+      }),
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() =>
+      h.events.some(
+        e =>
+          e.type === 'progress' &&
+          e.completedChapters === 1 &&
+          e.totalChapters === 2,
+      ),
+    );
+    await h.waitFor(() =>
+      h.events.some(e => e.type === 'paused' && e.reason === 'connectivity'),
+    );
+    expect(h.orchestrator.getSnapshot()).toMatchObject({
+      phase: 'offline',
+      completedChapters: 1,
+      totalChapters: 2,
+    });
+    expect(h.pendingTimers().map(t => t.delayMs)).toEqual([
+      sessionRetryDelayMs(1),
+    ]);
+
+    const before = h.events.length;
+    h.fireTimer(sessionRetryDelayMs(1));
+    await h.waitFor(() => h.events.some(e => e.type === 'complete'), 2000);
+    const after = h.events.slice(before);
+    expect(after.some(e => e.type === 'start')).toBe(false);
+    expect(
+      after.some(
+        e =>
+          e.type === 'progress' &&
+          e.completedChapters === 1 &&
+          e.totalChapters === 2,
+      ),
+    ).toBe(true);
+  });
+
+  it('deferred interrupt recheck stays offline when snapshot remains down (#600)', async () => {
+    // Stay reachable until the interrupt so the session can make progress;
+    // only the post-interrupt recheck sees persistent offline (no NetInfo).
+    let snapshotOnline = true;
+    const h = createHarness({
+      chapters: [
+        { bookId: 1, chapterNumber: 1 },
+        { bookId: 1, chapterNumber: 2 },
+      ],
+      networkInterruptOnChapter: 2,
+      getSessionTransportSnapshot: async () => ({
+        isOnline: snapshotOnline,
+        isWifi: snapshotOnline,
+        connectionType: snapshotOnline ? 'wifi' : 'none',
+      }),
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() =>
+      h.events.some(
+        e =>
+          e.type === 'progress' &&
+          e.completedChapters === 1 &&
+          e.totalChapters === 2,
+      ),
+    );
+    await h.waitFor(() =>
+      h.events.some(e => e.type === 'paused' && e.reason === 'connectivity'),
+    );
+    expect(h.orchestrator.getSnapshot()).toMatchObject({
+      phase: 'offline',
+      completedChapters: 1,
+      totalChapters: 2,
+    });
+    expect(h.pendingTimers().map(t => t.delayMs)).toEqual([
+      sessionRetryDelayMs(1),
+    ]);
+
+    snapshotOnline = false;
+    h.fireTimer(sessionRetryDelayMs(1));
+    await h.flush();
+    await h.flush();
+    expect(h.orchestrator.getSnapshot()).toMatchObject({
+      phase: 'offline',
+      completedChapters: 1,
+      totalChapters: 2,
+    });
+    expect(h.events.some(e => e.type === 'complete')).toBe(false);
+    expect(h.pendingTimers().filter(t => !t.cancelled)).toEqual([]);
+  });
+
   it('keeps the session total when Resume follows a pause that finished the in-flight chapter (#600)', async () => {
     const h = createHarness({
       chapters: [

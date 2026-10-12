@@ -725,6 +725,19 @@ describe('recordingSync', () => {
     expect(mockMarkRecordingUploaded).toHaveBeenCalled();
   });
 
+  it('uploadChapterRecordings throws on failed count like the registered worker', async () => {
+    authToken.set('session-tok');
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ projectUnitId: null }),
+    ]);
+    await expect(
+      uploadChapterRecordings(
+        { bookId: 40, chapterNumber: 1 },
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow(/Chapter upload failed/);
+  });
+
   it('createChapterUploadWorker registers chapter uploads', async () => {
     const worker = createChapterUploadWorker(() => 'worker-tok');
     const controller = new AbortController();

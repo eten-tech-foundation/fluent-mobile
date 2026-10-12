@@ -245,6 +245,26 @@ export function createUploadOrchestrator(
     return true;
   }
 
+  /**
+   * After a thrown transport interrupt there may be no NetInfo edge. Match
+   * connectivity pause cleanup, then re-probe via session transport snapshot
+   * after a nonzero delay (never 0ms) before evaluateAuto (#600).
+   */
+  function scheduleTransportRecheckAfterInterrupt(): void {
+    clearRetryTimer();
+    const delayMs = sessionRetryDelayMs(1);
+    log.info('Scheduling upload transport recheck after network interrupt', {
+      delayMs,
+    });
+    retryTimerCancel = schedule(() => {
+      retryTimerCancel = null;
+      void (async () => {
+        await applyFreshTransportSnapshot();
+        evaluateAuto();
+      })();
+    }, delayMs);
+  }
+
   const runSession = async (reason: 'auto' | 'sync_now'): Promise<void> => {
     if (sessionPromise || sessionOpen) {
       rerunAfterSession = true;
@@ -405,10 +425,17 @@ export function createUploadOrchestrator(
             return;
           }
           if (isUploadNetworkInterruptedError(error)) {
-            // Match onConnectivity drop: keep sessionKeys for offline resume.
+            // Match onConnectivity drop: keep sessionKeys, clear retry budget,
+            // and mark link offline so evaluateAuto cannot assume reachability
+            // without a fresh snapshot / NetInfo edge (#600).
             log.info('Upload session paused after network drop', { error });
+            clearRetryTimer();
+            sessionFailures = 0;
+            isOnline = false;
+            wasOnline = false;
             phase = 'offline';
             deps.emit({ type: 'paused', reason: 'connectivity' });
+            scheduleTransportRecheckAfterInterrupt();
             return;
           }
           log.error('Upload session failed', { error });
