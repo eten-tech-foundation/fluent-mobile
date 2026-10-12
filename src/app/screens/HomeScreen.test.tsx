@@ -13,10 +13,12 @@ jest.mock('../../navigation/AuthSessionProvider', () => ({
   }),
 }));
 
+const mockLocalSearchParams: { newUserLoading?: string } = {};
+
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: jest.fn() }),
   useNavigation: () => ({ openDrawer: jest.fn() }),
-  useLocalSearchParams: () => ({}),
+  useLocalSearchParams: () => mockLocalSearchParams,
   useIsFocused: () => true,
 }));
 
@@ -141,6 +143,10 @@ jest.mock('../../components/ui/ReauthBanner', () => ({
 import { HomeScreenBody } from './HomeScreen';
 
 describe('HomeScreenBody progressive login (#670)', () => {
+  beforeEach(() => {
+    delete mockLocalSearchParams.newUserLoading;
+  });
+
   it('dismisses full-screen loading when Tier 1 clears while sync continues', async () => {
     const { rerender } = render(
       <HomeScreenBody postLoginSyncActive userSwitchEpoch={0} />,
@@ -162,5 +168,27 @@ describe('HomeScreenBody progressive login (#670)', () => {
     await act(async () => {
       emitSyncComplete();
     });
+  });
+
+  it('clears route newUserLoading when Tier 1 ends so the loader does not wait for Tier 2', async () => {
+    mockLocalSearchParams.newUserLoading = 'true';
+    const { rerender, unmount } = render(
+      <HomeScreenBody postLoginSyncActive userSwitchEpoch={0} />,
+    );
+
+    expect(screen.getByTestId('home-loading')).toBeTruthy();
+
+    await act(async () => {
+      emitSyncStart();
+    });
+
+    rerender(
+      <HomeScreenBody postLoginSyncActive={false} userSwitchEpoch={0} />,
+    );
+
+    expect(screen.queryByTestId('home-loading')).toBeNull();
+    expect(screen.getByTestId('my-work-tab')).toBeTruthy();
+
+    unmount();
   });
 });

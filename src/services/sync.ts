@@ -848,7 +848,9 @@ export async function syncBibleTexts(
         uniqueBiblesInDb: uniqueBiblesCount,
       });
 
-      if (remapPending) {
+      // Scoped Tier 1 (#670) must not clear remap — catalogue chapters still
+      // need an unscoped full fetch before old verse ids are safe to leave.
+      if (remapPending && !options?.chapterGroups) {
         clearBibleTextsServerIdRemapPending();
       }
     },

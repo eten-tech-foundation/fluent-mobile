@@ -736,6 +736,32 @@ describe('sync step orchestration', () => {
       isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
     });
 
+    it('keeps remap pending after a scoped Tier 1 chapterGroups pass (#670)', async () => {
+      mockDbCount(1);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 41,
+            chapterNumber: 1,
+            verses: [{ id: 4101, verseNumber: 1, text: 'The beginning' }],
+          },
+        ],
+      });
+
+      await syncBibleTexts('2026-01-01T00:00:00.000Z', {
+        chapterGroups: new Map([[10, [{ bookId: 41, chapterNumber: 1 }]]]),
+      });
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 41, chapterNumber: 1 }],
+        undefined,
+      );
+      expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+    });
+
     it('remaps recording-linked chapters absent from chapter_assignments', async () => {
       mockDbCount(1);
       isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);

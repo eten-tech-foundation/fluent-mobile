@@ -191,10 +191,12 @@ export function HomeScreenBody({
   }, [autoPrompt]);
 
   // Tier 1 clears postLoginSyncActive while Tier 2 keeps emitSyncStart active.
-  // Bump refreshKey so Home is interactive; header sync chrome still shows (#670).
+  // Drop route newUserLoading + bump refreshKey so Home is interactive; header
+  // sync chrome still shows (#670).
   const wasPostLoginSyncActiveRef = useRef(false);
   useEffect(() => {
     if (wasPostLoginSyncActiveRef.current && !postLoginSyncActive) {
+      setIsNewUserLoading(false);
       setRefreshKey(key => key + 1);
     }
     wasPostLoginSyncActiveRef.current = postLoginSyncActive;
