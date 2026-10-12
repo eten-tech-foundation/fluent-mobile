@@ -18,7 +18,10 @@ import {
   computeRemainingBytes,
   sortItemsForPrepareOfflineDownload,
 } from '../utils/prepareOfflineCatalog';
-import { hydratePrepareOfflineTextContent } from '../services/prepareOfflineResources';
+import {
+  hydratePrepareOfflineTextContent,
+  persistSourceAudioMetaForManifestContexts,
+} from '../services/prepareOfflineResources';
 import type { PrepareOfflineManifestContext } from '../utils/buildManifestContexts';
 import { syncBibleTextsForChapters } from '../services/sync';
 import { formatByteSize } from '../utils/formatByteSize';
@@ -501,14 +504,6 @@ export function usePrepareOfflineDownload({
     setDownloadKickoff(true);
     setDownloadTransportError(null);
     try {
-      const resumable = await getResumableDownloadItems(true);
-      const existingProjectItems = resumable.filter(
-        item => item.projectId === projectId,
-      );
-
-      if (!canDownloadNow && existingProjectItems.length === 0) {
-        return;
-      }
       try {
         await syncBibleTextsForChapters(bibleTextChapters);
       } catch (error) {
@@ -516,6 +511,9 @@ export function usePrepareOfflineDownload({
           error,
           projectId,
         });
+        setDownloadTransportError(
+          'Could not prepare Bible text for offline. Try again.',
+        );
         return; // the finally block still resets the kickoff state
       }
       let itemsToEnqueue = sortItemsForPrepareOfflineDownload(
@@ -533,8 +531,18 @@ export function usePrepareOfflineDownload({
           error,
           projectId,
         });
+        setDownloadTransportError(
+          'Could not load resource content for download. Try again.',
+        );
         return;
       }
+
+      // Verse timestamps are only needed once the user downloads — persist
+      // after hydration so catalog toggles do not fan out chapter-audio calls.
+      await persistSourceAudioMetaForManifestContexts(
+        projectId,
+        manifestContexts,
+      );
 
       setForceIdle(false);
       userCancelledRef.current = false;
@@ -544,12 +552,22 @@ export function usePrepareOfflineDownload({
       // prop (mock-status-driven, never updated by cancel/download
       // activity) — otherwise newly selected resources after a cancel never
       // get written to download_queue and nothing new starts downloading.
-      if (canDownloadNow) {
+      // Early return above already requires canDownloadNow.
+      try {
         await enqueuePrepareOfflineDownload({
           userId,
           projectId,
           items: itemsToEnqueue,
         });
+      } catch (error) {
+        log.error('Failed to enqueue prepare offline download', {
+          error,
+          projectId,
+        });
+        setSessionStarted(false);
+        setForceIdle(true);
+        setDownloadTransportError('Could not start the download. Try again.');
+        return;
       }
 
       await refresh();

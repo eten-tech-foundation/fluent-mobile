@@ -6,6 +6,7 @@ import {
   getDefaultPrepareOfflinePackageDeselects,
   getPrepareOfflineResourceStatus,
   hydratePrepareOfflineTextContent,
+  persistSourceAudioMetaForManifestContexts,
   refreshPrepareOfflineInventory,
   subscribePrepareOfflineInventory,
 } from './prepareOfflineResources';
@@ -137,7 +138,41 @@ describe('prepareOfflineResources', () => {
       );
       // Source Bible text is handled by sync, never by the manifest.
       expect(result.map(item => item.id)).toEqual(['sa1', 'r1']);
-      // Multi-chapter manifest member expands to one meta fetch per chapter (#579).
+      // Successful-manifest path must not fan out chapter-audio meta fetches
+      // during catalog load — that happens at download time (#579 review).
+      expect(FluentAPI.getChapterSourceAudio).not.toHaveBeenCalled();
+      expect(persistMeta).not.toHaveBeenCalled();
+    });
+
+    it('persists source-audio meta for each chapter in download contexts', async () => {
+      (FluentAPI.getChapterSourceAudio as jest.Mock).mockImplementation(
+        (params: { bookCode: string; chapter: number }) =>
+          Promise.resolve({
+            provider: 'dbl',
+            bible: { name: 'B', abbreviation: 'ENG' },
+            bookCode: params.bookCode,
+            chapter: params.chapter,
+            items: [
+              {
+                format: 'mp3',
+                url: `https://example.com/ch${params.chapter}.mp3`,
+                sizeBytes: 100,
+                scope: 'chapter',
+              },
+            ],
+          }),
+      );
+
+      await persistSourceAudioMetaForManifestContexts(99, [
+        {
+          languageCode: 'eng',
+          bookCode: 'MRK',
+          startChapter: 1,
+          endChapter: 3,
+          bibleId: 10,
+        },
+      ]);
+
       expect(FluentAPI.getChapterSourceAudio).toHaveBeenCalledTimes(3);
       expect(persistMeta).toHaveBeenCalledTimes(3);
     });

@@ -15,6 +15,7 @@ const mockPlaybackSeek = jest.fn();
 const mockFileExists = jest.fn();
 const mockFileSize = jest.fn();
 const mockDeleteFile = jest.fn();
+const mockNotifyPendingUploads = jest.fn();
 
 const playbackState = { status: 'idle' as 'idle' | 'playing' | 'paused' };
 
@@ -62,6 +63,11 @@ jest.mock('../utils/audioStorage', () => ({
 
 jest.mock('../services/connectivity', () => ({
   getConnectivitySnapshot: jest.fn(),
+}));
+
+jest.mock('../services/uploadOrchestrator', () => ({
+  notifyPendingUploads: (...args: unknown[]) =>
+    mockNotifyPendingUploads(...args),
 }));
 
 jest.mock('../services/chapterClaimSync', () => ({
@@ -273,6 +279,7 @@ describe('useVerseAudio', () => {
       endChapter: 0,
       endVerse: 0,
     });
+    expect(mockNotifyPendingUploads).toHaveBeenCalledTimes(1);
     expect(result.current.state).toBe('recorded');
     expect(result.current.takes).toEqual([saved]);
   });

@@ -93,6 +93,7 @@ jest.mock('../services/prepareOfflineDownload', () => ({
 
 jest.mock('../services/prepareOfflineResources', () => ({
   hydratePrepareOfflineTextContent: jest.fn(async (_projectId, items) => items),
+  persistSourceAudioMetaForManifestContexts: jest.fn(async () => undefined),
 }));
 
 jest.mock('../services/sync', () => ({
@@ -142,6 +143,24 @@ const catalog: PrepareOfflineCatalog = {
 describe('usePrepareOfflineDownload', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    const { syncBibleTextsForChapters } = jest.requireMock('../services/sync');
+    const {
+      hydratePrepareOfflineTextContent,
+      persistSourceAudioMetaForManifestContexts,
+    } = jest.requireMock('../services/prepareOfflineResources');
+    const { enqueuePrepareOfflineDownload } = jest.requireMock(
+      '../services/prepareOfflineDownload',
+    );
+    syncBibleTextsForChapters.mockReset().mockResolvedValue(undefined);
+    hydratePrepareOfflineTextContent
+      .mockReset()
+      .mockImplementation(async (_projectId: number, items: unknown) => items);
+    persistSourceAudioMetaForManifestContexts
+      .mockReset()
+      .mockResolvedValue(undefined);
+    enqueuePrepareOfflineDownload
+      .mockReset()
+      .mockResolvedValue(['tier-1-source-bible-text']);
     mockSnapshot = {
       items: [],
       completedCount: 0,
@@ -184,27 +203,14 @@ describe('usePrepareOfflineDownload', () => {
   });
 
   it('shows downloading session immediately when handleDownload starts', async () => {
-    const { getResumableDownloadItems } = jest.requireMock('../db/repository');
-    let resolveFirstFetch: ((items: unknown[]) => void) | undefined;
-
-    getResumableDownloadItems.mockImplementation(() => {
-      if (resolveFirstFetch) {
-        return Promise.resolve([
-          {
-            id: 'tier-1-source-bible-text',
-            tier: 1,
-            label: 'Text',
-            progress: 0,
-            status: 'queued',
-            projectId: 1,
-          },
-        ]);
-      }
-
-      return new Promise(resolve => {
-        resolveFirstFetch = resolve;
-      });
-    });
+    const { syncBibleTextsForChapters } = jest.requireMock('../services/sync');
+    let resolveSync: (() => void) | undefined;
+    syncBibleTextsForChapters.mockImplementation(
+      () =>
+        new Promise<void>(resolve => {
+          resolveSync = resolve;
+        }),
+    );
 
     const { result } = renderHook(() =>
       usePrepareOfflineDownload({
@@ -227,42 +233,20 @@ describe('usePrepareOfflineDownload', () => {
     expect(result.current.busy).toBe(false);
 
     await act(async () => {
-      resolveFirstFetch?.([
-        {
-          id: 'tier-1-source-bible-text',
-          tier: 1,
-          label: 'Text',
-          progress: 0,
-          status: 'queued',
-          projectId: 1,
-        },
-      ]);
+      resolveSync?.();
       await downloadPromise;
     });
   });
 
   it('runs a cancel tapped during kickoff after enqueue finishes without starting the worker', async () => {
-    const { getResumableDownloadItems } = jest.requireMock('../db/repository');
-    let resolveFirstFetch: ((items: unknown[]) => void) | undefined;
-
-    getResumableDownloadItems.mockImplementation(() => {
-      if (resolveFirstFetch) {
-        return Promise.resolve([
-          {
-            id: 'tier-1-source-bible-text',
-            tier: 1,
-            label: 'Text',
-            progress: 0,
-            status: 'queued',
-            projectId: 1,
-          },
-        ]);
-      }
-
-      return new Promise(resolve => {
-        resolveFirstFetch = resolve;
-      });
-    });
+    const { syncBibleTextsForChapters } = jest.requireMock('../services/sync');
+    let resolveSync: (() => void) | undefined;
+    syncBibleTextsForChapters.mockImplementation(
+      () =>
+        new Promise<void>(resolve => {
+          resolveSync = resolve;
+        }),
+    );
 
     const { result } = renderHook(() =>
       usePrepareOfflineDownload({
@@ -288,16 +272,7 @@ describe('usePrepareOfflineDownload', () => {
     });
 
     await act(async () => {
-      resolveFirstFetch?.([
-        {
-          id: 'tier-1-source-bible-text',
-          tier: 1,
-          label: 'Text',
-          progress: 0,
-          status: 'queued',
-          projectId: 1,
-        },
-      ]);
+      resolveSync?.();
       await downloadPromise;
     });
 
@@ -306,27 +281,14 @@ describe('usePrepareOfflineDownload', () => {
   });
 
   it('runs a pause tapped during kickoff after enqueue finishes without starting the worker', async () => {
-    const { getResumableDownloadItems } = jest.requireMock('../db/repository');
-    let resolveFirstFetch: ((items: unknown[]) => void) | undefined;
-
-    getResumableDownloadItems.mockImplementation(() => {
-      if (resolveFirstFetch) {
-        return Promise.resolve([
-          {
-            id: 'tier-1-source-bible-text',
-            tier: 1,
-            label: 'Text',
-            progress: 0,
-            status: 'queued',
-            projectId: 1,
-          },
-        ]);
-      }
-
-      return new Promise(resolve => {
-        resolveFirstFetch = resolve;
-      });
-    });
+    const { syncBibleTextsForChapters } = jest.requireMock('../services/sync');
+    let resolveSync: (() => void) | undefined;
+    syncBibleTextsForChapters.mockImplementation(
+      () =>
+        new Promise<void>(resolve => {
+          resolveSync = resolve;
+        }),
+    );
 
     const { result } = renderHook(() =>
       usePrepareOfflineDownload({
@@ -352,16 +314,7 @@ describe('usePrepareOfflineDownload', () => {
     });
 
     await act(async () => {
-      resolveFirstFetch?.([
-        {
-          id: 'tier-1-source-bible-text',
-          tier: 1,
-          label: 'Text',
-          progress: 0,
-          status: 'queued',
-          projectId: 1,
-        },
-      ]);
+      resolveSync?.();
       await downloadPromise;
     });
 
@@ -881,6 +834,137 @@ describe('usePrepareOfflineDownload', () => {
 
     expect(enqueuePrepareOfflineDownload).not.toHaveBeenCalled();
     expect(mockStart).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a footer-visible error when bible text sync fails during prepare', async () => {
+    const { syncBibleTextsForChapters } = jest.requireMock('../services/sync');
+    const { enqueuePrepareOfflineDownload } = jest.requireMock(
+      '../services/prepareOfflineDownload',
+    );
+    syncBibleTextsForChapters.mockRejectedValueOnce(new Error('sync down'));
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+        bibleTextChapters: [{ bibleId: 10, bookId: 1, chapterNumber: 1 }],
+        manifestContexts: [],
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(enqueuePrepareOfflineDownload).not.toHaveBeenCalled();
+    expect(result.current.transportBlocked).toBe(true);
+    expect(result.current.transportBlockedMessage).toContain(
+      'Could not prepare Bible text',
+    );
+  });
+
+  it('surfaces a footer-visible error when text hydration fails during prepare', async () => {
+    const { hydratePrepareOfflineTextContent } = jest.requireMock(
+      '../services/prepareOfflineResources',
+    );
+    const { enqueuePrepareOfflineDownload } = jest.requireMock(
+      '../services/prepareOfflineDownload',
+    );
+    hydratePrepareOfflineTextContent.mockRejectedValueOnce(
+      new Error('No content returned for text item x'),
+    );
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(enqueuePrepareOfflineDownload).not.toHaveBeenCalled();
+    expect(result.current.transportBlocked).toBe(true);
+    expect(result.current.transportBlockedMessage).toContain(
+      'Could not load resource content',
+    );
+  });
+
+  it('surfaces a footer-visible error when enqueue throws during prepare', async () => {
+    const { enqueuePrepareOfflineDownload } = jest.requireMock(
+      '../services/prepareOfflineDownload',
+    );
+    enqueuePrepareOfflineDownload.mockRejectedValueOnce(
+      new Error('queue write failed'),
+    );
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(result.current.transportBlocked).toBe(true);
+    expect(result.current.transportBlockedMessage).toContain(
+      'Could not start the download',
+    );
+  });
+
+  it('persists source-audio meta from manifestContexts at download time', async () => {
+    const { persistSourceAudioMetaForManifestContexts } = jest.requireMock(
+      '../services/prepareOfflineResources',
+    );
+    const contexts = [
+      {
+        languageCode: 'eng',
+        bookCode: 'MRK',
+        bookId: 20,
+        startChapter: 1,
+        endChapter: 2,
+        bibleId: 10,
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: contexts,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(persistSourceAudioMetaForManifestContexts).toHaveBeenCalledWith(
+      1,
+      contexts,
+    );
   });
 
   it('does not resume when handleResume is invoked on cellular with toggle off', async () => {
