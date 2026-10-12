@@ -393,20 +393,22 @@ export function createUploadOrchestrator(
           if (!abort.signal.aborted) {
             phase = 'idle';
             log.info('Upload session complete', { totalChapters });
+            // Clear before terminal emit so sync listeners (getSnapshot) never
+            // observe stale completed/total after complete (#600).
+            clearSessionCounts();
             deps.emit({ type: 'complete' });
             sessionFailures = 0;
             clearRetryTimer();
-            clearSessionCounts();
           }
         } catch (error) {
           if (abort.signal.aborted) {
             return;
           }
           if (isUploadNetworkInterruptedError(error)) {
+            // Match onConnectivity drop: keep sessionKeys for offline resume.
             log.info('Upload session paused after network drop', { error });
-            phase = 'idle';
-            clearSessionCounts();
-            deps.emit({ type: 'idle' });
+            phase = 'offline';
+            deps.emit({ type: 'paused', reason: 'connectivity' });
             return;
           }
           log.error('Upload session failed', { error });
@@ -580,8 +582,8 @@ export function createUploadOrchestrator(
       rerunAfterSession = false;
       await abortActiveSession();
       phase = 'idle';
-      deps.emit({ type: 'cancelled' });
       clearSessionCounts();
+      deps.emit({ type: 'cancelled' });
       log.info('Upload cancelled by user');
     },
 

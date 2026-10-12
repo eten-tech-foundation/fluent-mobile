@@ -538,7 +538,15 @@ export function createChapterUploadWorker(
       if (!token) {
         throw new Error('No auth token available for chapter upload');
       }
-      await syncPendingRecordings(token, { chapter, signal });
+      // Chapter-scoped passes stay silent (#682). Propagate hard failures so
+      // the orchestrator can retry instead of emitting complete while work
+      // still needs attention. Conflicts are successful server accepts.
+      const result = await syncPendingRecordings(token, { chapter, signal });
+      if (result.failed > 0) {
+        throw new Error(
+          `Chapter upload failed for ${result.failed} recording(s)`,
+        );
+      }
     },
   };
 }
