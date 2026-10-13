@@ -206,17 +206,24 @@ Rules:
 Every Next component gets a gallery entry before review: a
 `src/app/gallery/entries/<Name>Entry.tsx` registered in
 `entries/index.ts` (see `KeyEntry.tsx`). Entries are **live demos only**,
-no static state grids. Build a small, realistic interaction that walks the
-component through its states, the way the Key's transport demo latches Play
-and disables the skip keys at the first and last verse. Each entry covers:
+no static state grids. Build a small interaction that walks the component
+through its states **doing its real job in the app**, the way the Key's
+transport demo latches Play and disables the skip keys at the first and last
+verse. Find that job on the Figma screen pages, not just the component page:
+where it's instanced, what content sits around it, which mode the screen is
+in. Don't invent a scenario. The Switch is the Listen / Record mode toggle,
+so its demo is that toggle; the Progress ring shows listening progress
+through a pericope's tracks, so its demo is the passage list for *The Last
+Supper*. Each entry covers:
 
 - every state in the contract reachable through real use, including disabled
-  and latched (the Switch demo disables "Loop this verse" while auto-play is
-  on). If a state or prop can't come up naturally, add a second small demo
-  rather than a static grid. If no Figma screen uses a prop value at all
-  (the Key's `Lip=false`), drop it from the ticket's AC instead of inventing
-  a demo for it. Keeping the prop itself is fine when it mirrors the Figma
-  component's API (the Key keeps `lip`, which Code Connect can map).
+  and latched (the Mode toggle locks while a take is recording). If a state or
+  prop can't come up naturally, add a second small demo rather than a static
+  grid. If no Figma screen uses a prop value or state at all (the Key's
+  `Lip=false`, the Round button's Disabled), drop it from the ticket's AC
+  instead of inventing a demo for it; unit tests still cover it. Keeping the
+  prop itself is fine when it mirrors the Figma component's API (the Key keeps
+  `lip`, which Code Connect can map).
 - the sizes it's actually used at in Figma (the Key appears at 135 × 96
   and 72 × 72). Check the Figma instance at each size before assuming the
   component scales: the 72 × 72 Key keeps the same 12 → 8 lip, so the

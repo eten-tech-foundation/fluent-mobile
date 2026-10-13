@@ -23,8 +23,9 @@ export const galleryEntries: GalleryEntry[] = [
   },
   {
     // Figma: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2326-41
+    // Used as the Mode toggle: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2409-538
     id: 'switch',
-    name: 'Switch',
+    name: 'Switch · Mode toggle',
     modes: 'Hardware',
     Component: SwitchEntry,
   },
@@ -33,7 +34,7 @@ export const galleryEntries: GalleryEntry[] = [
     // Figma: Progress ring https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2400-302
     id: 'round-button',
     name: 'Round button · Progress ring',
-    modes: 'Soft on light screens · Flat pinned to Canvas',
+    modes: 'Soft in passage rows · Flat in the Canvas player header',
     Component: RoundButtonEntry,
   },
 ];

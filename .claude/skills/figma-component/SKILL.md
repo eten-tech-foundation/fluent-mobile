@@ -106,16 +106,18 @@ import and style patterns.
 ### 5. Gallery entry
 
 Add `src/app/gallery/entries/<Name>Entry.tsx` and register it in
-`entries/index.ts` with the Figma link as a code comment. Live demos only,
-no static state grids: a small realistic interaction that reaches every
-state (see the Key's transport demo), at the sizes Figma uses it, with
-long-text and Telugu samples for text. The gallery always renders Next
-(`UiVersionOverride`), so don't add a version toggle.
-Every state in the contract must be reachable in the demo (add a second small
-demo if needed; drop a prop from the AC if no Figma screen uses it). Check
-Figma's instance geometry at each size the component is used at.
-Check every RN style feature's Android floor against `minSdkVersion` 24
-(inset `boxShadow` needs API 29, outset 28) and note it in the PR.
+`entries/index.ts` with the Figma link as a code comment. Live demos only, no
+static state grids: a small realistic interaction that reaches every state
+(see the Key's transport demo), at the sizes Figma uses it, with long-text and
+Telugu samples for text. The gallery always renders Next
+(`UiVersionOverride`), so don't add a version toggle. Demos show the component
+doing its real job in the app: find where Figma instances it on the screen
+pages (content, neighbors, mode) and recreate that, never an invented
+scenario. Every state in the contract must be reachable in the demo (add a
+second small demo if needed; drop a prop from the AC if no Figma screen uses
+it). Check Figma's instance geometry at each size the component is used at.
+Check every RN style feature's Android floor against `minSdkVersion` 24 (inset
+`boxShadow` needs API 29, outset 28) and note it in the PR.
 
 ### 5b. Screens only: wire to what exists
 
