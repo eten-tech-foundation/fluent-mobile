@@ -1,6 +1,6 @@
 import type React from 'react';
 import { KeyEntry } from './KeyEntry';
-import { ProgressDotsEntry } from './ProgressDotsEntry';
+import { LevelWaveEntry } from './LevelWaveEntry';
 import { SwitchEntry } from './SwitchEntry';
 import { WaveformEntry } from './WaveformEntry';
 
@@ -39,9 +39,10 @@ export const galleryEntries: GalleryEntry[] = [
   },
   {
     // Figma: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2409-509
-    id: 'progress-dots',
-    name: 'Progress dots',
-    modes: 'Hardware (Pericope header)',
-    Component: ProgressDotsEntry,
+    // Long: Recorder take card 2555-910
+    id: 'level-wave',
+    name: 'Level wave · Short and Long',
+    modes: 'Hardware (header) · Canvas (take card)',
+    Component: LevelWaveEntry,
   },
 ];
