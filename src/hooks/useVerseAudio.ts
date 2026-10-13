@@ -344,6 +344,10 @@ export function useVerseAudio({
   }, []);
   const recording = useRecordingEngine({ onAutoPause });
   const playback = usePlaybackEngine();
+  // Latest native position, readable inside callbacks without rebuilding them
+  // every 100 ms.
+  const positionMsRef = useRef(0);
+  positionMsRef.current = playback.positionMs;
   const [state, dispatch] = useReducer(
     verseAudioReducer,
     'idle' as VerseAudioState,
@@ -1012,9 +1016,13 @@ export function useVerseAudio({
    * Play one segment of a stitched row. `playbackLoadInFlightRef` is set
    * **before** `replace` so the natural-end effect cannot read the unload gap
    * as end-of-playback and drop the rest of the queue (#298).
+   *
+   * `keepHold` is true when resuming the same row mid-segment (pause → Play):
+   * the bar must stay at the current in-segment position instead of flashing to
+   * the segment start while the load is in flight.
    */
   const playStitchedSegment = useCallback(
-    async (uri: string, rowId: string) => {
+    async (uri: string, rowId: string, keepHold = false) => {
       const generation = stitchPlaybackGenerationRef.current;
       const isStale = () => generation !== stitchPlaybackGenerationRef.current;
       playbackLoadInFlightRef.current = true;
@@ -1023,8 +1031,10 @@ export function useVerseAudio({
         if (isStale()) {
           return;
         }
-        setStitchHoldMs(0);
-        setStitchSeekHoldMs(null);
+        if (!keepHold) {
+          setStitchHoldMs(0);
+          setStitchSeekHoldMs(null);
+        }
         setErrorMessage(null);
         await playUri(uri, isStale);
         if (isStale()) {
@@ -1068,7 +1078,11 @@ export function useVerseAudio({
       ) {
         const resumeUri = currentStitchUri(stitchQueueRef.current);
         if (resumeUri !== null) {
-          await playStitchedSegment(resumeUri, row.id);
+          // Hold the bar at the current in-segment position during the load.
+          // A pending scrub target (stitchSeekHoldMs) still takes precedence in
+          // stitchPositionMs.
+          setStitchHoldMs(positionMsRef.current);
+          await playStitchedSegment(resumeUri, row.id, true);
           return;
         }
       }

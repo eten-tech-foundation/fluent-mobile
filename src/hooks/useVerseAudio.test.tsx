@@ -1378,6 +1378,7 @@ describe('useVerseAudio', () => {
     expect(getTakesForVerse.mock.calls).toHaveLength(loadsBefore);
     expect(mockPlaybackStop.mock.calls).toHaveLength(stopsBefore);
   });
+
   describe('seekStitched', () => {
     it('while playing: load + seek, then resume without play/replace', async () => {
       loadTakes.mockResolvedValue([makeTake()]);
@@ -1541,6 +1542,46 @@ describe('useVerseAudio', () => {
       expect(result.current.state).not.toBe('playing');
       // Queue kept so Play can resume in-segment after pause.
       expect(result.current.playingTakeId).toBe(stitchedRow.id);
+    });
+
+    it('keeps the scrub position on the bar when Play resumes the same row', async () => {
+      loadTakes.mockResolvedValue([makeTake()]);
+      const stitchedRow = makeStitchedRow();
+
+      const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+      await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+      // Scrub while idle: queue is set, nothing plays.
+      await act(async () => {
+        await result.current.seekStitched(stitchedRow, 1500);
+      });
+      expect(result.current.stitchPositionMs).toBe(1500);
+
+      // Hold the resume's play() open so the load window is observable.
+      let releasePlay: () => void = () => {};
+      mockPlaybackPlay.mockImplementationOnce(
+        () =>
+          new Promise<void>(resolve => {
+            releasePlay = resolve;
+          }),
+      );
+
+      let resuming!: Promise<void>;
+      await act(async () => {
+        resuming = result.current.playStitched(stitchedRow);
+      });
+
+      // Wait until the file checks passed and play() is parked.
+      await waitFor(() => expect(mockPlaybackPlay).toHaveBeenCalled());
+
+      // While loading, the bar must not drop to the segment start (1000).
+      expect(result.current.stitchPositionMs).toBeGreaterThanOrEqual(1500);
+
+      await act(async () => {
+        releasePlay();
+        await resuming;
+      });
+      expect(mockPlaybackPlay).toHaveBeenCalledWith('/recordings/v4.m4a');
     });
   });
 
