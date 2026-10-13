@@ -1,9 +1,13 @@
 import React from 'react';
+import { useRouter } from 'expo-router';
+import { hrefs } from '../../navigation/hrefs';
+import { getChapterAssignmentById } from '../../db/queries';
 import { useWindowDimensions, type ColorValue } from 'react-native';
 import { Drawer, type DrawerContentComponentProps } from 'expo-router/drawer';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useAuthSession } from '../../navigation/AuthSessionProvider';
 import { useRecordCaptureGate } from '../../navigation/useRecordCaptureGate';
+import { useLaunchRecoveryPrompt } from '../../services/useLaunchRecoveryPrompt';
 import {
   DRAWER_MENU_ICON_SIZE,
   UserSettingsMenu,
@@ -11,6 +15,9 @@ import {
   drawerMenuLabelStyle,
 } from '../../components/ui/UserSettingsMenu';
 import { useTheme } from '../../theme/useTheme';
+import { logger } from '../../utils/logger';
+
+const log = logger.create('AppDrawerLayout');
 
 function SettingsDrawerContent(props: DrawerContentComponentProps) {
   const { signOut, notifyUserSwitched } = useAuthSession();
@@ -32,6 +39,39 @@ function drawerIcon(name: React.ComponentProps<typeof Ionicons>['name']) {
 export default function AppDrawerLayout() {
   const { width } = useWindowDimensions();
   const theme = useTheme();
+  const router = useRouter();
+
+  useLaunchRecoveryPrompt({
+    onResume: async marker => {
+      const { chapterAssignmentId, verseNumber, sessionKey } = marker;
+      if (
+        typeof chapterAssignmentId !== 'number' ||
+        typeof verseNumber !== 'number'
+      ) {
+        return false;
+      }
+      try {
+        const assignment = await getChapterAssignmentById(chapterAssignmentId);
+        if (!assignment) return false;
+        router.navigate(
+          hrefs.verseDetail({
+            chapterId: chapterAssignmentId,
+            chapterName: `${assignment.bookName ?? ''} ${
+              assignment.chapterNumber
+            }`.trim(),
+            projectName: '',
+            language: '',
+            recoverSessionKey: sessionKey,
+            recoverVerse: verseNumber,
+          }),
+        );
+        return true;
+      } catch (error) {
+        log.warn('Resume navigation failed', { error });
+        return false;
+      }
+    },
+  });
   const drawerWidth = Math.min(320, width * 0.82);
   const recordCaptureActive = useRecordCaptureGate();
 
