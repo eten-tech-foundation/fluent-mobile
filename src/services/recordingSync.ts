@@ -53,12 +53,6 @@ export type RecordingSyncOptions = {
   /** Injectable backoff (tests). Default: attempt * 500ms. */
   delay?: (ms: number) => Promise<void>;
   maxAttempts?: number;
-  /**
-   * Chapter workers pass false. The orchestrator owns the one session
-   * notification; a per-chapter complete was clearing it mid-upload (#599).
-   * Direct passes (retry) keep the default and emit their own lifecycle.
-   */
-  emitSessionEvents?: boolean;
 };
 
 let inFlight: Promise<UploadResult> | null = null;
@@ -393,6 +387,11 @@ async function uploadOneRecording(
   return 'failed';
 }
 
+/** Distinct chapter in a pending pass. Orchestrator sessions key the same way. */
+function chapterKey(recording: PendingRecording): string {
+  return `${recording.bookId}:${recording.chapterNumber}`;
+}
+
 async function runUploadPass(
   token: string,
   options: RecordingSyncOptions = {},
@@ -409,21 +408,32 @@ async function runUploadPass(
     chapter: options.chapter ?? null,
   });
 
-  const total = pending.length;
-  const emitSession = (event: UploadSessionEvent): void => {
-    if (options.emitSessionEvents === false) {
+  // Chapter-scoped passes run inside an orchestrator session. That session
+  // already emits start/progress/complete per chapter. Emitting the same
+  // events here (per take, including complete) resets the Sync page and the
+  // notification and can report more takes than chapters (#600).
+  const orchestratorOwnsSession = options.chapter !== undefined;
+  const emitPassEvent = (event: UploadSessionEvent): void => {
+    if (orchestratorOwnsSession) {
       return;
     }
     emitUploadSessionEvent(event);
   };
-  // Direct passes emit so retry UI can refresh. Chapter workers opt out;
-  // the orchestrator emits one start / progress / complete for the session.
-  emitSession({ type: 'start', totalChapters: total });
+
+  const takesLeftByChapter = new Map<string, number>();
+  if (!orchestratorOwnsSession) {
+    for (const recording of pending) {
+      const key = chapterKey(recording);
+      takesLeftByChapter.set(key, (takesLeftByChapter.get(key) ?? 0) + 1);
+    }
+  }
+  const totalChapters = takesLeftByChapter.size;
+  let completedChapters = 0;
+  emitPassEvent({ type: 'start', totalChapters });
 
   let uploaded = 0;
   let conflicted = 0;
   let failed = 0;
-  let completed = 0;
 
   try {
     for (const recording of pending) {
@@ -444,15 +454,26 @@ async function runUploadPass(
       } else {
         failed += 1;
       }
-      completed += 1;
-      emitSession({
-        type: 'progress',
-        completedChapters: completed,
-        totalChapters: total,
-      });
+
+      // Chapter workers never own session progress (#600 / #682). Failed takes
+      // stay pending — do not count the chapter complete on a failed result.
+      if (orchestratorOwnsSession || result === 'failed') {
+        continue;
+      }
+      const key = chapterKey(recording);
+      const left = (takesLeftByChapter.get(key) ?? 1) - 1;
+      takesLeftByChapter.set(key, left);
+      if (left === 0) {
+        completedChapters += 1;
+        emitPassEvent({
+          type: 'progress',
+          completedChapters,
+          totalChapters,
+        });
+      }
     }
 
-    emitSession({ type: 'complete' });
+    emitPassEvent({ type: 'complete' });
     log.info('Recording upload pass complete', {
       uploaded,
       conflicted,
@@ -461,9 +482,9 @@ async function runUploadPass(
     return { uploaded, conflicted, failed };
   } catch (error) {
     if (isAbortError(error) || options.signal?.aborted) {
-      emitSession({ type: 'cancelled' });
+      emitPassEvent({ type: 'cancelled' });
     } else {
-      emitSession({ type: 'idle' });
+      emitPassEvent({ type: 'idle' });
     }
     throw error;
   }
@@ -495,7 +516,11 @@ export async function syncPendingRecordings(
   return inFlight;
 }
 
-/** Chapter worker entry used by `uploadOrchestrator` (#150). */
+/**
+ * Direct chapter upload helper (tests / ad-hoc callers). Production wires
+ * `createChapterUploadWorker` via `registerRecordingUploadWorker` (#150).
+ * Same failed-count contract as the registered worker.
+ */
 export async function uploadChapterRecordings(
   chapter: PendingUploadChapter,
   signal: AbortSignal,
@@ -505,11 +530,10 @@ export async function uploadChapterRecordings(
   if (!resolved) {
     throw new Error('No auth token available for chapter upload');
   }
-  await syncPendingRecordings(resolved, {
-    chapter,
-    signal,
-    emitSessionEvents: false,
-  });
+  const result = await syncPendingRecordings(resolved, { chapter, signal });
+  if (result.failed > 0) {
+    throw new Error(`Chapter upload failed for ${result.failed} recording(s)`);
+  }
 }
 
 export function createChapterUploadWorker(
@@ -521,11 +545,15 @@ export function createChapterUploadWorker(
       if (!token) {
         throw new Error('No auth token available for chapter upload');
       }
-      await syncPendingRecordings(token, {
-        chapter,
-        signal,
-        emitSessionEvents: false,
-      });
+      // Chapter-scoped passes stay silent (#682). Propagate hard failures so
+      // the orchestrator can retry instead of emitting complete while work
+      // still needs attention. Conflicts are successful server accepts.
+      const result = await syncPendingRecordings(token, { chapter, signal });
+      if (result.failed > 0) {
+        throw new Error(
+          `Chapter upload failed for ${result.failed} recording(s)`,
+        );
+      }
     },
   };
 }
