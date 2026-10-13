@@ -25,10 +25,14 @@ import {
   getLastSyncedAt,
   getUserIdSync,
   setSyncError,
+  setSyncCount,
   setReauthRequired,
   registerKnownUser,
   setUserSync,
+  isBibleTextsServerIdRemapPending,
+  clearBibleTextsServerIdRemapPending,
 } from './storage';
+import { getDatabase } from '../db/db';
 
 jest.mock('./authToken', () => ({
   authToken: {
@@ -80,6 +84,9 @@ jest.mock('./storage', () => ({
     SYNC_ERROR_PERICOPES: 'sync_error_pericopes',
     SYNC_ERROR_PREPARE_OFFLINE_BIBLE_TEXTS:
       'sync_error_prepare_offline_bible_texts',
+    SYNC_COUNT_PROJECTS: 'sync_count_projects',
+    SYNC_COUNT_CHAPTERS: 'sync_count_chapters',
+    SYNC_COUNT_BIBLES: 'sync_count_bibles',
   },
   getUserIdSync: jest.fn(),
   getActiveUserId: jest.fn(),
@@ -150,6 +157,7 @@ jest.mock('../db/repository', () => ({
 const {
   getChaptersToSync,
   getMyWorkChaptersToSync,
+  getRecordingLinkedChaptersToSync,
   getLocalProjectIds,
   getChaptersNeedingPericopeSync,
   getProjectPericopeSetId,
@@ -163,6 +171,7 @@ const {
   insertUser: jest.Mock;
   getChaptersToSync: jest.Mock;
   getMyWorkChaptersToSync: jest.Mock;
+  getRecordingLinkedChaptersToSync: jest.Mock;
   getLocalProjectIds: jest.Mock;
   getChaptersNeedingPericopeSync: jest.Mock;
   getProjectPericopeSetId: jest.Mock;
@@ -1435,6 +1444,58 @@ describe('syncAllData progressive login (#670)', () => {
       [{ bookId: 19, chapterNumber: 1 }],
       undefined,
     );
+  });
+
+  it('My-Work-only login preserves bible count and clears remap without Tier 1 refetch', async () => {
+    const preloadedUser = { id: 2, email: 'user2@test.com' };
+    (getTempCredentials as jest.Mock).mockResolvedValue({
+      token: 'mywork-only-token',
+    });
+    (getCredentials as jest.Mock).mockResolvedValue({
+      token: 'mywork-only-token',
+    });
+    // Assignments are only My Work — Tier 2 exclude empties the remainder.
+    getChaptersToSync.mockResolvedValue(
+      new Map([[10, [{ bookId: 41, chapterNumber: 1 }]]]),
+    );
+    getMyWorkChaptersToSync.mockResolvedValue(
+      new Map([[10, [{ bookId: 41, chapterNumber: 1 }]]]),
+    );
+    getRecordingLinkedChaptersToSync.mockResolvedValue(new Map());
+    (isBibleTextsServerIdRemapPending as jest.Mock).mockReturnValue(true);
+    // Local texts from Tier 1 (distinct bible count) must survive Tier 2.
+    (getDatabase as jest.Mock).mockReturnValue({
+      execute: jest.fn().mockResolvedValue({ rows: [{ count: 2 }] }),
+    });
+    (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          bookId: 41,
+          chapterNumber: 1,
+          verses: [{ id: 4101, verseNumber: 1, text: 'The beginning' }],
+        },
+      ],
+    });
+    getProjectPericopeSetId.mockResolvedValue(null);
+    getChaptersNeedingPericopeSync.mockResolvedValue([]);
+    (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+      data: [],
+    });
+
+    await syncAllData(false, preloadedUser.email, preloadedUser, {
+      onTier1Complete: jest.fn(),
+    });
+
+    expect(FluentAPI.getBibleTexts).toHaveBeenCalledTimes(1);
+    expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+      10,
+      [{ bookId: 41, chapterNumber: 1 }],
+      undefined,
+    );
+    expect(setSyncCount).toHaveBeenCalledWith('sync_count_bibles', 2);
+    expect(setSyncCount).not.toHaveBeenCalledWith('sync_count_bibles', 0);
+    expect(clearBibleTextsServerIdRemapPending).toHaveBeenCalled();
+    (isBibleTextsServerIdRemapPending as jest.Mock).mockReturnValue(false);
   });
 });
 

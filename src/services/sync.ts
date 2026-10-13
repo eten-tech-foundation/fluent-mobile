@@ -783,6 +783,24 @@ export async function syncBibleTexts(
 
       if (bibleGroups.size === 0) {
         log.info('No chapters to sync');
+        // Tier 2 exclude emptied the set after My Work texts already landed
+        // (#670). Do not zero the global bible count, and clear remap only on
+        // this unscoped remainder path once recording-linked merge (above)
+        // also left nothing — coverage was Tier 1 + empty remainder.
+        if (!options?.chapterGroups && options?.excludeChapterGroups) {
+          const db = getDatabase();
+          const result = await db.execute(
+            'SELECT COUNT(DISTINCT bible_id) as count FROM bible_texts',
+          );
+          setSyncCount(
+            KV_KEYS.SYNC_COUNT_BIBLES,
+            Number(result.rows?.[0]?.count || 0),
+          );
+          if (remapPending) {
+            clearBibleTextsServerIdRemapPending();
+          }
+          return;
+        }
         setSyncCount(KV_KEYS.SYNC_COUNT_BIBLES, 0);
         return;
       }

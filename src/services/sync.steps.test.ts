@@ -805,6 +805,28 @@ describe('sync step orchestration', () => {
       isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
     });
 
+    it('My-Work-only exclude remainder preserves bible count and clears remap (#670)', async () => {
+      // Tier 1 already wrote texts; getChaptersToSync is only My Work; recording-linked empty.
+      mockDbCount(3);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 41, chapterNumber: 1 }]]]),
+      );
+      getRecordingLinkedChaptersToSyncMock.mockResolvedValue(new Map());
+
+      await syncBibleTexts(undefined, {
+        excludeChapterGroups: new Map([
+          [10, [{ bookId: 41, chapterNumber: 1 }]],
+        ]),
+      });
+
+      expect(FluentAPI.getBibleTexts).not.toHaveBeenCalled();
+      expect(setSyncCountMock).toHaveBeenCalledWith('sync_count_bibles', 3);
+      expect(setSyncCountMock).not.toHaveBeenCalledWith('sync_count_bibles', 0);
+      expect(clearBibleTextsServerIdRemapPendingMock).toHaveBeenCalled();
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+    });
+
     it('remaps recording-linked chapters absent from chapter_assignments', async () => {
       mockDbCount(1);
       isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
