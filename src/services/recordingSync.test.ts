@@ -723,6 +723,7 @@ describe('recordingSync', () => {
       chapterNumber: 1,
     });
     expect(mockMarkRecordingUploaded).toHaveBeenCalled();
+    expect(mockEmitUploadSessionEvent).not.toHaveBeenCalled();
   });
 
   it('uploadChapterRecordings throws on failed count like the registered worker', async () => {
@@ -755,6 +756,17 @@ describe('recordingSync', () => {
       bookId: 40,
       chapterNumber: 2,
     });
+    expect(mockEmitUploadSessionEvent).not.toHaveBeenCalled();
+  });
+
+  it('emits one session lifecycle for a direct upload pass', async () => {
+    await syncPendingRecordings('tok-1', { delay });
+
+    expect(mockEmitUploadSessionEvent.mock.calls.map(call => call[0])).toEqual([
+      { type: 'start', totalChapters: 1 },
+      { type: 'progress', completedChapters: 1, totalChapters: 1 },
+      { type: 'complete' },
+    ]);
   });
 
   it('createChapterUploadWorker throws when recordings fail so orchestrator can retry (#600)', async () => {
