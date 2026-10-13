@@ -1190,7 +1190,17 @@ describe('syncAllData progressive login (#670)', () => {
     userHasLocalChapterAssignments.mockResolvedValue(false);
     userNeedsAssigneeRepair.mockResolvedValue(false);
     getLocalProjectIds.mockResolvedValue([]);
-    getChaptersToSync.mockResolvedValue(new Map());
+    getChaptersToSync.mockResolvedValue(
+      new Map([
+        [
+          10,
+          [
+            { bookId: 41, chapterNumber: 1 },
+            { bookId: 19, chapterNumber: 1 },
+          ],
+        ],
+      ]),
+    );
     getMyWorkChaptersToSync.mockResolvedValue(
       new Map([[10, [{ bookId: 41, chapterNumber: 1 }]]]),
     );
@@ -1294,6 +1304,8 @@ describe('syncAllData progressive login (#670)', () => {
 
     // Tier 2 not finished yet — full catalogue still pending.
     expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+    // Tier 1 only fetched My Work texts so far.
+    expect(FluentAPI.getBibleTexts).toHaveBeenCalledTimes(1);
     resolveAssignments({ data: [] });
     await pending;
 
@@ -1315,6 +1327,113 @@ describe('syncAllData progressive login (#670)', () => {
       expect.arrayContaining([
         expect.objectContaining({ chapterNumber: 1, verseNumber: 1 }),
       ]),
+    );
+    // Tier 2 texts skip My Work (MRK) and only fetch remaining catalogue (PSA).
+    expect(FluentAPI.getBibleTexts).toHaveBeenCalledTimes(2);
+    expect(FluentAPI.getBibleTexts).toHaveBeenLastCalledWith(
+      10,
+      [{ bookId: 19, chapterNumber: 1 }],
+      undefined,
+    );
+  });
+
+  it('re-login unblocks My Work before full catalogue when there is no cursor', async () => {
+    const preloadedUser = { id: 2, email: 'user2@test.com' };
+    (getTempCredentials as jest.Mock).mockResolvedValue({
+      token: 'relogin-token',
+    });
+    (getCredentials as jest.Mock).mockResolvedValue({
+      token: 'relogin-token',
+    });
+    // Local projects exist ⇒ re-login path (not fresh install).
+    getLocalProjectIds.mockResolvedValue([10]);
+    (getUserLastSyncedAt as jest.Mock).mockReturnValue('');
+
+    const myWorkChapter = {
+      projectId: 10,
+      bookId: 41,
+      bookCode: 'MRK',
+      chapterNumber: 1,
+    };
+    const catalogueChapter = {
+      projectId: 10,
+      bookId: 19,
+      bookCode: 'PSA',
+      chapterNumber: 1,
+    };
+    getProjectPericopeSetId.mockResolvedValue(99);
+    getChaptersNeedingPericopeSync
+      .mockResolvedValueOnce([myWorkChapter])
+      .mockResolvedValueOnce([catalogueChapter]);
+    (FluentAPI.getPericopeSet as jest.Mock).mockImplementation(
+      async (_setId: number, opts: { bookCode: string }) => ({
+        status: 200,
+        etag: `"etag-${opts.bookCode}"`,
+        data: [
+          {
+            bookCode: opts.bookCode,
+            pericopeNumber: '1',
+            pericopeTitle: null,
+            verses: [{ chapterNumber: 1, verseNumber: 1 }],
+          },
+        ],
+      }),
+    );
+
+    let resolveCatalogue: (value: unknown) => void = () => undefined;
+    (FluentAPI.getChapterAssignments as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveCatalogue = resolve;
+        }),
+    );
+
+    const onTier1Complete = jest.fn();
+    const pending = syncAllData(false, preloadedUser.email, preloadedUser, {
+      onTier1Complete,
+    });
+
+    await waitFor(() => {
+      expect(FluentAPI.getUserChapterAssignments).toHaveBeenCalledWith(
+        2,
+        'relogin-token',
+      );
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 41, chapterNumber: 1 }],
+        undefined,
+      );
+      expect(onTier1Complete).toHaveBeenCalledTimes(1);
+    });
+
+    // Catalogue must not have finished before Tier 1 unblocked Home.
+    expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(99, {
+      bookCode: 'MRK',
+      etag: null,
+    });
+    expect(FluentAPI.getPericopeSet).not.toHaveBeenCalledWith(
+      99,
+      expect.objectContaining({ bookCode: 'PSA' }),
+    );
+
+    resolveCatalogue({ data: [] });
+    await pending;
+
+    expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
+      2,
+      undefined,
+      undefined,
+      'relogin-token',
+    );
+    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(99, {
+      bookCode: 'PSA',
+      etag: null,
+    });
+    expect(FluentAPI.getBibleTexts).toHaveBeenLastCalledWith(
+      10,
+      [{ bookId: 19, chapterNumber: 1 }],
+      undefined,
     );
   });
 });

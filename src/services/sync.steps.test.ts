@@ -765,6 +765,46 @@ describe('sync step orchestration', () => {
       isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
     });
 
+    it('skips excluded My Work chapters but still clears remap when unscoped (#670 Tier 2)', async () => {
+      mockDbCount(2);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([
+          [
+            10,
+            [
+              { bookId: 41, chapterNumber: 1 },
+              { bookId: 19, chapterNumber: 1 },
+            ],
+          ],
+        ]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 19,
+            chapterNumber: 1,
+            verses: [{ id: 1901, verseNumber: 1, text: 'Blessed' }],
+          },
+        ],
+      });
+
+      await syncBibleTexts('2026-01-01T00:00:00.000Z', {
+        excludeChapterGroups: new Map([
+          [10, [{ bookId: 41, chapterNumber: 1 }]],
+        ]),
+      });
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledTimes(1);
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 19, chapterNumber: 1 }],
+        undefined,
+      );
+      expect(clearBibleTextsServerIdRemapPendingMock).toHaveBeenCalled();
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+    });
+
     it('remaps recording-linked chapters absent from chapter_assignments', async () => {
       mockDbCount(1);
       isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
