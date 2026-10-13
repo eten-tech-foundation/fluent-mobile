@@ -78,6 +78,8 @@ jest.mock('./storage', () => ({
     SYNC_ERROR_PROJECT_UNITS: 'sync_error_project_units',
     SYNC_ERROR_BIBLE_TEXTS: 'sync_error_bible_texts',
     SYNC_ERROR_PERICOPES: 'sync_error_pericopes',
+    SYNC_ERROR_PREPARE_OFFLINE_BIBLE_TEXTS:
+      'sync_error_prepare_offline_bible_texts',
   },
   getUserIdSync: jest.fn(),
   getActiveUserId: jest.fn(),

@@ -116,6 +116,26 @@ describe('upload progress notification presentation', () => {
     ).not.toHaveBeenCalled();
   });
 
+  it('shows once and clears once for a multi-chapter session (#599)', async () => {
+    emitUploadSessionEvent({ type: 'start', totalChapters: 2 });
+    emitUploadSessionEvent({
+      type: 'progress',
+      completedChapters: 1,
+      totalChapters: 2,
+    });
+    emitUploadSessionEvent({
+      type: 'progress',
+      completedChapters: 2,
+      totalChapters: 2,
+    });
+    emitUploadSessionEvent({ type: 'complete' });
+    await waitForUploadNotificationIdle();
+
+    expect(mockStart).toHaveBeenCalledTimes(1);
+    expect(mockUpdate).toHaveBeenCalledTimes(2);
+    expect(mockStop).toHaveBeenCalledTimes(1);
+  });
+
   it('updates the same notification as chapters complete', async () => {
     emitUploadSessionEvent({ type: 'start', totalChapters: 2 });
     emitUploadSessionEvent({
