@@ -50,6 +50,15 @@ export type ApiPrepareOfflineResourceTier = 1 | 2 | 3;
 
 export type ApiPrepareOfflineResourceKind = 'text' | 'audio' | 'image';
 
+/** Actual coverage of one resource, independent of the manifest request range. */
+export interface ApiPrepareOfflineResourceScope {
+  bookCode?: string;
+  startChapter?: number;
+  endChapter?: number;
+  verseStart?: number;
+  verseEnd?: number;
+}
+
 export interface ApiPrepareOfflineManifestItem {
   id: string;
   tier: ApiPrepareOfflineResourceTier;
@@ -63,6 +72,8 @@ export interface ApiPrepareOfflineManifestItem {
   fileExt: string;
   aquiferContentId?: number;
   languageCode: string;
+  scope?: ApiPrepareOfflineResourceScope;
+  /** Legacy scope fields; a multi-chapter range may be the request range. */
   bookCode?: string;
   startChapter?: number;
   endChapter?: number;
