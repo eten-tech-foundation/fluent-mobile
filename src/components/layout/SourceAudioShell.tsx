@@ -8,12 +8,21 @@ import React, {
   useState,
 } from 'react';
 import { useDraftingContext } from '../../app/context/DraftingContext';
+import { useConnectivity } from '../../hooks/useConnectivity';
 import { useSourceAudio } from '../../hooks/useSourceAudio';
 import { useBibleTabUnits } from '../../hooks/useBibleTabUnits';
+import { getActiveUserId } from '../../services/storage';
 import { subdivisionTickMarks } from '../../utils/bibleTabUnits';
 import type { ChapterAssignmentData } from '../../types/db/types';
 import { SourceAudioPlayerBar } from './SourceAudioPlayerBar';
 import type { DraftingTab } from './DraftingTabBar';
+
+function activeUserIdNumber(): number | null {
+  const raw = getActiveUserId();
+  if (!raw) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
 
 type DraftAudioBridge = {
   pausePlayback: () => Promise<void>;
@@ -72,6 +81,9 @@ export function SourceAudioProvider({
   const [recordTabSourceEnabled, setRecordTabSourceEnabledState] =
     useState(true);
   const pauseDraftPlaybackRef = useRef<() => Promise<void>>(async () => {});
+  const { isOnline, hasResolved } = useConnectivity();
+  // Match Resources tab: no API until /health resolves; offline → local or empty.
+  const online = hasResolved && isOnline;
 
   const barVisible =
     (activeTab === 'bible' || activeTab === 'record') && !recordCaptureActive;
@@ -86,6 +98,8 @@ export function SourceAudioProvider({
     languageCode: chapterData.sourceLanguageCode,
     verse: selectedVerse,
     enabled,
+    isOnline: online,
+    userId: activeUserIdNumber(),
     onPlayingVerseChange: setCurrentlyPlayingVerse,
   });
 

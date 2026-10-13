@@ -19,15 +19,6 @@ function inventoryIdentityKey(
   return `${projectId}:${userId}`;
 }
 
-/**
- * Subscribe to Prepare Offline inventory for Resources gating (#192).
- * Does not fetch manifests or call Aquifer — local status and persisted
- * `download_queue` completions only.
- *
- * Section availability is bound to the active project + account. On identity
- * change, previously loaded sections are cleared until the matching lookup
- * resolves so a same-device account switch cannot leak the prior user's gates.
- */
 export function useResourcesInventory(
   projectId: number | null,
   userId: number | null,
@@ -54,8 +45,6 @@ export function useResourcesInventory(
       return;
     }
 
-    // Drop prior identity's sections immediately; do not wait for the new
-    // download_queue lookup (avoids cross-account / cross-project bleed).
     if (identityKeyRef.current !== nextKey) {
       identityKeyRef.current = nextKey;
       setDownloadedSections(NO_SECTIONS);
@@ -75,16 +64,14 @@ export function useResourcesInventory(
 
   const getResourceStatus = useCallback(
     (resourceId: string): PrepareOfflineResourceStatus => {
-      if (projectId === null) {
+      if (projectId === null || userId === null) {
         return 'available';
       }
-      return getResourcesInventoryStatus(projectId, resourceId);
+      return getResourcesInventoryStatus(projectId, userId, resourceId);
     },
-    // inventoryVersion forces callers to re-read after inventory pub/sub.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [projectId, inventoryVersion],
+    [projectId, userId, inventoryVersion],
   );
-
   return {
     inventoryVersion,
     downloadedSections,

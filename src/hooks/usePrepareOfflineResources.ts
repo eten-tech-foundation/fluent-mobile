@@ -34,12 +34,13 @@ export function usePrepareOfflineResources({
 
   const {
     manifest,
+    manifestContexts,
     loading: manifestLoading,
     error: manifestError,
     inventoryVersion,
     getResourceStatus,
     getDefaultPackageDeselects,
-  } = usePrepareOfflineResourceData(projectId);
+  } = usePrepareOfflineResourceData(projectId, userId, chapters, selectedIds);
 
   const sessionKey =
     projectId !== null ? `${projectId}:${userId ?? 'none'}` : null;
@@ -57,24 +58,14 @@ export function usePrepareOfflineResources({
 
   const catalog = useMemo(() => {
     void inventoryVersion;
-    if (projectId === null) {
-      return { items: [], groups: [] };
-    }
+
     return buildPrepareOfflineCatalog({
-      projectId,
       manifest,
       getResourceStatus,
       chapters,
       selectedIds,
     });
-  }, [
-    projectId,
-    manifest,
-    getResourceStatus,
-    chapters,
-    selectedIds,
-    inventoryVersion,
-  ]);
+  }, [manifest, getResourceStatus, chapters, selectedIds, inventoryVersion]);
 
   const effectiveCatalog = useMemo(
     () => buildEffectiveCatalog(catalog, deselectedItemIds),
@@ -143,6 +134,7 @@ export function usePrepareOfflineResources({
     canDownload,
     manifestLoading,
     manifestError,
+    manifestContexts,
     isItemSelected,
     toggleItemSelected,
   };

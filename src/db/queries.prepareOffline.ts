@@ -14,6 +14,7 @@ interface PrepareOfflineChapterDbRow {
   book_name: string;
   chapter_number: number;
   assigned_user_id: number | null;
+  bible_id: number;
 }
 
 function mapRow(row: PrepareOfflineChapterDbRow): PrepareOfflineChapterRow {
@@ -24,10 +25,10 @@ function mapRow(row: PrepareOfflineChapterDbRow): PrepareOfflineChapterRow {
     bookName: row.book_name,
     chapterNumber: row.chapter_number,
     assignedUserId: row.assigned_user_id,
+    bibleId: row.bible_id,
   };
 }
 
-/** Chapter assignments for a project, grouped downstream by book. */
 export async function getPrepareOfflineChapters(
   projectId: number,
 ): Promise<PrepareOfflineChapterRow[]> {
@@ -40,7 +41,8 @@ export async function getPrepareOfflineChapters(
         b.code AS book_code,
         ca.chapter_number,
         ca.assigned_user_id,
-        b.eng_display_name AS book_name
+        b.eng_display_name AS book_name,
+        ca.bible_id
       FROM chapter_assignments ca
       JOIN books b ON ca.book_id = b.id
       JOIN project_units pu ON ca.project_unit_id = pu.id
