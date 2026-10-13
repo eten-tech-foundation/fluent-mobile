@@ -27,6 +27,8 @@ interface PrepareOfflineDownloadFooterProps {
   busy?: boolean;
   transportBlocked?: boolean;
   transportBlockedMessage?: string;
+  /** Retryable prepare failure — shown but does not disable Download. */
+  downloadErrorMessage?: string;
   onDownload: () => void;
   onPause: () => void;
   onResume: () => void;
@@ -41,6 +43,7 @@ export function PrepareOfflineDownloadFooter({
   busy = false,
   transportBlocked = false,
   transportBlockedMessage,
+  downloadErrorMessage,
   onDownload,
   onPause,
   onResume,
@@ -48,6 +51,11 @@ export function PrepareOfflineDownloadFooter({
 }: PrepareOfflineDownloadFooterProps) {
   const disabled = busy;
   const transferDisabled = busy || transportBlocked;
+  // Prefer transport while blocked (even with no message yet — e.g. pending
+  // connectivity) so a stale prepare error does not show beside a disabled button.
+  const footerHint = transportBlocked
+    ? transportBlockedMessage
+    : downloadErrorMessage;
 
   return (
     <View style={styles.footer} testID="prepare-offline-download-footer">
@@ -145,12 +153,9 @@ export function PrepareOfflineDownloadFooter({
           </Text>
         </TouchableOpacity>
       )}
-      {transportBlocked && transportBlockedMessage ? (
-        <Text
-          style={styles.blockedHint}
-          testID="prepare-offline-transport-blocked-hint"
-        >
-          {transportBlockedMessage}
+      {footerHint ? (
+        <Text style={styles.blockedHint} testID="prepare-offline-footer-hint">
+          {footerHint}
         </Text>
       ) : null}
     </View>
