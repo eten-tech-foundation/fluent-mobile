@@ -64,11 +64,12 @@ export function ProgressRing({
   const progress = useSharedValue(clamped);
   const { motion } = theme;
 
+  // Linear, not ease-standard: playback reports position every 100ms, and an
+  // ease-out would stall at each update instead of sweeping continuously.
   useEffect(() => {
-    const { x1, y1, x2, y2 } = motion.easeStandard;
     progress.value = withTiming(clamped, {
       duration: reduceMotion ? 0 : motion.releaseMs,
-      easing: Easing.bezier(x1, y1, x2, y2),
+      easing: Easing.linear,
     });
   }, [clamped, motion, progress, reduceMotion]);
 

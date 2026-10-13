@@ -5,9 +5,12 @@ import { ProgressRing } from '../../../components/ui/ProgressRing';
 import { RoundButton } from '../../../components/ui/RoundButton';
 import { ColorModeScope, useThemedStyles } from '../../../theme/useTheme';
 
-/** Listening progress in whole steps, so a track lands exactly on complete. */
-const STEPS = 20;
-const STEP_MS = 250;
+/**
+ * Listening progress in whole steps, so a track lands exactly on complete.
+ * 100ms matches the player's position updates (usePlaybackEngine).
+ */
+const STEPS = 50;
+const STEP_MS = 100;
 const REFERENCE = 'Mark 14:22–25';
 
 /** The Last Supper's tracks, as on the Figma pericope screen. */
