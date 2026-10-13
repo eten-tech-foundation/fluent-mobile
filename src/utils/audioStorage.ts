@@ -33,6 +33,21 @@ export function recordingPath(recordingId: string): string {
   return `${recordingsDir()}${recordingId}.m4a`;
 }
 
+export type ScratchTakeExtension = '.aac' | '.m4a';
+
+/**
+ * Scratch URI used while a take is concatenated / remuxed, before it is copied
+ * to its final {@link recordingPath}. Never persisted to the DB, and always
+ * distinct from the final path so the commit copy can never be a self-copy
+ * (#567).
+ */
+export function recordingsScratchPath(
+  recordingId: string,
+  extension: ScratchTakeExtension,
+): string {
+  return `${recordingsDir()}${recordingId}.part${extension}`;
+}
+
 export async function fileExists(path: string): Promise<boolean> {
   return (await FileSystem.getInfoAsync(path)).exists;
 }

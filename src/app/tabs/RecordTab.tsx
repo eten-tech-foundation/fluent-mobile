@@ -87,6 +87,7 @@ import type { Recording, RecordingWithOwner } from '../../types/db/types';
 import {
   getStageAdvanceVisibility,
   isDrafterBlockedFromOpenPeerCheckCapture,
+  isRecordingLockedByStage,
   resolvePeerCheckerAssignmentOnAdvance,
   stageAdvanceConfirmBody,
 } from '../../utils/stageAdvancement';
@@ -351,6 +352,12 @@ export function RecordTab({
 
   const [lastPericopeOfChapter, setLastPericopeOfChapter] =
     useState<PericopeGroupResult | null>(null);
+
+  useEffect(() => {
+    if (verseAudio.recoveredElapsedMs > 0) {
+      setElapsedMs(verseAudio.recoveredElapsedMs);
+    }
+  }, [verseAudio.recoveredElapsedMs]);
 
   useEffect(() => {
     if (draftingUnit !== 'pericope' || pericopeSetId === null) {
@@ -896,6 +903,7 @@ export function RecordTab({
   });
 
   async function handleStart() {
+    if (stageLocked) return;
     if (!(await ensureMic())) return;
     setElapsedMs(0);
     if (sourceAudioControl && sourceAudioControl.status !== 'idle') {
@@ -926,7 +934,12 @@ export function RecordTab({
     () => isDrafterBlockedFromOpenPeerCheckCapture(chapterData, currentUserId),
     [chapterData, currentUserId],
   );
-  const captureDisabled = recordDisabled || drafterCaptureBlocked;
+  const stageLocked = useMemo(
+    () => isRecordingLockedByStage(chapterData),
+    [chapterData],
+  );
+  const captureDisabled =
+    recordDisabled || drafterCaptureBlocked || stageLocked;
   const isTaken = useMemo(
     () => isChapterTakenByOther(chapterData, currentUserId),
     [chapterData, currentUserId],
@@ -1440,10 +1453,18 @@ export function RecordTab({
                                 ? verseAudio.pausePlayback()
                                 : handlePlayTake(take));
                             }}
-                            onSelect={() => {
-                              void verseAudio.selectTake(take.id);
-                            }}
-                            onDelete={() => handleDeleteTake(take)}
+                            onSelect={
+                              stageLocked
+                                ? undefined
+                                : () => {
+                                    void verseAudio.selectTake(take.id);
+                                  }
+                            }
+                            onDelete={
+                              stageLocked
+                                ? undefined
+                                : () => handleDeleteTake(take)
+                            }
                             onSeek={
                               isSeekable
                                 ? ms => {
@@ -1493,9 +1514,13 @@ export function RecordTab({
                                   ? verseAudio.pausePlayback()
                                   : handlePlayTake(take));
                               }}
-                              onDesignateCanonical={() => {
-                                void verseAudio.setCanonical(take.id);
-                              }}
+                              onDesignateCanonical={
+                                stageLocked
+                                  ? undefined
+                                  : () => {
+                                      void verseAudio.setCanonical(take.id);
+                                    }
+                              }
                             />
                           </View>
                         );

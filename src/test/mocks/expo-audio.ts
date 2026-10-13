@@ -109,6 +109,8 @@ export class AudioRecorder {
   currentTime = 0;
 
   async prepareToRecordAsync(_options?: unknown): Promise<void> {
+    recordingUri = 'file:///mock-recording.aac';
+    this.uri = recordingUri;
     recordingStatus = { ...recordingStatus, canRecord: true };
     statusListener?.(recordingStatus);
   }
@@ -142,7 +144,7 @@ export class AudioRecorder {
       isRecording: false,
       durationMillis: Math.round(this.currentTime * 1000),
     };
-    recordingUri = 'file:///mock-recording.m4a';
+    recordingUri = this.uri ?? 'file:///mock-recording.aac';
     this.uri = recordingUri;
     statusListener?.(recordingStatus);
   }

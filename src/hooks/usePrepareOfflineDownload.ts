@@ -155,6 +155,9 @@ export function usePrepareOfflineDownload({
   const [downloadTransportError, setDownloadTransportError] = useState<
     string | null
   >(null);
+  // Retryable prepare failures (sync / hydrate / enqueue). Shown in the footer
+  // but must not disable Download — unlike real transport-gate errors (#579).
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [downloadKickoff, setDownloadKickoff] = useState(false);
   const [sessionStarted, setSessionStarted] = useState(false);
@@ -202,6 +205,7 @@ export function usePrepareOfflineDownload({
       pendingSessionActionRef.current = null;
       sessionKeyRef.current = sessionKey;
       setDownloadTransportError(null);
+      setDownloadError(null);
     }
   }, [sessionKey]);
 
@@ -214,6 +218,10 @@ export function usePrepareOfflineDownload({
     isWifi,
     uploadOverCellular,
   ]);
+
+  useEffect(() => {
+    setDownloadError(null);
+  }, [selectedItems]);
 
   useEffect(() => {
     if (projectId === null || userId === null) {
@@ -503,6 +511,7 @@ export function usePrepareOfflineDownload({
     downloadInFlightRef.current = true;
     setDownloadKickoff(true);
     setDownloadTransportError(null);
+    setDownloadError(null);
     try {
       try {
         await syncBibleTextsForChapters(bibleTextChapters);
@@ -511,7 +520,7 @@ export function usePrepareOfflineDownload({
           error,
           projectId,
         });
-        setDownloadTransportError(
+        setDownloadError(
           'Could not prepare Bible text for offline. Try again.',
         );
         return; // the finally block still resets the kickoff state
@@ -531,7 +540,7 @@ export function usePrepareOfflineDownload({
           error,
           projectId,
         });
-        setDownloadTransportError(
+        setDownloadError(
           'Could not load resource content for download. Try again.',
         );
         return;
@@ -539,10 +548,19 @@ export function usePrepareOfflineDownload({
 
       // Verse timestamps are only needed once the user downloads — persist
       // after hydration so catalog toggles do not fan out chapter-audio calls.
-      await persistSourceAudioMetaForManifestContexts(
-        projectId,
-        manifestContexts,
-      );
+      // persistSourceAudioMetaForManifestContexts is best-effort internally;
+      // still guard here so an unexpected throw cannot abort enqueue.
+      try {
+        await persistSourceAudioMetaForManifestContexts(
+          projectId,
+          manifestContexts,
+        );
+      } catch (error) {
+        log.warn('source-audio meta persist unexpected failure', {
+          error,
+          projectId,
+        });
+      }
 
       setForceIdle(false);
       userCancelledRef.current = false;
@@ -566,7 +584,7 @@ export function usePrepareOfflineDownload({
         });
         setSessionStarted(false);
         setForceIdle(true);
-        setDownloadTransportError('Could not start the download. Try again.');
+        setDownloadError('Could not start the download. Try again.');
         return;
       }
 
@@ -619,6 +637,7 @@ export function usePrepareOfflineDownload({
     canDownload: canDownloadNow && !transportBlocked,
     transportBlocked: transportBlocked || downloadTransportError !== null,
     transportBlockedMessage: downloadTransportError ?? transportBlockedMessage,
+    downloadErrorMessage: downloadError ?? undefined,
     inventoryRefreshSignal,
     handleDownload,
     pause: handlePause,
