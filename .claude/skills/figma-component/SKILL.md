@@ -153,8 +153,10 @@ section "Screens: wire to what exists" before writing screen code:
 
 Before handing off, run the guide's "Before asking for review" checklist
 (rebased on `main`, product rules consistent, status docs correct from the
-top, Android floor noted, shared test state reset). Then hand off to
-`/create-pr`. In the PR: Figma link, the token mapping report
+top, Android floor noted, shared test state reset). Then stop and say it's
+ready: **don't open a PR until the user says so**. When you're running
+`/start-issue`, stop at its step 7 instead of chaining into `/create-pr`. Once
+they ask, hand off to `/create-pr`. In the PR: Figma link, the token mapping report
 (collapsed), gallery path under "How to verify", before/after screenshots,
 **Needs QA? Yes** if haptics or recording are involved. For screens, add the
 **Existing functionality** table (UI element · Status · Source with file or
@@ -164,6 +166,7 @@ issue. Ask reviewers to confirm the wiring in the PR TLDR.
 
 ## Don'ts
 
+- Don't open a PR (or run `/create-pr`) until the user asks for one.
 - Don't import `src/theme/next*` from UI, add keys to `tokens.ts`, or put
   hex in component files.
 - Don't call `expo-haptics` directly from components.
