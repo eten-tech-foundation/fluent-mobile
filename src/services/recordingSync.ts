@@ -26,7 +26,11 @@ import {
   blobKeyFromVerseAudioResponse,
   outcomeFromVerseAudioFailure,
 } from './verseAudioContract';
-import { emitAuthReauthRequired, emitUploadSessionEvent } from './syncEvents';
+import {
+  emitAuthReauthRequired,
+  emitUploadSessionEvent,
+  type UploadSessionEvent,
+} from './syncEvents';
 import {
   setChapterUploadWorker,
   type ChapterUploadWorker,
@@ -49,6 +53,12 @@ export type RecordingSyncOptions = {
   /** Injectable backoff (tests). Default: attempt * 500ms. */
   delay?: (ms: number) => Promise<void>;
   maxAttempts?: number;
+  /**
+   * Chapter workers pass false. The orchestrator owns the one session
+   * notification; a per-chapter complete was clearing it mid-upload (#599).
+   * Direct passes (retry) keep the default and emit their own lifecycle.
+   */
+  emitSessionEvents?: boolean;
 };
 
 let inFlight: Promise<UploadResult> | null = null;
@@ -400,9 +410,15 @@ async function runUploadPass(
   });
 
   const total = pending.length;
-  // Per-recording lifecycle events so UI can refresh without a manual bump.
-  // Chapter-scoped orchestrator sessions also emit; listeners treat both as refresh signals.
-  emitUploadSessionEvent({ type: 'start', totalChapters: total });
+  const emitSession = (event: UploadSessionEvent): void => {
+    if (options.emitSessionEvents === false) {
+      return;
+    }
+    emitUploadSessionEvent(event);
+  };
+  // Direct passes emit so retry UI can refresh. Chapter workers opt out;
+  // the orchestrator emits one start / progress / complete for the session.
+  emitSession({ type: 'start', totalChapters: total });
 
   let uploaded = 0;
   let conflicted = 0;
@@ -429,14 +445,14 @@ async function runUploadPass(
         failed += 1;
       }
       completed += 1;
-      emitUploadSessionEvent({
+      emitSession({
         type: 'progress',
         completedChapters: completed,
         totalChapters: total,
       });
     }
 
-    emitUploadSessionEvent({ type: 'complete' });
+    emitSession({ type: 'complete' });
     log.info('Recording upload pass complete', {
       uploaded,
       conflicted,
@@ -445,9 +461,9 @@ async function runUploadPass(
     return { uploaded, conflicted, failed };
   } catch (error) {
     if (isAbortError(error) || options.signal?.aborted) {
-      emitUploadSessionEvent({ type: 'cancelled' });
+      emitSession({ type: 'cancelled' });
     } else {
-      emitUploadSessionEvent({ type: 'idle' });
+      emitSession({ type: 'idle' });
     }
     throw error;
   }
@@ -489,7 +505,11 @@ export async function uploadChapterRecordings(
   if (!resolved) {
     throw new Error('No auth token available for chapter upload');
   }
-  await syncPendingRecordings(resolved, { chapter, signal });
+  await syncPendingRecordings(resolved, {
+    chapter,
+    signal,
+    emitSessionEvents: false,
+  });
 }
 
 export function createChapterUploadWorker(
@@ -501,7 +521,11 @@ export function createChapterUploadWorker(
       if (!token) {
         throw new Error('No auth token available for chapter upload');
       }
-      await syncPendingRecordings(token, { chapter, signal });
+      await syncPendingRecordings(token, {
+        chapter,
+        signal,
+        emitSessionEvents: false,
+      });
     },
   };
 }
