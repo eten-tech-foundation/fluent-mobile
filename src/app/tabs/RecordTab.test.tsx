@@ -1524,6 +1524,37 @@ describe('RecordTab', () => {
       expect(screen.getByTestId('record-delete-button-rec_1')).toBeTruthy();
       expect(screen.getByTestId('record-take-select-rec_1')).toBeTruthy();
     });
+    it('does not allow designating a canonical take in All Takes at Complete', () => {
+      const ownTake = makeTake({ id: 'rec_1', takeNumber: 1 });
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [ownTake],
+        selectedTake: ownTake,
+        hasMultipleRecorders: true,
+        allTakes: [
+          makeOwnedTake({
+            id: 'rec_1',
+            recordedByUserId: 1,
+            ownerDisplayName: 'Me',
+          }),
+          makeOwnedTake({
+            id: 'rec_2',
+            recordedByUserId: 2,
+            ownerDisplayName: 'John Doe',
+          }),
+        ],
+      });
+
+      renderTab(undefined, { chapterData: completeChapter });
+      fireEvent.press(screen.getByTestId('take-view-all'));
+
+      // Rows still render (so the assertions below aren't vacuous)...
+      expect(screen.getAllByTestId('shared-take-row')).toHaveLength(2);
+      // ...but no canonical control is pressable.
+      expect(screen.queryAllByTestId('shared-take-canonical')).toHaveLength(0);
+      expect(idleAudio.setCanonical).not.toHaveBeenCalled();
+    });
   });
 
   describe('Mode-aware Current Unit Title (#409)', () => {

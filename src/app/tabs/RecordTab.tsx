@@ -1514,9 +1514,13 @@ export function RecordTab({
                                   ? verseAudio.pausePlayback()
                                   : handlePlayTake(take));
                               }}
-                              onDesignateCanonical={() => {
-                                void verseAudio.setCanonical(take.id);
-                              }}
+                              onDesignateCanonical={
+                                stageLocked
+                                  ? undefined
+                                  : () => {
+                                      void verseAudio.setCanonical(take.id);
+                                    }
+                              }
                             />
                           </View>
                         );
