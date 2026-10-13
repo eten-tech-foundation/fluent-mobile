@@ -1,5 +1,6 @@
 import type React from 'react';
 import { KeyEntry } from './KeyEntry';
+import { RoundButtonEntry } from './RoundButtonEntry';
 import { SwitchEntry } from './SwitchEntry';
 
 export interface GalleryEntry {
@@ -26,5 +27,13 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Switch',
     modes: 'Hardware',
     Component: SwitchEntry,
+  },
+  {
+    // Figma: Round button https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2326-64
+    // Figma: Progress ring https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2400-302
+    id: 'round-button',
+    name: 'Round button · Progress ring',
+    modes: 'Soft on light screens · Flat pinned to Canvas',
+    Component: RoundButtonEntry,
   },
 ];

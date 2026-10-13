@@ -16,10 +16,10 @@ the Legacy / Next split described there.
 | Effect styles as `boxShadow` | `theme.elevation.raised` · `inset` · `soft` · `floating` |
 | Motion | `theme.motion.pressMs` · `releaseMs` · `easeStandard` |
 | Disabled opacity, icon sizes | `theme.opacity.disabled` · `theme.controlSizes.icon24` / `icon32` |
-| Radius `xs` (4), space `2` | `theme.radius.xs`, `theme.spacing.xxs` |
+| Radius `xs` (4), space `2`, strokes | `theme.radius.xs`, `theme.spacing.xxs`, `theme.stroke[1]` / `[2]` |
 | Haptics | `useHaptics()` from `src/hooks/useHaptics.ts` |
 | Review screen | `/gallery` (`fluent://gallery`), entries in `src/app/gallery/entries/` |
-| Reference components | `src/components/ui/Key.tsx` (Figma Key, `2326:34`) in `KeyDeck.tsx` (Hardware panel keys, `2411:465`) · `src/components/ui/Switch.tsx` (Figma Switch, `2326:41`) |
+| Reference components | `src/components/ui/Key.tsx` (Figma Key, `2326:34`) in `KeyDeck.tsx` (Hardware panel keys, `2411:465`) · `src/components/ui/Switch.tsx` (Figma Switch, `2326:41`) · `src/components/ui/RoundButton.tsx` (Figma Round button, `2326:64`) · `src/components/ui/ProgressRing.tsx` (Figma Progress ring, `2400:302`) |
 
 Legacy carries the same keys with nearest-equivalent values, so components
 never branch on UI version. Components never pick a mode either: they read
@@ -126,7 +126,15 @@ Figma 07 · Tactile defines the state model. In code:
   `t.motion.easeStandard`, on a Reanimated shared value so it runs on the
   UI thread. Start the sink in `onPressIn`, then settle from an effect on
   `pressed || active`: Android can call `onPressOut` after `onPress` on quick
-  taps, so animating out from `onPressOut` latches wrong (see `Key.tsx`).
+  taps, so animating out from `onPressOut` latches wrong. `usePressProgress`
+  (`src/hooks/usePressProgress.ts`) does all of this; use it for any tactile
+  press rather than rewriting it (Key and RoundButton do).
+- When Figma pins a variant to a mode (Round button's Flat is "pinned
+  Canvas"), wrap that variant's body in `ColorModeScope` inside the component
+  so it resolves the pinned roles whatever screen it's on.
+- Put accessibility semantics for decorative-but-meaningful wrappers (a
+  progress ring around a button) on their own sibling element. An
+  `accessible` wrapper would swallow the button inside it.
 - `boxShadow` strings don't interpolate, so stack the states and fade only
   the top layer: keep the sunken face fully opaque underneath and fade the
   raised face over it. Fading both (`1 − p` / `p`) lets the background show

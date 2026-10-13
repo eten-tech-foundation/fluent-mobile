@@ -41,9 +41,11 @@ Read it fully before step 1; this file is how an agent executes it.
   `t.controlSizes.*`, plus the existing `t.spacing` / `t.radius`.
 - Haptics: `useHaptics()` from `src/hooks/useHaptics.ts` (no-op in Legacy, silent
   for the whole take, recording or paused, via `src/audio/micActivity.ts`).
-- Reference implementations: `src/components/ui/Key.tsx` (pressable, latch)
-  and `src/components/ui/Switch.tsx` (controlled value), with gallery entries
-  in `src/app/gallery/entries/`. Copy their shape.
+- Reference implementations: `src/components/ui/Key.tsx` (pressable, latch),
+  `Switch.tsx` (controlled value), `RoundButton.tsx` (variant pinned to a mode)
+  and `ProgressRing.tsx` (value-driven SVG, wraps a child), with gallery
+  entries in `src/app/gallery/entries/`. Copy their shape. Tactile presses use
+  `usePressProgress` from `src/hooks/usePressProgress.ts`.
 - Backend: fluent-api publishes OpenAPI at `https://dev.api.fluent.bible/doc`
   (Scalar UI at `/reference`). `npm run api:coverage -- --tag <tag>` lists
   operations mobile doesn't call yet. Source domains:
