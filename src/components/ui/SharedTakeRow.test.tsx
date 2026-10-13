@@ -72,7 +72,13 @@ describe('SharedTakeRow canonical designation', () => {
 
     expect(queryByTestId('shared-take-canonical')).toBeNull();
     expect(queryByTestId('shared-take-canonical-readonly')).toBeNull();
-    expect(getByTestId('shared-take-canonical-spacer')).toBeTruthy();
+    // The spacer is hidden from accessibility on purpose, so opt in to hidden
+    // elements or the query will never see it.
+    expect(
+      getByTestId('shared-take-canonical-spacer', {
+        includeHiddenElements: true,
+      }),
+    ).toBeTruthy();
   });
 
   it('shows a read-only canonical mark when locked and canonical', () => {
@@ -86,6 +92,10 @@ describe('SharedTakeRow canonical designation', () => {
 
     expect(queryByTestId('shared-take-canonical')).toBeNull();
     expect(getByTestId('shared-take-canonical-readonly')).toBeTruthy();
-    expect(queryByTestId('shared-take-canonical-spacer')).toBeNull();
+    expect(
+      queryByTestId('shared-take-canonical-spacer', {
+        includeHiddenElements: true,
+      }),
+    ).toBeNull();
   });
 });
