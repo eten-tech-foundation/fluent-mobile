@@ -58,6 +58,12 @@ The token-level detail is in the
   today, so the long Level wave uses simulated levels in the gallery. Wiring
   it means turning on expo-audio metering in the recording engine and mapping
   dB to 0–1 levels. Touches recording, so it needs device QA.
+- **Q20 · Contrast of unplayed and resting marks** *(design)*. Figma binds
+  unplayed Wave bars to `fg/inactive`, and the Level wave's resting ticks use
+  it too. That's about 1.5:1 on `bg/default` in Canvas and Hardware (WCAG
+  asks 3:1 for graphics you need to read), and identical to `surface/default`
+  in Canvas, so on a Canvas card they vanish. Keep it as a deliberate quiet
+  state, or move them to `fg/secondary` like the short Level wave's dots?
 - **Q7 · Listen / Record segmented control** *(design)*. The Pericope screen
   has a Listen | Record segmented button that isn't a Foundations component
   yet.
