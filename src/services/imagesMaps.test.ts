@@ -261,6 +261,7 @@ describe('loadImagesMapsForUnit', () => {
           id: 'img-api-279999',
           title: 'Locations in the Book of Mark',
           uri: 'https://cdn.aquifer.bible/example.png',
+          thumbnailUri: 'https://cdn.aquifer.bible/example-thumb.png',
         },
       ]);
       expect(getTranslationImages).toHaveBeenCalledTimes(1);
