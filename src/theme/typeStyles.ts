@@ -59,7 +59,6 @@ export const systemFontFamilies = {
  * Figma's six `type/telugu/*` styles: same sizes, taller line heights so
  * stacked conjuncts don't clip. Layer over the base style for Telugu text.
  */
-
 export const teluguTypeOverrides = {
   reading: { lineHeight: 64 },
   readingStrong: { lineHeight: 64 },
