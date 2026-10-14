@@ -80,6 +80,18 @@ export const OFFLINE_STORAGE_EMPTY_OTHER_PROJECTS =
 export const OFFLINE_STORAGE_SELECT_TO_DELETE = 'Select items to delete';
 export const OFFLINE_STORAGE_DELETE_SELECTED = 'Delete Selected';
 
+/** Prepare for Offline — manifest fetch failed for the current selection (#702). */
+export const PREPARE_OFFLINE_MANIFEST_LOAD_ERROR =
+  "Couldn't load downloadable resources for the selected chapters. Check your connection and try again.";
+
+/** Prepare for Offline — selection resolved but API returned nothing to download (#702). */
+export const PREPARE_OFFLINE_NO_RESOURCES_FOR_SELECTION =
+  'No downloadable resources are available for the selected chapters.';
+
+/** Prepare for Offline — manifest still loading after chapter selection (#702). */
+export const PREPARE_OFFLINE_MANIFEST_LOADING =
+  'Loading resources for the selected chapters…';
+
 /** Record tab warning banners (issue #269). */
 export const RECORD_TAKEN_CHAPTER_WARNING =
   'This chapter is assigned to another translator.';
