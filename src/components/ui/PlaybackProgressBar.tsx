@@ -319,6 +319,7 @@ export function PlaybackProgressBar({
           return (
             <Animated.View
               key={i}
+              pointerEvents="none"
               style={[
                 styles.bar,
                 {
@@ -335,6 +336,7 @@ export function PlaybackProgressBar({
         return (
           <View
             key={i}
+            pointerEvents="none"
             style={[
               styles.bar,
               {

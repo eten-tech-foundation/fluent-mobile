@@ -8,6 +8,8 @@ export type PlayerApi = {
   /** Prepare URI for seek/play without starting playback (Review scrub). */
   load(uri: string): Promise<void>;
   play(uri: string): Promise<void>;
+  /** Start the expected loaded source from its current position. */
+  resume(positionMs?: number, uri?: string): Promise<void>;
   pause(): Promise<void>;
   seek(ms: number): Promise<void>;
   stop(): Promise<void>;
