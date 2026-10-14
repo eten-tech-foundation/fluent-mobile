@@ -101,6 +101,20 @@ describe('nextTheme (Figma Foundations / Hardware)', () => {
     });
     expect(nextTheme.opacity.disabled).toBe(0.4);
     expect(nextTheme.controlSizes.icon32).toBe(32);
+    expect(nextTheme.type.reading).toMatchObject({
+      fontSize: 42,
+      lineHeight: 52,
+      fontWeight: '400',
+      includeFontPadding: false,
+    });
+    expect(nextTheme.type.readingStrong.fontWeight).toBe('700');
+    expect(nextTheme.type.overline).toMatchObject({
+      fontFamily: 'monospace',
+      fontSize: 20,
+      textTransform: 'uppercase',
+    });
+    expect(nextTheme.typeTelugu.reading.lineHeight).toBe(64);
+    expect(nextTheme.fontScale.readingMax).toBe(1.3);
     expect(nextTheme.radius.xs).toBe(4);
   });
 

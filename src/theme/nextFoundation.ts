@@ -61,7 +61,7 @@ export const nextRadius = {
   full: nextRadiusScale.full,
 } as const;
 
-/** Figma type styles (Inter placeholder; family TBD). */
+/** Figma type metrics behind the Legacy-keyed `typography` overrides below. */
 export const nextTypeStyles = {
   reading: { size: 42, lineHeight: 52, weight: '400' as const },
   title: { size: 18, lineHeight: 24, weight: '600' as const },
@@ -77,8 +77,14 @@ export const nextTypeStyles = {
  * reading/Canvas surface key.
  * `md` (16) and `xs` (12) have no Foundations style — left to Legacy via merge.
  */
+/**
+ * Font families for the named type styles. Figma's are placeholders (Google
+ * Sans Flex, DM Mono), so these stay on the system faces until design decides.
+ */
+export const nextFontFamilies = { sans: 'System', mono: 'monospace' } as const;
+
 export const nextTypography = {
-  fontFamily: 'System',
+  fontFamily: nextFontFamilies.sans,
   sizes: {
     sm: nextTypeStyles.label.size,
     lg: nextTypeStyles.title.size,
