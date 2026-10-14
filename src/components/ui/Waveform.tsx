@@ -42,7 +42,7 @@ export interface WaveformProps {
 }
 
 /** A seek (Next, Previous, scrubbing) jumps past the window margin. */
-export function waveformSnaps(prevOffset: number, nextOffset: number) {
+export function waveformJumps(prevOffset: number, nextOffset: number) {
   return Math.abs(nextOffset - prevOffset) > WINDOW_MARGIN;
 }
 
@@ -138,6 +138,17 @@ export function Waveform({
   const measured = useRef(false);
   const lastTarget = useRef(0);
   const target = waveformOffset(playheadX, frameWidth);
+  // Where a seek glides from, so the bars along the way stay mounted.
+  const [glideFrom, setGlideFrom] = useState<number | null>(null);
+  const glideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (glideTimer.current) {
+        clearTimeout(glideTimer.current);
+      }
+    },
+    [],
+  );
 
   // Linear like ProgressRing: position arrives every 100ms during playback.
   // The first measured offset snaps so the strip doesn't slide in on mount.
@@ -148,25 +159,42 @@ export function Waveform({
       offset.value = target;
       return;
     }
-    // A seek (Next, Previous, scrubbing) snaps instead of sliding, so the
-    // bar window never shows blank spacers mid-slide.
-    const jump = waveformSnaps(lastTarget.current, target);
+    if (reduceMotion) {
+      lastTarget.current = target;
+      offset.value = target;
+      return;
+    }
+    // A seek (Next, Previous, scrubbing) glides with ease-standard; playback
+    // ticks stay linear so the strip moves at an even speed.
+    const from = lastTarget.current;
     lastTarget.current = target;
-    offset.value =
-      jump || reduceMotion
-        ? target
-        : withTiming(target, {
-            duration: motion.releaseMs,
-            easing: Easing.linear,
-          });
+    if (!waveformJumps(from, target)) {
+      offset.value = withTiming(target, {
+        duration: motion.releaseMs,
+        easing: Easing.linear,
+      });
+      return;
+    }
+    const { x1, y1, x2, y2 } = motion.easeStandard;
+    setGlideFrom(from);
+    offset.value = withTiming(target, {
+      duration: motion.releaseMs,
+      easing: Easing.bezier(x1, y1, x2, y2),
+    });
+    if (glideTimer.current) {
+      clearTimeout(glideTimer.current);
+    }
+    glideTimer.current = setTimeout(() => setGlideFrom(null), motion.releaseMs);
   }, [target, frameWidth, motion, offset, reduceMotion]);
 
   // Only mount bars near the frame; a long pericope would otherwise mount
   // every bar it has. Off-screen verses keep their width as a spacer.
   const viewWidth = frameWidth || UNMEASURED_WIDTH;
+  const lo = Math.min(target, glideFrom ?? target);
+  const hi = Math.max(target, glideFrom ?? target);
   const inWindow = (vi: number) =>
-    layout.verseSpan[vi].to >= target - WINDOW_MARGIN &&
-    layout.verseSpan[vi].from <= target + viewWidth + WINDOW_MARGIN;
+    layout.verseSpan[vi].to >= lo - WINDOW_MARGIN &&
+    layout.verseSpan[vi].from <= hi + viewWidth + WINDOW_MARGIN;
   const barsWidth = (count: number) =>
     count * BAR_WIDTH + (count - 1) * spacing.xs;
 

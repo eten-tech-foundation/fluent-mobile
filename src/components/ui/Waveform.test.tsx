@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import { Waveform, waveformOffset, waveformSnaps } from './Waveform';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { Waveform, waveformOffset, waveformJumps } from './Waveform';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
 
 jest.mock('../../services/storage', () => ({
@@ -163,7 +163,8 @@ describe('Waveform windowing and chips', () => {
     expect(screen.queryByTestId('w-bar-580', hidden)).toBeNull();
   });
 
-  it('mounts the bars at the new window after a big jump', () => {
+  it('keeps the way mounted while a seek glides, then trims it', () => {
+    jest.useFakeTimers();
     const long = Array.from({ length: 30 }, (_, i) => ({
       verse: i + 1,
       bars: Array(20).fill(10),
@@ -189,7 +190,14 @@ describe('Waveform windowing and chips', () => {
     );
 
     expect(screen.getByTestId('w-bar-300', hidden)).toBeTruthy();
+    expect(screen.getByTestId('w-bar-0', hidden)).toBeTruthy();
+
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+    expect(screen.getByTestId('w-bar-300', hidden)).toBeTruthy();
     expect(screen.queryByTestId('w-bar-0', hidden)).toBeNull();
+    jest.useRealTimers();
   });
 
   it('widens the chip for three-digit verses', () => {
@@ -212,12 +220,12 @@ describe('Waveform windowing and chips', () => {
   });
 });
 
-describe('waveformSnaps', () => {
-  it('slides for playback ticks and snaps for seeks', () => {
-    expect(waveformSnaps(100, 102)).toBe(false);
-    expect(waveformSnaps(100, 164)).toBe(false);
-    expect(waveformSnaps(100, 400)).toBe(true);
-    expect(waveformSnaps(400, 100)).toBe(true);
+describe('waveformJumps', () => {
+  it('tells playback ticks from seeks', () => {
+    expect(waveformJumps(100, 102)).toBe(false);
+    expect(waveformJumps(100, 164)).toBe(false);
+    expect(waveformJumps(100, 400)).toBe(true);
+    expect(waveformJumps(400, 100)).toBe(true);
   });
 });
 
