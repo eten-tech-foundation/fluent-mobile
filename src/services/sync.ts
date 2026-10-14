@@ -12,6 +12,7 @@ import {
   insertChapterAssignmentSyncData,
   insertBibleTexts,
   getChaptersToSync,
+  getMyWorkChaptersToSync,
   getRecordingLinkedChaptersToSync,
   insertUserProjects,
   ensureUserProjectMembership,
@@ -110,6 +111,49 @@ function mergeBibleChapterGroups(
       }
     }
   }
+}
+
+/** Remove chapters from target in place (Tier 2 skip of Tier 1 My Work, #670). */
+function subtractBibleChapterGroups(
+  target: BibleChapterGroup,
+  exclude: BibleChapterGroup,
+): void {
+  for (const [bibleId, chapters] of exclude) {
+    const list = target.get(bibleId);
+    if (!list || list.length === 0) continue;
+    const drop = new Set(
+      chapters.map(chapter => `${chapter.bookId}:${chapter.chapterNumber}`),
+    );
+    const kept = list.filter(
+      chapter => !drop.has(`${chapter.bookId}:${chapter.chapterNumber}`),
+    );
+    if (kept.length === 0) {
+      target.delete(bibleId);
+    } else {
+      target.set(bibleId, kept);
+    }
+  }
+}
+
+function mapBibleTextRow(
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+  verse: ApiVerse,
+) {
+  if (!Number.isFinite(verse.id) || verse.id <= 0) {
+    throw new Error(
+      `Bible text sync missing verse id for bible ${bibleId} book ${bookId} ch ${chapterNumber} v ${verse.verseNumber}`,
+    );
+  }
+  return {
+    id: verse.id,
+    bible_id: bibleId,
+    book_id: bookId,
+    chapter_number: chapterNumber,
+    verse_number: verse.verseNumber,
+    text: verse.text,
+  };
 }
 
 function getErrorMessage(error: unknown): string {
@@ -694,7 +738,20 @@ async function syncChapterAssignmentsForUser(
   return result;
 }
 
-export async function syncBibleTexts(updatedAfter?: string) {
+export type SyncBibleTextsOptions = {
+  /** When set, sync only these chapters instead of all local assignments (#670). */
+  chapterGroups?: BibleChapterGroup;
+  /**
+   * Drop these chapters from an otherwise unscoped sync (Tier 2 after My Work
+   * texts already ran). Still counts as unscoped for server-id remap clear.
+   */
+  excludeChapterGroups?: BibleChapterGroup;
+};
+
+export async function syncBibleTexts(
+  updatedAfter?: string,
+  options?: SyncBibleTextsOptions,
+) {
   return retrySyncStep(
     'Bible text sync',
     KV_KEYS.SYNC_ERROR_BIBLE_TEXTS,
@@ -712,7 +769,12 @@ export async function syncBibleTexts(updatedAfter?: string) {
         cursorForSync = undefined;
       }
 
-      const bibleGroups = await getChaptersToSync();
+      const bibleGroups = options?.chapterGroups ?? (await getChaptersToSync());
+      // Tier 2 (#670): skip My Work chapters already fetched in Tier 1 without
+      // switching to a scoped pass (scoped passes must not clear remap).
+      if (!options?.chapterGroups && options?.excludeChapterGroups) {
+        subtractBibleChapterGroups(bibleGroups, options.excludeChapterGroups);
+      }
       // #469: remap must cover recording-linked verses even when the chapter is
       // no longer in chapter_assignments. Clear the pending flag only after
       // those chapters are fetched and upserted below.
@@ -725,6 +787,24 @@ export async function syncBibleTexts(updatedAfter?: string) {
 
       if (bibleGroups.size === 0) {
         log.info('No chapters to sync');
+        // Tier 2 exclude emptied the set after My Work texts already landed
+        // (#670). Do not zero the global bible count, and clear remap only on
+        // this unscoped remainder path once recording-linked merge (above)
+        // also left nothing — coverage was Tier 1 + empty remainder.
+        if (!options?.chapterGroups && options?.excludeChapterGroups) {
+          const db = getDatabase();
+          const result = await db.execute(
+            'SELECT COUNT(DISTINCT bible_id) as count FROM bible_texts',
+          );
+          setSyncCount(
+            KV_KEYS.SYNC_COUNT_BIBLES,
+            Number(result.rows?.[0]?.count || 0),
+          );
+          if (remapPending) {
+            clearBibleTextsServerIdRemapPending();
+          }
+          return;
+        }
         setSyncCount(KV_KEYS.SYNC_COUNT_BIBLES, 0);
         return;
       }
@@ -799,21 +879,9 @@ export async function syncBibleTexts(updatedAfter?: string) {
             bibleId,
             bookId: book.bookId,
             chapterNumber: book.chapterNumber,
-            verses: book.verses.map((verse: ApiVerse) => {
-              if (!Number.isFinite(verse.id) || verse.id <= 0) {
-                throw new Error(
-                  `Bible text sync missing verse id for bible ${bibleId} book ${book.bookId} ch ${book.chapterNumber} v ${verse.verseNumber}`,
-                );
-              }
-              return {
-                id: verse.id,
-                bible_id: bibleId,
-                book_id: book.bookId,
-                chapter_number: book.chapterNumber,
-                verse_number: verse.verseNumber,
-                text: verse.text,
-              };
-            }),
+            verses: book.verses.map((verse: ApiVerse) =>
+              mapBibleTextRow(bibleId, book.bookId, book.chapterNumber, verse),
+            ),
           }));
 
           await insertBibleTexts(textsWithBibleId);
@@ -843,7 +911,9 @@ export async function syncBibleTexts(updatedAfter?: string) {
         uniqueBiblesInDb: uniqueBiblesCount,
       });
 
-      if (remapPending) {
+      // Scoped Tier 1 (#670) must not clear remap — catalogue chapters still
+      // need an unscoped full fetch before old verse ids are safe to leave.
+      if (remapPending && !options?.chapterGroups) {
         clearBibleTextsServerIdRemapPending();
       }
     },
@@ -1263,10 +1333,19 @@ export async function syncAllUsers(): Promise<void> {
   );
 }
 
+export type SyncAllDataOptions = {
+  /**
+   * Fired after Tier 1 (My Work usable) on login so Home can clear the
+   * full-screen spinner while Tier 2 continues (#670).
+   */
+  onTier1Complete?: () => void;
+};
+
 export async function syncAllData(
   isIncremental = false,
   email?: string,
   preloadedUser?: ApiUser,
+  options?: SyncAllDataOptions,
 ) {
   return runFullSyncSingleFlight(
     'syncAllData',
@@ -1278,6 +1357,12 @@ export async function syncAllData(
       emitSyncStart();
 
       let masterPromise: Promise<void> | undefined;
+      let tier1Notified = false;
+      const notifyTier1Complete = () => {
+        if (tier1Notified) return;
+        tier1Notified = true;
+        options?.onTier1Complete?.();
+      };
 
       try {
         let userId: number;
@@ -1315,6 +1400,8 @@ export async function syncAllData(
           getUserLastSyncedAt(userIdStr) || undefined;
 
         // Claims overlap master fetch; projects/assignments wait for FK parents.
+        // Full catalogue still runs in Tier 1 until fluent-api offers scoped
+        // master data (fluent-api#373 / #670 follow-up).
         masterPromise = syncMasterData(sessionToken);
         await syncPendingChapterClaimsForUser(userId);
         await masterPromise;
@@ -1335,38 +1422,108 @@ export async function syncAllData(
             );
           assignmentPartialSkipWarning = partialSkipWarning;
           bibleTextUpdatedAfter = didFullSync ? undefined : assignmentCursor;
+          await syncPericopes();
+          await syncBibleTexts(bibleTextUpdatedAfter);
+          notifyTier1Complete();
         } else if (localProjectIdsBefore.length === 0) {
+          // Tier 1 (#670): My Work assignments + texts only — unblock Home.
+          const workResult = await syncUserChapterWork(userId, sessionToken);
+          assignmentPartialSkipWarning = applyChapterAssignmentSkipWarning(
+            workResult.partialSkipWarning,
+          );
+          bibleTextUpdatedAfter = undefined;
+          await reconcilePendingClaimsAfterAssignmentPull(userId);
+          await syncPericopes();
+          const myWorkChapterGroups = await getMyWorkChaptersToSync(userId);
+          await syncBibleTexts(undefined, {
+            chapterGroups: myWorkChapterGroups,
+          });
+          notifyTier1Complete();
+
+          // Tier 2: full project assignment catalogue + remaining bible texts.
+          log.info('Login Tier 2: project assignments + remaining bible texts');
           const projectResult = await syncChapterAssignments(
             userId,
             undefined,
             undefined,
             sessionToken,
           );
+          assignmentPartialSkipWarning = applyChapterAssignmentSkipWarning(
+            assignmentPartialSkipWarning,
+            projectResult.partialSkipWarning,
+          );
+          await reconcilePendingClaimsAfterAssignmentPull(userId);
+          // Catalogue books from Tier 2 assignments need pericopes too (#670).
+          // Already-current books skip via stored pericope book version.
+          await syncPericopes();
+          // Skip My Work chapters already fetched in Tier 1; keep unscoped so
+          // server-id remap can still clear after remaining + recording-linked.
+          await syncBibleTexts(undefined, {
+            excludeChapterGroups: myWorkChapterGroups,
+          });
+        } else {
+          // Re-login (#670): My Work assignments + texts first so Home is not
+          // blocked on a full assignment catalogue when there is no cursor.
+          // Omit excludeProjectIds: the API can return [] when every local
+          // project is excluded before checking newly assigned work.
           const workResult = await syncUserChapterWork(userId, sessionToken);
           assignmentPartialSkipWarning = applyChapterAssignmentSkipWarning(
             workResult.partialSkipWarning,
-            projectResult.partialSkipWarning,
           );
-          bibleTextUpdatedAfter = undefined;
-          // Raw assignment pull (not via syncChapterAssignmentsForUser) (#610).
           await reconcilePendingClaimsAfterAssignmentPull(userId);
-        } else {
-          // Omit excludeProjectIds on re-login: the API can return [] when every
-          // local project is excluded before checking newly assigned work.
-          const { didFullSync, partialSkipWarning } =
-            await syncChapterAssignmentsForUser(
+          const myWorkTextCursor = getUserLastSyncedAt(userIdStr)
+            ? userAssignmentCursor
+            : undefined;
+          await syncPericopes();
+          const myWorkChapterGroups = await getMyWorkChaptersToSync(userId);
+          await syncBibleTexts(myWorkTextCursor, {
+            chapterGroups: myWorkChapterGroups,
+          });
+          notifyTier1Complete();
+
+          // Tier 2: remaining assignment catalogue + texts (and pericopes for
+          // chapters added by that catalogue pull).
+          log.info('Login Tier 2: remaining assignments + bible texts');
+          let didFullAssignmentSync = false;
+          if (
+            !getUserLastSyncedAt(userIdStr) ||
+            (userAssignmentCursor &&
+              !(await userHasLocalChapterAssignments(userId))) ||
+            (await userNeedsAssigneeRepair(userId))
+          ) {
+            const projectResult = await syncChapterAssignments(
               userId,
-              userAssignmentCursor,
+              undefined,
+              undefined,
               sessionToken,
             );
-          assignmentPartialSkipWarning = partialSkipWarning;
-          bibleTextUpdatedAfter = didFullSync
+            assignmentPartialSkipWarning = applyChapterAssignmentSkipWarning(
+              assignmentPartialSkipWarning,
+              projectResult.partialSkipWarning,
+            );
+            didFullAssignmentSync = true;
+          } else {
+            const projectResult = await syncChapterAssignments(
+              userId,
+              userAssignmentCursor,
+              undefined,
+              sessionToken,
+            );
+            assignmentPartialSkipWarning = applyChapterAssignmentSkipWarning(
+              assignmentPartialSkipWarning,
+              projectResult.partialSkipWarning,
+            );
+            didFullAssignmentSync = !userAssignmentCursor;
+          }
+          await reconcilePendingClaimsAfterAssignmentPull(userId);
+          await syncPericopes();
+          bibleTextUpdatedAfter = didFullAssignmentSync
             ? undefined
             : userAssignmentCursor;
+          await syncBibleTexts(bibleTextUpdatedAfter, {
+            excludeChapterGroups: myWorkChapterGroups,
+          });
         }
-
-        await syncPericopes();
-        await syncBibleTexts(bibleTextUpdatedAfter);
 
         const now = new Date().toISOString();
         setLastSyncedAt(now);
@@ -1413,8 +1570,10 @@ export async function syncAllData(
         });
 
         log.info('Sync completed successfully!', { timestamp: now });
+        notifyTier1Complete();
       } catch (error) {
         await settleMasterPromise(masterPromise);
+        notifyTier1Complete();
         log.error('Sync failed', { error: getErrorMessage(error) });
         throw error;
       } finally {
@@ -1516,4 +1675,51 @@ export async function refreshChapterMetadataIfOnline(
 
   inFlightMetadataRefresh.set(userId, refreshPromise);
   return refreshPromise;
+}
+
+export async function syncBibleTextsForChapters(
+  chapters: Array<{ bibleId: number; bookId: number; chapterNumber: number }>,
+): Promise<void> {
+  if (chapters.length === 0) return;
+
+  // group chapters by bible
+  const groups: BibleChapterGroup = new Map();
+  for (const c of chapters) {
+    const list = groups.get(c.bibleId) ?? [];
+    list.push({ bookId: c.bookId, chapterNumber: c.chapterNumber });
+    groups.set(c.bibleId, list);
+  }
+
+  return retrySyncStep(
+    'Prepare offline bible text sync',
+    KV_KEYS.SYNC_ERROR_PREPARE_OFFLINE_BIBLE_TEXTS,
+    async () => {
+      for (const [bibleId, list] of groups) {
+        for (let i = 0; i < list.length; i += BIBLE_TEXT_CHUNK_SIZE) {
+          const chunk = list.slice(i, i + BIBLE_TEXT_CHUNK_SIZE);
+          const response = await FluentAPI.getBibleTexts(bibleId, chunk);
+          const books: ApiBook[] = response.data;
+          if (!Array.isArray(books)) {
+            throw new Error(`Invalid bible text response for bible ${bibleId}`);
+          }
+
+          await insertBibleTexts(
+            books.map((book: ApiBook) => ({
+              bibleId,
+              bookId: book.bookId,
+              chapterNumber: book.chapterNumber,
+              verses: book.verses.map((verse: ApiVerse) =>
+                mapBibleTextRow(
+                  bibleId,
+                  book.bookId,
+                  book.chapterNumber,
+                  verse,
+                ),
+              ),
+            })),
+          );
+        }
+      }
+    },
+  );
 }

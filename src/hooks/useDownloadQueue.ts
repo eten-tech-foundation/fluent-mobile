@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   DownloadQueueItem,
   DownloadQueueSnapshot,
@@ -11,6 +11,7 @@ import type { WorkerSessionState } from '../services/downloadQueueWorker';
 import { getSharedDownloadQueueWorker } from '../services/downloadQueueWorkerSingleton';
 import { getTransferTransportSnapshot } from '../services/connectivity';
 import { getUploadOverCellular } from '../services/userPreferences';
+import { onDownloadQueueChanged } from '../utils/downloadQueueEvents';
 import { logger } from '../utils/logger';
 import {
   transferInputFromLinkSnapshot,
@@ -21,6 +22,14 @@ import {
   getActiveUserId,
   setPrepareOfflineDownloadStarted,
 } from '../services/storage';
+
+/** Statuses that keep the Downloads section / hasDownloads true. */
+const ACTIVE_DOWNLOAD_STATUSES = new Set([
+  'queued',
+  'downloading',
+  'paused',
+  'failed',
+]);
 
 export type DownloadTransferResult =
   | { ok: true }
@@ -196,7 +205,7 @@ const DEV_PREVIEW_SCENARIOS: Record<string, DownloadQueueSnapshot> = {
 export const DEV_PREVIEW_DOWNLOAD_SNAPSHOT = DEV_PREVIEW_SCENARIOS.scenario4;
 
 function hasActiveDownloads(snapshot: DownloadQueueSnapshot): boolean {
-  return snapshot.items.some(item => item.status !== 'completed');
+  return snapshot.items.some(item => ACTIVE_DOWNLOAD_STATUSES.has(item.status));
 }
 
 export { getSharedDownloadQueueWorker } from '../services/downloadQueueWorkerSingleton';
@@ -210,23 +219,39 @@ export function useDownloadQueue() {
   );
   const [workerSessionState, setWorkerSessionState] =
     useState<WorkerSessionState>(() => worker.getState());
+  const refreshGenerationRef = useRef(0);
 
   const refresh = useCallback(async () => {
     if (__DEV__ && DEV_PREVIEW_DOWNLOAD_QUEUE) {
       setSnapshot(DEV_PREVIEW_DOWNLOAD_SNAPSHOT);
       return;
     }
+    const generation = ++refreshGenerationRef.current;
     try {
       const next = await getDownloadQueueSnapshot();
+      if (generation !== refreshGenerationRef.current) {
+        return;
+      }
       setSnapshot(next);
       setWorkerSessionState(worker.getState());
     } catch (error) {
+      if (generation !== refreshGenerationRef.current) {
+        return;
+      }
       log.error('Failed to load download queue snapshot', { error });
     }
   }, [worker]);
 
   useEffect(() => {
     void refresh();
+  }, [refresh]);
+
+  // External enqueue / cancel / complete while this screen is mounted (idle
+  // Sync must discover new work without remounting — #147).
+  useEffect(() => {
+    return onDownloadQueueChanged(() => {
+      void refresh();
+    });
   }, [refresh]);
 
   // Poll while the worker or queue reports an active transfer so progress and

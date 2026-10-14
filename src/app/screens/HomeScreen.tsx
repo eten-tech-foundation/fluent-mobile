@@ -47,7 +47,8 @@ type AppDrawerNavigation = {
   openDrawer: () => void;
 };
 
-function HomeScreenBody({
+/** Exported for unit tests (#670 progressive login spinner). */
+export function HomeScreenBody({
   postLoginSyncActive,
   userSwitchEpoch,
 }: {
@@ -191,6 +192,18 @@ function HomeScreenBody({
       unsubscribeStart();
     };
   }, [autoPrompt]);
+
+  // Tier 1 clears postLoginSyncActive while Tier 2 keeps emitSyncStart active.
+  // Drop route newUserLoading + bump refreshKey so Home is interactive; header
+  // sync chrome still shows (#670).
+  const wasPostLoginSyncActiveRef = useRef(false);
+  useEffect(() => {
+    if (wasPostLoginSyncActiveRef.current && !postLoginSyncActive) {
+      setIsNewUserLoading(false);
+      setRefreshKey(key => key + 1);
+    }
+    wasPostLoginSyncActiveRef.current = postLoginSyncActive;
+  }, [postLoginSyncActive]);
 
   useEffect(() => {
     if (

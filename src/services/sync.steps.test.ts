@@ -3,6 +3,7 @@ import { FluentAPI } from './api';
 import { AuthError } from './authError';
 import {
   syncBibleTexts,
+  syncBibleTextsForChapters,
   syncChapterAssignments,
   syncMasterData,
   syncPendingChapterClaimsForUser,
@@ -88,6 +89,8 @@ jest.mock('./storage', () => ({
     SYNC_ERROR_CHAPTER_CLAIMS: 'sync_error_chapter_claims',
     SYNC_ERROR_PROJECT_UNITS: 'sync_error_project_units',
     SYNC_ERROR_BIBLE_TEXTS: 'sync_error_bible_texts',
+    SYNC_ERROR_PREPARE_OFFLINE_BIBLE_TEXTS:
+      'sync_error_prepare_offline_bible_texts',
   },
   getUserIdSync: jest.fn(),
   getActiveUserId: jest.fn(),
@@ -125,6 +128,7 @@ jest.mock('../db/repository', () => ({
   }),
   insertBibleTexts: jest.fn().mockResolvedValue(undefined),
   getChaptersToSync: jest.fn().mockResolvedValue(new Map()),
+  getMyWorkChaptersToSync: jest.fn().mockResolvedValue(new Map()),
   getRecordingLinkedChaptersToSync: jest.fn().mockResolvedValue(new Map()),
   getLocalProjectIds: jest.fn().mockResolvedValue([1]),
   hasLanguagesMissingIsoCode: jest.fn().mockResolvedValue(false),
@@ -651,6 +655,30 @@ describe('sync step orchestration', () => {
       expect(clearSyncErrorMock).toHaveBeenCalledWith('sync_error_bible_texts');
     });
 
+    it('uses explicit chapterGroups instead of getChaptersToSync (#670)', async () => {
+      mockDbCount(1);
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 41,
+            chapterNumber: 1,
+            verses: [{ id: 9101, verseNumber: 1, text: 'The beginning' }],
+          },
+        ],
+      });
+
+      await syncBibleTexts(undefined, {
+        chapterGroups: new Map([[10, [{ bookId: 41, chapterNumber: 1 }]]]),
+      });
+
+      expect(getChaptersToSyncMock).not.toHaveBeenCalled();
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 41, chapterNumber: 1 }],
+        undefined,
+      );
+    });
+
     it('fetches and inserts verse texts for chapters to sync', async () => {
       mockDbCount(2);
       getChaptersToSyncMock.mockResolvedValue(
@@ -728,6 +756,94 @@ describe('sync step orchestration', () => {
       isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
     });
 
+    it('keeps remap pending after a scoped Tier 1 chapterGroups pass (#670)', async () => {
+      mockDbCount(1);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 41,
+            chapterNumber: 1,
+            verses: [{ id: 4101, verseNumber: 1, text: 'The beginning' }],
+          },
+        ],
+      });
+
+      await syncBibleTexts('2026-01-01T00:00:00.000Z', {
+        chapterGroups: new Map([[10, [{ bookId: 41, chapterNumber: 1 }]]]),
+      });
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 41, chapterNumber: 1 }],
+        undefined,
+      );
+      expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+    });
+
+    it('skips excluded My Work chapters but still clears remap when unscoped (#670 Tier 2)', async () => {
+      mockDbCount(2);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([
+          [
+            10,
+            [
+              { bookId: 41, chapterNumber: 1 },
+              { bookId: 19, chapterNumber: 1 },
+            ],
+          ],
+        ]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 19,
+            chapterNumber: 1,
+            verses: [{ id: 1901, verseNumber: 1, text: 'Blessed' }],
+          },
+        ],
+      });
+
+      await syncBibleTexts('2026-01-01T00:00:00.000Z', {
+        excludeChapterGroups: new Map([
+          [10, [{ bookId: 41, chapterNumber: 1 }]],
+        ]),
+      });
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledTimes(1);
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 19, chapterNumber: 1 }],
+        undefined,
+      );
+      expect(clearBibleTextsServerIdRemapPendingMock).toHaveBeenCalled();
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+    });
+
+    it('My-Work-only exclude remainder preserves bible count and clears remap (#670)', async () => {
+      // Tier 1 already wrote texts; getChaptersToSync is only My Work; recording-linked empty.
+      mockDbCount(3);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 41, chapterNumber: 1 }]]]),
+      );
+      getRecordingLinkedChaptersToSyncMock.mockResolvedValue(new Map());
+
+      await syncBibleTexts(undefined, {
+        excludeChapterGroups: new Map([
+          [10, [{ bookId: 41, chapterNumber: 1 }]],
+        ]),
+      });
+
+      expect(FluentAPI.getBibleTexts).not.toHaveBeenCalled();
+      expect(setSyncCountMock).toHaveBeenCalledWith('sync_count_bibles', 3);
+      expect(setSyncCountMock).not.toHaveBeenCalledWith('sync_count_bibles', 0);
+      expect(clearBibleTextsServerIdRemapPendingMock).toHaveBeenCalled();
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+    });
+
     it('remaps recording-linked chapters absent from chapter_assignments', async () => {
       mockDbCount(1);
       isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
@@ -802,6 +918,34 @@ describe('sync step orchestration', () => {
         isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
         jest.useRealTimers();
       }
+    });
+  });
+
+  describe('syncBibleTextsForChapters', () => {
+    it('uses a dedicated prepare-offline error key, not full bible-text sync', async () => {
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 1,
+            chapterNumber: 1,
+            verses: [{ id: 9001, verseNumber: 1, text: 'In the beginning' }],
+          },
+        ],
+      });
+
+      await syncBibleTextsForChapters([
+        { bibleId: 10, bookId: 1, chapterNumber: 1 },
+      ]);
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(10, [
+        { bookId: 1, chapterNumber: 1 },
+      ]);
+      expect(clearSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_prepare_offline_bible_texts',
+      );
+      expect(clearSyncErrorMock).not.toHaveBeenCalledWith(
+        'sync_error_bible_texts',
+      );
     });
   });
 });

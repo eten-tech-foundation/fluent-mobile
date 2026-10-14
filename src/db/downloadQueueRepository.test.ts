@@ -142,12 +142,15 @@ async function mockExecute(
     normalized.startsWith("UPDATE download_queue SET status = 'downloading'")
   ) {
     const [updatedAt, id] = params as [string, string];
-    rows = rows.map(r =>
-      r.id === id && r.status !== 'completed'
-        ? { ...r, status: 'downloading', updated_at: updatedAt }
-        : r,
-    );
-    return { rows: [] };
+    let rowsAffected = 0;
+    rows = rows.map(r => {
+      if (r.id === id && r.status !== 'completed') {
+        rowsAffected += 1;
+        return { ...r, status: 'downloading', updated_at: updatedAt };
+      }
+      return r;
+    });
+    return { rows: [], rowsAffected };
   }
 
   if (normalized.startsWith("UPDATE download_queue SET status = 'paused'")) {
@@ -156,20 +159,25 @@ async function mockExecute(
       string,
       string,
     ];
-    rows = rows.map(r =>
-      r.id === id &&
-      (r.status === 'queued' ||
-        r.status === 'downloading' ||
-        r.status === 'paused')
-        ? {
-            ...r,
-            status: 'paused',
-            resume_data: resumeData ?? r.resume_data,
-            updated_at: updatedAt,
-          }
-        : r,
-    );
-    return { rows: [] };
+    let rowsAffected = 0;
+    rows = rows.map(r => {
+      if (
+        r.id === id &&
+        (r.status === 'queued' ||
+          r.status === 'downloading' ||
+          r.status === 'paused')
+      ) {
+        rowsAffected += 1;
+        return {
+          ...r,
+          status: 'paused',
+          resume_data: resumeData ?? r.resume_data,
+          updated_at: updatedAt,
+        };
+      }
+      return r;
+    });
+    return { rows: [], rowsAffected };
   }
 
   if (
@@ -178,13 +186,18 @@ async function mockExecute(
     normalized.startsWith("UPDATE download_queue SET status = 'cancelled'")
   ) {
     const [updatedAt, projectId] = params as [string, number];
-    rows = rows.map(r =>
-      r.project_id === projectId &&
-      (r.status === 'downloading' || r.status === 'paused')
-        ? { ...r, status: 'cancelled', updated_at: updatedAt }
-        : r,
-    );
-    return { rows: [] };
+    let rowsAffected = 0;
+    rows = rows.map(r => {
+      if (
+        r.project_id === projectId &&
+        (r.status === 'downloading' || r.status === 'paused')
+      ) {
+        rowsAffected += 1;
+        return { ...r, status: 'cancelled', updated_at: updatedAt };
+      }
+      return r;
+    });
+    return { rows: [], rowsAffected };
   }
 
   if (normalized.startsWith("UPDATE download_queue SET status = 'cancelled'")) {
@@ -193,17 +206,20 @@ async function mockExecute(
       string,
       string,
     ];
-    rows = rows.map(r =>
-      r.id === id && r.status !== 'completed'
-        ? {
-            ...r,
-            status: 'cancelled',
-            resume_data: resumeData ?? r.resume_data,
-            updated_at: updatedAt,
-          }
-        : r,
-    );
-    return { rows: [] };
+    let rowsAffected = 0;
+    rows = rows.map(r => {
+      if (r.id === id && r.status !== 'completed') {
+        rowsAffected += 1;
+        return {
+          ...r,
+          status: 'cancelled',
+          resume_data: resumeData ?? r.resume_data,
+          updated_at: updatedAt,
+        };
+      }
+      return r;
+    });
+    return { rows: [], rowsAffected };
   }
 
   if (normalized.startsWith("UPDATE download_queue SET status = 'completed'")) {
@@ -213,34 +229,56 @@ async function mockExecute(
       string,
       string,
     ];
-    rows = rows.map(r =>
-      r.id === id
-        ? {
-            ...r,
-            status: 'completed',
-            progress: 1,
-            local_file_path: localFilePath,
-            bytes_total: bytesTotal ?? r.bytes_total,
-            resume_data: null,
-            updated_at: updatedAt,
-          }
-        : r,
-    );
-    return { rows: [] };
+    let rowsAffected = 0;
+    rows = rows.map(r => {
+      if (r.id === id) {
+        rowsAffected += 1;
+        return {
+          ...r,
+          status: 'completed',
+          progress: 1,
+          local_file_path: localFilePath,
+          bytes_total: bytesTotal ?? r.bytes_total,
+          resume_data: null,
+          updated_at: updatedAt,
+        };
+      }
+      return r;
+    });
+    return { rows: [], rowsAffected };
   }
 
   if (normalized.startsWith("UPDATE download_queue SET status = 'failed'")) {
     const [updatedAt, id] = params as [string, string];
-    rows = rows.map(r =>
-      r.id === id ? { ...r, status: 'failed', updated_at: updatedAt } : r,
-    );
-    return { rows: [] };
+    let rowsAffected = 0;
+    rows = rows.map(r => {
+      if (r.id === id) {
+        rowsAffected += 1;
+        return { ...r, status: 'failed', updated_at: updatedAt };
+      }
+      return r;
+    });
+    return { rows: [], rowsAffected };
   }
 
   if (normalized.startsWith('DELETE FROM download_queue WHERE id = ?')) {
     const id = params[0] as string;
+    const before = rows.length;
     rows = rows.filter(r => r.id !== id);
-    return { rows: [] };
+    return { rows: [], rowsAffected: before - rows.length };
+  }
+
+  if (
+    normalized.startsWith(
+      "SELECT * FROM download_queue WHERE status NOT IN ('completed', 'cancelled')",
+    )
+  ) {
+    return {
+      rows: rows
+        .filter(r => r.status !== 'completed' && r.status !== 'cancelled')
+        .sort((a, b) => a.queue_order - b.queue_order)
+        .map(clone),
+    };
   }
 
   if (
@@ -267,8 +305,11 @@ async function mockExecute(
   }
 
   if (normalized.startsWith('SELECT COUNT(*) AS total')) {
-    const total = rows.length;
-    const completed = rows.filter(r => r.status === 'completed').length;
+    const countable = normalized.includes("status != 'cancelled'")
+      ? rows.filter(r => r.status !== 'cancelled')
+      : rows;
+    const total = countable.length;
+    const completed = countable.filter(r => r.status === 'completed').length;
     return { rows: [{ total, completed }] };
   }
 
@@ -412,7 +453,8 @@ describe('downloadQueueRepository', () => {
         fileExt: 'mp3',
       },
     ]);
-    expect(changed).toEqual(['aquifer-1-audio']);
+    // Queue id is project+user scoped (#504); URL-change still re-queues (#446).
+    expect(changed).toEqual([`1-${TEST_USER_ID}-aquifer-1-audio`]);
     const row = __getDownloadQueueRows()[0];
     expect(row.status).toBe('queued');
     expect(row.progress).toBe(0);
@@ -720,6 +762,58 @@ describe('downloadQueueRepository', () => {
     expect(snapshot.primaryProjectId).toBe(1);
   });
 
+  it('snapshot excludes cancelled items from active rows and aggregate counts', async () => {
+    const [activeId, cancelledId] = await enqueueDownloadItems([
+      {
+        projectId: 1,
+        userId: TEST_USER_ID,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Source Bible — Audio',
+      },
+      {
+        projectId: 1,
+        userId: TEST_USER_ID,
+        tier: 2,
+        kind: 'text',
+        resourceName: 'Translation Notes',
+        label: 'Translation Notes — Text',
+      },
+    ]);
+    await markDownloadItemDownloading(activeId);
+    await updateDownloadItemProgress(activeId, 0.4);
+    await markDownloadItemCancelled(cancelledId);
+
+    const snapshot = await getDownloadQueueSnapshot();
+
+    expect(snapshot.items.map(item => item.id)).toEqual([activeId]);
+    expect(snapshot.totalCount).toBe(1);
+    expect(snapshot.completedCount).toBe(0);
+    expect(snapshot.aggregateProgress).toBeCloseTo(0.4, 5);
+  });
+
+  it('snapshot with only cancelled rows looks empty for active downloads', async () => {
+    const [id] = await enqueueDownloadItems([
+      {
+        projectId: 1,
+        userId: TEST_USER_ID,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible',
+        label: 'Source Bible — Audio',
+      },
+    ]);
+    await markDownloadItemCancelled(id);
+
+    const snapshot = await getDownloadQueueSnapshot();
+
+    expect(snapshot.items).toEqual([]);
+    expect(snapshot.totalCount).toBe(0);
+    expect(snapshot.completedCount).toBe(0);
+    expect(snapshot.aggregateProgress).toBe(0);
+  });
+
   it('does not apply a stale progress update after the item is paused', async () => {
     const [id] = await enqueueDownloadItems([
       {
@@ -934,8 +1028,8 @@ describe('downloadQueueRepository', () => {
       },
     ]);
 
-    expect(userOneId).toBe('user-7-source-bible-text');
-    expect(userTwoId).toBe('user-99-source-bible-text');
+    expect(userOneId).toBe('1-7-user-7-source-bible-text');
+    expect(userTwoId).toBe('1-99-user-99-source-bible-text');
     expect(__getDownloadQueueRows()).toHaveLength(2);
   });
 
