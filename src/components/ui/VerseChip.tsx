@@ -2,8 +2,14 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { useThemedStyles } from '../../theme/useTheme';
 
-/** Figma Verse chip: 24 × 24. Waveform lays out around this size. */
+/** Figma Verse chip: 24 × 24. Waveform lays out around these widths. */
 export const VERSE_CHIP_SIZE = 24;
+/** Three-digit verses (Psalm 119:176) don't fit 24 at 14pt semibold. */
+const VERSE_CHIP_WIDE = 32;
+
+export function verseChipWidth(verse: number) {
+  return verse >= 100 ? VERSE_CHIP_WIDE : VERSE_CHIP_SIZE;
+}
 
 export interface VerseChipProps {
   verse: number;
@@ -37,8 +43,17 @@ export function VerseChip({ verse, current, testID }: VerseChipProps) {
   }));
 
   return (
-    <View style={[styles.chip, current && styles.current]} testID={testID}>
-      <Text style={styles.label} maxFontSizeMultiplier={1}>
+    <View
+      style={[
+        styles.chip,
+        { width: verseChipWidth(verse) },
+        current && styles.current,
+      ]}
+      testID={testID}
+    >
+      {/* Fixed size: the chip is hidden from TalkBack and the waveform lays
+          out around it, so it doesn't scale with the font size setting. */}
+      <Text style={styles.label} numberOfLines={1} maxFontSizeMultiplier={1}>
         {verse}
       </Text>
     </View>

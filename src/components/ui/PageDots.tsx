@@ -95,7 +95,7 @@ export function PageDots({
       {Array.from({ length: count }, (_, i) => (
         <Dot
           key={i}
-          active={i === index}
+          active={i === Math.min(Math.max(index, 0), count - 1)}
           testID={testID ? `${testID}-dot-${i}` : undefined}
         />
       ))}

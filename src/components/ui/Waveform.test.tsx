@@ -140,6 +140,49 @@ describe('Waveform', () => {
   });
 });
 
+describe('Waveform windowing and chips', () => {
+  beforeEach(() => {
+    mockPreferenceStore();
+  });
+
+  it('only mounts bars for verses near the frame', () => {
+    const long = Array.from({ length: 30 }, (_, i) => ({
+      verse: i + 1,
+      bars: Array(20).fill(10),
+    }));
+    render(
+      <Waveform
+        verses={long}
+        progress={0}
+        accessibilityLabel="Mark 14"
+        testID="w"
+      />,
+    );
+
+    expect(screen.getByTestId('w-bar-0', hidden)).toBeTruthy();
+    expect(screen.queryByTestId('w-bar-580', hidden)).toBeNull();
+  });
+
+  it('widens the chip for three-digit verses', () => {
+    render(
+      <Waveform
+        verses={[
+          { verse: 99, bars: [10] },
+          { verse: 176, bars: [10] },
+        ]}
+        progress={0}
+        accessibilityLabel="Psalm 119"
+        testID="w"
+      />,
+    );
+
+    const width = (id: string) =>
+      StyleSheet.flatten(screen.getByTestId(id, hidden).props.style).width;
+    expect(width('w-verse-99')).toBe(24);
+    expect(width('w-verse-176')).toBe(32);
+  });
+});
+
 describe('waveformOffset', () => {
   it('holds still until the playhead reaches a third of the width', () => {
     expect(waveformOffset(100, 390)).toBe(0);

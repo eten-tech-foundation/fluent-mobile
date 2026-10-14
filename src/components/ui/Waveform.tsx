@@ -13,11 +13,15 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useTheme, useThemedStyles } from '../../theme/useTheme';
-import { VERSE_CHIP_SIZE, VerseChip } from './VerseChip';
+import { VerseChip, verseChipWidth } from './VerseChip';
 
 /** Figma Wave bar: 2 wide, heights 6–52 in a 52pt row. */
 const BAR_WIDTH = 2;
 const ROW_HEIGHT = 52;
+/** Verses this far outside the frame still mount, so the scroll never shows a gap. */
+const WINDOW_MARGIN = 64;
+/** Window size before the frame is measured. */
+const UNMEASURED_WIDTH = 480;
 /** Figma holds the playhead about a third of the way across (130 of 380). */
 const PLAYHEAD_ANCHOR = 1 / 3;
 
@@ -88,19 +92,22 @@ export function Waveform({
   const layout = useMemo(() => {
     const barX: number[] = [];
     const verseStart: number[] = [];
+    const verseSpan: { from: number; to: number }[] = [];
     let x = spacing.lg;
     for (const v of verses) {
       verseStart.push(barX.length);
-      x += VERSE_CHIP_SIZE + spacing.md;
+      const from = x;
+      x += verseChipWidth(v.verse) + spacing.md;
       for (let i = 0; i < v.bars.length; i++) {
         barX.push(x);
         x += BAR_WIDTH + spacing.xs;
       }
+      verseSpan.push({ from, to: x });
       if (v.bars.length > 0) {
         x += spacing.md - spacing.xs;
       }
     }
-    return { barX, verseStart };
+    return { barX, verseStart, verseSpan };
   }, [verses, spacing]);
 
   const total = layout.barX.length;
@@ -140,6 +147,15 @@ export function Waveform({
     });
   }, [target, frameWidth, motion, offset, reduceMotion]);
 
+  // Only mount bars near the frame; a long pericope would otherwise mount
+  // every bar it has. Off-screen verses keep their width as a spacer.
+  const viewWidth = frameWidth || UNMEASURED_WIDTH;
+  const inWindow = (vi: number) =>
+    layout.verseSpan[vi].to >= target - WINDOW_MARGIN &&
+    layout.verseSpan[vi].from <= target + viewWidth + WINDOW_MARGIN;
+  const barsWidth = (count: number) =>
+    count * BAR_WIDTH + (count - 1) * spacing.xs;
+
   const stripStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: -offset.value }],
   }));
@@ -166,7 +182,9 @@ export function Waveform({
               current={layout.verseStart[vi] <= lastBar}
               testID={testID ? `${testID}-verse-${v.verse}` : undefined}
             />
-            {v.bars.length > 0 ? (
+            {v.bars.length > 0 && !inWindow(vi) ? (
+              <View style={{ width: barsWidth(v.bars.length) }} />
+            ) : v.bars.length > 0 ? (
               <VerseBars
                 bars={v.bars}
                 start={layout.verseStart[vi]}

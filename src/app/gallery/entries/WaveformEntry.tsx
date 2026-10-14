@@ -113,9 +113,8 @@ export function WaveformEntry() {
 
   return (
     <View style={styles.demo}>
-      <ColorModeScope value="canvas">
-        <Player progress={progress} />
-      </ColorModeScope>
+      {/* Follows the gallery's Mode switcher; the real player is Canvas. */}
+      <Player progress={progress} />
       <ColorModeScope value="hardware">
         <KeyDeck>
           <Key

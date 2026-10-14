@@ -6,7 +6,7 @@ import type { LucideIcon } from 'lucide-react-native';
 import { Key, type KeyIconProps } from '../../../components/ui/Key';
 import { KeyDeck } from '../../../components/ui/KeyDeck';
 import { LevelWave } from '../../../components/ui/LevelWave';
-import { ColorModeScope, useThemedStyles } from '../../../theme/useTheme';
+import { useThemedStyles } from '../../../theme/useTheme';
 
 function filled(Icon: LucideIcon) {
   return function FilledIcon({ color, size }: KeyIconProps) {
@@ -98,13 +98,12 @@ export function LevelWaveEntry() {
         />
         <View style={styles.side} />
       </View>
-      <ColorModeScope value="canvas">
-        <TakeCard
-          levels={levels}
-          recording={recording}
-          time={formatTime(levels.length)}
-        />
-      </ColorModeScope>
+      {/* Follows the gallery's Mode switcher; the real take card is Canvas. */}
+      <TakeCard
+        levels={levels}
+        recording={recording}
+        time={formatTime(levels.length)}
+      />
       <KeyDeck>
         <Key
           icon={recording ? StopIcon : RecordIcon}

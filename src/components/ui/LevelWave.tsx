@@ -192,30 +192,35 @@ function LongWave({
   const target = levelWaveOffset(frontX, frameWidth);
   const frontOnScreen = frontX - target;
   const reduceMotion = useReducedMotion();
-  const offset = useSharedValue(0);
+  // One animated front drives both the scroll and the playhead, so they
+  // can't drift apart mid-animation.
   const front = useSharedValue(0);
   const measured = useRef(false);
+  const anchorX = frameWidth * PLAYHEAD_ANCHOR;
 
   useEffect(() => {
     if (!measured.current) {
       measured.current = frameWidth > 0;
-      offset.value = target;
-      front.value = frontOnScreen;
+      front.value = frontX;
       return;
     }
-    const timing = {
+    front.value = withTiming(frontX, {
       duration: reduceMotion ? 0 : motion.pressMs,
       easing: Easing.linear,
-    };
-    offset.value = withTiming(target, timing);
-    front.value = withTiming(frontOnScreen, timing);
-  }, [target, frontOnScreen, frameWidth, motion, offset, front, reduceMotion]);
+    });
+  }, [frontX, frameWidth, motion, front, reduceMotion]);
 
   const barsStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: -offset.value }],
+    transform: [
+      { translateX: anchorX > 0 ? -Math.max(0, front.value - anchorX) : 0 },
+    ],
   }));
   const playheadStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: front.value }],
+    transform: [
+      {
+        translateX: anchorX > 0 ? Math.min(front.value, anchorX) : front.value,
+      },
+    ],
   }));
 
   const firstVisible = Math.max(0, Math.floor(target / pitch) - OFFSCREEN_BARS);
