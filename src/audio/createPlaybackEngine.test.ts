@@ -335,4 +335,173 @@ describe('createPlaybackEngine', () => {
     expect(player.calls).toContain('replace');
     expect(player.loadedSource).toBe('file:///take-a.m4a');
   });
+  it('resume plays the loaded source without replace and keeps the seek offset', async () => {
+    const player = makeFakePlayer({ durationSec: 3 });
+    const statuses: string[] = [];
+    const engine = createPlaybackEngine({
+      player,
+      onStatusChange: s => statuses.push(s),
+      delayMs: async () => undefined,
+    });
+
+    await engine.load('file:///take.m4a');
+    await engine.seek(1500);
+    player.calls.length = 0;
+
+    await engine.resume();
+
+    expect(player.calls).not.toContain('replace');
+    expect(player.calls).toContain('play');
+    expect(engine.positionMs).toBe(1500);
+    expect(engine.getStatus()).toBe('playing');
+    expect(statuses).toEqual(['playing']);
+  });
+
+  it('resume with a target offset restores a seek dropped by native play', async () => {
+    const player = makeFakePlayer({ durationSec: 3 });
+    const engine = createPlaybackEngine({
+      player,
+      delayMs: async () => undefined,
+    });
+
+    await engine.load('file:///take.m4a');
+    await engine.seek(1500);
+    player.play = () => {
+      player.calls.push('play');
+      void player.seekTo(0);
+    };
+    player.calls.length = 0;
+
+    await engine.resume(500);
+
+    expect(player.calls).not.toContain('replace');
+    expect(player.calls).toContain('play');
+    expect(player.calls).toContain('seek:0.5');
+    expect(engine.positionMs).toBe(500);
+    expect(engine.getStatus()).toBe('playing');
+  });
+
+  it('resume with an expected URI reloads and seeks when native is unloaded', async () => {
+    const player = makeFakePlayer({ durationSec: 3 });
+    const engine = createPlaybackEngine({
+      player,
+      delayMs: async () => undefined,
+    });
+
+    await engine.load('file:///take.m4a');
+    player.replace(null);
+    player.calls.length = 0;
+
+    await engine.resume(500, 'file:///take.m4a');
+
+    expect(player.calls[0]).toBe('replace');
+    expect(player.calls).toContain('seek:0.5');
+    expect(player.calls).toContain('play');
+    expect(engine.positionMs).toBe(500);
+    expect(engine.getStatus()).toBe('playing');
+  });
+
+  it('resume after pause returns to playing and keeps position', async () => {
+    const player = makeFakePlayer();
+    const engine = createPlaybackEngine({
+      player,
+      delayMs: async () => undefined,
+    });
+
+    await engine.play('file:///take.m4a');
+    await engine.pause();
+    await player.seekTo(1.25);
+    player.calls.length = 0;
+
+    await engine.resume();
+
+    expect(engine.getStatus()).toBe('playing');
+    expect(player.calls).not.toContain('replace');
+    expect(engine.positionMs).toBe(1250);
+  });
+
+  it('resume waits for a queued load to finish before playing', async () => {
+    const player = makeFakePlayer({ unloadPolls: 3, durationSec: 3 });
+    const engine = createPlaybackEngine({
+      player,
+      delayMs: async () => undefined,
+    });
+
+    const loading = engine.load('file:///take-a.m4a');
+    const resuming = engine.resume();
+    await Promise.all([loading, resuming]);
+
+    // play must come after the replace has finished preparing, never mid-swap.
+    expect(player.calls).toEqual(['replace', 'play']);
+    expect(player.loadedSource).toBe('file:///take-a.m4a');
+    expect(engine.getStatus()).toBe('playing');
+  });
+
+  it('resume rejects when nothing is loaded', async () => {
+    const player = makeFakePlayer();
+    const engine = createPlaybackEngine({
+      player,
+      delayMs: async () => undefined,
+    });
+
+    await expect(engine.resume()).rejects.toThrow(/Nothing is loaded/);
+    expect(player.calls).not.toContain('play');
+    expect(engine.getStatus()).toBe('idle');
+  });
+
+  it('cancels a stale resume when a newer load starts mid-resume', async () => {
+    const player = makeFakePlayer({ durationSec: 3 });
+    const statuses: string[] = [];
+    const delayReleases: Array<() => void> = [];
+    const engine = createPlaybackEngine({
+      player,
+      onStatusChange: s => statuses.push(s),
+      delayMs: () =>
+        new Promise<void>(resolve => {
+          delayReleases.push(resolve);
+        }),
+    });
+
+    await engine.load('file:///take-a.m4a');
+    const resuming = engine.resume(500);
+
+    // Wait until resume has played and parked on the first post-play delay.
+    await new Promise<void>((resolve, reject) => {
+      const started = Date.now();
+      const tick = () => {
+        if (delayReleases.length > 0 && player.calls.includes('play')) {
+          resolve();
+          return;
+        }
+        if (Date.now() - started > 2000) {
+          reject(new Error('resume never reached post-play delay'));
+          return;
+        }
+        setImmediate(tick);
+      };
+      tick();
+    });
+
+    await engine.load('file:///take-b.m4a');
+    expect(player.loadedSource).toBe('file:///take-b.m4a');
+
+    const playCallsBeforeRelease = player.calls.filter(
+      c => c === 'play',
+    ).length;
+    // Drain every delayed tick the stale resume may still be waiting on.
+    while (delayReleases.length > 0) {
+      const release = delayReleases.shift()!;
+      release();
+      await new Promise<void>(r => setImmediate(r));
+    }
+    await resuming;
+
+    expect(player.calls.filter(c => c === 'play').length).toBe(
+      playCallsBeforeRelease,
+    );
+    expect(player.loadedSource).toBe('file:///take-b.m4a');
+    // Stale resume must not promote status to playing after B replaced A.
+    expect(statuses).not.toContain('playing');
+    expect(engine.getStatus()).toBe('idle');
+  });
 });

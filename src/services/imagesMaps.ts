@@ -1,4 +1,7 @@
-import type { ApiTranslationImageItem } from '../types/api/translationResources';
+import type {
+  ApiTranslationImageItem,
+  ApiTranslationImageLicenseInfo,
+} from '../types/api/translationResources';
 import type { ImagesMapsItem } from '../types/resources/imagesMaps';
 import {
   loadResourcesForVerseRange,
@@ -6,6 +9,7 @@ import {
   type ResourceVerseRef,
 } from '../utils/loadResourcesForVerseRange';
 import { FluentAPI } from './api';
+import { findDownloadedRows } from './offlineResources';
 
 const DEFAULT_IMAGES_LANGUAGE_CODE = 'eng';
 
@@ -21,6 +25,10 @@ export type LoadImagesMapsParams = {
   verseRefs?: ResourceVerseRef[];
   /** Aquifer language for Images (defaults to English source). */
   languageCode?: string;
+  /** Active user id, needed to find this user's downloaded rows. */
+  userId?: number | null;
+  /** False when offline, so we never call the API. */
+  isOnline?: boolean;
 };
 
 /** Test-only failure injection for section-scoped error/retry. */
@@ -31,9 +39,38 @@ export function setImagesMapsLoadFailureForTests(shouldFail: boolean): void {
 }
 
 /**
- * Map one fluent-api image item into a Resources-tab item.
- * fluent-api #274 returns title/url only (no caption/attribution); UI treats
- * those fields as optional.
+ * Build a short attribution line from fluent-api / Aquifer licenseInfo (#594).
+ * Returns undefined when nothing useful is present.
+ */
+export function formatImageLicenseAttribution(
+  licenseInfo: ApiTranslationImageItem['licenseInfo'],
+): string | undefined {
+  if (!licenseInfo || typeof licenseInfo !== 'object') {
+    return undefined;
+  }
+  const info = licenseInfo as ApiTranslationImageLicenseInfo;
+  const parts: string[] = [];
+  if (typeof info.title === 'string' && info.title.trim()) {
+    parts.push(info.title.trim());
+  }
+  const holder = info.copyright?.holder?.name;
+  if (typeof holder === 'string' && holder.trim()) {
+    parts.push(holder.trim());
+  }
+  const dates = info.copyright?.dates;
+  if (typeof dates === 'string' && dates.trim()) {
+    parts.push(dates.trim());
+  }
+  if (parts.length === 0) {
+    return undefined;
+  }
+  return parts.join(' · ');
+}
+
+/**
+ * Map one fluent-api image item into a Resources-tab item (#191 / #594).
+ * Caption / attribution / licenseInfo are optional until fluent-api exposes
+ * them on the verse images endpoint; thumbnailUrl is used for list previews.
  */
 export function parseTranslationImageItem(
   item: ApiTranslationImageItem,
@@ -48,16 +85,49 @@ export function parseTranslationImageItem(
     return null;
   }
 
+  const caption = item.caption?.trim() || undefined;
+  const attribution =
+    item.attribution?.trim() || formatImageLicenseAttribution(item.licenseInfo);
+  const thumbnailUri = item.thumbnailUrl?.trim() || undefined;
+
   return {
     id: `img-api-${item.id}`,
     title,
     uri,
+    ...(caption ? { caption } : {}),
+    ...(attribution ? { attribution } : {}),
+    ...(thumbnailUri && thumbnailUri !== uri ? { thumbnailUri } : {}),
   };
 }
 
+/** Downloaded images for this chapter. Null = nothing downloaded. */
+async function loadLocalImagesMaps(
+  params: LoadImagesMapsParams,
+  bookCode: string,
+): Promise<ImagesMapsItem[] | null> {
+  const rows = await findDownloadedRows({
+    projectId: params.projectId,
+    userId: params.userId,
+    resourceName: 'Reference Images',
+    kind: 'image',
+    bookCode,
+    chapterNumber: params.chapterNumber,
+    // No verseNumber: downloaded images are chapter-level.
+  });
+  if (rows === null) return null;
+
+  return rows.map(row => ({
+    id: `img-local-${row.id}`,
+    title: row.label,
+    uri: row.localFilePath!,
+  }));
+}
+
 /**
- * Load Images & Maps for a drafting unit via fluent-api translation-resources
- * (fluent-api #274). Pericope units fan out (#593). Aquifer verse vs chapter
+ * Load Images & Maps for a drafting unit. Downloaded images are used first;
+ * fluent-api translation-resources (fluent-api #274) is only called when
+ * nothing is downloaded and the device is online. Online pericope units fan
+ * out across their verse refs (#593). Aquifer verse vs chapter
  * search scope is owned by the API.
  */
 export async function loadImagesMapsForUnit(
@@ -73,6 +143,15 @@ export async function loadImagesMapsForUnit(
 
   const bookCode = params.bookCode.trim();
   if (!bookCode) {
+    return [];
+  }
+
+  const local = await loadLocalImagesMaps(params, bookCode);
+  if (local !== null) {
+    return local;
+  }
+  // Offline and nothing downloaded: show empty, do not call the API.
+  if (params.isOnline === false) {
     return [];
   }
 

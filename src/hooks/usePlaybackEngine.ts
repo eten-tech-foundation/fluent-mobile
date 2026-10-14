@@ -116,6 +116,13 @@ export function usePlaybackEngine(): UsePlaybackEngineApi {
     },
     [engine],
   );
+  const resume = useCallback(
+    (positionMs?: number, uri?: string) => {
+      prevDidJustFinishRef.current = true;
+      return engine.resume(positionMs, uri);
+    },
+    [engine],
+  );
   const pause = useCallback(() => engine.pause(), [engine]);
   const seek = useCallback((ms: number) => engine.seek(ms), [engine]);
   const stop = useCallback(() => engine.stop(), [engine]);
@@ -127,10 +134,11 @@ export function usePlaybackEngine(): UsePlaybackEngineApi {
       durationMs,
       load,
       play,
+      resume,
       pause,
       seek,
       stop,
     }),
-    [status, positionMs, durationMs, load, play, pause, seek, stop],
+    [status, positionMs, durationMs, load, play, resume, pause, seek, stop],
   );
 }
