@@ -23,7 +23,10 @@ function style(
 
 export function buildTypeStyles(sans: string | undefined, mono: string) {
   return {
-    /** Scripture. Pass `maxFontSizeMultiplier={theme.fontScale.readingMax}`. */
+    /**
+     * Scripture. Pass `maxFontSizeMultiplier={theme.fontScale.readingMax}`;
+     * that doesn't cap lineHeight, so see the recipe in figma-to-component.md.
+     */
     reading: style(sans, 42, 52, '400'),
     /** The word being spoken. */
     readingStrong: style(sans, 42, 52, '700'),
@@ -44,11 +47,18 @@ export function buildTypeStyles(sans: string | undefined, mono: string) {
   };
 }
 
-/**
- * Figma `type/telugu/*`: same sizes, line height at least 1.5× so stacked
- * conjuncts don't clip. Layer over the base style for Telugu text.
- */
 export type TypeStyleName = keyof ReturnType<typeof buildTypeStyles>;
+
+/** Families every theme uses until real fonts are loaded (see `style`). */
+export const systemFontFamilies = {
+  sans: undefined,
+  mono: 'monospace',
+} as const;
+
+/**
+ * Figma's six `type/telugu/*` styles: same sizes, taller line heights so
+ * stacked conjuncts don't clip. Layer over the base style for Telugu text.
+ */
 
 export const teluguTypeOverrides = {
   reading: { lineHeight: 64 },

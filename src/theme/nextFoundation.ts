@@ -1,4 +1,4 @@
-import { buildTypeStyles } from './typeStyles';
+import { buildTypeStyles, systemFontFamilies } from './typeStyles';
 
 /**
  * Next spacing / radius / type scale from Figma Foundations
@@ -67,7 +67,7 @@ export const nextRadius = {
  * Font families for the named type styles. Figma's are placeholders (Google
  * Sans Flex, DM Mono). Sans stays unset so Android keeps numeric weights.
  */
-export const nextFontFamilies = { sans: undefined, mono: 'monospace' } as const;
+export const nextFontFamilies = systemFontFamilies;
 
 /** Figma named type styles for Next (`Theme.type`). */
 export const nextTypeStyles = buildTypeStyles(
