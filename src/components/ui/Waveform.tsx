@@ -41,6 +41,11 @@ export interface WaveformProps {
   testID?: string;
 }
 
+/** A seek (Next, Previous, scrubbing) jumps past the window margin. */
+export function waveformSnaps(prevOffset: number, nextOffset: number) {
+  return Math.abs(nextOffset - prevOffset) > WINDOW_MARGIN;
+}
+
 /**
  * How far to slide the strip left so the playhead stays at the anchor once it
  * gets there. 0 until the frame has been measured.
@@ -145,7 +150,7 @@ export function Waveform({
     }
     // A seek (Next, Previous, scrubbing) snaps instead of sliding, so the
     // bar window never shows blank spacers mid-slide.
-    const jump = Math.abs(target - lastTarget.current) > WINDOW_MARGIN;
+    const jump = waveformSnaps(lastTarget.current, target);
     lastTarget.current = target;
     offset.value =
       jump || reduceMotion

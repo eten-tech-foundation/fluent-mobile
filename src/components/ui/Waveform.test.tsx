@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { Waveform, waveformOffset } from './Waveform';
+import { Waveform, waveformOffset, waveformSnaps } from './Waveform';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
 
 jest.mock('../../services/storage', () => ({
@@ -163,7 +163,7 @@ describe('Waveform windowing and chips', () => {
     expect(screen.queryByTestId('w-bar-580', hidden)).toBeNull();
   });
 
-  it('keeps the bars at the new spot mounted after a big jump', () => {
+  it('mounts the bars at the new window after a big jump', () => {
     const long = Array.from({ length: 30 }, (_, i) => ({
       verse: i + 1,
       bars: Array(20).fill(10),
@@ -209,6 +209,15 @@ describe('Waveform windowing and chips', () => {
       StyleSheet.flatten(screen.getByTestId(id, hidden).props.style).width;
     expect(width('w-verse-99')).toBe(24);
     expect(width('w-verse-176')).toBe(32);
+  });
+});
+
+describe('waveformSnaps', () => {
+  it('slides for playback ticks and snaps for seeks', () => {
+    expect(waveformSnaps(100, 102)).toBe(false);
+    expect(waveformSnaps(100, 164)).toBe(false);
+    expect(waveformSnaps(100, 400)).toBe(true);
+    expect(waveformSnaps(400, 100)).toBe(true);
   });
 });
 
