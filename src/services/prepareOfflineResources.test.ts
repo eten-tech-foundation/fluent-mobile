@@ -6,10 +6,12 @@ import {
   getDefaultPrepareOfflinePackageDeselects,
   getPrepareOfflineResourceStatus,
   hydratePrepareOfflineTextContent,
+  persistSourceAudioMetaForManifestContexts,
   refreshPrepareOfflineInventory,
   subscribePrepareOfflineInventory,
 } from './prepareOfflineResources';
 import { getDownloadQueueStatusMap } from '../db/downloadQueueRepository';
+import { persistSourceAudioChapterMeta } from './offlineSourceAudio';
 import type { DownloadQueueStatus } from '../types/download/types';
 import type { PrepareOfflineResourceItem } from '../types/prepareOffline/types';
 
@@ -21,12 +23,19 @@ jest.mock('./api', () => ({
   },
 }));
 
+jest.mock('./offlineSourceAudio', () => ({
+  persistSourceAudioChapterMeta: jest.fn(async () => undefined),
+}));
+
 jest.mock('../db/downloadQueueRepository', () => ({
   getDownloadQueueStatusMap: jest.fn(),
 }));
 
 const getQueueStatusMap = getDownloadQueueStatusMap as jest.MockedFunction<
   typeof getDownloadQueueStatusMap
+>;
+const persistMeta = persistSourceAudioChapterMeta as jest.MockedFunction<
+  typeof persistSourceAudioChapterMeta
 >;
 
 const USER_A = 1;
@@ -113,6 +122,8 @@ describe('prepareOfflineResources', () => {
         },
       ]);
 
+      mockEmptyChapterAudio();
+
       const result = await fetchPrepareOfflineManifest(99, FULL_PARAMS);
 
       expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledWith(99, {
@@ -127,6 +138,43 @@ describe('prepareOfflineResources', () => {
       );
       // Source Bible text is handled by sync, never by the manifest.
       expect(result.map(item => item.id)).toEqual(['sa1', 'r1']);
+      // Successful-manifest path must not fan out chapter-audio meta fetches
+      // during catalog load — that happens at download time (#579 review).
+      expect(FluentAPI.getChapterSourceAudio).not.toHaveBeenCalled();
+      expect(persistMeta).not.toHaveBeenCalled();
+    });
+
+    it('persists source-audio meta for each chapter in download contexts', async () => {
+      (FluentAPI.getChapterSourceAudio as jest.Mock).mockImplementation(
+        (params: { bookCode: string; chapter: number }) =>
+          Promise.resolve({
+            provider: 'dbl',
+            bible: { name: 'B', abbreviation: 'ENG' },
+            bookCode: params.bookCode,
+            chapter: params.chapter,
+            items: [
+              {
+                format: 'mp3',
+                url: `https://example.com/ch${params.chapter}.mp3`,
+                sizeBytes: 100,
+                scope: 'chapter',
+              },
+            ],
+          }),
+      );
+
+      await persistSourceAudioMetaForManifestContexts(99, [
+        {
+          languageCode: 'eng',
+          bookCode: 'MRK',
+          startChapter: 1,
+          endChapter: 3,
+          bibleId: 10,
+        },
+      ]);
+
+      expect(FluentAPI.getChapterSourceAudio).toHaveBeenCalledTimes(3);
+      expect(persistMeta).toHaveBeenCalledTimes(3);
     });
 
     it('overrides Translation Notes to Tier 1 regardless of API tier', async () => {
@@ -179,6 +227,7 @@ describe('prepareOfflineResources', () => {
 
       // One call per chapter in the 1–3 range.
       expect(FluentAPI.getChapterSourceAudio).toHaveBeenCalledTimes(3);
+      expect(persistMeta).toHaveBeenCalledTimes(3);
       expect(result.filter(item => item.kind === 'audio')).toHaveLength(3);
       expect(result.find(item => item.kind === 'audio')).toMatchObject({
         id: 'source-bible-audio-MRK-1',

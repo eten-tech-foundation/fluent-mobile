@@ -174,6 +174,13 @@ export function isDrafterBlockedFromOpenPeerCheckCapture(
   return chapterData.assignedUserId === currentUserId;
 }
 
+/** Complete chapters are read-only for capture. Rerun through translation is future work. */
+export function isRecordingLockedByStage(
+  chapterData: Pick<StageAdvanceChapterData, 'status'>,
+): boolean {
+  return normalizeAdvanceStatus(chapterData.status) === 'complete';
+}
+
 /**
  * When advancing unassigned Peer Check → Community Review, the tapping peer
  * becomes Peer Checker. Drafter and PM-assigned items do not assign here.

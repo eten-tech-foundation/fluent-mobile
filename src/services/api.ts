@@ -428,20 +428,6 @@ export const FluentAPI = {
   },
 
   /**
-   * Prepare Offline Tier 1 source audio manifest — sizes/metadata for a
-   * project/bible/chapter range (#504 follow-on). Same 20-chapter-per-range
-   * cap as the translation-resources manifest; `bibleId` comes from the
-   * chapter assignment, not the project record.
-   */
-  getSourceAudioManifest: (
-    projectId: number,
-    params: GetSourceAudioManifestParams,
-  ): Promise<ApiSourceAudioManifestResponse> =>
-    authedRequest<ApiSourceAudioManifestResponse>(
-      sourceAudioManifestPath(projectId, params),
-    ),
-
-  /**
    * Set-level (or book-scoped) pericope hydrate with ETag revalidation (#587).
    * 200 returns groups; 304 means local KV ETag still matches.
    */
@@ -465,6 +451,20 @@ export const FluentAPI = {
       token,
     );
   },
+
+  /**
+   * Prepare Offline Tier 1 source audio manifest — sizes/metadata for a
+   * project/bible/chapter range (#504 follow-on). Same 20-chapter-per-range
+   * cap as the translation-resources manifest; `bibleId` comes from the
+   * chapter assignment, not the project record.
+   */
+  getSourceAudioManifest: (
+    projectId: number,
+    params: GetSourceAudioManifestParams,
+  ): Promise<ApiSourceAudioManifestResponse> =>
+    authedRequest<ApiSourceAudioManifestResponse>(
+      sourceAudioManifestPath(projectId, params),
+    ),
 
   /**
    * Source/reference chapter audio for the drafting dock (fluent-api #282).

@@ -160,4 +160,20 @@ describe('prepareOfflineQueueMapping', () => {
 
     expect(inputs).toEqual([]);
   });
+
+  it('uses each manifest member sourceUrl / fileExt (#504 / #446)', () => {
+    const member: PrepareOfflineResourceManifestItem = {
+      ...BASE_MEMBER,
+      sourceUrl: 'https://cdn.example/audio_v2.mp3',
+      fileExt: 'mp3',
+    };
+    const [input] = prepareOfflineItemToEnqueueInputs(
+      item({}, [member]),
+      1,
+      TEST_USER_ID,
+    );
+
+    expect(input.sourceUrl).toBe('https://cdn.example/audio_v2.mp3');
+    expect(input.fileExt).toBe('mp3');
+  });
 });

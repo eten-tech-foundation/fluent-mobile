@@ -1538,7 +1538,7 @@ export async function syncBibleTextsForChapters(
 
   return retrySyncStep(
     'Prepare offline bible text sync',
-    KV_KEYS.SYNC_ERROR_BIBLE_TEXTS,
+    KV_KEYS.SYNC_ERROR_PREPARE_OFFLINE_BIBLE_TEXTS,
     async () => {
       for (const [bibleId, list] of groups) {
         for (let i = 0; i < list.length; i += BIBLE_TEXT_CHUNK_SIZE) {

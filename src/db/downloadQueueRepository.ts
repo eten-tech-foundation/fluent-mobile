@@ -159,6 +159,13 @@ export async function enqueueDownloadItems(
            progress = 0,
            local_file_path = NULL,
            resume_data = NULL,
+           serialized_content = excluded.serialized_content,
+           resource_id = excluded.resource_id,
+           book_code = excluded.book_code,
+           start_chapter = excluded.start_chapter,
+           end_chapter = excluded.end_chapter,
+           verse_start = excluded.verse_start,
+           verse_end = excluded.verse_end,
            updated_at = excluded.updated_at
          WHERE download_queue.source_url IS NOT excluded.source_url
            AND download_queue.status != 'downloading'`,
