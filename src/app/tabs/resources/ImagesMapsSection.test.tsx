@@ -7,7 +7,7 @@ import {
 } from '@testing-library/react-native';
 import { ImagesMapsSection } from './ImagesMapsSection';
 import { IMAGES_MAPS_LOAD_ERROR } from '../../../constants/messages';
-import { getMockImagesMaps } from '../../../mocks/resources/imagesMapsMock';
+import { ImagesMapsItem } from '../../../types/resources/imagesMaps';
 
 jest.mock('react-native-gesture-handler', () => {
   const actualReact = jest.requireActual('react');
@@ -75,6 +75,30 @@ jest.mock('./ZoomableImage', () => {
   };
 });
 
+// Fixed fixture matching the fixed mock's three-item shape for verse 2 — no
+// dependency on `mocks/resources`.
+const IMAGES_FOR_VERSE_2: ImagesMapsItem[] = [
+  {
+    id: 'img-99-2-1',
+    title: 'Jerusalem region map',
+    caption: 'Overview of surrounding towns',
+    attribution: 'Aquifer / Bible Journey Maps',
+    uri: 'https://picsum.photos/seed/fluent-map-99-2/800/500',
+  },
+  {
+    id: 'img-99-2-2',
+    title: 'Temple courtyard',
+    caption: 'Reference illustration for this passage',
+    attribution: 'Aquifer Images',
+    uri: 'https://picsum.photos/seed/fluent-img-99-2/800/600',
+  },
+  {
+    id: 'img-99-2-3',
+    title: 'Unattributed sketch',
+    uri: 'https://picsum.photos/seed/fluent-plain-99-2/640/480',
+  },
+];
+
 describe('ImagesMapsSection', () => {
   beforeEach(() => {
     mockAutoFailZoomableImages = false;
@@ -107,7 +131,7 @@ describe('ImagesMapsSection', () => {
   it('shows titles, captions, and attribution for items', () => {
     render(
       <ImagesMapsSection
-        state={{ status: 'ready', items: getMockImagesMaps(99, 2) }}
+        state={{ status: 'ready', items: IMAGES_FOR_VERSE_2 }}
         retry={() => undefined}
       />,
     );
@@ -121,7 +145,7 @@ describe('ImagesMapsSection', () => {
   it('opens fullscreen when maximize is pressed', () => {
     render(
       <ImagesMapsSection
-        state={{ status: 'ready', items: getMockImagesMaps(99, 2) }}
+        state={{ status: 'ready', items: IMAGES_FOR_VERSE_2 }}
         retry={() => undefined}
       />,
     );
@@ -150,7 +174,7 @@ describe('ImagesMapsSection', () => {
 
     rerender(
       <ImagesMapsSection
-        state={{ status: 'ready', items: getMockImagesMaps(99, 2) }}
+        state={{ status: 'ready', items: IMAGES_FOR_VERSE_2 }}
         retry={retry}
       />,
     );
@@ -161,10 +185,12 @@ describe('ImagesMapsSection', () => {
   it('escalates all thumbnail load failures to error + Retry', async () => {
     mockAutoFailZoomableImages = true;
     const retry = jest.fn();
-    const items = getMockImagesMaps(99, 2);
 
     render(
-      <ImagesMapsSection state={{ status: 'ready', items }} retry={retry} />,
+      <ImagesMapsSection
+        state={{ status: 'ready', items: IMAGES_FOR_VERSE_2 }}
+        retry={retry}
+      />,
     );
 
     await waitFor(() => {

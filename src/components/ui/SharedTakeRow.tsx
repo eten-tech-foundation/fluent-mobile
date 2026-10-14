@@ -13,7 +13,7 @@ type SharedTakeRowProps = {
   isPlaying: boolean;
   isCanonical: boolean;
   onPlayPause: () => void;
-  onDesignateCanonical: () => void;
+  onDesignateCanonical?: () => void;
 };
 
 function formatDuration(ms: number): string {
@@ -84,30 +84,50 @@ export function SharedTakeRow({
           />
         </View>
       </View>
-      <TouchableOpacity
-        onPress={onDesignateCanonical}
-        accessibilityRole="button"
-        accessibilityLabel={
-          isCanonical ? 'Canonical take' : 'Designate this take as canonical'
-        }
-        accessibilityState={{ selected: isCanonical }}
-        hitSlop={8}
-        testID="shared-take-canonical"
-      >
-        {isCanonical ? (
+      {onDesignateCanonical ? (
+        <TouchableOpacity
+          onPress={onDesignateCanonical}
+          accessibilityRole="button"
+          accessibilityLabel={
+            isCanonical ? 'Canonical take' : 'Designate this take as canonical'
+          }
+          accessibilityState={{ selected: isCanonical }}
+          hitSlop={8}
+          testID="shared-take-canonical"
+        >
+          {isCanonical ? (
+            <CircleCheck
+              size={iconSizes.chevron}
+              color={theme.colors.primary}
+              strokeWidth={listIconStrokeWidth}
+            />
+          ) : (
+            <Circle
+              size={iconSizes.chevron}
+              color={theme.colors.mutedForeground}
+              strokeWidth={listIconStrokeWidth}
+            />
+          )}
+        </TouchableOpacity>
+      ) : isCanonical ? (
+        <View
+          accessibilityLabel="Canonical take"
+          testID="shared-take-canonical-readonly"
+        >
           <CircleCheck
             size={iconSizes.chevron}
             color={theme.colors.primary}
             strokeWidth={listIconStrokeWidth}
           />
-        ) : (
-          <Circle
-            size={iconSizes.chevron}
-            color={theme.colors.mutedForeground}
-            strokeWidth={listIconStrokeWidth}
-          />
-        )}
-      </TouchableOpacity>
+        </View>
+      ) : (
+        <View
+          style={styles.canonicalSpacer}
+          testID="shared-take-canonical-spacer"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
+      )}
     </View>
   );
 }
@@ -152,5 +172,8 @@ const styles = StyleSheet.create({
     color: theme.colors.mutedForeground,
     flexShrink: 0,
     textAlign: 'right',
+  },
+  canonicalSpacer: {
+    width: iconSizes.chevron,
   },
 });

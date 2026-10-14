@@ -200,4 +200,27 @@ describe('sourceAudioHelpers', () => {
       ),
     ).toBe(true);
   });
+
+  it('treats local file URIs as never expired (#579)', () => {
+    const nowMs = 1_700_000_000_000;
+    expect(
+      isCachedSourceAudioResponseValid(
+        {
+          provider: 'aquifer',
+          bible: { name: 'BSB', abbreviation: 'BSB' },
+          bookCode: 'MRK',
+          chapter: 1,
+          items: [
+            {
+              format: 'mp3',
+              url: 'file:///downloads/1/source-bible-audio-MRK-1.mp3',
+              scope: 'chapter',
+              expiresAt: Math.floor(nowMs / 1000) - 1,
+            },
+          ],
+        },
+        nowMs,
+      ),
+    ).toBe(true);
+  });
 });
