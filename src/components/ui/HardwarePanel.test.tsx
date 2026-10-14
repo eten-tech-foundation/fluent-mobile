@@ -15,8 +15,9 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 24, left: 0, right: 0 }),
 }));
 
+const mockToggle = jest.fn();
 jest.mock('../../hooks/useHaptics', () => ({
-  useHaptics: () => ({ toggle: jest.fn(), press: jest.fn() }),
+  useHaptics: () => ({ toggle: mockToggle, press: jest.fn() }),
 }));
 
 function Panel({ locked = false }: { locked?: boolean }) {
@@ -35,7 +36,9 @@ function Panel({ locked = false }: { locked?: boolean }) {
 
 describe('HardwarePanel', () => {
   beforeEach(() => {
-    mockPreferenceStore();
+    jest.clearAllMocks();
+    // The panel only ever renders in Next.
+    mockPreferenceStore({ pref_ui_version: 'next' });
   });
 
   it('flips between Listen and Record from the mode toggle', () => {
@@ -45,6 +48,7 @@ describe('HardwarePanel', () => {
     fireEvent.press(screen.getByRole('switch', { name: 'Record mode' }));
 
     expect(screen.getByText('record keys')).toBeTruthy();
+    expect(mockToggle).toHaveBeenLastCalledWith(true);
     expect(
       screen.getByRole('switch', { name: 'Record mode' }).props
         .accessibilityState,
@@ -58,6 +62,7 @@ describe('HardwarePanel', () => {
     expect(toggle.props.accessibilityState).toMatchObject({ disabled: true });
     fireEvent.press(toggle);
     expect(screen.getByText('listen keys')).toBeTruthy();
+    expect(mockToggle).not.toHaveBeenCalled();
   });
 
   it('pads for the gesture bar unless told not to', () => {

@@ -56,7 +56,11 @@ export function HardwarePanel({
       flexDirection: 'row',
       alignItems: 'center',
       gap: t.spacing.md,
+      flexShrink: 0,
     },
+    // The decorative grill gives way on narrow screens (360dp, large Display
+    // size) so the toggle never gets pushed out of the panel.
+    grillSlot: { flexShrink: 1, overflow: 'hidden', alignItems: 'flex-end' },
   }));
 
   const iconColor = theme.roles.fgSecondary;
@@ -84,7 +88,9 @@ export function HardwarePanel({
           />
           <Speech color={iconColor} size={iconSize} />
         </View>
-        <SpeakerGrill testID={testID ? `${testID}-grill` : undefined} />
+        <View style={styles.grillSlot}>
+          <SpeakerGrill testID={testID ? `${testID}-grill` : undefined} />
+        </View>
       </View>
     </View>
   );
