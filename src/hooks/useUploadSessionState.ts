@@ -34,6 +34,8 @@ export interface UseUploadSessionStateOptions {
   countsUnknown?: boolean;
   /** Pending offline claims or Sync errors that still need Sync Now (#611). */
   hasClaimsOrSyncRetryWork?: boolean;
+  /** Active download-queue work — keeps status off allComplete (#147). */
+  hasDownloads?: boolean;
   uploadProgress: UploadProgress | null;
 }
 
@@ -57,6 +59,7 @@ export function useUploadSessionState({
   hasUnuploadablePending = false,
   countsUnknown = false,
   hasClaimsOrSyncRetryWork = false,
+  hasDownloads = false,
   uploadProgress,
 }: UseUploadSessionStateOptions): UseUploadSessionStateResult {
   const [snapshot, setSnapshot] =
@@ -94,6 +97,7 @@ export function useUploadSessionState({
     hasUnuploadablePending,
     countsUnknown,
     hasClaimsOrSyncRetryWork,
+    hasDownloads,
   );
 
   const progressUploaded =

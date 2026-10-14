@@ -23,9 +23,9 @@ describe('deriveSyncPageStatus', () => {
     ['idle', true, false, 'pending'],
     ['idle', false, true, 'pending'],
     ['idle', true, true, 'pending'],
-    ['idle', false, false, 'uploadComplete'],
-    ['waiting_wifi', false, false, 'uploadComplete'],
-    ['offline', false, false, 'uploadComplete'],
+    ['idle', false, false, 'allComplete'],
+    ['waiting_wifi', false, false, 'allComplete'],
+    ['offline', false, false, 'allComplete'],
   ] as const)(
     'phase=%s pending=%s failed=%s → %s',
     (phase, hasPending, hasFailed, expected) => {
@@ -34,14 +34,14 @@ describe('deriveSyncPageStatus', () => {
   );
 
   it.each(['idle', 'waiting_wifi', 'offline'] as const)(
-    'does not report uploadComplete when only unuploadable pending remains (phase=%s)',
+    'does not report allComplete when only unuploadable pending remains (phase=%s)',
     phase => {
       expect(deriveSyncPageStatus(phase, false, false, true)).toBe('pending');
     },
   );
 
   it.each(['idle', 'waiting_wifi', 'offline'] as const)(
-    'does not report uploadComplete when pending counts are unknown (phase=%s)',
+    'does not report allComplete when pending counts are unknown (phase=%s)',
     phase => {
       expect(deriveSyncPageStatus(phase, false, false, false, true)).toBe(
         'pending',
@@ -50,10 +50,51 @@ describe('deriveSyncPageStatus', () => {
   );
 
   it.each(['idle', 'waiting_wifi', 'offline'] as const)(
-    'does not report uploadComplete when claims/sync retry work remains (phase=%s)',
+    'does not report allComplete when claims/sync retry work remains (phase=%s)',
     phase => {
       expect(
         deriveSyncPageStatus(phase, false, false, false, false, true),
+      ).toBe('pending');
+    },
+  );
+
+  it.each(['idle', 'waiting_wifi', 'offline'] as const)(
+    'reports uploadComplete when uploads are clear but downloads remain (phase=%s)',
+    phase => {
+      expect(
+        deriveSyncPageStatus(phase, false, false, false, false, false, true),
+      ).toBe('uploadComplete');
+    },
+  );
+
+  it('preserves syncing and paused over download-queue signal', () => {
+    expect(
+      deriveSyncPageStatus('syncing', false, false, false, false, false, true),
+    ).toBe('syncing');
+    expect(
+      deriveSyncPageStatus('paused', false, false, false, false, false, true),
+    ).toBe('paused');
+  });
+
+  it.each([
+    ['hasPendingUploads', true, false, false, false, false],
+    ['hasFailedUploads', false, true, false, false, false],
+    ['hasUnuploadablePending', false, false, true, false, false],
+    ['countsUnknown', false, false, false, true, false],
+    ['hasClaimsOrSyncRetryWork', false, false, false, false, true],
+  ] as const)(
+    'keeps pending when %s is set even if downloads remain',
+    (_label, pending, failed, unuploadable, unknown, claims) => {
+      expect(
+        deriveSyncPageStatus(
+          'idle',
+          pending,
+          failed,
+          unuploadable,
+          unknown,
+          claims,
+          true,
+        ),
       ).toBe('pending');
     },
   );
