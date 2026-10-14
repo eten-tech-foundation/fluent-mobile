@@ -25,7 +25,8 @@ export const nextMotion = {
 
 export const nextOpacity = { disabled: 0.4 } as const;
 
-export const nextControlSizes = { icon24: 24, icon32: 32 } as const;
+/** `icon20` is the icon library's Icon/md (Mode toggle icons). */
+export const nextControlSizes = { icon20: 20, icon24: 24, icon32: 32 } as const;
 
 /**
  * Map onto existing `Theme.spacing` keys.
