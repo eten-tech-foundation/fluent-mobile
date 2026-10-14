@@ -6,11 +6,10 @@ import {
   within,
 } from '@testing-library/react-native';
 import { buildPrepareOfflineCatalog } from '../../utils/prepareOfflineCatalog';
-import {
-  MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST,
-  setPrepareOfflineMockInventoryScenario,
-} from '../../mocks/prepareOffline';
-import { getPrepareOfflineResourceStatus } from '../../services/prepareOfflineResources';
+import type {
+  PrepareOfflineResourceManifestItem,
+  PrepareOfflineResourceStatus,
+} from '../../types/prepareOffline/types';
 import { PrepareOfflineResourcesSection } from './PrepareOfflineResourcesSection';
 
 jest.mock('lucide-react-native', () => {
@@ -37,15 +36,54 @@ const chapters = [
     bookName: 'Genesis',
     chapterNumber: 1,
     assignedUserId: 42,
+    bibleId: 10,
   },
 ];
 
-function buildSectionCatalog(projectId = 1) {
+/**
+ * Inline manifest fixture replacing the deleted dev mock catalog (#504):
+ * Tier 1 Source Bible + Translation Notes, Tier 2 Words/Questions, Tier 3
+ * Images — same group names the component renders.
+ */
+function buildManifestFixture(): PrepareOfflineResourceManifestItem[] {
+  const entry = (
+    tier: 1 | 2 | 3,
+    resourceName: string,
+    kind: 'text' | 'audio' | 'image',
+  ): PrepareOfflineResourceManifestItem => ({
+    id: `tier-${tier}-${resourceName
+      .toLowerCase()
+      .replace(/\s+/g, '-')}-${kind}`,
+    tier,
+    kind,
+    resourceName,
+    label: kind === 'text' ? 'Text' : kind === 'audio' ? 'Audio' : 'Image',
+    required: tier === 1,
+    removable: tier !== 1,
+    bytesTotal: 1024,
+    fileExt: kind === 'audio' ? 'mp3' : kind === 'image' ? 'png' : 'json',
+    languageCode: 'eng',
+  });
+
+  return [
+    entry(1, 'Source Bible', 'text'),
+    entry(1, 'Source Bible', 'audio'),
+    entry(1, 'Translation Notes', 'text'),
+    entry(1, 'Translation Notes', 'audio'),
+    entry(2, 'Translation Words', 'text'),
+    entry(2, 'Translation Words', 'audio'),
+    entry(2, 'Translation Questions', 'text'),
+    entry(2, 'Translation Questions', 'audio'),
+    entry(3, 'Reference Images', 'image'),
+  ];
+}
+
+function buildSectionCatalog(
+  status: PrepareOfflineResourceStatus = 'selected',
+) {
   return buildPrepareOfflineCatalog({
-    projectId,
-    manifest: MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST,
-    getResourceStatus: (resourceId: string) =>
-      getPrepareOfflineResourceStatus(projectId, resourceId),
+    manifest: buildManifestFixture(),
+    getResourceStatus: () => status,
     chapters,
     selectedIds: new Set([1]),
   });
@@ -140,9 +178,7 @@ describe('PrepareOfflineResourcesSection', () => {
   });
 
   it('locks completed tier 2 items in customize instead of showing a toggle', () => {
-    setPrepareOfflineMockInventoryScenario('tier1-tier2');
-
-    const catalogWithInventory = buildSectionCatalog(1);
+    const catalogWithInventory = buildSectionCatalog('completed');
 
     render(
       <PrepareOfflineResourcesSection
@@ -154,7 +190,7 @@ describe('PrepareOfflineResourcesSection', () => {
 
     const accordion = screen.getByTestId('customize-download-accordion');
     const wordsTextRow = within(accordion).getByTestId(
-      'resource-row-1-tier-2-translation-words-text',
+      'resource-row-Translation Words:text',
     );
     fireEvent.press(wordsTextRow);
     fireEvent.press(wordsTextRow);

@@ -2,8 +2,9 @@ import type { UploadPhase } from '../services/uploadOrchestratorCore';
 import type { SyncPageStatus } from '../types/sync/types';
 
 /**
- * Maps orchestrator phase + DB pending/failed counts to Sync page UI status.
- * Does not derive `allComplete` (blocked on download-queue signal, #149).
+ * Maps orchestrator phase + upload/download queue signals to Sync page UI status.
+ * `allComplete` only when uploads are clear and the download queue has no
+ * active work; otherwise prefer uploadComplete / pending / phase states (#147).
  */
 export function deriveSyncPageStatus(
   phase: UploadPhase,
@@ -13,6 +14,8 @@ export function deriveSyncPageStatus(
   countsUnknown = false,
   /** Pending offline claims or Sync metadata errors that need Sync Now (#611). */
   hasClaimsOrSyncRetryWork = false,
+  /** Active download-queue work (queued/downloading/paused/failed). */
+  hasDownloads = false,
 ): SyncPageStatus {
   if (phase === 'syncing') {
     return 'syncing';
@@ -21,20 +24,19 @@ export function deriveSyncPageStatus(
     return 'paused';
   }
 
-  const hasWorkRemaining =
+  const hasUploadWorkRemaining =
     hasPendingUploads ||
     hasFailedUploads ||
     hasUnuploadablePending ||
     countsUnknown ||
     hasClaimsOrSyncRetryWork;
-  if (hasWorkRemaining) {
+  if (hasUploadWorkRemaining) {
     return 'pending';
   }
 
-  if (phase === 'idle') {
+  if (hasDownloads) {
     return 'uploadComplete';
   }
 
-  // waiting_wifi / offline with nothing left to upload
-  return 'uploadComplete';
+  return 'allComplete';
 }

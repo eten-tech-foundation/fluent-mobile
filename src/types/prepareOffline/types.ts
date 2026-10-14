@@ -5,6 +5,7 @@ export interface PrepareOfflineChapterRow {
   bookName: string;
   chapterNumber: number;
   assignedUserId: number | null;
+  bibleId: number;
 }
 
 export interface PrepareOfflineBookGroup {
@@ -66,11 +67,13 @@ export interface PrepareOfflineResourceItem {
   label: string;
   bytes: number;
   status: PrepareOfflineResourceStatus;
-  /** Partial progress (0–1) while queued, downloading, paused, cancelled, or failed. */
   progress?: number;
-  /** When set, enqueue uses this URL instead of the mock fixture (#446). */
-  sourceUrl?: string;
-  fileExt?: string;
+  /** Real manifest items this display row aggregates, for download enqueue. */
+  manifestMembers: PrepareOfflineResourceManifestItem[];
+  required: boolean;
+  removable: boolean;
+  /** Replaces the byte size text, e.g. "Included" for rows handled by sync. */
+  displayValue?: string;
 }
 
 export interface PrepareOfflineResourceGroup {
@@ -84,8 +87,7 @@ export interface PrepareOfflineCatalog {
 }
 
 export interface BuildPrepareOfflineCatalogInput {
-  projectId: number;
-  manifest: PrepareOfflineResourceManifestEntry[];
+  manifest: PrepareOfflineResourceManifestItem[];
   getResourceStatus: (resourceId: string) => PrepareOfflineResourceStatus;
   chapters: PrepareOfflineChapterRow[];
   selectedIds: Set<number>;

@@ -81,10 +81,13 @@ const SECTION_META: {
 ];
 
 /**
- * Resources tab host (#188 + #192): offline inventory gates which sections
- * appear on device. When online, all sections load via fluent-api
- * translation-resources (#381). Pericope mode fans out across the unit (#593).
- * Empty sections hide after load (#591).
+ * Resources tab host (#188 + #192). Section content is download-first:
+ * downloaded rows are used whenever present (online or offline); the
+ * fluent-api translation-resources stream (#381) only fills in when nothing
+ * is downloaded and the device is online. Offline inventory gates which
+ * sections appear on device. Pericope mode fans out across the unit (#593).
+ * Empty sections hide after load (#591); on failure each section shows its
+ * own Retry.
  */
 export function ResourcesTab({
   chapterId,
@@ -106,6 +109,7 @@ export function ResourcesTab({
     recordedCoverageEpoch,
   } = useDraftingContext();
   const { isOnline, hasResolved } = useConnectivity();
+  const online = hasResolved && isOnline;
   const scrollRef = useRef<ScrollView>(null);
   const scrollOffsetRef = useRef(0);
 
@@ -159,6 +163,8 @@ export function ResourcesTab({
 
   const { state: notesState, retry: retryNotes } = useTranslationNotesForUnit({
     projectId,
+    userId,
+    isOnline: online,
     bookCode,
     chapterNumber,
     verseNumber: selectedVerse,
@@ -168,6 +174,8 @@ export function ResourcesTab({
   const { state: questionsState, retry: retryQuestions } =
     useTranslationQuestionsForUnit({
       projectId,
+      userId,
+      isOnline: online,
       bookCode,
       chapterNumber,
       verseNumber: selectedVerse,
@@ -177,6 +185,8 @@ export function ResourcesTab({
   const { state: imagesMapsState, retry: retryImagesMaps } =
     useImagesMapsForUnit({
       projectId,
+      userId,
+      isOnline: online,
       bookCode,
       chapterNumber,
       verseNumber: selectedVerse,
