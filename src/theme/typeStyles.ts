@@ -1,17 +1,18 @@
 /**
- * Figma named type styles (Foundations · 03 Type). Metrics are final; the
- * families are still TBD in Figma (Google Sans Flex / DM Mono placeholders),
- * so callers pass today's families and swap them in one place later.
+ * Figma named type styles (Foundations · 03 Type), the one source for these
+ * metrics. Families are still TBD in Figma, so callers pass today's.
+ * Leave `sans` undefined until real fonts are loaded: on Android a named but
+ * unloaded family drops weights 500/600 to regular, while no family keeps them.
  */
 function style(
-  fontFamily: string,
+  fontFamily: string | undefined,
   fontSize: number,
   lineHeight: number,
   fontWeight: '400' | '500' | '600' | '700',
   uppercase = false,
 ) {
   return {
-    fontFamily,
+    ...(fontFamily ? { fontFamily } : {}),
     fontSize,
     lineHeight,
     fontWeight,
@@ -20,7 +21,7 @@ function style(
   };
 }
 
-export function buildTypeStyles(sans: string, mono: string) {
+export function buildTypeStyles(sans: string | undefined, mono: string) {
   return {
     /** Scripture. Pass `maxFontSizeMultiplier={theme.fontScale.readingMax}`. */
     reading: style(sans, 42, 52, '400'),
@@ -36,7 +37,7 @@ export function buildTypeStyles(sans: string, mono: string) {
     body: style(sans, 18, 24, '400'),
     /** Verse numbers in chips. */
     label: style(sans, 14, 20, '600'),
-    /** Passage title, eyebrows. */
+    /** Passage title, eyebrows. 500 renders as 400 in `monospace` until DM Mono loads. */
     overline: style(mono, 20, 24, '500', true),
     /** References and metadata under a title. */
     meta: style(mono, 14, 20, '400', true),
@@ -47,6 +48,8 @@ export function buildTypeStyles(sans: string, mono: string) {
  * Figma `type/telugu/*`: same sizes, line height at least 1.5× so stacked
  * conjuncts don't clip. Layer over the base style for Telugu text.
  */
+export type TypeStyleName = keyof ReturnType<typeof buildTypeStyles>;
+
 export const teluguTypeOverrides = {
   reading: { lineHeight: 64 },
   readingStrong: { lineHeight: 64 },
@@ -54,4 +57,4 @@ export const teluguTypeOverrides = {
   lead: { lineHeight: 48 },
   title: { lineHeight: 28 },
   body: { lineHeight: 28 },
-} as const;
+} as const satisfies Partial<Record<TypeStyleName, { lineHeight: number }>>;

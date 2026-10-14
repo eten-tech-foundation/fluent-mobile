@@ -17,7 +17,7 @@ the Legacy / Next split described there.
 | Motion | `theme.motion.pressMs` · `releaseMs` · `easeStandard` |
 | Disabled opacity, icon sizes | `theme.opacity.disabled` · `theme.controlSizes.icon24` / `icon32` |
 | Radius `xs` (4), space `2` | `theme.radius.xs`, `theme.spacing.xxs` |
-| Type styles | `theme.type.reading` … `meta` (spread into a style); layer `theme.typeTelugu.*` for Telugu; Reading text gets `maxFontSizeMultiplier={theme.fontScale.readingMax}` |
+| Type styles | `theme.type.reading` … `meta` (spread into a style); layer `theme.typeTelugu.*` for Telugu; Reading text gets `maxFontSizeMultiplier={theme.fontScale.readingMax}`, which caps the glyphs but not `lineHeight`, so cap the line height too (`Math.min(PixelRatio.getFontScale(), readingMax)`) |
 | Haptics | `useHaptics()` from `src/hooks/useHaptics.ts` |
 | Review screen | `/gallery` (`fluent://gallery`), entries in `src/app/gallery/entries/` |
 | Reference components | `src/components/ui/Key.tsx` (Figma Key, `2326:34`) in `KeyDeck.tsx` (Hardware panel keys, `2411:465`) · `src/components/ui/Switch.tsx` (Figma Switch, `2326:41`) |

@@ -1,13 +1,12 @@
 import { legacyTheme, type Theme } from './legacy';
 import { buildElevation } from './elevation';
-import { buildTypeStyles } from './typeStyles';
 import {
   nextControlSizes,
-  nextFontFamilies,
   nextMotion,
   nextOpacity,
   nextSpacing,
   nextRadius,
+  nextTypeStyles,
   nextTypography,
 } from './nextFoundation';
 import {
@@ -173,7 +172,7 @@ function buildNextOverrides(mode: NextColorRoleMode): ThemeOverrides {
       weights: { ...nextTypography.weights },
       lineHeights: { ...nextTypography.lineHeights },
     },
-    type: buildTypeStyles(nextFontFamilies.sans, nextFontFamilies.mono),
+    type: nextTypeStyles,
   };
 }
 

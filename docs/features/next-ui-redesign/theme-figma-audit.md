@@ -58,17 +58,17 @@ and `space/48`.
 - **Missing styles (resolved).** All 9 styles are on `Theme` as
   `theme.type.*` (`reading`, `readingStrong`, `heading`, `lead`, `title`,
   `body`, `label`, `overline`, `meta`), built in `src/theme/typeStyles.ts`,
-  with the Telugu line heights as `theme.typeTelugu.*`. They use the system
-  sans and `monospace` until the family is decided.
-- **`overline` is mono.** It's mapped onto `typography.sizes.xl` and
-  `weights.medium`, so any Legacy-keyed text using `xl` turns into a 20px
-  "overline" in Next without being monospaced. It reads better as its own
-  named style than as a size-scale override.
+  with the Telugu line heights as `theme.typeTelugu.*`. Sans styles set no
+  family (a named but unloaded family drops 500/600 to regular on Android),
+  and mono uses `monospace`, which only renders 400 and 700 until DM Mono is
+  loaded.
 - **Figma-side rules (resolved):** every style sets `includeFontPadding:
   false`, overline and meta carry `textTransform: 'uppercase'`, and Reading's
   1.3× cap is `theme.fontScale.readingMax` (a `Text` prop, not a style).
-- **`overline` still overrides `typography.sizes.xl`** in Next. New code should
-  use `theme.type.overline`; the old mapping can go once nothing reads it.
+- **`overline` still overrides `typography.sizes.xl`** in Next, so Legacy-keyed
+  text using `xl` becomes a 20px overline without being monospaced. New code
+  should use `theme.type.overline`; the old mapping can go once nothing reads
+  it.
 
 ### 3. Foundations tokens that weren't encoded (mostly resolved in #638)
 

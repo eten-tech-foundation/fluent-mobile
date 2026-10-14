@@ -32,7 +32,7 @@ export const legacyTheme = {
   opacity: { disabled: 0.4 },
   controlSizes: { icon24: 24, icon32: 32 },
   /** Figma named type styles; no Legacy screen uses them, so same metrics. */
-  type: buildTypeStyles(typography.fontFamily, 'monospace'),
+  type: buildTypeStyles(undefined, 'monospace'),
   typeTelugu: teluguTypeOverrides,
   fontScale: { readingMax: 1.3 },
   workflowBadges,

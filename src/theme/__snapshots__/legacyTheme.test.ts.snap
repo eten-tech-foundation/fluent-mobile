@@ -147,28 +147,24 @@ exports[`legacyTheme matches the frozen Legacy snapshot 1`] = `
   },
   "type": {
     "body": {
-      "fontFamily": "System",
       "fontSize": 18,
       "fontWeight": "400",
       "includeFontPadding": false,
       "lineHeight": 24,
     },
     "heading": {
-      "fontFamily": "System",
       "fontSize": 42,
       "fontWeight": "700",
       "includeFontPadding": false,
       "lineHeight": 48,
     },
     "label": {
-      "fontFamily": "System",
       "fontSize": 14,
       "fontWeight": "600",
       "includeFontPadding": false,
       "lineHeight": 20,
     },
     "lead": {
-      "fontFamily": "System",
       "fontSize": 32,
       "fontWeight": "400",
       "includeFontPadding": false,
@@ -191,21 +187,18 @@ exports[`legacyTheme matches the frozen Legacy snapshot 1`] = `
       "textTransform": "uppercase",
     },
     "reading": {
-      "fontFamily": "System",
       "fontSize": 42,
       "fontWeight": "400",
       "includeFontPadding": false,
       "lineHeight": 52,
     },
     "readingStrong": {
-      "fontFamily": "System",
       "fontSize": 42,
       "fontWeight": "700",
       "includeFontPadding": false,
       "lineHeight": 52,
     },
     "title": {
-      "fontFamily": "System",
       "fontSize": 18,
       "fontWeight": "600",
       "includeFontPadding": false,
