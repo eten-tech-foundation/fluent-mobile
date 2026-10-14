@@ -1,4 +1,5 @@
 import type React from 'react';
+import { HardwarePanelEntry } from './HardwarePanelEntry';
 import { KeyEntry } from './KeyEntry';
 import { SwitchEntry } from './SwitchEntry';
 
@@ -26,5 +27,13 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Switch',
     modes: 'Hardware',
     Component: SwitchEntry,
+  },
+  {
+    // Figma: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2411-529
+    // Mode toggle 2409-538 and Speaker grill 2409-533 are drawn inside it.
+    id: 'hardware-panel',
+    name: 'Hardware panel',
+    modes: 'Hardware',
+    Component: HardwarePanelEntry,
   },
 ];
