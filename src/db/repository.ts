@@ -1438,41 +1438,63 @@ const PROJECT_UNIT_OTHER_LOCAL_MEMBER_GUARD = `
       AND up2.user_id != ?
   )`;
 
+function milestoneIdsToDrop(
+  userId: number,
+  currentUnitIds: number[],
+): { sql: string; params: number[] } {
+  const notIn =
+    currentUnitIds.length > 0
+      ? `AND pu.id NOT IN (${currentUnitIds.map(() => '?').join(',')})`
+      : '';
+  return {
+    sql: `SELECT pu.id
+          FROM project_units pu
+          INNER JOIN user_projects up ON up.project_id = pu.project_id
+          WHERE up.user_id = ?
+            ${notIn}
+            ${PROJECT_UNIT_OTHER_LOCAL_MEMBER_GUARD}
+            ${PROJECT_UNIT_PENDING_UPLOAD_GUARD}`,
+    params:
+      currentUnitIds.length > 0
+        ? [userId, ...currentUnitIds, userId]
+        : [userId, userId],
+  };
+}
+
 export async function reconcileUserMilestones(
   userId: number,
   currentUnitIds: number[],
 ): Promise<void> {
   const db = getDatabase();
+  const { sql, params } = milestoneIdsToDrop(userId, currentUnitIds);
   await db.transaction(async (tx: Transaction) => {
-    let result;
-    if (currentUnitIds.length > 0) {
-      const placeholders = currentUnitIds.map(() => '?').join(',');
-      result = await tx.execute(
-        `DELETE FROM project_units
-         WHERE id IN (
-           SELECT pu.id
-           FROM project_units pu
-           INNER JOIN user_projects up ON up.project_id = pu.project_id
-           WHERE up.user_id = ?
-             AND pu.id NOT IN (${placeholders})
-             ${PROJECT_UNIT_OTHER_LOCAL_MEMBER_GUARD}
-             ${PROJECT_UNIT_PENDING_UPLOAD_GUARD}
-         )`,
-        [userId, ...currentUnitIds, userId],
-      );
-    } else {
-      result = await tx.execute(
-        `DELETE FROM project_units
-         WHERE id IN (
-           SELECT pu.id
-           FROM project_units pu
-           INNER JOIN user_projects up ON up.project_id = pu.project_id
-           WHERE up.user_id = ?
-             ${PROJECT_UNIT_OTHER_LOCAL_MEMBER_GUARD}
-             ${PROJECT_UNIT_PENDING_UPLOAD_GUARD}
-         )`,
-        [userId, userId],
-      );
+    const selected = await tx.execute(sql, params);
+    const unitIds = (selected.rows ?? []).map(row =>
+      Number((row as { id: number }).id),
+    );
+    if (unitIds.length === 0) return;
+
+    const placeholders = unitIds.map(() => '?').join(',');
+    // recordings.project_unit_id has no ON DELETE action. Null it on the
+    // snapshotted units so an uploaded take does not block membership cleanup.
+    // Re-running the pending-upload guard after this write would keep a unit
+    // whose protection only appears once project_unit_id is NULL.
+    const detached = await tx.execute(
+      `UPDATE recordings
+       SET project_unit_id = NULL
+       WHERE project_unit_id IN (${placeholders})`,
+      unitIds,
+    );
+    const result = await tx.execute(
+      `DELETE FROM project_units
+       WHERE id IN (${placeholders})`,
+      unitIds,
+    );
+    if (detached.rowsAffected) {
+      log.info('Detached recordings from removed project_units', {
+        userId,
+        detachedCount: detached.rowsAffected,
+      });
     }
     if (result.rowsAffected) {
       log.info('Reconciled stale project_units', {
