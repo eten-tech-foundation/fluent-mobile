@@ -91,7 +91,9 @@ export function HardwarePanelEntry() {
 
   // What Eject does isn't designed yet, so the demo only acknowledges it.
   const status = ejected
-    ? 'Eject pressed · its action is still TBD in Figma'
+    ? `Eject pressed · its action is still TBD in Figma${
+        playing ? ' · playing back' : ''
+      }`
     : recordMode
     ? recording
       ? `Recording take ${takes + 1} · stop to switch to Listen`
