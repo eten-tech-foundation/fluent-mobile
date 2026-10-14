@@ -40,3 +40,41 @@ export interface ApiTranslationImageItem {
 export interface ApiTranslationImagesResponse {
   items: ApiTranslationImageItem[];
 }
+
+/**
+ * Wire types for the Prepare Offline resource manifest endpoint (#504).
+ * GET /projects/{projectId}/translation-resources/manifest
+ */
+
+export type ApiPrepareOfflineResourceTier = 1 | 2 | 3;
+
+export type ApiPrepareOfflineResourceKind = 'text' | 'audio' | 'image';
+
+export interface ApiPrepareOfflineManifestItem {
+  id: string;
+  tier: ApiPrepareOfflineResourceTier;
+  kind: ApiPrepareOfflineResourceKind;
+  resourceName: string;
+  label: string;
+  required: boolean;
+  removable: boolean;
+  bytesTotal: number;
+  sourceUrl?: string;
+  fileExt: string;
+  aquiferContentId?: number;
+  languageCode: string;
+  bookCode?: string;
+  startChapter?: number;
+  endChapter?: number;
+  collectionCode?: string;
+  resourceType?: string;
+  serializedContent?: string;
+}
+
+export interface ApiPrepareOfflineManifestResponse {
+  projectId: number;
+  sourceLanguageCode: string;
+  items: ApiPrepareOfflineManifestItem[];
+  totalBytes: number;
+  truncated: boolean;
+}

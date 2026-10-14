@@ -18,6 +18,12 @@ import {
   computeRemainingBytes,
   sortItemsForPrepareOfflineDownload,
 } from '../utils/prepareOfflineCatalog';
+import {
+  hydratePrepareOfflineTextContent,
+  persistSourceAudioMetaForManifestContexts,
+} from '../services/prepareOfflineResources';
+import type { PrepareOfflineManifestContext } from '../utils/buildManifestContexts';
+import { syncBibleTextsForChapters } from '../services/sync';
 import { formatByteSize } from '../utils/formatByteSize';
 import { logger } from '../utils/logger';
 import {
@@ -53,6 +59,12 @@ export interface UsePrepareOfflineDownloadInput {
   catalog: PrepareOfflineCatalog;
   selectedItems: PrepareOfflineResourceItem[];
   canDownload: boolean;
+  bibleTextChapters: Array<{
+    bibleId: number;
+    bookId: number;
+    chapterNumber: number;
+  }>;
+  manifestContexts: PrepareOfflineManifestContext[];
 }
 
 function deriveSession(
@@ -104,6 +116,8 @@ function deriveSession(
 }
 
 export function usePrepareOfflineDownload({
+  bibleTextChapters,
+  manifestContexts,
   projectId,
   userId,
   catalog,
@@ -141,6 +155,9 @@ export function usePrepareOfflineDownload({
   const [downloadTransportError, setDownloadTransportError] = useState<
     string | null
   >(null);
+  // Retryable prepare failures (sync / hydrate / enqueue). Shown in the footer
+  // but must not disable Download — unlike real transport-gate errors (#579).
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [downloadKickoff, setDownloadKickoff] = useState(false);
   const [sessionStarted, setSessionStarted] = useState(false);
@@ -188,6 +205,7 @@ export function usePrepareOfflineDownload({
       pendingSessionActionRef.current = null;
       sessionKeyRef.current = sessionKey;
       setDownloadTransportError(null);
+      setDownloadError(null);
     }
   }, [sessionKey]);
 
@@ -200,6 +218,10 @@ export function usePrepareOfflineDownload({
     isWifi,
     uploadOverCellular,
   ]);
+
+  useEffect(() => {
+    setDownloadError(null);
+  }, [selectedItems]);
 
   useEffect(() => {
     if (projectId === null || userId === null) {
@@ -230,8 +252,13 @@ export function usePrepareOfflineDownload({
 
   const catalogWithProgress = useMemo(
     () =>
-      mergeQueueIntoPrepareOfflineCatalog(catalog, allQueueItems, projectId),
-    [catalog, allQueueItems, projectId],
+      mergeQueueIntoPrepareOfflineCatalog(
+        catalog,
+        allQueueItems,
+        projectId,
+        userId,
+      ),
+    [catalog, allQueueItems, projectId, userId],
   );
 
   const mergedSelectedItems = useMemo(
@@ -484,7 +511,57 @@ export function usePrepareOfflineDownload({
     downloadInFlightRef.current = true;
     setDownloadKickoff(true);
     setDownloadTransportError(null);
+    setDownloadError(null);
     try {
+      try {
+        await syncBibleTextsForChapters(bibleTextChapters);
+      } catch (error) {
+        log.error('Bible text sync failed during prepare offline', {
+          error,
+          projectId,
+        });
+        setDownloadError(
+          'Could not prepare Bible text for offline. Try again.',
+        );
+        return; // the finally block still resets the kickoff state
+      }
+      let itemsToEnqueue = sortItemsForPrepareOfflineDownload(
+        selectedItems,
+        catalog.items,
+      );
+      try {
+        itemsToEnqueue = await hydratePrepareOfflineTextContent(
+          projectId,
+          itemsToEnqueue,
+          manifestContexts,
+        );
+      } catch (error) {
+        log.error('Failed to load text content for download', {
+          error,
+          projectId,
+        });
+        setDownloadError(
+          'Could not load resource content for download. Try again.',
+        );
+        return;
+      }
+
+      // Verse timestamps are only needed once the user downloads — persist
+      // after hydration so catalog toggles do not fan out chapter-audio calls.
+      // persistSourceAudioMetaForManifestContexts is best-effort internally;
+      // still guard here so an unexpected throw cannot abort enqueue.
+      try {
+        await persistSourceAudioMetaForManifestContexts(
+          projectId,
+          manifestContexts,
+        );
+      } catch (error) {
+        log.warn('source-audio meta persist unexpected failure', {
+          error,
+          projectId,
+        });
+      }
+
       setForceIdle(false);
       userCancelledRef.current = false;
       setSessionStarted(true);
@@ -493,11 +570,23 @@ export function usePrepareOfflineDownload({
       // prop (mock-status-driven, never updated by cancel/download
       // activity) — otherwise newly selected resources after a cancel never
       // get written to download_queue and nothing new starts downloading.
-      await enqueuePrepareOfflineDownload({
-        userId,
-        projectId,
-        items: sortItemsForPrepareOfflineDownload(selectedItems, catalog.items),
-      });
+      // Early return above already requires canDownloadNow.
+      try {
+        await enqueuePrepareOfflineDownload({
+          userId,
+          projectId,
+          items: itemsToEnqueue,
+        });
+      } catch (error) {
+        log.error('Failed to enqueue prepare offline download', {
+          error,
+          projectId,
+        });
+        setSessionStarted(false);
+        setForceIdle(true);
+        setDownloadError('Could not start the download. Try again.');
+        return;
+      }
 
       await refresh();
 
@@ -527,9 +616,11 @@ export function usePrepareOfflineDownload({
       await flushPendingSessionAction();
     }
   }, [
+    bibleTextChapters,
     canDownloadNow,
     catalog.items,
     flushPendingSessionAction,
+    manifestContexts,
     projectId,
     refresh,
     selectedItems,
@@ -546,6 +637,7 @@ export function usePrepareOfflineDownload({
     canDownload: canDownloadNow && !transportBlocked,
     transportBlocked: transportBlocked || downloadTransportError !== null,
     transportBlockedMessage: downloadTransportError ?? transportBlockedMessage,
+    downloadErrorMessage: downloadError ?? undefined,
     inventoryRefreshSignal,
     handleDownload,
     pause: handlePause,
