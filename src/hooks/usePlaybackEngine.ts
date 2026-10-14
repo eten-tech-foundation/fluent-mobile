@@ -118,7 +118,9 @@ export function usePlaybackEngine(): UsePlaybackEngineApi {
   );
   const resume = useCallback(
     (positionMs?: number, uri?: string) => {
-      prevDidJustFinishRef.current = true;
+      // Same sticky-finish consume as load/play (#298). Resume seeks and
+      // plays without going through those methods (#544).
+      mirrorRef.current = { ...mirrorRef.current, didJustFinish: true };
       return engine.resume(positionMs, uri);
     },
     [engine],
