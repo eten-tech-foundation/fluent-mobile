@@ -14,6 +14,13 @@ import {
   syncPendingRecordings,
   uploadChapterRecordings,
 } from './recordingSync';
+import {
+  createUploadOrchestrator,
+  PAUSE_WINDOW_MS,
+  sessionRetryDelayMs,
+  type ChapterUploadWorker,
+} from './uploadOrchestratorCore';
+import type { UploadSessionEvent } from './syncEvents';
 
 const mockGetPendingRecordings = jest.fn();
 const mockGetLatestVersionToken = jest.fn();
@@ -170,6 +177,109 @@ describe('recordingSync', () => {
     );
     expect(mockMarkRecordingConflicted).not.toHaveBeenCalled();
     expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+  });
+
+  it('reports chapter progress, not take counts, for a multi-chapter pass (#600)', async () => {
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ id: 'a', bookId: 1, chapterNumber: 1 }),
+      pendingRecording({
+        id: 'b',
+        bookId: 1,
+        chapterNumber: 1,
+        bibleTextId: 43,
+      }),
+      pendingRecording({
+        id: 'c',
+        bookId: 1,
+        chapterNumber: 2,
+        bibleTextId: 44,
+      }),
+      pendingRecording({
+        id: 'd',
+        bookId: 1,
+        chapterNumber: 3,
+        bibleTextId: 45,
+      }),
+    ]);
+
+    await syncPendingRecordings('tok-1', { delay });
+
+    expect(mockEmitUploadSessionEvent.mock.calls.map(call => call[0])).toEqual([
+      { type: 'start', totalChapters: 3 },
+      { type: 'progress', completedChapters: 1, totalChapters: 3 },
+      { type: 'progress', completedChapters: 2, totalChapters: 3 },
+      { type: 'progress', completedChapters: 3, totalChapters: 3 },
+      { type: 'complete' },
+    ]);
+  });
+
+  it('does not emit session events for a chapter-scoped orchestrator pass (#600)', async () => {
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ id: 'a', bookId: 40, chapterNumber: 1 }),
+      pendingRecording({
+        id: 'b',
+        bookId: 40,
+        chapterNumber: 1,
+        bibleTextId: 43,
+      }),
+    ]);
+
+    await syncPendingRecordings('tok-1', {
+      delay,
+      chapter: { bookId: 40, chapterNumber: 1 },
+    });
+
+    expect(mockGetPendingRecordings).toHaveBeenCalledWith({
+      bookId: 40,
+      chapterNumber: 1,
+    });
+    expect(mockEmitUploadSessionEvent).not.toHaveBeenCalled();
+  });
+
+  it('does not count a failed take as a completed chapter (#600)', async () => {
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ id: 'ok', bookId: 1, chapterNumber: 1 }),
+      pendingRecording({
+        id: 'bad',
+        bookId: 1,
+        chapterNumber: 2,
+        projectUnitId: null,
+      }),
+    ]);
+
+    const result = await syncPendingRecordings('tok-1', { delay });
+
+    expect(result).toEqual({ uploaded: 1, conflicted: 0, failed: 1 });
+    expect(mockEmitUploadSessionEvent.mock.calls.map(call => call[0])).toEqual([
+      { type: 'start', totalChapters: 2 },
+      { type: 'progress', completedChapters: 1, totalChapters: 2 },
+      { type: 'complete' },
+    ]);
+  });
+
+  it('still counts successful chapters when a sibling chapter fails (#600)', async () => {
+    mockUploadVerseAudio
+      .mockResolvedValueOnce(successResponse())
+      .mockRejectedValueOnce(new ApiError(400, 'bad request'));
+
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ id: 'a', bookId: 1, chapterNumber: 1 }),
+      pendingRecording({
+        id: 'b',
+        bookId: 1,
+        chapterNumber: 2,
+        bibleTextId: 43,
+      }),
+    ]);
+
+    const result = await syncPendingRecordings('tok-1', { delay });
+
+    expect(result).toEqual({ uploaded: 1, conflicted: 0, failed: 1 });
+    expect(mockEmitUploadSessionEvent.mock.calls.map(call => call[0])).toEqual([
+      { type: 'start', totalChapters: 2 },
+      { type: 'progress', completedChapters: 1, totalChapters: 2 },
+      { type: 'complete' },
+    ]);
   });
 
   it('uploads pericope takes with range fields and marks uploaded (#584)', async () => {
@@ -616,6 +726,19 @@ describe('recordingSync', () => {
     expect(mockEmitUploadSessionEvent).not.toHaveBeenCalled();
   });
 
+  it('uploadChapterRecordings throws on failed count like the registered worker', async () => {
+    authToken.set('session-tok');
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ projectUnitId: null }),
+    ]);
+    await expect(
+      uploadChapterRecordings(
+        { bookId: 40, chapterNumber: 1 },
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow(/Chapter upload failed/);
+  });
+
   it('createChapterUploadWorker registers chapter uploads', async () => {
     const worker = createChapterUploadWorker(() => 'worker-tok');
     const controller = new AbortController();
@@ -644,6 +767,101 @@ describe('recordingSync', () => {
       { type: 'progress', completedChapters: 1, totalChapters: 1 },
       { type: 'complete' },
     ]);
+  });
+
+  it('createChapterUploadWorker throws when recordings fail so orchestrator can retry (#600)', async () => {
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ projectUnitId: null }),
+    ]);
+    const worker = createChapterUploadWorker(() => 'worker-tok');
+    await expect(
+      worker.uploadChapter(
+        { bookId: 40, chapterNumber: 1 },
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow(/Chapter upload failed/);
+    expect(mockEmitUploadSessionEvent).not.toHaveBeenCalled();
+  });
+
+  it('createChapterUploadWorker does not treat conflicts as chapter failures (#600)', async () => {
+    mockUploadVerseAudio.mockResolvedValue(
+      successResponse({ conflictStatus: 'conflict', versionToken: 9 }),
+    );
+    mockGetPendingRecordings.mockResolvedValue([pendingRecording()]);
+    const worker = createChapterUploadWorker(() => 'worker-tok');
+    await expect(
+      worker.uploadChapter(
+        { bookId: 40, chapterNumber: 1 },
+        new AbortController().signal,
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it('registered worker failure keeps pending and retries without complete (#600)', async () => {
+    authToken.set('worker-tok');
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({
+        id: 'bad',
+        projectUnitId: null,
+        bookId: 40,
+        chapterNumber: 1,
+      }),
+    ]);
+    registerRecordingUploadWorker();
+    const worker = mockSetChapterUploadWorker.mock.calls.at(-1)?.[0] as
+      | ChapterUploadWorker
+      | undefined;
+    expect(worker?.uploadChapter).toEqual(expect.any(Function));
+
+    const events: UploadSessionEvent[] = [];
+    const timers: Array<{
+      callback: () => void;
+      delayMs: number;
+      cancelled: boolean;
+    }> = [];
+    let conn: ((online: boolean, wifi: boolean) => void) | null = null;
+    const pendingChapter = { bookId: 40, chapterNumber: 1 };
+
+    const orchestrator = createUploadOrchestrator({
+      subscribeToConnectivity: onChange => {
+        conn = onChange;
+        return () => undefined;
+      },
+      getUploadOverCellular: () => false,
+      subscribeToUploadOverCellular: () => () => undefined,
+      // Chapter stays listed so the session failure is not "empty complete".
+      getPendingUploadChapters: async () => [pendingChapter],
+      getPausedUntilMs: () => null,
+      setPausedUntilMs: () => undefined,
+      now: () => 1_000_000,
+      pauseWindowMs: PAUSE_WINDOW_MS,
+      worker: worker!,
+      emit: event => {
+        events.push(event);
+      },
+      schedule: (callback, delayMs) => {
+        const timer = { callback, delayMs, cancelled: false };
+        timers.push(timer);
+        return () => {
+          timer.cancelled = true;
+        };
+      },
+    });
+    orchestrator.start();
+    expect(conn).not.toBeNull();
+    conn!(true, true);
+
+    await waitFor(() => {
+      expect(events.some(e => e.type === 'idle')).toBe(true);
+    });
+    expect(events.some(e => e.type === 'complete')).toBe(false);
+    expect(events.some(e => e.type === 'cancelled')).toBe(false);
+    // Chapter-scoped pass must stay silent (#682).
+    expect(mockEmitUploadSessionEvent).not.toHaveBeenCalled();
+    expect(timers.filter(t => !t.cancelled).map(t => t.delayMs)).toEqual([
+      sessionRetryDelayMs(1),
+    ]);
+    expect(orchestrator.getSnapshot().phase).toBe('idle');
   });
 
   it('registerRecordingUploadWorker wires setChapterUploadWorker', () => {

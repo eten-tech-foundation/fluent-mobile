@@ -3,6 +3,7 @@ import {
   getStageAdvanceDestination,
   getStageAdvanceVisibility,
   isDrafterBlockedFromOpenPeerCheckCapture,
+  isRecordingLockedByStage,
   resolvePeerCheckerAssignmentOnAdvance,
   stageAdvanceConfirmBody,
 } from './stageAdvancement';
@@ -426,6 +427,35 @@ describe('isDrafterBlockedFromOpenPeerCheckCapture', () => {
         10,
       ),
     ).toBe(false);
+  });
+});
+describe('isRecordingLockedByStage', () => {
+  it('locks recording at complete', () => {
+    expect(isRecordingLockedByStage({ status: 'complete' })).toBe(true);
+  });
+
+  it('normalizes case and whitespace', () => {
+    expect(isRecordingLockedByStage({ status: 'Complete' })).toBe(true);
+    expect(isRecordingLockedByStage({ status: ' complete ' })).toBe(true);
+  });
+
+  it.each([
+    'not_started',
+    'draft',
+    'peer_check',
+    'community_review',
+    'linguist_check',
+    'theological_check',
+    'consultant_check',
+  ])('does not lock recording at %s', status => {
+    expect(isRecordingLockedByStage({ status })).toBe(false);
+  });
+
+  it('does not lock for empty or unrecognized status', () => {
+    expect(isRecordingLockedByStage({ status: '' })).toBe(false);
+    expect(isRecordingLockedByStage({ status: 'not_a_real_stage' })).toBe(
+      false,
+    );
   });
 });
 

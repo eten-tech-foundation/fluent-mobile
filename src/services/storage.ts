@@ -26,6 +26,9 @@ export const KV_KEYS = {
   SYNC_ERROR_CHAPTER_CLAIMS: 'sync_error_chapter_claims',
   SYNC_ERROR_PROJECT_UNITS: 'sync_error_project_units',
   SYNC_ERROR_BIBLE_TEXTS: 'sync_error_bible_texts',
+  /** Prepare Offline chapter text sync only — not shown as full bible-text sync. */
+  SYNC_ERROR_PREPARE_OFFLINE_BIBLE_TEXTS:
+    'sync_error_prepare_offline_bible_texts',
   SYNC_ERROR_PERICOPES: 'sync_error_pericopes',
   SYNC_ERROR_PERICOPE_SETS: 'sync_error_pericope_sets',
   /** ISO timestamp; empty / missing = not paused. */
@@ -103,6 +106,7 @@ export function clearAllSyncErrors() {
   clearSyncError(KV_KEYS.SYNC_ERROR_CHAPTER_CLAIMS);
   clearSyncError(KV_KEYS.SYNC_ERROR_PROJECT_UNITS);
   clearSyncError(KV_KEYS.SYNC_ERROR_BIBLE_TEXTS);
+  clearSyncError(KV_KEYS.SYNC_ERROR_PREPARE_OFFLINE_BIBLE_TEXTS);
   clearSyncError(KV_KEYS.SYNC_ERROR_PERICOPES);
   clearSyncError(KV_KEYS.SYNC_ERROR_PERICOPE_SETS);
   log.info('All sync errors cleared');
