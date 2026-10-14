@@ -15,7 +15,7 @@ the Legacy / Next split described there.
 | Foundations roles, all three modes | `theme.roles.*` via `useTheme()` / `useThemedStyles()`; wrap a subtree in `ColorModeScope` for Canvas or Accent (Hardware is the default) |
 | Effect styles as `boxShadow` | `theme.elevation.raised` · `inset` · `soft` · `floating` |
 | Motion | `theme.motion.pressMs` · `releaseMs` · `easeStandard` |
-| Disabled opacity, icon sizes | `theme.opacity.disabled` · `theme.controlSizes.icon24` / `icon32` |
+| Disabled opacity, icon sizes | `theme.opacity.disabled` · `theme.controlSizes.icon20` / `icon24` / `icon32` |
 | Radius `xs` (4), space `2` | `theme.radius.xs`, `theme.spacing.xxs` |
 | Haptics | `useHaptics()` from `src/hooks/useHaptics.ts` |
 | Review screen | `/gallery` (`fluent://gallery`), entries in `src/app/gallery/entries/` |

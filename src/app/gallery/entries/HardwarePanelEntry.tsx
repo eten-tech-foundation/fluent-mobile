@@ -127,7 +127,10 @@ export function HardwarePanelEntry() {
               announceLatched={false}
               active={playing}
               disabled={recording || takes === 0}
-              onPress={() => setPlaying(p => !p)}
+              onPress={() => {
+                setEjected(false);
+                setPlaying(p => !p);
+              }}
               style={styles.key}
               testID="gallery-panel-play-take"
             />
