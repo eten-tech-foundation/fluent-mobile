@@ -52,8 +52,8 @@ describe('ImageThumbnail', () => {
   });
 
   it('prefers thumbnailUri for the list preview (#594)', () => {
-    const item = {
-      ...getMockImagesMaps(99, 2)[0],
+    const item: ImagesMapsItem = {
+      ...SAMPLE_ITEM,
       uri: 'https://cdn.example/full.png',
       thumbnailUri: 'https://cdn.example/thumb.png',
     };
@@ -63,5 +63,7 @@ describe('ImageThumbnail', () => {
     expect(mockZoomableImage.mock.calls[0]?.[0]?.uri).toBe(
       'https://cdn.example/thumb.png',
     );
+    expect(screen.getByText(item.caption!)).toBeTruthy();
+    expect(screen.getByText(item.attribution!)).toBeTruthy();
   });
 });
