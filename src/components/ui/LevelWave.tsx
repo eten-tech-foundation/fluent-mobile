@@ -14,6 +14,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTheme, useThemedStyles } from '../../theme/useTheme';
 
+/** Levels arrive at the recorder's 100ms metering rate; motion spans a sample. */
+const SAMPLE_MS = 100;
 /** Short: the Pericope header's 16 resting dots (Figma Progress dot, 4 × 4). */
 const SHORT_SAMPLES = 16;
 const SHORT_DOT = 4;
@@ -97,17 +99,17 @@ function ShortWave({
 }
 
 function ShortDot({ height, testID }: { height: number; testID?: string }) {
-  const { motion, roles, radius } = useTheme();
+  const { roles, radius } = useTheme();
   const reduceMotion = useReducedMotion();
   const h = useSharedValue(height);
 
-  // Linear over a tick so samples morph instead of stepping.
+  // Linear over one sample so levels morph instead of stepping.
   useEffect(() => {
     h.value = withTiming(height, {
-      duration: reduceMotion ? 0 : motion.pressMs,
+      duration: reduceMotion ? 0 : SAMPLE_MS,
       easing: Easing.linear,
     });
-  }, [height, h, motion, reduceMotion]);
+  }, [height, h, reduceMotion]);
 
   const animated = useAnimatedStyle(() => ({ height: h.value }));
 
@@ -177,7 +179,7 @@ function LongWave({
     },
   }));
 
-  const { spacing, motion } = theme;
+  const { spacing } = theme;
   const pitch = LONG_BAR + spacing.xxs;
   const frontX = levels.length * pitch;
 
@@ -205,10 +207,10 @@ function LongWave({
       return;
     }
     front.value = withTiming(frontX, {
-      duration: reduceMotion ? 0 : motion.pressMs,
+      duration: reduceMotion ? 0 : SAMPLE_MS,
       easing: Easing.linear,
     });
-  }, [frontX, frameWidth, motion, front, reduceMotion]);
+  }, [frontX, frameWidth, front, reduceMotion]);
 
   const barsStyle = useAnimatedStyle(() => ({
     transform: [

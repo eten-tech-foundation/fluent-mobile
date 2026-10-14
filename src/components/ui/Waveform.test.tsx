@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Waveform, waveformOffset } from './Waveform';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
 
@@ -161,6 +161,35 @@ describe('Waveform windowing and chips', () => {
 
     expect(screen.getByTestId('w-bar-0', hidden)).toBeTruthy();
     expect(screen.queryByTestId('w-bar-580', hidden)).toBeNull();
+  });
+
+  it('keeps the bars at the new spot mounted after a big jump', () => {
+    const long = Array.from({ length: 30 }, (_, i) => ({
+      verse: i + 1,
+      bars: Array(20).fill(10),
+    }));
+    const { rerender } = render(
+      <Waveform
+        verses={long}
+        progress={0}
+        accessibilityLabel="Mark 14"
+        testID="w"
+      />,
+    );
+    fireEvent(screen.getByTestId('w'), 'layout', {
+      nativeEvent: { layout: { width: 360, height: 52 } },
+    });
+    rerender(
+      <Waveform
+        verses={long}
+        progress={0.5}
+        accessibilityLabel="Mark 14"
+        testID="w"
+      />,
+    );
+
+    expect(screen.getByTestId('w-bar-300', hidden)).toBeTruthy();
+    expect(screen.queryByTestId('w-bar-0', hidden)).toBeNull();
   });
 
   it('widens the chip for three-digit verses', () => {

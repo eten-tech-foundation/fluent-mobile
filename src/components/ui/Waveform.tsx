@@ -55,7 +55,7 @@ export function waveformOffset(playheadX: number, frameWidth: number): number {
 /**
  * Player waveform (Figma Wave bar 2409:505 and Verse chip 2409:502): a verse
  * chip, then that verse's bars, played in fg/primary and unplayed in
- * fg/inactive. The strip scrolls under a fixed playhead.
+ * fg/inactive. The strip scrolls so the played edge holds about a third across.
  */
 export function Waveform({
   verses,
@@ -131,6 +131,7 @@ export function Waveform({
   const reduceMotion = useReducedMotion();
   const offset = useSharedValue(0);
   const measured = useRef(false);
+  const lastTarget = useRef(0);
   const target = waveformOffset(playheadX, frameWidth);
 
   // Linear like ProgressRing: position arrives every 100ms during playback.
@@ -138,13 +139,21 @@ export function Waveform({
   useEffect(() => {
     if (!measured.current) {
       measured.current = frameWidth > 0;
+      lastTarget.current = target;
       offset.value = target;
       return;
     }
-    offset.value = withTiming(target, {
-      duration: reduceMotion ? 0 : motion.releaseMs,
-      easing: Easing.linear,
-    });
+    // A seek (Next, Previous, scrubbing) snaps instead of sliding, so the
+    // bar window never shows blank spacers mid-slide.
+    const jump = Math.abs(target - lastTarget.current) > WINDOW_MARGIN;
+    lastTarget.current = target;
+    offset.value =
+      jump || reduceMotion
+        ? target
+        : withTiming(target, {
+            duration: motion.releaseMs,
+            easing: Easing.linear,
+          });
   }, [target, frameWidth, motion, offset, reduceMotion]);
 
   // Only mount bars near the frame; a long pericope would otherwise mount
@@ -176,7 +185,7 @@ export function Waveform({
         testID={testID ? `${testID}-strip` : undefined}
       >
         {verses.map((v, vi) => (
-          <React.Fragment key={v.verse}>
+          <React.Fragment key={vi}>
             <VerseChip
               verse={v.verse}
               current={layout.verseStart[vi] <= lastBar}
@@ -228,7 +237,11 @@ const VerseBars = memo(function VerseBars({
       {bars.map((height, i) => (
         <View
           key={i}
-          style={[styles.bar, { height }, i < played && styles.played]}
+          style={[
+            styles.bar,
+            { height: Math.min(ROW_HEIGHT, Math.max(0, height)) },
+            i < played && styles.played,
+          ]}
           testID={testID ? `${testID}-bar-${start + i}` : undefined}
         />
       ))}

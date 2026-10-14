@@ -155,9 +155,11 @@ Before handing off, run the guide's "Before asking for review" checklist
 (rebased on `main`, product rules consistent, status docs correct from the
 top, Android floor noted, shared test state reset). Then stop and say it's
 ready: **don't open a PR until the user says so**. When you're running
-`/start-issue`, skip its step 7 (the `/create-pr` chain) and go straight to
-step 8 (Report). Once
-they ask, hand off to `/create-pr`. In the PR: Figma link, the token mapping report
+`/start-issue`, still run `/create-pr`'s local gates and the code-reviewer
+agent at step 7, but skip the push, `gh pr create`, board move and CI watch.
+Report "PR held until the user asks" with the board left at In Progress
+(Dev). Once they ask, hand off to `/create-pr`. In the PR: Figma link, the
+token mapping report
 (collapsed), gallery path under "How to verify", before/after screenshots,
 **Needs QA? Yes** if haptics or recording are involved. For screens, add the
 **Existing functionality** table (UI element · Status · Source with file or
