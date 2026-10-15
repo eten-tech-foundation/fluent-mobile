@@ -70,11 +70,6 @@ The token-level detail is in the
 
 ### Architecture
 
-- **Q8 · Where Next screens branch on UI version** *(dev)*. No screen
-  branches on `uiVersion` yet; only theming and the Settings toggle read it. The first one sets the
-  pattern every later screen copies. Proposed: branch once in `DraftingScreen`
-  (or the `verse-detail` route) and reuse `SourceAudioProvider`,
-  `useSourceAudio` and `useBibleTabUnits`.
 - **Q9 · App-level player for "Now playing"** *(dev)*. Source playback lives
   in `SourceAudioProvider`, scoped to `DraftingScreen`, and stops when you
   leave it (`useSourceAudio.ts:252-260`). A mini player that survives
@@ -113,6 +108,31 @@ The token-level detail is in the
   Understanding variant shows notes. Translation notes are wired today; is
   that the content, or Aquifer Guide content?
 
+### Review
+
+From Foundations › 10 · Review and the Record page's "Record & Review –
+states" (10 frames): reviewers take turns on the official take, listening,
+recording voice comments at points on its timeline and passing the turn; the
+translator hears them all last.
+
+- **Q21 · One phone or many?** *(design + product)*. "Seats", "holding the
+  turn" and a Pass button read like a group passing one phone around. Is
+  review in person on one device, remote with each reviewer on their own
+  phone, or both? One device can mostly ride on today's take sync; many
+  devices needs a review backend with turn state and probably push
+  notifications ("your turn").
+- **Q22 · Who are the reviewers?** *(product)*. Peer checker, community
+  reviewers, Observers (#452), or anyone present? Do seats need accounts, or
+  just a name for the round?
+- **Q23 · How does this relate to the comment tickets?** *(product + design)*.
+  #451 specs text and audio comments in a half drawer, one level of threading
+  and emoji reactions; #703 adds comment counts to My Work rows. The Review
+  design is turn-based voice comments on the take timeline. Replace those
+  tickets, or keep both?
+- **Q24 · What does the API store?** *(API)*. Nothing exists today: no
+  comments, review rounds, reviewers, turn order or comment audio. Depends on
+  Q21–Q23. Review also needs the official take to sync (#701).
+
 ### Screens
 
 - **Q15 · Pericope title fallback** *(design)*. The bundled FCBH set has no
@@ -132,6 +152,7 @@ Rows marked — were decided before this doc had IDs.
 
 | ID | Question | Answer | Date | Where |
 | --- | --- | --- | --- | --- |
+| Q8 | Where Next screens branch on UI version | New v2 routes, chosen once at the root; Legacy routes stay frozen. Both trees share hooks and services, and the rules inside `RecordTab` / `DraftingScreen` move into shared hooks | 2026-10-15 | `v2-feature-manifest.md` (local branch `jskager/chore/v2-feature-manifest`) |
 | — | Header progress dots on the Pericope screen | They're a resting waveform: Level wave, short variant | 2026-10-13 | Figma Level wave `2595:772` |
 | — | Speaker grill hole color | `surface/inverse` (was the `bone/800` primitive) | 2026-10-14 | Figma Speaker grill `2409:533` |
 | — | Icon/md size | `theme.controlSizes.icon20` | 2026-10-14 | `jskager/feature/hardware-panel` |
@@ -145,7 +166,7 @@ Scrubbed 2026-10-14 against `origin/main` at `fecd07d`. Figma:
 
 **Proposed v1:** the Source Text player only, with verse-level highlighting,
 the waveform clipped to the pericope with verse chips, page dots, and the
-Hardware panel, rendered by `DraftingScreen` when the UI version is Next.
+Hardware panel, as a new v2 route on the hooks `DraftingScreen` uses today (Q8).
 
 **How you get here today:** a chapter row in `ViewProject`
 (`src/app/tabs/ViewProject.tsx:76`) or `MyWorkTab`
