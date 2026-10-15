@@ -26,10 +26,13 @@ Ranked by how much they block a full switch to v2.
    frames, and neither do the drafting flow's dialogs and edge states (crash
    recovery, recording gates, conflicts, stage advance, empty and error
    states). Agents can build these quickly, but shouldn't invent the design.
-2. **Content for the new v2 features doesn't exist.** The FIA step tracks and
-   listened progress are the heart of the new pericope screen, and no endpoint
-   provides either (Q11, Q13). The Figma example passage doesn't match the
-   pericope sets the app ships (Q18).
+2. **The new v2 features have no backend.** The FIA step tracks and listened
+   progress are the heart of the new pericope screen, and no endpoint provides
+   either (Q11, Q13). The Figma example passage doesn't match the pericope sets
+   the app ships (Q18). The biggest one is **Review**: voice comments recorded
+   on the official take's timeline, taken in turns by reviewers. fluent-api
+   has no comments, reviewers or review rounds at all, and the design differs
+   from the comment tickets already filed (#451, #703; Q21–Q23).
 3. **One architecture call blocks the Now playing bar.** An app-level player
    so audio survives navigation (Q9). Where v2 branches from Legacy (Q8) is
    settled: separate v2 routes, chosen once at the root.
@@ -175,6 +178,8 @@ Things the Figma designs add that v1 doesn't do.
 | Word and phrase highlight | Highlight the spoken word and its phrase | ✅ | **Missing** word timing (Q10); verse-level in v1 |
 | Understanding view | Notes tied to the phrase being read | ✅ | Wired per verse; per-phrase mapping not checked |
 | Pericope titles as headings | The pericope list and player header lead with titles | ✅ | Partial (Q15, Q18) |
+| Official take card | The take marked official shows as a blue (Accent) card with a Review chip: "Open" before anyone reviews, the comment count after | ✅ (Foundations › 10 · Review, Record page R&R 01, 10) | Partial. Mobile marks the official take on the device only; changing it doesn't sync (#701) |
+| Review | From the official take, reviewers take turns: listen, play earlier comments, record a voice comment at a point on the timeline, pass to the next reviewer; the translator hears them all last. Earlier review rounds can be shown | ✅ (Record page › Record & Review – states, 10 frames) | **Missing.** No comments, audio comments, reviewer seats, turn order or review rounds in fluent-api (Q21–Q23) |
 
 ## 3. Backend parity
 
@@ -201,7 +206,8 @@ Things the Figma designs add that v1 doesn't do.
 | Pericope takes | Merge `PUT /verse-audio/{puid}/range` (fluent-api #391) |
 | Verse-range resources | Merge fluent-api #389 |
 | Removed from last project | Merge fluent-api #392 so sync doesn't hit a 403 |
-| Nice to have | Waveform peaks, push notifications, take comments and review (#451, #703) |
+| Review | A data model for review rounds on a take: reviewers, turn order, voice comments with a timestamp and audio upload, who has heard what. Shape depends on Q21 (one phone or many) |
+| Nice to have | Waveform peaks, push notifications (likely needed if review is multi-device: "your turn") |
 
 ### Found along the way
 
@@ -234,6 +240,7 @@ bottleneck. These are:
 | 1. Everything without v2 frames | Build the drafted screens and dialogs (V2 · Gap screens) as new v2 routes on v1's hooks; promote the proposed parts to Foundations components | 2–3 days | 1–2 weeks (design sign-off on the drafts, ~6 PRs) |
 | 2. Drafting flow | Lift RecordTab and DraftingScreen rules into shared hooks; then pericope list → pericope screen → player → recorder → resources as v2 routes | 3–5 days | About 2 weeks (device QA on audio and recording) |
 | 3. New v2 features | FIA tracks, listened progress, Now playing bar, server takes, `playback-audio` | 1–2 days each once data exists | Set by the backend |
+| 3b. Review | Build Seat, Thread turn, review controls and Review chip as components; the Review screen on the recording engine and player v1 already has | 3–5 days | Set by the review backend, the largest new API domain in v2 |
 
 **Total: about 3–5 weeks on the calendar** to have the app on v2, minus the
 backend-gated features, if PRs are reviewed within a day and design keeps
