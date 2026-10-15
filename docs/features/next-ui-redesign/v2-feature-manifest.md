@@ -252,6 +252,12 @@ anything that only shows up on specific hardware, like #707. The rule that
 keeps this safe is the one the screens already follow: reuse v1's hooks and
 services, don't rewrite them.
 
+## Before a public release
+
+- Hide the Legacy / Next toggle in Settings, or make v2 the default. Today
+  production builds only reach the Play internal track, so the toggle is how
+  testers and summit demos switch into v2.
+
 ## Known v1 issues that carry over
 
 Fix these regardless of v2, since v2 reuses the same logic:
