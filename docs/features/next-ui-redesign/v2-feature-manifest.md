@@ -30,13 +30,15 @@ Ranked by how much they block a full switch to v2.
    listened progress are the heart of the new pericope screen, and no endpoint
    provides either (Q11, Q13). The Figma example passage doesn't match the
    pericope sets the app ships (Q18).
-3. **Two architecture calls block real screens.** Where Next screens branch
-   from Legacy (Q8), and an app-level player so audio survives navigation for
-   the Now playing bar (Q9). Both are small to build and need a dev decision
-   first.
-4. **The theme switch doesn't reach most screens.** 76 of the 100 UI files on
-   `main` use the static Legacy theme, so flipping to Next changes 4 of them.
-   Every screen needs migrating, redesign or not. Mechanical, but every file.
+3. **One architecture call blocks the Now playing bar.** An app-level player
+   so audio survives navigation (Q9). Where v2 branches from Legacy (Q8) is
+   settled: separate v2 routes, chosen once at the root.
+4. **Recording rules live inside the v1 screen.** v2 gets new routes and Legacy
+   stays frozen (see [v2 routes](#v2-routes)), so the 76 Legacy-styled files
+   don't need migrating. But `RecordTab.tsx` (1,785 lines, 17 effects, 6
+   alerts) holds the stage-advance rules, recording gates and take handling,
+   and `DraftingScreen` holds the leave-while-recording guard. Those move into
+   shared hooks both versions call, so v2 reuses them instead of copying them.
 5. **v1 bugs v2 inherits.** The drafting flow reuses v1's logic, so these come
    along: offline stage advances aren't queued (#257), only the picked take
    uploads and changing it doesn't sync (#701), takes play silent on Xiaomi
@@ -45,6 +47,48 @@ Ranked by how much they block a full switch to v2.
 What isn't a gap: drafting itself. Listening, reading, recording, takes,
 resources and stage advance all work in v1, and the backend supports them.
 Moving them to v2 is wiring the new screens to the hooks v1 already has.
+
+## v2 routes
+
+v2 gets its own route tree (for example `src/routes/(app)/(v2)/…`), chosen
+once at the root from the UI version setting, so only one tree is mounted.
+Legacy routes and screens don't change.
+
+- **Shared logic, not shared UI.** Both trees call the same hooks and services
+  (auth, sync, uploads, recording engine, source audio, downloads). That's
+  where the backend is wired today, so v2 screens get it for free. Bible,
+  Resources, My Work and Prepare for Offline are already thin over hooks.
+- **The one Legacy change:** lift the rules inside `RecordTab` and
+  `DraftingScreen` into shared hooks (stage advance, recording gates, takes,
+  leave guard), with Legacy calling them unchanged and the existing tests
+  proving it.
+- **App-wide pieces need v2 versions:** the crash-recovery prompt, the upload
+  notification's "open Sync" target, the drawer, and the 24 links in
+  `src/navigation/hrefs.ts`.
+- **Cost:** two UIs until Legacy is deleted. Logic fixes land in both; UI
+  fixes don't.
+
+## Screen triage and drafts
+
+Drafts for everything without a v2 frame are on the Figma page
+[V2 · Gap screens](https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2644-6),
+built from the Foundations components plus a few proposed parts (button,
+field, list row, banner, dialog, chapter chip, avatar).
+
+| Needs its own screen | Folds into an existing v2 mock | Just a dialog or state |
+| --- | --- | --- |
+| Login (+ can't connect, check email, session expired) | Milestones and chapter lists → Home | Leave while recording |
+| Home: my chapters | Stage, ownership, conflict, sync → row meta and headers | Recovered recording |
+| Prepare for offline | Resources → pericope screen and Understanding | Microphone is off |
+| Settings | Takes, All Takes, canonical → recorder take cards | Log out with unsynced work |
+| Sync (as a sheet) | Unit navigation, source text → Hardware panel, reading view | Send to next stage |
+| Accounts (as a sheet) | Session expired → banner on Home | Recorder can't record yet (text syncing, Complete, Peer Check) |
+
+**Not ours to design:** the microphone and notification permission prompts
+and the upload notification (Android), the splash screen and app icon
+(assets only), finishing a password reset or accepting an invite (fluent-web
+from the email link), and the Expo dev menu (dev builds only). v1's 17
+confirm dialogs use Android's native alerts, so v2 needs its own Dialog.
 
 ## 1. Feature manifest (v1)
 
@@ -187,8 +231,8 @@ bottleneck. These are:
 | Phase | What | Agent work | Calendar, if review keeps up |
 | --- | --- | --- | --- |
 | 0. Foundations | Tokens, type styles, the core components | Done | Waiting on #693, #698, #699, #700 |
-| 1. Everything without v2 frames | Migrate ~76 files to the runtime theme; build the undesigned screens from the Foundations components, reviewed as gallery prototypes before they ship | 2–3 days | 1–2 weeks (design sign-off on ~7 screens, ~6 PRs) |
-| 2. Drafting flow | Pericope list → pericope screen → player → recorder → resources, on v1's hooks, behind the Q8 branch point | 3–5 days | About 2 weeks (device QA on audio and recording) |
+| 1. Everything without v2 frames | Build the drafted screens and dialogs (V2 · Gap screens) as new v2 routes on v1's hooks; promote the proposed parts to Foundations components | 2–3 days | 1–2 weeks (design sign-off on the drafts, ~6 PRs) |
+| 2. Drafting flow | Lift RecordTab and DraftingScreen rules into shared hooks; then pericope list → pericope screen → player → recorder → resources as v2 routes | 3–5 days | About 2 weeks (device QA on audio and recording) |
 | 3. New v2 features | FIA tracks, listened progress, Now playing bar, server takes, `playback-audio` | 1–2 days each once data exists | Set by the backend |
 
 **Total: about 3–5 weeks on the calendar** to have the app on v2, minus the
