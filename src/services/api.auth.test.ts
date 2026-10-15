@@ -116,6 +116,10 @@ describe('FluentAPI auth', () => {
       name: 'AuthError',
       message: 'Invalid or revoked session token',
     });
+
+    const [url] = fetchMock.mock.calls[0] as [string];
+    expect(url).toContain('/self/projects');
+    expect(url).not.toContain('/users/');
   });
 
   it.each([

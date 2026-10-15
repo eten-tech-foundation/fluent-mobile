@@ -341,6 +341,10 @@ export async function syncProjects(userId: number, sessionToken?: string) {
         );
       }
 
+      if (isConfirmedShape && projects.length === 0) {
+        await reconcileUserMilestones(userId, []);
+      }
+
       if (isConfirmedShape) {
         await reconcileUserProjects(
           userId,
