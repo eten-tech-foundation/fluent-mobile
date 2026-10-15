@@ -1,3 +1,5 @@
+import type { ApiPrepareOfflineResourceScope } from '../api/translationResources';
+
 export interface PrepareOfflineChapterRow {
   id: number;
   bookId: number;
@@ -37,6 +39,9 @@ export interface PrepareOfflineResourceManifestItem {
   aquiferContentId?: number;
   aquiferBibleId?: number;
   languageCode: string;
+  /** Actual per-resource coverage; never copy the requested range here. */
+  scope?: ApiPrepareOfflineResourceScope;
+  /** Legacy scope fields; only a single chapter is unambiguous. */
   bookCode?: string;
   startChapter?: number;
   endChapter?: number;

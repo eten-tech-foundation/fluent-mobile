@@ -3,6 +3,8 @@
  * Distinct from translator `/verse-audio` draft recordings.
  */
 
+import type { ApiPrepareOfflineResourceScope } from './translationResources';
+
 export type ApiSourceAudioProvider = 'dbl' | 'aquifer';
 
 export type ApiSourceAudioFormat = 'mp3' | 'webm';
@@ -63,6 +65,8 @@ export interface ApiSourceAudioManifestItem {
   sourceUrl: string;
   fileExt: string;
   languageCode: string;
+  scope?: ApiPrepareOfflineResourceScope;
+  /** Legacy scope fields; a multi-chapter range may be the request range. */
   bookCode: string;
   startChapter: number;
   endChapter: number;
