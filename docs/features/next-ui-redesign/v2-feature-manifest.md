@@ -252,6 +252,99 @@ anything that only shows up on specific hardware, like #707. The rule that
 keeps this safe is the one the screens already follow: reuse v1's hooks and
 services, don't rewrite them.
 
+## Summit MVP
+
+Summit: second week of November 2026. Hard freeze: end of October (merged to
+`main` by Fri Oct 30). The MVP is the translator's core loop in the v2
+interface: open a chapter, listen to a passage, read along, record, play it
+back, and have it upload. Everything else stays in v1, reachable from the v2
+avatar.
+
+| Capability | v1 today | MVP work |
+| --- | --- | --- |
+| Sign in, pick a chapter | ✅ | Keep v1 login; v2 Home on `useMyWorkChapters` |
+| Listen to a passage | ✅ chapter audio, verse seek when timestamps exist | Wire the player prototype to `useSourceAudio`; stop at the pericope's end |
+| Read along | ✅ verse highlight | Verse-level highlight (Q10) |
+| Tap to hear (TTS) | ❌ | Only if the demo language has no recorded source audio |
+| Record | ✅ | v2 recorder on `useVerseAudio` and the recording engine |
+| Play back takes | ✅ | Take cards on the same hook |
+| Upload in the background | ✅ | Reuse as is |
+| Works offline at the venue | ✅ (Prepare for offline, #579) | Prepare demo phones in v1 beforehand |
+
+**Cuts to fit the freeze:** the recording rules stay inside `RecordTab` until
+after the summit (the v2 recorder calls the same hooks; sending to the next
+stage stays in v1), and no TTS unless needed. Out of the MVP: FIA step tracks,
+listened progress, word-level highlight, Review, the Now playing bar, and v2
+versions of Settings, Sync and Prepare for offline.
+
+| When | What |
+| --- | --- |
+| Oct 15–16 | Merge the foundations (#698 → #699 → #700 → #693). Pick the demo project and language. Raise the pre-freeze blockers below with the devs |
+| Oct 19–21 | v2 route tree, Home, pericope list, player on real source audio |
+| Oct 22–23 | Word, recorder and takes, Hardware panel wiring, avatar links into v1 screens |
+| Oct 26–28 | Device QA on the nightly, fixes, polish |
+| Oct 29–30 | Buffer for last merges. Freeze |
+| Nov 2–6 | Fixes only. Prepare demo phones offline, set them to Next, rehearse |
+
+**MVP prerequisites:** a demo project on the FIA pericope set with recorded
+source audio and verse timestamps (the Figma example doesn't match either
+shipped set, Q18), and PR reviews turned around within a day. MVP work is
+tracked here rather than as new GitHub issues.
+
+## Existing issues
+
+Open fluent-mobile issues and Project 4 items, triaged against the plan on
+2026-10-15.
+
+### Must land before the freeze
+
+| Issue | Why it matters | Status |
+| --- | --- | --- |
+| #707 Silent playback of remuxed takes | Takes play silent on Xiaomi / Redmi phones | Open, assigned |
+| #569 Max update depth during Record tab playback | PR #706 changes `usePlaybackEngine`, which the v2 player also uses | In PR review |
+| #702 Prepare for Offline download button disappears | Needed to prepare the demo phones | Draft PR #705 |
+| #483 Disk I/O error after a full offline sync on a device | Could hit the demo phones prepared for offline | Open, assigned |
+| fluent-api #391 Pericope / verse-range take uploads | Without it, the demo records verse by verse | Open PR |
+
+### In flight underneath v2
+
+Low collision, since v2 only calls this code: #677 (resources offline, touches
+`DraftingScreen`), #690 (sync on `/self` lists), #562 (Tier 2/3 resources in
+Prepare for offline).
+
+### Reshaped by the v2 designs
+
+Settle these before anyone builds them:
+
+- #451 comments and #703 comment counts vs. the Review design (Q23).
+- #452, #505, #508 Observer view, My Work accordions and offline drafts: tied to
+  who the reviewers are (Q22). #505 redesigns My Work, which v2 Home replaces.
+- #408 Bible tab verse / pericope toggle (Passed QA in v1): v2 is
+  pericope-first (Settings › Record by).
+- #701 selected-take sync and #257 offline stage advance: not MVP, but Review
+  needs #701.
+
+### Hold until after the summit
+
+- #536 Upgrade to Expo SDK 58 (unassigned). A framework upgrade near the
+  freeze is the biggest schedule risk in the backlog.
+- #691 bootsplash major and #499 Prettier 3 / TypeScript 7 are already
+  deferred.
+
+### Elsewhere on Project 4
+
+- fluent-web #422 (source audio in drafting, in progress) and the roadmap's
+  "Text to Speech" item: mobile TTS would follow web.
+- fluent-web #383 (audio review with take selection, In QA), #514 / #515 (take
+  playback, Product Ready), and the roadmap's "Commenting on Audio" and "Audio
+  Playback for Review": line up with Review.
+- fluent-api #335 (assign the peer checker on submit, In QA): likely covers
+  v1's open Peer Check gap.
+
+Ours: #692, #694, #695, #696 (Next UI foundations). The Mobile Feature Audit
+epic (#526) and its audits (#528–#534) are tracking chores with no effect on
+the plan.
+
 ## Before a public release
 
 - Hide the Legacy / Next toggle in Settings, or make v2 the default. Today
