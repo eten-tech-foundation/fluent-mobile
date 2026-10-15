@@ -16,58 +16,66 @@ ID.
 | --- | --- |
 | **v2 design** | ✅ designed in Figma · ◐ partly (a pattern or one state exists) · — none yet |
 | **Backend** | **Wired** (mobile already calls it) · **Available** (fluent-api has it, mobile doesn't call it) · **Missing** (no endpoint) · **Local** (device only) |
-| **Effort** | Mobile work for one developer, rough: **S** ≤ 1 day · **M** 2–4 days · **L** 1–2 weeks · **XL** 2+ weeks |
 
-Effort assumes the Next UI foundations already in review (#693, #698, #699,
-#700) and the Listen player prototype have landed. It covers UI and wiring to
-existing hooks, not backend work.
+## The biggest gaps
 
-## The headline
+Ranked by how much they block a full switch to v2.
 
-- **Most of v1 has no v2 design yet.** Figma covers the drafting flow (pericope
-  list, pericope screen, player, recorder, notes). Login, Home, My Work,
-  Milestones, Sync, Prepare for Offline and Settings have no v2 frames.
-- **Flipping the UI version doesn't reskin the app yet.** 76 of the 100 UI files
-  on `main` style themselves with the static Legacy theme, and only 4 read the
-  runtime theme. Every screen needs migrating to `useThemedStyles` before Next
-  shows up on it, redesign or not.
-- **The backend covers almost all of v1.** Mobile calls 24 of 127 operations.
-  The gaps are in what v2 adds: FIA step tracks, listened progress, word-level
-  timing and a persistent player.
-- **Rough total:** about 9–14 weeks of mobile work for one developer, in three
-  phases (see [Effort and phasing](#effort-and-phasing)), plus backend work for
-  the new v2 features.
+1. **No v2 design for most of the app.** Figma covers the drafting flow. Login,
+   Home, My Work, Milestones, Sync, Prepare for Offline and Settings have no v2
+   frames, and neither do the drafting flow's dialogs and edge states (crash
+   recovery, recording gates, conflicts, stage advance, empty and error
+   states). Agents can build these quickly, but shouldn't invent the design.
+2. **Content for the new v2 features doesn't exist.** The FIA step tracks and
+   listened progress are the heart of the new pericope screen, and no endpoint
+   provides either (Q11, Q13). The Figma example passage doesn't match the
+   pericope sets the app ships (Q18).
+3. **Two architecture calls block real screens.** Where Next screens branch
+   from Legacy (Q8), and an app-level player so audio survives navigation for
+   the Now playing bar (Q9). Both are small to build and need a dev decision
+   first.
+4. **The theme switch doesn't reach most screens.** 76 of the 100 UI files on
+   `main` use the static Legacy theme, so flipping to Next changes 4 of them.
+   Every screen needs migrating, redesign or not. Mechanical, but every file.
+5. **v1 bugs v2 inherits.** The drafting flow reuses v1's logic, so these come
+   along: offline stage advances aren't queued (#257), only the picked take
+   uploads and changing it doesn't sync (#701), takes play silent on Xiaomi
+   (#707), and pericope uploads target an unmerged endpoint (fluent-api #391).
+
+What isn't a gap: drafting itself. Listening, reading, recording, takes,
+resources and stage advance all work in v1, and the backend supports them.
+Moving them to v2 is wiring the new screens to the hooks v1 already has.
 
 ## 1. Feature manifest (v1)
 
 ### Auth and accounts
 
-| Feature | What we need to support | v2 design | Backend | Effort |
-| --- | --- | --- | --- | --- |
-| Launch and session restore | Open straight to the last signed-in account, offline included, with loading and error states | — | Local | S |
-| Email login | Email and password, inline validation, show/hide password, a clear offline message | — | Wired: `POST /api/auth/sign-in/email`, `GET /users/email/{email}` | S |
-| First-login sync | "Syncing…" until My Work is ready, then the rest of the catalog in the background | — | Wired (full sync) | S |
-| Forgot password | Send a reset email, with Resend and Back to login | — | Wired: `POST /api/auth/forget-password` (the reset itself happens on web) | S |
-| Session expired | Keep local data, show a banner, re-enter the password only, then sync | — | Wired | S |
-| Log out | Warn about unsynced recordings, sign out, switch to another account on the device | — | Wired: `POST /api/auth/sign-out` | S |
-| Multiple accounts | Up to 3 accounts per device: add, switch (not while recording), initials chip in the drafting header, takes credited to the account that recorded them | — | Wired + Local | M |
+| Feature | What we need to support | v2 design | Backend |
+| --- | --- | --- | --- |
+| Launch and session restore | Open straight to the last signed-in account, offline included, with loading and error states | — | Local |
+| Email login | Email and password, inline validation, show/hide password, a clear offline message | — | Wired: `POST /api/auth/sign-in/email`, `GET /users/email/{email}` |
+| First-login sync | "Syncing…" until My Work is ready, then the rest of the catalog in the background | — | Wired (full sync) |
+| Forgot password | Send a reset email, with Resend and Back to login | — | Wired: `POST /api/auth/forget-password` (the reset itself happens on web) |
+| Session expired | Keep local data, show a banner, re-enter the password only, then sync | — | Wired |
+| Log out | Warn about unsynced recordings, sign out, switch to another account on the device | — | Wired: `POST /api/auth/sign-out` |
+| Multiple accounts | Up to 3 accounts per device: add, switch (not while recording), initials chip in the drafting header, takes credited to the account that recorded them | — | Wired + Local |
 
 ### Home and navigation
 
-| Feature | What we need to support | v2 design | Backend | Effort |
-| --- | --- | --- | --- | --- |
-| Home shell | Drawer menu, sync status, Milestones and My Work tabs (My Work first) | — | Wired | M (needs an IA decision) |
-| My Work | Chapters assigned to me (drafter or peer checker) with stage, sync state, ownership, last activity and a source-text download ring; pull to refresh | — | Wired. Available: `GET /projects/{id}/workflow-stages` for real stage labels | M |
-| Milestones and chapter list | Milestones I belong to, then every chapter in one, with stage, sync, ownership and conflict icons; an "unassigned" state | — | Wired. Available: `GET /projects/{id}/chapter-assignments/progress` | M |
-| Sync status icon | A cloud in every header (synced, syncing, pending, failed, offline) that opens Sync | — | Wired: `GET /health` | S |
-| Drawer and legal pages | Settings, Privacy Policy, Terms, the device's accounts, Add user, Log out | — | Local | S |
+| Feature | What we need to support | v2 design | Backend |
+| --- | --- | --- | --- |
+| Home shell | Drawer menu, sync status, Milestones and My Work tabs (My Work first) | — | Wired |
+| My Work | Chapters assigned to me (drafter or peer checker) with stage, sync state, ownership, last activity and a source-text download ring; pull to refresh | — | Wired. Available: `GET /projects/{id}/workflow-stages` for real stage labels |
+| Milestones and chapter list | Milestones I belong to, then every chapter in one, with stage, sync, ownership and conflict icons; an "unassigned" state | — | Wired. Available: `GET /projects/{id}/chapter-assignments/progress` |
+| Sync status icon | A cloud in every header (synced, syncing, pending, failed, offline) that opens Sync | — | Wired: `GET /health` |
+| Drawer and legal pages | Settings, Privacy Policy, Terms, the device's accounts, Add user, Log out | — | Local |
 
 ### Ownership and claims
 
-| Feature | What we need to support | v2 design | Backend | Effort |
-| --- | --- | --- | --- | --- |
-| Ownership and claims | Mine / someone else / unassigned icons; a warning (not a block) when someone else holds the chapter; the first recording claims an unassigned chapter, queued if offline | — | Wired: `POST /chapter-assignments/{id}/claim`. Available: `POST/DELETE …/presence` to warn about someone working right now | M |
-| Conflicts | Flag claim races and take version conflicts; block stage advance while one is open | — | Wired. Available: `POST /verse-audio/{puid}/{btid}/resolve` (web resolves today) | M |
+| Feature | What we need to support | v2 design | Backend |
+| --- | --- | --- | --- |
+| Ownership and claims | Mine / someone else / unassigned icons; a warning (not a block) when someone else holds the chapter; the first recording claims an unassigned chapter, queued if offline | — | Wired: `POST /chapter-assignments/{id}/claim`. Available: `POST/DELETE …/presence` to warn about someone working right now |
+| Conflicts | Flag claim races and take version conflicts; block stage advance while one is open | — | Wired. Available: `POST /verse-audio/{puid}/{btid}/resolve` (web resolves today) |
 
 ### Drafting (Listen and Record)
 
@@ -75,54 +83,54 @@ This is where v2 changes the structure: v1's Bible / Resources / Record tabs
 become a chapter's pericope list → a pericope screen (tracks, Listen / Record,
 Resources, Images) → the player and recorder.
 
-| Feature | What we need to support | v2 design | Backend | Effort |
-| --- | --- | --- | --- | --- |
-| Chapter screen | Open on the first unrecorded unit, remember the last view per chapter, and confirm before leaving mid-recording | ✅ (new structure) | Wired | L |
-| Verse and pericope lists | Units with recorded / partial / unrecorded state; verse or pericope mode per user; a fallback when pericopes aren't available | ✅ pericope list | Wired. Titles only in FIA, and the Figma example matches neither shipped set (Q15, Q18) | M |
-| Source audio | Play, pause, scrub, verse position, source label; loading, "no audio" and retry states; offline playback when prepared; stops when recording | ✅ Listen player (prototype built) | Wired: `GET /projects/{id}/source-audio/…`. Available: `GET …/playback-audio/…` (verse end times, licence, TTS permission), TTS when no recording exists | L |
-| Reading along | Highlight what's being read and keep it in view | ✅ word highlight + scrolling text | Verse-level only. Missing: word timing (Q10) | M |
-| Resources | Translation notes, questions, images and maps for the selected verse or pericope, offline when downloaded | ◐ Understanding notes view, Resources and Images entries | Wired: `…/translation-resources/notes`, `questions`, `images`. Available: verse-range resources (fluent-api #389), Aquifer search and Guides | M–L |
-| Unit navigation | Previous / next unit with reference and pericope title | ✅ Hardware panel keys (built) | Local | S |
-| Recording | Record, pause, resume, stop; mic permission with a Settings link; live waveform and timer; error alerts | ✅ recorder, Level wave (built) | Local. Live mic levels need metering turned on (Q6) | M |
-| Crash recovery | Pause when the app is backgrounded; offer to resume or discard a paused take after a crash | — (needs a v2 dialog) | Local | S |
-| Recording gates | Wait for source text, block on Complete, block the drafter during open Peer Check | — (states need design) | Local | S |
-| Takes | Up to 5 per unit: play one at a time, seek, pick the one to submit, delete, record another | ✅ take cards, stacking, delete, mark official | Local (only the picked take uploads). Available: `GET /verse-audio` to list and download server takes | L |
-| Shared-device takes | All Takes view when another account on the device recorded the unit; mark one canonical (device only) | ◐ "Select canonical take", "Marked official" | Local. Available: resolve endpoint | M |
-| Verse and pericope takes together | Label take types; a pericope take covers its verses; verse takes play stitched in pericope view | — | Local. Pericope uploads use `PUT /verse-audio/{puid}/range`, which isn't merged in fluent-api yet (#391) | M |
+| Feature | What we need to support | v2 design | Backend |
+| --- | --- | --- | --- |
+| Chapter screen | Open on the first unrecorded unit, remember the last view per chapter, and confirm before leaving mid-recording | ✅ (new structure) | Wired |
+| Verse and pericope lists | Units with recorded / partial / unrecorded state; verse or pericope mode per user; a fallback when pericopes aren't available | ✅ pericope list | Wired. Titles only in FIA, and the Figma example matches neither shipped set (Q15, Q18) |
+| Source audio | Play, pause, scrub, verse position, source label; loading, "no audio" and retry states; offline playback when prepared; stops when recording | ✅ Listen player (prototype built) | Wired: `GET /projects/{id}/source-audio/…`. Available: `GET …/playback-audio/…` (verse end times, licence, TTS permission), TTS when no recording exists |
+| Reading along | Highlight what's being read and keep it in view | ✅ word highlight + scrolling text | Verse-level only. Missing: word timing (Q10) |
+| Resources | Translation notes, questions, images and maps for the selected verse or pericope, offline when downloaded | ◐ Understanding notes view, Resources and Images entries | Wired: `…/translation-resources/notes`, `questions`, `images`. Available: verse-range resources (fluent-api #389), Aquifer search and Guides |
+| Unit navigation | Previous / next unit with reference and pericope title | ✅ Hardware panel keys (built) | Local |
+| Recording | Record, pause, resume, stop; mic permission with a Settings link; live waveform and timer; error alerts | ✅ recorder, Level wave (built) | Local. Live mic levels need metering turned on (Q6) |
+| Crash recovery | Pause when the app is backgrounded; offer to resume or discard a paused take after a crash | — (needs a v2 dialog) | Local |
+| Recording gates | Wait for source text, block on Complete, block the drafter during open Peer Check | — (states need design) | Local |
+| Takes | Up to 5 per unit: play one at a time, seek, pick the one to submit, delete, record another | ✅ take cards, stacking, delete, mark official | Local (only the picked take uploads). Available: `GET /verse-audio` to list and download server takes |
+| Shared-device takes | All Takes view when another account on the device recorded the unit; mark one canonical (device only) | ◐ "Select canonical take", "Marked official" | Local. Available: resolve endpoint |
+| Verse and pericope takes together | Label take types; a pericope take covers its verses; verse takes play stitched in pericope view | — | Local. Pericope uploads use `PUT /verse-audio/{puid}/range`, which isn't merged in fluent-api yet (#391) |
 
 ### Workflow
 
-| Feature | What we need to support | v2 design | Backend | Effort |
-| --- | --- | --- | --- | --- |
-| Send to the next stage | Appears once every unit is recorded; confirm sheet; blocked by conflicts or takes that can't upload | — | Wired: `PATCH /chapter-assignments/{id}/submit`. Offline advances aren't queued (#257) | M |
-| Stage badges | Not Started → Draft → Peer Check → Community Review → Linguist / Theological / Consultant Check → Complete | — | Labels are hard-coded. Available: `GET /projects/{id}/workflow-stages` | S |
+| Feature | What we need to support | v2 design | Backend |
+| --- | --- | --- | --- |
+| Send to the next stage | Appears once every unit is recorded; confirm sheet; blocked by conflicts or takes that can't upload | — | Wired: `PATCH /chapter-assignments/{id}/submit`. Offline advances aren't queued (#257) |
+| Stage badges | Not Started → Draft → Peer Check → Community Review → Linguist / Theological / Consultant Check → Complete | — | Labels are hard-coded. Available: `GET /projects/{id}/workflow-stages` |
 
 ### Sync, offline and downloads
 
-| Feature | What we need to support | v2 design | Backend | Effort |
-| --- | --- | --- | --- | --- |
-| Sync page | Status line, chapters uploaded, pause / resume / cancel / sync now, failure reasons, the cellular setting | — | Wired | M |
-| Automatic upload | Upload picked takes on Wi-Fi (or cellular if allowed), retry quietly, keep going in the background with a progress notification | n/a (system UI) | Wired: `PUT /verse-audio/…` | S |
-| Prepare for offline | Auto-prompt for low-connectivity projects; pick a project and chapters; resource tiers with sizes and Customize; download queue with pause / resume / cancel; manage device storage | — | Wired: `…/translation-resources/manifest`, `…/source-audio/manifest` | L |
+| Feature | What we need to support | v2 design | Backend |
+| --- | --- | --- | --- |
+| Sync page | Status line, chapters uploaded, pause / resume / cancel / sync now, failure reasons, the cellular setting | — | Wired |
+| Automatic upload | Upload picked takes on Wi-Fi (or cellular if allowed), retry quietly, keep going in the background with a progress notification | n/a (system UI) | Wired: `PUT /verse-audio/…` |
+| Prepare for offline | Auto-prompt for low-connectivity projects; pick a project and chapters; resource tiers with sizes and Customize; download queue with pause / resume / cancel; manage device storage | — | Wired: `…/translation-resources/manifest`, `…/source-audio/manifest` |
 
 ### Settings
 
-| Feature | What we need to support | v2 design | Backend | Effort |
-| --- | --- | --- | --- | --- |
-| Settings | UI version, Prepare for offline, cellular uploads, verse or pericope drafting, clear cache, add user, log out, session expired | — | Local | M |
+| Feature | What we need to support | v2 design | Backend |
+| --- | --- | --- | --- |
+| Settings | UI version, Prepare for offline, cellular uploads, verse or pericope drafting, clear cache, add user, log out, session expired | — | Local |
 
 ## 2. New in v2
 
 Things the Figma designs add that v1 doesn't do.
 
-| Feature | What it needs | v2 design | Backend | Effort |
-| --- | --- | --- | --- | --- |
-| FIA step tracks | Each pericope lists steps (Hear & Heart, Setting the Stage, Defining the Scenes, Embodying the Text, …) to listen to before recording | ✅ | **Missing.** No endpoint names these steps; Aquifer Guide content is the likely source, unconfirmed (Q11) | L, once the data exists |
-| Listened progress | A progress ring per track showing how much you've heard | ✅ | **Missing** (Q13). Could ride on `…/editor-state` or `/self/settings` with an API change | M |
-| Now playing bar | Audio keeps playing in a mini player when you leave the player | ✅ | Local, but needs an app-level player (Q9) | L |
-| Word and phrase highlight | Highlight the spoken word and its phrase | ✅ | **Missing** word timing (Q10); verse-level in v1 | M (verse-level now) |
-| Understanding view | Notes tied to the phrase being read | ✅ | Wired per verse; per-phrase mapping not checked | M |
-| Pericope titles as headings | The pericope list and player header lead with titles | ✅ | Partial (Q15, Q18) | S |
+| Feature | What it needs | v2 design | Backend |
+| --- | --- | --- | --- |
+| FIA step tracks | Each pericope lists steps (Hear & Heart, Setting the Stage, Defining the Scenes, Embodying the Text, …) to listen to before recording | ✅ | **Missing.** No endpoint names these steps; Aquifer Guide content is the likely source, unconfirmed (Q11) |
+| Listened progress | A progress ring per track showing how much you've heard | ✅ | **Missing** (Q13). Could ride on `…/editor-state` or `/self/settings` with an API change |
+| Now playing bar | Audio keeps playing in a mini player when you leave the player | ✅ | Local, but needs an app-level player (Q9) |
+| Word and phrase highlight | Highlight the spoken word and its phrase | ✅ | **Missing** word timing (Q10); verse-level in v1 |
+| Understanding view | Notes tied to the phrase being read | ✅ | Wired per verse; per-phrase mapping not checked |
+| Pericope titles as headings | The pericope list and player header lead with titles | ✅ | Partial (Q15, Q18) |
 
 ## 3. Backend parity
 
@@ -161,18 +169,37 @@ Things the Figma designs add that v1 doesn't do.
   the real number is 24, because it ignores the HTTP method and matches paths
   in comments.
 
-## Effort and phasing
+## Effort, with agentic coding
 
-| Phase | What | Rough effort |
-| --- | --- | --- |
-| 0. Foundations | Tokens, type styles, Key, Switch, Round button, Progress ring, Waveform, Level wave, Hardware panel, Word | Done or in review |
-| 1. Reskin the rest | Migrate the remaining screens (auth, Home, My Work, Milestones, Sync, Prepare for offline, Settings) to the runtime theme and Next components, keeping today's layout. Needs a light design pass, since these have no v2 frames | 2–3 weeks |
-| 2. Drafting flow | Pericope list → pericope screen → player → recorder → resources, wired to the hooks v1 already uses; the UI-version branch point (Q8) | 4–6 weeks |
-| 3. New v2 features | FIA step tracks, listened progress, Now playing bar, server takes, adopting `playback-audio` | 3–5 weeks, gated on backend answers |
+Measured from this week's work: on Oct 13–14, the agentic workflow (Claude
+building, a designer directing and reviewing) produced nine components, the
+type styles and a clickable Listen player, about 4,200 lines with two review
+passes each, in roughly a day and a half of sessions. Code isn't the
+bottleneck. These are:
 
-Phases 1 and 2 can run in parallel with two people. These are planning
-estimates from code size and the work so far, not team velocity, so treat
-them as ranges to refine as each phase gets tickets.
+- **Design decisions.** Anything without a Figma frame waits on a designer.
+- **PR review.** #639 took three days in review; #693 has been open since
+  Oct 13. At that pace review, not building, sets the calendar.
+- **Device QA.** Haptics, audio, recording and older Android versions need a
+  person with a phone, on the nightly.
+- **Backend answers** for the v2-only features.
+
+| Phase | What | Agent work | Calendar, if review keeps up |
+| --- | --- | --- | --- |
+| 0. Foundations | Tokens, type styles, the core components | Done | Waiting on #693, #698, #699, #700 |
+| 1. Everything without v2 frames | Migrate ~76 files to the runtime theme; build the undesigned screens from the Foundations components, reviewed as gallery prototypes before they ship | 2–3 days | 1–2 weeks (design sign-off on ~7 screens, ~6 PRs) |
+| 2. Drafting flow | Pericope list → pericope screen → player → recorder → resources, on v1's hooks, behind the Q8 branch point | 3–5 days | About 2 weeks (device QA on audio and recording) |
+| 3. New v2 features | FIA tracks, listened progress, Now playing bar, server takes, `playback-audio` | 1–2 days each once data exists | Set by the backend |
+
+**Total: about 3–5 weeks on the calendar** to have the app on v2, minus the
+backend-gated features, if PRs are reviewed within a day and design keeps
+pace. If reviews take three days like #639, plan on double.
+
+Where agents are weakest here, so it's worth a human eye: native audio
+behaviour (audio focus, the foreground upload service, crash recovery), and
+anything that only shows up on specific hardware, like #707. The rule that
+keeps this safe is the one the screens already follow: reuse v1's hooks and
+services, don't rewrite them.
 
 ## Known v1 issues that carry over
 
