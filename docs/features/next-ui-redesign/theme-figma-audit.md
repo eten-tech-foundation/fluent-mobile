@@ -73,6 +73,7 @@ typography, gradients, strokes and `space/48`.
 | --- | --- | --- | --- |
 | `space/48` | 48 | Screen top inset. Use safe-area insets in code, not a constant | Open |
 | `size/icon-24`, `size/icon-32` | 24, 32 | Round buttons and rows; keys and mini player | `theme.controlSizes` |
+| `Icon/md` (icon library) | 20 | Mode toggle icons | `theme.controlSizes.icon20` (#695) |
 | `stroke/1`, `stroke/2` | 1, 2 | Rim on screen buttons; bevel edges on hardware | Open |
 | `opacity/disabled` | → `opacity/40` | Disabled controls | `theme.opacity.disabled` |
 | `motion/press` | 80 ms | Press-in | `theme.motion.pressMs` |

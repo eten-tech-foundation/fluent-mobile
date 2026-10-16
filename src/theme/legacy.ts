@@ -29,7 +29,7 @@ export const legacyTheme = {
     easeStandard: { x1: 0.2, y1: 0, x2: 0, y2: 1 },
   },
   opacity: { disabled: 0.4 },
-  controlSizes: { icon24: 24, icon32: 32 },
+  controlSizes: { icon20: 20, icon24: 24, icon32: 32 },
   workflowBadges,
   workflowStages,
   recordControlSizes,
