@@ -6,6 +6,7 @@ import {
   nextOpacity,
   nextSpacing,
   nextRadius,
+  nextTypeStyles,
   nextTypography,
 } from './nextFoundation';
 import {
@@ -171,6 +172,7 @@ function buildNextOverrides(mode: NextColorRoleMode): ThemeOverrides {
       weights: { ...nextTypography.weights },
       lineHeights: { ...nextTypography.lineHeights },
     },
+    type: nextTypeStyles,
   };
 }
 
