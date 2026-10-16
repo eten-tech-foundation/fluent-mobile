@@ -245,7 +245,10 @@ emulator (haptics need a real device):
 
 ### 10. Ship
 
-Normal delivery: `/start-issue` → `/create-pr`, `Refs #NNN`, PR template. Mark
+Normal delivery: `/start-issue` → `/create-pr`, `Refs #NNN`, PR template. Only
+open a PR when the user asks for one (this includes `/start-issue`, which
+otherwise chains into `/create-pr`); until then, commit on the branch and say
+it's ready. Pushing to a PR that already exists is fine once asked. Mark
 **Needs QA? Yes** when the component adds haptics or touches recording, since
 those need a human on a device ([qa-process.md](qa-process.md)). Include
 before/after screenshots and the gallery path in "How to verify".
