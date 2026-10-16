@@ -3,6 +3,7 @@ import type { TranslationNoteItem } from '../types/resources/translationNotes';
 import { tipTapToPlainText } from '../utils/aquiferTipTapText';
 import {
   loadResourcesForVerseRange,
+  normalizeVerseRefs,
   verseRefsFromChapter,
   type ResourceVerseRef,
 } from '../utils/loadResourcesForVerseRange';
@@ -98,9 +99,24 @@ export function parseTranslationNotesItem(
   return notes;
 }
 
-async function loadLocalTranslationNotes(
+function resolveTranslationNotesRefs(
+  params: LoadTranslationNotesParams,
+): ResourceVerseRef[] {
+  return normalizeVerseRefs(
+    params.verseRefs && params.verseRefs.length > 0
+      ? params.verseRefs
+      : verseRefsFromChapter(
+          params.chapterNumber,
+          params.verseNumber,
+          params.verseNumbers,
+        ),
+  );
+}
+
+async function loadLocalTranslationNotesForRef(
   params: LoadTranslationNotesParams,
   bookCode: string,
+  ref: ResourceVerseRef,
 ): Promise<TranslationNoteItem[] | null> {
   const rows = await findDownloadedRows({
     projectId: params.projectId,
@@ -108,8 +124,8 @@ async function loadLocalTranslationNotes(
     resourceName: 'Translation Notes',
     kind: 'text',
     bookCode,
-    chapterNumber: params.chapterNumber,
-    verseNumber: params.verseNumber,
+    chapterNumber: ref.chapterNumber,
+    verseNumber: ref.verseNumber,
   });
   if (rows === null) return null;
 
@@ -134,12 +150,24 @@ async function loadLocalTranslationNotes(
   return readAnyRow ? notes : null;
 }
 
+function mergeNotesById(
+  into: TranslationNoteItem[],
+  next: TranslationNoteItem[],
+  seenIds: Set<string>,
+): void {
+  for (const note of next) {
+    if (seenIds.has(note.id)) continue;
+    seenIds.add(note.id);
+    into.push(note);
+  }
+}
+
 /**
  * Load uW Translation Notes for a drafting unit. Downloaded rows are used
- * first (even online); the fluent-api translation-resources call
- * (fluent-api #274) only runs when nothing usable is downloaded and the
- * device is online. Online pericope units fan out across their verse refs
- * (#593).
+ * first (even online) for every verseRef in the unit; the fluent-api
+ * translation-resources call (fluent-api #274) only runs for refs with no
+ * usable local row, and only when online. Offline returns whatever was
+ * downloaded without calling the API (#578 / #593).
  */
 export async function loadTranslationNotesForUnit(
   params: LoadTranslationNotesParams,
@@ -158,27 +186,32 @@ export async function loadTranslationNotesForUnit(
     return [];
   }
 
-  const local = await loadLocalTranslationNotes(params, bookCode);
-  if (local !== null) {
-    return local;
+  const refs = resolveTranslationNotesRefs(params);
+  const localNotes: TranslationNoteItem[] = [];
+  const missingRefs: ResourceVerseRef[] = [];
+  const seenIds = new Set<string>();
+
+  for (const ref of refs) {
+    const local = await loadLocalTranslationNotesForRef(params, bookCode, ref);
+    if (local !== null) {
+      mergeNotesById(localNotes, local, seenIds);
+    } else {
+      missingRefs.push(ref);
+    }
   }
-  // Offline and nothing downloaded: show empty, do not call the API.
+
+  // Offline: return whatever was downloaded; never call the API.
   if (params.isOnline === false) {
-    return [];
+    return localNotes;
+  }
+
+  if (missingRefs.length === 0) {
+    return localNotes;
   }
 
   const languageCode = params.languageCode?.trim() || DEFAULT_TN_LANGUAGE_CODE;
   const projectId = params.projectId;
-  const refs =
-    params.verseRefs && params.verseRefs.length > 0
-      ? params.verseRefs
-      : verseRefsFromChapter(
-          params.chapterNumber,
-          params.verseNumber,
-          params.verseNumbers,
-        );
-
-  return loadResourcesForVerseRange(refs, async ref => {
+  const remote = await loadResourcesForVerseRange(missingRefs, async ref => {
     const response = await FluentAPI.getTranslationNotes(
       projectId,
       bookCode,
@@ -189,4 +222,6 @@ export async function loadTranslationNotesForUnit(
     const items = Array.isArray(response?.items) ? response.items : [];
     return items.flatMap(parseTranslationNotesItem);
   });
+  mergeNotesById(localNotes, remote, seenIds);
+  return localNotes;
 }

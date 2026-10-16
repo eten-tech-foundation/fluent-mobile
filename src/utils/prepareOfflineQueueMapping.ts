@@ -1,5 +1,8 @@
 import type { EnqueueDownloadItemInput } from '../db/downloadQueueRepository';
-import { PrepareOfflineResourceItem } from '../types/prepareOffline/types';
+import type {
+  PrepareOfflineResourceItem,
+  PrepareOfflineResourceManifestItem,
+} from '../types/prepareOffline/types';
 import { parseLabelScope } from './parseVerseScope';
 /** Resources whose manifest label encodes a verse (e.g. "Genesis 1:1 (#1)"). */
 const VERSE_LABELED_GROUPS = new Set([
@@ -20,9 +23,9 @@ function queueKindForResource(
  * download_queue enqueue input per underlying manifest item, using each
  * item's real sourceUrl/fileExt/bytesTotal from the API manifest (#504).
  *
- * Also copies the manifest scope (book, chapter range) and, for resources
- * whose label carries a verse, the parsed verse range, so downloaded rows can
- * be mapped back to their place in the app offline.
+ * Persists each resource's actual scope, preferring parsed labels where
+ * available. Legacy multi-chapter fields can describe the request range,
+ * so they cannot establish a resource's coverage.
  */
 export function prepareOfflineItemToEnqueueInputs(
   item: PrepareOfflineResourceItem,
@@ -30,9 +33,22 @@ export function prepareOfflineItemToEnqueueInputs(
   userId: number,
 ): EnqueueDownloadItemInput[] {
   return item.manifestMembers.map(member => {
-    const scope = VERSE_LABELED_GROUPS.has(item.groupName)
+    const labelScope = VERSE_LABELED_GROUPS.has(item.groupName)
       ? parseLabelScope(member.label)
       : null;
+    const legacyChapter =
+      member.startChapter === member.endChapter
+        ? member.startChapter
+        : undefined;
+    const manifestScope: PrepareOfflineResourceManifestItem['scope'] =
+      member.scope ?? {
+        startChapter: legacyChapter,
+        endChapter: legacyChapter,
+      };
+    const scope =
+      labelScope && labelScope.startChapter !== null
+        ? labelScope
+        : manifestScope;
 
     return {
       id: member.id,
@@ -46,12 +62,11 @@ export function prepareOfflineItemToEnqueueInputs(
       fileExt: member.fileExt,
       bytesTotal: member.bytesTotal,
       serializedContent: member.serializedContent,
-      bookCode: member.bookCode,
-      // Label chapter wins: the manifest range is only the requested range.
-      startChapter: scope?.startChapter ?? member.startChapter,
-      endChapter: scope?.endChapter ?? member.endChapter,
-      verseStart: scope?.verseStart ?? undefined,
-      verseEnd: scope?.verseEnd ?? undefined,
+      bookCode: member.scope?.bookCode ?? member.bookCode,
+      startChapter: scope.startChapter ?? undefined,
+      endChapter: scope.endChapter ?? undefined,
+      verseStart: scope.verseStart ?? undefined,
+      verseEnd: scope.verseEnd ?? undefined,
     };
   });
 }

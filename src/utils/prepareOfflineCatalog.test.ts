@@ -76,7 +76,7 @@ function buildManifestFixture(): PrepareOfflineResourceManifestItem[] {
     }),
     manifestItem({
       tier: 1,
-      resourceName: 'Source Bible',
+      resourceName: 'Source Bible Audio',
       kind: 'audio',
       id: 'source-bible-audio-GEN-1',
     }),
@@ -129,6 +129,7 @@ describe('prepareOfflineCatalog', () => {
     expect(catalog.items.length).toBeGreaterThan(0);
     expect(catalog.groups.map(g => g.groupName)).toEqual([
       'Source Bible',
+      'Source Bible Audio',
       'Translation Notes',
       'Translation Words',
       'Translation Questions',
@@ -139,7 +140,7 @@ describe('prepareOfflineCatalog', () => {
     expect(tier1).toHaveLength(4);
     expect(tier1.map(item => item.groupName).sort()).toEqual([
       'Source Bible',
-      'Source Bible',
+      'Source Bible Audio',
       'Translation Notes',
       'Translation Notes',
     ]);
@@ -184,6 +185,7 @@ describe('prepareOfflineCatalog', () => {
     expect(tier1Only.items.every(item => item.tier === 1)).toBe(true);
     expect(tier1Only.groups.map(group => group.groupName)).toEqual([
       'Source Bible',
+      'Source Bible Audio',
       'Translation Notes',
     ]);
 
@@ -422,6 +424,7 @@ describe('prepareOfflineCatalog', () => {
 
     expect(effective.groups.map(group => group.groupName)).toEqual([
       'Source Bible',
+      'Source Bible Audio',
       'Translation Notes',
     ]);
     expect(effective.items).toHaveLength(4);
