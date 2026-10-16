@@ -313,7 +313,8 @@ private fun adtsAudioConfig(buffer: ByteBuffer): Int =
 /**
  * The AAC access unit in [buffer], or null for an ADTS frame cut short at the
  * end of the stream by a process kill; it is skipped so the rest of the take
- * still muxes.
+ * still muxes. Only a tail with an intact 7-byte header is recognised: a
+ * shorter tail throws, and the caller keeps the original `.aac`.
  */
 private fun aacAccessUnit(
   buffer: ByteBuffer,
