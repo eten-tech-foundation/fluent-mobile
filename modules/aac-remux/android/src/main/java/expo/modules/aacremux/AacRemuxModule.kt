@@ -5,12 +5,14 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.net.Uri
+import android.util.Log
 import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.io.File
 import java.nio.ByteBuffer
 
+private const val TAG = "AacRemux"
 private const val CSD_0 = "csd-0"
 
 private val AAC_SAMPLE_RATES = intArrayOf(
@@ -82,6 +84,10 @@ class AacRemuxModule : Module() {
 
       val format = trackFormat
         ?: throw CodedException("No audio track found in $srcPath")
+      val mime = format.getString(MediaFormat.KEY_MIME)
+      if (mime != MediaFormat.MIMETYPE_AUDIO_AAC) {
+        throw CodedException("Expected an AAC track in $srcPath, got $mime")
+      }
       extractor.selectTrack(audioTrackIndex)
 
       val maxInputSize = if (format.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) {
@@ -90,12 +96,12 @@ class AacRemuxModule : Module() {
         256 * 1024
       }
       val buffer = ByteBuffer.allocate(maxInputSize)
-      buffer.clear()
       var sampleSize = extractor.readSampleData(buffer, 0)
       if (sampleSize < 0) {
         throw CodedException("No audio samples in $srcPath")
       }
       val adtsHeaderSize = prepareRawAacFormat(format, buffer, sampleSize)
+      val adtsConfig = if (adtsHeaderSize > 0) adtsAudioConfig(buffer) else 0
 
       // ADTS carries no container timestamps, so synthesize presentation times
       // from AAC frame index × 1024 samples (rational µs), not by accumulating
@@ -116,18 +122,26 @@ class AacRemuxModule : Module() {
       var lastPtsUs = -1L
 
       while (sampleSize >= 0) {
-        val payload = aacAccessUnit(buffer, sampleSize, adtsHeaderSize)
-        var ptsUs = frameIndex * 1024L * 1_000_000L / sampleRate
-        if (ptsUs <= lastPtsUs) {
-          ptsUs = lastPtsUs + 1
+        val payload = aacAccessUnit(buffer, sampleSize, adtsHeaderSize, adtsConfig)
+        if (payload == null) {
+          Log.w(
+            TAG,
+            "Skipping truncated ADTS frame after frame $frameIndex: " +
+              "$sampleSize of ${adtsFrameLength(buffer)} bytes",
+          )
+        } else {
+          var ptsUs = frameIndex * 1024L * 1_000_000L / sampleRate
+          if (ptsUs <= lastPtsUs) {
+            ptsUs = lastPtsUs + 1
+          }
+          lastPtsUs = ptsUs
+          bufferInfo.offset = payload.position()
+          bufferInfo.size = payload.remaining()
+          bufferInfo.presentationTimeUs = ptsUs
+          bufferInfo.flags = MediaCodec.BUFFER_FLAG_KEY_FRAME
+          muxer.writeSampleData(outputTrackIndex, payload, bufferInfo)
+          frameIndex += 1
         }
-        lastPtsUs = ptsUs
-        bufferInfo.offset = 0
-        bufferInfo.size = payload.remaining()
-        bufferInfo.presentationTimeUs = ptsUs
-        bufferInfo.flags = MediaCodec.BUFFER_FLAG_KEY_FRAME
-        muxer.writeSampleData(outputTrackIndex, payload, bufferInfo)
-        frameIndex += 1
         extractor.advance()
         buffer.clear()
         sampleSize = extractor.readSampleData(buffer, 0)
@@ -188,12 +202,18 @@ private fun prepareRawAacFormat(
   val headerSize = adtsHeaderSize(firstSample, sampleSize)
   if (headerSize > 0) {
     writeAudioSpecificConfig(format, firstSample)
-  } else if (!format.containsKey(CSD_0)) {
-    writeAudioSpecificConfigFromExtractor(format)
+  } else {
+    if (hasAdtsSyncWord(firstSample, sampleSize)) {
+      throw CodedException(
+        "First sample has an ADTS sync word but frame length " +
+          "${adtsFrameLength(firstSample)} != sample size $sampleSize",
+      )
+    }
+    if (!format.containsKey(CSD_0)) {
+      writeAudioSpecificConfigFromExtractor(format)
+    }
   }
-  if (format.containsKey(MediaFormat.KEY_IS_ADTS)) {
-    format.setInteger(MediaFormat.KEY_IS_ADTS, 0)
-  }
+  format.setInteger(MediaFormat.KEY_IS_ADTS, 0)
   return headerSize
 }
 
@@ -217,7 +237,6 @@ private fun writeAudioSpecificConfig(format: MediaFormat, adts: ByteBuffer) {
   format.setInteger(MediaFormat.KEY_SAMPLE_RATE, AAC_SAMPLE_RATES[samplingFrequencyIndex])
   format.setInteger(MediaFormat.KEY_CHANNEL_COUNT, channelConfiguration)
   format.setString(MediaFormat.KEY_MIME, MediaFormat.MIMETYPE_AUDIO_AAC)
-  format.setInteger(MediaFormat.KEY_IS_ADTS, 0)
 }
 
 private fun writeAudioSpecificConfigFromExtractor(format: MediaFormat) {
@@ -239,7 +258,6 @@ private fun writeAudioSpecificConfigFromExtractor(format: MediaFormat) {
     ByteBuffer.wrap(audioSpecificConfig(2, samplingFrequencyIndex, channels)),
   )
   format.setString(MediaFormat.KEY_MIME, MediaFormat.MIMETYPE_AUDIO_AAC)
-  format.setInteger(MediaFormat.KEY_IS_ADTS, 0)
 }
 
 private fun audioSpecificConfig(
@@ -259,15 +277,10 @@ private fun audioSpecificConfig(
  * happens to look like a sync word is left alone.
  */
 private fun adtsHeaderSize(buffer: ByteBuffer, sampleSize: Int): Int {
-  if (sampleSize < 7) {
+  if (!hasAdtsSyncWord(buffer, sampleSize)) {
     return 0
   }
-  val b0 = u8(buffer, 0)
-  val b1 = u8(buffer, 1)
-  if (b0 != 0xFF || (b1 and 0xF0) != 0xF0 || (b1 and 0x06) != 0) {
-    return 0
-  }
-  val headerSize = if ((b1 and 0x01) == 1) 7 else 9
+  val headerSize = if ((u8(buffer, 1) and 0x01) == 1) 7 else 9
   if (sampleSize <= headerSize || adtsFrameLength(buffer) != sampleSize) {
     return 0
   }
@@ -277,6 +290,15 @@ private fun adtsHeaderSize(buffer: ByteBuffer, sampleSize: Int): Int {
   return headerSize
 }
 
+/** 12-bit sync word plus layer `00`; frame length is not checked. */
+private fun hasAdtsSyncWord(buffer: ByteBuffer, sampleSize: Int): Boolean {
+  if (sampleSize < 7) {
+    return false
+  }
+  val b1 = u8(buffer, 1)
+  return u8(buffer, 0) == 0xFF && (b1 and 0xF0) == 0xF0 && (b1 and 0x06) == 0
+}
+
 private fun adtsFrameLength(buffer: ByteBuffer): Int {
   val b3 = u8(buffer, 3)
   val b4 = u8(buffer, 4)
@@ -284,23 +306,37 @@ private fun adtsFrameLength(buffer: ByteBuffer): Int {
   return ((b3 and 0x03) shl 11) or (b4 shl 3) or (b5 shr 5)
 }
 
+/** Profile, sampling-frequency index and channel configuration bits of an ADTS header. */
+private fun adtsAudioConfig(buffer: ByteBuffer): Int =
+  ((u8(buffer, 2) and 0xFD) shl 8) or (u8(buffer, 3) and 0xC0)
+
+/**
+ * The AAC access unit in [buffer], or null for an ADTS frame cut short at the
+ * end of the stream by a process kill; it is skipped so the rest of the take
+ * still muxes.
+ */
 private fun aacAccessUnit(
   buffer: ByteBuffer,
   sampleSize: Int,
   headerSize: Int,
-): ByteBuffer {
+  expectedConfig: Int,
+): ByteBuffer? {
   if (headerSize == 0) {
     buffer.position(0)
     buffer.limit(sampleSize)
     return buffer
   }
-  if (sampleSize <= headerSize) {
-    throw CodedException("AAC sample is smaller than its ADTS header")
+  if (hasAdtsSyncWord(buffer, sampleSize) && adtsFrameLength(buffer) > sampleSize) {
+    return null
   }
-  val payload = ByteArray(sampleSize - headerSize)
+  if (adtsHeaderSize(buffer, sampleSize) != headerSize ||
+    adtsAudioConfig(buffer) != expectedConfig
+  ) {
+    throw CodedException("ADTS sample header does not match the stream's first frame")
+  }
+  buffer.limit(sampleSize)
   buffer.position(headerSize)
-  buffer.get(payload)
-  return ByteBuffer.wrap(payload)
+  return buffer
 }
 
 private fun u8(buffer: ByteBuffer, index: Int): Int = buffer.get(index).toInt() and 0xFF
