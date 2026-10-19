@@ -161,6 +161,138 @@ describe('prepareOfflineQueueMapping', () => {
     expect(inputs).toEqual([]);
   });
 
+  it.each(['Translation Notes', 'Translation Questions', 'Bible Commentary'])(
+    'prefers the parsed label scope for %s over manifest scope and request range',
+    groupName => {
+      const [input] = prepareOfflineItemToEnqueueInputs(
+        item({ groupName, kind: 'text' }, [
+          {
+            ...BASE_MEMBER,
+            label: 'Mark 2:4-7 (#1)',
+            startChapter: 1,
+            endChapter: 5,
+            scope: {
+              startChapter: 3,
+              endChapter: 3,
+              verseStart: 1,
+              verseEnd: 2,
+            },
+          },
+        ]),
+        42,
+        TEST_USER_ID,
+      );
+
+      expect(input).toMatchObject({
+        bookCode: 'MRK',
+        startChapter: 2,
+        endChapter: 2,
+        verseStart: 4,
+        verseEnd: 7,
+      });
+    },
+  );
+
+  it('does not mix a parsed cross-chapter label with manifest verse bounds', () => {
+    const [input] = prepareOfflineItemToEnqueueInputs(
+      item({ groupName: 'Translation Notes', kind: 'text' }, [
+        {
+          ...BASE_MEMBER,
+          label: 'Mark 2:4–3:7',
+          scope: { startChapter: 2, endChapter: 2, verseStart: 4, verseEnd: 5 },
+        },
+      ]),
+      42,
+      TEST_USER_ID,
+    );
+
+    expect(input).toMatchObject({ startChapter: 2, endChapter: 3 });
+    expect(input.verseStart).toBeUndefined();
+    expect(input.verseEnd).toBeUndefined();
+  });
+
+  it('persists each member actual scope when labels do not encode a verse', () => {
+    const inputs = prepareOfflineItemToEnqueueInputs(
+      item({ groupName: 'Bible Commentary', kind: 'text' }, [
+        {
+          ...BASE_MEMBER,
+          label: 'Introduction',
+          startChapter: 1,
+          endChapter: 5,
+          scope: {
+            bookCode: 'GEN',
+            startChapter: 2,
+            endChapter: 2,
+            verseStart: 1,
+            verseEnd: 3,
+          },
+        },
+        {
+          ...BASE_MEMBER,
+          id: 'commentary-overview',
+          label: 'Overview',
+          startChapter: 1,
+          endChapter: 5,
+          scope: { bookCode: 'MRK', startChapter: 3, endChapter: 4 },
+        },
+      ]),
+      42,
+      TEST_USER_ID,
+    );
+
+    expect(inputs[0]).toMatchObject({
+      bookCode: 'GEN',
+      startChapter: 2,
+      endChapter: 2,
+      verseStart: 1,
+      verseEnd: 3,
+    });
+    expect(inputs[1]).toMatchObject({
+      bookCode: 'MRK',
+      startChapter: 3,
+      endChapter: 4,
+    });
+    expect(inputs[1].verseStart).toBeUndefined();
+    expect(inputs[1].verseEnd).toBeUndefined();
+  });
+
+  it.each(['Source Bible Audio', 'Reference Images', 'Translation Notes'])(
+    'leaves ambiguous legacy request ranges unscoped for %s',
+    groupName => {
+      const [input] = prepareOfflineItemToEnqueueInputs(
+        item({ groupName }, [
+          { ...BASE_MEMBER, startChapter: 1, endChapter: 5 },
+        ]),
+        42,
+        TEST_USER_ID,
+      );
+
+      expect(input.bookCode).toBe('MRK');
+      expect(input.startChapter).toBeUndefined();
+      expect(input.endChapter).toBeUndefined();
+      expect(input.verseStart).toBeUndefined();
+      expect(input.verseEnd).toBeUndefined();
+    },
+  );
+
+  it('keeps unambiguous legacy chapter scope for each audio member', () => {
+    const inputs = prepareOfflineItemToEnqueueInputs(
+      item({}, [
+        BASE_MEMBER,
+        { ...BASE_MEMBER, id: 'audio-2', startChapter: 2, endChapter: 2 },
+      ]),
+      42,
+      TEST_USER_ID,
+    );
+
+    expect(inputs.map(input => [input.startChapter, input.endChapter])).toEqual(
+      [
+        [1, 1],
+        [2, 2],
+      ],
+    );
+  });
+
   it('uses each manifest member sourceUrl / fileExt (#504 / #446)', () => {
     const member: PrepareOfflineResourceManifestItem = {
       ...BASE_MEMBER,

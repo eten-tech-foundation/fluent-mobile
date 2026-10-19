@@ -43,6 +43,10 @@ describe('offlineSourceAudio', () => {
     jest.clearAllMocks();
   });
 
+  it('uses the fluent-api Source Bible Audio resource name for offline lookup', () => {
+    expect(SOURCE_BIBLE_RESOURCE_NAME).toBe('Source Bible Audio');
+  });
+
   describe('persistSourceAudioChapterMeta / readSourceAudioChapterMeta', () => {
     it('writes and reads verse timestamps for a chapter', async () => {
       await persistSourceAudioChapterMeta(42, chapterResponse);
