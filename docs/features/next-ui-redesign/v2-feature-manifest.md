@@ -345,11 +345,30 @@ Ours: #692, #694, #695, #696 (Next UI foundations). The Mobile Feature Audit
 epic (#526) and its audits (#528–#534) are tracking chores with no effect on
 the plan.
 
-## Before a public release
+## v2 as a beta
 
-- Hide the Legacy / Next toggle in Settings, or make v2 the default. Today
-  production builds only reach the Play internal track, so the toggle is how
-  testers and summit demos switch into v2.
+After the summit, v2 stays in the app as a beta so backend hooks and
+connectors can land a little at a time.
+
+- **Gate:** the Legacy / Next toggle in Settings (default Legacy), labelled
+  "Next (beta)". Later, `GET /config/features` can turn it on per user or
+  project from the server.
+- **Who gets it:** the team on the nightly APK (QA API), and wider testers on
+  the Play internal track, which is the only place production builds go today.
+- **Safe to switch back and forth:** v2 writes through the same hooks and
+  services as v1, so a take recorded in v2 shows up in v1. A connector that
+  writes a new shape of data needs a v1 read path or a migration first.
+- **Connectors land on `main` behind the toggle**, one small PR each: the
+  endpoints mobile can adopt today first, then the API work as it ships.
+- **Unfinished areas** link to the v1 screen rather than show an empty v2 one.
+- **Review contract:** PRs that only touch v2 routes, `src/components/ui`, the
+  gallery or docs get a light review, since Legacy users can't reach them.
+  PRs that touch shared hooks or services get the normal review. Needs the
+  team's OK.
+
+### Before a public release
+
+- Make v2 the default, then retire the toggle and the Legacy routes.
 
 ## Known v1 issues that carry over
 
