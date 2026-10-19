@@ -1,19 +1,14 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React from 'react';
 import {
   Pressable,
   type GestureResponderEvent,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useTheme, useThemedStyles } from '../../theme/useTheme';
 import { useHaptics } from '../../hooks/useHaptics';
+import { usePressProgress } from '../../hooks/usePressProgress';
 
 /** Figma Key: 96pt tall, lip 12pt (8pt when sunk) sitting 2pt off the bottom edge. */
 const KEY_HEIGHT = 96;
@@ -115,29 +110,8 @@ export function Key({
     },
   }));
 
-  const reduceMotion = useReducedMotion();
-  const [pressed, setPressed] = useState(false);
-  const down = pressed || active;
-  const progress = useSharedValue(down ? 1 : 0);
-  const { motion, spacing } = theme;
-  const sink = spacing.xs;
-
-  const animateTo = useCallback(
-    (down: boolean) => {
-      const { x1, y1, x2, y2 } = motion.easeStandard;
-      progress.value = withTiming(down ? 1 : 0, {
-        duration: reduceMotion ? 0 : down ? motion.pressMs : motion.releaseMs,
-        easing: Easing.bezier(x1, y1, x2, y2),
-      });
-    },
-    [motion, progress, reduceMotion],
-  );
-
-  // Settle on pressed || active once both updates land. Android can deliver
-  // onPressOut after onPress on quick taps, so the handlers don't animate out.
-  useEffect(() => {
-    animateTo(down);
-  }, [down, animateTo]);
+  const { progress, onPressIn, onPressOut } = usePressProgress(active);
+  const sink = theme.spacing.xs;
 
   // The sunken face stays opaque underneath and only the raised face fades,
   // so the deck never shows through mid-press (no flash on release).
@@ -161,12 +135,10 @@ export function Key({
   return (
     <Pressable
       onPressIn={() => {
-        // Start the sink immediately rather than a render later.
-        animateTo(true);
-        setPressed(true);
+        onPressIn();
         haptics.press();
       }}
-      onPressOut={() => setPressed(false)}
+      onPressOut={onPressOut}
       onPress={onPress}
       disabled={!interactive}
       android_disableSound
