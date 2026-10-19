@@ -10,7 +10,7 @@ export type AuthGateInput = {
   isAuthenticated: boolean;
   /** Current path is under the unauthenticated `(auth)` group. */
   inAuthGroup: boolean;
-  /** Current path is under the authenticated `(app)` group. */
+  /** Current path is under the authenticated `(app)` group or `v2` tree. */
   inAppGroup: boolean;
 };
 
@@ -48,7 +48,8 @@ export function getAuthGateDecision(input: AuthGateInput): AuthGateDecision {
 
 /**
  * Classify Expo Router segments into auth vs app groups.
- * Segments look like `['(auth)', 'login']` or `['(app)', '(stack)', 'settings']`.
+ * Segments look like `['(auth)', 'login']`, `['(app)', '(stack)', 'settings']`
+ * or `['v2']`. The v2 tree needs a signed-in user, like `(app)`.
  */
 export function classifyRouteGroups(segments: readonly string[]): {
   inAuthGroup: boolean;
@@ -56,6 +57,6 @@ export function classifyRouteGroups(segments: readonly string[]): {
 } {
   return {
     inAuthGroup: segments.includes('(auth)'),
-    inAppGroup: segments.includes('(app)'),
+    inAppGroup: segments.includes('(app)') || segments[0] === 'v2',
   };
 }

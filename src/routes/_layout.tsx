@@ -11,7 +11,7 @@ import {
 import { NavigationBar } from 'expo-navigation-bar';
 import { queryClient } from '../services/queryClient';
 import { appStyles } from '../app/appStyles';
-import { useTheme } from '../theme/useTheme';
+import { useTheme, useUiVersion } from '../theme/useTheme';
 import { isComponentGalleryEnabled } from '../config/componentGallery';
 import {
   AuthSessionProvider,
@@ -31,6 +31,7 @@ function UploadSyncNotificationTap() {
 
 function RootNavigator() {
   const { isAuthenticated, isLoading } = useAuthSession();
+  const uiVersion = useUiVersion();
   const segments = useSegments();
   const { inAuthGroup, inAppGroup } = classifyRouteGroups(segments);
   const decision = getAuthGateDecision({
@@ -52,6 +53,9 @@ function RootNavigator() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={isAuthenticated}>
         <Stack.Screen name="(app)" />
+      </Stack.Protected>
+      <Stack.Protected guard={isAuthenticated && uiVersion === 'next'}>
+        <Stack.Screen name="v2" />
       </Stack.Protected>
       <Stack.Protected guard={!isAuthenticated}>
         <Stack.Screen name="(auth)" />

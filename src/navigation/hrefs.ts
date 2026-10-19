@@ -90,6 +90,8 @@ export const hrefs = {
       pathname: '/(app)/(stack)/reauth' as const,
       params: params?.returnTo ? { returnTo: params.returnTo } : undefined,
     } as const),
+  /** v2 Home; only registered while the UI version is Next. */
+  v2Home: '/v2' as const,
   /** Next UI component gallery; only registered when the flag is on. */
   gallery: '/gallery' as const,
   privacyPolicyApp: '/(app)/privacy-policy' as const,

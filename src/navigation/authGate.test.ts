@@ -9,6 +9,7 @@ describe('classifyRouteGroups', () => {
   it.each([
     [['(auth)', 'login'], true, false],
     [['(app)', '(stack)', 'settings'], false, true],
+    [['v2'], false, true],
     [[], false, false],
   ] as const)('%j', (segments, inAuthGroup, inAppGroup) => {
     expect(classifyRouteGroups(segments)).toEqual({ inAuthGroup, inAppGroup });
