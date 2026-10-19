@@ -1,11 +1,14 @@
-import { act, renderHook } from '@testing-library/react-native';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
+import { getDownloadQueueSnapshot } from '../db/repository';
 import { getTransferTransportSnapshot } from '../services/connectivity';
 import { getSharedDownloadQueueWorker } from '../services/downloadQueueWorkerSingleton';
 import { getUploadOverCellular } from '../services/userPreferences';
+import { emitDownloadQueueChanged } from '../utils/downloadQueueEvents';
 import { useDownloadQueue } from './useDownloadQueue';
 
 const mockWorkerStart = jest.fn();
 const mockWorkerResume = jest.fn();
+const mockWorkerCancel = jest.fn();
 const mockGetState = jest.fn();
 
 jest.mock('../services/connectivity', () => ({
@@ -69,12 +72,13 @@ describe('useDownloadQueue transport gate', () => {
     mockWorkerStart.mockResolvedValue(undefined);
     mockWorkerResume.mockResolvedValue(undefined);
     mockGetState.mockReturnValue('idle');
+    mockWorkerCancel.mockResolvedValue(undefined);
     (getSharedDownloadQueueWorker as jest.Mock).mockReturnValue({
       getState: mockGetState,
       start: mockWorkerStart,
       resume: mockWorkerResume,
       pause: jest.fn(),
-      cancel: jest.fn(),
+      cancel: mockWorkerCancel,
     });
     (getUploadOverCellular as jest.Mock).mockReturnValue(false);
     (getTransferTransportSnapshot as jest.Mock).mockResolvedValue({
@@ -204,5 +208,143 @@ describe('useDownloadQueue transport gate', () => {
     });
 
     expect(mockWorkerStart).toHaveBeenCalledWith([queuedItem]);
+  });
+});
+
+describe('useDownloadQueue idle discovery and active flags (#147)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockWorkerStart.mockResolvedValue(undefined);
+    mockWorkerResume.mockResolvedValue(undefined);
+    mockWorkerCancel.mockResolvedValue(undefined);
+    mockGetState.mockReturnValue('idle');
+    (getSharedDownloadQueueWorker as jest.Mock).mockReturnValue({
+      getState: mockGetState,
+      start: mockWorkerStart,
+      resume: mockWorkerResume,
+      pause: jest.fn(),
+      cancel: mockWorkerCancel,
+    });
+    (getDownloadQueueSnapshot as jest.Mock).mockResolvedValue({
+      items: [],
+      completedCount: 0,
+      totalCount: 0,
+      aggregateProgress: 0,
+    });
+  });
+
+  it('treats cancelled-only snapshots as inactive', async () => {
+    (getDownloadQueueSnapshot as jest.Mock).mockResolvedValue({
+      items: [
+        {
+          id: 'cancelled-1',
+          tier: 1,
+          label: 'Text',
+          progress: 0.2,
+          status: 'cancelled',
+          projectId: 1,
+        },
+      ],
+      completedCount: 0,
+      totalCount: 0,
+      aggregateProgress: 0,
+    });
+
+    const { result } = renderHook(() => useDownloadQueue());
+
+    await waitFor(() => {
+      expect(result.current.hasDownloads).toBe(false);
+    });
+  });
+
+  it('refreshes an idle mounted consumer when the queue changes externally', async () => {
+    const { result } = renderHook(() => useDownloadQueue());
+
+    await waitFor(() => {
+      expect(result.current.hasDownloads).toBe(false);
+    });
+
+    (getDownloadQueueSnapshot as jest.Mock).mockResolvedValue({
+      items: [queuedItem],
+      completedCount: 0,
+      totalCount: 1,
+      aggregateProgress: 0,
+    });
+
+    await act(async () => {
+      emitDownloadQueueChanged();
+    });
+
+    await waitFor(() => {
+      expect(result.current.hasDownloads).toBe(true);
+      expect(result.current.snapshot.items).toHaveLength(1);
+    });
+  });
+
+  it('notifies both mounted consumers and cleans up on unmount', async () => {
+    const first = renderHook(() => useDownloadQueue());
+    const second = renderHook(() => useDownloadQueue());
+
+    await waitFor(() => {
+      expect(first.result.current.hasDownloads).toBe(false);
+      expect(second.result.current.hasDownloads).toBe(false);
+    });
+
+    const callsAfterMount = (getDownloadQueueSnapshot as jest.Mock).mock.calls
+      .length;
+
+    second.unmount();
+
+    (getDownloadQueueSnapshot as jest.Mock).mockResolvedValue({
+      items: [queuedItem],
+      completedCount: 0,
+      totalCount: 1,
+      aggregateProgress: 0,
+    });
+
+    await act(async () => {
+      emitDownloadQueueChanged();
+    });
+
+    await waitFor(() => {
+      expect(first.result.current.hasDownloads).toBe(true);
+    });
+
+    // Unmounted consumer must not keep refreshing.
+    expect(
+      (getDownloadQueueSnapshot as jest.Mock).mock.calls.length -
+        callsAfterMount,
+    ).toBe(1);
+  });
+
+  it('refreshes after cancel so resume can see the cleared queue', async () => {
+    (getDownloadQueueSnapshot as jest.Mock)
+      .mockResolvedValueOnce({
+        items: [queuedItem],
+        completedCount: 0,
+        totalCount: 1,
+        aggregateProgress: 0,
+      })
+      .mockResolvedValue({
+        items: [],
+        completedCount: 0,
+        totalCount: 0,
+        aggregateProgress: 0,
+      });
+
+    const { result } = renderHook(() => useDownloadQueue());
+
+    await waitFor(() => {
+      expect(result.current.hasDownloads).toBe(true);
+    });
+
+    await act(async () => {
+      await result.current.cancel();
+    });
+
+    expect(mockWorkerCancel).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(result.current.hasDownloads).toBe(false);
+    });
   });
 });

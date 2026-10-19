@@ -288,6 +288,36 @@ describe('useUploadSessionState', () => {
     });
   });
 
+  it('reports allComplete when uploads and downloads are both clear', async () => {
+    const { result } = renderHook(() =>
+      useUploadSessionState({
+        hasPendingUploads: false,
+        hasFailedUploads: false,
+        hasDownloads: false,
+        uploadProgress: null,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.pageStatus).toBe('allComplete');
+    });
+  });
+
+  it('reports uploadComplete when uploads are clear but downloads remain', async () => {
+    const { result } = renderHook(() =>
+      useUploadSessionState({
+        hasPendingUploads: false,
+        hasFailedUploads: false,
+        hasDownloads: true,
+        uploadProgress: null,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.pageStatus).toBe('uploadComplete');
+    });
+  });
+
   it('sets isControlPending while pause is in flight', async () => {
     let resolvePause: (() => void) | undefined;
     mockPauseUploadSession.mockImplementation(

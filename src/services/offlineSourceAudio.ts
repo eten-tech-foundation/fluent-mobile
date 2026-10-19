@@ -20,8 +20,11 @@ function pickSourceAudioItem(
 
 const log = logger.create('offlineSourceAudio');
 
-/** Prepare for Offline / download_queue resource_name for Tier 1 source audio. */
-export const SOURCE_BIBLE_RESOURCE_NAME = 'Source Bible';
+/**
+ * Prepare for Offline / download_queue resource_name for Tier 1 source audio.
+ * Must match fluent-api `getSourceAudioManifest` (`Source Bible Audio`).
+ */
+export const SOURCE_BIBLE_RESOURCE_NAME = 'Source Bible Audio';
 
 const SAFE_SEGMENT = /^[A-Za-z0-9_-]+$/;
 
