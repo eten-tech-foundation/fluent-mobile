@@ -323,6 +323,27 @@ export function createUploadOrchestrator(
 
       const chapters = await deps.getPendingUploadChapters();
       if (!started || version !== lifecycleVersion) return;
+      // Controls and connectivity may change while the queue read is pending,
+      // before there is an AbortController for pause/cancel/offline to abort.
+      if (isUserPaused()) {
+        phase = 'paused';
+        armPauseTimer();
+        return;
+      }
+      if (suppressAutoUntilOnlineEdge) return;
+      const currentGate = transportAllowsTransfer({
+        isOnline,
+        isWifi,
+        connectionType,
+        uploadOverCellular: deps.getUploadOverCellular(),
+      });
+      if (currentGate !== 'ok') {
+        phase = currentGate;
+        if (currentGate === 'waiting_wifi') {
+          deps.emit({ type: 'waiting_wifi' });
+        }
+        return;
+      }
       if (chapters.length === 0) {
         phase = 'idle';
         clearSessionCounts();
