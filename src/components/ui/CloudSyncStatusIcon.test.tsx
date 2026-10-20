@@ -1,4 +1,5 @@
 import React from 'react';
+import { Animated } from 'react-native';
 import { render } from '@testing-library/react-native';
 import { CloudSyncStatusIcon } from './CloudSyncStatusIcon';
 import { SyncStatus, SYNC_STATUS_LABELS } from '../../utils/syncStatusState';
@@ -61,6 +62,15 @@ describe('CloudSyncStatusIcon', () => {
     const { getByLabelText } = render(<CloudSyncStatusIcon status={status} />);
 
     expect(getByLabelText(SYNC_STATUS_LABELS[status])).toBeTruthy();
+  });
+
+  it('does not take presses when the parent button owns the label', () => {
+    const { UNSAFE_getByType, queryByLabelText } = render(
+      <CloudSyncStatusIcon status="online_synced" decorative />,
+    );
+
+    expect(UNSAFE_getByType(Animated.View).props.pointerEvents).toBe('none');
+    expect(queryByLabelText(SYNC_STATUS_LABELS.online_synced)).toBeNull();
   });
 
   it('#38: offline_synced draws gray cloud-check, not cloud-off', () => {

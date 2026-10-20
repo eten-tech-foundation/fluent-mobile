@@ -1,6 +1,7 @@
 import React from 'react';
-import { act, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { emitSyncComplete, emitSyncStart } from '../../services/syncEvents';
+import { hrefs } from '../../navigation/hrefs';
 
 jest.mock('react-native-bootsplash', () => ({
   hide: jest.fn().mockResolvedValue(undefined),
@@ -14,9 +15,10 @@ jest.mock('../../navigation/AuthSessionProvider', () => ({
 }));
 
 const mockLocalSearchParams: { newUserLoading?: string } = {};
+const mockPush = jest.fn();
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: jest.fn() }),
+  useRouter: () => ({ push: mockPush }),
   useNavigation: () => ({ openDrawer: jest.fn() }),
   useLocalSearchParams: () => mockLocalSearchParams,
   useIsFocused: () => true,
@@ -84,12 +86,33 @@ jest.mock('../../utils/prepareOfflineAutoPrompt', () => ({
   }),
 }));
 
+let mockMyWorkBody: 'tab' | 'empty' | 'populated' = 'tab';
+
 jest.mock('../tabs/MyWorkTab', () => {
   const MockReact = require('react');
   const { Text } = require('react-native');
   return {
-    MyWorkTab: () =>
-      MockReact.createElement(Text, { testID: 'my-work-tab' }, 'My Work'),
+    MyWorkTab: () => {
+      if (mockMyWorkBody === 'empty') {
+        return MockReact.createElement(
+          Text,
+          { testID: 'my-work-empty' },
+          'empty',
+        );
+      }
+      if (mockMyWorkBody === 'populated') {
+        return MockReact.createElement(
+          Text,
+          { testID: 'my-work-row-1' },
+          'row',
+        );
+      }
+      return MockReact.createElement(
+        Text,
+        { testID: 'my-work-tab' },
+        'My Work',
+      );
+    },
   };
 });
 
@@ -115,7 +138,8 @@ jest.mock('../../components/layout/PageHeader', () => {
   const MockReact = require('react');
   const { View } = require('react-native');
   return {
-    PageHeader: () => MockReact.createElement(View, { testID: 'page-header' }),
+    PageHeader: ({ rightIcon }: { rightIcon?: React.ReactNode }) =>
+      MockReact.createElement(View, { testID: 'page-header' }, rightIcon),
   };
 });
 
@@ -132,8 +156,16 @@ jest.mock('../../components/ui/SettingsButton', () => ({
   SettingsButton: () => null,
 }));
 
+jest.mock('../../components/ui/CloudSyncStatusIcon', () => ({
+  CloudSyncStatusIcon: () => null,
+}));
+
+const mockPageHeaderSyncButton = jest.fn(
+  (_props?: object): React.ReactNode => null,
+);
+
 jest.mock('../../components/ui/PageHeaderSyncButton', () => ({
-  PageHeaderSyncButton: () => null,
+  PageHeaderSyncButton: (props: object) => mockPageHeaderSyncButton(props),
 }));
 
 jest.mock('../../components/ui/ReauthBanner', () => ({
@@ -145,6 +177,10 @@ import { HomeScreenBody } from './HomeScreen';
 describe('HomeScreenBody progressive login (#670)', () => {
   beforeEach(() => {
     delete mockLocalSearchParams.newUserLoading;
+    mockMyWorkBody = 'tab';
+    mockPush.mockClear();
+    mockPageHeaderSyncButton.mockReset();
+    mockPageHeaderSyncButton.mockImplementation(() => null);
   });
 
   it('dismisses full-screen loading when Tier 1 clears while sync continues', async () => {
@@ -190,5 +226,48 @@ describe('HomeScreenBody progressive login (#670)', () => {
     expect(screen.getByTestId('my-work-tab')).toBeTruthy();
 
     unmount();
+  });
+});
+
+describe('HomeScreenBody sync header', () => {
+  beforeEach(() => {
+    delete mockLocalSearchParams.newUserLoading;
+    mockMyWorkBody = 'tab';
+    mockPush.mockClear();
+    mockPageHeaderSyncButton.mockReset();
+    mockPageHeaderSyncButton.mockImplementation(() => null);
+  });
+
+  it('pushes the sync route from the real header button when My Work is empty and when it has a row', () => {
+    const actual = jest.requireActual(
+      '../../components/ui/PageHeaderSyncButton',
+    ) as typeof import('../../components/ui/PageHeaderSyncButton');
+    mockPageHeaderSyncButton.mockImplementation(props =>
+      React.createElement(
+        actual.PageHeaderSyncButton,
+        props as React.ComponentProps<typeof actual.PageHeaderSyncButton>,
+      ),
+    );
+
+    mockMyWorkBody = 'empty';
+    const empty = render(
+      <HomeScreenBody postLoginSyncActive={false} userSwitchEpoch={0} />,
+    );
+    expect(screen.getByTestId('my-work-empty')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('home-sync-button'));
+    expect(mockPush).toHaveBeenCalledTimes(1);
+    expect(mockPush).toHaveBeenCalledWith(hrefs.sync);
+    empty.unmount();
+
+    mockPush.mockClear();
+    mockMyWorkBody = 'populated';
+    const populated = render(
+      <HomeScreenBody postLoginSyncActive={false} userSwitchEpoch={0} />,
+    );
+    expect(screen.getByTestId('my-work-row-1')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('home-sync-button'));
+    expect(mockPush).toHaveBeenCalledTimes(1);
+    expect(mockPush).toHaveBeenCalledWith(hrefs.sync);
+    populated.unmount();
   });
 });

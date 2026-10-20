@@ -422,6 +422,7 @@ export function CloudSyncStatusIcon({
 
   return (
     <Animated.View
+      pointerEvents={decorative ? 'none' : 'auto'}
       accessible={!decorative}
       accessibilityLabel={decorative ? undefined : SYNC_STATUS_LABELS[status]}
       style={[style, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}
