@@ -30,25 +30,25 @@
       "unresolved": 7
     },
     "canonical_live_status": {
-      "UNTESTED": 28,
-      "BLOCKED": 147,
-      "PASS": 27
+      "UNTESTED": 27,
+      "BLOCKED": 146,
+      "PASS": 29
     },
     "canonical_execution_coverage": {
-      "partial": 48,
-      "complete_for_requirement": 27,
-      "not_run": 127
+      "partial": 47,
+      "complete_for_requirement": 29,
+      "not_run": 126
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
       "UNTESTED": 7,
-      "BLOCKED": 58,
-      "PASS": 21
+      "BLOCKED": 57,
+      "PASS": 22
     },
     "eligible_current_atomic_execution_coverage": {
       "partial": 18,
-      "complete_for_requirement": 21,
-      "not_run": 47
+      "complete_for_requirement": 22,
+      "not_run": 46
     },
     "full_live_PASS_eligible_ids": [
       "A-0015-01",
@@ -57,6 +57,7 @@
       "B-0004-01",
       "C-0050-02",
       "C-0050-03",
+      "C-0050-04",
       "C-0146-02",
       "D-0188-01",
       "D-0188-02",
@@ -1045,8 +1046,8 @@
       "unit_review": "group",
       "additive_scope": "nonadditive_parent",
       "review_reason": "Generic PFO entry/back and project-download back target are different navigation contexts.",
-      "live_status": "UNTESTED",
-      "execution_coverage": "partial",
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
       "live_evidence": [
         {
           "receipt": "/tmp/fluent-maestro-existing-session-pfo.md",
@@ -1061,21 +1062,30 @@
           "flow": ".maestro/flows/offline/pfo-download-button-persist.yaml",
           "relation": "partial",
           "reason": "Actual Settings/PFO project selection and header-back journey; selection only, no download."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-unassigned-pfo-first/result.json",
+          "case_id": "unassigned_pfo_completed_assertions_45.7s",
+          "flow": ".maestro/flows/offline/b-user11-unassigned-pfo-default-existing-session.yaml",
+          "process_outcome": "FAIL45.7s_later_Settings_cleanup_expectation",
+          "relation": "complete_criterion_assertion_segment",
+          "commands": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-unassigned-pfo-first/cli/2026-10-20_133820/b-user11-unassigned-pfo-default-existing-session/commands.json",
+          "commands_sha256": "f35410a4c8607168ab1a42af335d74c00d98845fa1051b1a4bd81bbf8bba50db",
+          "reason": "Prior Settings/PFO entry and simple Back proof retained. This durable run presses project-detail headerBack then asserts project-row12 visible (command25COMPLETED), satisfying #503 detail\u2192project-list target. Later pickerBack expects Settings (command27FAILED), actual Home; that expectation is outside #503. FinalHome/radios0/1 verified; no full-flowPASS."
         }
       ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Simple entry/back is proved; #503 project-download back-target context is not exhaustively asserted by selection-only PFO flow."
-      ],
-      "executable_now": true,
+      "missing_assertions_or_fixture": [],
+      "executable_now": false,
       "next_test": null,
       "source_title": "Prepare Offline entry and back navigation",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/40",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/503"
       ],
-      "domain": "identity_navigation"
+      "domain": "identity_navigation",
+      "closure_scope_note": "Completed exact criterion assertions only; full CLI failure at later cleanup retained. No positive download/server/catalogue claim."
     },
     {
       "id": "A-0018-01",
@@ -1729,17 +1739,25 @@
         }
       ],
       "missing_assertions_or_fixture": [
-        "Matt must listen to preserved audio and assess playback/seek feel; decoded nonzero signal does not prove audible or intended input quality.",
-        "Full capture-to-audible-playback flow and required repeatability remain incomplete; preserve navigation and lifecycle timeouts."
+        "Full capture-to-audible-playback flow and required repeatability remain incomplete; preserve navigation and lifecycle timeouts.",
+        "Matt must make a NEW recording on physical Android with the current fix build, after verifying the intended QA account, project, assignment and recording ownership/fixture. Verify audible output/playback and seek quality on that new take. Earlier six emulator takes remain preserved and do not satisfy this physical new-take acceptance; no automation or Samsung R9 device action is requested."
       ],
       "executable_now": false,
-      "next_test": "Matt to verify audible playback on an existing preserved take; automation must not create another take or retry pending uploads to replace that human check.",
+      "next_test": "Matt must make a NEW recording on physical Android with the current fix build, after verifying the intended QA account, project, assignment and recording ownership/fixture. Verify audible output/playback and seek quality on that new take. Earlier six emulator takes remain preserved and do not satisfy this physical new-take acceptance; no automation or Samsung R9 device action is requested.",
       "source_title": "Record and play local draft audio",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/23",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/49"
       ],
-      "domain": "recording_review"
+      "domain": "recording_review",
+      "manual_audio_dependency": {
+        "source": "Trusted parent manual-test instruction based on #528/#707",
+        "issue528_comment": "https://github.com/eten-tech-foundation/fluent-mobile/issues/528#issuecomment-6249883208",
+        "required": "physical Android + new recording + current fix build + verified QA account/fixture",
+        "old_takes": "Preserve all six; no audible acceptance inferred from earlier silence/nonzero decode observations.",
+        "execution": "pending Matt; no new automated recording or physical Samsung R9 access",
+        "no_status_promotion": true
+      }
     },
     {
       "id": "B-0002-01",
@@ -2123,16 +2141,24 @@
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
         "Direct native remux invocation/causal trace and forced-remux-failure AAC fallback remain unverified.",
-        "Matt must assess physical audible/seek quality; file container/decoding and UI position alone do not establish it."
+        "Matt must make a NEW recording on physical Android with the current fix build, after verifying the intended QA account, project, assignment and recording ownership/fixture. Verify audible output/playback and seek quality on that new take. Earlier six emulator takes remain preserved and do not satisfy this physical new-take acceptance; no automation or Samsung R9 device action is requested."
       ],
       "executable_now": false,
-      "next_test": "Reconcile any already-retained native remux call trace if available; otherwise keep invocation/fallback blocked until a supported assigned check, with Matt handling listening.",
+      "next_test": "Matt must make a NEW recording on physical Android with the current fix build, after verifying the intended QA account, project, assignment and recording ownership/fixture. Verify audible output/playback and seek quality on that new take. Earlier six emulator takes remain preserved and do not satisfy this physical new-take acceptance; no automation or Samsung R9 device action is requested. Native remux invocation and forced-failure AAC fallback remain separately unverified.",
       "source_title": "Committed AAC remuxed to seekable M4A",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/176",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/233"
       ],
-      "domain": "recording_review"
+      "domain": "recording_review",
+      "manual_audio_dependency": {
+        "source": "Trusted parent manual-test instruction based on #528/#707",
+        "issue528_comment": "https://github.com/eten-tech-foundation/fluent-mobile/issues/528#issuecomment-6249883208",
+        "required": "physical Android + new recording + current fix build + verified QA account/fixture",
+        "old_takes": "Preserve all six; no audible acceptance inferred from earlier silence/nonzero decode observations.",
+        "execution": "pending Matt; no new automated recording or physical Samsung R9 access",
+        "no_status_promotion": true
+      }
     },
     {
       "id": "B-0006-02",
@@ -2168,16 +2194,24 @@
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
         "Known input provenance and native-remux causal trace remain absent.",
-        "Matt must verify audible output/quality; do not equate host-mic-off with measured digital silence or nonzero PCM with audibility."
+        "Matt must make a NEW recording on physical Android with the current fix build, after verifying the intended QA account, project, assignment and recording ownership/fixture. Verify audible output/playback and seek quality on that new take. Earlier six emulator takes remain preserved and do not satisfy this physical new-take acceptance; no automation or Samsung R9 device action is requested."
       ],
       "executable_now": false,
-      "next_test": "Matt to listen to existing preserved recovered audio; retain digital nonzero measurements without inventing input provenance or active thresholds.",
+      "next_test": "Matt must make a NEW recording on physical Android with the current fix build, after verifying the intended QA account, project, assignment and recording ownership/fixture. Verify audible output/playback and seek quality on that new take. Earlier six emulator takes remain preserved and do not satisfy this physical new-take acceptance; no automation or Samsung R9 device action is requested.",
       "source_title": "Remuxed take must not be silent",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/707",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/719"
       ],
-      "domain": "recording_review"
+      "domain": "recording_review",
+      "manual_audio_dependency": {
+        "source": "Trusted parent manual-test instruction based on #528/#707",
+        "issue528_comment": "https://github.com/eten-tech-foundation/fluent-mobile/issues/528#issuecomment-6249883208",
+        "required": "physical Android + new recording + current fix build + verified QA account/fixture",
+        "old_takes": "Preserve all six; no audible acceptance inferred from earlier silence/nonzero decode observations.",
+        "execution": "pending Matt; no new automated recording or physical Samsung R9 access",
+        "no_status_promotion": true
+      }
     },
     {
       "id": "B-0007-01",
@@ -3460,22 +3494,31 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Assigned-user fixture cannot prove the unassigned-user expansion/default requirement.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-unassigned-pfo-first/result.json",
+          "case_id": "unassigned_pfo_completed_assertions_45.7s",
+          "flow": ".maestro/flows/offline/b-user11-unassigned-pfo-default-existing-session.yaml",
+          "process_outcome": "FAIL45.7s_later_Settings_cleanup_expectation",
+          "relation": "complete_criterion_assertion_segment",
+          "commands": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-unassigned-pfo-first/cli/2026-10-20_133820/b-user11-unassigned-pfo-default-existing-session/commands.json",
+          "commands_sha256": "f35410a4c8607168ab1a42af335d74c00d98845fa1051b1a4bd81bbf8bba50db",
+          "reason": "Scoped native user11/project12 assigned0/total5; initial Selected chapters0 outer section open, book collapsed and expandable; opening shows all5 unchecked, Download disabled and0B. All criterion assertions completed; no selection or manifest/download requests. Exact source criterion requires open/visible selection, not positive Download enablement; catalogue remains separately blocked."
+        }
+      ],
       "isolated_status": "NOT_APPLICABLE",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "unassigned open",
-        "Necessary safe fixture/authorization not established: unassigned chapters"
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Unassigned chapters accordion open/required",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/50"
       ],
-      "domain": "sync_offline"
+      "domain": "sync_offline",
+      "closure_scope_note": "Completed exact criterion assertions only; full CLI failure at later cleanup retained. No positive download/server/catalogue claim."
     },
     {
       "id": "C-0050-05",
