@@ -10,11 +10,12 @@
     },
     "canonical_candidates_reviewed": 202,
     "canonical_applicability": {
-      "current": 176,
-      "deferred": 7,
-      "process": 5,
+      "current": 175,
       "superseded": 6,
-      "unclear": 7,
+      "process": 5,
+      "unclear": 6,
+      "excluded_user_scope": 2,
+      "deferred": 7,
       "waived": 1
     },
     "canonical_unit_review": {
@@ -25,9 +26,9 @@
     },
     "canonical_additive_scope": {
       "eligible_current_atomic": 86,
-      "nonadditive_parent": 90,
-      "out_of_current_scope": 19,
-      "unresolved": 7
+      "nonadditive_parent": 89,
+      "out_of_current_scope": 21,
+      "unresolved": 6
     },
     "canonical_live_status": {
       "UNTESTED": 26,
@@ -246,6 +247,31 @@
       "requirement": "D-0407-02",
       "case_elapsed_s": 68.111,
       "restored_verse_and_active12": true
+    },
+    "required_product_QA_candidate_count": 200,
+    "excluded_user_scope_candidate_count": 2,
+    "excluded_user_scope_candidate_ids": [
+      "A-0030-01",
+      "B-0024-01"
+    ],
+    "required_product_QA_execution_coverage": {
+      "partial": 46,
+      "complete_for_requirement": 39,
+      "not_run": 115
+    },
+    "required_product_QA_live_status": {
+      "UNTESTED": 25,
+      "BLOCKED": 136,
+      "PASS": 39
+    },
+    "component_gallery_scope_decision": {
+      "source": "Trustedparentuserinstruction",
+      "user_message_id": "Sentinel_45c17bb438e481919aeb33ed049a4036",
+      "instruction": "remove component gallery as something needing testing\u2014that\u2019s where designers building next theme components.",
+      "disposition": "EXCLUDED_USER_SCOPE",
+      "scope": "ComponentGallery only; designerdevelopmentworkspace. ProductionNexttemporaryLegacyplaceholder,Legacybehavior, themeisolation andcomponentbehaviorwhereusedinproduct remaininQA scope.",
+      "not_a_PASS": true,
+      "no_component_or_gallery_source_changed": true
     }
   },
   "source_sha256": {
@@ -1575,25 +1601,44 @@
     },
     {
       "id": "A-0030-01",
-      "applicability_review": "current",
+      "applicability_review": "excluded_user_scope",
       "unit_review": "group",
-      "additive_scope": "nonadditive_parent",
-      "review_reason": "Key/KeyDeck/Switch visual tokens, motion, haptics and gated-gallery access are a component-family umbrella.",
+      "additive_scope": "out_of_current_scope",
+      "review_reason": "Matt explicitly excludes ComponentGallery designerworkspace from requiredproductQA; historicalumbrella/evidence retained. This doesnotexclude productiontheme/componentcontracts.",
       "live_status": "BLOCKED",
       "execution_coverage": "not_run",
       "live_evidence": [],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Gallery build/flag and human motion/haptic/reference verification not established; not an ordinary existing-session test."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Next UI Key component + gallery (flag-gated)",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/638"
       ],
-      "domain": "identity_navigation"
+      "domain": "identity_navigation",
+      "historical_scope_before_user_exclusion": {
+        "applicability_review": "current",
+        "additive_scope": "nonadditive_parent",
+        "review_reason": "Key/KeyDeck/Switch visual tokens, motion, haptics and gated-gallery access are a component-family umbrella.",
+        "missing_assertions_or_fixture": [
+          "Gallery build/flag and human motion/haptic/reference verification not established; not an ordinary existing-session test."
+        ],
+        "next_test": null,
+        "executable_now": false
+      },
+      "scope_disposition": "EXCLUDED_USER_SCOPE",
+      "required_product_QA": false,
+      "user_scope_decision": {
+        "source": "Trustedparentuserinstruction",
+        "user_message_id": "Sentinel_45c17bb438e481919aeb33ed049a4036",
+        "instruction": "remove component gallery as something needing testing\u2014that\u2019s where designers building next theme components.",
+        "disposition": "EXCLUDED_USER_SCOPE",
+        "scope": "ComponentGallery only; designerdevelopmentworkspace. ProductionNexttemporaryLegacyplaceholder,Legacybehavior, themeisolation andcomponentbehaviorwhereusedinproduct remaininQA scope.",
+        "not_a_PASS": true,
+        "no_component_or_gallery_source_changed": true
+      }
     },
     {
       "id": "A-0031-01",
@@ -3036,18 +3081,16 @@
     },
     {
       "id": "B-0024-01",
-      "applicability_review": "unclear",
+      "applicability_review": "excluded_user_scope",
       "unit_review": "group",
-      "additive_scope": "unresolved",
-      "review_reason": "Open Next UI gallery foundation spans several components; applicability/complete agreed visual AC not established by this recording lane.",
+      "additive_scope": "out_of_current_scope",
+      "review_reason": "Matt explicitly excludes ComponentGallery designerworkspace from requiredproductQA; historicalumbrella/evidence retained. This doesnotexclude productiontheme/componentcontracts.",
       "live_status": "UNTESTED",
       "execution_coverage": "not_run",
       "live_evidence": [],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Confirmed current gallery acceptance/design scope; source presence is not runtime proof."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Next UI Waveform/Hardware gallery components",
@@ -3055,7 +3098,28 @@
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/694",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/695"
       ],
-      "domain": "recording_review"
+      "domain": "recording_review",
+      "historical_scope_before_user_exclusion": {
+        "applicability_review": "unclear",
+        "additive_scope": "unresolved",
+        "review_reason": "Open Next UI gallery foundation spans several components; applicability/complete agreed visual AC not established by this recording lane.",
+        "missing_assertions_or_fixture": [
+          "Confirmed current gallery acceptance/design scope; source presence is not runtime proof."
+        ],
+        "next_test": null,
+        "executable_now": false
+      },
+      "scope_disposition": "EXCLUDED_USER_SCOPE",
+      "required_product_QA": false,
+      "user_scope_decision": {
+        "source": "Trustedparentuserinstruction",
+        "user_message_id": "Sentinel_45c17bb438e481919aeb33ed049a4036",
+        "instruction": "remove component gallery as something needing testing\u2014that\u2019s where designers building next theme components.",
+        "disposition": "EXCLUDED_USER_SCOPE",
+        "scope": "ComponentGallery only; designerdevelopmentworkspace. ProductionNexttemporaryLegacyplaceholder,Legacybehavior, themeisolation andcomponentbehaviorwhereusedinproduct remaininQA scope.",
+        "not_a_PASS": true,
+        "no_component_or_gallery_source_changed": true
+      }
     },
     {
       "id": "B-0025-01",

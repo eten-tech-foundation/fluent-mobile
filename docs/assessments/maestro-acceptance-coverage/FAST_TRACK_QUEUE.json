@@ -2122,6 +2122,20 @@
         "complete_only_if_existing_ledger_says_so": false
       },
       "blocked": {
+        "existing_status": false,
+        "dependencies": [],
+        "existing_executable_now": false,
+        "next_check": [],
+        "reason": "UserexcludedComponentGallery; notarequiredproducttest orPASS"
+      },
+      "failed": {
+        "existing_ledger_status": null,
+        "new_attempts": [],
+        "rule": "Historical or later command failures are separate evidence;not inferred from BLOCKED or partial coverage."
+      },
+      "scope_disposition_action": "EXCLUDED_USER_SCOPE",
+      "later_gate": "NONE_FOR_EXCLUDED_GALLERY_SCOPE; productionthemechecksremainowned",
+      "historical_blocked_before_scope_exclusion": {
         "existing_status": true,
         "dependencies": [
           "Gallery build/flag and human motion/haptic/reference verification not established; not an ordinary existing-session test."
@@ -2131,13 +2145,21 @@
           "Gallery build/flag and human motion/haptic/reference verification not established; not an ordinary existing-session test."
         ]
       },
-      "failed": {
-        "existing_ledger_status": null,
-        "new_attempts": [],
-        "rule": "Historical or later command failures are separate evidence;not inferred from BLOCKED or partial coverage."
+      "required_product_QA": false,
+      "current_disposition": {
+        "applicability_review": "excluded_user_scope",
+        "additive_scope": "out_of_current_scope",
+        "scope_disposition": "EXCLUDED_USER_SCOPE"
       },
-      "scope_disposition_action": "owned_unfinished_unless_exact_existing_complete_evidence",
-      "later_gate": "final_integrated_revision_and_required_repeatability;not_automatic_PASS"
+      "user_scope_decision": {
+        "source": "Trustedparentuserinstruction",
+        "user_message_id": "Sentinel_45c17bb438e481919aeb33ed049a4036",
+        "instruction": "remove component gallery as something needing testing\u2014that\u2019s where designers building next theme components.",
+        "disposition": "EXCLUDED_USER_SCOPE",
+        "scope": "ComponentGallery only; designerdevelopmentworkspace. ProductionNexttemporaryLegacyplaceholder,Legacybehavior, themeisolation andcomponentbehaviorwhereusedinproduct remaininQA scope.",
+        "not_a_PASS": true,
+        "no_component_or_gallery_source_changed": true
+      }
     },
     {
       "id": "A-0031-01",
@@ -4119,6 +4141,20 @@
       },
       "blocked": {
         "existing_status": false,
+        "dependencies": [],
+        "existing_executable_now": false,
+        "next_check": [],
+        "reason": "UserexcludedComponentGallery; notarequiredproducttest orPASS"
+      },
+      "failed": {
+        "existing_ledger_status": null,
+        "new_attempts": [],
+        "rule": "Historical or later command failures are separate evidence;not inferred from BLOCKED or partial coverage."
+      },
+      "scope_disposition_action": "EXCLUDED_USER_SCOPE",
+      "later_gate": "NONE_FOR_EXCLUDED_GALLERY_SCOPE; productionthemechecksremainowned",
+      "historical_blocked_before_scope_exclusion": {
+        "existing_status": false,
         "dependencies": [
           "Confirmed current gallery acceptance/design scope; source presence is not runtime proof."
         ],
@@ -4127,13 +4163,21 @@
           "Confirmed current gallery acceptance/design scope; source presence is not runtime proof."
         ]
       },
-      "failed": {
-        "existing_ledger_status": null,
-        "new_attempts": [],
-        "rule": "Historical or later command failures are separate evidence;not inferred from BLOCKED or partial coverage."
+      "required_product_QA": false,
+      "current_disposition": {
+        "applicability_review": "excluded_user_scope",
+        "additive_scope": "out_of_current_scope",
+        "scope_disposition": "EXCLUDED_USER_SCOPE"
       },
-      "scope_disposition_action": "owned_unfinished_unless_exact_existing_complete_evidence",
-      "later_gate": "final_integrated_revision_and_required_repeatability;not_automatic_PASS"
+      "user_scope_decision": {
+        "source": "Trustedparentuserinstruction",
+        "user_message_id": "Sentinel_45c17bb438e481919aeb33ed049a4036",
+        "instruction": "remove component gallery as something needing testing\u2014that\u2019s where designers building next theme components.",
+        "disposition": "EXCLUDED_USER_SCOPE",
+        "scope": "ComponentGallery only; designerdevelopmentworkspace. ProductionNexttemporaryLegacyplaceholder,Legacybehavior, themeisolation andcomponentbehaviorwhereusedinproduct remaininQA scope.",
+        "not_a_PASS": true,
+        "no_component_or_gallery_source_changed": true
+      }
     },
     {
       "id": "B-0025-01",
@@ -11670,5 +11714,24 @@
     }
   ],
   "completion_gate": "Entire202canonical scope incl compound/unresolved/outscope dispositions must be accounted;86atomic subset is not whole-audit denominator.",
-  "shared_mutation_policy": "One owner/file/device/fixture;served code freeze9af88a3 plus docs-only HEAD;no reload by this worker."
+  "shared_mutation_policy": "One owner/file/device/fixture;served code freeze9af88a3 plus docs-only HEAD;no reload by this worker.",
+  "current_user_scope_override": {
+    "decision": {
+      "source": "Trustedparentuserinstruction",
+      "user_message_id": "Sentinel_45c17bb438e481919aeb33ed049a4036",
+      "instruction": "remove component gallery as something needing testing\u2014that\u2019s where designers building next theme components.",
+      "disposition": "EXCLUDED_USER_SCOPE",
+      "scope": "ComponentGallery only; designerdevelopmentworkspace. ProductionNexttemporaryLegacyplaceholder,Legacybehavior, themeisolation andcomponentbehaviorwhereusedinproduct remaininQA scope.",
+      "not_a_PASS": true,
+      "no_component_or_gallery_source_changed": true
+    },
+    "excluded_ids": [
+      "A-0030-01",
+      "B-0024-01"
+    ],
+    "canonical_inventory_count": 202,
+    "required_product_QA_candidates": 200,
+    "batch_assignment_unchanged": true,
+    "original_frozen_dispositions_retained": true
+  }
 }
