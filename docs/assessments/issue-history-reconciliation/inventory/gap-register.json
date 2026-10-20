@@ -1,0 +1,286 @@
+{
+  "schema": "fluent-mobile-gap-register/v1",
+  "role": "post_freeze_operational_map",
+  "not_part_of_original_frozen_sha256_manifest": true,
+  "verification_snapshot_utc": "2026-10-20T02:11:38Z",
+  "sources": {
+    "gap_mapping": "/tmp/fluent-audit-issue-publication/GAP-MAPPING.md",
+    "gap_mapping_json": "/tmp/fluent-audit-issue-publication/GAP-MAPPING.json",
+    "independent_review": "/tmp/fluent-gap-mapping-review.md",
+    "g10_created": "/tmp/fluent-g10-created.json",
+    "ledger_relative": "../coverage.csv",
+    "final_report_relative": "../FINAL-report.md"
+  },
+  "pins": {
+    "audit_source_snapshot_head": "5334ff6aa69ae4227332ad2304fa3f8a0c70e7f9",
+    "fluent_mobile_published": "758d4b04a9ca81e1ed6228e9d30df1fc80014f5d",
+    "fluent_api_published": "4336602df77ce86a4d46dfd45a7840cc3c64ebc0",
+    "note": "Issue/PR states can change after this snapshot; re-verify before acting."
+  },
+  "limitations": [
+    "Source analysis is not live QA or Nightly signoff",
+    "Role labels are not grant proof",
+    "No account emails, private fixtures, credentials, or raw corpus",
+    "No PM blame; no perfect or exhaustive conformance claim",
+    "This register is operational post-freeze — not a rewrite of the original 59-entry freeze manifest"
+  ],
+  "publication": {
+    "complete": true,
+    "issues_created": [722],
+    "no_more_issues_comments_edits": true
+  },
+  "status_counts": {
+    "reuse_open": 10,
+    "existing_closed_sufficient": 1,
+    "defer_no_create": 4,
+    "decision_needed_open": 1,
+    "total_groups": 16
+  },
+  "groups": [
+    {
+      "id": "G1",
+      "title": "Offline stage advancement queue",
+      "distinction": "source_unimplemented_plus_launch_decision_open",
+      "original": {"number": 257, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/257"},
+      "later": [
+        {"kind": "comment", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/257#issuecomment-5273627839", "note": "launch_blocker_TBD"},
+        {"kind": "pr", "number": 361, "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/361"}
+      ],
+      "current": [{"number": 257, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/257"}],
+      "action": "reuse_open"
+    },
+    {
+      "id": "G2",
+      "title": "Reconnect claim sync remainder",
+      "distinction": "open_parent_after_closed_slice",
+      "original": {"number": 271, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/271"},
+      "later": [
+        {"kind": "issue", "number": 611, "state": "closed", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/611", "class": "slice_fixed"},
+        {"kind": "pr", "number": 667, "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/667"},
+        {"kind": "issue", "number": 610, "state": "closed", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/610"},
+        {"kind": "pr", "number": 653, "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/653"},
+        {"kind": "pr", "number": 427, "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/427"}
+      ],
+      "current": [{"number": 271, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/271"}],
+      "action": "reuse_open"
+    },
+    {
+      "id": "G3",
+      "title": "Upload foreground crash",
+      "distinction": "open_bug_mitigations_present_current_QA_unproven",
+      "original": {"number": 599, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/599"},
+      "later": [{"kind": "pr", "number": 682, "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/682"}],
+      "current": [{"number": 599, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/599"}],
+      "action": "reuse_open"
+    },
+    {
+      "id": "G4",
+      "title": "Sync entry automation",
+      "distinction": "QA_automation_local_Maestro_neq_Nightly",
+      "original": {"number": 721, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/721"},
+      "later": [],
+      "baselines": [
+        {"number": 38, "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/38"},
+        {"number": 149, "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/149"}
+      ],
+      "current": [{"number": 721, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/721"}],
+      "action": "reuse_open"
+    },
+    {
+      "id": "G5",
+      "title": "Observer My Work / offline draft download",
+      "distinction": "open_AC_source_gap_accepted_rows",
+      "original": null,
+      "later": [],
+      "current": [
+        {"number": 505, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/505"},
+        {"number": 508, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/508"},
+        {"number": 452, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/452"}
+      ],
+      "action": "reuse_open"
+    },
+    {
+      "id": "G6",
+      "title": "Claim-pool / Maestro seed fixtures",
+      "distinction": "open_followup_fixture_API_seed_dependency",
+      "original": null,
+      "later": [],
+      "current": [
+        {"number": 607, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/607"},
+        {"number": 717, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/717"}
+      ],
+      "action": "reuse_open",
+      "note": "Do not conflate mobile #368/#369 with fluent-api seed tickets"
+    },
+    {
+      "id": "G7",
+      "title": "Gallery / sync FR open batch",
+      "distinction": "OPEN_followup_source_gap_only_where_accepted_row_proves",
+      "original": null,
+      "later": [],
+      "current": [
+        {"number": 694, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/694"},
+        {"number": 695, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/695"},
+        {"number": 696, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/696"},
+        {"number": 701, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/701"},
+        {"number": 703, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/703"},
+        {"number": 704, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/704"},
+        {"number": 716, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/716"}
+      ],
+      "action": "reuse_open"
+    },
+    {
+      "id": "G8",
+      "title": "Auth 401 / sign-out lineage from #41",
+      "distinction": "policy_superseded_vs_QA_unproven",
+      "original": {"number": 41, "state": "closed", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/41"},
+      "later": [
+        {"kind": "pr", "number": 46, "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/46", "note": "Better-Auth delivery"},
+        {"kind": "issue", "number": 292, "state": "closed", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/292", "class": "duplicate_of_291"},
+        {"kind": "comment", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/292#issuecomment-5208306644"},
+        {"kind": "issue", "number": 291, "state": "closed", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/291", "class": "canonical_soft_reauth_AC"},
+        {"kind": "pr", "number": 342, "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/342", "note": "soft_reauth_delivery"},
+        {"kind": "issue", "number": 622, "state": "closed", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/622", "class": "signout_retention_documented"},
+        {"kind": "pr", "number": 658, "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/658", "note": "unsynced_warning_UX"}
+      ],
+      "current": [
+        {"number": 291, "state": "closed", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/291", "role": "policy_canonical"},
+        {"number": 622, "state": "closed", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/622", "role": "retention_warning_context"}
+      ],
+      "action": "existing_closed_sufficient",
+      "policy": "hard_401_clear_to_Login_SUPERSEDED_by_291_292_PR342",
+      "qa": "soft_reauth_device_checks_unproven_neq_Nightly",
+      "not": ["new_41_ticket", "new_401_wipe_bug", "blanket_DB_retention_waiver_beyond_622"]
+    },
+    {
+      "id": "G9",
+      "title": "Translator assigned wording (project grant vs chapter)",
+      "distinction": "deferred_ambiguity_no_new_issue",
+      "original": {"number": 4, "state": "closed", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/4"},
+      "later": [
+        {"kind": "issue", "number": 104, "state": "closed", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/104", "covers": "per_user_isolation_not_grant_semantic"},
+        {"kind": "issue", "number": 675, "state": "closed", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/675"}
+      ],
+      "current": [
+        {"number": 4, "state": "closed", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/4"},
+        {"number": 104, "state": "closed", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/104"},
+        {"number": 675, "state": "closed", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/675"}
+      ],
+      "action": "defer_no_create",
+      "map_no_issue": true,
+      "ambiguity_recorded_with": [4, 104, 675]
+    },
+    {
+      "id": "G10",
+      "title": "Sync/Resources/Record navigation visibility and denied-access UX by grant",
+      "distinction": "decision_needed_open_server_auth_remains",
+      "original": null,
+      "later": [],
+      "current": [
+        {
+          "number": 722,
+          "state": "open",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/722",
+          "author": "mattrace-gloo",
+          "role": "decision_needed"
+        }
+      ],
+      "action": "decision_needed_open",
+      "created_issue": 722,
+      "matrix_roles_include": [
+        "Org Manager",
+        "Project Manager",
+        "Project Translator",
+        "Org Member-only",
+        "Observer",
+        "SuperAdmin",
+        "signed-in_no_project_grant"
+      ],
+      "explicit_non_claims": [
+        "hide_buttons_not_decided",
+        "no_security_bypass_claim",
+        "no_live_403_established",
+        "grants_neq_chapter_relationships",
+        "role_labels_neq_grant_proof"
+      ],
+      "pins": {
+        "fluent_mobile": "758d4b04a9ca81e1ed6228e9d30df1fc80014f5d",
+        "fluent_api": "4336602df77ce86a4d46dfd45a7840cc3c64ebc0"
+      },
+      "related_reuse": [38, 149, 721, 578, 504, 417, 717, 104, 675, 607]
+    },
+    {
+      "id": "G11",
+      "title": "#176 remux/scrub Android QA evidence",
+      "distinction": "source_fixed_QA_proof_reuse_open_trackers",
+      "original": {"number": 176, "state": "closed", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/176"},
+      "later": [
+        {"kind": "issue", "number": 233, "state": "closed", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/233"},
+        {"kind": "pr", "number": 252, "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/252"},
+        {"kind": "pr", "number": 254, "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/254"},
+        {"kind": "pr", "number": 231, "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/231"},
+        {"kind": "issue", "number": 707, "state": "closed", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/707"},
+        {"kind": "pr", "number": 709, "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/709"}
+      ],
+      "current": [
+        {"number": 719, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/719"},
+        {"number": 720, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/720"},
+        {"number": 717, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/717", "role": "parent"}
+      ],
+      "action": "reuse_open",
+      "not": ["new_176_QA_sibling"]
+    },
+    {
+      "id": "G12",
+      "title": "Optional central env.ts",
+      "distinction": "valid_optional_absence",
+      "original": {"number": 109, "state": "closed", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/109"},
+      "later": [],
+      "current": [{"number": 109, "state": "closed", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/109"}],
+      "action": "defer_no_create"
+    },
+    {
+      "id": "G13",
+      "title": "PM Home default tab",
+      "distinction": "explicitly_nonblocking_closed",
+      "original": {"number": 234, "state": "closed", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/234"},
+      "later": [],
+      "current": [{"number": 234, "state": "closed", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/234"}],
+      "action": "defer_no_create"
+    },
+    {
+      "id": "G14",
+      "title": "Historical Dev audit Fails",
+      "distinction": "HISTORICAL_DEVICE_EVIDENCE_neq_Nightly",
+      "original": null,
+      "later": [
+        {"kind": "pr", "number": 577, "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/577"},
+        {"kind": "pr", "number": 598, "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/598"}
+      ],
+      "current": [
+        {"number": 529, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/529"},
+        {"number": 530, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/530"}
+      ],
+      "action": "reuse_open"
+    },
+    {
+      "id": "G15",
+      "title": "Multi-role / SA live verification (audit evidence)",
+      "distinction": "process_evidence_gap_not_product_ticket",
+      "original": null,
+      "later": [],
+      "current": [],
+      "action": "defer_no_create",
+      "note": "Role inventory labels only; no account emails or credential material in this register. Coverage may reference G10 matrix roles without proving grants."
+    },
+    {
+      "id": "G16",
+      "title": "Offline audio conflict detection",
+      "distinction": "open_implementation_tracker",
+      "original": {"number": 256, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/256"},
+      "later": [],
+      "current": [{"number": 256, "state": "open", "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/256"}],
+      "action": "reuse_open"
+    }
+  ]
+}
