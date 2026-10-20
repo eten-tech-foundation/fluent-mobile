@@ -1,0 +1,32 @@
+{
+  "issue_number": 377,
+  "fetched_at_utc": "2026-10-20T00:36:30Z",
+  "issue": {
+    "number": 377,
+    "title": "[A+] Make Project 4 QA handoff Status updates reliable (board token)",
+    "state": "closed",
+    "body": "## Summary / context\n\nPart of **A+ Process / CI**. QA handoff \u2192 Project 4 **In QA** is **best-effort** when `PROJECT_BOARD_TOKEN` (or equivalent) is missing.\n\n## Current vs expected\n\n**Current:** Handoff comment/assignee may work while Status stays stale.\n\n**Expected:** Merged Needs-QA PRs reliably move linked issues to **In QA** on Project 4 (token present + documented).\n\n## Scope\n\n**In scope**\n- Confirm secret/variable wiring for `qa-handoff.yml` / scripts\n- Document required secret in `.github/README.md` or `docs/ci.md`\n- Prove with a test merge or dry-run as available\n\n**Out of scope**\n- Board sweeps of old cards (\u2192 C3)\n- Re-blocking merges on QA\n\n## Acceptance criteria\n\n- [ ] Token/secret present in the environment that runs handoff\n- [ ] Docs state how handoff updates Status\n- [ ] One evidence pass (log or issue moved) recorded on this ticket\n\n## Verification / test plan\n\n1. Inspect Actions secrets (maintainer)\n2. Re-run or simulate handoff script tests under `.github/scripts/`\n3. Confirm Project 4 Status updates on next Needs-QA merge\n\n## Links\n\n- `.github/workflows/qa-handoff.yml`, `.github/scripts/qa-handoff-on-merge.cjs`, `docs/guides/qa-process.md`\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-08-25T14:17:59Z",
+    "updated_at": "2026-08-25T22:08:46Z",
+    "closed_at": "2026-08-25T22:08:46Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/377",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5417487462,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-25T22:08:45Z",
+      "updated_at": "2026-08-25T22:08:45Z",
+      "body": "Completed as manual epic hygiene (no PR). Board token wiring and handoff docs tracked in `.github/README.md` / `docs/ci.md`; maintainer owns secret rotation. Part of #365 \u2014 waived agent PR per epic queue.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/377#issuecomment-5417487462"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

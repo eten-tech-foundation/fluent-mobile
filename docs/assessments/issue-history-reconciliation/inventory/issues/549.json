@@ -1,0 +1,26 @@
+{
+  "issue_number": 549,
+  "fetched_at_utc": "2026-10-20T00:37:47Z",
+  "issue": {
+    "number": 549,
+    "title": "Nightly APK blocked by online expo-doctor; Slack mislabels failures as skipped",
+    "state": "closed",
+    "body": "## Problem\n\nAfter #484 simplified nightly to one cron + same-run Slack, scheduled Nightly Preview runs (Sep 13\u201317) still produce **no APK** and Slack posts **\u201cFluent nightly skipped (no APK)\u201d** even though the workflow failed before EAS.\n\n**Evidence**\n\n| Date | Actions run | Commit | Failed step | EAS |\n| --- | --- | --- | --- | --- |\n| Sep 13\u201317 | e.g. [35167024644](https://github.com/eten-tech-foundation/fluent-mobile/actions/runs/35167024644) | various | **Expo doctor** | skipped |\n| Last real nightly APK | \u2014 | `c39799d` | \u2014 | EAS `9cab7d4d` (Sep 11) |\n\nAdjacent Expo dashboard rows that look like \u201cdouble builds\u201d are **`preview` profile**, not `nightly`.\n\n**Root causes**\n\n1. Nightly runs online `expo-doctor` **without** `EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK`, violating the two-clock model (`docs/ci.md` / #422). Upstream Expo 57.0.x patch freshness fails CI with no repo diff.\n2. `expo-sdk-align.yml` cannot open its rolling PR \u2014 `EXPO_SDK_ALIGN_APP_ID` / `EXPO_SDK_ALIGN_APP_PRIVATE_KEY` / `EXPO_SDK_ALIGN_TOKEN` are missing (ops follow-up).\n3. Slack `STATUS=failure` is titled/copy as \u201cskipped (no APK)\u201d and `FAILED_STEP` is the job name, not the real step (e.g. Expo doctor).\n\n## Acceptance criteria\n\n- [ ] Nightly Expo validation matches Quality Gates: skip remote dep-version check + warn on network errors; offline `expo:check` before EAS\n- [ ] Online patch freshness remains only on `expo-sdk-align.yml`\n- [ ] Slack outcomes are mutually exclusive and truthful: success (build id + install URL), skipped (no new commits), failed before APK (named step), EAS build failed\n- [ ] Failure Slack never claims \u201cno APK\u201d after a successful EAS step in the same run\n- [ ] Tests cover Slack copy + workflow contract (deterministic doctor env, offline check, one cron, no pending-delivery job)\n- [ ] Docs (`docs/ci.md`, QA preview guide, `.github/README.md`) distinguish skip vs pre-EAS fail vs EAS fail\n\n## Out of scope (ops follow-up)\n\n- Configuring Expo SDK Align GitHub App / PAT secrets (cannot ship secrets in code)\n\n## Related\n\n- #484 / #517 \u2014 simplify nightly schedule\n- #422 \u2014 two-clock Expo health\n- #459 / #462 \u2014 delayed cron trust",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-17T21:34:24Z",
+    "updated_at": "2026-10-07T21:25:57Z",
+    "closed_at": "2026-10-07T21:25:57Z",
+    "labels": [
+      "bug",
+      "ci"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/549",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

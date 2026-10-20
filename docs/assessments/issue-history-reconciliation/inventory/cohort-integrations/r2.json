@@ -1,0 +1,199 @@
+{
+  "reviewer": "auto-r2",
+  "integrator_parent": "bc-da4aa327-d86e-47fc-93c0-d7105af39497",
+  "domain": "upload-contract-sync-status",
+  "wave": 1,
+  "issue_ids": [100, 102, 150, 253],
+  "written_at_utc": "2026-10-20T00:55:00Z",
+  "corpus": "docs/assessments/issue-history-reconciliation/inventory/issues/<id>.json",
+  "recommend_complete_count": 4,
+  "recommend_complete_false_count": 0,
+  "issues": [
+    {
+      "issue": 100,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Net-new upload worker: recordingSync.ts uses expo-file-system + getApiBaseUrl (no @env, no react-native-fs); reads local_file_path directly (no absolute-path reconstruction); status pending→uploading→uploaded|failed with upload_error on failure and blob_key on success; auth token as parameter; single-flight; bounded retries/backoff; logger; unit tests (success/failure/retry/single-flight).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/100"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/recordingSync.ts",
+          "lines": "1-2,93-99,213-271,500-516,561-564",
+          "fact": "Imports expo-file-system/legacy + getApiBaseUrl; assertLocalFileExists(localFilePath); setRecordingSyncStatus(...,'uploading') then markRecordingUploaded/blobKey or markRecordingFailed; single-flight via inFlight; registerRecordingUploadWorker→setChapterUploadWorker; FluentAPI.uploadVerseAudio with recording.localFilePath uri."
+        },
+        {
+          "path": "docs/guides/recordings-sync-contract.md",
+          "lines": "43,75",
+          "fact": "Living eng contract attributes local persistence/status transitions and upload worker to #100 / recordingSync.ts; unit tests mock fetch — not live grant proof."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/223",
+        "fact": "Merged 2026-07-23 Closes #100: implements recordingSync worker calling FluentAPI.uploadVerseAudio, expo-file-system on local_file_path, pending→uploading→uploaded|failed, single-flight + retries, registerRecordingUploadWorker; explicitly no Sync UI and no R2 POST /recordings/sync."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "recordingSync.ts + recordingSync.test.ts present; worker registered from AuthSessionProvider; AC engineering surface matches HEAD.",
+        "device_evidence": "none in this review — ticket-level waiver 2026-07-20 (https://github.com/eten-tech-foundation/fluent-mobile/issues/100#issuecomment-5027838172) deferred live DevQA until verse-audio API merge/deploy; PR #223 checklist marks device tested but waiver still governs live API e2e."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Worker AC is implemented in current source (expo-FS, localFilePath, status machine, single-flight, uploadVerseAudio) and closed via merged PR #223. Live DevQA was an explicit ticket-level waiver — source/current ≠ deployed QA proof."
+    },
+    {
+      "issue": 102,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Original AC: freeze POST /recordings/sync multipart + blob_key response matched to fluent-api PR #188; define 2xx/4xx/5xx/network client behavior; verify blob_key round-trip; confirm R2 secrets server-side only; DevQA e2e on a dev server.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/102"
+        },
+        {
+          "slice": "other",
+          "text": "Later freeze (2026-07-20): mobile client frozen to fluent-api #224 PUT /verse-audio/{projectUnitId}/{bibleTextId}; POST /recordings/sync+#188 waived; live blob_key/DevQA waived until chosen API deploys. Secrets-server-side retained.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/102#issuecomment-5027793270"
+        }
+      ],
+      "disposition": [
+        "LATEST_EXPLICIT_DECISION",
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/verseAudioFormData.ts",
+          "lines": "142-147",
+          "fact": "verseAudioUploadPath returns `/verse-audio/${projectUnitId}/${bibleTextId}` — not POST /recordings/sync."
+        },
+        {
+          "path": "src/services/api.ts",
+          "lines": "149-164,312-320",
+          "fact": "uploadVerseAudioRequest builds multipart FormData and authedMultipartRequest with method PUT; FluentAPI.uploadVerseAudio exposes it."
+        },
+        {
+          "path": "src/services/verseAudioContract.ts",
+          "lines": "32-37,49-75",
+          "fact": "blobKeyFromVerseAudioResponse + outcomeFromVerseAudioFailure: 503 terminal failed; 409 retryable; other 4xx terminal; isRetryable→retry — matches living contract client matrix."
+        },
+        {
+          "path": "docs/guides/recordings-sync-contract.md",
+          "lines": "8-16,64-71",
+          "fact": "Documents deviations: original #102 POST /recordings/sync superseded by PUT /verse-audio; fluent-api #224 historical merge; #188 not what mobile implements; R2 secrets server-side only. Living doc labels some API-main pins as eng/inferred — not a product waive of secrets rule."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/222",
+        "fact": "Merged 2026-07-23 Closes #102: freezes mobile to fluent-api #224 PUT /verse-audio (not draft #188 POST /recordings/sync); ships types + FluentAPI.uploadVerseAudio + verseAudioContract outcome helpers + recordings-sync-contract.md; waives live blob_key/DevQA until API deploy."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Client wire matches living guide (PUT verse-audio + contract helpers); no R2/Azure keys in mobile .env.example per PR #222 verify step / living doc.",
+        "device_evidence": "none — live round-trip/DevQA explicitly waived in issue comment 5027793270; living guide notes unit tests mock fetch, not live grant proof. Do not treat closed #102 as Nightly e2e upload proof."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Original POST /recordings/sync+#188 AC was superseded by an explicit 2026-07-20 freeze to PUT /verse-audio (PR #222); current source and living recordings-sync-contract.md match that later decision. Secrets-server-side remains AGREED; live DevQA was waived, not proven."
+    },
+    {
+      "issue": 150,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Upload trigger/sync engine (no UI): online === Fluent /health reachable (not mere NetInfo); auto-upload on Wi‑Fi when pending; cellular only if uploadOverCellular; mid-upload server loss pauses silently and resumes when reachable; cancel stops now and does not retry until a future reachability-triggered auto-upload; pause blocks auto-upload 24h, Sync Now overrides/resets, pausing again starts a new 24h window; chapter-level upload granularity; unit tests.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/150"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/connectivity.ts",
+          "lines": "25-43,56",
+          "fact": "checkServerReachable GETs `${getApiBaseUrl()}/health`; snapshot type documents isOnline as Fluent reachability, not link-layer."
+        },
+        {
+          "path": "src/services/uploadOrchestratorCore.ts",
+          "lines": "9,290-314,588-625",
+          "fact": "PAUSE_WINDOW_MS=24h; transportAllowsTransfer cellular gate→waiting_wifi; pause sets pausedUntilMs; cancel sets suppressAutoUntilOnlineEdge; syncNow clears pause + suppress and runSession('sync_now')."
+        },
+        {
+          "path": "src/services/uploadOrchestrator.ts",
+          "lines": "57-61,122-136",
+          "fact": "setChapterUploadWorker seam + imperative pauseUploadSession/cancelUploadSession/syncNowUploads/getUploadSessionSnapshot for Sync page."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/150#issuecomment-5062155739",
+        "fact": "2026-07-23 closing decision: engine AC completed on main via PR #223 (alongside #100); dedicated PR #213 closed unmerged so Closes #150 never auto-ran; remaining SyncScreen Pause/Cancel/Sync Now glue tracked as #253."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "uploadOrchestrator.ts + uploadOrchestratorCore.ts + cellular/pause/cancel unit tests present; chapter worker registered from recordingSync; Sync UI wiring is #253 (later), not this ticket’s scope.",
+        "device_evidence": "dated 2026-09-04 Dev (not Nightly QA): chadw-eten comment https://github.com/eten-tech-foundation/fluent-mobile/issues/150#issuecomment-5545095944 — never observed auto-upload working (Orbit / cwhite+devt@gloo.us); no resolving reply in thread. Historical Dev ≠ current QA deploy proof."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Engine AC closed with explicit decision (PR #223 path; #213 unmerged) and SyncScreen glue deferred to #253; current orchestrator source matches the matrix. Chad’s 2026-09-04 Dev report disputes observed auto-upload — treat as unresolved historical Dev evidence, not Nightly QA confirmation or a silent reopen of engine AC."
+    },
+    {
+      "issue": 253,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Wire SyncScreen Pause/Cancel/Sync Now (and Resume) to uploadOrchestrator imperative APIs (pauseUploadSession, cancelUploadSession, syncNowUploads, getUploadSessionSnapshot); replace TODO(#150) mock status/progress; update SyncScreen tests with control→orchestrator coverage. Out of scope: re-implement upload engine (#150).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/253"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/hooks/useUploadSessionState.ts",
+          "lines": "161-175",
+          "fact": "pause→pauseUploadSession; cancel→cancelUploadSession; resumeUploads and syncNow both call syncNowUploads (Resume aliases Sync Now)."
+        },
+        {
+          "path": "src/app/screens/SyncScreen.tsx",
+          "lines": "79-98,163-186",
+          "fact": "Uses useUploadSessionState; runSyncNow awaits syncNowUploads; handlePause/handleCancel/handleResume wired; no TODO(#150) stubs remain in src/."
+        },
+        {
+          "path": "src/app/screens/SyncScreen.test.tsx",
+          "lines": "256-335",
+          "fact": "Tests assert Sync Now and Resume call syncNowUploads (and metadata triggerSync as applicable)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/297",
+        "fact": "Merged 2026-08-10 Closes #253: replaces TODO(#150) mocks with useUploadSessionState→orchestrator; documents Resume vs Sync Now as same action in this PR; device demo video attached; notes upload 404 until fluent-api #224 deploy does not fail the wiring AC."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "SyncScreen + useUploadSessionState wiring present; TODO(#150) grep empty under src/.",
+        "device_evidence": "PR #297 includes Android device demo video for Pause/Resume/Cancel/Sync Now wiring (2026-08); that is Dev-demo evidence of control wiring, not a claim that verse-audio upload succeeded end-to-end on Nightly QA."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "SyncScreen control glue AC is implemented (useUploadSessionState→orchestrator; TODO(#150) gone) and closed via merged PR #297 with Resume documented as Sync Now alias. Orthogonal Home Sync navigation (#721) is out of scope and was not treated as a blocker for this wiring ticket."
+    }
+  ]
+}

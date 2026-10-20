@@ -1,0 +1,32 @@
+{
+  "issue_number": 10,
+  "fetched_at_utc": "2026-10-20T00:33:46Z",
+  "issue": {
+    "number": 10,
+    "title": "Initial CI/CD",
+    "state": "closed",
+    "body": "Mobile builds and deployments are more complex than web applications. To start, we will only have a simple CI/CD pipeline.\n\nFor this ticket, establish basic status checks:\n- lint and format\n- unit tests run and pass\n- If possible, establish a minimal build step for both Android and iOS. Don't waste a lot of time on this one yet as there might be tasks that need to be completed before this is possible.",
+    "user": "kaseywright",
+    "created_at": "2026-03-06T13:58:14Z",
+    "updated_at": "2026-07-02T19:51:13Z",
+    "closed_at": "2026-04-14T16:55:53Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/10",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4072344022,
+      "user": "B3RN153",
+      "created_at": "2026-03-17T04:58:54Z",
+      "updated_at": "2026-03-17T04:58:54Z",
+      "body": "1. Research               -( ET 2hr)\n2. Basic CI/CD setup -(ET 1hr)",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/10#issuecomment-4072344022"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

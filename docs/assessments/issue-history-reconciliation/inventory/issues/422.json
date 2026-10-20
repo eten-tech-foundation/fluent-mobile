@@ -1,0 +1,28 @@
+{
+  "issue_number": 422,
+  "fetched_at_utc": "2026-10-20T00:36:45Z",
+  "issue": {
+    "number": 422,
+    "title": "Weekday Expo compatibility sync job",
+    "state": "closed",
+    "body": "## Parent\n\nPart of #420 (Phase 2). Do not close #420 from this ticket.\n\n## Problem\n\n`Quality Gates` goes red on `main` \u2014 and therefore on every PR branched from it \u2014 roughly every three days, with no diff in this repo. The team then hand-runs `npx expo install --fix`, opens a realignment PR, merges it, and re-syncs in-flight branches. That has happened repeatedly (#314, #343, and prior `expo install --fix` commits).\n\nPhase 1 (#425) pinned Node (`.nvmrc`) and lockfile `expo-doctor@1.20.4`, but left two networked steps in `.github/workflows/quality-gates.yml`:\n\n- `npm run doctor` still runs `InstalledDependencyVersionCheck` against Expo\u2019s remote versions map\n- `npx expo install --check` still fetches that remote map (`EXPO_OFFLINE` unset)\n\n### Mechanism (verified in `@expo/cli`)\n\n`getVersionedPackages` merges local `bundledNativeModules.json` with the remote SDK versions map (remote wins). `validateDependenciesVersions` reads **installed** versions from `node_modules`, so `~57.0.x` ranges in `package.json` do not decide pass/fail. A frozen `package-lock.json` against a map that advances every ~3 days produces red CI with no repo diff. `expo` itself is remote-only in that map \u2014 the primary recurring failure.\n\n## Proposed fix (two layers)\n\n### Layer 1 \u2014 deterministic PR gate\n\n- `EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK=1` + `EXPO_DOCTOR_WARN_ON_NETWORK_ERRORS=1` on the doctor step (other doctor checks stay blocking).\n- `EXPO_OFFLINE=1` on `expo install --check` so it validates against lockfile-pinned `expo/bundledNativeModules.json` only.\n- Scripts: `expo:check` (offline, mirrors CI) and `expo:check:latest` (online freshness probe). `doctor` stays the pinned local binary.\n\n### Layer 2 \u2014 freshness as a scheduled auto-PR\n\nNew `.github/workflows/expo-sdk-align.yml` (`schedule` weekly Monday + `workflow_dispatch`):\n\n1. Checkout `main`; `npm ci`\n2. Online `npx expo install --fix` (abort / fail job, open no PR if this fails \u2014 see expo/expo#48612)\n3. Online full `npm run doctor`\n4. Open/update single PR on `chore/expo-sdk-align` via App token or PAT (**not** `GITHUB_TOKEN` \u2014 recursion guard would leave required checks like `PR Description` forever waiting)\n5. PR body includes Android native rebuild warning: `npm run prebuild` + fresh dev client (`expo-modules-core` / native sources)\n\nNever bump Expo SDK major/minor; abort if `expo` major/minor would change. Ignore gitignored `android/`.\n\n## Acceptance criteria\n\n- [ ] `quality-gates.yml` sets `EXPO_OFFLINE=1` on the `expo install --check` step, and `EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK=1` + `EXPO_DOCTOR_WARN_ON_NETWORK_ERRORS=1` on the `expo-doctor` step, each with a comment naming this issue.\n- [ ] `expo-doctor` remains pinned in `devDependencies` and is invoked via the local binary (`npm run doctor`), not `npx expo-doctor@latest`.\n- [ ] `expo:check` runs offline (mirrors CI); `expo:check:latest` runs online for a deliberate freshness probe.\n- [ ] Publishing a new `expo` 57.0.x patch upstream no longer turns Quality Gates red with an unchanged tree (offline check passes while online may report newer patches).\n- [ ] A deliberately incompatible install (e.g. wrong `react-native-screens`) still fails Quality Gates with `EXPO_OFFLINE=1` \u2014 the gate keeps its real value.\n- [ ] `expo-sdk-align.yml` exists, runs on `schedule` + `workflow_dispatch`, and opens or updates a single PR on `chore/expo-sdk-align` against `main`.\n- [ ] That PR is authored by a GitHub App token or PAT (not `GITHUB_TOKEN`) so required checks actually run and post. Document the secret(s) needed.\n- [ ] Auto-PR body includes the `npm run prebuild` + fresh-dev-client warning (Android-only; no CocoaPods).\n- [ ] A failed `expo install --fix` fails the scheduled job and opens no PR.\n- [ ] `docs/ci.md` workflow table gains the new workflow; Quality Gates row notes offline/deterministic validation with freshness on a schedule.\n- [ ] No workflow-level `paths:` filter (the #845 / docs/ci.md guardrail).\n- [ ] No branch-protection change required.\n- [ ] SHA-pin all new `uses:` (action-pins gate).\n\n## Out of scope\n\nPhase 3 Dependabot ownership (#424), Phase 4 merge queue (#423), Expo SDK 58+.\n\n## References\n\n- Prior Phase 1: #425 / #420\n- Manual realignments: #314, #343\n- Versions endpoint ahead of npm: https://github.com/expo/expo/issues/48612\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-08-28T19:54:07Z",
+    "updated_at": "2026-09-10T17:16:12Z",
+    "closed_at": "2026-09-10T17:16:12Z",
+    "labels": [
+      "enhancement",
+      "dependencies",
+      "chore",
+      "github_actions"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/422",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

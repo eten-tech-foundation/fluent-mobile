@@ -1,0 +1,34 @@
+{
+  "issue_number": 88,
+  "fetched_at_utc": "2026-10-20T00:34:18Z",
+  "issue": {
+    "number": 88,
+    "title": "Harden API token injection (remove mutable singleton + fake async)",
+    "state": "closed",
+    "body": "### Context\n\n### Current state in baseline\n\n`src/services/api.ts` holds the token in module scope and mutates it via a setter:\n\n```ts\n// src/services/api.ts:33\nlet _activeToken: string | null = null;\n\nexport function setActiveToken(token: string | null): void {\n _activeToken = token;\n}\n\nconst MOBILE_HEADERS = {\n 'x-client-type': 'mobile',\n 'User-Agent': 'fluent-mobile',\n};\n\nasync function getHeaders(): Promise<Record<string, string>> {\n return {\n 'Content-Type': 'application/json',\n ...(_activeToken && { Authorization: `Bearer ${_activeToken}` }),\n };\n}\n```\n\n- `request()` (`src/services/api.ts:75`) awaits `getHeaders()` and logs failures through `summarizeApiErrorResponse()` (good \u2014 sanitized metadata only).\n- `publicRequest()` (`src/services/api.ts:51`) has **no logging** on failure; it only re-throws.\n- `setActiveToken` is called from `App.tsx:43,59`, `src/app/tabs/LoginScreen.tsx:84`, and `src/services/sync.ts` (multiple call sites in `syncAllUsers`/`syncAllData`, e.g. lines 338, 361, 390).\n- All requests resolve the base URL via `getApiBaseUrl()` from `src/config/apiBaseUrl.ts` (keep this).\n\n### Problems / why\n\n- **Mutable module singleton (`let _activeToken`)** is global state: hard to test, racy across multi-user sync (`syncAllUsers` flips the token mid-loop), and impossible to reason about per-request.\n- **`getHeaders` is `async` but contains no `await`** \u2014 fake async that adds a microtask and misleads readers.\n- **`publicRequest` lacks logging**, so public-endpoint failures (sign-in, forgot-password, master data) are invisible in logs while `request` failures are captured.\n- Token coupling is implicit: callers must remember to call `setActiveToken` before each request batch.\n\n### Target design\n\nReplace the mutable global with an explicit, testable auth accessor and make header building synchronous. Keep `getApiBaseUrl()`.\n\n```ts\n// src/services/authToken.ts (small, single-responsibility accessor)\nlet token: string | null = null;\nexport const authToken = {\n get: (): string | null => token,\n set: (next: string | null): void => {\n token = next;\n },\n};\n```\n\n```ts\n// src/services/api.ts\nfunction buildHeaders(extra?: Record<string, string>): Record<string, string> {\n const t = authToken.get();\n return {\n 'Content-Type': 'application/json',\n ...(t && { Authorization: `Bearer ${t}` }),\n ...extra,\n };\n}\n```\n\n- `request()` uses synchronous `buildHeaders()`.\n- `publicRequest()` logs failures via the existing `summarizeApiErrorResponse()` + `logger` before throwing.\n- Prefer passing the token explicitly where practical (e.g. the upload worker in #100 accepts a token argument) so the upload path does not depend on global state. The accessor remains the bridge for the existing sync flow until #113 introduces the full client.\n\n### Implementation steps\n\n1. Add `src/services/authToken.ts` with the `authToken` accessor (no React, no native deps).\n2. In `src/services/api.ts`: remove `let _activeToken` and the `setActiveToken` definition; re-export `authToken.set` as `setActiveToken` (compat shim) **or** update all call sites (preferred).\n3. Convert `getHeaders` \u2192 synchronous `buildHeaders`; drop the `async`/`await` in `request()`.\n4. Add failure logging to `publicRequest()` using `summarizeApiErrorResponse()` and `logger.create('API')`.\n5. Update callers in `App.tsx`, `src/app/tabs/LoginScreen.tsx`, and `src/services/sync.ts` to import from the new accessor (or keep the shim).\n6. Keep `MOBILE_HEADERS` and `getApiBaseUrl()` usage unchanged.\n\n### Acceptance criteria\n\n- [ ] No `let`-mutable module singleton for the token in `src/services/api.ts`.\n- [ ] `buildHeaders` is synchronous (no `async` without `await`).\n- [ ] `publicRequest` logs sanitized failure metadata via `summarizeApiErrorResponse`.\n- [ ] Token can be set/cleared and read deterministically in a unit test without rendering the app.\n- [ ] All existing `setActiveToken` call sites still compile and behave identically.\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Tests default `EXPO_PUBLIC_API_BASE_URL=http://localhost:9999` via `jest.env.cjs`; **no live API URL required** \u2014 runs against local logic only.\n- Add a jest-expo unit test for `authToken` (set \u2192 get \u2192 clear) and for `buildHeaders` (Authorization present only when a token is set).\n- Do **not** use `FLUENT_USER_EMAIL` (obsolete on main).\n\n### Out of scope\n\n- Full typed API client / react-query wiring (#113).\n- Secure persistence of the token (#89).\n- Login UI changes (#90).\n\n### Links\n\n- Epic: #115\n- Builds toward: #113 (API client standard), consumed by #100 (upload worker)\n- Anti-pattern reference: [PR #82](https://github.com/eten-tech-foundation/fluent-mobile/pull/82) `recordingSync.ts` reads the token differently and imports `@env` \u2014 do not copy.\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:44:22Z",
+    "updated_at": "2026-07-02T20:11:35Z",
+    "closed_at": "2026-07-02T19:32:17Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/88",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4825260286,
+      "user": "mattrace-gloo",
+      "created_at": "2026-06-28T07:33:49Z",
+      "updated_at": "2026-06-28T07:33:49Z",
+      "body": "**Attribution clarification:** The `_activeToken` singleton + fake-async `getHeaders` originate from the better-auth work (PR #46/#82); @mattrace-gloo's CNG change (PR #70) only relocated env handling + added error logging. The hardening in this ticket targets the **inherited** pattern, not the CNG work. Scope unchanged \u2014 this remains a legitimate harden task.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/88#issuecomment-4825260286"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

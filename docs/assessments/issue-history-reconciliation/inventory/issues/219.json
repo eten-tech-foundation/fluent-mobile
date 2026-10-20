@@ -1,0 +1,23 @@
+{
+  "issue_number": 219,
+  "fetched_at_utc": "2026-10-20T00:35:28Z",
+  "issue": {
+    "number": 219,
+    "title": "Add nightly binary preview CI for internal Android testing",
+    "state": "closed",
+    "body": "## Summary\n\nTemporary GitHub Actions CI/CD that runs nightly (and on manual dispatch) to produce an **internal Android APK** for testing against the **development API**. Uses EAS via `EXPO_TOKEN` \u2014 does **not** require the Expo GitHub App integration.\n\n## Context\n\nThe repo is not yet connected to Expo via the org GitHub App. PR preview already works with `EXPO_TOKEN` ([`.github/workflows/preview-build.yml`](.github/workflows/preview-build.yml)). Nightly builds should reuse that auth pattern but ship a **fresh binary only** (no OTA), so they never collide with the PR `preview` Updates channel.\n\n## Scope\n\n- New EAS profile `nightly` (internal APK, dev API URL, no Updates channel)\n- Scheduled + `workflow_dispatch` GitHub Actions workflow\n- Validation gates, API URL guard, skip-if-no-commits + force, Slack + job summary\n- Docs updates\n- **Out of scope:** changing PR preview or production release flows; OTA for nightlies; iOS\n\n## Acceptance criteria\n\n- [ ] Scheduled workflow runs daily and supports `workflow_dispatch` with `force_build` / `notify_slack`\n- [ ] Uses EAS profile `nightly`, Android internal APK, baked `https://dev.api.fluent.bible`\n- [ ] **Never** runs `eas update` / does not publish to any Updates channel\n- [ ] Always starts a **new** EAS binary build when not skipped (no fingerprint reuse of prior APKs)\n- [ ] Nightly builds do not inherit the PR `preview` Updates channel; Expo Updates remain disabled for `nightly`\n- [ ] Workflow fails if API base URL looks like production\n- [ ] Concurrency prevents overlapping nightlies; skip when no new commits unless forced\n- [ ] Job summary + Slack success/failure notifications\n- [ ] Docs updated; production / PR preview behavior unchanged\n- [ ] No Expo GitHub App dependency for this workflow\n\n## Manual setup (outside PR)\n\n- Confirm repo secret `EXPO_TOKEN`\n- Add repo secret `SLACK_WEBHOOK_URL`\n- Enable GitHub Actions failure emails for watchers (email fallback)\n\n## Verification\n\n1. `workflow_dispatch` with `force_build=true` after merge (or on the PR branch if secrets allow)\n2. Confirm install URL is a new APK; app does not pull PR preview OTAs\n3. Confirm Slack + Actions summary\n4. Confirm PR `preview-build` label path still works",
+    "user": "mattrace-gloo",
+    "created_at": "2026-07-20T21:19:02Z",
+    "updated_at": "2026-07-21T16:53:58Z",
+    "closed_at": "2026-07-21T16:53:58Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/219",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

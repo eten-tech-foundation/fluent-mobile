@@ -1,0 +1,23 @@
+{
+  "issue_number": 375,
+  "fetched_at_utc": "2026-10-20T00:36:28Z",
+  "issue": {
+    "number": 375,
+    "title": "[A+] Shared-device multi-account nightly QA script",
+    "state": "closed",
+    "body": "## Summary / context\n\nPart of **A+ Ship-ready product**. Multi-account isolation must be proven on the **nightly** APK with a repeatable QA script (2+ accounts), not only unit tests.\n\n## Current vs expected\n\n**Current:** Panel/session unit tests exist; shared-device matrix is ad hoc.\n\n**Expected:** A short QA script (issue comment or `docs/guides/`) covering: add/switch accounts, no cross-account take leakage, settings/switcher usable, sync scoped to active user.\n\n## Scope\n\n**In scope**\n- Author QA checklist/script\n- Run once on nightly (or document blocker)\n- File bugs for failures (do not silently waive)\n\n**Out of scope**\n- Implementing new account features\n- Replacing #291\n\n## Acceptance criteria\n\n- [ ] Checklist checked into docs or linked from QA process\n- [ ] At least one completed run recorded on this issue (pass or fail+bugs)\n- [ ] Needs QA? path clear for future regressions\n\n## Verification / test plan\n\n1. Install nightly APK\n2. Execute checklist with 2 accounts\n3. Attach results / file follow-ups\n\n## Links\n\n- Related: #291, #348 (settings white screen on switch \u2014 may block)\n- Docs: `docs/guides/qa-process.md`, `docs/guides/qa-preview-testing.md`\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-08-25T14:17:49Z",
+    "updated_at": "2026-08-26T17:00:35Z",
+    "closed_at": "2026-08-26T17:00:35Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/375",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

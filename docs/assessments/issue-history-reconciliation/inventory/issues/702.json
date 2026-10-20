@@ -1,0 +1,25 @@
+{
+  "issue_number": 702,
+  "fetched_at_utc": "2026-10-20T00:38:49Z",
+  "issue": {
+    "number": 702,
+    "title": "Prepare for Offline: Download button disappears when a chapter is selected",
+    "state": "open",
+    "body": "## Observed behavior\n\nOn Prepare for Offline, selecting a chapter makes the Total download / Download button block disappear, leaving no way to start the download. Deselecting the chapter restores the block with `Download 0 B`.\n\nChad's 30-second recording shows this repeatedly when selecting chapter 1 in Matthew, Mark, and Luke in the English-English project. The selected-chapter count changes from 0 to 1, confirming the selection is registered.\n\n## Reproduction shown in the video\n\n1. In the QA environment, sign in as the T1 mobile user (as identified in Chad's narration).\n2. Open Prepare for Offline and select **English-English**.\n3. Expand **Matthew** and select chapter **1**.\n4. Observe that the Download button and total-download summary disappear.\n5. Deselect chapter 1: the Download block returns. Repeat with Mark or Luke chapter 1; the same behavior is shown.\n\n## Expected behavior\n\nSelecting a chapter keeps the Download control visible and provides a way to download available resources for the selection. If downloading is unavailable, show a clear disabled state and explanation rather than removing the control. Selection and deselection should keep the summary and controls consistent.\n\n## Environment and evidence\n\n- Reporter: Chad White; QA environment; T1 mobile user; English-English project.\n- Platform: Android emulator visible in the recording. Exact Android version, app build/commit, device model, and resource availability are unknown.\n- Evidence: downloaded and visually inspected the MP4; narration confirms the disappearing Download button. This report is based on the recording, not an independent app reproduction. No root cause is established.\n- [Original Slack report and video](https://midwestern.slack.com/archives/C0B9RJZ5W75/p1792009820254669), Oct 14, 2026, 20:30 UTC, #fluent-mobile-team.\n- Video: `Screenshare - 2026-10-14 4:29:09 PM.mp4`, Slack file `F0C98QF3DUN`.\n- Key moments: ~10s project opens; ~15\u201317s Matthew selection hides the control; ~18s deselection restores it; ~21\u201323s Mark and ~27\u201329s Luke repeat the behavior.\n\n## Acceptance criteria\n\n- [ ] Download controls stay visible when chapters are selected or deselected.\n- [ ] Available chapter resources can be downloaded; unavailable selections have a clear explanation.\n- [ ] Verify selection/deselection for Matthew, Mark, and Luke in the reported QA scenario on Android.\n\nRelated context: #50 and #51 define chapter selection/download behavior; #580 covers a different zero-selection/accordion issue; #504 covers resource availability. Existing open/closed issues were searched before filing; no matching disappearing-control report was found.\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-10-14T20:49:21Z",
+    "updated_at": "2026-10-14T20:49:22Z",
+    "closed_at": null,
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/702",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,32 @@
+{
+  "issue_number": 270,
+  "fetched_at_utc": "2026-10-20T00:35:49Z",
+  "issue": {
+    "number": 270,
+    "title": "Implement Offline Chapter Claiming on First Recording",
+    "state": "closed",
+    "body": "When a translator is offline, claiming works the same way as online \u2014 the first recording on an unassigned chapter implicitly claims it \u2014 but the claim is held in local device state and cannot be confirmed with the server until reconnect. This ticket implements the offline claiming path: detect the first recording on an unassigned chapter while offline, update local state, and reflect the provisional claim in the chapter row. Reconnect sync and conflict detection are handled in a follow-on ticket.\n\n## Functional Requirements\n\n### Auto-Claim on First Recording (Offline)\n\n- When a translator creates the first recording on an unassigned chapter while offline, mark the chapter as claimed in local device state with no confirmation prompt.\n- Update the chapter row to the \"mine\" state (`li:user`, primary color `#0b50d0`); the claim is provisional until synced.\n- Derive the chapter's available/taken/assigned state from last-synced data; do not make a live server check.\n\nNote: The \"mine\" state visual treatment is defined and mocked up in #267. An unassigned chapter (per last-synced state) may be recorded on by a second offline translator simultaneously \u2014 the device has no way to detect or prevent this until reconnect. Conflict detection on reconnect is handled in #271.",
+    "user": "chadw-eten",
+    "created_at": "2026-07-29T17:37:25Z",
+    "updated_at": "2026-08-26T04:44:16Z",
+    "closed_at": "2026-08-26T04:44:16Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/270",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5273846828,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-12T23:08:33Z",
+      "updated_at": "2026-08-12T23:08:33Z",
+      "body": "### Eng note (updated)\n\nProvisional local \u201cmine\u201d while offline is still this ticket\u2019s core (last-synced unassigned \u2192 local claim). Confirm/sync is **#271** + **eten-tech-foundation/fluent-api#272**.\n\n**Preferred:** shape the local queue so it plugs into `fluent-api#272` and try to land offline claim + API claim as one feature with #268/#271.\n\n**Fallback:** ship local-only provisional claim with mocked confirm if API is too heavy \u2014 don\u2019t half-implement a claim endpoint from this ticket.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/270#issuecomment-5273846828"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,4120 @@
+[
+  {
+    "closed_at": "2026-05-11T05:28:32Z",
+    "comments": 1,
+    "created_at": "2026-01-22T17:10:45Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/1",
+    "labels": [],
+    "number": 1,
+    "state": "closed",
+    "title": "React Native with Expo Discovery",
+    "updated_at": "2026-07-02T19:50:55Z",
+    "user": "kaseywright"
+  },
+  {
+    "closed_at": "2026-07-29T21:46:40Z",
+    "comments": 2,
+    "created_at": "2026-01-22T18:44:48Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/2",
+    "labels": [
+      "DevQA"
+    ],
+    "number": 2,
+    "state": "closed",
+    "title": "MVP PoC mobile companion app",
+    "updated_at": "2026-07-29T21:46:40Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-05-11T05:28:17Z",
+    "comments": 1,
+    "created_at": "2026-01-29T12:17:46Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/3",
+    "labels": [],
+    "number": 3,
+    "state": "closed",
+    "title": "Discovery doc",
+    "updated_at": "2026-07-02T19:50:59Z",
+    "user": "kaseywright"
+  },
+  {
+    "closed_at": "2026-04-17T11:33:26Z",
+    "comments": 1,
+    "created_at": "2026-03-03T20:27:14Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/4",
+    "labels": [],
+    "number": 4,
+    "state": "closed",
+    "title": "Create Project List Page",
+    "updated_at": "2026-07-02T19:51:01Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-04-17T11:33:27Z",
+    "comments": 1,
+    "created_at": "2026-03-03T20:36:16Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/5",
+    "labels": [],
+    "number": 5,
+    "state": "closed",
+    "title": "Create View Project Page",
+    "updated_at": "2026-07-02T19:51:03Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-07-01T09:19:57Z",
+    "comments": 2,
+    "created_at": "2026-03-03T20:48:44Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/6",
+    "labels": [],
+    "number": 6,
+    "state": "closed",
+    "title": "Create View Chapter page",
+    "updated_at": "2026-07-02T19:51:05Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-03-17T11:54:37Z",
+    "comments": 1,
+    "created_at": "2026-03-05T15:35:07Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/7",
+    "labels": [
+      "DevQA"
+    ],
+    "number": 7,
+    "state": "closed",
+    "title": "Establish local dev environments",
+    "updated_at": "2026-07-02T19:51:07Z",
+    "user": "kaseywright"
+  },
+  {
+    "closed_at": "2026-04-17T11:33:27Z",
+    "comments": 2,
+    "created_at": "2026-03-05T15:45:21Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/8",
+    "labels": [
+      "DevQA"
+    ],
+    "number": 8,
+    "state": "closed",
+    "title": "SQLite",
+    "updated_at": "2026-07-02T19:51:09Z",
+    "user": "kaseywright"
+  },
+  {
+    "closed_at": "2026-04-14T16:55:52Z",
+    "comments": 1,
+    "created_at": "2026-03-05T15:49:50Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/9",
+    "labels": [
+      "DevQA"
+    ],
+    "number": 9,
+    "state": "closed",
+    "title": "Fluent server API integration",
+    "updated_at": "2026-07-02T19:51:11Z",
+    "user": "kaseywright"
+  },
+  {
+    "closed_at": "2026-04-14T16:55:53Z",
+    "comments": 1,
+    "created_at": "2026-03-06T13:58:14Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/10",
+    "labels": [],
+    "number": 10,
+    "state": "closed",
+    "title": "Initial CI/CD",
+    "updated_at": "2026-07-02T19:51:13Z",
+    "user": "kaseywright"
+  },
+  {
+    "closed_at": "2026-04-08T09:11:06Z",
+    "comments": 1,
+    "created_at": "2026-03-19T11:06:26Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/12",
+    "labels": [
+      "documentation"
+    ],
+    "number": 12,
+    "state": "closed",
+    "title": "Planning \u2014 Pre-development Architecture Study",
+    "updated_at": "2026-07-02T19:51:15Z",
+    "user": "Joel-Joseph-George"
+  },
+  {
+    "closed_at": "2026-07-01T09:17:59Z",
+    "comments": 1,
+    "created_at": "2026-04-08T09:55:14Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/14",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 14,
+    "state": "closed",
+    "title": "Mobile API integration & initial data sync",
+    "updated_at": "2026-07-02T19:51:17Z",
+    "user": "Joel-Joseph-George"
+  },
+  {
+    "closed_at": "2026-05-01T06:30:26Z",
+    "comments": 2,
+    "created_at": "2026-04-13T06:45:30Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/15",
+    "labels": [],
+    "number": 15,
+    "state": "closed",
+    "title": "Auth + identity bootstrap",
+    "updated_at": "2026-07-02T19:51:18Z",
+    "user": "Joel-Joseph-George"
+  },
+  {
+    "closed_at": "2026-04-17T11:33:28Z",
+    "comments": 1,
+    "created_at": "2026-04-13T06:49:56Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/16",
+    "labels": [],
+    "number": 16,
+    "state": "closed",
+    "title": "Fetch & upsert all API data",
+    "updated_at": "2026-07-02T19:51:20Z",
+    "user": "Joel-Joseph-George"
+  },
+  {
+    "closed_at": "2026-05-06T12:11:41Z",
+    "comments": 2,
+    "created_at": "2026-04-13T06:59:29Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/17",
+    "labels": [],
+    "number": 17,
+    "state": "closed",
+    "title": "Sync trigger + MMKV state",
+    "updated_at": "2026-07-02T19:51:22Z",
+    "user": "Joel-Joseph-George"
+  },
+  {
+    "closed_at": "2026-05-07T06:42:13Z",
+    "comments": 4,
+    "created_at": "2026-04-13T07:01:47Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/18",
+    "labels": [],
+    "number": 18,
+    "state": "closed",
+    "title": "Inline sync status UI",
+    "updated_at": "2026-07-02T19:51:23Z",
+    "user": "Joel-Joseph-George"
+  },
+  {
+    "closed_at": "2026-05-07T12:13:35Z",
+    "comments": 1,
+    "created_at": "2026-04-13T07:03:25Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/19",
+    "labels": [],
+    "number": 19,
+    "state": "closed",
+    "title": "Error handling",
+    "updated_at": "2026-07-02T19:51:25Z",
+    "user": "Joel-Joseph-George"
+  },
+  {
+    "closed_at": "2026-04-22T17:22:18Z",
+    "comments": 1,
+    "created_at": "2026-04-17T05:26:30Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/22",
+    "labels": [],
+    "number": 22,
+    "state": "closed",
+    "title": "Architecture of project",
+    "updated_at": "2026-07-02T19:51:27Z",
+    "user": "B3RN153"
+  },
+  {
+    "closed_at": "2026-07-29T21:46:47Z",
+    "comments": 2,
+    "created_at": "2026-04-20T05:13:36Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/23",
+    "labels": [],
+    "number": 23,
+    "state": "closed",
+    "title": "Audio recording",
+    "updated_at": "2026-07-29T21:46:47Z",
+    "user": "vipinpaul"
+  },
+  {
+    "closed_at": "2026-06-28T07:31:20Z",
+    "comments": 2,
+    "created_at": "2026-05-06T18:58:59Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/31",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 31,
+    "state": "closed",
+    "title": "Build My Work Tab",
+    "updated_at": "2026-07-02T19:34:07Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-06-28T07:31:24Z",
+    "comments": 2,
+    "created_at": "2026-05-07T15:28:06Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/32",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 32,
+    "state": "closed",
+    "title": "Build Projects Tab",
+    "updated_at": "2026-07-02T19:34:09Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-06-28T07:31:36Z",
+    "comments": 1,
+    "created_at": "2026-05-07T15:59:06Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/33",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 33,
+    "state": "closed",
+    "title": "Build View Project Page",
+    "updated_at": "2026-07-02T19:34:11Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-06-09T03:42:24Z",
+    "comments": 0,
+    "created_at": "2026-05-18T09:40:01Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/36",
+    "labels": [],
+    "number": 36,
+    "state": "closed",
+    "title": "Sync Data [ import only]",
+    "updated_at": "2026-07-02T19:51:30Z",
+    "user": "LijuJacob08"
+  },
+  {
+    "closed_at": "2026-06-28T07:31:42Z",
+    "comments": 2,
+    "created_at": "2026-05-19T20:43:46Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/38",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 38,
+    "state": "closed",
+    "title": "Build Cloud Sync Status Icon",
+    "updated_at": "2026-07-02T19:34:12Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-07-24T04:28:47Z",
+    "comments": 0,
+    "created_at": "2026-05-20T16:07:06Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/39",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 39,
+    "state": "closed",
+    "title": "Implement Prepare for Offline Screen Trigger and Re-surface Logic",
+    "updated_at": "2026-07-24T04:28:47Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-06-28T22:30:57Z",
+    "comments": 1,
+    "created_at": "2026-05-20T17:38:26Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/40",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 40,
+    "state": "closed",
+    "title": "Build Settings Page with Gear Icon Entry Point",
+    "updated_at": "2026-07-02T19:36:28Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-06-09T03:42:24Z",
+    "comments": 2,
+    "created_at": "2026-05-21T05:35:39Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/41",
+    "labels": [],
+    "number": 41,
+    "state": "closed",
+    "title": "Better-Auth Integeration",
+    "updated_at": "2026-07-02T19:51:32Z",
+    "user": "LijuJacob08"
+  },
+  {
+    "closed_at": "2026-07-03T04:43:03Z",
+    "comments": 1,
+    "created_at": "2026-06-04T15:33:45Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/47",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 47,
+    "state": "closed",
+    "title": "Build Drafting Page Shell with Tab Navigation",
+    "updated_at": "2026-07-03T04:43:03Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-07-10T15:37:11Z",
+    "comments": 0,
+    "created_at": "2026-06-04T15:34:05Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/48",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 48,
+    "state": "closed",
+    "title": "Build Bible Tab with Verse List and Sequential Playback",
+    "updated_at": "2026-07-10T15:37:11Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-07-23T03:46:13Z",
+    "comments": 4,
+    "created_at": "2026-06-04T15:34:28Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/49",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 49,
+    "state": "closed",
+    "title": "Build Record Tab with Draft Recording and Playback",
+    "updated_at": "2026-07-23T03:46:13Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-07-15T22:17:13Z",
+    "comments": 0,
+    "created_at": "2026-06-04T19:06:18Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/50",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 50,
+    "state": "closed",
+    "title": "Build Prepare for Offline Screen with Chapter Selection",
+    "updated_at": "2026-07-15T22:17:13Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-08-06T13:18:34Z",
+    "comments": 8,
+    "created_at": "2026-06-04T19:19:36Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/51",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 51,
+    "state": "closed",
+    "title": "Build Prepare for Offline Screen with Resource Download",
+    "updated_at": "2026-08-25T05:59:16Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-08-12T19:07:11Z",
+    "comments": 1,
+    "created_at": "2026-06-04T20:07:34Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/52",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 52,
+    "state": "closed",
+    "title": "Build Prepare for Offline Screen Download Controls",
+    "updated_at": "2026-08-19T14:59:11Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-08-12T19:06:55Z",
+    "comments": 3,
+    "created_at": "2026-06-04T20:25:02Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/53",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 53,
+    "state": "closed",
+    "title": "Build Prepare for Offline Screen Storage Management",
+    "updated_at": "2026-08-24T10:46:01Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-07-30T04:56:30Z",
+    "comments": 2,
+    "created_at": "2026-06-12T17:06:49Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/71",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 71,
+    "state": "closed",
+    "title": "Add Multi-Take Recording to Record Tab",
+    "updated_at": "2026-08-06T05:57:09Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-07-02T19:32:16Z",
+    "comments": 2,
+    "created_at": "2026-06-16T05:56:28Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/77",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 77,
+    "state": "closed",
+    "title": "Cloud storage",
+    "updated_at": "2026-07-02T19:34:29Z",
+    "user": "vipinpaul"
+  },
+  {
+    "closed_at": "2026-07-15T18:42:59Z",
+    "comments": 0,
+    "created_at": "2026-06-25T19:59:27Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/84",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 84,
+    "state": "closed",
+    "title": "Build Account Switcher Panel",
+    "updated_at": "2026-07-15T18:42:59Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-07-14T02:27:26Z",
+    "comments": 0,
+    "created_at": "2026-06-25T19:59:36Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/85",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 85,
+    "state": "closed",
+    "title": "Add Initials Indicator to Drafting Page Header",
+    "updated_at": "2026-07-14T02:27:26Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-07-16T17:41:24Z",
+    "comments": 0,
+    "created_at": "2026-06-25T19:59:47Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/86",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 86,
+    "state": "closed",
+    "title": "Implement Add Account Flow with Three-Account Cap",
+    "updated_at": "2026-07-16T17:41:24Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-07-17T20:43:59Z",
+    "comments": 0,
+    "created_at": "2026-06-25T20:00:00Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/87",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 87,
+    "state": "closed",
+    "title": "Implement Account Switching with Offline and Error Handling",
+    "updated_at": "2026-07-17T20:43:59Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-07-02T19:32:17Z",
+    "comments": 1,
+    "created_at": "2026-06-28T06:44:22Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/88",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 88,
+    "state": "closed",
+    "title": "Harden API token injection (remove mutable singleton + fake async)",
+    "updated_at": "2026-07-02T20:11:35Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-02T19:32:18Z",
+    "comments": 0,
+    "created_at": "2026-06-28T06:45:45Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/89",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 89,
+    "state": "closed",
+    "title": "Migrate token storage from react-native-keychain to expo-secure-store",
+    "updated_at": "2026-07-02T20:11:37Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-02T19:32:20Z",
+    "comments": 0,
+    "created_at": "2026-06-28T06:45:46Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/90",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 90,
+    "state": "closed",
+    "title": "Harden existing Login screen to team standard",
+    "updated_at": "2026-07-02T20:11:40Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-02T19:32:22Z",
+    "comments": 0,
+    "created_at": "2026-06-28T06:45:48Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/91",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 91,
+    "state": "closed",
+    "title": "Extract & harden forgot-password flow",
+    "updated_at": "2026-07-02T20:11:43Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-02T19:32:23Z",
+    "comments": 0,
+    "created_at": "2026-06-28T06:45:49Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/92",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 92,
+    "state": "closed",
+    "title": "Privacy Policy + Terms of Use screens & routing",
+    "updated_at": "2026-07-02T20:11:45Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-02T19:32:25Z",
+    "comments": 1,
+    "created_at": "2026-06-28T06:45:50Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/93",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 93,
+    "state": "closed",
+    "title": "Harden auth guard + launch session bootstrap",
+    "updated_at": "2026-07-02T20:11:48Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-23T02:53:52Z",
+    "comments": 3,
+    "created_at": "2026-06-28T06:45:52Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/94",
+    "labels": [
+      "enhancement",
+      "SP 1"
+    ],
+    "number": 94,
+    "state": "closed",
+    "title": "Audio storage on expo-file-system (net-new)",
+    "updated_at": "2026-07-23T02:53:52Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-23T03:34:16Z",
+    "comments": 2,
+    "created_at": "2026-06-28T06:45:54Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/95",
+    "labels": [
+      "enhancement",
+      "SP 1"
+    ],
+    "number": 95,
+    "state": "closed",
+    "title": "Recording engine on expo-audio",
+    "updated_at": "2026-07-23T03:34:16Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-23T17:51:01Z",
+    "comments": 3,
+    "created_at": "2026-06-28T06:45:57Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/96",
+    "labels": [
+      "enhancement",
+      "SP 1"
+    ],
+    "number": 96,
+    "state": "closed",
+    "title": "Playback engine on expo-audio + waveform decision",
+    "updated_at": "2026-07-23T17:51:01Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-23T03:43:48Z",
+    "comments": 2,
+    "created_at": "2026-06-28T06:45:58Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/97",
+    "labels": [
+      "enhancement",
+      "SP 1"
+    ],
+    "number": 97,
+    "state": "closed",
+    "title": "useVerseAudio as a testable state machine (net-new)",
+    "updated_at": "2026-07-23T03:43:48Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-23T03:37:27Z",
+    "comments": 5,
+    "created_at": "2026-06-28T06:45:59Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/98",
+    "labels": [
+      "enhancement",
+      "SP 1"
+    ],
+    "number": 98,
+    "state": "closed",
+    "title": "Multi-take support (take_number / is_latest semantics)",
+    "updated_at": "2026-07-23T03:37:27Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-27T05:08:47Z",
+    "comments": 1,
+    "created_at": "2026-06-28T06:46:01Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/99",
+    "labels": [
+      "enhancement",
+      "SP 1"
+    ],
+    "number": 99,
+    "state": "closed",
+    "title": "Recordings linkage + restore chapter_assignment FK/index via migration",
+    "updated_at": "2026-07-27T05:08:47Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-23T03:32:24Z",
+    "comments": 1,
+    "created_at": "2026-06-28T06:46:02Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/100",
+    "labels": [
+      "enhancement",
+      "SP 1"
+    ],
+    "number": 100,
+    "state": "closed",
+    "title": "Upload worker (recordingSync.ts) on expo-file-system (net-new)",
+    "updated_at": "2026-07-23T03:32:24Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-27T05:06:06Z",
+    "comments": 0,
+    "created_at": "2026-06-28T06:46:03Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/101",
+    "labels": [
+      "enhancement",
+      "SP 1"
+    ],
+    "number": 101,
+    "state": "closed",
+    "title": "Sync status surfaced in UI",
+    "updated_at": "2026-07-27T05:06:06Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-23T02:53:48Z",
+    "comments": 1,
+    "created_at": "2026-06-28T06:46:05Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/102",
+    "labels": [
+      "enhancement",
+      "SP 1",
+      "DevQA"
+    ],
+    "number": 102,
+    "state": "closed",
+    "title": "R2 server contract + /recordings/sync coordination",
+    "updated_at": "2026-07-23T02:53:48Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-27T05:12:40Z",
+    "comments": 2,
+    "created_at": "2026-06-28T06:46:06Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/103",
+    "labels": [
+      "enhancement",
+      "SP 1"
+    ],
+    "number": 103,
+    "state": "closed",
+    "title": "Harden multi-user schema: FKs/indexes via migration",
+    "updated_at": "2026-07-27T05:12:40Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-02T20:03:58Z",
+    "comments": 1,
+    "created_at": "2026-06-28T06:46:07Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/104",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 104,
+    "state": "closed",
+    "title": "Verify & harden per-user project list & My Work filtering",
+    "updated_at": "2026-07-02T20:14:35Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-29T21:33:58Z",
+    "comments": 3,
+    "created_at": "2026-06-28T06:46:09Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/105",
+    "labels": [
+      "enhancement",
+      "SP 1"
+    ],
+    "number": 105,
+    "state": "closed",
+    "title": "Active-user data attribution for recordings/edits",
+    "updated_at": "2026-07-29T21:33:58Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-06-30T18:21:46Z",
+    "comments": 1,
+    "created_at": "2026-06-28T06:46:10Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/106",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 106,
+    "state": "closed",
+    "title": "Local SQLite seed/fixtures for offline dev",
+    "updated_at": "2026-07-02T20:12:22Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-06-30T18:21:48Z",
+    "comments": 1,
+    "created_at": "2026-06-28T06:46:11Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/107",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 107,
+    "state": "closed",
+    "title": "Mock-API / offline dev mode when EXPO_PUBLIC_API_BASE_URL unset",
+    "updated_at": "2026-07-02T20:12:24Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-02T19:32:27Z",
+    "comments": 0,
+    "created_at": "2026-06-28T06:46:13Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/108",
+    "labels": [
+      "documentation"
+    ],
+    "number": 108,
+    "state": "closed",
+    "title": "Document local-only run workflow",
+    "updated_at": "2026-07-02T20:12:27Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-06-29T16:36:28Z",
+    "comments": 0,
+    "created_at": "2026-06-28T06:46:14Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/109",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 109,
+    "state": "closed",
+    "title": "Env audit + typed runtime validation",
+    "updated_at": "2026-07-02T20:14:38Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-23T03:31:33Z",
+    "comments": 0,
+    "created_at": "2026-06-28T06:46:15Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/110",
+    "labels": [
+      "enhancement",
+      "SP 1"
+    ],
+    "number": 110,
+    "state": "closed",
+    "title": "DB migration framework",
+    "updated_at": "2026-07-23T03:31:33Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-09T18:14:56Z",
+    "comments": 0,
+    "created_at": "2026-06-28T06:46:17Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/111",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 111,
+    "state": "closed",
+    "title": "Expo test infra (jest-expo mocks, gate fluent-api.test.ts)",
+    "updated_at": "2026-07-09T18:14:56Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-02T20:08:39Z",
+    "comments": 1,
+    "created_at": "2026-06-28T06:46:19Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/112",
+    "labels": [
+      "documentation"
+    ],
+    "number": 112,
+    "state": "closed",
+    "title": "EAS/dev-client onboarding + prebuild docs",
+    "updated_at": "2026-07-02T20:12:37Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-09T18:19:47Z",
+    "comments": 0,
+    "created_at": "2026-06-28T06:46:21Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/113",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 113,
+    "state": "closed",
+    "title": "API client architecture standard",
+    "updated_at": "2026-07-09T18:19:47Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-09T18:09:07Z",
+    "comments": 0,
+    "created_at": "2026-06-28T06:46:24Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/114",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 114,
+    "state": "closed",
+    "title": "Lint guardrails for handoff anti-patterns",
+    "updated_at": "2026-07-09T18:09:07Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-02T20:04:00Z",
+    "comments": 0,
+    "created_at": "2026-06-28T06:46:26Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/115",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 115,
+    "state": "closed",
+    "title": "[Epic] Authentication (better-auth)",
+    "updated_at": "2026-07-02T20:18:38Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-29T21:34:00Z",
+    "comments": 1,
+    "created_at": "2026-06-28T06:46:28Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/116",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 116,
+    "state": "closed",
+    "title": "[Epic] Audio recording & playback (Expo modules)",
+    "updated_at": "2026-07-29T21:34:00Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-29T21:34:01Z",
+    "comments": 1,
+    "created_at": "2026-06-28T06:46:30Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/117",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 117,
+    "state": "closed",
+    "title": "[Epic] Recording sync & cloud storage (R2)",
+    "updated_at": "2026-07-29T21:34:01Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-29T21:34:03Z",
+    "comments": 1,
+    "created_at": "2026-06-28T06:46:32Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/118",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 118,
+    "state": "closed",
+    "title": "[Epic] Multi-user projects",
+    "updated_at": "2026-07-29T21:34:03Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-02T20:04:01Z",
+    "comments": 4,
+    "created_at": "2026-06-28T06:46:34Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/119",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 119,
+    "state": "closed",
+    "title": "[Epic] Local-first dev experience (unblock from missing live API)",
+    "updated_at": "2026-07-02T20:18:43Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-29T21:34:04Z",
+    "comments": 1,
+    "created_at": "2026-06-28T06:46:35Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/120",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 120,
+    "state": "closed",
+    "title": "[Epic] Expo migration follow-ups & dev tooling",
+    "updated_at": "2026-07-29T21:34:04Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-02T20:04:03Z",
+    "comments": 0,
+    "created_at": "2026-06-28T07:25:30Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/121",
+    "labels": [
+      "bug"
+    ],
+    "number": 121,
+    "state": "closed",
+    "title": "Fix broken recordings join: queries reference non-existent recordings.chapter_assignment_id",
+    "updated_at": "2026-07-02T20:12:58Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-06-29T16:36:27Z",
+    "comments": 0,
+    "created_at": "2026-06-28T07:34:54Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/122",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 122,
+    "state": "closed",
+    "title": "Migrate to Expo SDK 56 CNG (Android-only)",
+    "updated_at": "2026-07-02T20:14:46Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-06-28T07:35:20Z",
+    "comments": 0,
+    "created_at": "2026-06-28T07:34:56Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/123",
+    "labels": [
+      "documentation"
+    ],
+    "number": 123,
+    "state": "closed",
+    "title": "Agent onboarding docs, PR workflow tooling & Android-only scope",
+    "updated_at": "2026-06-28T07:35:20Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-06-28T07:35:21Z",
+    "comments": 0,
+    "created_at": "2026-06-28T07:35:05Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/124",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 124,
+    "state": "closed",
+    "title": "Brand Android app launch: Fluent launcher icon + native splash",
+    "updated_at": "2026-06-28T07:35:21Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-06-28T07:35:22Z",
+    "comments": 0,
+    "created_at": "2026-06-28T07:35:08Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/125",
+    "labels": [
+      "documentation",
+      "dependencies"
+    ],
+    "number": 125,
+    "state": "closed",
+    "title": "Dependabot config + safe dependency merge workflow",
+    "updated_at": "2026-06-28T07:35:22Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-06-30T20:25:45Z",
+    "comments": 1,
+    "created_at": "2026-06-30T15:12:20Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/132",
+    "labels": [
+      "documentation"
+    ],
+    "number": 132,
+    "state": "closed",
+    "title": "Document Expo local dev auth troubleshooting",
+    "updated_at": "2026-07-02T19:54:37Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-06-30T20:25:47Z",
+    "comments": 1,
+    "created_at": "2026-06-30T15:12:34Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/133",
+    "labels": [
+      "documentation"
+    ],
+    "number": 133,
+    "state": "closed",
+    "title": "Clean up .gitignore for Android-only Expo project",
+    "updated_at": "2026-07-02T19:54:39Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-06-30T19:44:08Z",
+    "comments": 1,
+    "created_at": "2026-06-30T18:26:36Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/137",
+    "labels": [
+      "bug",
+      "enhancement"
+    ],
+    "number": 137,
+    "state": "closed",
+    "title": "fix(app): show actionable error when API URL is unset or unreachable",
+    "updated_at": "2026-07-02T19:54:42Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-02T20:04:04Z",
+    "comments": 0,
+    "created_at": "2026-06-30T20:14:55Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/139",
+    "labels": [
+      "enhancement",
+      "dependencies"
+    ],
+    "number": 139,
+    "state": "closed",
+    "title": "Add Expo Doctor to Dependabot workflow and CI",
+    "updated_at": "2026-07-02T20:04:56Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-20T18:08:58Z",
+    "comments": 1,
+    "created_at": "2026-06-30T21:06:34Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/146",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 146,
+    "state": "closed",
+    "title": "Add Upload/Download over Cellular Toggle to Settings and Sync Page",
+    "updated_at": "2026-07-20T18:08:58Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-10-14T15:52:23Z",
+    "comments": 2,
+    "created_at": "2026-07-01T11:47:08Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/147",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 147,
+    "state": "closed",
+    "title": "Add Download Queue Progress Bar to Coming Back Online Screen",
+    "updated_at": "2026-10-14T15:52:23Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-07-20T17:18:09Z",
+    "comments": 1,
+    "created_at": "2026-07-01T20:46:59Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/149",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 149,
+    "state": "closed",
+    "title": "Build Sync Page Core Layout and Upload Progress",
+    "updated_at": "2026-07-20T17:18:09Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-07-23T18:50:36Z",
+    "comments": 3,
+    "created_at": "2026-07-01T21:00:10Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/150",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 150,
+    "state": "closed",
+    "title": "Implement Upload Trigger and Sync Engine",
+    "updated_at": "2026-09-04T18:51:22Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-07-23T02:53:29Z",
+    "comments": 1,
+    "created_at": "2026-07-01T21:00:24Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/151",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 151,
+    "state": "closed",
+    "title": "Build Sync Page Action Controls",
+    "updated_at": "2026-07-23T02:53:29Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-08-25T22:00:07Z",
+    "comments": 2,
+    "created_at": "2026-07-01T21:00:36Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/152",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 152,
+    "state": "closed",
+    "title": "Implement Background Sync Notification with Upload Progress",
+    "updated_at": "2026-08-25T22:00:07Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-07-20T17:37:41Z",
+    "comments": 1,
+    "created_at": "2026-07-03T21:54:53Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/159",
+    "labels": [
+      "documentation"
+    ],
+    "number": 159,
+    "state": "closed",
+    "title": "Add agent delivery guardrails (AC, scope, abstraction, human QA)",
+    "updated_at": "2026-07-20T20:51:31Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-23T04:23:37Z",
+    "comments": 2,
+    "created_at": "2026-07-07T17:06:15Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/170",
+    "labels": [],
+    "number": 170,
+    "state": "closed",
+    "title": "Clear orphaned/unresolvable paused recording takes",
+    "updated_at": "2026-07-23T04:23:37Z",
+    "user": "coderabbitai[bot]"
+  },
+  {
+    "closed_at": "2026-07-10T02:34:41Z",
+    "comments": 0,
+    "created_at": "2026-07-09T21:52:43Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/173",
+    "labels": [
+      "documentation"
+    ],
+    "number": 173,
+    "state": "closed",
+    "title": "Adopt Phase 1 agent/process docs (no merge-gate changes)",
+    "updated_at": "2026-07-10T02:34:41Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-04T21:23:19Z",
+    "comments": 11,
+    "created_at": "2026-07-10T15:21:04Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/176",
+    "labels": [
+      "SP 1",
+      "DevQA"
+    ],
+    "number": 176,
+    "state": "closed",
+    "title": "Seekable playback: convert committed AAC take to M4A for Review scrubbing",
+    "updated_at": "2026-08-11T14:21:30Z",
+    "user": "fel-cesar"
+  },
+  {
+    "closed_at": "2026-07-23T03:43:44Z",
+    "comments": 1,
+    "created_at": "2026-07-10T15:32:31Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/177",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 177,
+    "state": "closed",
+    "title": "Resolve null `bibleTextId` for verses in the Record tab (sync/lookup gap)",
+    "updated_at": "2026-07-23T03:43:44Z",
+    "user": "fel-cesar"
+  },
+  {
+    "closed_at": "2026-10-06T19:06:47Z",
+    "comments": 1,
+    "created_at": "2026-07-17T14:43:57Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/188",
+    "labels": [],
+    "number": 188,
+    "state": "closed",
+    "title": "Add Resources Tab with Unit-Synced Content",
+    "updated_at": "2026-10-06T19:06:47Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-08-20T17:30:03Z",
+    "comments": 1,
+    "created_at": "2026-07-17T14:56:03Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/189",
+    "labels": [],
+    "number": 189,
+    "state": "closed",
+    "title": "Add Translation Notes Section to Resources Tab",
+    "updated_at": "2026-08-24T13:02:49Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-08-20T17:45:00Z",
+    "comments": 2,
+    "created_at": "2026-07-17T15:05:53Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/190",
+    "labels": [],
+    "number": 190,
+    "state": "closed",
+    "title": "Add Translation Questions Section to Resources Tab",
+    "updated_at": "2026-08-20T17:45:00Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-08-20T17:28:08Z",
+    "comments": 4,
+    "created_at": "2026-07-17T15:18:53Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/191",
+    "labels": [],
+    "number": 191,
+    "state": "closed",
+    "title": "Add Images & Maps Section to Resources Tab",
+    "updated_at": "2026-08-20T17:28:08Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-08-20T18:05:11Z",
+    "comments": 2,
+    "created_at": "2026-07-17T15:26:59Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/192",
+    "labels": [],
+    "number": 192,
+    "state": "closed",
+    "title": "Reuse Offline Sync Model for Resources Tab",
+    "updated_at": "2026-08-20T18:05:11Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-07-23T03:44:20Z",
+    "comments": 0,
+    "created_at": "2026-07-17T17:49:32Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/193",
+    "labels": [],
+    "number": 193,
+    "state": "closed",
+    "title": "Update Settings Menu to Reorganize Account Actions",
+    "updated_at": "2026-07-23T03:44:20Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-08-12T14:58:13Z",
+    "comments": 3,
+    "created_at": "2026-07-20T17:04:24Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/201",
+    "labels": [
+      "DevQA"
+    ],
+    "number": 201,
+    "state": "closed",
+    "title": "Build Prepare for Offline Download Queue and Resource Inventory",
+    "updated_at": "2026-08-24T09:13:03Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-23T02:53:33Z",
+    "comments": 0,
+    "created_at": "2026-07-20T18:21:44Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/204",
+    "labels": [
+      "documentation"
+    ],
+    "number": 204,
+    "state": "closed",
+    "title": "Truth-up agent docs and theme conventions to match main",
+    "updated_at": "2026-07-23T02:53:33Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-23T02:53:36Z",
+    "comments": 0,
+    "created_at": "2026-07-20T18:21:45Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/205",
+    "labels": [],
+    "number": 205,
+    "state": "closed",
+    "title": "Extract shared account session helpers for sign-out and switch",
+    "updated_at": "2026-07-23T02:53:36Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-23T03:02:37Z",
+    "comments": 0,
+    "created_at": "2026-07-20T18:21:46Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/206",
+    "labels": [],
+    "number": 206,
+    "state": "closed",
+    "title": "Route Sync/Settings pending-upload reads through hooks",
+    "updated_at": "2026-07-23T03:02:37Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-23T02:53:43Z",
+    "comments": 0,
+    "created_at": "2026-07-20T18:30:31Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/211",
+    "labels": [],
+    "number": 211,
+    "state": "closed",
+    "title": "Require filled PR template in delivery rules",
+    "updated_at": "2026-07-23T02:53:43Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-23T04:23:49Z",
+    "comments": 0,
+    "created_at": "2026-07-20T20:46:13Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/214",
+    "labels": [],
+    "number": 214,
+    "state": "closed",
+    "title": "Log Dependabot triage for 2026-07-20 batch",
+    "updated_at": "2026-07-23T04:23:49Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-23T03:30:42Z",
+    "comments": 0,
+    "created_at": "2026-07-20T20:54:07Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/217",
+    "labels": [],
+    "number": 217,
+    "state": "closed",
+    "title": "Document Project 4 Fluent Mobile Board as canonical tracker",
+    "updated_at": "2026-07-23T03:30:42Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-21T16:53:58Z",
+    "comments": 0,
+    "created_at": "2026-07-20T21:19:02Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/219",
+    "labels": [],
+    "number": 219,
+    "state": "closed",
+    "title": "Add nightly binary preview CI for internal Android testing",
+    "updated_at": "2026-07-21T16:53:58Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-20T21:59:01Z",
+    "comments": 1,
+    "created_at": "2026-07-20T21:56:40Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/221",
+    "labels": [],
+    "number": 221,
+    "state": "closed",
+    "title": "Rename home-screen app label to Fluent Mobile",
+    "updated_at": "2026-07-20T21:59:01Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-04T21:23:19Z",
+    "comments": 3,
+    "created_at": "2026-07-20T23:16:22Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/233",
+    "labels": [
+      "enhancement",
+      "SP 1",
+      "DevQA"
+    ],
+    "number": 233,
+    "state": "closed",
+    "title": "Native AAC\u2192M4A remux module (MediaMuxer) for seekable Review scrubbing",
+    "updated_at": "2026-08-04T21:23:19Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-18T21:36:59Z",
+    "comments": 2,
+    "created_at": "2026-07-23T03:38:49Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/234",
+    "labels": [
+      "bug"
+    ],
+    "number": 234,
+    "state": "closed",
+    "title": "Fix FK failure in chapter assignment sync for PM with no assigned work",
+    "updated_at": "2026-08-18T21:36:59Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-08T18:31:29Z",
+    "comments": 5,
+    "created_at": "2026-07-23T04:49:36Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/235",
+    "labels": [],
+    "number": 235,
+    "state": "closed",
+    "title": "Wire Source audio dock to real fetch + playback",
+    "updated_at": "2026-09-08T18:31:29Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-23T05:14:10Z",
+    "comments": 0,
+    "created_at": "2026-07-23T05:03:13Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/236",
+    "labels": [
+      "bug"
+    ],
+    "number": 236,
+    "state": "closed",
+    "title": "Fix blank Record tab, drafting chrome, and draft playback footguns",
+    "updated_at": "2026-07-23T05:14:10Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-23T05:18:00Z",
+    "comments": 0,
+    "created_at": "2026-07-23T05:16:36Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/238",
+    "labels": [
+      "bug"
+    ],
+    "number": 238,
+    "state": "closed",
+    "title": "Fix recording upload failing on expo-file-system getInfoAsync deprecation",
+    "updated_at": "2026-07-23T05:18:00Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-23T05:33:46Z",
+    "comments": 0,
+    "created_at": "2026-07-23T05:33:12Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/240",
+    "labels": [
+      "bug"
+    ],
+    "number": 240,
+    "state": "closed",
+    "title": "Fix verse-audio FormData upload and Record CR leftovers",
+    "updated_at": "2026-07-23T05:33:46Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-07-23T18:50:19Z",
+    "comments": 0,
+    "created_at": "2026-07-23T18:30:35Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/249",
+    "labels": [],
+    "number": 249,
+    "state": "closed",
+    "title": "Fix nightly EAS profile to ship standalone internal APK (no Metro)",
+    "updated_at": "2026-07-23T18:50:19Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-10T11:59:40Z",
+    "comments": 3,
+    "created_at": "2026-07-23T18:50:20Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/253",
+    "labels": [
+      "enhancement",
+      "good first issue"
+    ],
+    "number": 253,
+    "state": "closed",
+    "title": "Wire SyncScreen Pause/Cancel/Sync Now to upload orchestrator",
+    "updated_at": "2026-08-20T17:29:24Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-06T04:59:16Z",
+    "comments": 1,
+    "created_at": "2026-07-23T19:54:01Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/255",
+    "labels": [],
+    "number": 255,
+    "state": "closed",
+    "title": "Replace Settings Menu Overlay with Slide-Out Panel",
+    "updated_at": "2026-08-06T04:59:16Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": null,
+    "comments": 1,
+    "created_at": "2026-07-24T14:46:36Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/256",
+    "labels": [],
+    "number": 256,
+    "state": "open",
+    "title": "Implement Conflict Detection for Offline Audio Takes",
+    "updated_at": "2026-09-07T06:52:34Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": null,
+    "comments": 3,
+    "created_at": "2026-07-24T18:08:25Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/257",
+    "labels": [],
+    "number": 257,
+    "state": "open",
+    "title": "Implement Local Stage Advancement Queue for Offline Sync",
+    "updated_at": "2026-09-28T16:59:07Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-08-25T22:03:02Z",
+    "comments": 1,
+    "created_at": "2026-07-24T19:07:30Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/258",
+    "labels": [],
+    "number": 258,
+    "state": "closed",
+    "title": "Implement Stage Advancement Action on Drafting Page",
+    "updated_at": "2026-08-25T22:03:02Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-08-13T05:51:10Z",
+    "comments": 2,
+    "created_at": "2026-07-24T19:34:37Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/259",
+    "labels": [],
+    "number": 259,
+    "state": "closed",
+    "title": "Cross-account take visibility, ownership, and attribution on shared devices",
+    "updated_at": "2026-08-24T11:34:46Z",
+    "user": "mattrace-buildmidwestern"
+  },
+  {
+    "closed_at": "2026-08-28T20:56:29Z",
+    "comments": 1,
+    "created_at": "2026-07-24T20:13:20Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/260",
+    "labels": [],
+    "number": 260,
+    "state": "closed",
+    "title": "Add Conflict Indicator to Mobile Chapter List",
+    "updated_at": "2026-08-28T20:56:29Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-07-29T21:33:45Z",
+    "comments": 1,
+    "created_at": "2026-07-24T22:09:22Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/261",
+    "labels": [],
+    "number": 261,
+    "state": "closed",
+    "title": "Cross-account take visibility, ownership, and attribution on shared devices",
+    "updated_at": "2026-07-29T21:33:45Z",
+    "user": "mattrace-buildmidwestern"
+  },
+  {
+    "closed_at": "2026-08-25T05:02:40Z",
+    "comments": 2,
+    "created_at": "2026-07-29T17:16:01Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/267",
+    "labels": [],
+    "number": 267,
+    "state": "closed",
+    "title": "Add Claim and Assignment Indicators to Chapter List Rows",
+    "updated_at": "2026-08-25T05:02:40Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-08-28T18:58:23Z",
+    "comments": 2,
+    "created_at": "2026-07-29T17:33:30Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/268",
+    "labels": [],
+    "number": 268,
+    "state": "closed",
+    "title": "Implement Online Chapter Claiming on First Recording",
+    "updated_at": "2026-09-09T05:25:38Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-10-06T19:06:48Z",
+    "comments": 2,
+    "created_at": "2026-07-29T17:33:32Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/269",
+    "labels": [],
+    "number": 269,
+    "state": "closed",
+    "title": "Add Recording Warning on Taken Chapters",
+    "updated_at": "2026-10-06T19:06:48Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-08-26T04:44:16Z",
+    "comments": 1,
+    "created_at": "2026-07-29T17:37:25Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/270",
+    "labels": [],
+    "number": 270,
+    "state": "closed",
+    "title": "Implement Offline Chapter Claiming on First Recording",
+    "updated_at": "2026-08-26T04:44:16Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": null,
+    "comments": 3,
+    "created_at": "2026-07-29T18:15:40Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/271",
+    "labels": [],
+    "number": 271,
+    "state": "open",
+    "title": "Implement Reconnect Claim Sync and Conflict Detection",
+    "updated_at": "2026-09-29T19:02:45Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-08-27T22:12:16Z",
+    "comments": 3,
+    "created_at": "2026-07-29T20:25:59Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/273",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 273,
+    "state": "closed",
+    "title": "Refresh Assignment and Stage State on Chapter List Open",
+    "updated_at": "2026-09-02T04:14:05Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-07-31T07:16:55Z",
+    "comments": 0,
+    "created_at": "2026-07-29T21:34:35Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/274",
+    "labels": [
+      "documentation"
+    ],
+    "number": 274,
+    "state": "closed",
+    "title": "Require Closes #NNN only on PRs targeting main (stacked-PR tracker guardrail)",
+    "updated_at": "2026-07-31T07:16:55Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-12T17:49:14Z",
+    "comments": 1,
+    "created_at": "2026-07-29T21:34:36Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/275",
+    "labels": [
+      "documentation",
+      "DevQA"
+    ],
+    "number": 275,
+    "state": "closed",
+    "title": "Truth-up AGENT_ONBOARDING: recording is wired; fix Jest suite count",
+    "updated_at": "2026-08-25T12:39:06Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-18T21:26:09Z",
+    "comments": 0,
+    "created_at": "2026-07-29T21:46:24Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/276",
+    "labels": [],
+    "number": 276,
+    "state": "closed",
+    "title": "Migrate navigation from React Navigation stack to Expo Router",
+    "updated_at": "2026-08-18T21:26:09Z",
+    "user": "mattrace-buildmidwestern"
+  },
+  {
+    "closed_at": "2026-07-30T16:36:26Z",
+    "comments": 0,
+    "created_at": "2026-07-29T22:02:26Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/277",
+    "labels": [
+      "documentation"
+    ],
+    "number": 277,
+    "state": "closed",
+    "title": "Document Project 4 board rules, Expo-first deps, and cross-tool agent entrypoints",
+    "updated_at": "2026-07-30T16:36:26Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-27T04:59:10Z",
+    "comments": 0,
+    "created_at": "2026-07-30T15:58:36Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/279",
+    "labels": [
+      "preview-build"
+    ],
+    "number": 279,
+    "state": "closed",
+    "title": "Add All-Takes View with Canonical Selection to Record Tab",
+    "updated_at": "2026-08-27T04:59:10Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-07-31T06:19:03Z",
+    "comments": 0,
+    "created_at": "2026-07-30T20:06:31Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/282",
+    "labels": [
+      "dependencies"
+    ],
+    "number": 282,
+    "state": "closed",
+    "title": "Upgrade to Expo SDK 57 (React Native 0.86)",
+    "updated_at": "2026-07-31T06:19:03Z",
+    "user": "mattrace-buildmidwestern"
+  },
+  {
+    "closed_at": "2026-07-31T07:06:15Z",
+    "comments": 0,
+    "created_at": "2026-07-31T06:39:33Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/289",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 289,
+    "state": "closed",
+    "title": "Preview-build: binary APKs only, comment linked ticket, move to In QA",
+    "updated_at": "2026-07-31T07:06:15Z",
+    "user": "mattrace-buildmidwestern"
+  },
+  {
+    "closed_at": "2026-08-28T19:02:03Z",
+    "comments": 2,
+    "created_at": "2026-07-31T07:08:54Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/291",
+    "labels": [
+      "bug"
+    ],
+    "number": 291,
+    "state": "closed",
+    "title": "Offline-first auth session durability (persist, soft reauth, per-request tokens, multi-account)",
+    "updated_at": "2026-08-28T19:02:03Z",
+    "user": "mattrace-buildmidwestern"
+  },
+  {
+    "closed_at": "2026-08-06T18:45:31Z",
+    "comments": 2,
+    "created_at": "2026-07-31T07:09:03Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/292",
+    "labels": [
+      "bug"
+    ],
+    "number": 292,
+    "state": "closed",
+    "title": "Stop wiping auth credentials on sync 401; use reauth-required",
+    "updated_at": "2026-08-06T18:45:31Z",
+    "user": "mattrace-buildmidwestern"
+  },
+  {
+    "closed_at": "2026-08-06T18:45:34Z",
+    "comments": 2,
+    "created_at": "2026-07-31T07:09:13Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/293",
+    "labels": [
+      "bug"
+    ],
+    "number": 293,
+    "state": "closed",
+    "title": "Fix add-account and restoreSession multi-account session safety",
+    "updated_at": "2026-08-06T18:45:34Z",
+    "user": "mattrace-buildmidwestern"
+  },
+  {
+    "closed_at": "2026-08-06T18:45:36Z",
+    "comments": 2,
+    "created_at": "2026-07-31T07:09:16Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/294",
+    "labels": [
+      "bug"
+    ],
+    "number": 294,
+    "state": "closed",
+    "title": "Pass per-request auth tokens; stop mutating global authToken in sync",
+    "updated_at": "2026-08-06T18:45:36Z",
+    "user": "mattrace-buildmidwestern"
+  },
+  {
+    "closed_at": "2026-08-27T23:17:07Z",
+    "comments": 0,
+    "created_at": "2026-08-04T20:46:53Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/298",
+    "labels": [
+      "bug"
+    ],
+    "number": 298,
+    "state": "closed",
+    "title": "Investigate intermittent multi-take Review Maximum update depth on Android devices",
+    "updated_at": "2026-08-27T23:17:07Z",
+    "user": "mattrace-buildmidwestern"
+  },
+  {
+    "closed_at": "2026-08-11T22:21:51Z",
+    "comments": 0,
+    "created_at": "2026-08-04T21:55:59Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/300",
+    "labels": [
+      "documentation",
+      "chore"
+    ],
+    "number": 300,
+    "state": "closed",
+    "title": "Stop auto-closing issues on PR merge; hand off to In QA",
+    "updated_at": "2026-08-11T22:21:51Z",
+    "user": "mattrace-buildmidwestern"
+  },
+  {
+    "closed_at": "2026-08-11T22:21:10Z",
+    "comments": 0,
+    "created_at": "2026-08-11T16:59:49Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/314",
+    "labels": [],
+    "number": 314,
+    "state": "closed",
+    "title": "Align Expo SDK 57 patch dependencies via expo install --fix",
+    "updated_at": "2026-08-11T22:21:11Z",
+    "user": "mattrace"
+  },
+  {
+    "closed_at": "2026-08-12T14:23:23Z",
+    "comments": 0,
+    "created_at": "2026-08-11T22:16:14Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/317",
+    "labels": [],
+    "number": 317,
+    "state": "closed",
+    "title": "Enforce PR template, description CI check, CODEOWNERS, and required reviews",
+    "updated_at": "2026-08-12T14:23:23Z",
+    "user": "mattrace"
+  },
+  {
+    "closed_at": "2026-08-11T22:49:12Z",
+    "comments": 2,
+    "created_at": "2026-08-11T22:38:27Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/319",
+    "labels": [],
+    "number": 319,
+    "state": "closed",
+    "title": "Add pr-demo-video agent skill for Cursor and Claude Code",
+    "updated_at": "2026-08-11T22:49:12Z",
+    "user": "mattrace"
+  },
+  {
+    "closed_at": "2026-08-13T14:53:43Z",
+    "comments": 0,
+    "created_at": "2026-08-12T23:52:27Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/324",
+    "labels": [],
+    "number": 324,
+    "state": "closed",
+    "title": "Add /start-issue delivery loop and shared agent command surface",
+    "updated_at": "2026-08-13T14:53:43Z",
+    "user": "mattrace"
+  },
+  {
+    "closed_at": "2026-08-13T17:31:12Z",
+    "comments": 0,
+    "created_at": "2026-08-13T03:42:48Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/326",
+    "labels": [],
+    "number": 326,
+    "state": "closed",
+    "title": "Forward habitual yarn CLI to npm (keep npm as source of truth)",
+    "updated_at": "2026-08-13T17:31:12Z",
+    "user": "mattrace"
+  },
+  {
+    "closed_at": "2026-08-18T21:47:49Z",
+    "comments": 0,
+    "created_at": "2026-08-13T15:28:14Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/329",
+    "labels": [
+      "documentation",
+      "chore"
+    ],
+    "number": 329,
+    "state": "closed",
+    "title": "Document QA process and align CI/automations to pre-merge preview gate",
+    "updated_at": "2026-08-18T21:47:49Z",
+    "user": "mattrace"
+  },
+  {
+    "closed_at": "2026-08-25T21:42:36Z",
+    "comments": 1,
+    "created_at": "2026-08-13T17:20:50Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/330",
+    "labels": [],
+    "number": 330,
+    "state": "closed",
+    "title": "Enforce QA-required PR merge gate (status/label/checklist)",
+    "updated_at": "2026-08-25T21:42:36Z",
+    "user": "mattrace"
+  },
+  {
+    "closed_at": "2026-10-08T16:51:09Z",
+    "comments": 3,
+    "created_at": "2026-08-13T18:05:43Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/333",
+    "labels": [],
+    "number": 333,
+    "state": "closed",
+    "title": "Update Projects Tab to Milestones with Flat Milestone List and Offline Controls",
+    "updated_at": "2026-10-08T16:51:09Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-08-20T17:21:23Z",
+    "comments": 0,
+    "created_at": "2026-08-18T20:50:17Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/343",
+    "labels": [],
+    "number": 343,
+    "state": "closed",
+    "title": "Align Expo SDK 57 package versions so Quality Gates pass",
+    "updated_at": "2026-08-20T17:21:23Z",
+    "user": "mattrace"
+  },
+  {
+    "closed_at": "2026-08-20T17:26:55Z",
+    "comments": 1,
+    "created_at": "2026-08-20T17:23:16Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/347",
+    "labels": [],
+    "number": 347,
+    "state": "closed",
+    "title": "QA #191: Images unavailable lacks Retry; Settings white screen on user switch",
+    "updated_at": "2026-08-20T17:26:55Z",
+    "user": "mattrace"
+  },
+  {
+    "closed_at": "2026-08-28T02:48:40Z",
+    "comments": 1,
+    "created_at": "2026-08-20T17:25:52Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/348",
+    "labels": [
+      "bug"
+    ],
+    "number": 348,
+    "state": "closed",
+    "title": "QA #191: Images unavailable lacks Retry; Settings white screen on user switch",
+    "updated_at": "2026-08-28T02:49:26Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-10-06T19:06:44Z",
+    "comments": 1,
+    "created_at": "2026-08-25T14:16:59Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/365",
+    "labels": [],
+    "number": 365,
+    "state": "closed",
+    "title": "[A+] Composite grades initiative tracker (Architecture / Product / Tests / Process)",
+    "updated_at": "2026-10-06T19:06:44Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-25T22:04:24Z",
+    "comments": 0,
+    "created_at": "2026-08-25T14:17:04Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/366",
+    "labels": [],
+    "number": 366,
+    "state": "closed",
+    "title": "[A+] ESLint: ban UI fetch, raw SQL, and @react-navigation app imports",
+    "updated_at": "2026-08-25T22:04:24Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-26T16:59:33Z",
+    "comments": 0,
+    "created_at": "2026-08-25T14:17:09Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/367",
+    "labels": [],
+    "number": 367,
+    "state": "closed",
+    "title": "[A+] CI-enforce architecture-guard (not warn-only) + unit tests",
+    "updated_at": "2026-08-26T16:59:33Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-25T22:05:43Z",
+    "comments": 0,
+    "created_at": "2026-08-25T14:17:13Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/368",
+    "labels": [],
+    "number": 368,
+    "state": "closed",
+    "title": "[A+] Audit @react-navigation direct dependencies (remove or document)",
+    "updated_at": "2026-08-25T22:05:43Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-25T22:03:43Z",
+    "comments": 0,
+    "created_at": "2026-08-25T14:17:18Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/369",
+    "labels": [],
+    "number": 369,
+    "state": "closed",
+    "title": "[A+] Unit tests: sync.ts step orchestration beyond auth",
+    "updated_at": "2026-08-25T22:03:43Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-25T22:06:24Z",
+    "comments": 0,
+    "created_at": "2026-08-25T14:17:23Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/370",
+    "labels": [],
+    "number": 370,
+    "state": "closed",
+    "title": "[A+] Unit tests: useVerseAudio hook",
+    "updated_at": "2026-08-25T22:06:24Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-26T16:59:41Z",
+    "comments": 0,
+    "created_at": "2026-08-25T14:17:29Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/371",
+    "labels": [],
+    "number": 371,
+    "state": "closed",
+    "title": "[A+] Unit tests: useRecordingEngine hook",
+    "updated_at": "2026-08-26T16:59:41Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-26T16:59:49Z",
+    "comments": 0,
+    "created_at": "2026-08-25T14:17:34Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/372",
+    "labels": [],
+    "number": 372,
+    "state": "closed",
+    "title": "[A+] Unit tests: Prepare Offline service/query modules",
+    "updated_at": "2026-08-26T16:59:49Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-26T16:59:57Z",
+    "comments": 0,
+    "created_at": "2026-08-25T14:17:38Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/373",
+    "labels": [],
+    "number": 373,
+    "state": "closed",
+    "title": "[A+] Unit tests: useDeviceAccounts, useActiveAccountSummary, useSync",
+    "updated_at": "2026-08-26T16:59:57Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-26T17:00:05Z",
+    "comments": 0,
+    "created_at": "2026-08-25T14:17:43Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/374",
+    "labels": [],
+    "number": 374,
+    "state": "closed",
+    "title": "[A+] Resolve sync.switchUser no-op stub (implement or remove)",
+    "updated_at": "2026-08-26T17:00:05Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-26T17:00:35Z",
+    "comments": 0,
+    "created_at": "2026-08-25T14:17:49Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/375",
+    "labels": [],
+    "number": 375,
+    "state": "closed",
+    "title": "[A+] Shared-device multi-account nightly QA script",
+    "updated_at": "2026-08-26T17:00:35Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-26T17:00:13Z",
+    "comments": 0,
+    "created_at": "2026-08-25T14:17:54Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/376",
+    "labels": [],
+    "number": 376,
+    "state": "closed",
+    "title": "[A+] Document live required branch-protection checks in docs/ci.md",
+    "updated_at": "2026-08-26T17:00:13Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-25T22:08:46Z",
+    "comments": 1,
+    "created_at": "2026-08-25T14:17:59Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/377",
+    "labels": [],
+    "number": 377,
+    "state": "closed",
+    "title": "[A+] Make Project 4 QA handoff Status updates reliable (board token)",
+    "updated_at": "2026-08-25T22:08:46Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-25T22:08:48Z",
+    "comments": 4,
+    "created_at": "2026-08-25T14:18:04Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/378",
+    "labels": [],
+    "number": 378,
+    "state": "closed",
+    "title": "[A+] In QA column hygiene \u2014 approved change set only",
+    "updated_at": "2026-08-25T22:08:48Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-26T17:28:09Z",
+    "comments": 0,
+    "created_at": "2026-08-25T14:18:09Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/379",
+    "labels": [],
+    "number": 379,
+    "state": "closed",
+    "title": "[A+] Align format vs format:check globs",
+    "updated_at": "2026-08-26T17:28:09Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-26T17:00:27Z",
+    "comments": 0,
+    "created_at": "2026-08-25T14:18:13Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/380",
+    "labels": [],
+    "number": 380,
+    "state": "closed",
+    "title": "[A+] Dependabot one-at-a-time + doctor checklist",
+    "updated_at": "2026-08-26T17:00:27Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-08-31T06:18:49Z",
+    "comments": 2,
+    "created_at": "2026-08-27T12:32:11Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/404",
+    "labels": [],
+    "number": 404,
+    "state": "closed",
+    "title": "Fix Record Tab Scrolling to Move as One Page Instead of Independently Scrolling Sections",
+    "updated_at": "2026-09-14T08:32:31Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-08-27T22:54:23Z",
+    "comments": 0,
+    "created_at": "2026-08-27T16:06:36Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/405",
+    "labels": [
+      "DevQA",
+      "dependencies",
+      "github_actions"
+    ],
+    "number": 405,
+    "state": "closed",
+    "title": "CI parity: SHA-pin all GitHub Actions and add the enforcement gate",
+    "updated_at": "2026-08-27T22:54:23Z",
+    "user": "kaseywright"
+  },
+  {
+    "closed_at": "2026-09-02T08:51:53Z",
+    "comments": 1,
+    "created_at": "2026-08-27T18:18:41Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/407",
+    "labels": [],
+    "number": 407,
+    "state": "closed",
+    "title": "Add Verse/Pericope Toggle to Mobile Settings",
+    "updated_at": "2026-09-09T05:16:41Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": null,
+    "comments": 6,
+    "created_at": "2026-08-27T18:18:49Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/408",
+    "labels": [],
+    "number": 408,
+    "state": "open",
+    "title": "Update Bible Tab for Verse/Pericope Toggle",
+    "updated_at": "2026-09-21T11:10:22Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-09-17T11:47:08Z",
+    "comments": 5,
+    "created_at": "2026-08-27T18:18:53Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/409",
+    "labels": [],
+    "number": 409,
+    "state": "closed",
+    "title": "Update Record Tab for Verse/Pericope Toggle",
+    "updated_at": "2026-10-08T09:09:30Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-10-06T19:06:39Z",
+    "comments": 6,
+    "created_at": "2026-08-27T18:19:01Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/410",
+    "labels": [],
+    "number": 410,
+    "state": "closed",
+    "title": "Support Mixed-Mode Recording with Cross-Granularity Take Labeling",
+    "updated_at": "2026-10-06T19:06:39Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-10-06T19:06:40Z",
+    "comments": 4,
+    "created_at": "2026-08-27T18:19:10Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/411",
+    "labels": [],
+    "number": 411,
+    "state": "closed",
+    "title": "Implement Cross-Granularity Playback with Stitching and Labeling",
+    "updated_at": "2026-10-06T19:06:41Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-09-10T20:28:02Z",
+    "comments": 3,
+    "created_at": "2026-08-27T19:11:32Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/412",
+    "labels": [],
+    "number": 412,
+    "state": "closed",
+    "title": "Build Source Audio Player for Bible Tab",
+    "updated_at": "2026-09-15T14:29:24Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-08-28T02:49:11Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/417",
+    "labels": [
+      "bug"
+    ],
+    "number": 417,
+    "state": "open",
+    "title": "Prepare Offline: persist Reference Images as kind:image in download_queue for Resources offline gating",
+    "updated_at": "2026-08-28T02:50:30Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-02T21:03:19Z",
+    "comments": 0,
+    "created_at": "2026-08-28T19:36:53Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/420",
+    "labels": [
+      "enhancement",
+      "dependencies",
+      "chore",
+      "github_actions"
+    ],
+    "number": 420,
+    "state": "closed",
+    "title": "Deterministic PR CI + weekday Expo compatibility sync",
+    "updated_at": "2026-09-02T21:03:19Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-10T17:16:12Z",
+    "comments": 0,
+    "created_at": "2026-08-28T19:54:07Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/422",
+    "labels": [
+      "enhancement",
+      "dependencies",
+      "chore",
+      "github_actions"
+    ],
+    "number": 422,
+    "state": "closed",
+    "title": "Weekday Expo compatibility sync job",
+    "updated_at": "2026-09-10T17:16:12Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-08-28T19:54:12Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/423",
+    "labels": [
+      "enhancement",
+      "chore",
+      "github_actions"
+    ],
+    "number": 423,
+    "state": "open",
+    "title": "Enable merge queue on main (optional)",
+    "updated_at": "2026-08-28T19:54:12Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-08-28T19:54:12Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/424",
+    "labels": [
+      "enhancement",
+      "dependencies",
+      "chore",
+      "github_actions"
+    ],
+    "number": 424,
+    "state": "open",
+    "title": "Dependabot ownership split + limited auto-merge",
+    "updated_at": "2026-08-28T19:54:12Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-01T19:00:47Z",
+    "comments": 1,
+    "created_at": "2026-08-31T04:46:36Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/428",
+    "labels": [
+      "bug"
+    ],
+    "number": 428,
+    "state": "closed",
+    "title": "Chapter assignment sync silently drops assigned_user_id / peer_checker_id for users not locally known.",
+    "updated_at": "2026-09-10T04:14:52Z",
+    "user": "B3RN153"
+  },
+  {
+    "closed_at": "2026-09-10T17:39:55Z",
+    "comments": 0,
+    "created_at": "2026-08-31T14:59:51Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/435",
+    "labels": [
+      "documentation",
+      "dependencies"
+    ],
+    "number": 435,
+    "state": "closed",
+    "title": "Harden Dependabot: ignore unsafe bumps + align workflow docs",
+    "updated_at": "2026-09-10T17:39:56Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-08T20:10:54Z",
+    "comments": 3,
+    "created_at": "2026-09-01T18:57:58Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/438",
+    "labels": [
+      "enhancement",
+      "DevQA"
+    ],
+    "number": 438,
+    "state": "closed",
+    "title": "Sync pericope boundaries to local SQLite (set-level hybrid, bandwidth-first)",
+    "updated_at": "2026-09-08T20:10:54Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": null,
+    "comments": 5,
+    "created_at": "2026-09-02T17:57:16Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/442",
+    "labels": [],
+    "number": 442,
+    "state": "open",
+    "title": "Implement Implicit Peer Checker Assignment",
+    "updated_at": "2026-10-14T19:46:15Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-09-15T12:54:17Z",
+    "comments": 3,
+    "created_at": "2026-09-02T17:57:26Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/443",
+    "labels": [],
+    "number": 443,
+    "state": "closed",
+    "title": "Add Advanced and Complete Stage Progression",
+    "updated_at": "2026-09-17T11:50:43Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": null,
+    "comments": 2,
+    "created_at": "2026-09-03T16:41:34Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/446",
+    "labels": [
+      "DevQA"
+    ],
+    "number": 446,
+    "state": "open",
+    "title": "Offline download queue keys on Aquifer contentId, so a re-uploaded recording (same id, new sourceUrl) is never re-fetched",
+    "updated_at": "2026-10-14T13:16:32Z",
+    "user": "JEdward7777"
+  },
+  {
+    "closed_at": "2026-09-08T20:25:23Z",
+    "comments": 2,
+    "created_at": "2026-09-03T18:06:33Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/447",
+    "labels": [
+      "enhancement",
+      "DevQA"
+    ],
+    "number": 447,
+    "state": "closed",
+    "title": "Bundle known FIA/FCBH pericope set JSON in the APK (bandwidth-first seed)",
+    "updated_at": "2026-09-11T04:44:39Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": null,
+    "comments": 3,
+    "created_at": "2026-09-03T20:16:34Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/448",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 448,
+    "state": "open",
+    "title": "Clarify Record-tab messaging when source text is missing after sync",
+    "updated_at": "2026-10-14T20:43:29Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-09-04T15:29:04Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/451",
+    "labels": [],
+    "number": 451,
+    "state": "open",
+    "title": "Build Comment Entry Points, Composer & Panel",
+    "updated_at": "2026-09-11T19:13:07Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-09-04T15:50:17Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/452",
+    "labels": [],
+    "number": 452,
+    "state": "open",
+    "title": "Build Observer Read-Only Draft View",
+    "updated_at": "2026-09-11T19:13:09Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-09-08T10:21:46Z",
+    "comments": 0,
+    "created_at": "2026-09-08T10:11:16Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/459",
+    "labels": [
+      "bug",
+      "ci"
+    ],
+    "number": 459,
+    "state": "closed",
+    "title": "Nightly APK schedule never builds \u2014 delayed cron dropped by drift window",
+    "updated_at": "2026-09-08T10:21:46Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-10T20:28:33Z",
+    "comments": 0,
+    "created_at": "2026-09-08T10:34:51Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/464",
+    "labels": [
+      "documentation"
+    ],
+    "number": 464,
+    "state": "closed",
+    "title": "Automate Project 4 ticket lifecycle (In Progress \u2192 In PR Review \u2192 In QA / Done)",
+    "updated_at": "2026-09-10T20:28:33Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-09T16:36:29Z",
+    "comments": 0,
+    "created_at": "2026-09-09T15:40:09Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/469",
+    "labels": [
+      "bug"
+    ],
+    "number": 469,
+    "state": "closed",
+    "title": "Bug: Local bible_texts.id does not match API verse id (upload sends wrong bibleTextId)",
+    "updated_at": "2026-09-09T16:36:29Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-10T17:07:35Z",
+    "comments": 0,
+    "created_at": "2026-09-09T15:40:39Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/470",
+    "labels": [
+      "bug"
+    ],
+    "number": 470,
+    "state": "closed",
+    "title": "Bug: Sync Now triage \u2014 claim queue hardening + metadata error visibility",
+    "updated_at": "2026-09-10T17:07:35Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-09T20:32:02Z",
+    "comments": 1,
+    "created_at": "2026-09-09T20:30:11Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/474",
+    "labels": [],
+    "number": 474,
+    "state": "closed",
+    "title": "Take card pericope subtitle truncates on Record tab",
+    "updated_at": "2026-09-09T20:32:02Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-06T19:06:42Z",
+    "comments": 3,
+    "created_at": "2026-09-10T17:06:29Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/476",
+    "labels": [],
+    "number": 476,
+    "state": "closed",
+    "title": "Extend Assignment Indicator to Reflect Current-Stage Assignee",
+    "updated_at": "2026-10-06T19:06:42Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-09-10T17:44:36Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/483",
+    "labels": [
+      "bug"
+    ],
+    "number": 483,
+    "state": "open",
+    "title": "Projects tab fails with disk I/O error after full offline sync on physical device",
+    "updated_at": "2026-09-10T17:49:20Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-09-11T23:49:43Z",
+    "comments": 1,
+    "created_at": "2026-09-10T17:50:13Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/484",
+    "labels": [
+      "chore",
+      "ci"
+    ],
+    "number": 484,
+    "state": "closed",
+    "title": "Simplify nightly schedule: one cron + Slack on build complete",
+    "updated_at": "2026-09-11T23:49:43Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-15T04:42:21Z",
+    "comments": 4,
+    "created_at": "2026-09-10T17:50:38Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/485",
+    "labels": [
+      "bug"
+    ],
+    "number": 485,
+    "state": "closed",
+    "title": "Fix Waveform Shifting Left of Center When Recording Starts",
+    "updated_at": "2026-09-17T11:51:24Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-09-16T04:15:04Z",
+    "comments": 2,
+    "created_at": "2026-09-10T17:51:10Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/486",
+    "labels": [
+      "bug"
+    ],
+    "number": 486,
+    "state": "closed",
+    "title": "Fix Audio Error When Resuming After Pause or Screen Lock",
+    "updated_at": "2026-09-17T11:52:47Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-09-11T21:38:07Z",
+    "comments": 3,
+    "created_at": "2026-09-10T19:51:35Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/488",
+    "labels": [],
+    "number": 488,
+    "state": "closed",
+    "title": "Android Maestro E2E program",
+    "updated_at": "2026-09-11T21:38:07Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-11T20:55:54Z",
+    "comments": 1,
+    "created_at": "2026-09-10T19:51:59Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/489",
+    "labels": [],
+    "number": 489,
+    "state": "closed",
+    "title": "Maestro foundation: harness, selectors, agent loop",
+    "updated_at": "2026-09-11T20:55:54Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-10T19:54:17Z",
+    "comments": 1,
+    "created_at": "2026-09-10T19:52:08Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/490",
+    "labels": [],
+    "number": 490,
+    "state": "closed",
+    "title": "Stable Maestro selectors (Home, lists, Settings testIDs)",
+    "updated_at": "2026-09-10T19:54:47Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-11T20:53:07Z",
+    "comments": 0,
+    "created_at": "2026-09-10T19:52:12Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/491",
+    "labels": [],
+    "number": 491,
+    "state": "closed",
+    "title": "Maestro smokes: auth, navigation, record, sync/offline, edges",
+    "updated_at": "2026-09-11T20:53:07Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-10T19:54:15Z",
+    "comments": 1,
+    "created_at": "2026-09-10T19:52:19Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/492",
+    "labels": [],
+    "number": 492,
+    "state": "closed",
+    "title": "Maestro smoke: Home + drafting navigation",
+    "updated_at": "2026-09-10T19:54:48Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-10T19:54:17Z",
+    "comments": 1,
+    "created_at": "2026-09-10T19:52:28Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/493",
+    "labels": [],
+    "number": 493,
+    "state": "closed",
+    "title": "Maestro smoke: Record happy path (mic, capture, playback)",
+    "updated_at": "2026-09-10T19:54:48Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-10T19:54:18Z",
+    "comments": 1,
+    "created_at": "2026-09-10T19:52:28Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/494",
+    "labels": [],
+    "number": 494,
+    "state": "closed",
+    "title": "Maestro smoke: Sync + Prepare for Offline",
+    "updated_at": "2026-09-10T19:54:49Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-11T21:13:35Z",
+    "comments": 1,
+    "created_at": "2026-09-10T19:52:50Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/495",
+    "labels": [],
+    "number": 495,
+    "state": "closed",
+    "title": "Maestro: multi-account isolation (nightly checklist A\u2013D)",
+    "updated_at": "2026-09-11T21:13:35Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-10T19:54:17Z",
+    "comments": 1,
+    "created_at": "2026-09-10T19:52:59Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/496",
+    "labels": [],
+    "number": 496,
+    "state": "closed",
+    "title": "Maestro edge flows: reauth, legal, mic/notification deny",
+    "updated_at": "2026-09-10T19:54:50Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-11T21:24:19Z",
+    "comments": 2,
+    "created_at": "2026-09-10T19:53:06Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/497",
+    "labels": [
+      "documentation"
+    ],
+    "number": 497,
+    "state": "closed",
+    "title": "Maestro playbook + informational CI (workflow_dispatch)",
+    "updated_at": "2026-09-11T21:28:10Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-10T19:54:18Z",
+    "comments": 1,
+    "created_at": "2026-09-10T19:53:13Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/498",
+    "labels": [],
+    "number": 498,
+    "state": "closed",
+    "title": "Maestro CI (manual workflow_dispatch Android smoke; informational)",
+    "updated_at": "2026-09-10T19:55:10Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-09-10T19:57:14Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/499",
+    "labels": [],
+    "number": 499,
+    "state": "open",
+    "title": "Defer: Prettier 3 + TypeScript 7 tooling upgrade",
+    "updated_at": "2026-09-10T19:57:14Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-15T04:47:40Z",
+    "comments": 2,
+    "created_at": "2026-09-11T14:44:19Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/503",
+    "labels": [],
+    "number": 503,
+    "state": "closed",
+    "title": "Fix Back Navigation from Prepare for Offline Project Download",
+    "updated_at": "2026-09-17T12:48:45Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": null,
+    "comments": 2,
+    "created_at": "2026-09-11T14:46:23Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/504",
+    "labels": [],
+    "number": 504,
+    "state": "open",
+    "title": "Wire Tier 2/3 Resources to API in Customize Download",
+    "updated_at": "2026-10-19T16:47:35Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-09-11T19:01:00Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/505",
+    "labels": [],
+    "number": 505,
+    "state": "open",
+    "title": "Update My Work Tab with Stage Accordions and Observer Chapters",
+    "updated_at": "2026-10-14T21:30:15Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-09-11T21:18:10Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/508",
+    "labels": [],
+    "number": 508,
+    "state": "open",
+    "title": "Add Observer Offline Draft Download",
+    "updated_at": "2026-10-14T21:28:36Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-09-11T23:36:36Z",
+    "comments": 6,
+    "created_at": "2026-09-11T21:41:24Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/510",
+    "labels": [
+      "bug"
+    ],
+    "number": 510,
+    "state": "closed",
+    "title": "Fix Maestro CI script: dash rejects set -o pipefail",
+    "updated_at": "2026-09-11T23:36:36Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-11T23:40:29Z",
+    "comments": 3,
+    "created_at": "2026-09-11T22:18:01Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/513",
+    "labels": [],
+    "number": 513,
+    "state": "closed",
+    "title": "Align Maestro CI/docs with Expo MCP + Maestro official guidance",
+    "updated_at": "2026-09-11T23:40:29Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-12T00:08:18Z",
+    "comments": 1,
+    "created_at": "2026-09-11T23:33:40Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/516",
+    "labels": [],
+    "number": 516,
+    "state": "closed",
+    "title": "Migrate Maestro E2E to EAS Workflows (Android e2e-test + type: maestro)",
+    "updated_at": "2026-09-12T00:08:18Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": null,
+    "comments": 1,
+    "created_at": "2026-09-14T17:06:17Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/526",
+    "labels": [
+      "chore"
+    ],
+    "number": 526,
+    "state": "open",
+    "title": "Mobile Feature Audit [Epic]",
+    "updated_at": "2026-09-24T14:50:50Z",
+    "user": "kaseywright"
+  },
+  {
+    "closed_at": "2026-09-29T17:11:46Z",
+    "comments": 4,
+    "created_at": "2026-09-14T17:13:11Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/527",
+    "labels": [
+      "chore"
+    ],
+    "number": 527,
+    "state": "closed",
+    "title": "Drafting page Audit",
+    "updated_at": "2026-10-18T12:34:42Z",
+    "user": "kaseywright"
+  },
+  {
+    "closed_at": null,
+    "comments": 4,
+    "created_at": "2026-09-14T17:21:53Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/528",
+    "labels": [
+      "chore"
+    ],
+    "number": 528,
+    "state": "open",
+    "title": "Play, record, and re-record audio Audit",
+    "updated_at": "2026-10-18T12:34:44Z",
+    "user": "kaseywright"
+  },
+  {
+    "closed_at": null,
+    "comments": 5,
+    "created_at": "2026-09-14T17:21:57Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/529",
+    "labels": [
+      "chore"
+    ],
+    "number": 529,
+    "state": "open",
+    "title": "Going offline Audit",
+    "updated_at": "2026-10-18T12:34:46Z",
+    "user": "kaseywright"
+  },
+  {
+    "closed_at": null,
+    "comments": 5,
+    "created_at": "2026-09-14T17:22:02Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/530",
+    "labels": [
+      "chore"
+    ],
+    "number": 530,
+    "state": "open",
+    "title": "Returning online and synchronizing changes Audit",
+    "updated_at": "2026-10-18T12:34:48Z",
+    "user": "kaseywright"
+  },
+  {
+    "closed_at": null,
+    "comments": 3,
+    "created_at": "2026-09-14T17:22:06Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/531",
+    "labels": [
+      "chore"
+    ],
+    "number": 531,
+    "state": "open",
+    "title": "Viewing and listening to resources Audit",
+    "updated_at": "2026-10-18T12:34:50Z",
+    "user": "kaseywright"
+  },
+  {
+    "closed_at": "2026-10-09T18:46:27Z",
+    "comments": 4,
+    "created_at": "2026-09-14T17:22:09Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/532",
+    "labels": [
+      "chore"
+    ],
+    "number": 532,
+    "state": "closed",
+    "title": "Chapter assignment and claiming Audit",
+    "updated_at": "2026-10-18T12:34:52Z",
+    "user": "kaseywright"
+  },
+  {
+    "closed_at": null,
+    "comments": 3,
+    "created_at": "2026-09-14T17:22:14Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/533",
+    "labels": [
+      "chore"
+    ],
+    "number": 533,
+    "state": "open",
+    "title": "Offline chapter assignment Audit",
+    "updated_at": "2026-10-18T12:34:53Z",
+    "user": "kaseywright"
+  },
+  {
+    "closed_at": null,
+    "comments": 4,
+    "created_at": "2026-09-14T17:22:18Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/534",
+    "labels": [
+      "chore"
+    ],
+    "number": 534,
+    "state": "open",
+    "title": "Pericope view Audit",
+    "updated_at": "2026-10-18T12:34:55Z",
+    "user": "kaseywright"
+  },
+  {
+    "closed_at": null,
+    "comments": 2,
+    "created_at": "2026-09-14T21:54:48Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/536",
+    "labels": [],
+    "number": 536,
+    "state": "open",
+    "title": "Upgrade Fluent Mobile to Expo SDK 58",
+    "updated_at": "2026-09-29T18:48:07Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-21T04:38:57Z",
+    "comments": 2,
+    "created_at": "2026-09-16T15:21:29Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/540",
+    "labels": [],
+    "number": 540,
+    "state": "closed",
+    "title": "Fix Pericope View Next Navigation and Source Text Display",
+    "updated_at": "2026-09-28T13:40:03Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-09-22T17:18:06Z",
+    "comments": 4,
+    "created_at": "2026-09-16T19:35:33Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/542",
+    "labels": [],
+    "number": 542,
+    "state": "closed",
+    "title": "Fix Chapter Advancement to Require All Verses Recorded on Mobile",
+    "updated_at": "2026-10-08T13:08:14Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-10-14T04:37:52Z",
+    "comments": 3,
+    "created_at": "2026-09-17T13:20:37Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/544",
+    "labels": [
+      "bug"
+    ],
+    "number": 544,
+    "state": "closed",
+    "title": "Fix Waveform Scrubbing to Seek to Tapped Position",
+    "updated_at": "2026-10-15T17:45:59Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-09-23T00:51:08Z",
+    "comments": 0,
+    "created_at": "2026-09-17T15:27:57Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/545",
+    "labels": [
+      "bug"
+    ],
+    "number": 545,
+    "state": "closed",
+    "title": "Bug: Sync Now can no-op while pending uploads remain",
+    "updated_at": "2026-09-23T00:51:08Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-30T20:08:52Z",
+    "comments": 1,
+    "created_at": "2026-09-17T15:28:13Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/546",
+    "labels": [
+      "bug"
+    ],
+    "number": 546,
+    "state": "closed",
+    "title": "Bug: Download start ignores Wi\u2011Fi/cellular gate that blocks Sync Now",
+    "updated_at": "2026-09-30T20:08:52Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-10-09T18:46:20Z",
+    "comments": 1,
+    "created_at": "2026-09-17T15:28:29Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/547",
+    "labels": [
+      "documentation"
+    ],
+    "number": 547,
+    "state": "closed",
+    "title": "Docs: Refresh recordings-sync-contract.md for fluent-api main (verse-audio + R2)",
+    "updated_at": "2026-10-09T18:46:20Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-09-22T23:49:35Z",
+    "comments": 0,
+    "created_at": "2026-09-17T15:28:30Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/548",
+    "labels": [
+      "bug"
+    ],
+    "number": 548,
+    "state": "closed",
+    "title": "Bug: Sync page does not show recordings.upload_error for failed takes",
+    "updated_at": "2026-09-22T23:49:35Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-10-07T21:25:57Z",
+    "comments": 0,
+    "created_at": "2026-09-17T21:34:24Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/549",
+    "labels": [
+      "bug",
+      "ci"
+    ],
+    "number": 549,
+    "state": "closed",
+    "title": "Nightly APK blocked by online expo-doctor; Slack mislabels failures as skipped",
+    "updated_at": "2026-10-07T21:25:57Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-10-09T06:51:50Z",
+    "comments": 1,
+    "created_at": "2026-09-21T05:56:55Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/553",
+    "labels": [],
+    "number": 553,
+    "state": "closed",
+    "title": "Fix role selector background in dark mode",
+    "updated_at": "2026-10-09T06:51:52Z",
+    "user": "Roslin22"
+  },
+  {
+    "closed_at": "2026-09-21T06:12:17Z",
+    "comments": 1,
+    "created_at": "2026-09-21T06:02:30Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/554",
+    "labels": [],
+    "number": 554,
+    "state": "closed",
+    "title": "Fix role selector background in dark mode",
+    "updated_at": "2026-09-21T06:12:17Z",
+    "user": "Roslin22"
+  },
+  {
+    "closed_at": "2026-10-01T22:17:15Z",
+    "comments": 0,
+    "created_at": "2026-09-22T23:49:43Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/564",
+    "labels": [
+      "bug"
+    ],
+    "number": 564,
+    "state": "closed",
+    "title": "Restore Bible tab onOpenRecord (unit tap should open Record)",
+    "updated_at": "2026-10-01T22:17:15Z",
+    "user": "mattrace-buildmidwestern"
+  },
+  {
+    "closed_at": "2026-10-12T15:38:55Z",
+    "comments": 2,
+    "created_at": "2026-09-23T17:22:15Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/567",
+    "labels": [
+      "bug"
+    ],
+    "number": 567,
+    "state": "closed",
+    "title": "Restore kill-safe recovery and background auto-pause for in-progress takes [Play, record, and re-record audio Audit]",
+    "updated_at": "2026-10-14T19:53:47Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T18:25:15Z",
+    "comments": 0,
+    "created_at": "2026-09-23T17:22:17Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/568",
+    "labels": [
+      "bug"
+    ],
+    "number": 568,
+    "state": "closed",
+    "title": "Block drawer navigation while a take is recording or paused [Play, record, and re-record audio Audit]",
+    "updated_at": "2026-10-08T18:25:15Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-15T20:18:00Z",
+    "comments": 0,
+    "created_at": "2026-09-23T17:22:19Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/569",
+    "labels": [
+      "bug"
+    ],
+    "number": 569,
+    "state": "closed",
+    "title": "\"Maximum update depth exceeded\" during Record tab playback (regression of #298) [Play, record, and re-record audio Audit]",
+    "updated_at": "2026-10-15T20:18:00Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T17:26:52Z",
+    "comments": 1,
+    "created_at": "2026-09-23T17:22:21Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/570",
+    "labels": [
+      "bug"
+    ],
+    "number": 570,
+    "state": "closed",
+    "title": "Offer Resume or Discard when leaving an in-progress take [Play, record, and re-record audio Audit]",
+    "updated_at": "2026-10-14T10:03:00Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-05T04:48:02Z",
+    "comments": 2,
+    "created_at": "2026-09-23T17:44:19Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/571",
+    "labels": [
+      "bug"
+    ],
+    "number": 571,
+    "state": "closed",
+    "title": "Align stitched take row waveform and timer with other take rows [Play, record, and re-record audio Audit]",
+    "updated_at": "2026-10-14T19:12:19Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-09-23T18:36:06Z",
+    "comments": 1,
+    "created_at": "2026-09-23T18:33:19Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/572",
+    "labels": [],
+    "number": 572,
+    "state": "closed",
+    "title": "Pause in-flight downloads when transport becomes blocked",
+    "updated_at": "2026-09-23T18:36:06Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-09T18:46:24Z",
+    "comments": 2,
+    "created_at": "2026-09-24T00:29:37Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/574",
+    "labels": [
+      "enhancement",
+      "chore"
+    ],
+    "number": 574,
+    "state": "closed",
+    "title": "Maestro E2E + safe fixtures for chapter ownership, taken warning, and online claim",
+    "updated_at": "2026-10-09T18:46:24Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": null,
+    "comments": 1,
+    "created_at": "2026-09-24T13:51:30Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/578",
+    "labels": [
+      "bug"
+    ],
+    "number": 578,
+    "state": "open",
+    "title": "Show downloaded resources offline in the Resources tab [Going offline Audit]",
+    "updated_at": "2026-10-01T23:34:03Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-13T20:37:28Z",
+    "comments": 1,
+    "created_at": "2026-09-24T13:51:32Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/579",
+    "labels": [
+      "bug"
+    ],
+    "number": 579,
+    "state": "closed",
+    "title": "Play downloaded source audio offline [Going offline Audit]",
+    "updated_at": "2026-10-13T20:37:28Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T18:21:21Z",
+    "comments": 0,
+    "created_at": "2026-09-24T13:51:34Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/580",
+    "labels": [
+      "bug"
+    ],
+    "number": 580,
+    "state": "closed",
+    "title": "Unassigned Prepare for Offline: open the chapter accordion and disable Download [Going offline Audit]",
+    "updated_at": "2026-10-08T18:21:21Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T18:21:30Z",
+    "comments": 0,
+    "created_at": "2026-09-24T13:51:35Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/581",
+    "labels": [
+      "bug"
+    ],
+    "number": 581,
+    "state": "closed",
+    "title": "Make the Prepare for Offline auto-prompt fire consistently [Going offline Audit]",
+    "updated_at": "2026-10-08T18:21:30Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T18:28:11Z",
+    "comments": 1,
+    "created_at": "2026-09-25T17:20:09Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/584",
+    "labels": [
+      "bug"
+    ],
+    "number": 584,
+    "state": "closed",
+    "title": "Upload pericope takes to the server [Pericope view Audit]",
+    "updated_at": "2026-10-08T18:28:11Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": null,
+    "comments": 3,
+    "created_at": "2026-09-25T17:20:13Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/585",
+    "labels": [
+      "bug"
+    ],
+    "number": 585,
+    "state": "open",
+    "title": "Block chapter advancement while pericope takes cannot upload [Pericope view Audit]",
+    "updated_at": "2026-10-14T21:49:58Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T18:22:22Z",
+    "comments": 0,
+    "created_at": "2026-09-25T17:20:16Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/586",
+    "labels": [
+      "bug"
+    ],
+    "number": 586,
+    "state": "closed",
+    "title": "Count verse coverage toward pericope-mode chapter completeness [Pericope view Audit]",
+    "updated_at": "2026-10-08T18:22:22Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": null,
+    "comments": 2,
+    "created_at": "2026-09-25T17:20:21Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/587",
+    "labels": [
+      "enhancement",
+      "DevQA",
+      "chore"
+    ],
+    "number": 587,
+    "state": "open",
+    "title": "Hydrate unbundled pericope sets from GET /pericope-sets/{id} [Pericope view Audit]",
+    "updated_at": "2026-10-14T13:11:10Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T20:43:44Z",
+    "comments": 0,
+    "created_at": "2026-09-25T17:20:25Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/588",
+    "labels": [
+      "bug"
+    ],
+    "number": 588,
+    "state": "closed",
+    "title": "Handle pericope mode when the project has no local pericope data [Pericope view Audit]",
+    "updated_at": "2026-10-08T20:43:44Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T18:21:38Z",
+    "comments": 0,
+    "created_at": "2026-09-25T17:20:29Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/589",
+    "labels": [
+      "bug"
+    ],
+    "number": 589,
+    "state": "closed",
+    "title": "Show the full pericope take label on the Record tab [Pericope view Audit]",
+    "updated_at": "2026-10-08T18:21:38Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T18:32:16Z",
+    "comments": 0,
+    "created_at": "2026-09-25T21:13:48Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/591",
+    "labels": [
+      "bug"
+    ],
+    "number": 591,
+    "state": "closed",
+    "title": "Hide empty Translation Notes and Questions sections in the Resources tab [Viewing and listening to resources Audit]",
+    "updated_at": "2026-10-08T18:32:16Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T18:21:55Z",
+    "comments": 0,
+    "created_at": "2026-09-25T21:13:50Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/592",
+    "labels": [
+      "bug"
+    ],
+    "number": 592,
+    "state": "closed",
+    "title": "Show a loading state instead of the offline empty message while connectivity resolves [Viewing and listening to resources Audit]",
+    "updated_at": "2026-10-08T18:21:55Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T18:22:14Z",
+    "comments": 1,
+    "created_at": "2026-09-25T21:13:52Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/593",
+    "labels": [
+      "bug"
+    ],
+    "number": 593,
+    "state": "closed",
+    "title": "Show Resources for the whole pericope in pericope mode [Viewing and listening to resources Audit]",
+    "updated_at": "2026-10-08T18:22:14Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-09-25T21:13:53Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/594",
+    "labels": [
+      "bug"
+    ],
+    "number": 594,
+    "state": "open",
+    "title": "Show caption and attribution for Images & Maps [Viewing and listening to resources Audit]",
+    "updated_at": "2026-10-09T19:19:52Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T20:47:01Z",
+    "comments": 1,
+    "created_at": "2026-09-25T21:13:55Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/595",
+    "labels": [
+      "bug"
+    ],
+    "number": 595,
+    "state": "closed",
+    "title": "Make source audio follow verses when verse timestamps are missing [Viewing and listening to resources Audit]",
+    "updated_at": "2026-10-08T20:47:01Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T18:22:05Z",
+    "comments": 0,
+    "created_at": "2026-09-25T21:13:57Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/596",
+    "labels": [
+      "bug"
+    ],
+    "number": 596,
+    "state": "closed",
+    "title": "Fix \"Maximum update depth exceeded\" in the source audio player [Viewing and listening to resources Audit]",
+    "updated_at": "2026-10-08T18:22:05Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-09T16:54:48Z",
+    "comments": 0,
+    "created_at": "2026-09-25T21:14:00Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/597",
+    "labels": [
+      "chore"
+    ],
+    "number": 597,
+    "state": "closed",
+    "title": "Fix the Maestro images fullscreen smoke selector [Viewing and listening to resources Audit]",
+    "updated_at": "2026-10-09T16:54:48Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": null,
+    "comments": 1,
+    "created_at": "2026-09-28T16:57:29Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/599",
+    "labels": [
+      "bug"
+    ],
+    "number": 599,
+    "state": "open",
+    "title": "Stop the upload foreground service from crashing the app [Returning online and sync changes Audit]",
+    "updated_at": "2026-10-02T17:59:06Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-13T19:45:58Z",
+    "comments": 0,
+    "created_at": "2026-09-28T16:57:34Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/600",
+    "labels": [
+      "bug"
+    ],
+    "number": 600,
+    "state": "closed",
+    "title": "Show chapter-based upload progress on Sync and in the notification [Returning online and sync changes Audit]",
+    "updated_at": "2026-10-13T19:45:58Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T16:34:36Z",
+    "comments": 1,
+    "created_at": "2026-09-28T16:57:38Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/601",
+    "labels": [
+      "bug"
+    ],
+    "number": 601,
+    "state": "closed",
+    "title": "Keep server reachability current after reconnect and on cold start [Returning online and sync changes Audit]",
+    "updated_at": "2026-10-08T16:34:36Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T16:38:23Z",
+    "comments": 0,
+    "created_at": "2026-09-28T16:57:43Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/602",
+    "labels": [
+      "bug"
+    ],
+    "number": 602,
+    "state": "closed",
+    "title": "Do not keep network failures as sync errors on the Sync page [Returning online and sync changes Audit]",
+    "updated_at": "2026-10-08T16:38:23Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-12T15:17:53Z",
+    "comments": 4,
+    "created_at": "2026-09-28T16:57:47Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/603",
+    "labels": [
+      "bug"
+    ],
+    "number": 603,
+    "state": "closed",
+    "title": "Keep the header sync icon in step with pending and failed uploads [Returning online and sync changes Audit]",
+    "updated_at": "2026-10-15T12:23:36Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T16:36:11Z",
+    "comments": 0,
+    "created_at": "2026-09-28T16:57:51Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/604",
+    "labels": [
+      "bug"
+    ],
+    "number": 604,
+    "state": "closed",
+    "title": "Pause silently when the connection drops mid-upload [Returning online and sync changes Audit]",
+    "updated_at": "2026-10-08T16:36:11Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-09T19:12:10Z",
+    "comments": 0,
+    "created_at": "2026-09-28T16:57:56Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/605",
+    "labels": [
+      "bug"
+    ],
+    "number": 605,
+    "state": "closed",
+    "title": "Upload takes recorded while already online [Returning online and sync changes Audit]",
+    "updated_at": "2026-10-09T19:12:11Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-09-29T17:27:09Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/607",
+    "labels": [],
+    "number": 607,
+    "state": "open",
+    "title": "Ownership Maestro fixtures: conflict / open Peer Check seeds + claim baseline restore",
+    "updated_at": "2026-09-29T17:27:09Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-10-08T20:48:31Z",
+    "comments": 1,
+    "created_at": "2026-09-29T19:01:23Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/610",
+    "labels": [
+      "bug"
+    ],
+    "number": 610,
+    "state": "closed",
+    "title": "Surface offline claim conflicts when a PM assigned the chapter or the offline window exceeds 5 minutes [Offline chapter assignment Audit]",
+    "updated_at": "2026-10-08T20:48:31Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-09T16:54:41Z",
+    "comments": 0,
+    "created_at": "2026-09-29T19:01:25Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/611",
+    "labels": [
+      "bug"
+    ],
+    "number": 611,
+    "state": "closed",
+    "title": "Push pending offline claims before the reconnect upload and the chapter-list refresh [Offline chapter assignment Audit]",
+    "updated_at": "2026-10-09T16:54:41Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T20:44:00Z",
+    "comments": 0,
+    "created_at": "2026-09-29T19:01:27Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/612",
+    "labels": [
+      "bug"
+    ],
+    "number": 612,
+    "state": "closed",
+    "title": "Stop downloading full master data on every Sync Now and ignore repeated taps [Offline chapter assignment Audit]",
+    "updated_at": "2026-10-08T20:44:00Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T20:44:15Z",
+    "comments": 0,
+    "created_at": "2026-09-29T19:01:29Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/613",
+    "labels": [
+      "bug"
+    ],
+    "number": 613,
+    "state": "closed",
+    "title": "Upload takes to the project unit they were recorded in [Offline chapter assignment Audit]",
+    "updated_at": "2026-10-08T20:44:15Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-07T21:28:45Z",
+    "comments": 0,
+    "created_at": "2026-09-30T15:30:13Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/615",
+    "labels": [],
+    "number": 615,
+    "state": "closed",
+    "title": "Add runtime-selectable legacy and next UI theme foundation",
+    "updated_at": "2026-10-07T21:28:45Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-10-07T21:29:17Z",
+    "comments": 0,
+    "created_at": "2026-09-30T16:02:12Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/617",
+    "labels": [],
+    "number": 617,
+    "state": "closed",
+    "title": "Populate Next theme tokens from Figma Foundations (Hardware default)",
+    "updated_at": "2026-10-07T21:29:17Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-10-08T20:43:52Z",
+    "comments": 0,
+    "created_at": "2026-09-30T18:20:00Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/619",
+    "labels": [
+      "bug"
+    ],
+    "number": 619,
+    "state": "closed",
+    "title": "Pause downloads when Wi-Fi drops and cellular is off [Going offline Audit]",
+    "updated_at": "2026-10-08T20:43:52Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T20:25:09Z",
+    "comments": 0,
+    "created_at": "2026-09-30T18:20:06Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/620",
+    "labels": [
+      "bug"
+    ],
+    "number": 620,
+    "state": "closed",
+    "title": "Do not treat SQLite read errors as zero pending uploads [Returning online and sync changes Audit]",
+    "updated_at": "2026-10-08T20:25:09Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T16:32:17Z",
+    "comments": 0,
+    "created_at": "2026-09-30T18:20:10Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/621",
+    "labels": [
+      "bug"
+    ],
+    "number": 621,
+    "state": "closed",
+    "title": "Stop the Sync icon flashing pending before All synced [Returning online and sync changes Audit]",
+    "updated_at": "2026-10-08T16:32:17Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T19:45:39Z",
+    "comments": 0,
+    "created_at": "2026-09-30T18:20:16Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/622",
+    "labels": [
+      "bug"
+    ],
+    "number": 622,
+    "state": "closed",
+    "title": "Warn about unsynced recordings on drawer Sign Out [Returning online and sync changes Audit]",
+    "updated_at": "2026-10-08T19:45:39Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-08T18:21:46Z",
+    "comments": 0,
+    "created_at": "2026-09-30T18:20:21Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/623",
+    "labels": [
+      "bug"
+    ],
+    "number": 623,
+    "state": "closed",
+    "title": "Confirm before deleting a pericope take from Verse mode [Pericope view Audit]",
+    "updated_at": "2026-10-08T18:21:46Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": "2026-10-09T15:13:25Z",
+    "comments": 0,
+    "created_at": "2026-10-06T14:53:41Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/638",
+    "labels": [],
+    "number": 638,
+    "state": "closed",
+    "title": "Next UI: Key component, component gallery and Figma-to-component workflow",
+    "updated_at": "2026-10-09T15:13:25Z",
+    "user": "jskager"
+  },
+  {
+    "closed_at": "2026-10-08T18:26:48Z",
+    "comments": 0,
+    "created_at": "2026-10-07T14:51:35Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/642",
+    "labels": [
+      "bug"
+    ],
+    "number": 642,
+    "state": "closed",
+    "title": "Master-data sync 401s: /languages /books /bibles called via publicRequest",
+    "updated_at": "2026-10-08T18:26:48Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-10-08T20:49:22Z",
+    "comments": 0,
+    "created_at": "2026-10-08T17:30:49Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/665",
+    "labels": [],
+    "number": 665,
+    "state": "closed",
+    "title": "Point preview and nightly builds at QA (qa.app / qa.api), not Dev",
+    "updated_at": "2026-10-08T20:49:22Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": null,
+    "comments": 1,
+    "created_at": "2026-10-08T23:05:31Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/670",
+    "labels": [
+      "enhancement"
+    ],
+    "number": 670,
+    "state": "open",
+    "title": "Progressive first-login sync: unblock Home before full catalogue + bible-text pull",
+    "updated_at": "2026-10-09T19:36:24Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": "2026-10-15T19:40:24Z",
+    "comments": 0,
+    "created_at": "2026-10-09T14:23:32Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/675",
+    "labels": [
+      "enhancement",
+      "API Work Required",
+      "BLOCKED"
+    ],
+    "number": 675,
+    "state": "closed",
+    "title": "Point sync at /self lists and clear cached milestones when membership is empty",
+    "updated_at": "2026-10-15T19:40:24Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-10-09T19:35:59Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/679",
+    "labels": [],
+    "number": 679,
+    "state": "open",
+    "title": "Defer full master catalogue out of progressive login Tier 1",
+    "updated_at": "2026-10-09T19:35:59Z",
+    "user": "mattrace-buildmidwestern"
+  },
+  {
+    "closed_at": "2026-10-13T19:41:27Z",
+    "comments": 0,
+    "created_at": "2026-10-12T11:22:27Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/683",
+    "labels": [],
+    "number": 683,
+    "state": "closed",
+    "title": "Block recording on chapters at Complete stage.",
+    "updated_at": "2026-10-13T19:41:27Z",
+    "user": "B3RN153"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-10-13T15:53:59Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/691",
+    "labels": [
+      "dependencies",
+      "chore"
+    ],
+    "number": 691,
+    "state": "open",
+    "title": "Defer: react-native-bootsplash major (+ sharp) upgrade",
+    "updated_at": "2026-10-13T15:53:59Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-10-13T16:17:51Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/692",
+    "labels": [
+      "next-ui"
+    ],
+    "number": 692,
+    "state": "open",
+    "title": "Next UI: Round button and Progress ring",
+    "updated_at": "2026-10-19T15:01:30Z",
+    "user": "jskager"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-10-14T15:33:17Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/694",
+    "labels": [
+      "next-ui"
+    ],
+    "number": 694,
+    "state": "open",
+    "title": "Next UI: Waveform, Verse chip, Page dots and Level wave",
+    "updated_at": "2026-10-19T15:01:52Z",
+    "user": "jskager"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-10-14T15:33:22Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/695",
+    "labels": [
+      "next-ui"
+    ],
+    "number": 695,
+    "state": "open",
+    "title": "Next UI: Hardware panel",
+    "updated_at": "2026-10-19T15:01:46Z",
+    "user": "jskager"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-10-14T15:33:25Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/696",
+    "labels": [
+      "next-ui"
+    ],
+    "number": 696,
+    "state": "open",
+    "title": "Next UI: Named type styles",
+    "updated_at": "2026-10-19T15:01:38Z",
+    "user": "jskager"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-10-14T20:34:22Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/701",
+    "labels": [],
+    "number": 701,
+    "state": "open",
+    "title": "Implement Sync of Selected Take Changes",
+    "updated_at": "2026-10-19T16:47:35Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-10-14T20:49:21Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/702",
+    "labels": [
+      "bug"
+    ],
+    "number": 702,
+    "state": "open",
+    "title": "Prepare for Offline: Download button disappears when a chapter is selected",
+    "updated_at": "2026-10-14T20:49:22Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-10-14T21:20:21Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/703",
+    "labels": [],
+    "number": 703,
+    "state": "open",
+    "title": "Add Comment Count and Commented Marker to My Work Rows",
+    "updated_at": "2026-10-14T21:21:57Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-10-14T21:20:22Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/704",
+    "labels": [],
+    "number": 704,
+    "state": "open",
+    "title": "Add Offline Draft Audio Download for Peer Check Chapters",
+    "updated_at": "2026-10-14T21:28:38Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": "2026-10-16T19:21:12Z",
+    "comments": 1,
+    "created_at": "2026-10-15T15:05:55Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/707",
+    "labels": [
+      "bug"
+    ],
+    "number": 707,
+    "state": "closed",
+    "title": "Fix silent playback of remuxed takes [Play, record, and re-record audio Audit]",
+    "updated_at": "2026-10-16T19:21:12Z",
+    "user": "JonathanSeehagen"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-10-19T13:47:35Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/716",
+    "labels": [],
+    "number": 716,
+    "state": "open",
+    "title": "Implement Upload and Deletion of All Takes",
+    "updated_at": "2026-10-19T13:50:55Z",
+    "user": "chadw-eten"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-10-19T20:43:45Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/717",
+    "labels": [],
+    "number": 717,
+    "state": "open",
+    "title": "Build out full Maestro E2E coverage",
+    "updated_at": "2026-10-19T21:09:21Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-10-19T21:08:29Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/718",
+    "labels": [],
+    "number": 718,
+    "state": "open",
+    "title": "Prove schema migrations against real SQLite",
+    "updated_at": "2026-10-19T21:08:29Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-10-19T21:08:30Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/719",
+    "labels": [],
+    "number": 719,
+    "state": "open",
+    "title": "Assert remuxed take audio is non-silent",
+    "updated_at": "2026-10-19T21:08:30Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-10-19T21:08:32Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/720",
+    "labels": [],
+    "number": 720,
+    "state": "open",
+    "title": "Physical-device readiness checklist after Maestro coverage",
+    "updated_at": "2026-10-19T21:08:32Z",
+    "user": "mattrace-gloo"
+  },
+  {
+    "closed_at": null,
+    "comments": 0,
+    "created_at": "2026-10-19T23:53:36Z",
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/721",
+    "labels": [],
+    "number": 721,
+    "state": "open",
+    "title": "[QA Android] Home Sync press completes but Sync screen does not open",
+    "updated_at": "2026-10-19T23:53:36Z",
+    "user": "mattrace-gloo"
+  }
+]

@@ -1,0 +1,34 @@
+{
+  "issue_number": 112,
+  "fetched_at_utc": "2026-10-20T00:34:44Z",
+  "issue": {
+    "number": 112,
+    "title": "EAS/dev-client onboarding + prebuild docs",
+    "state": "closed",
+    "body": "> **Scope note:** This ticket is **verification/validation only, NOT a rewrite**. The EAS/dev-client tooling, preview-build workflow, and onboarding docs were **already built on main** (`eas.json`, `app.config.ts`, `.eas/`, `AGENT_ONBOARDING.md`). Remaining scope: **validate the `preview-build` label loop end-to-end + consolidate onboarding** (no infra rebuild). Assigned to @mattrace-gloo.\n\n### Context\n\n### Current state in baseline\n\n- `docs/AGENT_ONBOARDING.md` updated on main for EAS/preview; `docs/guides/qa-preview-testing.md` exists for non-technical testers.\n- `.eas/README.md`, `.eas/workflows/create-production-builds.yml`, and `app.config.ts` (`runtimeVersion: { policy: 'appVersion' }`) are present.\n- `.github/workflows/preview-build.yml` + `.github/scripts/eas-resolve-android-build.sh` drive preview builds via the **`preview-build`** PR label; `.fingerprintignore` excludes `docs/**/*` and `.github/**/*` from EAS fingerprint hashing.\n- Scripts: `npm start` = `expo start`, `npm run android` = `expo run:android`, `npm run prebuild` = `expo prebuild --clean --platform android`.\n- Requires `EXPO_TOKEN` repo secret; preview uses `EXPO_PUBLIC_API_BASE_URL=https://dev.api.fluent.bible`.\n\n### Problems / why\n\n- Onboarding info is spread across `AGENT_ONBOARDING.md`, `.eas/README.md`, and the qa guide; a contributor needs one coherent path from clone \u2192 dev-client run \u2192 preview build.\n- The `preview-build` label loop (trigger \u2192 fingerprint match/reuse \u2192 bot comment \u2192 tester guide) should be validated end-to-end and documented as the canonical flow.\n\n### Target design\n\n- Consolidate a single \"Getting started / build & preview\" onboarding flow in `docs/AGENT_ONBOARDING.md` linking out to `.eas/README.md` and `docs/guides/qa-preview-testing.md` (avoid duplicated, drifting content).\n- Document the dev-client loop: `npm install` \u2192 `cp .env.example .env` \u2192 `npm run prebuild` \u2192 `npm start` + `npm run android` (expo-dev-client).\n- Document the preview loop: add `preview-build` label \u2192 workflow resolves/builds APK or OTA \u2192 bot comments link to the tester guide. Note `EXPO_TOKEN` requirement and the preview API URL.\n- Validate the label loop on a test PR and capture any gaps.\n\n### Implementation steps\n\n1. Audit existing docs for overlap/drift; pick canonical homes and cross-link.\n2. Write/expand the dev-client quickstart and the preview-build section in `AGENT_ONBOARDING.md`.\n3. Run a test PR with the `preview-build` label; confirm the workflow + bot comment + tester guide flow; fix doc gaps.\n4. Cross-link the local-only guide (#108).\n\n### Acceptance criteria (verify-only)\n\n- [ ] **Consolidate** existing onboarding into one coherent path (clone \u2192 dev-client run \u2192 preview build) with no duplicated/contradicting steps \u2014 content already exists, just cross-link/dedupe.\n- [ ] **Validate** the `preview-build` label loop on a test PR and document it (incl. `EXPO_TOKEN`, preview API URL).\n- [ ] **Confirm** commands match current `package.json`; no `@env`/`FLUENT_USER_EMAIL` references.\n\n### Test plan / verification\n\n- Documentation + CI-config validation. Sanity-run gates:\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- **No live API required** for CI (tests default the URL via `jest.env.cjs`).\n- Preview-build validation is a **manual** check on a labeled test PR (documented manual step).\n- Do **not** use `FLUENT_USER_EMAIL`.\n\n### Out of scope\n\n- Local-only/offline guide authoring (#108) \u2014 cross-link only.\n- Changing the EAS workflow logic itself.\n\n### Links\n\n- Epic: #120\n- Related: #108 (local-only docs)\n\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:46:19Z",
+    "updated_at": "2026-07-02T20:12:37Z",
+    "closed_at": "2026-07-02T20:08:39Z",
+    "labels": [
+      "documentation"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/112",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4870063870,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-02T20:08:45Z",
+      "updated_at": "2026-07-02T20:08:45Z",
+      "body": "Closing as completed \u2014 deliverables already merged to `main`; this ticket was scoped as **verify/consolidate only** (see issue body).\n\n**Shipped via:**\n- [#70](https://github.com/eten-tech-foundation/fluent-mobile/pull/70) \u2014 EAS profiles, `.eas/README.md`, `preview-build.yml`, `docs/AGENT_ONBOARDING.md` PR preview section, `docs/guides/qa-preview-testing.md`\n- [#136](https://github.com/eten-tech-foundation/fluent-mobile/pull/136) \u2014 local dev workflow cross-links (#108)\n- [#145](https://github.com/eten-tech-foundation/fluent-mobile/pull/145) \u2014 quality gates / onboarding doc updates\n\nAcceptance criteria (consolidated onboarding path, preview-build loop documented, commands match `package.json`) are satisfied on `main` in `docs/AGENT_ONBOARDING.md` and `docs/guides/qa-preview-testing.md`.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/112#issuecomment-4870063870"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

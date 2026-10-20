@@ -1,0 +1,58 @@
+{
+  "issue_number": 532,
+  "fetched_at_utc": "2026-10-20T00:37:35Z",
+  "issue": {
+    "number": 532,
+    "title": "Chapter assignment and claiming Audit",
+    "state": "closed",
+    "body": "Audit the Chapter assignment and claiming against related GitHub issues and expected behavior. Test the latest supported mobile build, document results, and create `dev ready` issues for any identified gaps.\n\n**Done when:** The assessment is merged, all gaps are linked to actionable issues, and the audit result is posted to this sub-ticket.",
+    "user": "kaseywright",
+    "created_at": "2026-09-14T17:22:09Z",
+    "updated_at": "2026-10-18T12:34:52Z",
+    "closed_at": "2026-10-09T18:46:27Z",
+    "labels": [
+      "chore"
+    ],
+    "comments": 4,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/532",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5807081389,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-24T03:36:41Z",
+      "updated_at": "2026-09-24T03:36:41Z",
+      "body": "## #532 complete \u2014 assessment merged\n\n**Merged assessment:** https://github.com/eten-tech-foundation/fluent-mobile/blob/main/docs/assessments/chapter-assignment-and-claiming/README.md  \n**Assessment PR:** https://github.com/eten-tech-foundation/fluent-mobile/pull/575 (merged)\n\n### Result\nPass with gaps \u00b7 **24** planned \u00b7 **15** Pass \u00b7 **0** Fail \u00b7 **4** Blocked \u00b7 **5** Skipped  \nNo confirmed product FAILs on exercised online ownership / taken-warning paths.\n\n### Actionable gap (does not block this audit)\n- [#574](https://github.com/eten-tech-foundation/fluent-mobile/issues/574) \u2014 Maestro E2E + safe fixtures (Dev Ready)\n\n### Existing product / sibling follow-ups\n- [#269](https://github.com/eten-tech-foundation/fluent-mobile/issues/269) \u00b7 [#270](https://github.com/eten-tech-foundation/fluent-mobile/issues/270) \u00b7 [#271](https://github.com/eten-tech-foundation/fluent-mobile/issues/271) \u00b7 [#442](https://github.com/eten-tech-foundation/fluent-mobile/issues/442) \u00b7 [#476](https://github.com/eten-tech-foundation/fluent-mobile/issues/476) \u00b7 sibling [#533](https://github.com/eten-tech-foundation/fluent-mobile/issues/533) \u00b7 epic [#526](https://github.com/eten-tech-foundation/fluent-mobile/issues/526)\n\nDoD satisfied: assessment merged, gaps linked to actionable issues, result posted.\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/532#issuecomment-5807081389"
+    },
+    {
+      "id": 5815800043,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-24T14:13:38Z",
+      "updated_at": "2026-09-24T14:13:38Z",
+      "body": "## Scenario results (#532)\n\n**Coverage:** Planned 24 \u00b7 Pass 15 \u00b7 Fail 0 \u00b7 Blocked 4 \u00b7 Skipped 5  \n(15 + 0 + 4 + 5 = 24)\n\n| # | Scenario | Status | Notes |\n|---|---|---|---|\n| 1 | Lab + authenticated Home | PASS | Metro + Dev Client + hierarchy |\n| 2 | My Work shows assignments | PASS | Genesis/Exodus rows present |\n| 3 | My Work \u201cmine\u201d ownership icon | PASS | a11y `Assigned to you` |\n| 4 | Project list \u201cmine\u201d ownership | PASS | Genesis 1 / Mark 1 |\n| 5 | Project list \u201cother\u201d ownership | PASS | 3 John 1, Mark 9/10, 2 John 1 |\n| 6 | Project list unassigned (no icon) | PASS | Genesis 9 / Mark 3\u20138 Not Started |\n| 7 | Mine chapter \u2192 Record: no taken warning | PASS | `record-taken-warning` absent |\n| 8 | Taken Draft \u2192 Record: warning shown | PASS | 3 John 1 \u00b7 copy matches #269 |\n| 9 | Taken chapter: record still enabled | PASS | `record-start-button` present |\n| 10 | Unassigned \u2192 Record: no taken warning | PASS | Genesis 9 Not Started |\n| 11 | Peer Check + other assignee \u2192 taken warning | PASS | 2 John 1 \u00b7 #442 PM-assigned case |\n| 12 | Advanced/Complete: no ownership icon | PASS | 1 John 1\u20135 \u00b7 aligns with #476 |\n| 13 | App-observed online for claim surfaces | PASS | Sync a11y Online |\n| 14 | Sync healthy; My Work still assigned | PASS | Sync idle \u00b7 assignments persist |\n| 15 | My Work \u2194 Project consistency (Genesis 1) | PASS | same `33212`, mine both places |\n| 16 | Online auto-claim on first recording | SKIPPED | Destructive shared-data mutation; no approved safe fixture |\n| 17 | Claim updates row to mine immediately | SKIPPED | Depends on #16 |\n| 18 | Online multi-claim race / claim conflict UI | SKIPPED | Destructive; product also tracked by #271 |\n| 19 | Offline claim on first recording | SKIPPED | Sibling audit #533 \u00b7 #270 |\n| 20 | Reconnect claim sync + conflict clear | SKIPPED | Sibling #533 \u00b7 open #271 |\n| 21 | Open Peer Check (no peerChecker): no icon / no banner | BLOCKED | No seed fixture after Gujarati + Source Audio scan |\n| 22 | Chapter-list conflict indicator (#260) live | BLOCKED | No conflicted chapter in seed |\n| 23 | Record conflict warning banner (#269) | BLOCKED | Same fixture gap |\n| 24 | Cross-account ownership (B sees A as other) | BLOCKED | Account B add blocked by credential/approval boundary; other ownership already proven on Account A |\n\n**Assessment:** https://github.com/eten-tech-foundation/fluent-mobile/blob/main/docs/assessments/chapter-assignment-and-claiming/README.md",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/532#issuecomment-5815800043"
+    },
+    {
+      "id": 6087144970,
+      "user": "mattrace-gloo",
+      "created_at": "2026-10-09T18:46:27Z",
+      "updated_at": "2026-10-09T18:46:27Z",
+      "body": "Cleanup: work already on main (Refs PR merged; Needs QA? No / engineering-only or audit assessment). Board \u2192 **Done**, closing.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/532#issuecomment-6087144970"
+    },
+    {
+      "id": 6249884804,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-10-18T12:24:58Z",
+      "updated_at": "2026-10-18T12:34:52Z",
+      "body": "@Roslin22\n\n## Chapter assignment and claiming \u2014 retest\n\n> **Note:** this test script was generated with the help of AI, from the tests executed in the #532 audit (epic #526) and from other information gathered while the issues were implemented. It is a guide, not a limit: any other test that covers these points or goes beyond them is also valid.\n\n> **Linked issues:** when a test ends with an issue number in parentheses, for example `(#269)` at the end of test 8, that is the sub-issue that fixed that point, so you can open it to see what was changed. Some of these issues are still open or depend on work that is not finished yet (for example, fluent-api changes). Those tests are marked with \"issue still open\" or \"may fail\". For them, a failure may be expected for now: report what you see, but it does not necessarily mean the fix regressed.\n\nOwner icons in the chapter list: **blue person** = chapter assigned to you (\"mine\"); **other person icon** = assigned to someone else (\"other\"); **no icon** = nobody. \"Taken-chapter warning\" is the message on the Record tab saying the chapter belongs to someone else.\n\n**What to prepare:** two translator accounts (A and B) in the same project; in the project, chapters that are yours, someone else's, unowned (Not Started), someone else's in Draft, someone else's in Peer Check, and in Advanced/Complete. Tests 21\u201323 need chapters prepared by the dev team (#607); if there are none, skip and note it.\n\n- [ ] **1** Sign in. Expected: the home screen (Home) appears.\n- [ ] **2** Open the My Work tab. Expected: the chapters assigned to you are shown.\n- [ ] **3** Look at one of your chapters in My Work. Expected: blue person icon.\n- [ ] **4** On the Projects tab, open the project and look at one of your chapters. Expected: blue person icon.\n- [ ] **5** In the same list, look at a chapter assigned to someone else. Expected: \"other person\" icon.\n- [ ] **6** In the same list, look at a Not Started chapter that belongs to nobody. Expected: no icon.\n- [ ] **7** Open one of your chapters \u2192 Record tab. Expected: no taken-chapter warning.\n- [ ] **8** Open someone else's Draft chapter \u2192 Record tab. Expected: the taken-chapter warning appears. (#269)\n- [ ] **9** In the same chapter. Expected: even with the warning, you can record.\n- [ ] **10** Open a chapter with no owner \u2192 Record tab. Expected: no warning.\n- [ ] **11** Open a Peer Check chapter assigned to someone else \u2192 Record tab. Expected: the taken-chapter warning appears. (#442 \u2014 issue still open)\n- [ ] **12** Look at chapters in Advanced or Complete. Expected: no owner icon. (#476)\n- [ ] **13** Online, look at the cloud icon at the top. Expected: green cloud (online).\n- [ ] **14** Open Sync and tap Sync Now. Expected: sync finishes and the chapters stay in My Work.\n- [ ] **15** Compare the same chapter in My Work and in the project list. Expected: the same owner icon in both places.\n- [ ] **16** Online, record the first take in a chapter with no owner. Expected: the chapter becomes yours. (same test as #533, I.1)\n- [ ] **17** Right after, go back to the list. Expected: the chapter already shows the blue person icon. (same test as #533, I.2)\n- [ ] **18** Two users online record the first take of the same unowned chapter at the same time. Expected: the app shows the conflict. (not tested in the original audit) (#271 \u2014 issue still open)\n- [ ] **19** Offline, record the first take in a chapter with no owner. (same test as #533, B.3\u2013B.4)\n- [ ] **20** Bring internet back and check the assignment and the conflict. (same tests as #533, C to E) (#271 \u2014 issue still open)\n- [ ] **21** Open a Peer Check chapter with no reviewer set. Expected: no icon and no warning. (needs a chapter prepared by dev \u2014 #607)\n- [ ] **22** Chapter list with a chapter in conflict. Expected: conflict icon. (same test as #533, D.4)\n- [ ] **23** Record tab of a chapter in conflict. Expected: conflict warning. (same test as #533, D.5)\n- [ ] **24** With account B, look at chapters account A took. Expected: for B, they show the other-person icon. (not tested in the original audit)\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/532#issuecomment-6249884804"
+    }
+  ],
+  "comments_fetched_count": 4,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

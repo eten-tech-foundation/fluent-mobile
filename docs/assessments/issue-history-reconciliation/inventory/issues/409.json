@@ -1,0 +1,64 @@
+{
+  "issue_number": 409,
+  "fetched_at_utc": "2026-10-20T00:36:38Z",
+  "issue": {
+    "number": 409,
+    "title": "Update Record Tab for Verse/Pericope Toggle",
+    "state": "closed",
+    "body": "The Record tab's Current Unit Title and draft waveform are currently built around a single, project-fixed recording granularity. With the verse/pericope toggle making the working unit a live per-user setting, both need to switch behavior based on the active mode so it's always unambiguous what unit a translator is about to record.\n\n## Functional Requirements\n\n### Recording Controls\n- Update the Current Unit Title to reflect the active mode: show a verse reference in verse mode, or the pericope verse range in pericope mode with the pericope title as a subtitle when it is available.\n- Do not show a \"Pericope 1 of 7\" style counter in the Current Unit Title.\n- In verse mode, show verse-level tick marks on the draft waveform with per-verse scrubbing.\n- In pericope mode, show a continuous scrubber with no tick marks; scrubbing is position-only since verse boundaries are not known.\n\n<img width=\"300\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/269f80fa-0d65-42fb-9b6e-17b4213ce54f\" />",
+    "user": "chadw-eten",
+    "created_at": "2026-08-27T18:18:53Z",
+    "updated_at": "2026-10-08T09:09:30Z",
+    "closed_at": "2026-09-17T11:47:08Z",
+    "labels": [],
+    "comments": 5,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/409",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5480395062,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-31T15:15:30Z",
+      "updated_at": "2026-08-31T15:15:30Z",
+      "body": "## Engineering context\n\n### Product intent\nRecord tab Current Unit Title + draft waveform follow the live Verse/Pericope mode so it\u2019s always clear what unit is about to be recorded.\n\n### What exists today\n- Title is verse-only: `` `${chapterName}:${selectedVerse}` `` in `RecordTab` (`record-verse-reference`).\n- Prev/next navigates verses, not pericopes.\n- Draft waveform: `PlaybackProgressBar` \u2014 continuous scrub in review; **no** tick marks.\n- Recording stack: `useVerseAudio` keyed by single `bibleTextId` (verse).\n- Mode preference: #407; pericope data: not on mobile yet.\n\n### Alignment notes\n- Spec: verse mode \u2192 verse reference; pericope mode \u2192 verse **range** + optional pericope title subtitle; never `\"Pericope 1 of 7\"`.\n- Spec: verse-mode draft waveform shows **verse-level** tick marks with per-verse scrubbing; pericope mode stays continuous with **no** ticks (verse boundaries unknown on the draft take). That matches \u201cdon\u2019t invent boundaries.\u201d\n- Title/mode UI can land before mixed-mode persistence (#410), but navigation + which `bibleTextId`(s) get recorded must stay coherent \u2014 don\u2019t imply pericope capture until #410 defines storage.\n\n### Suggested approach\n1. Read drafting-unit preference (#407) in Record tab / shared drafting context.\n2. Resolve active unit (verse vs pericope group from synced pericopes).\n3. Update reference header + optional subtitle; adjust prev/next to unit boundaries.\n4. Waveform: add optional tick markers only in verse mode when we have meaningful boundaries for the **draft** surface \u2014 confirm with design; do not fake pericope ticks.\n\n### Dependencies\n- **Requires:** #407, mobile pericope sync (same foundation as #408).\n- **Does not require:** #412 for title work; player chrome is separate.\n- **Before claiming full pericope recording:** #410 (and range-take upload support on fluent-api `/verse-audio`, which is verse-keyed today).\n\n### API\n- Same pericope sync / full-range needs as #408.\n- No separate Record-tab API for titles.\n- Uploading pericope takes is **not** this ticket \u2014 see #410.\n\n### Out of scope\n- Mixed-mode take coexistence / labels / 5-cap (#410)\n- Cross-granularity stitch playback (#411)\n- Source-audio dock ticks (#408)",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/409#issuecomment-5480395062"
+    },
+    {
+      "id": 5498925790,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-01T19:00:54Z",
+      "updated_at": "2026-09-01T19:00:54Z",
+      "body": "**Blocked on:** [#438](https://github.com/eten-tech-foundation/fluent-mobile/issues/438) \u2014 Sync pericope boundaries to local SQLite (data model + post-login sync).\n\nThat ticket covers schema, `FluentAPI.getChapterPericopes`, repository writes, sync step, and offline queries. Implement #438 (or land it first) before pericope-mode titles / navigation here \u2014 avoids stubbing pericope groups in Record tab.\n\nAlso still depends on #407 (mode preference). Full pericope *recording* persistence remains #410.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/409#issuecomment-5498925790"
+    },
+    {
+      "id": 5615706253,
+      "user": "Roslin22",
+      "created_at": "2026-09-10T08:39:24Z",
+      "updated_at": "2026-09-10T08:39:24Z",
+      "body": "### Test Results \u2013 Recording Controls\n\n1. Verified that the **Current Unit Title** displays the active verse reference in Verse Mode.\n2. Verified that the **Current Unit Title** displays the pericope verse range, with the pericope title as a subtitle when available.\n3. Verified that a **\u201cPericope 1 of 7\u201d** style counter is not displayed in the Current Unit Title.\n4. Verified that **verse-level tick marks** are displayed on the draft waveform in Verse Mode and per-verse scrubbing is available.\n5. Verified that **Pericope Mode** displays a continuous scrubber without tick marks, allowing position-based scrubbing.\n\n### Issues Identified\n\n1. **Next Pericope Navigation Issue:**\n   When the user switches to **Pericope View**, the Record tab displays the verses belonging to the current pericope. However, clicking the **Next** button does not move to the next pericope set. The next pericope appears only after navigating through all the verses of the current pericope.\n\n2. **Source Bible Text Issue:**\n   In Pericope View, the **Source Bible text does not display the complete current pericope**. Only the first verse of the pericope is displayed instead of all verses included in the current pericope set.\n\n3. **Pericope Recording and Scrubbing Issue:**\n   When the user records multiple verses in **Pericope Mode**, the recording is displayed as a single audio unit. It is difficult for the user to scrub through the waveform and locate or verify a specific verse. Additionally, clicking on the waveform causes the audio to start from the beginning instead of starting from the selected position.\n\n4. **Pericope-to-Verse View Recording Issue:**\n   When the user switches from **Pericope View to Verse View**, a recording covering multiple verses is displayed only under the first verse. The remaining verses appear without recordings.\n\n### Suggestion\n\n1. **Improve Audio Waveform Scrubbing:**\n   Add a clear **audio progress/playhead indicator** to the recorded audio waveform so users can easily identify the current playback position and scrub to the required point within the recording.\n\nMoving this ticket to in progress Dev\n\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/409#issuecomment-5615706253"
+    },
+    {
+      "id": 5618939320,
+      "user": "chadw-eten",
+      "created_at": "2026-09-10T12:49:28Z",
+      "updated_at": "2026-09-10T12:49:28Z",
+      "body": "The issues Roslin identified need to be fixed. I will review again after those have been worked on.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/409#issuecomment-5618939320"
+    },
+    {
+      "id": 5713802848,
+      "user": "B3RN153",
+      "created_at": "2026-09-17T11:46:30Z",
+      "updated_at": "2026-10-08T09:09:30Z",
+      "body": "Fixed issues identified(1 & 2) in Issue #540(PR #543).\n4 will be in scope of #411.\nAnd 3 will be fixed in 544.\nMoving to QA.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/409#issuecomment-5713802848"
+    }
+  ],
+  "comments_fetched_count": 5,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

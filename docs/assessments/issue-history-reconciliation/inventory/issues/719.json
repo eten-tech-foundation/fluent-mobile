@@ -1,0 +1,23 @@
+{
+  "issue_number": 719,
+  "fetched_at_utc": "2026-10-20T00:38:01Z",
+  "issue": {
+    "number": 719,
+    "title": "Assert remuxed take audio is non-silent",
+    "state": "open",
+    "body": "## Why\n\n`src/audio/aacRemux.test.ts` mocks `AacRemux` and checks that `remuxAacToM4a` is invoked. It does not decode the output. A remux can return a path and still be silent. #707 tracked a silent-playback bug and is closed; this issue is the remaining proof gap called out by #717.\n\n## Acceptance\n\n- [ ] A check decodes a remuxed take and fails when the samples are silent or the container is unreadable.\n- [ ] The check uses a known non-silent fixture. A missing fixture is BLOCKED, not a pass.\n\nRefs #717. Android only. Do not treat a mocked module call as audio proof.\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-10-19T21:08:30Z",
+    "updated_at": "2026-10-19T21:08:30Z",
+    "closed_at": null,
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/719",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

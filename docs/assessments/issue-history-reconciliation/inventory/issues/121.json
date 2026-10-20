@@ -1,0 +1,25 @@
+{
+  "issue_number": 121,
+  "fetched_at_utc": "2026-10-20T00:34:53Z",
+  "issue": {
+    "number": 121,
+    "title": "Fix broken recordings join: queries reference non-existent recordings.chapter_assignment_id",
+    "state": "closed",
+    "body": "### Context\n\n### Current state in baseline\n\nIn `src/db/queries.ts` (ref `origin/chore/expo-cng-migration`), three exported functions use the same broken join:\n\n- `getProjectsWithSummary` \u2014 `src/db/queries.ts:66`\n- `getProjectChapters` \u2014 `src/db/queries.ts:284`\n- `getMyWorkChapters` \u2014 `src/db/queries.ts:334`\n\n```sql\nLEFT JOIN recordings r ON r.chapter_assignment_id = ca.id AND r.is_latest = 1\n```\n\nBut the `recordings` table (`src/db/schema.ts`) has **no `chapter_assignment_id` column** \u2014 it links to a verse via `bible_text_id`:\n\n```sql\nCREATE TABLE IF NOT EXISTS recordings (\n id TEXT PRIMARY KEY,\n bible_text_id INTEGER NOT NULL REFERENCES bible_texts(id),\n ...\n take_number INTEGER NOT NULL DEFAULT 1,\n is_latest INTEGER NOT NULL DEFAULT 1,\n sync_status TEXT NOT NULL DEFAULT 'pending',\n ...\n);\n```\n\n### Problems / why\n\n- SQLite raises `no such column: r.chapter_assignment_id` when the JOIN executes.\n- Each call site wraps the query in try/catch and returns `[]` on error (e.g. `getMyWorkChapters` around `src/db/queries.ts:340`), so the failure is **silent**: the Projects tab, View Project page, and My Work tab render empty / lose recording + pending counts instead of surfacing an error.\n- This is latent because the `recordings` table is currently never populated (no audio capture wired yet, see #95/#97/#100); it will manifest as soon as any recording row exists, or immediately for the count aggregates depending on the SQLite query planner.\n\n### Root cause\n\nThe handoff modeled the recordings \u2194 chapter relationship inconsistently. `recordings` is keyed by `bible_text_id` (verse-level), but these queries assume a chapter-level `recordings.chapter_assignment_id` foreign key that was never added to the schema.\n\n### Target design\n\nTwo viable fixes \u2014 pick per the linkage decision in #99 / #103:\n\n1. **Add the column (preferred if recordings are chapter-scoped):** add `chapter_assignment_id INTEGER REFERENCES chapter_assignments(id)` to `recordings` via the migration framework (#110), backfill, and keep the joins. Owned by #99.\n2. **Fix the join (if recordings stay verse-scoped):** associate recordings to a chapter assignment through `bible_texts`:\n\n```sql\nLEFT JOIN bible_texts bt2 ON bt2.id = r.bible_text_id\n AND bt2.bible_id = ca.bible_id\n AND bt2.book_id = ca.book_id\n AND bt2.chapter_number = ca.chapter_number\n AND r.is_latest = 1\n```\n\nWhichever is chosen must be applied consistently to all three call sites (and any `RECORDING_AGGREGATES` subquery that depends on the same relationship).\n\n### Implementation steps\n\n1. Decide chapter- vs verse-scoped linkage with #99/#103 (schema owner).\n2. If option 1: add column + index in `src/db/schema.ts`, add migration in the #110 framework.\n3. Update the three joins in `src/db/queries.ts` (lines ~66, ~284, ~334) and the `RECORDING_AGGREGATES` constant.\n4. Add a query-level regression test that inserts a recording and asserts counts (jest-expo, local SQLite) so a missing/renamed column fails CI instead of silently returning `[]`.\n5. Consider letting these query functions surface DB errors (or log at error with the SQL) rather than swallowing into `[]`.\n\n### Acceptance criteria\n\n- [ ] No `no such column` error from `getProjectsWithSummary`, `getProjectChapters`, `getMyWorkChapters` with recordings present\n- [ ] Recording count / pending count aggregates return correct values for seeded data\n- [ ] All three call sites use the same, schema-consistent relationship\n- [ ] Regression test inserts a recording and asserts non-empty/correct counts\n- [ ] Migration added if a new column is introduced (#110)\n\n### Test plan / verification\n\n- `npm run format:check && npm run lint && npm run typecheck && npm test -- --ci`\n- Tests run against local SQLite with `EXPO_PUBLIC_API_BASE_URL` defaulted by `jest.env.cjs` \u2014 **no live API URL required**.\n- Manual: seed a recording row (see #106) and confirm Projects/View Project/My Work show counts.\n\n### Out of scope\n\n- Audio capture/upload wiring (#95, #97, #100)\n- Broader migration framework work (#110)\n\n### Links\n\n- Schema/linkage owner: #99, #103\n- Migration framework: #110\n- Affected features: #104 (My Work), #98 (multi-take), Projects/View Project (#32/#33)\n- Anti-pattern origin: [PR #82](https://github.com/eten-tech-foundation/fluent-mobile/pull/82)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T07:25:30Z",
+    "updated_at": "2026-07-02T20:12:58Z",
+    "closed_at": "2026-07-02T20:04:03Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/121",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,40 @@
+{
+  "issue_number": 267,
+  "fetched_at_utc": "2026-10-20T00:35:46Z",
+  "issue": {
+    "number": 267,
+    "title": "Add Claim and Assignment Indicators to Chapter List Rows",
+    "state": "closed",
+    "body": "The chapter list has no way to show whether a chapter is unassigned, claimed by the current user, or taken by another translator. This ticket adds the `li:user` icon slot to chapter rows and implements the three ownership states. A fourth state \u2014 conflict \u2014 shares this slot and is implemented separately in #260. The sync status icon is a distinct surface and is not part of this ticket.\n\n## Functional Requirements\n\n### Chapter List Row \u2014 Ownership Indicator\n\n- Add a `li:user` icon slot to each chapter row in the chapter list, to the right of the sync indicator (`li:cloud-upload`); the slot is visible on all rows regardless of state.\n- When a chapter is unassigned (no recordings from any translator), show no icon in the slot.\n- When a chapter is claimed or PM-assigned to the current user (eg. Mark 9), display `li:user` filled in the primary color (`#0b50d0`).\n- When a chapter is claimed or PM-assigned to another translator (eg. Mark 10, display `li:user` filled in neutral/muted.\n\nNote: The conflict state (`li:users` with a `li:triangle-alert` badge) occupies the same slot and is implemented in #260. This ticket covers the three non-conflict ownership states only.\n\n<img width=\"424\" height=\"464\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/389fb4e4-bbfe-4de7-9939-2681ae28925d\" />",
+    "user": "chadw-eten",
+    "created_at": "2026-07-29T17:16:01Z",
+    "updated_at": "2026-08-25T05:02:40Z",
+    "closed_at": "2026-08-25T05:02:40Z",
+    "labels": [],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/267",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5338135911,
+      "user": "github-actions[bot]",
+      "created_at": "2026-08-19T05:58:51Z",
+      "updated_at": "2026-08-19T05:58:51Z",
+      "body": "## \u2705 Fluent preview app ready (Android)\n\n**Not Expo Go.** Install the **Fluent preview app** from the link below (internal APK \u2014 not a dev/Metro build).\n\n**Preview ID:** `pr-328-2177823` \u00b7 **App version:** `1.0.0`\n\nThis is a **standalone preview APK** for this PR (no over-the-air update). Each labeled PR gets its own build so multiple QA previews can exist at once.\n\n_Fresh preview APK for this PR commit. Install it once, then open Fluent and test._\n\n**Need help?** [Step-by-step guide for non-technical testers](https://github.com/eten-tech-foundation/fluent-mobile/blob/0b44dd342ddc5a0dd53ed7ebe963632f269296ef/docs/guides/qa-preview-testing.md)\n\n---\n\n### Install Fluent on your Android phone\n\nOn your **Android phone**, tap:\n\n### \ud83d\udc49 [Install Fluent](https://expo.dev/builds/665a8cc7-3ec5-47e9-882f-4930f92b15fc)\n\n1. Sign in to [expo.dev](https://expo.dev) if asked (your team lead can invite you).\n2. Tap **Download** or **Install** when the build page opens.\n3. If Android blocks it: **Settings \u2192 Install unknown apps** \u2192 allow your browser.\n4. Open **Fluent** from your home screen \u2014 it should open the app normally (not a Metro/dev launcher).\n5. Sign in and test this PR. Reinstall from a newer preview comment when testing a different PR (one Fluent install at a time).\n\n**Or scan this QR code** (opens the same install page):\n\n<a href=\"https://expo.dev/builds/665a8cc7-3ec5-47e9-882f-4930f92b15fc\">\n<img src=\"https://quickchart.io/qr?size=256&margin=2&text=https%3A%2F%2Fexpo.dev%2Fbuilds%2F665a8cc7-3ec5-47e9-882f-4930f92b15fc\" width=\"256\" height=\"256\" alt=\"QR code to install the Fluent preview app\" style=\"border: 1px solid #ccc; border-radius: 8px; max-width: 100%; height: auto;\" />\n</a>\n\n### Details\n\n| | |\n|---|---|\n| Preview ID | `pr-328-2177823` |\n| App version | `1.0.0` |\n| Build | `665a8cc7-3ec5-47e9-882f-4930f92b15fc` |\n| Install source | `created` |\n| Fingerprint | `8c54bf5a985b\u2026` |\n| Commit | `0b44dd342ddc5a0dd53ed7ebe963632f269296ef` |\n\n### Links\n\n- [EAS build page](https://expo.dev/builds/665a8cc7-3ec5-47e9-882f-4930f92b15fc)\n- [PR #328](https://github.com/eten-tech-foundation/fluent-mobile/pull/328)\n\n---\n*Binary preview APK (`1.0.0`, ID: `pr-328-2177823`). Android only \u2014 no OTA.*",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/267#issuecomment-5338135911"
+    },
+    {
+      "id": 5404652601,
+      "user": "Roslin22",
+      "created_at": "2026-08-25T03:25:35Z",
+      "updated_at": "2026-08-25T03:25:35Z",
+      "body": "**Test Results \u2013 #267: PR Tested #328**\n\n- When the Project Manager assigns a chapter to the current translator, the translator can view the chapter in the My Work tab. The assigned chapter displays the li:user icon filled with the primary color (#0b50d0).\n- When a chapter is reassigned to another translator, it is removed from the current user's My Work tab. When the chapter is opened from the My Projects page, the li:user icon is displayed in a muted color, indicating that the chapter is assigned to another translator.\n- When a chapter is unassigned, no li:user icon is displayed in the chapter list.\n- The li:user icon does not overflow or overlap with other UI elements.\n- Scrolling behavior, icon color, and overall UI are working as expected.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/267#issuecomment-5404652601"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

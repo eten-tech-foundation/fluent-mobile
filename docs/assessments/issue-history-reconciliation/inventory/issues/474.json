@@ -1,0 +1,32 @@
+{
+  "issue_number": 474,
+  "fetched_at_utc": "2026-10-20T00:37:02Z",
+  "issue": {
+    "number": 474,
+    "title": "Take card pericope subtitle truncates on Record tab",
+    "state": "closed",
+    "body": "## Context\n\nFollow-up from #410 / PR #473. Mixed-mode take cards now show subtitles like `Take 1 - Pericope - vv. 8:31-9:1`, but on device the label is truncated because it shares the top row with the playback timer (`0:00 / 0:13`) in `DraftTakeRow` / `SharedTakeRow`.\n\nValidated on Mark 8:31\u20139:1 pericope takes: the span text is correct, but users cannot read the full subtitle without hiding the timer locally.\n\n## Problem\n\n- `takeLabel` uses `numberOfLines={1}` beside a fixed-width timer in the top row.\n- Cross-chapter pericope labels are longer than legacy `Take N` labels.\n\n## Proposal\n\nImprove take-card layout so full pericope subtitles are readable without losing timer access. Options to evaluate in design/impl:\n\n1. Allow label to wrap (2 lines) and/or shrink timer typography\n2. Move timer below the waveform (previewed locally \u2014 needs design sign-off)\n3. Truncate with ellipsis only after 2 lines + expose full text via accessibility/long-press (last resort)\n\n## Acceptance criteria\n\n- [ ] Full subtitle visible for cross-chapter pericope takes (e.g. `Take 1 - Pericope - vv. 8:31-9:1`) on a typical phone width without manual dev hacks\n- [ ] Timer remains visible and usable for playback review\n- [ ] Verse-only labels (`Take N - Verse - v. X`) still look correct\n- [ ] `RecordTab` / take-row tests updated if layout changes\n\n## Files likely involved\n\n- `src/components/ui/DraftTakeRow.tsx`\n- `src/components/ui/SharedTakeRow.tsx`\n- `src/app/tabs/RecordTab.tsx` (if copy/placement changes)\n\n## Related\n\n- Parent: #410\n- PR: #473",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-09T20:30:11Z",
+    "updated_at": "2026-09-09T20:32:02Z",
+    "closed_at": "2026-09-09T20:32:02Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/474",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5608309737,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-09-09T20:32:01Z",
+      "updated_at": "2026-09-09T20:32:01Z",
+      "body": "Closing \u2014 opened by mistake during #410 follow-up triage; will be re-created manually if needed.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/474#issuecomment-5608309737"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

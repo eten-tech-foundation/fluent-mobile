@@ -1,0 +1,42 @@
+{
+  "issue_number": 38,
+  "fetched_at_utc": "2026-10-20T00:34:00Z",
+  "issue": {
+    "number": 38,
+    "title": "Build Cloud Sync Status Icon",
+    "state": "closed",
+    "body": "Fluent needs a persistent, tappable sync status icon in the navigation bar that communicates both connectivity and sync state at a glance. The icon reflects five states across an online/offline \u00d7 synced/syncing/pending matrix. Tapping the icon is the sole entry point to the Sync page.\n\n### Functional Requirements\n- Navigation Bar Icon\n   - Place a cloud sync status icon in the top-right navigation bar area.\n   - The icon changes based on the current sync state (see states below).\n   - Online states render at full color (green/blue); offline states render the same icons in gray (`#A0A0A0`).\n   - Tapping the icon navigates to the Sync page.\n- Online - synced\n   - Icon: `li:cloud-check`, cloud white, checkmark green (`#17B26A`)\n\n<img width=\"488\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/543d1120-bf34-4996-b714-6cab1d1dde57\" />\n\n- Online - syncing\n   - Icon: `li:cloud` with `li:refresh-cw` overlay (arrows static), cloud white, arrows green (`#17B26A`)\n\n<img width=\"488\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/304cac51-7adb-4a0f-9b52-1c8a728480f2\" />\n\n- Online - pending upload\n   - Icon: `li:cloud-upload`, cloud white, arrow yellow (`#E48F06`, same in dark mode)\n\n<img width=\"488\" height=\"254\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/31a5e55e-3b20-4bc0-8317-01e8370cf670\" />\n\n- Offline - synced\n   - Icon: `li:cloud-check`, #A0A0A0\n\n<img width=\"489\" height=\"252\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/11db5ed0-3ede-47fc-af1b-66618b8cdf94\" />\n\n- Offline - pending upload\n   - Icon: `custom icon attached`, #A0A0A0\n\n<img width=\"488\" height=\"250\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/079b34cc-4680-48b6-9f05-e946a136a54c\" />\n\n<img width=\"76\" height=\"76\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/85e4069e-04f2-407d-b488-a0d100b7a589\" />\n\n> **Note:** The Sync page must be built before this ticket can be completed - tapping the icon is the only way to reach that page.\n\n> **Note 2:** \"Online\" means the app can reach the Fluent server, not just that the device has a network connection. Offline states apply whenever the server is unreachable regardless of network availability.\n\n> **Note 3:** The syncing state uses a two-icon composition (`li:cloud` + `li:refresh-cw`). The arrows are static in the nav bar \u2014 animated rotation belongs on the Sync page. If the composition approach takes too much time, ask Product for a single-icon alternative.",
+    "user": "chadw-eten",
+    "created_at": "2026-05-19T20:43:46Z",
+    "updated_at": "2026-07-02T19:34:12Z",
+    "closed_at": "2026-06-28T07:31:42Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/38",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4656026219,
+      "user": "mattrace-gloo",
+      "created_at": "2026-06-09T04:13:27Z",
+      "updated_at": "2026-06-09T04:13:27Z",
+      "body": "_\"The Sync page must be built before this ticket can be completed - tapping the icon is the only way to reach that page\"_ \n\nI created navigation stack stub for that pending work next. ",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/38#issuecomment-4656026219"
+    },
+    {
+      "id": 4825255429,
+      "user": "mattrace-gloo",
+      "created_at": "2026-06-28T07:31:38Z",
+      "updated_at": "2026-06-28T07:31:38Z",
+      "body": "Delivered by @mattrace-gloo in #57 (merged) and present in the CNG baseline (PR #70). Closing as completed.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/38#issuecomment-4825255429"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

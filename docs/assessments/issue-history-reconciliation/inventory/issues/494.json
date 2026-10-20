@@ -1,0 +1,32 @@
+{
+  "issue_number": 494,
+  "fetched_at_utc": "2026-10-20T00:37:15Z",
+  "issue": {
+    "number": 494,
+    "title": "Maestro smoke: Sync + Prepare for Offline",
+    "state": "closed",
+    "body": "## Summary / context\n\nParent: #488.\n\nAutomate Sync screen controls and Prepare-for-Offline download controls that QA exercises on nightly builds.\n\n## Current vs expected\n\n**Current:** Sync / prepare-offline already expose many `testID`s (`sync-action-sync-now`, pause/resume/cancel, prepare-offline download ids). Manual only.\n\n**Expected:** Maestro smokes for Sync Now (and pause/resume if deterministic) plus prepare-offline select \u2192 download start (and pause/cancel if safe).\n\n## Scope\n\n**In scope**\n- Open Sync from Home header \u2192 Sync Now \u2192 wait for success / idle UI\n- Prepare for Offline: enter flow, select project/chapters as far as deterministic, start download, pause or cancel without bricking device storage\n- Cellular preference toggle only if non-destructive and assertable\n\n**Out of scope**\n- Full multi-GB offline pack soak\n- Upload FG notification deep proof (edge / residual doc OK)\n- Multi-account sync isolation (multi-account child)\n\n## Acceptance criteria\n\n- [ ] Sync smoke green against `dev.api.fluent.bible`\n- [ ] Prepare-offline smoke exercises primary controls by id\n- [ ] Residual gaps documented (notification tap \u2192 Sync, huge downloads)\n- [ ] Flows do not leave the device in a stuck download state\n\n## Verification / test plan\n\n1. Authenticated Maestro user\n2. Run sync smoke; then prepare-offline smoke\n3. Note network flakiness / timeouts in PR\n\n## Links\n\n- Refs #488\n- `SyncScreen.tsx`, `PrepareForOfflineScreen.tsx`\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-10T19:52:28Z",
+    "updated_at": "2026-09-10T19:54:49Z",
+    "closed_at": "2026-09-10T19:54:18Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/494",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5624594628,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-10T19:54:49Z",
+      "updated_at": "2026-09-10T19:54:49Z",
+      "body": "Condensed into #491 (main smoke suite).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/494#issuecomment-5624594628"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

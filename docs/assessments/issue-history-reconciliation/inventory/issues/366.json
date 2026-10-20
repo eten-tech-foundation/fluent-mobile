@@ -1,0 +1,23 @@
+{
+  "issue_number": 366,
+  "fetched_at_utc": "2026-10-20T00:36:18Z",
+  "issue": {
+    "number": 366,
+    "title": "[A+] ESLint: ban UI fetch, raw SQL, and @react-navigation app imports",
+    "state": "closed",
+    "body": "## Summary / context\n\nPart of the **A+ Architecture** gap (Now A\u2212 8.7 \u2192 A+ \u22659.5). Layer boundaries are documented and mostly held by convention, but **not machine-enforced** in ESLint/CI.\n\n## Current vs expected\n\n**Current:** `eslint.config.js` does not ban `fetch(` / raw SQL in UI layers, or `@react-navigation/*` app imports. `scripts/architecture-guard.mjs` is warn-only and agent-only.\n\n**Expected:** ESLint fails the existing `lint.yml` job when screens/components call `fetch`, embed SQL, or import `@react-navigation/*` directly.\n\n## Scope\n\n**In scope**\n- `no-restricted-syntax` / import bans for `src/app/**`, `src/components/**` (and agreed UI paths)\n- Ban `@react-navigation/*` imports outside allowed packages (Expo Router / `expo-router/drawer` only)\n- Fixture or documented example proving a violation fails lint\n- Short note in `docs/ci.md` or architecture docs pointing at the rules\n\n**Out of scope**\n- Wiring `architecture-guard.mjs` into CI (\u2192 sibling A2 ticket)\n- Removing `@react-navigation` packages from `package.json` (\u2192 A3)\n- Product feature work\n\n## Acceptance criteria\n\n- [ ] ESLint fails on `fetch(` in UI layers\n- [ ] ESLint fails on raw SQL / `getDatabase()` misuse patterns agreed in the PR (or equivalent ban list documented)\n- [ ] ESLint fails on app-level `@react-navigation/*` imports\n- [ ] Intentional violation in a test fixture or CI-documented check proves the rule fires\n- [ ] `npm run lint` green on current tree (no false positives on legitimate code)\n- [ ] Engineering-only \u2014 no Needs QA\n\n## Verification / test plan\n\n1. `npm run lint` (clean tree)\n2. Temporarily introduce a forbidden import/`fetch` in a UI file \u2192 lint fails \u2192 revert\n3. `npm run format:check` \u00b7 `typecheck` \u00b7 `npm test -- --ci` if config touches shared tooling\n\n## Links\n\n- Parent: A+ initiative (umbrella issue)\n- Related: A2 (CI guard), A3 (dep audit)\n- Refs: `.cursor/rules/architecture.mdc`, `eslint.config.js`\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-08-25T14:17:04Z",
+    "updated_at": "2026-08-25T22:04:24Z",
+    "closed_at": "2026-08-25T22:04:24Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/366",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

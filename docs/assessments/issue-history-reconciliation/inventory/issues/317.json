@@ -1,0 +1,23 @@
+{
+  "issue_number": 317,
+  "fetched_at_utc": "2026-10-20T00:36:07Z",
+  "issue": {
+    "number": 317,
+    "title": "Enforce PR template, description CI check, CODEOWNERS, and required reviews",
+    "state": "closed",
+    "body": "## Summary\n\nHumans (and some AI-assisted flows) still open PRs with empty or CodeRabbit-only bodies \u2014 e.g. [#306](https://github.com/eten-tech-foundation/fluent-mobile/pull/306). Agent rules under `.cursor/` do not apply to the GitHub UI. Enforce the template and review requests at the platform layer.\n\n## Acceptance criteria\n\n- [ ] Add `.github/PULL_REQUEST_TEMPLATE.md` matching `.cursor/templates/pr-template.md` so the GitHub UI pre-fills the body\n- [ ] Add a PR Description CI workflow that fails when required sections are missing (`### TLDR`, `Refs #NNN`, `### How to verify`) or the body is CodeRabbit-only / empty placeholders\n- [ ] Exempt Dependabot PRs from the full template check\n- [ ] Add `.github/CODEOWNERS` so default reviewers are auto-requested\n- [ ] Document the new check in `docs/ci.md` / `.github/README.md` and note branch-protection steps to make **PR Description** + reviews required on `main`\n- [ ] After merge (or with admin rights): mark **PR Description** as a required status check and require at least one approving review (CODEOWNERS) on `main`\n\n## Out of scope\n\n- Softening the agent template sections\n- Auto-filling PR bodies via a bot\n\n## Verification\n\n- Unit tests for the validation script\n- Open a draft PR / edit body to confirm check fails then passes\n- Confirm CODEOWNERS requests a review on a new PR\n\n## Links\n\n- Example empty body: https://github.com/eten-tech-foundation/fluent-mobile/pull/306\n- Related (docs-only, explicitly deferred gates): #173, #211",
+    "user": "mattrace",
+    "created_at": "2026-08-11T22:16:14Z",
+    "updated_at": "2026-08-12T14:23:23Z",
+    "closed_at": "2026-08-12T14:23:23Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/317",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

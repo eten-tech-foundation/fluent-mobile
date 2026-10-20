@@ -1,0 +1,25 @@
+{
+  "issue_number": 622,
+  "fetched_at_utc": "2026-10-20T00:38:33Z",
+  "issue": {
+    "number": 622,
+    "title": "Warn about unsynced recordings on drawer Sign Out [Returning online and sync changes Audit]",
+    "state": "closed",
+    "body": "Found during the returning online and synchronizing changes audit (#530, epic #526). First seen during PR #563 device QA.\n\n**Severity:** Medium  \n**Launch blocker:** No  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), local debug build of `ddfdaaa` (PR #559 head), `dev.api.fluent.bible`\n\n## Summary\n\nThere are two ways to sign out, and only one checks for unsynced work. More Settings \u2192 \"Log out\" (`src/app/screens/SettingsScreen.tsx:83`) shows \"Unsynced work on device\" when `loadPendingUploadCount()` > 0. The drawer \"Sign Out\" (`src/components/ui/UserSettingsMenu.tsx:145`) calls `signOutCurrentDeviceAccount()` with no check. The same action is also labeled differently in the two places. Recordings stay in the local database after sign out, so signing back in to the same account recovers them.\n\nThe pending count also ignores pericope takes (`granularity = 'verse'` in `UPLOADABLE_PENDING_WHERE`), so with only pericope takes pending neither entry warns. Those takes cannot upload yet (#584).\n\n## Expected\n\nBoth sign-out entries warn when recordings have not been uploaded, and they use the same label.\n\n## Actual\n\nThe drawer Sign Out signs out immediately, even with pending or failed takes.\n\n## Steps to reproduce\n\n1. Record a verse take and keep it pending (for example, offline).\n2. Open the drawer and tap Sign Out.\n\n## Acceptance criteria\n\n- [ ] The drawer Sign Out shows the same unsynced-work warning as More Settings \u2192 Log out (shared helper).\n- [ ] The warning counts every take not yet on the server, including pericope takes.\n- [ ] One label for the action in both places (product to choose \"Log out\" or \"Sign out\").\n- [ ] Unit tests for both entries.\n- [ ] Android device QA.\n\n## Related\n\n- Parent audit: #530 (epic #526)\n- #584 (pericope takes upload), #568 (drawer guard during recording; different case)\n- Assessment: `docs/assessments/returning-online-and-sync/README.md` (PR #598)\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-30T18:20:16Z",
+    "updated_at": "2026-10-08T19:45:39Z",
+    "closed_at": "2026-10-08T19:45:39Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/622",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

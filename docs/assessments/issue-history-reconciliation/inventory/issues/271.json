@@ -1,0 +1,48 @@
+{
+  "issue_number": 271,
+  "fetched_at_utc": "2026-10-20T00:35:50Z",
+  "issue": {
+    "number": 271,
+    "title": "Implement Reconnect Claim Sync and Conflict Detection",
+    "state": "open",
+    "body": "When a device comes back online, any claims made during the offline window need to be pushed to the server and validated. This ticket implements the reconnect sync path for claims: push pending offline claims, confirm clean claims silently, detect multi-claimant conflicts, surface the conflict state on the chapter row, and clear it when a PM resolves the conflict on web.\n\n## Functional Requirements\n\n### Claim Sync on Reconnect\n\n- On reconnect, sync all locally-held offline claims to the server as part of the standard sync cycle.\n- If no conflict is detected for a claimed chapter (no other translator claimed or was assigned the same chapter while offline), confirm the claim silently with no visual change to the chapter row.\n- If the PM resolved an assignment conflict server-side before reconnect, sync the clean single-assignment state with no conflict surfaced; no special case is needed.\n\n### Conflict Detection and State\n\n- If a conflict is detected on reconnect (another translator created a recording on the same chapter during the offline window), update the chapter row to the conflict state (`li:users` with `li:triangle-alert` badge, per #260).\n- Do not silently resolve or auto-assign to either translator; surface the conflict and wait for PM resolution.\n- The conflict indicator persists on subsequent syncs until explicitly resolved; it does not auto-dismiss.\n- The conflict state is visible to all users with access to the chapter, including both involved translators and the PM.\n\n### Conflict Resolution Receipt\n\n- On each sync cycle, check whether any locally-held conflict chapters have been resolved server-side (PM selected a winning take on web).\n- If a previously conflicted chapter now has a single assigned claimant, clear the conflict indicator and update the chapter row to either the \"mine\" state (`li:user`, primary color `#0b50d0`) or the \"taken\" state (`li:user`, neutral/muted), depending on which translator the PM assigned.\n- Clear the conflict state silently; no prompt or notification is shown to the translator.\n\nNote: This ticket depends on the conflict detection infrastructure in #256 (version tokens and server-side take flagging). PM conflict resolution mechanics are out of scope and will be specified in a separate requirements doc.",
+    "user": "chadw-eten",
+    "created_at": "2026-07-29T18:15:40Z",
+    "updated_at": "2026-09-29T19:02:45Z",
+    "closed_at": null,
+    "labels": [],
+    "comments": 3,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/271",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5273847008,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-12T23:08:34Z",
+      "updated_at": "2026-08-12T23:08:34Z",
+      "body": "### Eng note (updated)\n\nServer work lives in **eten-tech-foundation/fluent-api#272** (claim sync + multi-claimant conflict). Don\u2019t build a fake claim-conflict protocol only on mobile by default.\n\n**Preferred:** ship reconnect sync with `fluent-api#272` (+ #268/#270) as one feature.\n\n**Fallback:** mock the reconnect/conflict UI if API is too heavy, and leave `fluent-api#272` as the explicit follow-up in the PR.\n\n(Audio take conflicts are a different API ticket: eten-tech-foundation/fluent-api#271 / mobile #256.)",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/271#issuecomment-5273847008"
+    },
+    {
+      "id": 5874706180,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-09-28T16:59:08Z",
+      "updated_at": "2026-09-28T16:59:08Z",
+      "body": "Finding from the returning online and synchronizing changes audit (#530, epic #526), Gap 9. **Severity:** High \u00b7 **Launch blocker:** To be decided with product. Cross-reference: offline chapter assignment audit #533.\n\n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), local debug build of `09ff2fd` (PR #559 head), `https://dev.api.fluent.bible` (scenario G.23; 2026-09-28 device log).\n\n**What happened:** a take recorded offline in an unassigned chapter queued an offline claim (`Enqueued offline chapter claim`, assignment 41863). On reconnect the upload started before the claim was pushed, and the server answered HTTP 404 \"Verse audio recording not found\" (`retryable: false`). The take was marked failed, and the Sync page kept showing failed uploads until the takes were deleted or the user signed out and in.\n\n**Code cause:** uploads start on the reconnect edge, but offline claims are pushed only by the full metadata sync (`syncPendingChapterClaimsForUser`, `src/services/sync.ts:301-341`, called only from `:900` and `:1025`: Sync Now, sign-in, re-auth and the Home \"needs download sync\" repair). Reconnecting alone does not push claims.\n\n**Suggested extra AC:**\n\n- [ ] On reconnect, pending offline claims sync before audio uploads for those chapters.\n- [ ] A take whose upload fails because its claim has not synced stays pending (not failed) and uploads after the claim syncs.\n- [ ] Unit test for the claim-before-audio order; Android device QA (offline claim by recording \u2192 reconnect \u2192 take uploads).\n\nAssessment: `docs/assessments/returning-online-and-sync/README.md` (PR #598)\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/271#issuecomment-5874706180"
+    },
+    {
+      "id": 5896745775,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-09-29T19:02:45Z",
+      "updated_at": "2026-09-29T19:02:45Z",
+      "body": "The offline chapter assignment audit (#533) covered this issue's behavior on device (`main` @ `fb634e5`, Android 10, `dev.api.fluent.bible`).\n\n- **Pass:** translator-vs-translator race pushed within 5 minutes, no peer checker (D.3\u2013D.7): the claim returns a conflict, the conflict indicator shows on both devices, the Record banner appears, and it persists across syncs.\n- **Fail:** a PM assignment (web sets a peer checker) or an offline window longer than 5 minutes: the claim gets 404 on every sync, no conflict is shown, and the take is stranded \u2192 #610.\n- **Fail:** pending claims are pushed only by the full sync, so the reconnect upload and the list refresh act before them \u2192 #611.\n- PM conflict resolution was not tested (out of scope here, per this issue).\n\nAssessment: `docs/assessments/offline-chapter-assignment/README.md` (PR #609).\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/271#issuecomment-5896745775"
+    }
+  ],
+  "comments_fetched_count": 3,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

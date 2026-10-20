@@ -1,0 +1,249 @@
+{
+  "rolled_back_at_utc": "2026-10-20T00:48:04Z",
+  "snapshot": "docs/assessments/issue-history-reconciliation/inventory/provenance/coverage-before-rollback-2026-10-20T004804Z.csv",
+  "rollback_count": 303,
+  "kept_complete_count": 5,
+  "kept_complete": [
+    {
+      "issue": 38,
+      "reason": "genuine_override_source_checked",
+      "status": "agent_integrator_verified_override_c1"
+    },
+    {
+      "issue": 257,
+      "reason": "genuine_override_source_checked",
+      "status": "agent_integrator_verified_override_c3"
+    },
+    {
+      "issue": 271,
+      "reason": "genuine_override_source_checked",
+      "status": "agent_integrator_verified_override_c3"
+    },
+    {
+      "issue": 611,
+      "reason": "genuine_override_source_checked",
+      "status": "agent_integrator_verified_override_c6"
+    },
+    {
+      "issue": 721,
+      "reason": "genuine_override_source_checked",
+      "status": "agent_integrator_verified_override_c6"
+    }
+  ],
+  "rollback_sample": [
+    {
+      "issue": 1,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 2,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 3,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 4,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 5,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 6,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 7,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 8,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 9,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 10,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 12,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 14,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 15,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 16,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 17,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 18,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 19,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 22,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 23,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 31,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 32,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 33,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 36,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "needs_impl_check"
+    },
+    {
+      "issue": 39,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "needs_impl_check"
+    },
+    {
+      "issue": 40,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 41,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 47,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 48,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 49,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "needs_impl_check"
+    },
+    {
+      "issue": 50,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 51,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 52,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "needs_impl_check"
+    },
+    {
+      "issue": 53,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "needs_impl_check"
+    },
+    {
+      "issue": 71,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 77,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "needs_impl_check"
+    },
+    {
+      "issue": 84,
+      "from_status": "agent_integrator_complete_eng_only",
+      "reason": "bulk_scripted_false_complete"
+    },
+    {
+      "issue": 85,
+      "from_status": "agent_integrator_complete_eng_only",
+      "reason": "bulk_scripted_false_complete"
+    },
+    {
+      "issue": 86,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 87,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    },
+    {
+      "issue": 88,
+      "from_status": "cohort_c1_agent_integrated",
+      "reason": "cohort_disposition_only_pending_depth"
+    }
+  ],
+  "counts_after": {
+    "total": 308,
+    "disposition_review_yes": 308,
+    "reconciliation_complete_yes": 5,
+    "awaiting_reconciliation_depth": 303,
+    "no_disposition_yet": 0
+  },
+  "rules": [
+    "Bulk statuses closed_assessed/eng_only/open_assessed \u2192 rolled back",
+    "needs_impl_check + impl_checked=no \u2192 not complete",
+    "#599/#607 never eng-only complete",
+    "prs_mentioned \u2260 linked_prs_followed",
+    "Genuine overrides with CURRENT SOURCE kept"
+  ]
+}

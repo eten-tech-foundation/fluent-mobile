@@ -1,0 +1,34 @@
+{
+  "issue_number": 14,
+  "fetched_at_utc": "2026-10-20T00:33:48Z",
+  "issue": {
+    "number": 14,
+    "title": "Mobile API integration & initial data sync",
+    "state": "closed",
+    "body": "## Overview\nWire up manual sync on the home screen: auth header, fetch sequence, \nSQLite upserts, MMKV state, and inline sync status. Sync is manual \ntrigger only for now.\n\n## Shared context\n\n### .env\nUSER_ID=00\nUSER_EMAIL=user@fluent.com\n\n### MMKV keys\n| Key | Value | Set when |\n|-----|-------|----------|\n| `userId` | `00` | App startup (from env) |\n| `userEmail` | `user@fluent.com` | App startup (from env) |\n| `sync_count_projects` | `5` | After sync |\n| `sync_count_chapters` | `12` | After sync |\n| `sync_count_bibles` | `3` | After sync |\n| `last_synced_at` | `2024-01-04T10:32:00Z` | After sync |\n| `sync_error_<step>` | `\"Network timeout\"` | On step failure |\n\n### Upsert strategy (all tables)\nUse `INSERT OR REPLACE` keyed on server `id`. After each upsert, compare \nnew row count vs previous count and store in MMKV as `sync_count_<table>`.\n\n## Acceptance criteria\n- [x] After first launch, `users` table has exactly 1 row\n- [x] After first sync, `languages`, `books`, `bibles`, `projects`, \n      `project_units`, `chapter_assignments` and `bible_texts` are all populated\n- [x] Re-running sync does not duplicate rows\n- [x] A failing step does not crash or block other steps",
+    "user": "Joel-Joseph-George",
+    "created_at": "2026-04-08T09:55:14Z",
+    "updated_at": "2026-07-02T19:51:17Z",
+    "closed_at": "2026-07-01T09:17:59Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/14",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4221811498,
+      "user": "B3RN153",
+      "created_at": "2026-04-10T07:02:16Z",
+      "updated_at": "2026-04-10T07:02:16Z",
+      "body": "**SP5**\n1. GET primary 3 tables - (ET- 2hrs)\n2. GET project table        - (ET 3hrs)\n3. GET chaper assignment-(ET 6hrs)\n4. GET bible-texts               -(ET 3hrs)\n5. Derive project units         -(ET 3hrs)\n6. Implementing mmkv        -(ET 5hrs)\n7. Error handling                  -(Et 4 hrs)",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/14#issuecomment-4221811498"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

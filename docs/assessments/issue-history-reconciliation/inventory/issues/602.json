@@ -1,0 +1,25 @@
+{
+  "issue_number": 602,
+  "fetched_at_utc": "2026-10-20T00:38:19Z",
+  "issue": {
+    "number": 602,
+    "title": "Do not keep network failures as sync errors on the Sync page [Returning online and sync changes Audit]",
+    "state": "closed",
+    "body": "Found during the returning online and synchronizing changes audit (#530, epic #526).\n\n**Severity:** Low  \n**Launch blocker:** No  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), local debug build of `09ff2fd` (PR #559 head), `dev.api.fluent.bible` (scenario C.11 and the H.24 attempt)\n\n## Summary\n\nNetwork failures during a metadata sync are stored as sync errors and stay on the Sync page after the connection is back and uploads succeed, and also while offline.\n\nA metadata step that fails on a flapping connection stores the DNS error as `sync_error_*` (`src/services/sync.ts:121-168`). Keys clear when that step next succeeds, but master data, pericope sets and Bible texts run only in the full sync. `useSync` recomputes the text only when `isSyncing` changes and skips its refresh while in the error state (`src/hooks/useSync.ts:36-58`, `:91-100`).\n\n## Expected\n\nNo sync error once the connection is back and sync succeeds; being offline is shown as offline, not as a failure.\n\n## Actual\n\n\"Sync failed: master data\" (and \"pericope sets\" / \"bible texts\") stays next to \"Online \u00b7 all synced\", also offline, until sign-out and sign-in. The 2026-09-28 log shows `Sync error stored` for `sync_error_chapter_assignments` with a DNS failure.\n\n## Steps to reproduce\n\n1. Tap Sync Now while the connection is unstable (or turn Wi-Fi off right after tapping it).\n2. Reconnect and let uploads finish.\n\n## Acceptance criteria\n\n- [ ] Transport failures (offline, DNS, timeout) do not set persistent sync step errors, or are cleared on the next successful sync.\n- [ ] The Sync page error text updates when the stored errors change.\n- [ ] Unit tests for both.\n- [ ] Android device QA (C.11).\n\n## Related\n\n- Parent audit: #530 (epic #526)\n- #470, #18, #292\n- Assessment: `docs/assessments/returning-online-and-sync/README.md` (PR #598)\n\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-28T16:57:43Z",
+    "updated_at": "2026-10-08T16:38:23Z",
+    "closed_at": "2026-10-08T16:38:23Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/602",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

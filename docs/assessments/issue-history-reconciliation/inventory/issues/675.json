@@ -1,0 +1,27 @@
+{
+  "issue_number": 675,
+  "fetched_at_utc": "2026-10-20T00:38:40Z",
+  "issue": {
+    "number": 675,
+    "title": "Point sync at /self lists and clear cached milestones when membership is empty",
+    "state": "closed",
+    "body": "## Summary / context\n\nAfter the user leaves their last project, sync calls `GET /users/{userId}/projects` and gets **403 Insufficient permissions**. `retrySyncStep` throws, so milestones and chapter-assignments never run and local membership stays. The Milestones tab joins `user_projects`, so the cached row remains.\n\nBlocked on [fluent-api#386](https://github.com/eten-tech-foundation/fluent-api/issues/386). Do not implement until those `/self` routes are on `main`.\n\n## Current behavior\n\n1. Sync calls `GET /users/{userId}/projects`, `/milestones`, `/chapter-assignments/all`, and `/chapter-assignments`.\n2. Org Member with no project grant has neither `project:view` nor `user:view`, so the first call returns 403 and the rest never run.\n3. `reconcileUserProjects` does not run, so `user_projects` keeps the old row.\n4. `getMilestonesWithSummary` joins `user_projects`, and the Milestones tab still shows the cached milestone.\n5. If membership were cleared first, `ensureUserProjectMembership` (called from `getMilestonesWithSummary`) would rebuild `user_projects` from leftover `chapter_assignments`. `reconcileUserMilestones` joins `user_projects`, so those units have to be deleted first.\n\n## Expected behavior\n\nSync treats \"I am in no project\" as an empty list from the session routes:\n\n- `getUserProjects` \u2192 `GET /self/projects`\n- `getUserMilestones` \u2192 `GET /self/milestones`\n- `getChapterAssignments` \u2192 `GET /self/chapter-assignments/all` (same query string)\n- `getUserChapterAssignments` \u2192 `GET /self/chapter-assignments`\n\nKeep the current method signatures so the `token` argument does not shift. The `userId` does not go in the URL.\n\nWhen the projects response is a confirmed empty array, `syncProjects` calls `reconcileUserMilestones(userId, [])` and then `reconcileUserProjects(userId, [])`, and skips `ensureUserProjectMembership`. The Milestones tab stays empty on the next open.\n\n## Acceptance criteria\n\n- [ ] The four sync GETs hit `/self/...` and the request URL does not contain `/users/{userId}`.\n- [ ] A confirmed empty projects response calls `reconcileUserMilestones(userId, [])` and then `reconcileUserProjects(userId, [])`.\n- [ ] That empty path does not call `ensureUserProjectMembership`.\n- [ ] A non-empty projects response still reconciles project ids only inside `syncProjects`, and does not call `reconcileUserMilestones` there.\n- [ ] `npm test` for `api.milestones`, `sync.auth`, `sync.milestones`, and `sync.steps` passes.\n\n## File pointers\n\n| File | Notes |\n|------|-------|\n| `src/services/api.ts` | Four GET paths move to `/self/...` |\n| `src/services/sync.ts` | Empty projects list reconciles milestones before membership |\n| `src/db/repository.ts` | `reconcileUserMilestones` joins `user_projects`; `ensureUserProjectMembership` backfills from chapter assignments |\n| `src/db/queries.ts` | `getMilestonesWithSummary` joins `user_projects` and calls `ensureUserProjectMembership` |\n\n## Related\n\n- [fluent-api#386](https://github.com/eten-tech-foundation/fluent-api/issues/386)\n- [fluent-api#360](https://github.com/eten-tech-foundation/fluent-api/pull/360#issuecomment-6049724158)\n\n## Out of scope\n\n- Changing `GET /users/{userId}/...` on the API (that is #386)\n- Treating an empty chapter-work list as an assignee wipe in `reconcileUserChapterWork`\n- fluent-web",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-10-09T14:23:32Z",
+    "updated_at": "2026-10-15T19:40:24Z",
+    "closed_at": "2026-10-15T19:40:24Z",
+    "labels": [
+      "enhancement",
+      "API Work Required",
+      "BLOCKED"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/675",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,32 @@
+{
+  "issue_number": 330,
+  "fetched_at_utc": "2026-10-20T00:36:12Z",
+  "issue": {
+    "number": 330,
+    "title": "Enforce QA-required PR merge gate (status/label/checklist)",
+    "state": "closed",
+    "body": "## Summary\n\nFollow-up from #329. Docs now define a **manual** merge gate: QA-required PRs must not merge until QA passes that PR\u2019s isolated `preview-build`.\n\nThis ticket is to **automate or hard-enforce** that gate once the team agrees on the mechanism.\n\n## Options to consider\n\n- Required GitHub status check / Action that fails until a `qa-passed` label (or similar) is present\n- Branch protection rule + CODEOWNERS for QA-required paths\n- Checklist bot that blocks merge when Needs QA? = Yes and preview/QA not confirmed\n- Project 4 Status must be `Passed QA` before merge (harder to enforce in GitHub alone)\n\n## Out of scope\n\n- Changing the preview build pipeline itself (already isolates per-PR APKs)\n- Production `v*` / nightly paths\n\n## Acceptance criteria\n\n- [ ] Team picks an enforcement mechanism\n- [ ] Mechanism documented in `docs/guides/qa-process.md`\n- [ ] QA-required PRs cannot merge without evidence of QA pass on that PR\u2019s preview (or explicit maintainer override documented)\n\n## Related\n\n- Part of / blocked by process docs in #329\n- `docs/guides/qa-process.md` \u00a7 Gap (manual gate)",
+    "user": "mattrace",
+    "created_at": "2026-08-13T17:20:50Z",
+    "updated_at": "2026-08-25T21:42:36Z",
+    "closed_at": "2026-08-25T21:42:36Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/330",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5411789823,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-25T14:19:55Z",
+      "updated_at": "2026-08-25T14:19:55Z",
+      "body": "Per current `docs/guides/qa-process.md`, pre-merge QA gating is **superseded** (merge on engineer approval + green CI; QA is post-merge on nightly).\n\nRecommend closing this issue as **not planned** / superseded rather than implementing a merge-blocking QA gate. Tracked from A+ process work on #365.\n\nIf Product explicitly wants merge-blocking QA again, reopen with a new AC that matches that policy.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/330#issuecomment-5411789823"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

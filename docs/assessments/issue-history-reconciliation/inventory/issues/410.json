@@ -1,0 +1,72 @@
+{
+  "issue_number": 410,
+  "fetched_at_utc": "2026-10-20T00:36:39Z",
+  "issue": {
+    "number": 410,
+    "title": "Support Mixed-Mode Recording with Cross-Granularity Take Labeling",
+    "state": "closed",
+    "body": "Once the working unit is a live per-user toggle, a translator can switch modes mid-chapter, so recording must never be blocked by existing takes at the other granularity. This ticket removes any recording lock, and extends the existing takes model (#71) so every take is labeled by the granularity it was recorded in and the shared 5-take cap accounts for takes that span the other granularity.\n\n## Functional Requirements\n\n### Mixed-Mode Recording\n- Allow recording a new take in whichever mode is currently active, regardless of any existing takes in the other granularity.\n- Never block the Record action due to a granularity conflict; mixed verse-level and pericope-level takes may coexist within the same chapter.\n\n### Take Labeling\n- Add a subtitle to each take card in the format \"Take [N] - Pericope - vv. [X]-[Y]\" or \"Take [N] - Verse - v. [X]\", naming the granularity it was recorded in and the verse(s) it covers.\n- Show this subtitle regardless of which mode the take list is currently being viewed in.\n\n### Cross-Granularity Take Lists\n- When a pericope take exists, show it in the take list of every verse it spans, labeled with its \"Take [N] - Pericope - vv. [X]-[Y]\" subtitle.\n- Count a shared pericope take against each spanned verse's 5-take cap.\n- If a verse's take list is at the 5-take cap because of a shared pericope take, require deleting a take from verse view before a new verse-level take can be recorded for that verse.\n\n<img width=\"300\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/8f046e0e-be3b-4f35-a93b-00c8786547ee\" />\n\n> **Note:** Deleting a shared pericope take from one verse's list removes it entirely (from every verse it spans).\n",
+    "user": "chadw-eten",
+    "created_at": "2026-08-27T18:19:01Z",
+    "updated_at": "2026-10-06T19:06:39Z",
+    "closed_at": "2026-10-06T19:06:39Z",
+    "labels": [],
+    "comments": 6,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/410",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5480396805,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-31T15:15:38Z",
+      "updated_at": "2026-08-31T15:15:38Z",
+      "body": "## Engineering context\n\n### Product intent\nAllow recording in the active mode without blocking on the other granularity; label every take with granularity + verse coverage; show shared pericope takes on every spanned verse; apply the shared 5-take cap across granularities; deleting a shared pericope take removes it everywhere.\n\n### What exists today (#71 shipped)\n- `recordings` rows: `bible_text_id`, `take_number`, `is_selected`, \u2026 \u2014 **verse-keyed only**; no granularity / range columns (`src/db/schema.ts`).\n- Cap: `MAX_TAKES = 5` in `src/hooks/useVerseAudio.ts`.\n- Take row label: `\"Take {N}\"` only (`DraftTakeRow`) \u2014 no subtitle.\n- Upload: `FluentAPI.uploadVerseAudio` \u2192 `PUT /verse-audio/{projectUnitId}/{bibleTextId}` \u2014 one verse id; server record is per `(projectUnitId, bibleTextId)`.\n\n### Alignment notes\n- \u201cNever block Record due to granularity conflict\u201d is a **local policy** change once we can store both kinds of takes.\n- Cross-granularity list + shared cap need a data model for \u201cthis take covers verses X\u2013Y at pericope granularity,\u201d not only a UI subtitle.\n- Subtitle formats from the mock: `Take [N] - Pericope - vv. [X]-[Y]` / `Take [N] - Verse - v. [X]` \u2014 add a subtitle slot on `DraftTakeRow` / shared rows; show regardless of current view mode.\n- Delete of a shared pericope take is one underlying row (or one id) removed from all verse views \u2014 model accordingly.\n\n### Suggested approach\n1. Extend local recordings model (migration): e.g. `granularity` (`verse` | `pericope`), `start_verse` / `end_verse` (and book/chapter as needed), keep `bible_text_id` as anchor (start verse) for join compatibility **or** introduce a clearer unit key \u2014 pick one scheme and document it.\n2. Update list queries so verse V includes verse takes for V **plus** pericope takes whose range includes V.\n3. Cap logic: count all takes visible for that verse (including shared pericope takes) against 5; disable Record New Take at cap.\n4. Subtitle on take cards; ensure delete is global for shared ids.\n5. Tests for cap, list membership, delete fan-out.\n\n### Dependencies\n- **Requires:** #407 + pericope sync (to know ranges).\n- **Unblocks:** #411 \u201cStitched\u201d / pericope-on-verse labeling display.\n- Upload path depends on API support below \u2014 local mixed-mode can proceed first only if product accepts deferred sync for pericope takes.\n\n### API gap (important)\nCurrent `/verse-audio` cannot represent a multi-verse pericope take. Honest upload/sync for mixed-mode needs fluent-api support for pericope / verse-range translator recordings (granularity + verse span metadata; list/get/delete semantics; awareness of conflict work on fluent-api #271).\n\nUntil that exists: implement local mixed-mode + labeling; keep pericope-take upload behind an explicit waiver, or get product sign-off before mapping a pericope take onto a single-verse upload.\n\n### Out of scope\n- Stitched playback label `\"Take N - Stitched - \u2026\"` (#411)\n- Partial-recorded Bible card indicator (#408)\n- Source player (#412/#235)",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/410#issuecomment-5480396805"
+    },
+    {
+      "id": 5679311158,
+      "user": "Roslin22",
+      "created_at": "2026-09-15T11:19:05Z",
+      "updated_at": "2026-09-15T11:19:05Z",
+      "body": "**Test Result \u2013 Issue #410**\n\n- Mixed-mode recording is working: Verse and Pericope takes can be recorded in the same chapter without any granularity conflict.\n- Take labeling is working: Takes correctly show their original recording mode and covered verse range, such as \u201cTake N - Verse - v.1\u201d and \u201cTake N - Pericope - vv.1-3.\u201d\n- Cross-granularity visibility is working: Pericope takes are correctly displayed under all verses they cover, while remaining hidden from verses outside the range.\n- 5-take limit is working: The shared 5-take cap is correctly applied, including Pericope takes against every verse they span.\n- Delete and re-record flow is working: Deleting a shared Pericope take removes it from all covered verses and frees a slot for a new recording.\n- Overall mixed-mode workflow is working: Mode switching, recording, take lists, persistence after refresh/navigation, and existing play/delete functionality work as expected.\n\n**Issue Identified:** Minor UI/navigation glitch was observed while switching between verses.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/410#issuecomment-5679311158"
+    },
+    {
+      "id": 5681821522,
+      "user": "chadw-eten",
+      "created_at": "2026-09-15T14:20:40Z",
+      "updated_at": "2026-09-15T14:21:46Z",
+      "body": "I am curious about the way this is working. In the screen recording, \n\n- I start in verse mode and show that verse 1 has a recording.\n- Then I switch to pericope mode and go back to the same passage (now a pericope).\n- Note that there are both left and right arrows at the top for navigation.\n- Also note that the recording for verse 1 is not showing.\n- Navigating to the right does not do anything, I clicked twice.\n- Navigating back to the left, I clicked twice again, then on the third click, I get to the recording for Verse 1.\n- I can normally record a pericope as the ticket specifies and it is labeled correctly.\n\nI am wondering why does the verse not show right when it loads? What does the right navigation arrow do? If anything it should go to the next pericope, but that is not part of this ticket. Why do I have to navigate left to see the verse 1 recording?\n\nhttps://github.com/user-attachments/assets/a59e19c5-277d-4d1c-b57f-94955c4fb9f8",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/410#issuecomment-5681821522"
+    },
+    {
+      "id": 5684997095,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-09-15T17:34:29Z",
+      "updated_at": "2026-09-15T17:34:29Z",
+      "body": "> I am curious about the way this is working. In the screen recording,\n> \n> * I start in verse mode and show that verse 1 has a recording.\n> * Then I switch to pericope mode and go back to the same passage (now a pericope).\n> * Note that there are both left and right arrows at the top for navigation.\n> * Also note that the recording for verse 1 is not showing.\n> * Navigating to the right does not do anything, I clicked twice.\n> * Navigating back to the left, I clicked twice again, then on the third click, I get to the recording for Verse 1.\n> * I can normally record a pericope as the ticket specifies and it is labeled correctly.\n> \n> I am wondering why does the verse not show right when it loads? What does the right navigation arrow do? If anything it should go to the next pericope, but that is not part of this ticket. Why do I have to navigate left to see the verse 1 recording?\n> \n>  PericopeRecording.mp4\n\n@chadw-eten, I'd just like to leave a quick comment here to clarify.\n\nYou're seeing something I noticed during #409/#410 as well. In pericope mode the header shows the full range, but prev/next still moves verse by verse. I could've wired up pericope-to-pericope navigation, but it was out of scope for those tasks, so I left it for follow-up. #410 covered mixed-mode recording and labeling; the navigation piece is the gap here.\n\n@Roslin22 raised the same thing on [#409](https://github.com/eten-tech-foundation/fluent-mobile/issues/409), and Bernice also reached out to me about it. He asked how we should handle it from here. For now, Bernice is taking it on #409, but if you'd rather we address it here on #410, we can get it sorted right away. Just let me know.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/410#issuecomment-5684997095"
+    },
+    {
+      "id": 5688078346,
+      "user": "chadw-eten",
+      "created_at": "2026-09-15T21:05:27Z",
+      "updated_at": "2026-09-15T21:05:27Z",
+      "body": "Ah, ok. Thanks for the clarification. I think it makes sense to handle it in #409. I will get with Bernise to give him what he needs.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/410#issuecomment-5688078346"
+    },
+    {
+      "id": 5714645350,
+      "user": "chadw-eten",
+      "created_at": "2026-09-17T12:51:12Z",
+      "updated_at": "2026-09-17T12:51:12Z",
+      "body": ":white_check_mark:",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/410#issuecomment-5714645350"
+    }
+  ],
+  "comments_fetched_count": 6,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

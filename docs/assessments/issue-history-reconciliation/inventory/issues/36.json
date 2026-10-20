@@ -1,0 +1,23 @@
+{
+  "issue_number": 36,
+  "fetched_at_utc": "2026-10-20T00:33:59Z",
+  "issue": {
+    "number": 36,
+    "title": "Sync Data [ import only]",
+    "state": "closed",
+    "body": "- initial import based on the userid\n- incremental sync on button click\n- When the user changes relevant data (Projects, chapter assignments,bible-books, bible texts), they should be imported.\n- While importing the above(i.e, the 3rd point), make sure no duplicate data is there.\n- When the user is switched, make sure the data related to that user is visible \n\n\nDev:-\n- planning and Discussion (ET 7hrs)\n- creating a new api [ET 3hrs]\n- coding front end[ET 7hrs]\n- Unit testing [ET 2hrs]\n- code review [ET 3hrs]\n- fixes after review [ET 2hrs]\n- changes after QA testing [ET 2 hrs]\n",
+    "user": "LijuJacob08",
+    "created_at": "2026-05-18T09:40:01Z",
+    "updated_at": "2026-07-02T19:51:30Z",
+    "closed_at": "2026-06-09T03:42:24Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/36",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

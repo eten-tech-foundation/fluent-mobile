@@ -1,0 +1,25 @@
+{
+  "issue_number": 85,
+  "fetched_at_utc": "2026-10-20T00:34:15Z",
+  "issue": {
+    "number": 85,
+    "title": "Add Initials Indicator to Drafting Page Header",
+    "state": "closed",
+    "body": "When multiple accounts are logged in on a device, users need a persistent, at-a-glance way to see which account is currently active without opening a menu. This ticket adds a conditionally visible initials indicator to the drafting page header that doubles as the entry point for the account switcher panel.\n\n## Functional Requirements\n\n### Header Layout\n\n- The drafting page header currently has a back arrow on the left and a sync icon on the right.\n- Add an initials indicator icon to the right of the sync icon, making two icons on the right side of the header.\n\n### Initials Indicator\n\n- Display the active account's first and last initials inside a small circle.\n- Only render the indicator when two or more accounts are logged in on the device; single-account users see no change to the header.\n- Tapping the indicator opens the account switcher panel (see #84).\n\n> **Note:** The initials circle is a custom UI element, not a Lucide icon. Style to match the app's existing avatar/badge conventions.\n\n<img width=\"431\" height=\"211\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/c10dbed2-edf1-40e3-add6-d0dec9a78fb9\" />",
+    "user": "chadw-eten",
+    "created_at": "2026-06-25T19:59:36Z",
+    "updated_at": "2026-07-14T02:27:26Z",
+    "closed_at": "2026-07-14T02:27:26Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/85",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

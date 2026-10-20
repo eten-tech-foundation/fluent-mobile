@@ -1,0 +1,25 @@
+{
+  "issue_number": 92,
+  "fetched_at_utc": "2026-10-20T00:34:22Z",
+  "issue": {
+    "number": 92,
+    "title": "Privacy Policy + Terms of Use screens & routing",
+    "state": "closed",
+    "body": "### Context\n\n### Current state in baseline\n\n- Screens: `src/app/tabs/PrivacyPolicyPage.tsx`, `src/app/tabs/TermsOfUsePage.tsx`.\n- Routes registered in `src/navigation/AppNavigator.tsx` in **both** stacks:\n\n```tsx\n// signed-out (:32) and signed-in (:52)\n<Stack.Screen name=\"PrivacyPolicy\" component={PrivacyPolicyScreen} />\n<Stack.Screen name=\"TermsOfUse\" component={TermsOfUseScreen} />\n```\n\n- Param types in `src/types/navigation/types.ts:17-18` (`PrivacyPolicy: undefined; TermsOfUse: undefined;`).\n- Reachable from the Login footer: `src/app/tabs/LoginScreen.tsx:368,375` (`navigation.navigate('PrivacyPolicy' | 'TermsOfUse')`).\n\nGap: the settings menu does **not** link to them \u2014 `src/components/ui/UserSettingsMenu.tsx` only navigates to `AddUser` (`:55`); no Privacy/Terms entry.\n\n### Problems / why\n\n- Legal pages are only reachable pre-login (from the Login footer), not from in-app Settings, so a signed-in user cannot find them.\n- Content/markup should be verified for completeness and styled with `src/theme/` tokens; long legal text should scroll and be accessible.\n\n### Target design\n\n- Add \"Privacy Policy\" and \"Terms of Use\" entries to `UserSettingsMenu` that `navigation.navigate('PrivacyPolicy' | 'TermsOfUse')` (routes already exist in the signed-in stack).\n- Audit both pages: ensure `ScrollView`, theme tokens, readable typography, a back affordance, and accessibility roles/labels.\n- Confirm the latest approved legal copy is present (coordinate with product if placeholder).\n\n### Implementation steps\n\n1. Add Privacy/Terms rows to `src/components/ui/UserSettingsMenu.tsx` with navigation actions and `testID`s.\n2. Review `PrivacyPolicyPage.tsx` / `TermsOfUsePage.tsx`: wrap content in `ScrollView`, apply theme tokens, add a header/back control consistent with `StackScreenHeader`.\n3. Verify both routes open from Login footer and Settings.\n4. Add a lightweight render test asserting each screen mounts and is scrollable.\n\n### Acceptance criteria\n\n- [ ] Privacy Policy and Terms reachable from both Login and in-app Settings.\n- [ ] Both screens scroll, use theme tokens, and expose accessibility labels/roles.\n- [ ] Render tests pass for both screens.\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Tests default `EXPO_PUBLIC_API_BASE_URL=http://localhost:9999` via `jest.env.cjs`; **no live API required**.\n- Do **not** use `FLUENT_USER_EMAIL`.\n\n### Out of scope\n\n- Authoring/legal review of the actual policy text (product/legal owns wording).\n\n### Links\n\n- Epic: #115\n- Related: #90 (Login footer links)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:45:49Z",
+    "updated_at": "2026-07-02T20:11:45Z",
+    "closed_at": "2026-07-02T19:32:23Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/92",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

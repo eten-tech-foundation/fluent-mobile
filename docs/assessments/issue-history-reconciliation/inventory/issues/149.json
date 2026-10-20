@@ -1,0 +1,34 @@
+{
+  "issue_number": 149,
+  "fetched_at_utc": "2026-10-20T00:35:05Z",
+  "issue": {
+    "number": 149,
+    "title": "Build Sync Page Core Layout and Upload Progress",
+    "state": "closed",
+    "body": "When a translator reconnects after working offline, the Sync page is the primary surface showing whether uploads are running, how far along they are, and what state sync is in. It is reached exclusively by tapping the cloud sync status icon; there is no other entry point. This ticket builds the page scaffolding, the animated sync indicator, the upload progress bar, and the four states the page can present: syncing, paused, upload complete, and all complete. Action controls (Pause, Cancel, Sync Now) and the cellular toggle are covered in a follow-on ticket; the download queue section is already drafted separately.\n\n## Functional Requirements\n\n### Page Structure\n\n- Display the Sync page as a full-screen destination.\n- Display \"Sync\" as the page title.\n- Include a back button (`li:chevron-left`) in the top left.\n\n### Sync Status Indicator\n\n- Display a large centered icon as the primary visual element below the page title.\n- Use the same icon composition as the navigation bar syncing states in #38.\n- When sync is active, animate the `li:refresh-cw` arrows with a continuous clockwise rotation.\n- When sync is not active (paused or complete), display the icon static.\n\n### Upload Progress Bar\n\n- Display a horizontal progress bar below the sync status indicator.\n- Show an \"Uploading\" label above the bar.\n- Show a chapter count beneath the bar (e.g., \"12 of 34 chapters uploaded\").\n- Fill the bar left to right as chapter uploads complete; update in real time.\n\n### Syncing State\n\n- Show the sync indicator icon in the top pane with animated rotating arrows.\n- Show the upload progress bar with the current chapter count.\n\n### Paused State\n\n- Show the sync indicator with arrows static in the top pane.\n- Show the upload progress bar frozen at the current progress level.\n- Display a \"Paused\" label below the progress bar.\n- Display the next auto-retry time below the paused label (e.g., \"Resumes automatically in 23 hours\").\n\n### Upload Complete State\n\n- Display `li:cloud-check` (static) as the sync indicator.\n- Replace the progress bar and chapter count with an \"Upload complete\" label.\n\n### All Complete State\n\n- Display when all uploads are done and no downloads are pending.\n- Display `li:cloud-check` (static) as the sync indicator.\n- Display an \"All synced\" label in place of the progress bar.\n\n> **Note:** Pause, Cancel, and Sync Now buttons are covered in a follow-on ticket (#151 ). Reserve layout space between the progress bar and the bottom of the screen for those controls.\n\n> **Note:** The download queue section (already drafted separately) renders below the action controls. The \"Upload complete\" state may appear while downloads are still running \u2014 the page should support both sections being visible simultaneously.\n\n\n<img width=\"405\" height=\"690\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/f031be97-5a83-4d5d-9428-bbd1268b4db2\" />\n\n\n<img width=\"401\" height=\"452\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/0a427ad5-0907-414e-aab8-940fd47b416c\" />\n\n<img width=\"400\" height=\"449\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/8e55d4e0-48ff-4066-8050-a3af1d1875ba\" />\n\n#### Only uploads are complete; Downloads still active\n<img width=\"405\" height=\"323\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/83a2e621-232c-4eb1-aad3-0d69b1b1929a\" />\n</br>\n<img width=\"402\" height=\"490\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/2bea6063-7cd3-491b-9325-3ac279d5ec60\" />\n\n#### Upload AND Downloads are complete\n<img width=\"404\" height=\"294\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/5d9511e8-1c6d-43dc-bdf2-f4088e248333\" />\n</br>\n<img width=\"403\" height=\"442\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/e45dc8a9-1098-427e-b271-d73d3aab6f69\" />",
+    "user": "chadw-eten",
+    "created_at": "2026-07-01T20:46:59Z",
+    "updated_at": "2026-07-20T17:18:09Z",
+    "closed_at": "2026-07-20T17:18:09Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/149",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5019758003,
+      "user": "B3RN153",
+      "created_at": "2026-07-20T07:23:56Z",
+      "updated_at": "2026-07-20T07:56:43Z",
+      "body": "This issue's acceptance criteria is being narrowed to cover the UI layer only \u2014 layout, status indicator (animated/static), progress bar UI, and the four visual states (syncing / paused / upload complete / all synced). This is what's delivered in the linked PR.\n\nThe following are not part of this issue's scope and are tracked separately:\n\nReal upload progress / engine wiring \u2014 #150\nReal pause retry timing \u2014 #150\nDownload progress section (queue list, tiers, aggregate bar, Manage downloads link) \u2014 #147\nallComplete reachability (real check that both upload and download queues are empty) \u2014 depends on #147 landing; will confirm it's covered there once #147 is scoped/merged, otherwise will add explicitly.\nReal action controls (Pause/Resume/Cancel) \u2014 #151\nUpload/Download over cellular toggle (Sync page + Settings) \u2014 #146",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/149#issuecomment-5019758003"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

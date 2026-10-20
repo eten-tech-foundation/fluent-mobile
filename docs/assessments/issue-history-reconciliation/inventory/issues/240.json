@@ -1,0 +1,25 @@
+{
+  "issue_number": 240,
+  "fetched_at_utc": "2026-10-20T00:35:35Z",
+  "issue": {
+    "number": 240,
+    "title": "Fix verse-audio FormData upload and Record CR leftovers",
+    "state": "closed",
+    "body": "## Summary\n\nRecording uploads failed with Expo winter fetch FormData errors (`Unsupported FormDataPart`, then RN `ArrayBufferView` Blob rejection). Also address actionable CodeRabbit leftovers from #237.\n\n## Acceptance criteria\n\n- [ ] Verse-audio multipart upload uses Expo-compatible bytes FormData parts (not `{ uri }` / ArrayBufferView Blob)\n- [ ] Device upload reaches the API (no FormData client errors); 404 from undeployed verse-audio routes is expected until fluent-api #224 lands\n- [ ] Sync / system back gated while recording is active\n- [ ] Pause then play same take resumes without resetting to 0:00\n- [ ] Remove unused iOS-only `microphonePermission` from app.config\n- [ ] Unit tests cover FormData / playback resume paths\n\n## Links\n\nRelated: #238, #237, #236, #100, #102",
+    "user": "mattrace-gloo",
+    "created_at": "2026-07-23T05:33:12Z",
+    "updated_at": "2026-07-23T05:33:46Z",
+    "closed_at": "2026-07-23T05:33:46Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/240",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

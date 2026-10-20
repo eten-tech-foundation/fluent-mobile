@@ -1,0 +1,25 @@
+{
+  "issue_number": 464,
+  "fetched_at_utc": "2026-10-20T00:36:59Z",
+  "issue": {
+    "number": 464,
+    "title": "Automate Project 4 ticket lifecycle (In Progress \u2192 In PR Review \u2192 In QA / Done)",
+    "state": "closed",
+    "body": "## Summary\n\nTicket Status on Project 4 is supposed to move with delivery, but agents and CI do it inconsistently. Fix the lifecycle so Status tracks the work automatically:\n\n1. **`/start-issue`** \u2192 **In Progress (Dev)**\n2. **PR opened** (`/create-pr`) \u2192 **In PR Review**\n3. **Merged + Needs QA? Yes** \u2192 **In QA** (existing handoff; keep/harden)\n4. **Merged + Needs QA? No** (engineering-only) \u2192 **Done** + **close** the linked GitHub issue\n\nNeeds-QA tickets still stay open after merge until human/QA sets **Passed QA** / **Done**.\n\n## Problem\n\n- `/start-issue` documents the In Progress move but the mutation is incomplete / fragile (inline GraphQL snippets).\n- `/create-pr` has a best-effort In PR Review move that often fails or is skipped.\n- Post-merge automation only handles **Needs QA? Yes** \u2192 In QA.\n- Engineering-only merges leave cards stuck in **In PR Review** with open issues forever (docs currently say never auto-close).\n\n## Acceptance criteria\n\n- [ ] Shared Project 4 helper (IDs + move/add helpers) used by CI and agent commands \u2014 no duplicated fragile GraphQL in command markdown.\n- [ ] CLI agents can run for `In Progress (Dev)` and `In PR Review` (add to Project 4 if missing; never move Product-owned columns).\n- [ ] `/start-issue` and `/create-pr` call that CLI (best-effort warn-and-continue).\n- [ ] On merge: **Needs QA? Yes** \u2192 existing QA handoff (comment, assign `@Roslin22`, **In QA**).\n- [ ] On merge: **Needs QA? No** explicitly checked \u2192 linked `Refs #NNN` issues \u2192 Project 4 **Done** + close issue (`completed`) with a short bot comment. Soft-fail board/close failures.\n- [ ] Still never use `Closes` / `Fixes` / `Resolves` in PR bodies \u2014 close only via post-merge automation for engineering-only.\n- [ ] Docs/rules updated: `project-board.md`, `qa-process.md`, `issue-tracking.md`, `delivery.mdc` / `project-board.mdc`.\n- [ ] Unit tests for Needs QA? No detection + Done/close path.\n\n## Out of scope\n\n- Auto-closing Needs-QA tickets on merge\n- Auto-moving **Passed QA** / release columns\n- Board sweeps or Product-column edits\n\n## File pointers\n\n- `.claude/commands/start-issue.md`, `.claude/commands/create-pr.md`\n- `.github/workflows/qa-handoff.yml`, `.github/scripts/qa-handoff-on-merge.cjs`\n- `.github/scripts/preview-notify-linked-issues.cjs`\n- `docs/guides/project-board.md`, `docs/guides/qa-process.md`, `docs/issue-tracking.md`",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-08T10:34:51Z",
+    "updated_at": "2026-09-10T20:28:33Z",
+    "closed_at": "2026-09-10T20:28:33Z",
+    "labels": [
+      "documentation"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/464",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,305 @@
+{
+  "updated_utc": "2026-10-20T01:40:25Z",
+  "head": "5334ff6aa69ae4227332ad2304fa3f8a0c70e7f9",
+  "evidence_basis": "accepted_coverage_csv_rows_and_existing_receipts_only",
+  "ledger": {
+    "reconciliation_complete_yes": 308,
+    "complete_neq": [
+      "Nightly",
+      "conformance",
+      "epic_DoD"
+    ]
+  },
+  "freeze": {
+    "status": "FINAL",
+    "final_report": "FINAL-report.md",
+    "delta_pass_receipt": "/tmp/fluent-audit-final-review.md",
+    "readiness_receipt": "/tmp/fluent-audit-final-corrections.md",
+    "frozen_receipt": "/tmp/fluent-audit-frozen-final.md",
+    "frozen_utc": "2026-10-20T01:40:25Z"
+  },
+  "expected_behavior": [
+    {
+      "area": "sync_entry",
+      "issues": [
+        38,
+        149
+      ]
+    },
+    {
+      "area": "offline_stage_queue",
+      "issues": [
+        257
+      ]
+    },
+    {
+      "area": "reconnect_claims",
+      "issues": [
+        271
+      ]
+    },
+    {
+      "area": "record_mic_permission",
+      "issues": [
+        49
+      ]
+    },
+    {
+      "area": "seekable_scrub_remux_plus_android_qa",
+      "issues": [
+        176,
+        233
+      ]
+    },
+    {
+      "area": "source_audio_dock",
+      "issues": [
+        235
+      ]
+    },
+    {
+      "area": "project_list_filter",
+      "issues": [
+        4
+      ],
+      "api_pin": "4336602"
+    },
+    {
+      "area": "auth_signout_401_login",
+      "issues": [
+        41
+      ]
+    },
+    {
+      "area": "upload_foreground_no_crash",
+      "issues": [
+        599
+      ]
+    }
+  ],
+  "actual_source_qa": [
+    {
+      "issue": 4,
+      "finding": "server_filtered_self_projects_grant_or_org_role_not_Org_Member",
+      "api_pin": "4336602df77ce86a4d46dfd45a7840cc3c64ebc0",
+      "not": "missing_client_Manager_Translator_branch_is_filtering_bug",
+      "unknown": "translator_assigned_means_project_grant_vs_chapter_assignment_only"
+    },
+    {
+      "issue": 41,
+      "finding": "named_unwaived_divergence_logout_DB_wipe_and_hard_401_to_Login",
+      "current": "per_user_retained_DB_clearCredentials_soft_reauth_banner",
+      "not": "invented_new_bug",
+      "material_pr": "https://github.com/eten-tech-foundation/fluent-mobile/pull/46"
+    },
+    {
+      "issue": 599,
+      "state": "OPEN",
+      "mitigations_present": [
+        "modules/upload-sync-foreground/.../UploadSyncForegroundModule.kt",
+        "uploadOrchestratorCore.ts sessionOpen/sessionPromise guard"
+      ],
+      "current_qa": "unproven",
+      "device": "HISTORICAL_Dev_Xiaomi_2026-09"
+    },
+    {
+      "issue": 176,
+      "code": "CONFIRMED_CURRENT_SOURCE",
+      "prs": [
+        252,
+        254
+      ],
+      "android_qa_before_close_evidence": "missing",
+      "pr_252_wording": "do_not_auto_close_until_Android_device_QA_remux_scrub"
+    },
+    {
+      "area": "sync_maestro",
+      "result": "Stage_D_PASS_~61s",
+      "historical_failure_preserved": "Stage_B_FAIL_sync-screen",
+      "not": [
+        "Nightly",
+        "proven_product_fix",
+        "wrong_coords"
+      ]
+    },
+    {
+      "area": "local_checkpoints",
+      "sync_s": 61,
+      "pfo_s": 52,
+      "privacy_s": 32,
+      "terms_s": 31,
+      "privacy_terms_timing": "completed"
+    },
+    {
+      "issue": 109,
+      "optional_config_env_ts": "valid_absence_unimplemented_optional_AC",
+      "not": "broken_current_path_cite",
+      "shipped_paths": [
+        "src/config/apiBaseUrl.ts",
+        "src/types/env.d.ts",
+        "src/test/env.ts"
+      ]
+    },
+    {
+      "area": "cached_session",
+      "user_id": 10,
+      "email": "qa+fluentqa-translator@fluent.local"
+    }
+  ],
+  "changed_requirements": [
+    {
+      "from": 49,
+      "historical_waiver": "https://github.com/eten-tech-foundation/fluent-mobile/pull/158#issuecomment-4936939274",
+      "delivered_by": [
+        176,
+        233
+      ],
+      "prs": [
+        252,
+        254
+      ],
+      "classification": "HISTORICAL_waiver_not_still_open_49_AC",
+      "residual_evidence_gap": "176_android_qa_before_close_missing"
+    },
+    {
+      "from": "source_stub_era",
+      "delivered_by": [
+        235
+      ],
+      "prs": [
+        449
+      ],
+      "classification": "HISTORICAL_stub_closed"
+    },
+    {
+      "slice": 611,
+      "prs": [
+        667
+      ],
+      "parent_still_open": 271,
+      "classification": "slice_closed_parent_open"
+    }
+  ],
+  "named_unwaived_divergences": [
+    {
+      "issue": 41,
+      "slices": [
+        "signout_DB_wipe",
+        "401_exact_clear_to_Login"
+      ]
+    },
+    {
+      "issue": 4,
+      "note": "no_client_role_branch_neq_unfiltered_server"
+    },
+    {
+      "issue": 109,
+      "note": "optional_env_ts_never_shipped_valid_absence"
+    },
+    {
+      "issue": 176,
+      "note": "code_delivered_android_qa_before_close_evidence_missing"
+    }
+  ],
+  "product_decisions": [
+    {
+      "topic": "257_launch_blocker",
+      "state": "TBD_with_product",
+      "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/257#issuecomment-5273627839"
+    },
+    {
+      "topic": "grant_chrome_vs_403",
+      "state": "open",
+      "doc": "docs/product-behavior/roles-and-permissions.md"
+    },
+    {
+      "topic": "234_PM_home_default_tab",
+      "state": "explicit_nonblocking",
+      "path": "src/app/screens/HomeScreen.tsx:62"
+    },
+    {
+      "topic": "4_translator_assigned_wording",
+      "state": "unknown_project_grant_vs_chapter_only"
+    },
+    {
+      "topic": "41_DB_wipe_hard_401_Login",
+      "state": "no_waive_found_named_divergence_unknown_later_decision"
+    }
+  ],
+  "live_evidence_gaps": [
+    "no_Nightly_signoff",
+    "176_android_qa_before_close_missing",
+    "599_current_QA_unproven",
+    "SA_SuperAdmin_unverified_candidate_qa+fluentqa-sa@fluent.local",
+    "translator2_pm_observer_om_UNVERIFIED",
+    "721_causal_component_unisolated",
+    "529_530_Dev_Fails_HISTORICAL_only"
+  ],
+  "roles": {
+    "cached_only": {
+      "email": "qa+fluentqa-translator@fluent.local",
+      "user_id": 10
+    },
+    "unverified": [
+      "qa+fluentqa-translator2@fluent.local",
+      "qa+fluentqa-pm@fluent.local",
+      "qa+fluentqa-observer@fluent.local",
+      "qa+fluentqa-om@fluent.local"
+    ],
+    "sa_superadmin_candidate": {
+      "email": "qa+fluentqa-sa@fluent.local",
+      "status": "UNVERIFIED_candidate_only",
+      "template_key": null,
+      "do_not_omit_because_key_missing": true,
+      "verified_session_or_grants": false
+    }
+  },
+  "open_requirements_and_bugs": [
+    {
+      "issue": 257,
+      "type": "known_unimplemented_launch_decision_open"
+    },
+    {
+      "issue": 271,
+      "type": "open_parent_remainder"
+    },
+    {
+      "issue": 599,
+      "type": "OPEN_BUG_current_QA_unproven",
+      "mitigations_present": true,
+      "not": "unimplemented_from_open_alone",
+      "note": "cause_and_current_QA_unknown_Dev_historical_only"
+    },
+    {
+      "issue": 505,
+      "type": "open_AC_source_gap_accepted_row"
+    },
+    {
+      "issue": 508,
+      "type": "open_AC_source_gap_accepted_row"
+    },
+    {
+      "issue": 607,
+      "type": "open_followup_fixture_seed_dep"
+    },
+    {
+      "issues": [
+        694,
+        695,
+        696,
+        701,
+        703,
+        704,
+        716
+      ],
+      "type": "OPEN_followup",
+      "source_gap": "only_where_accepted_row_proves",
+      "examples_proven": {
+        "694": "gallery_lacks_Waveform_suite_entries",
+        "701": "selectRecordingTake_local_only"
+      },
+      "not": "infer_unimplemented_from_open_status_alone",
+      "wave": "r17"
+    }
+  ]
+}

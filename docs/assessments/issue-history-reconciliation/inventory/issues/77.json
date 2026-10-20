@@ -1,0 +1,42 @@
+{
+  "issue_number": 77,
+  "fetched_at_utc": "2026-10-20T00:34:13Z",
+  "issue": {
+    "number": 77,
+    "title": "Cloud storage",
+    "state": "closed",
+    "body": "## Feature: Asynchronous Audio Sync Pipeline via Cloudflare R2 and Worker Pools\n\n### \ud83d\ude80 Problem Statement / User Story\nAs an audio Bible translator working in low-bandwidth or offline environments, I need my recorded verse audio files to sync seamlessly and asynchronously to cloud storage in the background without freezing the mobile user interface or losing data during sudden network dropouts.\n\n---\n\n### \ud83d\udee0 Proposed Architecture & Technical Design\n\nWe are implementing an **Asynchronous Stream-Through Proxy / Edge Sync** pattern using **Cloudflare R2** (for zero-egress object storage) and an asynchronous queue managed by **\"Co-worker\" (Worker Pool)** concurrency loops in React Native.\n\n#### \ud83d\udd11 Authentication & Context Validation\nInstead of raw identifiers, the sync API will run on a highly secure composite context validation:\n1. **Authentication:** Handled entirely via a `Bearer Token (JWT)` passed in the HTTP Headers.\n2. **Relational Context:** The mobile application will pass `project_unit_id` and `bible_text_id` alongside the binary file stream.\n3. **Server-Side Gatekeeping:** The backend will decode the JWT to extract the `user_id` and execute a database validation join to confirm the user is actively assigned to the target chapter before allowing data ingestion.\n\n---\n\n### \ud83d\udcbe Schema Implementations (`recordings`)\n\nBoth databases will share the table name `recordings` to maintain structural uniformity between the client-side cache and cloud mapping.\n\n#### \ud83d\udcf1 Local SQLite Schema (Mobile)\nThe local table tracks the physical filesystem artifact and manages the asynchronous queue state machine.\n```sql\nCREATE TABLE IF NOT EXISTS recordings (\n    id                    TEXT PRIMARY KEY, -- Client-generated UUID\n    bible_text_id         INTEGER NOT NULL REFERENCES bible_texts(id),\n    chapter_assignment_id INTEGER NOT NULL REFERENCES chapter_assignments(id) ON DELETE CASCADE,\n    local_file_path       TEXT NOT NULL UNIQUE,\n    sync_status           TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'syncing', 'synced', 'failed_issue'\n    upload_error          TEXT,     -- Stores detailed network/API crash logs\n    retry_count           INTEGER NOT NULL DEFAULT 0, -- Prevents infinite looping on corrupt files\n    updated_at            TEXT NOT NULL\n);\nCREATE INDEX IF NOT EXISTS idx_recordings_sync_status ON recordings(sync_status) WHERE sync_status != 'synced';\n\n\n\n### \ud83d\udd04 Asynchronous \"Co-Worker\" Sync Lifecycle\n\nTo prevent mobile network congestion, battery drain, and transaction drops, the mobile application will execute background syncing using a **Concurrency-Limited Worker Pool (2 Co-workers)** processing a shared memory array retrieved from the local database.\n\n#### Execution Process Flow:\n1. **Queue Fetch:** Query the local SQLite database for all rows where `sync_status = 'pending'`.\n2. **Worker Allocation:** Spin up 2 parallel asynchronous worker loops processing the shared array using an atomic `.shift()` extraction pattern.\n3. **Network Ingestion:** Workers change the specific row status to `sync_status = 'syncing'` and issue a `multipart/form-data` POST request containing the `Bearer Token` (in headers), `project_unit_id`, and `bible_text_id`.\n4. **Edge Streaming:** The backend server interceptor authorizes the request via the token, streams the incoming binary directly to **Cloudflare R2** without local server caching, and resolves the database insertion.\n5. **Finalization / Self-Healing:**\n   * **On Success:** Local SQLite state updates to `'synced'` and the worker automatically pulls the next file from the queue.\n   * **On Transient Drop (Network timeout):** Increment `retry_count` and revert status back to `'pending'` so it is re-evaluated during the next global sync cycle.\n   * **On Hard Block (403 Unauthorized):** Set `sync_status = 'failed_issue'`, write the failure trace to `upload_error`, bypass the blocked item entirely, and preserve the rest of the queue workflow.\n\n---\n\n### \u2705 Acceptance Criteria\n\n- [ ] **Fluid User Experience:** Mobile UI remains completely smooth, responsive, and interactive during active background audio uploads.\n- [ ] **Secure Ingestion Gatekeeper:** Backend successfully extracts user identity context securely from the `Bearer Token` and cross-verifies project unit permissions before accepting file payloads.\n- [ ] **Isolated Failure Boundaries:** Multi-file synchronization behaves predictably; dropping a connection mid-stream fails that individual file independently without halting undamaged queue items.\n- [ ] **Zero-Cache Proxy Pipeline:** No temporary audio files are cached on the server host machine; binary payloads stream straight through Node.js/Cloudflare edges into the Cloudflare R2 bucket.\n- [ ] **Error Visibility:** Corrupt, invalid, or unauthorized transactions flag `failed_issue` locally and provide human-readable troubleshooting indicators in the application UI for the translator.",
+    "user": "vipinpaul",
+    "created_at": "2026-06-16T05:56:28Z",
+    "updated_at": "2026-07-02T19:34:29Z",
+    "closed_at": "2026-07-02T19:32:16Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/77",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4717420259,
+      "user": "B3RN153",
+      "created_at": "2026-06-16T10:11:31Z",
+      "updated_at": "2026-06-16T10:11:31Z",
+      "body": "- Planning - 4hrs(ET)\n- Implementation -6hrs(ET)\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/77#issuecomment-4717420259"
+    },
+    {
+      "id": 4738291963,
+      "user": "Joel-Joseph-George",
+      "created_at": "2026-06-18T05:21:55Z",
+      "updated_at": "2026-06-18T05:41:38Z",
+      "body": "DEV \nCloudfare R&D, POC : 8 hours [Bernise]\nServer-side API modifications: 4 hours[Joel]\nMobile side API changes: 4 Hours [Bernise, Joel and  Liju]\nUnit testing , optmization, refactoring : 2 hours[Bernise and Liju]\nPR review changes etc : 2 hours [Bernise]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/77#issuecomment-4738291963"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

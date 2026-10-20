@@ -1,0 +1,26 @@
+{
+  "issue_number": 435,
+  "fetched_at_utc": "2026-10-20T00:36:49Z",
+  "issue": {
+    "number": 435,
+    "title": "Harden Dependabot: ignore unsafe bumps + align workflow docs",
+    "state": "closed",
+    "body": "## Context\n\nAfter the 2026-08-31 Dependabot queue pass:\n\n- Merged [#432](https://github.com/eten-tech-foundation/fluent-mobile/pull/432) (`@tanstack/react-query` patch)\n- Closed as unsafe / CI-red: [#429](https://github.com/eten-tech-foundation/fluent-mobile/pull/429) (react pin drift), [#430](https://github.com/eten-tech-foundation/fluent-mobile/pull/430) (Jest 30 + RTL 14), [#431](https://github.com/eten-tech-foundation/fluent-mobile/pull/431) (Babel 8 + ESLint 10), [#433](https://github.com/eten-tech-foundation/fluent-mobile/pull/433) (`lucide-react-native` major)\n\nClosing does **not** ignore versions \u2014 the same React `19.2.3 \u2192 19.2.8` bump already returned after [#308](https://github.com/eten-tech-foundation/fluent-mobile/pull/308). With `open-pull-requests-limit: 5`, these refill the queue and block safer updates.\n\n## Acceptance criteria\n\n### 1. `dependabot.yml` ignores (npm ecosystem)\n\nAdd ignore rules so Dependabot stops opening PRs that we repeatedly close without a dedicated upgrade ticket:\n\n- [ ] `react`, `react-dom`, `react-test-renderer` \u2014 ignore **all** version updates (keep Expo SDK 57 / RN 0.86 pin; today only major/minor are ignored for `react` / `react-test-renderer`, so patch drift still opens)\n- [ ] `jest`, `jest-*`, `@testing-library/react-native` \u2014 ignore **semver-major**\n- [ ] `@babel/core`, `@babel/preset-env`, `@babel/runtime` \u2014 ignore **semver-major** (Babel 8)\n- [ ] `eslint` \u2014 ignore **semver-major** (ESLint 10)\n- [ ] `lucide-react-native` \u2014 ignore **semver-major**\n\nDocument in a short comment in `.github/dependabot.yml` that these are intentional holds until dedicated upgrade tickets exist.\n\n### 2. Align Dependabot agent docs with best practice\n\nUpdate `.cursor/rules/dependabot-workflow.mdc`, `docs/guides/dependabot-process.md`, and `.claude/commands/handle-dependabot.md` so they agree:\n\n- [ ] **CI-first for safe PRs**: required GitHub checks green is enough for lockfile-only / non-native patch bumps; local `npm ci` + doctor remains mandatory for risky / native / Expo ecosystem bumps\n- [ ] **GitHub Actions PRs**: do **not** skip by default when Action pins + required checks are green (match historical merge of Actions SHA bumps)\n- [ ] **Resolution log**: write batch notes in PR/issue comments; land `docs/guides/dependabot-resolution-log.md` via a ticketed chore PR \u2014 never commit on `main`\n- [ ] **Deferred upgrades**: when closing a bot as \u201cneeds dedicated ticket\u201d, either open that ticket (or link an existing one) **or** rely on the ignore rules above \u2014 do not leave orphan \u201cneeds ticket\u201d comments with no tracker\n\n### 3. Resolution log catch-up\n\n- [ ] Commit the 2026-08-31 batch entry for #429\u2013#433 / #432 into `docs/guides/dependabot-resolution-log.md` on this ticket\u2019s PR (local draft already exists on the agent machine)\n\n## Out of scope (separate tickets if/when we upgrade)\n\nDo **not** implement these in this PR \u2014 only stop Dependabot from auto-opening them:\n\n- React patch bump past Expo-aligned `19.2.3` (needs Android smoke)\n- Jest 30 + Testing Library RN 14 migration\n- Babel 8 + ESLint 10 tooling migration\n- `lucide-react-native` v1 major + UI smoke\n\n## References\n\n- Process: `docs/guides/dependabot-process.md`\n- Rule: `.cursor/rules/dependabot-workflow.mdc`\n- Config: `.github/dependabot.yml`\n- Batch notes: 2026-08-31 Dependabot queue handling session",
+    "user": "mattrace-gloo",
+    "created_at": "2026-08-31T14:59:51Z",
+    "updated_at": "2026-09-10T17:39:56Z",
+    "closed_at": "2026-09-10T17:39:55Z",
+    "labels": [
+      "documentation",
+      "dependencies"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/435",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

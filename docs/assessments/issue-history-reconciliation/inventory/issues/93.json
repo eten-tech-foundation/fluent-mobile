@@ -1,0 +1,34 @@
+{
+  "issue_number": 93,
+  "fetched_at_utc": "2026-10-20T00:34:24Z",
+  "issue": {
+    "number": 93,
+    "title": "Harden auth guard + launch session bootstrap",
+    "state": "closed",
+    "body": "### Context\n\n### Current state in baseline\n\n`App.tsx` does the bootstrap inline inside a `useEffect`, with nested conditionals and a **dynamic import** of storage:\n\n```tsx\n// App.tsx:37\nconst activeUserId = getActiveUserId();\nif (activeUserId) {\n const hasToken = await hasCredentials(activeUserId);\n if (hasToken) {\n const creds = await getCredentials(activeUserId);\n setActiveToken(creds?.token ?? null);\n setIsAuthenticated(true);\n setDbReady(true);\n return;\n }\n}\nconst storedUserIds = await getAllStoredUserIds();\nif (storedUserIds.length > 0) {\n const userId = storedUserIds[0];\n const creds = await getCredentials(userId);\n if (creds?.token) {\n const { switchActiveUser } = await import('./src/services/storage'); // dynamic import\n switchActiveUser(userId);\n setActiveToken(creds.token);\n setIsAuthenticated(true);\n ...\n```\n\nNavigation already gates on auth state:\n\n```tsx\n// src/navigation/AppNavigator.tsx:27\n{!isAuthenticated ? (<Login/Privacy/Terms .../>) : (<Home/Chapters/VerseDetail/AddUser/...>)}\n```\n\n`handleSignOut` (`App.tsx:28`) only flips `setIsAuthenticated(false)` \u2014 it does **not** clear the token or secure storage.\n\n### Problems / why\n\n- Bootstrap logic is **duplicated/branchy** (active user vs. first stored user) and lives in the component body with a `return` early-exit, making it hard to read and test.\n- **Dynamic `import('./src/services/storage')`** inside the effect is a code smell (the module is already statically imported elsewhere) \u2014 use a normal import.\n- **Sign-out is incomplete**: it leaves `authToken` set and credentials in secure storage; a true signed-out state should clear the active token (and optionally the session KV).\n- No single source of truth for \"restore session\" \u2192 the same logic is partially repeated in `sync.ts`.\n\n### Target design\n\n- Extract a pure-ish `restoreSession()` (e.g. `src/services/authSession.ts`) returning `{ authenticated: boolean; userId?: string }`: read active userId \u2192 secure credentials (#89) \u2192 set token (#88); fall back to first known user (`storage.getKnownUserIds()`), else unauthenticated.\n- Add `signOut()` that clears the active token (#88), and define whether it clears secure credentials / KV session (decide: keep credentials for fast re-login of multi-account, but clear active token + active user).\n- `App.tsx` calls `restoreSession()` once; no dynamic imports, no nested early returns. `AppNavigator` keeps gating on `isAuthenticated`.\n\n### Implementation steps\n\n1. Create `src/services/authSession.ts` with `restoreSession()` and `signOut()`.\n2. Replace the `App.tsx` bootstrap effect body with a single `restoreSession()` call; remove the dynamic `import`.\n3. Wire `handleSignOut` \u2192 `signOut()` (clear token; clear active user) then `setIsAuthenticated(false)`.\n4. Keep `BootSplash.hide` behavior on `dbReady`.\n5. Add unit tests for `restoreSession` (active user present; only first-known user; none) and `signOut` (token cleared), mocking secure storage (#89) and KV.\n\n### Acceptance criteria\n\n- [ ] Session restore lives in one testable module; `App.tsx` has no dynamic imports and no nested early-return bootstrap.\n- [ ] `signOut()` clears the active token (and active user) so a relaunch does not auto-authenticate the signed-out user.\n- [ ] Navigation continues to gate signed-in vs signed-out correctly.\n- [ ] Unit tests cover restore (3 cases) and sign-out.\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Tests default `EXPO_PUBLIC_API_BASE_URL=http://localhost:9999` via `jest.env.cjs`; **no live API required**.\n- Mock `expo-secure-store` (#111) and op-sqlite KV; assert restore/sign-out branches.\n- Do **not** use `FLUENT_USER_EMAIL`.\n\n### Out of scope\n\n- Secure storage migration (#89) and token accessor (#88) \u2014 consumed here.\n- Account switcher UI (#84\u2013#87).\n\n### Links\n\n- Epic: #115\n- Related: #88, #89\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:45:50Z",
+    "updated_at": "2026-07-02T20:11:48Z",
+    "closed_at": "2026-07-02T19:32:25Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/93",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4825260322,
+      "user": "mattrace-gloo",
+      "created_at": "2026-06-28T07:33:50Z",
+      "updated_at": "2026-06-28T07:33:50Z",
+      "body": "**Attribution clarification:** Auth bootstrap is built on the inherited keychain/storage modules (Liju Jacob, PR #46); the CNG migration (PR #70) only adapted it. The hardening in this ticket targets the **inherited** bootstrap, not the CNG work. Scope unchanged \u2014 this remains a legitimate harden task.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/93#issuecomment-4825260322"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

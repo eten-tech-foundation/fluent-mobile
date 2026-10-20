@@ -1,0 +1,1389 @@
+{
+  "cohort": "c3",
+  "parent_agent": "bc-da4aa327-d86e-47fc-93c0-d7105af39497",
+  "reviewed_at_utc": "2026-10-20T00:42:51Z",
+  "source": {
+    "ids_file": "/tmp/fluent-issue-review-c3-ids.json",
+    "cache_glob": "docs/assessments/issue-history-reconciliation/inventory/issues/<N>.json",
+    "product_behavior": [
+      "docs/product-behavior/README.md",
+      "docs/product-behavior/roles-and-permissions.md",
+      "docs/product-behavior/core-flows.md"
+    ],
+    "rules": [
+      "READ-ONLY cohort reviewer",
+      "Later explicit decisions win",
+      "Dev\u2260QA",
+      "No keyword-only substantive marks",
+      "Write only /tmp/fluent-issue-review-c3.json and .md"
+    ]
+  },
+  "counts": {
+    "cohort": "c3",
+    "issues_reviewed": 52,
+    "ids_expected": 52,
+    "retrieval_complete_yes": 52,
+    "comments_count_match_yes": 52,
+    "by_state": {
+      "closed": 49,
+      "open": 3
+    },
+    "by_classification": {
+      "infra_process": 17,
+      "not_planned": 2,
+      "engineering_fix": 7,
+      "agreed_requirement": 14,
+      "open_requirement": 3,
+      "partially_landed_dependency_open": 1,
+      "duplicate": 5,
+      "superseded": 2,
+      "tracker_hygiene": 1
+    },
+    "with_discrepancy": 20,
+    "open_requirement_issues": [
+      256,
+      257,
+      271
+    ],
+    "priority_theme_hits": {
+      "recording": 16,
+      "sync": 15,
+      "roles": 6,
+      "resources": 3,
+      "conflict": 5,
+      "offline": 6,
+      "stage": 3,
+      "peer": 2,
+      "multi-account": 6,
+      "claim": 4,
+      "auth": 4
+    },
+    "substantive_marks": 52,
+    "keyword_only_substantive_marks": 0
+  },
+  "priority_findings": [
+    {
+      "rank": 1,
+      "issues": [
+        257,
+        258,
+        273
+      ],
+      "title": "Offline stage advance queue incomplete; closed CTA depends on open #257",
+      "summary": "CLOSED #258 shipped Send CTA while OPEN #257 must own offline queue/reconnect. Dev audit comments on #257 document Gap 7 (chapter leaves My Work with no pending state) and Gap 8 (reconnect pull reverts Peer Check back to Draft; handoff lost). #273\u2019s online metadata pull can worsen Gap 8 unless queued local stage is protected. Dev\u2260QA.",
+      "living_docs": "core-flows \u00a73/\u00a76; roles stage chain"
+    },
+    {
+      "rank": 2,
+      "issues": [
+        256,
+        260,
+        269,
+        271
+      ],
+      "title": "Audio conflict (#256) and claim-conflict reconnect (#271) still open under closed UI",
+      "summary": "Conflict list indicator (#260) and conflict banner half of #269 depend on OPEN #256/API#271. Claim reconnect/conflict (#271) still open under closed online/offline claim UIs (#268/#270), with Dev High gaps (claim-before-audio, PM/>5m 404 stranding \u2192 #610/#611). Do not treat closed UI as E2E conflict/claim completion. Audio hasConflict \u2260 claim hasClaimConflict.",
+      "living_docs": "core-flows \u00a76; roles claim policy; API#390 not pinned deploy proof"
+    },
+    {
+      "rank": 3,
+      "issues": [
+        258
+      ],
+      "title": "#258 assigned-peer-only Send vs later open-peer policy",
+      "summary": "#258 AC limits Peer\u2192Community Send to assigned peerChecker and says community reviewers never see the button. Living roles-and-permissions + core-flows prefer API policy open peer (peerCheckerId null \u2192 non-drafter content:update may Send). Later explicit policy wins; do not freeze #258 as forbidding open peer.",
+      "living_docs": "roles-and-permissions.md chapter slots; core-flows \u00a73"
+    },
+    {
+      "rank": 4,
+      "issues": [
+        259,
+        279
+      ],
+      "title": "Shared-device takes: confirmed default, unsettled team/review role rules",
+      "summary": "#259 CONFIRMED default show-my-takes-only. Team/review placement/roles/actions and backfill remain open in #259 even though closed. #279 (closed) implements All Takes + canonical designation allowing any device account to set canonical \u2014 may outrun still-open #259 role questions. Canonical flag should unify with #256 conflict resolution.",
+      "living_docs": "core-flows \u00a71/\u00a74; living docs lack team/review section"
+    },
+    {
+      "rank": 5,
+      "issues": [
+        269,
+        348,
+        329,
+        330,
+        253
+      ],
+      "title": "Warn-vs-block recording, resources Retry deferral, QA gate supersession, Sync reachability",
+      "summary": "(a) #269 agreed warn-but-allow-record on taken chapters \u2014 distinct from living open-peer drafter capture-block; do not conflate. (b) #348 Retry AC partially deferred to #417; empty UI (QA 484) \u2260 unavailable/retry \u2260 403. (c) #329/#330 pre-merge QA gate superseded by post-merge Nightly policy \u2014 later wins. (d) #253 SyncScreen wiring \u2260 #721 Home Sync navigation known deviation.",
+      "living_docs": "core-flows \u00a73\u2013\u00a76; README QA 484 chronology; qa-process"
+    }
+  ],
+  "issues": [
+    {
+      "issue": 214,
+      "title": "Log Dependabot triage for 2026-07-20 batch",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "infra_process",
+      "themes": [
+        "dependabot",
+        "docs"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "crosschecks": [
+        "product-behavior: n/a (ops log)"
+      ],
+      "discrepancy": null,
+      "rationale": "Dependabot triage log only; no user-facing product AC. Retrieval complete; body is process hygiene.",
+      "substantive": true
+    },
+    {
+      "issue": 217,
+      "title": "Document Project 4 Fluent Mobile Board as canonical tracker",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "infra_process",
+      "themes": [
+        "tracker",
+        "project-board"
+      ],
+      "requirements": [
+        "Canonical triage board is org Project 4 view 9 (Fluent Mobile Board), not bare repo Issues list."
+      ],
+      "decisions": [
+        "Project 4 Fluent Mobile Board is the canonical tracker (ticket AC)."
+      ],
+      "crosschecks": [
+        "product-behavior README cites Project 4 tickets; aligns with living delivery rules."
+      ],
+      "discrepancy": null,
+      "rationale": "Process/tracker contract, not app UX. Explicit board-as-canonical decision still relevant for agents.",
+      "substantive": true
+    },
+    {
+      "issue": 219,
+      "title": "Add nightly binary preview CI for internal Android testing",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "infra_process",
+      "themes": [
+        "ci",
+        "nightly",
+        "android"
+      ],
+      "requirements": [
+        "Nightly internal Android APK against development API; binary-only, no OTA collision with preview channel."
+      ],
+      "decisions": [],
+      "crosschecks": [
+        "product-behavior Environments: Dev vs QA are separate; nightly targeting Dev API is historical Dev path, not QA acceptance."
+      ],
+      "discrepancy": "Nightly-on-Dev must not be treated as QA env proof (Dev\u2260QA).",
+      "rationale": "CI/EAS profile work. Product-behavior explicitly separates Dev receipts from QA; this ticket is Dev nightly tooling.",
+      "substantive": true
+    },
+    {
+      "issue": 221,
+      "title": "Rename home-screen app label to Fluent Mobile",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "not_planned",
+      "themes": [
+        "branding"
+      ],
+      "requirements": [],
+      "decisions": [
+        "Closed unnecessary: launcher name already Fluent; no Fluent Demo string in repo (mattrace-gloo comment)."
+      ],
+      "crosschecks": [
+        "product-behavior: n/a"
+      ],
+      "discrepancy": null,
+      "rationale": "Closed with explicit not-needed finding; no rename AC remains.",
+      "substantive": true
+    },
+    {
+      "issue": 233,
+      "title": "Native AAC\u2192M4A remux module (MediaMuxer) for seekable Review scrubbing",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "engineering_fix",
+      "themes": [
+        "recording",
+        "native",
+        "review-scrub"
+      ],
+      "requirements": [
+        "Android MediaMuxer remux ADTS AAC\u2192seekable M4A for Review scrubbing; device QA required."
+      ],
+      "decisions": [
+        "Native remux is a carved slice of #176; stacked merge to feature branch did not auto-close until main delivery (board hygiene note)."
+      ],
+      "crosschecks": [
+        "core-flows \u00a74 Recording/takes \u2014 inferred seekable Review; Needs QA native path."
+      ],
+      "discrepancy": null,
+      "rationale": "Recording pipeline engineering with device-QA AC; not a roles/permissions decision.",
+      "substantive": true
+    },
+    {
+      "issue": 234,
+      "title": "Fix FK failure in chapter assignment sync for PM with no assigned work",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "engineering_fix",
+      "themes": [
+        "sync",
+        "roles",
+        "pm"
+      ],
+      "requirements": [
+        "Post-login sync must not FK-fail for PM with projects but zero chapter assignments."
+      ],
+      "decisions": [
+        "Open product question recorded (not decided): whether Home should default to My Work for all roles including PMs with no assigned work (kaseywright ask)."
+      ],
+      "crosschecks": [
+        "roles-and-permissions: Project Manager has content:assign; mobile has no grant router. core-flows \u00a72 empty My Work when no assignments. Open product decision: grant-visibility / home chrome."
+      ],
+      "discrepancy": "PM home-default role UX remains Open product decision; bugfix \u2260 product settlement of default tab.",
+      "rationale": "Closed sync FK bug with PM empty-assignment repro. Explicit unsettled product note on Home default must not be treated as agreed.",
+      "substantive": true
+    },
+    {
+      "issue": 235,
+      "title": "Wire Source audio dock to real fetch + playback",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "agreed_requirement",
+      "themes": [
+        "recording",
+        "source-audio",
+        "resources",
+        "api-dependency"
+      ],
+      "requirements": [
+        "SourceAudioPlayerBar must fetch/play real source audio with honest loading/empty/error; distinct from draft takes.",
+        "Reuse playback engine; stop on unit change/leave."
+      ],
+      "decisions": [
+        "Source audio is a separate lane from draft takes (#49 text-only AC; #96/#116 draft playback).",
+        "fluent-api#282 filed for source/reference audio API; until then mock/fixture + empty/error dock is allowed.",
+        "Known limitation: Aquifer verseTimestamps of 0 \u2192 seek falls back to chapter start (PR note)."
+      ],
+      "crosschecks": [
+        "core-flows \u00a74 recording vs \u00a75 resources \u2014 source audio not yet a living AC row; outline focuses on draft takes. API-doc contract absent for source audio on pinned SHA."
+      ],
+      "discrepancy": "Living product-behavior does not yet document source-audio dock expected/denied/offline; ticket closed but API dependency and verse-seek limitation remain.",
+      "rationale": "Substantive product AC for drafting source dock with explicit API gap and known seek limitation. Not keyword-only: body separates source vs draft takes and comments track API readiness.",
+      "substantive": true
+    },
+    {
+      "issue": 236,
+      "title": "Fix blank Record tab, drafting chrome, and draft playback footguns",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "engineering_fix",
+      "themes": [
+        "recording",
+        "record-tab"
+      ],
+      "requirements": [
+        "Record tab must load (no blank); mic release on stop; draft take play shows real duration; Bible\u2192Resources\u2192Record tab order."
+      ],
+      "decisions": [
+        "Source-audio remains stub \u2192 #235; Resources content out of scope."
+      ],
+      "crosschecks": [
+        "core-flows \u00a74 Recording inferred; Resources empty fixture is separate (\u00a75)."
+      ],
+      "discrepancy": null,
+      "rationale": "Critical post-merge Record footguns; engineering AC with explicit out-of-scope pointers.",
+      "substantive": true
+    },
+    {
+      "issue": 238,
+      "title": "Fix recording upload failing on expo-file-system getInfoAsync deprecation",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "engineering_fix",
+      "themes": [
+        "recording",
+        "upload",
+        "sync"
+      ],
+      "requirements": [
+        "recordingSync must use expo-file-system/legacy getInfoAsync so uploads do not fail on deprecation."
+      ],
+      "decisions": [],
+      "crosschecks": [
+        "core-flows \u00a76 upload/sync \u2014 client upload path reliability."
+      ],
+      "discrepancy": null,
+      "rationale": "Narrow upload orchestrator filesystem fix; no product policy change.",
+      "substantive": true
+    },
+    {
+      "issue": 240,
+      "title": "Fix verse-audio FormData upload and Record CR leftovers",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "engineering_fix",
+      "themes": [
+        "recording",
+        "upload",
+        "sync"
+      ],
+      "requirements": [
+        "Verse-audio multipart FormData Expo-compatible; gate Sync/system back while recording; pause/play resume without reset."
+      ],
+      "decisions": [
+        "404 from undeployed verse-audio routes expected until API landed (historical)."
+      ],
+      "crosschecks": [
+        "core-flows \u00a76; recordings-sync-contract referenced in sibling tickets."
+      ],
+      "discrepancy": null,
+      "rationale": "Upload client compatibility + Record leftovers; historical API undeploy note, not current product conflict.",
+      "substantive": true
+    },
+    {
+      "issue": 249,
+      "title": "Fix nightly EAS profile to ship standalone internal APK (no Metro)",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "infra_process",
+      "themes": [
+        "ci",
+        "nightly",
+        "eas"
+      ],
+      "requirements": [
+        "Nightly EAS profile must ship standalone internal APK (not Metro/dev-client)."
+      ],
+      "decisions": [],
+      "crosschecks": [
+        "product-behavior QA installs nightly APK \u2014 binary-not-Metro is a precondition for Nightly human QA."
+      ],
+      "discrepancy": null,
+      "rationale": "Build-profile correctness enabling QA binaries; process/infra.",
+      "substantive": true
+    },
+    {
+      "issue": 253,
+      "title": "Wire SyncScreen Pause/Cancel/Sync Now to upload orchestrator",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "agreed_requirement",
+      "themes": [
+        "sync",
+        "upload"
+      ],
+      "requirements": [
+        "SyncScreen Pause/Cancel/Sync Now/Resume wired to uploadOrchestrator; replace TODO(#150) mock progress with orchestrator snapshot."
+      ],
+      "decisions": [
+        "Local orchestrator wiring does not require API; e2e upload still depended on verse-audio API (historical comments on PR #224)."
+      ],
+      "crosschecks": [
+        "core-flows \u00a76 Expected: Home sync icon \u2192 Sync screen; Sync Now uploads. Known deviation #721 is a later navigation bug, distinct from this control wiring."
+      ],
+      "discrepancy": "Living known deviation #721 (Home Sync one-press does not open Sync screen) is orthogonal but means SyncScreen AC cannot be assumed reachable from Home chrome until #721 resolved.",
+      "rationale": "Explicit Sync UI\u2194orchestrator AC. Cross-check flags later #721 reachability issue without conflating it as role cause.",
+      "substantive": true
+    },
+    {
+      "issue": 255,
+      "title": "Replace Settings Menu Overlay with Slide-Out Panel",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "agreed_requirement",
+      "themes": [
+        "settings",
+        "navigation",
+        "ux"
+      ],
+      "requirements": [
+        "Replace settings overlay with left slide-out panel; retain menu items; dismiss via scrim/swipe."
+      ],
+      "decisions": [],
+      "crosschecks": [
+        "core-flows \u00a77 Downloads/settings outline \u2014 Settings entry exists; panel chrome not detailed."
+      ],
+      "discrepancy": null,
+      "rationale": "UX chrome AC with QA results comment; not roles/recording policy.",
+      "substantive": true
+    },
+    {
+      "issue": 256,
+      "title": "Implement Conflict Detection for Offline Audio Takes",
+      "state": "open",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "open_requirement",
+      "themes": [
+        "recording",
+        "conflict",
+        "sync",
+        "offline"
+      ],
+      "requirements": [
+        "Server version token per recorded unit; conflict when base token diverges; store incoming alongside existing; content-hash suppresses false conflicts on retry.",
+        "Foundation for conflict UI (#260/#269) and attribution (#259)."
+      ],
+      "decisions": [
+        "Claude sketch is non-normative starting point (author note + eng comment).",
+        "Server work in fluent-api#271; prefer ship mobile+API together; mock fallback allowed if API too large."
+      ],
+      "crosschecks": [
+        "core-flows \u00a76: audio hasConflict \u2260 claim hasClaimConflict. roles: live grant allow/deny still 0. Open tickets #256/#271 mean conflict detection is not settled product completion."
+      ],
+      "discrepancy": "Closed UI tickets (#260 conflict indicator, #269 conflict banner) declare dependency on #256/API#271 \u2014 risk of mock-only or incomplete conflict surfaces while this remains open.",
+      "rationale": "Still OPEN. Foundational audio-conflict protocol with explicit API pairing. High priority for decision chain.",
+      "substantive": true
+    },
+    {
+      "issue": 257,
+      "title": "Implement Local Stage Advancement Queue for Offline Sync",
+      "state": "open",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "open_requirement",
+      "themes": [
+        "sync",
+        "offline",
+        "stage",
+        "peer"
+      ],
+      "requirements": [
+        "Offline stage advance writes local queue; immediate local stage update; pending cloud-upload indicator; sync stage before audio on reconnect; on rejection keep lower stage silently.",
+        "Suggested extra AC from Dev audits: after offline Draft\u2192Peer Check, chapter should stay in My Work with pending indicator until sync (#529 Gap 7); pull must not overwrite queued local stage (#530 Gap 8)."
+      ],
+      "decisions": [
+        "Use PATCH /chapter-assignments/{id}/submit on reconnect (eng comment).",
+        "Rejection payload thin \u2014 derive from fresh assignment pull; do not let later assignment sync wipe pending local advance.",
+        "Launch-blocker severity for Gap 8 TBD with product (JonathanSeehagen Dev evidence)."
+      ],
+      "crosschecks": [
+        "core-flows \u00a73 drafting/peer stages + \u00a76 offline queue. #258 post-advancement expects pending sync state via #257. Dev\u2260QA: device evidence on Redmi/dev.api is historical Dev, not QA Nightly signoff."
+      ],
+      "discrepancy": "CLOSED #258 CTA landed while OPEN #257 queue/reconnect is incomplete; Dev evidence shows offline Send reverts to Draft on reconnect \u2014 contradicts #258/#257 expected pending\u2192synced handoff.",
+      "rationale": "Critical open sync/stage chain. Comments contain concrete Dev failure mode (stage overwritten on pull). Later audit AC suggestions supersede incomplete original queue story until product confirms.",
+      "substantive": true
+    },
+    {
+      "issue": 258,
+      "title": "Implement Stage Advancement Action on Drafting Page",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "agreed_requirement",
+      "themes": [
+        "roles",
+        "stage",
+        "peer",
+        "recording",
+        "conflict"
+      ],
+      "requirements": [
+        "Send to Peer Check / Send to Community Review CTA + confirmation sheet on Record tab.",
+        "Visible only to assignee for current stage; hide if no recordings (draft); disable if unresolved audio conflict; community reviewers never see button.",
+        "Confirm updates local stage immediately; pending sync via #257; Peer\u2192Community removes from My Work on refresh."
+      ],
+      "decisions": [
+        "Permissions match product-described drafter@draft and peer@peer_check; use real submit endpoint (eng comment 2026-08-12).",
+        "Disable-on-audio-conflict may mock until #256; web lacks that disable too.",
+        "Same-device multi-account may show peer My Work before server sync \u2014 expected; separate devices need both sync."
+      ],
+      "crosschecks": [
+        "roles-and-permissions stage table + open-peer policy: living docs allow open peer (peerCheckerId null) non-drafter Send; #258 text assumes assigned peer only and says community reviewers never see button \u2014 does not encode open-peer.",
+        "core-flows \u00a73 Expected open peer Send \u2014 later/inferred vs #258 assigned-peer-only AC."
+      ],
+      "discrepancy": "Decision-chain tension: #258 assigned-peer-only Send rules vs later API policy + living product-behavior open-peer. Later explicit policy wins; #258 must not be read as forbidding open peer. Also depends on still-open #257 for offline pending semantics.",
+      "rationale": "Closed product AC for advance CTA. Substantive conflict with later open-peer living guidance must be flagged; not keyword match alone.",
+      "substantive": true
+    },
+    {
+      "issue": 259,
+      "title": "Cross-account take visibility, ownership, and attribution on shared devices",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "agreed_requirement",
+      "themes": [
+        "recording",
+        "multi-account",
+        "roles",
+        "sync"
+      ],
+      "requirements": [
+        "Takes owned by recorder; default Review shows my takes only; team/review mode with attribution; owner-token upload; no demote across users; pending counts user-scoped."
+      ],
+      "decisions": [
+        "CONFIRMED product decision: default show my takes only; teammate takes only in explicit team/review mode.",
+        "STILL OPEN in ticket: where team/review lives; which roles may enter; peer actions on others takes; attribution display; backfill for ownerless rows.",
+        "Prerequisite for trustworthy #256 conflict attribution on shared devices."
+      ],
+      "crosschecks": [
+        "core-flows \u00a71 multi-account isolation + \u00a74 selected take. accountSession mocks cited in product-behavior. Living docs do not yet spell team/review mode."
+      ],
+      "discrepancy": "Confirmed default isolation is agreed; team/review mode mechanics remain Open product decision despite issue closed. Duplicate #261 points here as canonical.",
+      "rationale": "Major shared-device recording decision chain. Confirmed vs still-open decisions carefully separated from comment evidence.",
+      "substantive": true
+    },
+    {
+      "issue": 260,
+      "title": "Add Conflict Indicator to Mobile Chapter List",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "partially_landed_dependency_open",
+      "themes": [
+        "conflict",
+        "sync",
+        "recording"
+      ],
+      "requirements": [
+        "Chapter list shows conflict rollup icon (users+alert) alongside sync indicator; resolution is web-only; mobile surfaces state only."
+      ],
+      "decisions": [
+        "Depends on fluent-api#271 + mobile #256; mock hasConflict fallback allowed."
+      ],
+      "crosschecks": [
+        "core-flows \u00a76 hasConflict. #256 still open \u2192 indicator may be mock."
+      ],
+      "discrepancy": "Issue closed while foundational #256/API#271 remain open \u2014 delivery likely mock or incomplete vs full AC.",
+      "rationale": "UI AC closed ahead of open detection foundation; classify as partially landed dependency.",
+      "substantive": true
+    },
+    {
+      "issue": 261,
+      "title": "Cross-account take visibility, ownership, and attribution on shared devices",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "duplicate",
+      "themes": [
+        "recording",
+        "multi-account"
+      ],
+      "requirements": [],
+      "decisions": [
+        "Closed duplicate of #259 (canonical)."
+      ],
+      "crosschecks": [
+        "See #259"
+      ],
+      "discrepancy": null,
+      "rationale": "Explicit duplicate close comment; body identical to #259.",
+      "substantive": true
+    },
+    {
+      "issue": 267,
+      "title": "Add Claim and Assignment Indicators to Chapter List Rows",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "agreed_requirement",
+      "themes": [
+        "claim",
+        "assignment",
+        "roles"
+      ],
+      "requirements": [
+        "Chapter row ownership slot: empty unassigned; primary user icon mine; muted user icon taken by other; conflict slot owned by #260."
+      ],
+      "decisions": [],
+      "crosschecks": [
+        "core-flows \u00a72 My Work/claim; roles chapter slots. QA (Roslin) passed on preview \u2014 treat as human QA for that PR, env not specified as qa.api in comment."
+      ],
+      "discrepancy": null,
+      "rationale": "Product AC for claim/assignment indicators with QA pass comment. Distinct from grant matrix.",
+      "substantive": true
+    },
+    {
+      "issue": 268,
+      "title": "Implement Online Chapter Claiming on First Recording",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "agreed_requirement",
+      "themes": [
+        "claim",
+        "recording",
+        "sync"
+      ],
+      "requirements": [
+        "Online first recording on unassigned chapter auto-claims without prompt; immediate mine state; multi-claimant race deferred to #271."
+      ],
+      "decisions": [
+        "Server claim in fluent-api#272; prefer ship with API; web has no translator auto-claim either."
+      ],
+      "crosschecks": [
+        "core-flows \u00a72 claim on record when unassigned not_started; API policy PM cannot claim. Online 404 = deny (living mock)."
+      ],
+      "discrepancy": "Closed+QA-passed while reconnect/conflict sibling #271 still open; online path \u2260 full claim system. Dev/QA env of Roslin pass not asserted as qa.api.",
+      "rationale": "Agreed online auto-claim AC. Flag incomplete chain via open #271 without denying the online AC itself.",
+      "substantive": true
+    },
+    {
+      "issue": 269,
+      "title": "Add Recording Warning on Taken Chapters",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "agreed_requirement",
+      "themes": [
+        "roles",
+        "recording",
+        "conflict",
+        "taken"
+      ],
+      "requirements": [
+        "Taken-chapter warning on Record when assigned to another translator; allow recording despite warning (do not block controls).",
+        "Amber unresolved audio-conflict banner informational only; no mobile resolution."
+      ],
+      "decisions": [
+        "Taken warning uses synced assignment fields (no new API); conflict banner depends on API#271/#256 with mock fallback."
+      ],
+      "crosschecks": [
+        "core-flows \u00a73 Denied: drafter on open peer capture blocked; non-assignee on PM-assigned peer: taken banner.",
+        "#269 explicitly does NOT block recording on taken chapters \u2014 tensions with living inferred capture-blocked for open-peer drafter (different scenario) and with stronger deny semantics if product later blocks taken-chapter capture."
+      ],
+      "discrepancy": "Agreed #269 AC = warn-but-allow-record on taken chapters. Living product-behavior blocks capture for drafter-on-open-peer (inferred helpers). Do not conflate: open-peer drafter block \u2260 taken-by-other warn-allow. Conflict-warning half of #269 untested per QA note; follow-up #404 for unrelated View Source issues.",
+      "rationale": "Substantive roles/recording AC with careful cross-scenario distinction vs living open-peer deny rules.",
+      "substantive": true
+    },
+    {
+      "issue": 270,
+      "title": "Implement Offline Chapter Claiming on First Recording",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "agreed_requirement",
+      "themes": [
+        "claim",
+        "offline",
+        "recording"
+      ],
+      "requirements": [
+        "Offline first recording on last-synced-unassigned chapter marks provisional local mine; no live server check; reconnect/conflict in #271."
+      ],
+      "decisions": [
+        "Pair with API#272 + #268/#271 preferred."
+      ],
+      "crosschecks": [
+        "core-flows \u00a72 offline claim enqueue; \u00a76 reconnect. Living claim 404 mock."
+      ],
+      "discrepancy": "Closed provisional offline claim UX while #271 reconnect/conflict still open (and Dev gaps #610/#611 referenced from #271 comments).",
+      "rationale": "Offline claim AC agreed; completeness gated on open #271.",
+      "substantive": true
+    },
+    {
+      "issue": 271,
+      "title": "Implement Reconnect Claim Sync and Conflict Detection",
+      "state": "open",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "open_requirement",
+      "themes": [
+        "claim",
+        "sync",
+        "conflict",
+        "offline"
+      ],
+      "requirements": [
+        "On reconnect push offline claims; silent confirm if clean; multi-claimant \u2192 conflict indicator until PM resolves on web; clear silently when resolved.",
+        "Dev audit extra AC: claims before audio uploads on reconnect; failed-for-missing-claim stays pending not failed."
+      ],
+      "decisions": [
+        "API#272 for claim sync + multi-claimant conflict; audio conflicts are different (#256/API#271).",
+        "Dev offline-assignment audit: translator-vs-translator race PASS within 5m; FAIL for PM peer assign or >5m window (\u2192#610); FAIL claims only on full sync not reconnect edge (\u2192#611). Launch blocker TBD with product."
+      ],
+      "crosschecks": [
+        "core-flows \u00a72/\u00a76 claim conflict \u2260 audio conflict. Dev\u2260QA. Living docs cite API#390 open claim-conflict handling \u2014 not this SHA / not deploy proof."
+      ],
+      "discrepancy": "Open foundational ticket with High Dev gaps; closed #268/#270/#260 UI cannot be considered end-to-end claim-conflict complete. Distinct from audio #256.",
+      "rationale": "Priority open claim reconnect chain with concrete Dev failure evidence in comments.",
+      "substantive": true
+    },
+    {
+      "issue": 273,
+      "title": "Refresh Assignment and Stage State on Chapter List Open",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "agreed_requirement",
+      "themes": [
+        "sync",
+        "assignment",
+        "stage"
+      ],
+      "requirements": [
+        "Online open of My Work / View Project triggers background assignment+stage metadata pull; show cache immediately; offline uses cache only."
+      ],
+      "decisions": [
+        "Product clarification (chadw-eten): also pull when visiting Projects/Milestones tab (project membership changes), not only View Project detail."
+      ],
+      "crosschecks": [
+        "core-flows \u00a72/\u00a76 sync freshness. Relates to #257 risk: pull must not wipe queued local stage advances."
+      ],
+      "discrepancy": "If #257 pending local stage is not protected, #273 pull can cause the Dev-observed Draft revert (Gap 8) \u2014 interaction discrepancy while #257 open.",
+      "rationale": "Metadata refresh AC plus explicit product expansion to project list. Cross-links open stage-queue hazard.",
+      "substantive": true
+    },
+    {
+      "issue": 274,
+      "title": "Require Closes #NNN only on PRs targeting main (stacked-PR tracker guardrail)",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "infra_process",
+      "themes": [
+        "tracker",
+        "prs"
+      ],
+      "requirements": [
+        "Prefer Closes #NNN only on PRs targeting main; stacked feature-base PRs leave issues open."
+      ],
+      "decisions": [
+        "Later superseded in practice by Refs #NNN / no auto-close policy (#300) \u2014 later decision wins."
+      ],
+      "crosschecks": [
+        "delivery.mdc / qa-process: Refs not Closes; post-merge QA handoff."
+      ],
+      "discrepancy": "Ticket taught Closes-on-main; subsequent #300 + living delivery rules forbid closing keywords \u2014 supersession.",
+      "rationale": "Tracker guardrail later overridden by no-auto-close QA handoff policy.",
+      "substantive": true
+    },
+    {
+      "issue": 275,
+      "title": "Truth-up AGENT_ONBOARDING: recording is wired; fix Jest suite count",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "infra_process",
+      "themes": [
+        "docs",
+        "recording"
+      ],
+      "requirements": [
+        "Truth-up AGENT_ONBOARDING that recording is wired; fix stale Jest suite count."
+      ],
+      "decisions": [],
+      "crosschecks": [
+        "product-behavior treats current mobile code as inferred, never automatically normative \u2014 onboarding truth-up is eng docs not product AC."
+      ],
+      "discrepancy": null,
+      "rationale": "Docs hygiene acknowledging recording landed; not new product behavior.",
+      "substantive": true
+    },
+    {
+      "issue": 276,
+      "title": "Migrate navigation from React Navigation stack to Expo Router",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "engineering_fix",
+      "themes": [
+        "navigation",
+        "expo-router"
+      ],
+      "requirements": [
+        "Migrate app navigation to Expo Router file-based routes; do not block #255/#266."
+      ],
+      "decisions": [],
+      "crosschecks": [
+        "architecture / expo-first living rules align with Expo Router outcome."
+      ],
+      "discrepancy": null,
+      "rationale": "Engineering navigation migration; enables Sync/Home route structure implicated by later #721 but ticket itself is not that bug.",
+      "substantive": true
+    },
+    {
+      "issue": 277,
+      "title": "Document Project 4 board rules, Expo-first deps, and cross-tool agent entrypoints",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "infra_process",
+      "themes": [
+        "docs",
+        "agent",
+        "expo-first",
+        "board"
+      ],
+      "requirements": [
+        "Document Project 4 board mutation rules; cross-tool agent entrypoints; Expo-first deps preference."
+      ],
+      "decisions": [
+        "Board mutation hard rules; Expo-first for new deps."
+      ],
+      "crosschecks": [
+        "project-board.md / product-behavior related pointers."
+      ],
+      "discrepancy": null,
+      "rationale": "Agent/process documentation; not end-user product flows.",
+      "substantive": true
+    },
+    {
+      "issue": 279,
+      "title": "Add All-Takes View with Canonical Selection to Record Tab",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "agreed_requirement",
+      "themes": [
+        "recording",
+        "multi-account",
+        "canonical-take",
+        "roles"
+      ],
+      "requirements": [
+        "My Takes / All Takes toggle when multiple device accounts have takes; All Takes grouped by account with play + canonical designation.",
+        "Any device account may set canonical; only one canonical; no record/delete in All Takes; per-account 5-take cap supersedes #71 ambiguity.",
+        "When multi-account takes exist, My Takes hides active-draft selection; canonical is the selection mechanism."
+      ],
+      "decisions": [
+        "Canonical designation is the same mechanism conflict resolution should use (#256) \u2014 wire one flag.",
+        "Per-account 5-take cap supersedes #71.",
+        "Still inherits open #259 questions about which roles may enter team/review / act on others takes \u2014 #279 allows any logged-in device account to designate canonical (broader than peer-only)."
+      ],
+      "crosschecks": [
+        "core-flows \u00a74 selected take (isSelected/selectedTake) inferred. #259 confirmed default my-takes-only; #279 supplies the explicit All Takes mode."
+      ],
+      "discrepancy": "Closed #279 \u201cany account may designate canonical\u201d may conflict with still-open #259 product questions (which roles may act on others takes). Later product confirmation needed; do not silently treat #279 as settling #259 open role questions.",
+      "rationale": "Major recording multi-account AC implementing #259 team mode sketch; residual open role decisions flagged.",
+      "substantive": true
+    },
+    {
+      "issue": 282,
+      "title": "Upgrade to Expo SDK 57 (React Native 0.86)",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "infra_process",
+      "themes": [
+        "expo",
+        "sdk57",
+        "dependencies"
+      ],
+      "requirements": [
+        "Upgrade Expo SDK 56\u219257 / RN 0.86; Android-only CNG prebuild."
+      ],
+      "decisions": [],
+      "crosschecks": [
+        "product-behavior pins mobile HEAD on SDK 57 era."
+      ],
+      "discrepancy": null,
+      "rationale": "Platform upgrade; not product-behavior AC.",
+      "substantive": true
+    },
+    {
+      "issue": 289,
+      "title": "Preview-build: binary APKs only, comment linked ticket, move to In QA",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "infra_process",
+      "themes": [
+        "ci",
+        "qa",
+        "preview-build"
+      ],
+      "requirements": [
+        "preview-build label \u2192 fresh binary APK only; comment PR + linked tickets; best-effort move to In QA."
+      ],
+      "decisions": [
+        "Binary-only previews (no shared OTA channel)."
+      ],
+      "crosschecks": [
+        "Living qa-process: preview optional/debug; Nightly is QA vehicle \u2014 later policy softens pre-merge preview gate from #329."
+      ],
+      "discrepancy": "Preview-build In QA move is historical relative to post-merge Nightly QA handoff.",
+      "rationale": "CI/QA tooling; policy context later shifted by #300/#330/qa-process.",
+      "substantive": true
+    },
+    {
+      "issue": 291,
+      "title": "Offline-first auth session durability (persist, soft reauth, per-request tokens, multi-account)",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "agreed_requirement",
+      "themes": [
+        "auth",
+        "sync",
+        "multi-account",
+        "offline"
+      ],
+      "requirements": [
+        "Persist credentials before post-login sync; soft reauth on sync 401 (no wipe); per-request tokens in multi-user sync; add-account/restore fail-closed."
+      ],
+      "decisions": [
+        "Absorbs #292/#293/#294 as duplicates \u2014 single board ticket + tech notes preferred.",
+        "Sync 401 \u2192 reauth-required, keep SecureStore/SQLite; only explicit sign-out clears."
+      ],
+      "crosschecks": [
+        "core-flows \u00a71 login/multi-account; sync.auth + accountSession mocks in product-behavior. Aligns with living Expected isolation."
+      ],
+      "discrepancy": null,
+      "rationale": "Canonical auth/session durability AC; siblings closed as duplicates pointing here.",
+      "substantive": true
+    },
+    {
+      "issue": 292,
+      "title": "Stop wiping auth credentials on sync 401; use reauth-required",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "duplicate",
+      "themes": [
+        "auth",
+        "sync"
+      ],
+      "requirements": [],
+      "decisions": [
+        "Closed duplicate of #291 (soft reauth slice)."
+      ],
+      "crosschecks": [
+        "See #291; product-behavior sync 401 soft reauth mocks."
+      ],
+      "discrepancy": null,
+      "rationale": "Explicit duplicate close to #291.",
+      "substantive": true
+    },
+    {
+      "issue": 293,
+      "title": "Fix add-account and restoreSession multi-account session safety",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "duplicate",
+      "themes": [
+        "auth",
+        "multi-account"
+      ],
+      "requirements": [],
+      "decisions": [
+        "Closed duplicate of #291 (add-account/restore slice)."
+      ],
+      "crosschecks": [
+        "See #291"
+      ],
+      "discrepancy": null,
+      "rationale": "Explicit duplicate close to #291.",
+      "substantive": true
+    },
+    {
+      "issue": 294,
+      "title": "Pass per-request auth tokens; stop mutating global authToken in sync",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "duplicate",
+      "themes": [
+        "auth",
+        "sync"
+      ],
+      "requirements": [],
+      "decisions": [
+        "Closed duplicate of #291 (per-request token slice)."
+      ],
+      "crosschecks": [
+        "See #291"
+      ],
+      "discrepancy": null,
+      "rationale": "Explicit duplicate close to #291.",
+      "substantive": true
+    },
+    {
+      "issue": 298,
+      "title": "Investigate intermittent multi-take Review Maximum update depth on Android devices",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "engineering_fix",
+      "themes": [
+        "recording",
+        "review",
+        "android"
+      ],
+      "requirements": [
+        "Investigate/fix intermittent Maximum update depth on multi-take Review on physical Android devices."
+      ],
+      "decisions": [],
+      "crosschecks": [
+        "core-flows \u00a74 Review/takes \u2014 device flake, Needs QA class."
+      ],
+      "discrepancy": null,
+      "rationale": "Device stability bug follow-up from #176/#252 QA; engineering.",
+      "substantive": true
+    },
+    {
+      "issue": 300,
+      "title": "Stop auto-closing issues on PR merge; hand off to In QA",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "infra_process",
+      "themes": [
+        "qa",
+        "tracker"
+      ],
+      "requirements": [
+        "Stop Closes/Fixes/Resolves auto-close; use Refs #NNN; hand off to In QA; Done after QA."
+      ],
+      "decisions": [
+        "Later living qa-process: merge not blocked on QA; post-merge Nightly handoff \u2014 refines but keeps non-closing Refs invariant."
+      ],
+      "crosschecks": [
+        "docs/guides/qa-process.md; product-behavior Agent QA \u2260 Nightly signoff."
+      ],
+      "discrepancy": null,
+      "rationale": "Tracker/QA handoff policy; supersedes #274 Closes-on-main guidance.",
+      "substantive": true
+    },
+    {
+      "issue": 314,
+      "title": "Align Expo SDK 57 patch dependencies via expo install --fix",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "infra_process",
+      "themes": [
+        "expo",
+        "dependencies",
+        "ci"
+      ],
+      "requirements": [
+        "Align Expo SDK 57 patch versions via expo install --fix so Quality Gates pass."
+      ],
+      "decisions": [],
+      "crosschecks": [
+        "n/a"
+      ],
+      "discrepancy": null,
+      "rationale": "Deps alignment chore.",
+      "substantive": true
+    },
+    {
+      "issue": 317,
+      "title": "Enforce PR template, description CI check, CODEOWNERS, and required reviews",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "infra_process",
+      "themes": [
+        "prs",
+        "ci",
+        "codeowners"
+      ],
+      "requirements": [
+        "GitHub PR template + description CI check + CODEOWNERS."
+      ],
+      "decisions": [],
+      "crosschecks": [
+        "n/a"
+      ],
+      "discrepancy": null,
+      "rationale": "PR process enforcement.",
+      "substantive": true
+    },
+    {
+      "issue": 319,
+      "title": "Add pr-demo-video agent skill for Cursor and Claude Code",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "not_planned",
+      "themes": [
+        "agent-skill",
+        "demo"
+      ],
+      "requirements": [],
+      "decisions": [
+        "Closed not planned: Playwright demo skill cannot drive Android RN/Expo app; revisit only with emulator/device-oriented skill."
+      ],
+      "crosschecks": [
+        "n/a"
+      ],
+      "discrepancy": null,
+      "rationale": "Explicit not-planned close with rationale.",
+      "substantive": true
+    },
+    {
+      "issue": 324,
+      "title": "Add /start-issue delivery loop and shared agent command surface",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "infra_process",
+      "themes": [
+        "agent",
+        "delivery"
+      ],
+      "requirements": [
+        "Shared /start-issue delivery loop; .claude/commands canonical; Cursor shims; code-reviewer agent."
+      ],
+      "decisions": [],
+      "crosschecks": [
+        "delivery.mdc living process."
+      ],
+      "discrepancy": null,
+      "rationale": "Agent delivery tooling.",
+      "substantive": true
+    },
+    {
+      "issue": 326,
+      "title": "Forward habitual yarn CLI to npm (keep npm as source of truth)",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "infra_process",
+      "themes": [
+        "npm",
+        "tooling"
+      ],
+      "requirements": [
+        "Forward habitual yarn CLI to npm; keep npm lockfile source of truth."
+      ],
+      "decisions": [
+        "npm-only package manager (reinforces repo policy)."
+      ],
+      "crosschecks": [
+        "n/a"
+      ],
+      "discrepancy": null,
+      "rationale": "Tooling guardrail reinforcing npm-only package manager; no product-behavior user journey impact. Body+AC read for yarn\u2192npm forwarder scope.",
+      "substantive": true
+    },
+    {
+      "issue": 329,
+      "title": "Document QA process and align CI/automations to pre-merge preview gate",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "superseded",
+      "themes": [
+        "qa",
+        "ci"
+      ],
+      "requirements": [
+        "Original: QA-required PRs not mergeable until isolated preview QA passes."
+      ],
+      "decisions": [
+        "Superseded by living qa-process + #330 close comment: merge on engineer approval + green CI; QA post-merge on Nightly."
+      ],
+      "crosschecks": [
+        "product-behavior / qa-process: Agent emulator debug \u2260 Nightly signoff; merge not blocked on QA."
+      ],
+      "discrepancy": "Historical pre-merge QA gate must not be reimposed from this closed ticket; later explicit policy wins.",
+      "rationale": "Decision-chain exemplar: later QA policy supersedes this ticket\u2019s merge-blocking invariant.",
+      "substantive": true
+    },
+    {
+      "issue": 330,
+      "title": "Enforce QA-required PR merge gate (status/label/checklist)",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "superseded",
+      "themes": [
+        "qa",
+        "ci"
+      ],
+      "requirements": [
+        "Was: automate merge-blocking QA gate."
+      ],
+      "decisions": [
+        "Closed not planned / superseded per qa-process.md (mattrace-gloo): post-merge Nightly QA; reopen only if Product explicitly wants merge-blocking again."
+      ],
+      "crosschecks": [
+        "Same as #329 living policy."
+      ],
+      "discrepancy": null,
+      "rationale": "Explicit supersession comment; records open door only if Product re-requests merge-blocking.",
+      "substantive": true
+    },
+    {
+      "issue": 333,
+      "title": "Update Projects Tab to Milestones with Flat Milestone List and Offline Controls",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "agreed_requirement",
+      "themes": [
+        "milestones",
+        "navigation",
+        "sync"
+      ],
+      "requirements": [
+        "Rename Projects\u2192Milestones; flat list of milestones across user projects; chapter header subtitle = project name."
+      ],
+      "decisions": [
+        "API-first blocker documented then tracked via fluent-api#342/#343; mobile PR #552."
+      ],
+      "crosschecks": [
+        "core-flows does not yet detail Milestones taxonomy; My Work/projects outline still generic."
+      ],
+      "discrepancy": "Dev note: sync cloud can appear on unrelated milestone rows sharing bible_text_id \u2014 pre-existing join hazard, easy to misread as #333 regression; living docs silent on this false-positive indicator.",
+      "rationale": "Product hierarchy/UI AC with API dependency chain and known sync-indicator footgun.",
+      "substantive": true
+    },
+    {
+      "issue": 343,
+      "title": "Align Expo SDK 57 package versions so Quality Gates pass",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "infra_process",
+      "themes": [
+        "expo",
+        "dependencies",
+        "ci"
+      ],
+      "requirements": [
+        "Deps-only expo install --fix so Quality Gates pass on main."
+      ],
+      "decisions": [],
+      "crosschecks": [
+        "n/a"
+      ],
+      "discrepancy": null,
+      "rationale": "Deps chore duplicate-class with #314 theme.",
+      "substantive": true
+    },
+    {
+      "issue": 347,
+      "title": "QA #191: Images unavailable lacks Retry; Settings white screen on user switch",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "duplicate",
+      "themes": [
+        "resources",
+        "settings",
+        "qa"
+      ],
+      "requirements": [],
+      "decisions": [
+        "Closed: wrong GitHub account; recreated as #348."
+      ],
+      "crosschecks": [
+        "See #348"
+      ],
+      "discrepancy": null,
+      "rationale": "Explicit wrong-account duplicate.",
+      "substantive": true
+    },
+    {
+      "issue": 348,
+      "title": "QA #191: Images unavailable lacks Retry; Settings white screen on user switch",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "agreed_requirement",
+      "themes": [
+        "resources",
+        "settings",
+        "offline",
+        "multi-account"
+      ],
+      "requirements": [
+        "Images & Maps unavailable/load-failure shows section-scoped Retry; TN/TQ unaffected.",
+        "Settings must not white-screen; user switch must not crash."
+      ],
+      "decisions": [
+        "Follow-up #417 for offline inventory gating of reference images; comment states AC1 offline Retry stays open until #417."
+      ],
+      "crosschecks": [
+        "core-flows \u00a75 Resources: empty UI \u2260 403; offline no inventory \u2192 Prepare Offline copy; online empty \u2192 no resources for verse (QA 484 valid empty).",
+        "Retry-on-unavailable is distinct from empty-content copy and from 403-must-not-look-empty mocks."
+      ],
+      "discrepancy": "Partial: offline Retry AC deferred to #417 while issue closed. Do not treat closed #348 as full offline Images AC. Empty (484) \u2260 unavailable/retry.",
+      "rationale": "Resources QA defects with explicit deferred offline AC \u2014 important resources decision chain.",
+      "substantive": true
+    },
+    {
+      "issue": 365,
+      "title": "[A+] Composite grades initiative tracker (Architecture / Product / Tests / Process)",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "tracker_hygiene",
+      "themes": [
+        "initiative",
+        "a-plus"
+      ],
+      "requirements": [],
+      "decisions": [
+        "Tracking issue only; children ship separately; engineering-only no QA for many children."
+      ],
+      "crosschecks": [
+        "Lists product gaps including source audio #235 as P1 existing gap."
+      ],
+      "discrepancy": null,
+      "rationale": "Epic tracker; points at product gaps without new AC itself.",
+      "substantive": true
+    },
+    {
+      "issue": 366,
+      "title": "[A+] ESLint: ban UI fetch, raw SQL, and @react-navigation app imports",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "infra_process",
+      "themes": [
+        "architecture",
+        "eslint"
+      ],
+      "requirements": [
+        "ESLint ban UI fetch, raw SQL, @react-navigation app imports."
+      ],
+      "decisions": [],
+      "crosschecks": [
+        "architecture.mdc layer boundaries."
+      ],
+      "discrepancy": null,
+      "rationale": "Architecture enforcement; not user product flows.",
+      "substantive": true
+    },
+    {
+      "issue": 367,
+      "title": "[A+] CI-enforce architecture-guard (not warn-only) + unit tests",
+      "state": "closed",
+      "retrieval_complete": true,
+      "comments_count_match": true,
+      "classification": "infra_process",
+      "themes": [
+        "architecture",
+        "ci"
+      ],
+      "requirements": [
+        "CI-enforce architecture-guard (not warn-only) + unit tests."
+      ],
+      "decisions": [],
+      "crosschecks": [
+        "architecture.mdc"
+      ],
+      "discrepancy": null,
+      "rationale": "CI architecture gate.",
+      "substantive": true
+    }
+  ]
+}

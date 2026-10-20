@@ -1,0 +1,52 @@
+{
+  "issue_number": 233,
+  "fetched_at_utc": "2026-10-20T00:35:30Z",
+  "issue": {
+    "number": 233,
+    "title": "Native AAC\u2192M4A remux module (MediaMuxer) for seekable Review scrubbing",
+    "state": "closed",
+    "body": "## Summary\n\nFollow-up to #176 / PR #231. The JS remux seam (`ensureSeekableTakeUri`) is landed; this issue covers the **Android native** Expo CNG local module that remuxes committed ADTS `.aac` into seekable `.m4a` via `MediaMuxer`, plus device QA for Review scrubbing.\n\n## Context\n\n#176 AC requires a committed take to become a seekable M4A and accurate Review scrubbing. PR #231 only injects an optional `RemuxNativeModule` and keeps `.aac` playable when the module is absent. Full AC remains open on #176 with a ticket-level waiver pointing here.\n\n## Scope\n\n**In scope**\n- Expo local/native module (Android-only, CNG) wrapping `MediaMuxer` (or equivalent) for ADTS AAC \u2192 M4A remux\n- Wire module into `ensureSeekableTakeUri` / `RemuxNativeModule` injection\n- Android device QA: record (ADTS path) \u2192 commit \u2192 Review scrub to multiple positions\n\n**Out of scope**\n- Changing kill-safe ADTS capture format\n- JS seam already in #231\n\n## Acceptance criteria\n\n- [ ] Native remux module converts committed `.aac` to seekable `.m4a` with `moov`\n- [ ] Injected into app so `ensureSeekableTakeUri` remuxes on commit\n- [ ] Review scrubbing seeks accurately on the remuxed file\n- [ ] Remux failure leaves original AAC playable (no data loss)\n- [ ] Android device QA recorded on the implementing PR\n\n## Links\n\n- Parent: #176\n- JS seam PR: #231\n- Refs #49 (Review scrubbing deferred from Record Tab)",
+    "user": "mattrace-gloo",
+    "created_at": "2026-07-20T23:16:22Z",
+    "updated_at": "2026-08-04T21:23:19Z",
+    "closed_at": "2026-08-04T21:23:19Z",
+    "labels": [
+      "enhancement",
+      "SP 1",
+      "DevQA"
+    ],
+    "comments": 3,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/233",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5062262707,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-23T19:01:57Z",
+      "updated_at": "2026-07-23T19:01:57Z",
+      "body": "Draft PR (stacked on `mrace/feature/176-review-scrub-seekable`, base \u2260 `main`): https://github.com/eten-tech-foundation/fluent-mobile/pull/254\n\nNative AAC\u2192M4A remux via MediaMuxer; device Android QA required before ready for review.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/233#issuecomment-5062262707"
+    },
+    {
+      "id": 5064059941,
+      "user": "mattrace-buildmidwestern",
+      "created_at": "2026-07-23T22:13:57Z",
+      "updated_at": "2026-07-23T22:13:57Z",
+      "body": "Linked development branch `mrace/feature/233-native-aac-m4a-remux` \u2192 PR https://github.com/eten-tech-foundation/fluent-mobile/pull/254 (Closes #233).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/233#issuecomment-5064059941"
+    },
+    {
+      "id": 5134898460,
+      "user": "mattrace-buildmidwestern",
+      "created_at": "2026-07-30T18:43:03Z",
+      "updated_at": "2026-07-30T18:43:03Z",
+      "body": "## Board hygiene \u2014 not a duplicate of #176\n\nThis issue is the **native remux** slice carved out of #176 (JS seam was #231).\n\n### Status\n\n- Implementing PR **#254** is **merged into** the #252 feature branch (`mrace/feature/176-review-scrub-seekable`), **not** into `main`.\n- Because it was a stacked merge, GitHub\u2019s `Closes #233` did **not** auto-close this issue.\n- Delivery to `main` is via open PR **#252**: https://github.com/eten-tech-foundation/fluent-mobile/pull/252\n\n### Close when\n\nClose this issue when #252 merges to `main` (remux ships with that PR). Parent **#176** stays open until Android device QA for remux + Review scrub is recorded.\n\nProject 4 Status: keep **In PR Review** while #252 is open.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/233#issuecomment-5134898460"
+    }
+  ],
+  "comments_fetched_count": 3,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

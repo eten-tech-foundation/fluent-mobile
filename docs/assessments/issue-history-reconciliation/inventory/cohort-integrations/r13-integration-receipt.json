@@ -1,0 +1,32 @@
+{
+  "integrated_at_utc": "2026-10-20T01:22:05Z",
+  "reviewer": "bc-7a7c1e8b-249b-5dda-bf5e-08a1ef72bbea",
+  "source": "/tmp/fluent-issue-review-r13.json",
+  "accepted_complete": [
+    459,
+    464,
+    469,
+    470,
+    474,
+    476,
+    483,
+    484,
+    485,
+    486,
+    488,
+    489,
+    490,
+    491,
+    492,
+    493,
+    494,
+    495,
+    496,
+    497,
+    498,
+    499,
+    503,
+    504
+  ],
+  "wave4_note": "r14/r15 ownership preserved RUNNING"
+}

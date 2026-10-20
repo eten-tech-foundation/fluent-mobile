@@ -1,0 +1,26 @@
+{
+  "issue_number": 300,
+  "fetched_at_utc": "2026-10-20T00:36:05Z",
+  "issue": {
+    "number": 300,
+    "title": "Stop auto-closing issues on PR merge; hand off to In QA",
+    "state": "closed",
+    "body": "## Summary\n\nStop using GitHub closing keywords (`Closes` / `Fixes` / `Resolves`) so merged PRs do **not** auto-close issues. Linked tickets stay open and move to **In QA** on Project 4 for QA review before Done.\n\n## Current vs expected\n\n**Current:** PR bodies use `Closes #NNN`, which auto-closes the issue on merge to `main`. Agents often set Status to **Done** after merge.\n\n**Expected:** PR bodies use `Refs #NNN` (non-closing link). After merge (or when ready for QA), Project 4 Status moves to **In QA**. Issues stay open until QA completes; **Done** is set after QA (not by merge alone).\n\n## Scope\n\n**In scope:** Update agent/delivery docs, PR template, slash commands, and related QA/preview docs that instruct `Closes #NNN` or post-merge `Done`.\n\n**Out of scope:** Automating the board move on merge (preview-build already best-effort moves to In QA); changing GitHub org settings.\n\n## Acceptance criteria\n\n- [ ] PR template and delivery rules use `Refs #NNN` instead of `Closes #NNN` / other closing keywords\n- [ ] Docs instruct: after merge (or when ready for QA), set Project 4 Status to **In QA** \u2014 do not auto-close the issue\n- [ ] Agents must not set **Done** solely because a PR merged; Done follows QA / human process\n- [ ] QA preview / `.github` docs that mention `Closes #NNN` for linking are updated to `Refs #NNN`\n- [ ] Stacked-PR guidance still avoids closing keywords on non-`main` bases\n\n## Verification\n\n- [ ] Grep repo for `Closes #` in agent/docs templates shows none as the preferred linking form (historical notes OK if they explain the change)\n- [ ] Docs-only PR; no app code changes\n\n## File pointers\n\n- `.cursor/templates/pr-template.md`\n- `.cursor/rules/delivery.mdc`, `project-board.mdc`, `docs.mdc`\n- `.cursor/commands/create-pr.md`, `generate-pr-description.md`\n- `docs/issue-tracking.md`, `docs/guides/project-board.md`, `docs/guides/qa-preview-testing.md`\n- `.github/README.md`\n\n## Links\n\n- Board: https://github.com/orgs/eten-tech-foundation/projects/4/views/9\n- Related (superseded policy): #274\n- QA handoff via preview: #289",
+    "user": "mattrace-buildmidwestern",
+    "created_at": "2026-08-04T21:55:59Z",
+    "updated_at": "2026-08-11T22:21:51Z",
+    "closed_at": "2026-08-11T22:21:51Z",
+    "labels": [
+      "documentation",
+      "chore"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/300",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

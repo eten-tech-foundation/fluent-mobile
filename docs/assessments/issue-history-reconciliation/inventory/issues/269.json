@@ -1,0 +1,40 @@
+{
+  "issue_number": 269,
+  "fetched_at_utc": "2026-10-20T00:35:48Z",
+  "issue": {
+    "number": 269,
+    "title": "Add Recording Warning on Taken Chapters",
+    "state": "closed",
+    "body": "The record tab surfaces two distinct warnings: one when the current chapter is taken by another translator, and one when an unresolved audio take conflict exists on the chapter. Both are informational only; recording is not blocked. This ticket adds both warning banners to the drafting screen.\n\n## Functional Requirements\n\n### Taken Chapter Warning\n\n- When the current chapter is claimed or PM-assigned to another translator, display a warning on the record tab (e.g., \"This chapter is assigned to another translator.\").\n- Show the warning whether the device is online or offline; the taken state may be server-confirmed (online) or derived from last-synced state (offline).\n- Allow recording to proceed despite the warning; do not block or disable recording controls.\n\n<img width=\"416\" height=\"300\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/e2446e7f-a1d0-4a41-838f-074680a4bec2\" />\n\n### Conflict Warning\n\n- Display an amber banner at the top of the Record tab content area, above the verse navigator, with `li:triangle-alert` and the text \"Unresolved audio take conflict on this chapter/pericope.\" when the current chapter or pericope has an unresolved audio take conflict.\n- No resolution action is available on mobile; the banner is informational only.\n\n<img width=\"424\" height=\"247\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/a091611c-ef58-42d8-9a93-5f1a2d3cd6aa\" />\n\nNote: The chapter list conflict indicator is handled in #260.",
+    "user": "chadw-eten",
+    "created_at": "2026-07-29T17:33:32Z",
+    "updated_at": "2026-10-06T19:06:48Z",
+    "closed_at": "2026-10-06T19:06:48Z",
+    "labels": [],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/269",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5273846421,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-12T23:08:31Z",
+      "updated_at": "2026-08-12T23:08:31Z",
+      "body": "### Eng note (updated)\n\nTwo banners, two realities:\n\n- **Taken by someone else** \u2014 use real assignment data we already sync (`assignedUserId` / `peerCheckerId`). No new API.\n- **Unresolved audio conflict** \u2014 depends on **eten-tech-foundation/fluent-api#271**.\n\n**Preferred:** ship the conflict banner with `fluent-api#271` (and #256/#260) as one feature.\n\n**Fallback:** mock only the conflict banner if API is too heavy; keep the taken warning on real data. Don\u2019t block recording either way.\n\n(Not the same as web\u2019s presence \u201cother editor online\u201d warning.)",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/269#issuecomment-5273846421"
+    },
+    {
+      "id": 5448450500,
+      "user": "Roslin22",
+      "created_at": "2026-08-28T04:29:36Z",
+      "updated_at": "2026-08-28T04:32:18Z",
+      "body": "**Test Results:269**\n\n- For a newly assigned chapter, the assignment warning banner is not displayed initially.\n- When the chapter assignment changes and the chapter is assigned to a different translator, the assignment warning message is displayed.\n- When the chapter is in Peer Check, the translator receives the expected warning message.\n- When the chapter is reassigned to the current translator, the assignment warning message is no longer displayed.\n- When the assignment warning is displayed, the user can still record multiple takes, delete existing takes, and record new takes. The warning does not block or disable recording functionality.\n- The assignment warning functionality was tested in both online and offline modes and worked as expected.\n\nMoving this ticket to passed QA\n\n**Below these issues Followup tickets created #404**\n**Issues Identified**\n\n- When View Source Text is expanded, the chapter/verse navigation is hidden behind the takes section, making it difficult for the user to navigate between verses.\n- When very long source text is displayed, it is difficult for the user to scroll through and view the entire text.\n\n**Note**\nThe Conflict Warning functionality was not tested because the developer has commented on the PR regarding this functionality. Therefore, the conflict-warning requirements remain untested.\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/269#issuecomment-5448450500"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

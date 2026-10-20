@@ -1,0 +1,2648 @@
+{
+  "schema_version": 1,
+  "cohort": "c6",
+  "parent_integrator": "bc-da4aa327-d86e-47fc-93c0-d7105af39497",
+  "reviewer_agent": "bc-72933aea-7310-5fcf-b09d-bd0937573a32",
+  "reviewer_role": "read_only_cohort_reviewer",
+  "reviewed_at_utc": "2026-10-20T00:41:59Z",
+  "repo": "/Users/matt/Documents/Development/gloo/fluent-mobile",
+  "ids_file": "/tmp/fluent-issue-review-c6-ids.json",
+  "ids": [
+    592,
+    593,
+    594,
+    595,
+    596,
+    597,
+    599,
+    600,
+    601,
+    602,
+    603,
+    604,
+    605,
+    607,
+    610,
+    611,
+    612,
+    613,
+    615,
+    617,
+    619,
+    620,
+    621,
+    622,
+    623,
+    638,
+    642,
+    665,
+    670,
+    675,
+    679,
+    683,
+    691,
+    692,
+    694,
+    695,
+    696,
+    701,
+    702,
+    703,
+    704,
+    707,
+    716,
+    717,
+    718,
+    719,
+    720,
+    721
+  ],
+  "constraints_honored": [
+    "read_only_repo_and_canonical_docs",
+    "write_only_tmp_fluent_issue_review_c6_json_md",
+    "no_ledger_git_github_device_writes",
+    "no_keyword_only_substantive_marks",
+    "full_schema_with_evidence_links",
+    "dev_neq_qa",
+    "agent_debug_neq_nightly_signoff",
+    "every_assigned_id_reviewed_none_others"
+  ],
+  "product_behavior_sources": [
+    "docs/product-behavior/README.md",
+    "docs/product-behavior/core-flows.md",
+    "docs/product-behavior/roles-and-permissions.md",
+    "docs/guides/maestro-role-coverage.md",
+    "docs/assessments/chapter-assignment-and-claiming/tickets/maestro-ownership-claim-fixtures.md"
+  ],
+  "counts": {
+    "total": 48,
+    "open": 20,
+    "closed": 28,
+    "retrieval_complete_yes": 48,
+    "retrieval_complete_no": 0,
+    "substantive_review_yes": 48,
+    "with_discrepancy_flags": 41,
+    "by_review_status": {
+      "historical_audit_closed": 11,
+      "closed_with_residual": 4,
+      "open_agreed_work": 13,
+      "closed_aligned": 13,
+      "open_blocked_dependency": 2,
+      "infra_chore": 1,
+      "follow_up_gap": 3,
+      "known_deviation": 1
+    },
+    "priority_deep_reviewed": [
+      721,
+      717,
+      607
+    ],
+    "roles_permissions_thread_count": 8,
+    "top_findings": 8
+  },
+  "roles_permissions_threads": [
+    {
+      "issue": 607,
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/607",
+      "review_status": "open_blocked_dependency",
+      "why": "Open fixture/seed gap deferred from #574: conflict chapters, open Peer Check (no peerChecker), and claim baseline restore. Product-behavior explicitly ties unclaimed/open-peer pools to #607 + API #368/#369; #717 states t"
+    },
+    {
+      "issue": 610,
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/610",
+      "review_status": "closed_aligned",
+      "why": "Closed offline claim-conflict surfacing when PM assigns or window >5m. Body documents Dev audit; comment opened fluent-api#376. Product roles doc notes claim 404 mock + open API #390 not pinned SHA/deploy proof."
+    },
+    {
+      "issue": 675,
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/675",
+      "review_status": "closed_aligned",
+      "why": "Closed sync /self lists + clear cached milestones when membership empty — addresses Org Member / no project grant 403 stall leaving stale My Work/milestones. Labels included API Work Required/BLOCKED on fluent-api#386. R"
+    },
+    {
+      "issue": 683,
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/683",
+      "review_status": "closed_aligned",
+      "why": "Closed Complete-stage recording lock (QA-reported via #550/#542). AC preserves existing drafter block on open Peer Check for earlier stages. Matches roles/core-flows complete lock inferred behavior; Needs QA? Yes post-me"
+    },
+    {
+      "issue": 703,
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/703",
+      "review_status": "open_agreed_work",
+      "why": "Open FR for comment count + commented marker on My Work rows; body mentions translator or Observer scanning list. Roles doc: Observer grant unverified on mobile; mobile does not store grants — treat Observer mention as p"
+    },
+    {
+      "issue": 704,
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/704",
+      "review_status": "open_agreed_work",
+      "why": "Open FR: peer checkers need per-chapter download of drafter selected-take audio for Peer Check (assigned or open). Aligns with chapter-slot peer/open-peer model; depends on fixture reality (#607) for open-peer automation"
+    },
+    {
+      "issue": 717,
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/717",
+      "review_status": "open_agreed_work",
+      "why": "Open agreed Maestro E2E coverage ticket with explicit AC (warm sessions, fixture-id navigation, BLOCKED≠pass, QA/Dev env separation, nightly build pinning). Issue body itself states no device Maestro PASS yet and lists #"
+    },
+    {
+      "issue": 721,
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/721",
+      "review_status": "known_deviation",
+      "why": "Open QA Android Known deviation: exact one press of home-sync-button completed but sync-screen did not appear within 30s on QA session user 10 / assignment 484. Product-behavior and role docs classify this as Sync naviga"
+    }
+  ],
+  "top_findings": [
+    {
+      "severity": "P0",
+      "issue": 721,
+      "title": "[QA Android] Home Sync press completes but Sync screen does not open",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/721",
+      "finding": "QA Known deviation: Home Sync one-press does not open Sync screen (assignment 484 chronology). Not a role/permission conclusion. Later agent tabs PASS ≠ Sync recovery; agent debug ≠ Nightly. Local Metro-bridge receipt blocks causal classification until reconnect.",
+      "product_refs": [
+        "docs/product-behavior/README.md#qa-device-evidence-assignment-484--chronology",
+        "docs/product-behavior/core-flows.md",
+        "docs/product-behavior/roles-and-permissions.md"
+      ]
+    },
+    {
+      "severity": "P0",
+      "issue": 717,
+      "title": "Build out full Maestro E2E coverage",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/717",
+      "finding": "Agreed Maestro coverage AC still open; issue body admits no device PASS. Claim/open-peer lanes BLOCKED on #607 seeds. Product docs warn not to treat living outlines as #717 Maestro PASS/FAIL or Nightly signoff. Live grant allow/deny still 0.",
+      "product_refs": [
+        "docs/product-behavior/README.md",
+        "docs/product-behavior/core-flows.md",
+        "docs/guides/maestro-role-coverage.md"
+      ]
+    },
+    {
+      "severity": "P0",
+      "issue": 607,
+      "title": "Ownership Maestro fixtures: conflict / open Peer Check seeds + claim baseline restore",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/607",
+      "finding": "Fixture gap (conflict / open Peer Check / claim baseline restore) remains open and blocks deterministic Maestro claim/open-peer coverage. Tied to API #368/#369 in product-behavior; do not invent pool acceptance journeys yet.",
+      "product_refs": [
+        "docs/product-behavior/roles-and-permissions.md",
+        "docs/product-behavior/core-flows.md",
+        "docs/assessments/chapter-assignment-and-claiming/tickets/maestro-ownership-claim-fixtures.md"
+      ]
+    },
+    {
+      "severity": "P1",
+      "issue": 603,
+      "title": "Keep the header sync icon in step with pending and failed uploads [Returning online and sync changes Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/603",
+      "finding": "Closed icon work has residual QA-confirmed Pericope Sync “Missing Bible Text ID” awaiting fluent-api#391. Distinct from #721 Home Sync navigation failure; Nightly comment showed Sync navigation working in that earlier test.",
+      "product_refs": [
+        "docs/product-behavior/core-flows.md"
+      ]
+    },
+    {
+      "severity": "P1",
+      "issue": 675,
+      "title": "Point sync at /self lists and clear cached milestones when membership is empty",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/675",
+      "finding": "Roles thread: closed /self empty-membership sync path addresses no-project-grant 403 stale cache, but open product decision remains (hide chrome vs server 403 only) and live grant allow/deny remains 0. Official QA PM/Observer/no-grant accounts still an open question in core-flows.",
+      "product_refs": [
+        "docs/product-behavior/roles-and-permissions.md",
+        "docs/product-behavior/core-flows.md"
+      ]
+    },
+    {
+      "severity": "P1",
+      "issue": 599,
+      "title": "Stop the upload foreground service from crashing the app [Returning online and sync changes Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/599",
+      "finding": "Open high-severity upload foreground service crash (Dev evidence). Separate Sync-stack defect from #721 navigation Known deviation.",
+      "product_refs": [
+        "docs/product-behavior/core-flows.md"
+      ]
+    },
+    {
+      "severity": "P2",
+      "issue": 665,
+      "title": "Point preview and nightly builds at QA (qa.app / qa.api), not Dev",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/665",
+      "finding": "Closed preview/nightly→QA env switch underpins Dev≠QA rule in living product docs; hosted Maestro e2e-test intentionally left on Dev pending separate confirmation.",
+      "product_refs": [
+        "docs/product-behavior/README.md",
+        "docs/guides/maestro-role-coverage.md"
+      ]
+    },
+    {
+      "severity": "P2",
+      "issue": 704,
+      "title": "Add Offline Draft Audio Download for Peer Check Chapters",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/704",
+      "finding": "Open peer-check offline draft-audio download FR explicitly includes open Peer Check rows — automation still blocked until #607 seeds exist; roles open-peer policy vs permissions-doc stricter text remains an open decision.",
+      "product_refs": [
+        "docs/product-behavior/roles-and-permissions.md",
+        "docs/product-behavior/core-flows.md"
+      ]
+    }
+  ],
+  "issues": [
+    {
+      "issue": 592,
+      "state": "closed",
+      "title": "Show a loading state instead of the offline empty message while connectivity resolves [Viewing and listening to resources Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/592",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/592.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "historical_audit_closed",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [
+        "dev_device_evidence_not_qa"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Low severity resources audit finding closed; Dev confirmation in body.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/592",
+          "fact": "resources loading vs offline empty"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/592.json",
+          "fact": "closed; retrieval_complete=true"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "related flow",
+          "fact": "Cross-checked living product-behavior outline"
+        }
+      ],
+      "notes": "Dev-era audit confirmation in issue body; Dev≠QA. Closed with no open product-behavior contradiction found in living docs.",
+      "fetched_at_utc": "2026-10-20T00:38:09Z"
+    },
+    {
+      "issue": 593,
+      "state": "closed",
+      "title": "Show Resources for the whole pericope in pericope mode [Viewing and listening to resources Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/593",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/593.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 1,
+      "comments_fetched": 1,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "closed_with_residual",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [
+        "api_followup_375_noted",
+        "dev_device_evidence_not_qa"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed pericope-wide Resources fan-out ticket; comment opened fluent-api#375 for first-party verse-range endpoints. Product Resources section still has open Q for populated QA chapter.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/593",
+          "fact": "Closed pericope Resources fan-out"
+        },
+        {
+          "kind": "issue_comment",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/593#issuecomment-6047705739",
+          "fact": "mattrace-gloo: Opened fluent-api follow-up for first-party verse-range TN/TQ/Images endpoints: https://github.com/eten-tech-foundation/fluent-api/issues/375  Mobile slice in p"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "5. Resources",
+          "fact": "Populated expansion unverified"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/593.json",
+          "fact": "closed; 1 comment"
+        }
+      ],
+      "notes": "Residual API/product fixture questions remain outside this closed mobile ticket.",
+      "fetched_at_utc": "2026-10-20T00:38:11Z"
+    },
+    {
+      "issue": 594,
+      "state": "open",
+      "title": "Show caption and attribution for Images & Maps [Viewing and listening to resources Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/594",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/594.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "open_agreed_work",
+      "product_behavior_labels": [
+        "Inferred current behavior",
+        "Open product decision"
+      ],
+      "discrepancy_flags": [
+        "resources_attribution_gap",
+        "dev_device_evidence_not_qa",
+        "needs_api_caption_fields"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md",
+        "docs/product-behavior/README.md"
+      ],
+      "impl_checked": false,
+      "summary": "Open resources audit bug: Images & Maps lack caption/attribution (spec #191); confirmed on Dev device. Distinct from QA 484 empty Resources UI fixture (no 403 conclusion). Populated Resources expansion remains unverified in product docs.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/594",
+          "fact": "Dev confirmation Mark 1; AC needs API caption/attribution + mobile mapping"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "5. Resources",
+          "fact": "QA 484 = valid empty UI; populated expansion unverified; open Q which QA chapter has populated Resources"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/594.json",
+          "fact": "retrieval_complete=true; open"
+        }
+      ],
+      "notes": "Dev≠QA. Do not use 484 empty UI as populated-images AC.",
+      "fetched_at_utc": "2026-10-20T00:38:12Z"
+    },
+    {
+      "issue": 595,
+      "state": "closed",
+      "title": "Make source audio follow verses when verse timestamps are missing [Viewing and listening to resources Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/595",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/595.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 1,
+      "comments_fetched": 1,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "closed_with_residual",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [
+        "api_followup_374_noted",
+        "dev_device_evidence_not_qa"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed source-audio no-timestamp seek fix; comment opened fluent-api#374 for populated verseTimestamps.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/595",
+          "fact": "Closed source-audio timestamp gap mobile slice"
+        },
+        {
+          "kind": "issue_comment",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/595#issuecomment-6047534874",
+          "fact": "mattrace-gloo: Opened fluent-api follow-up for populated `verseTimestamps` on chapter source-audio: https://github.com/eten-tech-foundation/fluent-api/issues/374  Mobile slice"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/595.json",
+          "fact": "closed; 1 comment"
+        }
+      ],
+      "notes": "",
+      "fetched_at_utc": "2026-10-20T00:38:13Z"
+    },
+    {
+      "issue": 596,
+      "state": "closed",
+      "title": "Fix \"Maximum update depth exceeded\" in the source audio player [Viewing and listening to resources Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/596",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/596.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "historical_audit_closed",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [
+        "dev_device_evidence_not_qa"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed React max-update-depth bug from resources audit.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/596",
+          "fact": "source audio max update depth"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/596.json",
+          "fact": "closed; retrieval_complete=true"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "related flow",
+          "fact": "Cross-checked living product-behavior outline"
+        }
+      ],
+      "notes": "Dev-era audit confirmation in issue body; Dev≠QA. Closed with no open product-behavior contradiction found in living docs.",
+      "fetched_at_utc": "2026-10-20T00:38:14Z"
+    },
+    {
+      "issue": 597,
+      "state": "closed",
+      "title": "Fix the Maestro images fullscreen smoke selector [Viewing and listening to resources Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/597",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/597.json",
+      "labels": [
+        "chore"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "closed_aligned",
+      "product_behavior_labels": [],
+      "discrepancy_flags": [
+        "maestro_selector_infra"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [],
+      "impl_checked": false,
+      "summary": "Closed Maestro images fullscreen smoke selector fix (test infra). Not product AC; consistent with #717 quality bar that weak flows must assert named behavior.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/597",
+          "fact": "Maestro selector infra; file inspection confirmation"
+        },
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/717",
+          "fact": "Weak/partial flows must assert named behavior or be removed"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/597.json",
+          "fact": "closed; retrieval_complete"
+        }
+      ],
+      "notes": "",
+      "fetched_at_utc": "2026-10-20T00:38:15Z"
+    },
+    {
+      "issue": 599,
+      "state": "open",
+      "title": "Stop the upload foreground service from crashing the app [Returning online and sync changes Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/599",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/599.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 1,
+      "comments_fetched": 1,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "open_agreed_work",
+      "product_behavior_labels": [
+        "Known deviation"
+      ],
+      "discrepancy_flags": [
+        "upload_foreground_crash",
+        "dev_device_evidence_not_qa",
+        "high_severity_open"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Open high-severity Sync/upload crash: UploadSyncForegroundService startForeground race; Dev device repro + comment confirms duplicate sessions. Not the same defect as #721 Sync navigation.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/599",
+          "fact": "Open UploadSyncForegroundService crash AC"
+        },
+        {
+          "kind": "issue_comment",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/599#issuecomment-5896745443",
+          "fact": "JonathanSeehagen: Reproduced during the offline chapter assignment audit (#533) with a single chapter.  **Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), local debu"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "6. Upload / sync",
+          "fact": "Separate from #721 nav-open failure"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/599.json",
+          "fact": "open; 1 comment"
+        }
+      ],
+      "notes": "Dev evidence only in issue/comment. Separate track from #721.",
+      "fetched_at_utc": "2026-10-20T00:38:16Z"
+    },
+    {
+      "issue": 600,
+      "state": "closed",
+      "title": "Show chapter-based upload progress on Sync and in the notification [Returning online and sync changes Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/600",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/600.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "historical_audit_closed",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [
+        "dev_device_evidence_not_qa"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed Sync/notification chapter progress from #530 audit.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/600",
+          "fact": "chapter-based upload progress"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/600.json",
+          "fact": "closed; retrieval_complete=true"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "related flow",
+          "fact": "Cross-checked living product-behavior outline"
+        }
+      ],
+      "notes": "Dev-era audit confirmation in issue body; Dev≠QA. Closed with no open product-behavior contradiction found in living docs.",
+      "fetched_at_utc": "2026-10-20T00:38:17Z"
+    },
+    {
+      "issue": 601,
+      "state": "closed",
+      "title": "Keep server reachability current after reconnect and on cold start [Returning online and sync changes Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/601",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/601.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 1,
+      "comments_fetched": 1,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "closed_aligned",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [
+        "dev_device_evidence_not_qa"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed reachability/orchestrator stuck-offline after 404+flicker. Dev repro comment; aligns with sync auth/reachability expectations in core-flows.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/601",
+          "fact": "Closed reachability after reconnect/cold start"
+        },
+        {
+          "kind": "issue_comment",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/601#issuecomment-5896744989",
+          "fact": "JonathanSeehagen: Also seen during the offline chapter assignment audit (#533): the upload orchestrator gets stuck as \"offline\" after a 404 followed by a brief connectivity flick"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/601.json",
+          "fact": "closed; 1 comment"
+        }
+      ],
+      "notes": "Dev≠QA.",
+      "fetched_at_utc": "2026-10-20T00:38:18Z"
+    },
+    {
+      "issue": 602,
+      "state": "closed",
+      "title": "Do not keep network failures as sync errors on the Sync page [Returning online and sync changes Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/602",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/602.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "historical_audit_closed",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [
+        "dev_device_evidence_not_qa"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed Sync page error hygiene for transient network failures.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/602",
+          "fact": "network failures as sync errors"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/602.json",
+          "fact": "closed; retrieval_complete=true"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "related flow",
+          "fact": "Cross-checked living product-behavior outline"
+        }
+      ],
+      "notes": "Dev-era audit confirmation in issue body; Dev≠QA. Closed with no open product-behavior contradiction found in living docs.",
+      "fetched_at_utc": "2026-10-20T00:38:19Z"
+    },
+    {
+      "issue": 603,
+      "state": "closed",
+      "title": "Keep the header sync icon in step with pending and failed uploads [Returning online and sync changes Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/603",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/603.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 4,
+      "comments_fetched": 4,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "closed_with_residual",
+      "product_behavior_labels": [
+        "Inferred current behavior",
+        "Known deviation"
+      ],
+      "discrepancy_flags": [
+        "qa_nightly_icon_pass_with_separate_pericope_sync_error",
+        "residual_missing_bible_text_id_in_pericope_sync",
+        "depends_fluent_api_391"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md",
+        "docs/product-behavior/README.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed header sync icon state ticket. Nightly QA (@Roslin22) reported icon states + tap navigates to Sync, but also identified Sync broken in Pericope view (“Missing Bible Text ID”). Chad confirmed; B3RN153 says waits on fluent-api#391. Residual is not #721 (Home Sync open), but related Sync destination content error.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/603",
+          "fact": "Closed header sync icon pending/failed alignment"
+        },
+        {
+          "kind": "issue_comment",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/603#issuecomment-5897890058",
+          "fact": "JonathanSeehagen: Note for the offline header glyph: the going offline audit (#529, scenario G.22) recorded the offline header as gray `cloud-check` (Pass), but the header draws "
+        },
+        {
+          "kind": "issue_comment",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/603#issuecomment-6165676871",
+          "fact": "Roslin22: **Test Results – Sync Status Icon** 1. The sync status icon is displayed in the top-right navigation bar. 2. The icon changes correctly based on the current con"
+        },
+        {
+          "kind": "issue_comment",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/603#issuecomment-6174879543",
+          "fact": "chadw-eten: I can confirm that when in pericope mode, that error message displays when I got to the Sync page. @B3RN153 take a look."
+        },
+        {
+          "kind": "issue_comment",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/603#issuecomment-6191957285",
+          "fact": "B3RN153: > 22\\. I can confirm that when in pericope mode, that error message displays when I got to the Sync page. [@B3RN153](https://github.com/B3RN153) take a look.  I"
+        },
+        {
+          "kind": "foreign_issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-api/issues/391",
+          "fact": "Named residual blocker for pericope Missing Bible Text ID"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "6. Upload / sync",
+          "fact": "#391 audio; #721 separate Known deviation"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/603.json",
+          "fact": "closed; 4 comments; retrieval_complete"
+        }
+      ],
+      "notes": "IMPORTANT: Nightly QA comment proves Sync page navigation worked in that test context — do not conflate with later #721 Home Sync one-press failure on agent QA emulator. Dev≠QA environments still apply historically for audit body.",
+      "fetched_at_utc": "2026-10-20T00:38:21Z"
+    },
+    {
+      "issue": 604,
+      "state": "closed",
+      "title": "Pause silently when the connection drops mid-upload [Returning online and sync changes Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/604",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/604.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "historical_audit_closed",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [
+        "dev_device_evidence_not_qa"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed mid-upload pause-on-drop behavior from #530.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/604",
+          "fact": "pause silently mid-upload"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/604.json",
+          "fact": "closed; retrieval_complete=true"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "related flow",
+          "fact": "Cross-checked living product-behavior outline"
+        }
+      ],
+      "notes": "Dev-era audit confirmation in issue body; Dev≠QA. Closed with no open product-behavior contradiction found in living docs.",
+      "fetched_at_utc": "2026-10-20T00:38:21Z"
+    },
+    {
+      "issue": 605,
+      "state": "closed",
+      "title": "Upload takes recorded while already online [Returning online and sync changes Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/605",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/605.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "historical_audit_closed",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [
+        "dev_device_evidence_not_qa"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed online-recorded take upload gap from #530.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/605",
+          "fact": "upload takes while already online"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/605.json",
+          "fact": "closed; retrieval_complete=true"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "related flow",
+          "fact": "Cross-checked living product-behavior outline"
+        }
+      ],
+      "notes": "Dev-era audit confirmation in issue body; Dev≠QA. Closed with no open product-behavior contradiction found in living docs.",
+      "fetched_at_utc": "2026-10-20T00:38:22Z"
+    },
+    {
+      "issue": 607,
+      "state": "open",
+      "title": "Ownership Maestro fixtures: conflict / open Peer Check seeds + claim baseline restore",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/607",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/607.json",
+      "labels": [],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "open_blocked_dependency",
+      "product_behavior_labels": [
+        "Open product decision",
+        "Known deviation"
+      ],
+      "discrepancy_flags": [
+        "missing_conflict_fixture_seed",
+        "missing_open_peer_fixture_seed",
+        "claim_baseline_not_restorable",
+        "blocks_717_claim_maestro_lanes",
+        "depends_api_368_369"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/README.md",
+        "docs/product-behavior/core-flows.md",
+        "docs/product-behavior/roles-and-permissions.md",
+        "docs/assessments/chapter-assignment-and-claiming/tickets/maestro-ownership-claim-fixtures.md"
+      ],
+      "impl_checked": false,
+      "summary": "Open fixture/seed gap deferred from #574: conflict chapters, open Peer Check (no peerChecker), and claim baseline restore. Product-behavior explicitly ties unclaimed/open-peer pools to #607 + API #368/#369; #717 states those Maestro flows stay BLOCKED until seed exists. Historical gap ticket documents SKIPPED/BLOCKED paths were fixture/policy, not observed product FAIL.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/607",
+          "fact": "Three deferred AC still unchecked; needs Product/API input"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/607.json",
+          "fact": "retrieval_complete=true; open; comments=0"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/README.md",
+          "section": "Tickets",
+          "fact": "Mobile #607 Unclaimed / open-peer fixtures tracking; fluent-api #368/#369"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "2. My Work / milestones / claim",
+          "fact": "Known gap pool: #607; open Q3 on QA acceptance journeys when pools land"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/roles-and-permissions.md",
+          "section": "Acceptance links",
+          "fact": "Unclaimed / open-peer pool: #607 / API #368 / #369; live grant allow/deny 0"
+        },
+        {
+          "kind": "assessment",
+          "path": "docs/assessments/chapter-assignment-and-claiming/tickets/maestro-ownership-claim-fixtures.md",
+          "fact": "Historical gap ticket points fixture follow-ups at #607 / API #368/#369"
+        },
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/717",
+          "fact": "#717 Dependencies: #607 conflict/open Peer Check seeds; flows BLOCKED until seed"
+        },
+        {
+          "kind": "foreign_issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-api/issues/368",
+          "fact": "Draft seed engine / QA unclaimed pool gap (indexed in product README)"
+        },
+        {
+          "kind": "foreign_issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-api/issues/369",
+          "fact": "Confirm-gated reset (indexed in product README)"
+        }
+      ],
+      "notes": "PRIORITY. Do not mark claim/open-peer Maestro as PASS without seed. Open peer policy vs permissions-doc stricter wording is roles open decision territory.",
+      "fetched_at_utc": "2026-10-20T00:37:58Z"
+    },
+    {
+      "issue": 610,
+      "state": "closed",
+      "title": "Surface offline claim conflicts when a PM assigned the chapter or the offline window exceeds 5 minutes [Offline chapter assignment Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/610",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/610.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 1,
+      "comments_fetched": 1,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "closed_aligned",
+      "product_behavior_labels": [
+        "API-doc contract",
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [
+        "dev_device_evidence_not_qa",
+        "api_followup_376_noted",
+        "related_open_api_390_not_this_sha"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/roles-and-permissions.md",
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed offline claim-conflict surfacing when PM assigns or window >5m. Body documents Dev audit; comment opened fluent-api#376. Product roles doc notes claim 404 mock + open API #390 not pinned SHA/deploy proof.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/610",
+          "fact": "Closed offline claim conflict surfacing"
+        },
+        {
+          "kind": "issue_comment",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/610#issuecomment-6047910995",
+          "fact": "mattrace-gloo: Opened fluent-api follow-up so reconnecting claimants get a typed conflict instead of 404: https://github.com/eten-tech-foundation/fluent-api/issues/376  Mobile"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/roles-and-permissions.md",
+          "section": "Claim",
+          "fact": "404 deny; #390 open ≠ pinned SHA"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/610.json",
+          "fact": "closed; 1 comment"
+        }
+      ],
+      "notes": "Roles/claim thread. Closed mobile AC ≠ live grant matrix complete.",
+      "fetched_at_utc": "2026-10-20T00:38:24Z"
+    },
+    {
+      "issue": 611,
+      "state": "closed",
+      "title": "Push pending offline claims before the reconnect upload and the chapter-list refresh [Offline chapter assignment Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/611",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/611.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "closed_aligned",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [
+        "dev_device_evidence_not_qa"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed: push pending offline claims before reconnect upload and chapter-list refresh. Dev audit #533 evidence. Aligns with core-flows offline claim enqueue expectations.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/611",
+          "fact": "Closed claim-before-upload ordering / UI to push claims"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "4/6 Recording + Upload sync",
+          "fact": "Offline claim enqueue; reconnect upload/claim"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/611.json",
+          "fact": "closed; retrieval_complete"
+        }
+      ],
+      "notes": "Dev≠QA.",
+      "fetched_at_utc": "2026-10-20T00:38:25Z"
+    },
+    {
+      "issue": 612,
+      "state": "closed",
+      "title": "Stop downloading full master data on every Sync Now and ignore repeated taps [Offline chapter assignment Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/612",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/612.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "closed_aligned",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [
+        "api_373_linked",
+        "residual_first_login_in_670_679"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed Sync Now master-data incremental/single-flight work; linked fluent-api#373. Residual first-login catalogue cost continues in open #670/#679.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/612",
+          "fact": "Closed AC including updatedAfter / single-flight; API #373 linked"
+        },
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/670",
+          "fact": "Warm Sync Now improved by #612; first empty DB still heavy"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/612.json",
+          "fact": "closed; retrieval_complete"
+        }
+      ],
+      "notes": "",
+      "fetched_at_utc": "2026-10-20T00:38:26Z"
+    },
+    {
+      "issue": 613,
+      "state": "closed",
+      "title": "Upload takes to the project unit they were recorded in [Offline chapter assignment Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/613",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/613.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "closed_aligned",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [
+        "dev_device_evidence_not_qa"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed wrong project_unit upload targeting when bible/book shared across projects. Dev scenario I.3. Aligns with upload correctness expectations.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/613",
+          "fact": "Closed: upload to project unit recorded in"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/613.json",
+          "fact": "closed; bug; retrieval_complete"
+        }
+      ],
+      "notes": "Dev≠QA.",
+      "fetched_at_utc": "2026-10-20T00:38:27Z"
+    },
+    {
+      "issue": 615,
+      "state": "closed",
+      "title": "Add runtime-selectable legacy and next UI theme foundation",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/615",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/615.json",
+      "labels": [],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "closed_aligned",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [],
+      "linked_prs_followed": false,
+      "docs_checked": [],
+      "impl_checked": false,
+      "summary": "Closed theme foundation for dual UI. No living product-behavior discrepancy.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/615",
+          "fact": "Legacy/Next runtime theme foundation"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/615.json",
+          "fact": "closed; retrieval_complete=true"
+        }
+      ],
+      "notes": "Next/Legacy UI track; no roles/sync product-behavior conflict.",
+      "fetched_at_utc": "2026-10-20T00:38:28Z"
+    },
+    {
+      "issue": 617,
+      "state": "closed",
+      "title": "Populate Next theme tokens from Figma Foundations (Hardware default)",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/617",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/617.json",
+      "labels": [],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "closed_aligned",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [],
+      "linked_prs_followed": false,
+      "docs_checked": [],
+      "impl_checked": false,
+      "summary": "Closed Next token population follow-up to #615.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/617",
+          "fact": "Next theme tokens from Figma Foundations"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/617.json",
+          "fact": "closed; retrieval_complete=true"
+        }
+      ],
+      "notes": "Next/Legacy UI track; no roles/sync product-behavior conflict.",
+      "fetched_at_utc": "2026-10-20T00:38:29Z"
+    },
+    {
+      "issue": 619,
+      "state": "closed",
+      "title": "Pause downloads when Wi-Fi drops and cellular is off [Going offline Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/619",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/619.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "historical_audit_closed",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [
+        "dev_device_evidence_not_qa"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed going-offline download pause from #529.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/619",
+          "fact": "pause downloads wifi/cellular"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/619.json",
+          "fact": "closed; retrieval_complete=true"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "related flow",
+          "fact": "Cross-checked living product-behavior outline"
+        }
+      ],
+      "notes": "Dev-era audit confirmation in issue body; Dev≠QA. Closed with no open product-behavior contradiction found in living docs.",
+      "fetched_at_utc": "2026-10-20T00:38:30Z"
+    },
+    {
+      "issue": 620,
+      "state": "closed",
+      "title": "Do not treat SQLite read errors as zero pending uploads [Returning online and sync changes Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/620",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/620.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "historical_audit_closed",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [
+        "dev_device_evidence_not_qa"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed false zero-pending from SQLite read errors (#530).",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/620",
+          "fact": "sqlite read errors as zero pending"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/620.json",
+          "fact": "closed; retrieval_complete=true"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "related flow",
+          "fact": "Cross-checked living product-behavior outline"
+        }
+      ],
+      "notes": "Dev-era audit confirmation in issue body; Dev≠QA. Closed with no open product-behavior contradiction found in living docs.",
+      "fetched_at_utc": "2026-10-20T00:38:31Z"
+    },
+    {
+      "issue": 621,
+      "state": "closed",
+      "title": "Stop the Sync icon flashing pending before All synced [Returning online and sync changes Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/621",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/621.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "historical_audit_closed",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [
+        "dev_device_evidence_not_qa"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed header Sync icon flash before All synced.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/621",
+          "fact": "sync icon flash pending"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/621.json",
+          "fact": "closed; retrieval_complete=true"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "related flow",
+          "fact": "Cross-checked living product-behavior outline"
+        }
+      ],
+      "notes": "Dev-era audit confirmation in issue body; Dev≠QA. Closed with no open product-behavior contradiction found in living docs.",
+      "fetched_at_utc": "2026-10-20T00:38:32Z"
+    },
+    {
+      "issue": 622,
+      "state": "closed",
+      "title": "Warn about unsynced recordings on drawer Sign Out [Returning online and sync changes Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/622",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/622.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "historical_audit_closed",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [
+        "dev_device_evidence_not_qa"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed drawer Sign Out warn for unsynced recordings.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/622",
+          "fact": "sign-out unsynced warning"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/622.json",
+          "fact": "closed; retrieval_complete=true"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "related flow",
+          "fact": "Cross-checked living product-behavior outline"
+        }
+      ],
+      "notes": "Dev-era audit confirmation in issue body; Dev≠QA. Closed with no open product-behavior contradiction found in living docs.",
+      "fetched_at_utc": "2026-10-20T00:38:33Z"
+    },
+    {
+      "issue": 623,
+      "state": "closed",
+      "title": "Confirm before deleting a pericope take from Verse mode [Pericope view Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/623",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/623.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "historical_audit_closed",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [
+        "dev_device_evidence_not_qa"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed confirm-before-delete pericope take from Verse mode.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/623",
+          "fact": "confirm delete pericope take"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/623.json",
+          "fact": "closed; retrieval_complete=true"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "related flow",
+          "fact": "Cross-checked living product-behavior outline"
+        }
+      ],
+      "notes": "Dev-era audit confirmation in issue body; Dev≠QA. Closed with no open product-behavior contradiction found in living docs.",
+      "fetched_at_utc": "2026-10-20T00:38:34Z"
+    },
+    {
+      "issue": 638,
+      "state": "closed",
+      "title": "Next UI: Key component, component gallery and Figma-to-component workflow",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/638",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/638.json",
+      "labels": [],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "closed_aligned",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [],
+      "linked_prs_followed": false,
+      "docs_checked": [],
+      "impl_checked": false,
+      "summary": "Closed Figma-to-component pilot (Key/Switch/gallery).",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/638",
+          "fact": "Next UI Key + gallery workflow"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/638.json",
+          "fact": "closed; retrieval_complete=true"
+        }
+      ],
+      "notes": "Next/Legacy UI track; no roles/sync product-behavior conflict.",
+      "fetched_at_utc": "2026-10-20T00:38:35Z"
+    },
+    {
+      "issue": 642,
+      "state": "closed",
+      "title": "Master-data sync 401s: /languages /books /bibles called via publicRequest",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/642",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/642.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "closed_aligned",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [
+        "auth_header_on_master_data"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed master-data 401s from publicRequest on /languages|/books|/bibles. Aligns with authenticated sync expectations (403/401 handling in sync.auth mocks referenced by product docs).",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/642",
+          "fact": "Closed: master-data sync must not use publicRequest unauthenticated"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "6. Upload / sync",
+          "fact": "401 → reauth; 403 projects → fail not empty success"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/642.json",
+          "fact": "closed; retrieval_complete"
+        }
+      ],
+      "notes": "",
+      "fetched_at_utc": "2026-10-20T00:38:37Z"
+    },
+    {
+      "issue": 665,
+      "state": "closed",
+      "title": "Point preview and nightly builds at QA (qa.app / qa.api), not Dev",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/665",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/665.json",
+      "labels": [],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "closed_aligned",
+      "product_behavior_labels": [
+        "Agreed requirement"
+      ],
+      "discrepancy_flags": [
+        "e2e_test_profile_left_on_dev_by_design"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/README.md",
+        "docs/guides/maestro-role-coverage.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed: preview/nightly APKs point at QA API/web, not Dev — foundational for Dev≠QA discipline used throughout product-behavior. Issue out-of-scope leaves hosted Maestro e2e-test on Dev unless separately confirmed.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/665",
+          "fact": "AC: preview/nightly bake qa.api; docs point testers to qa.app"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/README.md",
+          "section": "Environments",
+          "fact": "Dev vs QA API/web; ids/roles do not transfer; agent debug ≠ Nightly"
+        },
+        {
+          "kind": "guide",
+          "path": "docs/guides/maestro-role-coverage.md",
+          "fact": "Hosted Maestro e2e-test profile bakes Dev; QA pair separate"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/665.json",
+          "fact": "closed; retrieval_complete"
+        }
+      ],
+      "notes": "PRIORITY-adjacent for env truth. Closed aligned with living Environments table.",
+      "fetched_at_utc": "2026-10-20T00:38:38Z"
+    },
+    {
+      "issue": 670,
+      "state": "open",
+      "title": "Progressive first-login sync: unblock Home before full catalogue + bible-text pull",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/670",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/670.json",
+      "labels": [
+        "enhancement"
+      ],
+      "comment_count_api": 1,
+      "comments_fetched": 1,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "open_agreed_work",
+      "product_behavior_labels": [
+        "Agreed requirement"
+      ],
+      "discrepancy_flags": [
+        "progressive_login_partial",
+        "tier1_catalogue_waiver_to_679"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Open progressive first-login sync AC. Comment records ticket-level waiver: full catalogue out of Tier 1 unmet until API-scoped master data — tracked in #679 / fluent-api#373. Mobile PR unblocks Home after My Work path while Tier 2 continues.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/670",
+          "fact": "Open progressive first-login sync"
+        },
+        {
+          "kind": "issue_comment",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/670#issuecomment-6087927742",
+          "fact": "mattrace-buildmidwestern: **AC waiver (ticket-level):** “Do not gate Tier 1 on the full world languages/bibles catalogue” remains unmet until API-scoped master data exists. Tracked in fo"
+        },
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/679",
+          "fact": "Waived residual catalogue Tier 1"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/670.json",
+          "fact": "open; 1 comment"
+        }
+      ],
+      "notes": "Comment HTML URL reconstructed from cache; verify id if linking publicly. Waiver is ticket-level with follow-up — aligns with AGENTS.md.",
+      "fetched_at_utc": "2026-10-20T00:38:39Z"
+    },
+    {
+      "issue": 675,
+      "state": "closed",
+      "title": "Point sync at /self lists and clear cached milestones when membership is empty",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/675",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/675.json",
+      "labels": [
+        "enhancement",
+        "API Work Required",
+        "BLOCKED"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "closed_aligned",
+      "product_behavior_labels": [
+        "API-doc contract",
+        "Inferred current behavior",
+        "Open product decision"
+      ],
+      "discrepancy_flags": [
+        "roles_no_project_grant_empty_membership",
+        "was_blocked_on_api_386",
+        "mobile_still_no_grant_store"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/roles-and-permissions.md",
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed sync /self lists + clear cached milestones when membership empty — addresses Org Member / no project grant 403 stall leaving stale My Work/milestones. Labels included API Work Required/BLOCKED on fluent-api#386. Roles doc open decision remains: hide chrome vs fail on API only; live grant allow/deny still 0.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/675",
+          "fact": "Closed: /self routes; empty projects clears milestones/projects cache"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/roles-and-permissions.md",
+          "section": "Open product decision",
+          "fact": "Should mobile hide Sync/Resources/Record by grant, or always rely on server 403?"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/roles-and-permissions.md",
+          "section": "Project grants",
+          "fact": "Org Member only: no content; do not assume Account B = this grant"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "Open questions",
+          "fact": "Official QA accounts for PM, Observer, no-project-grant"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/675.json",
+          "fact": "closed; labels enhancement,API Work Required,BLOCKED"
+        }
+      ],
+      "notes": "PRIORITY roles/permissions thread. Closed engineering path ≠ verified live no-project-grant QA account.",
+      "fetched_at_utc": "2026-10-20T00:38:40Z"
+    },
+    {
+      "issue": 679,
+      "state": "open",
+      "title": "Defer full master catalogue out of progressive login Tier 1",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/679",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/679.json",
+      "labels": [],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "open_blocked_dependency",
+      "product_behavior_labels": [
+        "Open product decision"
+      ],
+      "discrepancy_flags": [
+        "blocked_on_fluent_api_373",
+        "parent_670"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Open follow-up: cannot drop full world catalogue from login Tier 1 until fluent-api#373 supplies FK-scoped master data.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/679",
+          "fact": "AC gated on API path for FK rows My Work needs"
+        },
+        {
+          "kind": "foreign_issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-api/issues/373",
+          "fact": "Referenced API dependency for scoped master data"
+        },
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/670",
+          "fact": "Parent progressive login; waiver points here"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/679.json",
+          "fact": "retrieval_complete=true; open"
+        }
+      ],
+      "notes": "Foreign API ticket — noted as dependency only; no foreign mutation.",
+      "fetched_at_utc": "2026-10-20T00:38:41Z"
+    },
+    {
+      "issue": 683,
+      "state": "closed",
+      "title": "Block recording on chapters at Complete stage.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/683",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/683.json",
+      "labels": [],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "closed_aligned",
+      "product_behavior_labels": [
+        "Agreed requirement",
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [
+        "needs_qa_yes_post_merge_nightly",
+        "open_peer_drafter_block_preserved"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/roles-and-permissions.md",
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed Complete-stage recording lock (QA-reported via #550/#542). AC preserves existing drafter block on open Peer Check for earlier stages. Matches roles/core-flows complete lock inferred behavior; Needs QA? Yes post-merge nightly (not agent debug).",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/683",
+          "fact": "Closed AC: Complete disables record/delete/select; playback remains; open peer drafter block unchanged"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/roles-and-permissions.md",
+          "section": "Chapter slots",
+          "fact": "complete — Recording locked"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "4. Recording",
+          "fact": "Denied: Complete lock; drafter-blocked on open peer"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/683.json",
+          "fact": "closed; retrieval_complete"
+        }
+      ],
+      "notes": "Roles/slot thread. Nightly human QA flag on ticket — do not treat unit tests as Nightly signoff.",
+      "fetched_at_utc": "2026-10-20T00:38:42Z"
+    },
+    {
+      "issue": 691,
+      "state": "open",
+      "title": "Defer: react-native-bootsplash major (+ sharp) upgrade",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/691",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/691.json",
+      "labels": [
+        "dependencies",
+        "chore"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "infra_chore",
+      "product_behavior_labels": [],
+      "discrepancy_flags": [
+        "dependency_deferral"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [],
+      "impl_checked": false,
+      "summary": "Open Dependabot/Expo bootsplash+sharp deferral due to expo install --check matrix mismatch. No product-behavior discrepancy.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/691",
+          "fact": "Defer react-native-bootsplash major (+ sharp) until Expo matrix allows"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/691.json",
+          "fact": "retrieval_complete=true; open"
+        }
+      ],
+      "notes": "Infra only.",
+      "fetched_at_utc": "2026-10-20T00:38:43Z"
+    },
+    {
+      "issue": 692,
+      "state": "open",
+      "title": "Next UI: Round button and Progress ring",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/692",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/692.json",
+      "labels": [
+        "next-ui"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "open_agreed_work",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [],
+      "linked_prs_followed": false,
+      "docs_checked": [],
+      "impl_checked": false,
+      "summary": "Open Next UI Round button + Progress ring presentational components (figma-component workflow). No living product-behavior conflict found.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/692",
+          "fact": "Next UI components batched PR request"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/692.json",
+          "fact": "open; retrieval_complete"
+        }
+      ],
+      "notes": "UI foundation track (#615/#638 lineage).",
+      "fetched_at_utc": "2026-10-20T00:38:44Z"
+    },
+    {
+      "issue": 694,
+      "state": "open",
+      "title": "Next UI: Waveform, Verse chip, Page dots and Level wave",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/694",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/694.json",
+      "labels": [
+        "next-ui"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "open_agreed_work",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [],
+      "linked_prs_followed": false,
+      "docs_checked": [],
+      "impl_checked": false,
+      "summary": "Open Next UI Waveform/Verse chip/Page dots/Level wave presentational set. No product-behavior conflict.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/694",
+          "fact": "Presentational gallery sample data"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/694.json",
+          "fact": "open; retrieval_complete"
+        }
+      ],
+      "notes": "",
+      "fetched_at_utc": "2026-10-20T00:38:45Z"
+    },
+    {
+      "issue": 695,
+      "state": "open",
+      "title": "Next UI: Hardware panel",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/695",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/695.json",
+      "labels": [
+        "next-ui"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "open_agreed_work",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [],
+      "linked_prs_followed": false,
+      "docs_checked": [],
+      "impl_checked": false,
+      "summary": "Open Next UI Hardware panel. No product-behavior conflict.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/695",
+          "fact": "Hardware panel recipe"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/695.json",
+          "fact": "open; retrieval_complete"
+        }
+      ],
+      "notes": "",
+      "fetched_at_utc": "2026-10-20T00:38:46Z"
+    },
+    {
+      "issue": 696,
+      "state": "open",
+      "title": "Next UI: Named type styles",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/696",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/696.json",
+      "labels": [
+        "next-ui"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "open_agreed_work",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [],
+      "linked_prs_followed": false,
+      "docs_checked": [],
+      "impl_checked": false,
+      "summary": "Open Next UI named type styles from Figma Foundations. No product-behavior conflict.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/696",
+          "fact": "Named type styles for Next theme"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/696.json",
+          "fact": "open; retrieval_complete"
+        }
+      ],
+      "notes": "",
+      "fetched_at_utc": "2026-10-20T00:38:47Z"
+    },
+    {
+      "issue": 701,
+      "state": "open",
+      "title": "Implement Sync of Selected Take Changes",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/701",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/701.json",
+      "labels": [],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "open_agreed_work",
+      "product_behavior_labels": [
+        "Agreed requirement"
+      ],
+      "discrepancy_flags": [
+        "selected_take_sync_gap"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Open FR: selected-take changes must sync as pending changes (online/offline), independent of new audio. Aligns with core-flows recording/selected-take outline; replaces #279 behavior note.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/701",
+          "fact": "Functional requirements for selected take sync"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "4. Recording / takes / selected take",
+          "fact": "Expected selected take in Record UI; upload via Sync"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/701.json",
+          "fact": "retrieval_complete=true; open"
+        }
+      ],
+      "notes": "Paired with #716 for full take set sync/delete.",
+      "fetched_at_utc": "2026-10-20T00:38:48Z"
+    },
+    {
+      "issue": 702,
+      "state": "open",
+      "title": "Prepare for Offline: Download button disappears when a chapter is selected",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/702",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/702.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "open_agreed_work",
+      "product_behavior_labels": [
+        "Known deviation"
+      ],
+      "discrepancy_flags": [
+        "prepare_offline_download_button_disappears"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Open Prepare for Offline UI bug: selecting a chapter hides Download/Total block. Separate from #704 peer draft-audio download feature.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/702",
+          "fact": "Observed: Download button disappears when chapter selected"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "7. Downloads / storage / settings",
+          "fact": "Prepare Offline entry expected"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/702.json",
+          "fact": "retrieval_complete=true; open"
+        }
+      ],
+      "notes": "",
+      "fetched_at_utc": "2026-10-20T00:38:49Z"
+    },
+    {
+      "issue": 703,
+      "state": "open",
+      "title": "Add Comment Count and Commented Marker to My Work Rows",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/703",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/703.json",
+      "labels": [],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "open_agreed_work",
+      "product_behavior_labels": [
+        "Agreed requirement",
+        "Open product decision"
+      ],
+      "discrepancy_flags": [
+        "my_work_comment_markers_missing",
+        "observer_mentioned_without_grant_proof"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/roles-and-permissions.md",
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Open FR for comment count + commented marker on My Work rows; body mentions translator or Observer scanning list. Roles doc: Observer grant unverified on mobile; mobile does not store grants — treat Observer mention as product intent, not live grant proof.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/703",
+          "fact": "Comment count + message-square-check marker requirements"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/roles-and-permissions.md",
+          "section": "Project grants",
+          "fact": "Project Observer mobile unverified; live grant allow/deny 0"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/703.json",
+          "fact": "retrieval_complete=true; open"
+        }
+      ],
+      "notes": "Roles thread: do not treat this ticket alone as Observer grant coverage.",
+      "fetched_at_utc": "2026-10-20T00:38:50Z"
+    },
+    {
+      "issue": 704,
+      "state": "open",
+      "title": "Add Offline Draft Audio Download for Peer Check Chapters",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/704",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/704.json",
+      "labels": [],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "open_agreed_work",
+      "product_behavior_labels": [
+        "Agreed requirement"
+      ],
+      "discrepancy_flags": [
+        "peer_check_offline_draft_audio_download_missing",
+        "open_and_assigned_peer_rows"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/roles-and-permissions.md",
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Open FR: peer checkers need per-chapter download of drafter selected-take audio for Peer Check (assigned or open). Aligns with chapter-slot peer/open-peer model; depends on fixture reality (#607) for open-peer automation.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/704",
+          "fact": "Download chip on Peer Check rows assigned or open; cleanup after stage advances"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/roles-and-permissions.md",
+          "section": "Chapter slots and stages",
+          "fact": "peer_check assigned vs peerCheckerId null open peer"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "3. Drafting / peer / community stages",
+          "fact": "Open peer non-drafter can Send; open Q on membership check"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/704.json",
+          "fact": "retrieval_complete=true; open"
+        }
+      ],
+      "notes": "Roles/slot thread. Open-peer lane still fixture-blocked via #607 for Maestro.",
+      "fetched_at_utc": "2026-10-20T00:38:51Z"
+    },
+    {
+      "issue": 707,
+      "state": "closed",
+      "title": "Fix silent playback of remuxed takes [Play, record, and re-record audio Audit]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/707",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/707.json",
+      "labels": [
+        "bug"
+      ],
+      "comment_count_api": 1,
+      "comments_fetched": 1,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "closed_with_residual",
+      "product_behavior_labels": [
+        "Inferred current behavior"
+      ],
+      "discrepancy_flags": [
+        "proof_gap_open_719",
+        "physical_qa_plan_in_comment"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Closed silent playback of remuxed takes (physical Android). Comment provides suggested Nightly physical QA plan. Residual decode proof tracked in open #719 from #717.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/707",
+          "fact": "Closed silent remux playback"
+        },
+        {
+          "kind": "issue_comment",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/707#issuecomment-6221804039",
+          "fact": "JonathanSeehagen: ## Suggested QA test plan  This is a **suggestion**, based on the steps I used to test this fix locally. It is not a required checklist: feel free to adapt it o"
+        },
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/719",
+          "fact": "Open decode proof gap"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/707.json",
+          "fact": "closed; 1 comment"
+        }
+      ],
+      "notes": "Agent debug ≠ Nightly; comment is suggestion not signoff.",
+      "fetched_at_utc": "2026-10-20T00:38:52Z"
+    },
+    {
+      "issue": 716,
+      "state": "open",
+      "title": "Implement Upload and Deletion of All Takes",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/716",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/716.json",
+      "labels": [],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "open_agreed_work",
+      "product_behavior_labels": [
+        "Agreed requirement"
+      ],
+      "discrepancy_flags": [
+        "all_takes_upload_delete_contract_undefined_until_done"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Open FR to upload/delete all takes (not only selected) across accounts on device; selection sync deferred to #701. Clarifies sync payload contract without changing sync trigger.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/716",
+          "fact": "Upload every take; delete sync; 5-take cap device-only"
+        },
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/701",
+          "fact": "Selected take sync follows #701"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "4. Recording / takes",
+          "fact": "Upload via Sync / worker"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/716.json",
+          "fact": "retrieval_complete=true; open"
+        }
+      ],
+      "notes": "",
+      "fetched_at_utc": "2026-10-20T00:38:54Z"
+    },
+    {
+      "issue": 717,
+      "state": "open",
+      "title": "Build out full Maestro E2E coverage",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/717",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/717.json",
+      "labels": [],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "open_agreed_work",
+      "product_behavior_labels": [
+        "Agreed requirement"
+      ],
+      "discrepancy_flags": [
+        "maestro_ac_incomplete",
+        "claim_open_peer_flows_blocked_on_607",
+        "no_device_pass_claimed_in_issue_body",
+        "agent_debug_not_nightly_signoff"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/README.md",
+        "docs/product-behavior/core-flows.md",
+        "docs/guides/maestro-role-coverage.md"
+      ],
+      "impl_checked": false,
+      "summary": "Open agreed Maestro E2E coverage ticket with explicit AC (warm sessions, fixture-id navigation, BLOCKED≠pass, QA/Dev env separation, nightly build pinning). Issue body itself states no device Maestro PASS yet and lists #607 / API seed deps as blockers for claim/open-peer cases. Product docs index #717 as coverage work on this branch and warn not to treat outline/docs as Maestro PASS/FAIL for #717 as a whole.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/717",
+          "fact": "AC checklist all unchecked; deps include #607 and fluent-api #368/#369/#390/#391; follow-ups #718–#720 filed"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/717.json",
+          "fact": "retrieval_complete=true; open; comments=0"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/README.md",
+          "section": "Tickets",
+          "fact": "Mobile #717 Maestro / warm-entry coverage on this branch"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "What this outline is not",
+          "fact": "Not Maestro PASS/FAIL for #717 as a whole; not Nightly human QA signoff"
+        },
+        {
+          "kind": "guide",
+          "path": "docs/guides/maestro-role-coverage.md",
+          "fact": "Live grant allow/deny still 0; Dev receipts ≠ QA; agent emulator ≠ Nightly"
+        },
+        {
+          "kind": "local_receipt",
+          "path": "/tmp/fluent-coverage-review.md",
+          "fact": "Coverage checkpoint: mock slot/403 suites aligned; live grants 0; populated QA Resources BLOCKED"
+        },
+        {
+          "kind": "local_receipt",
+          "path": "/tmp/fluent-checkpoint-review.md",
+          "fact": "#717 harness allowlisted separately from Sync-owner paths"
+        }
+      ],
+      "notes": "PRIORITY. Open question in core-flows: #721 vs #717 smoke — stop-ship or separate track? Do not invent Nightly signoff from agent receipts.",
+      "fetched_at_utc": "2026-10-20T00:37:59Z"
+    },
+    {
+      "issue": 718,
+      "state": "open",
+      "title": "Prove schema migrations against real SQLite",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/718",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/718.json",
+      "labels": [],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "follow_up_gap",
+      "product_behavior_labels": [
+        "Agreed requirement"
+      ],
+      "discrepancy_flags": [
+        "below_ui_proof_gap",
+        "refs_717"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Open follow-up from #717: prove schema migrations on real SQLite/op-sqlite, not in-memory stand-in. Explicitly not Maestro AC.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/718",
+          "fact": "AC: real SQLite open + migrate + column readback; fail if only fake driver works"
+        },
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/717",
+          "fact": "Follow-ups filed: #718 real SQLite migration proof"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/718.json",
+          "fact": "retrieval_complete=true; open"
+        }
+      ],
+      "notes": "Aligned as below-UI gap called out by #717; no product-behavior contradiction.",
+      "fetched_at_utc": "2026-10-20T00:38:00Z"
+    },
+    {
+      "issue": 719,
+      "state": "open",
+      "title": "Assert remuxed take audio is non-silent",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/719",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/719.json",
+      "labels": [],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "follow_up_gap",
+      "product_behavior_labels": [
+        "Agreed requirement"
+      ],
+      "discrepancy_flags": [
+        "below_ui_proof_gap",
+        "refs_717",
+        "related_closed_707"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/core-flows.md"
+      ],
+      "impl_checked": false,
+      "summary": "Open follow-up from #717: decode remuxed take and fail on silence; mocked AacRemux invocation is not audio proof. #707 silent-playback bug closed; this is remaining proof gap.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/719",
+          "fact": "AC: decode remuxed take; missing fixture = BLOCKED not pass"
+        },
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/717",
+          "fact": "Follow-ups: #719 non-silent remux audio proof"
+        },
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/707",
+          "fact": "Closed silent playback fix; #719 remains proof gap"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/719.json",
+          "fact": "retrieval_complete=true; open"
+        }
+      ],
+      "notes": "Keep distinct from Nightly QA of #707.",
+      "fetched_at_utc": "2026-10-20T00:38:01Z"
+    },
+    {
+      "issue": 720,
+      "state": "open",
+      "title": "Physical-device readiness checklist after Maestro coverage",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/720",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/720.json",
+      "labels": [],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "follow_up_gap",
+      "product_behavior_labels": [
+        "Agreed requirement"
+      ],
+      "discrepancy_flags": [
+        "physical_device_deferred",
+        "refs_717",
+        "blocked_until_717_device_evidence"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/README.md"
+      ],
+      "impl_checked": false,
+      "summary": "Open physical-device readiness checklist after #717; issue forbids starting while #717 has no device run. Explicitly not #717 AC.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/720",
+          "fact": "Pin exact APK; physical checklist PASS/FAIL/BLOCKED; missing device = BLOCKED"
+        },
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/717",
+          "fact": "Summit/physical readiness follow-up, not acceptance for #717"
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/720.json",
+          "fact": "retrieval_complete=true; open"
+        }
+      ],
+      "notes": "Agent emulator debug ≠ this physical readiness pass.",
+      "fetched_at_utc": "2026-10-20T00:38:02Z"
+    },
+    {
+      "issue": 721,
+      "state": "open",
+      "title": "[QA Android] Home Sync press completes but Sync screen does not open",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/721",
+      "cache_path": "docs/assessments/issue-history-reconciliation/inventory/issues/721.json",
+      "labels": [],
+      "comment_count_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "retrieval_complete": true,
+      "substantive_review": true,
+      "review_status": "known_deviation",
+      "product_behavior_labels": [
+        "Known deviation"
+      ],
+      "discrepancy_flags": [
+        "qa_home_sync_one_press_no_sync_screen",
+        "not_role_or_permission_cause",
+        "agent_debug_not_nightly_signoff",
+        "instrumentation_blocked_by_metro_bridge_per_local_receipt"
+      ],
+      "linked_prs_followed": false,
+      "docs_checked": [
+        "docs/product-behavior/README.md",
+        "docs/product-behavior/core-flows.md",
+        "docs/product-behavior/roles-and-permissions.md",
+        "docs/guides/maestro-role-coverage.md"
+      ],
+      "impl_checked": false,
+      "summary": "Open QA Android Known deviation: exact one press of home-sync-button completed but sync-screen did not appear within 30s on QA session user 10 / assignment 484. Product-behavior and role docs classify this as Sync navigation failure, not a grant/role conclusion. Local Sync-owner diagnosis receipt separately finds Metro bridge detached from PID 7152 (instrumentation blocker), which does not close the product Known deviation.",
+      "evidence_links": [
+        {
+          "kind": "issue",
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/721",
+          "fact": "Body: one tap COMPLETED; sync-screen FAILED 30s; hierarchy remained Home; grants not read back; not a role cause."
+        },
+        {
+          "kind": "issue_cache",
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/721.json",
+          "fact": "retrieval_complete=true; comments=0"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/README.md",
+          "section": "QA device evidence (assignment 484)",
+          "fact": "Chronology: Sync FAIL earlier; tabs PASS later; Sync = Known deviation #721"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/core-flows.md",
+          "section": "6. Upload / sync / offline / conflicts",
+          "fact": "Known deviation (QA) #721 — bug, not role cause; agent debug ≠ Nightly"
+        },
+        {
+          "kind": "product_doc",
+          "path": "docs/product-behavior/roles-and-permissions.md",
+          "section": "QA snapshot",
+          "fact": "Sync one-press failure before tabs run — #721"
+        },
+        {
+          "kind": "guide",
+          "path": "docs/guides/maestro-role-coverage.md",
+          "fact": "Home Sync single press FAIL opens #721; lead owns Sync"
+        },
+        {
+          "kind": "local_receipt",
+          "path": "/tmp/fluent-sync721-final.md",
+          "fact": "Failing boundary classified as dev-client↔Metro bridge for PID 7152; Jest Sync push still green; no production Sync fix claimed"
+        }
+      ],
+      "notes": "PRIORITY. Keep Resources empty UI and role-grant checks separate. Do not treat later tabs PASS as Sync recovery. Dev≠QA; agent debug≠Nightly.",
+      "fetched_at_utc": "2026-10-20T00:38:03Z"
+    }
+  ]
+}

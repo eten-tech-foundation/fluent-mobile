@@ -1,0 +1,58 @@
+{
+  "issue_number": 485,
+  "fetched_at_utc": "2026-10-20T00:37:07Z",
+  "issue": {
+    "number": 485,
+    "title": "Fix Waveform Shifting Left of Center When Recording Starts",
+    "state": "closed",
+    "body": "When a user taps the Record button, the waveform visualization shifts left of its resting position, while the surrounding recording controls (timer, stop button, pause button) remain centered on the screen. This creates a visible misalignment between the waveform and the controls it's meant to sit above. The waveform should stay horizontally aligned with the rest of the recording controls when recording begins.\n\n## Functional Requirements\n\n### Waveform Display\n- Keep the waveform horizontally centered and aligned with the recording controls (timer, stop button, pause/record button) at all times, including the moment recording starts.\n- Do not shift the waveform's horizontal position when the Record button is tapped.\n\n<img width=\"382\" height=\"515\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/f097cb60-6539-4899-8611-21b997ff4065\" />\n\n> **Note:** The screenshot shows the bug: the waveform sits left of center while the timer and control buttons below it remain centered.",
+    "user": "chadw-eten",
+    "created_at": "2026-09-10T17:50:38Z",
+    "updated_at": "2026-09-17T11:51:24Z",
+    "closed_at": "2026-09-15T04:42:21Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 4,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/485",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5680905628,
+      "user": "chadw-eten",
+      "created_at": "2026-09-15T13:23:29Z",
+      "updated_at": "2026-09-15T13:23:29Z",
+      "body": "I tried to look at this one, but build 94026c6 crashes repeatedly for me. The waveform shift fix does not show up in builds past this one. Should it?",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/485#issuecomment-5680905628"
+    },
+    {
+      "id": 5692110622,
+      "user": "B3RN153",
+      "created_at": "2026-09-16T04:37:21Z",
+      "updated_at": "2026-09-16T04:37:21Z",
+      "body": "> I tried to look at this one, but build [94026c6](https://github.com/eten-tech-foundation/fluent-mobile/commit/94026c6a8e4589fe2ae5f5064904af802acb8f21) crashes repeatedly for me. The waveform shift fix does not show up in builds past this one. Should it?\n\nIt is is just a alignment change shouldn't affect the build. Now the nightly has this and can be installed from there.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/485#issuecomment-5692110622"
+    },
+    {
+      "id": 5711250343,
+      "user": "Roslin22",
+      "created_at": "2026-09-17T08:19:19Z",
+      "updated_at": "2026-09-17T08:19:19Z",
+      "body": "**Test Results: #485 Tested on PR:#525**\n\n- Waveform remains horizontally centered and aligned with the timer, stop button, and pause/record button when recording starts.\n- Waveform does not shift left or change its horizontal position when the Record button is tapped.\n- Waveform remains aligned with the recording controls throughout the recording session.\n\n<img width=\"301\" height=\"612\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/de79d0f1-3a4f-4e61-9aef-871f7fa1a020\" />",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/485#issuecomment-5711250343"
+    },
+    {
+      "id": 5713865839,
+      "user": "chadw-eten",
+      "created_at": "2026-09-17T11:51:24Z",
+      "updated_at": "2026-09-17T11:51:24Z",
+      "body": ":white_check_mark:",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/485#issuecomment-5713865839"
+    }
+  ],
+  "comments_fetched_count": 4,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

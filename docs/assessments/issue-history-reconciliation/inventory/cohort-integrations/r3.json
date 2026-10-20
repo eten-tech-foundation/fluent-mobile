@@ -1,0 +1,356 @@
+{
+  "review": "r3",
+  "domain": "open-audit-maestro",
+  "parent_agent": "bc-da4aa327-d86e-47fc-93c0-d7105af39497",
+  "reviewed_at_utc": "2026-10-20T00:53:58Z",
+  "repo": "/Users/matt/Documents/Development/gloo/fluent-mobile",
+  "branch_head": "mrace/chore/717-build-out-full-maestro-e2e-coverage@c81bd86",
+  "ids": [
+    526,
+    529,
+    530,
+    717
+  ],
+  "methodology": {
+    "read_only": true,
+    "wrote_only": [
+      "/tmp/fluent-issue-review-r3.json",
+      "/tmp/fluent-issue-review-r3.md"
+    ],
+    "corpus": "docs/assessments/issue-history-reconciliation/inventory/issues/<id>.json",
+    "contract": "docs/assessments/issue-history-reconciliation/inventory/complete-row-contract.md",
+    "taxonomy": "docs/assessments/issue-history-reconciliation/inventory/disposition-taxonomy.md",
+    "c5_triage_only": "/tmp/fluent-issue-review-c5.json",
+    "did_not": [
+      "edit coverage.csv",
+      "edit docs/assessments/",
+      "git mutate",
+      "GitHub write",
+      "Maestro/device runs",
+      "duplicate Sync #721 lead",
+      "revive bc-11ead3e6"
+    ]
+  },
+  "recommend_complete_counts": {
+    "true": 3,
+    "false": 1
+  },
+  "issues": [
+    {
+      "issue": 526,
+      "title": "Mobile Feature Audit [Epic]",
+      "state": "open",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/526",
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Epic DoD: every in-scope feature has a completed sub-issue; every assessment merged; every identified gap resolved or captured in a prioritized development issue; unresolved launch risks documented with an owner. Scope lists eight feature audits (Drafting; Play/record/re-record; Going offline; Returning online/sync; Resources; Chapter assignment/claiming; Offline chapter assignment; Pericope).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/526"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "PROVISIONAL_PRIORITY"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/assessments/going-offline/README.md",
+          "lines": "1-8",
+          "fact": "Living notice: assessment is historical snapshot, not current product AC / not Nightly signoff; canonical living behavior is product-behavior/."
+        },
+        {
+          "path": "docs/assessments/returning-online-and-sync/README.md",
+          "lines": "13-13",
+          "fact": "Same historical-assessment banner; separately cites Sync nav known deviation #721 without making #721 part of this epic's DoD."
+        },
+        {
+          "path": "docs/assessments/drafting-page/",
+          "lines": "absent",
+          "fact": "No drafting-page assessment directory on this working tree despite closed sub-issue #527 (c5 noted assessment PR #565 closed unmerged)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/526#issuecomment-5667759582",
+        "fact": "Only epic comment is the reusable audit template (2026-09-14 @kaseywright); no later epic-level completion decision."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Epic process only; assessments under docs/assessments/* are labeled historical. No product-behavior rewrite claimed by the epic.",
+        "device_evidence": "none on the epic itself; device evidence lives on sub-audits (e.g. #529/#530 Dev physical runs)"
+      },
+      "open_sub_issues": [
+        {
+          "number": 528,
+          "state": "open",
+          "title": "Play, record, and re-record audio Audit"
+        },
+        {
+          "number": 529,
+          "state": "open",
+          "title": "Going offline Audit"
+        },
+        {
+          "number": 530,
+          "state": "open",
+          "title": "Returning online and synchronizing changes Audit"
+        },
+        {
+          "number": 531,
+          "state": "open",
+          "title": "Viewing and listening to resources Audit"
+        },
+        {
+          "number": 533,
+          "state": "open",
+          "title": "Offline chapter assignment Audit"
+        },
+        {
+          "number": 534,
+          "state": "open",
+          "title": "Pericope view Audit"
+        }
+      ],
+      "closed_sub_issues": [
+        {
+          "number": 527,
+          "state": "closed",
+          "title": "Drafting page Audit",
+          "closed_at": "2026-09-29T17:11:46Z",
+          "note": "Closed state is history only; drafting-page assessment absent on tree"
+        },
+        {
+          "number": 532,
+          "state": "closed",
+          "title": "Chapter assignment and claiming Audit",
+          "closed_at": "2026-10-09T18:46:27Z"
+        }
+      ],
+      "priority_class": "P1_provisional",
+      "recommend_complete": false,
+      "blocker_if_incomplete": "Epic DoD unmet: 6/8 sub-issues still open (#528,#529,#530,#531,#533,#534); do not mark epic reconciliation_complete=yes. Closed #527 does not prove merged assessment.",
+      "finding_le_2_sentences": "Epic #526 remains open: GitHub sub-issues show 6 still open (#528,#529,#530,#531,#533,#534) and only #527/#532 closed. Closed #527 still lacks docs/assessments/drafting-page/ on tree \u2014 closed state is not epic DoD."
+    },
+    {
+      "issue": 529,
+      "title": "Going offline Audit",
+      "state": "open",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/529",
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Audit Going offline against related issues and expected behavior; test latest supported mobile build; document results; create Dev Ready issues for gaps. Done when: assessment merged, all gaps linked to actionable issues, and audit result posted on this sub-ticket.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/529"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "PRODUCT_DECISION_REQUIRED",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/assessments/going-offline/README.md",
+          "lines": "1-22",
+          "fact": "Historical assessment: Pass with gaps on Dev nightly main@d5b9e64 / Redmi Note 9 Pro API29; Gaps 1\u20134 filed #578\u2013#581; banner says not living AC / not Nightly signoff."
+        },
+        {
+          "path": "docs/assessments/going-offline/README.md",
+          "lines": "265-292",
+          "fact": "Gap 1 Resources offline \u2192 #578 (High, launch blocker TBD with product); Gap 2 source audio offline \u2192 #579."
+        },
+        {
+          "path": "src/services/translationNotes.ts",
+          "lines": "165-206",
+          "fact": "Current source documents local-first TN load and offline never-calls-API path citing #578/#593 \u2014 distinct from 2026-09-24 Fail on G.26; #578 remains OPEN blocked on real downloads (#504)."
+        },
+        {
+          "path": "src/hooks/useSourceAudio.ts",
+          "lines": "32-37,191-210",
+          "fact": "Current source resolves local downloaded audio offline (#579); inventory shows #579 closed 2026-10-13 \u2014 historical Gap 2 Fail is not proof of current shipped QA."
+        },
+        {
+          "path": "src/components/ui/CloudSyncStatusIcon.tsx",
+          "lines": "297-309",
+          "fact": "offline_synced renders gray CloudCheckGlyph (not CloudOff); offline_pending uses CloudOffUnsynced \u2014 matches #529 comment correction vs early G.22 misread."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/577",
+        "fact": "Merged 2026-09-24: assessment-only PR; Overall Pass with gaps; Gaps 1\u20132 High launch-blocker TBD with product; no product code in PR."
+      },
+      "material_pr_or_decision_na": null,
+      "additional_decisions": [
+        {
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/529#issuecomment-5898143116",
+          "fact": "2026-09-29 auditor: assessment merged Pass with gaps; #578/#579 launch blocker still product TBD; pending transport retests after #559."
+        },
+        {
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/578#issuecomment-5942711830",
+          "fact": "2026-10-01 eng explicit deferral (not AC waive): #578 blocked pending real Prepare-for-Offline downloads (#504 / PR #562)."
+        },
+        {
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/529#issuecomment-6249883542",
+          "fact": "2026-10-18 retest script for @Roslin22; marks #578/#504/#257 as still open / expected fail \u2014 not a Nightly pass."
+        }
+      ],
+      "source_vs_qa": {
+        "working_tree": "Assessment on main; TN/source-audio loaders have local-offline paths; Gap tickets #578+#504 still open. Living product-behavior treats assessments as historical.",
+        "device_evidence": "HISTORICAL Dev 2026-09-24 (nightly 1.0.0 main@d5b9e64, Redmi Note 9 Pro, dev.api); additional Dev retest note 2026-09-30 (#619). No QA Nightly signoff in comments."
+      },
+      "gap_ticket_snapshot": {
+        "504": "open (Gap 5 attachment)",
+        "578": "open (blocked on #504)",
+        "579": "closed",
+        "580": "closed",
+        "581": "closed",
+        "619": "filed after retest (cellular mid-download)"
+      },
+      "priority_class": "P1_provisional",
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding_le_2_sentences": "Assessment PR #577 merged Pass-with-gaps on Dev evidence; ticket stays OPEN with #578 still open (deferred behind #504, launch-blocker TBD). Historical G.26 Fail \u2260 current TN local-offline path; living docs supersede assessment matrices."
+    },
+    {
+      "issue": 530,
+      "title": "Returning online and synchronizing changes Audit",
+      "state": "open",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/530",
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Audit Returning online and synchronizing changes against related issues and expected behavior; test latest supported mobile build; document results; create Dev Ready issues for gaps. Done when: assessment merged, all gaps linked to actionable issues, and audit result posted on this sub-ticket.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/530"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "PRODUCT_DECISION_REQUIRED",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/assessments/returning-online-and-sync/README.md",
+          "lines": "1-28",
+          "fact": "Historical assessment Overall: Fail; Dev device 2026-09-25..28 (+ Gaps 12\u201314 on 2026-09-30); tested PR #559 head 09ff2fd against dev.api; supersession note records #559 merged 2026-09-30."
+        },
+        {
+          "path": "docs/assessments/returning-online-and-sync/README.md",
+          "lines": "256-261,611-635",
+          "fact": "Gap 1 upload FGS crash \u2192 #599 (High, launch blocker TBD); audit summary Overall Fail; Gaps 8/9 attach #257/#611 with product launch-blocker TBD."
+        },
+        {
+          "path": "src/services/stageAdvance.ts",
+          "lines": "8-40",
+          "fact": "Current source: local stage update then best-effort submit; offline/submit-failure paths explicitly defer durable queue to #257 \u2014 confirms Gap 8 chain still open in code comments."
+        },
+        {
+          "path": "docs/product-behavior/core-flows.md",
+          "lines": "11,73-79",
+          "fact": "Living doc separately lists Sync FAIL single-press as Known deviation #721 \u2014 inferred/living nav issue, not a waive of #530 audit gaps; do not treat as Sync #721 lead assignment here."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/598",
+        "fact": "Merged 2026-09-30: assessment-only; Overall Fail; fourteen gaps (#599\u2013#605, #257/#147/#611, later #620\u2013#622); launch blocker TBD for Gaps 1, 8, 9."
+      },
+      "material_pr_or_decision_na": null,
+      "additional_decisions": [
+        {
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/530#issuecomment-5874807887",
+          "fact": "2026-09-28 auditor result Fail on Dev physical device; High gaps include #599, #257, #611."
+        },
+        {
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/599",
+          "fact": "Gap 1 ticket still OPEN; body cites RemoteServiceException on UploadSyncForegroundService; launch blocker TBD with product (not an AC waive)."
+        },
+        {
+          "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/530#issuecomment-6249883908",
+          "fact": "2026-10-18 retest script for @Roslin22; #599/#257 marked still open / expected fail \u2014 not Pass."
+        }
+      ],
+      "source_vs_qa": {
+        "working_tree": "Assessment on main; stageAdvance still defers offline queue to #257; #599 open. Living product-behavior cites #721 Sync nav separately (out of scope for this reviewer).",
+        "device_evidence": "HISTORICAL Dev 2026-09-25..30 (Redmi Note 9 Pro, debug 09ff2fd / nightly main for some scenarios, dev.api). No QA Nightly signoff in comments."
+      },
+      "priority_class": "P1_provisional",
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding_le_2_sentences": "Merged assessment PR #598 records Overall Fail on Dev with High gaps #599/#257/#611 still product-TBD launch blockers; audit ticket remains OPEN. Current stageAdvance.ts still defers durable offline stage queue to #257 \u2014 separate from living #721 Sync-nav deviation (not owned here)."
+    },
+    {
+      "issue": 717,
+      "title": "Build out full Maestro E2E coverage",
+      "state": "open",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/717",
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Unchecked AC: warm sessions (relaunch without clear; login only if login showing; navigate by fixture id not first row); handle Recovered recording + Prepare-for-Offline auto-push; weak flows assert named behavior or remove (missing fixture = BLOCKED); read-only receipt check; explicit QA/Dev env files; mutating lanes allowlisted disposable projects only; domain coverage across auth/lists/drafting/record/upload-offline/Prepare Offline/sync/claims/stage/settings; hosted nightly build-id+commit check, named Dev fallback, zero reports fail, mutating no auto-retry; below-UI gaps filed as follow-ups (#718\u2013#720) not claimed here.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/717"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "PROVISIONAL_PRIORITY"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".maestro/shared/ensure/ensure-warm-session.yaml",
+          "lines": "1-21",
+          "fact": "Warm helper discards Recovered recording alert and logs in only when login-email-input visible \u2014 partial AC for warm + launch hazards."
+        },
+        {
+          "path": ".maestro/shared/nav/open-my-work-chapter.yaml",
+          "lines": "1-18",
+          "fact": "Fixture-id chapter open exists and is referenced by multiple flows; issue body milestone claiming it unused is stale vs current tree."
+        },
+        {
+          "path": ".maestro/flows/drafting/bible-verse-to-record.yaml",
+          "lines": "9-10",
+          "fact": "Still calls open-any-chapter (first-row) \u2014 AC 'navigate by fixture id rather than first row' not fully met across suite (also tabs.yaml, my-work-to-drafting.yaml, verse-bounds.yaml)."
+        },
+        {
+          "path": "scripts/maestro-fixture-guard.cjs",
+          "lines": "17-46,126-167",
+          "fact": "Allowlist/denylist project guard and missing MAESTRO_FIXTURE_CHAPTER_ID \u2192 BLOCKED for flows referencing open-my-work-chapter."
+        },
+        {
+          "path": ".eas/workflows/maestro-android.yml",
+          "lines": "81-106",
+          "fact": "Nightly maestro job retries:0; requires get-build git_commit_hash match GITHUB_SHA; blocks Dev e2e-test fallback as QA nightly proof."
+        },
+        {
+          "path": "scripts/maestro-eas-slack-summary.sh",
+          "lines": "13-18",
+          "fact": "Zero JUnit XML under MAESTRO_TESTS_DIR exits BLOCKED \u2014 implements 'run with zero reports is a failure'."
+        },
+        {
+          "path": "scripts/maestro-verify-receipt.mjs",
+          "lines": "exists",
+          "fact": "Read-only receipt script present on tree; issue body states it has not been run \u2014 AC checkbox still open."
+        }
+      ],
+      "material_pr_or_decision": null,
+      "material_pr_or_decision_na": "reason_not_applicable: no linked merged PR and zero issue comments; in-force AC is the issue body (created 2026-10-19 @mattrace-gloo). Working milestone in the body documents unfinished branch work and explicitly 'No flow has a PASS' / no device run \u2014 not a completion decision.",
+      "source_vs_qa": {
+        "working_tree": "Partial Maestro warm/fixture/nightly wiring on branch mrace/chore/717-build-out-full-maestro-e2e-coverage@c81bd86; ~37 flows under .maestro/flows (excl. qa-warm-temp). AC checkboxes all still open.",
+        "device_evidence": "none (issue body: adb devices showed no online device; no Maestro/Metro/emulator/build started for PASS)"
+      },
+      "priority_class": "P1_provisional",
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding_le_2_sentences": "OPEN with all AC checkboxes unchecked; branch has partial warm helpers, fixture guard, retries:0 nightly commit gate, and zero-JUnit BLOCKED, but first-row open-any-chapter remains in several flows and no device PASS exists. Issue-body milestone that open-my-work-chapter is unused is stale versus current tree."
+    }
+  ]
+}

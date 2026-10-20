@@ -1,0 +1,14 @@
+{
+  "integrated_at_utc": "2026-10-20T00:55:39Z",
+  "source": "/tmp/fluent-issue-review-r1.json",
+  "accepted_complete": [
+    16,
+    33,
+    41,
+    49
+  ],
+  "overrides": {
+    "41": "signout localDB wipe + exact 401\u2192clear\u2192Login labeled UNVERIFIED/unwaived; Bearer/secure-store alone insufficient",
+    "33": "header milestone/project via #333/#552 LATEST_EXPLICIT not undecided drift; chip\u2192ring via PR #55"
+  }
+}

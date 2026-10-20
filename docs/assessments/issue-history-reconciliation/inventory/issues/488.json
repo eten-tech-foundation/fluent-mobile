@@ -1,0 +1,48 @@
+{
+  "issue_number": 488,
+  "fetched_at_utc": "2026-10-20T00:37:09Z",
+  "issue": {
+    "number": 488,
+    "title": "Android Maestro E2E program",
+    "state": "closed",
+    "body": "## Summary / context\n\nFluent Mobile has **no device E2E suite** today (`docs/AGENT_ONBOARDING.md`). QA exercises journeys by hand on the **nightly Android APK** (`docs/guides/qa-process.md`).\n\nThis epic tracks an **Android-only Maestro** program: repeatable regression flows engineers run locally (and optionally via manual CI), plus a playbook mapping checklists \u2192 flows. Auth is native email/password (many `testID`s already) \u2014 no OAuth bypass.\n\n## Condensed children (implementation order)\n\n1. #489 \u2014 Foundation: harness, selectors, opt-in agent loop\n2. #491 \u2014 Smokes: auth, navigation, record, sync/offline, edges\n3. #495 \u2014 Multi-account isolation (checklist A\u2013D)\n4. #497 \u2014 Playbook + informational `workflow_dispatch` CI\n\n## Process\n\n- One child = one PR (default). Engineers sequence in order above.\n- Maestro is the **repeatable Android regression** layer. Exploratory testing, hardware variance, and journeys without a green flow stay on nightly human QA.\n- Maestro is **not** a required PR check in this epic.\n- Needs QA? / `@Roslin22` handoff policy unchanged by this epic alone.\n\n## Prerequisites\n\n| Item | Notes |\n| --- | --- |\n| Dedicated Maestro accounts | \u22652 translators on `dev.api.fluent.bible` |\n| Assignments | Each needs \u22651 project/chapter |\n| Secrets (CI) | `MAESTRO_EMAIL` / `MAESTRO_PASSWORD` (+ second pair for #495) |\n| Device | Android AVD or physical; no Expo Go |\n\n## Scope / out of scope\n\n**In:** Android harness, flows, docs, optional informational CI, selector gaps.\n\n**Out:** iOS; auth bypass; Detox/Playwright; merge-blocking Maestro; E2E flags on store/production EAS; replacing nightly QA handoff.\n\n## Acceptance criteria\n\n- [ ] Four children linked and on Project 4\n- [ ] Journey map clear (automated vs residual manual) via #497\n- [ ] Dedicated accounts + secret names documented\n- [ ] CI stays optional until local suite is green\n\n## Risks\n\n- Shared **dev** DB \u2014 don\u2019t destroy other translators\u2019 data\n- Empty My Work without assignments blocks #491/#495\n- Mic + notification permissions for record/upload\n- Expo Dev Menu on Debug+Metro steals taps\n\n## Links\n\n- `docs/guides/qa-process.md`, `qa-preview-testing.md`, `qa-multi-account-nightly.md` (#375)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-10T19:51:35Z",
+    "updated_at": "2026-09-11T21:38:07Z",
+    "closed_at": "2026-09-11T21:38:07Z",
+    "labels": [],
+    "comments": 3,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/488",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5624594155,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-10T19:54:46Z",
+      "updated_at": "2026-09-10T19:54:46Z",
+      "body": "FYI @Roslin22 \u2014 we filed an Android Maestro E2E program so device regression can be automated over time. No action needed from you right now; nightly Needs QA? handoff is unchanged.\n\n**Tracker:** this epic\n\n**Work slices (Backlog):**\n1. #489 \u2014 Foundation (harness, selectors, opt-in agent loop)\n2. #491 \u2014 Main smokes (auth, nav, record, sync/offline, edges)\n3. #495 \u2014 Multi-account (your nightly checklist A\u2013D)\n4. #497 \u2014 Playbook mapping checklists \u2192 flows + optional manual CI\n\nWhen #497 lands, `docs/guides/maestro.md` will say which journeys are automated vs still manual on the nightly. Until a flow is green for a path, keep testing that path as you do today.\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/488#issuecomment-5624594155"
+    },
+    {
+      "id": 5626011862,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-10T22:00:25Z",
+      "updated_at": "2026-09-10T22:00:25Z",
+      "body": "## Async: what mobile E2E looks like (for building a suite)\n\nFYI @Roslin22 \u2014 no reply needed. This is the process picture so your existing checklist style still works, with automation underneath for the boring/repeatable parts.\n\n### Your current style stays the source of truth\n\nA post like the #268 results is already a **test suite**:\n\n1. Verified that \u2026\n2. Verified that \u2026\n\nNothing about Maestro asks you to stop writing those lists. The change is **who/what executes each line**:\n\n| Kind of line | Who runs it |\n| --- | --- |\n| Same path every nightly (login, open chapter, record a take, sync) | **Maestro** (automated on Android) |\n| New feature nuance, visual polish, \u201cdoes this feel right?\u201d, one-off edge | **You on the nightly APK** (same as today) |\n| Line that isn\u2019t automated yet | **You** \u2014 and we can add a Maestro flow later if it becomes regression-critical |\n\nSo: you still author numbered expectations. Eng turns stable ones into Maestro flows. Your nightly pass/fail comment can say which lines were **Maestro** vs **manual**.\n\n### Worked example (same mental model as #268)\n\nImagine a feature checklist:\n\n1. Verified login with a translator account reaches Home.\n2. Verified My Work opens an assigned chapter.\n3. Verified Record can start/stop and play a take.\n4. Verified Sync Now completes without error.\n5. Verified the claim icon uses the expected primary color. \u2190 **manual** (visual)\n6. Verified no odd confirmation prompt on first claim. \u2190 **manual** until we automate that flow\n\nToday\u2019s Maestro smoke tags map roughly to 1\u20134 (`auth` / `nav` / `record` / `sync`). Lines 5\u20136 stay on your numbered list until we encode them.\n\n### How you grow \u201cyour\u201d suite (without becoming an engineer)\n\n1. **Write the numbered list** for the ticket (exactly like #268).\n2. Mark each line: `Maestro` (if a flow already covers it), `Manual`, or `Candidate` (worth automating later).\n3. Run / ask eng to run: `npm run maestro:test:smokes` (or a single tag like `maestro:test:record`) against the nightly-shaped Debug client \u2014 green = those lines pass without re-tapping the phone.\n4. On the nightly APK, only walk the **Manual** / **Candidate** lines (and exploratory).\n5. File bugs the same way you do now when a line fails.\n\nYou do **not** need to learn YAML to contribute. Eng owns the flow files; you own the checklist language and pass/fail judgment on what isn\u2019t automated.\n\n### Where things live\n\n- Epic: #488\n- Foundation + smokes (in PR): #489 / #491 \u2192 docs: `docs/guides/maestro.md`\n- Multi-account checklist \u2192 future Maestro: #495 (same A\u2013D steps you already use)\n- Fuller QA playbook + optional CI button: #497\n\n### What does **not** change\n\n- Needs QA? \u2192 merge \u2192 you on the **nightly** APK\n- Pass/fail still your call on the ticket\n- Maestro is **not** a merge blocker; it\u2019s repeatable Android regression so you spend phone time on judgment, not re-proving login every time\n\nWhen #497\u2019s playbook lands, it will include a table: journey \u2192 Maestro command \u2192 residual manual \u2014 written so a #268-style list plugs into it directly.\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/488#issuecomment-5626011862"
+    },
+    {
+      "id": 5640843364,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-11T21:28:12Z",
+      "updated_at": "2026-09-11T21:28:12Z",
+      "body": "All four children shipped and closed:\n\n1. #489 foundation \u2192 #500\n2. #491 smokes \u2192 #501\n3. #495 multi-account \u2192 #507\n4. #497 playbook + informational CI \u2192 #509\n\nEpic AC met: journey map + residuals in `docs/guides/maestro.md`; secrets documented; CI is `workflow_dispatch` only (not a merge gate). First post-merge harness dispatch failed at APK/emulator build ([run](https://github.com/eten-tech-foundation/fluent-mobile/actions/runs/34649217854)) \u2014 blocker noted on #497; cron stays off until stabilized.\n\nClosing epic.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/488#issuecomment-5640843364"
+    }
+  ],
+  "comments_fetched_count": 3,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,1142 @@
+{
+  "reviewer": "r13",
+  "wave": 4,
+  "domain": "late-gap-refill",
+  "ids": [
+    459,
+    464,
+    469,
+    470,
+    474,
+    476,
+    483,
+    484,
+    485,
+    486,
+    488,
+    489,
+    490,
+    491,
+    492,
+    493,
+    494,
+    495,
+    496,
+    497,
+    498,
+    499,
+    503,
+    504
+  ],
+  "reviewed_at_utc": "2026-10-20T01:17:50Z",
+  "corpus": "docs/assessments/issue-history-reconciliation/inventory/issues/<id>.json",
+  "contract": "docs/assessments/issue-history-reconciliation/inventory/complete-row-contract.md",
+  "skip": {
+    "721": "Sync lead \u2014 out of scope for this reviewer"
+  },
+  "recommend_complete_count": 24,
+  "recommend_complete_false_count": 0,
+  "issues": [
+    {
+      "issue": 459,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "When github.event.schedule is the APK cron, build even if wall-clock PT outside 22\u201302; unknown/legacy schedules still gated; Slack quiet-hours/morning delivery preserved at time of ticket; unit tests for delayed cron; docs note GitHub delay + cron identity authoritative.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/459"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".github/scripts/nightly-windows.cjs",
+          "lines": "44-50",
+          "fact": "Known NIGHTLY_SCHEDULE_CRON identity sets inBuildWindow=true regardless of PT hour; unknown/legacy cron strings set false."
+        },
+        {
+          "path": ".github/scripts/nightly-windows.test.cjs",
+          "lines": "38-48",
+          "fact": "Unit test allows delayed nightly cron fire after intended hour (GitHub lag)."
+        },
+        {
+          "path": "docs/ci.md",
+          "lines": "17",
+          "fact": "Documents single cron trusted when GitHub delays ~3\u20135h; Slack in same run (post-#484 supersession of morning-hold path)."
+        },
+        {
+          "path": ".github/README.md",
+          "lines": "64",
+          "fact": "Trusts github.event.schedule == 17 15 * * * so delayed fires still build; unknown/legacy ignored."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/462",
+        "fact": "Merged [#459]: Trust delayed nightly APK cron so Slack gets builds again (commit 8bc7b06)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Cron-identity trust on HEAD (later cron string 17 15 via #484).",
+        "device_evidence": "none \u2014 CI/infra ticket"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#459 AC delivered by #462; #484 later simplified to one cron + same-run Slack and retargeted cron to 17 15 \u2014 delayed-identity rule still holds."
+    },
+    {
+      "issue": 464,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Shared Project 4 CLI for In Progress (Dev) / In PR Review; /start-issue and /create-pr call it; merge Needs QA? Yes\u2192In QA; Needs QA? No\u2192Done+close; docs/rules updated; unit tests; never Closes/Fixes/Resolves in PR bodies.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/464"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".claude/commands/start-issue.md",
+          "lines": "123-126",
+          "fact": "Calls project-board-cli.cjs set-status \u2192 In Progress (Dev) with --allow-product-owned."
+        },
+        {
+          "path": ".claude/commands/create-pr.md",
+          "lines": "209",
+          "fact": "Calls project-board-cli.cjs set-status for In PR Review."
+        },
+        {
+          "path": ".github/scripts/qa-handoff-on-merge.cjs",
+          "lines": "6",
+          "fact": "Header: Needs QA? No \u2192 comment, Project 4 \u2192 Done, close issue."
+        },
+        {
+          "path": ".github/scripts/qa-handoff-on-merge.cjs",
+          "lines": "125-129",
+          "fact": "Eng-done comment text documents Needs QA? No \u2192 Done + closing issue."
+        },
+        {
+          "path": "docs/guides/project-board.md",
+          "lines": "31-34",
+          "fact": "Lifecycle diagram: start-issue\u2192In Progress; create-pr\u2192In PR Review; merge Needs QA? No\u2192Done+close."
+        },
+        {
+          "path": ".github/scripts/project-board-cli.test.cjs",
+          "lines": "9-42",
+          "fact": "Unit tests for CLI parseArgs In Progress (Dev) / In PR Review."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/465",
+        "fact": "Merged [#464]: Automate Project 4 ticket lifecycle (commit c39799d)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "CLI + handoff + command docs on HEAD.",
+        "device_evidence": "none \u2014 process/automation ticket"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Project 4 lifecycle automation AC on HEAD via #465; engineering-only Done/close path present in qa-handoff-on-merge."
+    },
+    {
+      "issue": 469,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "ApiVerse includes required id; sync maps it; missing id fails chunk; insertBibleTexts upserts with server PK and remaps recordings when local id differs; migration forces full bible-text re-fetch; unit tests; recordings-sync-contract documents local PK = API verse id; device QA Needs QA.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/469"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/types/api/types.ts",
+          "lines": "1-3",
+          "fact": "ApiVerse.id required; comment: server bible_texts.id must be persisted locally (#469)."
+        },
+        {
+          "path": "src/db/repository.ts",
+          "lines": "789-798",
+          "fact": "upsertBibleTextVerse throws on missing/invalid server id; uses server PK."
+        },
+        {
+          "path": "src/db/repository.ts",
+          "lines": "741-744",
+          "fact": "Comment: Persist verse using server bible-text id as PK (#469); remaps recordings when local id differs."
+        },
+        {
+          "path": "src/db/migrations.ts",
+          "lines": "505-514",
+          "fact": "markBibleTextsServerIdsRemap flags one-shot full bible-text re-fetch."
+        },
+        {
+          "path": "src/db/migrations.ts",
+          "lines": "649-652",
+          "fact": "Schema migration v16 name bible_texts_server_ids."
+        },
+        {
+          "path": "docs/guides/recordings-sync-contract.md",
+          "lines": "32",
+          "fact": "bibleTextId must be Fluent API bible_texts.id; local SQLite id is that server id (#469)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/471",
+        "fact": "Merged [#469]: Persist server bible text ids for upload sync (commit 41bca22)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Server-id PK + remap migration on HEAD.",
+        "device_evidence": "none in corpus comments \u2014 closed issue; Complete\u2260QA pass"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Bible-text server-id identity AC implemented on HEAD via #471; upload no longer depends on local autoincrement surrogates."
+    },
+    {
+      "issue": 470,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Pending claim sync: do not delete queue rows on ambiguous API responses; do not abort entire metadata sync on single claim failure without Sync-page surfacing; Sync page shows metadata step failures (displayText/SYNC_ERROR_*); verify #428/#177 residuals; unit/hook tests.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/470"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/chapterClaimSync.ts",
+          "lines": "98-106",
+          "fact": "Ambiguous API response: failed+=1 and leaves claim queue row pending (warn log); does not delete."
+        },
+        {
+          "path": "src/services/sync.ts",
+          "lines": "460-468",
+          "fact": "Claim sync soft-fails: set SYNC_ERROR_CHAPTER_CLAIMS then return without rethrow so metadata sync continues."
+        },
+        {
+          "path": "src/app/screens/SyncScreen.tsx",
+          "lines": "243-246",
+          "fact": "Renders displayText under testID sync-metadata-error when stateType==='error'."
+        },
+        {
+          "path": "src/hooks/useSync.ts",
+          "lines": "14-60",
+          "fact": "SYNC_ERROR_* steps aggregated into displayText 'Sync failed: \u2026' when any KV error set."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/472",
+        "fact": "Merged [#470]: Harden claim queue sync and surface metadata errors (commit 67d591e)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Claim soft-fail + Sync metadata error UI on HEAD.",
+        "device_evidence": "none in corpus \u2014 closed; Complete\u2260QA pass"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Claim-queue harden + Sync metadata error surfacing on HEAD via #472."
+    },
+    {
+      "issue": 474,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Full pericope subtitle visible on take cards (e.g. Take 1 - Pericope - vv. 8:31-9:1) without losing timer; verse-only labels still correct; tests if layout changes.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/474"
+        }
+      ],
+      "disposition": [
+        "LATEST_EXPLICIT_DECISION",
+        "NO_PRODUCT_FIX",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/ui/DraftTakeRow.tsx",
+          "lines": "131-136",
+          "fact": "takeLabel still numberOfLines={1} beside timer \u2014 no layout fix shipped (ticket withdrawn)."
+        },
+        {
+          "path": "src/components/ui/SharedTakeRow.tsx",
+          "lines": "69-74",
+          "fact": "shared takeLabel likewise numberOfLines={1}."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/474",
+        "fact": "JonathanSeehagen 2026-09-09: Closing \u2014 opened by mistake during #410 follow-up triage; will be re-created manually if needed."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Truncation layout unchanged (expected after withdrawal).",
+        "device_evidence": "none \u2014 withdrawn before impl"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Withdrawn as opened-by-mistake; AC not in force. Truncation may persist until refiled."
+    },
+    {
+      "issue": 476,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Reuse li:user three-state ownership icon; evaluate by current stage (Drafting\u2192drafter; Peer Check\u2192peerCheckerId only if PM-assigned; Community Review/Advanced/Complete\u2192no icon); clear icon when leaving assignee stages; conflict icon (#260) still wins same slot.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/476"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/utils/chapterOwnershipState.ts",
+          "lines": "14-28",
+          "fact": "resolveStageAssigneeId: draft/not_started\u2192assignedUserId; peer_check\u2192peerCheckerId; default\u2192null (clears post-peer stages)."
+        },
+        {
+          "path": "src/utils/chapterOwnershipState.test.ts",
+          "lines": "33-44",
+          "fact": "Tests peer_check with/without peerCheckerId and community_review/complete return null."
+        },
+        {
+          "path": "src/components/ui/ChapterOwnershipIndicator.tsx",
+          "lines": "13-20",
+          "fact": "Reuses three-state unassigned/mine/other treatment (no second icon system)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/502",
+        "fact": "Merged 476 extend assignment indicator to reflect current stage assignee (commit 0183cfb). Roslin QA 2026-09-17 passed stages 1\u20135; conflict (#260) untested; Chad \u2705."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Stage-aware resolveStageAssigneeId on HEAD.",
+        "device_evidence": "dated 2026-09-17 Roslin QA pass; conflict icon precedence residual noted"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Stage-aware assignee icon AC on HEAD via #502; conflict-icon precedence explicitly residual from QA."
+    },
+    {
+      "issue": 483,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "After full offline sync on physical device, Projects tab loads without disk I/O error; log Projects with summary fetched; ProjectSummary shape unchanged; unit tests for merge/recording-count direction; CI gates.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/483"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/queries.ts",
+          "lines": "151-178",
+          "fact": "fetchProjectSummaryBases: project base rows without bible_texts\u00d7recordings JOIN."
+        },
+        {
+          "path": "src/db/queries.ts",
+          "lines": "180-205",
+          "fact": "fetchProjectChapterCounts: chapter counts per project (no bible_texts join)."
+        },
+        {
+          "path": "src/db/queries.ts",
+          "lines": "207-245",
+          "fact": "fetchProjectRecordingCounts: recording/pending counts from recordings direction."
+        },
+        {
+          "path": "src/db/queries.ts",
+          "lines": "255-271",
+          "fact": "getProjectsWithSummary merges three queries; logs Projects with summary fetched."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/479",
+        "fact": "Merged [#483]: Split getProjectsWithSummary to avoid disk I/O on Projects tab (commit 4c5f8c9). Issue GitHub state still open."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Split-query fix on HEAD.",
+        "device_evidence": "none post-fix in corpus \u2014 original report Redmi Note 9 Pro; ticket still open"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Source fix landed in #479; GitHub issue remains open (0 comments / no closed-at). Reconciliation complete as named open-ticket residual + confirmed source fix \u2014 not a device-QA pass claim."
+    },
+    {
+      "issue": 484,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Single Nightly Preview schedule cron; Slack in same run as build/skip; remove morning Slack-only cron/pending artifact; docs state intended local time + GitHub delay; unit/docs tests; no overnight Slack hold unless product re-asks.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/484"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".github/workflows/nightly-preview.yml",
+          "lines": "14",
+          "fact": "Single schedule cron: 17 15 * * *."
+        },
+        {
+          "path": ".github/scripts/nightly-windows.cjs",
+          "lines": "13-20",
+          "fact": "Comment: Slack posts in same workflow run (#484); NIGHTLY_SCHEDULE_CRON=17 15 * * *."
+        },
+        {
+          "path": ".github/scripts/nightly-windows.test.cjs",
+          "lines": "50-65",
+          "fact": "Ignores legacy dual-cron strings 7 9 and 17 23 after #484 simplify."
+        },
+        {
+          "path": ".github/README.md",
+          "lines": "64",
+          "fact": "Single schedule + intended local time + GitHub delay documented."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/517",
+        "fact": "Merged [#484] Needs QA? No; eng-done close comment cites commit d6cf5cb."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Single-cron + same-run Slack on HEAD.",
+        "device_evidence": "none \u2014 CI chore; disambiguate from QA chapter-assignment fixture id 484"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Nightly schedule simplify AC on HEAD via #517. Not the Sync/assignment fixture id 484 used in #721 notes."
+    },
+    {
+      "issue": 485,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Keep waveform horizontally centered/aligned with recording controls at all times including record start; do not shift horizontal position when Record tapped.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/485"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/ui/PlaybackProgressBar.tsx",
+          "lines": "404-409",
+          "fact": "Waveform row StyleSheet: justifyContent: 'center' (fix from #525 \u2014 was flex-start)."
+        },
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "1234",
+          "fact": "Live capture uses styles.waveformWrap testID=record-waveform wrapping PlaybackProgressBar."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/525",
+        "fact": "Merged [#485] commit 94026c6. Roslin 2026-09-17: waveform stays centered on record start; Chad \u2705."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Centered waveform row on HEAD.",
+        "device_evidence": "dated 2026-09-17 Roslin QA on PR #525"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Waveform centering AC on HEAD via #525 with human QA pass."
+    },
+    {
+      "issue": 486,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Resuming paused recording after short pause or screen lock must not audio-error; continue same take without restart.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/486"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/audio/recordingAppState.ts",
+          "lines": "18-31",
+          "fact": "On AppState active, syncPausedNativeState() \u2014 expo-audio Android can resume paused recorder on foreground (#486)."
+        },
+        {
+          "path": "src/hooks/useRecordingEngine.ts",
+          "lines": "105-113",
+          "fact": "AppState listener delegates to handleRecordingAppStateChange; comment cites #486 re-sync."
+        },
+        {
+          "path": "src/hooks/useRecordingEngine.test.tsx",
+          "lines": "166-191",
+          "fact": "Test re-pauses paused recorder when app returns active."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/537",
+        "fact": "Merged [#486] commit e6abe80. Roslin 2026-09-17: resume after pause and screen lock OK; Chad \u2705."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "AppState re-sync pause policy on HEAD.",
+        "device_evidence": "dated 2026-09-17 Roslin QA on PR #537"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Recording resume-after-pause/lock AC on HEAD via #537 with human QA pass."
+    },
+    {
+      "issue": 488,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Epic: four children on Project 4; journey map via #497; dedicated accounts+secret names documented; CI optional until suite green.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/488"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/guides/maestro.md",
+          "lines": "1-14",
+          "fact": "Maestro playbook present; not a PR merge gate; QA vs Dev lanes; secrets documented."
+        },
+        {
+          "path": "docs/guides/maestro.md",
+          "lines": "67-80",
+          "fact": "Journey\u2192flow map table for auth/nav/record smokes."
+        },
+        {
+          "path": ".maestro/config.yaml",
+          "lines": "1-12",
+          "fact": "Maestro config present under .maestro/."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/488",
+        "fact": "mattrace-gloo 2026-09-11: All four children shipped (#489\u2192#500, #491\u2192#501, #495\u2192#507, #497\u2192#509); closing epic; harness CI blocker noted on #497."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Maestro suite + playbook on HEAD.",
+        "device_evidence": "none required for epic bookkeeping \u2014 Complete\u2260QA pass"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Epic AC met by children; closed with explicit journey map + optional CI note."
+    },
+    {
+      "issue": 489,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "maestro:install + doctor documented; Debug APK+Metro path; primary Home/Settings/list testIDs; opt-in agent loop; creds never committed; production EAS untouched.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/489"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "package.json",
+          "lines": "22-23",
+          "fact": "npm scripts maestro:install and maestro:doctor."
+        },
+        {
+          "path": "scripts/maestro-install.sh",
+          "lines": "1-30",
+          "fact": "Install script for pinned Maestro CLI."
+        },
+        {
+          "path": "src/components/ui/SettingsButton.tsx",
+          "lines": "22",
+          "fact": "testID=home-settings-button."
+        },
+        {
+          "path": "src/app/screens/SettingsScreen.tsx",
+          "lines": "187",
+          "fact": "testID=settings-prepare-offline."
+        },
+        {
+          "path": "docs/guides/maestro.md",
+          "lines": "174-175",
+          "fact": "Documents npm run maestro:install / maestro:doctor."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/500",
+        "fact": "Merged [#489] foundation; closing comment on issue cites harness/scripts/selectors/agent loop."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Harness + selectors on HEAD.",
+        "device_evidence": "none \u2014 test infra"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Maestro foundation AC on HEAD via #500."
+    },
+    {
+      "issue": 490,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Stable kebab-case testIDs on Home tabs, project/chapter rows, Settings primary rows for Maestro smokes.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/490"
+        }
+      ],
+      "disposition": [
+        "LATEST_EXPLICIT_DECISION",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/ui/PageHeaderSyncButton.tsx",
+          "lines": "32",
+          "fact": "testID=home-sync-button (selector surface absorbed into #489)."
+        },
+        {
+          "path": "src/app/screens/SettingsScreen.tsx",
+          "lines": "187",
+          "fact": "settings-prepare-offline testID present."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/490",
+        "fact": "mattrace-gloo 2026-09-10: Condensed into #489 (foundation includes selectors + agent loop)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Selectors delivered under #489/#500.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Superseded/condensed into #489; no independent open AC."
+    },
+    {
+      "issue": 491,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Launch+auth, nav, record happy path, sync+prepare-offline, edge flows green locally or residual-documented; seed prerequisites on PR.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/491"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".maestro/flows/auth/login-happy-path.yaml",
+          "lines": "1-12",
+          "fact": "Auth login happy-path flow present."
+        },
+        {
+          "path": ".maestro/flows/navigation/my-work-to-drafting.yaml",
+          "lines": "1-16",
+          "fact": "Nav My Work\u2192drafting smoke present."
+        },
+        {
+          "path": ".maestro/flows/recording/record-stop-play-delete.yaml",
+          "lines": "1-20",
+          "fact": "Record stop/play flow present."
+        },
+        {
+          "path": ".maestro/flows/sync/sync-now.yaml",
+          "lines": "1-20",
+          "fact": "Sync Now smoke present."
+        },
+        {
+          "path": ".maestro/flows/edges/mic-denied.yaml",
+          "lines": "1-20",
+          "fact": "Mic-deny edge flow present."
+        },
+        {
+          "path": "package.json",
+          "lines": "30-37",
+          "fact": "npm maestro:test:smokes / auth / nav / record / sync / edges scripts."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/501",
+        "fact": "Merged [#491]: Maestro smokes (commit edbfb40). Absorbed #492/#493/#494/#496."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Smoke YAML + npm tags on HEAD.",
+        "device_evidence": "none \u2014 test infra; does not prove product AC"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Main Maestro smoke suite on HEAD via #501."
+    },
+    {
+      "issue": 492,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Maestro Home+drafting nav smoke: My Work/Projects\u2192chapter\u2192Bible/Resources/Record tabs by testID.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/492"
+        }
+      ],
+      "disposition": [
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".maestro/flows/navigation/tab-switching.yaml",
+          "lines": "1-15",
+          "fact": "Tab-switching nav smoke (delivered under #491)."
+        },
+        {
+          "path": ".maestro/flows/navigation/projects-to-drafting.yaml",
+          "lines": "1-15",
+          "fact": "Projects\u2192drafting flow present."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/492",
+        "fact": "mattrace-gloo 2026-09-10: Condensed into #491 (main smoke suite)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Nav flows under #491/#501.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Condensed into #491; scope delivered by #501."
+    },
+    {
+      "issue": 493,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Maestro Record happy path: mic allow\u2192record\u2192stop\u2192play; avoid unsafe stage-advance on shared dev.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/493"
+        }
+      ],
+      "disposition": [
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".maestro/flows/recording/record-stop-play-delete.yaml",
+          "lines": "1-20",
+          "fact": "Record stop/play(/delete) flow present under recording/."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/493",
+        "fact": "mattrace-gloo 2026-09-10: Condensed into #491."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Record smoke under #491/#501.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Condensed into #491; record smoke on HEAD."
+    },
+    {
+      "issue": 494,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Maestro Sync Now + Prepare-for-Offline primary controls by testID; residuals documented.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/494"
+        }
+      ],
+      "disposition": [
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".maestro/flows/sync/sync-now.yaml",
+          "lines": "1-15",
+          "fact": "Sync Now flow present."
+        },
+        {
+          "path": ".maestro/flows/sync/prepare-offline-entry.yaml",
+          "lines": "1-15",
+          "fact": "Prepare-offline entry flow present."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/494",
+        "fact": "mattrace-gloo 2026-09-10: Condensed into #491."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Sync/offline smokes under #491/#501.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Condensed into #491; sync/prepare-offline flows on HEAD."
+    },
+    {
+      "issue": 495,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Encode qa-multi-account-nightly A\u2013D as Maestro flows with two dedicated accounts; secrets via env only.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/495"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".maestro/flows/accounts/multi-account-isolation.yaml",
+          "lines": "1-30",
+          "fact": "Multi-account isolation YAML present."
+        },
+        {
+          "path": "package.json",
+          "lines": "40",
+          "fact": "npm run maestro:test:multi-account \u2192 maestro-test-multi-account.sh."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/507",
+        "fact": "Merged [#495]; issue close comment links PR #507."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Multi-account flows on HEAD.",
+        "device_evidence": "none \u2014 test infra"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Multi-account Maestro A\u2013D on HEAD via #507."
+    },
+    {
+      "issue": 496,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Maestro edges: reauth/legal/mic deny/notification deny \u2014 or residual documented.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/496"
+        }
+      ],
+      "disposition": [
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".maestro/flows/edges/legal-pages.yaml",
+          "lines": "1-15",
+          "fact": "Legal pages edge flow present."
+        },
+        {
+          "path": ".maestro/flows/edges/mic-denied.yaml",
+          "lines": "1-15",
+          "fact": "Mic-denied edge flow present."
+        },
+        {
+          "path": ".maestro/flows/edges/forgot-password.yaml",
+          "lines": "1-15",
+          "fact": "Forgot-password edge (auth edges bundled under #491)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/496",
+        "fact": "mattrace-gloo 2026-09-10: Condensed into #491."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Edge flows under #491/#501.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Condensed into #491; edge flows on HEAD."
+    },
+    {
+      "issue": 497,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "docs/guides/maestro.md with residual list; linked from QA/onboarding; workflow_dispatch CI informational; one green Actions run OR blocker noted; docs/ci.md lists informational.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/497"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/guides/maestro.md",
+          "lines": "1-8",
+          "fact": "Playbook with residual/manual vs Maestro split; not a merge gate."
+        },
+        {
+          "path": ".eas/workflows/maestro-android.yml",
+          "lines": "25",
+          "fact": "workflow_dispatch input present (informational hosted path)."
+        },
+        {
+          "path": "docs/ci.md",
+          "lines": "17",
+          "fact": "Nightly/CI inventory; Maestro documented as informational elsewhere in guide (playbook links)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/509",
+        "fact": "Merged [#497]. Follow-up comment: harness dispatch run 34649217854 failed at APK build \u2014 blocker noted; AC allows blocker-noted."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Playbook + workflow on HEAD; first harness CI failed (documented).",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Playbook+#509 landed; green Actions AC satisfied via explicit CI blocker note on close."
+    },
+    {
+      "issue": 498,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Informational workflow_dispatch Maestro CI; secrets documented; not a merge gate.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/498"
+        }
+      ],
+      "disposition": [
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".eas/workflows/maestro-android.yml",
+          "lines": "25",
+          "fact": "workflow_dispatch suite inputs (harness/smokes/multi-account) \u2014 delivered under #497."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/498",
+        "fact": "mattrace-gloo 2026-09-10: Condensed into #497 (playbook + informational CI)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "CI slice under #497/#509.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Condensed into #497; informational Maestro CI on HEAD."
+    },
+    {
+      "issue": 499,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Plan Prettier 2\u21923 and TypeScript 6\u21927 migrations; optionally land remaining dev-tools minors; consider dependabot ignore for prettier/typescript majors until ready.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/499"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "package.json",
+          "lines": "107-110",
+          "fact": "devDependencies still pin prettier 2.8.8 and typescript ~6.0.3 (majors not upgraded)."
+        },
+        {
+          "path": ".github/dependabot.yml",
+          "lines": "100-104",
+          "fact": "dev-tools group still includes typescript + prettier (no ignore rule for majors yet)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/481",
+        "fact": "Dependabot #481 deferred/closed \u2014 ticket exists as dedicated migration plan; still open."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Majors not landed; open deferral accurate.",
+        "device_evidence": "none \u2014 tooling"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Open engineering deferral correctly reflected: Prettier 3 / TS 7 not on HEAD; AC remains unresolved work, not a missing decision."
+    },
+    {
+      "issue": 503,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Back from Prepare for Offline project download returns to project list (not Home); can pick another project without re-entering Settings.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/503"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/screens/PrepareForOfflineScreen.tsx",
+          "lines": "41-48",
+          "fact": "Comment: Back navigation (#503) clears pickedProjectId to return to project list."
+        },
+        {
+          "path": "src/app/screens/PrepareForOfflineScreen.tsx",
+          "lines": "126-132",
+          "fact": "goBack: if projectId set \u2192 setPickedProjectId(null); else router.back()."
+        },
+        {
+          "path": "src/app/screens/PrepareForOfflineScreen.test.tsx",
+          "lines": "557-558",
+          "fact": "Test suite back navigation (#503) returns to picker instead of router.back()."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/520",
+        "fact": "Merged [#503] commit 70d7170. Roslin 2026-09-17: back returns to project list; Chad \u2705."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "In-screen back-to-picker on HEAD.",
+        "device_evidence": "dated 2026-09-17 Roslin QA pass"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Prepare-offline back-nav AC on HEAD via #520 with human QA pass."
+    },
+    {
+      "issue": 504,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Retrieve Tier 2/3 resource availability from API for selected project; list only API-available resources (remove static placeholders); hide empty Tier 2/3 sections and Customize control when none.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/504"
+        },
+        {
+          "slice": "other",
+          "text": "Additional AC from #529 Gap 5 comment: Tier 1 source audio from fluent-api source-audio manifest; download available again after chapter change (no stuck Download complete).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/504"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/prepareOfflineResources.ts",
+          "lines": "231",
+          "fact": "Calls FluentAPI.getPrepareOfflineManifest for project (API-backed catalog)."
+        },
+        {
+          "path": "src/utils/prepareOfflineCatalog.ts",
+          "lines": "191-218",
+          "fact": "Builds Tier 2/3 catalog rows from raw manifest items; Tier 1 through same manifest (#504)."
+        },
+        {
+          "path": "src/app/prepare-offline/PrepareOfflineResourcesSection.tsx",
+          "lines": "68-93",
+          "fact": "Customize accordion only if customizeCatalog.items.length > 0; filters tiers [2,3]."
+        },
+        {
+          "path": "src/types/api/translationResources.ts",
+          "lines": "61-62",
+          "fact": "Wire types for GET /projects/{id}/translation-resources/manifest (#504)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/504",
+        "fact": "mattrace-gloo 2026-10-19: Reopened \u2014 #562 zero-file bookkeeping; code via #676/#677; device/manual QA pending (not passed). Jonathan 2026-09-24 Gap 5: mock fixtures on nightly @ d5b9e64."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "API manifest wiring + hide-empty customize on HEAD (post-#676/#677).",
+        "device_evidence": "dated 2026-09-24 Redmi Note 9 Pro mock-fixture evidence pre-fix; 2026-10-19 reopen says device QA still pending"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Open ticket: source appears API-wired on HEAD; human device QA still pending per 2026-10-19 decision. Reconciliation records OPEN_TICKET_UNRESOLVED + confirmed source \u2014 not a QA pass."
+    }
+  ]
+}

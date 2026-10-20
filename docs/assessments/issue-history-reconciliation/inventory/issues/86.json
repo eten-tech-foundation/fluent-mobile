@@ -1,0 +1,25 @@
+{
+  "issue_number": 86,
+  "fetched_at_utc": "2026-10-20T00:34:16Z",
+  "issue": {
+    "number": 86,
+    "title": "Implement Add Account Flow with Three-Account Cap",
+    "state": "closed",
+    "body": "Users need to be able to add a second or third account to the device without logging out of their current session. This ticket covers the flow triggered by tapping \"Add Account\" in the switcher panel, including success, failure, and cap enforcement.\n\n## Functional Requirements\n\n### Add Account Flow\n\n- Tapping \"Add Account\" in the switcher panel launches the standard login screen.\n- The current account's session remains active while the login screen is shown.\n- On successful login, add the new account to the local session store and make it the active account.\n- Dismiss the login screen and return the user to the drafting view with the new account active.\n\n### Three-Account Cap\n\n- Before launching the login screen, check the number of accounts currently stored on the device.\n- If three accounts are already logged in, do not launch the login screen; the \"Add Account\" row should already be hidden in this state (see #84).\n\n### Login Failure Handling\n\n- If login fails due to incorrect credentials, display the standard login error message.\n- If login fails due to a network error, display a network error message.\n- In both failure cases, return the user to the login screen without affecting existing logged-in accounts.\n\n> **Note:** Adding an account requires an internet connection \u2014 this is consistent with the existing login flow and the offline sync architecture.",
+    "user": "chadw-eten",
+    "created_at": "2026-06-25T19:59:47Z",
+    "updated_at": "2026-07-16T17:41:24Z",
+    "closed_at": "2026-07-16T17:41:24Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/86",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

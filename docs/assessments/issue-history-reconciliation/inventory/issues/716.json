@@ -1,0 +1,23 @@
+{
+  "issue_number": 716,
+  "fetched_at_utc": "2026-10-20T00:38:54Z",
+  "issue": {
+    "number": 716,
+    "title": "Implement Upload and Deletion of All Takes",
+    "state": "open",
+    "body": "Mobile lets each user record up to 5 takes per passage (#71) and view takes from every account on the device (#279). No ticket defines which of those takes reach the server or what happens on the server when a take is deleted on the device. This ticket closes that gap so the server holds the same set of takes as the device.\n\n## Functional Requirements\n\n### Take Upload\n- Upload every take recorded for a passage, whether or not it is the selected take.\n- Upload takes from every account on the device when that account syncs.\n- Upload a take recorded offline on the next sync, using the existing sync rules.\n\n### Take Deletion\n- When a user deletes a take on the device, delete that take from the server on the next sync.\n- Delete the take from the server whether it is the selected take or not.\n- When the selected take is deleted, keep the existing behavior from #71 that automatically selects the next available take, and sync that new selection.\n- Do not send a delete to the server for a take that was deleted before it ever uploaded.\n- Keep the delete pending and retry on the next sync if the sync fails.\n- Clear the pending delete once the server confirms it.\n\n### Take Cap\n- Enforce the 5-take cap per user on the device only.\n- Upload all takes on the device even when the total across accounts exceeds 5 for a passage.\n- Do not send the cap to the server or reject takes on the server because of it.\n\nNote: Do not change when sync runs or how it is triggered; this ticket only changes which takes and deletions the existing sync sends.\n\nNote 2: Syncing a changed selection follows #701.\n\n",
+    "user": "chadw-eten",
+    "created_at": "2026-10-19T13:47:35Z",
+    "updated_at": "2026-10-19T13:50:55Z",
+    "closed_at": null,
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/716",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

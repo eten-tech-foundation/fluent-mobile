@@ -1,0 +1,25 @@
+{
+  "issue_number": 611,
+  "fetched_at_utc": "2026-10-20T00:38:25Z",
+  "issue": {
+    "number": 611,
+    "title": "Push pending offline claims before the reconnect upload and the chapter-list refresh [Offline chapter assignment Audit]",
+    "state": "closed",
+    "body": "Found during the offline chapter assignment audit (#533, epic #526).\n\n**Severity:** High  \n**Launch blocker:** To be decided with product  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), local debug build of `main` @ `fb634e5`, `dev.api.fluent.bible` (scenarios C.1\u2013C.3, D.3, F-alt)\n\n## Summary\n\nOnly the full sync (`syncAllUsers` / `syncAllData`: Sync Now, login, reauth, Home auto-repair) pushes pending offline claims (`src/services/sync.ts:301`). The other online paths act without them:\n\n- **Automatic upload on reconnect or app open** (`src/services/uploadOrchestratorCore.ts:245`): the server still sees the chapter as unassigned `not_started`, the edit policy rejects the upload, and the take is marked failed with a misleading 404 \"Verse audio recording not found\".\n- **Sync Now** (`src/app/screens/SyncScreen.tsx:94-96`) starts the full sync without awaiting it and runs the upload in parallel. The full sync spends about 30 s on master data before the claims, so the upload loses the race every time and the take uploads only in a later session.\n- **Chapter-list refresh** (`refreshChapterMetadataIfOnline`, `src/services/sync.ts:1142`) \u2192 `reconcileUserChapterWork` (`src/db/repository.ts:1341`) clears the local assignee for chapters the server did not return, ignoring `chapter_claim_queue`, so the provisional \"mine\" disappears until a full sync.\n- **Sync page:** after a failed upload, Sync Now stays disabled until the page is reopened. With no pending uploads, Sync Now is hidden (`src/components/ui/SyncActionControls.tsx:147-150`) even while claims are pending or the chapter-claims error is shown, so the only way to push a claim is to sign out and back in.\n\nIn a conflict, this delay also uses up the 5-minute window #610 depends on (D.3 passed only because Sync Now was tapped in time).\n\n## Expected\n\nPer #271, claims sync \"as part of the standard sync cycle\" on reconnect. The row stays \"mine\", and takes on an offline-claimed chapter upload without errors.\n\n## Actual\n\nUpload 404 before the claim push (C.1, C.3); provisional \"mine\" cleared by the list refresh (C.2); no UI to push claims when no uploads are pending (F-alt).\n\n## Steps to reproduce\n\n1. Offline: record on an unassigned chapter (it shows \"mine\").\n2. Turn Wi-Fi on and wait, without tapping Sync Now: the upload fails.\n3. Open Projects \u2192 the project: the row is no longer \"mine\".\n4. Sync \u2192 Sync Now: the upload fails again, the claim is pushed about 30 s later, and the take uploads only on a later session.\n\n## Acceptance criteria\n\n- [ ] Every online path that talks to the server for a chapter (automatic upload session, Sync Now upload, chapter-list refresh) pushes pending claims first, or waits for them.\n- [ ] The list refresh does not clear a local assignee that has a pending claim.\n- [ ] No upload error for takes on an offline-claimed chapter after reconnect.\n- [ ] The Sync page offers a way to push pending claims (and retry after a failed upload) without signing out.\n- [ ] Unit tests: ordering (claims before upload); reconcile keeps pending claims.\n- [ ] Android device QA: steps above.\n\n## Related\n\n- Parent audit: #533 (epic #526)\n- #271, #545, #273, #530 (Returning online audit)\n- Same behavior confirmed by the #530 audit (Gap 9); its device evidence is on #271: https://github.com/eten-tech-foundation/fluent-mobile/issues/271#issuecomment-5874706180\n- #610, #612 (master data delay drives the race)\n- Assessment: `docs/assessments/offline-chapter-assignment/README.md` (PR #609)\n\n\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-29T19:01:25Z",
+    "updated_at": "2026-10-09T16:54:41Z",
+    "closed_at": "2026-10-09T16:54:41Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/611",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

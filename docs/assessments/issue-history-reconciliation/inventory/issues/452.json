@@ -1,0 +1,23 @@
+{
+  "issue_number": 452,
+  "fetched_at_utc": "2026-10-20T00:36:57Z",
+  "issue": {
+    "number": 452,
+    "title": "Build Observer Read-Only Draft View",
+    "state": "open",
+    "body": "Observers need to browse a chapter and listen to the current draft to give community-review feedback, but the app has no surface for that today: draft (target-language) audio playback exists only inside the Record tab's translator-only Review state, and Observers have no editing or recording ability to reach it. This ticket builds a dedicated read-only view for the Observer role, so it exists as a prerequisite before comments are usable by anyone outside the translation team. It depends on the backend Observer-role identity system shipping first; that is out of scope here. Comment entry points, resolve/delete, offline sync, and text-project parity are covered in separate tickets.\n\n## Functional Requirements\n\n### Tab Structure\n- Give the Observer view two tabs, Bible and Draft, matching the translator tab pattern minus Resources.\n- Show the existing Bible tab unchanged.\n- Build the Draft tab as a read-only variant of the Record tab, showing draft text and canonical-take playback.\n- Do not show the Resources tab anywhere in the Observer view.\n\n### Chapter & Verse Browse\n- Let an Observer browse chapters and verses/pericopes within a project they've been invited to.\n- Show verse/pericope text in the same reading layout used elsewhere in the app.\n\n### Draft Playback\n- Let an Observer play back the current canonical take for a verse/pericope from the Draft tab.\n- Reuse the existing draft playback component rather than building a new player.\n\n### Restrictions\n- Do not show record, re-record, delete, or any editing controls to Observers.\n- Do not expose stage-advancement controls to Observers.\n- Do not let an Observer select among multiple takes; only the canonical take is playable, matching what advances to checking.\n\n<img width=\"413\" height=\"951\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/7576ca6c-e032-44d0-ba03-a8d250183b22\" />\n\n> **Note:** The Resources tab is intentionally excluded. Community checkers in the field work from printed target-language text and a physical source-language Bible, so in-app resources add no value for this role. Resources can be added later if validated field demand appears.\n\n> **Note:** This view does not include comments \u2014 the comment indicator, composer, and panel are built on top of this surface in a separate ticket (#451). When those land, they attach to the Draft tab only, since comments apply to the target-language draft and not the source text.\n\n> **Note:** The Observer tab is labeled \"Draft,\" not \"Record\" (Observers cannot record) and not \"Review\" (that word already names a state inside the Record tab and overlaps the Peer Check, Community Review, and Advanced Checking stage names).\n\n> **Note:** Observer login and project-invitation entry already exist in the app \u2014 the invitation email prompts the Observer to log in (or create an account) before they can browse the project. No push notification and no shareable deep link exist either, and neither is being added here. This ticket only adds the read-only browse/playback surface a logged-in Observer lands on; it does not touch login or invitation flows.\n\n",
+    "user": "chadw-eten",
+    "created_at": "2026-09-04T15:50:17Z",
+    "updated_at": "2026-09-11T19:13:09Z",
+    "closed_at": null,
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/452",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

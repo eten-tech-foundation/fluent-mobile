@@ -1,0 +1,1558 @@
+{
+  "cohort": "c2",
+  "reviewer_role": "parallel-readonly-subagent",
+  "ids_assigned": [
+    100,
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109,
+    110,
+    111,
+    112,
+    113,
+    114,
+    115,
+    116,
+    117,
+    118,
+    119,
+    120,
+    121,
+    122,
+    123,
+    124,
+    125,
+    132,
+    133,
+    137,
+    139,
+    146,
+    147,
+    149,
+    150,
+    151,
+    152,
+    159,
+    170,
+    173,
+    176,
+    177,
+    188,
+    189,
+    190,
+    191,
+    192,
+    193,
+    201,
+    204,
+    205,
+    206,
+    211
+  ],
+  "ids_reviewed": [
+    100,
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109,
+    110,
+    111,
+    112,
+    113,
+    114,
+    115,
+    116,
+    117,
+    118,
+    119,
+    120,
+    121,
+    122,
+    123,
+    124,
+    125,
+    132,
+    133,
+    137,
+    139,
+    146,
+    147,
+    149,
+    150,
+    151,
+    152,
+    159,
+    170,
+    173,
+    176,
+    177,
+    188,
+    189,
+    190,
+    191,
+    192,
+    193,
+    201,
+    204,
+    205,
+    206,
+    211
+  ],
+  "ids_skipped_incomplete_retrieval": [],
+  "issues": [
+    {
+      "issue": 100,
+      "state": "closed",
+      "title": "Upload worker (recordingSync.ts) on expo-file-system (net-new)",
+      "retrieval_ok": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "classification": "aligned",
+      "themes": [
+        "recording",
+        "sync",
+        "upload"
+      ],
+      "original_requirement_summary": "Net-new recordingSync upload worker on expo-file-system: pending\u2192uploading\u2192uploaded|failed, read local_file_path (no path reconstruction), getApiBaseUrl + token param, single-flight, retries; no @env/RNFS.",
+      "later_decisions": [
+        {
+          "date": "2026-07-20",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/100#issuecomment-5027838172",
+          "summary": "Ticket-level waivers: live DevQA deferred (API not deployed); minimal repo helpers pending #98; null bibleTextId \u2192 #177; Sync Pause/Resume UI \u2192 #151/#152. Depends on #102 uploadVerseAudio + #150 orchestrator seam."
+        }
+      ],
+      "docs_crosscheck": "docs/guides/recordings-sync-contract.md + core-flows \u00a74/\u00a76 describe recordingSync + PUT /verse-audio; matches later #102 freeze not original R2 POST.",
+      "impl_crosscheck": "src/services/recordingSync.ts + tests present; FluentAPI.uploadVerseAudio used.",
+      "discrepancy": null,
+      "rationale": "Body+waiver comment read. Engineering AC for worker largely matches living upload contract; live DevQA was explicitly waived. Product journeys still depend on orchestrator/UI tickets and env deploy \u2014 not a silent contradiction.",
+      "substantive": true
+    },
+    {
+      "issue": 101,
+      "state": "closed",
+      "title": "Sync status surfaced in UI",
+      "retrieval_ok": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "classification": "needs_impl_check",
+      "themes": [
+        "sync",
+        "ui",
+        "status-icon"
+      ],
+      "original_requirement_summary": "Surface sync status in UI via useSyncStatus/usePendingUploads/deriveSyncStatus and cloud icons (online_synced|syncing|pending / offline_*), with live pending updates while uploads run.",
+      "later_decisions": [],
+      "docs_crosscheck": "core-flows \u00a76: Home sync icon \u2192 Sync screen; known deviation #721 (one-press fails to open sync-screen). Icon chrome is not grant-gated (roles-and-permissions).",
+      "impl_crosscheck": "CloudSyncStatusIcon / PageHeaderSyncButton / SyncScreen exist on branch; navigation failure tracked separately as #721.",
+      "discrepancy": "Living QA chronology documents Home Sync one-press not reaching sync-screen (#721) \u2014 agreed icon\u2192Sync entry from sibling #38/#101 era is currently a known deviation. Status derivation itself not re-audited here.",
+      "rationale": "No comments; closed without comment trail. Requirement is product-facing sync chrome. Status math may be aligned, but Sync entry path has a documented living discrepancy (#721) that supersedes assuming #101 end-to-end UX is green.",
+      "substantive": true
+    },
+    {
+      "issue": 102,
+      "state": "closed",
+      "title": "R2 server contract + /recordings/sync coordination",
+      "retrieval_ok": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "classification": "superseded",
+      "themes": [
+        "sync",
+        "recording",
+        "api-contract"
+      ],
+      "original_requirement_summary": "Freeze mobile\u2194API upload contract as POST /recordings/sync multipart + R2 blob_key response; DevQA e2e once fluent-api PR #188 deploys; no R2 secrets on mobile.",
+      "later_decisions": [
+        {
+          "date": "2026-07-20",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/102#issuecomment-5027793270",
+          "summary": "Contract freeze pivots to fluent-api #224 PUT /verse-audio (Azure then later R2 on main); POST /recordings/sync / #188 waived; live blob_key/DevQA waived until deploy."
+        }
+      ],
+      "docs_crosscheck": "docs/guides/recordings-sync-contract.md explicitly documents deviations from original #102 proposal; pin verse-audio on fluent-api main 4336602.",
+      "impl_crosscheck": "uploadVerseAudio / verseAudioContract.ts / recordingSync.ts match living guide, not POST /recordings/sync.",
+      "discrepancy": "Original AC text still says POST /recordings/sync + PR #188 \u2014 later comment + living guide override. Do not treat issue body as current contract.",
+      "rationale": "Clear decision chain: later freeze wins. Title still says R2 /recordings/sync; living product uses PUT /verse-audio. Secrets-server-side rule retained.",
+      "substantive": true
+    },
+    {
+      "issue": 103,
+      "state": "closed",
+      "title": "Harden multi-user schema: FKs/indexes via migration",
+      "retrieval_ok": true,
+      "comments_api": 2,
+      "comments_fetched": 2,
+      "classification": "aligned",
+      "themes": [
+        "multi-user",
+        "schema",
+        "roles"
+      ],
+      "original_requirement_summary": "Harden multi-user schema: FKs/indexes on user_projects and chapter_assignments (peer_checker_id, assigned_user indexes) via real migrations not swallow-errors ALTER.",
+      "later_decisions": [
+        {
+          "date": "2026-07-23",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/103#issuecomment-5062181043",
+          "summary": "Landed via PR #248 (stacked); closing keywords delayed until main merge path."
+        }
+      ],
+      "docs_crosscheck": "roles-and-permissions: chapter slots use assignedUserId/peerCheckerId \u2014 schema integrity supports that model.",
+      "impl_crosscheck": "migrations/schema show user_projects FK pattern and assignment indexes (spot-check via sibling c1 #99 notes + present schema).",
+      "discrepancy": null,
+      "rationale": "Schema hardening for multi-user/My Work; product impact is integrity of role/slot data, not a new UX rule. Comments confirm delivery vehicle.",
+      "substantive": true
+    },
+    {
+      "issue": 104,
+      "state": "closed",
+      "title": "Verify & harden per-user project list & My Work filtering",
+      "retrieval_ok": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "classification": "needs_impl_check",
+      "themes": [
+        "my-work",
+        "roles",
+        "multi-user"
+      ],
+      "original_requirement_summary": "Verification-only: confirm per-user project list and My Work filtering (MyWorkTab + mergeUserChapterAssignments) with edge-case tests \u2014 not a rewrite; largely satisfied with #31.",
+      "later_decisions": [
+        {
+          "date": "2026-06-28",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/104#issuecomment-4825242369",
+          "summary": "Depends on #121 fix for broken recordings join in getMyWorkChapters."
+        }
+      ],
+      "docs_crosscheck": "core-flows \u00a72 My Work lists assignee/peer work; roles distinguish grant vs chapter slots.",
+      "impl_crosscheck": "MyWorkTab + merge helpers exist; not re-run full filter matrix in this review.",
+      "discrepancy": "Closed 2026-07-02 while comment required verify-after-#121; no closing comment proving edge-case verification completed.",
+      "rationale": "Product-relevant My Work filtering. Scope was verify-only; silent close after dependency note \u2192 needs_impl_check rather than assume aligned.",
+      "substantive": true
+    },
+    {
+      "issue": 105,
+      "state": "closed",
+      "title": "Active-user data attribution for recordings/edits",
+      "retrieval_ok": true,
+      "comments_api": 3,
+      "comments_fetched": 3,
+      "classification": "aligned",
+      "themes": [
+        "multi-user",
+        "recording",
+        "attribution"
+      ],
+      "original_requirement_summary": "Attribute local recordings/edits to active user (recorded_by_user_id) so shared-device takes are not verse-global; upload still auth via Bearer.",
+      "later_decisions": [
+        {
+          "date": "2026-07-29",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/105#issuecomment-5123591074",
+          "summary": "Closed after audit: landed via #248 squash including #251 work (recorded_by_user_id + owner-token upload)."
+        }
+      ],
+      "docs_crosscheck": "core-flows \u00a74 selected take; roles shared-device themes continue in later #259 (c3). recordings-sync-contract \u00a7 local attribution.",
+      "impl_crosscheck": "schema/types include recorded_by_user_id; recordingSync owner-token path referenced in close comment.",
+      "discrepancy": null,
+      "rationale": "Explicit product requirement for shared-device attribution; later close cites main evidence. Foundational for roles\u2260slot confusion on device.",
+      "substantive": true
+    },
+    {
+      "issue": 106,
+      "state": "closed",
+      "title": "Local SQLite seed/fixtures for offline dev",
+      "retrieval_ok": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "classification": "superseded",
+      "themes": [
+        "dev-experience",
+        "offline",
+        "decision-chain"
+      ],
+      "original_requirement_summary": "Local SQLite seed/fixtures for offline mobile dev without live API.",
+      "later_decisions": [
+        {
+          "date": "2026-06-30",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/106#issuecomment-4846694694",
+          "summary": "Descoped under epic #119 pivot: use real hosted/local Docker API + syncAllData; no mobile mock seed."
+        }
+      ],
+      "docs_crosscheck": "product-behavior Environments: Dev vs QA real APIs; mobile not mock-seeded.",
+      "impl_crosscheck": "No seedDevData product path expected.",
+      "discrepancy": null,
+      "rationale": "Clear later decision overrides original AC. Infra/dev-only; no living product AC remains.",
+      "substantive": true
+    },
+    {
+      "issue": 107,
+      "state": "closed",
+      "title": "Mock-API / offline dev mode when EXPO_PUBLIC_API_BASE_URL unset",
+      "retrieval_ok": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "classification": "superseded",
+      "themes": [
+        "dev-experience",
+        "auth",
+        "decision-chain"
+      ],
+      "original_requirement_summary": "Mock-API / EXPO_PUBLIC_OFFLINE_MODE auto-auth when API URL unset.",
+      "later_decisions": [
+        {
+          "date": "2026-06-30",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/107#issuecomment-4846695105",
+          "summary": "Descoped with #119: real Better Auth against hosted/Docker API; optional app-shell error reduced to #137 then also not planned."
+        }
+      ],
+      "docs_crosscheck": "core-flows \u00a71 login expects real credentials for API base.",
+      "impl_crosscheck": "getApiBaseUrl still requires EXPO_PUBLIC_API_BASE_URL.",
+      "discrepancy": null,
+      "rationale": "Explicit descope decision; would have been throwaway vs Better Auth.",
+      "substantive": true
+    },
+    {
+      "issue": 108,
+      "state": "closed",
+      "title": "Document local-only run workflow",
+      "retrieval_ok": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "classification": "infra_only",
+      "themes": [
+        "docs",
+        "dev-experience"
+      ],
+      "original_requirement_summary": "Document local-only run workflow after #119 pivot (hosted dev + Docker sync hydration; not mock seed).",
+      "later_decisions": [
+        {
+          "date": "2026-06-30",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/119",
+          "summary": "Epic delivery via PR #136 docs."
+        }
+      ],
+      "docs_crosscheck": "AGENT_ONBOARDING / local workflow docs; not product-behavior AC.",
+      "impl_crosscheck": "n/a docs",
+      "discrepancy": null,
+      "rationale": "Documentation for engineers; no user-facing product requirement.",
+      "substantive": true
+    },
+    {
+      "issue": 109,
+      "state": "closed",
+      "title": "Env audit + typed runtime validation",
+      "retrieval_ok": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "classification": "infra_only",
+      "themes": [
+        "env",
+        "tooling"
+      ],
+      "original_requirement_summary": "Verify no residual @env; optional typed runtime validation of EXPO_PUBLIC_* (env migration already on main).",
+      "later_decisions": [],
+      "docs_crosscheck": "n/a",
+      "impl_crosscheck": "apiBaseUrl.ts pattern exists; not product UX.",
+      "discrepancy": null,
+      "rationale": "Dev/tooling verification; no product impact.",
+      "substantive": true
+    },
+    {
+      "issue": 110,
+      "state": "closed",
+      "title": "DB migration framework",
+      "retrieval_ok": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "classification": "infra_only",
+      "themes": [
+        "db",
+        "migrations"
+      ],
+      "original_requirement_summary": "Replace swallow-errors ALTER arrays with versioned PRAGMA user_version migration framework.",
+      "later_decisions": [],
+      "docs_crosscheck": "architecture rules require versioned migrations \u2014 engineering contract.",
+      "impl_crosscheck": "db/migrations.ts pattern expected on main; not re-diffed line-by-line.",
+      "discrepancy": null,
+      "rationale": "Infra enabling schema product features; ticket itself is framework not user AC.",
+      "substantive": true
+    },
+    {
+      "issue": 111,
+      "state": "closed",
+      "title": "Expo test infra (jest-expo mocks, gate fluent-api.test.ts)",
+      "retrieval_ok": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "classification": "infra_only",
+      "themes": [
+        "testing",
+        "jest"
+      ],
+      "original_requirement_summary": "Add expo-audio/file-system/secure-store Jest mocks; gate live-network fluent-api.test.ts.",
+      "later_decisions": [],
+      "docs_crosscheck": "n/a",
+      "impl_crosscheck": "jest-expo setup present in repo.",
+      "discrepancy": null,
+      "rationale": "Test infra only.",
+      "substantive": true
+    },
+    {
+      "issue": 112,
+      "state": "closed",
+      "title": "EAS/dev-client onboarding + prebuild docs",
+      "retrieval_ok": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "classification": "infra_only",
+      "themes": [
+        "docs",
+        "eas",
+        "android"
+      ],
+      "original_requirement_summary": "Verify/consolidate EAS/dev-client onboarding + preview-build label loop (already largely shipped).",
+      "later_decisions": [
+        {
+          "date": "2026-07-02",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/112#issuecomment-4870063870",
+          "summary": "Closed as completed \u2014 deliverables already on main via #70 etc."
+        }
+      ],
+      "docs_crosscheck": "n/a product-behavior",
+      "impl_crosscheck": "eas.json / preview workflows exist.",
+      "discrepancy": null,
+      "rationale": "Docs/CI onboarding; no product AC.",
+      "substantive": true
+    },
+    {
+      "issue": 113,
+      "state": "closed",
+      "title": "API client architecture standard",
+      "retrieval_ok": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "classification": "infra_only",
+      "themes": [
+        "api-client",
+        "architecture"
+      ],
+      "original_requirement_summary": "Document/standardize FluentAPI typing, error semantics, token injection, react-query conventions.",
+      "later_decisions": [],
+      "docs_crosscheck": "guides/api-client-standard.md (engineering); not product AC.",
+      "impl_crosscheck": "FluentAPI pattern in services/api.ts.",
+      "discrepancy": null,
+      "rationale": "Engineering standard; indirectly supports 401/403 semantics used in product-behavior mocks.",
+      "substantive": true
+    },
+    {
+      "issue": 114,
+      "state": "closed",
+      "title": "Lint guardrails for handoff anti-patterns",
+      "retrieval_ok": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "classification": "infra_only",
+      "themes": [
+        "lint",
+        "architecture-guard"
+      ],
+      "original_requirement_summary": "ESLint/architecture guardrails against handoff anti-patterns (token singleton, fetch in UI, etc.).",
+      "later_decisions": [],
+      "docs_crosscheck": "n/a",
+      "impl_crosscheck": "architecture-guard / eslint present.",
+      "discrepancy": null,
+      "rationale": "Process/infra.",
+      "substantive": true
+    },
+    {
+      "issue": 115,
+      "state": "closed",
+      "title": "[Epic] Authentication (better-auth)",
+      "retrieval_ok": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "classification": "aligned",
+      "themes": [
+        "auth",
+        "epic"
+      ],
+      "original_requirement_summary": "Epic: authentication (better-auth) harden/refactor on Expo CNG baseline; sub-issues #88\u2013#93.",
+      "later_decisions": [
+        {
+          "date": "2026-07-02",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/115",
+          "summary": "All sub-issues #88\u2013#93 merged; epic complete."
+        }
+      ],
+      "docs_crosscheck": "core-flows \u00a71 login/multi-account; accountSession mocks.",
+      "impl_crosscheck": "Auth session path exists; epic is tracker.",
+      "discrepancy": null,
+      "rationale": "Epic closed after sub-issues; auth is product-critical foundation. No contradictory later decision in comments (none).",
+      "substantive": true
+    },
+    {
+      "issue": 116,
+      "state": "closed",
+      "title": "[Epic] Audio recording & playback (Expo modules)",
+      "retrieval_ok": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "classification": "aligned",
+      "themes": [
+        "recording",
+        "epic",
+        "audio"
+      ],
+      "original_requirement_summary": "Epic: audio recording & playback on expo-audio + expo-file-system; sub-issues #94\u2013#98.",
+      "later_decisions": [
+        {
+          "date": "2026-07-29",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/116#issuecomment-5123591274",
+          "summary": "Closed after audit: sub-issues done; follow-ups #71 multi-take UI, #235 source-audio dock separate."
+        }
+      ],
+      "docs_crosscheck": "core-flows \u00a74 recording/takes.",
+      "impl_crosscheck": "Record tab + engines on main per close comment; Cesar #158 unmerge history lives in child tickets (c1).",
+      "discrepancy": "Child tickets (#95/#97/#49 in c1) had Cesar-unmerge ambiguity; epic close assumes children done \u2014 trust but cross-ref c1 findings.",
+      "rationale": "Epic-level close cites sub-issues complete. Product recording path exists; residual scrub/attribution follow-ups tracked elsewhere (#176/#105).",
+      "substantive": true
+    },
+    {
+      "issue": 117,
+      "state": "closed",
+      "title": "[Epic] Recording sync & cloud storage (R2)",
+      "retrieval_ok": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "classification": "superseded",
+      "themes": [
+        "sync",
+        "recording",
+        "epic",
+        "r2"
+      ],
+      "original_requirement_summary": "Epic: recording sync & R2 cloud storage \u2014 worker, UI sync status, server contract (#99\u2013#102).",
+      "later_decisions": [
+        {
+          "date": "2026-07-20",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/117",
+          "summary": "Server contract pivots away from /recordings/sync R2 design to verse-audio."
+        },
+        {
+          "date": "2026-07-29",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/117#issuecomment-5123591371",
+          "summary": "Epic closed; leftovers SyncScreen glue #253; remux #176/#233."
+        }
+      ],
+      "docs_crosscheck": "recordings-sync-contract.md + core-flows \u00a76; title R2 still accurate for server storage but path differs.",
+      "impl_crosscheck": "Worker/orchestrator land; SyncScreen glue deferred #253; #721 nav bug later.",
+      "discrepancy": "Epic title/original #102 body still imply POST /recordings/sync; living contract superseded. Closed epic \u2260 Sync UX fully done (#253/#721).",
+      "rationale": "Decision chain important: R2 branding remains server-side; client wire changed. Do not read epic as proof Sync page E2E complete.",
+      "substantive": true
+    },
+    {
+      "issue": 118,
+      "state": "closed",
+      "title": "[Epic] Multi-user projects",
+      "retrieval_ok": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "classification": "aligned",
+      "themes": [
+        "multi-user",
+        "my-work",
+        "epic",
+        "roles"
+      ],
+      "original_requirement_summary": "Epic: multi-user projects \u2014 harden FKs, verify My Work filtering, active-user recording attribution (#103\u2013#105).",
+      "later_decisions": [
+        {
+          "date": "2026-07-29",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/118#issuecomment-5123591760",
+          "summary": "#103/#104 closed; #105 on main; further shared-device take visibility \u2192 #259."
+        }
+      ],
+      "docs_crosscheck": "roles-and-permissions grant\u2260slot; shared-device visibility open product themes in later tickets.",
+      "impl_crosscheck": "Attribution schema landed; My Work filter verify still soft (#104).",
+      "discrepancy": null,
+      "rationale": "Roles/multi-user foundation epic; later #259 continues product decisions \u2014 expected handoff not contradiction.",
+      "substantive": true
+    },
+    {
+      "issue": 119,
+      "state": "closed",
+      "title": "[Epic] Local-first dev experience (unblock from missing live API)",
+      "retrieval_ok": true,
+      "comments_api": 4,
+      "comments_fetched": 4,
+      "classification": "superseded",
+      "themes": [
+        "dev-experience",
+        "decision-chain",
+        "epic"
+      ],
+      "original_requirement_summary": "Originally unblock mobile without live API (mock seed path); pivoted to real API sync hydration + docs.",
+      "later_decisions": [
+        {
+          "date": "2026-06-30",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/119#issuecomment-4846694329",
+          "summary": "Pivot: descope #106/#107; document hosted/Docker workflow; syncAllData hydration."
+        },
+        {
+          "date": "2026-06-30",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/119#issuecomment-4846694329",
+          "summary": "PR #136 docs delivered; #137 not planned; reopened briefly until #108 merged."
+        }
+      ],
+      "docs_crosscheck": "Environments table; Dev\u2260QA emphasized in living docs.",
+      "impl_crosscheck": "Docs-first delivery; no mock offline mode.",
+      "discrepancy": null,
+      "rationale": "Strong decision-chain exemplar for reconciliation: later pivot fully overrides original mock-seed epic intent.",
+      "substantive": true
+    },
+    {
+      "issue": 120,
+      "state": "closed",
+      "title": "[Epic] Expo migration follow-ups & dev tooling",
+      "retrieval_ok": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "classification": "infra_only",
+      "themes": [
+        "epic",
+        "tooling",
+        "expo"
+      ],
+      "original_requirement_summary": "Epic: Expo migration follow-ups \u2014 env, migrations, jest mocks, EAS docs, API client standard, lint (#109\u2013#114).",
+      "later_decisions": [
+        {
+          "date": "2026-07-29",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/120#issuecomment-5123591730",
+          "summary": "All sub-issues closed."
+        }
+      ],
+      "docs_crosscheck": "n/a product",
+      "impl_crosscheck": "n/a epic tracker",
+      "discrepancy": null,
+      "rationale": "Tooling epic; no product AC.",
+      "substantive": true
+    },
+    {
+      "issue": 121,
+      "state": "closed",
+      "title": "Fix broken recordings join: queries reference non-existent recordings.chapter_assignment_id",
+      "retrieval_ok": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "classification": "aligned",
+      "themes": [
+        "my-work",
+        "recording",
+        "bug",
+        "queries"
+      ],
+      "original_requirement_summary": "Fix queries joining recordings on non-existent chapter_assignment_id; join via bible_text_id / is_latest for projects/chapters/My Work.",
+      "later_decisions": [],
+      "docs_crosscheck": "core-flows \u00a72 My Work progress depends on correct recordings join.",
+      "impl_crosscheck": "queries should join via bible_texts path (not re-run SQL audit); ticket is foundational bugfix.",
+      "discrepancy": null,
+      "rationale": "Clear product bug; blocks #104 verify. Closed without comments but AC is well-specified engineering fix.",
+      "substantive": true
+    },
+    {
+      "issue": 122,
+      "state": "closed",
+      "title": "Migrate to Expo SDK 56 CNG (Android-only)",
+      "retrieval_ok": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "classification": "infra_only",
+      "themes": [
+        "expo",
+        "android",
+        "cng"
+      ],
+      "original_requirement_summary": "Migrate to Expo SDK 56 CNG Android-only; tracking/credit for shipped migration.",
+      "later_decisions": [],
+      "docs_crosscheck": "android-only permanent; living pins now SDK 57 era \u2014 historical.",
+      "impl_crosscheck": "CNG workflow is current platform.",
+      "discrepancy": null,
+      "rationale": "Platform infra; no lasting product AC beyond Android-only.",
+      "substantive": true
+    },
+    {
+      "issue": 123,
+      "state": "closed",
+      "title": "Agent onboarding docs, PR workflow tooling & Android-only scope",
+      "retrieval_ok": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "classification": "infra_only",
+      "themes": [
+        "docs",
+        "process"
+      ],
+      "original_requirement_summary": "Agent onboarding docs, PR workflow tooling, Android-only scope formalization.",
+      "later_decisions": [],
+      "docs_crosscheck": "n/a product-behavior",
+      "impl_crosscheck": "docs/AGENT_ONBOARDING.md exists.",
+      "discrepancy": null,
+      "rationale": "Process/docs.",
+      "substantive": true
+    },
+    {
+      "issue": 124,
+      "state": "closed",
+      "title": "Brand Android app launch: Fluent launcher icon + native splash",
+      "retrieval_ok": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "classification": "no_product_impact",
+      "themes": [
+        "branding",
+        "android"
+      ],
+      "original_requirement_summary": "Fluent launcher icon + native splash branding.",
+      "later_decisions": [],
+      "docs_crosscheck": "n/a journeys",
+      "impl_crosscheck": "bootsplash assets exist.",
+      "discrepancy": null,
+      "rationale": "Launch branding only; no workflow AC.",
+      "substantive": true
+    },
+    {
+      "issue": 125,
+      "state": "closed",
+      "title": "Dependabot config + safe dependency merge workflow",
+      "retrieval_ok": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "classification": "infra_only",
+      "themes": [
+        "dependabot",
+        "docs"
+      ],
+      "original_requirement_summary": "Dependabot config + safe dependency merge workflow docs.",
+      "later_decisions": [],
+      "docs_crosscheck": "n/a",
+      "impl_crosscheck": ".github/dependabot.yml",
+      "discrepancy": null,
+      "rationale": "Ops/process.",
+      "substantive": true
+    },
+    {
+      "issue": 132,
+      "state": "closed",
+      "title": "Document Expo local dev auth troubleshooting",
+      "retrieval_ok": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "classification": "infra_only",
+      "themes": [
+        "docs",
+        "expo",
+        "dev-experience"
+      ],
+      "original_requirement_summary": "Document Expo local-dev auth troubleshooting (no Expo account required; logout/offline for UnexpectedServerData).",
+      "later_decisions": [
+        {
+          "date": "2026-06-30",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/132#issuecomment-4847631175",
+          "summary": "Closed to match merged PR #135 (Refs-only so no auto-close)."
+        }
+      ],
+      "docs_crosscheck": "n/a product",
+      "impl_crosscheck": "docs",
+      "discrepancy": null,
+      "rationale": "Dev troubleshooting docs.",
+      "substantive": true
+    },
+    {
+      "issue": 133,
+      "state": "closed",
+      "title": "Clean up .gitignore for Android-only Expo project",
+      "retrieval_ok": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "classification": "infra_only",
+      "themes": [
+        "gitignore",
+        "android"
+      ],
+      "original_requirement_summary": "Clean .gitignore for Android-only Expo (keep .env.example tracked; drop iOS dead weight).",
+      "later_decisions": [
+        {
+          "date": "2026-06-30",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/133#issuecomment-4847631369",
+          "summary": "Closed to match PR #134."
+        }
+      ],
+      "docs_crosscheck": "n/a",
+      "impl_crosscheck": "gitignore",
+      "discrepancy": null,
+      "rationale": "Repo hygiene.",
+      "substantive": true
+    },
+    {
+      "issue": 137,
+      "state": "closed",
+      "title": "fix(app): show actionable error when API URL is unset or unreachable",
+      "retrieval_ok": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "classification": "superseded",
+      "themes": [
+        "dev-experience",
+        "error-ux"
+      ],
+      "original_requirement_summary": "App-shell actionable error when API URL unset/unreachable (reduced scope from descoped #107).",
+      "later_decisions": [
+        {
+          "date": "2026-06-30",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/137#issuecomment-4847332766",
+          "summary": "Closed as not planned for epic #119; docs-only workflow sufficient."
+        }
+      ],
+      "docs_crosscheck": "n/a required product journey",
+      "impl_crosscheck": "not required per decision",
+      "discrepancy": null,
+      "rationale": "Explicit not-planned after pivot; superseded by docs-only local workflow.",
+      "substantive": true
+    },
+    {
+      "issue": 139,
+      "state": "closed",
+      "title": "Add Expo Doctor to Dependabot workflow and CI",
+      "retrieval_ok": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "classification": "infra_only",
+      "themes": [
+        "ci",
+        "expo-doctor",
+        "dependabot"
+      ],
+      "original_requirement_summary": "Add expo-doctor to CI and Dependabot workflow; agent rules never push main.",
+      "later_decisions": [],
+      "docs_crosscheck": "n/a",
+      "impl_crosscheck": "quality-gates / doctor scripts",
+      "discrepancy": null,
+      "rationale": "CI infra.",
+      "substantive": true
+    },
+    {
+      "issue": 146,
+      "state": "closed",
+      "title": "Add Upload/Download over Cellular Toggle to Settings and Sync Page",
+      "retrieval_ok": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "classification": "aligned",
+      "themes": [
+        "sync",
+        "cellular",
+        "settings",
+        "offline"
+      ],
+      "original_requirement_summary": "Off-by-default Upload/Download over cellular toggle in Settings (canonical) mirrored on Sync page; pause when WiFi lost if off.",
+      "later_decisions": [
+        {
+          "date": "2026-07-20",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/146#issuecomment-5025316327",
+          "summary": "Waived: in-flight pause on WiFi loss \u2192 #150; downloads honor toggle \u2192 #201/#147. Still in scope: Settings+Sync mirrored pref + Sync Now gating."
+        }
+      ],
+      "docs_crosscheck": "core-flows \u00a76 cellular gate; returning-online assessment cites #146/#150.",
+      "impl_crosscheck": "SyncScreen cellular toggle testID sync-upload-cellular; uploadOrchestrator tests for uploadOverCellular.",
+      "discrepancy": null,
+      "rationale": "Agreed product preference with explicit waivers. Living docs still treat cellular gate as current requirement.",
+      "substantive": true
+    },
+    {
+      "issue": 147,
+      "state": "closed",
+      "title": "Add Download Queue Progress Bar to Coming Back Online Screen",
+      "retrieval_ok": true,
+      "comments_api": 2,
+      "comments_fetched": 2,
+      "classification": "contradiction",
+      "themes": [
+        "sync",
+        "downloads",
+        "offline",
+        "qa"
+      ],
+      "original_requirement_summary": "Download queue progress section on Coming Back Online/Sync screen below actions: aggregate progress, remaining count, Manage downloads \u2192 Prepare Offline.",
+      "later_decisions": [
+        {
+          "date": "2026-09-28",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/147#issuecomment-5874706590",
+          "summary": "Gaps 10\u201311 (Manage downloads back stack; Sync never reaches All synced / #149 TODO) \u2014 low severity, not launch blocker; Downloads section itself passed on Dev device."
+        },
+        {
+          "date": "2026-10-05",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/147#issuecomment-5992275076",
+          "summary": "Core layout pass but open issues: wrong labels, new downloads not reflected, cancel not updating queue, no auto-resume after cellular\u2192WiFi."
+        }
+      ],
+      "docs_crosscheck": "core-flows \u00a76/\u00a77 downloads; Dev\u2260QA \u2014 Roslin results are device QA but ticket closed 2026-10-14 after those findings without comment resolving them.",
+      "impl_crosscheck": "Sync download section exists; deriveSyncPageStatus allComplete historically blocked (Gap 11).",
+      "discrepancy": "Issue closed after QA listed four functional failures and audit Gaps 10\u201311. Closed state contradicts unresolved AC/QA unless a follow-up absorbed them without link in comments.",
+      "rationale": "Read body + both comments. Product download progress AC not fully satisfied per latest QA comment; closure without waiver/follow-up on those items is a contradiction.",
+      "substantive": true
+    },
+    {
+      "issue": 149,
+      "state": "closed",
+      "title": "Build Sync Page Core Layout and Upload Progress",
+      "retrieval_ok": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "classification": "needs_impl_check",
+      "themes": [
+        "sync",
+        "ui"
+      ],
+      "original_requirement_summary": "Sync page core layout: animated indicator, upload progress, four states (syncing/paused/upload complete/all complete); entry exclusively via cloud sync icon.",
+      "later_decisions": [
+        {
+          "date": "2026-07-20",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/149#issuecomment-5019758003",
+          "summary": "AC narrowed to UI layer only; engine behaviors out of scope to #150."
+        }
+      ],
+      "docs_crosscheck": "core-flows \u00a76; #721 known Home\u2192Sync navigation deviation; Gap 11 notes allComplete never reached.",
+      "impl_crosscheck": "SyncScreen present; allComplete signal historically incomplete per #147 audit.",
+      "discrepancy": "Exclusive icon entry + all-complete state conflict with living #721 and audit Gap 11.",
+      "rationale": "UI ticket closed after UI-only narrowing. Living discrepancies on entry navigation and all-complete state mean Sync page product AC is not fully green.",
+      "substantive": true
+    },
+    {
+      "issue": 150,
+      "state": "closed",
+      "title": "Implement Upload Trigger and Sync Engine",
+      "retrieval_ok": true,
+      "comments_api": 3,
+      "comments_fetched": 3,
+      "classification": "contradiction",
+      "themes": [
+        "sync",
+        "upload",
+        "offline",
+        "cellular",
+        "decision-chain"
+      ],
+      "original_requirement_summary": "Upload trigger/sync engine: online=/health; auto-upload on WiFi; cellular gate; mid-drop silent pause/resume; cancel vs next reachability; 24h pause + Sync Now; chapter granularity; no UI.",
+      "later_decisions": [
+        {
+          "date": "2026-07-20",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/150#issuecomment-5027062968",
+          "summary": "Real HTTP upload/blob_key waived to #100; contract to #102; UI to #151 \u2014 orchestrator ships with mocked worker."
+        },
+        {
+          "date": "2026-07-23",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/150#issuecomment-5062155739",
+          "summary": "Closed completed for engine AC via PR #223; remaining SyncScreen Pause/Cancel/Sync Now glue \u2192 #253."
+        },
+        {
+          "date": "2026-09-04",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/150#issuecomment-5545095944",
+          "summary": "Post-close Dev report: never observed auto-upload working (Orbit / cwhite+devt@gloo.us); asks for check."
+        }
+      ],
+      "docs_crosscheck": "core-flows \u00a76 expects auto-upload; returning-online assessment still treats #150 as closed AC with gaps. Dev\u2260QA; Chad evidence is Dev historical not QA Nightly.",
+      "impl_crosscheck": "uploadOrchestrator.ts + cellular tests exist; engined closed \u2260 proven on device for Chad's account.",
+      "discrepancy": "Closed as completed while later human Dev report says behavior never worked; SyncScreen control glue deferred to #253; no reply in thread resolving Chad's report.",
+      "rationale": "Highest-signal sync decision chain in cohort. Engine unit AC may be green while product auto-upload journey remains disputed on Dev \u2014 do not treat closed #150 as Nightly-proof E2E sync.",
+      "substantive": true
+    },
+    {
+      "issue": 151,
+      "state": "closed",
+      "title": "Build Sync Page Action Controls",
+      "retrieval_ok": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "classification": "needs_impl_check",
+      "themes": [
+        "sync",
+        "ui"
+      ],
+      "original_requirement_summary": "Sync page Pause/Resume/Cancel/Sync Now controls wired to #150 engine behaviors per state.",
+      "later_decisions": [
+        {
+          "date": "2026-07-20",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/151#issuecomment-5025570092",
+          "summary": "Engine-dependent AC waived until #150 lands."
+        },
+        {
+          "date": "2026-07-23",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/151",
+          "summary": "Follow-up #253 owns remaining SyncScreen stubs after #150 engine close."
+        }
+      ],
+      "docs_crosscheck": "core-flows \u00a76 Sync Now / pause; #721 is navigation not controls.",
+      "impl_crosscheck": "Controls present on SyncScreen; #253 tracked glue \u2014 verify stubs cleared.",
+      "discrepancy": "Ticket closed same day as #150 while #253 created for remaining stubs \u2014 possible partial close.",
+      "rationale": "Product controls ticket; waiver+follow-up chain suggests not all AC were in the closing PR. needs_impl_check.",
+      "substantive": true
+    },
+    {
+      "issue": 152,
+      "state": "closed",
+      "title": "Implement Background Sync Notification with Upload Progress",
+      "retrieval_ok": true,
+      "comments_api": 2,
+      "comments_fetched": 2,
+      "classification": "needs_impl_check",
+      "themes": [
+        "sync",
+        "notification",
+        "android"
+      ],
+      "original_requirement_summary": "Android foreground-service notification with live chapter upload progress; tap \u2192 Sync; clear on complete/pause/cancel; device QA required.",
+      "later_decisions": [
+        {
+          "date": "2026-07-31",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/152#issuecomment-5140426856",
+          "summary": "Notification chrome needs no new API; e2e DevQA still depends on deployed verse-audio."
+        },
+        {
+          "date": "2026-08-20",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/152#issuecomment-5360479293",
+          "summary": "Preview APK for PR available."
+        }
+      ],
+      "docs_crosscheck": "core-flows \u00a76 upload notification inferred.",
+      "impl_crosscheck": "modules/upload-sync-foreground exists.",
+      "discrepancy": "Closed without a human device-QA results comment on the issue (AC required recording QA on PR); only preview bot + API note.",
+      "rationale": "Native notification is Needs-QA class. Implementation module exists; issue thread lacks recorded device QA evidence.",
+      "substantive": true
+    },
+    {
+      "issue": 159,
+      "state": "closed",
+      "title": "Add agent delivery guardrails (AC, scope, abstraction, human QA)",
+      "retrieval_ok": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "classification": "infra_only",
+      "themes": [
+        "docs",
+        "agents",
+        "process"
+      ],
+      "original_requirement_summary": "Add AGENTS.md delivery guardrails (AC\u2260CI, one ticket=one PR, abstraction budget, human QA).",
+      "later_decisions": [
+        {
+          "date": "2026-07-20",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/159#issuecomment-5025247939",
+          "summary": "Already delivered via PR #160."
+        }
+      ],
+      "docs_crosscheck": "AGENTS.md is process; informs ticket waivers seen across cohort.",
+      "impl_crosscheck": "AGENTS.md present",
+      "discrepancy": null,
+      "rationale": "Process docs enabling later waiver discipline.",
+      "substantive": true
+    },
+    {
+      "issue": 170,
+      "state": "closed",
+      "title": "Clear orphaned/unresolvable paused recording takes",
+      "retrieval_ok": true,
+      "comments_api": 2,
+      "comments_fetched": 2,
+      "classification": "contradiction",
+      "themes": [
+        "recording",
+        "storage",
+        "recovery"
+      ],
+      "original_requirement_summary": "Clear orphaned/unresolvable paused recording takes via routine cache-clear + Settings Clear cache; don't leave markers that never show Discard.",
+      "later_decisions": [
+        {
+          "date": "2026-07-20",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/170#issuecomment-5025017955",
+          "summary": "Cesar cleared; issue stays open / Dev Ready for thin PR from main \u2014 do not revive #158 mega-diff."
+        }
+      ],
+      "docs_crosscheck": "core-flows \u00a74 offline recording recovery inferred.",
+      "impl_crosscheck": "pausedTakeRecovery.ts / clearAllPausedTakes / AuthSessionProvider orphan clear exist on main \u2014 code may have landed without issue comment.",
+      "discrepancy": "Closed 2026-07-23 with no delivery/QA comment after explicit 'stays open' guidance; closure rationale absent from thread.",
+      "rationale": "Decision chain says keep open for intentional pickup; silent close three days later without citing a PR/AC completion is a tracker contradiction even if impl later appeared.",
+      "substantive": true
+    },
+    {
+      "issue": 173,
+      "state": "closed",
+      "title": "Adopt Phase 1 agent/process docs (no merge-gate changes)",
+      "retrieval_ok": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "classification": "infra_only",
+      "themes": [
+        "docs",
+        "process"
+      ],
+      "original_requirement_summary": "Adopt Phase 1 agent/process docs without merge-gate changes (issue tracking, CI docs, /onboard, warn-only hooks).",
+      "later_decisions": [],
+      "docs_crosscheck": "n/a product",
+      "impl_crosscheck": "docs/process commands",
+      "discrepancy": null,
+      "rationale": "Process adoption.",
+      "substantive": true
+    },
+    {
+      "issue": 176,
+      "state": "closed",
+      "title": "Seekable playback: convert committed AAC take to M4A for Review scrubbing",
+      "retrieval_ok": true,
+      "comments_api": 11,
+      "comments_fetched": 11,
+      "classification": "contradiction",
+      "themes": [
+        "recording",
+        "playback",
+        "remux",
+        "decision-chain",
+        "qa"
+      ],
+      "original_requirement_summary": "After ADTS capture, remux committed take to seekable M4A so Review scrub works; keep crash-safe capture; Android device QA required.",
+      "later_decisions": [
+        {
+          "date": "2026-07-13",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/176#issuecomment-4960208711",
+          "summary": "No single expo-audio format is crash-safe+seekable; fMP4 ruled out; Options A/B/C deferred for tech-lead call."
+        },
+        {
+          "date": "2026-07-20",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/176#issuecomment-5028172943",
+          "summary": "JS remux seam #231 only; native MediaMuxer + scrub AC + device QA deferred to #233; do not Closes #176."
+        },
+        {
+          "date": "2026-07-23",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/176#issuecomment-5062156353",
+          "summary": "Leave open by design until #233 + human Android QA on ADTS remux scrub."
+        },
+        {
+          "date": "2026-07-30",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/176#issuecomment-5134789413",
+          "summary": "PR #252 Part of #176 (not Closes); close only after merge AND device QA recorded."
+        }
+      ],
+      "docs_crosscheck": "core-flows \u00a74 Review scrub inferred; native remux module aac-remux present.",
+      "impl_crosscheck": "modules/aac-remux exists; scrub UI shipped per comments \u2014 device QA evidence missing on issue.",
+      "discrepancy": "Closed 2026-08-04 without any comment documenting the required Android device QA or reversing the repeated stay-open rule.",
+      "rationale": "Strongest decision-chain contradiction in cohort: multiple explicit 'stay open until device QA' comments, then silent close. Native module may exist; Nightly/human QA receipt not on thread.",
+      "substantive": true
+    },
+    {
+      "issue": 177,
+      "state": "closed",
+      "title": "Resolve null `bibleTextId` for verses in the Record tab (sync/lookup gap)",
+      "retrieval_ok": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "classification": "contradiction",
+      "themes": [
+        "recording",
+        "sync",
+        "bible-text"
+      ],
+      "original_requirement_summary": "Diagnose/fix null bibleTextId on Record tab so recording can start; replace TEMP ToastAndroid with real still-syncing/disabled UX; tests.",
+      "later_decisions": [
+        {
+          "date": "2026-07-20",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/177#issuecomment-5025018882",
+          "summary": "Stays open after Cesar exit; thin PR from main preferred."
+        }
+      ],
+      "docs_crosscheck": "core-flows \u00a74 recording preconditions; recordings-sync-contract requires Fluent bible_texts.id.",
+      "impl_crosscheck": "RecordTab.test covers 'still syncing when bible text missing'; getBibleTextId still used \u2014 suggests UX path landed later.",
+      "discrepancy": "Closed 2026-07-23 with no delivery comment after 'stays open'; root-cause documentation AC not evidenced in thread.",
+      "rationale": "Same Cesar-clearance silent-close pattern as #170. Impl tests suggest partial landing, but issue history lacks completion evidence / root-cause note.",
+      "substantive": true
+    },
+    {
+      "issue": 188,
+      "state": "closed",
+      "title": "Add Resources Tab with Unit-Synced Content",
+      "retrieval_ok": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "classification": "aligned",
+      "themes": [
+        "resources",
+        "drafting",
+        "ui"
+      ],
+      "original_requirement_summary": "Add Resources tab (Bible\u2192Resources\u2192Record) unit-synced to selected verse/pericope; empty copy 'No resources available for this verse'; sections deferred to #189\u2013#191.",
+      "later_decisions": [
+        {
+          "date": "2026-09-02",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/188#issuecomment-5504281215",
+          "summary": "QA pass: tab order, TN/TQ/Images sections expandable \u2014 broader than shell-only AC (sections also present by then)."
+        }
+      ],
+      "docs_crosscheck": "core-flows \u00a75: empty UI copy is agreed; QA 484 empty fixture is valid empty UI (no 403 conclusion); populated expansion still unverified on QA 484.",
+      "impl_crosscheck": "ResourcesTab.tsx + messages constant match empty copy.",
+      "discrepancy": "Living docs: populated section expansion unverified on current QA fixture \u2014 not a failure of #188 empty-state AC.",
+      "rationale": "Empty-state string matches living product-behavior. Later QA empty-on-484 is consistent with this AC, not a resources-permission conclusion.",
+      "substantive": true
+    },
+    {
+      "issue": 189,
+      "state": "closed",
+      "title": "Add Translation Notes Section to Resources Tab",
+      "retrieval_ok": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "classification": "aligned",
+      "themes": [
+        "resources",
+        "translation-notes"
+      ],
+      "original_requirement_summary": "Translation Notes accordion section on Resources tab with error/retry for active unit.",
+      "later_decisions": [
+        {
+          "date": "2026-08-14",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/189#issuecomment-5287984816",
+          "summary": "Preview APK for PR."
+        }
+      ],
+      "docs_crosscheck": "core-flows \u00a75; 403 must not look like empty \u2014 mock tests in translationNotes.test.ts; empty UI \u2260 deny.",
+      "impl_crosscheck": "loadTranslationNotesForUnit + tests including 403 path.",
+      "discrepancy": null,
+      "rationale": "Product resources section; living docs warn not to infer 403 from empty QA fixture.",
+      "substantive": true
+    },
+    {
+      "issue": 190,
+      "state": "closed",
+      "title": "Add Translation Questions Section to Resources Tab",
+      "retrieval_ok": true,
+      "comments_api": 2,
+      "comments_fetched": 2,
+      "classification": "needs_impl_check",
+      "themes": [
+        "resources",
+        "translation-questions",
+        "api-dependency"
+      ],
+      "original_requirement_summary": "Translation Questions accordion below Notes with error/retry.",
+      "later_decisions": [
+        {
+          "date": "2026-07-31",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/190#issuecomment-5140427228",
+          "summary": "fluent-api main then had no TQ domain; mobile can discover Aquifer UWTranslationQuestions in Prepare Offline."
+        },
+        {
+          "date": "2026-08-11",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/190#issuecomment-5257617515",
+          "summary": "Preview APK."
+        }
+      ],
+      "docs_crosscheck": "core-flows \u00a75 resources; API completeness may have changed since note \u2014 not re-verified against pin here beyond living mocks.",
+      "impl_crosscheck": "translationQuestions service/tests exist on mobile.",
+      "discrepancy": "Closed without human QA comment on issue; API readiness was incomplete at audit note time.",
+      "rationale": "Product section closed while API note flagged incompleteness; mobile impl exists \u2014 needs_impl_check vs living API pin.",
+      "substantive": true
+    },
+    {
+      "issue": 191,
+      "state": "closed",
+      "title": "Add Images & Maps Section to Resources Tab",
+      "retrieval_ok": true,
+      "comments_api": 4,
+      "comments_fetched": 4,
+      "classification": "aligned",
+      "themes": [
+        "resources",
+        "images",
+        "qa"
+      ],
+      "original_requirement_summary": "Images & Maps section with thumbnails, pinch-zoom, fullscreen, error/retry.",
+      "later_decisions": [
+        {
+          "date": "2026-07-31",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/191#issuecomment-5140427410",
+          "summary": "No Aquifer/images domain on API main at note time."
+        },
+        {
+          "date": "2026-08-14",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/191#issuecomment-5292532176",
+          "summary": "QA pass on display/expand/fullscreen behaviors."
+        },
+        {
+          "date": "2026-08-20",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/191#issuecomment-5359395175",
+          "summary": "QA follow-up bug is #348 (not #347)."
+        }
+      ],
+      "docs_crosscheck": "core-flows \u00a75; #348 retry deferral noted in c3 findings; empty\u2260403.",
+      "impl_crosscheck": "imagesMaps services/tests present.",
+      "discrepancy": "Follow-up #348 for retry/QA gaps \u2014 expected, cited on issue.",
+      "rationale": "Has human QA pass + explicit follow-up bug link. Good decision hygiene relative to #147/#176.",
+      "substantive": true
+    },
+    {
+      "issue": 192,
+      "state": "closed",
+      "title": "Reuse Offline Sync Model for Resources Tab",
+      "retrieval_ok": true,
+      "comments_api": 2,
+      "comments_fetched": 2,
+      "classification": "needs_impl_check",
+      "themes": [
+        "resources",
+        "offline",
+        "prepare-offline"
+      ],
+      "original_requirement_summary": "Reuse Tier 1/2/3 Prepare Offline sync model so Resources read local inventory offline (no separate resource sync).",
+      "later_decisions": [
+        {
+          "date": "2026-07-31",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/192#issuecomment-5140427536",
+          "summary": "Download pipeline #295 exists; fluent-api resource completeness still limited at note time."
+        },
+        {
+          "date": "2026-08-11",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/192#issuecomment-5257010453",
+          "summary": "Preview APK."
+        }
+      ],
+      "docs_crosscheck": "core-flows \u00a75 offline inventory gates Resources; Prepare Offline copy when no inventory.",
+      "impl_crosscheck": "prepareOfflineResources + inventory utilities exist.",
+      "discrepancy": "No human QA comment on issue confirming offline-only Resources after Prepare Offline.",
+      "rationale": "Critical offline resources product path; closed with API caveat and preview bot only.",
+      "substantive": true
+    },
+    {
+      "issue": 193,
+      "state": "closed",
+      "title": "Update Settings Menu to Reorganize Account Actions",
+      "retrieval_ok": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "classification": "aligned",
+      "themes": [
+        "settings",
+        "multi-account",
+        "accounts"
+      ],
+      "original_requirement_summary": "Reorganize Settings: rename Switch User\u2192Accounts; group Add User with account list.",
+      "later_decisions": [],
+      "docs_crosscheck": "core-flows \u00a71 multi-account; open Q on per-account settings.",
+      "impl_crosscheck": "UserSettingsMenu Accounts section expected; not screenshot-verified.",
+      "discrepancy": null,
+      "rationale": "UX reorganization for multi-account; low ambiguity, no contradicting comments.",
+      "substantive": true
+    },
+    {
+      "issue": 201,
+      "state": "closed",
+      "title": "Build Prepare for Offline Download Queue and Resource Inventory",
+      "retrieval_ok": true,
+      "comments_api": 3,
+      "comments_fetched": 3,
+      "classification": "needs_impl_check",
+      "themes": [
+        "offline",
+        "downloads",
+        "resources",
+        "prepare-offline"
+      ],
+      "original_requirement_summary": "Shared download queue/worker/inventory for Prepare Offline + Sync download progress (#51/#52/#53/#147 consumers).",
+      "later_decisions": [
+        {
+          "date": "2026-07-31",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/201#issuecomment-5140427020",
+          "summary": "Mobile queue landed PR #295 calling Aquifer direct; API Aquifer proxy still evolving."
+        },
+        {
+          "date": "2026-08-04",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/201#issuecomment-5179734034",
+          "summary": "Aquifer API endpoints added; need refinement vs #295."
+        },
+        {
+          "date": "2026-08-24",
+          "source": "https://github.com/eten-tech-foundation/fluent-mobile/issues/201#issuecomment-5393086247",
+          "summary": "Preview after close (closed 2026-08-12) \u2014 post-close build noise."
+        }
+      ],
+      "docs_crosscheck": "core-flows \u00a75/\u00a77; parent #51 had unresolved QA in c1 \u2014 shared queue consumers inherit risk.",
+      "impl_crosscheck": "prepareOfflineResources / download queue code present.",
+      "discrepancy": "Closed before later preview; Aquifer/API refinement still open in comments; ties to #147 QA failures on queue labels/cancel/resume.",
+      "rationale": "Foundational offline downloads. API dependency + downstream QA failures on #147 mean treat as needs_impl_check for product completeness.",
+      "substantive": true
+    },
+    {
+      "issue": 204,
+      "state": "closed",
+      "title": "Truth-up agent docs and theme conventions to match main",
+      "retrieval_ok": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "classification": "infra_only",
+      "themes": [
+        "docs",
+        "theme"
+      ],
+      "original_requirement_summary": "Truth-up agent docs/theme conventions to current launch path and src/theme tokens.",
+      "later_decisions": [],
+      "docs_crosscheck": "docs hygiene; product-behavior separate living layer.",
+      "impl_crosscheck": "docs",
+      "discrepancy": null,
+      "rationale": "Docs/theme conventions only.",
+      "substantive": true
+    },
+    {
+      "issue": 205,
+      "state": "closed",
+      "title": "Extract shared account session helpers for sign-out and switch",
+      "retrieval_ok": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "classification": "aligned",
+      "themes": [
+        "auth",
+        "multi-account",
+        "session"
+      ],
+      "original_requirement_summary": "Extract shared account session helpers for sign-out and switch (no user-visible behavior change).",
+      "later_decisions": [],
+      "docs_crosscheck": "core-flows \u00a71; accountSession.test.ts mocks cited in living docs.",
+      "impl_crosscheck": "accountSession service + tests exist.",
+      "discrepancy": null,
+      "rationale": "Supports multi-account isolation product requirement; refactor with tests.",
+      "substantive": true
+    },
+    {
+      "issue": 206,
+      "state": "closed",
+      "title": "Route Sync/Settings pending-upload reads through hooks",
+      "retrieval_ok": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "classification": "infra_only",
+      "themes": [
+        "architecture",
+        "sync"
+      ],
+      "original_requirement_summary": "Route Sync/Settings pending-upload reads through hooks instead of raw db/queries imports.",
+      "later_decisions": [],
+      "docs_crosscheck": "architecture layer boundary; not user AC.",
+      "impl_crosscheck": "usePendingUploads pattern",
+      "discrepancy": null,
+      "rationale": "Architecture boundary cleanup; no product behavior change intended.",
+      "substantive": true
+    },
+    {
+      "issue": 211,
+      "state": "closed",
+      "title": "Require filled PR template in delivery rules",
+      "retrieval_ok": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "classification": "infra_only",
+      "themes": [
+        "docs",
+        "process",
+        "pr-template"
+      ],
+      "original_requirement_summary": "Require filled PR template in delivery.mdc for agent-opened PRs.",
+      "later_decisions": [],
+      "docs_crosscheck": "n/a product",
+      "impl_crosscheck": "delivery.mdc / pr-template",
+      "discrepancy": null,
+      "rationale": "Process rule only.",
+      "substantive": true
+    }
+  ],
+  "priority_findings": [
+    {
+      "issue": 150,
+      "title": "Implement Upload Trigger and Sync Engine",
+      "severity": "P0",
+      "summary": "Closed as engine-complete (PR #223) with UI glue deferred to #253; later Dev human report (2026-09-04) says auto-upload never worked. Do not treat closed #150 as E2E Nightly-proof sync; Dev\u2260QA.",
+      "evidence_links": [
+        "https://github.com/eten-tech-foundation/fluent-mobile/issues/150",
+        "https://github.com/eten-tech-foundation/fluent-mobile/issues/253",
+        "docs/product-behavior/core-flows.md",
+        "src/services/uploadOrchestrator.ts"
+      ]
+    },
+    {
+      "issue": 176,
+      "title": "Seekable playback: convert committed AAC take to M4A for Review scrubbing",
+      "severity": "P0",
+      "summary": "Repeated explicit stay-open-until-Android-device-QA decisions (#233 remux), then silent close 2026-08-04 with no QA receipt on the issue thread.",
+      "evidence_links": [
+        "https://github.com/eten-tech-foundation/fluent-mobile/issues/176",
+        "https://github.com/eten-tech-foundation/fluent-mobile/issues/233",
+        "modules/aac-remux",
+        "docs/product-behavior/core-flows.md"
+      ]
+    },
+    {
+      "issue": 102,
+      "title": "R2 server contract + /recordings/sync coordination",
+      "severity": "P1",
+      "summary": "Original AC froze POST /recordings/sync + fluent-api #188; later comment + living recordings-sync-contract freeze PUT /verse-audio on fluent-api main. Body text is superseded \u2014 later decision wins.",
+      "evidence_links": [
+        "https://github.com/eten-tech-foundation/fluent-mobile/issues/102",
+        "docs/guides/recordings-sync-contract.md",
+        "src/services/recordingSync.ts"
+      ]
+    },
+    {
+      "issue": 147,
+      "title": "Add Download Queue Progress Bar to Coming Back Online Screen",
+      "severity": "P1",
+      "summary": "Closed after Roslin QA listed label/queue/cancel/resume failures and audit Gaps 10\u201311 (Manage downloads back stack; All synced unreachable). Closure contradicts unresolved QA without ticket-level waiver in comments.",
+      "evidence_links": [
+        "https://github.com/eten-tech-foundation/fluent-mobile/issues/147",
+        "docs/assessments/returning-online-and-sync/README.md",
+        "docs/product-behavior/core-flows.md"
+      ]
+    },
+    {
+      "issue": 170,
+      "title": "Silent close after Cesar-clearance stay-open (#170/#177)",
+      "severity": "P1",
+      "summary": "#170 and #177 were explicitly left open for thin PRs after Cesar clearance, then closed days later with no delivery comment. Impl may exist (pausedTakeRecovery; RecordTab still-syncing UX) but issue history lacks completion evidence \u2014 same pattern risk as c1 Cesar-unmerge chain.",
+      "evidence_links": [
+        "https://github.com/eten-tech-foundation/fluent-mobile/issues/170",
+        "https://github.com/eten-tech-foundation/fluent-mobile/issues/177",
+        "src/services/pausedTakeRecovery.ts",
+        "src/app/tabs/RecordTab.test.tsx"
+      ]
+    }
+  ],
+  "counts": {
+    "assigned": 52,
+    "reviewed": 52,
+    "skipped": 0,
+    "with_discrepancy": 18,
+    "by_classification": {
+      "aligned": 13,
+      "contradiction": 5,
+      "infra_only": 19,
+      "needs_impl_check": 8,
+      "no_product_impact": 1,
+      "superseded": 6
+    }
+  },
+  "reviewed_at_utc": "2026-10-20T00:48:24Z"
+}

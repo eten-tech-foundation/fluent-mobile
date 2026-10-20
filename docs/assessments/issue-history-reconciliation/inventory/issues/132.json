@@ -1,0 +1,34 @@
+{
+  "issue_number": 132,
+  "fetched_at_utc": "2026-10-20T00:34:58Z",
+  "issue": {
+    "number": 132,
+    "title": "Document Expo local dev auth troubleshooting",
+    "state": "closed",
+    "body": "## Summary\n\nDocument that local development requires **no Expo account**, and how to fix dev-client launch failures caused by a mismatched global Expo CLI session.\n\n## Background\n\nContributors logged into an Expo account without access to this EAS project can hit `UnexpectedServerData` / code-signing errors on launch. The CLI signs dev manifests with user credentials when online; `npx expo logout` or `expo start --offline` fixes it.\n\n## Acceptance criteria\n\n- [ ] README troubleshooting explains local dev needs no Expo login\n- [ ] Documents `npx expo whoami`, `npx expo logout`, and `expo start --offline`\n- [ ] Notes session is global to the machine (persists across clones), not in the repo\n- [ ] Clarifies Expo/EAS login is only for maintainer tasks (`eas build`, `eas update`, `eas submit`)\n\n## Verification\n\nFollow README steps on a machine logged into a foreign Expo account; confirm logout resolves launch errors.",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-30T15:12:20Z",
+    "updated_at": "2026-07-02T19:54:37Z",
+    "closed_at": "2026-06-30T20:25:45Z",
+    "labels": [
+      "documentation"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/132",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4847631175,
+      "user": "mattrace-gloo",
+      "created_at": "2026-06-30T20:25:44Z",
+      "updated_at": "2026-06-30T20:25:44Z",
+      "body": "Closed to match merged PR #135 (2026-06-30). The PR used `Refs #132` so GitHub did not auto-close this issue.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/132#issuecomment-4847631175"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

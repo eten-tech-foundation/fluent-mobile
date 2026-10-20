@@ -1,0 +1,23 @@
+{
+  "issue_number": 371,
+  "fetched_at_utc": "2026-10-20T00:36:24Z",
+  "issue": {
+    "number": 371,
+    "title": "[A+] Unit tests: useRecordingEngine hook",
+    "state": "closed",
+    "body": "## Summary / context\n\nPart of **A+ Test safety net**. `useRecordingEngine` lacks dedicated unit tests despite being on the record path.\n\n## Current vs expected\n\n**Current:** Lower-level recording engine/sync tested; hook wiring untested.\n\n**Expected:** Colocated unit tests for `useRecordingEngine` lifecycle (start/stop/error) with mocks.\n\n## Scope\n\n**In scope**\n- Unit tests only for the hook module\n- Jest + repo Expo mocks\n\n**Out of scope**\n- `useVerseAudio` (sibling)\n- Full device recording QA\n\n## Acceptance criteria\n\n- [ ] Colocated tests cover start/stop/error (or equivalent public API)\n- [ ] No flake in CI\n- [ ] Engineering-only \u2014 no Needs QA\n\n## Verification / test plan\n\n1. `npm test -- --ci -- useRecordingEngine`\n2. Full CI gates\n\n## Links\n\n- Sibling: useVerseAudio tests ticket\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-08-25T14:17:29Z",
+    "updated_at": "2026-08-26T16:59:41Z",
+    "closed_at": "2026-08-26T16:59:41Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/371",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

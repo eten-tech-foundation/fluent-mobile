@@ -1,0 +1,43 @@
+{
+  "issue_number": 95,
+  "fetched_at_utc": "2026-10-20T00:34:26Z",
+  "issue": {
+    "number": 95,
+    "title": "Recording engine on expo-audio",
+    "state": "closed",
+    "body": "### Current state on main\n\n- `src/app/tabs/ViewChapter.tsx` simulates recording with local state only:\n\n```tsx\n// src/app/tabs/ViewChapter.tsx:27\ntype VerseState = 'idle' | 'recording' | 'recorded';\n// :109 button toggles 'recording' <-> 'recorded' \u2014 no audio is captured\n```\n\n- **Absent:** any `expo-audio` (or other) recording dependency in `package.json`; no permission handling.\n- Output target already exists: `recordings.local_file_path` and the `audioStorage` helpers from #94.\n\n### Problems / why (anti-patterns to avoid)\n\n[PR #82](https://github.com/eten-tech-foundation/fluent-mobile/pull/82) implements recording through **`@simform_solutions/react-native-audio-waveform`** (`src/hooks/useVerseAudio.ts`), which:\n- Is **not an Expo module** and couples recording to a waveform UI library and imperative `IWaveformRef` refs.\n- Mixes `react-native-fs` file moves, `Alert` dialogs, and DB writes into the recording call (`stopRecord`).\n\nWe standardize capture on `expo-audio`, decoupled from UI and storage.\n\n### Target design\n\n```bash\nnpx expo install expo-audio\n```\n\n- A thin recorder service/hook around `expo-audio`'s recording API (e.g. `useAudioRecorder` / `AudioModule`) exposing `start()`, `pause()`, `resume()`, `stop(): Promise<{ uri, durationMs }>` and a recorder status.\n- **Permissions:** request the microphone permission via `expo-audio`'s permission API; on denial, surface a recoverable UI state (no hard `Alert` coupling inside the engine \u2014 let the screen decide).\n- **Config:** declare the mic permission/usage in `app.config.ts` (Android `RECORD_AUDIO`; the `expo-audio` config plugin handles the manifest).\n- Engine returns a temp URI + duration; persistence (move to `recordingPath(id)`, DB insert) is handled by the state machine (#97) + multi-take wiring (#98) \u2014 **not** inside the engine.\n\n```ts\n// shape only \u2014 engine stays UI/storage-agnostic\ntype RecorderApi = {\n status: 'idle' | 'recording' | 'paused';\n start(): Promise<void>;\n pause(): Promise<void>;\n resume(): Promise<void>;\n stop(): Promise<{ uri: string; durationMs: number }>;\n};\n```\n\n### Implementation steps\n\n1. `npx expo install expo-audio`.\n2. Add mic permission/usage config to `app.config.ts` (Android `RECORD_AUDIO`).\n3. Implement a recorder hook/service wrapping `expo-audio` record APIs with start/pause/resume/stop + status.\n4. Implement a `requestMicPermission()` helper returning `granted | denied | undetermined`.\n5. Keep the engine free of `Alert`, navigation, file moves, and DB writes (those live in #97/#98).\n6. Add jest mock for `expo-audio` (#111); unit-test status transitions and that `stop()` returns a uri+duration.\n\n### Acceptance criteria\n\n- [ ] Recording engine built on `expo-audio` (no Simform/`react-native-audio-waveform`, no `react-native-fs`).\n- [ ] start/pause/resume/stop work and expose recorder status.\n- [ ] Mic permission requested via `expo-audio`; denial is a recoverable state, not a thrown `Alert`.\n- [ ] Android `RECORD_AUDIO` declared via `app.config.ts`.\n- [ ] Engine has no storage/DB/UI side effects; covered by mocked unit tests.\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Tests default `EXPO_PUBLIC_API_BASE_URL=http://localhost:9999` via `jest.env.cjs`; **no live API required**.\n- jest-expo with a mocked `expo-audio`: assert state transitions and the `stop()` payload.\n- Do **not** use `FLUENT_USER_EMAIL`. Real mic capture is verified manually on a device build.\n\n### Dev setup notes (current)\n\n```bash\nnpm install && npm run prebuild # required: new native module + permission\nnpm start # + npm run android (expo-dev-client); grant mic permission on first record\n```\n\n### Out of scope\n\n- Playback + waveform (#96), state machine (#97), multi-take/DB wiring (#98), upload (#100), file path helpers (#94).\n\n### Links\n\n- Epic: #116\n- Anti-pattern: [PR #82](https://github.com/eten-tech-foundation/fluent-mobile/pull/82) `src/hooks/useVerseAudio.ts` (Simform + RNFS)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:45:54Z",
+    "updated_at": "2026-07-23T03:34:16Z",
+    "closed_at": "2026-07-23T03:34:16Z",
+    "labels": [
+      "enhancement",
+      "SP 1"
+    ],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/95",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4906598841,
+      "user": "fel-cesar",
+      "created_at": "2026-07-07T17:28:39Z",
+      "updated_at": "2026-07-07T17:28:39Z",
+      "body": "Superseded by PR #158 (#49). The recording engine / state machine / multi-take wiring described here is implemented in `src/hooks/useRecorder.ts` + `src/app/tabs/drafting/record/hooks/useVerseRecorder.ts`, built on `expo-audio` (no Simform / react-native-fs) with mocked unit tests. It was delivered as one fused module rather than the thin-engine/state-machine/multi-take split originally scoped here.\n\nProposed resolution: **close as implemented-via-#158**, unless we specifically want to refactor toward the original layered split \u2014 in which case this should be rewritten as a \"refactor #158's recorder\" task. See the reconciliation note on #158 for the full AC mapping.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/95#issuecomment-4906598841"
+    },
+    {
+      "id": 5025016487,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-20T17:13:46Z",
+      "updated_at": "2026-07-20T17:13:46Z",
+      "body": "**Assignee cleared** \u2014 `fel-cesar` is no longer on the project.\n\nRelated recording PRs closed (do not merge): #158, #178, #184. Branches remain as reference/salvage only.\n\nThis issue stays open. Re-assign when someone intentionally picks it up; prefer thin PRs against current `main` rather than reviving the closed mega-diffs.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/95#issuecomment-5025016487"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,32 @@
+{
+  "issue_number": 16,
+  "fetched_at_utc": "2026-10-20T00:33:50Z",
+  "issue": {
+    "number": 16,
+    "title": "Fetch & upsert all API data",
+    "state": "closed",
+    "body": "## Context\n\n- Part of the mobile sync epic: #14\n- Depends on: #15 \n\n## Background\nCore sync logic. Fetches all required data from the server in order and \nupserts into SQLite. Runs on every manual sync trigger.\n\n## Tasks\n\n### 1. Chapter assignments\n- [ ] Call `GET /users/:userId/chapter-assignments` using `userId` from MMKV\n- [x] Use `assignedChapters` array only \u2014 ignore `peerCheckChapters`\n- [x] Upsert into `chapter_assignments`:\n\n| Column | Source |\n|--------|--------|\n| `id` | `chapterAssignmentId` |\n| `project_unit_id` | `projectUnitId` |\n| `bible_id` | `bibleId` |\n| `book_id` | `bookId` |\n| `chapter_number` | `chapterNumber` |\n| `assigned_user_id` | `assignedUserId` |\n| `status` | `status` |\n| `submitted_time` | `submittedTime` |\n| `updated_at` | `updatedAt` |\n\n### 2. Derive project_units\n- [x] Collect distinct `projectUnitId` values from the assignments response\n- [x] Upsert into `project_units` with `id` and `project_id` \n      (matched from projects already in SQLite)\n- [x] No separate fetch needed\n\n### 3. Bulk bible texts\n- [x] After chapter assignments are written, collect all unique \n      `(bookId, chapterNumber)` pairs from `chapter_assignments`\n- [x] Group by `bibleId` (a user may be assigned chapters across multiple bibles)\n- [x] Skip the bulk call entirely if all `(bible_id, book_id, chapter_number)` \n      combos already exist in SQLite \u2014 avoids re-fetching on every sync\n- [x] For each `bibleId`, call `POST /bibles/:bibleId/bulk-texts` with:\n```json\n{\n  \"chapters\": [\n    { \"bookId\": 40, \"chapterNumber\": 1 },\n    { \"bookId\": 40, \"chapterNumber\": 2 }\n  ]\n}\n```\n- [x] Upsert into `bible_texts`:\n\n| Column | Source |\n|--------|--------|\n| `id` | response `id` |\n| `bible_id` | URL param `bibleId` |\n| `book_id` | response `bookId` |\n| `chapter_number` | response `chapterNumber` |\n| `verse_number` | response `verseNumber` |\n| `text` | response `text` |\n\nNote: `bible_id`, `book_id`, and `chapter_number` must be injected \nmanually when writing rows as they are not inside the `verses` array.\n\n## Acceptance criteria\n- [x] After sync, `chapter_assignments`, `project_units` and `bible_texts` \n      are all populated\n- [x] `project_units` rows are derived from assignments \u2014 no extra API call\n- [ ] Bulk bible texts call is skipped if data already exists in SQLite\n- [x] Re-running sync does not duplicate rows (upsert on `id`)",
+    "user": "Joel-Joseph-George",
+    "created_at": "2026-04-13T06:49:56Z",
+    "updated_at": "2026-07-02T19:51:20Z",
+    "closed_at": "2026-04-17T11:33:28Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/16",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4241637529,
+      "user": "B3RN153",
+      "created_at": "2026-04-14T06:10:49Z",
+      "updated_at": "2026-04-14T06:10:49Z",
+      "body": "**SP5**\n1. GET primary 3 tables - (ET- 2hrs)\n2. GET project table - (ET 3hrs)\n3. GET chaper assignment-(ET 6hrs)\n4. GET bible-texts -(ET 3hrs)\n5. Derive project units -(ET 3hrs)",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/16#issuecomment-4241637529"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

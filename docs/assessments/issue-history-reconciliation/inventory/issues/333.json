@@ -1,0 +1,48 @@
+{
+  "issue_number": 333,
+  "fetched_at_utc": "2026-10-20T00:36:13Z",
+  "issue": {
+    "number": 333,
+    "title": "Update Projects Tab to Milestones with Flat Milestone List and Offline Controls",
+    "state": "closed",
+    "body": "The mobile home screen has a \"Projects\" tab that currently shows the user's projects (the current small unit, now renamed to milestones). Under the new hierarchy, this tab is renamed to \"Milestones\" and updated to show all milestones across all projects the user belongs to. For most users this is a single project's milestones; for users in multiple projects, all milestones appear in one flat list. No project-level navigation screen is introduced.\n\n## Functional Requirements\n\n- Rename the \"Projects\" tab label to \"Milestones.\"\n- Update the row subtitle from language name to project name and show the milestones instead of the chapters (e.g., \"Baka NT \u00b7 3 milestones\").\n- Populate the list all the milestones from all the projects the user belongs to.\n- In the chapter view, update the subtitle at the top from language name to project name.",
+    "user": "chadw-eten",
+    "created_at": "2026-08-13T18:05:43Z",
+    "updated_at": "2026-10-08T16:51:09Z",
+    "closed_at": "2026-10-08T16:51:09Z",
+    "labels": [],
+    "comments": 3,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/333",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5622896004,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-10T17:39:45Z",
+      "updated_at": "2026-09-10T17:39:45Z",
+      "body": "## Engineering write-up (Dev Ready)\n\nChecked against **fluent-api `main` @ `07927c6`** (2026-09-10).\n\n### Blocker: API first \u2014 do not start mobile yet\n\nThis ticket depends on the **Project \u2192 Milestone** hierarchy. On API `main` today:\n\n- There is **no** `src/domains/milestones/` domain and **no** `/projects/:id/milestones` routes.  \n- Schema is still `projects` + `project_units` (effectively one unit per project for mobile).  \n- Only design docs exist: `docs/features/milestones/proposal.md` and `docs/features/milestones/review.md` (review still lists blocking migration defects).\n\n**Before writing any fluent-mobile code for this ticket, the assigned developer must:**\n\n1. **Open a fluent-api issue** for the milestones API (list/create/get milestones under a project, response shape with milestone name + parent project name/count, and any schema/migration work from the proposal).  \n2. **Implement and merge that API work** (or confirm an equivalent API PR is already on `main`).  \n3. Only then start the mobile Milestones tab / subtitle changes against the real API + sync model.\n\nUntil the API exists, mobile cannot truthfully show a flat list of milestones across projects as specified.\n\n### Mobile (after API)\n- Rename Projects tab \u2192 Milestones; flat list across projects the user belongs to.  \n- Row subtitle: project name + milestone count (not language name).  \n- Chapter view header subtitle: project name.\n\nMoving to **Dev Ready** with the above start-order constraint.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/333#issuecomment-5622896004"
+    },
+    {
+      "id": 5730638127,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-09-18T13:24:38Z",
+      "updated_at": "2026-09-18T13:37:46Z",
+      "body": "Tracking the API work @mattrace-gloo  called out in the engineering write-up above.\n\nCreated the fluent-api ticket for the milestones hierarchy + flat list endpoint:\n\n- **Issue:** [eten-tech-foundation/fluent-api#342](https://github.com/eten-tech-foundation/fluent-api/issues/342) \u2014 Milestones API for mobile #333\n- **PR:** [eten-tech-foundation/fluent-api#343](https://github.com/eten-tech-foundation/fluent-api/pull/343)\n\nThis covers the API blocker (named `project_units`, nested milestones CRUD, `GET /users/{userId}/milestones` with `projectName` / `milestoneCount`). Mobile #333 remains the product/UI ticket; implementation PR:\n\n- **PR:** [eten-tech-foundation/fluent-mobile#552](https://github.com/eten-tech-foundation/fluent-mobile/pull/552)\n\nPair with [fluent-api#342](https://github.com/eten-tech-foundation/fluent-api/issues/342) for release/QA \u2014 merge/deploy API before mobile.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/333#issuecomment-5730638127"
+    },
+    {
+      "id": 5730826013,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-09-18T13:39:58Z",
+      "updated_at": "2026-09-18T13:42:36Z",
+      "body": "### Dev testing \u2014 sync cloud may appear on unrelated milestone rows\n\nWhile manually testing the Milestones tab on device, I noticed behavior that is easy to misread as a regression from this work.\n\n**What I saw**\n- After recording **Genesis 1** in one milestone, the upload/sync cloud (`SyncIndicator`) also appeared on other milestone rows that include Gn 1 in the same bible \u2014 milestones I had not opened.\n\n**Why**\n- Local `recordings` are keyed by `bible_text_id`, not by `project_unit_id`.\n- Milestone row `syncState` joins recordings to chapters via bible location (`RECORDINGS_JOIN_CA` in `queries.ts`), so any milestone sharing that book/chapter can show the same indicator.\n\n**Please take care when reviewing**\n- This is **pre-existing** \u2014 it was already true when Home listed projects, and it is **not introduced by #333** / [#552](https://github.com/eten-tech-foundation/fluent-mobile/pull/552).\n- Flagging here only so reviewers and testers do not treat \u201ccloud on multiple cards after one recording\u201d as a defect in this PR.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/333#issuecomment-5730826013"
+    }
+  ],
+  "comments_fetched_count": 3,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,32 @@
+{
+  "issue_number": 22,
+  "fetched_at_utc": "2026-10-20T00:33:54Z",
+  "issue": {
+    "number": 22,
+    "title": "Architecture of project",
+    "state": "closed",
+    "body": "- [x] Fix the file structure architecture of the project \n",
+    "user": "B3RN153",
+    "created_at": "2026-04-17T05:26:30Z",
+    "updated_at": "2026-07-02T19:51:27Z",
+    "closed_at": "2026-04-22T17:22:18Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/22",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4265663895,
+      "user": "B3RN153",
+      "created_at": "2026-04-17T05:29:36Z",
+      "updated_at": "2026-04-17T05:29:36Z",
+      "body": "**SP6**\n\n_DEV_\n1. Estimated time: 3 hrs\n\n_Review_\n1. Estimated time: 2 hrs\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/22#issuecomment-4265663895"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,25 @@
+{
+  "issue_number": 586,
+  "fetched_at_utc": "2026-10-20T00:38:04Z",
+  "issue": {
+    "number": 586,
+    "title": "Count verse coverage toward pericope-mode chapter completeness [Pericope view Audit]",
+    "state": "closed",
+    "body": "Found during the pericope view audit (#534, epic #526).\n\n**Severity:** Medium  \n**Launch blocker:** No  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), `main` @ `4ebeae2`, `dev.api.fluent.bible` (scenario F.24)\n\n## Summary\n\n`isChapterFullyRecordedPericopeMode` (`src/db/queries.ts`) treats a pericope as recorded only when a selected take's range equals the pericope exactly. A pericope recorded verse by verse (shown as a `Stitched` row, #411) does not count. The Bible tab (`unitRecordedStatus`) counts verse coverage, so it shows a green check while the Record tab never shows the advance CTA.\n\n## Expected\n\nThe Bible tab status and the advance gate agree. Pending product decision (see Open Questions in the assessment): if verse coverage counts, a pericope whose verses are all recorded counts as recorded for advancement.\n\n## Actual\n\nAfter recording every verse in verse mode and switching to pericope mode, every card shows a check, but the CTA does not appear on the last pericope.\n\n## Steps to reproduce\n\n1. In verse mode, record every verse of a chapter.\n2. Switch to pericope mode and open the chapter's last pericope on Record.\n3. The stage-advance CTA is missing; the Bible tab shows every pericope as recorded.\n\n## Acceptance criteria\n\n- [ ] Product confirms whether verse coverage counts in pericope mode.\n- [ ] Completeness in pericope mode uses the same coverage rule as the Bible tab status.\n- [ ] Unit tests cover mixed verse/pericope coverage in `isChapterFullyRecordedPericopeMode`.\n- [ ] Android device QA for verse-only, pericope-only and mixed chapters.\n\n## Related\n\n- Parent audit: #534 (epic #526)\n- Feature: #542 (PR #550), #411, #408\n- Assessment: `docs/assessments/pericope-view/README.md` (PR #583)\n\n\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-25T17:20:16Z",
+    "updated_at": "2026-10-08T18:22:22Z",
+    "closed_at": "2026-10-08T18:22:22Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/586",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,25 @@
+{
+  "issue_number": 91,
+  "fetched_at_utc": "2026-10-20T00:34:21Z",
+  "issue": {
+    "number": 91,
+    "title": "Extract & harden forgot-password flow",
+    "state": "closed",
+    "body": "### Context\n\n### Current state in baseline\n\n`src/app/tabs/LoginScreen.tsx` implements forgot-password as two of its three view modes:\n\n```ts\n// src/app/tabs/LoginScreen.tsx:26\ntype ViewMode = 'login' | 'forgot' | 'sent';\n// handleForgotPassword (:96) -> FluentAPI.forgotPassword(trimmedEmail) -> setView('sent')\n```\n\nThe API call exists in `src/services/api.ts`:\n\n```ts\nforgotPassword: (email: string) =>\n publicRequest('/api/auth/forget-password', {\n method: 'POST',\n body: JSON.stringify({ email }),\n headers: MOBILE_HEADERS,\n }),\n```\n\nThe `forgot` view has its own field error (`forgotFieldError`) and global error (`globalForgotError`) state, and the `sent` view offers \"Resend email\" and \"Back to login\". So this is a **harden/extract**, not a green-field build.\n\n### Problems / why\n\n- Forgot-password, login, and the \"check your email\" confirmation are all interleaved in a single 385-line component \u2192 hard to test and to navigate to directly.\n- `publicRequest` (which `forgotPassword` uses) currently lacks failure logging \u2014 fixed in #88; this flow benefits from that.\n- Reuses the inline `isValidEmail` (duplicated logic, see #90).\n- No accessibility metadata or `testID`s; no deep-linkable route for \"Forgot password\".\n\n### Target design\n\n- Extract the forgot-password and confirmation UI into a dedicated screen/component (e.g. `src/app/tabs/ForgotPasswordScreen.tsx`) with its own route in `RootStackParamList` (`src/types/navigation/types.ts`) and `AppNavigator.tsx`, mirroring how `PrivacyPolicy`/`TermsOfUse` are registered.\n- Reuse the shared `validateEmail` util (#90) and theme tokens (`src/theme/`).\n- Keep the same UX states (form \u2192 sent \u2192 resend/back), add accessibility props + `testID`s.\n- Surface API/network errors via the screen, relying on `publicRequest` logging from #88.\n\n### Implementation steps\n\n1. Create `ForgotPasswordScreen` from the existing `forgot`/`sent` blocks in `LoginScreen`.\n2. Add `ForgotPassword` to `RootStackParamList` and register it in `AppNavigator.tsx` (available in both signed-in and signed-out stacks if needed).\n3. Replace the in-screen `switchToForgot` link in `LoginScreen` with navigation to the new route.\n4. Reuse `validateEmail` (#90) and theme tokens; add a11y + `testID`s.\n5. Add a component test: invalid email shows error; valid email calls `FluentAPI.forgotPassword` and renders the \"sent\" state; resend works.\n\n### Acceptance criteria\n\n- [ ] Forgot-password is a standalone, directly navigable screen/route.\n- [ ] `LoginScreen` no longer owns `forgot`/`sent` view modes (or they delegate to the new screen).\n- [ ] Uses shared email validation + theme tokens; a11y labels + `testID`s present.\n- [ ] Success and failure paths covered by a mocked-API component test.\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Tests default `EXPO_PUBLIC_API_BASE_URL=http://localhost:9999` via `jest.env.cjs`; **no live API required** (mock `FluentAPI.forgotPassword`).\n- Do **not** use `FLUENT_USER_EMAIL`.\n\n### Out of scope\n\n- Server-side reset email behavior (owned by fluent-api).\n- Login screen styling/a11y beyond what this extraction touches (#90).\n\n### Links\n\n- Epic: #115\n- Related: #90 (Login harden), #88 (`publicRequest` logging)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:45:48Z",
+    "updated_at": "2026-07-02T20:11:43Z",
+    "closed_at": "2026-07-02T19:32:22Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/91",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

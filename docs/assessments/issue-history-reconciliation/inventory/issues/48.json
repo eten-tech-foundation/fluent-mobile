@@ -1,0 +1,25 @@
+{
+  "issue_number": 48,
+  "fetched_at_utc": "2026-10-20T00:34:06Z",
+  "issue": {
+    "number": 48,
+    "title": "Build Bible Tab with Verse List and Sequential Playback",
+    "state": "closed",
+    "body": "The Bible Tab is the listening surface on the drafting page. Oral Bible translation follows a listen-then-record workflow \u2014 translators absorb source passages before rendering them in the target language. The Bible Tab supports the full listening session: showing all verses in a chapter, tracking recording status at a glance, and allowing the translator to select any verse to work on. BCS field testers confirmed the concept immediately: \"this is a good idea as a translator because you can listen to the whole chapter.\"\n\nThis build targets verse-by-verse translation. Pericope view is a future phase.\n\n## Functional Requirements\n\n### Verse List\n- Display all verses in the chapter as a vertically scrollable list, one row per verse.\n- Each row shows: verse number on the left, full verse text (no expand/collapse needed; verses are short). A small `li:audio-waveform` icon appears below the verse number on the left side for every verse \u2014 green when a recording exists for that verse, gray when no recording exists yet.\n- On page entry, auto-scroll to the selected verse (see #47 for selected verse default logic).\n- Two distinct visual states apply to verse rows simultaneously:\n  - **Selected verse:** filled left border accent \u2014 marks the verse the translator is working on; set only by explicit user action.\n  - **Currently playing verse:** full row background highlight \u2014 tracks whichever verse the audio is currently playing through; updates as playback advances.\n  - When both states apply to the same row, both indicators are shown together.\n- Tapping a verse sets it as the selected verse, scrubs the player to that verse's start, and does not auto-play.\n\n### Sequential Playback\n- When source audio for a verse finishes playing, auto-advance: load the next verse's audio and begin playback automatically; update the currently playing highlight to the next row.\n- Sequential playback does not change the selected verse \u2014 it only moves the currently playing indicator.\n- Scroll the currently playing row into view if it is off-screen.\n- Stop when the last verse in the chapter finishes; do not loop.\n- If the user taps a verse during playback, that tap sets the selected verse and scrubs the player to that verse's start; auto-advance continues from that position.\n\n### When there is no source audio\n- When source audio is not available, the player should be hidden.\n\n<img width=\"389\" height=\"816\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/df41d4af-02e2-4169-a6f8-d5cd9c71f8b5\" />",
+    "user": "chadw-eten",
+    "created_at": "2026-06-04T15:34:05Z",
+    "updated_at": "2026-07-10T15:37:11Z",
+    "closed_at": "2026-07-10T15:37:11Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/48",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

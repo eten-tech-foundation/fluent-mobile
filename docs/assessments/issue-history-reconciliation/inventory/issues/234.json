@@ -1,0 +1,42 @@
+{
+  "issue_number": 234,
+  "fetched_at_utc": "2026-10-20T00:35:31Z",
+  "issue": {
+    "number": 234,
+    "title": "Fix FK failure in chapter assignment sync for PM with no assigned work",
+    "state": "closed",
+    "body": "## Summary\n\nPost-login sync can fail with a SQLite foreign key error when inserting chapter assignment sync data. Reported while reviewing [#230](https://github.com/eten-tech-foundation/fluent-mobile/pull/230) for a project manager who has active projects but **no assigned translation work**.\n\nThis looks unrelated to the bible-text full-fetch change in #230 (that PR only fills bible texts when local verse count is zero). Tracking here so #230 can merge separately.\n\n## Repro\n\n1. Fresh install / clear local DB.\n2. Sign in as a project manager against the dev cloud DB.\n3. User has active projects but no assigned chapter translation work.\n4. Observe post-login sync failure.\n\n## Observed\n\nFrom the review logs on #230:\n\n- `[SyncService] User chapter work sync failed, retrying` with `FOREIGN KEY constraint failed` from op-sqlite\n- Failure path: `insertChapterAssignmentSyncData` during user chapter work sync (retries \u00d73, then post-login sync fails)\n- App log: `[App] Post-login sync failed` with the same FK error\n\n## Expected\n\nPost-login sync should succeed (or soft-fail without blocking) for users who have projects but no chapter assignments. FK inserts should not reference missing parent rows.\n\n## Acceptance criteria\n\n- [ ] Reproduce (or unit/integration cover) FK failure path around `insertChapterAssignmentSyncData` for empty / orphan assignment payloads\n- [ ] Fix ordering or filtering so chapter assignment sync does not insert rows that violate FKs when the user has no assigned work\n- [ ] Post-login sync no longer fails for a PM with active projects and zero assignments\n- [ ] Add or extend a test covering this case\n\n## File pointers\n\n- `src/db/repository.ts` \u2014 `insertChapterAssignmentSyncData`\n- `src/services/sync.ts` \u2014 user chapter work sync calling that insert\n- `App.tsx` \u2014 post-login `syncAllData` catch / log\n\n## Related product note (not blocking the bug)\n\nHome defaults to the My Work tab via `useState<HomeTab>('myWork')` in `src/app/screens/HomeScreen.tsx`. kaseywright asked whether Product wants that for all roles (including PMs with no assigned work). Confirm with Product; change only if they want a different default (e.g. Projects).\n\n## Links\n\n- Review / screenshots: https://github.com/eten-tech-foundation/fluent-mobile/pull/230#pullrequestreview-4755780308",
+    "user": "mattrace-gloo",
+    "created_at": "2026-07-23T03:38:49Z",
+    "updated_at": "2026-08-18T21:36:59Z",
+    "closed_at": "2026-08-18T21:36:59Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/234",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5123592472,
+      "user": "mattrace-buildmidwestern",
+      "created_at": "2026-07-29T21:33:40Z",
+      "updated_at": "2026-07-29T21:33:40Z",
+      "body": "**Needs re-verification on current `main`** (tracker cleanup note).\n\nSince this was filed, `main` gained migration/sync hardening that nulls orphan `assigned_user_id` values when the user row is not local (part of #99 / #248 \u2014 see `insertChapterAssignmentSyncData` in `src/db/repository.ts`).\n\nPlease re-test the original PM repro (active projects, zero assigned chapter work, fresh DB, post-login sync):\n- If sync succeeds \u2192 close this issue (or narrow AC to any remaining failure mode).\n- If it still fails \u2192 keep open and attach fresh logs.\n\nLeaving Project Status as Backlog until that check.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/234#issuecomment-5123592472"
+    },
+    {
+      "id": 5140440622,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-31T07:27:37Z",
+      "updated_at": "2026-07-31T07:27:37Z",
+      "body": "## API readiness note (board audit)\n\n**Status on fluent-api `main`:** Present for chapter-assignment sync \u2014 `GET /users/{userId}/chapter-assignments/all` (and related) exist. Bug is local insert ordering/FK when payloads are empty/orphan for PMs with projects but no assigned work.\n\n**Implement with:** Fix mobile repository/sync filtering. No mock API; use real (or empty) sync payloads.\n\n### Follow up with fluent-api team\nWhen you pick this up, please ask the fluent-api team:\n1. Is the needed feature planned / in progress?\n2. Expected ETA (or \u201cnot scheduled\u201d)?\n3. Is there already an open fluent-api GitHub issue or PR? If yes, link it here; if no, ask them to file one (or file it yourself and link it).\n\nChecked against local fluent-api `main` @ `3ef4025` (2026-07-31).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/234#issuecomment-5140440622"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

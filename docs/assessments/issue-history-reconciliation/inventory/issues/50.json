@@ -1,0 +1,25 @@
+{
+  "issue_number": 50,
+  "fetched_at_utc": "2026-10-20T00:34:08Z",
+  "issue": {
+    "number": 50,
+    "title": "Build Prepare for Offline Screen with Chapter Selection",
+    "state": "closed",
+    "body": "The Prepare for Offline screen walks translators through downloading project resources before losing connectivity. This ticket builds the screen header, introductory copy, chapter selection accordion, and dismissal path (the portion of the screen that orients the translator and determines which chapters are included in the download). For assigned translators, chapter selection is pre-loaded and collapsed; for unassigned translators, it is a required first step before any download can proceed.\n\n## Functional Requirements\n\n### Page Header\n- Display \"Prepare for Offline\" as the page title.\n- Include a back button (`li:chevron-left`) in the top left.\n- Display a brief instructional line directly below the title: \"Download project resources to work without a connection.\"\n\n### Chapter Selection Accordion\n- Display the chapter selection accordion below the page header and instructional line, before tier selection.\n- For assigned users, render the accordion collapsed by default; show the label \"Assigned chapters ([n])\" with the pre-loaded chapter count. The visual treatment must communicate coverage, not prompt action.\n- For unassigned users, render the accordion open by default; chapter selection is required before proceeding; the Download button (next ticket) is inactive until at least one chapter is selected.\n- Show the total selected chapter count in the accordion header, updating live as selections change.\n- Inside the accordion, list all books in the project as collapsible sections with a `li:chevron-up` (expanded) / `li:chevron-down` (collapsed) toggle, expanded by default.\n- Each book header includes a \"Select all\" control (`li:circle-check`) to select or deselect all chapters in that book at once.\n- Display chapters as numbers only (e.g., \"1\", \"2\", \"3\") in a 5-column grid of circular selectors.\n- For assigned users, pre-select all assigned chapters.\n- For unassigned users, no chapters are pre-selected.\n- Any chapter can be freely selected or deselected regardless of assignment state.\n\n<img width=\"390\" height=\"442\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/358c44f0-c72f-4cf4-af26-25ee6fa9ebf2\" />",
+    "user": "chadw-eten",
+    "created_at": "2026-06-04T19:06:18Z",
+    "updated_at": "2026-07-15T22:17:13Z",
+    "closed_at": "2026-07-15T22:17:13Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/50",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,25 @@
+{
+  "issue_number": 204,
+  "fetched_at_utc": "2026-10-20T00:35:22Z",
+  "issue": {
+    "number": 204,
+    "title": "Truth-up agent docs and theme conventions to match main",
+    "state": "closed",
+    "body": "## Summary\n\nAgent onboarding docs and Cursor rules still describe an older launch path and screen map. Theme guidance still points new UI at `appStyles` hex dumps instead of `src/theme` tokens.\n\n## Acceptance criteria\n\n- [ ] Document actual launch: `initializeDatabase` \u2192 `restoreSession` \u2192 navigator; sync post-login (not cold-start `syncAllData` as the only path)\n- [ ] Update screen/path map to current `src/app/screens/` + `src/app/tabs/` (Home, Drafting, Sync, Settings, etc.)\n- [ ] Fix `code-style.mdc` to use `getApiBaseUrl()` (not non-existent `API_BASE_URL` named export)\n- [ ] Align `architecture.mdc` / `project-overview.mdc` launch + screen wording with code\n- [ ] Document `src/theme` as canonical for new UI; do not add new hardcoded hex in new styles; `appStyles` is legacy until migrated by touch\n\n## Out of scope\n\nRuntime refactors, full `appStyles` rewrite, migration framework (#110).",
+    "user": "mattrace-gloo",
+    "created_at": "2026-07-20T18:21:44Z",
+    "updated_at": "2026-07-23T02:53:33Z",
+    "closed_at": "2026-07-23T02:53:33Z",
+    "labels": [
+      "documentation"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/204",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

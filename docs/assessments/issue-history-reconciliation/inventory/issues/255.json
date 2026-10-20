@@ -1,0 +1,32 @@
+{
+  "issue_number": 255,
+  "fetched_at_utc": "2026-10-20T00:35:39Z",
+  "issue": {
+    "number": 255,
+    "title": "Replace Settings Menu Overlay with Slide-Out Panel",
+    "state": "closed",
+    "body": "The current settings and accounts menu appears as a floating overlay card anchored near the top of the screen. This ticket replaces that overlay with a full-height slide-out panel that opens from the left edge, giving the menu more vertical room and a more native mobile feel.\n\n## Functional Requirements\n\n### Slide-Out Panel\n- Replace the overlay card with a panel that slides in from the left edge, covering the full screen height\n- Size the panel width to fit its content; leave the remaining screen area visible beneath a scrim\n- Dismiss the panel when the user taps the scrim or swipes left\n- Animate the panel sliding in and out on open and close\n\n### Menu Content\n- Retain all existing menu items and their order, icons, labels, and behaviors from the current overlay menu\n\n### Sign Out\n- Keep Sign Out visually separated from the rest of the menu items, as in the current design\n\n<img width=\"386\" height=\"861\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/87e2482f-5100-499d-a934-c01247ccdf17\" />",
+    "user": "chadw-eten",
+    "created_at": "2026-07-23T19:54:01Z",
+    "updated_at": "2026-08-06T04:59:16Z",
+    "closed_at": "2026-08-06T04:59:16Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/255",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5187585045,
+      "user": "Roslin22",
+      "created_at": "2026-08-05T04:34:42Z",
+      "updated_at": "2026-08-05T08:46:48Z",
+      "body": "**Test Results #255**\n\n- The Settings panel opens correctly, and all icons and labels are clearly visible.\n- The overlay menu has been replaced with a panel that slides in from the left and covers the full height of the screen.\n- The panel width adjusts to fit its content, and the rest of the screen remains visible with a dimmed background (scrim).\n\n**Issues Found**\n\n- The panel closes when the user taps the dimmed background (scrim), but it does not close when swiping left.\n- The slide-in and slide-out animation when opening and closing the panel is not implemented.\n\n\nMoving this issue to In progress",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/255#issuecomment-5187585045"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

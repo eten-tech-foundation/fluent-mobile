@@ -1,0 +1,25 @@
+{
+  "issue_number": 545,
+  "fetched_at_utc": "2026-10-20T00:37:42Z",
+  "issue": {
+    "number": 545,
+    "title": "Bug: Sync Now can no-op while pending uploads remain",
+    "state": "closed",
+    "body": "## Summary\n\nSync Now can appear to do nothing (or briefly \u201ccomplete\u201d) while the Sync page still shows pending uploads. Confirmed from `origin/main` code review while investigating Chad\u2019s report on build `749d31f` (#fluent-mobile-team, 2026-09-17).\n\n### Confirmed silent / empty paths\n\n1. **Offline Sync Now still enabled** \u2014 `cellularBlocked` is only `isOnline && !isWifi && !uploadOverCellular`. When `isOnline === false`, Sync Now stays enabled; `runSession` hits `gate === 'offline'` and returns with no toast/error (`SyncScreen.runSyncNow`, `uploadOrchestratorCore.transportAllowsUpload`).\n2. **Pending count vs chapter list mismatch** \u2014 `getPendingUploadCount()` counts selected non-uploaded recordings **without** joining `bible_texts`. `getPendingUploadChapters()` **INNER JOINs** `bible_texts`. Orphan / missing `bible_text_id` rows inflate the pending badge, but Sync Now gets `chapters.length === 0`, emits `idle`, and exits (`queries.ts`).\n3. **Non-verse pending ignored by the worker** \u2014 UI pending count / chapter list do **not** filter granularity. `getPendingRecordings()` only returns `IFNULL(granularity,'verse') = 'verse'`. A chapter with only pericope (or other non-verse) pending takes can start a session that uploads **0** files while pending remains (`repository.getPendingRecordings`, `#410`).\n\n## Acceptance criteria\n\n- [ ] Sync Now is not presented as actionable when transport cannot upload (offline / waiting-for-Wi\u2011Fi), **or** tapping it shows a clear, persistent reason (not a silent return).\n- [ ] Pending badge / Sync page counts agree with what the upload orchestrator will actually process (same join + granularity rules as `getPendingUploadChapters` + `getPendingRecordings`).\n- [ ] If pending rows cannot be uploaded (orphan `bible_text_id`, unsupported granularity, missing assignment), surface a Sync-page error and keep Sync Now from looking like a successful no-op.\n- [ ] Unit tests cover: offline Sync Now feedback; count>0 with empty chapters; non-verse-only pending chapter.\n\n## Out of scope\n\n- Surfacing `recordings.upload_error` copy (separate ticket).\n- Aligning download vs upload cellular/Wi\u2011Fi policy (separate ticket).\n- API R2 / 503 environment diagnosis for a specific device.\n\n## Related\n\n- Observed on build `749d31f` (pericope ordering only; `#469`/`#470` already included).\n- Slack: Chad White, #fluent-mobile-team, Sync Now \u201cdoes nothing\u201d + later failed upload.\n- Code: `src/app/screens/SyncScreen.tsx`, `src/services/uploadOrchestratorCore.ts`, `src/db/queries.ts` (`getPendingUploadCount` / `getPendingUploadChapters`), `src/db/repository.ts` (`getPendingRecordings`).\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-17T15:27:57Z",
+    "updated_at": "2026-09-23T00:51:08Z",
+    "closed_at": "2026-09-23T00:51:08Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/545",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

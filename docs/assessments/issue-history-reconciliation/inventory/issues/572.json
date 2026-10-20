@@ -1,0 +1,32 @@
+{
+  "issue_number": 572,
+  "fetched_at_utc": "2026-10-20T00:37:56Z",
+  "issue": {
+    "number": 572,
+    "title": "Pause in-flight downloads when transport becomes blocked",
+    "state": "closed",
+    "body": "## Summary\n\nThe Wi-Fi / cellular transport gate currently applies to download **start**, **resume**, and queue auto-resume only. Turning off **Upload/Download over cellular** or losing Wi-Fi does **not** pause a download that is already running.\n\nThis is the follow-up called out on [#546](https://github.com/eten-tech-foundation/fluent-mobile/issues/546) / PR #559.\n\n## Acceptance criteria\n\n- [ ] An in-flight download pauses (or otherwise stops transferring) when the shared transport policy is no longer `ok` (cellular + toggle off, or no link).\n- [ ] Upload in-flight behavior is explicit (pause vs finish current chapter) and matches the same policy unless waived.\n- [ ] UI explains why the transfer stopped.\n\n## Out of scope\n\nUnifying start/resume gating (done in #546).",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-23T18:33:19Z",
+    "updated_at": "2026-09-23T18:36:06Z",
+    "closed_at": "2026-09-23T18:36:06Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/572",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5800680433,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-09-23T18:36:05Z",
+      "updated_at": "2026-09-23T18:36:05Z",
+      "body": "Closed: opened from a review nit, not requested. Mid-download gating remains a note in PR #559 Follow-ups without a ticket.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/572#issuecomment-5800680433"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

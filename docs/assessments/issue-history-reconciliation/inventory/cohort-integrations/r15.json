@@ -1,0 +1,1105 @@
+{
+  "reviewer": "r15",
+  "wave": 4,
+  "domain": "late-gap-refill3",
+  "ids": [
+    568,
+    569,
+    570,
+    571,
+    572,
+    574,
+    578,
+    579,
+    580,
+    581,
+    584,
+    585,
+    586,
+    587,
+    588,
+    589,
+    591,
+    592,
+    593,
+    594,
+    595,
+    596,
+    597,
+    600
+  ],
+  "reviewed_at_utc": "2026-10-20T01:22:38Z",
+  "corpus": "docs/assessments/issue-history-reconciliation/inventory/issues/<id>.json",
+  "contract": "docs/assessments/issue-history-reconciliation/inventory/complete-row-contract.md",
+  "skip": {
+    "721": "Sync lead \u2014 out of scope for this reviewer"
+  },
+  "recommend_complete_count": 24,
+  "recommend_complete_false_count": 0,
+  "issues": [
+    {
+      "issue": 568,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "While recordCaptureActive, drawer swipe disabled and menu exits (Settings/account switch/Add User/Sign Out) blocked with Recording-in-progress guard; no silent discard on unmount.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/568"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/routes/(app)/_layout.tsx",
+          "lines": "76-85",
+          "fact": "useRecordCaptureGate(); swipeEnabled: !recordCaptureActive (#568)."
+        },
+        {
+          "path": "src/components/ui/UserSettingsMenu.tsx",
+          "lines": "117-138",
+          "fact": "blockIfRecording closes drawer + Recording-in-progress alert before navigate/Add User/Sign Out/account switch."
+        },
+        {
+          "path": "src/navigation/useRecordCaptureGate.ts",
+          "lines": "7-14",
+          "fact": "Subscribe hook for drafting record-capture gate (#568)."
+        },
+        {
+          "path": "src/components/ui/UserSettingsMenu.test.tsx",
+          "lines": "437",
+          "fact": "Test: blocks drawer navigation, account switch, Add User, and Sign Out while recording."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/625",
+        "fact": "Merged 2026-10-08 [#568]: publishes capture gate, disables drawer swipe, blocks drawer exits."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Drawer swipe + menu guards on HEAD.",
+        "device_evidence": "none in corpus (issue closed same day as merge; no QA comment on corpus)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Drawer mid-take escape closed by #625; swipe + menu guards present on HEAD."
+    },
+    {
+      "issue": 569,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Playing/pausing/switching takes never triggers Maximum update depth exceeded (regression of #298).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/569"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/hooks/playbackStatusGuards.ts",
+          "lines": "33-66",
+          "fact": "applyNativePlaybackStatus folds samples; same rounded time must not re-fire setState (#569)."
+        },
+        {
+          "path": "src/hooks/playbackStatusGuards.test.ts",
+          "lines": "48-66",
+          "fact": "Regression: stable mirror across 60 playing ticks (#569)."
+        },
+        {
+          "path": "src/hooks/useVerseAudio.ts",
+          "lines": "378-380",
+          "fact": "playbackLoadInFlightRef + playbackLoadGate gate load/end-idle races (#298/#569 path)."
+        },
+        {
+          "path": "src/hooks/playbackStatusGuards.ts",
+          "lines": "72-79",
+          "fact": "shouldEndPlaybackOnIdle skips while loadInFlight."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/706",
+        "fact": "Merged 2026-10-15 [#569]: status samples update React only when rounded position/duration/status change."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Playback mirror gating + Jest tick stability on HEAD.",
+        "device_evidence": "none in corpus"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Update-depth root cause addressed via applyNativePlaybackStatus + load-in-flight idle gate; #706 on HEAD."
+    },
+    {
+      "issue": 570,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Leave prompt offers Resume and Discard; Discard stops recorder, deletes temp, no DB row, then continues navigation.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/570"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "856-871",
+          "fact": "requestVerseChange shows Resume/Discard; Discard calls discardCapture then changeVerse."
+        },
+        {
+          "path": "src/hooks/useVerseAudio.ts",
+          "lines": "766-791",
+          "fact": "discardCapture: stop recorder, delete temp, persist nothing (#49)."
+        },
+        {
+          "path": "src/app/screens/DraftingScreen.tsx",
+          "lines": "102-121",
+          "fact": "Tab-leave uses CAPTURE_LEAVE Resume/Discard via captureControls."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/624",
+        "fact": "Merged 2026-10-08 [#570]: Resume/Discard leave prompt. QA Roslin22 2026-10-14 passed Resume/Discard on verse change and leave drafting."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Resume/Discard + discardCapture on HEAD.",
+        "device_evidence": "dated 2026-10-14 Roslin22 nightly/device pass (issue comment)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Resume/Discard leave path on HEAD via #624; human QA confirmed 2026-10-14."
+    },
+    {
+      "issue": 571,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Rows without delete reserve trailing slot so stitched waveform/timer align with pericope rows.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/571"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/ui/DraftTakeRow.tsx",
+          "lines": "187-193",
+          "fact": "When no onDelete, render deleteSlotSpacer with record-take-delete-spacer testID."
+        },
+        {
+          "path": "src/components/ui/DraftTakeRow.test.tsx",
+          "lines": "20-36",
+          "fact": "Component test DraftTakeRow trailing slot (#571)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/614",
+        "fact": "Merged 2026-10-05 [#571]. QA Roslin22 2026-10-14 + chadw-eten \u2705."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Delete spacer slot on HEAD.",
+        "device_evidence": "dated 2026-10-14 Roslin22 pass; chadw-eten confirm"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Stitched-row trailing spacer lands via #614; QA confirmed alignment."
+    },
+    {
+      "issue": 572,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "In-flight download pauses when transport policy is no longer ok; upload in-flight behavior explicit; UI explains stop.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/572"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "NO_PRODUCT_FIX",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/downloadQueueAutoResume.ts",
+          "lines": "39-55",
+          "fact": "Later #619: when gate !== ok and worker downloading, worker.pause('transport') \u2014 mid-download pause exists on HEAD under follow-up id, not this ticket."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/572#issuecomment-5800680433",
+        "fact": "2026-09-23 JonathanSeehagen: Closed \u2014 opened from a review nit, not requested. Mid-download gating remains a note in PR #559 Follow-ups without a ticket."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Behavior later present via #619 pause-on-transport; #572 itself closed without implementing under this id.",
+        "device_evidence": "none for #572"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Explicit close-as-not-requested; reconciliation complete. Subsequent #619 delivered similar mid-download pause on HEAD."
+    },
+    {
+      "issue": 574,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Deterministic Maestro fixtures for mine/other/unassigned/conflict/open Peer Check; ownership UI + taken-warning + online auto-claim without mutating shared data; document in Maestro guide. Partial waiver: conflict/open Peer Check/claim restore \u2192 #607.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/574"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/guides/maestro.md",
+          "lines": "182-200",
+          "fact": "Ownership/claim disposable fixtures (#574) documented with seed/test commands and role table."
+        },
+        {
+          "path": ".maestro/flows/ownership/ownership-states.yaml",
+          "lines": "36-83",
+          "fact": "Asserts chapter-ownership-mine/other and record-taken-warning."
+        },
+        {
+          "path": ".maestro/flows/ownership/ownership-auto-claim.yaml",
+          "lines": "1-65",
+          "fact": "Online first-recording auto-claim on disposable CLAIM fixture (#574)."
+        },
+        {
+          "path": ".maestro/flows/ownership/ownership-taken-warning.yaml",
+          "lines": "17",
+          "fact": "Asserts record-taken-warning."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/582",
+        "fact": "Merged 2026-09-29 [#574]. Ticket-level waiver 2026-09-29: conflict/open Peer Check/claim baseline restore deferred to #607."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Ownership Maestro flows + guide on HEAD; waived roles still noted in guide.",
+        "device_evidence": "none \u2014 engineering/E2E harness ticket (Needs QA? No)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Delivered slice + explicit partial waiver to #607; closed after #582 on main."
+    },
+    {
+      "issue": 578,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "TN/TQ/Images read Prepare-for-Offline download when present; no network when offline; unavailable state when nothing downloaded.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/578"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "OPEN_TICKET_UNRESOLVED",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/translationNotes.ts",
+          "lines": "170-210",
+          "fact": "Local-first merge; offline returns downloaded notes and never calls API (#578/#593)."
+        },
+        {
+          "path": "src/services/translationQuestions.ts",
+          "lines": "169-205",
+          "fact": "Same local-first / offline-no-API pattern (#578/#593)."
+        },
+        {
+          "path": "src/services/imagesMaps.ts",
+          "lines": "103-153",
+          "fact": "Downloaded images path; offline with nothing downloaded shows empty without API."
+        },
+        {
+          "path": "src/app/tabs/ResourcesTab.tsx",
+          "lines": "87-90",
+          "fact": "Downloaded rows used whenever present; offline inventory gates sections."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/677",
+        "fact": "Merged 2026-10-15 [#578]: offline Resources from downloads. Earlier blocked on #504/PR#562 (now merged)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Local-first TN/TQ/Images loaders on HEAD.",
+        "device_evidence": "none in corpus; issue still OPEN (likely post-merge QA)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Mobile offline Resources path on HEAD via #677; ticket still open for QA \u2014 complete \u2260 QA pass."
+    },
+    {
+      "issue": 579,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Source audio player resolves downloaded local file before API; plays offline with verse timestamps; offline without download shows unavailable not spinner.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/579"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/hooks/useSourceAudio.ts",
+          "lines": "48-62",
+          "fact": "Local Prepare-for-Offline files win over network (#579); resolveLocalChapterSourceAudio injected."
+        },
+        {
+          "path": "src/hooks/useSourceAudio.ts",
+          "lines": "204-208",
+          "fact": "Offline with nothing downloaded: setLoadState('empty'), not Retry (#579 G.27)."
+        },
+        {
+          "path": "src/services/offlineSourceAudio.ts",
+          "lines": "59-96",
+          "fact": "Sidecar JSON for verse seek offline (#579)."
+        },
+        {
+          "path": "src/services/offlineSourceAudio.ts",
+          "lines": "161-175",
+          "fact": "resolveLocalChapterSourceAudio finds downloaded source-bible audio rows."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/676",
+        "fact": "Merged 2026-10-13 [#579]: play downloaded source audio offline."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Local-first source audio + offline empty on HEAD.",
+        "device_evidence": "none in corpus after close"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Offline source-audio local-first delivered by #676; closed after merge."
+    },
+    {
+      "issue": 580,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Unassigned users: chapter accordion open on first entry; Download disabled with zero chapters selected; assigned users keep collapsed Assigned chapters (n).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/580"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/hooks/usePrepareOfflineSelection.ts",
+          "lines": "78-81",
+          "fact": "Unassigned: setAccordionExpanded(true); assigned: collapsed (#50/#580)."
+        },
+        {
+          "path": "src/hooks/usePrepareOfflineSelection.ts",
+          "lines": "50-51",
+          "fact": "Default open so next unassigned project entry starts expanded (#580)."
+        },
+        {
+          "path": "src/hooks/usePrepareOfflineResources.ts",
+          "lines": "95-100",
+          "fact": "canDownload false when !isAssignedUser && selectedCount < 1."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/626",
+        "fact": "Merged 2026-10-08 [#580]: unassigned accordion open + Download disabled."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Unassigned open accordion + canDownload gate on HEAD.",
+        "device_evidence": "none in corpus"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Unassigned Prepare-for-Offline accordion/Download AC on HEAD via #626."
+    },
+    {
+      "issue": 581,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Auto-prompt evaluation reads current settling state; if skipped for settling, retries once settling ends; deterministic #39 matrix behavior.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/581"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/screens/HomeScreen.tsx",
+          "lines": "170-177",
+          "fact": "isSettling written to isSettlingRef at evaluate time; notifySettlingChanged on change (#581)."
+        },
+        {
+          "path": "src/utils/prepareOfflineAutoPrompt.ts",
+          "lines": "140-155",
+          "fact": "notifySettlingChanged re-requests evaluation when settling ends so skipped prompts are not dropped."
+        },
+        {
+          "path": "src/app/screens/HomeScreen.tsx",
+          "lines": "265-279",
+          "fact": "Eligibility effect re-runs autoPrompt when focused + transfer-eligible after settling/connectivity resolve."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/640",
+        "fact": "Merged 2026-10-08 [#581]: Prepare for Offline auto-prompt consistency."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Settling-ref + notifySettlingChanged + eligibility re-request on HEAD.",
+        "device_evidence": "none in corpus"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Settling-aware auto-prompt retry on HEAD via #640."
+    },
+    {
+      "issue": 584,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Mobile uploads selected pericope takes via range endpoint; marks uploaded; leave can't-upload-yet bucket; Sync Now usable for metadata while leftovers remain.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/584"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/queries.ts",
+          "lines": "795-799",
+          "fact": "UPLOADABLE_PENDING_WHERE includes granularity verse and pericope (#584)."
+        },
+        {
+          "path": "src/services/api.ts",
+          "lines": "154-157",
+          "fact": "Pericope uploads use verseAudioRangeUploadPath (PUT range)."
+        },
+        {
+          "path": "src/services/recordingSync.ts",
+          "lines": "174-210",
+          "fact": "Builds pericopeRange start/end chapter+verse for upload."
+        },
+        {
+          "path": "src/app/screens/SyncScreen.test.tsx",
+          "lines": "397-405",
+          "fact": "Keeps Sync Now enabled when only failed unuploadable leftovers (#584)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/654",
+        "fact": "Merged 2026-10-08 [#584]. Comment linked fluent-api#377 for range upload API."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Pericope uploadable query + range PUT + Sync Now test on HEAD.",
+        "device_evidence": "none in corpus"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Pericope take upload path on HEAD via #654; API follow-up fluent-api#377 recorded."
+    },
+    {
+      "issue": 585,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Advance CTA disabled or blocking explanation while chapter has selected takes in unuploadable bucket; verse-mode advancement unchanged. May close as superseded once pericope takes upload.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/585"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "OPEN_TICKET_UNRESOLVED",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/utils/stageAdvancement.ts",
+          "lines": "107-152",
+          "fact": "getStageAdvanceVisibility disables when hasUnuploadableTakes."
+        },
+        {
+          "path": "src/db/queries.ts",
+          "lines": "857-868",
+          "fact": "chapterHasUnuploadableSelectedTakes blocks stage advance (#585)."
+        },
+        {
+          "path": "src/constants/messages.ts",
+          "lines": "101-103",
+          "fact": "RECORD_STAGE_ADVANCE_UNUPLOADABLE_WARNING copy."
+        },
+        {
+          "path": "src/app/tabs/RecordTab.test.tsx",
+          "lines": "1280-1289",
+          "fact": "Disables CTA and shows stage-advance-unuploadable-warning (#585)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/655",
+        "fact": "Merged 2026-10-08 [#585]. QA Roslin22 2026-10-14 verified blocking; also reported residual cannot-sync preventing Peer Check; Chad: needs fix. Ticket still OPEN."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Unuploadable advance gate on HEAD.",
+        "device_evidence": "dated 2026-10-14 Roslin22: blocking AC passed; residual sync issue named; issue remains open"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Advance-block AC present on HEAD via #655. Complete row records open residual QA sync concern \u2014 not a claim the ticket is Done/QA-passed."
+    },
+    {
+      "issue": 586,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Pericope-mode completeness uses same verse-coverage rule as Bible tab (exact pericope take OR stitched verses covering the pericope).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/586"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/queries.ts",
+          "lines": "1430-1445",
+          "fact": "isChapterFullyRecordedPericopeMode uses unitRecordedStatus verse-coverage (#542/#586)."
+        },
+        {
+          "path": "src/db/queries.ts",
+          "lines": "1470-1475",
+          "fact": "pericopes.every(unitRecordedStatus === recorded) \u2014 stitched verse coverage counts."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/656",
+        "fact": "Merged 2026-10-08 [#586]: verse coverage toward pericope-mode completeness."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Verse-coverage completeness on HEAD.",
+        "device_evidence": "none in corpus"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Pericope completeness aligned with Bible-tab coverage via #656."
+    },
+    {
+      "issue": 587,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "FluentAPI.getPericopeSet handles 200/304; syncPericopes falls back to API for unbundled sets with If-None-Match; no per-chapter requests; update stale doc comment.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/587"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "OPEN_TICKET_UNRESOLVED",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/api.ts",
+          "lines": "423-441",
+          "fact": "getPericopeSet with optional If-None-Match ETag (#587)."
+        },
+        {
+          "path": "src/services/sync.ts",
+          "lines": "936-1012",
+          "fact": "syncPericopes set-level hydrate; falls back to GET /pericope-sets/{id} when book missing from bundle."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/671",
+        "fact": "Merged 2026-10-09 [#587]. Board \u2192 In QA; Chad 2026-10-14: QA cannot test without knowing unbundled project \u2014 DevQA."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "API client + syncPericopes network path on HEAD.",
+        "device_evidence": "none \u2014 QA blocked pending fixture project; issue OPEN"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Unbundled pericope hydrate on HEAD via #671; open only for QA fixture discovery \u2014 complete \u2260 QA pass."
+    },
+    {
+      "issue": 588,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "isOnLastUnit falls back to last verse when no pericope data; UI explains pericopes unavailable; advance still works via verse rules.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/588"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/constants/messages.ts",
+          "lines": "106-110",
+          "fact": "PERICOPE_UNAVAILABLE_WARNING copy (#588)."
+        },
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "262-273",
+          "fact": "pericopeUnavailable \u2192 effectiveUnit verse fallback."
+        },
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "953-956",
+          "fact": "isOnLastUnit falls back to verse rules when no pericope data (#588)."
+        },
+        {
+          "path": "src/app/tabs/BibleTab.tsx",
+          "lines": "290-298",
+          "fact": "Shows PERICOPE_UNAVAILABLE_WARNING banner."
+        },
+        {
+          "path": "src/app/tabs/RecordTab.test.tsx",
+          "lines": "1415-1433",
+          "fact": "Shows stage advance when set id exists but no local rows (#588)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/641",
+        "fact": "Merged 2026-10-08 [#588]: handle no local pericope data."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Unavailable banner + isOnLastUnit verse fallback on HEAD.",
+        "device_evidence": "none in corpus"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "No-pericope-data UX + advance fallback on HEAD via #641."
+    },
+    {
+      "issue": 589,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Full pericope/stitched labels visible on typical phone width including cross-chapter ranges; timer stays visible; verse labels still correct.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/589"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/ui/DraftTakeRow.tsx",
+          "lines": "131-133",
+          "fact": "Take label Text has no numberOfLines clamp (timer keeps numberOfLines={1})."
+        },
+        {
+          "path": "src/components/ui/DraftTakeRow.test.tsx",
+          "lines": "67-77",
+          "fact": "Long take labels (#589): badge.props.numberOfLines undefined."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/644",
+        "fact": "Merged 2026-10-08 [#589]: show full pericope take label."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Unclamped take label + component test on HEAD.",
+        "device_evidence": "none in corpus"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Full pericope label (no single-line clamp) on HEAD via #644."
+    },
+    {
+      "issue": 591,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "TN/TQ hide when empty like Images; TQ loads with tab; all-empty online shows centered No resources available for this verse.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/591"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/tabs/ResourcesTab.tsx",
+          "lines": "288-309",
+          "fact": "Hide section when load finished empty (#591); online empty uses RESOURCES_EMPTY_MESSAGE; avoid flash while unresolved."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/647",
+        "fact": "Merged 2026-10-08 [#591]: hide empty TN/TQ sections."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Hide-when-empty + online empty copy on HEAD.",
+        "device_evidence": "none in corpus"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Empty TN/TQ hide + tab-wide empty state on HEAD via #647."
+    },
+    {
+      "issue": 592,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "While connectivity unresolved, show loading state not offline empty message; update unit test.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/592"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/tabs/ResourcesTab.tsx",
+          "lines": "295-299",
+          "fact": "if (!hasResolved) render ActivityIndicator \u2014 no empty flash (#592/#591)."
+        },
+        {
+          "path": "src/app/tabs/ResourcesTab.test.tsx",
+          "lines": "493",
+          "fact": "Test exercises hasResolved: false path."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/646",
+        "fact": "Merged 2026-10-08 [#592]: loading while connectivity resolves."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Connectivity-unresolved spinner on HEAD.",
+        "device_evidence": "none in corpus"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Connectivity-resolve loading state on HEAD via #646."
+    },
+    {
+      "issue": 593,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Resources covers every verse in active pericope (API range or client fan-out); header shows pericope range; accordion/scroll keyed by unit.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/593"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/tabs/ResourcesTab.tsx",
+          "lines": "90",
+          "fact": "Pericope mode fans out across the unit (#593)."
+        },
+        {
+          "path": "src/app/tabs/ResourcesTab.tsx",
+          "lines": "161-163",
+          "fact": "Header uses activeUnit.title for pericope range label."
+        },
+        {
+          "path": "src/services/translationNotes.ts",
+          "lines": "22-26",
+          "fact": "verseRefs for fan-out (#593)."
+        },
+        {
+          "path": "src/hooks/useTranslationNotesForUnit.ts",
+          "lines": "47-54",
+          "fact": "Online pericope units fan out across verse refs (#593)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/652",
+        "fact": "Merged 2026-10-08 [#593]. Comment: mobile client fan-out; fluent-api#375 for first-party range endpoints."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Client fan-out + pericope header on HEAD.",
+        "device_evidence": "none in corpus"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Pericope Resources fan-out on HEAD via #652; API range follow-up fluent-api#375 recorded separately."
+    },
+    {
+      "issue": 594,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "fluent-api returns caption/attribution; mobile maps and shows under thumbnails; thumbnails use thumbnailUrl when present, fullscreen uses url.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/594"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "OPEN_TICKET_UNRESOLVED",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/imagesMaps.ts",
+          "lines": "71-98",
+          "fact": "parseTranslationImageItem maps caption/attribution/licenseInfo/thumbnailUrl (#594)."
+        },
+        {
+          "path": "src/app/tabs/resources/ImageThumbnail.tsx",
+          "lines": "94-96",
+          "fact": "Renders caption and attribution when present."
+        },
+        {
+          "path": "src/types/api/translationResources.ts",
+          "lines": "46-51",
+          "fact": "ApiTranslationImageItem optional caption/attribution/thumbnailUrl (#594)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/678",
+        "fact": "Merged 2026-10-14 [#594]: mobile mapper + thumbnailUrl. PR notes device QA once fluent-api exposes fields; ticket still OPEN."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Mobile maps/renders caption/attribution/thumbnailUrl on HEAD.",
+        "device_evidence": "none \u2014 OPEN pending API fields + QA"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Mobile AC on HEAD via #678; named residual: API may not yet emit caption/attribution (ticket open). Complete \u2260 conformance/QA."
+    },
+    {
+      "issue": 595,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Without timestamps, UI does not restart chapter on verse tap (keep position); scroll playing row into view (#48). fluent-api timestamps tracked fluent-api#374.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/595"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/hooks/useSourceAudio.ts",
+          "lines": "263-276",
+          "fact": "Without timestamps, seeking would restart (#595) \u2014 keep position instead."
+        },
+        {
+          "path": "src/app/tabs/BibleTab.tsx",
+          "lines": "126",
+          "fact": "Keep playing row on-screen while source audio advances (#48/#595)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/651",
+        "fact": "Merged 2026-10-08 [#595]: keep position without timestamps + scroll. Comment linked fluent-api#374."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "No-timestamp keep-position + scroll-into-view on HEAD.",
+        "device_evidence": "none in corpus"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Mobile no-timestamp path on HEAD via #651; API timestamp population remains fluent-api#374."
+    },
+    {
+      "issue": 596,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Identify and fix Maximum update depth in source audio player without regressing #412/#408; regression test where reproducible.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/596"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/layout/SourceAudioShell.tsx",
+          "lines": "115",
+          "fact": "Comment: across positionMs ticks (#596) \u2014 memoized context value strategy."
+        },
+        {
+          "path": "src/components/layout/SourceAudioShell.tsx",
+          "lines": "284",
+          "fact": "Comment: true\u2194false in cleanup/setup (#596 Maximum update depth)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/650",
+        "fact": "Merged 2026-10-08 [#596]: Fix source audio Maximum update depth exceeded."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "SourceAudioShell update-depth guards on HEAD.",
+        "device_evidence": "none in corpus"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Source-audio update-depth fix on HEAD via #650."
+    },
+    {
+      "issue": 597,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Maestro images fullscreen smoke targets images-maps-maximize-.*; uses fixture verse with images; drafting suite passes.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/597"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".maestro/flows/drafting/images-fullscreen.yaml",
+          "lines": "24-36",
+          "fact": "Required maximize id images-maps-maximize-.* then fullscreen-close (#597)."
+        },
+        {
+          "path": "src/app/tabs/resources/ImageThumbnail.tsx",
+          "lines": "83",
+          "fact": "testID images-maps-maximize-${item.id} matches flow."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/668",
+        "fact": "Merged 2026-10-09 [#597]: Fix Maestro images fullscreen smoke selector."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Maximize selector aligned with ImageThumbnail testIDs on HEAD.",
+        "device_evidence": "none \u2014 harness ticket"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Fullscreen Maestro selector fixed on HEAD via #668."
+    },
+    {
+      "issue": 600,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Sync page and notification show chapter counts for session (fixed total, monotonic); status line/progress/controls same state.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/600"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/ui/UploadProgressBar.tsx",
+          "lines": "36",
+          "fact": "Renders '{uploaded} of {total} chapters uploaded'."
+        },
+        {
+          "path": "src/app/screens/SyncScreen.tsx",
+          "lines": "332-345",
+          "fact": "Paused wins so status line/progress/controls agree (#600)."
+        },
+        {
+          "path": "src/hooks/useUploadSessionState.ts",
+          "lines": "104",
+          "fact": "progressUploaded from uploadProgress.completed or snapshot.completedChapters."
+        },
+        {
+          "path": "src/services/uploadOrchestratorCore.ts",
+          "lines": "162",
+          "fact": "Session total locked so X does not reset (#600)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/681",
+        "fact": "Merged 2026-10-13 [#600]: chapter-based upload progress on Sync and notification."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Chapter progress + paused status consistency on HEAD.",
+        "device_evidence": "none in corpus"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Chapter-based upload progress + consistent paused status on HEAD via #681."
+    }
+  ]
+}

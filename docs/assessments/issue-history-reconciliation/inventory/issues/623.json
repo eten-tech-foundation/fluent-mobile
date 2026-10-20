@@ -1,0 +1,25 @@
+{
+  "issue_number": 623,
+  "fetched_at_utc": "2026-10-20T00:38:34Z",
+  "issue": {
+    "number": 623,
+    "title": "Confirm before deleting a pericope take from Verse mode [Pericope view Audit]",
+    "state": "closed",
+    "body": "Found during the pericope view audit (#534, epic #526). First seen during PR #550 device QA.\n\n**Severity:** High  \n**Launch blocker:** To be decided with product  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), local debug build of `ddfdaaa` (PR #559 head), `dev.api.fluent.bible`\n\n## Summary\n\nIn Verse mode, a pericope take appears on every verse it covers (#410) and can be deleted from any of them. Deleting it removes the whole multi-verse recording from every verse. `handleDeleteTake` (`src/app/tabs/RecordTab.tsx:687-690`) deletes a non-selected take immediately with no prompt; only the selected take gets the generic \"Delete selected take?\" alert, which does not mention other verses.\n\n## Expected\n\nDeleting a pericope take from Verse mode asks for confirmation and says the whole recording (vv. X\u2013Y) will be removed.\n\n## Actual\n\nThe pericope take is deleted at once, with no confirmation.\n\n## Steps to reproduce\n\n1. Pericope mode: record a take for a pericope (for example, vv. 1\u20135).\n2. On one of its verses, record a verse take so the pericope take is not selected.\n3. Switch to Verse mode, open that verse, and delete the pericope take.\n\n## Acceptance criteria\n\n- [ ] Deleting a pericope take from Verse mode shows a confirmation that names the full range.\n- [ ] Cancel keeps the take on every verse.\n- [ ] Unit test for the confirmation path.\n- [ ] Android device QA.\n\n## Related\n\n- Parent audit: #534 (epic #526)\n- #410 (pericope takes in Verse mode), PR #550 (original finding)\n- Assessment: `docs/assessments/pericope-view/README.md` (PR #583)\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-30T18:20:21Z",
+    "updated_at": "2026-10-08T18:21:46Z",
+    "closed_at": "2026-10-08T18:21:46Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/623",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

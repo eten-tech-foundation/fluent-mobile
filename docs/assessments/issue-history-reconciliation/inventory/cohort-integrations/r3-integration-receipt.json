@@ -1,0 +1,12 @@
+{
+  "integrated_at_utc": "2026-10-20T00:57:06Z",
+  "reviewer": "bc-60eda6f7-248f-5fa3-8008-1afa358d3b1d",
+  "source": "/tmp/fluent-issue-review-r3.json",
+  "accepted_complete": [
+    526,
+    529,
+    530,
+    717
+  ],
+  "note": "r3 recommend_complete false on #526 overridden: epic-incomplete with evidence is a valid complete audit finding (\u2260 DoD pass). Spot-checked drafting-page absent, stageAdvance #257 defer, open-any-chapter vs open-my-work-chapter."
+}

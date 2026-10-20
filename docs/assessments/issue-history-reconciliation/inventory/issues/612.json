@@ -1,0 +1,25 @@
+{
+  "issue_number": 612,
+  "fetched_at_utc": "2026-10-20T00:38:26Z",
+  "issue": {
+    "number": 612,
+    "title": "Stop downloading full master data on every Sync Now and ignore repeated taps [Offline chapter assignment Audit]",
+    "state": "closed",
+    "body": "## Acceptance Criteria\n\n- [ ] Sync Now does not download full languages (~7.6k) / books / bibles catalogues when unchanged\n- [ ] Sync uses `updatedAfter` (or equivalent) for master data when the Fluent API supports it\n- [ ] If the API lacks support, the developer opens the fluent-api issue at implementation time and links it here \u2014 **done: [fluent-api#373](https://github.com/eten-tech-foundation/fluent-api/issues/373)**\n- [ ] Pending claims and user data do not wait for master data (reorder or parallelize)\n- [ ] Concurrent Sync Now / login sync cannot start a second overlapping full sync (single-flight)\n- [ ] Unit tests cover incremental skip / cursor behavior and single-flight\n- [ ] Needs QA on device: timed Sync Now before/after on Wi\u2011Fi with a warm cache\n\n## Context\n\nFrom [#533](https://github.com/eten-tech-foundation/fluent-mobile/issues/533) audit (P1):\n\n> Sync Now re-downloads ~7.6k languages + books + bibles every time (~30s on Wi\u2011Fi) before claims/assignments. Master data should be incremental (`updatedAfter`) or cached; claims should not wait behind that catalogue pull.\n\nAlso overlaps with login/post-login sync contention (429 risk when Sync Now overlaps login sync).\n\n## Suggested approach\n\n1. Confirm whether Fluent API list endpoints for languages/books/bibles accept `updatedAfter` (or similar).\n2. If yes: wire client + persist last-successful master sync cursor; skip empty responses.\n3. If no: open fluent-api ticket and temporarily reorder sync so user/claim steps run before or in parallel with master data.\n4. Add a process-wide single-flight guard around `syncAllUsers` / full sync orchestration (same pattern as other in-flight sync locks in the app).\n\n## Related\n\n- Parent audit: #533\n- API follow-up: [eten-tech-foundation/fluent-api#373](https://github.com/eten-tech-foundation/fluent-api/issues/373)",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-29T19:01:27Z",
+    "updated_at": "2026-10-08T20:44:00Z",
+    "closed_at": "2026-10-08T20:44:00Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/612",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

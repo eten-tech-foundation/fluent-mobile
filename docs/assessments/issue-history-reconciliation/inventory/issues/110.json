@@ -1,0 +1,26 @@
+{
+  "issue_number": 110,
+  "fetched_at_utc": "2026-10-20T00:34:42Z",
+  "issue": {
+    "number": 110,
+    "title": "DB migration framework",
+    "state": "closed",
+    "body": "### Current state on main\n\n- `src/db/schema.ts:108`:\n\n```ts\n/** For DBs created before verse progress columns were added. */\nexport const chapterAssignmentMigrations: string[] = [\n `ALTER TABLE chapter_assignments ADD COLUMN total_verses INTEGER NOT NULL DEFAULT 0`,\n `ALTER TABLE chapter_assignments ADD COLUMN completed_verses INTEGER NOT NULL DEFAULT 0`,\n];\n```\n\n- `src/db/index.ts:67-68` runs `createTableQueries` then `chapterAssignmentMigrations`, swallowing \"duplicate column\"/\"already exists\" errors (`shouldIgnoreInitError`). There is **no version tracking** \u2014 every migration is attempted on every launch and errors are ignored.\n- `PRAGMA foreign_keys = ON` and WAL are set in `initializeDatabase()` (`:62-65`).\n\n### Problems / why\n\n- Running all `ALTER`s every launch and ignoring errors is fragile: it can't add FKs/defaults (which require table rebuilds in SQLite), can't reorder/branch, and hides real failures.\n- #99/#103 need to **rebuild** `chapter_assignments`/`user_projects` (restore FKs/defaults/indexes) and #105 needs to add a column \u2014 impossible safely without ordered, versioned migrations.\n\n### Target design\n\nA `user_version`-based runner:\n\n```ts\n// src/db/migrations.ts\ntype Migration = { version: number; up: (db: DB) => Promise<void> };\n\nconst migrations: Migration[] = [\n { version: 1, up: async db => { /* baseline already-created tables: no-op or align */ } },\n { version: 2, up: async db => { /* verse-progress columns (supersedes chapterAssignmentMigrations) */ } },\n // future: #99/#103 FK rebuild, #105 attribution column, etc.\n];\n\nexport async function runMigrations(db: DB): Promise<void> {\n const [{ user_version }] = (await db.execute('PRAGMA user_version')).rows as any;\n for (const m of migrations.filter(m => m.version > user_version).sort(by version)) {\n await db.transaction(async tx => { await m.up(tx as unknown as DB); });\n await db.execute(`PRAGMA user_version = ${m.version}`);\n }\n}\n```\n\n- Each migration runs **once**, in order, in a transaction; `user_version` advances on success.\n- Provide a helper for SQLite **table-rebuild** migrations (create new \u2192 copy \u2192 drop \u2192 rename) used by #99/#103.\n- Replace the ad-hoc array + `runStatements(..., 'column')` call in `db/index.ts` with `runMigrations(db)`.\n\n### Implementation steps\n\n1. Create `src/db/migrations.ts` with the `Migration` type + `runMigrations` (user_version, transactional, ordered).\n2. Encode the current schema state as the baseline version; fold `chapterAssignmentMigrations` into a versioned step.\n3. Add a documented table-rebuild helper for FK/default changes.\n4. Update `src/db/index.ts` to call `runMigrations(db)` instead of the ad-hoc array; keep pragmas.\n5. Remove/deprecate `chapterAssignmentMigrations` from `schema.ts`.\n6. Tests: from a fresh DB (version 0) all migrations apply and set `user_version`; idempotent on second run; an old-shape DB upgrades without data loss.\n\n### Acceptance criteria\n\n- [ ] Versioned `runMigrations` using `PRAGMA user_version`; each migration runs once, in order, transactionally.\n- [ ] `db/index.ts` uses the framework; the ad-hoc `chapterAssignmentMigrations` array is gone.\n- [ ] A table-rebuild helper exists for FK/default changes (used by #99/#103).\n- [ ] Tests cover fresh apply, idempotency, and old-shape upgrade with data preserved.\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Tests default `EXPO_PUBLIC_API_BASE_URL=http://localhost:9999` via `jest.env.cjs`; **no live API required** \u2014 local SQLite/mocked DB.\n- Do **not** use `FLUENT_USER_EMAIL`.\n\n### Out of scope\n\n- The actual schema changes that ride on this framework (#99, #103, #105).\n\n### Links\n\n- Epic: #120\n- Blocks: #99 (C1), #103 (D1), #105 (D3)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:46:15Z",
+    "updated_at": "2026-07-23T03:31:33Z",
+    "closed_at": "2026-07-23T03:31:33Z",
+    "labels": [
+      "enhancement",
+      "SP 1"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/110",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

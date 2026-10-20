@@ -1,0 +1,40 @@
+{
+  "issue_number": 41,
+  "fetched_at_utc": "2026-10-20T00:34:04Z",
+  "issue": {
+    "number": 41,
+    "title": "Better-Auth Integeration",
+    "state": "closed",
+    "body": "### Description\nFluent Mobile currently relies on the insecure `x-user-email` header and a static environment variable (`FLUENT_USER_EMAIL`) for data synchronization. We need to implement a user-facing Login/Forgot Password flow and migrate the networking layer to use Bearer token authentication stored securely on the device.\n\n### Requirements & Scope\n\n1. **Secure Storage Integration**:\n   - Add `\"react-native-keychain\"` to dependencies.\n   - Implement helper functions (`src/services/keychain.ts`) to securely store, retrieve, and delete the token under a custom service name (e.g. `'fluent_session'`).\n   - Non-sensitive user details (username, email, ID) can be stored in plain KV storage, but credentials must reside in Keychain (iOS) / Keystore (Android).\n\n2. **API Layer Refactoring**:\n   - Modify the fetch request wrapper in `src/services/api.ts` to automatically retrieve the Bearer token from Keychain and inject `Authorization: Bearer <token>`.\n   - Send `x-client-type: mobile` and `User-Agent: FluentMobile` headers globally.\n   - Remove legacy `x-user-email` headers and arguments.\n\n3. **Login UI & Auth Navigation**:\n   - Design a polished, modern Login Screen (`LoginScreen.tsx`) using Fluent styling.\n   - Set up an `AuthNavigator` stack. Wrap the app's root navigation in a conditional check:\n     - If a valid token is found, render the main `AppNavigator`.\n     - Otherwise, render the `AuthNavigator`.\n\n4. **E2E Sign-in, Forgot Password & Sign-out Flow**:\n   - **Sign-in**: Call `/api/auth/sign-in/email`, extract the `set-auth-token` header, and save it to the secure Keychain. Store user details locally and navigate to the Projects list.\n   - **Forgot Password**: On the login screen, add a \"Forgot Password?\" link to request a reset email via `/api/auth/forget-password`.\n   - **Sign-out**: Call `/api/auth/sign-out`, clear the stored keychain token, clear local databases/caches, and redirect to the Login Screen.\n\n5. **Token Expiration Handling**:\n   - In the API wrapper, if a request fails with 401 containing `\"Session token has expired\"`, display a friendly prompt, clear the keychain token, and redirect to the Login Screen.\n\n6. **Privacy Policy & Terms of Use**:\n   - On the Login Screen, add links to the Privacy Policy and Terms of Use pages.",
+    "user": "LijuJacob08",
+    "created_at": "2026-05-21T05:35:39Z",
+    "updated_at": "2026-07-02T19:51:32Z",
+    "closed_at": "2026-06-09T03:42:24Z",
+    "labels": [],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/41",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4509925723,
+      "user": "kaseywright",
+      "created_at": "2026-05-21T15:44:28Z",
+      "updated_at": "2026-05-21T15:56:50Z",
+      "body": "1. Using \"react-native-keychain\" is the right call here. It is essentially just a maintained wrapper so we don't have to write and maintain the Java/Kotlin bridge ourselves to the [Keystore](https://developer.android.com/privacy-and-security/keystore#WhichShouldIUse). \n2. The `x-client-type: mobile` and `User-Agent: FluentMobile` headers are an acceptable practice. Though, this can be inferred by the mobile requests being the only ones to include the `Auth Bearer <token>` header as well.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/41#issuecomment-4509925723"
+    },
+    {
+      "id": 4531807030,
+      "user": "LijuJacob08",
+      "created_at": "2026-05-25T05:32:02Z",
+      "updated_at": "2026-06-18T05:32:14Z",
+      "body": "Dev Timings:\n- Login page UI [ET 3hrs]\n- trying the initial changes finding the gaps in initial  better auth apis[liju-4 hrs]\n- code changes for integrating login with the current app [Liju ET 4hrs]\n             - handling tokens -> saving token [react-native-keychain] \n             - updating the APIs to accommodate bearer token in the header.\n             \n- exposing sign in, forget password, sign out, refresh token apis(R& D involved)[Joel Joesph].[ET-4] \n- fix after review[ET - 2hrs]\n- fix after QA testing[2hrs]\n\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/41#issuecomment-4531807030"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

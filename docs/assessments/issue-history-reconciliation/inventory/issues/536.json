@@ -1,0 +1,40 @@
+{
+  "issue_number": 536,
+  "fetched_at_utc": "2026-10-20T00:37:38Z",
+  "issue": {
+    "number": 536,
+    "title": "Upgrade Fluent Mobile to Expo SDK 58",
+    "state": "open",
+    "body": "## Goal\n\nUpgrade Fluent Mobile from Expo SDK 57 to Expo SDK 58 as a dedicated, validated dependency migration.\n\n## Scope\n\n- Follow the official Expo SDK 58 upgrade guidance\n- Upgrade Expo and the compatible React Native dependency set together\n- Include the compatible `react-native-worklets` update\n- Evaluate the deferred TypeScript 7 and Prettier 3 upgrades separately; include them only if supported and low-risk\n- Regenerate native projects or configuration only where required\n- Review app configuration, plugins, EAS profiles, and native modules for compatibility\n- Preserve current app behavior and release workflows\n\n## Validation\n\n- Clean dependency install\n- `expo-doctor`\n- Expo dependency compatibility check\n- Formatting and lint checks\n- TypeScript checks\n- Unit tests\n- Architecture guards\n- iOS and Android development builds\n- Smoke test authentication, navigation, audio, downloads, and other native-module flows\n\n## Context\n\nDependabot updates for the Expo group and React Native Worklets were closed because they fail current SDK 57 compatibility checks. The grouped development-tool update was also closed because its major upgrades need separate validation.",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-14T21:54:48Z",
+    "updated_at": "2026-09-29T18:48:07Z",
+    "closed_at": null,
+    "labels": [],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/536",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5671408200,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-14T22:01:11Z",
+      "updated_at": "2026-09-14T22:01:11Z",
+      "body": "## Hold: wait for stable Expo SDK 58\n\n**Not Dev Ready** until Expo publishes a stable `expo@58` release with release notes.\n\n### Why\n- As of 2026-09-14, `expo@latest` is still **57.0.22**.\n- `expo@next` is **58.0.0-preview.1** only (no https://expo.dev/changelog/sdk-58 yet).\n- Preview `bundledNativeModules` pins **React Native `0.88.0-rc.0`** plus `react-native-worklets@0.12.2` / `reanimated@4.6.0` \u2014 too early for a production Android upgrade PR.\n- Closed Dependabot [#523](https://github.com/eten-tech-foundation/fluent-mobile/pull/523) (expo group \u2192 58) and [#521](https://github.com/eten-tech-foundation/fluent-mobile/pull/521) (worklets) correctly failed on current SDK 57 compatibility checks.\n\n### When to pick up\nRe-open for implementation when:\n1. Stable `expo@^58.0.0` is on npm `latest` (or an official beta with a changelog),\n2. SDK 58 release notes / upgrade section exist,\n3. RN target is a stable line (not RC).\n\nAndroid-only validation only (no iOS) \u2014 see repo android-only policy.\n\n`/start-issue #536` deferred by explicit decision.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/536#issuecomment-5671408200"
+    },
+    {
+      "id": 5896514990,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-29T18:48:07Z",
+      "updated_at": "2026-09-29T18:48:07Z",
+      "body": "## Dependabot batch notes (2026-09-29)\n\n**Merged (1)**\n- #557 \u2014 `@tanstack/react-query` 5.102.8 \u2192 5.104.0 (safe, CI-first; all required checks green). Squash-merged \u2192 `99de1a9`.\n\n**Closed without merge (3)** \u2014 peer/SDK conflicts; no `--force` / `--legacy-peer-deps`\n- #555 \u2014 `react-native-worklets` 0.10.1 \u2192 0.13.0; conflicts with `reanimated@4.5.1` peer `worklets@0.10.x` \u2192 #536\n- #556 \u2014 dev-tools group includes TypeScript 7 + Prettier 3; typescript-eslint peers TS `<6.1.0` \u2192 #536 (evaluate separately)\n- #608 \u2014 Expo group pulls `expo-router`/`expo-updates`/`expo-navigation-bar` to v58 on SDK 57 \u2192 #536\n\n**Queue empty** after this pass. Resolution-log catch-up deferred to a ticketed chore PR (never commit on `main`).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/536#issuecomment-5896514990"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,23 @@
+{
+  "issue_number": 499,
+  "fetched_at_utc": "2026-10-20T00:37:20Z",
+  "issue": {
+    "number": 499,
+    "title": "Defer: Prettier 3 + TypeScript 7 tooling upgrade",
+    "state": "open",
+    "body": "## Context\n\nDependabot PR #481 bundled a `dev-tools` group update that includes **semver-major** bumps:\n\n- `prettier` `2.8.8` \u2192 `3.9.6`\n- `typescript` `6.0.3` \u2192 `7.0.2`\n\nplus non-major `@typescript-eslint/*` and `eslint-plugin-jest` bumps.\n\nThat PR was **deferred/closed** during Dependabot queue processing \u2014 not safe as a drive-by lockfile merge (CI red; majors need a dedicated migration).\n\n## Acceptance criteria\n\n- [ ] Plan Prettier 2 \u2192 3 migration (config / format churn)\n- [ ] Plan TypeScript 6 \u2192 7 upgrade and fix any breaks\n- [ ] Optionally land the remaining `dev-tools` minors with those majors, or as a follow-up\n- [ ] Consider adding `dependabot.yml` ignore rules for `prettier` / `typescript` semver-major until this ticket is ready (so Dependabot does not reopen the same group)\n\n## Refs\n\n- Closed bot: https://github.com/eten-tech-foundation/fluent-mobile/pull/481",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-10T19:57:14Z",
+    "updated_at": "2026-09-10T19:57:14Z",
+    "closed_at": null,
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/499",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

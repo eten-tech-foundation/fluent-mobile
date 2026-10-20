@@ -1,0 +1,25 @@
+{
+  "issue_number": 279,
+  "fetched_at_utc": "2026-10-20T00:35:56Z",
+  "issue": {
+    "number": 279,
+    "title": "Add All-Takes View with Canonical Selection to Record Tab",
+    "state": "closed",
+    "body": "The Record Tab (#71) shows only the active account's takes. In team recording sessions, translators take turns with a shared device: each switches to their own account, records takes for a passage, then the group listens back together and agrees on the one take to carry forward into checking. This ticket adds the cross-account layer: a toggle that surfaces takes from all device accounts for the current unit, attributed by recorder, with a canonical designation control that marks the take advancing through the checking workflow.\n\n## Functional Requirements\n\n### Take View Toggle\n- Display a segmented control above the take list with two options: \"My Takes\" and \"All Takes.\"\n- Show the toggle only when at least one other account on the device has recorded a take for the current unit; hide it otherwise.\n- Default to \"My Takes\" each time the Record Tab is opened.\n- \"My Takes\" view is unchanged from #71: shows only the active account's takes with all existing controls.\n\n### All Takes View \u2014 Take List\n- Display takes from all accounts on the device for the current unit, grouped by account.\n- Each group is preceded by a header row showing the account holder's display name and a `li:user` icon.\n- Within each group, takes are ordered by take number ascending.\n- Each take card shows: take number, compact inline waveform, duration, and a `li:play` / `li:pause` button.\n- Tapping `li:play` on a card plays that take inline; playback of one take stops any other take currently playing.\n- Each take card shows a canonical indicator on the trailing edge: `li:circle` when undesignated, `li:circle-check` when this take is the canonical selection.\n\n<img width=\"418\" height=\"868\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/81ece3a7-dc2c-485d-b3d0-3ade687d0408\" />\n\n### All Takes View \u2014 Canonical Selection\n- Any account logged in on the device may designate a take as canonical from the All Takes view.\n- Tapping `li:circle` on a take card designates that take as canonical; the icon changes to `li:circle-check`.\n- Only one take across all accounts may be canonical at a time; designating a new take removes the indicator from the previously designated one.\n- The canonical designation may be changed at any time by any account on the device.\n- Canonical designation does not trigger a sync; it is included when the take's owning account syncs under normal rules.\n\n<img width=\"416\" height=\"870\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/d5a3a5b9-09bc-498a-8779-a19810bfab02\" />\n\n### All Takes View \u2014 Restrictions\n- \"Record New Take\" does not appear in All Takes view.\n- Delete controls do not appear on take cards in All Takes view.\n- Active-draft selection (the highlighted border and `li:circle-check` from My Takes) does not appear in All Takes view; the only action available on a take card is play/pause and canonical designation.\n\n### My Takes \u2014 Selection Behavior\n- When the toggle is hidden (only one account has takes for the unit), My Takes shows the active-draft selection indicator exactly as defined in #71: one take is selected, shown with `li:circle-check` and a highlighted border.\n- When the toggle is visible (multiple accounts have takes), the active-draft selection indicator is hidden in My Takes; canonical designation in All Takes is the only selection available.\n- If the active account's own take is the current canonical selection, that take card displays a read-only `li:circle-check` on the trailing edge.\n- If the canonical take belongs to another account, no canonical indicator appears on any take card in My Takes view.\n\n### 5-Take Cap\n- The 5-take cap is enforced per account, not per device.\n- Each account may record up to 5 takes for a unit regardless of how many takes other accounts have recorded for the same unit.\n\n> **Note:** The canonical designation introduced here is the same mechanism the conflict resolution workflow uses to mark the take that advances through checking (see #256 and related MCR tickets). Engineers should wire both to the same underlying flag rather than creating a parallel concept.\n\n> **Note 2:** The per-account 5-take cap defined here supersedes the ambiguous cap language in #71, which does not address multi-account scenarios.",
+    "user": "chadw-eten",
+    "created_at": "2026-07-30T15:58:36Z",
+    "updated_at": "2026-08-27T04:59:10Z",
+    "closed_at": "2026-08-27T04:59:10Z",
+    "labels": [
+      "preview-build"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/279",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

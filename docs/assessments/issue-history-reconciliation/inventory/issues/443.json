@@ -1,0 +1,48 @@
+{
+  "issue_number": 443,
+  "fetched_at_utc": "2026-10-20T00:36:52Z",
+  "issue": {
+    "number": 443,
+    "title": "Add Advanced and Complete Stage Progression",
+    "state": "closed",
+    "body": "Fluent Mobile currently stops at Community Review; there is no way to move an item to Advanced or Complete without switching to web. This ticket extends the record screen with a straight linear progression through the remaining checks: Send to Linguist Check, Send to Theological Check, Send to Consultant Check, and Send to Complete, each appearing one at a time as the prior stage is confirmed done. This matches the existing Drafting and Peer Check pattern: only one stage-advancement button is ever on screen, and confirming it opens a bottom sheet before anything changes.\n\n## Functional Requirements\n\n### Stage Progression Buttons\n- Display exactly one stage-advancement button on the record screen at a time, named for its destination stage: Send to Linguist Check (from Community Review), Send to Theological Check (from Linguist Check), Send to Consultant Check (from Theological Check), Send to Complete (from Consultant Check).\n- Community Review, Linguist Check, Theological Check, and Consultant Check are always open with no assignee, so display the relevant button to any translator, not just a specific assignee.\n- Enforce a fixed linear order: Community Review, then Linguist Check, then Theological Check, then Consultant Check, then Complete. There is no way to skip a stage or move backward.\n- Once a stage is confirmed done, its button is replaced by the next stage's button; never show more than one stage-advancement button at once.\n- Sending to Complete is terminal; there is no further stage to advance to and no backward movement.\n\n<img width=\"412\" height=\"520\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/8fba5110-f19c-4f5a-b5df-b582ae5ceded\" />\n\n### Confirmation Sheet\n- Tapping a stage-advancement button opens a bottom sheet before any state change, matching the confirmation sheet used for Drafting and Peer Check advancement.\n- Title: the chapter/unit name.\n- Body: \"This marks [chapter/unit] as ready for [destination stage].\"\n- Buttons: Send (primary) and Cancel (secondary).\n- Tapping Send dismisses the sheet and advances the item to the next stage; tapping Cancel dismisses the sheet with no state change.\n\n<img width=\"412\" height=\"652\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/5d708270-32db-4585-9697-f09709162020\" />\n\n",
+    "user": "chadw-eten",
+    "created_at": "2026-09-02T17:57:26Z",
+    "updated_at": "2026-09-17T11:50:43Z",
+    "closed_at": "2026-09-15T12:54:17Z",
+    "labels": [],
+    "comments": 3,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/443",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5622895765,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-10T17:39:44Z",
+      "updated_at": "2026-09-10T17:39:44Z",
+      "body": "## Engineering write-up (Dev Ready)\n\nChecked against **fluent-api `main` @ `07927c6`**.\n\n### API \u2014 ready\n`PATCH /chapter-assignments/{id}/submit` already advances the full chain:\n\n`draft \u2192 peer_check \u2192 community_review \u2192 linguist_check \u2192 theological_check \u2192 consultant_check \u2192 complete`\n\nPost-peer stages (`community_review` and later) are already open to any project member via `ChapterAssignmentPolicy` \u2014 no new endpoint required for linear Send buttons.\n\n### Mobile work\n- Extend `getStageAdvanceDestination` / visibility beyond Peer Check \u2192 Community Review (today capped in `stageAdvancement.ts` / #258).  \n- One CTA at a time + existing confirm bottom sheet.  \n- Map API status strings carefully: API uses `community_review`; local SQLite often aliases `community_check`. Add destinations for Linguist / Theological / Consultant / Complete labels per AC.  \n- Badge UI still collapses some advanced statuses \u2014 button labels should use the product stage names, not only the coarse badge bucket.\n\n### Soft dep\n#257 (offline stage-advance queue) is still open; online best-effort submit matches the existing #258 pattern until #257 lands.\n\nMoving to **Dev Ready**.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/443#issuecomment-5622895765"
+    },
+    {
+      "id": 5711225611,
+      "user": "Roslin22",
+      "created_at": "2026-09-17T08:17:22Z",
+      "updated_at": "2026-09-17T08:17:22Z",
+      "body": "**Test Results:#443**\n\n- User can move the chapter from Community Review \u2192 Linguist Check.\n- User can move the chapter from Linguist Check \u2192 Theological Check.\n- User can move the chapter from Theological Check \u2192 Consultant Check.\n- User can move the chapter from Consultant Check \u2192 Complete.\n- Only the next stage-advancement button is displayed at each stage; users cannot skip or move backward.\n- Confirmation sheet appears before stage advancement, and Send advances the chapter while Cancel leaves the stage unchanged.\n\n**Issues Identified:**\n\n- If there is no recording, the user is still able to move the chapter to the next stage. A new issue has been created for this: #542.\n- When sending the chapter to the next stage, a confirmation message appears, and clicking Send successfully advances the chapter. However, this confirmation step is not currently implemented on the web. Could you please confirm if this is a required feature for the mobile as well?",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/443#issuecomment-5711225611"
+    },
+    {
+      "id": 5713857101,
+      "user": "chadw-eten",
+      "created_at": "2026-09-17T11:50:43Z",
+      "updated_at": "2026-09-17T11:50:43Z",
+      "body": "Yes, the mobile does have a confirmation message and this is different from web. It is intended. This one can be moved to Passed QA. :white_check_mark:",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/443#issuecomment-5713857101"
+    }
+  ],
+  "comments_fetched_count": 3,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,23 @@
+{
+  "issue_number": 372,
+  "fetched_at_utc": "2026-10-20T00:36:25Z",
+  "issue": {
+    "number": 372,
+    "title": "[A+] Unit tests: Prepare Offline service/query modules",
+    "state": "closed",
+    "body": "## Summary / context\n\nPart of **A+ Test safety net**. Prepare Offline **UI/hooks** are tested; **service/query modules** are not.\n\n## Current vs expected\n\n**Current:** Untested (or thinly tested): `prepareOfflineDownload.ts`, `prepareOfflineResources.ts`, `queries.prepareOffline.ts` (confirm exact paths in PR).\n\n**Expected:** Colocated unit tests for download/queue/inventory logic used by Prepare Offline + Resources gate.\n\n## Scope\n\n**In scope**\n- Unit tests for the three service/query modules above\n- One PR is OK (same feature vertical) \u2014 do **not** mix with UI redesign\n\n**Out of scope**\n- New Prepare Offline product features\n- Device download QA (covered by existing Needs-QA tickets)\n\n## Acceptance criteria\n\n- [ ] Each listed module has meaningful unit coverage (happy + at least one failure/empty path)\n- [ ] Engineering-only \u2014 no Needs QA\n\n## Verification / test plan\n\n1. Targeted jest for prepare-offline service tests\n2. Full `npm test -- --ci`\n\n## Separation note\n\nIf the PR exceeds ~reviewable size, split by module into follow-ups \u2014 prefer shipping all three if small.\n\n## Links\n\n- Related closed product work: #39, #51, #53, #192, #201\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-08-25T14:17:34Z",
+    "updated_at": "2026-08-26T16:59:49Z",
+    "closed_at": "2026-08-26T16:59:49Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/372",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

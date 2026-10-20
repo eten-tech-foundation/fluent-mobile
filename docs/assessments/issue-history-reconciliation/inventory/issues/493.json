@@ -1,0 +1,32 @@
+{
+  "issue_number": 493,
+  "fetched_at_utc": "2026-10-20T00:37:14Z",
+  "issue": {
+    "number": 493,
+    "title": "Maestro smoke: Record happy path (mic, capture, playback)",
+    "state": "closed",
+    "body": "## Summary / context\n\nParent: #488.\n\nAutomate the Record tab happy path that QA currently runs by hand: mic allow \u2192 record \u2192 stop \u2192 play take.\n\n## Current vs expected\n\n**Current:** Strong Record `testID`s (`record-start-button`, `record-stop-button`, take lists, etc.). Manual nightly only.\n\n**Expected:** Maestro flow exercising capture + playback on a seeded verse assignment. Avoid destructive stage-advance / send unless safe for shared **dev** data.\n\n## Scope\n\n**In scope**\n- Grant mic on `launchApp` / first prompt\n- Navigate to Record on an assigned verse\n- Start \u2192 stop recording\n- Assert take appears; play/pause take\n- Document residual gaps (stage advance, conflict warnings, source-audio dock) if not automated\n\n**Out of scope**\n- Full upload-to-server proof (may pair lightly with Sync child)\n- All-takes vs mine edge matrix\n- Stage advance Send if it mutates shared project state unsafely\n\n## Acceptance criteria\n\n- [ ] Happy-path flow green on emulator with mic permission\n- [ ] Mic-deny path deferred to edge ticket (or linked)\n- [ ] No silent data destruction of other users\u2019 work\n- [ ] Flaky timing (waveform / duration) handled with explicit waits\n\n## Verification / test plan\n\n1. Dedicated Maestro user + assigned chapter\n2. Run record smoke\n3. Confirm take playable; optionally leave take local-only\n\n## Links\n\n- Refs #488\n- `RecordTab.tsx`, `docs/features/record-tab/`\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-10T19:52:28Z",
+    "updated_at": "2026-09-10T19:54:48Z",
+    "closed_at": "2026-09-10T19:54:17Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/493",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5624594377,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-10T19:54:48Z",
+      "updated_at": "2026-09-10T19:54:48Z",
+      "body": "Condensed into #491 (main smoke suite).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/493#issuecomment-5624594377"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

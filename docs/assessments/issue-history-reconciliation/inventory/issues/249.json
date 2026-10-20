@@ -1,0 +1,23 @@
+{
+  "issue_number": 249,
+  "fetched_at_utc": "2026-10-20T00:35:36Z",
+  "issue": {
+    "number": 249,
+    "title": "Fix nightly EAS profile to ship standalone internal APK (no Metro)",
+    "state": "closed",
+    "body": "## Summary\n\nNightly/internal Android builds are behaving like development clients (looking for Metro) instead of shipping a standalone APK with JS bundled in.\n\n## Current vs expected\n\n- **Current:** Nightly install prompts for / waits on Metro (dev-client behavior).\n- **Expected:** Nightly is a standalone **internal** distribution APK (`distribution: \"internal\"`, `developmentClient` false/absent), same class of binary as `preview` / production-style release builds \u2014 not the `development` profile.\n\n## Scope\n\n**In scope**\n- `eas.json` `nightly` profile: ensure `developmentClient` is false/absent and `distribution: \"internal\"`\n- Related nightly workflow / validation guards if needed\n- Keep `development` profile with `developmentClient: true`\n\n**Out of scope**\n- iOS profiles\n- Changing the `development` profile\n- SP1 recording work\n\n## Acceptance criteria\n\n- [ ] `eas.json` `nightly` does not enable a development client (`developmentClient: false` or omitted)\n- [ ] `eas.json` `nightly` has `distribution: \"internal\"`\n- [ ] `development` profile still has `developmentClient: true`\n- [ ] Nightly workflow still targets the `nightly` profile\n- [ ] Docs/README note that nightly is a binary-only internal APK (no Metro)\n\n## Verification\n\n```bash\n# Confirm profile shape\njq '.build.nightly | {developmentClient, distribution, android}' eas.json\n\n# Local EAS build (optional / when EXPO_TOKEN available)\nnpx eas build --profile nightly --platform android\n```\n\nInstall the resulting APK: app should launch with bundled JS and **not** try to connect to Metro.\n\n## File pointers\n\n- `eas.json` \u2014 `build.nightly` vs `build.preview` / `build.development`\n- `.github/workflows/nightly-preview.yml`\n- `.github/scripts/eas-build-android-nightly.sh`\n- `.github/scripts/validate-nightly-api-url.sh`\n- `.eas/README.md`, `.github/README.md`\n\n## Links\n\n- Nightly CI: `.github/workflows/nightly-preview.yml`\n- Issue tracking: [docs/issue-tracking.md](docs/issue-tracking.md)",
+    "user": "mattrace-gloo",
+    "created_at": "2026-07-23T18:30:35Z",
+    "updated_at": "2026-07-23T18:50:19Z",
+    "closed_at": "2026-07-23T18:50:19Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/249",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

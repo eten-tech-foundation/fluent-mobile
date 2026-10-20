@@ -1,0 +1,64 @@
+{
+  "issue_number": 235,
+  "fetched_at_utc": "2026-10-20T00:35:32Z",
+  "issue": {
+    "number": 235,
+    "title": "Wire Source audio dock to real fetch + playback",
+    "state": "closed",
+    "body": "## Summary / context\n\nThe drafting **Source audio** dock (`SourceAudioPlayerBar`) is still a decorative stub: play/seek UI exists, but duration/position are hardcoded and nothing loads or plays real source audio.\n\nThis was an intentional waiver on **PR #229** (Record tab / drafting UX for #49). Issue **#49** AC covered **source text** (accordion / view source), not source-audio fetch or playback. Nothing currently owns \u201cfetch source audio and play it through the dock.\u201d\n\nDraft **take** recording/playback is a separate lane (#96 / #116 / Record tab work). This ticket is **source** audio only (e.g. BSB or project source).\n\n## Current vs expected\n\n**Current:** Source audio bar looks like a player but does not fetch audio or drive real position/duration.\n\n**Expected:** Selecting a unit in drafting loads available source audio (when we have it), and the dock plays it via the existing playback engine where possible, with honest loading / empty / error UI.\n\n## Scope\n\n**In scope**\n- Fetch source audio for the active drafting unit (BSB and/or project source \u2014 pick what\u2019s available in API/DB today; document gaps)\n- Wire `SourceAudioPlayerBar` (and Bible tab if it shares the same dock/player) to real playback\n- Prefer existing playback engine / hooks (`usePlaybackEngine`, `createPlaybackEngine`, verse-audio paths) over a one-off player\n- Real duration + position (no hardcoded `0:00` / fake totals)\n- Loading, empty (no source audio), and error states in the dock\n- Pause/stop when switching unit or leaving the screen (match draft-playback hygiene if already established)\n\n**Out of scope**\n- Draft take **recording** / take list UX (already owned elsewhere)\n- New waveform product decision (see #96) unless strictly required to play source audio\n- iOS\n\n## File pointers & approach\n\n| Area | Path / note |\n| --- | --- |\n| Dock UI | `src/components/layout/SourceAudioPlayerBar.tsx` |\n| Record usage | `src/app/tabs/RecordTab.tsx` (and DraftingScreen tab wiring) |\n| Playback | `src/hooks/usePlaybackEngine.ts`, `src/audio/createPlaybackEngine.ts`, related verse-audio hooks/reducer |\n| Design reference | Lovable drafting dock / `tmp/lovable-ux` record + drafting shots (source audio chrome) |\n| Related | PR #229 waiver; #49 (source text only); #96 / #116 = draft playback engine epic \u2014 **do not** conflate draft takes with source audio |\n\nSuggested approach:\n1. Confirm where source audio URIs live today (API sync \u2192 SQLite vs on-demand fetch).\n2. Add a thin hook or extend existing verse-audio path for **source** asset only.\n3. Bind dock controls to engine play/pause/seek + progress.\n4. Cover empty/error/loading in UI; add unit tests for wiring/state where practical.\n5. Android device QA for actual playback (mic/filesystem not required, but audio playback is native).\n\n## Acceptance criteria\n\n- [ ] Source audio for the active unit can be resolved (local path / URI) when the project/API provides it\n- [ ] `SourceAudioPlayerBar` play/pause/seek drives **real** playback (not a no-op stub)\n- [ ] Displayed duration and position reflect the loaded asset (not hardcoded placeholders)\n- [ ] Loading, empty (no audio), and error states are visible and don\u2019t crash the tab\n- [ ] Changing unit or leaving drafting stops/clears source playback appropriately\n- [ ] Reuses existing playback engine patterns where feasible (no parallel ad-hoc player stack without a clear reason)\n- [ ] Unit tests cover new fetch/wiring/reducer behavior where logic lives outside pure UI\n- [ ] Distinct from draft-take recording/playback \u2014 this ticket does not claim #49/#96 take AC\n\n## Verification / test plan\n\n1. `npm run format:check`\n2. `npm run lint`\n3. `npm run typecheck`\n4. `npm test -- --ci`\n5. **Android device/emulator:** open drafting \u2192 Record (and Bible if shared) \u2192 confirm source dock loads, plays, seeks, shows real times; try a unit with no source audio and a failed load if injectable\n6. Confirm draft take record/play still works independently\n\n## Links\n\n- PR (waiver): https://github.com/eten-tech-foundation/fluent-mobile/pull/229\n- Issue #49 (Record tab; source **text** AC, not source audio): https://github.com/eten-tech-foundation/fluent-mobile/issues/49\n- Issue #96 (playback engine \u2014 draft-oriented): https://github.com/eten-tech-foundation/fluent-mobile/issues/96\n- Issue #116 (audio recording & playback epic): https://github.com/eten-tech-foundation/fluent-mobile/issues/116\n- Board: [Fluent Mobile Board (Project 4, view 9)](https://github.com/orgs/eten-tech-foundation/projects/4/views/9)\n\n## Notes\n\nOrphan follow-up from #229 \u2014 file this so source-audio work has an owner ticket before another Record/drafting PR swallows it again. Do not assign `@cursor` unless triage asks for agent pickup.\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-07-23T04:49:36Z",
+    "updated_at": "2026-09-08T18:31:29Z",
+    "closed_at": "2026-09-08T18:31:29Z",
+    "labels": [],
+    "comments": 5,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/235",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5113797181,
+      "user": "B3RN153",
+      "created_at": "2026-07-29T05:57:47Z",
+      "updated_at": "2026-07-29T05:57:47Z",
+      "body": "Issue #48 has the requirements for the sequential playback.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/235#issuecomment-5113797181"
+    },
+    {
+      "id": 5140441069,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-31T07:27:41Z",
+      "updated_at": "2026-08-06T19:32:09Z",
+      "body": "## API readiness note (board audit \u2014 refreshed)\n\n**Why the API is not complete for this ticket**\n\nThe Source audio dock needs **playable source (reference) audio URIs** for the active drafting unit. fluent-api `main` still does not expose source-audio assets. Translator **recording** audio is a separate lane and is also not on `main` yet.\n\n### What exists today (fluent-api `main` @ `28f9bdb`, 2026-08-06)\n\n- Bible **text** only: `GET /bibles/.../texts`, `POST /bibles/.../bulk-texts`.\n- Pericopes: section metadata (FIA/FCBH), **not** audio files.\n- No source-audio domain/routes; no DBL audio proxy on `main`.\n- DBL work in flight is text/lookup oriented ([#216](https://github.com/eten-tech-foundation/fluent-api/issues/216), [#230](https://github.com/eten-tech-foundation/fluent-api/issues/230)\u2013[#233](https://github.com/eten-tech-foundation/fluent-api/issues/233)); #216 notes \u201cdetermine audio bible availability\u201d as research, not a shipped endpoint.\n- Mobile Prepare-for-Offline already documents: Tier 1 Source Bible Text \u2192 Fluent API; **Tier 1 Source Audio \u2192 DBL** (`prepareOfflineResourceManifest.ts`). Not implemented as a Fluent contract yet.\n- Side channel: mobile\u2019s direct Aquifer client (`AquiferAPI.getBibleText(..., shouldReturnAudioData: true)`) can return chapter `audio.mp3/webm` URLs when Aquifer has them \u2014 **not** a fluent-api contract, not wired to `SourceAudioPlayerBar`, and may not match the project\u2019s chosen source Bible.\n\n### What is missing\n\n1. A first-party (or proxied) **source audio catalog + download/stream URLs** keyed by project source Bible / book / chapter / verse (or chapter blob + timestamps).\n2. DBL (or chosen provider) ingestion/proxy so mobile does not invent provider auth or URL shapes.\n3. Optional: stable offline-friendly URLs/sizes for Prepare Offline Tier 1 Source Audio (shared with #52/#201).\n\n### What needs to be done (fluent-api)\n\n1. Decide provider of truth for project source audio (DBL vs Aquifer vs other) and whether mobile may call the provider directly or must go through fluent-api.\n2. Ship endpoints (or documented provider contract) returning playable URIs + duration/size metadata for the active unit.\n3. Until then: mobile implements #235 with **mock/fixture URIs** + honest empty/error dock states; swap when API/DB provides real URLs.\n\nChecked against fluent-api `main` @ `28f9bdb` (2026-08-06). Prior audit was `3ef4025` (2026-07-31).\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/235#issuecomment-5140441069"
+    },
+    {
+      "id": 5403020336,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-24T23:48:58Z",
+      "updated_at": "2026-08-24T23:48:58Z",
+      "body": "API dependency filed: [fluent-api#282](https://github.com/eten-tech-foundation/fluent-api/issues/282) \u2014 **Expose source/reference audio API for mobile drafting dock**.\n\nOn Fluent Project 4 (**Web** board / fluent-api repo), not the Mobile board. Distinct from `/verse-audio` translator recordings.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/235#issuecomment-5403020336"
+    },
+    {
+      "id": 5411789399,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-25T14:19:54Z",
+      "updated_at": "2026-08-25T14:19:54Z",
+      "body": "Tracked under the A+ composite-grades initiative as **P1** (existing product gap \u2014 do not duplicate).\n\nParent: #365",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/235#issuecomment-5411789399"
+    },
+    {
+      "id": 5587516069,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-08T15:20:02Z",
+      "updated_at": "2026-09-08T15:20:02Z",
+      "body": "**Note (source audio verse seek):** When the Aquifer API returns `verseTimestamps` of `0` (seen on DEV), seek falls back to chapter start. Chapter play still works; accurate verse-aligned seek needs real timestamps from the API. Tracked as a known limitation on the #235 delivery PR.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/235#issuecomment-5587516069"
+    }
+  ],
+  "comments_fetched_count": 5,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

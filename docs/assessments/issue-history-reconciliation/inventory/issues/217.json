@@ -1,0 +1,23 @@
+{
+  "issue_number": 217,
+  "fetched_at_utc": "2026-10-20T00:35:27Z",
+  "issue": {
+    "number": 217,
+    "title": "Document Project 4 Fluent Mobile Board as canonical tracker",
+    "state": "closed",
+    "body": "## Summary\n\nRepo Issues list is deprecated as the source of truth for triage/columns. Canonical board is org Project 4 view 9 (Fluent Mobile Board).\n\n## Acceptance criteria\n\n- [ ] `docs/issue-tracking.md` states Project 4 / Fluent Mobile Board (view 9) is canonical for status/columns\n- [ ] `delivery.mdc` and related agent pointers no longer treat the bare repo Issues URL as primary tracker\n- [ ] Ticket numbers `#NNN` remain (cards are still repo issues on the project)\n\n## Links\n\n- Board: https://github.com/orgs/eten-tech-foundation/projects/4/views/9",
+    "user": "mattrace-gloo",
+    "created_at": "2026-07-20T20:54:07Z",
+    "updated_at": "2026-07-23T03:30:42Z",
+    "closed_at": "2026-07-23T03:30:42Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/217",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,544 @@
+{
+  "reviewer": "r5",
+  "wave": 2,
+  "ids": [87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98],
+  "domain": "auth-session-followons",
+  "reviewed_at_utc": "2026-10-20T00:57:17Z",
+  "notes_for_integrator": "Auth slice split vs already-integrated #41: #88/#89/#93 cover Bearer accessor, expo-secure-store migration, and restore/signOut token+active-user clear (credentials kept). Do not fold #41's unverified sign-out DB wipe or 401→clear→Login into these rows. IDs 94–98 are epic #116 audio stack included in this exact ID batch.",
+  "issues": [
+    {
+      "issue": 87,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Switcher tap on non-active account makes it active without full reload; dismiss panel; offline switch (outgoing unsynced data untouched; incoming from local cache); on failure show error and keep current account; post-switch recordings/edits attributed to new account; only active account syncs (background multi-account sync OOS).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/87"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/ui/AccountSwitcherPanel.tsx",
+          "lines": "54-76",
+          "fact": "Offline-capable switch: getCredentials → authToken.set → switchActiveUser → notifyUserSwitched; catch keeps prior session and shows error banner (no indeterminate wipe)."
+        },
+        {
+          "path": "src/navigation/resetNavigationAfterAccountSwitch.ts",
+          "lines": "13-20",
+          "fact": "After switch, dismisses nested routes and replace(hrefs.home) — not drafting view as original AC wording; cites #348."
+        },
+        {
+          "path": "docs/product-behavior/core-flows.md",
+          "lines": "20-28",
+          "fact": "§1 Login/multi-account Expected/Denied covers switch activates only target token/user and missing session fails closed; Labels=Inferred — not a product waive."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/171",
+        "fact": "Merged 2026-07-17 closing #87: ‘users is able to switch user form user switcher panel’; screencast attached; no product waive of drafting-return or offline AC."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "AccountSwitcherPanel + resetNavigationAfterAccountSwitch on HEAD; lands on Home not Drafting.",
+        "device_evidence": "none dated for #87 offline-switch / attribution AC"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Closed≠QA. Post-switch destination (Home vs drafting) is named CONFIRMED_CURRENT_SOURCE drift; attribution/offline switch behavior matches intent via active-user KV + local SecureStore tokens."
+    },
+    {
+      "issue": 88,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Remove let-mutable token singleton from api.ts; sync buildHeaders via authToken accessor; publicRequest logs sanitized failures; token set/get/clear unit-testable; setActiveToken call sites still work.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/88"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/authToken.ts",
+          "lines": "1-9",
+          "fact": "Dedicated authToken.get/set accessor — no token singleton in api.ts."
+        },
+        {
+          "path": "src/services/httpClient.ts",
+          "lines": "41-51",
+          "fact": "buildHeaders is synchronous; injects Authorization Bearer from authToken.get() (or explicit bearerToken)."
+        },
+        {
+          "path": "src/services/httpClient.ts",
+          "lines": "81-87",
+          "fact": "handleErrorResponse logs via summarizeApiErrorResponse before throw — shared by publicRequest and authedRequest."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/141",
+        "fact": "Merged 2026-07-01 Refs #88: replaces _activeToken with authToken accessor + sync buildHeaders; publicRequest failure logging. Issue comment 2026-06-28 attributes pattern to PR #46 inheritance (scope unchanged)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "authToken + httpClient buildHeaders/publicRequest on HEAD; Bearer path separate from #41 sign-out/401 UI slices.",
+        "device_evidence": "none (eng unit-test AC)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Bearer injection harden only — not secure-store (#89) and not #41 DB-wipe/401 soft-reauth."
+    },
+    {
+      "issue": 89,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Migrate token storage from react-native-keychain to expo-secure-store; keep credential API signatures; fluent.auth.<userId> namespacing; getAllStoredUserIds from KV known_user_ids; launch bootstrap still restores session. Optional keychain→SecureStore migration shim.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/89"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/keychain.ts",
+          "lines": "1-15",
+          "fact": "Implements credentials on expo-secure-store with SERVICE_PREFIX fluent.auth; no react-native-keychain import."
+        },
+        {
+          "path": "src/services/keychain.ts",
+          "lines": "103-106",
+          "fact": "getAllStoredUserIds delegates to storage.getKnownUserIds() (KV index)."
+        },
+        {
+          "path": "package.json",
+          "lines": "58-69",
+          "fact": "Dependencies include expo-secure-store; react-native-keychain absent."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/142",
+        "fact": "Merged 2026-07-01 Refs #89: removes react-native-keychain; adds expo-secure-store plugin; explicitly no keychain→SecureStore migration shim (re-login after land)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "expo-secure-store keychain.ts + restoreSession consumers on HEAD — this is the #41 storage-library slice delivered later.",
+        "device_evidence": "none dated for SecureStore restore E2E"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Pairs with #41: keychain→SecureStore is here (waived optional migration in PR body). Does not address #41 sign-out DB wipe or 401→Login."
+    },
+    {
+      "issue": 90,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Harden Login: no direct kvStorage/SQL from LoginScreen; theme tokens (no literal hex); a11y labels/roles + testIDs; shared email validation in src/utils with unit test; RTL tests for success/fail paths (mocked API).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/90"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/tabs/LoginScreen.tsx",
+          "lines": "17-73",
+          "fact": "Screen uses useLogin; no kvStorage/SQL imports; side effects via beginLoginSession in hook."
+        },
+        {
+          "path": "src/app/tabs/LoginScreen.tsx",
+          "lines": "160-289",
+          "fact": "Inputs/buttons/errors expose accessibilityLabel + testIDs (login-email-input, login-submit-button, privacy/terms links)."
+        },
+        {
+          "path": "src/utils/validateEmail.ts",
+          "lines": "1-4",
+          "fact": "Shared isValidEmail extracted for login/forgot-password."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/144",
+        "fact": "Merged 2026-07-01 Refs #90/#91/#92: useLogin + beginLoginSession; theme/a11y/testIDs; no direct KV from LoginScreen."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "LoginScreen + useLogin + validateEmail on HEAD; no literal hex in LoginScreen.",
+        "device_evidence": "none dated for login harden AC (product journey from #41)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "UI/eng harden of existing #41 login journey — complete≠device QA."
+    },
+    {
+      "issue": 91,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Extract forgot-password to standalone navigable screen/route; LoginScreen no longer owns forgot/sent modes; shared validateEmail + theme + a11y/testIDs; mocked success/failure component tests.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/91"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/tabs/ForgotPasswordScreen.tsx",
+          "lines": "102-178",
+          "fact": "Standalone form/sent UI with testIDs; resend + back links."
+        },
+        {
+          "path": "src/hooks/useForgotPassword.ts",
+          "lines": "10-40",
+          "fact": "Uses isValidEmail + FluentAPI.forgotPassword mutation; view form|sent."
+        },
+        {
+          "path": "src/routes/(auth)/forgot-password.tsx",
+          "lines": "1",
+          "fact": "Expo Router auth route re-exports ForgotPasswordScreen (app-stack route also present)."
+        },
+        {
+          "path": "src/app/tabs/LoginScreen.tsx",
+          "lines": "101-239",
+          "fact": "Login navigates to forgotHref; no embedded forgot/sent view modes."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/144",
+        "fact": "Merged 2026-07-01 Refs #91: ForgotPasswordScreen route; login navigates instead of embedded view modes."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "ForgotPasswordScreen + routes/(auth|app)/forgot-password on HEAD.",
+        "device_evidence": "none dated for forgot-password E2E"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Extraction/harden of #41 forgot-password surface; server email behavior OOS."
+    },
+    {
+      "issue": 92,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Privacy Policy and Terms reachable from Login and in-app Settings; screens scroll, use theme tokens, a11y labels/roles; render tests for both screens.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/92"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/ui/UserSettingsMenu.tsx",
+          "lines": "252-302",
+          "fact": "Drawer Privacy Policy / Terms of Use entries with accessibilityLabel + testIDs."
+        },
+        {
+          "path": "src/components/layout/LegalDocumentLayout.tsx",
+          "lines": "25-46",
+          "fact": "StackScreenHeader back + ScrollView with theme spacing; testID on scroll."
+        },
+        {
+          "path": "src/app/tabs/LoginScreen.tsx",
+          "lines": "278-289",
+          "fact": "Login footer Privacy/Terms links with testIDs (pre-login reachability)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/144",
+        "fact": "Merged 2026-07-01 Refs #92: LegalDocumentLayout + Privacy/Terms from UserSettingsMenu."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Legal pages + settings drawer links on HEAD; legal copy ownership OOS per ticket.",
+        "device_evidence": "none dated for legal navigation AC"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Routing/settings reachability for #41 Privacy/Terms links; not legal-copy review."
+    },
+    {
+      "issue": 93,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Extract restoreSession/signOut to testable module; App bootstrap no dynamic import / nested early-return; signOut clears active token (+ active user) so relaunch does not auto-auth; nav continues to gate; unit tests for restore (3 cases) + sign-out.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/93"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/authSession.ts",
+          "lines": "87-112",
+          "fact": "restoreSession reads SecureStore/KV; signOut clears authToken + ACTIVE_USER_ID + clearUserSession — keeps stored credentials (multi-account)."
+        },
+        {
+          "path": "src/navigation/AuthSessionProvider.tsx",
+          "lines": "77-94",
+          "fact": "Launch calls restoreSession once; signOut → clearAuthSession then setIsAuthenticated(false)."
+        },
+        {
+          "path": "src/services/accountSession.ts",
+          "lines": "42-80",
+          "fact": "signOutCurrentDeviceAccount clears that account's SecureStore credentials then switches or calls authSession.signOut — still no SQLite DB wipe (distinct from #41 unwaived DB-wipe AC)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/143",
+        "fact": "Merged 2026-07-01 Refs #93: restoreSession + signOut clears authToken + active KV session; ‘does not delete SecureStore credentials’. Explicit multi-account keep-creds decision."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "authSession + AuthSessionProvider on HEAD; token clear on sign-out verified in source; DB wipe not in this ticket's AC.",
+        "device_evidence": "none dated for relaunch-after-sign-out E2E"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "LATEST_EXPLICIT_DECISION: keep SecureStore creds on signOut. Do not conflate with #41 ‘clear local databases/caches’ (still unwaived there) or 401→Login."
+    },
+    {
+      "issue": 94,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Net-new audioStorage on expo-file-system only (no react-native-fs); id-based stable paths; helpers unit-tested; local_file_path is sole source of truth (no path reconstruction from display names).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/94"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/utils/audioStorage.ts",
+          "lines": "1-34",
+          "fact": "expo-file-system/legacy; flat recordings/{recordingId}.m4a under documentDirectory; never project/book display names."
+        },
+        {
+          "path": "package.json",
+          "lines": "58-62",
+          "fact": "expo-file-system present; react-native-fs not a dependency."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/224",
+        "fact": "Merged 2026-07-23 Closes #94: ships flat id-based paths. Cesar 2026-07-17 comment recommended hierarchical Layout C; that discussion was not adopted by the merged PR (flat A = ticket Target design)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "audioStorage flat UUID layout on HEAD matches #224, not comment Layout C.",
+        "device_evidence": "PR #224 left Android device QA unchecked — none recorded for filesystem native"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Complete row records Layout-C comment as non-binding vs merged #224. complete≠device QA."
+    },
+    {
+      "issue": 95,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Recording engine on expo-audio (no Simform/react-native-fs); start/pause/resume/stop + status; mic permission via expo-audio returning recoverable state (no Alert in engine); Android RECORD_AUDIO via app.config; engine free of storage/DB/UI side effects; mocked unit tests.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/95"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/audio/createRecordingEngine.ts",
+          "lines": "46-56",
+          "fact": "Injectable recording engine with status; start/pause/resume/stop API."
+        },
+        {
+          "path": "src/audio/micPermission.ts",
+          "lines": "27-33",
+          "fact": "requestMicPermission via expo-audio; returns granted|denied|undetermined; no Alert."
+        },
+        {
+          "path": "app.config.ts",
+          "lines": "114-120",
+          "fact": "expo-audio plugin with recordAudioAndroid (RECORD_AUDIO)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/225",
+        "fact": "Merged 2026-07-23 Closes #95 thin PR. Prior fel-cesar comment claimed via unmerged #158; mattrace 2026-07-20 cleared assignee / do-not-merge Cesar PRs — #225 is actual delivery."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "createRecordingEngine + micPermission on HEAD; no Simform in package.json.",
+        "device_evidence": "PR #225 device QA unchecked; none for real mic capture"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Do not treat closed #158 as delivery. Thin #225 supersedes Cesar implemented-via-#158 claim."
+    },
+    {
+      "issue": 96,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Playback on expo-audio (no Simform waveform); play/pause/seek/stop with position+duration; waveform/progress approach chosen and documented; mocked unit tests.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/96"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/audio/createPlaybackEngine.ts",
+          "lines": "172-230",
+          "fact": "expo-audio player engine exposes resume/pause/stop (seek/position handled in engine API)."
+        },
+        {
+          "path": "src/components/ui/PlaybackProgressBar.tsx",
+          "lines": "13-25",
+          "fact": "Decorative amplitude placeholders (not metering) — matches ticket Alt static/placeholder bars option."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/96#issuecomment-5061609501",
+        "fact": "Closing comment 2026-07-23: dedicated PR #226 closed unmerged; playback + PlaybackProgressBar landed via recording stack primarily #229 (related #225/#227/#228). Rejects treating #184/#226 as delivery."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "createPlaybackEngine + PlaybackProgressBar on HEAD; decorative bars = documented alt choice.",
+        "device_evidence": "none dated for #96 playback AC (warm Record chrome ≠ playback engine)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Waveform decision = decorative placeholder bars (Alt). #226 unmerged; cite closing comment + #229 stack."
+    },
+    {
+      "issue": 97,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Pure verse-audio reducer unit-tested; hook composes recorder/player/storage/DB via injected deps; no react-native-fs or @simform; per-verse status from DB; ViewChapter uses hook instead of mock toggle.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/97"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/hooks/verseAudioReducer.ts",
+          "lines": "1-50",
+          "fact": "Pure reducer encodes idle/recording/paused/recorded/playing/saving/error + REHYDRATE from DB hasTake."
+        },
+        {
+          "path": "src/hooks/useVerseAudio.ts",
+          "lines": "219-221",
+          "fact": "Hook composes reducer + engines; Permission/Alert UX stays in the screen."
+        },
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "36-36",
+          "fact": "Current capture surface imports useVerseAudio (ViewChapter mock path superseded by Record Tab / #49)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/228",
+        "fact": "Merged 2026-07-23 Closes #97: verseAudioReducer + useVerseAudio wired (then ViewChapter). Cesar #158 claim discarded by 2026-07-20 do-not-merge guidance."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Reducer+hook on HEAD; UI host is RecordTab not ViewChapter — CONFIRMED_CURRENT_SOURCE surface drift vs original AC wording.",
+        "device_evidence": "PR #228 device QA unchecked"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Surface moved to RecordTab (#49) after #228; state-machine AC still in force and present."
+    },
+    {
+      "issue": 98,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Repository addRecordingTake bumps take_number and flips latest in one transaction; exactly one latest per verse (later corrected to per-(verse,user) on shared devices); queries join via bible_text_id not chapter_assignment_id; delete latest promotes previous; unit tests.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/98"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/recordingsRepository.ts",
+          "lines": "288-354",
+          "fact": "addRecordingTake transactional; scopes by recorded_by_user_id (#105); inserts is_selected=1 (is_latest renamed)."
+        },
+        {
+          "path": "src/db/queries.ts",
+          "lines": "79-92",
+          "fact": "RECORDINGS_JOIN_CA joins bible_texts→recordings.bible_text_id + recorded_by_user_id; no chapter_assignment_id on recordings."
+        },
+        {
+          "path": "src/db/schema.ts",
+          "lines": "93-121",
+          "fact": "is_selected + idx_rec_verse_user on (bible_text_id, recorded_by_user_id, is_selected)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/227",
+        "fact": "Merged 2026-07-23 Closes #98 with ticket-level waiver: per-user latest waits for user_id (#99/#105); PR kept verse-global is_latest then. Issue comments 2026-07-16/07-20 record shared-device cardinality correction; HEAD now has recorded_by_user_id + is_selected implementing that later decision."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Per-user selected-take semantics on HEAD via #105 follow-through; join bug fixed (also split #121).",
+        "device_evidence": "none dated for multi-take repository AC"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "LATEST_EXPLICIT_DECISION chain: original verse-global → #227 waiver pending #105 → current source per-(bible_text_id, recorded_by_user_id). complete≠UI multi-take history QA."
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "issue_number": 23,
+  "fetched_at_utc": "2026-10-20T00:33:55Z",
+  "issue": {
+    "number": 23,
+    "title": "Audio recording",
+    "state": "closed",
+    "body": "- [x] record audio\n- [x] playback audio",
+    "user": "vipinpaul",
+    "created_at": "2026-04-20T05:13:36Z",
+    "updated_at": "2026-07-29T21:46:47Z",
+    "closed_at": "2026-07-29T21:46:47Z",
+    "labels": [],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/23",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4417811123,
+      "user": "LijuJacob08",
+      "created_at": "2026-05-11T05:25:52Z",
+      "updated_at": "2026-06-18T05:44:12Z",
+      "body": "Dev tasks\n- identify a suitable package for audio recording and playback [ET - 7hrs]\n- planning/discussion the folder structure for storing the audio data /(workflow ) with Vipin ( need approval from Joel Mathew)  [ET 5 hrs]\n- coding [ET - 4hrs]\n- unit testing [ET 2hrs]\n- code review (Vipin) [ET - 2hrs]\n- code review changes [ET 2hrs]\n- QA fixes [ET 2 hrs]\n- on audio recording update the recording table data should perform insert update and delete[4hrs]\n- Testing the table update woking as expected[ET 2hrs]",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/23#issuecomment-4417811123"
+    },
+    {
+      "id": 4768089039,
+      "user": "LijuJacob08",
+      "created_at": "2026-06-22T12:07:50Z",
+      "updated_at": "2026-06-22T12:07:50Z",
+      "body": "As the main branch is broken, I added my changes to branch [newbase](https://github.com/eten-tech-foundation/fluent-mobile/tree/newbase). ",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/23#issuecomment-4768089039"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

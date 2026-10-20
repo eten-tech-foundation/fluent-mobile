@@ -1,0 +1,215 @@
+{
+  "integrated_at_utc": "2026-10-20T00:43:31Z",
+  "cohorts": [
+    "c4",
+    "c6"
+  ],
+  "sources": {
+    "c4": "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/c4.json",
+    "c6": "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/c6.json",
+    "tmp_untouched": true
+  },
+  "stats": {
+    "c4_integrated": 48,
+    "c4_thin": 4,
+    "c6_integrated": 45,
+    "c6_thin": 1,
+    "overrides": 2
+  },
+  "substantive_total": 127,
+  "pending_total": 181,
+  "overrides_applied": [
+    721,
+    611,
+    271,
+    257
+  ],
+  "priority_findings_accepted_with_caveats": {
+    "c4": [
+      {
+        "rank": 1,
+        "severity": "critical",
+        "issues": [
+          368,
+          369,
+          484
+        ],
+        "themes": [
+          "decision",
+          "roles",
+          "sync",
+          "qa_process"
+        ],
+        "finding": "ID collision hazards in this cohort: mobile #368/#369 are A+ eng chores, NOT fluent-api#368/#369 seed/reset tickets cited in docs/product-behavior; mobile #484 is nightly CI schedule simplification, NOT QA assignment fixture 484 (1 Peter 5 peer_check) used in living QA chronology.",
+        "evidence": "Cache titles/bodies for #368 (react-navigation audit), #369 (sync unit tests), #484 (nightly cron+Slack). product-behavior/README.md Tickets table lists fluent-api#368/#369 and separately documents assignment 484 chronology + #721.",
+        "recommendation": "Integrator must keep cross-repo and fixture-id namespaces explicit in the ledger; never keyword-merge mobile issue numbers with API tickets or QA assignment ids."
+      },
+      {
+        "rank": 2,
+        "severity": "high",
+        "issues": [
+          442,
+          476
+        ],
+        "themes": [
+          "roles",
+          "decision",
+          "recording"
+        ],
+        "finding": "Open Peer Check decision chain is product-authoritative and reflected in living roles docs, but mobile #442 remains GitHub-open after Roslin PASS + Chad \u2705 (2026-10-14). #476 stage-aware ownership icon closed against #442 semantics.",
+        "evidence": "#442 body AC + eng write-up (API blocker fluent-api#335/#334) + QA checklist + Roslin/Chad comments; roles-and-permissions.md open-peer policy rows; #476 AC + QA results for no-icon on unassigned peer_check.",
+        "recommendation": "Treat living open-peer policy as current; resolve #442 board/GitHub closure separately from re-opening product debate. Pair any residual env gaps with API deploy proof (Dev\u2260QA)."
+      },
+      {
+        "rank": 3,
+        "severity": "high",
+        "issues": [
+          417,
+          446,
+          448
+        ],
+        "themes": [
+          "resources",
+          "offline",
+          "sync",
+          "recording"
+        ],
+        "finding": "Resources/offline integrity cluster still open: #417 kind:image queue bug blocks Images & Maps offline gating; #446 Aquifer same-id URL refresh never re-fetches (DevQA / hard to verify); #448 honest missing-text messaging is In QA but blocked awaiting resources download + repro fixture.",
+        "evidence": "#417 root-cause file pointers + AC; #446 conflict DO NOTHING analysis + Chad DevQA; #448 Roslin/Chad hold comments; core-flows Resources empty-vs-403 guidance (QA 484 empty UI is unrelated fixture).",
+        "recommendation": "Prioritize #417 for offline Resources AC; keep #446 as eng/DevQA; do not ask Nightly QA to sign #448 without a named chapter fixture. Do not infer HTTP 403 from empty Resources UI (living doc)."
+      },
+      {
+        "rank": 4,
+        "severity": "high",
+        "issues": [
+          428,
+          469,
+          470
+        ],
+        "themes": [
+          "roles",
+          "sync",
+          "recording"
+        ],
+        "finding": "Assignment + bibleTextId sync integrity chain: #428 fixed silent dropping of teammate assignee ids (QA passed with incomplete sync-validation caveat); #469 fixed local vs API bible_texts.id (upload wrong id masquerading as 403); #470 hardened claim queue + metadata error visibility and residual checks.",
+        "evidence": "#428 impact table (View Project unassigned, false offline claim, repair loop); Roslin caveat; #469 current-vs-expected identity; #470 AC tying residuals to #428/#177; living sync/roles docs.",
+        "recommendation": "When reconciling historical 'permission denied' upload reports, check bibleTextId identity era before concluding role denials. Retain #428 QA caveat as residual risk until proven on a healthy sync path."
+      },
+      {
+        "rank": 5,
+        "severity": "high",
+        "issues": [
+          408,
+          452,
+          451,
+          483
+        ],
+        "themes": [
+          "recording",
+          "roles",
+          "decision",
+          "sync"
+        ],
+        "finding": "Open product surfaces with decision weight: #408 Bible Verse/Pericope still open with product-concern scrubbing residual (auto-select waived); #452/#451 Observer Draft view + comments not started (first real Observer mobile surfaces); #483 Projects tab disk I/O after large offline sync on physical devices.",
+        "evidence": "#408 Chad scrubbing concern + open state; #452/#451 FR bodies (Observer restrictions, no Resources tab); #483 op-sqlite disk I/O root-cause write-up; living roles open questions on Observer QA accounts / grant chrome.",
+        "recommendation": "Keep #408 open until scrubbing residual dispositioned; sequence #452 before #451; treat #483 as physical-device scale bug not emulator-dismissible. Living open questions on Observer accounts remain unsettled."
+      }
+    ],
+    "c6_top_findings_raw": [
+      {
+        "severity": "P0",
+        "issue": 721,
+        "title": "[QA Android] Home Sync press completes but Sync screen does not open",
+        "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/721",
+        "finding": "QA Known deviation: Home Sync one-press does not open Sync screen (assignment 484 chronology). Not a role/permission conclusion. Later agent tabs PASS \u2260 Sync recovery; agent debug \u2260 Nightly. Local Metro-bridge receipt blocks causal classification until reconnect.",
+        "product_refs": [
+          "docs/product-behavior/README.md#qa-device-evidence-assignment-484--chronology",
+          "docs/product-behavior/core-flows.md",
+          "docs/product-behavior/roles-and-permissions.md"
+        ]
+      },
+      {
+        "severity": "P0",
+        "issue": 717,
+        "title": "Build out full Maestro E2E coverage",
+        "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/717",
+        "finding": "Agreed Maestro coverage AC still open; issue body admits no device PASS. Claim/open-peer lanes BLOCKED on #607 seeds. Product docs warn not to treat living outlines as #717 Maestro PASS/FAIL or Nightly signoff. Live grant allow/deny still 0.",
+        "product_refs": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/core-flows.md",
+          "docs/guides/maestro-role-coverage.md"
+        ]
+      },
+      {
+        "severity": "P0",
+        "issue": 607,
+        "title": "Ownership Maestro fixtures: conflict / open Peer Check seeds + claim baseline restore",
+        "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/607",
+        "finding": "Fixture gap (conflict / open Peer Check / claim baseline restore) remains open and blocks deterministic Maestro claim/open-peer coverage. Tied to API #368/#369 in product-behavior; do not invent pool acceptance journeys yet.",
+        "product_refs": [
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md",
+          "docs/assessments/chapter-assignment-and-claiming/tickets/maestro-ownership-claim-fixtures.md"
+        ]
+      },
+      {
+        "severity": "P1",
+        "issue": 603,
+        "title": "Keep the header sync icon in step with pending and failed uploads [Returning online and sync changes Audit]",
+        "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/603",
+        "finding": "Closed icon work has residual QA-confirmed Pericope Sync \u201cMissing Bible Text ID\u201d awaiting fluent-api#391. Distinct from #721 Home Sync navigation failure; Nightly comment showed Sync navigation working in that earlier test.",
+        "product_refs": [
+          "docs/product-behavior/core-flows.md"
+        ]
+      },
+      {
+        "severity": "P1",
+        "issue": 675,
+        "title": "Point sync at /self lists and clear cached milestones when membership is empty",
+        "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/675",
+        "finding": "Roles thread: closed /self empty-membership sync path addresses no-project-grant 403 stale cache, but open product decision remains (hide chrome vs server 403 only) and live grant allow/deny remains 0. Official QA PM/Observer/no-grant accounts still an open question in core-flows.",
+        "product_refs": [
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ]
+      },
+      {
+        "severity": "P1",
+        "issue": 599,
+        "title": "Stop the upload foreground service from crashing the app [Returning online and sync changes Audit]",
+        "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/599",
+        "finding": "Open high-severity upload foreground service crash (Dev evidence). Separate Sync-stack defect from #721 navigation Known deviation.",
+        "product_refs": [
+          "docs/product-behavior/core-flows.md"
+        ]
+      },
+      {
+        "severity": "P2",
+        "issue": 665,
+        "title": "Point preview and nightly builds at QA (qa.app / qa.api), not Dev",
+        "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/665",
+        "finding": "Closed preview/nightly\u2192QA env switch underpins Dev\u2260QA rule in living product docs; hosted Maestro e2e-test intentionally left on Dev pending separate confirmation.",
+        "product_refs": [
+          "docs/product-behavior/README.md",
+          "docs/guides/maestro-role-coverage.md"
+        ]
+      },
+      {
+        "severity": "P2",
+        "issue": 704,
+        "title": "Add Offline Draft Audio Download for Peer Check Chapters",
+        "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/704",
+        "finding": "Open peer-check offline draft-audio download FR explicitly includes open Peer Check rows \u2014 automation still blocked until #607 seeds exist; roles open-peer policy vs permissions-doc stricter text remains an open decision.",
+        "product_refs": [
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ]
+      }
+    ],
+    "integrator_caveats": [
+      "c6 #721 severity downgraded from P0 product framing to P1_provisional/NO_PRODUCT_FIX",
+      "c6 #611 notes enriched with PR #667 later-merge; old claim404 not current defect",
+      "c4 ID collisions 368/369/484 accepted as critical ledger hygiene"
+    ]
+  }
+}

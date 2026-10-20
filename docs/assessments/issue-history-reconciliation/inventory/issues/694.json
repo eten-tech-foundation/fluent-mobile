@@ -1,0 +1,25 @@
+{
+  "issue_number": 694,
+  "fetched_at_utc": "2026-10-20T00:38:45Z",
+  "issue": {
+    "number": 694,
+    "title": "Next UI: Waveform, Verse chip, Page dots and Level wave",
+    "state": "open",
+    "body": "Next UI components for the Listen player and the Recorder, built with the `figma-component` workflow. They're presentational and run on sample data in the gallery for now.\n\nFigma: [Wave bar](https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2409-505) \u00b7 [Verse chip](https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2409-502) \u00b7 [Page dot](https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2409-508) \u00b7 [Level wave](https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2595-772)\n\n## Acceptance criteria\n\n- [ ] `Waveform` draws each verse as a Verse chip (Current once reached, Default ahead) and its Wave bars (Played `fg/primary`, Unplayed `fg/inactive`), driven by a 0\u20131 progress, and scrolls under a playhead held about a third across\n- [ ] `Waveform` only mounts bars near the screen, so long passages stay light\n- [ ] `PageDots`: the current page is 14pt `fg/primary`, the rest 10pt `fg/inactive`, `space/8` apart\n- [ ] `LevelWave` short: the last 16 input levels, resting as dots and lifting into bars\n- [ ] `LevelWave` long: recorded levels as bars, resting ticks ahead, and a playhead at the recording front that holds two thirds across\n- [ ] Progress and position are announced to TalkBack; bars, chips and ticks are hidden from it\n- [ ] Gallery demos do the real jobs: the Listen player waveform with page dots and Play \u00b7 Previous \u00b7 Next, and recording a take that drives both Level wave sizes (levels are simulated)\n- [ ] Unit tests for each component\n- [ ] The `figma-component` skill holds PRs until the user asks for one\n\nNeeds QA? Yes (motion and feel need a real device)\n\nFollow-ups: live mic levels for the long Level wave and the unplayed bar contrast are tracked in `docs/features/next-ui-redesign/open-questions.md` (Q6, Q20).\n",
+    "user": "jskager",
+    "created_at": "2026-10-14T15:33:17Z",
+    "updated_at": "2026-10-19T15:01:52Z",
+    "closed_at": null,
+    "labels": [
+      "next-ui"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/694",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

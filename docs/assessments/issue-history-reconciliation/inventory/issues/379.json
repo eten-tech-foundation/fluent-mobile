@@ -1,0 +1,23 @@
+{
+  "issue_number": 379,
+  "fetched_at_utc": "2026-10-20T00:36:32Z",
+  "issue": {
+    "number": 379,
+    "title": "[A+] Align format vs format:check globs",
+    "state": "closed",
+    "body": "## Summary / context\n\nPart of **A+ Process / CI**. `docs/AGENT_ONBOARDING.md` notes `format` vs `format:check` glob drift.\n\n## Current vs expected\n\n**Current:** Format scripts may not check the same file set they write.\n\n**Expected:** `format` and `format:check` globs aligned (or intentional difference documented).\n\n## Scope\n\n**In scope**\n- Align `package.json` scripts\n- Update onboarding note if fixed\n\n**Out of scope**\n- Mass unrelated formatting of the whole repo beyond what the aligned check requires (prefer minimal diff; if huge, call out)\n\n## Acceptance criteria\n\n- [ ] Globs aligned or documented\n- [ ] `npm run format:check` passes on `main` after change\n- [ ] Engineering-only \u2014 no Needs QA\n\n## Verification / test plan\n\n1. `npm run format:check`\n2. lint/typecheck if needed\n\n## Links\n\n- `package.json`, `docs/AGENT_ONBOARDING.md`\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-08-25T14:18:09Z",
+    "updated_at": "2026-08-26T17:28:09Z",
+    "closed_at": "2026-08-26T17:28:09Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/379",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

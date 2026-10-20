@@ -1,0 +1,25 @@
+{
+  "issue_number": 469,
+  "fetched_at_utc": "2026-10-20T00:37:00Z",
+  "issue": {
+    "number": 469,
+    "title": "Bug: Local bible_texts.id does not match API verse id (upload sends wrong bibleTextId)",
+    "state": "closed",
+    "body": "## Summary\n\nRecording upload sends `bibleTextId` on `PUT /verse-audio/{projectUnitId}/{bibleTextId}`. The API expects the **server** `bible_texts.id` from bulk-texts (`verses[].id`). Mobile currently drops that id on sync and lets SQLite assign a **local** rowid. Uploads then associate audio with the wrong chapter/verse and often look like a **permissions / 403** error.\n\nThis is intermittent (not every chapter) because local autoincrement ids only match server ids by accident.\n\nObserved while claim-task QA; Sync Now / upload failures have been blocking related QA.\n\n## Current vs expected\n\n**Current**\n1. `POST /bibles/{id}/bulk-texts` returns verses with stable numeric `id`.\n2. Mobile `ApiVerse` / `syncBibleTexts` / `insertBibleTexts` omit `id` \u2192 local PK.\n3. Recordings store local `bible_text_id`; upload sends that value to the API.\n\n**Expected**\n- Local `bible_texts.id` **equals** API `verses[].id`.\n- Existing devices remap `bible_texts` + `recordings.bible_text_id` on next bible-text sync after upgrade.\n- Upload no longer sends local autoincrement ids.\n\n## Acceptance criteria\n\n- [ ] `ApiVerse` includes required `id`; sync maps it; missing `id` fails the chunk (no silent auto-id fallback).\n- [ ] `insertBibleTexts` upserts with server PK; when local id differs, remaps `recordings.bible_text_id` then replaces the row.\n- [ ] Migration / one-shot flag forces full bible-text re-fetch on next sync so existing DBs remap.\n- [ ] Unit tests cover insert, same-id update, id remap, and missing-id error.\n- [ ] `docs/guides/recordings-sync-contract.md` states local PK must equal API verse id.\n- [ ] Device QA: Sync Now \u2192 record \u2192 upload on previously failing chapters succeeds (Needs QA).\n\n## Out of scope\n\n- Claim queue hardening / Sync page metadata error UI (separate follow-up).\n- #152, #256, #271 product work.\n\n## File pointers\n\n- `src/types/api/types.ts` \u2014 `ApiVerse`\n- `src/services/sync.ts` \u2014 `syncBibleTexts`\n- `src/db/repository.ts` \u2014 `insertBibleTexts`\n- `src/db/migrations.ts` \u2014 schema v15\n- `docs/guides/recordings-sync-contract.md`\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-09T15:40:09Z",
+    "updated_at": "2026-09-09T16:36:29Z",
+    "closed_at": "2026-09-09T16:36:29Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/469",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

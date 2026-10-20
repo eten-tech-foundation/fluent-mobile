@@ -1,0 +1,23 @@
+{
+  "issue_number": 665,
+  "fetched_at_utc": "2026-10-20T00:38:38Z",
+  "issue": {
+    "number": 665,
+    "title": "Point preview and nightly builds at QA (qa.app / qa.api), not Dev",
+    "state": "closed",
+    "body": "## Problem\n\nPreview (`preview-build` label) and Nightly APKs currently target the **Dev** environment. We want those internal builds to use **QA** instead:\n\n- Web / login (what testers open in a browser): [https://qa.app.fluent.bible/](https://qa.app.fluent.bible/) \u2014 **not** [https://dev.app.fluent.bible/](https://dev.app.fluent.bible/)\n- Mobile API baked into the APK (`EXPO_PUBLIC_API_BASE_URL`): `https://qa.api.fluent.bible` \u2014 **not** `https://dev.api.fluent.bible`\n\nThe mobile client never talks to `*.app.fluent.bible` (that is the Fluent **web** app). The APK must bake the matching **API** host so sign-in and sync hit the same QA backend as [qa.app.fluent.bible](https://qa.app.fluent.bible/).\n\n## Current vs expected\n\n| Surface | Current | Expected |\n| --- | --- | --- |\n| `eas.json` `preview` / `nightly` env | `https://dev.api.fluent.bible` | `https://qa.api.fluent.bible` |\n| `.github/workflows/preview-build.yml` | `EXPO_PUBLIC_API_BASE_URL: https://dev.api.fluent.bible` | QA API |\n| `.github/workflows/nightly-preview.yml` | `EXPECTED_DEV_API_URL: https://dev.api.fluent.bible` | QA API (rename the env if needed) |\n| `.github/scripts/validate-nightly-api-url.sh` | Requires exact `dev.api.fluent.bible`; treats other `*.api.fluent.bible` as production | Allow / require `qa.api.fluent.bible`; still reject production |\n| Docs / Slack / QA guides that say testers use Dev web | `https://dev.app.fluent.bible` | `https://qa.app.fluent.bible` |\n\n## Scope\n\n**In scope**\n- EAS `preview` and `nightly` profiles (and the workflows/scripts that guard or inject the URL)\n- Docs that describe which environment those APKs talk to (`.eas/README.md`, `.github/README.md`, QA preview / process guides, `.env.example` comments as needed)\n- Nightly URL validation so `qa.api` is the expected host, not a false production fail\n\n**Out of scope**\n- Local / emulator Path A (`development` profile, engineer `.env`) unless docs only mention it in passing\n- Production EAS / Play Store builds\n- `e2e-test` / Maestro hosted-dev accounts (leave on Dev unless we separately confirm QA fixtures)\n- iOS\n\n## Acceptance criteria\n\n- [ ] Preview and nightly APKs bake `EXPO_PUBLIC_API_BASE_URL=https://qa.api.fluent.bible`\n- [ ] Nightly (and preview, if it has a guard) URL validation expects QA and still fails on production-like hosts\n- [ ] Docs and QA-facing copy tell testers to use [https://qa.app.fluent.bible/](https://qa.app.fluent.bible/) (not Dev web) as the matching web environment\n- [ ] Local development default remains unchanged (localhost / hosted Dev for engineers)\n- [ ] Confirm QA API is reachable and QA test accounts work before relying on the next nightly\n\n## File pointers\n\n- `eas.json` \u2014 `build.preview.env` / `build.nightly.env`\n- `.github/workflows/preview-build.yml`\n- `.github/workflows/nightly-preview.yml`\n- `.github/scripts/validate-nightly-api-url.sh`\n- `.env.example`, `.eas/README.md`, `.github/README.md`, `docs/guides/qa-preview-testing.md`, `docs/guides/local-development-workflow.md`\n\n## Notes\n\nNeeds QA? **Yes** after merge \u2014 next nightly must sign in against QA data, not Dev.\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-10-08T17:30:49Z",
+    "updated_at": "2026-10-08T20:49:22Z",
+    "closed_at": "2026-10-08T20:49:22Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/665",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,1095 @@
+{
+  "reviewer": "r16",
+  "wave": 4,
+  "domain": "late-gap-refill4",
+  "ids": [
+    601,
+    602,
+    603,
+    604,
+    605,
+    610,
+    612,
+    613,
+    615,
+    617,
+    619,
+    620,
+    621,
+    622,
+    623,
+    638,
+    642,
+    665,
+    670,
+    675,
+    679,
+    683,
+    691,
+    692
+  ],
+  "reviewed_at_utc": "2026-10-20T01:27:05Z",
+  "corpus": "docs/assessments/issue-history-reconciliation/inventory/issues/<id>.json",
+  "contract": "docs/assessments/issue-history-reconciliation/inventory/complete-row-contract.md",
+  "skip": {
+    "721": "Sync lead \u2014 out of scope for this reviewer"
+  },
+  "recommend_complete_count": 24,
+  "recommend_complete_false_count": 0,
+  "issues": [
+    {
+      "issue": 601,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Only the latest reachability probe result is applied (stale dropped); failed probe after network change is retried with backoff until success or link drop; unit tests for out-of-order and retry; Android QA A.1/D.14/C.10.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/601"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/connectivity.ts",
+          "lines": "144-184",
+          "fact": "generation counter drops stale /health emits; evaluate retries with REACHABILITY_RETRY_BACKOFF_MS until online or generation changes."
+        },
+        {
+          "path": "src/services/connectivity.test.ts",
+          "lines": "137-187",
+          "fact": "Tests cover dropping a stale probe that finishes after a newer one and retrying a failed probe after reconnect."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/663",
+        "fact": "Merged 2026-10-08: NetInfo /health probes sequenced so failed reconnect/cold-start probes cannot overwrite a later success."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Generation-gated probe emit + retry on HEAD in connectivity.ts.",
+        "device_evidence": "dated 2026-09-28 Xiaomi Redmi Note 9 Pro / 09ff2fd / dev.api \u2014 pre-fix audit A.1/D.14/C.10; post-merge device reverify not in corpus"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#601 AC implemented on HEAD via #663; historical device evidence is pre-fix audit only."
+    },
+    {
+      "issue": 602,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Transport failures (offline/DNS/timeout) do not set persistent sync step errors, or clear on next successful sync; Sync page error text updates when stored errors change; unit tests; Android QA C.11.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/602"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/sync.ts",
+          "lines": "203-209",
+          "fact": "On final retrySyncStep failure, setSyncError is skipped when isTransientTransportFailure(error)."
+        },
+        {
+          "path": "src/types/api/errors.ts",
+          "lines": "46-56",
+          "fact": "isTransientTransportFailure treats status 0, AbortError, and DNS/timeout message patterns as transport."
+        },
+        {
+          "path": "src/services/sync.steps.test.ts",
+          "lines": "330-347",
+          "fact": "Unit test: does not persist DNS/timeout transport failures as sync errors."
+        },
+        {
+          "path": "src/hooks/useSync.ts",
+          "lines": "95-116",
+          "fact": "Subscribes to sync-complete and upload session events to rebuild Sync page error display text."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/660",
+        "fact": "Merged 2026-10-08: metadata sync no longer stores offline/DNS/timeout as persistent sync_error_*; Sync screen refreshes error copy."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Transport skip of setSyncError + useSync refresh on HEAD.",
+        "device_evidence": "dated 2026-09-28 audit C.11 on 09ff2fd / dev.api \u2014 pre-fix"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#602 AC on HEAD via #660; sticky transport sync errors skipped at retrySyncStep."
+    },
+    {
+      "issue": 603,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "One shared sync-status source feeds every header and Sync page; refreshes on take save/delete, upload state change, and focus; offline glyphs match #38 (gray cloud-check); unit tests; Android QA A.1/A.2/B.3/B.8.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/603"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/syncStatusStore.ts",
+          "lines": "106-125",
+          "fact": "Shared store wires upload-session events and onRecordingDataChanged \u2192 refreshSyncStatusStore for all consumers."
+        },
+        {
+          "path": "src/components/ui/CloudSyncStatusIcon.tsx",
+          "lines": "296-302",
+          "fact": "offline_synced renders gray CloudCheckGlyph (not CloudOff), matching #38."
+        },
+        {
+          "path": "src/hooks/usePendingUploads.ts",
+          "lines": "6-31",
+          "fact": "Hook reads/refreshes via syncStatusStore rather than per-screen isolated state."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/606",
+        "fact": "Merged 2026-10-12: shared pending-upload/sync-status store so headers stay in step across screens."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "syncStatusStore + offline_synced cloud-check on HEAD.",
+        "device_evidence": "dated 2026-10-14 QA comment on #603: icon states verified on device; residual 'Missing Bible Text ID' in pericope Sync called out as fluent-api#391 (out of this AC)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#603 shared store + offline glyph on HEAD via #606; post-merge QA passed icon AC; pericope Sync copy residual tracked elsewhere."
+    },
+    {
+      "issue": 604,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Network/transport failure during upload leaves take pending (not failed) with no error; resume when server reachable; friendly copy if network error reaches UI; unit test; Android QA E.17.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/604"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/recordingSync.ts",
+          "lines": "351-359",
+          "fact": "On exhausted retries, isNetworkTransportError leaves status pending and throws UploadNetworkInterruptedError instead of markRecordingFailed."
+        },
+        {
+          "path": "src/services/recordingSync.ts",
+          "lines": "526",
+          "fact": "Unit test: leaves the take pending after exhausting network errors (#604)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/661",
+        "fact": "Merged 2026-10-08: mid-upload network drop keeps take pending and pauses session without take-level failure UI."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Network interrupt \u2192 pending path on HEAD.",
+        "device_evidence": "dated audit E.17 on 09ff2fd / dev.api \u2014 pre-fix"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#604 silent pause-on-network-drop on HEAD via #661."
+    },
+    {
+      "issue": 605,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Saving a take while online starts/queues upload without user action; pause-window end resumes auto-upload; failed session schedules later retry; unit tests; Android QA E.19.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/605"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/uploadOrchestrator.ts",
+          "lines": "139-148",
+          "fact": "notifyPendingUploads() starts/queues upload when a take is saved while app is open."
+        },
+        {
+          "path": "src/services/uploadOrchestratorCore.ts",
+          "lines": "92-93",
+          "fact": "Orchestrator API exposes notifyPendingWork for take-saved triggers."
+        },
+        {
+          "path": "src/services/uploadOrchestrator.test.ts",
+          "lines": "950-1071",
+          "fact": "Tests: uploads a take saved during in-flight or last-failed session without a new connectivity event."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/674",
+        "fact": "Merged 2026-10-09: takes recorded while already online start upload without requiring connectivity change."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "notifyPendingUploads path on HEAD.",
+        "device_evidence": "dated audit E.19 on 09ff2fd / dev.api \u2014 pre-fix"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#605 online take-saved auto-upload on HEAD via #674."
+    },
+    {
+      "issue": 610,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Pending offline claim whose chapter is held by another (claim 404 or pulled assignee \u2260 claimant) sets local conflict and resolves queue row regardless of peer checker/elapsed time; conflict UI on My Work/View Project/Record; no repeated claims sync error; API follow-up if needed; unit tests; Android QA.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/610"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/chapterClaimSync.ts",
+          "lines": "24-29",
+          "fact": "Documents claim 404 as terminal reconnect conflict (PM assign / CLAIM_RACE_WINDOW)."
+        },
+        {
+          "path": "src/services/chapterClaimSync.ts",
+          "lines": "65-151",
+          "fact": "syncPendingChapterClaims + post-pull reconcile set has_conflict and resolve queue for 404 / held-by-other."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/653",
+        "fact": "Merged 2026-10-08: treat claim 404 as local has_conflict + resolve queue; assignment-pull conflict when claimant \u2260 assignee. Comment on issue opened fluent-api#376 for typed conflict."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "404\u2192conflict + post-pull reconcile on HEAD.",
+        "device_evidence": "dated 2026-09-29 audit D.8/E on fb634e5 / dev.api \u2014 pre-fix"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#610 mobile conflict surfacing on HEAD via #653; API typed-conflict follow-up tracked at fluent-api#376."
+    },
+    {
+      "issue": 612,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Sync Now does not full-download languages/books/bibles when unchanged; uses updatedAfter when API supports (fluent-api#373 linked); claims/user data not blocked behind master; single-flight; unit tests; device QA timed Sync Now.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/612"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/sync.ts",
+          "lines": "277-299",
+          "fact": "syncMasterData passes updatedAfter to getLanguages/getBooks/getBibles for incremental catalogue pulls."
+        },
+        {
+          "path": "src/services/sync.ts",
+          "lines": "1125-1139",
+          "fact": "runFullSyncSingleFlight / __resetFullSyncSingleFlightForTests enforce one overlapping full sync."
+        },
+        {
+          "path": "src/services/sync.auth.test.ts",
+          "lines": "1066",
+          "fact": "Unit test enforces single-flight across overlapping syncAllUsers calls."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/649",
+        "fact": "Merged 2026-10-08: incremental master data + single-flight; claims no longer wait behind full catalogue on warm Sync Now."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "updatedAfter master sync + single-flight on HEAD.",
+        "device_evidence": "none in corpus comments"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#612 incremental master + single-flight on HEAD via #649."
+    },
+    {
+      "issue": 613,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Recordings store/resolve project unit they were recorded in; upload uses that unit; migration for existing local recordings; unit tests with two projects sharing bible+book; Android device QA.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/613"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/schema.ts",
+          "lines": "100",
+          "fact": "recordings.project_unit_id column present."
+        },
+        {
+          "path": "src/db/migrations.ts",
+          "lines": "665-712",
+          "fact": "Migration recordings_project_unit_id backfills when uniquely resolvable."
+        },
+        {
+          "path": "src/db/repository.ts",
+          "lines": "1034-1069",
+          "fact": "getPendingRecordings prefers capture-time project_unit_id (#613); fallback only when exactly one matching unit."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/657",
+        "fact": "Merged 2026-10-08: store project_unit_id at capture and upload to that unit instead of ORDER BY ca.id LIMIT 1."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "project_unit_id capture + upload preference on HEAD.",
+        "device_evidence": "dated audit I.3 on fb634e5 / dev.api \u2014 pre-fix"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#613 project-unit-scoped upload on HEAD via #657."
+    },
+    {
+      "issue": 615,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "UiVersion legacy|next foundation: resolveTheme/useTheme, Legacy frozen, Settings runtime toggle default legacy, Next token module, tests/lint guard, proving consumers only \u2014 no redesign in this ticket.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/615"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/theme/uiVersionTypes.ts",
+          "lines": "8-12",
+          "fact": "UiVersion = 'legacy' | 'next'; DEFAULT_UI_VERSION = 'legacy'."
+        },
+        {
+          "path": "src/theme/uiVersion.ts",
+          "lines": "13-14",
+          "fact": "resolveTheme(version) central resolution."
+        },
+        {
+          "path": "src/theme/useTheme.ts",
+          "lines": "36-64",
+          "fact": "useUiVersion / useTheme react to preference without restart."
+        },
+        {
+          "path": "src/app/screens/SettingsScreen.tsx",
+          "lines": "151-156",
+          "fact": "Settings segmented control Legacy/Next bound to uiVersion."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/616",
+        "fact": "Merged 2026-09-30: runtime-selectable Legacy/Next theme foundation with Settings toggle."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "UiVersion foundation + Settings toggle on HEAD.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#615 Legacy/Next foundation on HEAD via #616."
+    },
+    {
+      "issue": 617,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Populate Next theme from Figma Foundations; Hardware default for Theme.colors; Canvas/Accent role tables; spacing/radius/typography overrides; Legacy unchanged; tests + docs/guides/ui-version-theming.md; Needs QA Yes.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/617"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/theme/nextPrimitives.ts",
+          "lines": "9",
+          "fact": "Figma bone (and other) primitive ramps encoded for Next."
+        },
+        {
+          "path": "src/theme/nextRoles.ts",
+          "lines": "16-70",
+          "fact": "Canvas/Hardware/Accent role tables; Hardware used as light chrome default."
+        },
+        {
+          "path": "src/theme/legacyTheme.test.ts",
+          "lines": "25-130",
+          "fact": "Tests: resolveTheme('next') \u2192 nextThemes.hardware; Legacy still legacyTheme across modes."
+        },
+        {
+          "path": "docs/guides/ui-version-theming.md",
+          "lines": "37-47",
+          "fact": "Documents Figma Foundations source link and Hardware as default app chrome for Next Theme mapping."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/618",
+        "fact": "Merged 2026-10-01: Next tokens from Figma Foundations with Hardware default chrome."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Next Hardware/Canvas/Accent tokens on HEAD.",
+        "device_evidence": "none in corpus \u2014 Needs QA was flagged on ticket"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#617 Next Foundations tokens on HEAD via #618; complete \u2260 device QA pass."
+    },
+    {
+      "issue": 619,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "When transport blocks (Wi-Fi lost, cellular off), active download pauses keeping resume data; worker checks transport before each item; transport loss does not mark failed; auto-resume when Wi-Fi returns; unit test; Android QA E.19.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/619"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/downloadQueueWorker.ts",
+          "lines": "22-35",
+          "fact": "DownloadPauseReason includes 'transport'; transportAllows gate documented for #546/#619."
+        },
+        {
+          "path": "src/services/downloadQueueWorker.ts",
+          "lines": "117-173",
+          "fact": "pause(reason='transport') preserves resume; resume() re-checks transportAllows before continuing."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/648",
+        "fact": "Merged 2026-10-08: re-check Wi-Fi/cellular during running download queue; transport loss pauses without cascading failed."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Transport pause reason + gate on HEAD.",
+        "device_evidence": "dated going-offline audit E.19 on ddfdaaa / dev.api \u2014 pre-fix"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#619 mid-download transport pause on HEAD via #648."
+    },
+    {
+      "issue": 620,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Pending-count queries propagate failures (not 0); Sync page does not show All synced/uploadComplete when unknown; log-out guard treats unknown as may have unsynced work; unit tests.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/620"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/queries.ts",
+          "lines": "809-825",
+          "fact": "getPendingUploadCount rethrows on SQLite error instead of returning 0."
+        },
+        {
+          "path": "src/services/syncStatusStore.ts",
+          "lines": "197-199",
+          "fact": "#620: rejected pending reads set countsUnknown instead of zero."
+        },
+        {
+          "path": "src/utils/deriveSyncPageStatus.test.ts",
+          "lines": "44",
+          "fact": "Test: does not report allComplete when pending counts are unknown."
+        },
+        {
+          "path": "src/services/confirmUnsyncedSignOut.ts",
+          "lines": "16-22",
+          "fact": "Failed count treated as possible unsynced work (warn path)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/659",
+        "fact": "Merged 2026-10-08: pending-count failures propagate; Sync/log-out no longer treat errors as zero pending."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "throw + countsUnknown path on HEAD.",
+        "device_evidence": "none \u2014 code-review finding, not device-reproduced"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#620 unknown pending counts on HEAD via #659."
+    },
+    {
+      "issue": 621,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "No snapshot with isUploading:false and pre-upload pendingCount after complete/idle; unit test complete before pending query resolves; Android device QA.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/621"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/syncStatusStore.ts",
+          "lines": "57-59",
+          "fact": "Comment: #621 hold isUploading true across final refresh."
+        },
+        {
+          "path": "src/services/syncStatusStore.ts",
+          "lines": "176-179",
+          "fact": "complete/idle sets pendingFinalRefresh instead of clearing isUploading immediately."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/664",
+        "fact": "Merged 2026-10-08: keep Syncing until refreshed counts land so icon does not flash pending."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "pendingFinalRefresh hold on HEAD.",
+        "device_evidence": "dated pre-fix flash observed on ddfdaaa during #563 QA"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#621 no flash-pending after complete on HEAD via #664."
+    },
+    {
+      "issue": 622,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Drawer Sign Out shows same unsynced-work warning as Settings Log out (shared helper); counts every take not yet on server including pericope; one label; unit tests; Android QA.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/622"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/confirmUnsyncedSignOut.ts",
+          "lines": "10-41",
+          "fact": "Shared sign-out guard (#622) using getUnsyncedRecordingCount for drawer and Settings."
+        },
+        {
+          "path": "src/db/queries.ts",
+          "lines": "828-847",
+          "fact": "getUnsyncedRecordingCount includes pericope/failed takes not yet uploaded."
+        },
+        {
+          "path": "src/components/ui/UserSettingsMenu.tsx",
+          "lines": "179-185",
+          "fact": "Drawer Sign Out awaits confirmUnsyncedSignOut before signOutCurrentDeviceAccount."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/658",
+        "fact": "Merged 2026-10-08: drawer and Settings share unsynced warning + label, including pericope takes."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Shared confirmUnsyncedSignOut on HEAD.",
+        "device_evidence": "dated pre-fix on ddfdaaa during #563 QA"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#622 shared unsynced sign-out warning on HEAD via #658."
+    },
+    {
+      "issue": 623,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Deleting a pericope take from Verse mode shows confirmation naming full range; Cancel keeps take; unit test; Android device QA.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/623"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "804-825",
+          "fact": "handleDeleteTake for pericope-in-verse-mode Alert names span and requires Delete confirm."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/645",
+        "fact": "Merged 2026-10-08: Verse-mode pericope delete always confirms with vv. X\u2013Y range copy."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Confirmation alert path on HEAD.",
+        "device_evidence": "dated pericope audit finding on ddfdaaa / dev.api \u2014 pre-fix"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#623 pericope delete confirm on HEAD via #645."
+    },
+    {
+      "issue": 638,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Key (Default/Pressed/Disabled) + KeyDeck + Switch with haptics; Foundations roles/motion via useTheme; ColorModeScope; fluent://gallery flag-gated non-prod; workflow guide + figma-component skill; Needs QA Yes.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/638"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/ui/Key.tsx",
+          "lines": "1-40",
+          "fact": "Next UI Key component present (Default/Pressed/Disabled contract)."
+        },
+        {
+          "path": "src/components/ui/KeyDeck.tsx",
+          "lines": "1-30",
+          "fact": "KeyDeck frames transport keys."
+        },
+        {
+          "path": "src/routes/gallery.tsx",
+          "lines": "1",
+          "fact": "Gallery route exports ComponentGalleryScreen."
+        },
+        {
+          "path": "src/routes/_layout.tsx",
+          "lines": "59",
+          "fact": "Stack.Protected guard={isComponentGalleryEnabled()} for gallery."
+        },
+        {
+          "path": "src/app/gallery/entries/KeyEntry.tsx",
+          "lines": "1-20",
+          "fact": "Gallery live demo entry for Key."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/639",
+        "fact": "Merged 2026-10-09: Key, KeyDeck, Switch, flag-gated gallery, Figma-to-component workflow."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Key/KeyDeck/gallery on HEAD.",
+        "device_evidence": "none in corpus \u2014 Needs QA flagged for haptics"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#638 Key/gallery/workflow on HEAD via #639; complete \u2260 haptic device QA pass."
+    },
+    {
+      "issue": 642,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Document API contract for /languages /books /bibles; master-data sync succeeds for signed-in user or fails once with soft-reauth UX; if auth required use authedRequest + bearer tests; no sticky misleading sync_error_master_data; unit tests; smoke.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/642"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/api.ts",
+          "lines": "217-239",
+          "fact": "getLanguages/getBooks/getBibles use authedRequest (bearer), not publicRequest."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/643",
+        "fact": "Merged 2026-10-08: catalog GETs switched to authedRequest after confirming fluent-api authenticateUser on those routes."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Authed catalog methods on HEAD.",
+        "device_evidence": "none in corpus comments"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#642 authenticated master-data catalog calls on HEAD via #643."
+    },
+    {
+      "issue": 665,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Preview/nightly bake EXPO_PUBLIC_API_BASE_URL=https://qa.api.fluent.bible; URL validation expects QA; docs point testers to qa.app; local EAS development remains Dev/localhost; Needs QA Yes on next nightly.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/665"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "eas.json",
+          "lines": "31-44",
+          "fact": "preview and nightly env EXPO_PUBLIC_API_BASE_URL = https://qa.api.fluent.bible."
+        },
+        {
+          "path": ".github/workflows/preview-build.yml",
+          "lines": "15",
+          "fact": "Preview workflow bakes QA API URL."
+        },
+        {
+          "path": ".github/workflows/nightly-preview.yml",
+          "lines": "44",
+          "fact": "EXPECTED_QA_API_URL = https://qa.api.fluent.bible."
+        },
+        {
+          "path": ".github/scripts/validate-nightly-api-url.sh",
+          "lines": "6-32",
+          "fact": "Validator requires qa.api.fluent.bible host."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/666",
+        "fact": "Merged 2026-10-08: preview/nightly pointed at QA API + qa.app docs; development profile stays Dev."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "preview/nightly \u2192 qa.api on HEAD; development still dev.api (eas.json ~70).",
+        "device_evidence": "none \u2014 infra/config ticket; nightly sign-in against QA is post-merge process"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#665 QA-targeted preview/nightly on HEAD via #666."
+    },
+    {
+      "issue": 670,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Cold login: Home interactive after Tier 1 (user/projects/milestones/My Work chapters + those bible texts) without waiting full catalogue+all assignments+all texts; Tier 2 background; honest missing-text copy; single-flight; tests; device QA.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/670"
+        },
+        {
+          "slice": "other",
+          "text": "Ticket-level waiver 2026-10-09: 'Do not gate Tier 1 on full world languages/bibles catalogue' deferred to #679 until API-scoped master data (fluent-api#373).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/670"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/sync.ts",
+          "lines": "1338-1444",
+          "fact": "onTier1Complete + login path: Tier 1 My Work assignments/texts then notifyTier1Complete; Tier 2 project assignments + remaining texts. Comment notes full catalogue still in Tier 1 until fluent-api#373/#679."
+        },
+        {
+          "path": "src/navigation/AuthSessionProvider.tsx",
+          "lines": "139-140",
+          "fact": "Clears Home full-screen spinner via onTier1Complete after Tier 1."
+        },
+        {
+          "path": "src/app/screens/HomeScreen.tsx",
+          "lines": "50-55",
+          "fact": "HomeSpinnerGate exports postLoginSyncActive wiring for progressive login (#670)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/680",
+        "fact": "Merged 2026-10-14: progressive Tier 1/2 login sync; issue comment waives full-catalogue-out-of-Tier-1 into #679."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Tiered login sync on HEAD; master catalogue still awaited in Tier 1 (explicit residual).",
+        "device_evidence": "none in corpus \u2014 issue still open"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#670 progressive login on HEAD via #680; issue still open. Catalogue-from-Tier-1 AC explicitly waived to #679. Reconciliation complete as open residual + source confirmation \u2014 not a QA pass."
+    },
+    {
+      "issue": 675,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Four sync GETs hit /self/... without /users/{userId}; empty projects \u2192 reconcileUserMilestones([]) then reconcileUserProjects([]); no ensureUserProjectMembership on empty path; non-empty does not call reconcileUserMilestones in syncProjects; named unit tests pass.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/675"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/api.ts",
+          "lines": "252-285",
+          "fact": "getUserProjects/Milestones/ChapterAssignments hit /self/projects, /self/milestones, /self/chapter-assignments(/all)."
+        },
+        {
+          "path": "src/services/sync.ts",
+          "lines": "344-360",
+          "fact": "Confirmed empty projects list reconciles milestones then projects; skips ensureUserProjectMembership on that path."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/690",
+        "fact": "Merged 2026-10-15: point sync at /self lists and clear cached milestones when membership empty (follow-up #708 also merged)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "/self routes + empty-membership reconcile on HEAD.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#675 /self sync + empty membership clear on HEAD via #690/#708."
+    },
+    {
+      "issue": 679,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Login Tier 1 must not wait on full world languages/books/bibles once API path exists for FK rows My Work needs; remaining master data in Tier 2/background; unit tests for scoped master-data path.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/679"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/sync.ts",
+          "lines": "1402-1407",
+          "fact": "Comment + code: Full catalogue still runs in Tier 1 (await masterPromise) until fluent-api offers scoped master data (fluent-api#373 / #670 follow-up)."
+        }
+      ],
+      "material_pr_or_decision": null,
+      "material_pr_or_decision_na": {
+        "reason_not_applicable": "No dedicated implementation PR; ticket is the explicit #670 Tier-1 catalogue deferral pending fluent-api#373. Related progressive login landed in PR #680 which documents this residual."
+      },
+      "source_vs_qa": {
+        "working_tree": "Tier 1 still awaits syncMasterData (full catalogue) on HEAD \u2014 AC unmet by design until API.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#679 open deferral correctly reflected: full master catalogue still gates Tier 1. Reconciliation records OPEN_TICKET_UNRESOLVED + confirmed source residual \u2014 not Done."
+    },
+    {
+      "issue": 683,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "At Complete stage: record / Record New Take disabled in verse and pericope; delete and select-take controls hidden; playback/scrub still work; earlier stages unchanged; unit tests; Needs QA Yes.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/683"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/utils/stageAdvancement.ts",
+          "lines": "177-182",
+          "fact": "isRecordingLockedByStage true when status normalizes to complete."
+        },
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "937-942",
+          "fact": "stageLocked from isRecordingLockedByStage feeds captureDisabled."
+        },
+        {
+          "path": "src/utils/stageAdvancement.test.ts",
+          "lines": "432-452",
+          "fact": "Unit tests lock recording at complete and not at earlier stages."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/684",
+        "fact": "Merged 2026-10-13: Complete-stage recording lock; delete/select-take controls hidden; playback retained."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Complete-stage capture lock on HEAD.",
+        "device_evidence": "none in corpus \u2014 Needs QA flagged for post-merge nightly"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#683 Complete-stage recording lock on HEAD via #684; complete \u2260 nightly QA pass."
+    },
+    {
+      "issue": 691,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Evaluate react-native-bootsplash major (+ sharp) against SDK 57 (or with SDK 58 per #536); local doctor + CI + Android smoke; consider dependabot ignore for semver-major until ready. Explicit deferral of Dependabot #633.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/691"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "package.json",
+          "lines": "77",
+          "fact": "react-native-bootsplash still ^6.3.10 \u2014 major bump not landed (matches deferral)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/633",
+        "fact": "Dependabot bootsplash+sharp PR closed 2026-10-13 in favor of this open deferral tracker (risky native bump vs Expo SDK 57 matrix)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Bootsplash remains ^6.3.10 on HEAD \u2014 AC work not started.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#691 open engineering deferral correctly reflected; major bootsplash bump not on HEAD. Reconciliation complete as deferred open work \u2014 not a missing decision."
+    },
+    {
+      "issue": 692,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "RoundButton Soft/Flat \u00d7 Default/Pressed/Disabled; ProgressRing None/In progress/Complete with TalkBack; stroke tokens; gallery demos; Switch gallery rework; unit tests; Needs QA Yes.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/692"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/ui/RoundButton.tsx",
+          "lines": "1-40",
+          "fact": "RoundButton component present."
+        },
+        {
+          "path": "src/components/ui/ProgressRing.tsx",
+          "lines": "1-40",
+          "fact": "ProgressRing component present."
+        },
+        {
+          "path": "src/components/ui/RoundButton.test.tsx",
+          "lines": "1-20",
+          "fact": "Unit tests for RoundButton."
+        },
+        {
+          "path": "src/components/ui/ProgressRing.test.tsx",
+          "lines": "1-20",
+          "fact": "Unit tests for ProgressRing."
+        },
+        {
+          "path": "src/app/gallery/entries/RoundButtonEntry.tsx",
+          "lines": "1-20",
+          "fact": "Gallery entry for Round button / listening progress demos."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/693",
+        "fact": "Merged 2026-10-19: Round button + Progress ring Next UI components; GitHub issue remains open (no closed_at)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "RoundButton + ProgressRing + tests + gallery entry on HEAD.",
+        "device_evidence": "none \u2014 Needs QA for haptics/press; issue still open"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#692 components on HEAD via #693; issue still open. Reconciliation complete as open-ticket residual + confirmed source \u2014 not a device-QA pass."
+    }
+  ]
+}

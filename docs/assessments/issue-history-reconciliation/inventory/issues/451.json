@@ -1,0 +1,23 @@
+{
+  "issue_number": 451,
+  "fetched_at_utc": "2026-10-20T00:36:56Z",
+  "issue": {
+    "number": 451,
+    "title": "Build Comment Entry Points, Composer & Panel",
+    "state": "open",
+    "body": "Community-review feedback today happens outside the app: drafts are printed for review, feedback is collected on paper or by phone, and there is no reliable digital return path to the translator. This ticket builds the mobile comment surface that closes that gap: the entry point on each verse/pericope, the half-drawer thread view, the text/audio composer, and one level of threading with emoji reactions. It depends on the backend comment data model, comment endpoints, and Observer-role identity shipping first, as well as on #452 (Observer Read-Only Draft View) \u2014 Observers have no in-app surface to comment from until that view exists. Resolve/delete controls, Observer permissions, offline sync, and text-project parity are covered in separate tickets.\n\n## Functional Requirements\n\n### Comment Entry Points & Anchoring\n- Show a comment indicator (li:message-square) on each verse or pericope that has one or more comments, visible to both translators and Observers.\n- Show the indicator only on the draft surface: the Record tab for translators and the Draft tab for Observers.\n- Do not show the comment indicator or open the comment drawer on the Bible tab for any role.\n- Let a user tap a verse or pericope to open its comment thread in a half bottom drawer over the reading surface (GDocs-mobile pattern) rather than a separate screen.\n- Size the half drawer tall enough to fit one audio comment plus the composer without scrolling, since audio playback and the record control take more vertical space than a text-only comment row.\n- Let a user dismiss the drawer by dragging it down or tapping outside it.\n- Anchor each comment to the verse/pericope it was created on. If a later structural edit invalidates that anchor, mark the comment \"Unconnected\" but keep it visible in the comments panel rather than deleting it.\n\n### Comment Composer\n- Let an Observer or translator add a comment as typed text or a recorded audio clip.\n- Show a record control (li:mic) alongside the text field so a user can switch modality without leaving the composer.\n- Let a user post an emoji-only comment with no text or audio required.\n- Let a user react to an existing comment with an emoji, lighter-weight than a reply (GDocs-style).\n\n### Threading\n- Let any commenter reply to a top-level comment, creating a single-level subthread.\n- Route any further response into that same first-level subthread; do not allow nested replies (Zoom-style).\n\n### Comments Panel\n- Show all comments for the open verse/pericope in the half drawer, ordered oldest to newest.\n- Show each comment's author role, timestamp, and content (text and/or audio playback).\n- Show the \"Unconnected\" state for comments whose anchor no longer resolves, without removing them from the panel.\n\n> **Note:** Verse joining and verse splitting do not exist in Fluent today, so join/split-specific anchor behavior (which resulting verse a comment attaches to) is out of scope. Only the generic \"Unconnected\" fallback above is in scope for v1.\n\n> **Note:** The pending-sync indicator on a comment (queued vs. uploaded) is covered by the offline/sync ticket, not this one.\n\n> **Note:** Comments apply to the target-language draft only. The Bible tab carries no comment affordance, so the draft surface is the single comment entry point for every role.\n\n",
+    "user": "chadw-eten",
+    "created_at": "2026-09-04T15:29:04Z",
+    "updated_at": "2026-09-11T19:13:07Z",
+    "closed_at": null,
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/451",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

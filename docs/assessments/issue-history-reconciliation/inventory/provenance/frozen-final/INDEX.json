@@ -1,0 +1,21 @@
+{
+  "frozen_utc": "2026-10-20T01:41:50Z",
+  "head": "5334ff6aa69ae4227332ad2304fa3f8a0c70e7f9",
+  "integrator": "bc-da4aa327-d86e-47fc-93c0-d7105af39497",
+  "ledger_issues": 308,
+  "ledger_comment_count_api_sum": 356,
+  "cached_issue_files": 308,
+  "cached_comment_items_crosscheck": 356,
+  "comment_count_crosscheck": "match",
+  "scope_label": "308 issues + 356 comments",
+  "scope_note": "308 = distinct GitHub issues excl. PRs in coverage.csv; 356 = sum of comment_count_api across those rows (total issue comments). Verified equal to cached inventory/issues comment arrays.",
+  "delta_pass": "review-receipts/fluent-audit-final-review.md",
+  "readiness": "review-receipts/fluent-audit-final-corrections.md",
+  "independent_prior": "review-receipts/fluent-audit-independent-review.md",
+  "wave_outputs_dir": "wave-outputs/",
+  "sha256sums": "SHA256SUMS",
+  "final_report": "../../FINAL-report.md",
+  "no_nightly_claim": true,
+  "no_secrets_copied": true,
+  "factual_correction": "356_is_total_issue_comments_not_timing_scope"
+}

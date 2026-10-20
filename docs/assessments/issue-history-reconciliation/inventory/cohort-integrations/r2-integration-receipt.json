@@ -1,0 +1,18 @@
+{
+  "integrated_at_utc": "2026-10-20T00:56:33Z",
+  "reviewer": "bc-fdf549d5-dd96-57a8-9154-0aac262aff3d",
+  "source": "/tmp/fluent-issue-review-r2.json",
+  "accepted_complete": [
+    100,
+    102,
+    150,
+    253
+  ],
+  "spot_checks": {
+    "verseAudioUploadPath": "src/services/verseAudioFormData.ts:146",
+    "registerRecordingUploadWorker": "src/services/recordingSync.ts:562",
+    "useUploadSessionState resume=syncNow": "src/hooks/useUploadSessionState.ts:170-174",
+    "checkServerReachable": "src/services/connectivity.ts:25"
+  },
+  "policy": "complete\u2260QA pass; #150 Chad Dev dispute retained as HISTORICAL"
+}

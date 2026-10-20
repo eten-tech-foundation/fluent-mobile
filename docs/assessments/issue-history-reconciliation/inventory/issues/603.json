@@ -1,0 +1,58 @@
+{
+  "issue_number": 603,
+  "fetched_at_utc": "2026-10-20T00:38:21Z",
+  "issue": {
+    "number": 603,
+    "title": "Keep the header sync icon in step with pending and failed uploads [Returning online and sync changes Audit]",
+    "state": "closed",
+    "body": "Found during the returning online and synchronizing changes audit (#530, epic #526).\n\n**Severity:** Medium  \n**Launch blocker:** No  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), local debug build of `09ff2fd` (PR #559 head), `dev.api.fluent.bible` (scenarios A.1, A.2, B.3, B.8)\n\n## Summary\n\nThe header sync icon is stale and differs between screens, and offline with nothing pending it uses the wrong glyph.\n\nHome, the chapter screen, ViewProject and Sync each run their own `useSyncStatus` / `usePendingUploads` instance with no shared store. The pending state reloads only on upload events or a `refreshKey` bump (`src/hooks/usePendingUploads.ts:99-148`), not on focus or when a take is recorded or deleted. Offline with nothing pending, the header draws `CloudOff` (`src/components/ui/CloudSyncStatusIcon.tsx:297-303`), while #38 and the Sync page use gray `cloud-check`.\n\n## Expected\n\nEvery header shows the same, current sync state (#38).\n\n## Actual\n\n- Offline, after recording a take, Home keeps the struck-out cloud without an arrow while the chapter screen and Sync show the pending variant; Home updates only after an app restart, also after deleting the take.\n- After all uploads finished, My Work still showed pending.\n- After deleting a failed take, Sync showed a green check, Home the red failed arrow, and the chapter screen green.\n- Offline with nothing pending, the header shows `CloudOff`, not gray `cloud-check`.\n\n## Steps to reproduce\n\n1. Offline, record a take, go back to Home; then delete the take.\n2. Online, let uploads finish on Sync and go back to My Work.\n\n## Acceptance criteria\n\n- [ ] One shared sync-status source feeds every header and the Sync page.\n- [ ] It refreshes when a take is saved or deleted, when uploads change state, and on focus.\n- [ ] Offline glyphs match #38 (confirm the offline-synced glyph with product).\n- [ ] Unit tests for the shared source and its refresh triggers.\n- [ ] Android device QA (A.1, A.2, B.3, B.8).\n\n## Related\n\n- Parent audit: #530 (epic #526)\n- #38, #101\n- Assessment: `docs/assessments/returning-online-and-sync/README.md` (PR #598)\n\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-28T16:57:47Z",
+    "updated_at": "2026-10-15T12:23:36Z",
+    "closed_at": "2026-10-12T15:17:53Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 4,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/603",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5897890058,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-09-29T20:12:59Z",
+      "updated_at": "2026-09-29T20:12:59Z",
+      "body": "Note for the offline header glyph: the going offline audit (#529, scenario G.22) recorded the offline header as gray `cloud-check` (Pass), but the header draws `CloudOff` for `offline_synced` on `main` (`src/components/ui/CloudSyncStatusIcon.tsx:297-303`, not changed by PR #559). #529 most likely read the Sync page glyph. The returning online and synchronizing changes audit (#530, scenario A.2) has the correct result, and it is tracked here. The expected glyph (#38: gray `cloud-check`) still needs product confirmation (#530 Open Questions).\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/603#issuecomment-5897890058"
+    },
+    {
+      "id": 6165676871,
+      "user": "Roslin22",
+      "created_at": "2026-10-14T09:54:02Z",
+      "updated_at": "2026-10-14T09:54:02Z",
+      "body": "**Test Results \u2013 Sync Status Icon**\n1. The sync status icon is displayed in the top-right navigation bar.\n2. The icon changes correctly based on the current connectivity and sync status.\n3. The online synced state displays a cloud with a green checkmark.\n4. The online syncing state displays a cloud with green refresh arrows.\n5. The online pending upload state displays a cloud with a yellow upload arrow.\n6. The offline synced and offline pending upload states display their respective icons in gray.\n7. The icon correctly reflects server connectivity, even when the device has a network connection but the Fluent server is unreachable.\n8. Tapping the sync status icon navigates to the Sync page.\n\n**Issue IDentified:** \n\nSync is not working in Pericope view, and is displayed as \u201cMissing Bible Text ID.\u201d\n\n<img width=\"276\" height=\"442\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/a2d25f12-c638-4db9-8702-b0dd6bfd577a\" />",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/603#issuecomment-6165676871"
+    },
+    {
+      "id": 6174879543,
+      "user": "chadw-eten",
+      "created_at": "2026-10-14T17:59:25Z",
+      "updated_at": "2026-10-14T17:59:25Z",
+      "body": "I can confirm that when in pericope mode, that error message displays when I got to the Sync page. @B3RN153 take a look.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/603#issuecomment-6174879543"
+    },
+    {
+      "id": 6191957285,
+      "user": "B3RN153",
+      "created_at": "2026-10-15T12:23:36Z",
+      "updated_at": "2026-10-15T12:23:36Z",
+      "body": "> 22\\. I can confirm that when in pericope mode, that error message displays when I got to the Sync page. [@B3RN153](https://github.com/B3RN153) take a look.\n\nIt will work once eten-tech-foundation/fluent-api#391 lands.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/603#issuecomment-6191957285"
+    }
+  ],
+  "comments_fetched_count": 4,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

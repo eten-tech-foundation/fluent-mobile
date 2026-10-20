@@ -1,0 +1,32 @@
+{
+  "issue_number": 347,
+  "fetched_at_utc": "2026-10-20T00:36:15Z",
+  "issue": {
+    "number": 347,
+    "title": "QA #191: Images unavailable lacks Retry; Settings white screen on user switch",
+    "state": "closed",
+    "body": "## Summary / context\n\nQA on [#191](https://github.com/eten-tech-foundation/fluent-mobile/issues/191) (preview `pr-304-5ddf966`) confirmed the happy path for Images & Maps, then reported two defects. Filed from [Roslin22\u2019s QA comment on #191](https://github.com/eten-tech-foundation/fluent-mobile/issues/191#issuecomment-5292532176).\n\nHappy path verified (not in scope here): section at bottom, collapsed by default, expand shows thumbnails/titles, fullscreen open/zoom/pan/title/close/back, verse navigation updates images.\n\n## Issues identified\n\n### 1. Images & Maps \u2014 no Retry when offline / unavailable\n\n**Current:** With network unavailable, the section shows \u201cImages unavailable\u201d with **no Retry** control.\n\n**Expected (from #191 AC):** Section-scoped inline error **with a Retry button** when Images & Maps content fails to load; failure must not block Translation Notes / Translation Questions.\n\n### 2. Settings / account switch \u2014 white screen (reported crash)\n\n**Current:** When trying to switch between users, the app crashes / becomes unusable. Tapping the Settings icon results in an **empty white screen**.\n\n**Expected:** Settings opens normally; switching users completes without a blank screen or crash.\n\n> Note: may overlap with multi-account / session work on #291 \u2014 confirm whether this is a #191/#304 regression or the same session bug before deep-diving.\n\n## Scope\n\n**In scope**\n- Retry affordance on the Images & Maps unavailable / load-failure state (section-scoped only)\n- Fix Settings blank screen and user-switch failure observed on the #191 preview build\n- Android device QA for both paths\n\n**Out of scope**\n- Re-implementing Images & Maps happy path already verified on #191\n- Broader offline inventory / Prepare Offline work (#192 / #201) beyond Retry UX for this section\n\n## Acceptance criteria\n\n- [ ] When Images & Maps cannot load (including no network), the section shows an inline error that includes a **Retry** control\n- [ ] Tapping Retry re-attempts Images & Maps load only; TN/TQ remain unaffected\n- [ ] Settings opens to a usable screen (not blank white)\n- [ ] Switching users does not crash or leave a blank white screen\n- [ ] Android device QA recorded on the PR for both defect paths\n\n## Verification / test plan\n\n1. Airplane mode (or disable network) \u2192 Resources \u2192 Images & Maps \u2192 confirm \u201cunavailable\u201d + **Retry** \u2192 Retry recovers when network returns (or shows a controlled failure again).\n2. Open Settings from drafting/home \u2192 screen renders content.\n3. Multi-account device: switch users \u2192 lands on expected account UI without crash/white screen.\n4. Gates: `format:check` \u2192 `lint` \u2192 `typecheck` \u2192 `npm test -- --ci`\n\n## Links\n\n- Source QA: https://github.com/eten-tech-foundation/fluent-mobile/issues/191#issuecomment-5292532176\n- Parent feature: #191 \u00b7 Preview PR: #304\n- Possible related: #291 (multi-account / session durability)\n- Project board: [Fluent Mobile Board](https://github.com/orgs/eten-tech-foundation/projects/4/views/9) \u2014 please set Status **Dev Ready**, Priority **P1** (agent token lacked `read:project` / project write scopes to add the card)\n",
+    "user": "mattrace",
+    "created_at": "2026-08-20T17:23:16Z",
+    "updated_at": "2026-08-20T17:26:55Z",
+    "closed_at": "2026-08-20T17:26:55Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/347",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5359394822,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-20T17:26:54Z",
+      "updated_at": "2026-08-20T17:26:54Z",
+      "body": "Closing: filed under wrong GitHub account (`mattrace`). Recreated as `mattrace-gloo` in **#348**. Do not use `mattrace` for fluent-mobile work.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/347#issuecomment-5359394822"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

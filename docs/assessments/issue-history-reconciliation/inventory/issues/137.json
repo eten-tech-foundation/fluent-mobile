@@ -1,0 +1,35 @@
+{
+  "issue_number": 137,
+  "fetched_at_utc": "2026-10-20T00:35:01Z",
+  "issue": {
+    "number": 137,
+    "title": "fix(app): show actionable error when API URL is unset or unreachable",
+    "state": "closed",
+    "body": "## Summary\n\nHarden the app shell (`App.tsx`) so developers see a clear, actionable message when `EXPO_PUBLIC_API_BASE_URL` is missing or the API health check fails \u2014 without mock data or auth bypass (reduced scope from descoped #107).\n\n## Context\n\nRefs #119\n\nOriginal #107 (offline auto-auth bypass) was descoped. This ticket covers only startup UX when configuration or connectivity blocks sign-in/sync.\n\n## Acceptance criteria\n\n- [ ] Missing `EXPO_PUBLIC_API_BASE_URL` shows an error pointing to `.env.example` / local development workflow docs\n- [ ] Unauthenticated startup with URL set but API unreachable shows an error with retry (no infinite spinner)\n- [ ] Returning users with a stored session token still enter the app offline (no regression)\n- [ ] No mock seed, no `EXPO_PUBLIC_OFFLINE_MODE`, no auth bypass\n\n## Verification\n\n1. Unset env var \u2192 rebuild \u2192 actionable config error on launch\n2. Point URL at dead host \u2192 unauthenticated launch shows unreachable error + retry works when API comes up\n3. Sign in, kill API, relaunch \u2192 app opens with cached SQLite data\n4. `npm run format:check && npm run lint && npm run typecheck && npm test -- --ci`",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-30T18:26:36Z",
+    "updated_at": "2026-07-02T19:54:42Z",
+    "closed_at": "2026-06-30T19:44:08Z",
+    "labels": [
+      "bug",
+      "enhancement"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/137",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4847332766,
+      "user": "mattrace-gloo",
+      "created_at": "2026-06-30T19:44:08Z",
+      "updated_at": "2026-06-30T19:44:08Z",
+      "body": "Closing as not planned for epic #119. The local development workflow is now docs-only in PR #136; no app-shell hardening or seed-related mobile work is needed for this scope.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/137#issuecomment-4847332766"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

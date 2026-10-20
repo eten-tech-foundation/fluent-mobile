@@ -1,0 +1,34 @@
+{
+  "issue_number": 593,
+  "fetched_at_utc": "2026-10-20T00:38:11Z",
+  "issue": {
+    "number": 593,
+    "title": "Show Resources for the whole pericope in pericope mode [Viewing and listening to resources Audit]",
+    "state": "closed",
+    "body": "Found during the viewing and listening to resources audit (#531, epic #526).\n\n**Severity:** High  \n**Launch blocker:** To be decided with product  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), local run of `main` @ `fb634e5`, `dev.api.fluent.bible` (scenarios F.15)\n\n## Summary\nIn pericope mode, the Resources tab loads and labels only the pericope's anchor verse. The Bible tab sets `selectedVerse` to `unit.anchorVerse` (`src/app/tabs/BibleTab.tsx:117-124`), and `ResourcesTab` passes that single verse to the TN / TQ / Images loaders (`src/app/tabs/ResourcesTab.tsx:93-113`). fluent-api only exposes single-verse routes (`/translation-resources/{notes|questions|images}/{book}/{chapter}/{verse}`).\n\n## Expected\nResources for the whole active pericope: one note per verse or passage covered by the unit (#189), with the pericope range in the header.\n\n## Actual\nF.15: in pericope mode, Bible and Record show pericopes, but Resources shows \"Mark 1:1\" and only verse 1's content, as in verse mode.\n\n## Steps to reproduce\n1. Settings \u2192 drafting unit Pericope.\n2. Select a multi-verse pericope on the Bible tab.\n3. Open Resources and compare with the notes for the second verse of the pericope in verse mode.\n\n## Acceptance criteria\n- [ ] fluent-api serves TN / TQ / Images for a verse range (or mobile fans out per verse; decide with the API owner). The fluent-api issue is opened at implementation time and linked here.\n- [ ] Resources covers every verse in the active pericope (fluent-api range route, or client fan-out; decide with API).\n- [ ] Header shows the pericope range.\n- [ ] Per-unit scroll/accordion restore keys on the unit, not the anchor verse.\n- [ ] Unit tests for the range loader.\n- [ ] Android device QA in pericope and verse modes.\n\n## Related\n- Spec: #188, #189, #408\n- fluent-api translation-resources (fluent-api #273 / PR #274)\n- Sibling audit: #534\n- Parent audit: #531 (epic #526)\n- Related gap: #594 (also needs fluent-api translation-resources changes)\n- Assessment: `docs/assessments/viewing-and-listening-to-resources/README.md` (PR #590)\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-25T21:13:52Z",
+    "updated_at": "2026-10-08T18:22:14Z",
+    "closed_at": "2026-10-08T18:22:14Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/593",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 6047705739,
+      "user": "mattrace-gloo",
+      "created_at": "2026-10-07T22:00:21Z",
+      "updated_at": "2026-10-07T22:00:21Z",
+      "body": "Opened fluent-api follow-up for first-party verse-range TN/TQ/Images endpoints: https://github.com/eten-tech-foundation/fluent-api/issues/375\n\nMobile slice in progress: client fan-out across the active pericope\u2019s verses (merge/dedupe by id), header shows the pericope range, accordion/scroll keyed by `BibleUnit.key`.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/593#issuecomment-6047705739"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

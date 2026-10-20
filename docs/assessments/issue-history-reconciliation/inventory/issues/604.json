@@ -1,0 +1,25 @@
+{
+  "issue_number": 604,
+  "fetched_at_utc": "2026-10-20T00:38:21Z",
+  "issue": {
+    "number": 604,
+    "title": "Pause silently when the connection drops mid-upload [Returning online and sync changes Audit]",
+    "state": "closed",
+    "body": "Found during the returning online and synchronizing changes audit (#530, epic #526).\n\n**Severity:** Medium  \n**Launch blocker:** No  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), local debug build of `09ff2fd` (PR #559 head), `dev.api.fluent.bible` (scenarios E.17, F.20)\n\n## Summary\n\nWhen the connection drops during an upload, the take is marked failed and the Sync page shows a raw technical error, instead of pausing silently.\n\nThe worker tries a network error 3 times (2 retries, 0.5 s and 1 s backoff), then marks the take failed (`src/services/recordingSync.ts:32`, `:276-317`, `src/services/verseAudioContract.ts:77-79`), before the connectivity event aborts the session. Network errors get no friendly mapping (`src/utils/sanitizeUploadError.ts:12-31`). Takes re-upload on reconnect, so no data is lost.\n\n## Expected\n\n\"If the server becomes unreachable during an active upload, pause the upload silently \u2014 no user-facing error for the interruption itself\" (#150).\n\n## Actual\n\nThe Sync page shows \"fetch failed: java.net.UnknownHostException: Unable to resolve host \"dev.api.fluent.bible\": No address associated with hostname\"; it clears after the automatic retry when Wi-Fi returns.\n\n## Steps to reproduce\n\n1. Start an upload of several takes on Wi-Fi.\n2. Turn on airplane mode for 30 s, then turn it off.\n\n## Acceptance criteria\n\n- [ ] A network/transport failure during an upload leaves the take pending, not failed, and shows no error.\n- [ ] The upload resumes on its own when the server is reachable.\n- [ ] Any network error that does reach the UI has friendly copy.\n- [ ] Unit test: network error during upload \u2192 pending, not failed.\n- [ ] Android device QA (E.17).\n\n## Related\n\n- Parent audit: #530 (epic #526)\n- #150, #548\n- Assessment: `docs/assessments/returning-online-and-sync/README.md` (PR #598)\n\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-28T16:57:51Z",
+    "updated_at": "2026-10-08T16:36:11Z",
+    "closed_at": "2026-10-08T16:36:11Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/604",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

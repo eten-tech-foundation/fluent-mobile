@@ -1,0 +1,26 @@
+{
+  "issue_number": 691,
+  "fetched_at_utc": "2026-10-20T00:38:43Z",
+  "issue": {
+    "number": 691,
+    "title": "Defer: react-native-bootsplash major (+ sharp) upgrade",
+    "state": "open",
+    "body": "## Context\n\nDependabot PR #633 bumps `sharp` (transitive) and ancestor `react-native-bootsplash` together. On current Expo SDK 57, Quality Gates fail `expo install --check` (matrix expects `react-native-bootsplash` `^6.3.10`). This is a **risky native** bump \u2014 not a CI-first Dependabot merge.\n\nPrior Dependabot queue left #633 open for the same reason; closing it now so it does not occupy `open-pull-requests-limit: 5`, with this ticket as the tracker.\n\n## Acceptance criteria\n\n- [ ] Evaluate bootsplash major against SDK 57 (or land with SDK 58 per #536)\n- [ ] Local `npm ci` \u2192 `npm run doctor` \u2192 full CI gate + Android smoke (cold start / BootSplash)\n- [ ] Consider `dependabot.yml` ignore for `react-native-bootsplash` semver-major until ready\n\n## Refs\n\n- Open bot (will close): https://github.com/eten-tech-foundation/fluent-mobile/pull/633\n- Related: #536 (SDK 58)",
+    "user": "mattrace-gloo",
+    "created_at": "2026-10-13T15:53:59Z",
+    "updated_at": "2026-10-13T15:53:59Z",
+    "closed_at": null,
+    "labels": [
+      "dependencies",
+      "chore"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/691",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,51 @@
+{
+  "issue_number": 253,
+  "fetched_at_utc": "2026-10-20T00:35:37Z",
+  "issue": {
+    "number": 253,
+    "title": "Wire SyncScreen Pause/Cancel/Sync Now to upload orchestrator",
+    "state": "closed",
+    "body": "## Summary\n\n`SyncScreen` still has `TODO(#150)` stubs for Pause / Resume / Cancel / Sync Now and mock upload progress state. The upload trigger/sync **engine** landed on `main` via PR #223 (with #100); dedicated PR #213 was closed unmerged, so UI wiring was left behind.\n\nPredecessor: #150 (engine AC complete; this issue is the leftover SyncScreen glue).\n\n## Scope\n\nWire Sync screen controls and live status to the upload orchestrator imperative APIs in `src/services/uploadOrchestrator.ts`:\n\n- `pauseUploadSession()`\n- `cancelUploadSession()`\n- `syncNowUploads()`\n- `getUploadSessionSnapshot()` (replace mock `status` / chapter counts / `nextRetryAt` where appropriate)\n\nResume should remain distinct from Sync Now if the orchestrator model requires it; today the screen\u2019s resume path clears via Sync Now \u2014 align with orchestrator semantics when wiring.\n\n## Acceptance criteria\n\n- [ ] Sync Now invokes `syncNowUploads()` (or equivalent) instead of only the legacy `useSync` path for upload-session pause-window clear\n- [ ] Pause invokes `pauseUploadSession()` and UI reflects paused state from orchestrator snapshot\n- [ ] Cancel invokes `cancelUploadSession()` and UI returns to a coherent pending/idle state\n- [ ] Resume behavior matches orchestrator (document if it aliases Sync Now)\n- [ ] Mock `TODO(#150)` state for status / uploadedChapters / totalChapters / nextRetryAt is replaced with orchestrator-backed data (or explicitly deferred with a linked follow-up)\n- [ ] Existing SyncScreen tests updated; unit coverage for control \u2192 orchestrator calls\n\n## File pointers\n\n- `src/app/screens/SyncScreen.tsx` \u2014 `TODO(#150)` stubs\n- `src/services/uploadOrchestrator.ts` \u2014 `pauseUploadSession` / `cancelUploadSession` / `syncNowUploads` / `getUploadSessionSnapshot`\n- Related UI: `SyncActionControls`, `UploadProgressBar`, `SyncStatusIndicator`\n\n## Out of scope\n\nRe-implementing the upload engine itself (#150). Download-queue / `allComplete` (#149) unless needed for status display consistency.",
+    "user": "mattrace-gloo",
+    "created_at": "2026-07-23T18:50:20Z",
+    "updated_at": "2026-08-20T17:29:24Z",
+    "closed_at": "2026-08-10T11:59:40Z",
+    "labels": [
+      "enhancement",
+      "good first issue"
+    ],
+    "comments": 3,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/253",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5140427666,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-31T07:26:00Z",
+      "updated_at": "2026-07-31T07:26:00Z",
+      "body": "## API readiness note (board audit)\n\n**Status on fluent-api `main`:** Not required for this ticket \u2014 replace SyncScreen mock/TODO(#150) with local `uploadOrchestrator` APIs.\n\n**Note:** End-to-end upload still depends on verse-audio on fluent-api ([PR #224](https://github.com/eten-tech-foundation/fluent-api/pull/224), open \u2014 not on `main`). That does not block wiring Pause/Cancel/Sync Now to the orchestrator.\n\n### Follow up with fluent-api team\nWhen you pick this up, please ask the fluent-api team:\n1. Is the needed feature planned / in progress?\n2. Expected ETA (or \u201cnot scheduled\u201d)?\n3. Is there already an open fluent-api GitHub issue or PR? If yes, link it here; if no, ask them to file one (or file it yourself and link it).\n\nChecked against local fluent-api `main` @ `3ef4025` (2026-07-31).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/253#issuecomment-5140427666"
+    },
+    {
+      "id": 5192247467,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-08-05T13:19:26Z",
+      "updated_at": "2026-08-05T13:22:35Z",
+      "body": "> ## API readiness note (board audit)\n> **Status on fluent-api `main`:** Not required for this ticket \u2014 replace SyncScreen mock/TODO([#150](https://github.com/eten-tech-foundation/fluent-mobile/issues/150)) with local `uploadOrchestrator` APIs.\n> \n> **Note:** End-to-end upload still depends on verse-audio on fluent-api ([PR #224](https://github.com/eten-tech-foundation/fluent-api/pull/224), open \u2014 not on `main`). That does not block wiring Pause/Cancel/Sync Now to the orchestrator.\n> \n> ### Follow up with fluent-api team\n> When you pick this up, please ask the fluent-api team:\n> \n> 1. Is the needed feature planned / in progress?\n> 2. Expected ETA (or \u201cnot scheduled\u201d)?\n> 3. Is there already an open fluent-api GitHub issue or PR? If yes, link it here; if no, ask them to file one (or file it yourself and link it).\n> \n> Checked against local fluent-api `main` @ `3ef4025` (2026-07-31).\n\nI checked the current status, and it looks like PR (https://github.com/eten-tech-foundation/fluent-api/pull/224) is still open. From what I can tell, the remaining blocker was the R2 credentials. I just noticed those credentials have now been provided, and @kaseywright has already approved the PR.\n\nBased on that, I think we should be able to start testing it soon.\n\nI also reached out to @henrique221, explained the situation, and asked him to confirm whether that's correct.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/253#issuecomment-5192247467"
+    },
+    {
+      "id": 5193186066,
+      "user": "kaseywright",
+      "created_at": "2026-08-05T14:38:38Z",
+      "updated_at": "2026-08-05T14:38:54Z",
+      "body": "API PR 224 has been approved and is ready for merge when the few conflicts that is has is resolved.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/253#issuecomment-5193186066"
+    }
+  ],
+  "comments_fetched_count": 3,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

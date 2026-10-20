@@ -1,0 +1,117 @@
+{
+  "updated_utc": "2026-10-20T01:36:34Z",
+  "reviewer": "agent_integrator bc-da4aa327-d86e-47fc-93c0-d7105af39497",
+  "not_human_review": true,
+  "head": "5334ff6aa69ae4227332ad2304fa3f8a0c70e7f9",
+  "taxonomy": "inventory/disposition-taxonomy.md",
+  "sync_agent_final": {
+    "id": "bc-9c8695db-e3d3-4df1-bdbb-e0caa02685f0",
+    "summary": "detached dev-client bridge; PageHeaderSyncButton correct after one clear; 15 focused tests PASS; probes gone; no product fix",
+    "issue": 721
+  },
+  "priority_findings": [
+    {
+      "issue": 257,
+      "priority": "P1_current",
+      "disposition": [
+        "CONFIRMED_CURRENT_SOURCE",
+        "OPEN_TICKET_UNRESOLVED",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "PROVISIONAL_PRIORITY"
+      ],
+      "current_source": "src/services/stageAdvance.ts defers offline queue to #257",
+      "device": "Dev 2026-09-24/28 \u2014 not reverified"
+    },
+    {
+      "issue": 271,
+      "related": [
+        611,
+        667,
+        610,
+        653
+      ],
+      "priority": "P1_provisional",
+      "disposition": [
+        "OPEN_TICKET_UNRESOLVED",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "PROVISIONAL_PRIORITY"
+      ],
+      "note": "Not P0_current; #611/PR667 merged after Dev Fail"
+    },
+    {
+      "issue": 721,
+      "priority": "P1_provisional",
+      "disposition": [
+        "OPEN_TICKET_UNRESOLVED",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "PROVISIONAL_PRIORITY"
+      ],
+      "sync_agent": "bc-9c8695db-e3d3-4df1-bdbb-e0caa02685f0",
+      "note": "Stage_B FAIL text in prior summary is HISTORICAL and SUPERSEDED by dated Stage_D Maestro PASS. Preserve failure chronology; do not delete Stage_B fact.",
+      "priority_class": "P1_provisional",
+      "summary": "CURRENT: Stage_D focused Maestro PASS EXIT=0 ~61s (settle + tapOn id home-sync-button point 50%,50%); cause unisolated; not proven product fix; not Nightly. Earlier Stage_B FAIL preserved as historical only \u2014 do not cite as current. Receipts: inventory/sync721-maestro-correction-receipt.md.",
+      "summary_HISTORICAL_Stage_B": "HISTORICAL (superseded): Stage_B one Maestro home-sync-button COMPLETED stayed Home / FAIL sync-screen (user10/PID7152; debug 2026-10-19_174838). Preserve as earlier failure evidence only.",
+      "superseded_by": "sync721.stages.D + coverage.csv#721 Stage_D"
+    },
+    {
+      "issue": 607,
+      "priority": "P1_provisional",
+      "disposition": [
+        "OPEN_TICKET_UNRESOLVED",
+        "PROVISIONAL_PRIORITY"
+      ]
+    }
+  ],
+  "substantive_count": 308,
+  "pending_count": 0,
+  "sync721": {
+    "issue": 721,
+    "stages": [
+      {
+        "id": "A",
+        "summary": "bridge sole-blocker hypothesis",
+        "status": "historical"
+      },
+      {
+        "id": "B",
+        "summary": "live Metro; Maestro stayed Home",
+        "status": "historical"
+      },
+      {
+        "id": "C",
+        "summary": "adb tap opens Sync; native route OK",
+        "status": "historical_native_ok"
+      },
+      {
+        "id": "D",
+        "dated": "2026-10-19 focused Maestro",
+        "summary": "PASS EXIT0 ~61s settle+point 50%,50%; both runs aimed 985168; causal unisolated; not product fix",
+        "status": "current_maestro_helper_correction",
+        "receipt": "inventory/sync721-maestro-correction-receipt.md",
+        "docs": "docs/assessments/maestro-sync721/README.md"
+      }
+    ],
+    "not": [
+      "wrong_coords_proven",
+      "confirmed_product_fix",
+      "Nightly_acceptance",
+      "P0_current"
+    ],
+    "priority_class": "P1_provisional",
+    "priority_findings_note": "priority_findings[#721].summary_HISTORICAL_Stage_B retains earlier FAIL; priority_findings[#721].summary is Stage_D current. sync721.stages is authoritative chronology."
+  },
+  "issue4_api_pin": {
+    "pin": "4336602df77ce86a4d46dfd45a7840cc3c64ebc0",
+    "server_guarantees": "GET /self/projects \u2192 getByUserId: project grants OR org-scoped roles where name != Org Member (Org Manager org-wide; Project Translator project-scoped per permissions.md)",
+    "remaining_unknown": "#4 Translator 'assigned' = project grant vs chapter-assignment-only",
+    "not": "missing_client_Manager_Translator_branch_implies_server_unfiltered"
+  },
+  "issue257": {
+    "framing": "known_unimplemented_requirement_launch_decision_open",
+    "not": "newly_discovered_regression_because_open"
+  },
+  "ledger_reconciliation_complete_yes": 308,
+  "do_not_cite_as_current": [
+    "priority_findings[#721] older FAIL-only wording without Stage_D supersession note"
+  ]
+}

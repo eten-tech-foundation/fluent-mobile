@@ -1,0 +1,64 @@
+{
+  "issue_number": 442,
+  "fetched_at_utc": "2026-10-20T00:36:51Z",
+  "issue": {
+    "number": 442,
+    "title": "Implement Implicit Peer Checker Assignment",
+    "state": "open",
+    "body": "Peer Check on mobile currently expects a peer to already be assigned before an item can be sent to it, with no defined behavior for what happens when one isn't. Forcing a push assignment to a specific peer at send time risks stalling the item if that person doesn't come online soon. This ticket makes an unassigned item fully open, the same way Advanced sub-checks are open: any peer can act on it freely, and whoever taps Send to Community Review is logged as its Peer Checker at that moment. There is no claim step and no exclusivity window while the item sits in Peer Check.\n\n## Functional Requirements\n\n### Send to Peer Check\n- Sending an item to Peer Check moves it to unassigned if no peer is already assigned, or moves the assignment if a peer already exists (existing behavior, unchanged).\n- While unassigned, any peer other than the original drafter can view and act on the item (record or comment) at any time; recording or commenting does not itself assign anyone.\n\n<img width=\"350\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/5d18a641-e69e-4da9-bee8-cfbdaf4c9a91\" />\n\n### Peer Checker Assignment via Send\n- While an item is unassigned in Peer Check, any peer other than the original drafter can tap Send to Community Review at any time, whether or not they've recorded or commented on it.\n- Tapping Send assigns the tapping peer as the item's Peer Checker and advances the item to Community Review in the same action.\n- Hide the Send to Community Review action from the original drafter entirely; they can never be logged as Peer Checker on their own item.\n- If a PM has explicitly assigned a Peer Checker to an item (separate, existing push-assignment path), that assignment is exclusive and unaffected by this ticket; only that assignee can act and other users will not see the Send button.\n\n### PM-Assigned Item \u2014 Non-Assignee Banner\n- When a non-assigned peer opens an item that a PM has explicitly assigned to another Peer Checker, show a visible banner (e.g., \"This item is assigned to another translator.\"), matching the existing warning pattern used for PM-assigned/claimed chapters.\n- This banner applies only to the PM push-assignment case; it does not apply while an item is unassigned and open, since there is no assignee to name in that state.\n\n<img width=\"412\" height=\"238\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/2878e4bb-bf16-4049-be86-d9e009090ed3\" />\n\n### Offline Conflict Handling\n- Competing recordings from two peers on the same unassigned item while offline are caught by the existing take-conflict detection (see #256); no new conflict logic is needed for this ticket.\n- Two peers tapping Send on the same unassigned item while offline is not a conflict requiring resolution: whichever sync lands first is logged as Peer Checker, and the item ends up correctly in Community Review either way.",
+    "user": "chadw-eten",
+    "created_at": "2026-09-02T17:57:16Z",
+    "updated_at": "2026-10-14T19:46:15Z",
+    "closed_at": null,
+    "labels": [],
+    "comments": 5,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/442",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5622893731,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-10T17:39:34Z",
+      "updated_at": "2026-09-10T17:39:34Z",
+      "body": "## Engineering write-up (Dev Ready)\n\nChecked against **fluent-api `main` @ `07927c6`** (2026-09-10).\n\n### Blocker: API work required before mobile\n\nOpen / implicit Peer Check is **not** supported by the API today. Do **not** start the mobile UI until the API changes below are merged (or land them in the same stacked delivery with API first).\n\n**Create a fluent-api ticket** covering:\n\n1. **Policy (`ChapterAssignmentPolicy.edit` / `submit`)**  \n   - Today `peer_check` requires `peerCheckerId === user.id`. If `peerCheckerId` is null, **nobody** can edit, upload verse audio (verse-audio auth uses the same `edit` policy), or `PATCH /chapter-assignments/:id/submit`.  \n   - Needed: when `status === peer_check` and `peerCheckerId == null`, any project member **except the original drafter** (`assignedUserId`) may record, comment, and submit.  \n   - When a PM has set `peerCheckerId`, keep exclusive assignee behavior (unchanged).\n\n2. **Submit (`PATCH .../submit`)**  \n   - `submitChapterAssignment` currently does not take the acting user and does not set `peerCheckerId` on `peer_check \u2192 community_review`.  \n   - Needed: pass current user; on advance from open Peer Check, set `peerCheckerId` to the submitter, write peer-checker assignment history, and reject the drafter. First sync wins for competing offline Sends (per product AC).\n\n### Mobile (after API)\n- Unassigned Peer Check: open to peers; recording/commenting does **not** assign.  \n- Send to Community Review assigns the tapper as Peer Checker.  \n- Hide Send from the original drafter.  \n- PM-assigned banner for non-assignees (existing taken-chapter pattern).\n\n### Soft deps\n- Product cites #256 for take-conflict handling \u2014 that issue is still **open**; confirm conflict path before relying on it.  \n- #476 should follow these Peer Check assignment semantics for the ownership icon.\n\nMoving to **Dev Ready**.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/442#issuecomment-5622893731"
+    },
+    {
+      "id": 5687966500,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-09-15T20:56:18Z",
+      "updated_at": "2026-09-15T20:58:00Z",
+      "body": "Tracking the API work @mattrace-gloo called out in the engineering write-up above.\n\nCreated the fluent-api ticket for open Peer Check policy + assign-on-submit:\n\n- **Issue:** [eten-tech-foundation/fluent-api#335](https://github.com/eten-tech-foundation/fluent-api/issues/335) \u2014 Open Peer Check: allow edit/submit and assign peer checker on submit\n- **PR:** [eten-tech-foundation/fluent-api#334](https://github.com/eten-tech-foundation/fluent-api/pull/334)\n\nThis covers the API blocker (edit/submit when `peerCheckerId` is null, set `peerCheckerId` on submit, PM exclusivity unchanged, first-wins on concurrent submit). Mobile #442 remains the product/UI ticket; pair with [fluent-api#335](https://github.com/eten-tech-foundation/fluent-api/issues/335) for release/QA.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/442#issuecomment-5687966500"
+    },
+    {
+      "id": 5733874758,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-09-18T17:41:10Z",
+      "updated_at": "2026-09-18T17:41:10Z",
+      "body": "@Roslin22, Nightly QA checklist \u2014 #442 Implicit Peer Checker assignment\nPR: https://github.com/eten-tech-foundation/fluent-mobile/pull/538\nChecklist generated with AI assistance.\n\nRequires API with open Peer Check support (fluent-api #334 on the same environment as the nightly build).\n\nSetup\n- Three Fluent users on the same project: **Drafter**, **Peer B**, **Peer C** (two peers only needed for the optional dual-Send row).\n- One chapter with no PM-assigned Peer Checker (claim/open drafting as needed).\n- Use **Projects** to find open Peer Check items (they may not appear in My Work until assigned).\n\nChecklist\n1. **Drafter \u2192 Peer Check (open):** As Drafter, record at least one take \u2192 **Send to Peer Check**. On web, chapter is Peer Check with no Peer Checker assigned.\n2. **Drafter on open Peer Check:** Reopen chapter \u2192 Record tab. **No** \u201cSend to Community Review\u201d. Record / Record New Take **disabled**.\n3. **Peer on open Peer Check:** As Peer B (not the drafter), sync \u2192 open same chapter via Projects. **No** \u201cassigned to another translator\u201d banner. Record enabled. **Send to Community Review** visible.\n4. **Assign on Send:** Peer B confirms Send \u2192 Community Review. Web shows Peer B as Peer Checker and Community Review (or later stage if advanced). Drafter still does not see that Send.\n5. **PM-assigned Peer Check (regression):** On a chapter with a PM-assigned Peer Checker, only that assignee sees Send; other peers see the taken-chapter banner and no Send.\n6. **Dual-Send online (optional, needs Peer B + C):** Fresh open Peer Check chapter. Both peers tap Send ~at the same time. Web shows **one** Peer Checker. Loser device: after sync, shows taken-chapter banner (not stuck believing they are the checker).\n7. **Offline dual-Send (optional):** Two peers Send while offline \u2192 reconnect. First sync wins; chapter ends in Community Review with one checker; no Send-specific conflict UI.\n\nPass when: Open Peer Check is non-exclusive for peers (no taken banner); only non-drafter peers can record and Send; Send assigns the tapper as Peer Checker; drafter never sees Send and cannot record on open Peer Check; PM-assigned exclusivity unchanged; dual-Send reconciles to a single checker on web after sync.\n\nAlso from Matt\u2019s review on the PR:\n- Drafter capture gate on open Peer Check (record disabled, not only Send hidden)\n- Optimistic local `peer_checker_id` + online dual-Send reconcile (row 6 above)",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/442#issuecomment-5733874758"
+    },
+    {
+      "id": 6165946842,
+      "user": "Roslin22",
+      "created_at": "2026-10-14T10:09:04Z",
+      "updated_at": "2026-10-14T10:09:04Z",
+      "body": "**### Test Results \u2013 Peer Check on Mobile**\n\n1. Items can be sent to Peer Check without assigning a peer.\n2. Any peer except the original drafter can open and view an unassigned item.\n3. Peers can record audio for an unassigned item without being automatically assigned.\n4. Peers can add records in my takes tab without being automatically assigned.\n5. Any peer except the original drafter can tap Send to Community Review.\n6. The peer who taps Send to Community Review is assigned as the Peer Checker, and the item moves to Community Review.\n7. The original drafter cannot see the Send to Community Review action on their own item.\n8. For PM-assigned items, only the assigned Peer Checker can act, and other peers cannot see the Send button.\n9. Non-assigned peers see a warning banner when opening an item assigned to another peer by the PM.\n10. When two peers send the same unassigned item while offline, the first successful sync determines the Peer Checker, and the item moves to Community Review.\n\n**Note: Peer checker adds comments; the comments feature not tested here**",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/442#issuecomment-6165946842"
+    },
+    {
+      "id": 6176906894,
+      "user": "chadw-eten",
+      "created_at": "2026-10-14T19:46:15Z",
+      "updated_at": "2026-10-14T19:46:15Z",
+      "body": "\u2705 ",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/442#issuecomment-6176906894"
+    }
+  ],
+  "comments_fetched_count": 5,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

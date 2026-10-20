@@ -1,0 +1,34 @@
+{
+  "issue_number": 599,
+  "fetched_at_utc": "2026-10-20T00:38:16Z",
+  "issue": {
+    "number": 599,
+    "title": "Stop the upload foreground service from crashing the app [Returning online and sync changes Audit]",
+    "state": "open",
+    "body": "Found during the returning online and synchronizing changes audit (#530, epic #526).\n\n**Severity:** High  \n**Launch blocker:** To be decided with product  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), local debug build of `09ff2fd` (PR #559 head), `dev.api.fluent.bible` (scenarios B.6, B.7, B.8, C.10)\n\n## Summary\n\nUploading takes after reconnecting crashes the app with `RemoteServiceException: Context.startForegroundService() did not then call Service.startForeground()` (`UploadSyncForegroundService`).\n\nEvery notification `start` and `update` calls `startForegroundService()` (`modules/upload-sync-foreground/android/src/main/java/expo/modules/uploadsyncforeground/UploadSyncForegroundModule.kt:14-36`), and the JS clears it on each `complete` / `idle` event (`src/services/uploadProgressNotification.ts:25-41`). The worker emits `complete` after every chapter (`src/services/recordingSync.ts:382`), and one reconnect starts several concurrent sessions: `runSession` guards on `sessionPromise` (`src/services/uploadOrchestratorCore.ts:131`) but only sets it at `:220`, after two awaits (`:143`, `:170`), and `evaluateAuto` does not await it (`:263-264`). The `:143` await is new in PR #559 (a `/health` probe of up to 5 s) and widens the window. `stopService()` then runs before the service calls `startForeground()`, and Android kills the app.\n\n## Expected\n\nOne persistent upload notification per session (#152); the app never crashes because of it.\n\n## Actual\n\nThe app crashes (red box on the debug build; the app just closes on others). The 2026-09-28 device log shows five \"Upload session started\" entries for one chapter within 300 ms and five notification start/clear pairs within 200 ms. The device crash buffer holds the same exception on 2026-09-04 and 2026-09-21, before PR #559.\n\n## Steps to reproduce\n\n1. In airplane mode, record takes in 2 or more chapters.\n2. Turn Wi-Fi back on and open the Sync page (or background the app).\n\n## Acceptance criteria\n\n- [ ] One reconnect starts at most one upload session (the in-flight guard is set before any await).\n- [ ] The foreground service is started once per session and stopped only on complete, pause or cancel; a stop never races a pending start.\n- [ ] Unit tests: concurrent connectivity events start one session; the notification event stream for a multi-chapter session produces one show and one clear.\n- [ ] Android device QA: reconnect with pending takes in several chapters, foreground and background, with no crash.\n\n## Related\n\n- Parent audit: #530 (epic #526)\n- #152, #150, #559; progress counts from the same event stream: #600\n- Assessment: `docs/assessments/returning-online-and-sync/README.md` (PR #598)\n\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-28T16:57:29Z",
+    "updated_at": "2026-10-02T17:59:06Z",
+    "closed_at": null,
+    "labels": [
+      "bug"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/599",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5896745443,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-09-29T19:02:44Z",
+      "updated_at": "2026-09-29T19:02:44Z",
+      "body": "Reproduced during the offline chapter assignment audit (#533) with a single chapter.\n\n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), local debug build of `main` @ `fb634e5` (without PR #559), `dev.api.fluent.bible` (2026-09-28 16:57, Acts 6).\n\n- One offline take on one chapter; turning Wi-Fi on started **two** automatic upload sessions 2 ms apart (16:57:41.638 and .640), with notification start/clear pairs within 2 ms.\n- The app then crashed with `RemoteServiceException: Context.startForegroundService() did not then call Service.startForeground()` (`UploadSyncForegroundService`) at 16:57:43.\n- Duplicate sessions per trigger were seen again on 2026-09-29 (Sync Now at 08:03 started three sessions; the reconnect at 12:02 started two).\n\nSo the crash does not need many chapters; a duplicate session on one reconnect is enough.\n\nAssessment: `docs/assessments/offline-chapter-assignment/README.md` (PR #609).\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/599#issuecomment-5896745443"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

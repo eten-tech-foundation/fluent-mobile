@@ -1,0 +1,40 @@
+{
+  "issue_number": 17,
+  "fetched_at_utc": "2026-10-20T00:33:51Z",
+  "issue": {
+    "number": 17,
+    "title": "Sync trigger + MMKV state",
+    "state": "closed",
+    "body": "## Context\n\n- Part of the mobile sync epic: #14\n- Depends on: #15 \n\n## Background\nManual sync trigger on the home screen. Runs the fetch sequence in order\nand tracks sync state in MMKV after a successful full sync.\n\n## Tasks\n\n### Sync trigger UI\n- [x] Add a \"Sync\" button  refer #18\n- [x] On trigger, run the fetch sequence in this order:\n      1. `GET /users/:userId/projects`\n      2. `GET /users/:userId/chapter-assignments`\n      3. Derive `project_units` from assignments\n      4. `POST /bibles/:bibleId/bulk-texts` for each bibleId\n\n### MMKV state tracking\n- [x] After a successful full sync, store `last_synced_at` timestamp in MMKV\n- [x] After each table upsert, update the per-table count in MMKV:\n      1. Read old count: `storage.getNumber('sync_count_projects') ?? 0`\n      2. Query new count: `SELECT COUNT(*) as count FROM projects`\n      3. Save new count: `storage.set('sync_count_projects', newCount)`\n\n## MMKV keys set here\n| Key | Value | Set when |\n|-----|-------|----------|\n| `last_synced_at` | `2024-01-04T10:32:00Z` | After full sync |\n| `sync_count_projects` | `5` | After sync |\n| `sync_count_chapters` | `12` | After sync |\n| `sync_count_bibles` | `3` | After sync |\n\n## Acceptance criteria\n- [x] Tapping sync or pulling to refresh triggers the full fetch sequence\n- [x] Fetch sequence runs in order \u2014 later steps depend on earlier ones\n- [x] `last_synced_at` is updated in MMKV after a successful full sync\n- [x] Per-table counts are updated in MMKV after each upsert",
+    "user": "Joel-Joseph-George",
+    "created_at": "2026-04-13T06:59:29Z",
+    "updated_at": "2026-07-02T19:51:22Z",
+    "closed_at": "2026-05-06T12:11:41Z",
+    "labels": [],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/17",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4281096436,
+      "user": "kaseywright",
+      "created_at": "2026-04-20T13:20:00Z",
+      "updated_at": "2026-04-20T13:20:00Z",
+      "body": "MMKV should work fine for our purposes as long as we follow best practices for security like using internal storage, encryption, etc.\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/17#issuecomment-4281096436"
+    },
+    {
+      "id": 4301994320,
+      "user": "B3RN153",
+      "created_at": "2026-04-23T05:44:23Z",
+      "updated_at": "2026-04-23T05:44:23Z",
+      "body": "Used op-sqlite Key-Value Storage instead of MMKV",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/17#issuecomment-4301994320"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

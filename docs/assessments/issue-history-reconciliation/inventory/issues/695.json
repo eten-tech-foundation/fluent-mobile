@@ -1,0 +1,25 @@
+{
+  "issue_number": 695,
+  "fetched_at_utc": "2026-10-20T00:38:46Z",
+  "issue": {
+    "number": 695,
+    "title": "Next UI: Hardware panel",
+    "state": "open",
+    "body": "The bottom Hardware panel for the Listen and Record screens, built with the `figma-component` workflow. The Mode toggle and speaker grill are recipes drawn inside the panel, not separate components.\n\nFigma: [Hardware panel](https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2411-529) \u00b7 [Mode toggle](https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2409-538) \u00b7 [Speaker grill](https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2409-533)\n\n## Acceptance criteria\n\n- [ ] `controlSizes.icon20` (Figma Icon/md) is on the theme, added Legacy-first\n- [ ] `HardwarePanel` takes the screen's keys in the KeyDeck, then the Mode toggle (Switch between Headphones and Speech) and the speaker grill\n- [ ] `modeLocked` locks the toggle for the whole take\n- [ ] The panel pads for the gesture bar, and the grill gives way on narrow screens instead of overflowing\n- [ ] Gallery demo: the toggle swaps Listen keys (Play \u00b7 Previous \u00b7 Next) and Record keys (Record \u00b7 Play \u00b7 Eject); recording latches Record and locks the toggle\n- [ ] Unit tests, including the toggle haptic and the lock\n\nNeeds QA? Yes (haptics and the panel on a real device, including an API 28 phone where the grill renders flat)\n\nFollow-ups: what Eject does is open (`open-questions.md` Q3).\n",
+    "user": "jskager",
+    "created_at": "2026-10-14T15:33:22Z",
+    "updated_at": "2026-10-19T15:01:46Z",
+    "closed_at": null,
+    "labels": [
+      "next-ui"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/695",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

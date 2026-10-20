@@ -1,0 +1,34 @@
+{
+  "issue_number": 547,
+  "fetched_at_utc": "2026-10-20T00:37:44Z",
+  "issue": {
+    "number": 547,
+    "title": "Docs: Refresh recordings-sync-contract.md for fluent-api main (verse-audio + R2)",
+    "state": "closed",
+    "body": "## Summary\n\n`docs/guides/recordings-sync-contract.md` still describes fluent-api `main` as having **no** verse-audio routes and freezes the contract against open PR #224 / Azure Blob. That is stale.\n\nVerified against local fluent-api checkout on `main` (`0ebc096`): `src/domains/verse-audio/` is present; `PUT/GET/DELETE /verse-audio/...` are registered; storage is Cloudflare R2 via `src/lib/audio-storage.ts`, with **503** `\"Audio storage is unavailable\"` when R2 is unset or the bucket probe failed.\n\n## Acceptance criteria\n\n- [ ] Update the \u201cfluent-api truth\u201d table to current `main` (verse-audio shipped; R2, not Azure).\n- [ ] Document 503 storage-unavailable behavior and that mobile treats 503 as terminal failed (`verseAudioContract.ts`).\n- [ ] Remove or clearly mark obsolete Azure / PR #224 \u201copen\u201d wording; keep mobile\u2194API path/auth contract accurate.\n- [ ] Cross-link from `docs/AGENT_ONBOARDING.md` / recordings docs index if needed so agents stop citing the stale table.\n\n## Out of scope\n\n- App code changes for Sync Now / upload UI.\n- Provisioning R2 in any deployed environment.\n\n## Related\n\n- `docs/guides/recordings-sync-contract.md`\n- fluent-api: `src/domains/verse-audio/verse-audio.route.ts`, `src/lib/audio-storage.ts`\n- Mobile: `src/services/verseAudioContract.ts`\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-17T15:28:29Z",
+    "updated_at": "2026-10-09T18:46:20Z",
+    "closed_at": "2026-10-09T18:46:20Z",
+    "labels": [
+      "documentation"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/547",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 6087143104,
+      "user": "mattrace-gloo",
+      "created_at": "2026-10-09T18:46:19Z",
+      "updated_at": "2026-10-09T18:46:19Z",
+      "body": "Cleanup: work already on main (Refs PR merged; Needs QA? No / engineering-only or audit assessment). Board \u2192 **Done**, closing.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/547#issuecomment-6087143104"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

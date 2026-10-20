@@ -1,0 +1,584 @@
+{
+  "reviewer": "r6",
+  "wave": 2,
+  "ids": [101, 103, 104, 105, 110, 117, 118, 146, 147, 151, 152, 176],
+  "domain": "sync-upload-ui-mid",
+  "reviewed_at_utc": "2026-10-20T00:57:59Z",
+  "skipped": [721],
+  "non_overlap_wave1_r2": [100, 102, 150, 253],
+  "counts": {
+    "reviewed": 12,
+    "recommend_complete_true": 12,
+    "recommend_complete_false": 0
+  },
+  "issues": [
+    {
+      "issue": 101,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Pending/upload UI updates live from worker transitions (no manual refresh); SyncStatus/labels represent upload progress + failed; retry affordance re-runs upload worker and reflects in-flight/outcome; syncStatusState unit tests cover new states.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/101"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/syncStatusStore.ts",
+          "lines": "112-120",
+          "fact": "Store subscribes to onUploadSessionEvent and refreshes pending/failed counts on each worker lifecycle event (live UI without refreshKey)."
+        },
+        {
+          "path": "src/utils/syncStatusState.ts",
+          "lines": "1-74",
+          "fact": "deriveSyncStatus includes online_uploading and online_failed; formatSyncStatusLabel can show “Uploading X of Y” and failed retry copy."
+        },
+        {
+          "path": "src/hooks/usePendingUploads.ts",
+          "lines": "18-55",
+          "fact": "Exposes failedCount, isUploading, uploadProgress from the shared store (not refreshKey-only)."
+        },
+        {
+          "path": "src/app/screens/SyncScreen.tsx",
+          "lines": "171-280",
+          "fact": "Sync Now / Resume invoke syncNowUploads (retry path for failed/pending); failed chrome uses online_failed labeling."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/247",
+        "fact": "Merged 2026-07-27 closing #101: TLDR claims live refresh from upload session events, uploading/failed deriveSyncStatus states, and Sync Now → syncPendingRecordings as retry."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "HEAD has syncStatusStore event subscription + online_uploading/online_failed; Sync Now retries via upload orchestrator hooks.",
+        "device_evidence": "none dated for #101 AC"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Closed≠waive. Out-of-scope worker/contract are #100/#102 (wave1 r2 — not reconciled here). Retry is Sync-page Sync Now, not a separate failed-row button."
+    },
+    {
+      "issue": 103,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Via #110 migrations: user_projects.user_id FK→users(id); chapter_assignments.assigned_user_id FK→users(id); status DEFAULT 'not_started'; idx_ca_assigned_user; one non-destructive rebuild migration; existing rows preserved; tests for migrate/FK/index.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/103"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/migrations.ts",
+          "lines": "126-196",
+          "fact": "restoreChapterAssignmentAssignedUserIntegrity rebuilds assigned_user_id FK + status default + idx_ca_assigned_user; restoreUserProjectsUserIntegrity rebuilds user_id FK ON DELETE CASCADE."
+        },
+        {
+          "path": "src/db/migrations.ts",
+          "lines": "588-596",
+          "fact": "Ordered migrations v4=chapter_assignments integrity, v5=user_projects integrity (split across #99/#103 delivery, both on HEAD)."
+        },
+        {
+          "path": "src/db/schema.ts",
+          "lines": "53-71",
+          "fact": "Fresh-install baseline includes assigned_user_id REFERENCES users(id), status DEFAULT 'not_started', idx_ca_assigned_user."
+        },
+        {
+          "path": "src/db/schema.ts",
+          "lines": "126-130",
+          "fact": "user_projects.user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/248",
+        "fact": "Merged 2026-07-27 closing #103: lands user_projects FK as migration v5; TLDR states chapter_assignments FK/index already owned by stacked #246/#99 (v4) — not a duplicate rebuild."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Both integrity rebuilds present in migrations/schema on HEAD.",
+        "device_evidence": "none (schema/migration ticket)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Original ticket claimed #103 owns both rebuilds; PR #248 is LATEST_EXPLICIT_DECISION splitting chapter_assignments to #99. AC outcomes still present on HEAD — not an open bug."
+    },
+    {
+      "issue": 104,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Verify-only: My Work lists active user’s non-complete assigned+peer-check chapters with multi-account isolation; recording counts/sync correct after #98 join fix; project list scoped by user_projects; extend edge-case tests only where gaps found (no rewrite).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/104"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/utils/myWorkChapterFilter.ts",
+          "lines": "7-20",
+          "fact": "MY_WORK_CHAPTER_WHERE scopes not_started/draft to assigned_user_id and peer_check to peer_checker_id for the active userId."
+        },
+        {
+          "path": "src/db/queries.ts",
+          "lines": "740-777",
+          "fact": "getMyWorkChapters applies MY_WORK_CHAPTER_WHERE + RECORDINGS_JOIN_CA (active-user recording aggregates)."
+        },
+        {
+          "path": "src/db/queries.ts",
+          "lines": "168-172",
+          "fact": "Project summary bases INNER JOIN user_projects WHERE up.user_id = ?."
+        }
+      ],
+      "material_pr_or_decision": null,
+      "material_pr_or_decision_na": "reason_not_applicable: no linked closing PR; closed 2026-07-02 by mattrace-gloo as COMPLETED (verify-only). Sole issue comment (2026-06-28) only notes #121 join dependency. Epic #118 body state “Verify pass (2026-07): #104 verified complete and closed.” — that epic text is the dated verification claim, not a product waive of AC.",
+      "source_vs_qa": {
+        "working_tree": "Active-user My Work filter + user_projects project scoping on HEAD; join uses bible_text_id/recorded_by_user_id path (post-#98/#105).",
+        "device_evidence": "none dated for #104 verify AC"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Closed state alone is history; completeness rests on epic verify claim + current source matching verify AC. No written test-extension audit artifact on the issue."
+    },
+    {
+      "issue": 105,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Add recordings.recorded_by_user_id via #110 migration; set on capture from active user; upload prefers owner token (document policy); tests for capture attribution + upload token selection.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/105"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/migrations.ts",
+          "lines": "198-218",
+          "fact": "addRecordingsRecordedByUser adds recorded_by_user_id INTEGER REFERENCES users(id) + idx_rec_verse_user (migration v6 on HEAD)."
+        },
+        {
+          "path": "src/db/recordingsRepository.ts",
+          "lines": "291-338",
+          "fact": "addRecordingTake INSERTs recorded_by_user_id (capture-time owner from active user)."
+        },
+        {
+          "path": "src/services/recordingSync.ts",
+          "lines": "118-137",
+          "fact": "resolveUploadTokenForRecording prefers getCredentials(recordedByUserId); falls back to pass token if missing."
+        },
+        {
+          "path": "docs/guides/recordings-sync-contract.md",
+          "lines": "79-87",
+          "fact": "Living eng contract documents attribution policy (capture owner + owner-token upload). Labeled API-doc/inferred unless ticket AC — version pin says “v5” while code migration is v6 (doc drift, not product waive)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/105#issuecomment-5123591074",
+        "fact": "2026-07-29 close comment: landed via squash of PR #248 including #251 work (recorded_by_user_id, capture attribution, owner-token upload); remaining cross-account product gaps tracked in #259."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Column + capture + owner-token upload path on HEAD; contract doc present.",
+        "device_evidence": "none dated for multi-account attribution E2E"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Explicit deferral of leftover shared-device visibility is #259 (not this ticket’s unwaived AC). Inferred contract version label ≠ product decision."
+    },
+    {
+      "issue": 110,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Versioned runMigrations via PRAGMA user_version (once, ordered, transactional); db/index uses framework; remove ad-hoc chapterAssignmentMigrations; table-rebuild helper for FK/default changes; tests for fresh/idempotent/old-shape upgrade.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/110"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/migrations.ts",
+          "lines": "17-91",
+          "fact": "Migration type + getUserVersion/setUserVersion + rebuildTable helper for SQLite FK/default rebuilds."
+        },
+        {
+          "path": "src/db/migrations.ts",
+          "lines": "571-601",
+          "fact": "Ordered migrations array starting at baseline v1; CURRENT_SCHEMA_VERSION advanced well past v2 verse-progress fold-in."
+        },
+        {
+          "path": "src/db/index.ts",
+          "lines": "30-35",
+          "fact": "initializeDatabase sets pragmas then await runMigrations(db) — no ad-hoc ALTER ignore loop."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/210",
+        "fact": "Merged 2026-07-23 closing #110: TLDR replaces ignore-errors ALTER loops with user_version runner, folds verse-progress into v2, adds rebuildTable, unblocks #99/#103/#105 without applying those schema changes in-PR."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Framework on HEAD; schema changes for dependents landed in later migrations.",
+        "device_evidence": "none (framework ticket)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "No issue comments; PR body is the material decision. Closed≠proof alone — source confirms AC."
+    },
+    {
+      "issue": 117,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Epic: recording sync to R2 on Expo CNG Android — sub-issues #99–#102 (schema integrity, upload worker, sync-status UI, server contract); dependency order via #110; PR #82 anti-pattern only.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/117"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/guides/recordings-sync-contract.md",
+          "lines": "1-14",
+          "fact": "Living eng contract: mobile matches PUT /verse-audio (not original POST /recordings/sync); fluent-api main has verse-audio; labeled inferred/eng unless ticket AC."
+        },
+        {
+          "path": "src/services/recordingSync.ts",
+          "lines": "500-517",
+          "fact": "syncPendingRecordings upload worker entry on HEAD (epic C2 surface; #100 not re-audited here)."
+        },
+        {
+          "path": "src/utils/syncStatusState.ts",
+          "lines": "1-19",
+          "fact": "Upload progress/failed SyncStatus states on HEAD (epic C3/#101)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/117#issuecomment-5123591371",
+        "fact": "2026-07-29 close: all sub-issues #99–#102 done/closed; upload worker/R2 contract on main; leftover SyncScreen glue → #253; remux/scrub → #176/#233/PR #252."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Epic deliverables present via sub-issue code paths; contract doc notes #102 path deviation as eng freeze.",
+        "device_evidence": "none for epic as a whole; #253/#721 Sync chrome are separate"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Do not treat inferred contract as product waive of #102 wording — that is eng freeze documented in recordings-sync-contract. Skip deep #100/#102/#253/#721 per wave rules."
+    },
+    {
+      "issue": 118,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Epic: multi-user project scoping + My Work filtering — harden FKs/indexes (#103), verify filtering (#104), recordings attribution (#105); account switcher already tracked #84–#87.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/118"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/schema.ts",
+          "lines": "59-71",
+          "fact": "chapter_assignments assigned_user_id FK + idx_ca_assigned_user on baseline (#103/#99 outcomes)."
+        },
+        {
+          "path": "src/utils/myWorkChapterFilter.ts",
+          "lines": "7-9",
+          "fact": "My Work active-user assigned/peer filter (#104 verify surface)."
+        },
+        {
+          "path": "src/db/schema.ts",
+          "lines": "96-99",
+          "fact": "recordings.recorded_by_user_id present (#105)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/118#issuecomment-5123591760",
+        "fact": "2026-07-29 close: #103/#104 closed; #105 on main via #248; further shared-device take visibility remains #259."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Sub-issue outcomes on HEAD.",
+        "device_evidence": "none for epic E2E"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "#259 is explicit follow-up for remaining product gaps — not missing decision on #118 AC."
+    },
+    {
+      "issue": 146,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Off-by-default “Upload/Download over cellular” toggle in Settings (below Prepare for Offline) and mirrored on Sync (below action controls); when off, uploads/downloads only on WiFi and pause if WiFi lost mid-transfer; when on, any connection.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/146"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/userPreferences.ts",
+          "lines": "20-23",
+          "fact": "DEFAULT_USER_PREFERENCES.uploadOverCellular = false (off by default)."
+        },
+        {
+          "path": "src/app/screens/SettingsScreen.tsx",
+          "lines": "203-208",
+          "fact": "Settings toggle row title “Upload/Download over cellular” wired to shared preference."
+        },
+        {
+          "path": "src/app/screens/SyncScreen.tsx",
+          "lines": "301-308",
+          "fact": "Mirrored Sync toggle via same setUploadOverCellular; sits below controls/downloads section."
+        },
+        {
+          "path": "src/constants/messages.ts",
+          "lines": "1-7",
+          "fact": "Cellular-blocked Sync Now explanation strings reference the Upload/Download over cellular setting."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/146#issuecomment-5025316327",
+        "fact": "2026-07-20 ticket-level AC waivers for PR #200: (1) pause in-flight on WiFi loss deferred to #150; (2) downloads honor toggle deferred to #201. Still in scope: Settings+Sync mirrored toggle, WiFi detection, Sync Now/status chrome."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Mirrored toggles + default-off on HEAD; download/orchestrator consumers also read the pref (post-waiver work may have expanded beyond #200 — not a re-open of waived AC without new ticket).",
+        "device_evidence": "none dated specifically for #146; #147 QA later exercised cellular download ON/OFF (2026-10-05)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Explicit deferral ≠ bug. Layout placement vs #147: Downloads section now sits above the cellular toggle (matches #147 AC; supersedes #146 note that toggle was above download queue). Settings subtitle still upload-only wording vs Sync subtitle including downloads — minor CONFIRMED_CURRENT_SOURCE copy drift."
+    },
+    {
+      "issue": 147,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Coming Back Online/Sync: Downloads section only when queue≥1; below Sync action controls and above cellular toggle; aggregate bar + “N items remaining”; per-row Tier1 “Source Bible” / Tier2 book+Audio|Text; Manage downloads → Prepare for Offline; queue-based (append mid-session; preserve partial).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/147"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/screens/SyncScreen.tsx",
+          "lines": "266-308",
+          "fact": "Layout: SyncActionControls → conditional DownloadProgressSection → cellular SettingsToggleRow."
+        },
+        {
+          "path": "src/components/ui/DownloadProgressSection.tsx",
+          "lines": "18-88",
+          "fact": "Hides when no active items; aggregate bar; items-remaining label; Manage downloads affordance."
+        },
+        {
+          "path": "src/hooks/useDownloadQueue.ts",
+          "lines": "57-90",
+          "fact": "Label helpers include Tier1 “Source Bible” and Tier2 “Book — Audio/Notes” style strings (also used in preview scenarios)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/685",
+        "fact": "Merged 2026-10-14 closing #147: fixes cancelled-download count inflation, idle Sync discovery of new enqueues, and deriveSyncPageStatus allComplete when both queues clear (addresses audit Gaps 10/11 leftovers partially)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Downloads UI + queue hook on HEAD; #685 status/cancel/discovery fixes merged.",
+        "device_evidence": "2026-09-28 JonathanSeehagen on Xiaomi Redmi Note 9 Pro / 09ff2fd / dev.api — Downloads section passed; Gap10 double-back Manage downloads; Gap11 never allComplete. 2026-10-05 Roslin22 QA: section/position/progress OK; open defects on labels, new-item discovery, cancel queue update, cellular→WiFi resume."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Complete≠conformance. #685 closed the issue after targeting cancel/discovery/allComplete; Roslin label/resume findings lack a dated product waive on #147 — treat as named unwaived QA divergence / possible follow-up, not as missing layout AC decision. Original UI delivery PR #272 (2026-08-03)."
+    },
+    {
+      "issue": 151,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Sync action controls by state: Syncing Pause+Cancel; Paused Resume+Sync Now+Cancel; Pending Sync Now (disabled on cellular when upload-over-cellular off + explanation); hide controls on Upload/All Complete; sit in #149 slot; component tests. Engine behaviors defined in #150.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/151"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/ui/SyncActionControls.tsx",
+          "lines": "54-119",
+          "fact": "Control matrix: syncing→Pause/Cancel; paused→Resume/Cancel/Sync Now + disabled hint; pending Sync Now with cellular disable path."
+        },
+        {
+          "path": "src/app/screens/SyncScreen.tsx",
+          "lines": "266-285",
+          "fact": "Controls mounted in reserved slot; handlers call pause/resume/cancel/syncNow from useUploadSessionState."
+        },
+        {
+          "path": "src/hooks/useUploadSessionState.ts",
+          "lines": "162-174",
+          "fact": "UI handlers invoke pauseUploadSession / cancelUploadSession / syncNowUploads (post-#150 wiring on HEAD; #150 itself not reconciled in this wave)."
+        },
+        {
+          "path": "src/app/screens/SyncScreen.test.tsx",
+          "lines": "256-357",
+          "fact": "Component tests cover Sync Now, Pause, Resume, cellular-disabled Sync Now."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/151#issuecomment-5025570092",
+        "fact": "2026-07-20 ticket-level waivers: real Pause/Resume/Cancel/Sync Now engine semantics deferred to #150; UI matrix + cellular disable + hide-on-complete still in scope for #151 / PR #203."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Control matrix + cellular gating on HEAD; handlers now call orchestrator APIs (engine landed later — do not treat as #151 reopen).",
+        "device_evidence": "none dated for #151 control matrix alone"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Explicit deferral of engine to #150 (wave1 r2 — not audited here). Closed by PR #203 (2026-07-23) with UI-only scope."
+    },
+    {
+      "issue": 152,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Android persistent non-dismissible FG-service notification while background sync runs; title “Uploading your recordings”; body “X of Y chapters uploaded” updating; no inline actions; tap→Sync; clear on complete/pause/cancel; no iOS implementation; Android device QA on PR.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/152"
+        },
+        {
+          "slice": "permission",
+          "text": "Android 13+ POST_NOTIFICATIONS: open question in ticket — degrade without crashing if denied; clarify whether upload requires permission.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/152"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/uploadProgressNotification.ts",
+          "lines": "10-40",
+          "fact": "Title/body helpers match AC; commandForUploadSessionEvent shows/updates on start/progress and clears on paused/cancelled/complete/idle."
+        },
+        {
+          "path": "src/services/uploadProgressNotification.ts",
+          "lines": "97-113",
+          "fact": "Permission slice: if notification permission denied, set permissionDenied and continue upload without shade chrome (no crash)."
+        },
+        {
+          "path": "modules/upload-sync-foreground/android/src/main/java/expo/modules/uploadsyncforeground/UploadSyncForegroundService.kt",
+          "lines": "125",
+          "fact": "DEFAULT_TITLE = “Uploading your recordings” in Android FG service module."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/349",
+        "fact": "Merged 2026-08-25 closing #152: FG-service notification + Sync tap + clear on complete/pause/cancel; permission denied → uploads continue without shade. Needs QA? Yes checked; “QA passed this PR’s preview” left unchecked despite merge."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "uploadProgressNotification + upload-sync-foreground module on HEAD; Android-only.",
+        "device_evidence": "2026-08-20 preview APK comment on issue (pr-349-1b21268 / 574b744) — install artifact only; no dated human QA pass/fail recorded on #152. Issue comment 2026-08-06 notes live DevQA of chapter counts historically blocked on undeployed verse-audio API (eng note; contract later updated)."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Split layout/notification chrome vs permission. Permission decision on HEAD = degrade without blocking upload (PR #349 fact). Complete≠claim device QA passed — named gap: merge without checked QA-pass box."
+    },
+    {
+      "issue": 176,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "After commit, convert ADTS AAC take → seekable M4A; Review scrubbing accurate on converted file (satisfies #49-waived scrub AC); capture/pause/resume-after-kill stays ADTS; conversion failure → keep playable AAC (no data loss); Android device QA of remux+scrub on PR.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/176"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/audio/ensureSeekableTakeUri.ts",
+          "lines": "18-41",
+          "fact": "Remuxes .aac→.m4a when native module present; on missing module/throw keeps original AAC playable (no data loss)."
+        },
+        {
+          "path": "src/audio/aacRemux.ts",
+          "lines": "1-17",
+          "fact": "Optional binding to local AacRemux Expo module (Android MediaMuxer)."
+        },
+        {
+          "path": "modules/aac-remux/android/src/main/java/expo/modules/aacremux/AacRemuxModule.kt",
+          "lines": "1-40",
+          "fact": "Native AAC→M4A remux module present under modules/aac-remux (device-linked path)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/252",
+        "fact": "Merged 2026-08-04; GitHub closing ref for #176. Body said Part of #176 / do not auto-close until Android device QA of remux+ADTS scrub — yet issue closed on merge. Prior issue comments explicitly waived native remux to #233 then required device QA before close."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "JS seam + native aac-remux module + ensureSeekableTakeUri on HEAD.",
+        "device_evidence": "2026-07-31 mattrace-gloo PR #252 device test: scrub directionally right; multi-take Review crash (Maximum update depth) + waveform/timer overlap. 2026-08-04 reply: items 2–3 fixed on device; item 1 crash still valid — same day as merge/close."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Explicit partial waiver history (#231 JS seam; #233 remux). Closed≠full AC acceptance. Named unwaived divergence: multi-take Review crash still acknowledged at close; device QA gate was not marked done. Capture format remains ADTS per design (not a bug)."
+    }
+  ]
+}

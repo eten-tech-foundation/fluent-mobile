@@ -1,0 +1,42 @@
+{
+  "issue_number": 292,
+  "fetched_at_utc": "2026-10-20T00:36:01Z",
+  "issue": {
+    "number": 292,
+    "title": "Stop wiping auth credentials on sync 401; use reauth-required",
+    "state": "closed",
+    "body": "## Summary\n\nAny sync `AuthError` (HTTP 401) permanently deletes the user's SecureStore token via `handleSyncAuthFailure` and forces logout through `emitAuthSessionExpired` \u2192 `App.tsx`. Missing credentials are treated the same as revocation. Transient server/DB errors and Better Auth refresh races can also surface as indistinguishable 401s.\n\nFor an offline-first app, sync failure / offline / a single bad 401 must **not** log the user out or destroy local drafts.\n\n## Current vs expected\n\n**Current:** 401 during sync \u2192 `clearCredentials` \u2192 forced login screen; local session destroyed.\n\n**Expected:** Confirmed 401 sets a per-user **reauth-required** flag, keeps SecureStore token and SQLite data, and prompts for password (soft lock). Credentials are deleted only on explicit user sign-out or successful re-login that replaces the token. Network timeouts / offline errors never set reauth.\n\n## Scope\n\n**In scope**\n- Replace credential deletion in `handleSyncAuthFailure` with KV reauth flag (e.g. `{userId}:reauth_required`)\n- Soft event (e.g. `emitAuthReauthRequired`) that does **not** call `signOut()` / clear token by default\n- Missing-creds path: log + skip / set reauth for active user \u2014 do not wipe\n- Minimal UI shell for blocking re-auth (Settings/Home)\n- Update `sync.auth.test.ts` expectations that currently assert `clearCredentials` + forced expiry\n\n**Out of scope**\n- Durable login persistence (#291 \u2014 land first or in parallel carefully)\n- Per-request token plumbing (#294)\n- fluent-api structured error codes (optional later)\n\n## Acceptance criteria\n\n- [ ] Sync 401 for active user does **not** delete SecureStore credentials\n- [ ] Sync 401 sets reauth-required and surfaces soft re-auth UX; local drafts/SQLite remain\n- [ ] Offline / timeout / non-auth `ApiError` never triggers reauth or logout\n- [ ] Explicit Settings sign-out still clears credentials as today\n- [ ] Unit tests updated; no forced `emitAuthSessionExpired` logout on sync 401\n\n## Verification / test plan\n\n1. Unit: mock 401 in sync \u2192 credentials remain; reauth flag set\n2. Unit: timeout/network error \u2192 no reauth flag\n3. Device QA: trigger sync 401 while online \u2192 stay on app with reauth prompt; drafts intact\n4. Device QA: airplane mode + sync attempt \u2192 no login bounce\n\n## File pointers & approach\n\n1. `src/services/sync.ts` \u2014 `handleSyncAuthFailure`, missing-cred branches in `syncAllUsers` / `syncAllData`\n2. `src/services/syncEvents.ts`, `App.tsx` (~54\u201359)\n3. `src/services/storage.ts` \u2014 flag helpers\n4. Soft reauth UI entry (Settings/Home)\n5. `src/services/sync.auth.test.ts`\n\n## Related series (suggested order)\n\n1. **#291** \u2014 Persist auth credentials at login (**P0**)\n2. **#292** \u2014 Soft reauth / no wipe on 401 (**P0**) \u2014 this ticket\n3. **#294** \u2014 Per-request auth tokens (**P1**)\n4. **#293** \u2014 Multi-account session safety (**P1**)\n\n## Links\n\n- Project board: [Fluent Mobile Board](https://github.com/orgs/eten-tech-foundation/projects/4/views/9) \u2014 please set Status **Backlog**, Priority **P0** (agent lacked project write permission)\n",
+    "user": "mattrace-buildmidwestern",
+    "created_at": "2026-07-31T07:09:03Z",
+    "updated_at": "2026-08-06T18:45:31Z",
+    "closed_at": "2026-08-06T18:45:31Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/292",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5140440259,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-31T07:27:34Z",
+      "updated_at": "2026-07-31T07:27:34Z",
+      "body": "## API readiness note (board audit)\n\n**Status on fluent-api `main`:** Not required \u2014 client policy change on sync 401 (keep credentials; reauth-required). Optional later: structured API error codes (not on `main` today as a dedicated contract).\n\n**Implement with:** Local auth/session handling only. No mock API.\n\n### Follow up with fluent-api team\nWhen you pick this up, please ask the fluent-api team:\n1. Is the needed feature planned / in progress?\n2. Expected ETA (or \u201cnot scheduled\u201d)?\n3. Is there already an open fluent-api GitHub issue or PR? If yes, link it here; if no, ask them to file one (or file it yourself and link it).\n\nChecked against local fluent-api `main` @ `3ef4025` (2026-07-31).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/292#issuecomment-5140440259"
+    },
+    {
+      "id": 5208306644,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-06T18:45:30Z",
+      "updated_at": "2026-08-06T18:45:30Z",
+      "body": "Closing as **duplicate of #291**.\n\nAuth session durability is tracked as one board ticket per tech-lead preference (big ticket + tech notes as comments, not sibling slices).\n\nCanonical: https://github.com/eten-tech-foundation/fluent-mobile/issues/291",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/292#issuecomment-5208306644"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

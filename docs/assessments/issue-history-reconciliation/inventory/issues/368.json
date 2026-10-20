@@ -1,0 +1,23 @@
+{
+  "issue_number": 368,
+  "fetched_at_utc": "2026-10-20T00:36:20Z",
+  "issue": {
+    "number": 368,
+    "title": "[A+] Audit @react-navigation direct dependencies (remove or document)",
+    "state": "closed",
+    "body": "## Summary / context\n\nPart of **A+ Architecture**. App code must not import `@react-navigation/*` directly (Expo Router only), but packages may still sit in `package.json` as a footgun.\n\n## Current vs expected\n\n**Current:** Policy in `expo-first-dependencies.mdc`; deps may still be present for transitive/Expo reasons.\n\n**Expected:** Audit complete: unused direct deps removed **or** documented why they must remain (with owners). No drive-by unrelated upgrades.\n\n## Scope\n\n**In scope**\n- Audit `package.json` / lockfile for direct `@react-navigation/*`\n- Remove only if unused after Expo Router graph check; otherwise document\n- `npm run doctor` / `npx expo install --check` if deps change\n\n**Out of scope**\n- ESLint import bans (A1)\n- Broad dependency bumps\n\n## Acceptance criteria\n\n- [ ] Written audit result in PR body (keep vs remove per package)\n- [ ] Removals leave app building (`typecheck`, doctor clean)\n- [ ] Engineering-only \u2014 no Needs QA\n\n## Verification / test plan\n\n1. `npm run typecheck`\n2. `npm run doctor`\n3. `npx expo install --check`\n4. `npm test -- --ci`\n\n## Links\n\n- Sibling: A1\n- Docs: `docs/guides/expo-first-dependencies.md`\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-08-25T14:17:13Z",
+    "updated_at": "2026-08-25T22:05:43Z",
+    "closed_at": "2026-08-25T22:05:43Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/368",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

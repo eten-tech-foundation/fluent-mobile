@@ -1,0 +1,20 @@
+{
+  "integrated_at_utc": "2026-10-20T01:00:34Z",
+  "reviewer": "bc-7613a717-a8fe-59b4-af41-a9b301845a00",
+  "source": "/tmp/fluent-issue-review-r6.json",
+  "accepted_complete": [
+    101,
+    103,
+    104,
+    105,
+    110,
+    117,
+    118,
+    146,
+    147,
+    151,
+    152,
+    176
+  ],
+  "spot_note": "Spot-checked runMigrations/rebuildTable, recorded_by_user_id, uploadOverCellular."
+}

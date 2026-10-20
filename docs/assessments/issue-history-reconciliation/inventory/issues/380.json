@@ -1,0 +1,23 @@
+{
+  "issue_number": 380,
+  "fetched_at_utc": "2026-10-20T00:36:33Z",
+  "issue": {
+    "number": 380,
+    "title": "[A+] Dependabot one-at-a-time + doctor checklist",
+    "state": "closed",
+    "body": "## Summary / context\n\nPart of **A+ Process / CI**. Dependabot discipline (one PR at a time, `doctor` after npm bumps) is documented but easy to skip under load.\n\n## Current vs expected\n\n**Current:** `.cursor/rules/dependabot-workflow.mdc` + guides exist.\n\n**Expected:** Short checklist issue/template or addition to `docs/guides/dependabot-process.md` used for the next 4 bumps; no code change required unless docs are missing a step.\n\n## Scope\n\n**In scope**\n- Doc checklist (merge order, doctor, rebase others, expo install --fix when needed)\n- Optional: link from `.github/dependabot.yml` comment / README\n\n**Out of scope**\n- Auto-merge Dependabot without human/agent process\n- Large version upgrades\n\n## Acceptance criteria\n\n- [ ] Checklist exists in-repo\n- [ ] Linked from dependabot guide\n- [ ] Engineering/docs only\n\n## Verification / test plan\n\n1. Docs review only\n2. Apply on next Dependabot PR and note on this issue\n\n## Links\n\n- `docs/guides/dependabot-process.md`, `.cursor/rules/dependabot-workflow.mdc`\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-08-25T14:18:13Z",
+    "updated_at": "2026-08-26T17:00:27Z",
+    "closed_at": "2026-08-26T17:00:27Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/380",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

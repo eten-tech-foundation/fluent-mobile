@@ -1,0 +1,32 @@
+{
+  "issue_number": 492,
+  "fetched_at_utc": "2026-10-20T00:37:13Z",
+  "issue": {
+    "number": 492,
+    "title": "Maestro smoke: Home + drafting navigation",
+    "state": "closed",
+    "body": "## Summary / context\n\nParent: #488.\n\nAfter auth, prove Home tabs and drafting navigation: My Work / Projects \u2192 open chapter \u2192 Bible / Resources / Record tab bar.\n\n## Current vs expected\n\n**Current:** Manual QA opens projects/chapters by hand. No Maestro navigation smoke.\n\n**Expected:** Stable Android flow(s) that assert tab and drafting shell ids (depends on selector ticket).\n\n## Scope\n\n**In scope**\n- Smoke after login: My Work visible, Projects visible\n- Open an assigned chapter/verse drafting screen\n- Assert drafting tab bar: Bible, Resources, Record (`drafting-tab-bar` / tab ids)\n- Optional: Resources tab opens without crash\n\n**Out of scope**\n- Actually recording audio (Record child)\n- Prepare offline wizard\n- Multi-account isolation\n\n## Acceptance criteria\n\n- [ ] Flow green with Maestro account that has \u22651 assignment\n- [ ] Navigation uses `testID`s (not chapter title text alone)\n- [ ] Document required seed data (project/chapter) on the ticket/PR\n- [ ] Empty My Work called out as a hard fail with clear message (assignment prerequisite)\n\n## Verification / test plan\n\n1. Sync after login so SQLite has projects\n2. Run nav smoke on emulator\n3. Confirm on nightly-shaped Release build if harness supports it\n\n## Links\n\n- Refs #488\n- Home / `MyWorkTab` / `ProjectsTab` / `DraftingScreen`\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-10T19:52:19Z",
+    "updated_at": "2026-09-10T19:54:48Z",
+    "closed_at": "2026-09-10T19:54:15Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/492",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5624594458,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-10T19:54:48Z",
+      "updated_at": "2026-09-10T19:54:48Z",
+      "body": "Condensed into #491 (main smoke suite).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/492#issuecomment-5624594458"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,32 @@
+{
+  "issue_number": 407,
+  "fetched_at_utc": "2026-10-20T00:36:36Z",
+  "issue": {
+    "number": 407,
+    "title": "Add Verse/Pericope Toggle to Mobile Settings",
+    "state": "closed",
+    "body": "Fluent Mobile currently has no way for a translator to switch recording granularity; the working unit is fixed at the project level. Web already exposes a verse/pericope toggle from Drafting onward, and this ticket adds the equivalent control to mobile Settings so a translator's mode choice becomes a live, per-user preference instead of a fixed project setting.\n\n## Functional Requirements\n\n### Settings \u2014 Verse/Pericope Toggle\n- Add a Verse / Pericope toggle control to the mobile Settings screen.\n- Selecting a value immediately updates the active display unit across the Bible tab and Record tab; no partial mode mixing.\n- Persist the toggle state as a per-user preference, not per-device.\n- Sync the preference to the translator's account when the device is online.\n\n> **Note:** The requirements doc doesn't specify the toggle's UI control type (switch vs. segmented control) or its exact placement within Settings \u2014 confirm before design/build.\n\n<img width=\"391\" height=\"560\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/8a387448-3b70-4023-983e-f4bac86f9e1a\" />\n\n\n> **Note 2:** This ticket depends on the mobile pericope data model existing (tracked separately as an engineering-owned ticket).",
+    "user": "chadw-eten",
+    "created_at": "2026-08-27T18:18:41Z",
+    "updated_at": "2026-09-09T05:16:41Z",
+    "closed_at": "2026-09-02T08:51:53Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/407",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5596207250,
+      "user": "Roslin22",
+      "created_at": "2026-09-09T05:16:40Z",
+      "updated_at": "2026-09-09T05:16:40Z",
+      "body": "**Test Results #407**\n\n- Verse/Pericope Toggle in Settings \u2013 The Verse/Pericope toggle is available in the mobile Settings screen, and the user can select either option.\n- Display Unit Update \u2013 Not Implemented \u2013 Selecting Pericope does not currently change the display unit in the Bible or Record tab. As discussed with Bernise, only the Settings toggle has been implemented at this stage; pericope display support in the Bible and Record tabs is not yet available.\n- Follow-up Tickets \u2013 Follow-up tickets #409 and #408 have been created to implement the remaining pericope functionality. These changes will be tested once the tickets are moved to QA.\n- Toggle Preference Persistence \u2013 The selected preference is retained after restarting the app and when the same user logs in again.\n\n\nMoving this ticket to passedQA",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/407#issuecomment-5596207250"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

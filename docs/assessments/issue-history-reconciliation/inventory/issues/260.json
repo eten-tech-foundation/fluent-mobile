@@ -1,0 +1,32 @@
+{
+  "issue_number": 260,
+  "fetched_at_utc": "2026-10-20T00:35:44Z",
+  "issue": {
+    "number": 260,
+    "title": "Add Conflict Indicator to Mobile Chapter List",
+    "state": "closed",
+    "body": "When two or more translators record the same pericope or verse while offline, their takes arrive on the server as a conflict. Mobile translators need to know a conflict exists \u2014 both to understand why their work is blocked from advancing and to know they need a PM to resolve it on the web app. This ticket adds a conflict indicator to the chapter list. The record tab warning for conflicted chapters is handled in #269. Conflict resolution is web-only; mobile surfaces the state only. Stage advancement while a conflict is unresolved is already blocked by #258.\n\n## Functional Requirements\n\n### Chapter List\n- Display `li:users` with a `li:triangle-alert` badge to the right of the sync indicator (`li:cloud-upload`) on any chapter row where one or more pericopes or verses have an unresolved audio take conflict, on both the My Work tab and the View Project page.\n- The conflict indicator is a chapter-level rollup: if any pericope or verse within the chapter is in conflict, the chapter row shows the indicator regardless of whether other units are clean.\n- The conflict indicator appears alongside any existing sync indicator (`li:cloud-upload`); it does not replace it. A row may display both simultaneously.\n\n<img width=\"424\" height=\"464\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/e1958986-059c-41f2-af66-3e26543b3c34\" />\n\nNote: Stage advancement for a conflicted chapter is already blocked in #258; this ticket adds the chapter list indicator only.",
+    "user": "chadw-eten",
+    "created_at": "2026-07-24T20:13:20Z",
+    "updated_at": "2026-08-28T20:56:29Z",
+    "closed_at": "2026-08-28T20:56:29Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/260",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5273846132,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-12T23:08:29Z",
+      "updated_at": "2026-08-12T23:08:29Z",
+      "body": "### Eng note (updated)\n\nDepends on conflict state from **eten-tech-foundation/fluent-api#271** (same dependency as web #374).\n\n**Preferred:** land with `fluent-api#271` + mobile #256 as one feature so the badge is real.\n\n**Fallback:** mock `hasConflict` (or similar) locally if the API slice is too big \u2014 don\u2019t build a fake server inside this UI ticket. Sibling web indicator: eten-tech-foundation/fluent-web#374.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/260#issuecomment-5273846132"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

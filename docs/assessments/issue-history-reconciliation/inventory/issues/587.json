@@ -1,0 +1,44 @@
+{
+  "issue_number": 587,
+  "fetched_at_utc": "2026-10-20T00:38:05Z",
+  "issue": {
+    "number": 587,
+    "title": "Hydrate unbundled pericope sets from GET /pericope-sets/{id} [Pericope view Audit]",
+    "state": "open",
+    "body": "Found during the pericope view audit (#534, epic #526).\n\n**Severity:** Low (follow-up task, no user impact while projects use the bundled FCBH/FIA sets)  \n**Launch blocker:** No  \n**Confirmed on:** code review of `main` @ `4ebeae2` and fluent-api @ `acc1404`; not device-tested (scenario I.29b skipped)\n\n## Summary\n\n`syncPericopes` (`src/services/sync.ts`) seeds only the APK-bundled FCBH (id 1) and FIA (id 2) sets. For any other `pericope_set_id` it logs \"blocked on network path (fluent-api#309)\" and stores nothing. fluent-api `main` now serves `GET /pericope-sets/{id}` with `?bookCode=`, ETag and 304 (fluent-api PR #345). Mobile has no client for it, and the doc comment on `syncPericopes` still describes the step as a no-op with a \"#TBD\" follow-up.\n\n## Expected\n\nPer #438: for a set that is not bundled, or whose server version is newer, one set-level request (per set or book) hydrates SQLite, and unchanged sets revalidate with `If-None-Match` \u2192 304.\n\n## Actual\n\nProjects on an unbundled set have no pericope data; pericope mode silently shows verses.\n\n## Steps to reproduce\n\n1. Use a project whose `pericope_set_id` is neither 1 nor 2.\n2. Sync, then switch Settings \u2192 Drafting unit \u2192 Pericope.\n3. The Bible tab shows verse rows; logs show the \"blocked on network path\" message.\n\n## Acceptance criteria\n\n- [ ] `FluentAPI.getPericopeSet(id, { bookCode, etag })` handles 200 and 304.\n- [ ] `syncPericopes` falls back to the API when a set/book is not bundled, stores the ETag, and sends `If-None-Match` on the next sync.\n- [ ] No per-chapter pericope requests (the #438 bandwidth contract).\n- [ ] The stale doc comment on `syncPericopes` is updated.\n- [ ] Unit tests cover bundled, API 200, API 304 and offline paths.\n- [ ] Android device QA with an unbundled set once one exists in dev.\n\n## Related\n\n- Parent audit: #534 (epic #526)\n- Feature: #438 (PR #445), #447 (PR #450), fluent-api#309 (fluent-api PR #345)\n- Assessment: `docs/assessments/pericope-view/README.md` (PR #583)\n\n\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-25T17:20:21Z",
+    "updated_at": "2026-10-14T13:11:10Z",
+    "closed_at": null,
+    "labels": [
+      "enhancement",
+      "DevQA",
+      "chore"
+    ],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/587",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 6087142384,
+      "user": "mattrace-gloo",
+      "created_at": "2026-10-09T18:46:17Z",
+      "updated_at": "2026-10-09T18:46:17Z",
+      "body": "Cleanup: implementing PR already merged; board was stuck on In PR Review. Moved to **In QA** for post-merge nightly verification (Needs QA? Yes).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/587#issuecomment-6087142384"
+    },
+    {
+      "id": 6169148510,
+      "user": "chadw-eten",
+      "created_at": "2026-10-14T13:11:10Z",
+      "updated_at": "2026-10-14T13:11:10Z",
+      "body": "@mattrace-gloo QA cannot test this without knowing which project has no pericope set selected. Adding DevQA.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/587#issuecomment-6169148510"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

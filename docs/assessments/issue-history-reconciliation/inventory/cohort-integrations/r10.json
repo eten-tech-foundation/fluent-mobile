@@ -1,0 +1,1100 @@
+{
+  "reviewer": "r10",
+  "wave": 4,
+  "domain": "mid-late-gap-255+",
+  "ids": [
+    255,
+    258,
+    259,
+    260,
+    261,
+    267,
+    268,
+    269,
+    270,
+    273,
+    274,
+    275,
+    276,
+    277,
+    279,
+    282,
+    289,
+    291,
+    292,
+    293,
+    294,
+    298,
+    300,
+    314
+  ],
+  "reviewed_at_utc": "2026-10-20T01:15:01Z",
+  "corpus": "docs/assessments/issue-history-reconciliation/inventory/issues/<id>.json",
+  "contract": "docs/assessments/issue-history-reconciliation/inventory/complete-row-contract.md",
+  "skip": [
+    721
+  ],
+  "recommend_complete_count": 24,
+  "recommend_complete_false_count": 0,
+  "issues": [
+    {
+      "issue": 255,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Replace floating settings overlay with full-height left slide-out panel (content-width + scrim); dismiss on scrim tap or swipe left; animate open/close; retain menu items/order/icons; Sign Out visually separated.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/255"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/routes/(app)/_layout.tsx",
+          "lines": "79-97",
+          "fact": "Expo Router Drawer (front) hosts settings; swipeEnabled when not recording; overlayColor scrim; content-width drawerStyle."
+        },
+        {
+          "path": "src/components/ui/UserSettingsMenu.tsx",
+          "lines": "213-397",
+          "fact": "DrawerContent with settings/privacy/terms/accounts; Sign Out in separated footer below divider."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/266",
+        "fact": "Merged 2026-07-30 [#255] custom slide-out panel. Superseded UX-wise by PR #332 Drawer (2026-08-18) which restored swipe dismiss via swipeEnabled. QA 2026-08-05 (Roslin22) noted missing swipe/animation on the pre-Drawer panel \u2014 historical device evidence against #266 only."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Settings are Drawer-based with swipe + scrim on HEAD; Sign Out footer separated.",
+        "device_evidence": "dated 2026-08-05 QA on #255 against #266 panel (swipe/animation gaps); no re-QA note after #332 Drawer."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "AC satisfied on HEAD via Expo Router Drawer (#332) after #266; early QA gaps were against the custom Modal, not current Drawer."
+    },
+    {
+      "issue": 258,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Record-tab 'Send to [Next Stage]' CTA (Peer Check / Community Review) with assignee/recording/conflict visibility rules; confirmation sheet Send/Cancel; local stage write + navigate to My Work; conflict disable consumes #256 state.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/258"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/utils/stageAdvancement.ts",
+          "lines": "15-152",
+          "fact": "Computes visible/disabled destination labels; disables when hasConflict or unuploadable takes."
+        },
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "996-1610",
+          "fact": "Renders stage CTA + confirm sheet; calls confirmStageAdvancement then navigates."
+        },
+        {
+          "path": "src/services/stageAdvance.ts",
+          "lines": "1-50",
+          "fact": "Local stage write + best-effort FluentAPI.submitChapterAssignment."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/360",
+        "fact": "Merged 2026-08-25 [#258]: Send-to-next-stage CTA + confirm sheet; conflict disable stub until #256. Eng note 2026-08-12: use real PATCH submit; mock conflict flag until #256."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Stage advance CTA, confirm body helpers, and submit service present on HEAD with unit tests.",
+        "device_evidence": "none dedicated on #258 comments; closed via merge commit refs 2026-08-25."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Stage advancement AC on HEAD via #360; offline queue remains #257 scope."
+    },
+    {
+      "issue": 259,
+      "requirement": [
+        {
+          "slice": "permission",
+          "text": "Cross-account take ownership: stamp recorded_by_user_id; default Review shows active user's takes only; recording as B must not demote A's takes; owner-token upload; no select/delete/upload of others' takes outside attributed team/review mode; pending counts user-scoped.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/259"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/schema.ts",
+          "lines": "89-117",
+          "fact": "recordings.recorded_by_user_id + is_canonical columns documented for #105/#279."
+        },
+        {
+          "path": "src/db/recordingsRepository.ts",
+          "lines": "289-330,384-447,528-641",
+          "fact": "Per-user take scoping; getTakesForVerse joins owners; select/delete enforce recorded_by_user_id ownership."
+        },
+        {
+          "path": "src/services/recordingSync.ts",
+          "lines": "497-510",
+          "fact": "Uploads under recorded_by_user_id owner credentials (#105)."
+        },
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "1195-1230",
+          "fact": "My Takes / All Takes toggle (#279 team/review surface) on same ownership model."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/306",
+        "fact": "Merged 2026-08-13 [#259]: cross-account visibility/ownership/attribution; upload/pending scoped to active account; team/review path continued in #313/#279."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Ownership column, scoped CRUD, owner upload, and All Takes UI present on HEAD.",
+        "device_evidence": "preview APK pr-306-ef6137f comment 2026-08-24 only; no dedicated multi-account QA pass comment on #259."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Ownership AC on HEAD via #306; All Takes attribution UI completed under #279/#313. Open product-decision bullets in body answered by shipping All Takes toggle."
+    },
+    {
+      "issue": 260,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Chapter list (My Work + View Project): show Users + triangle-alert badge to the right of cloud sync when any unit in the chapter has unresolved audio conflict; chapter-level rollup; may coexist with sync indicator.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/260"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/ui/ChapterConflictIndicator.tsx",
+          "lines": "10-44",
+          "fact": "Users + TriangleAlert badge; documented as #260 chapter-list rollup beside sync icon."
+        },
+        {
+          "path": "src/components/ui/ProjectChapterRow.tsx",
+          "lines": "44-57",
+          "fact": "Renders conflict indicator when chapter.hasConflict; else ownership indicator; after cloud sync."
+        },
+        {
+          "path": "src/db/AGENTS.md",
+          "lines": "36-37",
+          "fact": "Migration note: v13 = chapter_assignments.has_conflict #260."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/362",
+        "fact": "Merged 2026-08-28 [#260]: persists API hasConflict into SQLite (schema v11/v13 lineage) and surfaces Users+TriangleAlert on chapter rows."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Conflict indicator component + ProjectChapterRow wiring + has_conflict schema on HEAD.",
+        "device_evidence": "none on #260 comments (eng note only)."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Chapter-list conflict indicator AC on HEAD via #362."
+    },
+    {
+      "issue": 261,
+      "requirement": [
+        {
+          "slice": "permission",
+          "text": "Identical cross-account take visibility/ownership/attribution AC as #259 (duplicate filing).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/261"
+        }
+      ],
+      "disposition": [
+        "LATEST_EXPLICIT_DECISION",
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/schema.ts",
+          "lines": "89-99",
+          "fact": "Canonical ownership column recorded_by_user_id lives under #259/#105 implementation path."
+        },
+        {
+          "path": "src/db/recordingsRepository.ts",
+          "lines": "528-573",
+          "fact": "Ownership gates on select use recorded_by_user_id \u2014 same as #259 delivery."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/261#issuecomment-5123592190",
+        "fact": "2026-07-29 mattrace-buildmidwestern: closed as duplicate of #259; keep #259 canonical."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "No separate code path; AC implemented under #259/#306.",
+        "device_evidence": "none (duplicate close)."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Explicit duplicate of #259; reconciliation points at #259/#306 ownership source."
+    },
+    {
+      "issue": 267,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Chapter row li:user ownership slot right of sync: empty when unassigned; primary #0b50d0 when mine; muted when other. Conflict state is #260.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/267"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/ui/ChapterOwnershipIcon.tsx",
+          "lines": "7-41",
+          "fact": "mine uses theme.colors.primary filled User; other uses mutedForeground."
+        },
+        {
+          "path": "src/components/ui/ChapterOwnershipIndicator.tsx",
+          "lines": "12-26",
+          "fact": "unassigned returns null; mine/other render icon slot."
+        },
+        {
+          "path": "src/components/ui/ProjectChapterRow.tsx",
+          "lines": "50-56",
+          "fact": "Ownership indicator placed after sync; deferred when hasConflict."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/328",
+        "fact": "Merged 2026-08-25 [#267]: li:user ownership indicator on My Work + View Project. QA 2026-08-25 Roslin22 pass on PR #328."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Ownership icon variants + chapter row slot on HEAD.",
+        "device_evidence": "dated 2026-08-25 QA pass (Roslin22) on PR #328 / #267."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Ownership indicator AC on HEAD via #328 with QA pass."
+    },
+    {
+      "issue": 268,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Online auto-claim: first recording on unassigned chapter claims without prompt, syncs immediately, row becomes mine (primary user icon).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/268"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/hooks/useVerseAudio.ts",
+          "lines": "899-930",
+          "fact": "On save, if unassigned and online, syncChapterClaim; offline path claimChapterOffline."
+        },
+        {
+          "path": "src/services/api.ts",
+          "lines": "167-326",
+          "fact": "FluentAPI.claimChapterAssignment POST wrapper."
+        },
+        {
+          "path": "src/services/chapterClaimSync.ts",
+          "lines": "35-48",
+          "fact": "Online claim sync persists assignment via repository after API."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/359",
+        "fact": "Merged 2026-08-28 [#268]: online self-claim on first take. QA 2026-09-09 Roslin22 passedQA for auto-claim + mine state."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Online claim path in useVerseAudio + FluentAPI.claimChapterAssignment on HEAD.",
+        "device_evidence": "dated 2026-09-09 QA pass (Roslin22) on #268."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Online auto-claim AC on HEAD via #359 with QA pass."
+    },
+    {
+      "issue": 269,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Taken-chapter warning on Record tab when assigned to another translator; recording still allowed (online or offline from last-synced state).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/269"
+        },
+        {
+          "slice": "other",
+          "text": "Amber unresolved audio-conflict banner above verse navigator; informational only.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/269"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "1079-1092",
+          "fact": "Taken WarningBanner + amber conflict WarningBanner with TriangleAlert above verse nav; no recording disable."
+        },
+        {
+          "path": "src/constants/messages.ts",
+          "lines": "96-99",
+          "fact": "RECORD_TAKEN_CHAPTER_WARNING + RECORD_AUDIO_CONFLICT_WARNING strings."
+        },
+        {
+          "path": "src/utils/chapterTakenStatus.test.ts",
+          "lines": "1-143",
+          "fact": "isChapterTakenByOther covers assignedUserId/peerCheckerId cases."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/346",
+        "fact": "Merged 2026-08-24 [#269]: taken banner on real assignment data; conflict banner UI wired (live data followed #362). QA 2026-08-28 Roslin22 passed taken warning; conflict untested then; follow-up #404 for unrelated source-dock issues."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Both banners + unit tests on HEAD; hasConflict fed from chapter conflict hook post-#362.",
+        "device_evidence": "dated 2026-08-28 QA pass for taken warning; conflict banner explicitly untested in that comment."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Both warning surfaces on HEAD; taken warning QA-passed; conflict banner later fed by #362 hasConflict \u2014 Complete \u2260 claiming conflict path was QA'd in #269 comment."
+    },
+    {
+      "issue": 270,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Offline auto-claim: first recording on last-synced-unassigned chapter marks local mine (provisional) without prompt; no live server check; reconnect/conflict is #271.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/270"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/repositories/chapterClaimsRepository.ts",
+          "lines": "35-77",
+          "fact": "claimChapterOffline sets assigned_user_id when NULL and enqueues chapter_claim_queue pending."
+        },
+        {
+          "path": "src/hooks/useVerseAudio.ts",
+          "lines": "908-917",
+          "fact": "Offline branch calls claimChapterOffline and onChapterClaimed."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/351",
+        "fact": "Merged 2026-08-26 [#270]: offline provisional claim + chapter_claim_queue for later sync."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Offline claim repository + useVerseAudio offline branch on HEAD.",
+        "device_evidence": "none on #270 comments (eng note only)."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Offline provisional claim AC on HEAD via #351; reconnect conflict remains #271."
+    },
+    {
+      "issue": 273,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "When online, My Work / View Project (and later Projects tab per Chad) open triggers non-blocking assignment/stage metadata pull; show cache immediately; offline shows cache only.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/273"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/sync.ts",
+          "lines": "1613-1652",
+          "fact": "refreshChapterMetadataIfOnline: connectivity gate, non-blocking in-flight map, claim push then projects/milestones/assignments pull."
+        },
+        {
+          "path": "src/hooks/useMyWorkChapters.ts",
+          "lines": "50-55",
+          "fact": "My Work open triggers refreshChapterMetadataIfOnline."
+        },
+        {
+          "path": "src/hooks/useProjectsSummary.ts",
+          "lines": "67-72",
+          "fact": "Projects tab also refreshes (Chad 2026-08-20 Discord note)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/335",
+        "fact": "Merged 2026-08-27 [#273]: background metadata refresh on My Work / View Project / Projects. Chad 2026-08-20: also pull on Projects tab. QA 2026-09-02 Roslin22 passedQA."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "refreshChapterMetadataIfOnline + My Work/Projects hooks on HEAD.",
+        "device_evidence": "dated 2026-09-02 QA pass (Roslin22) on #273."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Metadata refresh-on-open AC on HEAD via #335 with QA pass; Projects-tab pull included per product note."
+    },
+    {
+      "issue": 274,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Document stacked-PR closing rule: Closes #NNN only when PR base is main; stacked PRs use Part of #NNN; delivery/template/onboarding point at the rule.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/274"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/guides/project-board.md",
+          "lines": "67-69",
+          "fact": "Living docs: never use Closes/Fixes/Resolves; use Refs #NNN or Part of #NNN; explicitly notes #274 was superseded by #300."
+        },
+        {
+          "path": "docs/issue-tracking.md",
+          "lines": "75-106",
+          "fact": "Refs #NNN required; Part of #NNN for stacked/partial; no closing keywords."
+        },
+        {
+          "path": ".cursor/templates/pr-template.md",
+          "lines": "7-7",
+          "fact": "Reviewer checklist forbids Closes/Fixes/Resolves; requires Refs #NNN."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/301",
+        "fact": "Merged 2026-08-06 [#300]: policy flipped from 'Closes only on main' (#274) to never auto-close via keywords; living docs record the supersession."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Stacked/partial guidance + Refs-only closing policy documented on HEAD.",
+        "device_evidence": "none (docs chore)."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#274 stacked-PR drift concern resolved; closing-keyword policy superseded by #300 Refs rule (documented)."
+    },
+    {
+      "issue": 275,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Truth-up AGENT_ONBOARDING: recording/recordings persistence not stubbed; Jest suite count accurate or non-numeric; reader can see Record+upload exist.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/275"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/AGENT_ONBOARDING.md",
+          "lines": "11-11",
+          "fact": "Product blurb: Record tab captures verse audio, persists to recordings, uploads via recordingSync + uploadOrchestrator."
+        },
+        {
+          "path": "docs/AGENT_ONBOARDING.md",
+          "lines": "31-31,98-98,205-207",
+          "fact": "Jest guidance is non-brittle (colocated src/**/*.test.*) \u2014 no stale '18 suites' claim."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/321",
+        "fact": "Merged 2026-08-12 [#275]: onboarding truth-up for Record/upload + non-brittle Jest phrasing."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "AGENT_ONBOARDING documents wired Record + upload; test guidance non-numeric.",
+        "device_evidence": "none (docs)."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Onboarding hygiene AC on HEAD via #321."
+    },
+    {
+      "issue": 276,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Migrate app navigation to Expo Router file-based routes/layouts; remove custom AppNavigator stack; auth/app groups; settings as Drawer; update onboarding/architecture docs.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/276"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/routes/_layout.tsx",
+          "lines": "1-40",
+          "fact": "Expo Router root layout + AuthSessionProvider entry (AppNavigator absent)."
+        },
+        {
+          "path": "src/routes/(app)/_layout.tsx",
+          "lines": "79-100",
+          "fact": "Authenticated Drawer layout for settings/accounts."
+        },
+        {
+          "path": "docs/AGENT_ONBOARDING.md",
+          "lines": "25-25,39-39",
+          "fact": "Onboarding lists Expo Router + src/routes/ as navigation source of truth."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/332",
+        "fact": "Merged 2026-08-18 [#276]: replaced AppNavigator with Expo Router (auth)/(app) groups + Drawer."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "src/routes Expo Router; src/navigation/AppNavigator.tsx gone.",
+        "device_evidence": "none on #276 comments."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Expo Router migration AC on HEAD via #332."
+    },
+    {
+      "issue": 277,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Document Project 4 board mutation rules, Expo-first deps, and cross-tool agent entrypoints (CLAUDE.md/AGENTS.md); no navigation migration in this PR.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/277"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/guides/project-board.md",
+          "lines": "1-25",
+          "fact": "Canonical Project 4 board mutation hard rules (Dev Ready / Product columns)."
+        },
+        {
+          "path": "docs/guides/expo-first-dependencies.md",
+          "lines": "1-54",
+          "fact": "Expo-first dependency preference documented."
+        },
+        {
+          "path": "CLAUDE.md",
+          "lines": "1-40",
+          "fact": "Cross-tool entrypoint points at AGENTS.md, board rules, expo-first."
+        },
+        {
+          "path": ".cursor/rules/project-board.mdc",
+          "lines": "1-20",
+          "fact": "Cursor always-on pointer to board rules."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/278",
+        "fact": "Merged 2026-07-30 [#277]: board rules + Expo-first + CLAUDE.md/Copilot entrypoints; docs-only."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Board + expo-first docs and CLAUDE/AGENTS entrypoints present on HEAD.",
+        "device_evidence": "none (docs)."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Agent/board/expo-first documentation AC on HEAD via #278."
+    },
+    {
+      "issue": 279,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "My Takes / All Takes toggle when multiple accounts have takes; All Takes grouped by account with attribution; play + canonical designation; no record/delete/draft-select in All Takes; per-account 5-take cap; hide draft select when toggle visible.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/279"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "1195-1437",
+          "fact": "My Takes/All Takes segmented control; All Takes grouping; canonicalReadOnly in My Takes when own take canonical."
+        },
+        {
+          "path": "src/components/ui/SharedTakeRow.tsx",
+          "lines": "95-129",
+          "fact": "Canonical designate control / readonly / spacer for All Takes cards."
+        },
+        {
+          "path": "src/hooks/useVerseAudio.ts",
+          "lines": "1361-1379",
+          "fact": "setCanonical from All Takes \u2014 any account may designate."
+        },
+        {
+          "path": "src/app/tabs/RecordTab.test.tsx",
+          "lines": "953-1136",
+          "fact": "Unit coverage for toggle visibility, grouping, canonical designate, no Record New Take in All Takes."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/313",
+        "fact": "Merged 2026-08-27 [#279]: All Takes view + canonical selection on Record tab."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "All Takes UI + canonical designation + tests on HEAD.",
+        "device_evidence": "none dedicated QA comment on #279 (preview-build label only)."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "All Takes + canonical AC on HEAD via #313."
+    },
+    {
+      "issue": 282,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Upgrade to Expo SDK 57 / RN 0.86; align packages via expo install --fix; Android-only prebuild; docs/Dependabot pins; doctor/install-check; device QA.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/282"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "package.json",
+          "lines": "56-56,76-76",
+          "fact": "expo ~57.0.21 and react-native 0.86.3 on HEAD."
+        },
+        {
+          "path": "docs/AGENT_ONBOARDING.md",
+          "lines": "3-3",
+          "fact": "Onboarding verified against Expo SDK 57 + CNG Android-only."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/283",
+        "fact": "Merged 2026-07-31 [#282]: SDK 56\u219257 / RN 0.85\u21920.86 upgrade with docs/Dependabot alignment."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "SDK 57 / RN 0.86 line present (later patch-aligned by #314/#315).",
+        "device_evidence": "none in #282 comments (AC asked device QA on PR)."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "SDK 57 upgrade AC on HEAD via #283; patch drift later handled by #314."
+    },
+    {
+      "issue": 289,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "preview-build: always fresh Android APK (no OTA); Updates disabled on preview; comment linked tickets; best-effort move linked cards to In QA; docs.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/289"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".github/workflows/preview-build.yml",
+          "lines": "87-87",
+          "fact": "FORCE_NEW_BUILD=true for preview APK path."
+        },
+        {
+          "path": "app.config.ts",
+          "lines": "20-37",
+          "fact": "Expo Updates enabled only when buildProfile===production (preview/nightly/dev self-contained APKs)."
+        },
+        {
+          "path": ".github/scripts/preview-notify-linked-issues.cjs",
+          "lines": "1-94",
+          "fact": "Linked-issue comment upsert + In QA board move helpers; skips Part of #NNN."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/290",
+        "fact": "Merged 2026-07-31 [#289]: binary-only preview APKs, ticket comments, In QA handoff."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "FORCE_NEW_BUILD + Updates gated + preview-notify script on HEAD.",
+        "device_evidence": "none (CI/docs)."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Preview-build binary/In QA AC on HEAD via #290."
+    },
+    {
+      "issue": 291,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Durable login: persist fluent.auth.{userId} + active/known KV before post-login sync; cold restore without network.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/291"
+        },
+        {
+          "slice": "other",
+          "text": "Soft reauth on sync 401: do not wipe SecureStore; set reauth-required; keep drafts.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/291"
+        },
+        {
+          "slice": "other",
+          "text": "Per-request tokens in multi-user sync; no mid-loop authToken.set.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/291"
+        },
+        {
+          "slice": "other",
+          "text": "Multi-account: add-account must not hijack active session; restore must not silently switch users.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/291"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/authSession.ts",
+          "lines": "120-160",
+          "fact": "beginLoginSession saveCredentials before sync; beginAddAccountSession persists without changing authToken/ACTIVE_USER_ID."
+        },
+        {
+          "path": "src/services/authSession.ts",
+          "lines": "88-105",
+          "fact": "restoreSession: temp then active only \u2014 fails closed (no silent other-user switch)."
+        },
+        {
+          "path": "src/services/sync.ts",
+          "lines": "163-168",
+          "fact": "handleSyncAuthFailure sets reauth-required + emitAuthReauthRequired; does not clearCredentials."
+        },
+        {
+          "path": "src/services/storage.ts",
+          "lines": "166-179",
+          "fact": "per-user reauth_required KV helpers."
+        },
+        {
+          "path": "src/services/httpClient.ts",
+          "lines": "41-50",
+          "fact": "buildHeaders accepts optional bearerToken override for per-request tokens."
+        },
+        {
+          "path": "src/services/sync.ts",
+          "lines": "1196-1213,1369-1410",
+          "fact": "syncAllUsers gathers per-user tokens and passes sessionToken into sync steps."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/342",
+        "fact": "Merged 2026-08-28 [#291]: durable login, soft reauth, per-request tokens, add-account safety. Tech notes 2026-08-06 absorbed #292\u2013#294."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "All four auth-durability slices present on HEAD with sync.auth tests.",
+        "device_evidence": "none dedicated multi-account device QA comment on #291."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Auth session durability umbrella AC on HEAD via #342; siblings #292\u2013#294 closed as duplicates into this ticket."
+    },
+    {
+      "issue": 292,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Sync 401 must not clearCredentials/force logout; set per-user reauth-required; offline/timeout never reauth; explicit sign-out still clears.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/292"
+        }
+      ],
+      "disposition": [
+        "LATEST_EXPLICIT_DECISION",
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/sync.ts",
+          "lines": "163-168",
+          "fact": "handleSyncAuthFailure only setReauthRequired + emit; no credential wipe."
+        },
+        {
+          "path": "src/services/storage.ts",
+          "lines": "166-179",
+          "fact": "{userId}:reauth_required KV flag helpers."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/292#issuecomment-5208306644",
+        "fact": "2026-08-06 closed as duplicate of #291; soft-reauth delivered in PR #342."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Soft reauth path on HEAD under #291 implementation.",
+        "device_evidence": "none (duplicate)."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Duplicate of #291; soft-reauth AC evidenced on HEAD via #342."
+    },
+    {
+      "issue": 293,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Add-account must not overwrite active in-memory token/ACTIVE_USER_ID until switch; restore must not silently authenticate as another known user.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/293"
+        }
+      ],
+      "disposition": [
+        "LATEST_EXPLICIT_DECISION",
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/authSession.ts",
+          "lines": "144-160",
+          "fact": "beginAddAccountSession saves credentials + registerKnownUser without authToken.set."
+        },
+        {
+          "path": "src/services/authSession.ts",
+          "lines": "88-105",
+          "fact": "restoreSession fails closed when active creds missing \u2014 no silent switchActiveUser loop."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/293#issuecomment-5208306847",
+        "fact": "2026-08-06 closed as duplicate of #291; multi-account safety in PR #342."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Add-account isolation + fail-closed restore on HEAD.",
+        "device_evidence": "none (duplicate)."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Duplicate of #291; multi-account session safety on HEAD via #342."
+    },
+    {
+      "issue": 294,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Authenticated HTTP accepts optional token; syncAllUsers passes per-user tokens; global authToken never swapped mid multi-user sync loop.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/294"
+        }
+      ],
+      "disposition": [
+        "LATEST_EXPLICIT_DECISION",
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/httpClient.ts",
+          "lines": "41-50",
+          "fact": "buildHeaders(extra, bearerToken?) uses override or active authToken."
+        },
+        {
+          "path": "src/services/sync.auth.test.ts",
+          "lines": "502-522",
+          "fact": "Tests assert authToken.set not called during multi-user sync failure paths."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/294#issuecomment-5208307038",
+        "fact": "2026-08-06 closed as duplicate of #291; per-request tokens in PR #342."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Optional bearer override + sync sessionToken threading on HEAD.",
+        "device_evidence": "none (duplicate)."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Duplicate of #291; per-request token AC on HEAD via #342."
+    },
+    {
+      "issue": 298,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Stop intermittent Maximum update depth exceeded on Android multi-take Review play/switch; identify root cause; land fix + regression coverage; device QA.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/298"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/ui/PlaybackProgressBar.tsx",
+          "lines": "71-108",
+          "fact": "Documents #298 onLayout\u2194fittedBarCount loop; fittedBarCount returns 0 until width known; LAYOUT_WIDTH_STABILITY_PX hysteresis."
+        },
+        {
+          "path": "src/components/ui/PlaybackProgressBar.test.tsx",
+          "lines": "29-109",
+          "fact": "Regression tests for fittedBarCount empty-until-layout and alternating onLayout widths."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/363",
+        "fact": "Merged 2026-08-27 [#298]: breaks PlaybackProgressBar onLayout feedback loop. Later regression tracked as #569 (separate ticket) \u2014 does not reopen this reconciliation row."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "fittedBarCount + stability hysteresis + unit tests on HEAD.",
+        "device_evidence": "none in #298 comments; follow-on #569 filed 2026-09-23 for regression."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "#298 root-cause fix on HEAD via #363; Complete \u2260 claiming no later regressions (#569)."
+    },
+    {
+      "issue": 300,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Stop Closes/Fixes/Resolves in PR bodies; use Refs #NNN; hand off to In QA; agents must not set Done solely on merge; update templates/docs/commands.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/300"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".cursor/templates/pr-template.md",
+          "lines": "7-7",
+          "fact": "Requires Refs #NNN; forbids Closes/Fixes/Resolves."
+        },
+        {
+          "path": "docs/issue-tracking.md",
+          "lines": "75-101",
+          "fact": "Refs #NNN linking; never closing keywords; Done follows QA/automation."
+        },
+        {
+          "path": "docs/guides/project-board.md",
+          "lines": "67-69",
+          "fact": "Refs/Part of policy; notes #274 superseded by #300."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/301",
+        "fact": "Merged 2026-08-06 [#300]: Refs #NNN + In QA handoff docs/templates."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Refs-only PR/docs policy on HEAD; qa-handoff automation present.",
+        "device_evidence": "none (docs/process)."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Non-closing Refs + In QA handoff AC on HEAD via #301."
+    },
+    {
+      "issue": 314,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Run expo install --fix to align SDK 57 patch deps; doctor/quality gates green; document Dependabot batch in dependabot-resolution-log; unblock #312.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/314"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "package.json",
+          "lines": "56-56",
+          "fact": "expo ~57.0.21 on HEAD (aligned/beyond the 57.0.12 target from the ticket)."
+        },
+        {
+          "path": "docs/guides/dependabot-resolution-log.md",
+          "lines": "49-61",
+          "fact": "Records 2026-08-11 Dependabot batch blocked on SDK patch drift until #314."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/315",
+        "fact": "Merged 2026-08-11 [#314]: expo install --fix SDK 57 patch alignment to unblock Quality Gates / #312."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "SDK 57 packages remain aligned on the 57.x line; resolution log documents #314.",
+        "device_evidence": "none (deps chore)."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "SDK 57 patch alignment AC delivered by #315; documented in dependabot-resolution-log."
+    }
+  ]
+}

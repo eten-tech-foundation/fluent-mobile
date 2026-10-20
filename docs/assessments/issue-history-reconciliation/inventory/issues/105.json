@@ -1,0 +1,51 @@
+{
+  "issue_number": 105,
+  "fetched_at_utc": "2026-10-20T00:34:37Z",
+  "issue": {
+    "number": 105,
+    "title": "Active-user data attribution for recordings/edits",
+    "state": "closed",
+    "body": "### Current state on main\n\n- Active user is tracked in KV: `src/services/storage.ts` \u2014 `getActiveUserId()` (`:101`), `setActiveUserId()` (`:105`), `switchActiveUser()` (`:153`), plus `getKnownUserIds()`.\n- `recordings` table (`src/db/schema.ts:80`) has **no user column** \u2014 it links to a verse via `bible_text_id` only.\n- The upload worker (#100) relies on the **server deriving identity from the Bearer token**, so the network path is attributed by token \u2014 but **local** rows carry no record of who created them, which matters for multi-account devices and offline review.\n- `parseUserId()` (`src/utils/parseUserId.ts`) resolves the active user id for queries.\n\n### Problems / why\n\n- On a shared/multi-account device, two users can record against the same verse; without local attribution the app cannot show \"your takes vs. theirs\" or correctly scope My Work recording state.\n- Upload attribution currently depends solely on whichever token is active at upload time; a recording captured by user A but uploaded while user B is active could be misattributed if the token isn't pinned per-recording.\n\n### Target design\n\n- Add a nullable `recorded_by_user_id INTEGER REFERENCES users(id)` column to `recordings` via the #110 migration framework (coordinate with #99/#103 to avoid duplicate migrations).\n- On capture (#97/#98 `addRecordingTake`), set `recorded_by_user_id = getActiveUserId()`.\n- On upload (#100), upload under the **token of the recording's owner** when available (so attribution is stable regardless of the currently active account), or document that the active token is acceptable if product confirms single-user-at-a-time.\n- Scope recording aggregates/My Work by the active user where appropriate (consistent with #104).\n\n### Implementation steps\n\n1. Add migration for `recordings.recorded_by_user_id` (via #110; bundle with the #99/#103 migration set).\n2. Set the column on capture in `addRecordingTake` (#98) using `getActiveUserId()`.\n3. In `recordingSync` (#100), resolve the owner's token via `getCredentials(recordedByUserId)` when present; fall back per product decision.\n4. Update `Recording` DB types (`src/types/db/types.ts`).\n5. Document the attribution policy (capture-time owner vs. upload-time active user).\n6. Tests: capture sets owner; aggregates scope by active user; upload uses the owner token.\n\n### Acceptance criteria\n\n- [ ] `recordings.recorded_by_user_id` exists (via #110 migration; not a duplicate migration).\n- [ ] New recordings are attributed to the active user at capture time.\n- [ ] Upload attribution policy implemented and documented (owner token preferred).\n- [ ] Tests cover capture attribution and upload token selection.\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Tests default `EXPO_PUBLIC_API_BASE_URL=http://localhost:9999` via `jest.env.cjs`; **no live API required** \u2014 local SQLite/mocked DB.\n- Do **not** use `FLUENT_USER_EMAIL`.\n\n### Out of scope\n\n- Account switcher UI (#84\u2013#87), upload worker mechanics (#100), schema FK restoration (#99/#103).\n\n### Links\n\n- Epic: #118\n- Related: #98 (capture), #100 (upload), #99/#103 (migrations), #104 (My Work scoping)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:46:09Z",
+    "updated_at": "2026-07-29T21:33:58Z",
+    "closed_at": "2026-07-29T21:33:58Z",
+    "labels": [
+      "enhancement",
+      "SP 1"
+    ],
+    "comments": 3,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/105",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5062181214,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-23T18:53:28Z",
+      "updated_at": "2026-07-23T18:53:28Z",
+      "body": "## Linked PR (stacked \u2014 sidebar closing ref pending)\n\nImplementation: https://github.com/eten-tech-foundation/fluent-mobile/pull/251\n\nPR body already includes `Closes #105`, but the base is `mrace/feature/103-harden-user-projects-fk` (not `main`), so GitHub does not show a linked/closing issue in the PR sidebar until the stack (#246 \u2192 #248) merges and this PR is retargeted to `main`.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/105#issuecomment-5062181214"
+    },
+    {
+      "id": 5064059675,
+      "user": "mattrace-buildmidwestern",
+      "created_at": "2026-07-23T22:13:55Z",
+      "updated_at": "2026-07-23T22:13:55Z",
+      "body": "Linked development branch `mrace/feature/105-recording-user-attribution` \u2192 PR https://github.com/eten-tech-foundation/fluent-mobile/pull/251 (Closes #105).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/105#issuecomment-5064059675"
+    },
+    {
+      "id": 5123591074,
+      "user": "mattrace-buildmidwestern",
+      "created_at": "2026-07-29T21:33:30Z",
+      "updated_at": "2026-07-29T21:33:30Z",
+      "body": "Closing as completed (tracker cleanup after repo audit).\n\n**Evidence on `main`:** landed via squash merge of PR #248 (`a27ca5f`), which included the #105 / PR #251 work (`recorded_by_user_id` on `recordings`, capture attribution, owner-token upload path).\n\n**Why it stayed open:** PR #251 used `Closes #105` but was merged with base \u2260 `main` (stacked on the #103 branch), so GitHub did not auto-close the issue.\n\nRemaining cross-account product gaps stay tracked in #259.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/105#issuecomment-5123591074"
+    }
+  ],
+  "comments_fetched_count": 3,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

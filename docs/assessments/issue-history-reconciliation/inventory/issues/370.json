@@ -1,0 +1,23 @@
+{
+  "issue_number": 370,
+  "fetched_at_utc": "2026-10-20T00:36:23Z",
+  "issue": {
+    "number": 370,
+    "title": "[A+] Unit tests: useVerseAudio hook",
+    "state": "closed",
+    "body": "## Summary / context\n\nPart of **A+ Test safety net**. `useVerseAudio` is a critical recording/playback hook (~365 lines) without dedicated unit tests.\n\n## Current vs expected\n\n**Current:** Engine/repo/orchestrator tested; this hook is a coverage hole.\n\n**Expected:** Colocated `useVerseAudio.test.ts(x)` covering state transitions and key failure modes (follow `write-test` skill conventions).\n\n## Scope\n\n**In scope**\n- Unit tests for `src/hooks/useVerseAudio.ts` (or current path)\n- Mock native/audio deps per repo Jest patterns\n\n**Out of scope**\n- `useRecordingEngine` tests (sibling ticket)\n- Device QA / mic behavior\n\n## Acceptance criteria\n\n- [ ] Colocated unit tests for primary states (idle/load/play/error as applicable)\n- [ ] Tests fail meaningfully if reducer/wiring regresses\n- [ ] Engineering-only \u2014 no Needs QA\n\n## Verification / test plan\n\n1. `npm test -- --ci -- useVerseAudio`\n2. Full CI gates\n\n## Links\n\n- Sibling: useRecordingEngine tests ticket\n- Related closed: #97 (historical)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-08-25T14:17:23Z",
+    "updated_at": "2026-08-25T22:06:24Z",
+    "closed_at": "2026-08-25T22:06:24Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/370",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

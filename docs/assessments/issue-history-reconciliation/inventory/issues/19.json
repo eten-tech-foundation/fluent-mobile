@@ -1,0 +1,32 @@
+{
+  "issue_number": 19,
+  "fetched_at_utc": "2026-10-20T00:33:53Z",
+  "issue": {
+    "number": 19,
+    "title": "Error handling",
+    "state": "closed",
+    "body": "## Context\n\n- Part of the mobile sync epic: #14 \n- Can run in parallel with #16, #17 , #18 \n\n## Background\nEach sync step should fail independently \u2014 a single failing step should \nnot crash or block the rest of the sync sequence. Errors are stored in \nMMKV per step and surfaced inline on the home screen.\n\n## Tasks\n\n### Per-step error handling\n- [ ] Wrap each API call individually in try/catch\n- [ ] On network error or non-2xx response, store the error in MMKV:\n      `sync_error_<step>` with the error message string\n- [ ] Do not throw or bubble up \u2014 let the next step continue\n\n### Step keys\n| MMKV key | Step |\n|----------|------|\n| `sync_error_projects` | `GET /users/:userId/projects` |\n| `sync_error_chapter_assignments` | `GET /users/:userId/chapter-assignments` |\n| `sync_error_project_units` | Deriving project_units |\n| `sync_error_bible_texts` | `POST /bibles/:bibleId/bulk-texts` |\n\n## Acceptance criteria\n- [ ] A failing step does not crash or block subsequent steps\n- [ ] Each failed step writes its error message to the correct \n      `sync_error_<step>` key in MMKV\n- [ ] Errors are visible inline on the home screen per step \n      (handled by #XX Inline sync status UI)\n- [ ] No global error toast is shown",
+    "user": "Joel-Joseph-George",
+    "created_at": "2026-04-13T07:03:25Z",
+    "updated_at": "2026-07-02T19:51:25Z",
+    "closed_at": "2026-05-07T12:13:35Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/19",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4259968161,
+      "user": "B3RN153",
+      "created_at": "2026-04-16T12:15:13Z",
+      "updated_at": "2026-04-16T12:15:13Z",
+      "body": "1. Research (Et -2hrs)\n2.  Implementations (ET-5hrs)",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/19#issuecomment-4259968161"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

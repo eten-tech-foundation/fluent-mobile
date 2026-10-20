@@ -1,0 +1,23 @@
+{
+  "issue_number": 491,
+  "fetched_at_utc": "2026-10-20T00:37:12Z",
+  "issue": {
+    "number": 491,
+    "title": "Maestro smokes: auth, navigation, record, sync/offline, edges",
+    "state": "closed",
+    "body": "## Summary / context\n\nParent: #488.\n\nOne ticket for the main Android Maestro smoke suite after foundation (#489): launch/auth, Home\u2192drafting nav, Record happy path, Sync + Prepare for Offline, plus edges (forgot password, legal, reauth if feasible, mic/notification deny).\n\nPrefer **multiple YAML flows / npm run targets** in one PR (or a small stacked pair only if review size forces a split \u2014 default is one PR).\n\n## Current vs expected\n\n**Current:** Strong ids on login/record/sync/offline; no YAML. Manual nightly QA.\n\n**Expected:** `.maestro/flows/android/` smokes + subflows (`boot-to-login`, login, dismiss Dev Menu) with `clearState: true` for CI-shaped runs. Dedicated Maestro account on `dev.api.fluent.bible` with assignments.\n\n## Scope\n\n**In scope**\n- Launch \u2192 login screen; login \u2192 Home; session restore; logout\n- Forgot-password happy path; Privacy/Terms by id\n- My Work / Projects \u2192 chapter \u2192 Bible / Resources / Record tabs\n- Record: mic allow \u2192 record \u2192 stop \u2192 play (avoid destructive stage-advance on shared dev if unsafe)\n- Sync Now (+ pause/resume if deterministic); Prepare-for-Offline primary controls\n- Mic deny / notification deny smoke-level (no crash)\n- Reauth **or** residual-documented if not automatable without backend hooks\n\n**Out of scope**\n- Multi-account isolation (see #495)\n- Playbook/CI (#497)\n- Auth bypass; iOS; merge-gating Maestro\n\n## Acceptance criteria\n\n- [ ] Launch + auth smokes green locally (Debug+Metro)\n- [ ] Nav smoke green with assigned chapter data\n- [ ] Record happy path green with mic permission\n- [ ] Sync + prepare-offline primary paths green or residual-documented\n- [ ] Edge flows covered or explicitly residual\n- [ ] Seed/assignment prerequisites documented on PR\n\n## Verification / test plan\n\n1. Provision Maestro translator on hosted dev with \u22651 assignment\n2. Fail-fast suite run for this ticket\u2019s flows\n3. Note flakes (post-login sync, downloads) in PR\n\n## Links\n\n- Refs #488\n- Depends on #489\n- Absorbs former nav / record / sync / edge slices\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-10T19:52:12Z",
+    "updated_at": "2026-09-11T20:53:07Z",
+    "closed_at": "2026-09-11T20:53:07Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/491",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,23 @@
+{
+  "issue_number": 607,
+  "fetched_at_utc": "2026-10-20T00:37:58Z",
+  "issue": {
+    "number": 607,
+    "title": "Ownership Maestro fixtures: conflict / open Peer Check seeds + claim baseline restore",
+    "state": "open",
+    "body": "## Summary\n\nFollow-up from [#574](https://github.com/eten-tech-foundation/fluent-mobile/issues/574) / PR #582.\n\nPartial slice landed for mine / other / unassigned / online auto-claim. These AC items remain open and need Product/API input before they can be automated safely.\n\n## Deferred acceptance criteria (waived on #574)\n\n1. **Conflict fixture role** \u2014 `hasConflict=true` chapter for list + Record conflict chrome. `assign-selected` cannot set `hasConflict`.\n2. **Open Peer Check fixture role** \u2014 Peer Check with no `peerChecker`. `assign-selected` cannot set `status=peer_check`.\n3. **Claim baseline restore between runs** \u2014 After auto-claim, chapters stay assigned/`draft`. API cannot restore `not_started`. Suite rotates claim labels (pool drains) or requires manual Fluent web Status reset.\n\n## Acceptance criteria\n\n- [ ] Documented or automated seed path for conflict chapters (or Product accepts permanent SKIPPED)\n- [ ] Documented or automated seed path for open Peer Check (or Product accepts permanent SKIPPED)\n- [ ] Disposable claim baseline can be restored without permanently burning the fixture project (API support or admin reset runbook)\n\n## Links\n\n- Parent: #574\n- Audit context: #532",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-29T17:27:09Z",
+    "updated_at": "2026-09-29T17:27:09Z",
+    "closed_at": null,
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/607",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

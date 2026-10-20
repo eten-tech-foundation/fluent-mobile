@@ -1,0 +1,209 @@
+{
+  "updated_utc": "2026-10-20T01:36:34Z",
+  "integrator": "bc-da4aa327-d86e-47fc-93c0-d7105af39497",
+  "partition": {
+    "c1": {
+      "count": 52,
+      "ids_file": "/tmp/fluent-issue-review-c1-ids.json"
+    },
+    "c2": {
+      "count": 52,
+      "ids_file": "/tmp/fluent-issue-review-c2-ids.json"
+    },
+    "c3": {
+      "count": 52,
+      "ids_file": "/tmp/fluent-issue-review-c3-ids.json"
+    },
+    "c4": {
+      "count": 52,
+      "ids_file": "/tmp/fluent-issue-review-c4-ids.json"
+    },
+    "c5": {
+      "count": 52,
+      "ids_file": "/tmp/fluent-issue-review-c5-ids.json"
+    },
+    "c6": {
+      "count": 48,
+      "ids_file": "/tmp/fluent-issue-review-c6-ids.json"
+    }
+  },
+  "original_reviewers": {
+    "c1": "bc-09eeb8c0-8b52-57ab-9eb9-fc4b581379c1",
+    "c2": "bc-88f22bad-8ee6-51f8-b701-38e0b437c209",
+    "c3": "bc-cf02a792-6bc8-53bc-9b0a-1c50ccc2f0b2",
+    "c4": "bc-219f5782-1d17-5f67-87ad-36fd1b886e57",
+    "c5": "bc-4aa6c5a3-9e01-5b1c-ae4a-c769c6df9d4e",
+    "c6": "bc-72933aea-7310-5fcf-b09d-bd0937573a32"
+  },
+  "status": {
+    "c1": {
+      "state": "completed",
+      "output": "/tmp/fluent-issue-review-c1.json",
+      "integrated": true,
+      "note": "Output present; integrate after c4/c6 pass",
+      "integrated_at_utc": "2026-10-20T00:44:18Z",
+      "protected": true
+    },
+    "c2": {
+      "state": "completed_disposition_integrated_historical",
+      "output": "/tmp/fluent-issue-review-c2.json",
+      "integrated": true,
+      "integrated_at_utc": "2026-10-20T00:50:34Z",
+      "original_owner": "bc-88f22bad-8ee6-51f8-b701-38e0b437c209",
+      "note": "HISTORICAL status file previously said running_original_no_output_yet \u2014 STALE. Original finished /tmp; disposition integrated; quality completion via later r* waves. Do not treat this file as live RUNNING.",
+      "protected": true
+    },
+    "c3": {
+      "state": "completed",
+      "output": "/tmp/fluent-issue-review-c3.json",
+      "integrated": true,
+      "note": "Output present; integrate after c4/c6 pass",
+      "integrated_at_utc": "2026-10-20T00:44:18Z",
+      "protected": true
+    },
+    "c4": {
+      "state": "completed",
+      "output": "/tmp/fluent-issue-review-c4.json",
+      "reviewer": "bc-219f5782-1d17-5f67-87ad-36fd1b886e57",
+      "integrated": true,
+      "protected": true,
+      "note": "Do not overwrite /tmp output. No ownership transfer.",
+      "integrated_at_utc": "2026-10-20T00:43:31Z"
+    },
+    "c5": {
+      "state": "completed_disposition_integrated_historical",
+      "output": "/tmp/fluent-issue-review-c5.json",
+      "integrated": true,
+      "integrated_at_utc": "2026-10-20T00:50:34Z",
+      "original_owner": "bc-4aa6c5a3-9e01-5b1c-ae4a-c769c6df9d4e",
+      "note": "HISTORICAL status file previously said running_original_no_output_yet \u2014 STALE. Original finished /tmp; disposition integrated; quality completion via later r* waves. Do not treat this file as live RUNNING.",
+      "protected": true
+    },
+    "c6": {
+      "state": "completed",
+      "output": "/tmp/fluent-issue-review-c6.json",
+      "reviewer": "bc-72933aea-7310-5fcf-b09d-bd0937573a32",
+      "integrated": true,
+      "protected": true,
+      "note": "Do not overwrite /tmp output. No ownership transfer.",
+      "integrated_at_utc": "2026-10-20T00:43:31Z"
+    },
+    "extra_bc11": {
+      "id": "bc-11ead3e6-8b3e-5411-be2c-816c3927504d",
+      "state": "FINISHED_IGNORE_FOR_COMPLETION_HISTORICAL",
+      "stop_attempted": true,
+      "stop_acked": false,
+      "action": "Do not use for reconciliation_complete. Wave r* path is completion truth.",
+      "allowed_scope": [],
+      "forbidden": [
+        "c1",
+        "c2",
+        "c3",
+        "c4",
+        "c5",
+        "c6"
+      ]
+    }
+  },
+  "extra_worker": {
+    "id": "bc-11ead3e6-8b3e-5411-be2c-816c3927504d",
+    "label": "c1-c4 sequential (mis-scoped at launch)",
+    "allowed_scope_now": [],
+    "forbidden": [
+      "c1",
+      "c3",
+      "c4",
+      "c5",
+      "c6"
+    ],
+    "rule": "Unsteerable historically; ignore. c2/c5 completed disposition; r* waves completed contract rows.",
+    "status": "FINISHED_IGNORE_HISTORICAL"
+  },
+  "integrator_overrides_on_integrate": {
+    "721": "Downgrade cohort P0 Known-deviation product framing to P1_provisional + NO_PRODUCT_FIX per Sync agent bc-9c8695db final (detached dev-client bridge; 15 tests PASS; no product fix). Source still aligns with #38/#149.",
+    "611": "Preserve early finding: closed via PR #667 (2026-10-09); later merge after Dev Fail \u2014 not current claim404 defect.",
+    "271": "P1_provisional OPEN remainder; historical Dev Fail pre-#667 \u2014 not P0_current."
+  },
+  "last_integration": {
+    "cohorts": [
+      "c1",
+      "c2",
+      "c3",
+      "c4",
+      "c5",
+      "c6"
+    ],
+    "quality_waves": [
+      "r1",
+      "r2",
+      "r3",
+      "r4",
+      "r5",
+      "r6",
+      "r7",
+      "r8",
+      "r9",
+      "r10",
+      "r11",
+      "r12",
+      "r13",
+      "r14",
+      "r15",
+      "r16",
+      "r17"
+    ],
+    "reconciliation_complete_yes": 308,
+    "pending": 0,
+    "note": "Do not use stale running_* states below status.c2/c5 \u2014 overwritten to completed_historical."
+  },
+  "live_agent_check_utc": "2026-10-20T00:45:03Z",
+  "cohorts": {
+    "c2": {
+      "status": "original_completed_disposition_integrated",
+      "integrated_at_utc": "2026-10-20T00:50:34Z",
+      "stats": {
+        "merged": 51,
+        "skipped_already_complete": 1,
+        "kept_integrator": 0,
+        "missing": 0,
+        "merged_disposition": 51
+      },
+      "source": "/tmp/fluent-issue-review-c2.*",
+      "note": "Original reviewer finished /tmp; disposition-only earlier; NOT auto-complete from cohort flags"
+    },
+    "c5": {
+      "status": "original_completed_disposition_integrated",
+      "integrated_at_utc": "2026-10-20T00:50:34Z",
+      "stats": {
+        "merged": 52,
+        "skipped_already_complete": 0,
+        "kept_integrator": 0,
+        "missing": 0,
+        "merged_disposition": 52
+      },
+      "source": "/tmp/fluent-issue-review-c5.*",
+      "note": "Original reviewer finished /tmp; disposition-only earlier; NOT auto-complete from cohort flags"
+    }
+  },
+  "integrator_overrides": {
+    "721": "Stages A\u2013D. Stage_D focused Maestro PASS with corrected helper (settle+50%,50%); not wrong-coords claim; not proven product fix; causal component unisolated.",
+    "4": "API@4336602df77ce86a4d46dfd45a7840cc3c64ebc0 getByUserId grant membership implements Org Manager org-wide / Project Translator project grants; client branch absence \u2260 server unfiltered; remaining unknown chapter-slot wording.",
+    "257": "Known unimplemented requirement + launch decision open; not new regression from open state."
+  },
+  "extra_worker_bc-11ead3e6": {
+    "status": "FINISHED_IGNORE_FOR_COMPLETION",
+    "policy": "Do not use for reconciliation_complete; may have regenerated /tmp c1-c4; protected originals + r* quality path win"
+  },
+  "head": "5334ff6aa69ae4227332ad2304fa3f8a0c70e7f9",
+  "ledger": {
+    "reconciliation_complete_yes": 308,
+    "awaiting_reconciliation_depth": 0,
+    "note": "Wave reviewers r1\u2013r17 integrated; cohort disposition was intermediate only."
+  },
+  "wave4": {
+    "r16": "integrated",
+    "r17": "integrated",
+    "status": "complete"
+  },
+  "todo_status_note": "Any in-session todos saying r16/r17 RUNNING or 272/308 are STALE; ledger is 308/308 audit-complete."
+}

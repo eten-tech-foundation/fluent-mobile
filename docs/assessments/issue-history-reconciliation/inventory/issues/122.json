@@ -1,0 +1,25 @@
+{
+  "issue_number": 122,
+  "fetched_at_utc": "2026-10-20T00:34:54Z",
+  "issue": {
+    "number": 122,
+    "title": "Migrate to Expo SDK 56 CNG (Android-only)",
+    "state": "closed",
+    "body": "## Summary\n\nMigrate Fluent Mobile to **Expo SDK 56 Continuous Native Generation (CNG)**, Android-only. This replaces the previously committed native `android/` project with a managed, prebuild-driven workflow (`expo prebuild --clean --platform android`), and standardizes config + build tooling around Expo.\n\n## What shipped\n\n- **CNG / Expo SDK 56** config: `app.config.ts` (with `runtimeVersion: { policy: 'appVersion' }`), `eas.json`, EAS workflows under `.eas/`.\n- **Env standardization:** removed `react-native-dotenv`/`@env` in favor of `EXPO_PUBLIC_*` via `process.env`; added `src/config/apiBaseUrl.ts` and `src/types/env.d.ts`.\n- **Test stack:** migrated to `jest-expo` (`jest.config.cjs`, `jest.env.cjs`).\n- **Theme + sync touch-ups** under `src/theme/*` and `src/services/sync.ts`.\n- Preview-build workflow + dev-client onboarding docs.\n\n## Attribution\n\nDelivered by @mattrace-gloo in (merging to `main`).\n\n## Status\n\n**Completed** \u2014 Expo SDK 56 CNG migration merged to `main`. Tracking/credit issue.\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T07:34:54Z",
+    "updated_at": "2026-07-02T20:14:46Z",
+    "closed_at": "2026-06-29T16:36:27Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/122",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

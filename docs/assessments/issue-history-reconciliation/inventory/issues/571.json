@@ -1,0 +1,42 @@
+{
+  "issue_number": 571,
+  "fetched_at_utc": "2026-10-20T00:37:55Z",
+  "issue": {
+    "number": 571,
+    "title": "Align stitched take row waveform and timer with other take rows [Play, record, and re-record audio Audit]",
+    "state": "closed",
+    "body": "Found during the play/record/re-record audio audit (#528, epic #526).\n\n**Severity:** Low (cosmetic)  \n**Launch blocker:** No  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), merged `main` @ `d5b9e64`, `dev.api.fluent.bible` (scenario G.28)\n\n## Summary\n\nIn pericope view, the stitched row (#411) renders its waveform and timer further right than a pericope take row. Stitched rows cannot be deleted, so `DraftTakeRow` renders them without the trailing delete icon. The waveform and timer then take that space, and the two rows no longer line up. Stitched playback itself works as specified.\n\n## Expected\n\nWaveforms and timers line up across all take rows in the list, whether or not a row has a delete action.\n\n## Actual\n\nThe stitched row's waveform and timer (`0:00 / 0:03`) sit further right than the pericope row's (`0:00 / 0:02`).\n\n## Evidence\n\n<!-- SCREENSHOT: attach the G.28 screenshot here (Mark 1:1\u20135, Take 1 Pericope vs Take 2 Stitched) -->\n<img width=\"30%\" src=\"https://github.com/user-attachments/assets/0bc320c1-8b9a-4e9f-9339-af6c1f30bb2e\" />\n\n## Steps to reproduce\n\n1. In verse mode, record a take for one or more verses of a pericope.\n2. Switch to pericope mode and record a pericope take for the same pericope.\n3. On the Record tab, compare the \"Pericope\" row with the \"Stitched\" row.\n\n## Acceptance criteria\n\n- [ ] Rows without a delete action reserve the trailing slot (for example an empty spacer the width of the delete icon), so waveforms and timers align.\n- [ ] Other row kinds (verse, pericope, All Takes) keep their current layout.\n- [ ] A component test covers the stitched row layout slot.\n- [ ] Android device QA with a pericope take and a stitched row in the same list.\n\n## Related\n\n- Parent audit: #528 (epic #526)\n- Feature: #411 (merged in PR #506, passed QA)\n- Related: #474 (take card layout)\n- Assessment: `docs/assessments/play-record-rerecord-audio/README.md` (PR #566)\n\n\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-23T17:44:19Z",
+    "updated_at": "2026-10-14T19:12:19Z",
+    "closed_at": "2026-10-05T04:48:02Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/571",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 6165804481,
+      "user": "Roslin22",
+      "created_at": "2026-10-14T10:01:15Z",
+      "updated_at": "2026-10-14T10:01:15Z",
+      "body": "**Test Result: 571**\n \n- The stitched row's waveform and timer align correctly with the pericope take row.\n- Rows without a delete action reserve an empty trailing slot equal to the width of the delete icon, ensuring consistent alignment.\n- The existing layout of verse, pericope, and All Takes rows remains unchanged.\n- The component test covers the stitched row's layout slot.\n- Android device QA was performed with a pericope take and a stitched row in the same list.\n- Stitched playback works as expected.\n\n<img width=\"303\" height=\"605\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/6a118220-d45b-41ad-9f94-c3b971d7a666\" />",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/571#issuecomment-6165804481"
+    },
+    {
+      "id": 6176258129,
+      "user": "chadw-eten",
+      "created_at": "2026-10-14T19:12:18Z",
+      "updated_at": "2026-10-14T19:12:18Z",
+      "body": "\u2705 ",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/571#issuecomment-6176258129"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

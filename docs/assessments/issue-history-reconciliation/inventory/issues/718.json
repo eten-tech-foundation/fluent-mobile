@@ -1,0 +1,23 @@
+{
+  "issue_number": 718,
+  "fetched_at_utc": "2026-10-20T00:38:00Z",
+  "issue": {
+    "number": 718,
+    "title": "Prove schema migrations against real SQLite",
+    "state": "open",
+    "body": "## Why\n\n`src/db/migrations.test.ts` drives migrations through an in-memory stand-in. That does not open `op-sqlite`. Maestro cannot see schema version or table shape either. A green migration unit test is not proof that a device database migrates.\n\n## Acceptance\n\n- [ ] A test opens a real SQLite database, applies `runMigrations` from an older `user_version` to `CURRENT_SCHEMA_VERSION`, and reads back the resulting columns.\n- [ ] The test fails if a migration only succeeds against the fake driver.\n\nRefs #717. This does not change Maestro flows or the Fluent API.\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-10-19T21:08:29Z",
+    "updated_at": "2026-10-19T21:08:29Z",
+    "closed_at": null,
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/718",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

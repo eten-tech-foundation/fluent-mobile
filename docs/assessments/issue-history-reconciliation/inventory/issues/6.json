@@ -1,0 +1,40 @@
+{
+  "issue_number": 6,
+  "fetched_at_utc": "2026-10-20T00:33:41Z",
+  "issue": {
+    "number": 6,
+    "title": "Create View Chapter page",
+    "state": "closed",
+    "body": "This is the MVP version of the View Chapter page. There is just enough functionality to show recording and playback functionality.\n\n### Functional Requirements\n- Title: Book Chapter\n- Show a back caret/arrow which when tapped should take the user back to the View Project page.\n- Source Card\n  - Title:  [Source Bible] - Verse [#]\n  -  If there is source audio, show a play bar.\n  - Note: For this MVP the styling of the media player can be the default. Don't spend time on it.\n  - If there is textual source, show an accordion with the title \"Show Source Text\".\n    - It should default to closed.\n    - When it is open the title should be \"Hide Source Text\".\n    - When it is open it should show 3 lines of source text and then scroll after that. This will keep the Target/Record card below the source card on the same screen.\n- Target/Record Card\n  - Title: [Language name] - Verse [#]\n  - When there is no draft recording yet, show a record icon (left mockup).\n  - Tapping on the icon should  start recording and the icon should change to a square stop icon with the same red circle background.\n  - When a draft recording does exist, show the play bar to listen to the recording (right mockup).\n  - Show a delete icon below the play bar.\n  - When a user taps on the delete icon, it should delete the recording and revert back to the state in the left mockup.\n- Verse Navigation Chips\n  - Show a row of chips with verse numbers in them, one for each verse in the chapter.\n  - Tapping on a chip should select that verse and populate it in the body above.\n  - When a verse has a recording done, show the mic icon in the upper right corner of the chip for that verse.\n  - The chips should scroll horizontally when needed.\n\n- Note: This only addresses the happy path. We will address errors  like failure to load data in the next iteration.\n\n<img width=\"800\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/51f90b10-654d-4213-b235-0d3c83957d2b\" />\n",
+    "user": "chadw-eten",
+    "created_at": "2026-03-03T20:48:44Z",
+    "updated_at": "2026-07-02T19:51:05Z",
+    "closed_at": "2026-07-01T09:19:57Z",
+    "labels": [],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/6",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4072358438,
+      "user": "B3RN153",
+      "created_at": "2026-03-17T05:03:59Z",
+      "updated_at": "2026-03-17T05:03:59Z",
+      "body": "**SP3**\n1. Create view chapter page - (ET 2hr)",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/6#issuecomment-4072358438"
+    },
+    {
+      "id": 4852611794,
+      "user": "B3RN153",
+      "created_at": "2026-07-01T09:19:57Z",
+      "updated_at": "2026-07-01T09:19:57Z",
+      "body": "It is finished and will be replaced by issue #49 #47 ",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/6#issuecomment-4852611794"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,23 @@
+{
+  "issue_number": 721,
+  "fetched_at_utc": "2026-10-20T00:38:03Z",
+  "issue": {
+    "number": 721,
+    "title": "[QA Android] Home Sync press completes but Sync screen does not open",
+    "state": "open",
+    "body": "## Observed behavior\n\nOn the Android debug client connected to the QA API, one Home Sync press completed but the Sync screen did not appear within 30 seconds. The failure hierarchy still showed Home, with login absent. The underlying cause is unresolved; this report does not establish a role/permission, handler, routing, or native touch-dispatch cause.\n\n## Environment and session\n\n- API: `https://qa.api.fluent.bible` (runtime URL captured during QA setup; same owned Metro instance retained).\n- Android emulator: Pixel 6 / API 33, `com.eten.fluent`, debuggable 1.0.0 / versionCode 1.\n- Mobile baseline: `758d4b04a9ca81e1ed6228e9d30df1fc80014f5d` plus uncommitted #717 harness/UI changes. This is not an exact release-APK or clean-main reproduction.\n- Manually authenticated QA user 10 (`qa-t1`); projects 1, 8 and 11. My Work was populated. Assignment 484 is Mobile Testing / 1 Peter 5, assigned peer 10, drafter 11.\n- Project grant rows were not read back. Account labels are not grant proof.\n\n## Reproduction captured on 2026-10-19\n\n1. Preserve the authenticated QA session and reach Home. Do not clear state or run a login helper.\n2. Tap `home-sync-button` exactly once.\n3. Wait up to 30 seconds for `sync-screen`.\n\nExpected: Home Sync opens the Sync screen.\n\nActual: the tap completed, `sync-screen` timed out, and the hierarchy remained Home. No second Sync press was attempted.\n\n## Evidence\n\n- Run: `test_output/qa-warm-2026-10-19_163548/2026-10-19_163549/sync-once/`.\n- `commands.json`: `tapOnElement` selector `home-sync-button`, `retryIfNoChange: false`, status `COMPLETED`, duration 3842 ms.\n- Next command: `sync-screen` visible assertion, timeout 30000 ms, status `FAILED`, duration 30393 ms.\n- Native log: one hierarchy-based tap at `(985,168)`; observed button bounds `[933,116][1038,221]`.\n- Failure hierarchy: `home-tab-my-work` present; `sync-screen` and `login-email-input` absent.\n- Local artifacts include command metadata, screenshot, hierarchy and logs. Raw device logs are intentionally not pasted here because they can contain session data.\n\nThis is one captured QA occurrence, not a claim that every tap fails. Prior Dev observations are separate historical evidence. An earlier Dev handler/route trace was inconclusive and is not evidence about this QA handler invocation.\n\n## Follow-up / acceptance\n\n- Establish where this single press stops: native dispatch, JS handler, route transition, or destination mount, using one bounded instrumented observation rather than repeated identical taps.\n- Fix the verified cause and demonstrate Home -> Sync with one press while preserving the session.\n- Keep Resources empty-content cases and role-grant checks separate from Sync navigation.\n\nRelated: #717 (Maestro coverage), #530 (returning-online/sync audit). Existing Sync Now/upload issues concern actions after entering Sync and are not the same observed navigation failure.\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-10-19T23:53:36Z",
+    "updated_at": "2026-10-19T23:53:36Z",
+    "closed_at": null,
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/721",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

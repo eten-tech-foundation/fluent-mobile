@@ -1,0 +1,28 @@
+{
+  "issue_number": 424,
+  "fetched_at_utc": "2026-10-20T00:36:47Z",
+  "issue": {
+    "number": 424,
+    "title": "Dependabot ownership split + limited auto-merge",
+    "state": "open",
+    "body": "## Parent\n\nPart of #420 (Phase 3). Do not close #420 from this ticket.\n\n## Scope\n\n- Remove or ignore Expo/RN-coupled packages from Dependabot's `expo` / `react` / `react-native` groups so they cannot fight weekday `expo install --fix` (Phase 2).\n- Enable GitHub auto-merge (squash) for **safe** Dependabot labels only, still one lockfile merge at a time **or** rely on merge queue (Phase 4).\n- Keep ignore rules for `react-native >= 0.87`, React minor/major, `op-sqlite` major.\n\nRisk tiers: see #420.\n\n## Acceptance criteria\n\n- [ ] Dependabot no longer owns Expo/RN-coupled packages.\n- [ ] Auto-merge policy documented and limited to the risk tiers in #420.\n- [ ] Agent commands (`handle-dependabot`, `dep-bump`) and `docs/guides/dependabot-process.md` match.\n\n## Out of scope\n\nWeekday Expo sync job (Phase 2), merge queue (Phase 4), SDK 58+.\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-08-28T19:54:12Z",
+    "updated_at": "2026-08-28T19:54:12Z",
+    "closed_at": null,
+    "labels": [
+      "enhancement",
+      "dependencies",
+      "chore",
+      "github_actions"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/424",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

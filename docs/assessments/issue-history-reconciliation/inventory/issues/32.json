@@ -1,0 +1,42 @@
+{
+  "issue_number": 32,
+  "fetched_at_utc": "2026-10-20T00:33:57Z",
+  "issue": {
+    "number": 32,
+    "title": "Build Projects Tab",
+    "state": "closed",
+    "body": "Fluent Mobile is a companion app for oral Bible translators working in remote, low-connectivity environments. The Projects tab allows users to browse all projects available to them and drill into any project to view and access its chapters, regardless of assignment status.\n\n## Functional Requirements\n\n### Page Header\n\nIdentical to the Page Header in #31. See that ticket for the full spec.\n\n### Top-Level Tabs\n\nTwo full-width tabs \u2014 My Work and Projects \u2014 rendered below the page header. This ticket covers the Projects tab. See #31 for the My Work tab spec.\n\n### Projects Tab\n\n- Display a flat, scrollable list of all projects available to the user.\n- Each project row displays:\n   - project name,\n   - a sync state indicator,\n   - target language,\n   - total chapter count (e.g. \"42 chapters\"), and\n   - a right-facing arrow `li:chevron-right` indicating drilldown navigation.\n- Sync state indicator\n   - Reflects the aggregate upload state of all chapters in the project.\n   - If any chapter has unsynced work, the project shows the not-fully-synced state.\n   - All chapters synced: `li:cloud-check`, green (`#16A34A`)\n   - Any chapter not synced: `li:cloud-upload`, yellow (`#FBBF24`)\n   - No work recorded in the project: no indicator shown\n- Tapping a project row navigates to the View Project page. See #33 for that spec.\n\n<img width=\"392\" height=\"419\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/a8b7bf16-7613-4b16-b4fa-fed91b124ea2\" />\n\n### Projects Tab \u2014 Empty State\n\n- When the project list is empty for any reason, display: \"No projects are available right now. Connect to the internet to sync and find available work.\"",
+    "user": "chadw-eten",
+    "created_at": "2026-05-07T15:28:06Z",
+    "updated_at": "2026-07-02T19:34:09Z",
+    "closed_at": "2026-06-28T07:31:24Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/32",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4616956773,
+      "user": "mattrace-gloo",
+      "created_at": "2026-06-03T21:41:37Z",
+      "updated_at": "2026-06-03T21:41:37Z",
+      "body": "Ready for review @chadw-eten ",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/32#issuecomment-4616956773"
+    },
+    {
+      "id": 4825254745,
+      "user": "mattrace-gloo",
+      "created_at": "2026-06-28T07:31:21Z",
+      "updated_at": "2026-06-28T07:31:21Z",
+      "body": "Delivered by @mattrace-gloo in #44 (merged) and present in the CNG baseline (PR #70). Closing as completed.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/32#issuecomment-4825254745"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

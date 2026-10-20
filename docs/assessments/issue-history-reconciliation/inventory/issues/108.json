@@ -1,0 +1,25 @@
+{
+  "issue_number": 108,
+  "fetched_at_utc": "2026-10-20T00:34:40Z",
+  "issue": {
+    "number": 108,
+    "title": "Document local-only run workflow",
+    "state": "closed",
+    "body": "### Context\n\nEpic #119 pivot: we are **not** documenting mobile mock seed (#106) or `EXPO_PUBLIC_OFFLINE_MODE` (#107). Mobile SQLite is populated via **sync hydration** (`syncAllData()`).\n\n### Current state in baseline\n\n- `docs/AGENT_ONBOARDING.md` exists; `docs/guides/qa-preview-testing.md` for QA preview APKs.\n- Toolchain: `npm start`, `npm run android`, `npm run prebuild`, `npm test`.\n- Env: `EXPO_PUBLIC_API_BASE_URL` via `src/config/apiBaseUrl.ts`; `.env.example` provided.\n- No doc yet covers **both** dev paths (hosted dev + local Docker).\n\n### Problems / why\n\n- New contributors don't have a single page explaining how to run against hosted dev or local Docker, so they get blocked on API URL / setup confusion.\n\n### Target design\n\nAdd `docs/guides/local-development-workflow.md` (linked from `docs/AGENT_ONBOARDING.md` and README) covering:\n\n**Path A \u2014 Hosted dev:** `EXPO_PUBLIC_API_BASE_URL=https://dev.api.fluent.bible`; log in with a team dev account; shared Postgres \u2014 do not seed.\n\n**Path B \u2014 Local Docker:** in `fluent-api`, `./fapi.sh up` + `./fapi.sh db:init`; mobile `EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:9999`; login `t@fluent.local` / `t@123456`.\n\nAlso cover: prerequisites (Node \u2265 24.14.0, npm, Android emulator/dev client), setup commands, web app at https://dev.app.fluent.bible, what works after sync vs server-required features, CI test command.\n\n### Acceptance criteria\n\n- [ ] Local development workflow guide exists and is linked from onboarding + README.\n- [ ] Documents **both** hosted dev and local Docker paths with exact commands.\n- [ ] Documents offline vs server-required features (sync, upload need server).\n- [ ] No references to obsolete `@env`, `FLUENT_USER_EMAIL`, or descoped #106/#107 mock mode.\n- [ ] Commands match current `package.json`.\n\n### Test plan / verification\n\nDocs-only. Run:\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n### Out of scope\n\n- Mobile mock seed (#106), offline mock mode (#107) \u2014 descoped.\n- fluent-api local dev data seeder \u2014 separate fluent-api issue.\n\n### Links\n\n- Epic: #119\n- fluent-api local stack: [PR #187](https://github.com/eten-tech-foundation/fluent-api/pull/187)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:46:13Z",
+    "updated_at": "2026-07-02T20:12:27Z",
+    "closed_at": "2026-07-02T19:32:27Z",
+    "labels": [
+      "documentation"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/108",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

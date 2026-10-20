@@ -1,0 +1,34 @@
+{
+  "issue_number": 117,
+  "fetched_at_utc": "2026-10-20T00:34:49Z",
+  "issue": {
+    "number": 117,
+    "title": "[Epic] Recording sync & cloud storage (R2)",
+    "state": "closed",
+    "body": "### Summary\n\nEpic tracking recording sync to R2 cloud storage on the **Expo SDK 56 CNG (Android-only) baseline**. The `recordings` schema on main is **already good** (TEXT PK, `bible_text_id` FK, `local_file_path`, `blob_key`, `sync_status`, `take_number`/`is_latest`, `idx_rec_pending`). The work is: fix integrity gaps in **related** tables, build a net-new upload worker on `expo-file-system`, extend the existing sync-status UI, and freeze the server contract. The junior handoff [PR #82](https://github.com/eten-tech-foundation/fluent-mobile/pull/82) `recordingSync.ts` (uses `@env` + `react-native-fs` + path coupling + non-matching columns) is referenced **only** as an anti-pattern.\n\n**Verify pass (2026-07):** All sub-issues (#99\u2013#102) still open. Blocked on #110 (migrations) and fluent-api PR #188 for #102. Recordings join fix is on main.\n\n### Sub-issues\n- [x] #99\n- [x] #100\n- [x] #101\n- [x] #102\n\n### Dependency ordering\n1. **#110 (F2 migrations)** must land before **#99** schema changes.\n2. **#99 (C1)** restores `chapter_assignments` FK/index (jointly with #103) and confirms recordings\u2194verse linkage.\n3. **#100 (C2)** upload worker \u2014 needs A1 (#88 token), B1 (#94 file-system), and #98 repo helpers.\n4. **#101 (C3)** UI \u2014 extends existing hooks/icons, consumes worker events.\n5. **#102 (C4)** server contract \u2014 **blocked on [fluent-api PR #188](https://github.com/eten-tech-foundation/fluent-api/pull/188)**; keep DevQA label.\n- B (epic #116) must precede C \u2014 the worker uploads recorded files.\n\n### Links\n- Anti-pattern reference only (not merging): [PR #82](https://github.com/eten-tech-foundation/fluent-mobile/pull/82)\n- API: [fluent-api PR #188](https://github.com/eten-tech-foundation/fluent-api/pull/188)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:46:30Z",
+    "updated_at": "2026-07-29T21:34:01Z",
+    "closed_at": "2026-07-29T21:34:01Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/117",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5123591371,
+      "user": "mattrace-buildmidwestern",
+      "created_at": "2026-07-29T21:33:33Z",
+      "updated_at": "2026-07-29T21:33:33Z",
+      "body": "Closing as completed (tracker cleanup after repo audit).\n\nAll epic sub-issues are done and closed: #99, #100, #101, #102. Upload worker / R2 contract work is on `main`. Leftover SyncScreen glue is #253; remux/scrub completion is #176 / #233 / PR #252.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/117#issuecomment-5123591371"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

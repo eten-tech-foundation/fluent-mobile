@@ -1,0 +1,25 @@
+{
+  "issue_number": 621,
+  "fetched_at_utc": "2026-10-20T00:38:32Z",
+  "issue": {
+    "number": 621,
+    "title": "Stop the Sync icon flashing pending before All synced [Returning online and sync changes Audit]",
+    "state": "closed",
+    "body": "Found during the returning online and synchronizing changes audit (#530, epic #526). First seen during PR #563 device QA.\n\n**Severity:** Low  \n**Launch blocker:** No  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), local debug build of `ddfdaaa` (PR #559 head), `dev.api.fluent.bible`\n\n## Summary\n\nAfter Sync Now finishes, the large Sync icon briefly returns to \"pending\" before showing \"All synced\". On `complete` / `idle`, `isUploading` is set to false right away while the pending counts still hold the value from before the upload; the fresh counts arrive only when the async SQLite refresh resolves. PR #606 keeps the same order (`syncStatusStore.ts:155-160` commits first, `refreshSyncStatusStore()` runs after).\n\n## Expected\n\n\"Syncing\u2026\" goes straight to \"All synced\".\n\n## Actual\n\nThe icon flashes pending for a moment, then shows \"All synced\".\n\n## Steps to reproduce\n\n1. Record a few verse takes.\n2. Open Sync and tap Sync Now; watch the large icon when the upload ends.\n\n## Acceptance criteria\n\n- [ ] No snapshot has `isUploading: false` with the pre-upload `pendingCount` after `complete` / `idle`.\n- [ ] Unit test: `complete` emitted before the pending query resolves \u2192 no pending state in between.\n- [ ] Android device QA.\n\n## Related\n\n- Parent audit: #530 (epic #526)\n- #603 / PR #606 (same code path)\n- Assessment: `docs/assessments/returning-online-and-sync/README.md` (PR #598)\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-30T18:20:10Z",
+    "updated_at": "2026-10-08T16:32:17Z",
+    "closed_at": "2026-10-08T16:32:17Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/621",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

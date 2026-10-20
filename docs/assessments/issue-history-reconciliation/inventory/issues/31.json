@@ -1,0 +1,42 @@
+{
+  "issue_number": 31,
+  "fetched_at_utc": "2026-10-20T00:33:56Z",
+  "issue": {
+    "number": 31,
+    "title": "Build My Work Tab",
+    "state": "closed",
+    "body": "Fluent Mobile is a companion app for oral Bible translators working in remote, low-connectivity environments. These users \u2014 often low-literacy and low-tech \u2014 need an immediate, unambiguous entry point into their work. This screen is the first thing a user sees after login. It must show assigned chapters and function fully offline after at least one prior online session.\n\n## Functional Requirements\n\n### Page Header\n\n- Background: Fluent blue `#0B50D0`\n- Centered white Fluent logo SVG\n- Display a settings icon (`li:settings`) in the top left; tapping it navigates to the Settings page (#40).\n- Display a cloud sync status icon in the top right corner; see #38 for the full icon and overlay spec. Because the header is always blue (`#0B50D0`), render the gray-state icons in white (`#FFFFFF`) rather than gray.\n\n### Top-Level Tabs\n\n- Render two full-width tabs below the page header: My Work (`li:list-check`) and Projects (`li:book-open`).\n- Default to My Work tab selected on load.\n- See #32 for the Projects tab spec.\n\n### My Work Tab\n\n- Display a flat, scrollable list of chapters actively assigned to the current user.\n- Exclude completed chapters \u2014 chapters where all workflow stages are done do not appear in this list.\n- Each chapter row displays:\n  - book and chapter name (e.g. \"Luke 4\"),\n  - a workflow status badge,\n  - a sync state indicator icon,\n  - the date of last activity on that chapter,\n  - and a right-facing arrow `li:chevron-right` indicating drilldown navigation.\n- When Tier 1 content (source audio and source text) has not been downloaded for a chapter, display a muted gray outline chip with a `li:cloud-off` icon and the label \"Source not downloaded\" alongside the workflow status badge; the chip disappears once Tier 1 content is available.\n- Sync state indicator appears as a small icon alongside the chapter name and reflects the upload state of that chapter's work:\n  - Synced to Fluent: `li:cloud-check`, green (`#16A34A`)\n  - Saved on device only: `li:cloud`, gray (`#6B7280`)\n  - No work recorded yet: no indicator shown\n- Omit the status badge on chapters with no workflow stage recorded.\n- Omit the last activity date on chapters with no recorded activity.\n- Tapping a chapter row navigates the user into the drafting/checking flow for that chapter.\n- List chapters in canonical Bible order. Expose no sort controls.\n\n### Workflow Status Badge Colors\n\nBadge colors follow the canonical spec in #33. My Work surfaces Draft and Peer Check stages only.\n\n### My Work Tab \u2014 Empty State\n\n- When the chapter list is empty for any reason, display: \"You don't have any chapters to work on right now. Check the Projects tab to find available work.\"\n\n<img width=\"392\" height=\"611\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/9a7f5787-4043-486f-b962-b9049f89284a\" />",
+    "user": "chadw-eten",
+    "created_at": "2026-05-06T18:58:59Z",
+    "updated_at": "2026-07-02T19:34:07Z",
+    "closed_at": "2026-06-28T07:31:20Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/31",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4616957890,
+      "user": "mattrace-gloo",
+      "created_at": "2026-06-03T21:41:48Z",
+      "updated_at": "2026-06-03T21:41:48Z",
+      "body": "Ready for review @chadw-eten ",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/31#issuecomment-4616957890"
+    },
+    {
+      "id": 4825254580,
+      "user": "mattrace-gloo",
+      "created_at": "2026-06-28T07:31:17Z",
+      "updated_at": "2026-06-28T07:31:17Z",
+      "body": "Delivered by @mattrace-gloo in #45 (merged) and present in the CNG baseline (PR #70). The My Work tab (`src/app/tabs/MyWorkTab.tsx`) ships in the CNG baseline authored by @mattrace-gloo. Closing as completed.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/31#issuecomment-4825254580"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

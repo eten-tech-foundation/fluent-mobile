@@ -1,0 +1,32 @@
+{
+  "issue_number": 365,
+  "fetched_at_utc": "2026-10-20T00:36:17Z",
+  "issue": {
+    "number": 365,
+    "title": "[A+] Composite grades initiative tracker (Architecture / Product / Tests / Process)",
+    "state": "closed",
+    "body": "## Summary / context\n\nTracking issue for closing the four **A+ composite grade** gaps (\u22659.5) from the Aug 2026 scorecard (Then = May 7 handover; Now = Aug 24).\n\n| Dimension | Now | Target |\n| --- | --- | --- |\n| Architecture | A\u2212 8.7 | A+ \u22659.5 |\n| Ship-ready product | B\u2212 6.5 | A+ \u22659.5 |\n| Test safety net | B+ 8.0 | A+ \u22659.5 |\n| Process / CI | A\u2212 8.6 | A+ \u22659.5 |\n\nChild tickets are filed separately (one PR each). This issue does **not** ship code.\n\n**Status (2026-08-25):** Agent queue + manual items complete \u2014 12 open PRs awaiting merge (engineering-only, no QA). Manual #377 / #378 closed Done. See [#365#issuecomment-5417472678](https://github.com/eten-tech-foundation/fluent-mobile/issues/365#issuecomment-5417472678).\n\n## Child tickets\n\n### Architecture\n- [x] #366 \u2014 ESLint layer boundary bans (A1) \u2014 PR #382\n- [x] #367 \u2014 CI-enforce architecture-guard (A2) \u2014 PR #383\n- [x] #368 \u2014 Audit `@react-navigation` dependencies (A3) \u2014 PR #384\n\n### Tests\n- [x] #369 \u2014 `sync.ts` step unit tests (T1) \u2014 merged #385\n- [x] #370 \u2014 `useVerseAudio` unit tests (T3a) \u2014 PR #386\n- [x] #371 \u2014 `useRecordingEngine` unit tests (T3b) \u2014 PR #388\n- [x] #372 \u2014 Prepare Offline service-layer tests (T4) \u2014 PR #389\n- [x] #373 \u2014 Account / sync hook unit tests (T5) \u2014 PR #390\n\n### Product\n- [x] #374 \u2014 Resolve `sync.switchUser` stub (P2) \u2014 PR #391\n- [ ] #235 \u2014 Source audio dock (P1 existing \u2014 do not duplicate)\n- [x] #375 \u2014 Shared-device multi-account nightly QA script (P4) \u2014 PR #395\n- [ ] P3 \u2014 P0/P1 field-loop burn-down = **existing board work** (not a new feature ticket)\n\n### Process / CI\n- [x] #376 \u2014 Snapshot required branch-protection checks (C1) \u2014 PR #392\n- [x] #377 \u2014 QA handoff Status token reliability (C2) \u2014 manual, closed Done\n- [x] #378 \u2014 In QA column hygiene proposal (C3) \u2014 manual, closed Done\n- [x] #379 \u2014 Align `format` vs `format:check` globs (C4) \u2014 PR #393\n- [x] #380 \u2014 Dependabot one-at-a-time + doctor checklist (C5) \u2014 PR #394\n- [x] #330 \u2014 Close as superseded per `docs/guides/qa-process.md` (do not implement merge-blocking QA gate)\n\n## Separation rules\n\n- **Do not combine** #366+#367 (lint rules vs CI guard script).\n- **Do not combine** #370+#371 (different hooks, separate PRs).\n- **Do not fold** #374 into #369 (product behavior vs sync step tests).\n- **Do not** invent a vague \u201cP0 burn-down\u201d mega-PR \u2014 use existing Project 4 cards.\n- #378 requires an **approved named change set** before any board Status edits (`docs/guides/project-board.md`).\n- Optional further split: #372 can split by module if review size grows; #373 can split per hook if needed.\n\n## Acceptance criteria\n\n- [x] All child tickets exist, on Project 4, and are linked from this body\n- [ ] When children complete, re-score the A+ canvas with dated proof\n- [ ] No child merges with incomplete AC unless ticket-level waiver + follow-up issue\n\n## Links\n\n- Board: [Fluent Mobile Board (Project 4, view 9)](https://github.com/orgs/eten-tech-foundation/projects/4/views/9)\n- Docs: `docs/guides/qa-process.md`, `docs/ci.md`, `.cursor/rules/architecture.mdc`",
+    "user": "mattrace-gloo",
+    "created_at": "2026-08-25T14:16:59Z",
+    "updated_at": "2026-10-06T19:06:44Z",
+    "closed_at": "2026-10-06T19:06:44Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/365",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5417472678,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-25T22:07:27Z",
+      "updated_at": "2026-08-25T22:07:27Z",
+      "body": "## Epic hygiene pass (2026-08-25)\n\nAll actionable children now have open PRs (CI green) or are already merged. Engineering-only \u2014 **no QA**; cards go **Done** on merge.\n\n### Board updates applied\n- **In PR Review:** #365 (tracker), #371, #375, #376, #379, #380 (were Dev Ready with open PRs)\n- **Done:** #369 (merged via #385)\n- Already correct: #366\u2013#368, #370, #372\u2013#374 \u2192 In PR Review\n\n### Open PR queue\n| Issue | PR |\n| --- | --- |\n| #366 | #382 |\n| #367 | #383 |\n| #368 | #384 |\n| #370 | #386 |\n| #371 | #388 |\n| #372 | #389 |\n| #373 | #390 |\n| #374 | #391 |\n| #376 | #392 |\n| #379 | #393 |\n| #380 | #394 |\n| #375 | #395 |\n\n### Still open (no PR \u2014 manual / deferred)\n- **#377** \u2014 `PROJECT_BOARD_TOKEN` secret + docs (maintainer)\n- **#378** \u2014 In QA column hygiene (AC marked complete; confirm and close when ready)\n- **#235** \u2014 existing product work (out of agent queue)\n\n### Post-merge hygiene (engineering-only)\nWhen each PR merges, move that issue **Done** on Project 4 (skip In QA). Epic #365 \u2192 **Done** after all children are Done or explicitly waived.\n\nRefs #365",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/365#issuecomment-5417472678"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

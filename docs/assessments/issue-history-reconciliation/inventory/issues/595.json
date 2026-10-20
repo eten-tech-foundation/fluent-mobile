@@ -1,0 +1,34 @@
+{
+  "issue_number": 595,
+  "fetched_at_utc": "2026-10-20T00:38:13Z",
+  "issue": {
+    "number": 595,
+    "title": "Make source audio follow verses when verse timestamps are missing [Viewing and listening to resources Audit]",
+    "state": "closed",
+    "body": "Found during the viewing and listening to resources audit (#531, epic #526).\n\n**Severity:** High  \n**Launch blocker:** To be decided with product  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), local run of `main` @ `fb634e5`, `dev.api.fluent.bible` (scenarios G.18\u2013G.20)\n\n## Summary\nVerse seek and the playing-verse highlight depend on the API's `verseTimestamps`. Without them, `verseStartMs` returns 0 (`src/hooks/sourceAudioHelpers.ts:53-69`) and the highlight poll is skipped (`src/hooks/useSourceAudio.ts:239-241`). Tapping a verse during playback then restarts the chapter, and the highlight stays on the selected verse. #235 notes DEV returning timestamps of `0`.\n\n## Expected\nTapping a verse moves playback to that verse; the playing highlight follows playback (#48).\n\n## Actual\nG.18\u2013G.20: playback does not follow verse taps and the highlight does not follow playback. No dev project with verse timestamps was found (no ticks on any waveform).\n\n## Steps to reproduce\n1. Open a chapter whose source audio has no verse timestamps.\n2. Play, then tap verse 5.\n\n## Acceptance criteria\n- [ ] fluent-api returns verse timestamps for launch projects (source to be decided with product: DBL / Aquifer). Tracked in **[fluent-api#374](https://github.com/eten-tech-foundation/fluent-api/issues/374)**.\n- [ ] Without timestamps, the UI does not suggest verse-accurate seek (e.g. keep position instead of restarting; product to confirm).\n- [ ] Unit tests for the no-timestamp path.\n- [ ] Scroll the playing row into view when it goes off-screen (#48; no code reacts to `currentlyPlayingVerse` in `BibleTab.tsx`).\n- [ ] Android device QA with and without timestamps.\n\n## Related\n- Spec: #48, #235, #408\n- fluent-api: [#282](https://github.com/eten-tech-foundation/fluent-api/issues/282) (source-audio route), **[#374](https://github.com/eten-tech-foundation/fluent-api/issues/374)** (verseTimestamps population)\n- Parent audit: #531 (epic #526)\n- Related gap: #596 (source audio player)\n- Assessment: `docs/assessments/viewing-and-listening-to-resources/README.md` (PR #590)\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-25T21:13:55Z",
+    "updated_at": "2026-10-08T20:47:01Z",
+    "closed_at": "2026-10-08T20:47:01Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/595",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 6047534874,
+      "user": "mattrace-gloo",
+      "created_at": "2026-10-07T21:49:04Z",
+      "updated_at": "2026-10-07T21:49:04Z",
+      "body": "Opened fluent-api follow-up for populated `verseTimestamps` on chapter source-audio: https://github.com/eten-tech-foundation/fluent-api/issues/374\n\nMobile slice in progress: no-timestamp path keeps playback position (does not seek to 0), plus scroll playing row into view (#48).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/595#issuecomment-6047534874"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

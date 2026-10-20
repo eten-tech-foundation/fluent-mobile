@@ -1,0 +1,25 @@
+{
+  "issue_number": 597,
+  "fetched_at_utc": "2026-10-20T00:38:15Z",
+  "issue": {
+    "number": 597,
+    "title": "Fix the Maestro images fullscreen smoke selector [Viewing and listening to resources Audit]",
+    "state": "closed",
+    "body": "Found during the viewing and listening to resources audit (#531, epic #526).\n\n**Severity:** Low (test infra)  \n**Launch blocker:** No  \n**Confirmed on:** file inspection on `main` @ `fb634e5`\n\n## Summary\n`.maestro/flows/drafting/images-fullscreen.yaml` waits for `images-maps-thumbnail-.*`, a testID that no longer exists (thumbnails use `images-maps-item-*` and `images-maps-maximize-*`). The step is conditional, so the flow passes without ever opening fullscreen.\n\n## Expected\nThe smoke flow opens a thumbnail in fullscreen and closes it when an image is available.\n\n## Actual\nThe fullscreen branch never runs.\n\n## Steps to reproduce\n1. Compare the selectors in `.maestro/flows/drafting/images-fullscreen.yaml` with the testIDs in `src/app/tabs/resources/ImageThumbnail.tsx`.\n2. Run `npm run maestro:test:drafting` on a verse with images: the flow passes without opening fullscreen.\n\n## Acceptance criteria\n- [ ] Flow targets `images-maps-maximize-.*`.\n- [ ] Flow uses a fixture verse known to have images so the branch is not optional.\n- [ ] `npm run maestro:test:drafting` passes on the emulator.\n\n## Related\n- #191, #491 / PR #501\n- Parent audit: #531 (epic #526)\n- Assessment: `docs/assessments/viewing-and-listening-to-resources/README.md` (PR #590)\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-25T21:14:00Z",
+    "updated_at": "2026-10-09T16:54:48Z",
+    "closed_at": "2026-10-09T16:54:48Z",
+    "labels": [
+      "chore"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/597",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

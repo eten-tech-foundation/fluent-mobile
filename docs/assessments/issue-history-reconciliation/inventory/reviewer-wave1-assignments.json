@@ -1,0 +1,75 @@
+{
+  "created_utc": "2026-10-20T00:52:14Z",
+  "integrator": "bc-da4aa327-d86e-47fc-93c0-d7105af39497",
+  "contract": "docs/assessments/issue-history-reconciliation/inventory/complete-row-contract.md",
+  "corpus": "docs/assessments/issue-history-reconciliation/inventory/issues/",
+  "wave": 1,
+  "policy": "small batch 3-5; verify quality before larger ownership; READ-ONLY; /tmp only; no revive extra worker; skip #721 sync lead",
+  "batches": {
+    "r1": {
+      "domain": "early-home-auth-sync-ui",
+      "ids": [
+        16,
+        33,
+        41,
+        49
+      ]
+    },
+    "r2": {
+      "domain": "upload-contract-sync-status",
+      "ids": [
+        100,
+        102,
+        150,
+        253
+      ]
+    },
+    "r3": {
+      "domain": "open-audit-maestro",
+      "ids": [
+        526,
+        529,
+        530,
+        717
+      ]
+    }
+  },
+  "reviewers": {
+    "r1": {
+      "agent": "bc-40608dd5-3726-5080-8fb8-a1e8c6e5bfb3",
+      "ids": [
+        16,
+        33,
+        41,
+        49
+      ],
+      "status": "integrated"
+    },
+    "r2": {
+      "agent": "bc-fdf549d5-dd96-57a8-9154-0aac262aff3d",
+      "ids": [
+        100,
+        102,
+        150,
+        253
+      ],
+      "status": "integrated"
+    },
+    "r3": {
+      "agent": "bc-60eda6f7-248f-5fa3-8008-1afa358d3b1d",
+      "ids": [
+        526,
+        529,
+        530,
+        717
+      ],
+      "status": "integrated"
+    }
+  },
+  "do_not_assign": [
+    "721",
+    "extra_worker_bc-11ead3e6"
+  ],
+  "updated_utc": "2026-10-20T00:57:06Z",
+  "wave1_complete": true
+}

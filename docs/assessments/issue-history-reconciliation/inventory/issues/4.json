@@ -1,0 +1,32 @@
+{
+  "issue_number": 4,
+  "fetched_at_utc": "2026-10-20T00:33:39Z",
+  "issue": {
+    "number": 4,
+    "title": "Create Project List Page",
+    "state": "closed",
+    "body": "This is an MVP version of the project list page. It is very basic and does not contain all the functionality that is needed. It is simply a way to show a list of current projects and browse them. For the MVP, this page will act as the Home page.\n\n### Functional Requirements\n- Show the Fluent logo at the top\n- Title: Projects with a folder icon to the left and outline\n- Show a list of cards, one for each project\n- It should show the same projects as are shown on the web app, ie..\n  - As Manager, they can see all projects in the org.\n  - As Translator, they can see all projects they are assigned to.\n- Each card should have\n  -  A folder icon (in the future, information about the project will be communicated here)\n  - Title: Project title\n  - Subtitle: Target language of the project\n  - Caret/arrow to the right showing they can navigate to the project by tapping\n- When a user tabs on a card, they should be taken to the View Project page for that project.\n- Note: This only addresses the happy path. We will address errors  like failure to load data in the next iteration.\n\n\n<img width=\"350\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/331e9e5c-b65c-4ad3-93e4-ff335db67b0f\" />",
+    "user": "chadw-eten",
+    "created_at": "2026-03-03T20:27:14Z",
+    "updated_at": "2026-07-02T19:51:01Z",
+    "closed_at": "2026-04-17T11:33:26Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/4",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4072336545,
+      "user": "B3RN153",
+      "created_at": "2026-03-17T04:56:13Z",
+      "updated_at": "2026-03-17T04:56:54Z",
+      "body": "**SP3** \n- Create Project List Page - (ET 1hr)",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/4#issuecomment-4072336545"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

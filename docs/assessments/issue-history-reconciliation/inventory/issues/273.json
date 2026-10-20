@@ -1,0 +1,50 @@
+{
+  "issue_number": 273,
+  "fetched_at_utc": "2026-10-20T00:35:51Z",
+  "issue": {
+    "number": 273,
+    "title": "Refresh Assignment and Stage State on Chapter List Open",
+    "state": "closed",
+    "body": "The chapter list on both My Work and View Project reads from a local SQLite cache. Assignment and stage state only refresh through login or a repair sync; the WiFi upload flow does not pull updated assignment metadata. As a result, a translator opening the chapter list while online may see stale data \u2014 chapters claimed by others could appear unclaimed, and stage values may lag behind the server. This ticket adds a lightweight metadata pull on chapter list open to keep the list current while online.\n\n## Functional Requirements\n\n### My Work Tab and View Project Page\n\n- When the device is online, trigger a pull of the latest assignment and stage metadata from the server when the user opens either My Work or View Project.\n- Sync involves any change to the chapter such as assignment added or removed or the stage advancing.\n- Display the locally cached chapter list immediately; do not block the UI while the pull runs in the background.\n- Once the server response is received, update any chapter rows where assignment or stage data has changed.\n- When the device is offline, display the locally cached data with no sync attempt.\n\nNote: Audio data is not included in this pull; audio download timing on chapter open is not addressed by this ticket.",
+    "user": "chadw-eten",
+    "created_at": "2026-07-29T20:25:59Z",
+    "updated_at": "2026-09-02T04:14:05Z",
+    "closed_at": "2026-08-27T22:12:16Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 3,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/273",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5273627440,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-12T22:42:10Z",
+      "updated_at": "2026-08-12T22:42:10Z",
+      "body": "API side is already good \u2014 `GET /users/{id}/chapter-assignments/all` (with `updatedAfter`) is what we want. Web just live-fetches on open; we need the offline-first version of that (pull into SQLite when the list opens while online).\n\nThis is mostly \u201ccall the sync we already have when My Work / View Project opens while online, show cache immediately, don\u2019t block the list.\u201d No new endpoint needed.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/273#issuecomment-5273627440"
+    },
+    {
+      "id": 5356237168,
+      "user": "chadw-eten",
+      "created_at": "2026-08-20T13:01:21Z",
+      "updated_at": "2026-08-20T13:01:21Z",
+      "body": "Documenting a Discord conversation with Bernise: \nThis ticket only addresses pulling when the user visits the View Project page as opposed to the Project List page. I had not thought that maybe they could be removed from the project entirely and thus the project should not even be listed. I do think we need it to pull when they visit the Project Tab as well. That probably means we don't necessarily need it to pull when they visit the View Project page (single project), but if you already have that working, there is no need to remove it.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/273#issuecomment-5356237168"
+    },
+    {
+      "id": 5504273524,
+      "user": "Roslin22",
+      "created_at": "2026-09-02T04:14:05Z",
+      "updated_at": "2026-09-02T04:14:05Z",
+      "body": "**Test Results: #273**\n\n- When the Project Manager changes an assignment, such as assigning/unassigning a chapter or adding/removing a project, the changes are reflected immediately for the user when they are online.\n- When a new project is added, the project list is updated and the newly added project is displayed.\n- When a new chapter is assigned or an existing chapter is unassigned, the updated chapter information is reflected in the translator's My Work tab.\n- When the translator is offline, the locally cached chapter list is displayed without any delay. If any chapter or project changes occur while the translator is offline, the changes are synchronized and can be viewed after the translator comes back online by opening My Work or View Project.\n\nMoving this ticket to passedQA",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/273#issuecomment-5504273524"
+    }
+  ],
+  "comments_fetched_count": 3,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

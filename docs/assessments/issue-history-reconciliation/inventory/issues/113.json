@@ -1,0 +1,25 @@
+{
+  "issue_number": 113,
+  "fetched_at_utc": "2026-10-20T00:34:45Z",
+  "issue": {
+    "number": 113,
+    "title": "API client architecture standard",
+    "state": "closed",
+    "body": "### Current state on main\n\n- `src/services/api.ts` exposes a flat `FluentAPI` object of endpoint functions over two helpers: `request()` (authed) and `publicRequest()` (no auth). Responses are untyped (`res.json()` \u2192 `any`), and errors throw generic `Error('API failed: <status>')`.\n- `request()` logs sanitized errors via `summarizeApiErrorResponse()`; `publicRequest()` doesn't (fixed in #88).\n- Token injection is via a mutable module singleton (being replaced by an accessor in #88).\n- `@tanstack/react-query` is in `package.json` (`^5.96.1`) but there is no shared query/client convention; screens read SQLite directly (correct), while network calls go through `FluentAPI` + sync.\n\n### Problems / why\n\n- Untyped responses push `any` through the app; callers can't rely on shapes.\n- Error semantics are coarse (`API failed: <status>`), so UIs can't distinguish auth (401) vs. validation (4xx) vs. server (5xx) vs. network.\n- No documented contract for token injection, base-URL resolution, retries, or react-query usage \u2192 each feature improvises.\n\n### Target design\n\nA documented client standard (consumed by #100 upload worker and feature tickets), layered on #88:\n\n- **Token injection contract:** explicit accessor (#88) or per-call token param; never a hidden mutable global; the upload worker takes a token argument.\n- **Base URL:** always via `getApiBaseUrl()` / the typed config (#109).\n- **Typed responses:** define request/response types in `src/types/api/` and have client methods return them (no leaking `any`).\n- **Error model:** a typed `ApiError { status, code?, message }` thrown by helpers; both `request` and `publicRequest` log via `summarizeApiErrorResponse`; classify retryable (5xx/network) vs. terminal (4xx).\n- **react-query integration:** a shared `QueryClient` + conventions (query keys, retry policy aligned with the error model, where react-query is appropriate vs. the SQLite-first read path). Document that UI reads stay SQLite-first; react-query is for network actions/mutations (login, forgot-password, upload).\n\n### Implementation steps\n\n1. Define `ApiError` and typed response interfaces in `src/types/api/`.\n2. Refactor `request`/`publicRequest` to throw `ApiError` and return typed results; ensure both log sanitized metadata.\n3. Adopt the #88 token contract throughout `FluentAPI`.\n4. Add a shared `QueryClient` + documented query-key/retry conventions; wire the provider in `App.tsx` if not already.\n5. Write a short \"API client standard\" doc and update call sites incrementally (auth/upload first).\n6. Tests: typed error classification (401/4xx/5xx/network), retry policy, and a sample react-query mutation with mocked `fetch`.\n\n### Acceptance criteria\n\n- [ ] Client methods return typed responses (no `any` leakage) with types in `src/types/api/`.\n- [ ] A typed `ApiError` with status/code/message; both helpers log sanitized metadata; retryable vs terminal classified.\n- [ ] Token injection follows the #88 contract (no mutable global).\n- [ ] Shared `QueryClient` + documented conventions; SQLite-first reads preserved.\n- [ ] Standard documented; covered by unit tests.\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Tests default `EXPO_PUBLIC_API_BASE_URL=http://localhost:9999` via `jest.env.cjs`; mock `fetch`; **no live API required**.\n- Do **not** use `FLUENT_USER_EMAIL`.\n\n### Out of scope\n\n- Token accessor implementation (#88), env config module (#109), upload worker (#100) \u2014 consumed/aligned here.\n\n### Links\n\n- Epic: #120\n- Builds on: #88 (A1). Related: #100, #109\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:46:21Z",
+    "updated_at": "2026-07-09T18:19:47Z",
+    "closed_at": "2026-07-09T18:19:47Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/113",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

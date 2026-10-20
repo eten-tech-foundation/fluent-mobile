@@ -1,0 +1,25 @@
+{
+  "issue_number": 124,
+  "fetched_at_utc": "2026-10-20T00:34:56Z",
+  "issue": {
+    "number": 124,
+    "title": "Brand Android app launch: Fluent launcher icon + native splash",
+    "state": "closed",
+    "body": "## Summary\n\nBrand the Android app launch experience with the **Fluent launcher icon** and a **native splash screen**.\n\n## What shipped\n\n- Fluent launcher icon assets wired into the Android app.\n- Native splash screen (BootSplash) configuration so the app shows Fluent branding on cold start.\n\n## Attribution\n\nDelivered by @mattrace-gloo in [PR #58](https://github.com/eten-tech-foundation/fluent-mobile/pull/58) (merged).\n\n## Status\n\n**Completed** \u2014 closing as completed. Tracking/credit issue.\n\nRefs #58.\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T07:35:05Z",
+    "updated_at": "2026-06-28T07:35:21Z",
+    "closed_at": "2026-06-28T07:35:21Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/124",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

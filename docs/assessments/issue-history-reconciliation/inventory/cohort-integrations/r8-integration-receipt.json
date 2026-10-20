@@ -1,0 +1,33 @@
+{
+  "integrated_at_utc": "2026-10-20T01:11:23Z",
+  "reviewer": "bc-1df4fe9c-bd60-5fd2-add3-2129049dd17c",
+  "source": "/tmp/fluent-issue-review-r8.json",
+  "accepted_complete": [
+    109,
+    111,
+    112,
+    113,
+    114,
+    115,
+    116,
+    119,
+    120,
+    121,
+    122,
+    123,
+    124,
+    125,
+    132,
+    133,
+    137,
+    139,
+    159,
+    170,
+    173,
+    177
+  ],
+  "integrator_overrides": {
+    "121": "Corrected src/db/AGENTS.md cite 44-48\u219235-40 (file is 40 lines; RECORDINGS_JOIN_CA note at 35-40)."
+  },
+  "wave3_note": "r7 ownership preserved RUNNING; r9 already integrated; spotchecks applied"
+}

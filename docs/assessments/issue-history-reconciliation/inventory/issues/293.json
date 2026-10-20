@@ -1,0 +1,42 @@
+{
+  "issue_number": 293,
+  "fetched_at_utc": "2026-10-20T00:36:02Z",
+  "issue": {
+    "number": 293,
+    "title": "Fix add-account and restoreSession multi-account session safety",
+    "state": "closed",
+    "body": "## Summary\n\nTwo multi-account hazards:\n\n1. **Add account** \u2014 `beginLoginSession` overwrites the global in-memory token (and temp SecureStore) while `ACTIVE_USER_ID` still points at the previous user. `handleAddUserLoginSuccess` starts sync whose failures can be attributed to the wrong user.\n2. **Cold restore** \u2014 if the active user's token is missing, `restoreSession` silently iterates other known users and `switchActiveUser`s without confirmation.\n\n## Current vs expected\n\n**Current:** Adding B can hijack A's in-memory session; restore may silently sign in as a different account.\n\n**Expected:** Adding an account writes that account's durable credentials without changing the active session until the user explicitly switches. Restore must not silently switch accounts (fail closed for missing active creds, or show an account picker).\n\n## Scope\n\n**In scope**\n- Add-account path: persist new user credentials without changing `authToken` / `ACTIVE_USER_ID` until explicit switch\n- `restoreSession`: remove silent fallback switch (or gate behind multi-account picker UX)\n- Tests for active A + add B without switch; restore behavior when active creds missing\n\n**Out of scope**\n- Durable first-login persistence mechanics beyond what add-account needs (#291)\n- Soft reauth / 401 policy (#292)\n- Per-request token in sync loops (#294)\n\n## Acceptance criteria\n\n- [ ] Adding a second account does not change the active user's in-memory token or `ACTIVE_USER_ID` until confirmed switch\n- [ ] Cold start with missing active credentials does not silently authenticate as another known user\n- [ ] Unit tests cover both behaviors (`authSession.test.ts`, add-user / account switcher tests as needed)\n- [ ] Device QA on a multi-account device: add second user, force-stop, cold start \u2192 still on previous active account (or clear reauth/picker \u2014 not a silent other user)\n\n## Verification / test plan\n\n1. Unit tests for add-account isolation and restore fail-closed / picker\n2. Device QA with 2\u20133 known accounts\n\n## File pointers & approach\n\n1. `src/services/authSession.ts` \u2014 `beginLoginSession`, `restoreSession`\n2. `App.tsx` \u2014 `handleAddUserLoginSuccess`\n3. Add-user / account switcher UI hooks\n4. `src/services/accountSession.ts` if switch semantics need alignment\n\n## Related series (suggested order)\n\n1. **#291** \u2014 Persist auth credentials at login (**P0**)\n2. **#292** \u2014 Soft reauth / no wipe on 401 (**P0**)\n3. **#294** \u2014 Per-request auth tokens (**P1**)\n4. **#293** \u2014 Multi-account session safety (**P1**) \u2014 this ticket\n\n## Links\n\n- Project board: [Fluent Mobile Board](https://github.com/orgs/eten-tech-foundation/projects/4/views/9) \u2014 please set Status **Backlog**, Priority **P1** (agent lacked project write permission)\n",
+    "user": "mattrace-buildmidwestern",
+    "created_at": "2026-07-31T07:09:13Z",
+    "updated_at": "2026-08-06T18:45:34Z",
+    "closed_at": "2026-08-06T18:45:34Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/293",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5140440370,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-31T07:27:35Z",
+      "updated_at": "2026-07-31T07:27:35Z",
+      "body": "## API readiness note (board audit)\n\n**Status on fluent-api `main`:** Not required \u2014 local multi-account session / `restoreSession` safety.\n\n**Implement with:** Client-only fixes. No mock API.\n\n### Follow up with fluent-api team\nWhen you pick this up, please ask the fluent-api team:\n1. Is the needed feature planned / in progress?\n2. Expected ETA (or \u201cnot scheduled\u201d)?\n3. Is there already an open fluent-api GitHub issue or PR? If yes, link it here; if no, ask them to file one (or file it yourself and link it).\n\nChecked against local fluent-api `main` @ `3ef4025` (2026-07-31).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/293#issuecomment-5140440370"
+    },
+    {
+      "id": 5208306847,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-06T18:45:33Z",
+      "updated_at": "2026-08-06T18:45:33Z",
+      "body": "Closing as **duplicate of #291**.\n\nAuth session durability is tracked as one board ticket per tech-lead preference (big ticket + tech notes as comments, not sibling slices).\n\nCanonical: https://github.com/eten-tech-foundation/fluent-mobile/issues/291",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/293#issuecomment-5208306847"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,23 @@
+{
+  "issue_number": 683,
+  "fetched_at_utc": "2026-10-20T00:38:42Z",
+  "issue": {
+    "number": 683,
+    "title": "Block recording on chapters at Complete stage.",
+    "state": "closed",
+    "body": "Block recording on chapters at Complete stage (mobile)\n\nDescription\n\nOnce a chapter reaches the Complete stage, it should no longer be recordable on mobile. Currently nothing prevents recording at that stage. #550 only gated the stage-advance CTA and did not add a recording lock.\n\nA future change will allow a completed chapter to be rerun through translation, but that is out of scope here.\n\nReported by\n\nQA (@Roslin22), in the #550 test results ([l[ink to comment: PASTE HERE](https://github.com/eten-tech-foundation/fluent-mobile/issues/542#issuecomment-5866279115)]) , issue 2, \u201cRecording allowed after completion\u201d:\n\nAfter the chapter is moved to the Advanced Checks stage and the chapter is marked as complete, the translator is still able to record.\n\nExpected behavior\n\nOnce a chapter is at Complete, it should not be recordable anymore. Rerunning a completed chapter through translation will be supported later, but not now.\n\nRelated\n\nRefs #542 / #550. This ticket covers only issue 2 of the QA report.\n\nAcceptance criteria\n\n When a chapter is at Complete, record and Record New Take are disabled in both verse mode and pericope mode.\n At Complete, delete and select-take controls on existing takes are not shown.\n Playback and scrubbing of existing takes still work at Complete.\n Stages before Complete behave as they do today, including the existing drafter block on open Peer Check.\n Unit tests cover the Complete-stage case.\n\nOut of scope\n\nRe-running a completed chapter through translation (planned later).\nStage-advance CTA behavior (handled in #550).\n\nRefs: #542, #550\n\nNeeds QA? Yes, post-merge nightly QA",
+    "user": "B3RN153",
+    "created_at": "2026-10-12T11:22:27Z",
+    "updated_at": "2026-10-13T19:41:27Z",
+    "closed_at": "2026-10-13T19:41:27Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/683",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

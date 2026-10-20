@@ -1,0 +1,25 @@
+{
+  "issue_number": 238,
+  "fetched_at_utc": "2026-10-20T00:35:34Z",
+  "issue": {
+    "number": 238,
+    "title": "Fix recording upload failing on expo-file-system getInfoAsync deprecation",
+    "state": "closed",
+    "body": "## Summary\n\nAfter Record landed, auto-upload fails because `recordingSync.ts` imports `getInfoAsync` from `expo-file-system` (non-legacy). Expo treats that as an error and the upload orchestrator retries then fails.\n\n`audioStorage.ts` already uses `expo-file-system/legacy`.\n\n## Acceptance criteria\n\n- [ ] `recordingSync` uses `expo-file-system/legacy` (same as audio storage)\n- [ ] Upload path no longer fails with the getInfoAsync deprecation message\n- [ ] Unit tests still pass\n\n## Repro\n\n1. Record takes on device\n2. Upload orchestrator starts\n3. Logs show Recording upload failed with getInfoAsync deprecation message",
+    "user": "mattrace-gloo",
+    "created_at": "2026-07-23T05:16:36Z",
+    "updated_at": "2026-07-23T05:18:00Z",
+    "closed_at": "2026-07-23T05:18:00Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/238",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,36 @@
+{
+  "issue_number": 102,
+  "fetched_at_utc": "2026-10-20T00:34:33Z",
+  "issue": {
+    "number": 102,
+    "title": "R2 server contract + /recordings/sync coordination",
+    "state": "closed",
+    "body": "### Current state on main\n\n- The mobile upload worker (#100) is net-new and needs an agreed request/response shape.\n- `recordings` schema fields that map to the contract (`src/db/schema.ts:80`): `local_file_path`, `bible_text_id`, `duration_ms`, `file_size_bytes`, `take_number`, `blob_key` (server-assigned object key), `sync_status`, `upload_error`.\n- The mobile client authenticates with a Bearer token (#88); the server derives user identity from the token \u2014 **no user id in the body**.\n\n### Problems / why\n\n- Without a frozen contract, #100 cannot finalize the request format, error semantics, or how `blob_key` is returned and stored.\n- R2 credentials must live **server-side only**; the mobile app must never hold R2 keys.\n\n### Target design (to confirm against fluent-api PR #188)\n\n**Endpoint:** `POST /recordings/sync` (multipart/form-data), `Authorization: Bearer <token>`.\n\nRequest parts (proposed \u2014 reconcile with PR #188):\n- `file`: the audio blob (`audio/mp4` / `.m4a`).\n- `bible_text_id`: integer.\n- `take_number`: integer.\n- `duration_ms`, `file_size_bytes`: integers (optional).\n- `recorded_at`: ISO timestamp.\n\nResponse (proposed):\n- `200`: `{ blob_key: string, recording_id?: string }` \u2192 client sets `sync_status='uploaded'`, stores `blob_key`.\n- `4xx`: `{ message, code? }` \u2192 client sets `failed` + `upload_error` (no retry for `4xx` validation errors).\n- `5xx`/network \u2192 client retries with backoff (#100).\n\n**R2 (server-side only):** the API service holds `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` and writes the object, returning the `blob_key`. These secrets **never** ship in the mobile app or `.env` (`EXPO_PUBLIC_*` is client-visible).\n\n### Implementation steps\n\n1. Review [fluent-api PR #188](https://github.com/eten-tech-foundation/fluent-api/pull/188); confirm route, field names, auth, and response shape.\n2. Document the agreed contract in this issue / `docs/` and align #100's implementation.\n3. Confirm R2 env vars are configured server-side and absent from the mobile app.\n4. DevQA: end-to-end test (record \u2192 upload \u2192 object in R2 \u2192 `blob_key` persisted) against a dev server once PR #188 is deployed.\n5. Record any deviations from the proposed shape above.\n\n### Acceptance criteria\n\n- [ ] Frozen request/response contract for `POST /recordings/sync` documented and matched to fluent-api PR #188.\n- [ ] Client behavior on `2xx`/`4xx`/`5xx`/network defined (and consistent with #100).\n- [ ] `blob_key` round-trip verified (server returns \u2192 client persists).\n- [ ] Confirmed R2 secrets are server-side only; none in the mobile app/`.env`.\n- [ ] DevQA end-to-end pass on a dev server.\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Mobile unit tests mock the endpoint; **no live API required** for CI (`EXPO_PUBLIC_API_BASE_URL=http://localhost:9999` via `jest.env.cjs`).\n- The live end-to-end check is **manual DevQA** against a dev server once PR #188 is deployed (this is the documented manual-verification step for this ticket).\n- Do **not** use `FLUENT_USER_EMAIL`.\n\n### Out of scope\n\n- Mobile upload worker implementation (#100) and UI (#101).\n- Server implementation (owned by fluent-api PR #188).\n\n### Links\n\n- Epic: #117\n- API: [fluent-api PR #188](https://github.com/eten-tech-foundation/fluent-api/pull/188)\n- Related: #100 (worker)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:46:05Z",
+    "updated_at": "2026-07-23T02:53:48Z",
+    "closed_at": "2026-07-23T02:53:48Z",
+    "labels": [
+      "enhancement",
+      "SP 1",
+      "DevQA"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/102",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5027793270,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-20T22:14:11Z",
+      "updated_at": "2026-07-20T22:14:11Z",
+      "body": "## Ticket-level waivers (#102) + contract freeze\n\nConsulted local fluent-api at `/Users/matt/Documents/Development/gloo/fluent-api` **main** SHA `3fd1027313c40c5e7a9fb3abe97c2b72d313e226` \u2014 **no** `/recordings/sync`, R2, or verse-audio routes on main.\n\nCompeting API PRs:\n- Draft [#188](https://github.com/eten-tech-foundation/fluent-api/pull/188) \u2014 `POST /recordings/sync` + Cloudflare R2 (original #102 text)\n- Open [#224](https://github.com/eten-tech-foundation/fluent-api/pull/224) \u2014 `PUT /verse-audio/{projectUnitId}/{bibleTextId}` + Azure Blob (built for mobile; preferred freeze)\n\n**Mobile PR:** https://github.com/eten-tech-foundation/fluent-mobile/pull/222 freezes the client to **#224**.\n\n### Waivers (AC not shippable from this repo alone)\n\n| AC | Waiver | Follow-up |\n| --- | --- | --- |\n| Frozen contract matched to #188 / R2 `/recordings/sync` | **Waived** \u2014 not on fluent-api main; #224 is the active non-draft mobile upload API | API maintainers pick #224 vs #188; if #188 wins, open a follow-up to revise the mobile contract |\n| `blob_key` round-trip verified live | **Waived** \u2014 needs deployed audio endpoint | After chosen API merges + deploys; covered by #100 device/DevQA |\n| DevQA end-to-end pass on a dev server | **Waived** (same) | Same as above |\n\n### Covered in mobile PR\n\n- Types + `FluentAPI.uploadVerseAudio` + multipart auth headers\n- Client 2xx / 4xx / 5xx / 503 / network outcome helpers for #100\n- Confirmed no Azure/R2 secrets in mobile `.env.example`\n- Unit tests with mocked fetch (no live API)",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/102#issuecomment-5027793270"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

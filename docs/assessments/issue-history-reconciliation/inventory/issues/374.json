@@ -1,0 +1,23 @@
+{
+  "issue_number": 374,
+  "fetched_at_utc": "2026-10-20T00:36:27Z",
+  "issue": {
+    "number": 374,
+    "title": "[A+] Resolve sync.switchUser no-op stub (implement or remove)",
+    "state": "closed",
+    "body": "## Summary / context\n\nPart of **A+ Ship-ready product** + test honesty. `sync.switchUser()` in `src/services/sync.ts` is a **no-op** (log + `emitSyncComplete`) while real account switching lives in `accountSession` / `AccountSwitcherPanel`.\n\n## Current vs expected\n\n**Current:** Dead/misleading API suggests multi-account sync switching that does not run.\n\n**Expected:** Either (a) implement correct switch-user sync behavior aligned with account session, **or** (b) remove/rename the stub and update callers so there is no false API. Tests must match the chosen behavior.\n\n## Scope\n\n**In scope**\n- Product-correct decision + code change\n- Unit tests for the resulting behavior\n- Call-site cleanup\n\n**Out of scope**\n- Full #291 offline auth durability epic\n- Unrelated sync step coverage (\u2192 T1)\n\n## Acceptance criteria\n\n- [ ] No no-op `switchUser` left that claims to sync\n- [ ] Chosen behavior documented in PR + short code comment if non-obvious\n- [ ] Unit tests cover the resulting API\n- [ ] Manual smoke: switch accounts still works (Needs QA? **Yes** if behavior changes user-visible sync)\n\n## Verification / test plan\n\n1. Unit tests\n2. Android: switch between two accounts \u2192 expected project/assignment data for active user\n3. CI gates\n\n## Links\n\n- Related: T1 (sync step tests), #291, AccountSwitcherPanel\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-08-25T14:17:43Z",
+    "updated_at": "2026-08-26T17:00:05Z",
+    "closed_at": "2026-08-26T17:00:05Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/374",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

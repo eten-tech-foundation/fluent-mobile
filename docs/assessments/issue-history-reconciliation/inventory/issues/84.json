@@ -1,0 +1,25 @@
+{
+  "issue_number": 84,
+  "fetched_at_utc": "2026-10-20T00:34:14Z",
+  "issue": {
+    "number": 84,
+    "title": "Build Account Switcher Panel",
+    "state": "closed",
+    "body": "The mobile app needs to support multiple users sharing a single device \u2014 a common pattern in field translation workshops where a phone passes between translators. The account switcher panel is the central UI for this feature: it lists all logged-in accounts on the device and lets users switch between them. All other multi-user tickets depend on this panel existing.\n\n## Functional Requirements\n\n### Panel Layout\n\n- Display a bottom sheet or modal panel when the account switcher is triggered.\n- List all accounts currently logged in on the device, one row per account.\n- Each row shows the account's first and last initial in a circle and their display name.\n- Mark the currently active account with a `li:check` icon on the right side of its row.\n\n### Add Account Entry\n\n- Show an \"Add Account\" row at the bottom of the panel with a `li:user-plus` icon.\n- If three accounts are already logged in, hide the \"Add Account\" row and show a brief message in its place: \"You've reached the 3-account limit.\"\n\n### Dismissal\n\n- Tapping outside the panel or a back gesture dismisses it without changing the active account.\n\n> **Note:** Account removal is explicitly out of scope. Do not add a remove or delete affordance to account rows.\n\n<img width=\"430\" height=\"288\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/8b7bbc30-e666-4c3a-8c1f-059bca44707d\" />\n\n<img width=\"431\" height=\"386\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/ec76f857-4374-4558-ac6d-7cbeeb15bb19\" />",
+    "user": "chadw-eten",
+    "created_at": "2026-06-25T19:59:27Z",
+    "updated_at": "2026-07-15T18:42:59Z",
+    "closed_at": "2026-07-15T18:42:59Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/84",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

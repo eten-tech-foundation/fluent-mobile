@@ -1,0 +1,25 @@
+{
+  "issue_number": 173,
+  "fetched_at_utc": "2026-10-20T00:35:11Z",
+  "issue": {
+    "number": 173,
+    "title": "Adopt Phase 1 agent/process docs (no merge-gate changes)",
+    "state": "closed",
+    "body": "## Summary\n\nAdd high-value, non-blocking process/agent patterns to fluent-mobile: issue tracking + CI docs, slimmer PR template, `/onboard` + `/dep-bump` commands, warn-only session env check, and short nested hot-path notes under `src/services/` and `src/db/`.\n\n**Out of scope / do not add in this ticket:** Conventional Commits / PR-title CI, required CODEOWNERS reviews, fail-deny convention hooks for design tokens, heavy feature-scaffold layers, or any new required branch-protection checks.\n\n## Context\n\nfluent-mobile already has strong delivery judgment (`AGENTS.md`, Android-only, architecture layers, Dependabot workflow). This ticket improves documentation contracts and agent discovery UX without tightening merge gates.\n\n**Ticket tracker for this repo (for now):** GitHub Issues (not Linear).\n\n## Scope\n\n### In scope\n- [ ] `docs/issue-tracking.md` \u2014 GitHub Issues, branch naming, PR linking (`Closes #NNN`)\n- [ ] `docs/ci.md` \u2014 workflow map + future required-check / `paths:` deadlock guardrail (docs only; no CI behavior change)\n- [ ] Slimmer `.cursor/templates/pr-template.md` (keep AGENTS AC/scope/device-QA; drop rarely filled sections)\n- [ ] `.cursor/commands/onboard.md` \u2014 Android-only setup guidance\n- [ ] `.cursor/commands/dep-bump.md` \u2014 `expo install` + `npm run doctor`\n- [ ] Warn-only Cursor session env check (`.cursor/hooks.json` + script) \u2014 never deny\n- [ ] Short nested notes: `src/services/AGENTS.md`, `src/db/AGENTS.md`\n- [ ] Wire pointers from onboarding / docs rules / delivery commands so GitHub Issues is the documented tracker\n\n### Out of scope\n- New required CI checks or branch protection changes\n- CODEOWNERS with required reviews\n- commitlint / PR title lint\n- Hard-deny convention guards\n- Dual agent-tooling trees beyond what Cursor already needs\n\n## Acceptance criteria\n\n- [ ] New docs and commands exist and match fluent-mobile conventions (npm, Android-only, Expo SDK 56)\n- [ ] No workflow YAML behavior changes that could block merges\n- [ ] Session env hook is warn-only / fail-open\n- [ ] PR template still includes AGENTS delivery checkboxes (AC, scope, Android device QA)\n- [ ] Onboarding + docs index link the new issue-tracking and CI docs\n- [ ] Local gates pass: `format:check`, `lint`, `typecheck`, `test --ci`\n\n## Verification\n\n```bash\nnpm run format:check\nnpm run lint\nnpm run typecheck\nnpm test -- --ci\n```\n\nManual: open `/onboard` and `/dep-bump` command files; confirm hooks.json sessionStart is warn-only.",
+    "user": "mattrace-gloo",
+    "created_at": "2026-07-09T21:52:43Z",
+    "updated_at": "2026-07-10T02:34:41Z",
+    "closed_at": "2026-07-10T02:34:41Z",
+    "labels": [
+      "documentation"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/173",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

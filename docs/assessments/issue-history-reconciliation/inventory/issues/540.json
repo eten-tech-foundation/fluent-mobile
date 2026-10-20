@@ -1,0 +1,40 @@
+{
+  "issue_number": 540,
+  "fetched_at_utc": "2026-10-20T00:37:39Z",
+  "issue": {
+    "number": 540,
+    "title": "Fix Pericope View Next Navigation and Source Text Display",
+    "state": "closed",
+    "body": "QA on #409 found two display bugs in Pericope View's Record tab. Tapping Next does not advance to the next pericope until every verse in the current pericope has been stepped through individually, and the Source Bible text only shows the first verse of the pericope instead of the full range. Both should reflect the current pericope as a single unit.\n\n## Functional Requirements\n\n### Next/Previous Navigation (caret icons at the top)\n- In Pericope View, tapping Next should advance directly to the next pericope set, without first stepping through each verse within the current pericope.\n- Tapping Previous should move directly to the previous pericope set, with the same behavior applied in reverse.\n\n### Source Bible Text\n- In Pericope View, display the full Source Bible text for every verse included in the current pericope, not just the first verse.",
+    "user": "chadw-eten",
+    "created_at": "2026-09-16T15:21:29Z",
+    "updated_at": "2026-09-28T13:40:03Z",
+    "closed_at": "2026-09-21T04:38:57Z",
+    "labels": [],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/540",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5866758659,
+      "user": "Roslin22",
+      "created_at": "2026-09-28T09:00:36Z",
+      "updated_at": "2026-09-28T09:00:36Z",
+      "body": "### Test Results \n\n* **Next navigation:** Working as expected. Tapping **Next** moves directly to the next pericope without stepping through each verse individually.\n* **Previous navigation:** Working as expected. Tapping **Previous** moves directly to the previous pericope.\n* **Source Bible text:** Working as expected. The complete Source Bible text for all verses in the current pericope is displayed.\n* **Pericope is treated as a single unit:** Working as expected for both navigation and Source Bible display.\n* No issues were identified during testing.\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/540#issuecomment-5866758659"
+    },
+    {
+      "id": 5871041007,
+      "user": "chadw-eten",
+      "created_at": "2026-09-28T13:40:03Z",
+      "updated_at": "2026-09-28T13:40:03Z",
+      "body": "\u2705 ",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/540#issuecomment-5871041007"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

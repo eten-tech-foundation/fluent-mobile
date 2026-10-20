@@ -1,0 +1,204 @@
+{
+  "updated_utc": "2026-10-20T00:40:41Z",
+  "policy": "evidence-backed only; no scripted lineage categorization",
+  "reviews": {
+    "599": {
+      "classification": "open_high_gap",
+      "themes": [
+        "sync"
+      ],
+      "review_status": "integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "P1:upload-notification-crash",
+      "linked_prs_followed": "",
+      "notes": "State=open. #530 gap: upload foreground crash/concurrent sessions. Title=Stop the upload foreground service from crashing the app [Returning online and sync changes Audit]. Comments=1. Body: Found during the returning online and synchronizing changes audit (#530, epic #526).  **Severity:** High   **Launch blocker:** To be decided with product   **Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), local debug build of",
+      "state": "open",
+      "title": "Stop the upload foreground service from crashing the app [Returning online and sync changes Audit]"
+    },
+    "574": {
+      "classification": "closed_partial_parent_of_607",
+      "themes": [
+        "qa",
+        "claim"
+      ],
+      "review_status": "integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "P1:maestro-ownership-fixtures",
+      "linked_prs_followed": "582",
+      "notes": "State=closed. Parent of open #607 (conflict/open-peer/claim restore deferred). Title=Maestro E2E + safe fixtures for chapter ownership, taken warning, and online claim. Comments=2.",
+      "state": "closed",
+      "title": "Maestro E2E + safe fixtures for chapter ownership, taken warning, and online claim"
+    },
+    "611": {
+      "classification": "closed_related_to_271",
+      "themes": [
+        "claim",
+        "sync"
+      ],
+      "review_status": "integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "P0:offline-claim-404-takes",
+      "linked_prs_followed": "",
+      "notes": "State=closed. Companion to #271/#530/#533 offline-claim-before-upload. Title=Push pending offline claims before the reconnect upload and the chapter-list refresh [Offline chapter assignment Audit]. Comments=0. Closed does not auto-clear open #271.",
+      "state": "closed",
+      "title": "Push pending offline claims before the reconnect upload and the chapter-list refresh [Offline chapter assignment Audit]"
+    },
+    "620": {
+      "classification": "closed_sync_ux_gap",
+      "themes": [
+        "sync"
+      ],
+      "review_status": "integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "P1:sync-ux-reliability",
+      "linked_prs_followed": "",
+      "notes": "State=closed. From #530 retest 2026-09-30. Title=Do not treat SQLite read errors as zero pending uploads [Returning online and sync changes Audit]. Comments=0. Dev-dated; distinct from QA #721.",
+      "state": "closed",
+      "title": "Do not treat SQLite read errors as zero pending uploads [Returning online and sync changes Audit]"
+    },
+    "621": {
+      "classification": "closed_sync_ux_gap",
+      "themes": [
+        "sync"
+      ],
+      "review_status": "integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "P1:sync-ux-reliability",
+      "linked_prs_followed": "",
+      "notes": "State=closed. From #530 retest 2026-09-30. Title=Stop the Sync icon flashing pending before All synced [Returning online and sync changes Audit]. Comments=0. Dev-dated; distinct from QA #721.",
+      "state": "closed",
+      "title": "Stop the Sync icon flashing pending before All synced [Returning online and sync changes Audit]"
+    },
+    "622": {
+      "classification": "closed_sync_ux_gap",
+      "themes": [
+        "sync"
+      ],
+      "review_status": "integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "P1:sync-ux-reliability",
+      "linked_prs_followed": "",
+      "notes": "State=closed. From #530 retest 2026-09-30. Title=Warn about unsynced recordings on drawer Sign Out [Returning online and sync changes Audit]. Comments=0. Dev-dated; distinct from QA #721.",
+      "state": "closed",
+      "title": "Warn about unsynced recordings on drawer Sign Out [Returning online and sync changes Audit]"
+    },
+    "528": {
+      "classification": "open_audit_subissue",
+      "themes": [
+        "qa"
+      ],
+      "review_status": "integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "P1:audit-still-open",
+      "linked_prs_followed": "",
+      "notes": "State=open. Epic #526 sub-audit. Historical assessment docs superseded by product-behavior. Comments=4. Last @JonathanSeehagen 2026-10-18.",
+      "state": "open",
+      "title": "Play, record, and re-record audio Audit"
+    },
+    "529": {
+      "classification": "open_audit_subissue",
+      "themes": [
+        "qa"
+      ],
+      "review_status": "integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "P1:audit-still-open",
+      "linked_prs_followed": "",
+      "notes": "State=open. Epic #526 sub-audit. Historical assessment docs superseded by product-behavior. Comments=5. Last @JonathanSeehagen 2026-10-18.",
+      "state": "open",
+      "title": "Going offline Audit"
+    },
+    "531": {
+      "classification": "open_audit_subissue",
+      "themes": [
+        "qa"
+      ],
+      "review_status": "integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "P1:audit-still-open",
+      "linked_prs_followed": "",
+      "notes": "State=open. Epic #526 sub-audit. Historical assessment docs superseded by product-behavior. Comments=3. Last @JonathanSeehagen 2026-10-18.",
+      "state": "open",
+      "title": "Viewing and listening to resources Audit"
+    },
+    "533": {
+      "classification": "open_audit_subissue",
+      "themes": [
+        "qa"
+      ],
+      "review_status": "integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "P1:audit-still-open",
+      "linked_prs_followed": "",
+      "notes": "State=open. Epic #526 sub-audit. Historical assessment docs superseded by product-behavior. Comments=3. Last @JonathanSeehagen 2026-10-18.",
+      "state": "open",
+      "title": "Offline chapter assignment Audit"
+    },
+    "534": {
+      "classification": "open_audit_subissue",
+      "themes": [
+        "qa"
+      ],
+      "review_status": "integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "P1:audit-still-open",
+      "linked_prs_followed": "",
+      "notes": "State=open. Epic #526 sub-audit. Historical assessment docs superseded by product-behavior. Comments=4. Last @JonathanSeehagen 2026-10-18.",
+      "state": "open",
+      "title": "Pericope view Audit"
+    },
+    "147": {
+      "classification": "closed_download_queue",
+      "themes": [
+        "sync"
+      ],
+      "review_status": "integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "P2:download-queue",
+      "linked_prs_followed": "",
+      "notes": "State=closed. Download queue on Sync. #530 listed open with PRs #272/#436 merged \u2014 remaining AC uncertain. Comments=2.",
+      "state": "closed",
+      "title": "Add Download Queue Progress Bar to Coming Back Online Screen"
+    },
+    "291": {
+      "classification": "closed_canonical_auth",
+      "themes": [
+        "sync"
+      ],
+      "review_status": "integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "",
+      "linked_prs_followed": "",
+      "notes": "State=closed. Canonical session durability; #292 closed as duplicate of this (2026-08-06). Comments=2.",
+      "state": "closed",
+      "title": "Offline-first auth session durability (persist, soft reauth, per-request tokens, multi-account)"
+    },
+    "546": {
+      "classification": "closed_transport_policy",
+      "themes": [
+        "sync"
+      ],
+      "review_status": "integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "",
+      "linked_prs_followed": "",
+      "notes": "State=closed. One transport policy upload+download; #530 audited #559 head; hygiene notes #559 merged 2026-09-30. Comments=1.",
+      "state": "closed",
+      "title": "Bug: Download start ignores Wi\u2011Fi/cellular gate that blocks Sync Now"
+    }
+  }
+}

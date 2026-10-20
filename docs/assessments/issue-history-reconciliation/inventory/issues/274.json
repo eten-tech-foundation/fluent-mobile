@@ -1,0 +1,25 @@
+{
+  "issue_number": 274,
+  "fetched_at_utc": "2026-10-20T00:35:52Z",
+  "issue": {
+    "number": 274,
+    "title": "Require Closes #NNN only on PRs targeting main (stacked-PR tracker guardrail)",
+    "state": "closed",
+    "body": "### Problem statement\n\nGitHub only auto-closes issues when a PR with `Closes #NNN` / `Fixes #NNN` merges into the **default branch**. Stacked PRs that merge into a feature branch (base \u2260 `main`) leave issues open even when the code later lands on `main` via a later squash.\n\nThis caused tracker drift during the 2026-07 audit:\n\n- #105 stayed open after PR #251 (`Closes #105`) because base was `mrace/feature/103-harden-user-projects-fk`, not `main`. Code reached `main` via #248.\n- #233 stayed open after PR #254 (`Closes #233`) because base was `mrace/feature/176-review-scrub-seekable`. Remux is still only on that stack / PR #252 until it merges to `main`.\n\n### Scope\n\n- Update delivery / issue-tracking docs (and optionally `.cursor/rules/delivery.mdc`) so agents and humans:\n  - Prefer `Closes #NNN` **only** when the PR base is `main` and the PR completes the issue.\n  - On stacked PRs, use `Part of #NNN` (no closing keyword) and close the issue from the final-to-`main` PR (or manually after merge).\n- Optionally add a short checklist item to the PR template Reviewer checklist.\n\n### Out of scope\n\n- Changing GitHub org rules / required status checks (unless a cheap Actions check is agreed later).\n- Rewriting historical stacked PR history.\n\n### Acceptance criteria\n\n- [ ] `docs/issue-tracking.md` documents the stacked-PR closing rule with the #105/#233 examples (or equivalent).\n- [ ] Delivery rules / PR template point authors at the same rule.\n- [ ] New developer / agent onboarding references the rule in one sentence.\n\n### Verification\n\n- [ ] Docs reviewed against a hypothetical stacked PR (base \u2260 main) \u2014 would not claim auto-close.\n- [ ] No code behavior change required.\n\n### Priority\n\nP1 \u2014 prevents recurring Project 4 / Issues drift.\n\n### Links\n\n- https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue\n- Audit close comments on #105 / #233",
+    "user": "mattrace-gloo",
+    "created_at": "2026-07-29T21:34:35Z",
+    "updated_at": "2026-07-31T07:16:55Z",
+    "closed_at": "2026-07-31T07:16:55Z",
+    "labels": [
+      "documentation"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/274",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

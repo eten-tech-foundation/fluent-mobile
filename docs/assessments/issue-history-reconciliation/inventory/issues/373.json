@@ -1,0 +1,23 @@
+{
+  "issue_number": 373,
+  "fetched_at_utc": "2026-10-20T00:36:26Z",
+  "issue": {
+    "number": 373,
+    "title": "[A+] Unit tests: useDeviceAccounts, useActiveAccountSummary, useSync",
+    "state": "closed",
+    "body": "## Summary / context\n\nPart of **A+ Test safety net**. Account switcher **panel** is tested; related hooks `useDeviceAccounts`, `useActiveAccountSummary`, and `useSync` lack unit tests.\n\n## Current vs expected\n\n**Current:** Panel + `accountSession` covered; hooks are gaps.\n\n**Expected:** Colocated unit tests for each hook\u2019s public behavior (thin is fine).\n\n## Scope\n\n**In scope**\n- Tests for the three hooks (one PR OK \u2014 small related surface)\n- Mocks for storage/session/sync emitters\n\n**Out of scope**\n- Reworking account switch UX\n- `sync.switchUser` product stub (\u2192 P2)\n\n## Acceptance criteria\n\n- [ ] `useDeviceAccounts` tested\n- [ ] `useActiveAccountSummary` tested\n- [ ] `useSync` tested (core subscribe/emit or documented equivalent)\n- [ ] Engineering-only \u2014 no Needs QA\n\n## Verification / test plan\n\n1. Targeted jest for these hooks\n2. Full CI gates\n\n## Links\n\n- Related: AccountSwitcherPanel tests; #291 (session durability \u2014 do not expand scope into that epic)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-08-25T14:17:38Z",
+    "updated_at": "2026-08-26T16:59:57Z",
+    "closed_at": "2026-08-26T16:59:57Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/373",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

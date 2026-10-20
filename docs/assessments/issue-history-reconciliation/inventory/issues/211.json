@@ -1,0 +1,23 @@
+{
+  "issue_number": 211,
+  "fetched_at_utc": "2026-10-20T00:35:25Z",
+  "issue": {
+    "number": 211,
+    "title": "Require filled PR template in delivery rules",
+    "state": "closed",
+    "body": "## Summary\n\nAgents have been opening PRs with thin ad-hoc bodies (`Details` + a short checklist) instead of filling [`.cursor/templates/pr-template.md`](.cursor/templates/pr-template.md). The template and `/create-pr` already exist; `delivery.mdc` only required title + `Closes #NNN`, so thin bodies still \u201ccomplied.\u201d\n\n## Acceptance criteria\n\n- [ ] `delivery.mdc` (alwaysApply) requires every agent-opened PR body to be filled from `.cursor/templates/pr-template.md` (TLDR, Reviewer checklist, Details with `Closes #NNN`, type, Technical changes, Testing, How to verify, Follow-ups)\n- [ ] Clarify that this applies whenever a PR is created \u2014 not only when the user types `/create-pr`\n- [ ] Point other always-on pointers (`agent-guardrails`, `commands.mdc` / issue-tracking if needed) at the same requirement so agents do not fall back to generic Summary/Test plan shapes\n- [ ] No product/runtime code changes\n\n## Verification\n\n- [ ] Read `delivery.mdc` \u2014 mandatory template section present\n- [ ] Docs/rules only; CI gates still pass if anything under `src/` is untouched",
+    "user": "mattrace-gloo",
+    "created_at": "2026-07-20T18:30:31Z",
+    "updated_at": "2026-07-23T02:53:43Z",
+    "closed_at": "2026-07-23T02:53:43Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/211",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

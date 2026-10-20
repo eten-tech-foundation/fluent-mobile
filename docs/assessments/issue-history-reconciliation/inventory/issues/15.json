@@ -1,0 +1,40 @@
+{
+  "issue_number": 15,
+  "fetched_at_utc": "2026-10-20T00:33:49Z",
+  "issue": {
+    "number": 15,
+    "title": "Auth + identity bootstrap",
+    "state": "closed",
+    "body": "## Context\n\n- Part of the mobile sync epic: #14 \n\n## Background\nNo login flow for mvp. `userId` and `userEmail` are hardcoded in `.env`\nand bootstrapped into MMKV on first launch. We then fetch the user record\nfrom the server and write it into SQLite as the FK anchor for all subsequent\nsyncs.\n\n## Tasks\n\n### MMKV bootstrap\n- [x] Read `USER_ID` and `USER_EMAIL` from `.env` at app startup\n- [x] Write both into MMKV on first launch: `userId` (int), `userEmail` (string)\n- [x] Wire `userEmail` into the existing request interceptor as the\n      `x-user-email` header on all authenticated requests\n\n### User identity fetch\n- [x] Call `GET /users/email/:email` using `userEmail` from MMKV\n- [x] Upsert the response into SQLite `users` table:\n\n| Column | Source |\n|--------|--------|\n| `id` | response `id` |\n| `username` | response `username` |\n| `email` | response `email` |\n| `first_name` | response `firstName` |\n| `last_name` | response `lastName` |\n\n## MMKV keys set here\n| Key | Value | Set when |\n|-----|-------|----------|\n| `userId` | `00` | App startup |\n| `userEmail` | `user@fluent.com` | App startup |\n\n## Acceptance criteria\n- [x] Every authenticated API request carries `x-user-email` header\n- [x] `userId` and `userEmail` are readable from MMKV immediately after app launch\n- [x] `users` table has exactly 1 row after first launch\n- [x] Re-running does not duplicate the row (upsert on `id`)",
+    "user": "Joel-Joseph-George",
+    "created_at": "2026-04-13T06:45:30Z",
+    "updated_at": "2026-07-02T19:51:18Z",
+    "closed_at": "2026-05-01T06:30:26Z",
+    "labels": [],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/15",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4285933013,
+      "user": "B3RN153",
+      "created_at": "2026-04-21T04:31:43Z",
+      "updated_at": "2026-04-21T04:31:43Z",
+      "body": "**SP6**\n\n1. Research time : (ET 4hrs)\n2. Implmentation  :(ET 2hrs)",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/15#issuecomment-4285933013"
+    },
+    {
+      "id": 4301974740,
+      "user": "B3RN153",
+      "created_at": "2026-04-23T05:38:52Z",
+      "updated_at": "2026-04-23T05:38:52Z",
+      "body": "Used op-sqlite KV Storage instead of mmkv.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/15#issuecomment-4301974740"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

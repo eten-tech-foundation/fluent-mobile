@@ -1,0 +1,67 @@
+{
+  "issue_number": 98,
+  "fetched_at_utc": "2026-10-20T00:34:29Z",
+  "issue": {
+    "number": 98,
+    "title": "Multi-take support (take_number / is_latest semantics)",
+    "state": "closed",
+    "body": "### Current state on main\n\n- Schema already has the columns (`src/db/schema.ts:87-88`):\n\n```sql\ntake_number INTEGER NOT NULL DEFAULT 1,\nis_latest INTEGER NOT NULL DEFAULT 1,\n```\n\nwith index `idx_rec_verse ON recordings(bible_text_id, is_latest)` (`:95`).\n\n- **`src/db/repository.ts` has no recording functions at all** \u2014 no insert/upsert/list for `recordings` (the #82 hook referenced an `upsertRecording` that does not exist on the current baseline).\n- **Bug to fix:** `src/db/queries.ts` joins recordings on a **non-existent column** in three aggregates:\n\n```sql\n-- queries.ts:66, :284, :334\nLEFT JOIN recordings r ON r.chapter_assignment_id = ca.id AND r.is_latest = 1\n```\n\nThe `recordings` table has **`bible_text_id`**, not `chapter_assignment_id`, so these joins fail/return nothing at runtime (errors are swallowed \u2192 recording counts are always 0). Recordings link to a verse via `bible_text_id \u2192 bible_texts`, and `bible_texts` map to a chapter via `(bible_id, book_id, chapter_number)`.\n\n### Problems / why\n\n- Without repository functions, the audio engine (#95/#97) cannot persist takes.\n- Multi-take semantics (only one `is_latest=1` per verse, monotonically increasing `take_number`) are unimplemented.\n- The `chapter_assignment_id` join means project/chapter recording aggregates (`getProjectsWithSummary`, `getProjectChapters`, `getMyWorkChapters`, `getPendingUploadCount` interplay) are silently broken.\n\n### Target design\n\nAdd repository functions and correct the join to go through `bible_text_id`.\n\n```ts\n// src/db/repository.ts\nexport async function addRecordingTake(input: {\n bibleTextId: number; localFilePath: string;\n durationMs?: number; fileSizeBytes?: number;\n}): Promise<string> {\n // in one transaction:\n // 1) UPDATE recordings SET is_latest = 0 WHERE bible_text_id = ? AND is_latest = 1\n // 2) take_number = (MAX(take_number) for bible_text_id) + 1\n // 3) INSERT new row with is_latest = 1, sync_status = 'pending', id = <uuid/text>\n}\nexport async function getLatestRecordingForVerse(bibleTextId: number): Promise<Recording | null>;\nexport async function getTakesForVerse(bibleTextId: number): Promise<Recording[]>;\n```\n\nFix the aggregate join (correlate via verse \u2192 chapter):\n\n```sql\nLEFT JOIN recordings r\n ON r.is_latest = 1\n AND r.bible_text_id IN (\n SELECT bt.id FROM bible_texts bt\n WHERE bt.bible_id = ca.bible_id AND bt.book_id = ca.book_id\n AND bt.chapter_number = ca.chapter_number\n )\n```\n\n(Or precompute a chapter\u2192bible_text mapping; choose the simplest correct form and add a covering index if needed.)\n\n### Implementation steps\n\n1. Add `addRecordingTake`, `getLatestRecordingForVerse`, `getTakesForVerse` to `repository.ts` (transactional; flip `is_latest`, bump `take_number`).\n2. Fix the three `r.chapter_assignment_id = ca.id` joins in `queries.ts` to correlate via `bible_text_id`/`bible_texts`.\n3. Wire `addRecordingTake` into the verse-audio state machine (#97) on `STOP`.\n4. Ensure `is_latest` uniqueness per verse (exactly one latest); deleting the latest promotes the previous take (define behavior).\n5. Add `Recording` DB types in `src/types/db/types.ts`.\n6. Unit-test multi-take logic against an in-memory/op-sqlite mock: take numbering, single latest, aggregate counts non-zero.\n\n### Acceptance criteria\n\n- [ ] Repository can add a take that bumps `take_number` and sets `is_latest=1` while clearing the prior latest, in one transaction.\n- [ ] Exactly one `is_latest=1` row per `bible_text_id`.\n- [ ] `queries.ts` aggregates join recordings via `bible_text_id` (no `chapter_assignment_id` reference) and return correct non-zero counts when recordings exist.\n- [ ] Deleting the latest take promotes the previous take (or clears latest if none).\n- [ ] Unit tests cover numbering, latest-flip, delete/promote, and aggregate correctness.\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Tests default `EXPO_PUBLIC_API_BASE_URL=http://localhost:9999` via `jest.env.cjs`; **no live API required** \u2014 runs against local SQLite/mocked DB.\n- Do **not** use `FLUENT_USER_EMAIL`.\n\n### Out of scope\n\n- The recording/playback engines (#95/#96) and state machine (#97).\n- Recordings \u2194 assignment/user linkage and the `assigned_user_id` FK restore (#99 / #103) \u2014 cross-link, do not duplicate.\n\n### Links\n\n- Epic: #116\n- Related: #71 (multi-take), #99 (recordings schema/linkage), #100 (upload reads latest pending)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:45:59Z",
+    "updated_at": "2026-07-23T03:37:27Z",
+    "closed_at": "2026-07-23T03:37:27Z",
+    "labels": [
+      "enhancement",
+      "SP 1"
+    ],
+    "comments": 5,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/98",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4825242340,
+      "user": "mattrace-gloo",
+      "created_at": "2026-06-28T07:25:43Z",
+      "updated_at": "2026-06-28T07:25:43Z",
+      "body": "Split out: the broken `r.chapter_assignment_id` join is now tracked as its own bug in #121.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/98#issuecomment-4825242340"
+    },
+    {
+      "id": 4906614579,
+      "user": "fel-cesar",
+      "created_at": "2026-07-07T17:29:44Z",
+      "updated_at": "2026-07-07T17:29:44Z",
+      "body": "Superseded by PR #158 (#49). The recording engine / state machine / multi-take wiring described here is implemented in `src/hooks/useRecorder.ts` + `src/app/tabs/drafting/record/hooks/useVerseRecorder.ts`, built on `expo-audio` (no Simform / react-native-fs) with mocked unit tests. It was delivered as one fused module rather than the thin-engine/state-machine/multi-take split originally scoped here.\n\nProposed resolution: **close as implemented-via-#158**, unless we specifically want to refactor toward the original layered split \u2014 in which case this should be rewritten as a \"refactor #158's recorder\" task. See the reconciliation note on #158 for the full AC mapping.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/98#issuecomment-4906614579"
+    },
+    {
+      "id": 4929689224,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-09T21:26:39Z",
+      "updated_at": "2026-07-09T21:26:39Z",
+      "body": "@fel-cesar You didn\u2019t fuse \u201clayers\u201d per say; you landed a vertical slice in one PR. In our stack, that\u2019s hook + service + repository + screen, not modules.\n\n\u201cModule\u201d here means native module, specifically expo-audio.\n\n#98 is repository work. #158 covered part of it, but not delete/promote, so we should keep #98 open for now.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/98#issuecomment-4929689224"
+    },
+    {
+      "id": 4994970949,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-16T17:51:35Z",
+      "updated_at": "2026-07-16T17:51:35Z",
+      "body": "**Correction for shared-device cardinality (PR #158 rewrite)**\n\nAC that says \u201cone `is_latest` per `bible_text_id`\u201d (verse-global) is outdated relative to #87 / #105:\n\n- On a **shared device SQLite DB**, the local invariant is **one latest recording per `(bible_text_id, user_id)`** \u2014 User A\u2019s re-record must not demote or delete User B\u2019s draft for the same verse.\n- Server-side (API [fluent-api#224](https://github.com/eten-tech-foundation/fluent-api/pull/224)) remains **one recording per `(project_unit_id, bible_text_id)`** (last upload wins / `uploaded_by` attribution).\n\nPlease update #98 AC when that ticket is picked up so multi-take / history UI doesn\u2019t assume a single global latest on shared devices.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/98#issuecomment-4994970949"
+    },
+    {
+      "id": 5028028979,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-20T22:51:38Z",
+      "updated_at": "2026-07-20T22:51:38Z",
+      "body": "**AC note (shared-device cardinality):** Schema still has no `recordings.user_id` (#99 / #105). This PR implements **one `is_latest` per `bible_text_id`** as originally written. When `user_id` lands on the table, follow-up should scope latest/take history to `(bible_text_id, user_id)` per the 2026-07-16 correction on this issue.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/98#issuecomment-5028028979"
+    }
+  ],
+  "comments_fetched_count": 5,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

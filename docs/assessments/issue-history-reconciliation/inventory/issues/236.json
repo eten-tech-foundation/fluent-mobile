@@ -1,0 +1,25 @@
+{
+  "issue_number": 236,
+  "fetched_at_utc": "2026-10-20T00:35:33Z",
+  "issue": {
+    "number": 236,
+    "title": "Fix blank Record tab, drafting chrome, and draft playback footguns",
+    "state": "closed",
+    "body": "## Summary\n\nCritical post-merge fix for drafting/Record after the Record stack landed: blank Record tab (expo-audio / mount lifetime), Lovable chrome parity, mic session not releasing after stop, take playback stuck at 0:00, and related navigation/guard bugs.\n\n## Acceptance criteria\n\n- [ ] Opening a chapter / Record tab loads (no blank screen from unresolved audio modules or mount teardown)\n- [ ] Bible verse tap selects verse and opens Record\n- [ ] Tab order Bible \u2192 Resources \u2192 Record; drafting chrome matches Lovable for built states\n- [ ] Stop recording releases mic; leaving after stop does not show Recording in progress\n- [ ] Draft take play shows real duration and advancing time (source dock remains stub \u2192 #235)\n- [ ] Unit tests for engines / Record / tab bar pass; Android device QA recorded on PR\n\n## Out of scope\n\n- Real source-audio fetch/playback (#235)\n- Full Resources content (#188+)\n- Kill-safe multi-segment pause remux epic work\n\n## Links\n\nRelated: #49 (Record tab), #96 (waveform decision), #235 (source audio stub follow-up)",
+    "user": "mattrace-gloo",
+    "created_at": "2026-07-23T05:03:13Z",
+    "updated_at": "2026-07-23T05:14:10Z",
+    "closed_at": "2026-07-23T05:14:10Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/236",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

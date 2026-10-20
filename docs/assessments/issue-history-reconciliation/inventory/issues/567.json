@@ -1,0 +1,42 @@
+{
+  "issue_number": 567,
+  "fetched_at_utc": "2026-10-20T00:37:51Z",
+  "issue": {
+    "number": 567,
+    "title": "Restore kill-safe recovery and background auto-pause for in-progress takes [Play, record, and re-record audio Audit]",
+    "state": "closed",
+    "body": "Found during the play/record/re-record audio audit (#528, epic #526).\n\n**Severity:** High  \n**Launch blocker:** To be decided with product  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), merged `main` @ `d5b9e64`, `dev.api.fluent.bible` (scenarios B.6, E.22)\n\n## Summary\n\n#49 requires that a paused take is flushed to disk and can be recovered after an app kill, and that backgrounding the app during recording auto-pauses the take. The original implementation (PR #158, `useRecordingRecovery`) was closed unmerged when the Record tab was rebuilt. On `main`:\n\n- `upsertPausedTake` (`src/services/pausedTakes.ts`) has no callers, and no recovery prompt exists. Only the #170 cleanup paths remain.\n- `useRecordingEngine` handles only `AppState` \u2192 `active` (#486). Nothing pauses the take on `background`.\n- Capture uses `RecordingPresets.HIGH_QUALITY` (`.m4a`). The file is not valid until `stop()` writes the `moov` atom, so a killed process leaves no playable partial take.\n\n## Expected\n\n- Backgrounding the app during recording auto-pauses the take, the same as a manual Pause.\n- A paused or killed take survives an app kill. On return, the translator is offered Resume or Discard for that verse.\n- Paused takes have no timeout.\n\n## Actual\n\n- B.6: pressing Home during recording does **not** pause the take.\n- E.22: after pause, kill, and relaunch, the take is lost; the verse comes back with no takes and no recovery prompt.\n\n## Steps to reproduce\n\n1. Open a verse on the Record tab, record for about 10 s, then tap Pause.\n2. Swipe the app away from Recents.\n3. Relaunch the app and open the same verse.\n4. Observe: no recovery prompt, and no partial take.\n\nBackground variant (B.6): while recording, press Home for 30 s, then return. Recording is still running and has not paused.\n\n## Acceptance criteria\n\n- [ ] Backgrounding during `recording` dispatches the same path as Pause.\n- [ ] The partial capture is persisted in a kill-safe way. Either restore ADTS `.aac` segment capture with the #233 remux on commit, or use an equivalent approach.\n- [ ] A paused-take marker is written on pause and cleared on stop or discard.\n- [ ] On relaunch, an unresolved marker prompts Resume or Discard for its verse. Unresolvable markers keep the #170 cleanup behavior.\n- [ ] Unit tests cover marker write/clear and the recovery prompt decision.\n- [ ] Android device QA: pause \u2192 kill \u2192 relaunch \u2192 resume \u2192 stop, and the committed take plays in full.\n\n## Related\n\n- Parent audit: #528 (epic #526)\n- Spec: #49\n- Prior implementation: PR #158 (closed, reference only)\n- Related: #170, #176, #233, #486\n- Related gap: #568 (drawer navigation discards the take)\n- Assessment: `docs/assessments/play-record-rerecord-audio/README.md` (PR #566)\n\n\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-23T17:22:15Z",
+    "updated_at": "2026-10-14T19:53:47Z",
+    "closed_at": "2026-10-12T15:38:55Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/567",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 6165971878,
+      "user": "Roslin22",
+      "created_at": "2026-10-14T10:10:29Z",
+      "updated_at": "2026-10-14T10:10:29Z",
+      "body": "**Test Results \u2013 567**\n\n- Verified that recording automatically pauses when the app moves to the background.\n- Verified that a paused recording is preserved when the app is killed and can be recovered after relaunch.\n- Verified that the Resume and Discard options appear for the corresponding verse when reopening the app.\n- Verified that the paused-take marker is handled correctly when stopping or discarding a recording.\n- Verified that the recording can be resumed, stopped, and saved successfully.\n- Confirmed that the committed take plays completely after recovery.\n- Unit tests for marker handling and recovery-prompt decisions were not verified as part of manual testing.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/567#issuecomment-6165971878"
+    },
+    {
+      "id": 6177044696,
+      "user": "chadw-eten",
+      "created_at": "2026-10-14T19:53:47Z",
+      "updated_at": "2026-10-14T19:53:47Z",
+      "body": "\u2705 ",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/567#issuecomment-6177044696"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

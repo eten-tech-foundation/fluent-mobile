@@ -1,0 +1,72 @@
+{
+  "issue_number": 408,
+  "fetched_at_utc": "2026-10-20T00:36:37Z",
+  "issue": {
+    "number": 408,
+    "title": "Update Bible Tab for Verse/Pericope Toggle",
+    "state": "open",
+    "body": "The Bible tab's audio player and unit cards need to render at whichever granularity is active. With the verse/pericope toggle making the working unit a live per-user setting, both components need to re-render at the active granularity whenever the toggle changes.\n\n## Functional Requirements\n\n### Source Audio Player\n- Update the unit counter label to reflect the active mode, e.g. \"Pericope 2 / 5\" in pericope mode or \"Verse 3 / 12\" in verse mode.\n- In pericope mode, show verse-boundary tick marks on the waveform whenever the API provides verse timestamp data within the pericope audio.\n- In verse mode, show verse tick marks on the waveform whenever the API provides verse timestamp data for the active verse.\n- Fall back to a plain continuous scrubber, with no tick marks, whenever no subdivision timestamp data exists for the active unit, in either mode.\n\n### Unit Cards\n- Render one card per pericope in pericope mode, or one card per verse in verse mode.\n- Set each card's title to the pericope range or verse reference; never show a numbered label like \"Pericope 1\".\n- Show a checkmark per unit indicating recorded status, green (`#16A34A`): one checkmark per verse in verse mode, one per pericope in pericope mode.\n- Show a distinct \"partially recorded\" status indicator, `li:loader-circle` in amber (`#FBBF24`), separate from the standard recorded checkmark, for a pericope where only some of its verses have been recorded.\n- Re-render the card list at the new granularity and re-run auto-select of the last unrecorded unit whenever the toggle changes.\n- Render a pericope that spans multiple chapters as a card in every chapter's Unit Card list it spans; the card is identically interactive (play, record, edit) from any of those chapters.\n- Attribute a cross-chapter pericope to its starting chapter only for that chapter's progress/phase status; chapters it spills into do not count it toward their own progress.\n\n#### Pericope View\n\n<img width=\"300\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/da4efca8-eec7-4704-bfec-26d3555c1271\" />\n\n#### Verse View\n\n<img width=\"300\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/f25afd04-d68a-438f-9de8-bf263ecd0d7e\" />\n\n\n> **Note:** The \"partially recorded\" indicator logic overlaps with the cross-granularity playback ticket (#411) \u2014 confirm which ticket owns building the indicator itself versus the playback behavior behind it.\n\n> **Note 2:** This ticket depends on #412 (Build Source Audio Player for Bible Tab) \u2014 the live app's Bible tab has no audio player yet, so the baseline player must exist before this ticket's toggle-driven updates can be built.\n\n> **Note 3:** Whether the API currently provides sub-verse timestamp data (verse mode) or verse timestamp data within pericope audio (pericope mode) is unconfirmed for either; whichever is missing falls back to a plain scrubber until it exists. Confirm with engineering before build.\n\n> **Note 4:** Cross-chapter pericope cards require the pericope-to-chapter mapping data (from USFM) to know which chapters a given pericope spans \u2014 confirm this is available alongside the existing pericope boundary data.",
+    "user": "chadw-eten",
+    "created_at": "2026-08-27T18:18:49Z",
+    "updated_at": "2026-09-21T11:10:22Z",
+    "closed_at": null,
+    "labels": [],
+    "comments": 6,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/408",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5480393258,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-31T15:15:22Z",
+      "updated_at": "2026-08-31T15:15:22Z",
+      "body": "## Engineering context\n\n### Product intent\nWhen drafting unit mode is Verse vs Pericope, Bible tab unit cards and the source player re-render at that granularity (counter label, optional tick marks, recorded/partial status, cross-chapter pericope cards + progress attribution).\n\n### What exists today\n- Bible tab is a flat verse list with a green/gray `AudioLines` affordance (`recordedVerseNumbers`) \u2014 not unit cards, no check / partial states.\n- No pericope tables, queries, or `FluentAPI` pericope client on mobile.\n- Source player baseline is #412; ticks are explicitly deferred from #412 to here.\n- Mode preference: #407 (PR #434 in flight) \u2014 local per-user KV; account sync deferred.\n\n### Ownership clarification (already partly in the ticket)\n- **Build** the \u201cpartially recorded\u201d indicator UI here.\n- **#411** owns playback behavior when coverage is incomplete (play recorded verses in order, stop).\n- Counter/mode switching and ticks belong here; baseline player chrome belongs in #412.\n\n### Alignment notes\n- Tick marks: fluent-api source-audio may return **verse** `verseTimestamps` (DBL). **Sub-verse** timestamps are not in the contract \u2014 fall back to a plain scrubber in verse mode until/unless that data exists (matches Note 3).\n- Cross-chapter pericopes: API `GET /projects/{id}/pericopes/{bookCode}/{chapter}` returns groups with `{ chapterNumber, verseNumber }[]`, but the server currently **filters rows to the requested chapter only**, so the full multi-chapter range is not available from one call. Cross-chapter card + full-range title AC needs either an API expansion or a careful multi-chapter client merge \u2014 worth confirming with API before building that slice.\n- Card titles: use pericope verse range / verse reference \u2014 never `\"Pericope N\"`. Status colors: recorded `#16A34A`; partial `li:loader-circle` amber `#FBBF24` \u2014 map through theme tokens where possible (`theme.colors.syncSynced` already used for recorded verses).\n\n### Suggested approach\n1. Depend on #412 player + #407 mode + mobile pericope sync into SQLite (API surface exists; mobile schema/client/sync do not yet).\n2. Derive unit list from mode; auto-select last unrecorded unit on toggle change.\n3. Player counter: `Verse n / m` vs `Pericope n / m`; ticks only when timestamp data exists.\n4. Progress: attribute cross-chapter pericopes to **starting chapter only**.\n\n### Dependencies\n- **Blocked on:** #412, #407, mobile pericope sync (schema + `FluentAPI` + sync step).\n- Soft-blocked on full-span chapter pericopes from API for honest cross-chapter AC.\n- Coordinates with #411 on partial indicator vs playback.\n\n### API / foundation gaps (do not invent in this PR)\n1. **Mobile:** Sync project pericopes \u2192 SQLite (`FluentAPI.getChapterPericopes`, schema, sync, queries). Referenced from #407 Note 2; not implemented yet.\n2. **fluent-api:** Chapter pericopes that touch the chapter should ideally include **all** verses in the pericope (other chapters), not only in-chapter rows \u2014 needed for cross-chapter cards / full-range titles.\n3. **Optional fluent-api:** Sub-verse timestamps on source-audio if verse-mode ticks are required beyond the plain-scrubber fallback.\n\n### Out of scope\n- Settings toggle UI (#407)\n- Record tab title/waveform mode (#409)\n- Take labeling / 5-cap (#410)\n- Stitching playback (#411)",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/408#issuecomment-5480393258"
+    },
+    {
+      "id": 5498925224,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-01T19:00:52Z",
+      "updated_at": "2026-09-01T19:00:52Z",
+      "body": "**Blocked on:** [#438](https://github.com/eten-tech-foundation/fluent-mobile/issues/438) \u2014 Sync pericope boundaries to local SQLite (data model + post-login sync).\n\nThat ticket covers schema, `FluentAPI.getChapterPericopes`, repository writes, sync step, and offline queries. Implement #438 (or land it first) before building unit cards / mode-driven rendering here \u2014 avoids stubbing pericope lists in UI hooks.\n\nAlso still depends on #412 (baseline player) and #407 (mode preference).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/408#issuecomment-5498925224"
+    },
+    {
+      "id": 5697414934,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-09-16T12:28:10Z",
+      "updated_at": "2026-09-16T12:28:10Z",
+      "body": "@Roslin22, Nightly QA checklist \u2014 #408 Bible tab Verse \u2194 Pericope\nPR: https://github.com/eten-tech-foundation/fluent-mobile/pull/535\nChecklist generated with AI assistance.\n\nChecklist\n1. Settings \u2192 Verse: Bible tab shows verse rows (number, text, AudioLines waveform). Play source audio \u2192 playing verse gets the light-blue row highlight.\n2. Settings \u2192 Pericope: loading spinner while units load (no verse-row flash). Cards show range titles (e.g. Mark 14:1\u20132), not \u201cPericope N\u201d. Cards start collapsed; tap to expand/collapse. Expanded body: one paragraph with small superscript verse numbers. Collapsed preview: no verse numbers. Expanded: light-blue fill + primary 1px border. Collapsed: no border. Expanding does not scroll the list.\n3. Toggle Verse \u2194 Pericope: list re-renders and auto-selects the last not-fully-recorded unit.\n4. Tap a pericope card: selection stays on Bible (does not jump to Record).\n5. Source audio caption shows \u201cVerse N / total\u201d or \u201cPericope N / total\u201d.\n6. Waveform boundary ticks (optional): only if the project\u2019s source audio has verseTimestamps (DBL/Aquifer). Many projects have none \u2014 plain scrubber is OK. When timestamps exist, confirm ticks appear.\n\nPass when: Verse and pericope modes match the #408 mocks for list layout, selection, recording status, and player caption. Waveform ticks only when the API provides verse timestamps.\n\nAlso from Matt\u2019s review on the PR:\n- Pericope cards with partial recording icons\n- Source-audio boundary ticks when verseTimestamps exist\n- Toggling Verse \u2194 Pericope with an in-progress source-audio play",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/408#issuecomment-5697414934"
+    },
+    {
+      "id": 5728779028,
+      "user": "Roslin22",
+      "created_at": "2026-09-18T10:34:21Z",
+      "updated_at": "2026-09-18T10:34:21Z",
+      "body": "**Verified Results:#408**\n\n- Verified that Unit Cards and the source audio player update correctly when switching between Verse and Pericope modes.\n- Verified that one card is displayed per verse in Verse mode and one card per pericope in Pericope mode.\n- Verified that recorded units show the correct checkmark and partially recorded pericopes show the partial recording indicator.\n- Verified that a cross-chapter pericope is displayed in both chapters and can be played, recorded, and edited from either chapter.\n\n**Issues Identified**\n\n- In Pericope mode, the app does not automatically select the last unrecorded unit.\n- When scrubbing the source audio in the Bible tab, playback sometimes starts again from the beginning instead of the selected position.\n\n**Suggestion**\n\n- While the source audio is playing, highlight the corresponding verse in the source Bible text so users can easily identify which verse is currently playing.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/408#issuecomment-5728779028"
+    },
+    {
+      "id": 5735368436,
+      "user": "chadw-eten",
+      "created_at": "2026-09-18T19:49:32Z",
+      "updated_at": "2026-09-18T19:49:32Z",
+      "body": "Since pericopes are large and not making a long list to sort through, I am not too concerned about it not selecting the last unrecorded unit in pericope mode.\n\nI am concerned about scrubbing not working sometimes. This needs to be fixed.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/408#issuecomment-5735368436"
+    },
+    {
+      "id": 5759529840,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-09-21T11:10:22Z",
+      "updated_at": "2026-09-21T11:10:22Z",
+      "body": "@chadw-eten, @Roslin22, \n\nI will check it and keep you posted!",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/408#issuecomment-5759529840"
+    }
+  ],
+  "comments_fetched_count": 6,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,34 @@
+{
+  "issue_number": 40,
+  "fetched_at_utc": "2026-10-20T00:34:03Z",
+  "issue": {
+    "number": 40,
+    "title": "Build Settings Page with Gear Icon Entry Point",
+    "state": "closed",
+    "body": "Several features across Fluent Mobile require a persistent settings surface \u2014 cellular sync opt-in, proactive offline preparation, and logout. Without a defined entry point, these settings have no home and dependent tickets cannot be finalized. A gear icon in the top-left of the home screen header provides a discoverable entry point; a full-screen Settings page sits behind it. Sub-page headers are unaffected.\n\n## Functional Requirements\n\n### Gear Icon Entry Point\n- Add a settings icon (`li:settings`) to the top left of the home screen header.\n- Tapping it navigates to the Settings page.\n- The icon appears only on the home screen header \u2014 sub-page headers are unaffected.\n\n### Page Header\n- Display \"Settings\" as the page title.\n- Include a back button (`li:chevron-left`) in the top left.\n\n### Offline Preparation\n- Display a \"Prepare for Offline\" row with a right-facing arrow (`li:chevron-right`) that navigates to the Prepare for Offline page (#39).\n\n### Sync\n- Display an \"Upload over cellular\" toggle, off by default.\n- When off, the app uploads only over WiFi; when on, the app uploads over cellular without an additional prompt.\n\n### Account\n- Display a \"Log out\" option that signs the user out and returns them to the login page.\n- If unsynced work exists on the device, prompt the user to confirm before logging out.\n\n<img width=\"393\" height=\"489\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/1f366471-e28c-482f-8b1d-935d1faff9f9\" />",
+    "user": "chadw-eten",
+    "created_at": "2026-05-20T17:38:26Z",
+    "updated_at": "2026-07-02T19:36:28Z",
+    "closed_at": "2026-06-28T22:30:57Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/40",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4827599618,
+      "user": "fel-cesar",
+      "created_at": "2026-06-28T22:30:57Z",
+      "updated_at": "2026-06-28T22:30:57Z",
+      "body": "Approved and merged. Also we will iterate over this screen and functionality in the near future.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/40#issuecomment-4827599618"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

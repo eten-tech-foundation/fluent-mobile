@@ -1,0 +1,23 @@
+{
+  "issue_number": 367,
+  "fetched_at_utc": "2026-10-20T00:36:19Z",
+  "issue": {
+    "number": 367,
+    "title": "[A+] CI-enforce architecture-guard (not warn-only) + unit tests",
+    "state": "closed",
+    "body": "## Summary / context\n\nPart of **A+ Architecture**. `scripts/architecture-guard.mjs` exists but is **warn-only** and only runs via Cursor agent hooks \u2014 not a merge gate.\n\n## Current vs expected\n\n**Current:** Guard never denies; not in GitHub Actions.\n\n**Expected:** Architecture-guard patterns are enforced in CI (dedicated job or folded into lint), with a unit test so the script cannot rot silently.\n\n## Scope\n\n**In scope**\n- Run guard in CI on PRs/main (or migrate equivalent checks into ESLint if A1 already covers them \u2014 then this ticket becomes \u201cdelete/replace warn-only hook + test\u201d)\n- Add `scripts/architecture-guard.test.cjs` (or `.ts`) covering key violation patterns\n- Keep agent hook behavior consistent (warn vs deny policy documented)\n\n**Out of scope**\n- New ESLint rule authoring if A1 already landed identical bans (coordinate; do not duplicate)\n- Product features\n\n## Acceptance criteria\n\n- [ ] Boundary violations fail a required CI check (not warn-only)\n- [ ] Guard script (or successor) has automated tests\n- [ ] Docs mention where enforcement lives\n- [ ] Engineering-only \u2014 no Needs QA\n\n## Verification / test plan\n\n1. CI job red on a synthetic violation branch / fixture\n2. `npm test` includes guard tests\n3. Local + CI green on `main`-based PR\n\n## Links\n\n- Sibling: A1 (ESLint bans)\n- Files: `scripts/architecture-guard.mjs`, `.cursor/hooks.json`\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-08-25T14:17:09Z",
+    "updated_at": "2026-08-26T16:59:33Z",
+    "closed_at": "2026-08-26T16:59:33Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/367",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

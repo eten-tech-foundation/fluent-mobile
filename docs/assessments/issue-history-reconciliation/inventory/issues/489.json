@@ -1,0 +1,32 @@
+{
+  "issue_number": 489,
+  "fetched_at_utc": "2026-10-20T00:37:10Z",
+  "issue": {
+    "number": 489,
+    "title": "Maestro foundation: harness, selectors, agent loop",
+    "state": "closed",
+    "body": "## Summary / context\n\nParent: #488 (Android Maestro E2E program).\n\nSingle foundation PR-track for Android-only Maestro: CLI/scripts/env, stable `testID`s where smokes will tap, and an **opt-in** agent/MCP loop. No domain smoke YAML beyond a trivial launch stub if needed to prove the harness.\n\n## Current vs expected\n\n**Current:** No `.maestro/`, thin Home/Settings selectors, no Maestro MCP.\n\n**Expected:** Installable harness (`maestro:install` / `doctor` / Debug+Metro setup), semantic kebab-case `testID`s on Home tabs, project/chapter rows, Settings rows, drawer gaps; `maestro:agent:up` + MCP example; **not** a `/create-pr` gate.\n\n## Scope\n\n**In scope**\n- `.maestro/config.yaml`, gitignore runtime/artifacts/`.env.maestro`\n- Android-only `scripts/maestro*.sh` + npm scripts\n- `.env.maestro.example`; durable creds path (never commit secrets)\n- `testID` contract for planned smokes (Home / lists / Settings)\n- Agent bring-up + `scripts/maestro-mcp.sh` + example MCP config\n- `EXPO_PUBLIC_E2E_MODE` only for Dev Menu / non-driveable sheets \u2014 **not** auth bypass\n\n**Out of scope**\n- Auth/nav/record/sync/multi-account flows (later children)\n- CI workflow (playbook+CI child)\n- iOS; store/production EAS E2E flags; making Maestro a merge gate\n\n## Acceptance criteria\n\n- [ ] `npm run maestro:install` + `maestro:doctor` documented and green locally\n- [ ] Debug APK + Metro + `adb reverse` path works; dismiss Expo Dev Menu handled\n- [ ] Primary Home/Settings/list selectors present for upcoming smokes\n- [ ] Agent loop documented as opt-in; no `clearState` during iteration\n- [ ] Creds never committed; production EAS profiles untouched\n\n## Verification / test plan\n\n1. Install CLI \u2192 doctor \u2192 boot emulator via scripts\n2. Confirm key `testID`s in hierarchy\n3. Optional: MCP `inspect_screen` on local emulator\n\n## Links\n\n- Refs #488\n- Absorbs former selector + agent-loop slices\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-10T19:51:59Z",
+    "updated_at": "2026-09-11T20:55:54Z",
+    "closed_at": "2026-09-11T20:55:54Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/489",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5640531966,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-11T20:55:48Z",
+      "updated_at": "2026-09-11T20:55:48Z",
+      "body": "Shipped in #500 (merged). Foundation AC covered: harness/scripts, selectors, opt-in agent loop, no secrets committed. Closing as done (Refs-linked, not auto-closed).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/489#issuecomment-5640531966"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

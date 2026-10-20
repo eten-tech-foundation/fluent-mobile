@@ -1,0 +1,35 @@
+{
+  "issue_number": 484,
+  "fetched_at_utc": "2026-10-20T00:37:06Z",
+  "issue": {
+    "number": 484,
+    "title": "Simplify nightly schedule: one cron + Slack on build complete",
+    "state": "closed",
+    "body": "## Problem\n\nNightly Preview looks unreliable / double-running, and Slack lands at the wrong time for QA.\n\n**Observed (Sep 2026):**\n\n| What | Intended | Actual |\n| --- | --- | --- |\n| APK cron `17 23 * * *` America/Los_Angeles | ~23:17 PT | Lands ~**04:30 PT** / **05:30 MT** (~5h GitHub delay) |\n| Slack cron `7 9 * * *` America/Los_Angeles | ~09:07 PT | Lands ~**12:15 PT** / **13:15 MT** (~3h delay) |\n| Actions UI | 1 useful run/day | **2 schedule fires/day** (APK + Slack-only) |\n| EAS `nightly` profile | \u2014 | **1 APK/day** (no duplicate EAS builds) |\n\nConfirmed via Actions history + Expo EAS `build_list` for project `b0919574-f268-4768-b3bd-7cfa5172bbab`.\n\nThe dual-cron design (hold Slack until Pacific business hours via pending artifact + morning delivery job) was added in #421 / fixed for delayed APK in #459. Incoming webhooks cannot mute phone push, which motivated the hold \u2014 but the second cron + delay window now produces midday Slack and confusing double runs. Timing also does not align with India morning QA (~09:00 IST \u2248 previous-day evening Mountain).\n\n## Proposed direction (simplify)\n\nPrefer a thinner design over more window/cron logic:\n\n1. **One** schedule cron (re-register thoughtfully \u2014 GitHub delay is expected).\n2. **Slack immediately** when the APK job finishes (success / skip / quiet no-APK), during that same run.\n3. Remove the morning Slack-only cron, pending artifact upload, and `deliver-pending-slack-nightly.sh` path (or leave scripts unused until deleted).\n4. Pick a target wall-clock that matches when offshore QA should see the notice (confirm desired local time: e.g. late evening Mountain / early India morning \u2014 account for ~3\u20135h GitHub delay when choosing the cron).\n5. Update docs (`docs/ci.md`, QA guides, `.github/README.md`, handoff copy).\n\n## Acceptance criteria\n\n- [ ] Single scheduled trigger for Nightly Preview (no Slack-only second cron)\n- [ ] At most one EAS `nightly` build attempt per successful schedule fire (unchanged skip-if-unchanged behavior)\n- [ ] Slack posts in the same workflow run as the build/skip outcome (no pending-artifact morning delivery)\n- [ ] Cron + docs state the intended local time and that GitHub may delay hours\n- [ ] Unit/docs tests updated for removed windows / delivery path\n- [ ] No overnight Slack requirement unless product re-asks for quiet-hours hold\n\n## Out of scope\n\n- Changing EAS profiles or Slack webhook secrets\niOS\n- Implementing until explicitly picked up (ticket only for now)\n\n## Related\n\n- #421 \u2014 dual cron + Pacific Slack hold\n- #459 / #462 \u2014 trust delayed APK cron identity\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-10T17:50:13Z",
+    "updated_at": "2026-09-11T23:49:43Z",
+    "closed_at": "2026-09-11T23:49:43Z",
+    "labels": [
+      "chore",
+      "ci"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/484",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5641934739,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-11T23:49:42Z",
+      "updated_at": "2026-09-11T23:49:42Z",
+      "body": "## Engineering-only \u2014 closed on merge\n\nPR [#517](https://github.com/eten-tech-foundation/fluent-mobile/pull/517) merged with **Needs QA? No**. Project 4 \u2192 **Done**; closing this issue.\n\n**Merged commit:** `d6cf5cb`\n\n_Note: `qa-handoff.yml` skipped because the Reviewer checklist line containing `**Needs QA?**` was parsed before the Details checkbox. Manual eng-done close applied._\n\n---\n_Post-merge eng-done handoff. See `docs/guides/qa-process.md`._",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/484#issuecomment-5641934739"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

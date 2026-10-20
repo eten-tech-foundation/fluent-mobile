@@ -1,0 +1,25 @@
+{
+  "issue_number": 90,
+  "fetched_at_utc": "2026-10-20T00:34:20Z",
+  "issue": {
+    "number": 90,
+    "title": "Harden existing Login screen to team standard",
+    "state": "closed",
+    "body": "### Context\n\n### Current state in baseline\n\n`src/app/tabs/LoginScreen.tsx` (385 lines) already implements:\n- Email/password fields with field-level + global error state (`loginFieldErrors`, `globalLoginError`), inline `isValidEmail` (`:52`), and a loading flag `isLoggingIn`.\n- Submit handler `handleLogin` (`:55`) \u2192 `FluentAPI.signIn` \u2192 `saveTempCredentials` \u2192 `setActiveToken` \u2192 `onLoginSuccess`.\n- An embedded forgot-password view (`view: 'login' | 'forgot' | 'sent'`, `:26`) \u2014 see #91.\n- Footer links to `PrivacyPolicy` / `TermsOfUse` (`:368,:375`).\n\nConcrete gaps:\n- Writes KV directly: `kvStorage.setItemSync(KV_KEYS.USER_EMAIL, response.user.email)` (`:85`) \u2014 UI reaching into storage.\n- Hard-coded hex colors instead of theme tokens: `#7a869a`, `#de350b`, `#00875a` (`:143,:193,:223,:337`); `src/theme/` exists and should be used.\n- No `accessibilityLabel` / `accessibilityRole` / `testID` on inputs and buttons.\n- A stale comment: `// Reusable inline helper template matching your web configuration` (`:138`).\n- Duplicated token plumbing (`saveTempCredentials` + `setActiveToken`) that should follow the #88 accessor contract.\n\n### Problems / why\n\n- UI directly mutating KV storage violates the layer boundary (screens should not write storage/SQL directly).\n- Hard-coded colors bypass the design system in `src/theme/` and break dark/contrast consistency.\n- Missing accessibility metadata fails a11y review and makes the screen hard to test with `@testing-library/react-native`.\n- Token plumbing should go through the hardened accessor from #88, not be re-implemented inline.\n\n### Target design\n\n- Centralize login side effects in a small handler/hook (e.g. `useLogin`) that calls the API, persists credentials (via #89 secure storage), sets the token (via #88 accessor), and updates session state \u2014 the screen stays presentational.\n- Replace all literal colors with `theme` tokens from `src/theme/`.\n- Add `accessibilityLabel`, `accessibilityRole`, and `testID` to inputs, the submit button, the password toggle, and error text (`accessibilityLiveRegion`/`role=\"alert\"` equivalent for errors).\n- Keep the existing validation UX; extract `isValidEmail` to `src/utils/` so it is unit-testable and shared with #91.\n\n### Implementation steps\n\n1. Extract `isValidEmail` to `src/utils/validateEmail.ts` (+ test).\n2. Replace direct `kvStorage` write at `:85` with a session helper (coordinate with #93); remove storage import from the screen.\n3. Swap hard-coded colors in `appStyles`/inline styles for `src/theme` tokens.\n4. Add accessibility props + `testID`s to all interactive elements and error labels.\n5. Route token persistence/setting through #88 (`authToken`) and #89 (secure storage).\n6. Remove the stale \"web configuration\" comment; tidy the `ErrorLabel` helper.\n7. Add a component test rendering the login view, asserting validation errors and a successful submit path (mocked `FluentAPI`).\n\n### Acceptance criteria\n\n- [ ] No direct `kvStorage`/SQL access from `LoginScreen`.\n- [ ] All colors come from `src/theme/`; no literal hex in the screen.\n- [ ] Inputs/buttons/errors expose `accessibilityLabel`/`accessibilityRole` and `testID`.\n- [ ] Email validation shared via `src/utils` with a unit test.\n- [ ] Successful and failed login paths covered by a `@testing-library/react-native` test (mocked API).\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Tests default `EXPO_PUBLIC_API_BASE_URL=http://localhost:9999` via `jest.env.cjs`; **no live API required** (mock `FluentAPI`).\n- jest-expo + `@testing-library/react-native`: assert validation messages, disabled state while submitting, and `onLoginSuccess` called on success.\n- Do **not** use `FLUENT_USER_EMAIL`.\n\n### Out of scope\n\n- Forgot-password extraction/hardening (#91).\n- Secure token storage migration (#89) and token accessor (#88) \u2014 consume them, don't implement here.\n- Privacy/Terms content (#92).\n\n### Links\n\n- Epic: #115\n- Related: #88, #89, #91, #92, #93\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:45:46Z",
+    "updated_at": "2026-07-02T20:11:40Z",
+    "closed_at": "2026-07-02T19:32:20Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/90",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

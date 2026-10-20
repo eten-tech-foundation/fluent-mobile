@@ -1,0 +1,25 @@
+{
+  "issue_number": 298,
+  "fetched_at_utc": "2026-10-20T00:36:04Z",
+  "issue": {
+    "number": 298,
+    "title": "Investigate intermittent multi-take Review Maximum update depth on Android devices",
+    "state": "closed",
+    "body": "## Summary / context\n\nOn physical Android devices (not the emulator), multi-take Review on the Record tab can intermittently trigger React\u2019s `Maximum update depth exceeded` error. After it appears, the app can slow down until reload. Filed as a follow-up from device QA on [#252](https://github.com/eten-tech-foundation/fluent-mobile/pull/252) / #176 \u2014 timer overlap and pre-play scrub from that review are already fixed and verified; this crash remains.\n\n## Current vs expected\n\n1. Open Record for a verse.\n2. Record Take 1 \u2192 play in Review (often stable).\n3. Record Take 2 \u2192 play Take 2 (crash can occur on first play of Take 2).\n4. Sometimes also during mid-take scrub / take switches with 2+ takes.\n\n**Frequency:** intermittent / flaky on device; not reproduced on emulator in the same flows.\n\n**Metro:** `Maximum update depth exceeded. This can happen when a component calls setState inside useEffect\u2026`\n\n**Expected:** Switching and playing multiple takes never triggers an update-depth loop or sustained UI slowdown.\n\n## Scope\n\n**In scope**\n- Root-cause the sync setState / effect loop on the take-switch + playback path\n- Fix with device-validated steps (not speculative layout/bar-count tweaks alone)\n- Regression coverage where the loop can be reproduced in JS/unit tests\n\n**Out of scope**\n- Re-litigating #176 scrub UX / remux (already covered by #252)\n- Broad Record-tab redesign\n\n## Acceptance criteria\n\n- [ ] Root cause identified (component stack + which state/effect cycle re-enters)\n- [ ] Fix lands without regressing Review scrub / multi-take play-pause\n- [ ] Physical Android QA: Record Take 1 \u2192 play \u2192 Record Take 2 \u2192 play Take 2, repeated across sessions, no update-depth error or sustained slowdown\n- [ ] Emulator still green on the same flow\n\n## Verification / test plan\n\n1. `npm run format:check && npm run lint && npm run typecheck && npm test -- --ci`\n2. **Android device (required):** multi-take play/switch repro above; capture Metro stack if it fails again.\n\n## File pointers & approach\n\nInvestigate end-to-end, one layer at a time (do not shotgun):\n\n1. `src/hooks/usePlaybackEngine.ts` \u2014 `useAudioPlayerStatus` \u2192 `setStatus` / `setPositionMs` (esp. `didJustFinish` during `replace` when switching takes)\n2. `src/hooks/useVerseAudio.ts` \u2014 `state === 'playing' && playback.status === 'idle'` \u2192 `PLAYBACK_END` race vs in-flight `playTake` / `load`\n3. `src/audio/createPlaybackEngine.ts` \u2014 load queue / `replace` while previous take is playing\n4. `src/components/ui/PlaybackProgressBar.tsx` \u2014 `onLayout` \u2194 `fittedBarCount` feedback (prior experiments were inconclusive)\n5. `src/app/tabs/RecordTab.tsx` \u2014 FlatList take rows + live `positionMs` fan-out\n\nPrior hardening on #252 (`d040166` and follow-ups: layout setState guard, status-effect deps, seek sampling) did **not** eliminate the device-only intermittent failure; treat those as incomplete, not proven root cause.\n\n## Links\n\n- Parent / source PR: https://github.com/eten-tech-foundation/fluent-mobile/pull/252\n- Related: #176 (Review scrub), #71 / #265 (multi-take Record)\n- Reviewer note (JonathanSeehagen): items 2\u20133 OK on device; item 1 still intermittent \u2014 investigate from scratch rather than more speculative tweaks.",
+    "user": "mattrace-buildmidwestern",
+    "created_at": "2026-08-04T20:46:53Z",
+    "updated_at": "2026-08-27T23:17:07Z",
+    "closed_at": "2026-08-27T23:17:07Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/298",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

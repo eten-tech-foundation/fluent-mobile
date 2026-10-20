@@ -1,0 +1,18 @@
+{
+  "retired_utc": "2026-10-20T01:07:28Z",
+  "reason": "Prevent accidental re-run overwriting accepted evidence with keyword/body-length/closed-state completion",
+  "scripts": [
+    {
+      "active": "inventory/_deepen_product_pending.py",
+      "quarantine": "inventory/provenance/retired-semantic-completion-scripts/_deepen_product_pending.py",
+      "bytes_quarantined": 10502
+    },
+    {
+      "active": "inventory/_recount_and_deepen.py",
+      "quarantine": "inventory/provenance/retired-semantic-completion-scripts/_recount_and_deepen.py",
+      "bytes_quarantined": 10314
+    }
+  ],
+  "active_behavior": "SystemExit(2) RETIRED fail-closed",
+  "counting_only": "inventory/_count_completion_readonly.py"
+}

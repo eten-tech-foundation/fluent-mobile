@@ -1,0 +1,998 @@
+{
+  "reviewer": "r8",
+  "wave": 3,
+  "domain": "mid-sync-nav-resources",
+  "ids": [
+    109,
+    111,
+    112,
+    113,
+    114,
+    115,
+    116,
+    119,
+    120,
+    121,
+    122,
+    123,
+    124,
+    125,
+    132,
+    133,
+    137,
+    139,
+    159,
+    170,
+    173,
+    177
+  ],
+  "reviewed_at_utc": "2026-10-20T01:10:21Z",
+  "corpus": "docs/assessments/issue-history-reconciliation/inventory/issues/<id>.json",
+  "contract": "docs/assessments/issue-history-reconciliation/inventory/complete-row-contract.md",
+  "skip": {
+    "721": "Sync lead \u2014 out of scope for this reviewer"
+  },
+  "recommend_complete_count": 22,
+  "recommend_complete_false_count": 0,
+  "issues": [
+    {
+      "issue": 109,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Verify-only: confirm no residual @env/react-native-dotenv; optional hardening: single typed src/config/env.ts validating all EXPO_PUBLIC_* with getApiBaseUrl() delegated; optional env.d.ts keys + .env.example + unit tests. Out of scope: #114 lint, #112 docs, #107 offline behavior.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/109"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/config/apiBaseUrl.ts",
+          "lines": "1-9",
+          "fact": "Required URL validation lives in getApiBaseUrl() reading process.env.EXPO_PUBLIC_API_BASE_URL \u2014 no src/config/env.ts central typed object (optional AC never shipped)."
+        },
+        {
+          "path": "src/types/env.d.ts",
+          "lines": "1-9",
+          "fact": "Types EXPO_PUBLIC_API_BASE_URL (+ Aquifer/E2E keys); no EXPO_PUBLIC_OFFLINE_MODE (descoped with #107)."
+        },
+        {
+          "path": "eslint.config.js",
+          "lines": "9-15,142-143,207-210",
+          "fact": "@env import banned; process.env banned outside src/config/** \u2014 regression guard for the migration."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/70",
+        "fact": "Merged 2026-06-29 same timestamp as #109 close: removed react-native-dotenv/@env for EXPO_PUBLIC_* + apiBaseUrl.ts. Optional env.ts module never opened as a follow-up PR."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "@env gone; apiBaseUrl validates URL; optional env.ts absent.",
+        "device_evidence": "none \u2014 infra/verify ticket"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Required no-@env AC is satisfied on HEAD; optional typed env.ts hardening remains unimplemented (documented divergence, not a product bug)."
+    },
+    {
+      "issue": 111,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Jest mocks for expo-secure-store, expo-file-system, expo-audio usable by unit tests; gate fluent-api.test.ts so default CI is offline; npm test --ci fully offline-deterministic.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/111"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "jest.config.cjs",
+          "lines": "14-18",
+          "fact": "moduleNameMapper routes expo-secure-store / expo-file-system / expo-audio to src/test/mocks/*."
+        },
+        {
+          "path": "src/services/fluent-api.test.ts",
+          "lines": "1-10",
+          "fact": "describe.skip unless RUN_LIVE_API_TESTS=1 \u2014 default CI never hits the network."
+        },
+        {
+          "path": "src/test/mocks/expoMocks.test.ts",
+          "lines": "1-46",
+          "fact": "Unit coverage of the three Expo mocks."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/155",
+        "fact": "Merged 2026-07-09 Fixes #111: shared Expo mocks + gated fluent-api.test.ts for offline CI."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Mocks + live-test gate present on HEAD.",
+        "device_evidence": "none \u2014 test infra"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Test-infra AC implemented via PR #155; mocks live under src/test/mocks with jest.config moduleNameMapper."
+    },
+    {
+      "issue": 112,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Verify-only: consolidate clone\u2192dev-client\u2192preview onboarding path; validate preview-build label loop (EXPO_TOKEN, preview API URL); confirm package.json commands; no @env/FLUENT_USER_EMAIL.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/112"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/AGENT_ONBOARDING.md",
+          "lines": "73-83,128",
+          "fact": "Dev-client quickstart (cp .env.example, prebuild, start/android) + optional preview-build label loop documented."
+        },
+        {
+          "path": "docs/guides/qa-preview-testing.md",
+          "lines": "1-40",
+          "fact": "Living tester guide for preview/nightly APKs (cross-linked from onboarding)."
+        },
+        {
+          "path": ".github/workflows/preview-build.yml",
+          "lines": "1-30",
+          "fact": "preview-build label workflow still present on HEAD."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/112#issuecomment-4870063870",
+        "fact": "2026-07-02 closeout: verify/consolidate only; cites merged #70/#136/#145 for EAS/preview/onboarding \u2014 AC satisfied on main."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Onboarding + preview docs/workflows present.",
+        "device_evidence": "none \u2014 docs/verify ticket"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Docs/verify ticket closed with explicit deliverable list; HEAD still has the consolidated onboarding + preview-build path."
+    },
+    {
+      "issue": 113,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Typed FluentAPI responses (src/types/api/); ApiError status/code/message with sanitized logging + retryable vs terminal; token via #88 accessor; shared QueryClient + SQLite-first docs; unit tests.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/113"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/types/api/errors.ts",
+          "lines": "1-37",
+          "fact": "ApiError with status/code/body; isRetryable (0/5xx) vs isTerminal (4xx)."
+        },
+        {
+          "path": "src/services/queryClient.ts",
+          "lines": "1-40",
+          "fact": "Shared QueryClient + shouldRetryApiRequest aligned with ApiError."
+        },
+        {
+          "path": "docs/guides/api-client-standard.md",
+          "lines": "1-37",
+          "fact": "Living eng contract: SQLite-first, FluentAPI, typed errors, QueryClientProvider in _layout.tsx."
+        },
+        {
+          "path": "src/routes/_layout.tsx",
+          "lines": "12,96-100",
+          "fact": "QueryClientProvider wired with shared queryClient."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/154",
+        "fact": "Merged 2026-07-09 Fixes #113: ApiError/httpClient typed FluentAPI + react-query conventions + api-client-standard.md."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Client standard + ApiError + QueryClient on HEAD.",
+        "device_evidence": "none \u2014 eng standard"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "API client standard landed in PR #154; living doc + current types/queryClient match AC."
+    },
+    {
+      "issue": 114,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Lint fails on @env, react-native-fs, react-native-keychain, Simform waveform imports; direct process.env outside src/config/** fails lint; npm run lint passes on tree.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/114"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "eslint.config.js",
+          "lines": "9-47,142-143,207-210",
+          "fact": "no-restricted-imports bans the four anti-pattern packages; no-restricted-syntax bans process.env with config exemption."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/156",
+        "fact": "Merged 2026-07-09 Fixes #114: ESLint guardrails for #82 handoff anti-patterns."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Lint rules active on HEAD.",
+        "device_evidence": "none \u2014 lint infra"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Lint guardrails shipped in PR #156 and remain in eslint.config.js."
+    },
+    {
+      "issue": 115,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Epic Authentication (better-auth) on Expo CNG baseline: harden/refactor sub-issues #88\u2013#93 (token accessor, expo-secure-store, login, forgot-password, legal, session bootstrap) \u2014 not greenfield.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/115"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/keychain.ts",
+          "lines": "1-1,27-55,103",
+          "fact": "Token storage on expo-secure-store (not react-native-keychain); per-user namespacing retained."
+        },
+        {
+          "path": "src/services/authToken.ts",
+          "lines": "1-9",
+          "fact": "Explicit authToken get/set accessor replaces mutable _activeToken singleton (#88)."
+        },
+        {
+          "path": "src/navigation/AuthSessionProvider.tsx",
+          "lines": "77-100",
+          "fact": "Launch restoreSession + signOut clearAuthSession bootstrap (#93 path)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/144",
+        "fact": "Merged 2026-07-01 Refs #90/#91/#92; body states it completes remaining Authentication epic #115 UI tickets after #141\u2013#143."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Auth stack on SecureStore + authToken + AuthSessionProvider.",
+        "device_evidence": "none in this review for epic-level device QA"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Epic closed after sub-issues #88\u2013#93 merged; HEAD still runs the hardened auth path."
+    },
+    {
+      "issue": 116,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Epic Audio recording & playback on expo-audio + expo-file-system: sub-issues #94\u2013#98 (storage, recorder, playback/waveform, state machine, multi-take). Anti-pattern PR #82 not merging.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/116"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/utils/audioStorage.ts",
+          "lines": "1-34",
+          "fact": "expo-file-system/legacy id-based recording paths (#94)."
+        },
+        {
+          "path": "src/audio/createRecordingEngine.ts",
+          "lines": "42-84",
+          "fact": "expo-audio recording engine start/pause/resume/stop (#95)."
+        },
+        {
+          "path": "src/db/recordingsRepository.ts",
+          "lines": "288-330",
+          "fact": "Multi-take addRecordingTake on bible_text_id (#98)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/116#issuecomment-5123591274",
+        "fact": "2026-07-29 closeout: all sub-issues #94\u2013#98 done; recording/playback on Expo modules on main; follow-ups #71/#235 separate."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Engines + storage + multi-take on HEAD (also via PRs #224\u2013#227/#229).",
+        "device_evidence": "none dated for epic as a whole; device QA tracked on child/record tickets"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Epic tracker closed after sub-issues; HEAD retains Expo audio stack. Residual UI follow-ups are separate tickets."
+    },
+    {
+      "issue": 119,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Original intent: local-first unblock without live API (mock seed / offline). Pivot 2026-06-30: descope #106/#107; document hosted-dev + local-Docker via EXPO_PUBLIC_API_BASE_URL + syncAllData; #108 docs primary.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/119"
+        },
+        {
+          "slice": "other",
+          "text": "Latest closeout: PR #136 docs delivered; fluent-api seeder and #137 app-shell not needed; acceptance = pick API URL, sign in, sync.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/119#issuecomment-4846854211"
+        }
+      ],
+      "disposition": [
+        "LATEST_EXPLICIT_DECISION",
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/guides/local-development-workflow.md",
+          "lines": "1-46",
+          "fact": "Canonical hosted-dev vs local-Docker paths; sync hydration; no mobile mock seed."
+        },
+        {
+          "path": "docs/AGENT_ONBOARDING.md",
+          "lines": "73-83",
+          "fact": "Cross-links local workflow + .env.example 10.0.2.2 emulator host."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/136",
+        "fact": "Merged 2026-07-01: local development workflow docs; epic closeout cites this as durable deliverable."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Docs-only epic deliverable present.",
+        "device_evidence": "none \u2014 docs epic"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Strong decision chain: mock-seed epic pivoted to docs-only real-API workflow; PR #136 is the material delivery."
+    },
+    {
+      "issue": 120,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Epic Expo migration follow-ups & tooling: #109 env, #110 migrations, #111 jest mocks, #112 EAS docs, #113 API client standard, #114 lint guardrails.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/120"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/migrations.ts",
+          "lines": "17-28",
+          "fact": "Versioned Migration type + CURRENT_SCHEMA_VERSION / getUserVersion (#110 framework) present on HEAD."
+        },
+        {
+          "path": "jest.config.cjs",
+          "lines": "14-18",
+          "fact": "#111 mocks mapped."
+        },
+        {
+          "path": "docs/guides/api-client-standard.md",
+          "lines": "1-21",
+          "fact": "#113 living standard."
+        },
+        {
+          "path": "eslint.config.js",
+          "lines": "9-47",
+          "fact": "#114 anti-pattern bans."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/120#issuecomment-5123591730",
+        "fact": "2026-07-29: all sub-issues #109\u2013#114 closed after repo audit."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Sub-issue deliverables present (see #109\u2013#114 rows).",
+        "device_evidence": "none \u2014 tooling epic"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Tooling epic closed when children closed; HEAD still has migrations/mocks/API standard/lint."
+    },
+    {
+      "issue": 121,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Fix broken recordings join using non-existent recordings.chapter_assignment_id in getProjectsWithSummary/getProjectChapters/getMyWorkChapters; schema-consistent relationship; regression test; migration only if new column.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/121"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "LATEST_EXPLICIT_DECISION",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/queries.ts",
+          "lines": "84-92",
+          "fact": "RECORDINGS_JOIN_CA joins bible_texts\u2192recordings.bible_text_id (not chapter_assignment_id)."
+        },
+        {
+          "path": "src/db/schema.ts",
+          "lines": "90-98",
+          "fact": "recordings schema documents bible_text_id canonical link; no chapter_assignment_id column on recordings."
+        },
+        {
+          "path": "src/db/AGENTS.md",
+          "lines": "44-48",
+          "fact": "Living db note: aggregates join assignments\u2192chapter bible_texts\u2192recordings; not chapter_assignment_id."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/227",
+        "fact": "Merged 2026-07-23 Closes #98: multi-take APIs and explicitly 'guards the recordings join on bible_text_id' \u2014 the verse-scoped fix #121 option 2. #121 itself closed 2026-07-02 without a dedicated PR comment."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Join fixed on HEAD via bible_text_id path.",
+        "device_evidence": "none for #121-specific counts"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Bug AC satisfied on HEAD (RECORDINGS_JOIN_CA); material join guard also cited in PR #227 though #121 closed earlier without its own PR."
+    },
+    {
+      "issue": 122,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Tracking/credit: migrate to Expo SDK 56 CNG Android-only \u2014 app.config.ts, eas.json, EXPO_PUBLIC_* env, jest-expo, preview/EAS docs (already shipped).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/122"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "app.config.ts",
+          "lines": "38-48,62-68",
+          "fact": "runtimeVersion appVersion policy; android package; expo-router root \u2014 CNG config present (SDK now 57 on HEAD)."
+        },
+        {
+          "path": "package.json",
+          "lines": "1-30",
+          "fact": "expo scripts include prebuild --platform android; jest-expo stack."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/70",
+        "fact": "Merged 2026-06-29: Expo SDK 56 CNG Android-only migration; #122 closed same minute as credit/tracking."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "CNG Android-only workflow remains; SDK advanced to 57 later.",
+        "device_evidence": "none \u2014 platform infra credit"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Credit issue for PR #70 CNG migration; Android-only Expo prebuild remains the shipping model."
+    },
+    {
+      "issue": 123,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Tracking/credit: agent onboarding docs, PR workflow tooling, Android-only scope formalized (PRs #43/#56).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/123"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/AGENT_ONBOARDING.md",
+          "lines": "1-40",
+          "fact": "Living agent onboarding map still present."
+        },
+        {
+          "path": ".cursor/rules/android-only.mdc",
+          "lines": "1-20",
+          "fact": "Android-only permanent scope rule."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/56",
+        "fact": "Merged 2026-06-09: removes iOS run/test/CI guidance from rules/commands/PR template/onboarding; issue body also cites #43."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Onboarding + Android-only rules present.",
+        "device_evidence": "none \u2014 process docs"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Credit/tracking for onboarding + Android-only docs; HEAD still reflects those deliverables."
+    },
+    {
+      "issue": 124,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Brand Android launch: Fluent launcher icon + native BootSplash splash on cold start.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/124"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "app.config.ts",
+          "lines": "29-47,98-102",
+          "fact": "icon + adaptiveIcon assets; react-native-bootsplash plugin with assets/bootsplash."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/58",
+        "fact": "Merged 2026-06-09: Fluent launcher icons + native BootSplash; issue is credit/tracking Refs #58."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "BootSplash + icons configured on HEAD.",
+        "device_evidence": "none dated for splash branding QA"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Launch branding delivered via PR #58; config still wires Fluent icon + bootsplash."
+    },
+    {
+      "issue": 125,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Dependabot config (.github/dependabot.yml weekly npm+Actions) + documented safe one-at-a-time merge workflow.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/125"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".github/dependabot.yml",
+          "lines": "1-11",
+          "fact": "Weekly npm ecosystem updates configured."
+        },
+        {
+          "path": "docs/guides/dependabot-process.md",
+          "lines": "1-18",
+          "fact": "Living one-at-a-time Dependabot merge checklist requires doctor on risky bumps."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/60",
+        "fact": "Merged 2026-06-10: Dependabot config + safe merge workflow; issue credit Refs #60."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "dependabot.yml + process doc present.",
+        "device_evidence": "none \u2014 ops/process"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Dependabot + safe-merge workflow shipped in PR #60 and remain on HEAD."
+    },
+    {
+      "issue": 132,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "README troubleshooting: local dev needs no Expo login; document whoami/logout/start --offline; session is machine-global; EAS login only for maintainer tasks.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/132"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "README.md",
+          "lines": "264-274",
+          "fact": "Documents UnexpectedServerData/code-signing fix via whoami/logout/--offline; global session note; EAS login only for maintainer tasks."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/135",
+        "fact": "Merged 2026-06-30 Refs #132; closing comment notes Refs-only so issue closed manually to match."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "README troubleshooting present.",
+        "device_evidence": "none \u2014 docs"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Expo local-auth troubleshooting docs landed in PR #135 and remain in README."
+    },
+    {
+      "issue": 133,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": ".gitignore: keep .env.example tracked; ignore .env/.env.local; remove iOS/Xcode/CocoaPods/fastlane boilerplate; keep Android/Expo CNG (/android,/ios,.expo) and EAS signing artifacts.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/133"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".gitignore",
+          "lines": "40-61",
+          "fact": ".env + .env.* ignored with !.env.example negation; /android and /ios present; no CocoaPods/fastlane sections."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/134",
+        "fact": "Merged 2026-06-30: protect .env.example + remove iOS/fastlane boilerplate; issue closed to match Refs #133."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": ".gitignore matches AC.",
+        "device_evidence": "none \u2014 repo hygiene"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": ".gitignore cleanup shipped in PR #134; HEAD still has !.env.example and Android-only CNG ignores."
+    },
+    {
+      "issue": 137,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "App-shell UX: missing EXPO_PUBLIC_API_BASE_URL \u2192 actionable error pointing to .env.example/docs; URL set but API unreachable \u2192 error+retry for unauthenticated launch; stored session still enters offline; no mock/offline-mode/auth bypass.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/137"
+        }
+      ],
+      "disposition": [
+        "LATEST_EXPLICIT_DECISION",
+        "NO_PRODUCT_FIX",
+        "AGREED_REQUIREMENT",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/config/apiBaseUrl.ts",
+          "lines": "1-9",
+          "fact": "Missing URL throws at first getApiBaseUrl() call \u2014 no dedicated app-shell config/unreachable screen with Retry as #137 specified."
+        },
+        {
+          "path": "src/navigation/AuthSessionProvider.tsx",
+          "lines": "85-100",
+          "fact": "Launch init shows generic initApp error string on failure; no API-health unreachable+retry UX from unmerged #138."
+        },
+        {
+          "path": "docs/guides/local-development-workflow.md",
+          "lines": "1-16",
+          "fact": "Docs-only workflow is the epic #119 substitute for shell hardening."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/137#issuecomment-4847332766",
+        "fact": "2026-06-30 closed as not planned for epic #119; docs-only PR #136 sufficient; companion PR #138 closed unmerged."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "No #137 app-shell Retry UX on HEAD \u2014 intentional non-delivery.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Explicit not-planned decision; AC remains unwaived product ask but reconciliation is complete as NO_PRODUCT_FIX / superseded by docs workflow."
+    },
+    {
+      "issue": 139,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "npm run doctor (expo-doctor) in CI after npm ci; Dependabot docs require doctor; agent rules never push to main + rule-precedence; CI gates pass.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/139"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "package.json",
+          "lines": "19",
+          "fact": "npm run doctor \u2192 expo-doctor."
+        },
+        {
+          "path": ".github/workflows/quality-gates.yml",
+          "lines": "45-73",
+          "fact": "expo-doctor job runs npm run doctor on PRs."
+        },
+        {
+          "path": ".cursor/rules/delivery.mdc",
+          "lines": "1-20",
+          "fact": "Never push to main; ticketed branch+PR."
+        },
+        {
+          "path": ".cursor/rules/rule-precedence.mdc",
+          "lines": "1-20",
+          "fact": "Ignore org umbrella rules when they conflict."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/140",
+        "fact": "Merged 2026-07-01 Refs GH-139: expo-doctor in CI + Dependabot workflow + delivery/rule-precedence agent rules. Later #145 moved doctor into Quality Gates."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "doctor script + quality-gates expo-doctor + delivery rules present.",
+        "device_evidence": "none \u2014 CI/process"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Expo Doctor + agent delivery rules shipped via PR #140; CI still runs npm run doctor."
+    },
+    {
+      "issue": 159,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Root AGENTS.md delivery guardrails (AC\u2260CI, one ticket=one PR, abstraction budget, human QA, agent-authorship heuristic); thin Cursor rule pointer; delivery/onboarding links; PR template checkboxes; principle-based blameless content.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/159"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "AGENTS.md",
+          "lines": "1-40",
+          "fact": "Canonical AC/scope/abstraction/human-QA gates in plain markdown."
+        },
+        {
+          "path": ".cursor/rules/agent-guardrails.mdc",
+          "lines": "1-20",
+          "fact": "Thin pointer to AGENTS.md without duplicated prose."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/160",
+        "fact": "Merged 2026-07-06; closing comment 2026-07-20 cites #160 as already delivering all AC \u2014 no further PR needed."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "AGENTS.md + agent-guardrails.mdc present.",
+        "device_evidence": "none \u2014 process docs"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Delivery guardrails shipped in PR #160; living AGENTS.md still encodes the AC."
+    },
+    {
+      "issue": 170,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Routine/periodic clear of orphaned paused-take markers+segments; Settings Clear cache; unresolvable paused takes cleaned without requiring a navigable verse target.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/170"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/pausedTakes.ts",
+          "lines": "71-129",
+          "fact": "isPausedTakeOrphaned + clearOrphanedPausedTakes deletes segments; clearAllPausedTakes for Settings Clear cache."
+        },
+        {
+          "path": "src/navigation/AuthSessionProvider.tsx",
+          "lines": "85-92",
+          "fact": "Launch calls clearOrphanedPausedTakes after DB init."
+        },
+        {
+          "path": "src/app/screens/SettingsScreen.tsx",
+          "lines": "90-108,230-232",
+          "fact": "Clear cache destructive Alert \u2192 clearAllPausedTakes."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/232",
+        "fact": "Merged 2026-07-23 Closes #170: launch orphan cleanup + Settings Clear cache. Earlier 2026-07-20 comments said 'stays open' after Cesar clearance \u2014 superseded by this merge."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Orphan cleanup + Clear cache on HEAD.",
+        "device_evidence": "none dated; PR notes filesystem delete QA recommended when pause-recovery writes real markers"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Silent-close contradiction resolved by PR #232 Closes #170; AC implemented on HEAD. Complete\u2260device QA of live pause recovery."
+    },
+    {
+      "issue": 173,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Phase 1 agent/process docs without merge-gate changes: issue-tracking.md, ci.md, slimmer PR template, /onboard+/dep-bump, warn-only session env hook, src/services|db AGENTS.md; no new required CI/CODEOWNERS/commitlint.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/173"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/issue-tracking.md",
+          "lines": "1-40",
+          "fact": "GitHub Issues / Project 4 tracker docs present."
+        },
+        {
+          "path": "docs/ci.md",
+          "lines": "1-40",
+          "fact": "CI workflow map present."
+        },
+        {
+          "path": ".cursor/hooks.json",
+          "lines": "1-16",
+          "fact": "sessionStart warn-only env check + warn-only architecture-guard preToolUse (never deny tools)."
+        },
+        {
+          "path": "src/services/AGENTS.md",
+          "lines": "1-20",
+          "fact": "Nested hot-path notes for services layer."
+        },
+        {
+          "path": "src/db/AGENTS.md",
+          "lines": "1-20",
+          "fact": "Nested hot-path notes for db layer."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/174",
+        "fact": "Merged 2026-07-10 Closes #173: Phase 1 agent/process docs with no new required merge gates."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Docs/commands/hooks present; later tickets may have tightened CI separately (#317 etc.).",
+        "device_evidence": "none \u2014 process"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Phase 1 process docs landed in PR #174; out-of-scope merge-gate prohibitions were for this ticket only."
+    },
+    {
+      "issue": 177,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Root-cause + fix null bibleTextId on Record: after sync every reachable verse resolves bible_text_id; remove TEMP ToastAndroid; disable record until id available; unit tests; no regression in getBibleTextId/syncBibleTexts.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/177"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/bibleTextSyncGap.ts",
+          "lines": "1-10",
+          "fact": "Documents root cause: incremental updatedAfter skips newly assigned chapters with zero local verses."
+        },
+        {
+          "path": "src/services/sync.ts",
+          "lines": "829-854",
+          "fact": "Per-chunk local verse count==0 forces full fetch (drop cursor) \u2014 the #177 fix."
+        },
+        {
+          "path": "src/db/queries.ts",
+          "lines": "1170-1189",
+          "fact": "getBibleTextId SELECT by bible/book/chapter/verse returns null only on miss/error."
+        },
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "775-776",
+          "fact": "recordDisabled when captureBibleTextId null; syncingMessage via recordSourceTextHint (TEMP ToastAndroid removed)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/230",
+        "fact": "Merged 2026-07-23 Closes #177: full-fetch when local verse count is zero; documents root cause; Record 'still syncing' UX from #49 retained. Earlier 'stays open' comment superseded by merge."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Full-fetch gap fix + disabled-record UX on HEAD.",
+        "device_evidence": "none dated for #177; PR marks device QA optional / remains on #49 stack"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Root cause documented and sync fix shipped in PR #230; TEMP toast replaced by disabled+still-syncing UX. Complete\u2260Record device QA pass."
+    }
+  ]
+}

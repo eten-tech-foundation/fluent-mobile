@@ -1,0 +1,32 @@
+{
+  "issue_number": 258,
+  "fetched_at_utc": "2026-10-20T00:35:42Z",
+  "issue": {
+    "number": 258,
+    "title": "Implement Stage Advancement Action on Drafting Page",
+    "state": "closed",
+    "body": "Translators and peer checkers working offline need a way to formally submit a chapter at their assigned stage and advance it to the next stage in the checking workflow. Currently the drafting page has no submit or advance action; completed work cannot progress through the pipeline from mobile. This ticket builds the advancement CTA, confirmation sheet, and permission and conflict rules governing when and by whom a chapter can be advanced. The underlying offline queue and sync behavior are covered in #257.\n\n## Functional Requirements\n\n### Advance Stage Button\n\n- Display a \"Send to [Next Stage]\" button on the Record tab, below the recording controls.\n- Label the button dynamically based on the chapter's current stage: \"Send to Peer Check\" at Drafting; \"Send to Community Review\" at Peer Check.\n- If the chapter has an unresolved audio take conflict, render the button in a disabled state.\n- If the current user is not the assignee for the chapter's current stage, do not display the button.\n\n### Confirmation Sheet\n\n- Tapping the button opens a bottom sheet before any action is taken.\n- Display the chapter name (e.g., \"Luke 4\") as the sheet title.\n- Display the submission destination as body text (e.g., \"This marks [chapter/unit] as ready for Peer Check.\").\n- Display two buttons: \"Send\" as the primary action and \"Cancel\" as the secondary.\n- Tapping Send dismisses the sheet and records the stage advancement locally; tapping Cancel dismisses the sheet with no state change.\n\n### Stage Advancement Rules\n\n- Drafting \u2192 Peer Check: the button is visible only to the translator assigned to the chapter.\n- Peer Check \u2192 Community Review: the button is visible only to the peer checker assigned to the chapter.\n- A chapter at Drafting with no verse recordings may not be advanced; the button is hidden until at least one verse has a recording.\n- A chapter with an unresolved conflict may not be advanced regardless of stage or user role.\n- Community reviewers never see the button.\n\n<img width=\"386\" height=\"868\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/1b717da1-7b42-4a4c-9583-972dd35a0006\" />\n\n<img width=\"385\" height=\"378\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/0e8582b4-6b83-40c8-9de3-16cbbee8d3d4\" />\n\n### Post-Advancement State\n\n- After submission is confirmed, update the chapter's stage in local storage immediately and navigate the user back to My Work; do not wait for server confirmation.\n- On the My Work tab, the chapter transitions to the pending upload sync state until the stage change syncs; see #257.\n- A chapter advanced from Peer Check \u2192 Community Review is no longer assigned to the current user and is removed from My Work on the next list refresh.\n\nNote: Conflict detection logic is implemented in #256. This ticket consumes the conflict state already tracked; it does not re-implement detection.\nNote 2: Visibility after offline advancement differs by scenario. On separate devices, the assigned peer checker will not see the chapter in My Work until both parties reconnect and the stage change syncs; that is expected offline-first behavior. On the same device with multiple accounts, because stage is written to shared local storage immediately, switching to the peer checker account may show the chapter in Peer Check My Work before server sync; that is expected and requires no special isolation. When the accounts are on different phones, the assigned peer checker will not see the chapter until both devices have synced with the server. See also #257.",
+    "user": "chadw-eten",
+    "created_at": "2026-07-24T19:07:30Z",
+    "updated_at": "2026-08-25T22:03:02Z",
+    "closed_at": "2026-08-25T22:03:02Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/258",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5273627647,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-12T22:42:11Z",
+      "updated_at": "2026-08-12T22:42:11Z",
+      "body": "Submit API is live on fluent-api: `PATCH /chapter-assignments/{id}/submit`. Permissions match what product described (drafter @ draft, peer checker @ peer check).\n\nWeb already calls this online from drafting (`useBibleTarget` \u2192 submit). Mirror that for the online path; our extra work is the offline confirmation UX + queue (#257).\n\nGo ahead and build the CTA + confirmation sheet against the real endpoint. For \u201cdisable when there\u2019s an unresolved audio conflict,\u201d mock that flag until #256 exists \u2014 don\u2019t invent a server check for it. Web doesn\u2019t have that disable either yet.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/258#issuecomment-5273627647"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

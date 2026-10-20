@@ -1,0 +1,1095 @@
+{
+  "reviewer": "r11",
+  "wave": 4,
+  "domain": "mid-late-gap-cont",
+  "ids": [
+    317,
+    319,
+    324,
+    326,
+    329,
+    330,
+    343,
+    347,
+    348,
+    365,
+    366,
+    367,
+    368,
+    369,
+    370,
+    371,
+    372,
+    373,
+    374,
+    375,
+    376,
+    377,
+    378,
+    379
+  ],
+  "reviewed_at_utc": "2026-10-20T01:15:00Z",
+  "corpus": "docs/assessments/issue-history-reconciliation/inventory/issues/<id>.json",
+  "contract": "docs/assessments/issue-history-reconciliation/inventory/complete-row-contract.md",
+  "skip": [
+    721
+  ],
+  "recommend_complete_count": 24,
+  "recommend_complete_false_count": 0,
+  "issues": [
+    {
+      "issue": 317,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Add GitHub PR template matching Cursor template; PR Description CI failing on missing ### TLDR / Refs #NNN / ### How to verify (Dependabot exempt); CODEOWNERS; document in docs/ci.md / .github/README.md; note branch-protection for PR Description + reviews.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/317"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".github/PULL_REQUEST_TEMPLATE.md",
+          "lines": "1-40",
+          "fact": "GitHub UI template includes ### TLDR, Refs #NNN guidance, and ### How to verify."
+        },
+        {
+          "path": ".github/workflows/pr-description.yml",
+          "lines": "1-25",
+          "fact": "PR Description workflow runs validate-pr-body.cjs on opened/edited/synchronize/reopened/ready_for_review."
+        },
+        {
+          "path": ".github/scripts/validate-pr-body.cjs",
+          "lines": "5-40,128-179",
+          "fact": "Requires TLDR + Refs #NNN|Refs:none + How to verify; DEPENDABOT_LOGINS exempt via isExemptAuthor."
+        },
+        {
+          "path": ".github/CODEOWNERS",
+          "lines": "1-5",
+          "fact": "Default owners @mattrace-gloo @B3RN153 @JonathanSeehagen for *."
+        },
+        {
+          "path": "docs/ci.md",
+          "lines": "9,82-99",
+          "fact": "Documents pr-description.yml check, CODEOWNERS, and maintainer required-check/review steps."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/318",
+        "fact": "Merged as [#317]: Enforce PR template, description CI check, and CODEOWNERS (commit 473d59f)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Template, workflow, validator, CODEOWNERS, and docs present on HEAD.",
+        "device_evidence": "none \u2014 engineering/process only"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "PR template + description CI + CODEOWNERS landed via #318; Dependabot exemption and docs on HEAD. Closed-state alone not used as proof."
+    },
+    {
+      "issue": 319,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Install shared pr-demo-video skill under .cursor/skills/ and .claude/skills/ with core recorder files, gitignore .playwright-mcp/, and docs pointer; runtime deps only when recording.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/319"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "NO_PRODUCT_FIX",
+        "CONFIRMED_CURRENT_SOURCE"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".cursor/rules/android-only.mdc",
+          "lines": "1-12",
+          "fact": "Repo is Android-only permanently \u2014 explains why Playwright browser demo skill was abandoned for this app."
+        },
+        {
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/319.json",
+          "lines": "30-45",
+          "fact": "Closing comment corpus: not planned \u2014 Playwright skill cannot drive Android-only RN/Expo; no in-repo .cursor/.claude skills/pr-demo-video on HEAD (paths absent)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/319#issuecomment-5259752403",
+        "fact": "2026-08-11 mattrace-gloo: Closing as not planned \u2014 shared Playwright PR demo-video skill cannot drive Android-only RN/Expo; revisit only for emulator/device-oriented demo skill."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "No in-repo pr-demo-video skill paths.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Explicit not-planned close: Playwright demo skill cannot drive Android-only RN/Expo; revisit only with emulator/device-oriented skill. AC not implemented by design."
+    },
+    {
+      "issue": 324,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "/start-issue NNN + /create-pr (/open-pr) shared agent command surface: canonical .claude/commands/, Cursor shims, Project 4 In Progress (Dev)/In PR Review, code-reviewer, Refs #NNN only, docs + commands.mdc.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/324"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".claude/commands/start-issue.md",
+          "lines": "1-40",
+          "fact": "Canonical /start-issue: claim \u2192 In Progress (Dev) \u2192 branch from main \u2192 plan-gate \u2192 implement \u2192 chain /create-pr; never merge."
+        },
+        {
+          "path": ".cursor/commands/start-issue.md",
+          "lines": "1-15",
+          "fact": "Thin Cursor shim pointing at .claude/commands/start-issue.md."
+        },
+        {
+          "path": ".claude/commands/create-pr.md",
+          "lines": "1-30",
+          "fact": "Exists as canonical create-pr handoff (CI gates, code-reviewer, In PR Review, Refs)."
+        },
+        {
+          "path": ".claude/commands/open-pr.md",
+          "lines": "1-10",
+          "fact": "Alias shim for /open-pr \u2192 create-pr."
+        },
+        {
+          "path": ".claude/agents/code-reviewer.md",
+          "lines": "1-20",
+          "fact": "Fluent-specific code-reviewer agent present."
+        },
+        {
+          "path": ".cursor/rules/ai-tooling-bridge.mdc",
+          "lines": "1-40",
+          "fact": "Bridge documents .claude/commands discovery + Cursor shims."
+        },
+        {
+          "path": ".cursor/rules/pr-delivery-ci-gate.mdc",
+          "lines": "1-30",
+          "fact": "PR delivery CI gate rule present as ticketed."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/325",
+        "fact": "Merged [#324]: Add /start-issue delivery loop and shared agent command surface (commit cb9ad90)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Commands, shims, code-reviewer, and bridge/gate rules on HEAD.",
+        "device_evidence": "none \u2014 agent tooling"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Shared agent delivery loop on HEAD via #325; Cursor palette shims and .claude canonical bodies present."
+    },
+    {
+      "issue": 326,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Forward habitual yarn CLI to npm without writing yarn.lock/PnP; preinstall command map if shim skipped; block pnpm with same map; README troubleshooting; keep npm lockfile/CI/Dependabot source of truth.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/326"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".yarnrc",
+          "lines": "1-2",
+          "fact": "Yarn Classic yarn-path points at ./scripts/package-manager.cjs."
+        },
+        {
+          "path": ".yarnrc.yml",
+          "lines": "1-3",
+          "fact": "Berry yarnPath \u2192 package-manager.cjs; nodeLinker node-modules (no PnP)."
+        },
+        {
+          "path": "scripts/package-manager.cjs",
+          "lines": "8-27,183-216",
+          "fact": "Documents yarn\u2192npm command map; --enforce blocks non-npm installers with NPM_ONLY_HINT map."
+        },
+        {
+          "path": "package.json",
+          "lines": "8",
+          "fact": "preinstall runs node ./scripts/package-manager.cjs --enforce."
+        },
+        {
+          "path": "README.md",
+          "lines": "243-249",
+          "fact": "Troubleshooting documents shim and rm of PnP/yarn.lock artifacts."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/327",
+        "fact": "Merged [#326]: Forward habitual yarn CLI to npm (commit f560270)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Shim + preinstall enforce + README recovery on HEAD.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "npm-only yarn forwarder delivered by #327; no product-behavior journey impact."
+    },
+    {
+      "issue": 329,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Original AC: document QA process where Needs-QA PRs are not mergeable until isolated preview-build QA passes; align docs/CI/agent rules to that pre-merge gate.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/329"
+        },
+        {
+          "slice": "other",
+          "text": "Living supersession: merge on engineer approval + green CI; device QA is post-merge on nightly (see qa-process.md + #330 close).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/329"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/guides/qa-process.md",
+          "lines": "1-7",
+          "fact": "Invariant is post-merge nightly QA; historical pre-merge preview gate retired; #330 superseded \u2014 do not implement merge-blocking gate."
+        },
+        {
+          "path": "docs/guides/qa-process.md",
+          "lines": "20-66",
+          "fact": "Branch 2 documents post-merge nightly handoff ownership (dev/CI/QA)."
+        },
+        {
+          "path": "docs/guides/qa-preview-testing.md",
+          "lines": "7-13",
+          "fact": "Default QA install is nightly; PR preview-build is optional debug only."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/331",
+        "fact": "Merged [#329]: Document pre-merge QA preview gate and align docs (be24d8a) \u2014 later living docs supersede that invariant toward post-merge nightly."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Living qa-process.md post-merge policy on HEAD.",
+        "device_evidence": "none for this process ticket; QA path is nightly policy text"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Decision-chain exemplar: original pre-merge gate docs from #331 superseded by living qa-process.md. Do not reimpose merge-blocking QA from closed #329."
+    },
+    {
+      "issue": 330,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Automate/hard-enforce QA-required PR merge gate (status/label/checklist) so Needs-QA PRs cannot merge without preview QA pass \u2014 follow-up from #329.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/330"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "NO_PRODUCT_FIX",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/guides/qa-process.md",
+          "lines": "5-7",
+          "fact": "States #330 automated merge gate is superseded; do not implement that gate."
+        },
+        {
+          "path": "docs/guides/qa-process.md",
+          "lines": "100-105",
+          "fact": "preview-build remains debug-only; does not start QA queue or block merge."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/330#issuecomment-5411789823",
+        "fact": "2026-08-25 mattrace-gloo: pre-merge QA gating superseded; close as not planned/superseded; reopen only if Product explicitly wants merge-blocking again. Tracked from #365."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "No merge-blocking QA gate workflow; policy docs forbid implementing one.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Explicit supersession close; living docs agree. Closed \u2260 reopen invitation unless Product rewrites AC."
+    },
+    {
+      "issue": 343,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Deps-only expo install --fix from main so expo install --check and npm run doctor pass; CI gates green; no product code.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/343"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "package.json",
+          "lines": "56",
+          "fact": "expo ~57.0.21 present (SDK 57 line)."
+        },
+        {
+          "path": ".github/workflows/quality-gates.yml",
+          "lines": "45-76",
+          "fact": "Quality Gates still run expo-doctor and offline expo install --check on PRs."
+        },
+        {
+          "path": "docs/ci.md",
+          "lines": "13-14,52-68",
+          "fact": "Documents Quality Gates Expo health + later scheduled expo-sdk-align (#422) freshness clock."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/344",
+        "fact": "Merged [#343]: Align Expo SDK 57 packages so Quality Gates pass (2c39bc6)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "SDK 57 deps + quality-gates workflows on HEAD; later #422 owns rolling freshness.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Deps-only alignment delivered by #344; ongoing Expo patch freshness is #422 schedule, not incomplete #343 AC."
+    },
+    {
+      "issue": 347,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Same AC as #348 (Images Retry + Settings white screen) \u2014 filed under wrong GitHub account mattrace.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/347"
+        }
+      ],
+      "disposition": [
+        "LATEST_EXPLICIT_DECISION",
+        "NO_PRODUCT_FIX"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/347.json",
+          "lines": "30-40",
+          "fact": "Close comment corpus recreates work as #348 under mattrace-gloo; #347 remains duplicate-only."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/347#issuecomment-5359394822",
+        "fact": "2026-08-20 mattrace-gloo: Closing \u2014 wrong account; recreated as #348. Do not use mattrace for fluent-mobile work."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "No separate implementation expected under #347; see #348.",
+        "device_evidence": "none on #347"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Duplicate wrong-account filing; product AC tracked on #348 only."
+    },
+    {
+      "issue": 348,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Images & Maps load-failure/unavailable shows section-scoped inline error with Retry; Retry reloads Images only; TN/TQ unaffected.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/348"
+        },
+        {
+          "slice": "other",
+          "text": "Settings opens usable (not blank white); switching users does not crash/white-screen; Android device QA on PR.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/348"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/tabs/resources/ImagesMapsSection.tsx",
+          "lines": "21-37,80-111",
+          "fact": "ImagesMapsErrorBody renders Retry; handleRetry wired for error/unavailable paths using IMAGES_MAPS_LOAD_ERROR."
+        },
+        {
+          "path": "src/constants/messages.ts",
+          "lines": "43",
+          "fact": "IMAGES_MAPS_LOAD_ERROR = 'Images unavailable'."
+        },
+        {
+          "path": "src/app/tabs/ResourcesTab.tsx",
+          "lines": "190,373",
+          "fact": "Host passes retryImagesMaps into Images section only."
+        },
+        {
+          "path": "src/navigation/resetNavigationAfterAccountSwitch.ts",
+          "lines": "9-19",
+          "fact": "dismissAll + replace home after account switch to avoid blank white screen (#348)."
+        },
+        {
+          "path": "src/components/ui/UserSettingsMenu.tsx",
+          "lines": "164-167",
+          "fact": "After switchToDeviceAccount calls resetNavigationAfterAccountSwitch citing #348 white screen."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/364",
+        "fact": "Merged [#348] Fix Images Retry offline UX and Settings account-switch white screen. Follow-up comment: #364 covers nav reset + section Retry when Images visible online; AC1 offline Retry stays open until #417."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Retry UI + nav reset on HEAD; offline inventory gating deferred to #417.",
+        "device_evidence": "dated source QA on #191 preview pr-304; #348 closed 2026-08-28 after #364 \u2014 offline Retry explicitly not claimed"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Online/section Retry + Settings switch white-screen fix on HEAD via #364. Named unwaived divergence: offline Images Retry deferred to #417 \u2014 closed #348 \u2260 full offline Images AC. Empty fixture \u2260 unavailable/retry."
+    },
+    {
+      "issue": 365,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "A+ composite grades tracker: child tickets filed/linked on Project 4; when children complete re-score canvas; no child merge with incomplete AC without waiver. Does not ship code itself.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/365"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/365.json",
+          "lines": "8-45",
+          "fact": "Tracker body lists Architecture/Tests/Product/Process children #366\u2013#380/#330 with PR numbers; states this issue does not ship code."
+        },
+        {
+          "path": "docs/guides/qa-process.md",
+          "lines": "5-7",
+          "fact": "Living policy referenced by epic (#330 superseded) \u2014 children own deliverables."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/365#issuecomment-5417472678",
+        "fact": "2026-08-25 epic hygiene: actionable children have PRs or merged; #377/#378 manual; engineering-only Done on merge; list maps each child to PR #382\u2013#395."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Tracker only \u2014 child deliverables verified under their own IDs in this batch.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Epic tracker hygiene complete; product gaps live on children (#235 etc.), not new AC on #365. Re-score canvas AC is process follow-up, not a product journey."
+    },
+    {
+      "issue": 366,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "ESLint fails on UI fetch(, raw SQL/getDatabase misuse, and app-level @react-navigation/* imports; fixture proves rule; lint green; eng-only.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/366"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "eslint.config.js",
+          "lines": "31-81,142-153",
+          "fact": "no-restricted-imports bans @react-navigation; no-restricted-syntax bans fetch/getDatabase/executeSql in UI layers."
+        },
+        {
+          "path": "docs/ci.md",
+          "lines": "35",
+          "fact": "Documents ESLint UI boundary bans + fixtures under src/app/__fixtures__/eslint-layer-boundaries/ asserted by scripts/eslint-layer-boundaries.test.cjs."
+        },
+        {
+          "path": "scripts/eslint-layer-boundaries.test.cjs",
+          "lines": "1-40",
+          "fact": "Automated assertion that intentional violation fixtures fail the boundary rules."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/382",
+        "fact": "Merged [#366]: Ban UI fetch, raw SQL access, and @react-navigation imports in ESLint (dee97c9)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "ESLint bans + fixture test on HEAD.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "A1 ESLint layer bans delivered by #382."
+    },
+    {
+      "issue": 367,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "architecture-guard enforced in CI (not warn-only) with automated tests; docs mention enforcement; eng-only.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/367"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "scripts/architecture-guard.mjs",
+          "lines": "7,185-193",
+          "fact": "--ci mode exits 1 on violations (merge gate)."
+        },
+        {
+          "path": "scripts/architecture-guard.test.cjs",
+          "lines": "48-137",
+          "fact": "Unit tests for --ci and hook modes."
+        },
+        {
+          "path": "package.json",
+          "lines": "11",
+          "fact": "architecture-guard script runs guard with --ci."
+        },
+        {
+          "path": ".github/workflows/lint.yml",
+          "lines": "29",
+          "fact": "CI job runs npm run architecture-guard."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/383",
+        "fact": "Merged [#367]: CI-enforce architecture-guard with unit tests (267f0b8)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Guard --ci + tests + lint.yml gate on HEAD.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "A2 CI architecture-guard delivered by #383."
+    },
+    {
+      "issue": 368,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "MOBILE A+ audit: remove unused direct @react-navigation/* deps or document keep reasons; eng-only. CRITICAL: this is NOT fluent-api#368 (draft seed / QA unclaimed pool).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/368"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "package.json",
+          "lines": "1-122",
+          "fact": "No direct @react-navigation/* dependency entries remain in package.json."
+        },
+        {
+          "path": "docs/guides/expo-first-dependencies.md",
+          "lines": "21-30",
+          "fact": "Audit #368: former direct @react-navigation/native and /stack removed; prefer expo-router only; do not re-add."
+        },
+        {
+          "path": "docs/product-behavior/README.md",
+          "lines": "67",
+          "fact": "NAMESPACE HYGIENE: product Tickets table lists fluent-api #368 (seed engine) \u2014 different repo/ticket from mobile #368."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/384",
+        "fact": "Merged [#368]: Remove unused direct @react-navigation dependencies (1094c23). Eng chore only \u2014 not API seed work."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Direct @react-navigation deps removed; audit documented.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Mobile #368 eng dep audit via #384. Do NOT conflate with fluent-api#368 seed/pool cited in product-behavior / #607 / #717."
+    },
+    {
+      "issue": 369,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "MOBILE A+ unit tests for sync.ts step orchestration beyond auth (master/projects/assignments/bible texts + retry/failure). Out of scope: switchUser product decision + Sync UI. CRITICAL: NOT fluent-api#369 (confirm-gated reset).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/369"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/sync.steps.test.ts",
+          "lines": "183-217,355,401,649,281-309",
+          "fact": "sync step orchestration suites for syncMasterData, syncProjects, syncChapterAssignments, syncBibleTexts including retry/AuthError paths."
+        },
+        {
+          "path": "src/services/sync.auth.test.ts",
+          "lines": "1-30",
+          "fact": "Existing auth-path coverage file still present alongside steps tests."
+        },
+        {
+          "path": "docs/product-behavior/README.md",
+          "lines": "67",
+          "fact": "NAMESPACE HYGIENE: fluent-api #369 listed separately as confirm-gated reset \u2014 not this mobile test ticket."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/385",
+        "fact": "Merged [#369]: Add unit tests for sync step orchestration beyond auth (9c624cc)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "sync.steps.test.ts + sync.auth.test.ts on HEAD.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Mobile #369 test coverage via #385. Do NOT conflate with fluent-api#369 / product-doc API reset tickets."
+    },
+    {
+      "issue": 370,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Colocated unit tests for useVerseAudio primary states (idle/load/play/error); eng-only no device QA.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/370"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/hooks/useVerseAudio.test.tsx",
+          "lines": "185-275,478,778",
+          "fact": "describe useVerseAudio covers rehydrate idle/recorded, load error, record start/stop, play, missing-file error."
+        },
+        {
+          "path": "src/hooks/useVerseAudio.ts",
+          "lines": "1-40",
+          "fact": "Hook module under test remains at src/hooks/useVerseAudio.ts."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/386",
+        "fact": "Merged [#370]: Add unit tests for useVerseAudio hook (0feb2be)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "useVerseAudio.test.tsx on HEAD.",
+        "device_evidence": "none \u2014 eng-only"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "T3a useVerseAudio unit tests delivered by #386."
+    },
+    {
+      "issue": 371,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Colocated unit tests for useRecordingEngine lifecycle start/stop/error; eng-only.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/371"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/hooks/useRecordingEngine.test.tsx",
+          "lines": "12-114",
+          "fact": "Lifecycle tests: start\u2192pause\u2192resume\u2192stop; stop-while-idle throws; mic/audio mode prepare/release."
+        },
+        {
+          "path": "src/hooks/useRecordingEngine.ts",
+          "lines": "1-40",
+          "fact": "Hook module under test present."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/388",
+        "fact": "Merged Add unit tests for useRecordingEngine hook lifecycle (#388 / 8fca78f)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "useRecordingEngine.test.tsx on HEAD.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "T3b useRecordingEngine unit tests delivered by #388."
+    },
+    {
+      "issue": 372,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Unit tests for Prepare Offline service/query modules (prepareOfflineDownload, prepareOfflineResources, queries.prepareOffline); eng-only \u2014 does not fix offline Images gating #417.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/372"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/prepareOfflineDownload.test.ts",
+          "lines": "61",
+          "fact": "enqueuePrepareOfflineDownload suite present."
+        },
+        {
+          "path": "src/services/prepareOfflineResources.test.ts",
+          "lines": "86-93,439",
+          "fact": "prepareOfflineResources suites including manifest fetch and resource status."
+        },
+        {
+          "path": "src/db/queries.prepareOffline.test.ts",
+          "lines": "26-74",
+          "fact": "queries.prepareOffline chapter/project context suites."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/389",
+        "fact": "Merged Add unit tests for Prepare Offline service/query modules (#389 / 8ec199c)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Service/query colocated tests on HEAD.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "T4 Prepare Offline service tests via #389; product offline Images kind:image gating remains #417."
+    },
+    {
+      "issue": 373,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Unit tests for useDeviceAccounts, useActiveAccountSummary, useSync; excludes switchUser stub product decision (#374).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/373"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/hooks/useDeviceAccounts.test.ts",
+          "lines": "31-95",
+          "fact": "Loads accounts, active flag, MAX_DEVICE_ACCOUNTS limit."
+        },
+        {
+          "path": "src/hooks/useActiveAccountSummary.test.ts",
+          "lines": "19-69",
+          "fact": "Empty summary, SQLite profile fields, email fallback."
+        },
+        {
+          "path": "src/hooks/useSync.test.ts",
+          "lines": "42-166",
+          "fact": "KV sync status/errors, syncAllUsers callbacks, onError path."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/390",
+        "fact": "Merged Add unit tests for account and sync hooks (#390 / 06761f5)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Three hook test files on HEAD.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "T5 account/sync hook tests via #390; switchUser product handled separately in #374."
+    },
+    {
+      "issue": 374,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Resolve sync.switchUser no-op stub: implement correct switch-user sync OR remove/rename misleading API; tests match chosen behavior.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/374"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/sync.auth.test.ts",
+          "lines": "1522-1523",
+          "fact": "Asserts sync module does not export misleading switchUser property (removal path chosen)."
+        },
+        {
+          "path": "src/services/sync.ts",
+          "lines": "1-80",
+          "fact": "Module exports/auth orchestration present; working-tree search finds no switchUser identifier in this file after #391 removal."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/391",
+        "fact": "Merged Remove dead sync.switchUser stub (#391 / 2a54f9b) \u2014 chose remove/rename path over implementing sync-on-switch."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "No switchUser export; test locks absence.",
+        "device_evidence": "none required for removal path (Needs QA only if user-visible sync behavior changed)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "P2 chose removal of misleading stub via #391. If later docs claim switchUser syncs, that would be a new divergence \u2014 current source has no such API."
+    },
+    {
+      "issue": 375,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Shared-device multi-account nightly QA checklist/script checked into docs; at least one completed run recorded on the issue; Needs QA path clear.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/375"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/guides/qa-multi-account-nightly.md",
+          "lines": "1-80",
+          "fact": "Full shared-device nightly checklist (add/switch/leakage/sync) citing #375 baseline run; nightly APK prerequisites."
+        },
+        {
+          "path": "docs/guides/qa-process.md",
+          "lines": "3,129",
+          "fact": "Links multi-account nightly script (#375) from canonical QA process."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/395",
+        "fact": "Merged Add multi-account nightly QA checklist guide (#395 / 0256d20)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Checklist guide on HEAD.",
+        "device_evidence": "corpus comments_fetched_count=0 \u2014 no dated nightly run recorded on #375 itself; agent/Maestro Dev receipts \u2260 nightly human pass"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Checklist AC shipped via #395. Named unwaived divergence: issue corpus has zero comments proving a completed nightly run on #375 \u2014 complete\u2260QA pass; future regressions use the living checklist."
+    },
+    {
+      "issue": 376,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Document live required branch-protection checks in docs/ci.md with dated snapshot matching GitHub; call out discrepancies.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/376"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/ci.md",
+          "lines": "75-89",
+          "fact": "Branch protection snapshot dated 2026-08-25: required PR Description; ruleset approvals/code owners; discrepancy that lint/test/typecheck not GitHub-required."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/392",
+        "fact": "Merged Document live main branch protection snapshot (#392 / 69c6eeb)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Dated snapshot + discrepancy callout on HEAD.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "C1 branch-protection docs via #392; later #405 Action-pins note already reflected in snapshot text."
+    },
+    {
+      "issue": 377,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Make Project 4 QA handoff Status updates reliable (PROJECT_BOARD_TOKEN present + documented); evidence pass on ticket.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/377"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "NO_PRODUCT_FIX",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".github/README.md",
+          "lines": "49-55,77",
+          "fact": "Documents qa-handoff.yml Status\u2192In QA and optional PROJECT_BOARD_TOKEN PAT for Project 4 writes."
+        },
+        {
+          "path": "docs/ci.md",
+          "lines": "16,114",
+          "fact": "Documents post-merge qa-handoff behavior for Needs QA Yes/No."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/377#issuecomment-5417487462",
+        "fact": "2026-08-25 Completed as manual epic hygiene (no PR). Board token wiring/docs in .github/README.md / docs/ci.md; maintainer owns secret rotation; waived agent PR per #365."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Handoff docs + optional token documented; secret presence not verifiable from git.",
+        "device_evidence": "none in corpus beyond close comment"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Manual C2 close with docs on HEAD. Named note: live secret presence is maintainer-owned env \u2014 reconciliation cites docs + explicit waive, not Actions secret inspection."
+    },
+    {
+      "issue": 378,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "In QA column hygiene via approved named change set only: list issues+targets, tech-lead approval, execute only that set; no Product-column edits.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/378"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "NO_PRODUCT_FIX",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/guides/project-board.md",
+          "lines": "1-30",
+          "fact": "Living hard rules: no silent board sweeps; In QA is post-merge Needs-QA lane \u2014 reinforced by this ticket's named-set process."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/378#issuecomment-5413503446",
+        "fact": "2026-08-25 Named-set final Status check: Passed QA/Done/In PR Review moves listed; #147/#188/#269 intentionally remained In QA; AC proposed+approval+mobile moves checked."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Process docs only; board state is GitHub Projects not git.",
+        "device_evidence": "dated 2026-08-25 execution comments on #378"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "C3 manual hygiene executed per approved named set; reinforces project-board rules used by this reconciliation."
+    },
+    {
+      "issue": 379,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Align package.json format vs format:check globs (or document intentional difference); format:check passes.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/379"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "package.json",
+          "lines": "17-18",
+          "fact": "format and format:check both use src/**/*.{ts,tsx} identical globs."
+        },
+        {
+          "path": "docs/AGENT_ONBOARDING.md",
+          "lines": "95-96,232",
+          "fact": "Onboarding states format and format:check share the same glob; checklist item marked done."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/393",
+        "fact": "Merged Align format script glob with format:check (#393 / 8af1476)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Identical Prettier globs on HEAD.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "C4 format glob alignment delivered by #393."
+    }
+  ]
+}

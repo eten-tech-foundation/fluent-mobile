@@ -1,0 +1,25 @@
+{
+  "issue_number": 613,
+  "fetched_at_utc": "2026-10-20T00:38:27Z",
+  "issue": {
+    "number": 613,
+    "title": "Upload takes to the project unit they were recorded in [Offline chapter assignment Audit]",
+    "state": "closed",
+    "body": "Found during the offline chapter assignment audit (#533, epic #526).\n\n**Severity:** High  \n**Launch blocker:** To be decided with product  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), local debug build of `main` @ `fb634e5`, `dev.api.fluent.bible` (scenario I.3)\n\n## Summary\n\nRecordings are keyed by `bible_text_id` only. When uploading, `getPendingRecordings` resolves the `project_unit_id` by bible + book + chapter with `ORDER BY ca.id LIMIT 1` (`src/db/repository.ts:993-1000`). When two projects (or, with Milestones #333, two units of one project) share the target bible and book, the take is uploaded against the first matching unit, not the one it was recorded in:\n\n- if the translator is not assigned there, the upload gets 404 and the take is stuck (seen on Ruth 3: recorded in unit 473 / assignment 42074, uploaded against 42042);\n- if the translator is assigned in both, the audio may be uploaded silently to the wrong project.\n\nA retest on a project with a unique book (Numbers 3) uploaded correctly. PR #552 and a comment on #333 describe the display side of the same root (recordings keyed by `bible_text_id`) as pre-existing; no issue covers the upload.\n\n## Expected\n\nA take is uploaded to the project unit and chapter assignment it was recorded in.\n\n## Actual\n\nThe upload targets the lowest matching assignment id for the same bible + book + chapter.\n\n## Steps to reproduce\n\n1. Two projects with the same target bible and the same book (e.g. Ruth), the translator assigned in the second one only.\n2. Record a take on Ruth 3 in the second project and upload (Sync Now).\n3. The upload fails with 404, or lands in the first project if the translator is assigned there too.\n\n## Acceptance criteria\n\n- [ ] Recordings store (or can resolve unambiguously) the project unit / chapter assignment they were recorded in.\n- [ ] Upload uses that unit; takes are shown only in their own project.\n- [ ] Migration path for existing local recordings.\n- [ ] Unit tests with two projects sharing bible + book; Android device QA.\n\n## Related\n\n- Parent audit: #533 (epic #526)\n- #333 (Milestones), PR #552, #528 (record audit), #530 (upload)\n- Assessment: `docs/assessments/offline-chapter-assignment/README.md` (PR #609)\n\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-29T19:01:29Z",
+    "updated_at": "2026-10-08T20:44:15Z",
+    "closed_at": "2026-10-08T20:44:15Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/613",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

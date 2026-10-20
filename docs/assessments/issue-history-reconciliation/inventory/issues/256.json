@@ -1,0 +1,32 @@
+{
+  "issue_number": 256,
+  "fetched_at_utc": "2026-10-20T00:35:40Z",
+  "issue": {
+    "number": 256,
+    "title": "Implement Conflict Detection for Offline Audio Takes",
+    "state": "open",
+    "body": "Fluent's current sync model does a blind overwrite: if two translators record the same pericope or verse while offline, whichever take syncs last silently replaces the other. This ticket introduces a version token on each recorded unit so the server can detect when an incoming take diverges from the current version and flag it as a conflict instead of overwriting. This is the foundational layer that all conflict resolution UI depends on.\n\nNOTE TO DEVS: This is Claude's solution for handling conflict resolution. Please take this with a Claude sized grain of salt and toss it out if there are better ways to handle this. Not trying to overstep.\n\n## Functional Requirements\n\n### Version Token\n\n- Assign a version token to each recorded unit (pericope or verse, depending on project configuration) on the server.\n- Update the version token whenever a take is committed to the server for that unit.\n- Include the unit's current version token in the sync payload sent to the client so the client knows what version it is recording against.\n\n### Conflict Detection on Sync\n\n- When a take syncs to the server, compare its base version token against the server's current version token for that unit.\n- If the tokens differ, flag the unit as in conflict and store the incoming take alongside the existing one; do not overwrite.\n- Support more than two conflicting takes per unit; do not cap how many takes can be in conflict simultaneously.\n\n### False Conflict Suppression\n\n- Before flagging a conflict, compare the content hash of the incoming take against all existing takes for that unit.\n- If the incoming take's content hash matches an existing take, do not flag a conflict.\n\nNote: Recording always happens at the sub-chapter level \u2014 pericope or verse depending on project configuration. Version tokens attach at that unit level only; chapter is a claiming and navigation unit, not a recording unit. See the Merge Conflict Resolution requirements for full context.\n\nNote 2: The false conflict scenario is a sync retry, not two people independently recording identical audio (which is not realistically possible). A take can upload successfully but the client never receives confirmation due to a dropped connection, causing it to retry. On retry, the version token has already advanced from the first upload, which would incorrectly flag a conflict. The content hash check catches this and suppresses it.",
+    "user": "chadw-eten",
+    "created_at": "2026-07-24T14:46:36Z",
+    "updated_at": "2026-09-07T06:52:34Z",
+    "closed_at": null,
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/256",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5273845866,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-12T23:08:28Z",
+      "updated_at": "2026-08-12T23:08:28Z",
+      "body": "### Eng note (updated)\n\nServer work lives in **eten-tech-foundation/fluent-api#271** \u2014 don\u2019t do/invent API work inside this mobile ticket by default.\n\n**Preferred:** pull `fluent-api#271` into the same slice and ship mobile + API together as one feature (so we\u2019re not mocking forever).\n\n**Fallback:** if after a short spike the API side looks like a crazy amount of work, ship this ticket against mocks and leave `fluent-api#271` as the explicit follow-up. Call that out in the PR.\n\nDon\u2019t treat the Claude sketch in the description as gospel \u2014 use it as a starting point when pairing with the API ticket.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/256#issuecomment-5273845866"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

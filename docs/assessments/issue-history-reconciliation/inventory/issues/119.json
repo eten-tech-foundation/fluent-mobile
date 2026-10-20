@@ -1,0 +1,58 @@
+{
+  "issue_number": 119,
+  "fetched_at_utc": "2026-10-20T00:34:51Z",
+  "issue": {
+    "number": 119,
+    "title": "[Epic] Local-first dev experience (unblock from missing live API)",
+    "state": "closed",
+    "body": "### Summary\n\n**Priority epic** \u2014 unblock mobile development without requiring every engineer to run Docker locally. On the Expo SDK 56 CNG (Android-only) baseline, developers point `EXPO_PUBLIC_API_BASE_URL` at a **real Fluent API** and sync into on-device SQLite. This epic documents the workflow and closes the local Docker My Work gap on the server side.\n\n**Pivot (2026-06):** Mobile mock seed (#106) and offline auth bypass (#107) are **descoped**. Data arrives via `syncAllData()` from real APIs \u2014 not fake mobile fixtures.\n\n**Verify pass (2026-07):** #108 docs complete and closed. #106/#107 descoped. Epic complete; fluent-api seeder (E2) remains optional follow-up outside this epic.\n\n### Sub-issues / deliverables\n\n- [x] **#108** \u2014 Local development workflow docs (hosted dev + local Docker)\n- [ ] **fluent-api** \u2014 Local dev data seeder (project + chapter assignment for translator; Docker Postgres only) \u2014 optional E2 follow-up\n- [x] ~~#106~~ \u2014 Descoped (mobile mock seed superseded)\n- [x] ~~#107~~ \u2014 Descoped (offline mock mode superseded; optional app-shell hardening tracked separately)\n\n### Two co-equal dev paths\n\n| Path | `EXPO_PUBLIC_API_BASE_URL` |\n|------|---------------------------|\n| Hosted dev | `https://dev.api.fluent.bible` |\n| Local Docker | `http://10.0.2.2:9999` (`./fapi.sh up` + `db:init` in fluent-api) |\n\nWeb app: https://dev.app.fluent.bible\n\n### Dependency ordering\n\n1. **#108 (E1)** \u2014 Document both paths (unblocks team immediately for hosted dev) \u2014 **done**\n2. **fluent-api seeder (E2)** \u2014 Populate My Work on local Docker stack (optional)\n3. **Optional** \u2014 App-shell error when API unreachable (reduced #107)\n\nUnblocks feature epics (#115/#116/#117/#118) for UI development against real data.\n\n### Open dependencies\n\n- [x] Postgres read access to shared dev (inspection only)\n- [ ] Hosted-dev login credentials (team to share)\n\n### Links\n\n- fluent-api local stack: [PR #187](https://github.com/eten-tech-foundation/fluent-api/pull/187), [`fapi.sh`](https://github.com/eten-tech-foundation/fluent-api/blob/main/fapi.sh)\n- Related: #112 (onboarding consolidation)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:46:34Z",
+    "updated_at": "2026-07-02T20:18:43Z",
+    "closed_at": "2026-07-02T20:04:01Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 4,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/119",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4846694329,
+      "user": "mattrace-gloo",
+      "created_at": "2026-06-30T18:21:42Z",
+      "updated_at": "2026-06-30T18:21:42Z",
+      "body": "## Epic pivot \u2014 local development workflow (not mobile mock seed)\n\nAfter reviewing `fluent-api` on `main` ([PR #187](https://github.com/eten-tech-foundation/fluent-api/pull/187) local dev seeders + [`fapi.sh`](https://github.com/eten-tech-foundation/fluent-api/blob/main/fapi.sh)) and confirming hosted dev is live, this epic pivots:\n\n**We are NOT building** mobile SQLite mock seed (#106) or offline auto-auth bypass (#107). The mobile app gets data via **sync hydration** from real APIs.\n\n### Two co-equal dev paths (switch via `EXPO_PUBLIC_API_BASE_URL` only)\n\n| Path | API URL | Use when |\n|------|---------|----------|\n| **Hosted dev** | `https://dev.api.fluent.bible` (same backend as Azure `scribe-server-dev`) | See shared remote data; no Docker |\n| **Local Docker** | `http://10.0.2.2:9999` after `./fapi.sh up` + `db:init` | Seed your own Postgres; offline API work |\n\nWeb app for login/testing: https://dev.app.fluent.bible\n\n### Revised deliverables\n\n1. **#108** \u2014 Document local development workflow (both paths) \u2014 primary\n2. **NEW fluent-api issue** \u2014 Local dev data seeder (project + chapter assignment for translator My Work on Docker only)\n3. **#106 / #107** \u2014 Descoped (superseded by real APIs)\n4. **Optional** \u2014 App-shell error when API URL unset/unreachable (reduced #107 scope)\n\n### Dependencies\n\n- Postgres read access to shared dev: **done** (inspection/debugging only)\n- Hosted-dev login credentials: **open** (need team account; `t@fluent.local` is local Docker only)\n\nHosted dev already has rich data (100+ users, 297 projects, 27k+ assignments). My Work works once you have login creds.\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/119#issuecomment-4846694329"
+    },
+    {
+      "id": 4846744228,
+      "user": "mattrace-gloo",
+      "created_at": "2026-06-30T18:28:04Z",
+      "updated_at": "2026-06-30T18:28:04Z",
+      "body": "## Epic delivery \u2014 PRs open\n\nPhase 0 ticket hygiene is complete (#106/#107 closed, #108 updated, fluent-api#207 created).\n\n### Pull requests (awaiting merge)\n\n| Issue | Repo | PR |\n|-------|------|-----|\n| #108 \u2014 local development workflow docs | fluent-mobile | https://github.com/eten-tech-foundation/fluent-mobile/pull/136 |\n| fluent-api#207 \u2014 local dev project seeder | fluent-api | https://github.com/eten-tech-foundation/fluent-api/pull/208 |\n| #137 \u2014 app shell API config/connectivity (optional, reduced #107) | fluent-mobile | https://github.com/eten-tech-foundation/fluent-mobile/pull/138 |\n\n### Verification status\n\n- **Automated gates:** passed locally on all three branches (`format:check`, `lint`, `typecheck`, tests).\n- **Manual \u2014 hosted dev path:** docs in PR #136 describe `EXPO_PUBLIC_API_BASE_URL=https://dev.api.fluent.bible`; requires team login credentials (still an open dependency on this epic).\n- **Manual \u2014 local Docker path:** after PR #208 merges, `./fapi.sh up` + seeds \u2192 sign in as `t@fluent.local` / `t@123456` \u2192 mobile sync should show GEN 1 in My Work.\n\nEpic stays **open** until #108 + #207 are merged and manual smoke is confirmed. Close with `Fixes #119` from a merge commit or follow-up comment once verified.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/119#issuecomment-4846744228"
+    },
+    {
+      "id": 4846854211,
+      "user": "mattrace-gloo",
+      "created_at": "2026-06-30T18:41:43Z",
+      "updated_at": "2026-06-30T18:41:43Z",
+      "body": "## Epic closeout\n\n**Delivered:** fluent-mobile PR #136 \u2014 local development workflow docs (hosted dev + local Docker, sync hydration, no mobile mock seed).\n\n**Descoped / closed:**\n- fluent-api#207 + PR #208 \u2014 automated project seeder not needed\n- fluent-mobile#138 \u2014 optional app-shell hardening, closed without merge\n\n**Acceptance:** Devs pick API via `EXPO_PUBLIC_API_BASE_URL`, sign in, sync. Local Docker My Work: web UI project setup or use hosted dev.\n\nClosing epic \u2014 docs are the durable deliverable.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/119#issuecomment-4846854211"
+    },
+    {
+      "id": 4847631599,
+      "user": "mattrace-gloo",
+      "created_at": "2026-06-30T20:25:48Z",
+      "updated_at": "2026-06-30T20:25:48Z",
+      "body": "Reopened: epic deliverable #108 still has open PR #136 awaiting merge. Per prior epic comment, this epic should stay open until #108 is merged and verified.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/119#issuecomment-4847631599"
+    }
+  ],
+  "comments_fetched_count": 4,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

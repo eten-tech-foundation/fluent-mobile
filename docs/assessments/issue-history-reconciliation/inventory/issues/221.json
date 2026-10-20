@@ -1,0 +1,32 @@
+{
+  "issue_number": 221,
+  "fetched_at_utc": "2026-10-20T00:35:29Z",
+  "issue": {
+    "number": 221,
+    "title": "Rename home-screen app label to Fluent Mobile",
+    "state": "closed",
+    "body": "## Summary\n\nChange the **user-facing app name** (the label under the Android home-screen / launcher icon) from **Fluent Demo** to **Fluent Mobile**.\n\n## Scope\n\n**In scope**\n- Display name only \u2014 what users see under the app icon (Expo `name` / Android `android:label` via Expo config)\n\n**Out of scope**\n- Android package / application id (`com.eten.fluent`)\n- Expo slug, scheme, EAS project id\n- Bundle identifiers or any deep store listing metadata beyond the launcher label\n- In-app copy, marketing sites, or docs renames (unless the launcher name is documented and should match)\n\n## Current state\n\n[`app.config.ts`](app.config.ts) currently sets `name: 'Fluent'`. On device, builds may still show **Fluent Demo** (older config or a prior build). Target display name: **Fluent Mobile**.\n\n## Acceptance criteria\n\n- [ ] Launcher / home-screen label under the app icon reads **Fluent Mobile**\n- [ ] Android `package` / application id is unchanged (`com.eten.fluent`)\n- [ ] Expo slug, scheme, and EAS project settings are unchanged\n- [ ] Verified on an Android device or emulator after a native rebuild (display name is baked into the binary)\n\n## Verification\n\n1. Update Expo `name` (and any related display-name config only if required)\n2. Rebuild Android (dev client or preview/nightly APK \u2014 not JS-only OTA)\n3. Install and confirm the icon label is **Fluent Mobile**\n\n## Notes\n\nDisplay name changes require a **native rebuild**; OTA/JS-only updates will not change the launcher label.",
+    "user": "mattrace-gloo",
+    "created_at": "2026-07-20T21:56:40Z",
+    "updated_at": "2026-07-20T21:59:01Z",
+    "closed_at": "2026-07-20T21:59:01Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/221",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5027688946,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-20T21:59:01Z",
+      "updated_at": "2026-07-20T21:59:01Z",
+      "body": "Closing as unnecessary: the launcher/app name in app.config.ts is already `Fluent` (not \"Fluent Demo\"), and there is no \"Fluent Demo\" string anywhere in this repository. No rename work is required for this ticket.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/221#issuecomment-5027688946"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

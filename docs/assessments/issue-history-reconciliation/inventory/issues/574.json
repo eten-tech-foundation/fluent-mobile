@@ -1,0 +1,43 @@
+{
+  "issue_number": 574,
+  "fetched_at_utc": "2026-10-20T00:37:57Z",
+  "issue": {
+    "number": 574,
+    "title": "Maestro E2E + safe fixtures for chapter ownership, taken warning, and online claim",
+    "state": "closed",
+    "body": "## Summary\n\nCurrent ownership/taken-warning behavior has strong unit coverage and passed the exercised live-device paths in the #532 audit, but Maestro lacks end-to-end assertions for these states and destructive claim scenarios cannot be safely tested against shared dev data.\n\nThe #532 audit proved the live UI for existing seeded states (mine / other / unassigned ownership, Draft + Peer Check taken warning, Advanced/Complete clearing). Important claim/conflict/open-Peer-Check paths cannot be safely or deterministically exercised because the project lacks resettable E2E fixture state.\n\n## Why\n\nWithout deterministic/resettable fixtures:\n\n- online auto-claim cannot be safely exercised\n- claim UI updates cannot be proven E2E\n- conflict banner/list behavior cannot be deterministically reproduced\n- open Peer Check / no-peerChecker state cannot be reliably reproduced\n- future audits remain partially BLOCKED/SKIPPED\n\n## Evidence from #532\n\n- mine / other / unassigned ownership UI **passed**\n- Draft taken-warning **passed**\n- Peer Check taken-warning **passed**\n- recording remained enabled on taken chapters **passed**\n- Advanced / Complete ownership clearing **passed**\n- online auto-claim was **not executed** because it would mutate shared state (SKIPPED \u2014 policy)\n- conflict UI lacked a safe deterministic seed (**BLOCKED**)\n- open Peer Check lacked a deterministic seed (**BLOCKED**)\n- existing Maestro flows do not assert ownership/claim behavior\n\nThese are coverage/fixture gaps, not confirmed product failures on the exercised paths.\n\n## Expected\n\nMaestro (backed by disposable/resettable fixtures) can deterministically prove:\n\n- ownership a11y states (mine / other / unassigned)\n- `record-taken-warning` on taken chapters\n- online first-recording auto-claim and immediate ownership UI update\n- conflict list + Record conflict banner when seeded\n- open Peer Check / no-peerChecker when seeded\n\nwithout mutating shared developer/QA project data.\n\n## Actual\n\n- Smokes only treat assignment as a seed prerequisite (`\u22651` My Work row)\n- No Maestro asserts ownership icons, `record-taken-warning`, or claim\n- Online claim / conflict / open Peer Check cannot be safely or deterministically run on shared `dev.api.fluent.bible` data\n\n## Acceptance criteria\n\n- [ ] Provide deterministic/resettable E2E assignment fixtures\n- [ ] Fixtures support at minimum:\n  - mine\n  - assigned to another user\n  - unassigned\n  - conflict\n  - open Peer Check / no peerChecker where applicable\n- [ ] Fixture state can be restored to a known baseline between runs\n- [ ] Maestro asserts mine / other / unassigned ownership UI\n- [ ] Maestro asserts `record-taken-warning`\n- [ ] Maestro proves online first-recording auto-claim using disposable/resettable data\n- [ ] Claim updates ownership UI immediately\n- [ ] Tests do not mutate shared developer/QA data\n- [ ] Fixture/seed/reset requirements are documented in the Maestro guide\n- [ ] Existing audit scenarios that were BLOCKED/SKIPPED because of missing fixtures can be executed deterministically\n\n## Related\n\n- Audit: #532 (parent epic #526)\n- Assessment (PR): `docs/assessments/chapter-assignment-and-claiming/`\n- Task doc: `docs/assessments/chapter-assignment-and-claiming/tickets/maestro-ownership-claim-fixtures.md`\n- Historical / related product work: #267, #268, #269, #270, #271, #442, #476\n- Sibling offline assignment audit: #533\n\n## Duplicate check\n\nSearched open issues for Maestro/E2E ownership, taken-warning, assignment fixtures, online/auto-claim. Existing product tickets (#269/#270/#271/#442/#476) cover product behavior, not Maestro fixtures + E2E assertions. No equivalent open QA/infra issue found.\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-24T00:29:37Z",
+    "updated_at": "2026-10-09T18:46:24Z",
+    "closed_at": "2026-10-09T18:46:24Z",
+    "labels": [
+      "enhancement",
+      "chore"
+    ],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/574",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5895262956,
+      "user": "mattrace-buildmidwestern",
+      "created_at": "2026-09-29T17:27:34Z",
+      "updated_at": "2026-09-29T17:27:34Z",
+      "body": "## Ticket-level waiver (partial AC)\n\nPR #582 lands the disposable mine / other / unassigned / online auto-claim slice with seed safety guards.\n\n**Waived for this ticket** (tracked on follow-up [#607](https://github.com/eten-tech-foundation/fluent-mobile/issues/607)):\n\n1. Conflict fixture role (`hasConflict=true`) \u2014 `assign-selected` cannot seed it\n2. Open Peer Check fixture role \u2014 `assign-selected` cannot set `status=peer_check`\n3. Claim baseline restore between runs \u2014 API cannot restore `not_started` after auto-claim; suite rotates labels or needs manual Status reset\n\nThese remain Product/API decisions; #574 can close when #582 merges with this waiver on the issue.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/574#issuecomment-5895262956"
+    },
+    {
+      "id": 6087143989,
+      "user": "mattrace-gloo",
+      "created_at": "2026-10-09T18:46:23Z",
+      "updated_at": "2026-10-09T18:46:23Z",
+      "body": "Cleanup: work already on main (Refs PR merged; Needs QA? No / engineering-only or audit assessment). Board \u2192 **Done**, closing.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/574#issuecomment-6087143989"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,26 @@
+{
+  "issue_number": 459,
+  "fetched_at_utc": "2026-10-20T00:36:58Z",
+  "issue": {
+    "number": 459,
+    "title": "Nightly APK schedule never builds \u2014 delayed cron dropped by drift window",
+    "state": "closed",
+    "body": "## Problem\n\nQA / Slack are not getting nightly Fluent APK notices. Last successful EAS `nightly` profile build was **2026-08-27**. Since PR #421 (merged 2026-08-28), scheduled `Nightly Preview` runs still fire twice daily and report **success**, but the APK job only writes \u201cignored drifted schedule\u201d and never calls EAS.\n\n## Root cause\n\n1. Cron is `17 23 * * *` with `timezone: America/Los_Angeles` (intended ~23:17 PT).\n2. GitHub\u2019s scheduler routinely delays that fire until **~04:00\u201306:00 PT** the next morning.\n3. `nightly-windows.cjs` only allows wall-clock hours **22\u201302 PT**, so every delayed-but-legitimate APK cron is dropped.\n4. No APK \u2192 no pending Slack artifact \u2192 morning Slack job has nothing to post.\n\nEvidence: recent schedule runs complete the APK job in ~20s with \u201cWrite drifted-schedule summary\u201d; EAS builds with `buildProfile: nightly` stopped after #421.\n\n## Acceptance criteria\n\n- [ ] When `github.event.schedule` is the APK cron (`17 23 * * *`), the workflow builds (subject to skip-if-unchanged), even if wall-clock PT is outside 22\u201302.\n- [ ] Unknown / legacy schedule strings still use the wall-clock guard (do not rebuild the old ~11am PT false fires).\n- [ ] Slack still waits for 09:00\u201316:00 PT (or morning cron delivery of pending payload).\n- [ ] Unit tests cover delayed APK cron acceptance.\n- [ ] Docs note that GitHub delay is expected and cron identity is authoritative.\n\n## Out of scope\n\n- Changing EAS profiles or Slack webhook secrets.\n- iOS.\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-08T10:11:16Z",
+    "updated_at": "2026-09-08T10:21:46Z",
+    "closed_at": "2026-09-08T10:21:46Z",
+    "labels": [
+      "bug",
+      "ci"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/459",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

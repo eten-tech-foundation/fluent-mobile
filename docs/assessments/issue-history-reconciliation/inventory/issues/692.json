@@ -1,0 +1,25 @@
+{
+  "issue_number": 692,
+  "fetched_at_utc": "2026-10-20T00:38:44Z",
+  "issue": {
+    "number": 692,
+    "title": "Next UI: Round button and Progress ring",
+    "state": "open",
+    "body": "Next UI components for the Listen and Record screens, built with the `figma-component` workflow from #638. Batched into one PR by request (Joe Skager) since both are small, front-end only, and the ring wraps the button in Figma.\n\nFigma: [Round button](https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2326-64) \u00b7 [Progress ring](https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2400-302)\n\n## Acceptance criteria\n\n- [ ] `RoundButton` renders Style Soft / Flat \u00d7 Default / Pressed / Disabled from Figma `2326:64` using only theme tokens; Flat is pinned to Canvas colors; Soft has the 1px `border/rim` ring\n- [ ] Press: Soft sinks to `surface/sunken` + `elevation/inset`, Flat to `surface/sunken`; icon nudges 2px; Figma motion tokens; reduce motion snaps; `press` haptic on press-in (Next only, silent during a take)\n- [ ] `ProgressRing` renders None / In progress / Complete from Figma `2400:302`, driven by a 0\u20131 value, 3px `fg/inactive` track with an `accent/primary` arc from 12 o'clock, and centers a child (the Round button)\n- [ ] Progress is announced to TalkBack (progress bar role with a percent value)\n- [ ] `stroke/1`, `stroke/2` reachable through `useTheme()` (needed by the rim)\n- [ ] Gallery demos show both doing their real job: passage rows for *The Last Supper* (Soft button + listening-progress ring, None / In progress / Complete, play and pause) and the Canvas player header (Flat minimize). Round button Disabled isn't used on any Figma screen, so it's covered by unit tests rather than demoed\n- [ ] Switch gallery demo reworked to its real job, the Listen / Record Mode toggle, locking while a take records\n- [ ] Unit tests for both components\n\nNeeds QA? Yes (haptics and press feel need a real device)\n\n",
+    "user": "jskager",
+    "created_at": "2026-10-13T16:17:51Z",
+    "updated_at": "2026-10-19T15:01:30Z",
+    "closed_at": null,
+    "labels": [
+      "next-ui"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/692",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

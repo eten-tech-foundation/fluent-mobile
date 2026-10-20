@@ -1,0 +1,32 @@
+{
+  "issue_number": 3,
+  "fetched_at_utc": "2026-10-20T00:33:38Z",
+  "issue": {
+    "number": 3,
+    "title": "Discovery doc",
+    "state": "closed",
+    "body": "Record findings in a document: [this one](https://docs.google.com/document/d/1ttTb-XzNYlJDX9DL0ueyuO-56uU19ZsE1Z5t7WQujbQ/edit?tab=t.0#heading=h.43ho6eulbe1t) can be used as a template.",
+    "user": "kaseywright",
+    "created_at": "2026-01-29T12:17:46Z",
+    "updated_at": "2026-07-02T19:50:59Z",
+    "closed_at": "2026-05-11T05:28:17Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/3",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 3919003950,
+      "user": "Alph-1n",
+      "created_at": "2026-02-18T06:34:26Z",
+      "updated_at": "2026-02-18T06:34:26Z",
+      "body": "This doc contains my explorations of the Audio Libraries for the mobile app.\n\nhttps://bridgeconn-my.sharepoint.com/:w:/g/personal/alphin_varghese_bridgeconn_com2/IQDfvUrnK2udQ4mK5lY3kosUAdiMDwGpjG2e21DxKWPPjiE?e=CKJXGN",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/3#issuecomment-3919003950"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

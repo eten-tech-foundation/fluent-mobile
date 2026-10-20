@@ -1,0 +1,32 @@
+{
+  "issue_number": 516,
+  "fetched_at_utc": "2026-10-20T00:37:28Z",
+  "issue": {
+    "number": 516,
+    "title": "Migrate Maestro E2E to EAS Workflows (Android e2e-test + type: maestro)",
+    "state": "closed",
+    "body": "## Summary / context\n\nMigrate informational Maestro E2E from GitHub Actions emulator-runner to **Expo\u2019s canonical path**: EAS Workflows `type: maestro` + Android-only `e2e-test` build profile ([EAS E2E docs](https://docs.expo.dev/eas/workflows/examples/e2e-tests/), [maestro job](https://docs.expo.dev/eas/workflows/pre-packaged-jobs/#maestro)).\n\nParent context: #488 / #497 / #510 (GHA path has been dash/`sh -c` then 90m timeout fragile).\n\n## Scope\n\n**In scope**\n- `eas.json` Android-only `e2e-test` profile (`withoutCredentials` + `buildType: apk`; **no iOS**)\n- `.eas/workflows/maestro-android.yml` \u2014 `workflow_dispatch` suite choice (harness / smokes / multi-account); build \u2192 `type: maestro`\n- Docs: playbook / `.eas/README.md` / `docs/ci.md` \u2014 EAS is primary; GHA optional legacy\n- Document EAS env secrets for `MAESTRO_*` (preview)\n\n**Out of scope**\n- Maestro Cloud (`type: maestro-cloud`)\n- iOS\n- Making Maestro a required PR merge gate\n- Deleting GHA workflow in this PR (mark legacy; remove later if EAS stable)\n\n## Acceptance criteria\n\n- [ ] `e2e-test` profile Android-only in `eas.json`\n- [ ] EAS workflow validates (`workflow_validate` / `eas workflow:run` dry)\n- [ ] Suite input maps to harness / smoke / multi-account tags or flow paths\n- [ ] Docs state EAS as preferred host + how to run + required EAS secrets\n- [ ] Android-only forever (no iOS profile/jobs)\n\n## Verification\n\n1. `eas workflow:run .eas/workflows/maestro-android.yml -F suite=harness` (needs EXPO_TOKEN + project access)\n2. Confirm build uses `e2e-test` and Maestro job runs on emulator\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-11T23:33:40Z",
+    "updated_at": "2026-09-12T00:08:18Z",
+    "closed_at": "2026-09-12T00:08:18Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/516",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5642048203,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-12T00:08:17Z",
+      "updated_at": "2026-09-12T00:08:17Z",
+      "body": "Shipped in https://github.com/eten-tech-foundation/fluent-mobile/pull/518 \u2014 Maestro hosted E2E is EAS Workflows only (GHA path removed).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/516#issuecomment-5642048203"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

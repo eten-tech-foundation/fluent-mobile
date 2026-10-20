@@ -1,0 +1,34 @@
+{
+  "issue_number": 47,
+  "fetched_at_utc": "2026-10-20T00:34:05Z",
+  "issue": {
+    "number": 47,
+    "title": "Build Drafting Page Shell with Tab Navigation",
+    "state": "closed",
+    "body": "The drafting page is the primary work surface in Fluent Mobile, where translators listen to source audio and record drafts in their target language. Field testing of the POC confirmed that separating listening and recording into distinct surfaces improves the workflow. This ticket covers the page shell only \u2014 the shared header, audio player bar, and bottom tab navigation that house the Bible and Record tabs. Each tab is built under its own ticket.\n\nThis build targets verse-by-verse translation. Pericope view is a future phase built on top of this foundation.\n\n## Functional Requirements\n\n### Selected Verse\n- The drafting page maintains a single selected verse \u2014 the verse the translator is currently working on.\n- On entry, the selected verse defaults to the first verse in the chapter with no existing recording; if all verses have recordings, it defaults to verse 1.\n- The selected verse changes only by explicit user action: tapping a verse on the Bible Tab, or tapping prev/next on the Record Tab. Passive audio playback advancing through the chapter does not change the selected verse.\n- On tab switch in either direction, the audio player scrubs to the start of the selected verse. If audio was playing beyond the selected verse, it continues playing from the selected verse's start position after the switch.\n\n### Page Header\n- Display book name and chapter number in the header (e.g., \"Luke 4\").\n- Display a back button (`li:chevron-left`) on the left; tapping returns the user to the screen they navigated from, either My Work or the Project chapter list depending on entry point.\n- Reserve the right side of the header for a sync status icon. See #38 for the icon spec; tapping the icon navigates to the sync page.\n\n### Source Audio Player\n- Render as a fixed bar anchored to the bottom of the page, just above the tab navigation; tab content scrolls above and behind it; always visible on both tabs regardless of which is active.\n- Load chapter-level audio for the current chapter; the player always holds the full chapter, not individual verse clips.\n- Before audio is loaded, display the player in an empty state: Play/Pause button disabled and waveform area shows a flat greyed-out placeholder; no interaction is possible until audio is ready.\n- If audio fails to load, display an inline error state in the player bar with a retry control; playback controls remain disabled until a successful load.\n- Display a Play/Pause button (`li:play` / `li:pause`) with a minimum 48dp touch target.\n- Display a waveform scrubber with verse boundary tick marks; allow continuous scrubbing to any position in the chapter.\n- Tapping a verse tick mark scrubs playback to that verse boundary; this does not change the selected verse.\n- The player is free to play beyond the selected verse on either tab; the translator may listen ahead for context at any point.\n- On tab switch, the player scrubs to the selected verse start.\n\n### Bottom Tab Navigation\n- Display two persistent tabs at the bottom of the page: Bible (`li:headphones`) and Record (`li:mic`).\n- Preserve the active tab and each tab's internal state for the duration of the app session, including when the app is backgrounded and resumed; switching tabs or leaving to another app does not reset position or state.\n- A Resources tab is reserved for a future build and does not appear in this version.\n\n<img width=\"389\" height=\"816\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/7023dea5-d191-4668-a2bf-22b50361230d\" />",
+    "user": "chadw-eten",
+    "created_at": "2026-06-04T15:33:45Z",
+    "updated_at": "2026-07-03T04:43:03Z",
+    "closed_at": "2026-07-03T04:43:03Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/47",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4843069825,
+      "user": "B3RN153",
+      "created_at": "2026-06-30T11:51:10Z",
+      "updated_at": "2026-06-30T11:51:10Z",
+      "body": " \n- Understanding codebase          - 1hr(ET)\n- Implementation and unittetsing - 3hrs(ET)",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/47#issuecomment-4843069825"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

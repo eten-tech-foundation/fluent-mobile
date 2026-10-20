@@ -1,0 +1,34 @@
+{
+  "issue_number": 584,
+  "fetched_at_utc": "2026-10-20T00:38:02Z",
+  "issue": {
+    "number": 584,
+    "title": "Upload pericope takes to the server [Pericope view Audit]",
+    "state": "closed",
+    "body": "Found during the pericope view audit (#534, epic #526).\n\n**Severity:** High  \n**Launch blocker:** To be decided with product  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), `main` @ `4ebeae2`, local fluent-api @ `acc1404` (scenarios G.25, G.26)\n\n## Summary\n\nTakes recorded in pericope mode (#410) are stored locally with `granularity = 'pericope'` and a verse range, but they never upload. The upload worker and pending counts only accept verse takes (`UPLOADABLE_PENDING_WHERE` in `src/db/queries.ts`), and fluent-api's verse-audio routes are keyed by a single `bibleTextId` (`PUT /verse-audio/{projectUnitId}/{bibleTextId}`). The API gap was noted on #410 but no follow-up exists in either repository.\n\n## Expected\n\nA pericope take uploads like a verse take, and the server keeps its granularity and verse range, so web, peer checkers and other devices can play it.\n\n## Actual\n\nThe take stays on the device. The Sync page reports \"N recordings can't upload yet \u2014 missing bible text or pericope-only takes.\"\n\n## Steps to reproduce\n\n1. Settings \u2192 Drafting unit \u2192 Pericope.\n2. Open a chapter whose project has a pericope set and record a pericope take.\n3. Go online and open Sync: Sync Now is disabled and the red \"can't upload yet\" message shows.\n4. Check the chapter's audio on web or the API: no audio rows for those verses.\n\n## Acceptance criteria\n\n- [ ] fluent-api accepts a range take (granularity, start/end chapter and verse) with list/get/delete semantics compatible with conflict detection (fluent-api#271). The fluent-api issue is opened at implementation time and linked here.\n- [ ] Mobile uploads selected pericope takes through that endpoint and marks them `uploaded`.\n- [ ] Pericope takes leave the \"can't upload yet\" bucket on the Sync page.\n- [ ] Sync Now stays usable for downloads while takes are pending. Today `syncNowDisabled` (`noUploadableChapters` in `SyncScreen.tsx`) disables it when every pending take is a pericope take, so the user cannot pull server changes from Sync Now either (seen in G.25).\n- [ ] Unit tests cover the upload query and worker for pericope takes.\n- [ ] Android device QA: record a pericope take, sync, confirm on web/API.\n\n## Related\n\n- Parent audit: #534 (epic #526)\n- Related gap: #585 (chapter advances while pericope takes cannot upload)\n- Feature: #410 (API gap section), #411\n- Assessment: `docs/assessments/pericope-view/README.md` (PR #583)\n\n\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-25T17:20:09Z",
+    "updated_at": "2026-10-08T18:28:11Z",
+    "closed_at": "2026-10-08T18:28:11Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/584",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 6048054063,
+      "user": "mattrace-gloo",
+      "created_at": "2026-10-07T22:21:52Z",
+      "updated_at": "2026-10-07T22:21:52Z",
+      "body": "Opened fluent-api follow-up for range/pericope verse-audio upload: https://github.com/eten-tech-foundation/fluent-api/issues/377\n\nMobile slice in progress: treat pericope takes as upload-eligible, PUT `/verse-audio/{projectUnitId}/range` with range form fields, and keep Sync Now enabled for metadata sync when only unuploadable leftovers remain.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/584#issuecomment-6048054063"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

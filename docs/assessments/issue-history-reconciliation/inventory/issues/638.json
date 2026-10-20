@@ -1,0 +1,23 @@
+{
+  "issue_number": 638,
+  "fetched_at_utc": "2026-10-20T00:38:35Z",
+  "issue": {
+    "number": 638,
+    "title": "Next UI: Key component, component gallery and Figma-to-component workflow",
+    "state": "closed",
+    "body": "Pilot for building Next UI components from the ETEN \u00d7 Fluent Figma file. It lands the hardware Key (in its key deck) and the Switch as reference components, a flag-gated component gallery for reviewing them on a device, the theme pieces they need, and the workflow docs and agent skill for the next ones.\n\nFigma: [Key](https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2326-34) \u00b7 [Switch](https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2326-41) \u00b7 [Hardware panel keys](https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2411-465)\n\nScope is one PR by request (Joe Skager), since the pieces only make sense together as a worked example.\n\n## Acceptance criteria\n\n- [ ] `Key` renders Default, Pressed / latched and Disabled from Figma Key (`2326:34`) using only theme tokens (no Figma screen uses `Lip=false`, so it's not demoed; the `lip` prop stays to mirror Figma); Disabled keeps the key solid and fades only the icon (Figma updated to match)\n- [ ] Press sinks the face `space/4` over `motion/press`, releases over `motion/release` with `ease-standard`, with no flash on release; reduce motion snaps\n- [ ] `KeyDeck` frames transport keys in `surface/inverse` with `space/2` seams (Figma `2411:465`)\n- [ ] `Switch` renders Off / On / Disabled from Figma Switch (`2326:41`), all reachable in the gallery demo, with a 48dp touch target and a toggle haptic\n- [ ] Haptics via `useHaptics()`: `Virtual_Key` / `Toggle_On|Off` in Next, nothing in Legacy, nothing for the whole take (recording or paused)\n- [ ] Foundations roles, elevation, motion, disabled opacity, icon sizes, `radius.xs` and `spacing.xxs` are reachable through `useTheme()`; Legacy snapshot changes are additive only\n- [ ] Canvas, Hardware and Accent modes resolve through `ColorModeScope`; `accent/record` matches Figma in every mode (Canvas `red/500`, Accent `red/300`)\n- [ ] Component gallery at `fluent://gallery`, signed in or out, always Next, with a mode switcher and live demos only; enabled for development / preview / nightly and never production\n- [ ] Workflow guide, `figma-component` skill, theme audit and `npm run api:coverage` committed, including the screen-wiring scrub and the PR \"Existing functionality\" table\n\nNeeds QA? Yes (new native module `expo-haptics`; haptics and press feel need a real device)\n\n",
+    "user": "jskager",
+    "created_at": "2026-10-06T14:53:41Z",
+    "updated_at": "2026-10-09T15:13:25Z",
+    "closed_at": "2026-10-09T15:13:25Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/638",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

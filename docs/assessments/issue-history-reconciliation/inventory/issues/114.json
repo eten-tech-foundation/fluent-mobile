@@ -1,0 +1,25 @@
+{
+  "issue_number": 114,
+  "fetched_at_utc": "2026-10-20T00:34:46Z",
+  "issue": {
+    "number": 114,
+    "title": "Lint guardrails for handoff anti-patterns",
+    "state": "closed",
+    "body": "### Current state on main\n\n- `eslint.config.js` (flat config) already has:\n\n```js\n'no-console': ['error', { allow: ['warn', 'error'] }], // logger.ts and test files exempted\n'@typescript-eslint/no-explicit-any': 'warn',\n'react-hooks/rules-of-hooks': 'error',\n```\n\n- `src/utils/logger.ts` is exempt from `no-console`; test files relax `no-console`/`any`.\n- The anti-patterns we want to prevent (all visible in #82 / the pre-#88 baseline):\n - **Mutable module singleton** for tokens (`let _activeToken` in `api.ts` \u2014 removed by #88).\n - **Fake async** (`async function getHeaders()` with no `await` \u2014 removed by #88).\n - **Direct `process.env`** reads outside the config layer (should go through `src/config/` per #109).\n - **`@env` import** (`recordingSync.ts` in #82) \u2014 must never come back.\n - **`react-native-fs`** / **`@simform_solutions/react-native-audio-waveform`** imports (use Expo modules).\n\n### Problems / why\n\n- The existing rule set catches raw console but not the structural anti-patterns above, so a future contributor could reintroduce them.\n\n### Target design\n\nAdd targeted lint guardrails (prefer `no-restricted-imports` / `no-restricted-syntax` / `no-restricted-globals` \u2014 no custom plugin needed):\n\n```js\n'no-restricted-imports': ['error', { paths: [\n { name: '@env', message: 'Use src/config/env.ts (EXPO_PUBLIC_*). @env was removed on main.' },\n { name: 'react-native-fs', message: 'Use expo-file-system.' },\n { name: 'react-native-keychain', message: 'Use expo-secure-store.' },\n { name: '@simform_solutions/react-native-audio-waveform', message: 'Use expo-audio.' },\n]}],\n// Ban direct process.env outside src/config/** (scoped override) to enforce typed config (#109):\n'no-restricted-syntax': ['error', {\n selector: \"MemberExpression[object.name='process'][property.name='env']\",\n message: 'Read env via src/config/ (typed + validated), not process.env directly.',\n}],\n```\n\n- Scope the `process.env` ban with an override that **exempts** `src/config/**`, `jest.env.cjs`, and config files.\n- Consider a lightweight rule/convention note discouraging mutable module-level `let` singletons for shared state (full enforcement may need review; document the expectation and rely on review + #88's accessor pattern).\n\n### Implementation steps\n\n1. Add `no-restricted-imports` entries for `@env`, `react-native-fs`, `react-native-keychain`, `@simform_solutions/react-native-audio-waveform`.\n2. Add the `process.env` `no-restricted-syntax` rule with an exemption override for `src/config/**` (and `jest.env.cjs`).\n3. Run `npm run lint`; fix any existing violations surfaced (coordinate with #88/#109 if they haven't landed \u2014 gate ordering).\n4. Document the guardrails in onboarding (#112).\n\n### Acceptance criteria\n\n- [ ] Importing `@env`, `react-native-fs`, `react-native-keychain`, or the Simform waveform lib fails lint with a helpful message.\n- [ ] Direct `process.env` access outside `src/config/**` fails lint.\n- [ ] `npm run lint` passes on the current tree after the rules land (no false positives in app code).\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Manually confirm a deliberate `import RNFS from 'react-native-fs'` and a stray `process.env.X` each trip the linter.\n- **No live API required**; do **not** use `FLUENT_USER_EMAIL`.\n\n### Out of scope\n\n- The refactors that remove the anti-patterns (#88, #89, #94, #95, #109) \u2014 this ticket prevents regressions.\n\n### Links\n\n- Epic: #120\n- Related: #88, #89, #94, #95, #109, #112\n- Anti-pattern source: [PR #82](https://github.com/eten-tech-foundation/fluent-mobile/pull/82)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:46:24Z",
+    "updated_at": "2026-07-09T18:09:07Z",
+    "closed_at": "2026-07-09T18:09:07Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/114",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

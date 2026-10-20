@@ -1,0 +1,214 @@
+{
+  "reviewer": "r1",
+  "wave": 1,
+  "ids": [16, 33, 41, 49],
+  "domain": "early-home-auth-sync-ui",
+  "reviewed_at_utc": "2026-10-20T00:53:25Z",
+  "issues": [
+    {
+      "issue": 16,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Core sync: fetch chapter assignments and upsert into SQLite; derive project_units from assignments (no extra API call); POST bulk-texts per bibleId and upsert bible_texts; re-run must not duplicate (upsert on id). Body still leaves unchecked: GET /users/:userId/chapter-assignments and “Bulk bible texts call is skipped if data already exists in SQLite.”",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/16"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/api.ts",
+          "lines": "260-310",
+          "fact": "Assignments use GET /self/chapter-assignments/all (not /users/:userId/…); bible texts POST /bibles/:bibleId/bulk-texts with optional updatedAfter — not a skip-if-present gate."
+        },
+        {
+          "path": "src/services/sync.ts",
+          "lines": "496-620",
+          "fact": "syncChapterAssignments upserts via insertChapterAssignmentSyncData; syncUserChapterWork merges assignedChapters AND peerCheckChapters (contradicts original “ignore peerCheckChapters”)."
+        },
+        {
+          "path": "src/services/sync.ts",
+          "lines": "751-870",
+          "fact": "syncBibleTexts still calls FluentAPI.getBibleTexts for chapter chunks; when local verses exist it keeps an updatedAfter cursor, but does not skip the bulk POST entirely when all combos already exist (unchecked AC still open vs current design)."
+        },
+        {
+          "path": "docs/product-behavior/core-flows.md",
+          "lines": "73-82",
+          "fact": "Living §6 upload/sync is labeled Inferred; documents 401→reauth and #721 Sync chrome bug — not a product waive of #16 bulk-skip AC."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/20",
+        "fact": "Merged 2026-04-17 (closes #16 per GitHub linkage): PR body claims fetch from API and populate SQLite into 8 tables; issue sole comment is SP5 planning hours only (not a product waive)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Branch HEAD: /self chapter-assignment APIs + incremental bulk-texts cursor; peer work included in user chapter sync.",
+        "device_evidence": "none for #16 AC; QA Sync one-press failure is #721 (separate), dated 2026-10-19 assignment 484 in product-behavior"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Closed state is history only. Unchecked bulk-skip AC was never explicitly deferred; current source replaced it with updatedAfter incremental fetch — treat as CONFIRMED_CURRENT_SOURCE divergence pending product confirm, not as a bug ticket by itself."
+    },
+    {
+      "issue": 33,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "View Project: header = project name title + language subtitle + back; flat chapter list with phase status icon, book/chapter, workflow badge, chevron; Not Started → Not Started badge (no last activity); when Tier 1 source missing → muted “Source not downloaded” cloud-off chip; tap row → drafting like My Work; error “Unable to load this project.” + Try again; canonical six-stage phase/badge colors.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/33"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/tabs/ViewProject.tsx",
+          "lines": "89-119",
+          "fact": "Header title=milestoneName, subtitle=projectName (not project name + language). Error copy and Try again match AC."
+        },
+        {
+          "path": "src/components/ui/ProjectChapterRow.tsx",
+          "lines": "29-74",
+          "fact": "Row uses PhaseStatusIcon + WorkflowBadge + optional ChapterProgressRing / cloud sync — no “Source not downloaded” chip string."
+        },
+        {
+          "path": "src/app/tabs/MyWorkTab.test.tsx",
+          "lines": "159",
+          "fact": "Test asserts queryByText('Source not downloaded') is null — chip AC not present on related My Work surface either."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/55",
+        "fact": "Merged 2026-06-09. Scope notes explicitly: Not Started uses download progress ring instead of “Source not downloaded” chip; phase icons outlined/tinted vs solid-fill table; row sync indicators added despite DEC-008 out-of-scope note. Closing comment 2026-06-28 cites #55 + CNG #70."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "ViewProject + ProjectChapterRow on HEAD; header/chip diverge from original #33 layout AC; PR #55 documents intentional chip→ring swap.",
+        "device_evidence": "none dated for View Project layout AC"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Layout-only ticket (no permission AC). PR #55 scope notes are the LATEST_EXPLICIT_DECISION for chip/icon deviations; later header title/subtitle (milestone/project) is further CONFIRMED_CURRENT_SOURCE drift vs both #33 body and PR #55 “How to Test” (project + language)."
+    },
+    {
+      "issue": 41,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Replace insecure x-user-email / FLUENT_USER_EMAIL with Better-Auth: react-native-keychain helpers under custom service; Bearer on API wrapper; x-client-type: mobile + User-Agent: FluentMobile globally; Login/AuthNavigator gate; sign-in (/api/auth/sign-in/email + set-auth-token), forgot-password, sign-out clearing secure token + local DB; 401 “Session token has expired” → prompt, clear token, Login; Privacy Policy & Terms links on Login.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/41"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/keychain.ts",
+          "lines": "1-50",
+          "fact": "Token helpers use expo-secure-store with service prefix fluent.auth — not react-native-keychain / fluent_session as written in AC."
+        },
+        {
+          "path": "src/services/api.ts",
+          "lines": "117-215",
+          "fact": "MOBILE_HEADERS User-Agent is fluent-mobile (not FluentMobile); applied on signIn/forgotPassword/signOut only. sign-in extracts set-auth-token via resolveSessionToken."
+        },
+        {
+          "path": "src/services/httpClient.ts",
+          "lines": "41-92",
+          "fact": "buildHeaders injects Authorization: Bearer; authed 401 → AuthError (no string match on “Session token has expired” in this layer)."
+        },
+        {
+          "path": "src/app/tabs/LoginScreen.tsx",
+          "lines": "238-291",
+          "fact": "Forgot password link + Privacy Policy + Terms footer links present."
+        },
+        {
+          "path": "docs/product-behavior/core-flows.md",
+          "lines": "20-28",
+          "fact": "§1 Login living doc is labeled Inferred + mock — not a product supersession of #41 AC."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/46",
+        "fact": "Merged 2026-06-09 closing #41: “added better auth support [login , forget password , signout]” + multi-user. Earlier eng comment 2026-05-21 endorses react-native-keychain and mobile headers (acceptable practice)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Bearer + expo-secure-store + Login/Forgot/Terms on HEAD; package.json has expo-secure-store, not react-native-keychain.",
+        "device_evidence": "none for full #41 E2E; product-behavior login §1 Labels=Inferred"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Implementation meets intent (secure bearer session) with named AC deviations (storage library, UA string, headers not global). No explicit product waive of those wording diffs — CONFIRMED_CURRENT_SOURCE, not OPEN_TICKET (issue closed)."
+    },
+    {
+      "issue": 49,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Record Tab verse-by-verse UI: verse ref + prev/next (dim at ends; pause-guard on nav); Idle enlarged Record + label (no waveform); Recording live waveform + Pause/Stop + duration; Pause flush/resumable append; background auto-pause; leave-page resume/discard; Stop→Review without auto-advance; Review static waveform + scrub + Play/Re-record/Delete; source text accordion collapsed by default.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/49"
+        },
+        {
+          "slice": "permission",
+          "text": "On first Record tap: OS mic permission dialog; if denied (or permanently denied/OS suppressed) show in-app message that mic is required with Go to Settings deep-link.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/49"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "778-794",
+          "fact": "Permission slice: ensureMic → requestMicPermission; on non-granted Alert “Microphone required” + Go to Settings → Linking.openSettings()."
+        },
+        {
+          "path": "src/audio/micPermission.ts",
+          "lines": "12-33",
+          "fact": "Maps expo-audio grant/undetermined/denied; does not special-case “permanently denied” beyond denied — UI path still shows Settings alert for any non-grant."
+        },
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "1234-1360",
+          "fact": "Layout slice: waveform wrap, pause/resume control testIDs, recording/paused helper copy present on HEAD (post-#229 delivery)."
+        },
+        {
+          "path": "docs/product-behavior/core-flows.md",
+          "lines": "52-60",
+          "fact": "§4 Recording Expected is labeled Inferred (selected take / upload) — not a product agreement superseding #49 AC or waivers."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/229",
+        "fact": "Merged 2026-07-23 with Closes #49 (actual closer). Follow-ups/waivers listed: #176 scrub/remux, #177 bibleTextId, decorative waveform/source-audio stub, background auto-pause + leave-page discard “open follow-up if product requires”; Android device QA checkbox left unchecked. Prior PR #158 closed unmerged 2026-07-20; issue comments 2026-07-10 waived scrub/waveform/#177 into follow-ups; 2026-07-20 comments put card back to Dev Ready before #229."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "RecordTab + micPermission on HEAD implement permission UX and design-aligned controls; several layout AC items explicitly deferred in #229/#158 comments (scrub, real waveform, kill-safe remux).",
+        "device_evidence": "dated 2026-10-19 QA assignment 484: warm tabs open including Record COMPLETED 10.76s (chrome smoke only — not recorder AC). PR #229 device QA not checked. #158 partial Dev QA historical only (unmerged)."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Do not treat closed #158 as delivery. Explicit deferrals (#176/#177/etc.) ≠ open bugs for waived slices. Permission AC still in force and implemented; layout AC partially waived with linked follow-ups. Living product-behavior §4 Inferred ≠ waive."
+    }
+  ]
+}

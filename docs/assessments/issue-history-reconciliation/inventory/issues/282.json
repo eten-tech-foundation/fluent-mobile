@@ -1,0 +1,25 @@
+{
+  "issue_number": 282,
+  "fetched_at_utc": "2026-10-20T00:35:57Z",
+  "issue": {
+    "number": 282,
+    "title": "Upgrade to Expo SDK 57 (React Native 0.86)",
+    "state": "closed",
+    "body": "## Summary\n\nUpgrade Fluent Mobile from **Expo SDK 56 / React Native 0.85** to **Expo SDK 57 / React Native 0.86**.\n\nSDK 57 is a focused Expo release that brings RN 0.86 into the Expo ecosystem. React stays on **19.2**. Expo positions this as a straightforward, intentionally non-breaking upgrade \u2014 but it still needs a dedicated ticket (Dependabot PR #199 was closed for this reason).\n\nThis app is **Android-only CNG**. No iOS work.\n\n## Current vs expected\n\n| | Current | Target |\n| --- | --- | --- |\n| Expo | `~56.0.18` | `~57.x` |\n| React Native | `0.85.3` | `0.86.x` |\n| React | `19.2.3` | `19.2.x` (unchanged line) |\n\n## Scope\n\n### In scope\n\n- Bump `expo@^57.0.0` and align all Expo / RN packages via `npx expo install --fix`\n- Regenerate Android native project (`npm run prebuild` \u2014 `--platform android` only)\n- Validate custom config plugins, native modules, and jest mocks\n- Update docs / Dependabot pins from SDK 56 / RN 0.85 \u2192 SDK 57 / RN 0.86\n- Fresh EAS Android development or preview build\n- Android device QA (required before ready-for-review)\n\n### Out of scope (separate tickets)\n\n- Expo Router migration\n- Migrating off `expo-file-system/legacy`\n- Jest 30 / ESLint 10 / Prettier 3 / TypeScript 7 tooling majors\n- React Navigation feature bumps beyond what `expo install --fix` pulls\n- Anything iOS\n\n## File pointers & approach\n\n1. **Deps:** [`package.json`](package.json) \u2014 `npx expo install expo@^57.0.0 --fix` then `npx expo-doctor@latest`\n2. **App config / plugins:** [`app.config.ts`](app.config.ts), [`plugins/withRNScreensFragmentFactory.js`](plugins/withRNScreensFragmentFactory.js), [`plugins/withAppWindowBackground.js`](plugins/withAppWindowBackground.js)\n3. **High-risk natives:** `@op-engineering/op-sqlite`, `react-native-bootsplash`, `expo-audio`, `expo-file-system/legacy`\n4. **Jest:** [`jest.config.cjs`](jest.config.cjs), [`jest.setup.expo-fs.cjs`](jest.setup.expo-fs.cjs), [`src/test/mocks/expo-audio.ts`](src/test/mocks/expo-audio.ts)\n5. **Dependabot:** [`.github/dependabot.yml`](.github/dependabot.yml) \u2014 raise RN ignore floor from `>=0.86.0` \u2192 `>=0.87.0`\n6. **Docs/rules mentioning SDK 56:** `README.md`, `docs/AGENT_ONBOARDING.md`, `docs/guides/expo-first-dependencies.md`, `docs/guides/dependabot-process.md`, `.cursor/rules/project-overview.mdc`, `.cursor/rules/expo-mcp.mdc`, `.cursor/rules/dependabot-workflow.mdc`\n\n### Suggested commands\n\n```bash\nnpx expo install expo@^57.0.0 --fix\nnpx expo-doctor@latest\nnpm run prebuild   # android only; already --clean\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n## Acceptance criteria\n\n- [ ] App builds and runs on Expo SDK 57 / RN 0.86 (Android)\n- [ ] `npx expo-doctor` and `npx expo install --check` pass\n- [ ] CI gates pass (`format:check`, `lint`, `typecheck`, `npm test -- --ci`)\n- [ ] Custom prebuild plugins still apply correctly after clean Android prebuild\n- [ ] Android device QA checklist completed and noted on the PR\n- [ ] Docs / Dependabot pins updated to SDK 57 / RN 0.86\n- [ ] Fresh EAS Android dev-client or preview build produced post-upgrade\n\n## Verification / device QA\n\n**CI:** format \u2192 lint \u2192 typecheck \u2192 test \u2192 doctor / install-check\n\n**Android device (minimum):**\n\n1. Cold start: BootSplash \u2192 login / session restore\n2. Post-login sync (SQLite) and Sync screen\n3. Record take \u2192 save \u2192 playback \u2192 upload when online\n4. Mic permission deny / grant\n5. Secure store: logout / session restore\n6. Connectivity gating (offline / cellular) for sync/upload\n7. Stack navigation + gesture-handler (no fragment crash on chapter/drafting)\n\nNative modules change \u2192 keep PR draft / not ready-for-review until human device results are on the PR.\n\n## Links\n\n- [Expo SDK 57 changelog](https://expo.dev/changelog/sdk-57)\n- [Upgrade Expo SDK walkthrough](https://docs.expo.dev/workflow/upgrading-expo-sdk-walkthrough/)\n- [React Native 0.86 release notes](https://reactnative.dev/blog/2026/06/11/react-native-0.86)\n- Prior Dependabot close: PR #199 (see `docs/guides/dependabot-resolution-log.md`)\n",
+    "user": "mattrace-buildmidwestern",
+    "created_at": "2026-07-30T20:06:31Z",
+    "updated_at": "2026-07-31T06:19:03Z",
+    "closed_at": "2026-07-31T06:19:03Z",
+    "labels": [
+      "dependencies"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/282",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

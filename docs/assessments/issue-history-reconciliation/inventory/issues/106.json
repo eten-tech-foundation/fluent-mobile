@@ -1,0 +1,34 @@
+{
+  "issue_number": 106,
+  "fetched_at_utc": "2026-10-20T00:34:38Z",
+  "issue": {
+    "number": 106,
+    "title": "Local SQLite seed/fixtures for offline dev",
+    "state": "closed",
+    "body": "### Context\n\n### Current state in baseline\n\n- DB init: `src/db/index.ts:initializeDatabase()` opens `fluent.db`, sets pragmas (FK on, WAL), and runs `createTableQueries` + `chapterAssignmentMigrations`. **No seeding.**\n- All data arrives through `src/services/sync.ts:syncAllData()` \u2192 `FluentAPI` \u2192 `repository.ts` inserts.\n- `App.tsx` calls `initializeDatabase()` then (on login) `syncAllData(false, email)`. With no server, tables stay empty and most screens are blank.\n- Insert helpers already exist in `repository.ts`: `insertUser`, `insertMasterData`, `insertProjects`, `insertUserProjects`, `insertChapterAssignmentSyncData`, `insertBibleTexts`.\n\n### Problems / why\n\n- Engineers without VPN/live API access cannot exercise UI flows (Projects, My Work, ViewChapter, recording).\n- Tests cover units, but manual UI dev needs realistic rows (users \u2192 projects \u2192 project_units \u2192 chapter_assignments \u2192 bible_texts) honoring FKs and the `user_projects` scoping.\n\n### Target design\n\nA dev-only seeding module (e.g. `src/db/seed.ts`) that inserts a small, internally-consistent dataset using the **existing repository functions** (so FKs/shape stay correct):\n\n```ts\n// src/db/seed.ts (guarded so it never runs in production)\nexport async function seedDevData(): Promise<void> {\n await insertUser({ id: 1, email: 'dev@example.com', firstName: 'Dev', lastName: 'User' });\n await insertMasterData([/* languages */], [/* books */], [/* bibles */]);\n await insertProjects([/* 1-2 projects */]);\n await insertUserProjects(1, [/* projectIds */]);\n await insertChapterAssignmentSyncData([/* a few assignments for user 1 */]);\n await insertBibleTexts([/* verses for those chapters */]);\n}\n```\n\n- Trigger via an explicit dev affordance or env flag (coordinate with #107 offline mode) \u2014 never auto-seed a production build.\n- Seed enough to populate Projects list, My Work, a chapter with verses, and at least one recording target.\n- Make seed idempotent (safe to run repeatedly; reuse `INSERT OR IGNORE`/upsert helpers).\n\n### Implementation steps\n\n1. Create `src/db/seed.ts` with `seedDevData()` using existing repository inserts.\n2. Define realistic fixtures (1 user, 1\u20132 languages, a couple books/bibles, 1\u20132 projects + project_units, several chapter_assignments for the user, verses for those chapters).\n3. Gate invocation behind a dev flag (tie into #107) so production never seeds.\n4. Ensure idempotency and FK ordering (users/languages/books/bibles \u2192 projects \u2192 project_units \u2192 assignments \u2192 bible_texts).\n5. Unit-test `seedDevData()` against a mocked/in-memory DB: row counts > 0, FK-consistent, My Work returns the seeded chapters.\n\n### Acceptance criteria\n\n- [ ] `seedDevData()` populates a consistent offline dataset via existing repository helpers.\n- [ ] App renders Projects, My Work, and a chapter with verses **with no server reachable**.\n- [ ] Seeding is dev-gated (never runs in production) and idempotent.\n- [ ] Unit test verifies seeded data satisfies the main read queries.\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Tests default `EXPO_PUBLIC_API_BASE_URL=http://localhost:9999` via `jest.env.cjs`; **no live API required** \u2014 entire point is offline.\n- Do **not** use `FLUENT_USER_EMAIL`.\n\n### Dev setup notes (current)\n\n```bash\nnpm install\ncp .env.example .env\nnpm run prebuild\nnpm start # + npm run android (expo-dev-client); enable dev seed (see #107)\n```\n\n### Out of scope\n\n- Offline/mock-mode wiring + skipping sync (#107), docs (#108).\n\n### Links\n\n- Epic: #119\n- Related: #107 (offline mode), #108 (docs)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:46:10Z",
+    "updated_at": "2026-07-02T20:12:22Z",
+    "closed_at": "2026-06-30T18:21:46Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/106",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4846694694,
+      "user": "mattrace-gloo",
+      "created_at": "2026-06-30T18:21:44Z",
+      "updated_at": "2026-06-30T18:21:44Z",
+      "body": "**Descoped** as part of epic #119 pivot.\n\nMobile mock seed (`seedDevData()` in fluent-mobile) is superseded by running against **real APIs**:\n\n- **Hosted dev:** `EXPO_PUBLIC_API_BASE_URL=https://dev.api.fluent.bible`\n- **Local Docker:** `./fapi.sh up` + `db:init` in fluent-api, then `http://10.0.2.2:9999`\n\nMobile SQLite is populated via **sync hydration** (`syncAllData()`), not fake fixtures. See epic #119 comment for details.\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/106#issuecomment-4846694694"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

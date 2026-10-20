@@ -1,0 +1,20 @@
+{
+  "integrated_at_utc": "2026-10-20T01:27:49Z",
+  "reviewer": "bc-dfee28a8-0841-59dc-84ff-29b9e4d8bed6",
+  "source": "/tmp/fluent-issue-review-r17.json",
+  "accepted_complete": [
+    694,
+    695,
+    696,
+    701,
+    702,
+    703,
+    704,
+    707,
+    716,
+    718,
+    719,
+    720
+  ],
+  "wave4_note": "final wave4 batches; DRAFT report not frozen pending Contract review"
+}

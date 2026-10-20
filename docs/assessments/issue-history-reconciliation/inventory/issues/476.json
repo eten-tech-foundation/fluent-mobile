@@ -1,0 +1,48 @@
+{
+  "issue_number": 476,
+  "fetched_at_utc": "2026-10-20T00:37:03Z",
+  "issue": {
+    "number": 476,
+    "title": "Extend Assignment Indicator to Reflect Current-Stage Assignee",
+    "state": "closed",
+    "body": "The chapter list's `li:user` icon (built in #267) only reflects Drafting assignment today: accent color for mine, muted for another translator's, no icon for unassigned. Once an item advances past Drafting, the icon never updates to reflect who, if anyone, is assigned at the item's current stage, so a Peer Check item with a PM-assigned Peer Checker looks identical to an open one. This ticket makes the same icon re-evaluate against the assignee relevant to whichever stage the item is currently in.\n\n## Functional Requirements\n\n### Stage-Aware Assignee Icon\n- Reuse the existing `li:user` icon slot and three-state treatment (no icon / muted / accent) from #267; do not add a second icon system.\n- Evaluate the icon against the assignee relevant to the item's current stage, not always against Drafting:\n  - At Drafting, show the Drafter's assignment (existing behavior, unchanged).\n  - At Peer Check, show the Peer Checker's assignment only if a PM has explicitly assigned one. Per #442, an item that reaches Peer Check without a PM assignment stays open for the entire time it's in that stage, so no icon is shown for it unless a PM later assigns one.\n  - At Community Review, Advanced, and Complete, show no icon; these stages have no assignee concept.\n- When an item advances to a stage with no assignee concept, clear any icon shown for the prior stage; the icon never reflects a stage the item has already left.\n\n### Non-Interference with Conflict State\n- The conflict-state icon (`li:users` with a warning-triangle badge, from #260) continues to take precedence in the same slot regardless of stage; this ticket does not change conflict-state precedence.\n\n<img width=\"411\" height=\"472\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/d88805a7-5d88-4b92-933d-bc2286b5c6cf\" />",
+    "user": "chadw-eten",
+    "created_at": "2026-09-10T17:06:29Z",
+    "updated_at": "2026-10-06T19:06:42Z",
+    "closed_at": "2026-10-06T19:06:42Z",
+    "labels": [],
+    "comments": 3,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/476",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5622894622,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-10T17:39:38Z",
+      "updated_at": "2026-09-10T17:39:38Z",
+      "body": "## Engineering write-up (Dev Ready)\n\nChecked against **fluent-api `main` @ `07927c6`** and current mobile ownership helpers.\n\n### API\nNo new endpoint required. `peerCheckerId` already syncs on chapter assignments.\n\n### Soft dependency\nPrefer implementing **after or alongside #442**. Product AC: at Peer Check, show the ownership icon only when a PM has explicitly assigned a Peer Checker; open (unassigned) Peer Check shows **no** icon. That matches #442\u2019s open-Peer-Check model.\n\n### Mobile notes\n- Reuse the existing `ChapterOwnershipIndicator` / three-state treatment from #267 \u2014 do not add a second icon system.  \n- Today `deriveChapterOwnershipState` only considers `assigned_user_id` (Drafting). Extend evaluation by **current stage**: Drafting \u2192 drafter; Peer Check \u2192 `peerCheckerId` if set, else unassigned; Community Review / Advanced / Complete \u2192 no icon.  \n- Conflict-state icon (`li:users` / #260) still wins the same slot.\n\nMoving to **Dev Ready**.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/476#issuecomment-5622894622"
+    },
+    {
+      "id": 5713936764,
+      "user": "Roslin22",
+      "created_at": "2026-09-17T11:56:42Z",
+      "updated_at": "2026-09-17T11:56:42Z",
+      "body": "### Test Results: #476\n\n1. When a chapter is assigned to a **Drafter** at the Drafting stage, it appears in **My Work** with the **accent/blue `li:user` icon**.\n2. When a chapter is at **Peer Check** and assigned to the current user as the Peer Checker, the **accent/blue `li:user` icon** is displayed.\n3. When a chapter is at **Peer Check** and assigned to another Peer Checker, the **muted `li:user` icon** is displayed.\n4. When a chapter reaches **Peer Check without a PM-assigned Peer Checker**, no assignee icon is displayed.\n5. When a chapter moves to **Community Review, Advanced, or Complete**, the assignee icon is cleared because these stages have no assignee concept.\n6. **Conflict assignment/state (#260) was not tested**; conflict icon precedence remains to be verified separately.\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/476#issuecomment-5713936764"
+    },
+    {
+      "id": 5714025559,
+      "user": "chadw-eten",
+      "created_at": "2026-09-17T12:03:04Z",
+      "updated_at": "2026-09-17T12:03:04Z",
+      "body": ":white_check_mark:",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/476#issuecomment-5714025559"
+    }
+  ],
+  "comments_fetched_count": 3,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

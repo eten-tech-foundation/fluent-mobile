@@ -1,0 +1,25 @@
+{
+  "issue_number": 568,
+  "fetched_at_utc": "2026-10-20T00:37:52Z",
+  "issue": {
+    "number": 568,
+    "title": "Block drawer navigation while a take is recording or paused [Play, record, and re-record audio Audit]",
+    "state": "closed",
+    "body": "Found during the play/record/re-record audio audit (#528, epic #526).\n\n**Severity:** High  \n**Launch blocker:** To be decided with product  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), merged `main` @ `d5b9e64`, `dev.api.fluent.bible` (scenarios B.7b)\n\n## Summary\n\n`DraftingScreen` guards the ways out of the drafting page while a take is in progress (`recordCaptureActive`): tab change, header or system back (`beforeRemove`), Sync, and account switch. The root drawer (`src/routes/(app)/_layout.tsx`, `swipeEnabled: true`) is not guarded, so a translator can open it mid-take and navigate to Settings, then Home. When the drafting screen unmounts (Settings returns Home via `router.replace(hrefs.home())`), `useRecordingEngine` force-stops the recorder without persisting the capture, and the take is discarded silently. The same drawer also offers account switch (`resetNavigationAfterAccountSwitch` \u2192 `router.dismissAll()`), Add User, and Sign Out, and each of those also bypasses the drafting guards.\n\n## Expected\n\nWhile a take is recording or paused, the drawer cannot be opened (swipe or menu). If it is opened, drawer navigation shows the same \"Recording in progress\" guard, and no in-progress audio is discarded without the translator choosing to.\n\n## Actual\n\nThe drawer opens and navigates away. On return, the in-progress take is gone.\n\n## Steps to reproduce\n\n1. Open a chapter, go to the Record tab, record, then pause.\n2. Swipe from the left edge to open the drawer, go to Settings, then back to Home.\n3. Reopen the same verse: there is no take and no recovery prompt.\n\n## Acceptance criteria\n\n- [ ] While `recordCaptureActive`, drawer swipe is disabled for the drafting screen and any menu entry point is blocked with the existing guard.\n- [ ] Account switch, Add User, and Sign Out from the drawer are blocked or prompted while `recordCaptureActive`.\n- [ ] No navigation path out of drafting while capturing discards audio silently. Unmount without a stop must go through the same path as #567 (persist or prompt), not a bare `engine.stop()`.\n- [ ] A unit test covers the drawer guard.\n- [ ] Android device QA: repeat the steps above, and the take is preserved or navigation is blocked.\n\n## Related\n\n- Parent audit: #528 (epic #526)\n- Specs: #49, #47\n- Related gap: #567\n- Assessment: `docs/assessments/play-record-rerecord-audio/README.md` (PR #566)\n\n\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-23T17:22:17Z",
+    "updated_at": "2026-10-08T18:25:15Z",
+    "closed_at": "2026-10-08T18:25:15Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/568",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,189 @@
+{
+  "updated_utc": "2026-10-20T00:42:32Z",
+  "reviewer": "agent_integrator",
+  "count": 18,
+  "ids": [
+    100,
+    101,
+    102,
+    105,
+    146,
+    150,
+    151,
+    152,
+    253,
+    260,
+    268,
+    269,
+    270,
+    442,
+    476,
+    601,
+    603,
+    610
+  ],
+  "reviews": {
+    "150": {
+      "classification": "closed_lineage_reviewed",
+      "review_status": "agent_integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "lineage:sync-upload",
+      "linked_prs_followed": "",
+      "notes": "CLOSED sync/upload foundation. ORIGINAL: Implement Upload Trigger and Sync Engine. Body head: When a translator reconnects after working offline, the app needs to detect that the Fluent server is reachable and begin uploading unsynced recordings automatically, without any user prompt. This ticket defines the cond. LATEST_EXPLICIT: @chadw-eten 2026-09-04 https://github.com/eten-tech-foundation/fluent-mobile/issues/150#issuecomment-5545095944: <img width=\"419\" height=\"894\" alt=\"Image\" src=\"https:/"
+    },
+    "151": {
+      "classification": "closed_lineage_reviewed",
+      "review_status": "agent_integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "lineage:sync-upload",
+      "linked_prs_followed": "",
+      "notes": "CLOSED sync/upload foundation. ORIGINAL: Build Sync Page Action Controls. Body head: The Sync page core layout (#149) builds the visual scaffolding and reserves space for the action controls. This ticket fills that space with the Pause, Resume, Cancel, and Sync Now buttons \u2014 the controls that let transla. LATEST_EXPLICIT: @mattrace-gloo 2026-07-20 https://github.com/eten-tech-foundation/fluent-mobile/issues/151#issuecomment-5025570092: ### Ticket-level AC waivers (explicit)  For the upcoming #15"
+    },
+    "152": {
+      "classification": "closed_lineage_reviewed",
+      "review_status": "agent_integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "lineage:sync-upload",
+      "linked_prs_followed": "",
+      "notes": "CLOSED sync/upload foundation. ORIGINAL: Implement Background Sync Notification with Upload Progress. Body head: When a translator leaves the app while a sync is running, there is no indication that upload activity is continuing. The background sync notification surfaces live progress in the system notification shade \u2014 a chapter co. LATEST_EXPLICIT: @github-actions[bot] 2026-08-20 https://github.com/eten-tech-foundation/fluent-mobile/issues/152#issuecomment-5360479293: ## \u2705 Fluent preview app re"
+    },
+    "146": {
+      "classification": "closed_lineage_reviewed",
+      "review_status": "agent_integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "lineage:sync-upload",
+      "linked_prs_followed": "",
+      "notes": "CLOSED sync/upload foundation. ORIGINAL: Add Upload/Download over Cellular Toggle to Settings and Sync Page. Body head: Fluent translators frequently work in areas where cellular data is limited or expensive. By default, Fluent should not use cellular data for uploads or downloads \u2014 but users who choose to allow it should be able to opt i. LATEST_EXPLICIT: @mattrace-gloo 2026-07-20 https://github.com/eten-tech-foundation/fluent-mobile/issues/146#issuecomment-5025316327: ### Ticket-level AC waive"
+    },
+    "253": {
+      "classification": "closed_lineage_reviewed",
+      "review_status": "agent_integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "lineage:sync-upload",
+      "linked_prs_followed": "",
+      "notes": "CLOSED sync/upload foundation. ORIGINAL: Wire SyncScreen Pause/Cancel/Sync Now to upload orchestrator. Body head: ## Summary  `SyncScreen` still has `TODO(#150)` stubs for Pause / Resume / Cancel / Sync Now and mock upload progress state. The upload trigger/sync **engine** landed on `main` via PR #223 (with #100); dedicated PR #213 . LATEST_EXPLICIT: @JonathanSeehagen 2026-08-05 https://github.com/eten-tech-foundation/fluent-mobile/issues/253#issuecomment-5192247467: > ## API readiness note (boa"
+    },
+    "268": {
+      "classification": "closed_lineage_reviewed",
+      "review_status": "agent_integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "lineage:claim-ownership",
+      "linked_prs_followed": "",
+      "notes": "CLOSED lineage for ownership/claim. ORIGINAL: Implement Online Chapter Claiming on First Recording. Body AC head: Claiming is implicit: the system automatically claims a chapter for a translator the moment they create their first recording on it. This ticket implements that path for the online case only \u2014 detect the first recording . LATEST_EXPLICIT: @mattrace-gloo 2026-08-12 https://github.com/eten-tech-foundation/fluent-mobile/issues/268#issuecomment-5273846637: ### Eng note (updated)  Server "
+    },
+    "269": {
+      "classification": "closed_lineage_reviewed",
+      "review_status": "agent_integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "lineage:claim-ownership",
+      "linked_prs_followed": "",
+      "notes": "CLOSED lineage for ownership/claim. ORIGINAL: Add Recording Warning on Taken Chapters. Body AC head: The record tab surfaces two distinct warnings: one when the current chapter is taken by another translator, and one when an unresolved audio take conflict exists on the chapter. Both are informational only; recording is . LATEST_EXPLICIT: @mattrace-gloo 2026-08-12 https://github.com/eten-tech-foundation/fluent-mobile/issues/269#issuecomment-5273846421: ### Eng note (updated)  Two banners, two rea"
+    },
+    "270": {
+      "classification": "closed_lineage_reviewed",
+      "review_status": "agent_integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "lineage:claim-ownership",
+      "linked_prs_followed": "",
+      "notes": "CLOSED lineage for ownership/claim. ORIGINAL: Implement Offline Chapter Claiming on First Recording. Body AC head: When a translator is offline, claiming works the same way as online \u2014 the first recording on an unassigned chapter implicitly claims it \u2014 but the claim is held in local device state and cannot be confirmed with the serve. LATEST_EXPLICIT: @mattrace-gloo 2026-08-12 https://github.com/eten-tech-foundation/fluent-mobile/issues/270#issuecomment-5273846828: ### Eng note (updated)  Provis"
+    },
+    "442": {
+      "classification": "closed_lineage_reviewed",
+      "review_status": "agent_integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "lineage:claim-ownership",
+      "linked_prs_followed": "",
+      "notes": "CLOSED lineage for ownership/claim. ORIGINAL: Implement Implicit Peer Checker Assignment. Body AC head: Peer Check on mobile currently expects a peer to already be assigned before an item can be sent to it, with no defined behavior for what happens when one isn't. Forcing a push assignment to a specific peer at send time r. LATEST_EXPLICIT: @Roslin22 2026-10-14 https://github.com/eten-tech-foundation/fluent-mobile/issues/442#issuecomment-6165946842: **### Test Results \u2013 Peer Check on Mobile**  1"
+    },
+    "476": {
+      "classification": "closed_lineage_reviewed",
+      "review_status": "agent_integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "lineage:claim-ownership",
+      "linked_prs_followed": "",
+      "notes": "CLOSED lineage for ownership/claim. ORIGINAL: Extend Assignment Indicator to Reflect Current-Stage Assignee. Body AC head: The chapter list's `li:user` icon (built in #267) only reflects Drafting assignment today: accent color for mine, muted for another translator's, no icon for unassigned. Once an item advances past Drafting, the icon neve. LATEST_EXPLICIT: @Roslin22 2026-09-17 https://github.com/eten-tech-foundation/fluent-mobile/issues/476#issuecomment-5713936764: ### Test Results: #476  1. "
+    },
+    "260": {
+      "classification": "closed_lineage_reviewed",
+      "review_status": "agent_integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "lineage:claim-ownership",
+      "linked_prs_followed": "",
+      "notes": "CLOSED lineage for ownership/claim. ORIGINAL: Add Conflict Indicator to Mobile Chapter List. Body AC head: When two or more translators record the same pericope or verse while offline, their takes arrive on the server as a conflict. Mobile translators need to know a conflict exists \u2014 both to understand why their work is block. LATEST_EXPLICIT: @mattrace-gloo 2026-08-12 https://github.com/eten-tech-foundation/fluent-mobile/issues/260#issuecomment-5273846132: ### Eng note (updated)  Depends on con"
+    },
+    "105": {
+      "classification": "closed_lineage_reviewed",
+      "review_status": "agent_integrator_verified",
+      "docs_checked": "partial",
+      "impl_checked": "no",
+      "discrepancy_flags": "",
+      "linked_prs_followed": "",
+      "notes": "CLOSED upload attribution / recorded_by. Title=Active-user data attribution for recordings/edits. Related historical #259 API caveat. Body head: ### Current state on main  - Active user is tracked in KV: `src/services/storage.ts` \u2014 `getActiveUserId()` (`:101`), `setActiveUserId()` (`:105`), `switchActiveUser()` (`:153`), plus `getKnownUserIds(. LATEST: @mattrace-buildmidwestern 2026-07-29 https://github.com/eten-tech-foundation/fluent-mobile/issues/105#issuecomment-5123591074: Closing as complet"
+    },
+    "100": {
+      "classification": "closed_lineage_reviewed",
+      "review_status": "agent_integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "lineage:sync-upload",
+      "linked_prs_followed": "",
+      "notes": "CLOSED sync/upload foundation. ORIGINAL: Upload worker (recordingSync.ts) on expo-file-system (net-new). Body head: ### Current state on main  - **Absent:** `src/services/recordingSync.ts`, and the `repository.ts` helpers it needs (`getPendingRecordings`, `updateRecordingSyncStatus`) \u2014 those come from #98. - Schema already models uplo. LATEST_EXPLICIT: @mattrace-gloo 2026-07-20 https://github.com/eten-tech-foundation/fluent-mobile/issues/100#issuecomment-5027838172: ### Ticket-level waivers (#10"
+    },
+    "101": {
+      "classification": "closed_lineage_reviewed",
+      "review_status": "agent_integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "lineage:sync-upload",
+      "linked_prs_followed": "",
+      "notes": "CLOSED sync/upload foundation. ORIGINAL: Sync status surfaced in UI. Body head: ### Current state on main  - `src/hooks/useSyncStatus.ts` composes `useConnectivity` + `usePendingUploads` + `deriveSyncStatus`. - `src/hooks/usePendingUploads.ts` reads `getPendingUploadCount()` (`queries.ts:355`) and r. LATEST_EXPLICIT: none in comments. Later #530 HISTORICAL Dev Fail / #546 transport / #559 merge may supersede slices \u2014 do not treat this closed AC as sole current contract; living docs=product-behav"
+    },
+    "102": {
+      "classification": "closed_lineage_reviewed",
+      "review_status": "agent_integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "lineage:sync-upload",
+      "linked_prs_followed": "",
+      "notes": "CLOSED sync/upload foundation. ORIGINAL: R2 server contract + /recordings/sync coordination. Body head: ### Current state on main  - The mobile upload worker (#100) is net-new and needs an agreed request/response shape. - `recordings` schema fields that map to the contract (`src/db/schema.ts:80`): `local_file_path`, `bible. LATEST_EXPLICIT: @mattrace-gloo 2026-07-20 https://github.com/eten-tech-foundation/fluent-mobile/issues/102#issuecomment-5027793270: ## Ticket-level waivers (#102) + contract"
+    },
+    "603": {
+      "classification": "closed_lineage_reviewed",
+      "review_status": "agent_integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "lineage:sync-icon",
+      "linked_prs_followed": "",
+      "notes": "CLOSED. Referenced by #530 retest as cloud-icon baseline fixes. Title=Keep the header sync icon in step with pending and failed uploads [Returning online and sync changes Audit]. Comments=4. LATEST: @Roslin22 2026-10-14 https://github.com/eten-tech-foundation/fluent-mobile/issues/603#issuecomment-6165676871: **Test Results \u2013 Sync Status Icon** 1. The sync status icon is displayed in the top-right navigation bar. 2. The icon changes correctly based on the current connectivity and sync status. 3. "
+    },
+    "601": {
+      "classification": "closed_lineage_reviewed",
+      "review_status": "agent_integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "no",
+      "discrepancy_flags": "lineage:sync-icon",
+      "linked_prs_followed": "",
+      "notes": "CLOSED. Referenced by #530 retest as cloud-icon baseline fixes. Title=Keep server reachability current after reconnect and on cold start [Returning online and sync changes Audit]. Comments=1. LATEST: @JonathanSeehagen 2026-09-29 https://github.com/eten-tech-foundation/fluent-mobile/issues/601#issuecomment-5896744989: Also seen during the offline chapter assignment audit (#533): the upload orchestrator gets stuck as \"offline\" after a 404 followed by a brief connectivity flicker.  **Confirmed on:*"
+    },
+    "610": {
+      "classification": "closed_lineage_reviewed",
+      "review_status": "agent_integrator_verified",
+      "docs_checked": "yes",
+      "impl_checked": "partial",
+      "discrepancy_flags": "closed_related_271",
+      "linked_prs_followed": "",
+      "notes": "CLOSED claim 404\u2192conflict window. Title=Surface offline claim conflicts when a PM assigned the chapter or the offline window exceeds 5 minutes [Offline chapter assignment Audit]. Merged companion to #611/PR667 path; chapterClaimSync cites #610. ORIGINAL gap HISTORICAL Dev; CURRENT SOURCE has isClaimHeldByOtherError. Remaining open work under #271 = OPEN_TICKET provisional."
+    }
+  }
+}

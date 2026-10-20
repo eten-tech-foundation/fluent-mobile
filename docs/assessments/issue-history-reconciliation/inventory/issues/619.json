@@ -1,0 +1,25 @@
+{
+  "issue_number": 619,
+  "fetched_at_utc": "2026-10-20T00:38:30Z",
+  "issue": {
+    "number": 619,
+    "title": "Pause downloads when Wi-Fi drops and cellular is off [Going offline Audit]",
+    "state": "closed",
+    "body": "Found during the going offline audit (#529, epic #526), scenario E.19 re-tested on PR #559.\n\n**Severity:** High  \n**Launch blocker:** To be decided with product  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), local debug build of `ddfdaaa` (PR #559 head), `dev.api.fluent.bible` (scenario E.19)\n\n## Summary\n\nThe Wi-Fi / cellular gate (#546, PR #559) applies only when the user taps Download or Resume and to auto-resume at start. Once the queue is running, the worker never checks transport again: `processNext` (`src/services/downloadQueueWorker.ts:199-272`) starts the next item right after the previous one finishes or fails. When Wi-Fi drops, the item in flight fails and, as soon as mobile data comes up, the queue keeps downloading over cellular with the toggle off. Items interrupted by the drop are marked `failed` in a cascade, and progress is lost for items without resume data.\n\n## Expected\n\n\"When off, uploads and downloads only initiate or continue over WiFi; if WiFi is lost while either is active, pause automatically\" (#146).\n\n## Actual\n\nProject 479, 13 items, toggle off, Wi-Fi and mobile data on. Wi-Fi turned off at 14:08:48: item 2 (audio, 5%) failed with \"Software caused connection abort\", item 3 failed on DNS, then item 4 started over mobile data and reached 94% (~8.4 MB) before a manual Pause. Pause and Cancel stayed visible the whole time. A second path hits the same gap: auto-resume starts the queue on Wi-Fi at login, and it keeps running after the device moves to cellular.\n\n## Steps to reproduce\n\n1. Toggle \"Upload/Download over cellular\" off; Wi-Fi and mobile data on.\n2. Prepare for Offline \u2192 Download a chapter not yet downloaded.\n3. While it downloads, turn Wi-Fi off.\n\n## Acceptance criteria\n\n- [ ] When transport no longer allows transfer (Wi-Fi lost with the toggle off, or no link), the active download pauses and keeps its resume data.\n- [ ] The worker checks transport before starting each queued item.\n- [ ] A transport loss does not mark items `failed`; they stay paused or queued.\n- [ ] The queue resumes on its own when Wi-Fi returns (existing auto-resume).\n- [ ] Unit test: transport change to blocked during a download \u2192 paused, no next item started.\n- [ ] Android device QA (E.19).\n\n## Related\n\n- Parent audit: #529 (epic #526)\n- #146 (spec), #546 / PR #559 (start and resume gate), #572 (closed without a fix), #604 (same behavior on the upload side)\n- Assessment: `docs/assessments/going-offline/README.md` (PR #577)\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-30T18:20:00Z",
+    "updated_at": "2026-10-08T20:43:52Z",
+    "closed_at": "2026-10-08T20:43:52Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/619",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

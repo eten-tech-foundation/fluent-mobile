@@ -1,0 +1,58 @@
+{
+  "issue_number": 527,
+  "fetched_at_utc": "2026-10-20T00:37:30Z",
+  "issue": {
+    "number": 527,
+    "title": "Drafting page Audit",
+    "state": "closed",
+    "body": "Audit the Drafting page against related GitHub issues and expected behavior. Test the latest supported mobile build, document results, and create `dev ready` issues for any identified gaps.\n\n**Done when:** The assessment is merged, all gaps are linked to actionable issues, and the audit result is posted to this sub-ticket.",
+    "user": "kaseywright",
+    "created_at": "2026-09-14T17:13:11Z",
+    "updated_at": "2026-10-18T12:34:42Z",
+    "closed_at": "2026-09-29T17:11:46Z",
+    "labels": [
+      "chore"
+    ],
+    "comments": 4,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/527",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5787094415,
+      "user": "mattrace-buildmidwestern",
+      "created_at": "2026-09-23T00:53:04Z",
+      "updated_at": "2026-09-23T00:53:04Z",
+      "body": "## Drafting page audit \u2014 result\n\n**Overall:** Pass with gaps\n\n**Assessment PR (draft):** https://github.com/eten-tech-foundation/fluent-mobile/pull/565\n\n**Docs (on branch until merge):**\n- `docs/assessments/drafting-page/README.md`\n- `docs/assessments/drafting-page/phase-7-report.md`\n\n**Build / env:** Android Debug `com.eten.fluent` + Metro (`EXPO_PUBLIC_E2E_MODE=1`) against `dev.api.fluent.bible`\n**Device:** Emulator `emulator-5554` (Pixel 6 / API 33)\n\n**Gap filed:** #564 \u2014 Bible tab ignores `onOpenRecord` after #408 rewrite (medium; not launch-blocking). Project board left Status alone when Product-owned \u2014 please move #564 to **Dev Ready** if appropriate.\n\n**Automation:** `.maestro/flows/android/smoke-drafting.yaml` / `npm run maestro:test:drafting`\n\nWill update this comment with the merged assessment permalink after #565 merges.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/527#issuecomment-5787094415"
+    },
+    {
+      "id": 5895020414,
+      "user": "mattrace-buildmidwestern",
+      "created_at": "2026-09-29T17:11:44Z",
+      "updated_at": "2026-09-29T17:11:44Z",
+      "body": "## #527 complete \u2014 drafting page audit\n\n**Overall:** Pass with gaps (one gap filed and fixed under #564 / PR #573)\n\n### Exercised results\n\n| Scenario | Status |\n|---|---|\n| My Work \u2192 chapter opens drafting shell | Pass |\n| Projects \u2192 chapter opens drafting | Pass |\n| Header sync control | Pass |\n| Tab switch Bible \u2194 Resources \u2194 Record (shared verse) | Pass |\n| Source-audio bar visible on Bible/Record; hidden on Resources | Pass |\n| Source-audio empty / loaded states | Pass |\n| Last-tab restore (re-open same chapter) | Pass |\n| Cross-chapter default (new chapter \u2192 Bible) | Pass |\n| Recording leave guard (tab / back) | Pass |\n| Offline chrome on shell (observational) | Pass |\n| Bible unit tap \u2192 Record (`onOpenRecord`) | Fail \u2192 [#564](https://github.com/eten-tech-foundation/fluent-mobile/issues/564) |\n\n### Gap fixed from this audit\n\n- **[#564](https://github.com/eten-tech-foundation/fluent-mobile/issues/564)** \u2014 Restore Bible tab `onOpenRecord` (unit tap should open Record). Regression after #408 / PR #535 discarded the prop in `BibleTab`. Fix: [PR #573](https://github.com/eten-tech-foundation/fluent-mobile/pull/573).\n\nNo additional drafting-shell bugs from this audit.\n\n**Build / env:** Android Debug Dev Client + Metro (`EXPO_PUBLIC_E2E_MODE=1`) \u00b7 `dev.api.fluent.bible` \u00b7 emulator Pixel 6 / API 33\n**Assessment (branch):** `docs/assessments/drafting-page/` \u00b7 smoke: `.maestro/flows/android/smoke-drafting.yaml` / `npm run maestro:test:drafting`\n\nClosing as Done.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/527#issuecomment-5895020414"
+    },
+    {
+      "id": 5895020588,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-29T17:11:45Z",
+      "updated_at": "2026-09-29T17:11:45Z",
+      "body": "Audit complete: Pass with gaps. Gap #564 tracked/fixed via PR #573. Board \u2192 Done.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/527#issuecomment-5895020588"
+    },
+    {
+      "id": 6249882794,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-10-18T12:24:45Z",
+      "updated_at": "2026-10-18T12:34:42Z",
+      "body": "@Roslin22\n\n## Drafting page \u2014 retest\n\n> **Note:** this test script was generated with the help of AI, from the tests executed in the #527 audit (epic #526) and from other information gathered while the issues were implemented. It is a guide, not a limit: any other test that covers these points or goes beyond them is also valid.\n\n> **Linked issues:** when a test ends with an issue number in parentheses, for example `(#564)` at the end of test 11, that is the sub-issue that fixed that point, so you can open it to see what was changed. Some of these issues are still open or depend on work that is not finished yet (for example, fluent-api changes). Those tests are marked with \"issue still open\" or \"may fail\". For them, a failure may be expected for now: report what you see, but it does not necessarily mean the fix regressed.\n\n\"Chapter screen\" is the screen that opens when you enter a chapter, with the **Bible**, **Resources** and **Record** tabs at the top.\n\n**What to prepare:** an account with chapters in My Work; one project with source audio and one without.\n\n- [ ] **1** On the **My Work** tab, tap a chapter. Expected: the chapter screen opens, with the Bible, Resources and Record tabs.\n- [ ] **2** On the **Projects** tab, open a project and tap a chapter. Expected: the chapter screen opens.\n- [ ] **3** On the chapter screen, tap the cloud icon in the top-right corner. Expected: the **Sync** page opens.\n- [ ] **4** On the Bible tab, tap a verse; then go to Resources and to Record. Expected: all three tabs show the same verse.\n- [ ] **5** Look at the source audio bar (player with an audio wave) on each tab. Expected: shown on Bible and Record; not shown on Resources.\n- [ ] **6** Open a chapter of a project with source audio and one of a project without it. Expected: in the first, the player is ready to play; in the second, \"No source audio\" is shown, with no error.\n- [ ] **7** In a chapter, go to the Resources tab, go back to the list and open the same chapter again. Expected: it opens straight on the Resources tab.\n- [ ] **8** Open a different chapter. Expected: it opens on the Bible tab.\n- [ ] **9** On the Record tab, start recording and, while recording, try to switch tabs or go back. Expected: the app does not let you leave without asking what to do with the recording.\n- [ ] **10** Turn on airplane mode and open a chapter. Expected: the screen opens normally, the cloud icon turns gray, and the app does not close.\n- [ ] **11** On the Bible tab, tap a verse. Expected: the app goes to the Record tab, already on that verse. (#564)\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/527#issuecomment-6249882794"
+    }
+  ],
+  "comments_fetched_count": 4,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,34 @@
+{
+  "integrated_at_utc": "2026-10-20T00:44:18Z",
+  "cohorts": [
+    "c1",
+    "c3"
+  ],
+  "reviewers": {
+    "c1": "bc-09eeb8c0-8b52-57ab-9eb9-fc4b581379c1",
+    "c3": "bc-cf02a792-6bc8-53bc-9b0a-1c50ccc2f0b2"
+  },
+  "stats": {
+    "c1": {
+      "integrated": 51,
+      "override": 1
+    },
+    "c3": {
+      "integrated": 49,
+      "override": 3
+    }
+  },
+  "substantive_total": 219,
+  "pending_total": 89,
+  "overrides": [
+    38,
+    257,
+    271,
+    256
+  ],
+  "caveats": [
+    "c3 #257/#271 framed as open foundations \u2014 integrator keeps P1_current source / P1_provisional historical device, not P0_current claim404",
+    "c1 #38/#721: agreed tap\u2192Sync; #721 harness NO_PRODUCT_FIX preserved from prior override",
+    "c1 #51 closed-vs-failing-QA flagged as P1 contradiction for later depth"
+  ]
+}

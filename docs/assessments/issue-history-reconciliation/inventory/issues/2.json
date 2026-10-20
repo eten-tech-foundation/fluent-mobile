@@ -1,0 +1,42 @@
+{
+  "issue_number": 2,
+  "fetched_at_utc": "2026-10-20T00:33:37Z",
+  "issue": {
+    "number": 2,
+    "title": "MVP PoC mobile companion app",
+    "state": "closed",
+    "body": "Goal: Produce a MVP PoC mobile companion app to fluent web.\n\nThe tasks that should be accomplished are:\n- [x] Setup local development environment\n    - [x] Can you build the app?\n    - [x] Can you run the app in an emulator?\n- [x] Scaffold a basic PoC application\n    - [x] Remove boilerplate code - (movie related demo code)\n    - [x] Update Project Identity\n        - [x] Update `app.json`: Change `name` to \"Fluent\", update `slug`, `scheme`\n        - [x] Update bundle identifiers:\n            - iOS: `com.eten.fluent` (or preferred ID)\n            - Android: `com.eten.fluent`\n        - [x] Update `package.json`: Change `name` to `fluent-mobile`\n        - [x] Update `README.md` with correct app description and setup instructions \n    - [x] Branding and themes: according to tickets\n    - [x] Basic navigation - according to tickets\n    - [x] Create Fluent web API client\n    - [x] Sqlite - will be used for offline, on-device storage - use `libsql` or similar\n    - [x] Audio: - according to tickets\n        - [x] record audio\n        - [x] playback audio\n        - [x] editing audio: TBD\n     - [x] CI/CD pipeline - Github Actions\n\nThe same best-practices for git workflows apply.\n\nRefer to the [Langquest](https://github.com/genesis-ai-dev/langquest) project for inspiration. They are using a very similar tech stack that could provide ideas and insights.\n\nPR reviews will be more relaxed as this is a PoC. That does not mean we should produce garbage code. Follow engineering best-practices.\n\nCreate Dev task tickets as-needed to track progress.\n\nRecommended application architecture is in [the docs](https://github.com/eten-tech-foundation/fluent-mobile/blob/main/docs/architecture.md).",
+    "user": "chadw-eten",
+    "created_at": "2026-01-22T18:44:48Z",
+    "updated_at": "2026-07-29T21:46:40Z",
+    "closed_at": "2026-07-29T21:46:40Z",
+    "labels": [
+      "DevQA"
+    ],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/2",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4036478126,
+      "user": "B3RN153",
+      "created_at": "2026-03-11T05:09:34Z",
+      "updated_at": "2026-03-12T11:14:51Z",
+      "body": " **SP3**\n1. Platform Research of react             -(ET 7hrs)\n2. Framework Familiarization of react   -(ET 7hrs)\n3. Basic setup                                        -(ET 1hr)\n4. Basic scaffolding                               -(ET 1hr)\n5. Other modifications                          -(ET 2hrs)\n6. Branding and themes                       -(ET 3hrs)\n7. Basic Navigation                               -(Et 3hrs)\n8. FIxes                                                -(ET 2hrs)\n9. Architecture documentation             -(Et 3hrs)",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/2#issuecomment-4036478126"
+    },
+    {
+      "id": 4045274871,
+      "user": "B3RN153",
+      "created_at": "2026-03-12T09:35:59Z",
+      "updated_at": "2026-03-12T09:35:59Z",
+      "body": "Basic architecture of fluent-mobile \nhttps://bridgeconn-my.sharepoint.com/:w:/r/personal/bernise_john_bridgeconn_com1/_layouts/15/Doc.aspx?sourcedoc=%7B10616823-17A6-44F9-A07F-95D98D7B2173%7D&file=Document.docx&action=editNew&mobileredirect=true&wdOrigin=APPHOME-WEB.DIRECT%2CAPPHOME-WEB.BANNER.NEWBLANK&wdPreviousSession=72af7542-6f1a-4416-b970-dd257794a475&wdPreviousSessionSrc=AppHomeWeb&ct=1773304884078",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/2#issuecomment-4045274871"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

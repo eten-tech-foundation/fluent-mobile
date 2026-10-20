@@ -1,0 +1,1119 @@
+{
+  "reviewer": "r12",
+  "wave": 4,
+  "domain": "mid-late-gap-cont2",
+  "ids": [
+    380,
+    404,
+    405,
+    407,
+    408,
+    409,
+    410,
+    411,
+    412,
+    417,
+    420,
+    422,
+    423,
+    424,
+    428,
+    435,
+    438,
+    442,
+    443,
+    446,
+    447,
+    448,
+    451,
+    452
+  ],
+  "reviewed_at_utc": "2026-10-20T01:15:08Z",
+  "corpus": "docs/assessments/issue-history-reconciliation/inventory/issues/<id>.json",
+  "contract": "docs/assessments/issue-history-reconciliation/inventory/complete-row-contract.md",
+  "skip": {
+    "721": "Sync lead \u2014 out of scope for this reviewer"
+  },
+  "recommend_complete_count": 24,
+  "recommend_complete_false_count": 0,
+  "issues": [
+    {
+      "issue": 380,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Checklist exists in-repo for Dependabot one-at-a-time + doctor; linked from dependabot guide; engineering/docs only.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/380"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/guides/dependabot-process.md",
+          "lines": "5-12",
+          "fact": "## One-at-a-time checklist with merge-order, required checks, doctor for risky bumps, rebase others."
+        },
+        {
+          "path": ".cursor/rules/dependabot-workflow.mdc",
+          "lines": "11",
+          "fact": "Rule points at docs/guides/dependabot-process.md as full guide."
+        },
+        {
+          "path": ".github/dependabot.yml",
+          "lines": "1-2",
+          "fact": "Comment links process doc (one-at-a-time checklist + doctor)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/394",
+        "fact": "Merged 2026-08-26 [#380]: Dependabot one-at-a-time + doctor checklist."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Checklist + rule link on HEAD.",
+        "device_evidence": "none \u2014 docs-only ticket"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Docs AC delivered by #394; closed same day. No product runtime change."
+    },
+    {
+      "issue": 404,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Pin verse nav at top of Record; combine take list + Source Text into one scrollable region (no independent nested scroll containers); whole page scrolls when content exceeds viewport.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/404"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "163-166",
+          "fact": "Comment: take list + Source Text inline inside single page-level ScrollView beneath pinned verse nav \u2014 #404."
+        },
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "1170-1602",
+          "fact": "Single ScrollView wraps page content; no nested scrollEnabled lists for takes/source text."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/418",
+        "fact": "Merged 2026-08-31 [#404]-Fixed record tab scrolling. QA 2026-09-14 passedQA; waveform/audio follow-ups filed as #485/#486."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Single page ScrollView pattern on HEAD.",
+        "device_evidence": "dated 2026-09-14 Roslin nightly QA pass; follow-ups #485/#486 out of #404 AC"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Single-page Record scroll AC on HEAD via #418; closed after human QA. Adjacent waveform/audio bugs tracked separately."
+    },
+    {
+      "issue": 405,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "SHA-pin all Actions; add action-pins gate (pull_request_target); Dependabot Actions groups+cooldown+github_actions label; Action pins required on main.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/405"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".github/workflows/action-pins.yml",
+          "lines": "1-40",
+          "fact": "Action pins workflow present (pull_request_target checker)."
+        },
+        {
+          "path": ".github/scripts/check-action-pins.rb",
+          "lines": "1-30",
+          "fact": "Ruby Psych-based pin checker executable."
+        },
+        {
+          "path": ".github/workflows/lint.yml",
+          "lines": "13-17",
+          "fact": "checkout/setup-node SHA-pinned with version comments."
+        },
+        {
+          "path": ".github/dependabot.yml",
+          "lines": "124-137",
+          "fact": "github-actions ecosystem: cooldown + groups + github_actions label."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/406",
+        "fact": "Merged 2026-08-27 [#405]: SHA-pin all GitHub Actions and add the enforcement gate."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Pins + gate + Dependabot Actions config on HEAD.",
+        "device_evidence": "none \u2014 CI/infra"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "CI parity AC present on HEAD via #406; closed same day."
+    },
+    {
+      "issue": 407,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Settings Verse/Pericope toggle; selecting updates Bible+Record display unit with no mode mixing; persist per-user; sync preference to account when online.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/407"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/screens/SettingsScreen.tsx",
+          "lines": "215-221",
+          "fact": "Verse/Pericope segmented control bound to setDraftingUnit."
+        },
+        {
+          "path": "src/services/draftingUnitPreference.ts",
+          "lines": "19-29",
+          "fact": "Per-userId KV key drafting_unit + dirty flag; not device-global."
+        },
+        {
+          "path": "src/hooks/useBibleTabUnits.ts",
+          "lines": "38-47",
+          "fact": "Bible tab units read useDraftingUnit() for live mode."
+        },
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "189-273",
+          "fact": "Record reads draftingUnit; effectiveUnit falls back to verse when pericope data missing."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/434",
+        "fact": "Merged 2026-09-02 [407] Settings toggle. QA 2026-09-09: toggle+persistence pass; display-unit updates deferred to #408/#409 at that time (now consumed via draftingUnit on HEAD). Account-online sync still local-dirty only \u2014 no self/settings push found."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Toggle + per-user KV + consumers on Bible/Record HEAD; account API sync not wired.",
+        "device_evidence": "dated 2026-09-09 Roslin passedQA for toggle/persistence; noted display not then implemented"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Settings toggle AC + live consumers on HEAD. Named divergence: online account sync of drafting_unit not found (dirty flag only); QA waived display to follow-ups that later landed."
+    },
+    {
+      "issue": 408,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Bible tab unit cards + source player re-render at Verse/Pericope granularity: counter labels, optional verseTimestamps ticks, recorded/partial icons, cross-chapter cards, auto-select last unrecorded on toggle.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/408"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/tabs/BibleTab.tsx",
+          "lines": "38-50,101,210-237",
+          "fact": "PericopeStatusIcon partial/recorded; isPericopeList switches card vs verse row renderers."
+        },
+        {
+          "path": "src/utils/bibleTabUnits.ts",
+          "lines": "54,105-141",
+          "fact": "Unit counter label Verse/Pericope; builds verse vs pericope unit lists."
+        },
+        {
+          "path": "src/components/layout/SourceAudioShell.tsx",
+          "lines": "155-169,222-225",
+          "fact": "subdivisionTickMarks from verseTimestamps; passes tickMarks + unitCaption into SourceAudioPlayerBar."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/535",
+        "fact": "Merged 2026-09-16 [#408] toggle Bible verse/pericope cards. Chad 2026-09-18: not concerned about missing auto-select in pericope mode; scrubbing must be fixed (still open issue state)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Cards, partial icon, ticks wiring on HEAD.",
+        "device_evidence": "dated 2026-09-18 Roslin verified cards/player/cross-chapter; flagged auto-select + scrubbing"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Core #408 UI on HEAD via #535/#541. Issue still open: product waived auto-select; scrubbing concern remains product-tracked (OPEN_TICKET_UNRESOLVED)."
+    },
+    {
+      "issue": 409,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Record Current Unit Title: verse ref vs pericope range + optional title subtitle; never Pericope N of M counter; verse-mode draft waveform ticks+scrub; pericope mode continuous no ticks.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/409"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "402-423",
+          "fact": "pericopeRange + pericopeTitle subtitle; verse fallback; no Pericope N of M counter."
+        },
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "427-435",
+          "fact": "Prev/next jumps adjacent pericope in pericope mode (post-#540/#543 nav fix path)."
+        },
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "1233-1246",
+          "fact": "Capture PlaybackProgressBar omits tickMarks \u2014 plain scrubber always on draft capture surface today."
+        },
+        {
+          "path": "src/components/ui/PlaybackProgressBar.tsx",
+          "lines": "44,373",
+          "fact": "Component supports optional tickMarks; Record capture does not pass them."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/467",
+        "fact": "Merged 2026-09-10 [#409] title/mode. Bernice 2026-09-17: nav/source-text fixes in #540/#543; item 4 \u2192 #411; item 3 \u2192 #544; moved to QA. Closed 2026-09-17."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Mode-aware title + pericope nav on HEAD; draft capture ticks not wired.",
+        "device_evidence": "dated 2026-09-10 Roslin initial fail\u2192dev; closed after follow-up PRs"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Title/nav AC on HEAD. Named divergence: Record capture waveform does not pass tickMarks (plain scrubber); QA earlier claimed verse ticks \u2014 not present on current capture path."
+    },
+    {
+      "issue": 410,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Allow mixed verse/pericope recording without granularity lock; take subtitles Take N - Pericope/Verse; show shared pericope takes on spanned verses; shared 5-cap; delete fan-out.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/410"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/schema.ts",
+          "lines": "108",
+          "fact": "recordings.granularity TEXT NOT NULL DEFAULT 'verse'."
+        },
+        {
+          "path": "src/utils/takeSubtitle.ts",
+          "lines": "32-43",
+          "fact": "formatTakeSubtitle: Take N - Pericope/Verse/Stitched labels."
+        },
+        {
+          "path": "src/hooks/useVerseAudio.ts",
+          "lines": "274-278,455-482",
+          "fact": "Pericope mode loads covered-verse takes; shared pericope take fills verse-mode cap."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/473",
+        "fact": "Merged 2026-09-10 [#410] mixed-mode labeling. Chad 2026-09-15/17: nav questions owned by #409; later :white_check_mark:. Closed 2026-10-06."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Granularity model + subtitles + cap logic on HEAD.",
+        "device_evidence": "dated 2026-09-15 Roslin pass; Chad checkmark 2026-09-17"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Mixed-mode + labeling AC on HEAD via #473; product accepted after nav clarification to #409."
+    },
+    {
+      "issue": 411,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Stitch consecutive verse takes for pericope playback labeled Take N - Stitched; one slot; no delete from pericope view; show pericope takes on covered verses with full-range #410 subtitle; play recorded verses in order for partial coverage.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/411"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/hooks/useVerseAudio.ts",
+          "lines": "381-401,1070-1077",
+          "fact": "stitchQueue + playStitched for synthetic stitched rows (#411)."
+        },
+        {
+          "path": "src/utils/takeSubtitle.ts",
+          "lines": "35-38",
+          "fact": "Stitched subtitle variant Take N - Stitched - vv. X-Y."
+        },
+        {
+          "path": "src/utils/crossGranularityRows.ts",
+          "lines": "105-109",
+          "fact": "Builds display rows for pericope mode including stitched aggregates."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/506",
+        "fact": "Merged 2026-09-16 [#411] stitched playback. Chad 2026-09-18 OK with timer reset on segment boundary. Closed 2026-10-06."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Stitch queue + labels on HEAD.",
+        "device_evidence": "dated 2026-09-18 Roslin pass; timer reset waived by Chad"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Stitch playback AC on HEAD via #506; product waived timer-reset concern."
+    },
+    {
+      "issue": 412,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Shell-level source audio player on Bible+Record: play/pause \u226548dp, waveform continuous scrub, Verse N/M counter, load Bible selection; baseline verse-mode no ticks (#408 owns ticks).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/412"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/screens/DraftingScreen.tsx",
+          "lines": "27-29",
+          "fact": "SourceAudioBarSlot + SourceAudioProvider wrap drafting shell."
+        },
+        {
+          "path": "src/components/layout/SourceAudioPlayerBar.tsx",
+          "lines": "21-25,48-64",
+          "fact": "Shell player chrome; unitCaption e.g. Verse 3/12; #412."
+        },
+        {
+          "path": "src/components/layout/SourceAudioShell.test.tsx",
+          "lines": "133",
+          "fact": "Asserts footer 'BSB Source Audio \u00b7 Verse 3 / 3'."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/455",
+        "fact": "Merged 2026-09-10 [#412] global source audio player. Chad 2026-09-15 :white_check_mark: accepting Record-tab chapter-vs-verse suggestion as future design overhaul."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Shell player on DraftingScreen HEAD.",
+        "device_evidence": "dated 2026-09-15 Roslin pass"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Baseline shell player AC on HEAD via #455; product passed with known design follow-up."
+    },
+    {
+      "issue": 417,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Persist Reference Images in download_queue as kind:image; after Prepare Offline, getDownloadedResourceSections includes imagesMaps; airplane Images accordion visible; TN/TQ/audio unchanged; unit tests.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/417"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/utils/prepareOfflineQueueMapping.ts",
+          "lines": "14-18,58",
+          "fact": "queueKindForResource returns kind as-is (no collapse to text); enqueue uses it."
+        },
+        {
+          "path": "src/db/downloadQueueRepository.ts",
+          "lines": "100",
+          "fact": "EnqueueDownloadItemInput.kind includes 'image'."
+        },
+        {
+          "path": "src/utils/resourcesSectionInventory.ts",
+          "lines": "35-40",
+          "fact": "imagesMaps gate requires kind:'image' + Reference Images."
+        },
+        {
+          "path": "src/utils/prepareOfflineQueueMapping.test.ts",
+          "lines": "100-104",
+          "fact": "Unit test enqueues kind:'image' for Reference Images."
+        }
+      ],
+      "material_pr_or_decision": null,
+      "material_pr_or_decision_na": {
+        "reason_not_applicable": "No PR with Refs #417. Fix present on HEAD via offline/resources stack (kind passthrough + image gate); issue still open with zero comments."
+      },
+      "source_vs_qa": {
+        "working_tree": "image kind mapping + inventory gate aligned on HEAD.",
+        "device_evidence": "none on #417; original defect from #364 QA"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Source now preserves kind:image and gates imagesMaps. Issue still open (board hygiene); no dedicated #417 PR link."
+    },
+    {
+      "issue": 420,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Parent: Phase1 deterministic PR CI (no @latest doctor; Node pin; docs); Phase2 weekday Expo sync; Phase3 Dependabot ownership split; Phase4 optional merge queue; follow-ups filed for unimplemented phases.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/420"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".nvmrc",
+          "lines": "1",
+          "fact": "Node 24.14.0 pinned."
+        },
+        {
+          "path": "docs/ci.md",
+          "lines": "41-72",
+          "fact": "Two-clock model; doctor lockfile; expo:check offline; Phase2/3/4 pointers #422/#424/#423."
+        },
+        {
+          "path": "package.json",
+          "lines": "20-21",
+          "fact": "expo:check offline + expo:check:latest online scripts."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/425",
+        "fact": "Merged 2026-09-02 [#420] Deterministic PR CI (Phase 1). Follow-ups #422/#423/#424 filed; parent closed."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Phase1+2 landed; Phase3/4 still open tickets.",
+        "device_evidence": "none \u2014 CI"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Parent tracker satisfied via Phase1 merge + follow-up issues; Phase2 done in #422; Phase3/4 remain open children."
+    },
+    {
+      "issue": 422,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "quality-gates EXPO_OFFLINE + doctor skip dep-version; pinned doctor; expo:check scripts; expo-sdk-align.yml schedule+dispatch opens chore/expo-sdk-align via App/PAT; docs/ci.md updated; SHA-pinned uses.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/422"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".github/workflows/quality-gates.yml",
+          "lines": "7,95-98",
+          "fact": "Comments #422; EXPO_OFFLINE=1 on npm run expo:check."
+        },
+        {
+          "path": ".github/workflows/expo-sdk-align.yml",
+          "lines": "4-22,121-152",
+          "fact": "Scheduled align job; App/PAT credentials; branch chore/expo-sdk-align; refs #422."
+        },
+        {
+          "path": "docs/ci.md",
+          "lines": "13-14,52",
+          "fact": "Workflow table + two-clock docs for #422."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/460",
+        "fact": "Merged 2026-09-10 [#422]: Deterministic Expo Quality Gates + scheduled SDK align."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Offline gates + align workflow on HEAD.",
+        "device_evidence": "none \u2014 CI"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Phase2 Expo sync AC on HEAD via #460; closed."
+    },
+    {
+      "issue": 423,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Optional Phase4: required checks include lint/test/typecheck/Expo; enable merge queue on main or close not-planned; update docs/ci.md.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/423"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/ci.md",
+          "lines": "69",
+          "fact": "Merge queue still pointed at open #423 \u2014 not documented as enabled."
+        },
+        {
+          "path": "docs/guides/dependabot-process.md",
+          "lines": "57",
+          "fact": "Notes Dependabot/Expo ownership and merge-queue phases still pending via #424/#423."
+        }
+      ],
+      "material_pr_or_decision": null,
+      "material_pr_or_decision_na": {
+        "reason_not_applicable": "No implementing PR; issue open, zero comments; maintainer GitHub settings not reflected in repo docs as done."
+      },
+      "source_vs_qa": {
+        "working_tree": "No merge-queue enablement documented; AC unmet.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Audit complete: OPEN_TICKET_UNRESOLVED \u2014 merge queue not enabled; docs still defer to #423."
+    },
+    {
+      "issue": 424,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Phase3: remove/ignore Expo/RN-coupled packages from Dependabot groups; document limited auto-merge risk tiers; align handle-dependabot/dep-bump docs.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/424"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".github/dependabot.yml",
+          "lines": "76-109",
+          "fact": "groups still include react-native, react, and expo \u2014 Dependabot still owns Expo/RN-coupled packages."
+        },
+        {
+          "path": "docs/guides/dependabot-process.md",
+          "lines": "57",
+          "fact": "Explicit: Dependabot still owns Expo/RN groups until #424."
+        },
+        {
+          "path": "docs/ci.md",
+          "lines": "69",
+          "fact": "Ownership split deferred to #424."
+        }
+      ],
+      "material_pr_or_decision": null,
+      "material_pr_or_decision_na": {
+        "reason_not_applicable": "No implementing PR; issue open, zero comments; living docs mark AC unfinished."
+      },
+      "source_vs_qa": {
+        "working_tree": "Expo/RN groups still present \u2014 AC not met.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Audit complete: OPEN_TICKET_UNRESOLVED \u2014 Phase3 ownership split not implemented on HEAD."
+    },
+    {
+      "issue": 428,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Stub missing users for assignee/peerChecker; write both ids through; remove coalesceAssignedUserId; View Project other ownership; tests.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/428"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/repository.ts",
+          "lines": "88-110",
+          "fact": "buildStubEmail stub+{id}@fluent.local; ensureUserStubs inserts missing assignee/checker users."
+        },
+        {
+          "path": "src/db/repository.ts",
+          "lines": "308-317,518",
+          "fact": "collectAssigneeIds gathers assignedUserId + peerCheckerId; used before insert."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/437",
+        "fact": "Merged 2026-09-01 [#428] stub users + write-through. Roslin 2026-09-10 passedQA (noted sync validation incomplete)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Stub path + dual id collection on HEAD; coalesceAssignedUserId gone.",
+        "device_evidence": "dated 2026-09-10 Roslin passedQA with sync caveat"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Assignee stub AC on HEAD via #437; closed. QA noted sync validation incomplete but passed ticket."
+    },
+    {
+      "issue": 435,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "dependabot.yml ignores for React all updates + Jest/RTL/Babel/ESLint/lucide majors; align workflow docs CI-first/Actions/resolution-log; commit 2026-08-31 resolution log batch.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/435"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".github/dependabot.yml",
+          "lines": "23-65",
+          "fact": "#435 intentional holds: react/react-dom/react-test-renderer all; jest/RTL/babel/eslint/lucide semver-major."
+        },
+        {
+          "path": "docs/guides/dependabot-resolution-log.md",
+          "lines": "33-36",
+          "fact": "2026-08-31 batch #429\u2013#433 / #432 entries with Refs #435 ignores."
+        },
+        {
+          "path": "docs/guides/dependabot-process.md",
+          "lines": "25-28",
+          "fact": "CI-first for safe PRs; React ignore-all alignment."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/463",
+        "fact": "Merged 2026-09-10 [#435]: Harden Dependabot ignores and align workflow docs."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Ignores + docs + resolution log on HEAD.",
+        "device_evidence": "none \u2014 deps/docs"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Dependabot harden AC on HEAD via #463; closed."
+    },
+    {
+      "issue": 438,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Set-level pericope schema+sync: projects.pericope_set_id; never chapter-loop HTTP; hydrate via bundle and/or GET /pericope-sets/{id}; offline chapter queries; cross-chapter verse lists; tests.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/438"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/schema.ts",
+          "lines": "40,188-210",
+          "fact": "projects.pericope_set_id + pericope_sets / pericope_verses tables."
+        },
+        {
+          "path": "src/services/sync.ts",
+          "lines": "935-1015",
+          "fact": "syncPericopes set-level: bundle seed then getPericopeSet with ETag; no chapter route loop."
+        },
+        {
+          "path": "src/services/api.ts",
+          "lines": "412-436",
+          "fact": "FluentAPI.getPericopeSets / getPericopeSet."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/445",
+        "fact": "Merged 2026-09-08 [#438] Sync pericope boundaries. Bandwidth redesign comment 2026-09-03 forbids chapter-loop."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Set-level hybrid sync + schema on HEAD.",
+        "device_evidence": "none dedicated; DevQA label"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Pericope data-layer AC on HEAD via #445; closed after bandwidth redesign."
+    },
+    {
+      "issue": 442,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Open unassigned Peer Check to non-drafter peers; Send to Community Review assigns tapper as Peer Checker; hide Send from drafter; PM-assigned exclusivity + taken banner; offline dual-Send first-wins.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/442"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/utils/stageAdvancement.ts",
+          "lines": "101-135,147-148",
+          "fact": "Unassigned Peer Check open to non-drafter; drafter/non-assignee hide Send; late stages ungated."
+        },
+        {
+          "path": "src/utils/chapterTakenStatus.ts",
+          "lines": "13-18",
+          "fact": "Unassigned Peer Check does not banner other peers as taken."
+        },
+        {
+          "path": "src/services/stageAdvance.test.ts",
+          "lines": "42-53",
+          "fact": "Writes local peerCheckerId on Send to Community Review."
+        },
+        {
+          "path": "src/db/repository.ts",
+          "lines": "1200-1220",
+          "fact": "updateChapterAssignmentStatusLocally accepts peerCheckerId for open Peer Check send."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/538",
+        "fact": "Merged 2026-09-24 [#442] implicit Peer Checker. Roslin 2026-10-14 pass; Chad 2026-10-14 \u2705. Issue still open on board."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Open Peer Check visibility + assign-on-send on HEAD.",
+        "device_evidence": "dated 2026-10-14 Roslin nightly QA pass; Chad product \u2705"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Product AC implemented (#538) and QA/product approved; GitHub issue still open (OPEN_TICKET_UNRESOLVED board state)."
+    },
+    {
+      "issue": 443,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "One stage-advance CTA at a time: Community\u2192Linguist\u2192Theological\u2192Consultant\u2192Complete; open stages any translator; confirmation bottom sheet before advance.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/443"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/utils/stageAdvancement.ts",
+          "lines": "25-61,91-154",
+          "fact": "Full STAGE_CHAIN through Complete; getStageAdvanceDestination labels; late stages open to any translator."
+        },
+        {
+          "path": "src/utils/stageAdvancement.test.ts",
+          "lines": "40-67",
+          "fact": "Maps community/linguist/theological/consultant destinations including Send to Complete."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/519",
+        "fact": "Merged 2026-09-15 [#443]. Chad 2026-09-17: mobile confirm sheet intentional vs web; Passed QA. Empty-recording gate follow-up #542."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Full linear stage chain on HEAD.",
+        "device_evidence": "dated 2026-09-17 Roslin pass; Chad Passed QA"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Advanced/Complete progression AC on HEAD via #519; #542 is separate empty-recording gate."
+    },
+    {
+      "issue": 446,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "When Aquifer re-uploads under same content id with new sourceUrl, download_queue must re-fetch (not forever keep completed row via ON CONFLICT DO NOTHING).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/446"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/downloadQueueRepository.ts",
+          "lines": "146-172",
+          "fact": "ON CONFLICT upsert resets to queued when source_url changes (skips downloading). Comment cites #446."
+        },
+        {
+          "path": "src/utils/prepareOfflineQueueMapping.ts",
+          "lines": "24,61",
+          "fact": "Maps real sourceUrl from manifest members into enqueue inputs."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/672",
+        "fact": "Merged 2026-10-09 [#446] re-queue on sourceUrl change. Chad 2026-10-14: DevQA \u2014 not device-testable via Aquifer content change."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Conflict upsert on source_url change on HEAD.",
+        "device_evidence": "none practical \u2014 DevQA per Chad 2026-10-14; issue still open"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Queue re-fetch AC on HEAD via #672; issue open awaiting board/DevQA close, not missing code."
+    },
+    {
+      "issue": 447,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Bundle FIA/FCBH pericope set JSON in APK; setId map + loadBundledPericopeSet; version/hash; unit tests; doc note; licensing/product agreement.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/447"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/pericopeSets.ts",
+          "lines": "1-8,69",
+          "fact": "Imports assets/pericope-sets FCBH/FIA JSON + versions; loadBundledPericopeSet export."
+        },
+        {
+          "path": "src/services/pericopeSets.test.ts",
+          "lines": "8-45",
+          "fact": "Tests mapped ids, unknown setId\u2192null, book miss\u2192null."
+        },
+        {
+          "path": "assets/pericope-sets/pericopeSetVersions.ts",
+          "lines": "1-20",
+          "fact": "Bundled set version/hash map consumed by sync."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/450",
+        "fact": "Merged 2026-09-08 447 bundle fia fcbh pericope set json in apk."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Assets + loader on HEAD.",
+        "device_evidence": "none \u2014 data/assets"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "APK seed AC on HEAD via #450; closed. Consumed by #438 sync."
+    },
+    {
+      "issue": 448,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "When bibleTextId null: syncing vs idle must show different Record hints; not claim still syncing after settled sync; distinct from No source audio dock; unit tests.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/448"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/utils/recordSourceTextHint.ts",
+          "lines": "7-16",
+          "fact": "null bibleTextId \u2192 SYNCING if isSyncing else UNAVAILABLE (#448)."
+        },
+        {
+          "path": "src/constants/messages.ts",
+          "lines": "113-117",
+          "fact": "RECORD_SOURCE_TEXT_SYNCING vs RECORD_SOURCE_TEXT_UNAVAILABLE + Open Sync."
+        },
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "776,1251-1268",
+          "fact": "Uses recordSourceTextHint; shows Open Sync affordance."
+        },
+        {
+          "path": "src/utils/recordSourceTextHint.test.ts",
+          "lines": "13-19",
+          "fact": "Unit coverage for syncing vs unavailable."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/673",
+        "fact": "Merged 2026-10-09 [#448]. Chad 2026-10-14: hold QA until download resources working for repro chapter."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Hint selection on HEAD.",
+        "device_evidence": "none yet \u2014 product hold on repro; issue open In QA"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Copy/state AC implemented (#673). Complete\u2260QA pass; issue open for device verification when fixtures available."
+    },
+    {
+      "issue": 451,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Comment entry points on draft surface (not Bible); half-drawer thread; text/audio/emoji composer; one-level threading; reactions; Unconnected anchors. Depends on Observer surface #452 + backend.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/451"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/layout/DraftingTabBar.tsx",
+          "lines": "20-25",
+          "fact": "Tabs are Bible\u2192Resources\u2192Record only \u2014 no comment affordance or Observer Draft tab."
+        },
+        {
+          "path": "src/types/drafting/types.ts",
+          "lines": "1",
+          "fact": "DraftingTab = 'bible' | 'resources' | 'record' only \u2014 no Observer Draft / comment tab."
+        }
+      ],
+      "material_pr_or_decision": null,
+      "material_pr_or_decision_na": {
+        "reason_not_applicable": "No implementing PR; issue open, zero comments; feature not started on mobile."
+      },
+      "source_vs_qa": {
+        "working_tree": "No comment UI modules on HEAD.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Audit complete: AGREED AC still open; no comment surface in working tree. Blocked on #452 + API per issue body."
+    },
+    {
+      "issue": 452,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Observer read-only Draft tab (+ Bible, no Resources); browse chapters/units; play canonical take only; no record/edit/stage controls. Prerequisite for #451.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/452"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/layout/DraftingTabBar.tsx",
+          "lines": "20-31",
+          "fact": "Only bible/resources/record tabs \u2014 no Observer Draft tab."
+        },
+        {
+          "path": "src/app/screens/DraftingScreen.tsx",
+          "lines": "1-5,21-29",
+          "fact": "Mounts BibleTab/RecordTab/ResourcesTab for drafting; no Observer-only shell."
+        }
+      ],
+      "material_pr_or_decision": null,
+      "material_pr_or_decision_na": {
+        "reason_not_applicable": "No implementing PR; issue open, zero comments; Observer draft view not built."
+      },
+      "source_vs_qa": {
+        "working_tree": "No Observer Draft surface on HEAD.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Audit complete: AGREED AC still open; Observer read-only Draft view absent from working tree."
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "issue_number": 369,
+  "fetched_at_utc": "2026-10-20T00:36:21Z",
+  "issue": {
+    "number": 369,
+    "title": "[A+] Unit tests: sync.ts step orchestration beyond auth",
+    "state": "closed",
+    "body": "## Summary / context\n\nPart of **A+ Test safety net** (Now B+ 8.0 \u2192 A+ \u22659.5). `src/services/sync.ts` only has auth-path coverage in `sync.auth.test.ts`.\n\n## Current vs expected\n\n**Current:** Auth orchestration tested; step units (`syncMasterData`, projects, assignments, bible texts, retries/partial failure) thinly covered or not at all.\n\n**Expected:** Colocated unit tests for sync steps: happy path + retry/failure + KV error surfacing where practical with mocks.\n\n## Scope\n\n**In scope**\n- Expand/add `src/services/sync*.test.ts` for step orchestration\n- Mock FluentAPI / repository boundaries; no device QA\n\n**Out of scope**\n- `switchUser` product decision (\u2192 P2 ticket)\n- UI Sync screen work\n- E2E device tests\n\n## Acceptance criteria\n\n- [ ] Unit tests cover at least: master data, projects, chapter assignments, bible texts (happy path)\n- [ ] At least one retry/failure path asserted (align with `retrySyncStep`)\n- [ ] Existing `sync.auth.test.ts` still green\n- [ ] Engineering-only \u2014 no Needs QA\n\n## Verification / test plan\n\n1. `npm test -- --ci -- sync`\n2. Full `npm test -- --ci`\n3. format/lint/typecheck\n\n## Links\n\n- Related: P2 (`switchUser`)\n- File: `src/services/sync.ts`\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-08-25T14:17:18Z",
+    "updated_at": "2026-08-25T22:03:43Z",
+    "closed_at": "2026-08-25T22:03:43Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/369",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,25 @@
+{
+  "issue_number": 115,
+  "fetched_at_utc": "2026-10-20T00:34:47Z",
+  "issue": {
+    "number": 115,
+    "title": "[Epic] Authentication (better-auth)",
+    "state": "closed",
+    "body": "### Summary\n\nEpic tracking authentication on the **Expo SDK 56 CNG (Android-only) baseline**. **Important:** most of this epic already exists in the current baseline and is being **hardened/refactored**, not built from scratch. The junior handoff in [PR #82](https://github.com/eten-tech-foundation/fluent-mobile/pull/82) is **not** being merged and is referenced only for anti-patterns.\n\n**Verify pass (2026-07):** All sub-issues #88\u2013#93 merged and closed. Epic complete.\n\nWhat already ships on main:\n- `src/services/api.ts` with token injection \u2014 but via a **mutable module singleton** (`let _activeToken`) and a **fake-async** `getHeaders`; `publicRequest` lacks logging (#88).\n- `src/services/keychain.ts` (multi-account, namespaced `fluent.auth.<userId>`) on **`react-native-keychain`** \u2014 to be migrated to `expo-secure-store` (#89).\n- `src/app/tabs/LoginScreen.tsx` with validation/loading/error + embedded forgot-password view modes (#90, #91).\n- `PrivacyPolicyPage.tsx` / `TermsOfUsePage.tsx` already routed in `AppNavigator` (#92).\n- Launch auth bootstrap already in `App.tsx` (ad-hoc, dynamic import, incomplete sign-out) (#93).\n\n### Sub-issues\n- [x] #88\n- [x] #89\n- [x] #90\n- [x] #91\n- [x] #92\n- [x] #93\n\n### Dependency ordering\n1. **#88** (token accessor) \u2192 unblocks #93, #100, #113.\n2. **#89** (expo-secure-store migration) \u2192 unblocks #93; needs jest mocks from #111.\n3. **#93** (session bootstrap) builds on #88 + #89.\n4. **#90 / #91** (login + forgot-password) consume #88/#89.\n5. **#92** is small and independent.\n- Benefits from F1 (#109 env) and E2 (#107 offline dev).\n- Blocks C2 (#100 upload token injection).\n\n### Links\n- Anti-pattern reference only (not merging): [PR #82](https://github.com/eten-tech-foundation/fluent-mobile/pull/82)\n- Account switcher already tracked: #84, #85, #86, #87 (reference only \u2014 do not duplicate)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:46:26Z",
+    "updated_at": "2026-07-02T20:18:38Z",
+    "closed_at": "2026-07-02T20:04:00Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/115",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

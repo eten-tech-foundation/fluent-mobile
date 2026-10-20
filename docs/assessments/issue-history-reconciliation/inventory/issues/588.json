@@ -1,0 +1,25 @@
+{
+  "issue_number": 588,
+  "fetched_at_utc": "2026-10-20T00:38:06Z",
+  "issue": {
+    "number": 588,
+    "title": "Handle pericope mode when the project has no local pericope data [Pericope view Audit]",
+    "state": "closed",
+    "body": "Found during the pericope view audit (#534, epic #526).\n\n**Severity:** Medium  \n**Launch blocker:** No  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), `main` @ `4ebeae2`, local fluent-api @ `acc1404` (scenario I.29a; hidden advance CTA from code)\n\n## Summary\n\nWhen the project has no `pericope_set_id`, or its set has no local rows, the Bible and Record tabs silently fall back to verse mode (`effectiveUnit` in `src/hooks/useBibleTabUnits.ts`; the fallback comment in `RecordTab.tsx`). If a set id exists but has no rows, `isOnLastUnit` in `RecordTab.tsx` requires `activePericope !== null`, which never happens, so the stage-advance CTA never appears.\n\n## Expected\n\nThe translator can tell that pericope mode is unavailable for this project, and chapter advancement still works (falling back to verse rules).\n\n## Actual\n\nSettings says Pericope and the tabs show verses without explanation (I.29a). From code, when the project has a set id but no local rows (not device-tested), the advance CTA is also never shown on the last verse.\n\n## Steps to reproduce\n\n1. Use a project whose set is not bundled (or a book missing from the bundled set).\n2. Settings \u2192 Drafting unit \u2192 Pericope.\n3. Record every verse, then open the last verse on Record: no advance CTA (from code; not yet device-tested).\n\n## Acceptance criteria\n\n- [ ] `isOnLastUnit` falls back to the last verse when no pericope data resolves.\n- [ ] The UI explains that pericopes are unavailable for this project (copy agreed with product).\n- [ ] Unit tests cover the no-data path for `isOnLastUnit`.\n- [ ] Android device QA with a project that has no pericope data.\n\n## Related\n\n- Parent audit: #534 (epic #526)\n- Feature: #409, #542 (PR #550), #438\n- Assessment: `docs/assessments/pericope-view/README.md` (PR #583)\n\n\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-25T17:20:25Z",
+    "updated_at": "2026-10-08T20:43:44Z",
+    "closed_at": "2026-10-08T20:43:44Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/588",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

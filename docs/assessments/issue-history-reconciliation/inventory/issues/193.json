@@ -1,0 +1,23 @@
+{
+  "issue_number": 193,
+  "fetched_at_utc": "2026-10-20T00:35:20Z",
+  "issue": {
+    "number": 193,
+    "title": "Update Settings Menu to Reorganize Account Actions",
+    "state": "closed",
+    "body": "The settings menu already ships with an Add User link and a Switch User section for managing multiple logged-in accounts. Today Add User sits above Privacy Policy and Terms of Use, disconnected from the account list below it. This ticket reorganizes the menu so account actions are grouped together.\n\n## Functional Requirements\n\n### Accounts Section\n\n- Rename the \"Switch User\" section header to \"Accounts.\"\n- List all logged-in accounts under the header, each showing display name and initials or icon, with a checkmark on the active account.\n- Move the \"Add User\" row out of the top settings group and into the Accounts section, as the last row below the listed accounts, using the `li:user-plus` icon.\n- If three accounts are already logged in, hide the \"Add User\" row and show the message \"You've reached the 3-account limit\" in its place, matching the account switcher panel.\n\n### Switch Account\n\n- Tapping a non-active account row in this menu makes it the active account immediately and closes the menu.\n- Reuse the existing switching logic and error handling from #87; do not open the separate account switcher panel from this menu.\n\n### Add Account\n\n- Tapping \"Add User\" launches the same add-account flow used by the account switcher panel's \"Add Account\" row (see #86).\n\nNote: This entry point is additive to the drafting page header indicator (#85), not a replacement; both trigger the same underlying switch/add logic.\nNote 2: Sign Out remains the last item in the menu, below the Accounts section, and is unaffected by this change.\n\n<img width=\"422\" height=\"453\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/b761df7f-84d8-4dab-8c7c-08c6c24f4fb8\" />",
+    "user": "chadw-eten",
+    "created_at": "2026-07-17T17:49:32Z",
+    "updated_at": "2026-07-23T03:44:20Z",
+    "closed_at": "2026-07-23T03:44:20Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/193",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

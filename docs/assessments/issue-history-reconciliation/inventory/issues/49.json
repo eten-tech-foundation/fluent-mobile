@@ -1,0 +1,58 @@
+{
+  "issue_number": 49,
+  "fetched_at_utc": "2026-10-20T00:34:07Z",
+  "issue": {
+    "number": 49,
+    "title": "Build Record Tab with Draft Recording and Playback",
+    "state": "closed",
+    "body": "The Record Tab is where translators record drafts in their target language, review takes, and re-record as needed. BCS field testing of the POC surfaced three needs this build addresses: mid-recording pause with resumable takes (translators encounter background noise and need to wait it out without losing progress), collapsible source text accessible without leaving the recording surface, and a persistent record/play button layout that never conditionally hides.\n\nThis build targets verse-by-verse translation. Pericope view is a future phase.\n\n## Functional Requirements\n\n### Verse Navigation\n- Display the selected verse reference prominently below the page header (e.g., \"Mark 14:3\").\n- Display a previous verse button (`li:chevron-left`) and next verse button (`li:chevron-right`) flanking the verse reference.\n- Tapping prev or next sets that verse as the selected verse for the whole drafting page (see #47), scrubs the player to that verse's start, and updates the tab to show that verse's recording state.\n- If a take is currently paused when the user taps prev/next, prompt them to resume or discard before the verse changes; discarding returns the current verse to its prior recording state.\n- Dim (do not hide) the previous button on the first verse; dim the next button on the last verse.\n\n### Recording Controls\nThree mutually exclusive states:\n\n- **Idle** (no draft exists):\n  - Display an enlarged Record button (`li:circle-dot`) with a label reading \"Record [verse reference]\" (e.g., \"Record Mark 14:3\").\n  - Do not render a waveform area in this state.\n  - Tapping begins recording and transitions to the Recording state.\n    - On first tap, request microphone permission via the OS dialog.\n    - If denied, show an in-app message explaining that microphone access is required, with a \"Go to Settings\" button that deep-links to the app's permission settings.\n    - If permanently denied (OS dialog suppressed), skip directly to the in-app message.\n\n- **Recording:**\n  - Render a live animated waveform above the controls; content below (including the source text accordion) shifts down to accommodate.\n  - Display a Pause button (`li:pause`) and a Stop button (`li:stop-circle`).\n  - Display a recording duration counter that increments in real time.\n  - Tapping Pause halts recording and immediately flushes the partial take to disk so it is recoverable if the app is killed or crashes; the take must be resumable; the Pause button changes to a Record icon (`li:circle-dot`) to indicate recording can be resumed.\n  - Tapping the Record icon resumes recording, appending to the current take, and restores the Pause button.\n  - Backgrounding the app during active recording auto-pauses the take (equivalent to a manual pause); the partial take is flushed to disk and the user returns to the paused state on resume.\n  - Paused takes persist indefinitely; there is no timeout.\n  - If the user navigates away from the drafting page (e.g., tapping the back button to return to My Work or the chapter list) while a take is paused, prompt them to resume or discard before leaving; discarding returns the verse to its prior recording state.\n  - Tapping Stop commits the take as the draft for that verse and transitions to the Review state; the selected verse does not auto-advance.\n\n- **Review** (draft exists):\n  - Display the draft waveform as a static amplitude visualization above the playback controls; allow scrubbing to any position.\n  - Display a Play button (`li:play`); tapping plays from the current scrub position; when playback reaches the end, it stops and resets the scrubber to the beginning.\n  - Display Re-record and Delete buttons below the waveform.\n  - Tapping Re-record begins a new recording immediately, silently overwriting the existing draft with no confirmation prompt.\n  - Tapping Delete shows a confirmation prompt before removing the draft; confirming returns to the Idle state.\n\n### Source Text\n- Display source text for the selected verse in a collapsible accordion below the recording controls.\n- Collapsed by default.\n\n> **Note:** Pause\u2192Resume appends to the current take. Re-record silently overwrites. These are distinct behaviors; no confirmation prompt for either in MVP.\n\n<img width=\"389\" height=\"815\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/47dcc1a1-dccf-497b-a0b8-93f2413aa999\" />\n\n**In recording mode**\n\n<img width=\"389\" height=\"564\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/224e1d69-d859-41b6-a940-4a52b6dcff55\" />\n\n**Recording paused**\n\n<img width=\"388\" height=\"552\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/8b964bfa-ccd2-4486-a4d1-bea440a76004\" />\n\n**Recording complete**\n\n<img width=\"388\" height=\"815\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/f1eaf854-be29-4c5d-8880-ea565e81f7d9\" />",
+    "user": "chadw-eten",
+    "created_at": "2026-06-04T15:34:28Z",
+    "updated_at": "2026-07-23T03:46:13Z",
+    "closed_at": "2026-07-23T03:46:13Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 4,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/49",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4937054228,
+      "user": "fel-cesar",
+      "created_at": "2026-07-10T15:48:15Z",
+      "updated_at": "2026-07-10T15:48:15Z",
+      "body": "The core Record tab (draft recording, pause/resume, kill-safe recovery, playback, re-record, delete) landed in PR #158. A few acceptance criteria from this ticket were **waived and split into dedicated follow-up issues** rather than blocking #158 (see the [PR summary comment](https://github.com/eten-tech-foundation/fluent-mobile/pull/158#issuecomment-4936939274)):\n\n- **Seekable playback (Review scrubbing)** \u2014 #176: committed takes are ADTS `.aac` (kept for kill-safe resumable capture), which isn't reliably seekable. Covered by converting/remuxing the committed take to a seekable M4A after commit.\n- **Playback engine + real waveform** \u2014 #96: real amplitude waveform and `expo-audio` seek/position; this may need a new local/native module (tracked in #176).\n- **Null `bibleTextId` in the Record tab** \u2014 #177: replaces the TEMP debug toast with a real \"still syncing\"/disabled-state UX and fixes the sync/lookup gap so every assigned verse resolves a `bible_text_id`.\n\nWith those three tracked separately, #49's remaining scope is fully accounted for. Android device QA for the recorder is still pending on #158 before it merges.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/49#issuecomment-4937054228"
+    },
+    {
+      "id": 5025015583,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-20T17:13:40Z",
+      "updated_at": "2026-07-20T17:13:40Z",
+      "body": "**Assignee cleared** \u2014 `fel-cesar` is no longer on the project.\n\nRelated recording PRs closed (do not merge): #158, #178, #184. Branches remain as reference/salvage only.\n\nThis issue stays open. Re-assign when someone intentionally picks it up; prefer thin PRs against current `main` rather than reviving the closed mega-diffs.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/49#issuecomment-5025015583"
+    },
+    {
+      "id": 5027836228,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-20T22:20:31Z",
+      "updated_at": "2026-07-20T22:20:31Z",
+      "body": "Status corrected: moved from In PR Review \u2192 Dev Ready. Closed Cesar PRs (#158/#178/#184) are not under review; this card is available to pick up as a thin PR from current main.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/49#issuecomment-5027836228"
+    },
+    {
+      "id": 5027845627,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-20T22:22:02Z",
+      "updated_at": "2026-07-20T22:22:02Z",
+      "body": "Note: closed PR #158 (Cesar recording work) was not merged \u2014 Project 4 remains Dev Ready as the canonical board; removed stale In Progress duplicate from Project 7.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/49#issuecomment-5027845627"
+    }
+  ],
+  "comments_fetched_count": 4,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

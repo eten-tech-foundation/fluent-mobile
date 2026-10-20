@@ -1,0 +1,34 @@
+{
+  "issue_number": 546,
+  "fetched_at_utc": "2026-10-20T00:37:43Z",
+  "issue": {
+    "number": 546,
+    "title": "Bug: Download start ignores Wi\u2011Fi/cellular gate that blocks Sync Now",
+    "state": "closed",
+    "body": "## Summary\n\nUpload and download use different transport gates, so a user can successfully start resource downloads while Sync Now is blocked (or looks broken) on the same device.\n\nConfirmed from `origin/main` while investigating Chad\u2019s report (downloads worked; Sync Now did nothing).\n\n### Confirmed asymmetry\n\n| Path | Gate |\n| --- | --- |\n| Sync Now / upload orchestrator | Requires `isWifi` **or** `uploadOverCellular` (`transportAllowsUpload`). Sync UI disables Sync Now when `cellularBlocked`. |\n| Download queue **`start()`** | **No** Wi\u2011Fi / cellular preference check (`useDownloadQueue.start`). |\n| Download **`resume()`** / auto-resume | Requires `isOnline && isWifi` only \u2014 does **not** honor `uploadOverCellular`. |\n\nNetInfo treats only `type === 'wifi'` as Wi\u2011Fi (`connectivity.ts`). Non-wifi online types (`ethernet`, `cellular`, `other`) share the upload \u201cwaiting for Wi\u2011Fi\u201d path unless the cellular toggle is on.\n\n## Acceptance criteria\n\n- [ ] Document and implement one transport policy for upload + download (product call: Wi\u2011Fi-only vs cellular toggle applies to both).\n- [ ] Download `start`, `resume`, and auto-resume use that same policy (today `start` is ungated; `resume` ignores the cellular toggle).\n- [ ] If Sync Now is blocked by transport while downloads are allowed (or vice versa), Sync / Prepare-for-Offline copy explains why.\n- [ ] Unit tests for the shared gate helper covering wifi / cellular+toggle / ethernet-like non-wifi / offline.\n\n## Out of scope\n\n- Sync Now silent no-op when pending queries disagree (separate ticket).\n- Surfacing `upload_error` (separate ticket).\n\n## Related\n\n- Code: `src/services/uploadOrchestratorCore.ts` (`transportAllowsUpload`), `src/app/screens/SyncScreen.tsx` (`cellularBlocked`), `src/hooks/useDownloadQueue.ts` (`start` vs `resume`), `src/services/downloadQueueAutoResume.ts`, `src/services/connectivity.ts`.\n- Slack: Chad White, #fluent-mobile-team, 2026-09-17.\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-17T15:28:13Z",
+    "updated_at": "2026-09-30T20:08:52Z",
+    "closed_at": "2026-09-30T20:08:52Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/546",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5815443528,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-09-24T13:53:00Z",
+      "updated_at": "2026-09-24T14:03:15Z",
+      "body": "**Gap found during the #529 audit (Going offline, epic #526): Gap 6 \u2014 \"Download 'starts' with a blocked transport and gives no feedback\"**\n\nWhile verifying the going offline feature, the audit found this gap. **This issue closes Gap 6**, and the fix is in progress in PR #559. No separate issue was filed for it.\n\nDevice: Xiaomi Redmi Note 9 Pro, Android 10 (API 29), nightly `1.0.0` of `main` @ `d5b9e64` (G.31 on a local debug build of the same commit), `dev.api.fluent.bible`.\n\nWhat the device showed:\n\n- **E.18:** Wi-Fi off, mobile data working, \"Upload/Download over cellular\" off. On the first entry to Prepare for Offline (no earlier Pause), Download is enabled. Tapping it shows Pause + Cancel with no progress and no explanation for about 30 s. When Wi-Fi returns, the download continues on its own.\n- **G.31:** in airplane mode, Prepare for Offline renders the chapters and resources. Download is enabled; tapping it shows Pause + Cancel with no message, and the log shows `DownloadQueueWorker` \"Failed to download item\".\n\nCode cause on `main`: download `start` has no transport check (`src/hooks/useDownloadQueue.ts:243-268`), while `resume` and auto-resume require Wi-Fi and ignore the cellular toggle (`src/hooks/useDownloadQueue.ts:284-293`, `src/services/downloadQueueAutoResume.ts:13`).\n\nSuggested additional AC for this issue:\n\n- [ ] With the shared policy returning `offline` or `waiting_wifi`, Download does not show Pause + Cancel as if it were transferring; the Prepare for Offline screen explains why the download waits (E.18, G.31).\n\nAfter PR #559 merges, the audit re-tests A.1\u2013A.3, E.17\u2013E.19, F.20, G.22, G.28 and G.31 on the new `main`. E.19 (an in-flight download pausing when Wi-Fi drops) has no open issue, since #572 was closed without a fix. If it still fails after #559, it becomes a new gap under #146.\n\nAssessment: `docs/assessments/going-offline/` (PR #577).\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/546#issuecomment-5815443528"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

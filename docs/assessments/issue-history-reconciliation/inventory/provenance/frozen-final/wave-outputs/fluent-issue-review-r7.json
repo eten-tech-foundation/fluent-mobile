@@ -1,0 +1,1000 @@
+{
+  "reviewer": "r7",
+  "wave": 3,
+  "domain": "early-remainder-ui-auth-adjacent",
+  "integrator_parent": "bc-da4aa327-d86e-47fc-93c0-d7105af39497",
+  "ids": [
+    3,
+    7,
+    8,
+    19,
+    22,
+    36,
+    39,
+    40,
+    47,
+    48,
+    50,
+    51,
+    52,
+    53,
+    71,
+    84,
+    85,
+    86,
+    99,
+    106,
+    107,
+    108
+  ],
+  "corpus": "docs/assessments/issue-history-reconciliation/inventory/issues/<id>.json",
+  "contract": "docs/assessments/issue-history-reconciliation/inventory/complete-row-contract.md",
+  "skipped": [
+    721
+  ],
+  "reviewed_at_utc": "2026-10-20T01:11:35Z",
+  "recommend_complete_count": 22,
+  "recommend_complete_false_count": 0,
+  "issues": [
+    {
+      "issue": 3,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Record discovery findings in a shared document (Google Doc template linked in body).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/3"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "NO_PRODUCT_FIX",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/AGENT_ONBOARDING.md",
+          "lines": "1-30",
+          "fact": "Living onboarding is the in-repo engineering map; #3\u2019s discovery artifact lived outside the repo (SharePoint/Google Doc) and never defined runtime product AC."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/3#issuecomment-3919003950",
+        "fact": "2026-02-18 Alph-1n linked SharePoint audio-library exploration doc as the delivered discovery artifact; no product code change requested."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "No runtime surface owned by #3; discovery was external docs only.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Docs-only discovery ticket; closed state is history. Explicit comment delivers SharePoint artifact \u2014 NO_PRODUCT_FIX, not a deferred bug."
+    },
+    {
+      "issue": 7,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Establish local mobile tooling: Android Get Started + emulator/IDE integration; body also mentioned optional iOS simulator on macOS.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/7"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".cursor/rules/android-only.mdc",
+          "lines": "1-20",
+          "fact": "Repo permanently Android-only; iOS simulator guidance in #7 body is historical and must not be reintroduced."
+        },
+        {
+          "path": "docs/guides/local-development-workflow.md",
+          "lines": "20-25",
+          "fact": "Living local-dev prereqs: Node \u226524.14, Android Studio/emulator or device + custom dev client \u2014 supersedes ad-hoc #7 checklist as the current engineer path."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/7#issuecomment-4030724771",
+        "fact": "2026-03-10 SP3 planning hours only (platform research/setup) \u2014 not a product waive; no linked closing PR in corpus."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Android-only CNG + local-development-workflow.md define current setup; iOS bullet in #7 is obsolete wording.",
+        "device_evidence": "none (infra chore)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Infra/dev-env ticket. iOS mention is historical vs android-only.mdc \u2014 CONFIRMED_CURRENT_SOURCE drift of the ticket text, not an open product bug."
+    },
+    {
+      "issue": 8,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Select a SQLite library, install it, and create a demo page demonstrating basic CRUD.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/8"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "package.json",
+          "lines": "51",
+          "fact": "@op-engineering/op-sqlite ^15.2.11 is the installed SQLite stack (library AC landed)."
+        },
+        {
+          "path": "src/db/index.ts",
+          "lines": "1-35",
+          "fact": "initializeDatabase opens fluent.db via op-sqlite, enables FKs/WAL, runs versioned migrations \u2014 production DB path, not a CRUD demo screen."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/8#issuecomment-4038799120",
+        "fact": "2026-03-11 vipinpaul linked SQLite research SharePoint docs; planning comment 2026-03-10 is hours only \u2014 no PR URL in-thread; demo CRUD page is absent on HEAD."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "op-sqlite + schema/migrations present; no SqliteDemo/CRUD demo route under src/routes or src/app.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Library install AC confirmed. Demo CRUD page AC has no explicit product waive \u2014 named CONFIRMED_CURRENT_SOURCE divergence (closed \u2260 demo still shipping)."
+    },
+    {
+      "issue": 19,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Per-step try/catch in sync: on network/non-2xx store sync_error_<step> (projects, chapter_assignments, project_units, bible_texts); do not crash/block later steps; surface errors inline on home per step; no global error toast.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/19"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/sync.ts",
+          "lines": "174-210",
+          "fact": "retrySyncStep catches per operation, setSyncError(errorKey) after max attempts (non-auth), continues orchestration rather than aborting whole sync for soft failures."
+        },
+        {
+          "path": "src/services/storage.ts",
+          "lines": "22-33,82-93",
+          "fact": "KV keys include sync_error_projects / chapter_assignments / project_units / bible_texts (+ later claim/pericope keys); get/setSyncError persist messages."
+        },
+        {
+          "path": "src/hooks/useSync.ts",
+          "lines": "14-61",
+          "fact": "UI aggregates failed step labels into a single \u201cSync failed: \u2026\u201d string \u2014 not separate inline home-per-step rows as original AC; no global toast in this hook."
+        },
+        {
+          "path": "docs/product-behavior/core-flows.md",
+          "lines": "73-82",
+          "fact": "\u00a76 Upload/sync labeled Inferred; documents 401\u2192reauth and #721 chrome bug \u2014 not a product waive of #19 inline-home AC."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/19#issuecomment-4259968161",
+        "fact": "2026-04-16 planning hours only (research/impl ET) \u2014 reason_not_applicable for a closing PR: none linked in corpus; AC never explicitly deferred."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Per-step KV errors + continue-on-failure remain; home inline-per-step UI replaced by aggregated Sync status text via useSync.",
+        "device_evidence": "none for #19 AC; Sync one-press chrome fail is #721 (separate), dated 2026-10-19 assignment 484"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Storage/continue AC largely CONFIRMED_CURRENT_SOURCE; original home inline-per-step UI drifted without an explicit waive \u2014 record as named divergence, not as #721."
+    },
+    {
+      "issue": 22,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Fix the file structure architecture of the project (checkbox AC only).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/22"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".cursor/rules/architecture.mdc",
+          "lines": "1-40",
+          "fact": "Documents layered src/services (HTTP/sync), src/db (schema/repository/queries), src/app + src/routes \u2014 current architecture contract that #22\u2019s vague \u201cfix file structure\u201d evolved into."
+        },
+        {
+          "path": "src/db/AGENTS.md",
+          "lines": "1-25",
+          "fact": "Layer rules: screens must not write SQL; repository/queries split \u2014 living structure evidence."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/22#issuecomment-4265663895",
+        "fact": "2026-04-17 SP6 planning hours only \u2014 reason_not_applicable: no linked closing PR in corpus; closed checkbox is history only."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Layered Expo Router + db/services boundaries present on HEAD.",
+        "device_evidence": "none (infra refactor)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Infra chore with no product journey AC. Closed checkbox \u2260 proof of a specific PR; living architecture.mdc is current structure evidence."
+    },
+    {
+      "issue": 36,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Import-only sync by userId; incremental sync on button; import projects/chapter assignments/bible-books/texts without duplicates; when user switches, show that user\u2019s data.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/36"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/sync.ts",
+          "lines": "1344-1384",
+          "fact": "syncAllData(isIncremental, email, \u2026) clears sync errors then syncs user + projects path for the active session \u2014 login vs incremental modes."
+        },
+        {
+          "path": "src/services/sync.ts",
+          "lines": "319-366",
+          "fact": "syncProjects(userId) fetches FluentAPI.getUserProjects and reconciles membership \u2014 user-scoped import foundation for multi-account."
+        },
+        {
+          "path": "docs/product-behavior/core-flows.md",
+          "lines": "20-28",
+          "fact": "\u00a71 multi-account Expected is labeled Inferred \u2014 not a product supersession of #36 isolation AC."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/46",
+        "fact": "Merged 2026-06-09 (same day #36 closed): better-auth + sync changes; issue #36 itself has 0 comments and no Closes link in corpus \u2014 treat PR #46 as contemporaneous sync/auth delivery, not an explicit #36 AC waive."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "User-scoped syncAllData/syncProjects + account session isolation on HEAD; overlaps later #14/#87 lineage.",
+        "device_evidence": "none dated specifically for #36 AC"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Closed with empty thread. Import/upsert/user-switch intent matches current sync architecture; no explicit later decision narrowed #36 \u2014 AGREED remains in force with CONFIRMED_CURRENT_SOURCE implementation."
+    },
+    {
+      "issue": 39,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "On Wi\u2011Fi/home: show Prepare for Offline for Rarely Connected (or unset\u2192Rarely) regardless of assignment; Sometimes+unassigned show; Sometimes+assigned and Usually Connected do not show; dismiss without download re-surfaces while Wi\u2011Fi; after Download starts (#51) stop auto re-surface; Settings still opens Prepare Offline independently.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/39"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/utils/prepareOfflineTrigger.ts",
+          "lines": "14-37",
+          "fact": "shouldPresentPrepareOffline: requires transfer-online; unset profile\u2192rarely_connected; rarely\u2192true; sometimes\u2192!isAssigned; else false (Usually Connected silent)."
+        },
+        {
+          "path": "src/utils/prepareOfflineAutoPrompt.ts",
+          "lines": "110-121",
+          "fact": "Auto-prompt loops projects, skips when hasDownloadStarted; presents once per app open."
+        },
+        {
+          "path": "src/services/storage.ts",
+          "lines": "235-263",
+          "fact": "KV keys prepareOfflineDismissed / prepareOfflineDownloadStarted per userId+projectId."
+        },
+        {
+          "path": "src/app/screens/SettingsScreen.tsx",
+          "lines": "183-196",
+          "fact": "SettingsNavigationRow \u201cPrepare for Offline\u201d \u2192 hrefs.prepareForOffline() independent of auto-prompt."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/242",
+        "fact": "Merged as [#39] Implement Prepare for Offline Screen Trigger and Re-surface Logic (#242). Later consistency fix tracked as #581/PR #640 \u2014 does not waive original matrix."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Trigger matrix + download-started gate + Settings entry present on HEAD.",
+        "device_evidence": "none dated for #39 matrix specifically (QA on sibling #51 is separate)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Layout/trigger AC (not permission). Closed with 0 comments; PR #242 is material delivery. Profile matrix matches source; complete \u2260 Nightly QA of auto-prompt."
+    },
+    {
+      "issue": 40,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Gear (settings) on home header top-left \u2192 Settings page titled Settings with back; Prepare for Offline row; Upload over cellular toggle default off; Log out with unsynced-work confirm.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/40"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/screens/HomeScreen.tsx",
+          "lines": "310-344",
+          "fact": "Home leftIcon SettingsButton opens settings entry (gear affordance retained; drawer/More Settings also exist \u2014 layout chrome evolved)."
+        },
+        {
+          "path": "src/app/screens/SettingsScreen.tsx",
+          "lines": "116,183-208,263-265",
+          "fact": "Title Settings + back; Prepare for Offline row; Upload/Download over cellular toggle; Log out destructive row."
+        },
+        {
+          "path": "src/components/ui/UserSettingsMenu.test.tsx",
+          "lines": "352-357",
+          "fact": "Log out with unsynced recordings prompts confirm copy \u2014 logout confirm AC covered on drawer path."
+        },
+        {
+          "path": "docs/product-behavior/core-flows.md",
+          "lines": "84-92",
+          "fact": "\u00a77 Downloads/settings labeled Inferred; Open question per-account vs device-global \u2014 not a waive of #40 AC."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/80",
+        "fact": "Merged [#40]: Add Settings screen with preferences and generic PageHeader. Closing comment 2026-06-28 fel-cesar: Approved and merged; will iterate \u2014 anticipates further UI churn, not a waive of cellular/logout AC."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Settings surface + cellular toggle + logout confirm on HEAD; toggle label now \u201cUpload/Download over cellular\u201d.",
+        "device_evidence": "none dated for #40 layout AC"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Layout/settings AC. PR #80 + approve comment are LATEST_EXPLICIT_DECISION for delivery; later drawer chrome is CONFIRMED_CURRENT_SOURCE evolution, not deferral."
+    },
+    {
+      "issue": 47,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Drafting shell only: selected-verse rules (default first unrecorded; change only by explicit user action); header book+chapter + back + sync icon; chapter-level source audio bar with waveform ticks above Bible/Record tabs; preserve tab state; verse-by-verse (pericope later).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/47"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/screens/DraftingScreen.tsx",
+          "lines": "78-100,251-280,441-461",
+          "fact": "DraftingScreen hosts DraftingHeader, DraftingTabBar (Bible/Record), SourceAudioProvider/BarSlot, DraftingProvider \u2014 shell composition from #47."
+        },
+        {
+          "path": "src/components/layout/DraftingHeader.tsx",
+          "lines": "33-48",
+          "fact": "Header back + PageHeaderSyncButton on right (sync affordance); initials optional via later #85."
+        },
+        {
+          "path": "docs/product-behavior/core-flows.md",
+          "lines": "42-50",
+          "fact": "\u00a73 Drafting labeled Inferred \u2014 not a product agreement superseding #47 shell AC."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/131",
+        "fact": "Merged \u201cImplemented a drafting page shell (#131)\u201d; issue comment 2026-06-30 is planning hours only \u2014 not a waive. Pericope later matches ticket note."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Drafting shell + SourceAudioShell + tabs on HEAD; later tickets extended player/pericope.",
+        "device_evidence": "dated 2026-10-19 QA 484 warm tabs PASS includes drafting chrome smoke \u2014 not full #47 AC suite"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Layout-only shell ticket (no permission AC). PR #131 delivers shell; living Inferred docs \u2260 waive."
+    },
+    {
+      "issue": 48,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Bible Tab: scrollable verse rows with number+text+recording waveform icon (green/gray); selected vs currently-playing visual states; tap selects+scrubs without auto-play; sequential auto-advance of playing indicator without changing selected verse; hide player when no source audio.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/48"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/tabs/BibleTab.tsx",
+          "lines": "73-75,126-144,165-166",
+          "fact": "Tracks selectedVerse vs currentlyPlayingVerse; auto-scrolls playing row; row render distinguishes isSelected vs isPlaying."
+        },
+        {
+          "path": "docs/product-behavior/core-flows.md",
+          "lines": "52-60",
+          "fact": "\u00a74 Recording/listening labeled Inferred \u2014 does not waive #48 sequential-playback AC."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/153",
+        "fact": "Merged \u201cBuilt Bible Tab with Verse List (#153)\u201d. Issue has 0 comments \u2014 closed state is history only; later #595/PR #651 refined source-audio position without timestamps."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "BibleTab selected/playing dual-state on HEAD; hide-player-when-no-audio owned by SourceAudioShell siblings.",
+        "device_evidence": "none dated specifically for #48 sequential AC; 484 tabs PASS is chrome smoke only"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Layout AC with empty comment thread. PR #153 material; dual-state selection/playing confirmed in source."
+    },
+    {
+      "issue": 50,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Prepare Offline header \u201cPrepare for Offline\u201d + instructional line; chapter accordion: assigned collapsed with \u201cAssigned chapters (n)\u201d preselected; unassigned open/required; books with select-all; 5-column chapter circles; free select regardless of assignment.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/50"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/screens/PrepareForOfflineScreen.tsx",
+          "lines": "33",
+          "fact": "INSTRUCTION copy: \u201cDownload project resources to work without a connection.\u201d"
+        },
+        {
+          "path": "src/app/prepare-offline/ChapterSelectionAccordion.tsx",
+          "lines": "21-74",
+          "fact": "Accordion header + book sections with expand/collapse chevrons feeding BookChapterSection select-all/chapter grid."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/175",
+        "fact": "Merged [#50]: Build Prepare for Offline chapter selection (#175). No contradicting issue comments (0 comments)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Chapter selection accordion UI present; sibling #51 owns contested download/customize behavior.",
+        "device_evidence": "none dated for #50 alone"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Layout chapter-selection AC. Do not conflate with #51 QA failures on resource download."
+    },
+    {
+      "issue": 51,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "RESOURCES TO DOWNLOAD summary with Tier1 locked; Customize (collapsed) deselects Tier2/3 only; live Total download + Download size CTA; unassigned Download disabled until \u22651 chapter; assigned enabled; start yields #52 controls; start flips #39 download-started.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/51"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/prepare-offline/PrepareOfflineResourcesSection.tsx",
+          "lines": "28-89",
+          "fact": "Renders RESOURCES TO DOWNLOAD; Tier1 summary + CustomizeDownloadAccordion for tiers 2/3."
+        },
+        {
+          "path": "src/app/prepare-offline/PrepareOfflineDownloadFooter.tsx",
+          "lines": "60-135",
+          "fact": "Total download row + Download CTA; downloading\u2192Pause/Cancel; paused\u2192Resume/Cancel."
+        },
+        {
+          "path": "docs/assessments/going-offline/README.md",
+          "lines": "30",
+          "fact": "Assessment notes #51 Closed but last QA 2026-08-25 still listed open issues \u2014 living audit, not a waive."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/296",
+        "fact": "Initial merge [#51] resource download UI (#296); follow-ups #322 (resources section) and #341 (disabled Download for unassigned). QA 2026-08-25 comment-5406198002 still fails: Download missing after chapter switch; deselected Tier2/3 still download \u2014 explicit unwaived bugs (later #702 addresses button visibility)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Resource summary/customize/footer present; #702 follow-up on branch lineage for download-button visibility \u2014 deselection exclusion still a named divergence pending product/reverify.",
+        "device_evidence": "dated 2026-08-14 and 2026-08-25 QA (Roslin22) on preview APKs PR #296/#341 \u2014 HISTORICAL_DEVICE_EVIDENCE, not current Nightly proof; closed board \u2260 QA pass"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Complete audit records named unwaived QA failures after close date \u2014 complete\u2260conformance. Explicit deferral absent; treat remaining deselection/chapter-switch issues as bugs/follow-ups (#702), not deferred AC."
+    },
+    {
+      "issue": 52,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "After download begins: replace Download with Pause+Cancel; Pause\u2194Resume retains progress; Cancel stops, restores Download CTA, keeps partials for Wi\u2011Fi resume; active item progress ring; completed check; untouched stay pre-download.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/52"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/prepare-offline/PrepareOfflineDownloadFooter.tsx",
+          "lines": "81-120",
+          "fact": "session downloading\u2192Pause+Cancel; paused\u2192Resume+Cancel control states."
+        },
+        {
+          "path": "src/app/prepare-offline/ResourceItemRow.tsx",
+          "lines": "107-148",
+          "fact": "showProgressRing when downloading/paused; ResourceDownloadProgressRing bound to item progress."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/307",
+        "fact": "Merged [#52]: Build Prepare for Offline download controls (#307). Board-audit comment 2026-07-31 notes Source Audio/catalog gaps may block complete progress accuracy \u2014 API readiness note, not a product waive of Pause/Cancel UI AC."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Pause/Resume/Cancel + per-item rings on HEAD over download queue.",
+        "device_evidence": "none dated for #52 alone; #51 QA mentioned Pause/Resume/Cancel working on 2026-08-14 (historical preview)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "UI control AC delivered via PR #307. API readiness note is eng context \u2014 do not treat as deferral of Pause/Cancel; catalog gaps are separate completeness risk."
+    },
+    {
+      "issue": 53,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Manage Device Storage: available + Fluent usage; other-project accordions; Delete Selected inactive until selection with live freed-space; confirm dialog title/message/actions; empty copy when none; subordinate visually to download flow.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/53"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/prepare-offline/ManageDeviceStorageSection.tsx",
+          "lines": "51-77",
+          "fact": "MANAGE DEVICE STORAGE label; available/Fluent used summary; empty state uses OFFLINE_STORAGE_EMPTY_OTHER_PROJECTS."
+        },
+        {
+          "path": "src/constants/messages.ts",
+          "lines": "77-81",
+          "fact": "Empty copy \u201cNo resources from other projects on this device.\u201d + Delete Selected string constants."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/316",
+        "fact": "Merged [#53]: Manage device storage on Prepare for Offline (#316). QA 2026-08-24 comment-5394134709: tested but \u201cPR is not merged in this ticket\u201d with screenshot \u2014 historical device evidence vs merge linkage ambiguity; API audit 2026-07-31 said no API needed (local FS)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "ManageDeviceStorageSection present on PrepareForOfflineScreen path.",
+        "device_evidence": "dated 2026-08-24 QA screenshot on preview pr-316 \u2014 HISTORICAL; not Nightly reverify"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Layout/storage AC. PR #316 is material despite QA wording about merge linkage; closed\u2260current Nightly proof."
+    },
+    {
+      "issue": 71,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Multi-take Review: idle matches #49 when zero takes; \u22651 take shows compact cards (number/waveform/duration/play/selection); single is_latest/selected; exclusive playback; Record New Take caps at 5; delete rules; replaces silent Re-record overwrite from #49.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/71"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/constants/recordingTakes.ts",
+          "lines": "1-2",
+          "fact": "MAX_RECORDING_TAKES = 5."
+        },
+        {
+          "path": "src/hooks/useVerseAudio.ts",
+          "lines": "481-484",
+          "fact": "canRecordNewTake false when takes.length >= MAX_RECORDING_TAKES (verse mode)."
+        },
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "1381-1563",
+          "fact": "DraftTakeRow list + Record New Take control in Review."
+        },
+        {
+          "path": "src/db/schema.ts",
+          "lines": "93-106",
+          "fact": "Comment: is_selected marks active draft (#71); take_number column present (renamed from is_latest lineage)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/265",
+        "fact": "Merged [#71]-Add Multi-take Recording to Record Tab (#265). QA 2026-08-06: core multi-take AC pass; timer/waveform overlap cosmetic moved In Progress \u2014 P2 nit, not AC contradiction or deferral of multi-take."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Multi-take Review + 5-cap on HEAD.",
+        "device_evidence": "dated 2026-08-06 QA (Roslin22) \u2014 HISTORICAL_DEVICE_EVIDENCE; cosmetic timer overlap noted"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Explicitly supersedes #49 silent overwrite. QA cosmetic \u2260 open multi-take bug; complete\u2260claim Nightly re-pass."
+    },
+    {
+      "issue": 84,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Account switcher panel: list accounts with initials+name; active check; Add Account row; at 3 accounts hide Add Account and show \u201cYou've reached the 3-account limit.\u201d; dismiss without switch; no remove affordance.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/84"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/ui/AccountSwitcherPanel.tsx",
+          "lines": "140-207",
+          "fact": "Rows show initials + active check testIDs; footer Add Account or 3-account limit text when hasAccountLimit."
+        },
+        {
+          "path": "src/services/storage.ts",
+          "lines": "8",
+          "fact": "MAX_DEVICE_ACCOUNTS = 3 shared cap constant."
+        },
+        {
+          "path": "docs/product-behavior/core-flows.md",
+          "lines": "20-28",
+          "fact": "\u00a71 multi-account labeled Inferred \u2014 not a waive of #84 panel AC."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/168",
+        "fact": "Merged \u201cFt/build account switcher panel (#168)\u201d. Issue has 0 comments \u2014 closed history only."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "AccountSwitcherPanel + MAX_DEVICE_ACCOUNTS=3 on HEAD; drawer UserSettingsMenu mirrors cap.",
+        "device_evidence": "none dated for #84"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Layout multi-account panel. No remove affordance in panel footer \u2014 matches out-of-scope note."
+    },
+    {
+      "issue": 85,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Drafting header: initials indicator to the right of sync icon only when \u22652 accounts; tap opens account switcher (#84); single-account users see no header change.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/85"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/layout/DraftingHeader.tsx",
+          "lines": "41-57",
+          "fact": "Renders AccountInitialsButton only when showAccountIndicator && onAccountPress, after sync button."
+        },
+        {
+          "path": "src/app/screens/DraftingScreen.tsx",
+          "lines": "257",
+          "fact": "showAccountIndicator={activeAccount.hasMultipleAccounts} (\u22652 accounts gate)."
+        },
+        {
+          "path": "src/hooks/useActiveAccountSummary.ts",
+          "lines": "69",
+          "fact": "hasMultipleAccounts: summary.accountCount >= 2."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/161",
+        "fact": "Merged \u201cAdded initials indicator to drafting header (#161)\u201d. Issue 0 comments."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Conditional initials + switcher open wiring on HEAD.",
+        "device_evidence": "none dated for #85"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Layout affordance for #84. Conditional \u22652 accounts gate confirmed in source."
+    },
+    {
+      "issue": 86,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Add Account from switcher launches login without dropping current session; success adds account and makes it active; enforce 3-cap before launch; credential/network failures leave existing accounts intact; requires network.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/86"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/ui/AccountSwitcherPanel.tsx",
+          "lines": "185-207",
+          "fact": "Add Account hidden when hasAccountLimit; otherwise opens add-account flow."
+        },
+        {
+          "path": "src/hooks/useDeviceAccounts.ts",
+          "lines": "97-99",
+          "fact": "hasAccountLimit when knownAccountCount >= MAX_DEVICE_ACCOUNTS."
+        },
+        {
+          "path": "src/app/screens/SettingsScreen.tsx",
+          "lines": "52-57,248-252",
+          "fact": "Add user disabled at MAX_DEVICE_ACCOUNTS with same limit subtitle \u2014 parallel entry enforces cap."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/169",
+        "fact": "Merged \u201cFt/account cap (#169)\u201d with related #171 switcher panel work. Issue #86 has 0 comments \u2014 no waive of failure/session-retention AC."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "3-cap + Add Account entry present; Better Auth login used for add-user path.",
+        "device_evidence": "none dated for #86"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Auth-adjacent multi-account add flow. Cap enforcement confirmed; living \u00a71 Inferred \u2260 waive session-retention AC."
+    },
+    {
+      "issue": 99,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Via versioned migrations (#110): restore chapter_assignments.assigned_user_id REFERENCES users(id), status DEFAULT 'not_started', idx_ca_assigned_user; no destructive createTableQueries wipe; recordings linkage via bible_text_id (optional chapter_assignment_id); coordinate user column with #105.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/99"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/schema.ts",
+          "lines": "53-71,89-99",
+          "fact": "Baseline CREATE has assigned_user_id REFERENCES users(id), status DEFAULT not_started, idx_ca_assigned_user; recordings comment documents bible_text_id canonical linkage (#98/#99)."
+        },
+        {
+          "path": "src/db/migrations.ts",
+          "lines": "121-167",
+          "fact": "rebuildTable migration restores assigned_user_id FK + status default + idx_ca_assigned_user for existing devices."
+        },
+        {
+          "path": "src/db/AGENTS.md",
+          "lines": "40-55",
+          "fact": "Documents v4 chapter_assignments integrity migration and recordings bible_text_id canonical link \u2014 living eng contract."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/246",
+        "fact": "Merged [#99]: Restore chapter_assignments FK/index via migration (#246). Comment 2026-06-28 notes linkage decision drives #121 join fix \u2014 prefer bible_text_id (no chapter_assignment_id on recordings)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Schema+migrations match target design; recorded_by_user_id from #105 also present.",
+        "device_evidence": "none (schema/migration eng ticket)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Schema AC landed via PR #246 + migrations. Linkage decision = bible_text_id canonical \u2014 LATEST_EXPLICIT_DECISION in schema comments/#99 thread."
+    },
+    {
+      "issue": 106,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Original AC: seedDevData() via repository helpers; offline Projects/My Work/chapter without server; dev-gated idempotent; unit tests. Later superseded.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/106"
+        },
+        {
+          "slice": "other",
+          "text": "2026-06-30 descope: mobile mock seed superseded by real hosted/local Docker API + syncAllData hydration (epic #119).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/106#issuecomment-4846694694"
+        }
+      ],
+      "disposition": [
+        "LATEST_EXPLICIT_DECISION",
+        "AGREED_REQUIREMENT",
+        "NO_PRODUCT_FIX",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/guides/local-development-workflow.md",
+          "lines": "1-10",
+          "fact": "States there is no mobile mock seed; SQLite populated via syncAllData against real API."
+        },
+        {
+          "path": "src/config/apiBaseUrl.ts",
+          "lines": "1-9",
+          "fact": "getApiBaseUrl still requires EXPO_PUBLIC_API_BASE_URL \u2014 no offline seed bypass."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/106#issuecomment-4846694694",
+        "fact": "2026-06-30 mattrace-gloo: Descoped under epic #119 \u2014 use real APIs; seedDevData not planned. Explicit ticket-level supersession (not an open bug)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "No seedDevData module under src/db; sync hydration path only.",
+        "device_evidence": "none (descoped eng)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Explicit deferral/descope dated 2026-06-30 \u2014 not a missing implementation bug. Original AC no longer in force."
+    },
+    {
+      "issue": 107,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Original AC: EXPO_PUBLIC_OFFLINE_MODE runs from seed, skips sync, offline indicator; getApiBaseUrl still throws for real network. Later superseded.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/107"
+        },
+        {
+          "slice": "other",
+          "text": "2026-06-30 descope: OFFLINE_MODE + auto-auth bypass superseded by real Better Auth vs hosted/Docker; would be throwaway.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/107#issuecomment-4846695105"
+        }
+      ],
+      "disposition": [
+        "LATEST_EXPLICIT_DECISION",
+        "AGREED_REQUIREMENT",
+        "NO_PRODUCT_FIX",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/config/apiBaseUrl.ts",
+          "lines": "1-9",
+          "fact": "No isOfflineMode; unset URL throws \u2014 matches post-descope contract."
+        },
+        {
+          "path": "docs/guides/local-development-workflow.md",
+          "lines": "151",
+          "fact": "Explicitly rejects FLUENT_USER_EMAIL / @env \u2014 aligns with #107/#108 descope of mock mode."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/107#issuecomment-4846695105",
+        "fact": "2026-06-30 mattrace-gloo: Descoped with #119; optional app-shell error reduced elsewhere. Explicit supersession of original OFFLINE_MODE AC."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "No EXPO_PUBLIC_OFFLINE_MODE path in src/; Better Auth + required API URL.",
+        "device_evidence": "none (descoped eng)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Explicit descope vs Better Auth \u2014 LATEST_EXPLICIT_DECISION. Missing OFFLINE_MODE is intentional NO_PRODUCT_FIX, not OPEN_TICKET_UNRESOLVED."
+    },
+    {
+      "issue": 108,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Document local-only run workflow linked from onboarding+README; both hosted dev and local Docker; offline vs server-required features; no @env/FLUENT_USER_EMAIL/#106/#107 mock mode; commands match package.json.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/108"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/guides/local-development-workflow.md",
+          "lines": "1-25,61-105,151",
+          "fact": "Living guide covers Path A hosted + Path B Docker, prerequisites, rejects obsolete @env/FLUENT_USER_EMAIL."
+        },
+        {
+          "path": "docs/AGENT_ONBOARDING.md",
+          "lines": "65",
+          "fact": "Links local-development-workflow.md from onboarding table."
+        },
+        {
+          "path": "README.md",
+          "lines": "9,204-205",
+          "fact": "README links workflow guide and documents hosted vs Docker API URLs."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/136",
+        "fact": "Merged [#108]: Document local development workflow (#136) after #119 pivot away from mock seed."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "docs/guides/local-development-workflow.md present and linked.",
+        "device_evidence": "none (documentation)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Docs-only AC delivered via PR #136. Infra/eng documentation \u2014 no user-facing product journey."
+    }
+  ]
+}

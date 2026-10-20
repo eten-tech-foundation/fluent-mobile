@@ -1,0 +1,25 @@
+{
+  "issue_number": 483,
+  "fetched_at_utc": "2026-10-20T00:37:04Z",
+  "issue": {
+    "number": 483,
+    "title": "Projects tab fails with disk I/O error after full offline sync on physical device",
+    "state": "open",
+    "body": "## Summary\n\nAfter a full offline sync on a physical Android device, opening the **Projects** tab can fail with:\n\n```text\n[DBQueries] Error fetching projects with summary\n{\"error\": \"[op-sqlite] statement execution error: disk I/O error\"}\n```\n\nThe Projects list stays empty even though post-login sync completes, **My Work** loads normally, and other SQLite reads succeed.\n\nInvestigation on device (Redmi Note 9 Pro, user 247, full sync) showed `PRAGMA integrity_check` = **ok** \u2014 this is **not** database corruption and not lack of free disk space. The failure appears when the local DB is large (~600+ `chapter_assignments`, ~19k+ `bible_texts` rows).\n\n## Root cause (investigation)\n\n`getProjectsWithSummary` in `src/db/queries.ts` runs a **single monolithic query** using `RECORDINGS_JOIN_CA`:\n\n- Join every user project \u2192 all chapter assignments \u2192 all matching `bible_texts` rows (one row per verse) \u2192 recordings\n- `GROUP BY p.id` to return one summary row per project\n\nSQLite must materialize a huge intermediate result (chapter \u00d7 verse) before grouping. On physical devices this triggers op-sqlite `disk I/O error` even though the DB is intact.\n\nThe same JOIN fragment is reused elsewhere (`getMyWorkChapters`, `getProjectChapters`) but those queries filter to a small chapter set, so they still work.\n\nLikely secondary factor: `useProjectsSummary` can trigger overlapping loads on tab focus (metadata refresh + a second load path), increasing read/write contention while sync is still writing.\n\n## User impact\n\n| Area | Symptom |\n|------|---------|\n| **Projects tab** | Empty list after sync on device; error logged from `getProjectsWithSummary` |\n| **Prepare offline picker** | Same loader \u2014 may show no projects |\n| **Home prepare-offline prompt** | Direct call to `getProjectsWithSummary` may fail silently |\n\nMy Work, chapter detail, and sync itself are unaffected.\n\n## Repro\n\n1. **Physical Android device** (emulator may not reproduce \u2014 faster I/O and/or smaller effective load).\n2. Clear app data, login, wait for **full first sync** (~19k+ `bible_texts`, 600+ `chapter_assignments`).\n3. Open the **Projects** tab.\n\n**Observed:** `disk I/O error` in logs; Projects list empty.\n\n**Expected:** Project list with name, target language, chapter count, and sync indicator per project.\n\n## Proposed approach\n\n1. **Replace the monolithic query** with smaller queries merged in application code, for example:\n   - Project base rows (name, languages, metadata)\n   - Chapter counts per project (no `bible_texts` join)\n   - Recording / pending counts per project starting from `recordings` (INNER JOIN), not a LEFT JOIN across all verses\n2. **Reduce concurrent loads** in `useProjectsSummary` (single focus flow; dedupe in-flight requests).\n\nPreserve the existing `ProjectSummary` shape and UI behavior.\n\n## Acceptance criteria\n\n- [ ] After full offline sync on a physical device, Projects tab loads all user projects without `disk I/O error`.\n- [ ] Log shows `[DBQueries] Projects with summary fetched` with the correct project count.\n- [ ] `ProjectSummary` fields unchanged for consumers (`ProjectsTab`, prepare offline, `HomeScreen`).\n- [ ] Unit tests cover merge behavior and recording-count query direction.\n- [ ] CI gates pass (`format:check`, `lint`, `typecheck`, `npm test -- --ci`).\n\n## How to verify (once fixed)\n\n1. Clear app data on a physical Android device; login; wait for first sync to finish.\n2. Open the **Projects** tab.\n3. Confirm the project list renders and logs contain no `disk I/O error`.\n\nCompare against `main` on the same device/account to confirm the bug exists before the fix.\n\n## File pointers\n\n| File | Notes |\n|------|-------|\n| `src/db/queries.ts` | `getProjectsWithSummary`, `RECORDINGS_JOIN_CA` |\n| `src/hooks/useProjectsSummary.ts` | Tab focus load + metadata refresh |\n| `src/app/tabs/ProjectsTab.tsx` | UI consumer |\n| `src/app/screens/HomeScreen.tsx` | Prepare-offline direct call |",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-10T17:44:36Z",
+    "updated_at": "2026-09-10T17:49:20Z",
+    "closed_at": null,
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/483",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

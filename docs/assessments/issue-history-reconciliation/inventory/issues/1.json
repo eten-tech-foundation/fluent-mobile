@@ -1,0 +1,32 @@
+{
+  "issue_number": 1,
+  "fetched_at_utc": "2026-10-20T00:33:36Z",
+  "issue": {
+    "number": 1,
+    "title": "React Native with Expo Discovery",
+    "state": "closed",
+    "body": "The purpose of this issue is to track the progress of discovery with Expo for Fluent mobile.\nThe tasks that should be accomplished are:\n\n- [ ] Setup local development environment\n- [ ] Scaffold a basic PoC application\n    - [ ] Basic navigation - can we easily create and navigate views\n    - [ ] Sqlite - can we easily do CRUD operations with local SQLite\n    - [ ] Audio - can we:\n        - [ ] record audio: what formats (encodings) are easily supported (ex. webm, mp3, etc.)\n        - [ ] playback audio: can we easily scrub through an audio recording\n        - [ ] editing audio:\n            - [ ] join (splice) recordings end-to-end, split one in the middle and insert another, etc.\n            - [ ] trim from the start and/or end of a recording\n            - [ ] cut recordings into two or more pieces\n- [ ] Record findings in a document: [this one](https://docs.google.com/document/d/1ttTb-XzNYlJDX9DL0ueyuO-56uU19ZsE1Z5t7WQujbQ/edit?tab=t.0#heading=h.43ho6eulbe1t) can be used as a template.\n\nNote: PoC source code can be committed to this repo as a PoC branch or in a separate repo. Other tasks for discovery, such as app store deployments, will be covered in separate tickets.",
+    "user": "kaseywright",
+    "created_at": "2026-01-22T17:10:45Z",
+    "updated_at": "2026-07-02T19:50:55Z",
+    "closed_at": "2026-05-11T05:28:32Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/1",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 3869342454,
+      "user": "Alph-1n",
+      "created_at": "2026-02-09T05:05:18Z",
+      "updated_at": "2026-02-09T05:05:18Z",
+      "body": "Working on integrating ffmpeg with react native.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/1#issuecomment-3869342454"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

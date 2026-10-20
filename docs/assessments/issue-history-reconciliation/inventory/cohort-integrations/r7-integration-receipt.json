@@ -1,0 +1,30 @@
+{
+  "integrated_at_utc": "2026-10-20T01:12:28Z",
+  "reviewer": "bc-82108cbc-5c10-581c-9d90-65bebcf4168b",
+  "source": "/tmp/fluent-issue-review-r7.json",
+  "accepted_complete": [
+    3,
+    7,
+    8,
+    19,
+    22,
+    36,
+    39,
+    40,
+    47,
+    48,
+    50,
+    51,
+    52,
+    53,
+    71,
+    84,
+    85,
+    86,
+    99,
+    106,
+    107,
+    108
+  ],
+  "wave3_note": "wave3 r7/r8/r9 all integrated"
+}

@@ -1,0 +1,25 @@
+{
+  "issue_number": 87,
+  "fetched_at_utc": "2026-10-20T00:34:17Z",
+  "issue": {
+    "number": 87,
+    "title": "Implement Account Switching with Offline and Error Handling",
+    "state": "closed",
+    "body": "With multiple accounts stored on a device, the app needs to switch the active session when a user selects a different account from the switcher panel. Switching must work offline and must correctly attribute all subsequent recordings and edits to the newly active account.\n\n## Functional Requirements\n\n### Switch Behavior\n\n- Tapping a non-active account row in the switcher panel immediately makes that account the active session.\n- Update the app state to reflect the new account's data without a full app reload.\n- Dismiss the switcher panel and return the user to the drafting view.\n\n### Offline Handling\n\n- Account switching works without an internet connection.\n- The outgoing account's unsynced local data is not affected by the switch; it remains in local storage and syncs the next time that account is active on a connected device.\n- The incoming account loads from its local cache if offline.\n\n### Error Handling\n\n- If the switch fails (e.g., corrupted local session), display an error message.\n- Keep the current account active \u2014 do not leave the app in an indeterminate state.\n\n### Data Attribution\n\n- All recordings, comments, and edits made after a switch are attributed to the newly active account.\n\n> **Note:** Only the active account syncs. Unsynced data for non-active accounts remains in local storage until that account becomes active again. Background sync across all logged-in accounts is out of scope for this feature \u2014 managing multiple concurrent sync processes adds significant complexity and battery/connectivity risk for devices operating on weak field connections. In the workshop use case, accounts naturally become active in rotation, so each account gets sync time. The edge case (a user adds their account, records, and the device never returns to them) is a known limitation shared with the single-user offline experience and should be addressed in the offline sync feature, not here.",
+    "user": "chadw-eten",
+    "created_at": "2026-06-25T20:00:00Z",
+    "updated_at": "2026-07-17T20:43:59Z",
+    "closed_at": "2026-07-17T20:43:59Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/87",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

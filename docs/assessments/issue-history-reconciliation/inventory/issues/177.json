@@ -1,0 +1,34 @@
+{
+  "issue_number": 177,
+  "fetched_at_utc": "2026-10-20T00:35:13Z",
+  "issue": {
+    "number": 177,
+    "title": "Resolve null `bibleTextId` for verses in the Record tab (sync/lookup gap)",
+    "state": "closed",
+    "body": "# Resolve null `bibleTextId` for verses in the Record tab (sync/lookup gap)\n\n## Summary / context\n\nThe Record tab can't start a recording when `getBibleTextId(...)` returns `null` for the selected verse. Recording is keyed on `bible_text_id`, so a null value leaves the record button silently inert. PR #158 (Record tab, #49) ships a **TEMP** Android toast (`\"No bible text id for this verse yet.\"`) to surface the state instead of a dead button, and #49 is waived for a real fix. This ticket owns diagnosing the root cause and making the lookup reliable so every assigned verse resolves a `bible_text_id`.\n\n## Current vs expected\n\n**Current**\n1. Open a chapter \u2192 Record tab \u2192 select a verse.\n2. `RecordTab` (`src/app/tabs/RecordTab.tsx`) calls `getBibleTextId(bibleId, bookId, chapterNumber, verseNumber)`; for some verses it resolves `null`.\n3. Tapping record shows the TEMP toast and does nothing (`src/app/tabs/drafting/record/RecordTab.tsx` L131\u2013145).\n\n**Expected**\n- Every verse the user is assigned to and can open in the Record tab resolves a valid `bible_text_id`, so recording starts normally.\n- If a row genuinely cannot exist yet (e.g. sync not finished), the UI communicates a real, non-TEMP state (e.g. \"source text still syncing\") rather than a debug toast \u2014 and the record button's disabled/enabled state reflects it.\n\n## Scope\n\n**In scope**\n- Root-cause why `bible_texts` has no matching row for `(bible_id, book_id, chapter_number, verse_number)` \u2014 investigate sync timing/ordering, missing rows in `syncBibleTexts`, or an API contract gap.\n- Fix the lookup and/or sync so assigned verses always have a `bible_text_id` after sync completes.\n- Replace the TEMP `ToastAndroid` debug path with the settled behavior.\n\n**Out of scope**\n- Draft review scrubbing (separate #49 waiver follow-up).\n- Android device QA of the recorder (separate #49 waiver follow-up).\n- Real-amplitude waveform (#96).\n\n## Acceptance criteria\n\n- [ ] Root cause of null `bibleTextId` is identified and documented (sync timing vs missing row vs API gap).\n- [ ] After a completed sync, every verse reachable in the Record tab resolves a non-null `bible_text_id`.\n- [ ] The TEMP `ToastAndroid` debug message in `RecordTab.tsx` (L131\u2013145) is removed and replaced with real UX (disabled state + clear \"still syncing\"/error messaging as appropriate).\n- [ ] The record button is only enabled when a valid `bible_text_id` is available.\n- [ ] Unit tests cover the null path (button disabled / correct messaging) and the resolved path.\n- [ ] No regression in `getBibleTextId` / `syncBibleTexts`.\n\n## Verification / test plan\n\n- `npm run format:check` \u00b7 `npm run lint` \u00b7 `npm run typecheck` \u00b7 `npm test -- --ci`\n- Manual (Android): sign in, wait for sync, open an assigned chapter \u2192 Record tab, step through verses; confirm each resolves a `bible_text_id` and record starts. Confirm mid-sync state shows the real \"still syncing\" UX, not the debug toast.\n\n## File pointers & approach\n\n- `src/db/queries.ts` \u2014 `getBibleTextId()` (L461\u2013481): `SELECT id FROM bible_texts WHERE bible_id/book_id/chapter_number/verse_number`; returns `null` on no-row or error.\n- `src/app/tabs/RecordTab.tsx` (L27\u201349, L73) \u2014 resolves `bibleTextId` in an effect and passes `bibleTextIdForSelectedVerse` down.\n- `src/app/tabs/drafting/record/RecordTab.tsx` (L131\u2013145) \u2014 TEMP toast to remove.\n- `src/services/sync.ts` \u2014 `syncBibleTexts()` (L299+), invoked at L493/L574/L577/L585; check ordering vs chapter-assignment sync and whether all assigned verses are fetched/inserted.\n- `src/db/repository.ts` \u2014 `insertBibleTexts` write path.\n\nApproach: (1) reproduce and capture which `(bible_id, book_id, chapter_number, verse_number)` combos miss a row; (2) determine whether the row is absent (sync/API) or the query keys are wrong; (3) fix at the correct layer; (4) swap the TEMP toast for real disabled/status UX and gate the record button.\n\n## Links\n\n- PR #158: https://github.com/eten-tech-foundation/fluent-mobile/pull/158\n- Matt's review (blockers): https://github.com/eten-tech-foundation/fluent-mobile/pull/158#pullrequestreview-4664902519\n- Parent issue #49: https://github.com/eten-tech-foundation/fluent-mobile/issues/49",
+    "user": "fel-cesar",
+    "created_at": "2026-07-10T15:32:31Z",
+    "updated_at": "2026-07-23T03:43:44Z",
+    "closed_at": "2026-07-23T03:43:44Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/177",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5025018882,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-20T17:14:03Z",
+      "updated_at": "2026-07-20T17:14:03Z",
+      "body": "**Assignee cleared** \u2014 `fel-cesar` is no longer on the project.\n\nRelated recording PRs closed (do not merge): #158, #178, #184. Branches remain as reference/salvage only.\n\nThis issue stays open. Re-assign when someone intentionally picks it up; prefer thin PRs against current `main` rather than reviving the closed mega-diffs.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/177#issuecomment-5025018882"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

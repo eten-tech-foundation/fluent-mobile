@@ -1,0 +1,23 @@
+{
+  "issue_number": 617,
+  "fetched_at_utc": "2026-10-20T00:38:29Z",
+  "issue": {
+    "number": 617,
+    "title": "Populate Next theme tokens from Figma Foundations (Hardware default)",
+    "state": "closed",
+    "body": "## Context\n\nFollow-up to #615 (Legacy/Next UI version foundation). The runtime switch and empty Next overrides landed in #616. This ticket populates the **Next** theme from the Figma Foundations page so Settings \u2192 Next actually resolves redesign tokens.\n\nFigma: [ETEN \u00d7 Fluent \u2014 Foundations](https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2308-6)\n\n## Scope\n\n1. Encode Figma Foundations into Next-only theme modules (primitives, roles, spacing, radius, typography sizes).\n2. Default Next app chrome uses the **Hardware** role mode (light panels/screens).\n3. Expose **Canvas** and **Accent** role modes as Next-only tokens for future drafting/overlay work \u2014 do not force them into Legacy or into every screen yet.\n4. Map Hardware roles onto the existing `Theme` shape via `nextOverrides` so proving consumers (`useTheme` / `ScreenContainer` / root nav) show Next colors when UI version is Next.\n5. Do **not** redesign screens/components structurally; do **not** change Legacy tokens.\n6. Do **not** add UI frameworks.\n\n## Acceptance criteria\n\n1. Next theme includes Figma color primitives (`bone`, `blue`, `red`, white/black) as source values.\n2. Color roles for Canvas / Hardware / Accent are represented in code and resolve to primitive hexes.\n3. Active Next theme (via `resolveTheme('next')` / `useTheme`) uses **Hardware** for mapped `Theme.colors` (background, foreground, primary, card, border, recordAccent, etc. where a clear mapping exists).\n4. Spacing and radius Next overrides match Figma (`space-*`, `radius-*`) where they map cleanly onto existing `Theme.spacing` / `Theme.radius` keys; document any Figma steps that have no Legacy key yet.\n5. Typography size/weight overrides for Next where they map to existing `Theme.typography` without inventing a full type system (family remains System/TBD per Figma).\n6. Legacy theme snapshot and Legacy visuals unchanged when `uiVersion === 'legacy'`.\n7. Focused tests: Next Hardware mapping values, Canvas/Accent role tables present, Legacy still resolves to `legacyTheme`.\n8. Update `docs/guides/ui-version-theming.md` with Figma source link and Hardware-default note.\n9. No mass screen migration; no domain behavior forks.\n\n## Non-goals\n\n- Implementing tactile/effects/gradients/bevels as first-class RN chrome (document as follow-up).\n- Choosing final font families (Figma: TBD).\n- Splitting screens into Legacy/Next presentations.\n- Changing Settings UX beyond what #615 already added.\n\n## Notes\n\n- Abstraction budget: build Next token modules + Hardware\u2192Theme bridge only.\n- Needs QA: Yes (Next toggle will change colors).",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-30T16:02:12Z",
+    "updated_at": "2026-10-07T21:29:17Z",
+    "closed_at": "2026-10-07T21:29:17Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/617",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

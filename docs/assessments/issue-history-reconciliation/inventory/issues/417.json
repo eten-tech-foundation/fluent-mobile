@@ -1,0 +1,25 @@
+{
+  "issue_number": 417,
+  "fetched_at_utc": "2026-10-20T00:36:42Z",
+  "issue": {
+    "number": 417,
+    "title": "Prepare Offline: persist Reference Images as kind:image in download_queue for Resources offline gating",
+    "state": "open",
+    "body": "## Summary / context\n\nDevice QA on [#364](https://github.com/eten-tech-foundation/fluent-mobile/pull/364) (fix for [#348](https://github.com/eten-tech-foundation/fluent-mobile/issues/348)) confirmed Settings / account-switch fixes, but **Images & Maps offline AC remains blocked**.\n\nAfter Prepare for Offline shows **Reference Images** as completed, airplane mode hides the Images & Maps accordion entirely \u2014 TN/TQ appear as downloaded, but no section-level \"Images unavailable\" + Retry.\n\nRoot cause (outside #364 scope): Prepare Offline persists Reference Images in `download_queue` as `kind: text`, while Resources offline gating requires `kind: image` for the `imagesMaps` slot ([#192](https://github.com/eten-tech-foundation/fluent-mobile/issues/192) / [#201](https://github.com/eten-tech-foundation/fluent-mobile/issues/201) inventory wiring).\n\n## Root cause (code)\n\n1. `src/utils/prepareOfflineQueueMapping.ts` \u2014 `queueKindForResource()` collapses non-audio kinds to `'text'` (including catalog `kind: 'image'`).\n2. `src/db/downloadQueueRepository.ts` \u2014 `EnqueueDownloadItemInput.kind` is typed `'text' | 'audio'` only (no `'image'`).\n3. `src/services/resourcesInventory.ts` + `src/utils/resourcesSectionInventory.ts` \u2014 `imagesMaps` gate matches `resourceName: 'Reference Images'` **and** `kind: 'image'`.\n\nPrepare Offline UI can show Reference Images completed while Resources never enables Images offline.\n\n## Scope\n\n**In scope**\n- Extend download queue / enqueue path to persist `kind: 'image'` for Reference Images (and any other image-tier resources)\n- Fix queue mapping so manifest `kind: 'image'` survives enqueue\n- Resources `imagesMaps` section appears offline after Prepare Offline completes Reference Images\n- Unit tests for mapping + inventory gate alignment\n- Android device QA: Prepare Offline complete \u2192 airplane mode \u2192 Images & Maps visible (with content or section Retry)\n\n**Out of scope**\n- #348 navigation reset + online Retry UX (landed in #364)\n- Broader offline auth durability (#291)\n\n## Acceptance criteria\n\n- [ ] Reference Images enqueue to `download_queue` with `kind: 'image'` (not `'text'`)\n- [ ] After successful Prepare Offline download, `getDownloadedResourceSections()` includes `imagesMaps`\n- [ ] Airplane mode: Images & Maps accordion is visible for a project with completed Reference Images download\n- [ ] Existing TN/TQ/audio queue behavior unchanged\n- [ ] Unit tests cover image kind mapping and inventory gate\n- [ ] Android device QA recorded on the PR\n\n## Verification / test plan\n\n1. Online: Genesis 1 with images \u2192 confirm Images & Maps shows thumbnails.\n2. Prepare for Offline: complete all tiers including Reference Images.\n3. Airplane mode \u2192 Resources \u2192 same verse: TN/TQ show downloaded; **Images & Maps accordion appears** (content or Retry).\n4. Gates: `format:check` \u2192 `lint` \u2192 `typecheck` \u2192 `npm test -- --ci`\n\n## Links\n\n- Discovered in QA review: https://github.com/eten-tech-foundation/fluent-mobile/pull/364#pullrequestreview-5046685538\n- Parent QA defect: #348 (AC1 offline remains open until this lands)\n- Inventory wiring: #192 (closed), queue foundation: #201 (closed)\n- Key files: `prepareOfflineQueueMapping.ts`, `downloadQueueRepository.ts`, `resourcesSectionInventory.ts`, `resourcesInventory.ts`",
+    "user": "mattrace-gloo",
+    "created_at": "2026-08-28T02:49:11Z",
+    "updated_at": "2026-08-28T02:50:30Z",
+    "closed_at": null,
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/417",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

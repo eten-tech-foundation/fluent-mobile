@@ -1,0 +1,34 @@
+{
+  "issue_number": 107,
+  "fetched_at_utc": "2026-10-20T00:34:39Z",
+  "issue": {
+    "number": 107,
+    "title": "Mock-API / offline dev mode when EXPO_PUBLIC_API_BASE_URL unset",
+    "state": "closed",
+    "body": "### Context\n\n### Current state in baseline\n\n- `src/config/apiBaseUrl.ts`:\n\n```ts\nexport function getApiBaseUrl(): string {\n const url = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();\n if (!url) {\n throw new Error('EXPO_PUBLIC_API_BASE_URL is required. Copy .env.example to .env ...');\n }\n return url;\n}\n```\n\n- Every `FluentAPI` call resolves through `getApiBaseUrl()` (`src/services/api.ts`), so an unset URL throws at the first request.\n- `App.tsx` runs `syncAllData()` after login; `sync.ts` has connectivity checks (`checkServerReachable`) but no \"skip sync entirely / offline dev\" path.\n- `.env.example` sets `EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:9999`; `jest.env.cjs` defaults tests to `http://localhost:9999`.\n\n### Problems / why\n\n- A developer with no server (or no `.env`) hits a hard throw and cannot use the app at all.\n- There is no explicit toggle to run from **seeded local data** (#106) while disabling network sync.\n\n### Target design\n\n- Introduce an explicit **offline/mock mode** flag (e.g. `EXPO_PUBLIC_OFFLINE_MODE=1`, read via `process.env` like the base URL). When enabled:\n - Skip `syncAllData()` / disable sync steps; do not call `getApiBaseUrl()` for data fetches.\n - Run from #106 seed data.\n - Surface a clear \"Offline dev mode\" indicator (reuse existing sync-status UI).\n- When offline mode is **off** but the URL is unset, keep a clear actionable error (current behavior) \u2014 but ensure the app shell still renders (don't crash the whole tree).\n- Keep `getApiBaseUrl()` throwing for real network calls; gate the *callers* on offline mode instead of weakening the config contract.\n\n### Implementation steps\n\n1. Add an `isOfflineMode()` helper (reads `EXPO_PUBLIC_OFFLINE_MODE`), typed in `src/types/env.d.ts`.\n2. In `App.tsx`/sync entry points: when offline, skip sync and optionally run `seedDevData()` (#106); otherwise behave as today.\n3. Ensure screens read SQLite (already the architecture) so they work identically with seeded data.\n4. Add an offline indicator via the existing sync-status components.\n5. Tests: offline mode skips sync and renders from seed; non-offline with unset URL still surfaces the actionable error without crashing the shell.\n\n### Acceptance criteria\n\n- [ ] With `EXPO_PUBLIC_OFFLINE_MODE` enabled and no server, the app runs from seeded data and performs no network calls.\n- [ ] Sync is cleanly skipped/disabled in offline mode (no thrown `getApiBaseUrl` from data paths).\n- [ ] `getApiBaseUrl()` still throws for genuine network use (contract unchanged); the app shell does not crash when the URL is missing.\n- [ ] An offline indicator is visible; behavior covered by tests.\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Tests default `EXPO_PUBLIC_API_BASE_URL=http://localhost:9999` via `jest.env.cjs`; assert offline-mode branches by toggling the env in-test; **no live API required**.\n- Do **not** use `FLUENT_USER_EMAIL`.\n\n### Dev setup notes (current)\n\n```bash\ncp .env.example .env\n# set EXPO_PUBLIC_OFFLINE_MODE=1 to run without a server\nnpm run prebuild && npm start # + npm run android (expo-dev-client)\n```\n\n### Out of scope\n\n- The seed dataset itself (#106), documentation (#108).\n\n### Links\n\n- Epic: #119\n- Related: #106 (seed), #108 (docs), #109 (env validation)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:46:11Z",
+    "updated_at": "2026-07-02T20:12:24Z",
+    "closed_at": "2026-06-30T18:21:48Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/107",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4846695105,
+      "user": "mattrace-gloo",
+      "created_at": "2026-06-30T18:21:47Z",
+      "updated_at": "2026-06-30T18:21:47Z",
+      "body": "**Descoped** as part of epic #119 pivot.\n\n`EXPO_PUBLIC_OFFLINE_MODE` + auto-auth bypass is superseded by real Better Auth against hosted dev or local Docker API. Original scope diverged from Better Auth and would be throwaway code.\n\nOptional reduced scope (app-shell error when API unreachable) may be tracked in a separate issue if needed. See epic #119.\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/107#issuecomment-4846695105"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

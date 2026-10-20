@@ -1,0 +1,25 @@
+{
+  "issue_number": 109,
+  "fetched_at_utc": "2026-10-20T00:34:41Z",
+  "issue": {
+    "number": 109,
+    "title": "Env audit + typed runtime validation",
+    "state": "closed",
+    "body": "> **Scope note:** This ticket is **verification/validation only, NOT a rewrite**. The env migration (`@env`/`react-native-dotenv` removed \u2192 `EXPO_PUBLIC_*` via `process.env`, `apiBaseUrl.ts`, `env.d.ts`) was **already done on main**. Remaining scope: **confirm no residual `@env` references + optionally add typed runtime validation**. Assigned to @mattrace-gloo.\n\n### Context\n\n### Current state in baseline\n\n- `src/config/apiBaseUrl.ts` reads `process.env.EXPO_PUBLIC_API_BASE_URL` and throws if unset.\n- `src/types/env.d.ts` declares `EXPO_PUBLIC_API_BASE_URL: string` under `NodeJS.ProcessEnv`.\n- `.env.example` = `EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:9999`; `jest.env.cjs` defaults `http://localhost:9999`.\n- Test CI (`.github/workflows/test.yml`) sets `EXPO_PUBLIC_API_BASE_URL: http://localhost:9999`. No `FLUENT_USER_EMAIL` anywhere.\n- `@env`/`react-native-dotenv` are **gone from main** (note: [PR #82](https://github.com/eten-tech-foundation/fluent-mobile/pull/82) still imports `@env` in `recordingSync.ts` \u2014 an anti-pattern, not merging).\n\n### Problems / why\n\n- Validation is single-key and ad-hoc (only the base URL, only at first use). New env (`EXPO_PUBLIC_OFFLINE_MODE` from #107) will need typing/validation too.\n- No central typed config object; callers read `process.env` in scattered spots.\n- Need a guard to prevent `@env` regressions creeping back (coordinate with lint #114).\n\n### Target design\n\n- A single typed config module (e.g. `src/config/env.ts`) that reads and validates all `EXPO_PUBLIC_*` values once and exports a typed object:\n\n```ts\nexport const env = {\n apiBaseUrl: requireUrl('EXPO_PUBLIC_API_BASE_URL'), // optional in offline mode\n offlineMode: boolEnv('EXPO_PUBLIC_OFFLINE_MODE'),\n} as const;\n```\n\n- Keep `getApiBaseUrl()` (back it with the new module) so existing imports keep working; throw with the same actionable message.\n- Extend `src/types/env.d.ts` with any new keys (`EXPO_PUBLIC_OFFLINE_MODE`).\n- Document the env contract in onboarding docs (#112).\n\n### Implementation steps\n\n1. Grep the repo for any residual `@env` / `react-native-dotenv` references; remove if found (none expected on main).\n2. Add `src/config/env.ts` with typed accessors + validation; re-implement `getApiBaseUrl()` on top of it.\n3. Add `EXPO_PUBLIC_OFFLINE_MODE` (and any others) to `env.d.ts`.\n4. Document env vars in docs; ensure `.env.example` is complete.\n5. Coordinate a lint guardrail (#114) banning direct `process.env` reads outside `src/config/`.\n6. Unit-test validation (missing/blank URL throws actionable error; offline flag parsing).\n\n### Acceptance criteria (verify-only)\n\n- [ ] **Confirm** no `@env`/`react-native-dotenv` references remain (migration already done on main).\n- [ ] **Optional hardening:** a single typed config module validates all `EXPO_PUBLIC_*` keys; `getApiBaseUrl()` delegates to it.\n- [ ] **Optional:** new keys typed in `env.d.ts`; `.env.example` complete.\n- [ ] **Optional:** validation covered by unit tests.\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Tests default `EXPO_PUBLIC_API_BASE_URL=http://localhost:9999` via `jest.env.cjs`; toggle env in-test to assert validation; **no live API required**.\n- Do **not** use `FLUENT_USER_EMAIL`.\n\n### Out of scope\n\n- Offline-mode behavior (#107), lint rule implementation (#114), docs page authoring (#112).\n\n### Links\n\n- Epic: #120\n- Related: #107 (offline flag), #114 (lint), #112 (docs)\n- Anti-pattern: [PR #82](https://github.com/eten-tech-foundation/fluent-mobile/pull/82) `recordingSync.ts` `import { API_BASE_URL } from '@env'`\n\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:46:14Z",
+    "updated_at": "2026-07-02T20:14:38Z",
+    "closed_at": "2026-06-29T16:36:28Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/109",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

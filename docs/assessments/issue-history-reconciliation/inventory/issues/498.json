@@ -1,0 +1,32 @@
+{
+  "issue_number": 498,
+  "fetched_at_utc": "2026-10-20T00:37:19Z",
+  "issue": {
+    "number": 498,
+    "title": "Maestro CI (manual workflow_dispatch Android smoke; informational)",
+    "state": "closed",
+    "body": "## Summary / context\n\nParent: #488.\n\nAdd an informational GitHub Actions workflow that runs Android Maestro smokes on **`workflow_dispatch` only** (schedule optional/off initially). **Not** a required PR check or merge gate.\n\n## Current vs expected\n\n**Current:** Lint/test/typecheck/quality-gates only for app logic; nightly is EAS APK for human QA.\n\n**Expected:** Manual dispatch job installs Maestro, builds/installs Android app (prebuild path or documented artifact), runs fail-fast smoke chain, uploads JUnit/artifacts. Secrets for Maestro accounts. Documented in `docs/ci.md`.\n\n## Scope\n\n**In scope**\n- `.github/workflows/maestro-*.yml` with `workflow_dispatch`\n- Secrets documented: `MAESTRO_EMAIL`, `MAESTRO_PASSWORD` (+ second account if multi-account job included)\n- Artifact retention for failures\n- Explicit: not required for merge; does not replace Needs QA? handoff\n\n**Out of scope**\n- Blocking PRs on Maestro\n- iOS jobs\n- Replacing nightly human QA\n\n## Acceptance criteria\n\n- [ ] One green manual Actions run recorded on this issue or epic\n- [ ] `docs/ci.md` lists workflow as informational\n- [ ] Failures upload logs/screenshots/JUnit\n- [ ] No schedule until suite is stable (or schedule disabled by default)\n\n## Verification / test plan\n\n1. Dispatch workflow on `main` or the PR branch after smokes exist\n2. Confirm artifacts and conclusion\n\n## Links\n\n- Refs #488\n- `docs/ci.md`\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-10T19:53:13Z",
+    "updated_at": "2026-09-10T19:55:10Z",
+    "closed_at": "2026-09-10T19:54:18Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/498",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5624599168,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-10T19:55:09Z",
+      "updated_at": "2026-09-10T19:55:09Z",
+      "body": "Condensed into #497 (playbook + informational CI).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/498#issuecomment-5624599168"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

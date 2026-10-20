@@ -1,0 +1,43 @@
+{
+  "issue_number": 97,
+  "fetched_at_utc": "2026-10-20T00:34:28Z",
+  "issue": {
+    "number": 97,
+    "title": "useVerseAudio as a testable state machine (net-new)",
+    "state": "closed",
+    "body": "### Current state on main\n\n- `ViewChapter.tsx` keeps per-verse UI state in a plain object (`verseStates`) toggled by a button (`:108`). No persistence, no engine.\n- No hook coordinates record \u2192 stop \u2192 persist \u2192 play.\n\n### Problems / why (anti-patterns to avoid)\n\n[PR #82](https://github.com/eten-tech-foundation/fluent-mobile/pull/82) `src/hooks/useVerseAudio.ts` (316 lines) is the anti-pattern:\n- **Fat hook**: imperative `IWaveformRef` refs, `react-native-fs` file moves, `Alert.alert` dialogs, permission prompts, and DB writes (`upsertRecording`/`deleteRecording`) all inline in `startRecord`/`stopRecord`.\n- State is split across `useState` + multiple `useRef`s (`recordingStarted`, `tempRecordingPath`, `finalRecordingPath`) with ad-hoc transitions \u2192 untestable, race-prone.\n- Tightly coupled to the Simform library types (`PlayerState`, `RecorderState`, `FinishMode`).\n\n### Target design\n\nA small, deterministic state machine driven by typed events, with side effects injected (so it is unit-testable without native modules):\n\n```ts\nexport type VerseAudioState =\n | 'idle' | 'recording' | 'paused' | 'recorded' | 'playing' | 'saving' | 'error';\n\ntype Event =\n | { type: 'START' } | { type: 'PAUSE' } | { type: 'RESUME' } | { type: 'STOP' }\n | { type: 'SAVED' } | { type: 'PLAY' } | { type: 'PLAYBACK_END' }\n | { type: 'DELETE' } | { type: 'ERROR'; message: string };\n\n// Pure reducer: (state, event) => nextState \u2014 fully unit-testable\nexport function verseAudioReducer(state: VerseAudioState, e: Event): VerseAudioState;\n```\n\n- The `useVerseAudio` hook wires the reducer to the recorder (#95) and player (#96) and persists via repository functions (#98) and `audioStorage` (#94). Permission/`Alert` decisions live in the screen, not the hook.\n- Per-verse audio status derives from the DB (latest take per `bible_text_id`), not from in-memory refs.\n\n### Implementation steps\n\n1. Create `src/hooks/verseAudioReducer.ts` (pure) + tests covering each transition (including `ERROR` and `DELETE`).\n2. Create `src/hooks/useVerseAudio.ts` that composes the reducer + recorder (#95) + player (#96) + persistence (#98), with injectable dependencies.\n3. Persist on `STOP`: move temp file to `recordingPath(id)` (#94) and insert a take (#98); set state `recorded`.\n4. Integrate into `ViewChapter.tsx`, replacing the mock toggle.\n5. No `react-native-fs`, no Simform types, no DB writes inside reducer.\n\n### Acceptance criteria\n\n- [ ] A pure reducer encodes all verse-audio transitions and is fully unit-tested.\n- [ ] The hook composes recorder/player/storage/DB via injected deps (no inline native coupling).\n- [ ] No `react-native-fs` and no `@simform_solutions/*` imports anywhere in the audio path.\n- [ ] Per-verse status is derived from the DB, not in-memory refs.\n- [ ] `ViewChapter.tsx` uses the hook instead of the mock toggle.\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Tests default `EXPO_PUBLIC_API_BASE_URL=http://localhost:9999` via `jest.env.cjs`; **no live API required**.\n- Reducer tests run with no native mocks; hook tests mock `expo-audio`/`expo-file-system` (#111).\n- Do **not** use `FLUENT_USER_EMAIL`.\n\n### Out of scope\n\n- The engines themselves (#95, #96), storage (#94), DB schema/repo for takes (#98).\n\n### Links\n\n- Epic: #116\n- Anti-pattern: [PR #82](https://github.com/eten-tech-foundation/fluent-mobile/pull/82) `src/hooks/useVerseAudio.ts`\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:45:58Z",
+    "updated_at": "2026-07-23T03:43:48Z",
+    "closed_at": "2026-07-23T03:43:48Z",
+    "labels": [
+      "enhancement",
+      "SP 1"
+    ],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/97",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4906602008,
+      "user": "fel-cesar",
+      "created_at": "2026-07-07T17:28:53Z",
+      "updated_at": "2026-07-07T17:28:53Z",
+      "body": "Superseded by PR #158 (#49). The recording engine / state machine / multi-take wiring described here is implemented in `src/hooks/useRecorder.ts` + `src/app/tabs/drafting/record/hooks/useVerseRecorder.ts`, built on `expo-audio` (no Simform / react-native-fs) with mocked unit tests. It was delivered as one fused module rather than the thin-engine/state-machine/multi-take split originally scoped here.\n\nProposed resolution: **close as implemented-via-#158**, unless we specifically want to refactor toward the original layered split \u2014 in which case this should be rewritten as a \"refactor #158's recorder\" task. See the reconciliation note on #158 for the full AC mapping.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/97#issuecomment-4906602008"
+    },
+    {
+      "id": 5025017510,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-20T17:13:53Z",
+      "updated_at": "2026-07-20T17:13:53Z",
+      "body": "**Assignee cleared** \u2014 `fel-cesar` is no longer on the project.\n\nRelated recording PRs closed (do not merge): #158, #178, #184. Branches remain as reference/salvage only.\n\nThis issue stays open. Re-assign when someone intentionally picks it up; prefer thin PRs against current `main` rather than reviving the closed mega-diffs.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/97#issuecomment-5025017510"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

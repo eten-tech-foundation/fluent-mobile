@@ -1,0 +1,40 @@
+{
+  "issue_number": 503,
+  "fetched_at_utc": "2026-10-20T00:37:21Z",
+  "issue": {
+    "number": 503,
+    "title": "Fix Back Navigation from Prepare for Offline Project Download",
+    "state": "closed",
+    "body": "In Prepare for Offline, the translator selects a project from a list and downloads its resources. Backing out of that project's download screen currently returns the translator to the Home screen instead of the project list, forcing them to re-enter Settings and Prepare for Offline to download a second project.\n\n## Functional Requirements\n\n### Back Navigation\n- Return the translator to the Prepare for Offline project list when they tap back (`li:chevron-left`) from a project's download screen.\n\nThis screen\n\n<img width=\"380\" height=\"582\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/d83fbc09-c23c-4a70-a5b1-39977424754f\" />\n\nShould navigate back to this screen\n<img width=\"381\" height=\"347\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/0dc0d9d0-d975-4f65-b4f4-def370c82a36\" />",
+    "user": "chadw-eten",
+    "created_at": "2026-09-11T14:44:19Z",
+    "updated_at": "2026-09-17T12:48:45Z",
+    "closed_at": "2026-09-15T04:47:40Z",
+    "labels": [],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/503",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5712315058,
+      "user": "Roslin22",
+      "created_at": "2026-09-17T09:46:35Z",
+      "updated_at": "2026-09-17T09:46:35Z",
+      "body": "**Test Results:**\n\n1. Tapped the `li:chevron-left` back button from a project's download screen; the translator is successfully returned to the **Prepare for Offline project list**.\n2. The selected project remains available in the project list after navigating back.\n3. The translator can select another project from the list and proceed to download its resources without re-entering **Settings \u2192 Prepare for Offline**.\n4. Back navigation from the project download screen no longer returns the translator to the **Home** screen.\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/503#issuecomment-5712315058"
+    },
+    {
+      "id": 5714613417,
+      "user": "chadw-eten",
+      "created_at": "2026-09-17T12:48:45Z",
+      "updated_at": "2026-09-17T12:48:45Z",
+      "body": ":white_check_mark:",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/503#issuecomment-5714613417"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

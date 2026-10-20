@@ -1,0 +1,40 @@
+{
+  "issue_number": 268,
+  "fetched_at_utc": "2026-10-20T00:35:47Z",
+  "issue": {
+    "number": 268,
+    "title": "Implement Online Chapter Claiming on First Recording",
+    "state": "closed",
+    "body": "Claiming is implicit: the system automatically claims a chapter for a translator the moment they create their first recording on it. This ticket implements that path for the online case only \u2014 detect the first recording on an unassigned chapter, sync the claim to the server, and update the chapter row state immediately. The offline claiming path is handled in a follow-on ticket; the warning shown when recording on a taken chapter is handled in a separate ticket.\n\n## Functional Requirements\n\n### Auto-Claim on First Recording\n\n- When a translator creates the first recording on an unassigned chapter while online, automatically claim the chapter on their behalf with no confirmation prompt.\n- Sync the claim to the server immediately after the first recording is created.\n- Update the chapter row to the \"mine\" state (`li:user`, primary color `#0b50d0`) immediately; the claim is confirmed, not provisional.\n\nNote: If another translator claimed the same chapter online in the window between the current user viewing the chapter list and creating their first recording, treat it as a multi-claimant conflict \u2014 do not reject either claim. The conflict surfaces and resolves through the same path as offline conflicts, handled in #271.",
+    "user": "chadw-eten",
+    "created_at": "2026-07-29T17:33:30Z",
+    "updated_at": "2026-09-09T05:25:38Z",
+    "closed_at": "2026-08-28T18:58:23Z",
+    "labels": [],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/268",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5273846637,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-12T23:08:32Z",
+      "updated_at": "2026-08-12T23:08:32Z",
+      "body": "### Eng note (updated)\n\nServer work lives in **eten-tech-foundation/fluent-api#272** \u2014 translator self-claim isn\u2019t on main today (PM assign only). Don\u2019t invent a claim API inside this mobile ticket by default.\n\n**Preferred:** pull `fluent-api#272` into the same slice and ship online claim (mobile) + API together as one feature.\n\n**Fallback:** if the API side is a crazy amount of work, ship the mobile UX against mocks and leave `fluent-api#272` as the follow-up. Call that out in the PR.\n\nWeb doesn\u2019t have translator auto-claim either \u2014 this isn\u2019t catch-up to fluent-web.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/268#issuecomment-5273846637"
+    },
+    {
+      "id": 5596280711,
+      "user": "Roslin22",
+      "created_at": "2026-09-09T05:25:38Z",
+      "updated_at": "2026-09-09T05:25:38Z",
+      "body": "**Test Results: #268 **\n\n- Verified that the first recording on an unassigned chapter automatically claims the chapter for the translator.\n- Verified that no confirmation prompt is displayed when the chapter is automatically claimed.\n- Verified that the claim is synced to the server immediately after the first recording is created while online.\n- Verified that the chapter row immediately changes to the \u201cMine\u201d state.\n- Verified that the user icon (li:user) is displayed with the expected primary color.\n- Verified that the claim is displayed as confirmed, not provisional.\n- Verified that subsequent recordings on the same chapter do not create an additional claim.\n- Verified that the chapter remains in the \u201cMine\u201d state after synchronization.\n- Verified that the claimed chapter state persists after leaving and reopening the chapter list.\n- Verified that the online auto-claim flow is working as expected.\n\nMoving this ticket to passedQA",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/268#issuecomment-5596280711"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

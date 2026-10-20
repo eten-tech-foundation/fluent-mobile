@@ -1,0 +1,33 @@
+{
+  "integrated_at_utc": "2026-10-20T00:50:34Z",
+  "cohorts": [
+    "c2",
+    "c5"
+  ],
+  "policy": "disposition_review only; reconciliation_complete never set from cohort alone; closed\u2260acceptance; inferred docs\u2260waive",
+  "c2_stats": {
+    "merged": 51,
+    "skipped_already_complete": 1,
+    "kept_integrator": 0,
+    "missing": 0,
+    "merged_disposition": 51
+  },
+  "c5_stats": {
+    "merged": 52,
+    "skipped_already_complete": 0,
+    "kept_integrator": 0,
+    "missing": 0,
+    "merged_disposition": 52
+  },
+  "integrator_evidence_completes": [
+    4,
+    31,
+    32,
+    77,
+    149,
+    256,
+    333,
+    599,
+    607
+  ]
+}

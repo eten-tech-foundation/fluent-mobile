@@ -1,0 +1,34 @@
+{
+  "issue_number": 104,
+  "fetched_at_utc": "2026-10-20T00:34:36Z",
+  "issue": {
+    "number": 104,
+    "title": "Verify & harden per-user project list & My Work filtering",
+    "state": "closed",
+    "body": "> **Scope note:** This ticket is **verification/validation only, NOT a rewrite**. The My Work tab (`MyWorkTab.tsx`) and `mergeUserChapterAssignments.ts` (+ their tests) were authored by @mattrace-gloo and are already shipped; this work is **largely satisfied alongside #31**. Remaining scope is limited to **verifying filtering correctness against the existing tests** and adding edge-case coverage. Assigned to @mattrace-gloo.\n\n### Current state on main\n\n- `src/app/tabs/MyWorkTab.tsx` (+ `MyWorkTab.test.tsx`) \u2014 the My Work screen, already shipped.\n- `src/hooks/useMyWorkChapters.ts` \u2014 loads via `getMyWorkChapters(userId)` using `parseUserId()` (`:15`).\n- `src/db/queries.ts:getMyWorkChapters` (`:305`) filters `WHERE ca.assigned_user_id = ?` and excludes complete chapters (`.filter(row => !isCompleteStatus(row.status))`, `:343`).\n- `src/services/mergeUserChapterAssignments.ts` (+ `mergeUserChapterAssignments.test.ts`) \u2014 merges assigned + peer-check lists, keeping the higher-priority status (`peer_check > draft > not_started`).\n- Per-user project list: `getProjectsWithSummary(userId)` joins `user_projects` (`queries.ts:61`).\n\n### Problems / why\n\n- The recording aggregates inside these queries are **broken** by the `r.chapter_assignment_id = ca.id` join (`queries.ts:66,284,334`) \u2014 the column doesn't exist (fixed in #98). My Work counts/sync state are therefore wrong until that lands.\n- `getMyWorkChapters` performs no-index scan on `assigned_user_id` until #103 adds `idx_ca_assigned_user`.\n- Filtering correctness (assigned vs peer-check, complete exclusion, multi-account isolation) needs explicit verification against the existing tests + new cases.\n\n### Target design\n\n- Confirm My Work shows exactly the active user's assigned + peer-check chapters, excludes complete, and isolates across accounts (active user via `parseUserId`/`storage.getActiveUserId`).\n- Ensure aggregates are correct after #98 and indexed after #103.\n- Strengthen the existing test suites (`MyWorkTab.test.tsx`, `mergeUserChapterAssignments.test.ts`) with edge cases: a chapter assigned to user A and peer-checked by user B; duplicate assignment across payloads; complete-status exclusion; empty state.\n\n### Implementation steps\n\n1. Audit `getMyWorkChapters` + `useMyWorkChapters` + `mergeUserChapterAssignments` for correctness against the active-user contract.\n2. Depend on #98 (join fix) and #103 (index) for correct/fast aggregates; re-verify after they land.\n3. Add/extend tests in `MyWorkTab.test.tsx` and `mergeUserChapterAssignments.test.ts` for the edge cases above.\n4. Confirm per-user project list (`getProjectsWithSummary`) scopes strictly by `user_projects.user_id`.\n5. Fix any filtering defects uncovered (e.g. status-priority gaps, complete-exclusion off-by-one).\n\n### Acceptance criteria (verify-only)\n\n- [ ] **Verify** My Work lists only the active user's non-complete assigned + peer-check chapters; multi-account isolation confirmed against existing tests.\n- [ ] **Verify** recording counts/sync state are correct after the #98 join fix.\n- [ ] **Verify** project list is scoped strictly by `user_projects`.\n- [ ] Existing tests pass; extend with the edge cases above only where a gap is found (no rewrite of the shipped feature).\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Tests default `EXPO_PUBLIC_API_BASE_URL=http://localhost:9999` via `jest.env.cjs`; **no live API required** \u2014 local SQLite/mocked DB.\n- Cite/extend `src/app/tabs/MyWorkTab.test.tsx` and `src/services/mergeUserChapterAssignments.test.ts`.\n- Do **not** use `FLUENT_USER_EMAIL`.\n\n### Out of scope\n\n- Schema FK/index migration (#103), recordings join fix (#98), attribution (#105).\n\n### Links\n\n- Epic: #118\n- Related: #31 (My Work tab), #98 (join fix), #103 (index)\n\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:46:07Z",
+    "updated_at": "2026-07-02T20:14:35Z",
+    "closed_at": "2026-07-02T20:03:58Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/104",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4825242369,
+      "user": "mattrace-gloo",
+      "created_at": "2026-06-28T07:25:44Z",
+      "updated_at": "2026-06-28T07:25:44Z",
+      "body": "Note: My Work currently depends on `getMyWorkChapters`, whose recordings join is broken \u2014 see #121. Verify/harden after #121 is fixed.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/104#issuecomment-4825242369"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

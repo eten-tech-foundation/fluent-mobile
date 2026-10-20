@@ -1,0 +1,26 @@
+{
+  "integrated_at_utc": "2026-10-20T00:58:54Z",
+  "reviewer": "bc-359af0d2-dd4d-541e-a318-98048d9c220d",
+  "source": "/tmp/fluent-issue-review-r5.json",
+  "accepted_complete": [
+    87,
+    88,
+    89,
+    90,
+    91,
+    92,
+    93,
+    94,
+    95,
+    96,
+    97,
+    98
+  ],
+  "spot_checks": [
+    "keychain.ts expo-secure-store",
+    "authSession signOut keeps creds",
+    "schema recorded_by_user_id/is_selected",
+    "createRecordingEngine present"
+  ],
+  "41_boundary": "88/89/93 explicitly not folding #41 DB wipe or 401\u2192Login"
+}

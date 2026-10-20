@@ -1,0 +1,50 @@
+{
+  "issue_number": 448,
+  "fetched_at_utc": "2026-10-20T00:36:55Z",
+  "issue": {
+    "number": 448,
+    "title": "Clarify Record-tab messaging when source text is missing after sync",
+    "state": "open",
+    "body": "## Summary / context\n\nOn Record, any missing local `bible_texts` row (`bibleTextId === null`) currently shows:\n\n> Source text still syncing for this verse \u2014 recording will unlock when ready.\n\nThat copy is misleading when **cloud sync has already finished** (green sync status) but verse text never landed \u2014 e.g. bible-text sync skipped / returned empty, chapter not fully assignable yet, or API has no text for that unit. Users wait forever thinking sync is still in flight.\n\nSurfaced while QA\u2019ing [#235](https://github.com/eten-tech-foundation/fluent-mobile/issues/235) against a new BSB Mark project on Dev (`projectId` 432): assignments synced, Record opened on Mark 1, hint never cleared, dock correctly showed **No source audio** as a separate lane.\n\n## Current vs expected\n\n**Current:** Missing text \u21d2 always \u201cstill syncing\u2026\u201d.\n\n**Expected:** Distinguish **sync in progress** from **text unavailable after sync settled**.\n\n## Scope\n\n**In scope**\n- Record-tab (and any shared hint) copy/state when `bibleTextId` is null\n- Use existing sync signals already on device (e.g. sync in flight vs idle / last-synced) \u2014 no new backend\n- Keep / reinforce that **source audio empty** stays its own honest dock state (`No source audio`), not conflated with text sync\n- Unit tests for the message / state selection\n\n**Out of scope**\n- Explaining web-only rules (e.g. Assign disabled until \u22652 translators)\n- Fixing bible-text sync gaps themselves (file separately if AC needs it)\n- Source-audio fetch/playback (#235)\n- Shell Bible-tab player (#412)\n\n## Suggested messaging\n\n| Condition | Message direction |\n| --- | --- |\n| Sync actively running + no local text | Keep \u201cSource text syncing\u2026\u201d (or equivalent) |\n| Sync idle + no local text for this verse | \u201cSource text isn\u2019t available for this verse yet.\u201d + affordance to open Sync / retry |\n| Text ready, source audio empty | Unchanged: dock `No source audio` |\n\n## Acceptance criteria\n\n- [ ] When sync is in progress and text is missing, messaging still indicates syncing\n- [ ] When sync is **not** in progress and text is missing, messaging does **not** claim text is \u201cstill syncing\u201d\n- [ ] User can tell the difference from source-audio-empty dock chrome\n- [ ] Unit coverage for the hint/state selection\n- [ ] Android smoke: open a chapter with no local `bible_texts` after a settled sync and confirm copy\n\n## File pointers\n\n- `src/app/tabs/RecordTab.tsx` (`syncingMessage` / `recordDisabled` when `bibleTextId === null`)\n- Sync status signals: `src/utils/syncStatusState.ts`, sync hooks / Sync screen as applicable\n\n## Related\n\n- Follow-up from [#235](https://github.com/eten-tech-foundation/fluent-mobile/issues/235) (source audio dock wiring)\n- Related UX confusion with green sync chrome vs missing verse text\n- Board: [Fluent Mobile Board (Project 4, view 9)](https://github.com/orgs/eten-tech-foundation/projects/4/views/9)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-03T20:16:34Z",
+    "updated_at": "2026-10-14T20:43:29Z",
+    "closed_at": null,
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 3,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/448",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 6087139921,
+      "user": "mattrace-gloo",
+      "created_at": "2026-10-09T18:46:06Z",
+      "updated_at": "2026-10-09T18:46:06Z",
+      "body": "Cleanup: implementing PR already merged; board was stuck on In PR Review. Moved to **In QA** for post-merge nightly verification (Needs QA? Yes).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/448#issuecomment-6087139921"
+    },
+    {
+      "id": 6166256442,
+      "user": "Roslin22",
+      "created_at": "2026-10-14T10:26:48Z",
+      "updated_at": "2026-10-14T10:30:45Z",
+      "body": "@chadw-eten and @mattrace-gloo  could you please let me know which book or chapter has missing Bible text after sync is completed? Also, could you guide me on how to reproduce and test this scenario in the mobile app?",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/448#issuecomment-6166256442"
+    },
+    {
+      "id": 6178025607,
+      "user": "chadw-eten",
+      "created_at": "2026-10-14T20:43:29Z",
+      "updated_at": "2026-10-14T20:43:29Z",
+      "body": "I am not sure how to test this one. Currently the download resources is not working, so I guess hold off on it until that is working and we can identify a suitable book and chapter to test with.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/448#issuecomment-6178025607"
+    }
+  ],
+  "comments_fetched_count": 3,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

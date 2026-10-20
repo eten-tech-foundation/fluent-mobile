@@ -1,0 +1,34 @@
+{
+  "issue_number": 146,
+  "fetched_at_utc": "2026-10-20T00:35:03Z",
+  "issue": {
+    "number": 146,
+    "title": "Add Upload/Download over Cellular Toggle to Settings and Sync Page",
+    "state": "closed",
+    "body": "Fluent translators frequently work in areas where cellular data is limited or expensive. By default, Fluent should not use cellular data for uploads or downloads \u2014 but users who choose to allow it should be able to opt in. This ticket adds an off-by-default \"Upload/Download over cellular\" toggle to the Settings menu as the canonical location, and surfaces the same setting on the Sync page for convenience.\n\n## Functional Requirements\n\n### Settings Menu \u2014 Upload/Download over Cellular\n\n- Add a toggle row to the Settings menu below the Prepare for Offline setting with the label \"Upload/Download over cellular\" and the description \"Use mobile data to upload recordings when WiFi isn't available.\"\n- The toggle is off by default.\n- When off, uploads and downloads only initiate or continue over WiFi; if WiFi is lost while either is active, pause automatically.\n- When on, uploads and downloads proceed over any available connection.\n\n### Sync Page \u2014 Upload/Download over Cellular\n\n- Display the same toggle row on the Sync page, below the Sync Now / Pause / Cancel buttons and above the download queue progress section.\n- Use the same label and description text as the Settings instance.\n- This control mirrors the Settings toggle \u2014 changing either one updates the other immediately.\n\n> **Note:** Both controls represent the same underlying setting. They must stay in sync \u2014 changing the value on the Sync page is reflected in Settings and vice versa.\n\n> **Note:** #40 (now closed) included an upload-only cellular toggle in the Settings page. This ticket extends that to cover downloads as well and adds a mirrored toggle on the Sync page. A partial implementation may already exist \u2014 scope here extends it.\n\n<img width=\"406\" height=\"714\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/98cffaf5-b608-4b6f-975b-156f10e3133e\" />\n\n<img width=\"403\" height=\"663\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/a61a6619-3b64-4652-94e7-c10b0ad4dab2\" />",
+    "user": "chadw-eten",
+    "created_at": "2026-06-30T21:06:34Z",
+    "updated_at": "2026-07-20T18:08:58Z",
+    "closed_at": "2026-07-20T18:08:58Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/146",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5025316327,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-20T17:44:31Z",
+      "updated_at": "2026-07-20T17:44:31Z",
+      "body": "### Ticket-level AC waivers (explicit)\n\nFor [#200](https://github.com/eten-tech-foundation/fluent-mobile/pull/200), the following #146 acceptance criteria are **waived on this issue** with linked follow-ups (per `AGENTS.md` \u2014 not PR-body-only notes):\n\n1. **Pause in-flight upload/sync work when WiFi is lost while the cellular toggle is off**  \n   Current PR gates Sync Now and flips Sync page mock status to `paused`. Real pause/cancel of an in-flight upload/sync engine is deferred to **#150** (upload trigger / sync engine).\n\n2. **Downloads honor the cellular toggle**  \n   No download worker exists on `main` yet. Gating downloads is deferred to **#201** (Prepare for Offline download queue / inventory) and related download UI tickets (#52 / #147 as they consume the queue).\n\n**Still in scope for #146 / #200:** Settings toggle (already on `main`), mirrored Sync page toggle via shared preferences, WiFi detection, Sync Now / status chrome respecting the preference.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/146#issuecomment-5025316327"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

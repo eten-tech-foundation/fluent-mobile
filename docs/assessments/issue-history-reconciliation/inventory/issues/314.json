@@ -1,0 +1,23 @@
+{
+  "issue_number": 314,
+  "fetched_at_utc": "2026-10-20T00:36:06Z",
+  "issue": {
+    "number": 314,
+    "title": "Align Expo SDK 57 patch dependencies via expo install --fix",
+    "state": "closed",
+    "body": "## Problem\n\nDependabot cleanup (2026-08-11) found Quality Gates failing on all rebased bot PRs with Expo SDK patch drift:\n\n- `expo` 57.0.11 \u2192 expected ~57.0.12\n- `expo-asset` 57.0.9 \u2192 expected ~57.0.10\n- `expo-build-properties` 57.0.9 \u2192 expected ~57.0.10\n- `expo-constants` 57.0.9 \u2192 expected ~57.0.10\n- `expo-dev-client` 57.0.10 \u2192 expected ~57.0.11\n- `expo-updates` 57.0.12 \u2192 expected ~57.0.13\n- `jest-expo` 57.0.3 \u2192 expected ~57.0.4\n\nThis blocks merging safe Dependabot PR #312 (`babel-preset-expo` patch).\n\n## Acceptance criteria\n\n- [ ] Run `npx expo install --fix` so packages match Expo SDK 57 expected versions\n- [ ] `npm run doctor` passes locally\n- [ ] CI Quality Gates (TypeScript, expo-doctor, expo install --check) green\n- [ ] Document Dependabot batch resolution in `docs/guides/dependabot-resolution-log.md`\n- [ ] After merge, rebase Dependabot #312 so it can be squash-merged\n\n## Notes\n\nPer dependabot-workflow / delivery rules: agent-authored expo doctor fixes go through a ticketed feature branch + PR \u2014 never push to `main` directly.",
+    "user": "mattrace",
+    "created_at": "2026-08-11T16:59:49Z",
+    "updated_at": "2026-08-11T22:21:11Z",
+    "closed_at": "2026-08-11T22:21:10Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/314",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

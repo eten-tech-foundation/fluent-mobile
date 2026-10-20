@@ -1,0 +1,32 @@
+{
+  "integrated_at_utc": "2026-10-20T01:23:23Z",
+  "reviewer": "bc-a61d1781-c145-536e-ac03-b99f377b8791",
+  "source": "/tmp/fluent-issue-review-r14.json",
+  "accepted_complete": [
+    505,
+    508,
+    510,
+    513,
+    516,
+    527,
+    528,
+    531,
+    532,
+    533,
+    534,
+    536,
+    540,
+    542,
+    544,
+    545,
+    546,
+    547,
+    548,
+    549,
+    553,
+    554,
+    564,
+    567
+  ],
+  "wave4_note": "integrated with sibling ready batch"
+}

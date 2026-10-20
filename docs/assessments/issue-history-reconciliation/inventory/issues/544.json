@@ -1,0 +1,50 @@
+{
+  "issue_number": 544,
+  "fetched_at_utc": "2026-10-20T00:37:41Z",
+  "issue": {
+    "number": 544,
+    "title": "Fix Waveform Scrubbing to Seek to Tapped Position",
+    "state": "closed",
+    "body": "QA on #409 found that when a user records multiple verses in Pericope Mode, the recording plays back as a single combined audio unit. Tapping a point on the draft waveform to scrub does not seek playback to that position; instead, playback restarts from the beginning of the recording. Tapping the waveform should move playback to the tapped position.\n\n## Functional Requirements\n\n### Waveform Scrubbing\n- Tapping a point on the draft waveform in Pericope or Verse Mode should seek playback to that position in the recording.\n- Do not restart playback from the beginning when the waveform is tapped.",
+    "user": "chadw-eten",
+    "created_at": "2026-09-17T13:20:37Z",
+    "updated_at": "2026-10-15T17:45:59Z",
+    "closed_at": "2026-10-14T04:37:52Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 3,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/544",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5799518492,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-09-23T17:22:53Z",
+      "updated_at": "2026-09-23T17:22:53Z",
+      "body": "**Finding from the #528 audit (Play, record, and re-record audio)**\n\nDevice: Xiaomi Redmi Note 9 Pro, Android 10, running merged `main` against `dev.api.fluent.bible`.\n\nIn verse mode, tapping the middle of a draft take's waveform now **seeks to the tapped position**, but:\n\n- playback **starts on its own** after the tap, and\n- the take control keeps showing **Play** instead of Pause.\n\nIn `useVerseAudio.seek`, `playingTakeId` is set but no `PLAY` is dispatched, so the card's `isThisPlaying` (which requires `state === 'playing'`) stays false.\n\nThe same tap also raises `Maximum update depth exceeded` (dev LogBox). That is tracked separately in #569.\n\nSuggested additional AC for this issue:\n\n- [ ] After a waveform tap, the take control reflects the real playback state (Pause while playing), and playback does not auto-start unless it was already playing.\n\nAssessment: `docs/assessments/play-record-rerecord-audio/` (PR #566).\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/544#issuecomment-5799518492"
+    },
+    {
+      "id": 6191401754,
+      "user": "Roslin22",
+      "created_at": "2026-10-15T11:52:42Z",
+      "updated_at": "2026-10-15T11:52:42Z",
+      "body": "**Test Results: 544-Mobile**\n\n- Verified that tapping a point on the draft waveform seeks playback to the corresponding position in the recording in Pericope Mode.\n- Verified that waveform scrubbing also works correctly in Verse Mode.\n- Confirmed that tapping the waveform moves playback to the selected position instead of restarting the recording from the beginning.\n- Verified that waveform scrubbing works as expected when recording multiple verses in Pericope Mode.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/544#issuecomment-6191401754"
+    },
+    {
+      "id": 6198524031,
+      "user": "chadw-eten",
+      "created_at": "2026-10-15T17:45:59Z",
+      "updated_at": "2026-10-15T17:45:59Z",
+      "body": "\u2705 ",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/544#issuecomment-6198524031"
+    }
+  ],
+  "comments_fetched_count": 3,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

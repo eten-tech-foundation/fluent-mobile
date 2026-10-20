@@ -1,0 +1,34 @@
+{
+  "issue_number": 579,
+  "fetched_at_utc": "2026-10-20T00:37:59Z",
+  "issue": {
+    "number": 579,
+    "title": "Play downloaded source audio offline [Going offline Audit]",
+    "state": "closed",
+    "body": "Found during the going offline audit (#529, epic #526).\n\n**Severity:** High  \n**Launch blocker:** To be decided with product  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), nightly `1.0.0` of `main` @ `d5b9e64`, `dev.api.fluent.bible` (scenarios G.25, G.27)\n\n## Summary\n\n#51 puts source audio in Tier 1: it is always part of the Prepare for Offline download. On `main`, the source audio player never reads a local file. `useSourceAudio` fetches the chapter's audio from fluent-api on every cache miss (`src/hooks/useSourceAudio.ts:172`) and streams the returned URL. The response cache is in memory only (`:153-158`). In airplane mode the fetch fails and the player moves to `error`, even for a chapter prepared for offline.\n\nThe Prepare for Offline catalog is still a mock today (#504 / PR #562, open). fluent-api `main` already serves `GET /projects/{id}/source-audio/manifest` for Tier 1 source audio.\n\n## Expected\n\n- After Prepare for Offline completes for a chapter, its source audio plays in airplane mode from the downloaded file, including verse seek.\n- A chapter without downloaded audio shows the existing \"no audio\" or unavailable state offline.\n\n## Actual\n\n- G.25: on a chapter prepared for offline, in airplane mode, the Bible tab shows the source text, but the source audio player shows only a Retry button.\n- G.27: on a chapter that was not prepared, offline, the player also shows Retry instead of an unavailable state.\n\n## Steps to reproduce\n\n1. On Wi-Fi, prepare one chapter for offline in a project that has source audio.\n2. Turn on airplane mode, then kill and reopen the app.\n3. Open the chapter \u2192 Bible tab, and play the source audio.\n\n## Acceptance criteria\n\n- [ ] Prepare for Offline enqueues Tier 1 source audio from the fluent-api source-audio manifest (coordinate with #504).\n- [ ] The source audio player resolves a downloaded local file before calling the API, and plays offline with verse timestamps.\n- [ ] Offline without a download shows the unavailable state, not a spinner.\n- [ ] Unit tests cover local-first resolution and the offline fallback.\n- [ ] Android device QA: prepare \u2192 airplane mode \u2192 cold start \u2192 play + seek.\n\n## Related\n\n- Parent audit: #529 (epic #526)\n- Spec: #51 (Tier 1), #412 (Bible tab source audio player)\n- Related: #504, PR #562; fluent-api source-audio manifest; sibling audit #531\n- Related gap: #578 (downloaded Resources are not read offline either)\n- Assessment: `docs/assessments/going-offline/README.md` (PR #577)\n\n\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-24T13:51:32Z",
+    "updated_at": "2026-10-13T20:37:28Z",
+    "closed_at": "2026-10-13T20:37:28Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/579",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5942711881,
+      "user": "mattrace-gloo",
+      "created_at": "2026-10-01T23:34:03Z",
+      "updated_at": "2026-10-01T23:34:03Z",
+      "body": "Blocked pending Prepare for Offline source-audio manifest / downloads (#504 / PR #562). Will resume `/start-issue` for this ticket after that lands.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/579#issuecomment-5942711881"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

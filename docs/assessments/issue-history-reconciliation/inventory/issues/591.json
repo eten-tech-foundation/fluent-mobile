@@ -1,0 +1,25 @@
+{
+  "issue_number": 591,
+  "fetched_at_utc": "2026-10-20T00:38:08Z",
+  "issue": {
+    "number": 591,
+    "title": "Hide empty Translation Notes and Questions sections in the Resources tab [Viewing and listening to resources Audit]",
+    "state": "closed",
+    "body": "Found during the viewing and listening to resources audit (#531, epic #526).\n\n**Severity:** Medium  \n**Launch blocker:** No  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), local run of `main` @ `fb634e5`, `dev.api.fluent.bible` (scenarios A.6, E.14)\n\n## Summary\nOnline, the Resources tab always shows the Translation Notes and Translation Questions accordions, even when the verse has none, and the tab-wide empty state from #188 never appears. `getVisibleResourceSections` returns all three sections online (`src/utils/resourcesSectionInventory.ts:84-86`); `ResourcesTab` hides only Images & Maps when it loads empty (`src/app/tabs/ResourcesTab.tsx:175-188`). The only empty copy is the offline one (`RESOURCES_EMPTY_MESSAGE`, `src/constants/messages.ts:24-25`).\n\n## Expected\n- A section with no content for the unit is hidden (#189, #190, #191).\n- When the unit has no resources of any kind, the tab shows a centered \"No resources available for this verse\" (#188).\n\n## Actual\n- A.6: Psalms 10:1 shows Translation Notes, which expands to an empty body (Images & Maps is correctly hidden).\n- A.6: Mark 1 Translation Questions shows a spinner on expand, then an empty body. TQ loads only when its section is expanded (`useTranslationQuestionsForUnit` runs inside the accordion body, which renders only when expanded), so the tab cannot know it is empty and it refetches on every expand.\n- E.14: after Retry online, an empty TQ still expands to a blank body.\n\n## Steps to reproduce\n1. Online, open a chapter and go to a verse missing one resource type (e.g. Psalms 10:1 has no Translation Notes content).\n2. Open the Resources tab and expand each section.\n\n## Acceptance criteria\n- [ ] TQ loads with the tab (like TN and Images), not on expand.\n- [ ] TN and TQ are hidden once they load empty, like Images & Maps.\n- [ ] When all sections load empty online, show the centered \"No resources available for this verse\".\n- [ ] Offline copy stays for the no-inventory case; loading and connectivity-unresolved states do not show an empty message.\n- [ ] Unit tests cover hide-when-empty per section and the online tab-wide empty state.\n- [ ] Android device QA: verse with content, verse with one missing type, verse with none.\n\n## Related\n- Spec: #188, #189, #190, #191\n- PR #387 (online without inventory gating)\n- Parent audit: #531 (epic #526)\n- Related gap: #592 (offline empty message flashes while loading)\n- Assessment: `docs/assessments/viewing-and-listening-to-resources/README.md` (PR #590)\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-25T21:13:48Z",
+    "updated_at": "2026-10-08T18:32:16Z",
+    "closed_at": "2026-10-08T18:32:16Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/591",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

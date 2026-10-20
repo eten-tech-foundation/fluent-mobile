@@ -1,0 +1,35 @@
+{
+  "issue_number": 275,
+  "fetched_at_utc": "2026-10-20T00:35:53Z",
+  "issue": {
+    "number": 275,
+    "title": "Truth-up AGENT_ONBOARDING: recording is wired; fix Jest suite count",
+    "state": "closed",
+    "body": "### Problem statement\n\n`docs/AGENT_ONBOARDING.md` still describes recording as largely stubbed and persistence to `recordings` as not fully wired. That is false on current `main` after #49 / #94\u2013#98 / #100 and related work.\n\nIt also claims Jest has \u201c18 suites\u201d; the repo now has on the order of ~75 `*.test.ts(x)` files.\n\nStale onboarding misleads new developers and agents about where to start.\n\n### Scope\n\n- Update the product blurb in `docs/AGENT_ONBOARDING.md` so it matches current Record / recordings / upload state (high level; do not invent unfinished AC).\n- Fix the Jest suite count (or replace with a non-brittle phrasing such as \u201cJest + Testing Library; see `src/**/*.test.*`\u201d).\n- Quick pass for any other obviously false \u201cstubbed\u201d claims in that file only.\n\n### Out of scope\n\n- Rewriting all of `docs/` or architecture diagrams unless required for accuracy.\n- Implementing product features.\n\n### Acceptance criteria\n\n- [ ] Onboarding no longer says recording UI / `recordings` persistence is stubbed/unwired when that is false on `main`.\n- [ ] Test count / test guidance is accurate or intentionally non-numeric.\n- [ ] A new reader can tell Record + upload exist and which follow-ups remain (e.g. #235 source dock, #253 SyncScreen glue, #71 multi-take UI).\n\n### Verification\n\n- [ ] Diff reviewed against `origin/main` Record / `recordingsRepository` / upload paths.\n- [ ] `npm test -- --ci` not required for docs-only unless touched scripts.\n\n### Priority\n\nP2 \u2014 onboarding hygiene for the incoming developer.\n\n### File pointers\n\n- `docs/AGENT_ONBOARDING.md`\n- Related (read-only context): `src/app/tabs/RecordTab.tsx`, `src/db/recordingsRepository.ts`, `src/services/recordingSync.ts`",
+    "user": "mattrace-gloo",
+    "created_at": "2026-07-29T21:34:36Z",
+    "updated_at": "2026-08-25T12:39:06Z",
+    "closed_at": "2026-08-12T17:49:14Z",
+    "labels": [
+      "documentation",
+      "DevQA"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/275",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5140440931,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-31T07:27:40Z",
+      "updated_at": "2026-07-31T07:27:40Z",
+      "body": "## API readiness note (board audit)\n\n**Status on fluent-api `main`:** Not applicable \u2014 docs/Jest count hygiene only (`docs/AGENT_ONBOARDING.md`).\n\n**Implement with:** Docs/tests only. No mock API / no fluent-api follow-up required unless onboarding text claims APIs that are still missing (then correct the docs).\n\n### Follow up with fluent-api team\nWhen you pick this up, please ask the fluent-api team:\n1. Is the needed feature planned / in progress?\n2. Expected ETA (or \u201cnot scheduled\u201d)?\n3. Is there already an open fluent-api GitHub issue or PR? If yes, link it here; if no, ask them to file one (or file it yourself and link it).\n\nChecked against local fluent-api `main` @ `3ef4025` (2026-07-31).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/275#issuecomment-5140440931"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,43 @@
+{
+  "issue_number": 103,
+  "fetched_at_utc": "2026-10-20T00:34:35Z",
+  "issue": {
+    "number": 103,
+    "title": "Harden multi-user schema: FKs/indexes via migration",
+    "state": "closed",
+    "body": "### Current state on main\n\n`user_projects` already exists (`src/db/schema.ts:98`):\n\n```sql\nCREATE TABLE IF NOT EXISTS user_projects (\n user_id INTEGER NOT NULL, -- no FK to users(id)\n project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,\n PRIMARY KEY (user_id, project_id)\n);\nCREATE INDEX IF NOT EXISTS idx_up_user ON user_projects(user_id); -- :104\n```\n\n`chapter_assignments` already has `peer_checker_id` (`:57`) and `total_verses`/`completed_verses` (`:61-62`), but:\n\n```sql\nassigned_user_id INTEGER , -- :56 lost: REFERENCES users(id)\nstatus TEXT NOT NULL, -- :58 lost: DEFAULT\n-- idx_ca_assigned_user index is absent (only idx_ca_project_unit exists)\n```\n\nRepository writes already populate these (`repository.ts:insertUserProjects:390`, `insertChapterAssignmentTx:74`). Reads rely on them (`queries.ts:getMyWorkChapters` filters `WHERE ca.assigned_user_id = ?`, `:335`; `getProjectsWithSummary` joins `user_projects`, `:61`).\n\n### Problems / why\n\n- `user_projects.user_id` has **no FK** to `users(id)` \u2192 orphan rows possible.\n- `chapter_assignments.assigned_user_id` lost its **FK to users(id)** and there is **no `idx_ca_assigned_user`** \u2192 no integrity + slow My Work query.\n- `chapter_assignments.status` lost its **default**.\n- Migrations are an **ad-hoc array** (`schema.ts:108`), not versioned (#110).\n\n### Target design\n\nVia the #110 `user_version` migration framework (SQLite requires table rebuild to add FKs/defaults):\n\n```sql\n-- chapter_assignments rebuild: assigned_user_id INTEGER REFERENCES users(id),\n-- status TEXT NOT NULL DEFAULT 'not_started'\nCREATE INDEX IF NOT EXISTS idx_ca_assigned_user ON chapter_assignments(assigned_user_id);\n-- user_projects rebuild: user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE\n```\n\n- Keep `peer_checker_id` and verse-progress columns as-is.\n- Do **not** edit `createTableQueries` destructively \u2014 migrate existing device DBs in place.\n\n### Coordination note (avoid duplication)\n\n- **This ticket (#103) owns** the single migration that rebuilds `chapter_assignments` (FK + default + `idx_ca_assigned_user`) and `user_projects` (user FK). **#99 (C1)** references this migration and must not implement a second one.\n- **#110 (F2)** lands first.\n- **#105 (D3)** owns any recordings user-attribution column.\n\n### Implementation steps\n\n1. Depend on #110 migration framework.\n2. Add one migration that rebuilds `chapter_assignments` with `assigned_user_id REFERENCES users(id)` + `status DEFAULT 'not_started'`, adds `idx_ca_assigned_user`, and rebuilds `user_projects` with a `user_id` FK.\n3. Preserve existing data during rebuild (copy \u2192 drop \u2192 rename), respecting `PRAGMA foreign_keys` ordering.\n4. Verify `getMyWorkChapters`/`getProjectsWithSummary` still pass and now use the new index.\n5. Tests: migrate an old-shape DB; FK violations rejected; indexes present; existing rows preserved.\n\n### Acceptance criteria\n\n- [ ] `user_projects.user_id` references `users(id)`; `chapter_assignments.assigned_user_id` references `users(id)`; `status` defaults to `'not_started'`.\n- [ ] `idx_ca_assigned_user` exists.\n- [ ] Implemented as one migration via #110 (no duplicate with #99); no destructive `createTableQueries` rewrite.\n- [ ] Existing rows preserved through the rebuild; tests cover migration + FK enforcement.\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Tests default `EXPO_PUBLIC_API_BASE_URL=http://localhost:9999` via `jest.env.cjs`; **no live API required** \u2014 local SQLite/mocked DB.\n- Do **not** use `FLUENT_USER_EMAIL`.\n\n### Out of scope\n\n- Migration framework (#110), recordings linkage (#99), user attribution column (#105), My Work query correctness (#104).\n\n### Links\n\n- Epic: #118\n- Related: #110 (F2), #99 (C1 \u2014 references this migration), #105 (D3), #104 (D2)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:46:06Z",
+    "updated_at": "2026-07-27T05:12:40Z",
+    "closed_at": "2026-07-27T05:12:40Z",
+    "labels": [
+      "enhancement",
+      "SP 1"
+    ],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/103",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5062181043,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-23T18:53:27Z",
+      "updated_at": "2026-07-23T18:53:27Z",
+      "body": "## Linked PR (stacked \u2014 sidebar closing ref pending)\n\nImplementation: https://github.com/eten-tech-foundation/fluent-mobile/pull/248\n\nPR body already includes `Closes #103`, but the base is `mrace/feature/99-recordings-linkage-chapter-fk` (not `main`), so GitHub does not show a linked/closing issue in the PR sidebar until the PR is retargeted to `main` after #246 merges.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/103#issuecomment-5062181043"
+    },
+    {
+      "id": 5064059391,
+      "user": "mattrace-buildmidwestern",
+      "created_at": "2026-07-23T22:13:53Z",
+      "updated_at": "2026-07-23T22:13:53Z",
+      "body": "Linked development branch `mrace/feature/103-harden-user-projects-fk` \u2192 PR https://github.com/eten-tech-foundation/fluent-mobile/pull/248 (Closes #103).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/103#issuecomment-5064059391"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

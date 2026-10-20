@@ -1,0 +1,32 @@
+{
+  "issue_number": 496,
+  "fetched_at_utc": "2026-10-20T00:37:17Z",
+  "issue": {
+    "number": 496,
+    "title": "Maestro edge flows: reauth, legal, mic/notification deny",
+    "state": "closed",
+    "body": "## Summary / context\n\nParent: #488.\n\nEdge and negative paths that round out regression coverage beyond happy-path smokes: reauth, legal pages, mic deny, notification deny.\n\n## Current vs expected\n\n**Current:** Manual / ad hoc. Some ids already exist (`reauth-banner`, legal links, permission helpers).\n\n**Expected:** Maestro flows (or tagged suite entries) for:\n- Reauth banner \u2192 password \u2192 return\n- Privacy / Terms from login and drawer\n- Mic deny on Record (assert gated UI, no crash)\n- Notification permission deny still allows upload path (assert no crash / sync still usable \u2014 match product behavior)\n\n## Scope\n\n**In scope**\n- Flows listed above\n- Document how to force reauth in **dev** (or skip with N/A if not automatable without backend hooks)\n\n**Out of scope**\n- Exhaustive permission matrix on every OEM\n- Accessibility audit\n\n## Acceptance criteria\n\n- [ ] Legal navigation asserts by id\n- [ ] Mic-deny flow does not crash; Record remains gated\n- [ ] Notification-deny path documented + asserted at smoke level\n- [ ] Reauth covered **or** residual documented with reason\n\n## Verification / test plan\n\n1. Run edge suite after auth smokes exist\n2. Note device/API limitations in PR\n\n## Links\n\n- Refs #488\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-10T19:52:59Z",
+    "updated_at": "2026-09-10T19:54:50Z",
+    "closed_at": "2026-09-10T19:54:17Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/496",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5624594917,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-10T19:54:50Z",
+      "updated_at": "2026-09-10T19:54:50Z",
+      "body": "Condensed into #491 (main smoke suite).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/496#issuecomment-5624594917"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

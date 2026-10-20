@@ -1,0 +1,115 @@
+{
+  "issue_number": 176,
+  "fetched_at_utc": "2026-10-20T00:35:12Z",
+  "issue": {
+    "number": 176,
+    "title": "Seekable playback: convert committed AAC take to M4A for Review scrubbing",
+    "state": "closed",
+    "body": "## Summary\n\nThe Record Tab Review state (#49) requires scrubbing the draft waveform to any position. Recording commits takes as **ADTS AAC (`.aac`)**, which is not reliably seekable, so #49 **waives** the scrubbing acceptance criterion and defers it here to be solved and reviewed separately.\n\nThis issue covers both halves of the problem: the **commit format** and the **scrubbing** it needs to enable.\n\n## Background / why the format is the way it is\n\nRecording captures into **ADTS AAC (`.aac`)** rather than the preset `.m4a` on purpose (see `src/hooks/useRecorder.ts`):\n\n- An MP4/M4A file is only valid once its `moov` atom is written on a clean `stop()`. A process kill mid-recording leaves it unplayable and un-appendable.\n- ADTS is a self-framing stream: a killed segment stays playable, and multiple segments concatenate by byte-append. This is what makes **pause / resume-after-kill** possible.\n\nThe trade-off: ADTS AAC has **no container index / `moov` atom**, so accurate absolute seeking (scrubbing) is unreliable. We do not want to give up kill-safe resumable capture to get seeking, so the two formats must coexist.\n\n## Current vs expected\n\n- **Current:** committed takes are stored as ADTS `.aac`. Playback works, but scrubbing to an arbitrary position is not reliably accurate.\n- **Expected:** Review can scrub to any position accurately, reading from a **seekable** file, without regressing resumable capture.\n\n## Proposed approach\n\nBuild a **local (native) module** \u2014 an Expo local/native module or config-plugin-backed module, since this is CNG / Android-only \u2014 that, after a take is committed, **converts/remuxes the committed ADTS `.aac` into an M4A (MP4/AAC) file** with a proper `moov` atom.\n\n- Keep ADTS AAC as the **capture/resume** format (do not regress kill-safe resumable takes).\n- Run the AAC \u2192 M4A conversion as part of / immediately after commit (`commitRecording` in `src/hooks/useRecorder.ts`), and resolve the committed take's playable URI to the M4A output.\n- Feed the seekable M4A into the existing playback/seek path (`src/hooks/useAudioPlayback.ts`) that backs the Review scrub UI (`src/app/tabs/drafting/record/components/RecordingWaveform.tsx`).\n\n## Scope\n\n**In scope**\n- Local native module to convert/remux a committed AAC take to seekable M4A.\n- Wiring the converted M4A into the commit flow and playback URI resolution.\n- Accurate scrubbing in the Review state on the converted file.\n\n**Out of scope**\n- Changing the capture/resume format (stays ADTS AAC).\n- Waveform amplitude generation / visual design beyond enabling accurate seek.\n\n## Acceptance criteria\n\n- [ ] A committed take is converted to a seekable M4A (MP4/AAC) file after commit.\n- [ ] Review-state scrubbing seeks accurately to arbitrary positions on the converted file (satisfies the #49-waived scrubbing AC).\n- [ ] Capture, pause, and resume-after-kill continue to work unchanged (still ADTS AAC).\n- [ ] Conversion failure is handled gracefully (logged; take remains playable even if non-seekable) \u2014 no data loss.\n- [ ] Android device QA recorded on the PR (native module + audio path).\n\n## Verification / test plan\n\n- Unit-test the commit \u2192 convert \u2192 resolve-URI path (mock the native module).\n- Android device QA: record a take, commit, then scrub the Review waveform to multiple positions and confirm playback resumes accurately from each.\n\n## File pointers\n\n- `src/hooks/useRecorder.ts` \u2014 AAC/ADTS capture decision (comment near the `useAudioRecorder` config) and `commitRecording`.\n- `src/hooks/useAudioPlayback.ts` \u2014 `seek()` / playback used by Review.\n- `src/app/tabs/drafting/record/components/RecordingWaveform.tsx` \u2014 Review scrub UI (`onSeek`, `durationMs`).\n- `app.config.ts` / `plugins/` \u2014 where a local native module / config plugin would be wired (CNG, Android-only).\n\n## Links\n\nRefs #49\nRelated: #96 (playback engine + waveform decision)",
+    "user": "fel-cesar",
+    "created_at": "2026-07-10T15:21:04Z",
+    "updated_at": "2026-08-11T14:21:30Z",
+    "closed_at": "2026-08-04T21:23:19Z",
+    "labels": [
+      "SP 1",
+      "DevQA"
+    ],
+    "comments": 11,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/176",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4960208711,
+      "user": "fel-cesar",
+      "created_at": "2026-07-13T16:28:16Z",
+      "updated_at": "2026-07-13T17:03:51Z",
+      "body": "## Spike #176 \u2014 findings: m4a vs ADTS capture (bounded, ~half day)\n\nRan the bounded kill-test spike on a physical Android device (dev client). TL;DR: **there is no single crash-safe *and* natively-seekable capture format available through an `expo-audio` preset**, which confirms ADTS capture is the right call. Two real options remain for producing a seekable take (below) \u2014 flagging before any more native code per the ask.\n\n### 1. Default `HIGH_QUALITY` `.m4a` (`mpeg4`) preset \u2014 kill mid-take\n**Result: lossy on crash.** After a mid-take force-kill, only a **prefix** of the take is playable; audio recorded near the moment of the kill is lost. MediaRecorder streams samples into `mdat` while recording but only finalizes the `moov` (sample index) on a clean `stop()`, so a killed take has a missing/stale index and can't recover the tail. (Exact symptom can vary by device/player \u2014 open-with-prefix vs fail-to-open \u2014 but it's lossy either way.)\n\nVideo:\n\nhttps://github.com/user-attachments/assets/28aab85b-c027-41d6-b6cf-ce95a38cc4c0\n\n\n### 2. Our ADTS config (`aac_adts` / `.aac`) \u2014 kill mid-take\n**Result: fully playable + resumable.** The partial take plays end-to-end after a kill, because every AAC frame is self-framing (no central index to go stale). This is what makes byte-append concatenation and resume-after-kill work.\n\nVideo: \n\nhttps://github.com/user-attachments/assets/21439538-5d3b-4417-900b-a31daeb6854e\n\n### 3. Output formats exposed by `expo-audio`\n`AndroidOutputFormat` is fixed to: `default | 3gp | mpeg4 | amrnb | amrwb | aac_adts | mpeg2ts | webm`. **No fragmented-MP4 (fMP4) option.** Of these, only `aac_adts` and `mpeg2ts` are self-framing / crash-tolerant; none are both crash-safe **and** natively seekable via a preset. (Confirmed by inspecting the shipped types \u2014 no device needed.)\n\n### 4. Fragmented MP4\nAs predicted, fMP4 (`moof`/`mdat` fragments) is **not reachable through a preset**. Getting it would require a custom `AudioRecord \u2192 MediaCodec \u2192 fragmented muxer` pipeline \u2014 a much larger native project than the remux module. **Ruled out for this feature.**\n\n### Conclusion\nNo single-format path through `expo-audio` gives us crash-safety + native seek. ADTS capture stands. That leaves the two valid options called out in the ticket for turning captured ADTS into a seekable take:\n\n- **B \u2014 ADTS capture + remux on commit:** losslessly repackage the merged ADTS into a seekable `.m4a` via Android `MediaMuxer` (`AacRemux`). Not brute force \u2014 it's the platform API JS can't reach.\n- **A \u2014 segment manifest + global seek in playback (JS only):** keep the ordered ADTS segments, play them as one logical stream, map global position \u2192 `(segment, offset)`. No Kotlin.\n\nThe A-vs-B decision hinges on **intra-ADTS seek accuracy** and **cross-segment boundary smoothness**, which I have *not* measured yet.\n\n### Scope flag before more native code\nHolding here per \"post findings before building any more native code\" \u2014 **how do you want to proceed?**\n- (b) go straight to Option B (keep the remux) and delete the Option A prototype, or\n- (c) merge-at-sync/server and play a single file.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/176#issuecomment-4960208711"
+    },
+    {
+      "id": 4961747887,
+      "user": "fel-cesar",
+      "created_at": "2026-07-13T19:24:12Z",
+      "updated_at": "2026-07-13T19:24:12Z",
+      "body": "## Append: fMP4 findings \u2014 why we're not taking that path\n\nfMP4 (fragmented MP4) is the one container that is *both* crash-safe and seekable:\nan init segment (`ftyp` + skeletal `moov`) is written up front, then each fragment\n(`moof` index + `mdat` audio) is self-describing \u2014 so flushed fragments stay playable\nafter a kill, and each carries a sample table for precise seek. It would collapse both\nconcerns the ADTS+remux path splits (crash-safe capture vs. seekable playback) into a\nsingle file, retiring `AacRemux`.\n\nIt is reachable natively: `androidx.media3.muxer.FragmentedMp4Muxer`\n(`setFragmentDurationMs`, default 2000ms) produces fMP4. But **not through `expo-audio`**\n\u2014 `AndroidOutputFormat` exposes no fMP4, so this means replacing the recorder with a\ncustom `AudioRecord \u2192 MediaCodec \u2192 FragmentedMp4Muxer` pipeline.\n\nWhy we're **not** doing it now:\n\n- **Much larger than the remux module.** We'd own raw mic capture, AAC encode, the\n  muxer, a **foreground-service** (`microphone` FGS type) lifecycle, and metering \u2014\n  everything `expo-audio` currently handles for us.\n- **Crash-recovery is not free.** A kill can leave a torn trailing fragment, so we'd\n  need a relaunch **repair/truncate** step. More importantly, media3 writes samples \"in\n  batches,\" so the real loss window depends on **disk-flush cadence** \u2014 unverified, and\n  the single biggest risk to prove before trusting the crash-safety claim.\n- **Doesn't remove multi-segment.** `FragmentedMp4Muxer` can't be reopened to append, so\n  resume-after-kill still yields N files \u2014 same as ADTS today \u2014 and fMP4 files don't\n  byte-concatenate (each has its own init segment), so merging needs a real remux pass.\n\n**Decision:** stay on crash-safe ADTS capture; the A-vs-B choice (JS manifest vs.\nADTS\u2192M4A remux) is unchanged. fMP4 is the theoretically ideal format but a disproportionate\nnative subsystem for this feature. Revisit only if a future ticket needs a single\ncrash-safe + seekable artifact and is scoped for a dedicated native recorder \u2014 first step\nwould be a throwaway spike that records fragments, hard-kills the process, and **measures\nthe actual tail loss** to validate the flush window.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/176#issuecomment-4961747887"
+    },
+    {
+      "id": 4962988042,
+      "user": "fel-cesar",
+      "created_at": "2026-07-13T21:44:21Z",
+      "updated_at": "2026-07-13T21:55:14Z",
+      "body": "[fluent-mobile-176-spike.zip](https://github.com/user-attachments/files/29986390/fluent-mobile-176-spike.zip)\n\n## Device test update \u2014 Option C (m4a segments + manifest + global seek)\n\nReran the final device test with **Record .m4a + Keep manifest + Segment playback** forced on, killing the app **two ways**: Recents swipe *and* `adb shell am force-stop com.eten.fluent` (system-style kill).\n\n> \ud83d\udcf9 Screen recording attached below.\n\nhttps://github.com/user-attachments/assets/32480d56-7455-4675-aff4-3635c9138013\n\n### What worked\n- **Gap-free sequential playback** across multiple independently-finalized `.m4a` segments \u2014 little to no perceptible gap at boundaries.\n- **Accurate global seek** across the whole take: maps to the right \n\n\nsegment and the correct offset within it (relative to total duration), auto-switching `.m4a` files while scrubbing.\n- **No native remux needed** \u2014 each `.m4a` is self-seekable (own `moov`/sample table), so `manifest + useSegmentedAudioPlayback` plays N files as one logical, seekable stream.\n- Contrary to the step-1 kill test and the documented \"no `moov` on abrupt kill,\" **most** hard kills (swipe *and* `am force-stop`) left the in-flight segment playable \u2014 likely because expo-audio releases/finalizes the recorder on teardown and the muxer runs in a separate media-server process.\n\n### Downsides\n- `.m4a` segments are **not reliably mergeable into one file in JS** (MP4 is a box structure; would need ffmpeg/native).\n- In-flight crash-safety is **best-effort, not guaranteed** \u2014 **some** runs still produced a corrupt (moov-less) segment. It's timing/OEM-dependent, so it can't be leaned on for data safety. The manifest writer drops any moov-less segment (probe \u2192 0ms), so the failure mode degrades to \"lose the last chunk,\" never \"whole take unplayable.\" ADTS remains the only *guaranteed* crash-safe capture.\n\nI also tried to reproduce the \"corrupt state\" locally more aggressively (using the CLI `am force-stop` to match how Android actually kills the app) and it happens **less often** than the docs/research imply \u2014 though frequency is still unknown.\n\n### Recommendation \u2014 depends on how reliable we need crash recovery to be\n- **If occasional unrecoverable in-flight chunks are acceptable \u2192 Option C, with a recovery prompt.** When the in-flight segment can't be recovered, tell the user that chunk couldn't be saved and prompt them to re-record it. Given how hard the corruption has been to reproduce in practice, this is my lean \u2014 but it's a product/reliability call, not purely technical.\n- **If we need near-guaranteed recovery \u2192 don't ship C as-is.** Either stay on **Option B** (ADTS + `MediaMuxer` remux, or merge at sync/server) for guaranteed crash-safe capture + accurate seek, or invest in a merge/repair step before relying on m4a segments.\n\nA/B/C stays **deferred pending the tech-lead call** per this issue \u2014 no native code deleted or graduated. The Option A/C prototype (`useSegmentedAudioPlayback`, manifest writer/resolver, runtime debug flags, MP4/ADTS duration probes) is all on `fel-cesar/spike/explore-m4a` for side-by-side comparison.\n\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/176#issuecomment-4962988042"
+    },
+    {
+      "id": 5025018425,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-20T17:14:00Z",
+      "updated_at": "2026-07-20T17:14:00Z",
+      "body": "**Assignee cleared** \u2014 `fel-cesar` is no longer on the project.\n\nRelated recording PRs closed (do not merge): #158, #178, #184. Branches remain as reference/salvage only.\n\nThis issue stays open. Re-assign when someone intentionally picks it up; prefer thin PRs against current `main` rather than reviving the closed mega-diffs.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/176#issuecomment-5025018425"
+    },
+    {
+      "id": 5027836346,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-20T22:20:32Z",
+      "updated_at": "2026-07-20T22:20:32Z",
+      "body": "Status corrected: moved from In PR Review \u2192 Dev Ready. Closed Cesar PRs (#158/#178/#184) are not under review; this card is available to pick up as a thin PR from current main.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/176#issuecomment-5027836346"
+    },
+    {
+      "id": 5028172943,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-20T23:16:23Z",
+      "updated_at": "2026-07-20T23:16:23Z",
+      "body": "## AC waiver (AGENTS.md) \u2014 native remux deferred\n\nPR #231 lands the **JS remux seam only** (`ensureSeekableTakeUri` + optional native inject). It does **not** implement the Android `MediaMuxer` remux module or complete #176 scrubbing AC.\n\n**Waived pending follow-up #233:**\n- [ ] Committed take converted to seekable M4A after commit (native remux)\n- [ ] Review scrubbing accurate on converted file\n- [ ] Android device QA for native remux + audio path\n\n**Satisfied / not blocked by this waiver:**\n- Conversion failure / missing module \u2192 take stays playable AAC (no data loss) \u2014 covered by the JS seam\n- Capture/pause/resume-after-kill format unchanged by #231\n\n**Follow-up:** #233 \u2014 native AAC\u2192M4A remux module + device QA.\n\nDo **not** treat `Closes #176` on #231 as full AC completion; #176 stays open until #233 lands (or AC is otherwise met).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/176#issuecomment-5028172943"
+    },
+    {
+      "id": 5062149293,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-23T18:49:49Z",
+      "updated_at": "2026-07-23T18:49:49Z",
+      "body": "## SP1 queue update \u2014 Review scrub UX shipped; #176 stays open for #233\n\nPR #252 (stacked on #105 / #251) wires the **Review scrub surface**:\n- Tap/drag on draft waveform \u2192 `useVerseAudio.seek`\n- Playback engine `load()` so scrub works before play\n- Works today on HIGH_QUALITY `.m4a`; ADTS remux still missing\n\n**Does not close #176** (per prior waiver): native MediaMuxer remux + accurate scrub on remuxed ADTS + device QA remain **#233**.\n\nNext queue item after #252 CI: **#233**.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/176#issuecomment-5062149293"
+    },
+    {
+      "id": 5062156353,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-23T18:50:38Z",
+      "updated_at": "2026-07-23T18:50:38Z",
+      "body": "## Board hygiene note\n\nLeaving this issue **open by design**.\n\n- JS seam landed via #231\n- Remaining AC continues on #233\n- Project 4 Status should stay **Dev Ready** until #233 completes (not closed with the seam PR alone)",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/176#issuecomment-5062156353"
+    },
+    {
+      "id": 5062262726,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-23T19:01:57Z",
+      "updated_at": "2026-07-23T19:01:57Z",
+      "body": "Draft remux PR is open for #233: https://github.com/eten-tech-foundation/fluent-mobile/pull/254 (stacked on this branch).\n\n**#176 should stay open** until a human records Android device QA for remux + Review scrub on an ADTS take. This remux PR does not close #176.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/176#issuecomment-5062262726"
+    },
+    {
+      "id": 5064060184,
+      "user": "mattrace-buildmidwestern",
+      "created_at": "2026-07-23T22:13:59Z",
+      "updated_at": "2026-07-23T22:13:59Z",
+      "body": "Linked development branch `mrace/feature/176-review-scrub-seekable` \u2192 PR https://github.com/eten-tech-foundation/fluent-mobile/pull/252 (Part of #176).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/176#issuecomment-5064060184"
+    },
+    {
+      "id": 5134789413,
+      "user": "mattrace-buildmidwestern",
+      "created_at": "2026-07-30T18:32:01Z",
+      "updated_at": "2026-07-30T18:32:01Z",
+      "body": "## Board hygiene \u2014 delivery vehicle\n\n**Open PR that ships this work (incl. remux from #254):** https://github.com/eten-tech-foundation/fluent-mobile/pull/252\n\n### How the tickets relate (not duplicates)\n\n| Issue | Role |\n|-------|------|\n| **#176** (this) | Parent: seekable Review scrub end-to-end |\n| **#233** | Follow-up: native AAC\u2192M4A MediaMuxer remux (code merged into #252\u2019s branch via #254) |\n\n### Why this issue stays open\n\n- #252 is **Part of #176** \u2014 it does **not** use `Closes #176` on purpose.\n- Remaining gate: **Android device QA** for remux + Review scrub on an ADTS take (per prior waiver).\n- After #252 merges to `main` **and** device QA is recorded, close this issue.\n\n### Why GitHub may not show a clean \u201ccloses\u201d link\n\n- Closing keywords only auto-close on merge to **default branch** (`main`).\n- #254 merged into the #252 feature branch (stacked), so `Closes #233` never fired.\n\nProject 4 Status: keep **In PR Review** while #252 is open.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/176#issuecomment-5134789413"
+    }
+  ],
+  "comments_fetched_count": 11,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

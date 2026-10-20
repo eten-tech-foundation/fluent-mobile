@@ -1,0 +1,23 @@
+{
+  "issue_number": 704,
+  "fetched_at_utc": "2026-10-20T00:38:51Z",
+  "issue": {
+    "number": 704,
+    "title": "Add Offline Draft Audio Download for Peer Check Chapters",
+    "state": "open",
+    "body": "Prepare for Offline downloads the source resources for a translator's selected chapters but not the target-language draft, since a translator authors the draft rather than receiving it. A peer checker opens a chapter that someone else drafted, so offline the draft audio is missing and the check cannot start. This ticket adds a per-chapter download of the drafter's audio for Peer Check chapters.\n\n## Functional Requirements\n\n### Download Trigger\n- Show the icon-only `li:cloud-off` download chip on any Peer Check chapter row, assigned or open, whose draft audio is not on the device.\n- Start the download when the peer checker taps the chip, without an intermediate selection or configuration screen.\n- Start the download on the single tap; do not require a second confirmation step.\n- Do not start any draft audio download automatically.\n\n<img width=\"413\" height=\"584\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/4f75e13a-6abc-4814-9d41-b8d568422beb\" />\n\n### Download Payload\n- Download the chapter's draft text and the selected take's audio for every verse or pericope in the chapter.\n- Do not download any other take for the chapter.\n- Do not download draft audio for a chapter the peer checker has not tapped to download.\n\n### Progress & Readiness\n- Show download progress as a circular progress ring around the chip's icon; do not open a separate progress screen.\n- Swap the icon inside the ring to a green `li:cloud-check` once the draft audio is on the device.\n- Keep the green checkmark visible for 10 seconds after it appears, then fade the chip out, returning the row to its normal state.\n- Let a peer checker open a chapter whose download is incomplete; do not block entry. Draft playback stays unavailable until the audio lands.\n- Reuse the existing sync status icon and its offline/pending/synced states rather than adding a separate readiness indicator.\n\n### Cleanup\n- Remove the downloaded draft audio automatically once the chapter's stage advances past Peer Check.\n\n> **Note:** Reuse the download behavior built in #508, including its progress and retry after a failed download. Unlike that download, this one excludes the source scripture and removes its content when the chapter leaves Peer Check rather than Community Review. The chip itself is defined in #505.\n\n\n",
+    "user": "chadw-eten",
+    "created_at": "2026-10-14T21:20:22Z",
+    "updated_at": "2026-10-14T21:28:38Z",
+    "closed_at": null,
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/704",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

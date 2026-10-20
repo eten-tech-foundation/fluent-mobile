@@ -1,0 +1,575 @@
+{
+  "reviewer": "r4",
+  "wave": 2,
+  "ids": [1, 2, 5, 6, 9, 10, 12, 14, 15, 17, 18, 23],
+  "domain": "early-mvp-nav-ci",
+  "reviewed_at_utc": "2026-10-20T00:58:21Z",
+  "issues": [
+    {
+      "issue": 1,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Expo discovery spike: local env; PoC navigation; SQLite CRUD; audio record/playback/scrub/edit (splice/trim/cut); record findings in Google Doc template. Explicitly not app-store work; PoC may live on a branch or separate repo. Body checkboxes remain unchecked at close.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/1"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "package.json",
+          "lines": "1-16",
+          "fact": "Shipping Expo app name fluent-mobile with prebuild --platform android / jest / lint scripts — discovery PoC scaffolding was absorbed into the product repo, not left as a disposable spike branch."
+        },
+        {
+          "path": "docs/AGENT_ONBOARDING.md",
+          "lines": "11-24",
+          "fact": "Living stack is Expo SDK 57 + op-sqlite + Android-only CNG; audio editing discovery items are not living AC here (owned later by #49/#94–98)."
+        },
+        {
+          "path": "src/audio/createRecordingEngine.ts",
+          "lines": "46-94",
+          "fact": "Current record surface is expo-audio engine start/pause — not the discovery ffmpeg exploration path."
+        }
+      ],
+      "material_pr_or_decision": null,
+      "material_pr_or_decision_na": {
+        "reason_not_applicable": "No linked closing PR (closed_by_pull_requests empty). Closed completed 2026-05-11 by vipinpaul. Sole comment 2026-02-09 (Alph-1n) is ffmpeg integration progress only — not a product waive or acceptance of unchecked AC. Later product tickets (#23/#49/#94–98) supersede audio PoC scope."
+      },
+      "source_vs_qa": {
+        "working_tree": "Branch HEAD is a full Expo Android app; discovery checkboxes are historical only.",
+        "device_evidence": "none for #1 discovery AC"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Closed state ≠ acceptance of unchecked discovery AC. Complete finding: no lasting user-facing AC; named supersession by later tickets. Complete ≠ QA pass."
+    },
+    {
+      "issue": 2,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Umbrella MVP PoC companion: local env/emulator; Fluent branding (app.json name/slug/scheme; iOS+Android bundle com.eten.fluent; package.json name fluent-mobile; README); navigation/API client/SQLite/audio/CI per child tickets; relaxed PoC PR bar.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/2"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "package.json",
+          "lines": "1-8",
+          "fact": "name is fluent-mobile — matches PoC identity AC."
+        },
+        {
+          "path": "app.config.ts",
+          "lines": "41-42",
+          "fact": "android.package is com.eten.fluent; no ios.bundleIdentifier block — named divergence vs body iOS id."
+        },
+        {
+          "path": ".cursor/rules/android-only.mdc",
+          "lines": "6-12",
+          "fact": "Permanent Android-only policy: never add iOS config/CI/prebuild — supersedes #2 iOS bundle AC."
+        },
+        {
+          "path": "docs/AGENT_ONBOARDING.md",
+          "lines": "11-20",
+          "fact": "Living product AC lives in later stage tickets (sync/auth/drafting); umbrella PoC is historical."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/11",
+        "fact": "Merged 2026-04-14: body checks Setup local env, Scaffold PoC, Branding, Basic Navigation, Basic CI/CD. GitHub closing refs include #6/#7/#9/#10 (not #2). Later PR #82 Newbase connected to #2/#23 but CLOSED unmerged 2026-07-09 — not delivery. Issue closed completed 2026-07-29 by mattrace-gloo (manual). Comments are SP3 hours + SharePoint architecture doc only."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Fluent identity + Android-only CNG on HEAD; iOS bundle text in #2 is historical vs android-only policy.",
+        "device_evidence": "none for umbrella PoC AC"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Named unwaived wording divergence (iOS bundle) is superseded by explicit android-only policy — LATEST_EXPLICIT_DECISION, not an open bug. Do not treat unmerged #82 as ship. Complete ≠ QA pass."
+    },
+    {
+      "issue": 5,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "MVP View Project: title=project title; subtitle=target language; back → Project List; horizontal chapter cards (folder icon, Book Chapter, status subtitle, caret); tap → View Chapter. Happy path only (errors deferred).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/5"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/tabs/ViewProject.tsx",
+          "lines": "89-120",
+          "fact": "Current header title=milestoneName, subtitle=projectName (not project title + language); error+Try again present (beyond original happy-path-only AC)."
+        },
+        {
+          "path": "src/components/ui/ProjectChapterRow.tsx",
+          "lines": "29-74",
+          "fact": "Chapter rows use PhaseStatusIcon/WorkflowBadge/progress ring — not MVP folder-icon horizontal cards."
+        },
+        {
+          "path": "docs/product-behavior/core-flows.md",
+          "lines": "31-40",
+          "fact": "Living §2 My Work/milestones entry is Inferred — does not re-assert #5 card layout as AC."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/20",
+        "fact": "Merged 2026-04-17 and is the GitHub closer of #5 (also closes #4/#8/#16). PR body is DB+API sync into 8 tables — not a View Project layout delivery. Layout supersession is PR #55 (merged 2026-06-09, closes #33) replacing legacy View Project with stage badges/sync rows. Issue sole comment is SP3 hours only."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "ViewProject on HEAD matches #33-era layout, not #5 folder cards / language subtitle.",
+        "device_evidence": "none dated for #5 MVP layout AC"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Layout-only ticket (no permission AC). #5 closed-by-PR #20 is historical linkage oddity; living layout contract is #33/#55. Complete ≠ QA pass."
+    },
+    {
+      "issue": 6,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "MVP View Chapter: Book Chapter title + back to View Project; Source card (bible-verse, optional play bar, Show/Hide Source Text accordion default closed, 3-line then scroll); Target/Record card (record↔stop, play bar + delete when draft exists); horizontal verse chips with mic when recorded. Happy path only.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/6"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/tabs/RecordTab.tsx",
+          "lines": "1234-1360",
+          "fact": "Living record/playback UI is Record tab (post-#49), not a single View Chapter page with Show Source Text accordion strings."
+        },
+        {
+          "path": "docs/product-behavior/core-flows.md",
+          "lines": "52-60",
+          "fact": "§4 Recording Expected is labeled Inferred — not a reassertion of #6 MVP page AC."
+        },
+        {
+          "path": "src/app/tabs/ViewProject.tsx",
+          "lines": "89-93",
+          "fact": "Navigation today is milestone View Project → drafting/Record surfaces; no 'Show Source Text' / 'Hide Source Text' strings remain in src/."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/6#issuecomment-4852611794",
+        "fact": "LATEST_EXPLICIT_DECISION 2026-07-01 (B3RN153, closing comment): “It is finished and will be replaced by issue #49 #47”. PR #11 (merged 2026-04-14) is a GitHub closer of #6 (PoC companion) — not the drafting-shell replacement. Later Record delivery is PR #229 closing #49."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "No View Chapter MVP strings; RecordTab implements living record/play layout under #49 lineage.",
+        "device_evidence": "dated 2026-10-19 QA assignment 484: warm Record tab COMPLETED 10.76s (chrome smoke only — not #6 page AC)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Layout ticket with record UX on same page (no separate permission AC). Explicit 2026-07-01 supersession to #49/#47 — closed ≠ proof of original mockup. Complete ≠ QA pass."
+    },
+    {
+      "issue": 9,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Scaffold fluent-api-service app logic can reference; demonstrate a simple API call — even auth error / 403 counts as success. Explicitly out of scope: DB structure and migrations.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/9"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/api.ts",
+          "lines": "117-252",
+          "fact": "Living FluentAPI uses Bearer authedRequest to /self/projects (and related); MOBILE_HEADERS on auth calls — far beyond a 403-demo scaffold."
+        },
+        {
+          "path": "src/services/httpClient.ts",
+          "lines": "41-50",
+          "fact": "buildHeaders injects Authorization: Bearer — current auth contract from #41, not x-user-email / anonymous 403 probe."
+        },
+        {
+          "path": "docs/product-behavior/core-flows.md",
+          "lines": "73-82",
+          "fact": "§6 sync Expected is Inferred + #721 chrome bug — not a reassertion of #9 scaffold AC."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/13",
+        "fact": "Merged 2026-03-30 with GitHub closing ref #9 (title “test fluent api integration”; empty PR body). Also connected later to PR #11 (merged 2026-04-14, closes #9 among others). Issue sole comment is test-code estimate hours only — not a product waive. Scaffold superseded by #14/#41 authenticated sync."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "FluentAPI + Bearer on HEAD; 403-demo scaffold AC is historical.",
+        "device_evidence": "none for #9 scaffold AC"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Closed scaffold ticket; living API client is CONFIRMED_CURRENT_SOURCE evolution. Complete ≠ QA pass."
+    },
+    {
+      "issue": 10,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Initial CI status checks: lint and format; unit tests run and pass; if possible minimal build step for both Android and iOS (optional; do not spend long).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/10"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": ".github/workflows/lint.yml",
+          "lines": "1-32",
+          "fact": "CI runs ESLint, architecture-guard, and Prettier format:check on push/PR."
+        },
+        {
+          "path": ".github/workflows/test.yml",
+          "lines": "1-23",
+          "fact": "CI runs npm test -- --ci on push/PR."
+        },
+        {
+          "path": ".cursor/rules/android-only.mdc",
+          "lines": "6-12",
+          "fact": "Permanent Android-only — dual Android+iOS CI build wish from #10 is superseded; no iOS workflow under .github/workflows/."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/11",
+        "fact": "Merged 2026-04-14: PR body checks “Basic CI/CD pipeline”; GitHub closing refs include #10. Issue sole comment is research/setup hours only. Optional iOS build never required as hard AC (“If possible… Don't waste a lot of time”)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "lint.yml + test.yml (+ quality-gates) on HEAD; Android EAS/nightly exist; no iOS CI.",
+        "device_evidence": "none — eng CI infra, not device AC"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Infra-only living contract (lint/format/unit). Named iOS build wish is optional+superseded by android-only — not an open product bug. Complete ≠ QA pass."
+    },
+    {
+      "issue": 12,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Pre-development architecture spike: Auth0 offline-first auth; PostgreSQL↔PowerSync↔OpSQLite sync; Hono mobile endpoints (mutations/JWT/audio upload); audio storage; bidirectional conflict approach; open questions before Stage 1.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/12"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/sync.ts",
+          "lines": "1344-1410",
+          "fact": "Living sync is manual FluentAPI orchestration into SQLite (syncMasterData/syncProjects/…) — not PowerSync."
+        },
+        {
+          "path": "src/services/api.ts",
+          "lines": "198-285",
+          "fact": "FluentAPI /self endpoints replace the PowerSync JWT / Hono mobile-sync plan from the spike."
+        },
+        {
+          "path": "docs/AGENT_ONBOARDING.md",
+          "lines": "11-24",
+          "fact": "Living architecture: Expo + op-sqlite + Fluent API sync — Auth0/PowerSync are not current pins."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/12#issuecomment-4169043707",
+        "fact": "LATEST_EXPLICIT_DECISION 2026-04-01 (Joel-Joseph-George): attached fluent_mobile_development / mobile_api_updated / mobile_sqlite_schema docs describing “mobile data sync instead of powersync” and schema drafts. No linked PR (docs/R&D spike). Closed 2026-04-08. Later #14 epic implements manual sync."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "FluentAPI+SQLite manual sync on HEAD; PowerSync/Auth0 spike abandoned per 2026-04-01 comment.",
+        "device_evidence": "none for architecture spike"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Planning/docs ticket. Explicit PowerSync→manual API decision in closing research comment. Complete ≠ conformance to Auth0/PowerSync original scope."
+    },
+    {
+      "issue": 14,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Wire manual home sync: auth header, ordered fetches, SQLite upserts, MMKV state, inline sync status; sync manual-only. AC: users has 1 row after first launch; languages/books/bibles/projects/project_units/chapter_assignments/bible_texts populated after first sync; re-run no duplicates; failing step must not crash or block other steps.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/14"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/storage.ts",
+          "lines": "1-55",
+          "fact": "KV is @op-engineering/op-sqlite Storage (not MMKV); LAST_SYNCED_AT + sync_count_* keys remain."
+        },
+        {
+          "path": "src/services/sync.ts",
+          "lines": "1344-1410",
+          "fact": "syncAllData still orchestrates ordered master→projects→assignments→texts path with setLastSyncedAt; fails independently per step via try/catch patterns (child #19)."
+        },
+        {
+          "path": "src/services/httpClient.ts",
+          "lines": "41-50",
+          "fact": "Auth is Bearer token — original epic “auth header” / x-user-email path superseded by #41 (no x-user-email matches in src/)."
+        },
+        {
+          "path": "docs/product-behavior/core-flows.md",
+          "lines": "73-82",
+          "fact": "§6 Expected Home sync icon→Sync screen is Inferred; #721 is separate chrome bug — not a waive of upsert/no-duplicate AC."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/20",
+        "fact": "Merged 2026-04-17: foundational “populate sqlite… into 8 tables” delivery for the sync epic (closes #16/#4/#5/#8). #14 itself has no connected/closing PR — closed completed manually 2026-07-01 by B3RN153 after children #15–#19. Child PRs #25/#28/#29 delivered identity/trigger/inline UI; comments on #14 are SP5 hours only (not product waive of upsert AC)."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Manual sync + op-sqlite KV + Bearer on HEAD; MMKV and inline-row chrome evolved via children/#38/#41.",
+        "device_evidence": "none for #14 upsert AC; QA Sync one-press failure is #721 (separate), dated 2026-10-19 assignment 484"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Core manual-sync / upsert / independent-step AC remains AGREED. Named superseded slices: MMKV→op-sqlite KV (children comments), x-user-email→Bearer (#41), inline Home row→cloud icon (#38). Complete finding ≠ Sync QA pass (#721)."
+    },
+    {
+      "issue": 15,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "No login for MVP: bootstrap USER_ID/USER_EMAIL from .env into MMKV; send x-user-email on all authenticated requests; GET /users/email/:email and upsert users row (id/username/email/names). AC: every authed request has x-user-email; userId/userEmail readable after launch; users exactly 1 row; upsert on id.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/15"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/httpClient.ts",
+          "lines": "41-50",
+          "fact": "buildHeaders uses Authorization Bearer only — zero x-user-email occurrences under src/."
+        },
+        {
+          "path": "src/services/storage.ts",
+          "lines": "1-16",
+          "fact": "userId/userEmail keys live on op-sqlite KV (matches 2026-04-23 eng note), not MMKV."
+        },
+        {
+          "path": "src/services/api.ts",
+          "lines": "117-145",
+          "fact": "Living identity is Better-Auth sign-in + set-auth-token — not .env hardcoded USER_EMAIL bootstrap."
+        },
+        {
+          "path": "docs/product-behavior/core-flows.md",
+          "lines": "20-28",
+          "fact": "§1 Login living doc is Inferred + mock — not a product reassertion of #15 x-user-email AC."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/25",
+        "fact": "Merged 2026-05-01 closing #15: “Save the user email and userid in mmkv” + “Implemented op-sqlite kv storage… instead of MMKV”. Issue comment 2026-04-23 restates op-sqlite KV. Later PR #46 (merged 2026-06-09) closing #41 replaces this interim with Better-Auth Bearer — LATEST_EXPLICIT_DECISION superseding x-user-email / no-login AC."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Bearer + secure session on HEAD; #15 interim identity AC is historical.",
+        "device_evidence": "none for #15 x-user-email AC"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Named supersession: MMKV→op-sqlite (PR #25) then x-user-email/no-login→Better-Auth (#41/#46). Unwaived only if someone still treated #15 as living AC — it is not. Complete ≠ login QA pass."
+    },
+    {
+      "issue": 17,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Manual Sync button (refer #18) runs ordered fetch: GET /users/:userId/projects → chapter-assignments → derive project_units → POST bulk-texts; store last_synced_at + sync_count_projects/chapters/bibles in MMKV after upserts. AC: tap/pull-to-refresh triggers sequence; order preserved; timestamps/counts updated.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/17"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/services/storage.ts",
+          "lines": "10-55",
+          "fact": "last_synced_at + sync_count_* remain on op-sqlite KV (explicit 2026-04-23 decision vs MMKV)."
+        },
+        {
+          "path": "src/services/sync.ts",
+          "lines": "1344-1427",
+          "fact": "syncAllData still runs ordered projects/assignments/texts and setLastSyncedAt; endpoints evolved to /self/* (see api.ts) vs original /users/:userId/… paths."
+        },
+        {
+          "path": "src/app/screens/HomeScreen.tsx",
+          "lines": "314-318",
+          "fact": "Home sync chrome no longer triggers sync inline — comment cites #38/#149: icon navigates to Sync page."
+        },
+        {
+          "path": "src/services/api.ts",
+          "lines": "248-273",
+          "fact": "getUserProjects/getChapterAssignments use /self/projects and /self/chapter-assignments/all — named path divergence from #17 AC URLs."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/28",
+        "fact": "Merged 2026-05-06 closing #17: Sync button + last_synced_at + sync_count_* in KV. Issue comments: kaseywright 2026-04-20 endorses MMKV if encrypted; B3RN153 2026-04-23 “Used op-sqlite Key-Value Storage instead of MMKV” — LATEST_EXPLICIT_DECISION on storage medium. UI entry later superseded by #38 cloud→Sync page."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Ordered sync + KV counts on HEAD; trigger UI is Sync screen / post-login, not #17 Home Sync button; API paths are /self.",
+        "device_evidence": "none for #17 button AC; #721 is Sync-page chrome (separate)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Trigger intent remains; named divergences: MMKV→op-sqlite (waived in-thread), /users/:id→/self (CONFIRMED_CURRENT_SOURCE, also in #16 r1), Home button→#38 Sync entry. Complete ≠ Sync QA pass."
+    },
+    {
+      "issue": 18,
+      "requirement": [
+        {
+          "slice": "layout",
+          "text": "Inline Home sync status row between fluent header and Projects button: Normal (“Last synced: X mins ago”+↻), Syncing (blue tint “Syncing...”+⟳), Never synced, Error (red “Sync failed: <step>”+↻). Tap ↻ triggers sync; no global error toast. AC: all 4 states; row placement; step-named errors.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/18"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/screens/HomeScreen.tsx",
+          "lines": "314-349",
+          "fact": "No inline 4-state sync row between header and Projects; PageHeaderSyncButton navigates to Sync screen per #38/#149 comment."
+        },
+        {
+          "path": "src/app/screens/SyncScreen.tsx",
+          "lines": "69-173",
+          "fact": "Living sync status/Sync Now chrome lives on SyncScreen, not the #18 Home row design."
+        },
+        {
+          "path": "docs/product-behavior/core-flows.md",
+          "lines": "73-82",
+          "fact": "§6 Expected is “Home sync icon → Sync screen” (Inferred) — matches #38 supersession, not #18 inline row."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/29",
+        "fact": "Merged 2026-05-07 closing #18: “The sync button shows sync status according to the ticket.” Product narrowing: chadw-eten 2026-04-14 comment — do not spend much time; detailed sync info not planned for MVP. Eng note 2026-04-23: op-sqlite KV instead of MMKV. Later #38 (cloud icon sole Sync-page entry) is LATEST_EXPLICIT_DECISION superseding this row layout."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Home cloud icon → SyncScreen on HEAD; #18 four-state inline row absent.",
+        "device_evidence": "dated 2026-10-19 QA assignment 484: Sync one-press FAIL is #721 (icon→screen), not a re-test of #18 row states"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "Layout-only. Named supersession #18 row → #38 cloud icon is explicit product evolution; chadw 2026-04-14 already narrowed MVP detail. Do not conflate with #721. Complete ≠ Sync QA pass."
+    },
+    {
+      "issue": 23,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Checkbox AC only: record audio; playback audio. (PoC-level; no mic-permission or verse UI AC on this ticket.)",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/23"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "LATEST_EXPLICIT_DECISION",
+        "CONFIRMED_CURRENT_SOURCE",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/audio/createRecordingEngine.ts",
+          "lines": "46-94",
+          "fact": "Living expo-audio recording engine implements start/pause/stop — satisfies record intent under later #94/#49 stack."
+        },
+        {
+          "path": "src/audio/createPlaybackEngine.ts",
+          "lines": "42-160",
+          "fact": "Living playback engine play(uri) implements playback intent under later #96/#49 stack."
+        },
+        {
+          "path": "docs/product-behavior/core-flows.md",
+          "lines": "52-60",
+          "fact": "§4 Recording is Inferred living journey (Record→stop→play→delete) — supersedes PoC checkbox AC as product contract."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/229",
+        "fact": "Merged 2026-07-23 with Closes #49 — actual Record Tab delivery that superseded PoC #23. Connected PR #82 Newbase (lists audio recording/playing) was CLOSED unmerged 2026-07-09 — not delivery. Issue #23 closed completed 2026-07-29 by mattrace-gloo. Comments: 2026-05-11 Dev task hours; 2026-06-22 notes changes on unmerged newbase branch."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Record+playback engines on HEAD via #49/#94–98 lineage; #23 checkbox AC insufficient as living contract.",
+        "device_evidence": "dated 2026-10-19 QA assignment 484: warm Record tab COMPLETED 10.76s (chrome smoke only — not recorder AC). PR #229 device QA was unchecked historically."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "notes": "No permission slice on #23 (permission lives on #49). Do not treat unmerged #82 as ship. Complete finding: PoC AC superseded by #49/#229. Complete ≠ Record QA pass."
+    }
+  ],
+  "summary": {
+    "recommend_complete_true": 12,
+    "recommend_complete_false": 0,
+    "ids_true": [1, 2, 5, 6, 9, 10, 12, 14, 15, 17, 18, 23],
+    "ids_false": []
+  }
+}

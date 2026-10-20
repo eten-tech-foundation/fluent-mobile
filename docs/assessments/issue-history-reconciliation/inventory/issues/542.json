@@ -1,0 +1,56 @@
+{
+  "issue_number": 542,
+  "fetched_at_utc": "2026-10-20T00:37:40Z",
+  "issue": {
+    "number": 542,
+    "title": "Fix Chapter Advancement to Require All Verses Recorded on Mobile",
+    "state": "closed",
+    "body": "On Fluent Mobile, a chapter can currently advance from drafting to peer check as soon as at least one verse has a recording, in both verse mode and pericope mode. This diverges from web, where a drafter must complete every verse before advancing. This surfaced during QA testing of #485. The chapter should not advance until every verse has a recording.\n\n## Functional Requirements\n\n### Chapter Advancement Validation\n- In verse mode, require every verse in the chapter to have a recording before the drafter can send it to peer check.\n- In pericope mode, require every pericope in the chapter to have a recording before the drafter can send it to peer check.",
+    "user": "chadw-eten",
+    "created_at": "2026-09-16T19:35:33Z",
+    "updated_at": "2026-10-08T13:08:14Z",
+    "closed_at": "2026-09-22T17:18:06Z",
+    "labels": [],
+    "comments": 4,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/542",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5866279115,
+      "user": "Roslin22",
+      "created_at": "2026-09-28T08:26:31Z",
+      "updated_at": "2026-09-28T08:26:31Z",
+      "body": "### Test Results\n\n* When all verses have recordings, the user is able to move the chapter to the next stage.\n* When all pericopes have recordings, the user is able to move the chapter to the next stage.\n* The user is able to move the chapter to the Advanced Checks stage.\n\n### Issues Identified\n\n1. **Recording mode switch issue:** When recordings are completed in verse mode and the user switches to pericope mode, the user is unable to send the chapter to the next stage. The same issue occurs when switching from pericope mode to verse mode.\n\n2. **Recording allowed after completion:** After the chapter is moved to the Advanced Checks stage and the chapter is marked as complete, the translator is still able to record.\n\n3. **Send button remains enabled after deleting the last recording:** When the user records the last verse, the **Send to Next Stage** button becomes enabled. If the user then deletes the last verse's recording, the button remains enabled, and the user is still able to send the chapter to the next stage even though the last verse no longer has a recording.\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/542#issuecomment-5866279115"
+    },
+    {
+      "id": 5867081516,
+      "user": "Roslin22",
+      "created_at": "2026-09-28T09:22:22Z",
+      "updated_at": "2026-09-28T09:22:22Z",
+      "body": "**Suggestion:** When the button is disabled, show a tooltip explaining why it is disabled, for example: **\u201cPlease make sure all verses have recordings before moving to the next stage.\u201d**\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/542#issuecomment-5867081516"
+    },
+    {
+      "id": 5870731964,
+      "user": "chadw-eten",
+      "created_at": "2026-09-28T13:22:31Z",
+      "updated_at": "2026-10-08T13:08:14Z",
+      "body": "1. This is a rare instance so I am not inclined to put in any checks for that. It is ok as is. \n2. Once a chapter is at Complete, it should not be recordable anymore. That should be fixed. There will be a time when we allow a chapter to be rerun through translation, but not now.\n3. If there are no recordings, Send should not be enabled. This needs to be fixed.\n  - A tooltip does not work on mobile. Since it is the same pattern as when they open the chapter new with no recordings, I would just disable it and not worry about a message.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/542#issuecomment-5870731964"
+    },
+    {
+      "id": 6060360328,
+      "user": "chadw-eten",
+      "created_at": "2026-10-08T12:56:37Z",
+      "updated_at": "2026-10-08T12:56:37Z",
+      "body": "After more thought, I think for the first issue, we need to allow the user to advance a passage if there is recording coverage in either mode. As long as all verses or all pericopes have a recording, it can be advanced and this can happen from either mode.\n\nReference: #586 where the fix is being handled",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/542#issuecomment-6060360328"
+    }
+  ],
+  "comments_fetched_count": 4,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

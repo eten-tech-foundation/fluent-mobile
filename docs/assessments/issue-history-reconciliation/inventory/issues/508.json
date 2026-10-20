@@ -1,0 +1,23 @@
+{
+  "issue_number": 508,
+  "fetched_at_utc": "2026-10-20T00:37:24Z",
+  "issue": {
+    "number": 508,
+    "title": "Add Observer Offline Draft Download",
+    "state": "open",
+    "body": "Observers reach a chapter through the Community Review queue on My Work (#505) and read it through the read-only draft view (#452), but neither surface gets the draft's audio onto the device before the Observer goes offline. The existing Prepare for Offline flow (Mobile Going Offline) was built for translators managing a heavier, multi-tier content set and does not download a target-language draft at all, since a translator authors the draft rather than receiving it. This ticket adds a download step scoped to what an Observer actually needs: the chapter's draft text and selected-take audio, plus the source scripture behind the Bible tab. It reuses the existing download and sync mechanism; only the trigger, payload, and surface are new.\n\n## Functional Requirements\n\n### Download Trigger\n- Trigger the download chip's appearance (spec'd in #505) on any Community Review queue row whose draft audio is not on the device.\n- Give the chip a padded tap target independent of its visible icon size.\n- Let an Observer tap the chip to start that chapter's download immediately, without an intermediate selection or configuration screen.\n- Start the download on the single tap; do not require a second confirmation step.\n- Do not auto-trigger any download or prompt on WiFi detection for Observer-role users.\n\n### Download Payload\n- Download the chapter's draft text and the selected take's audio for every verse or pericope in the chapter.\n- Download the source scripture needed to render the Bible tab for that chapter.\n- Exclude translation notes and all other Tier 2 and Tier 3 resources from the Observer payload.\n- Download the draft audio before the source scripture, so the Observer can begin the check as early as possible.\n\n### Progress & Readiness\n- Show download progress as a circular progress ring around the chip's icon; do not open a separate progress screen.\n- Swap the icon inside the ring to a green `li:cloud-check` once the draft audio and source scripture are both on the device.\n- Keep the green checkmark visible for 10 seconds after it appears, then fade the chip out, returning the row to its normal state.\n- Let an Observer open a chapter whose download is incomplete; do not block entry. Draft playback stays unavailable until the audio lands.\n- Reuse the existing sync status icon and its offline/pending/synced states rather than adding a separate Observer-specific readiness indicator.\n- Remove the downloaded draft audio and source scripture from the device automatically once the chapter's stage advances past Community Review; do not require any Observer action to free the space.\n\n### Failure & Retry\n- Return the row to the chip's default (undownloaded) state if a download fails, so the Observer's retry is the same single tap.\n- Retain partial progress on failure and resume from it rather than restarting the chapter.\n\n<img width=\"413\" height=\"584\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/4f75e13a-6abc-4814-9d41-b8d568422beb\" />\n\n> **Note:** No Storage Management UI is being built for Observers in this ticket. An Observer's footprint is one chapter's draft plus source scripture, not the multi-project resource set a translator manages, so view/delete UI isn't warranted yet.\n\n> **Note:** Open question, unresolved at ticket creation. If Community Review advances per pericope rather than per chapter, the download unit and the queue row's label both need to name the portion rather than the whole chapter. Tracked alongside the same question on #505.\n\n> **Note:** Downloaded content is removed automatically on stage advancement rather than left for the Observer to clear, since there is no Storage Management UI for Observers in v1 (see the first Note above) to clear it manually. This also matches the chapter's own removal from My Work at the same trigger, so storage cleanup and list cleanup happen together.\n\n\n\n",
+    "user": "chadw-eten",
+    "created_at": "2026-09-11T21:18:10Z",
+    "updated_at": "2026-10-14T21:28:36Z",
+    "closed_at": null,
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/508",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

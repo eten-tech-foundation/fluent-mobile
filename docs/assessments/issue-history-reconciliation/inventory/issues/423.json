@@ -1,0 +1,27 @@
+{
+  "issue_number": 423,
+  "fetched_at_utc": "2026-10-20T00:36:46Z",
+  "issue": {
+    "number": 423,
+    "title": "Enable merge queue on main (optional)",
+    "state": "open",
+    "body": "## Parent\n\nPart of #420 (Phase 4). Do not close #420 from this ticket. Maintainer GitHub settings + required checks \u2014 optional until merge volume justifies it.\n\n## Scope\n\nEnable merge queue on `main` so approved PRs are tested against the *would-be* main instead of every developer rebasing after each dep merge.\n\nRequires required status checks to be real (today only `PR Description` is required in branch protection \u2014 see `docs/ci.md`). Do **not** enable the queue until lint/test/typecheck (and the Expo checks we still want) are required, or the queue tests the wrong bar.\n\n## Acceptance criteria\n\n- [ ] Required checks include lint, test, typecheck, and the Expo checks we still want on PRs.\n- [ ] Merge queue enabled on `main` (or this ticket closed as not planned if volume does not justify it).\n- [ ] `docs/ci.md` updated.\n\n## Out of scope\n\nDependabot Expo/RN split (Phase 3), weekday Expo `--fix` bot (Phase 2).\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-08-28T19:54:12Z",
+    "updated_at": "2026-08-28T19:54:12Z",
+    "closed_at": null,
+    "labels": [
+      "enhancement",
+      "chore",
+      "github_actions"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/423",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

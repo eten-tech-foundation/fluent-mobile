@@ -1,0 +1,43 @@
+{
+  "issue_number": 447,
+  "fetched_at_utc": "2026-10-20T00:36:54Z",
+  "issue": {
+    "number": 447,
+    "title": "Bundle known FIA/FCBH pericope set JSON in the APK (bandwidth-first seed)",
+    "state": "closed",
+    "body": "## Summary\n\nMobile users often have poor / metered network. Pericope **boundaries** (FIA / FCBH-style sets) are mostly static reference data. Shipping known sets inside the APK lets post-login sync seed SQLite with **zero runtime bytes** for those sets.\n\nThis ticket owns **asset packaging + setId mapping + loader**. [#438](https://github.com/eten-tech-foundation/fluent-mobile/issues/438) owns schema, sync orchestration, and queries that **consume** the loader.\n\nCompanion network path (when set is unknown or version mismatches): [fluent-api#309](https://github.com/eten-tech-foundation/fluent-api/issues/309) \u2014 `GET /pericope-sets/{id}` + ETag.\n\n## Why not only API sync\n\n[#438](https://github.com/eten-tech-foundation/fluent-mobile/issues/438) previously planned one chapter GET per assignment. That burns RTT \u00d7 N on flaky networks. Even a bulk chapter API still downloads set boundaries over the air. Bundled known sets + conditional set refresh is the bandwidth-first hybrid we want.\n\n## Scope\n\n### In scope\n\n- Identify which fluent-api `pericope_set` ids/names ship in v1 (FIA and/or FCBH \u2014 confirm with product / API owners).\n- Confirm license / redistribution rights for shipping those JSON (or derived) files in the Android APK.\n- APK size budget (document target; prefer compressed assets; consider OT/NT split if needed).\n- Asset layout under something like `assets/pericope-sets/` + a stable map: `pericopeSetId` and/or set `name` \u2192 asset module.\n- Pure loader API used by sync (e.g. `loadBundledPericopeSet(setId): SetSnapshot | null`) \u2014 no HTTP inside the loader.\n- Version / content-hash embedded in the asset (or sidecar) so #438 can compare to SQLite `version` / `etag` and skip reseed when equal.\n- Unit tests for map lookup, parse, and \u201cunknown setId \u2192 null\u201d.\n- Doc note in AGENT_ONBOARDING or a short `docs/guides/` note: how to refresh bundled sets in a release.\n\n### Out of scope\n\n- SQLite schema / sync step / chapter queries \u2014 [#438](https://github.com/eten-tech-foundation/fluent-mobile/issues/438).\n- fluent-api endpoint implementation \u2014 [fluent-api#309](https://github.com/eten-tech-foundation/fluent-api/issues/309).\n- Bible/Record UI (#408 / #409).\n- Shipping full FIA *media* (audio/images) \u2014 this is **boundary JSON only** (verse ranges + titles).\n\n## Acceptance criteria\n\n- [ ] Product/API agree which set ids are in the v1 APK.\n- [ ] Licensing clearance documented on the ticket (or explicit \u201cblocked on legal\u201d with owner).\n- [ ] Bundled assets land in the repo/APK; size vs budget recorded in the PR.\n- [ ] Loader returns typed set snapshot for mapped ids and `null` for unmapped.\n- [ ] Asset includes a version/hash consumable by #438 sync.\n- [ ] Unit tests cover mapping + parse.\n- [ ] CI gates pass.\n\n## How to verify\n\n1. Fresh install, offline: #438 sync path can seed a mapped set from assets (integration or manual with airplane mode once #438 wiring exists).\n2. Unmapped setId: loader returns null; sync falls through to API (when available) without crashing.\n3. APK size delta reported on the PR.\n\n## Related\n\n- Consumed by: [#438](https://github.com/eten-tech-foundation/fluent-mobile/issues/438) (set-level hybrid sync)\n- Network refresh: [fluent-api#309](https://github.com/eten-tech-foundation/fluent-api/issues/309)\n- Unblocks offline first-paint for: [#408](https://github.com/eten-tech-foundation/fluent-mobile/issues/408), [#409](https://github.com/eten-tech-foundation/fluent-mobile/issues/409)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-03T18:06:33Z",
+    "updated_at": "2026-09-11T04:44:39Z",
+    "closed_at": "2026-09-08T20:25:23Z",
+    "labels": [
+      "enhancement",
+      "DevQA"
+    ],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/447",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5530006557,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-03T18:06:51Z",
+      "updated_at": "2026-09-03T18:06:51Z",
+      "body": "## Context / why\n\nFluent Mobile targets low-connectivity regions. Pericope boundaries are **set-scoped** (`project.pericopeSetId`) on fluent-api today, but the only content route is chapter-scoped:\n\n`GET /projects/{id}/pericopes/{bookCode}/{chapter}`\n\nMobile ticket [fluent-mobile#438](https://github.com/eten-tech-foundation/fluent-mobile/issues/438) originally planned one call per assigned chapter. That is too expensive (RTT \u00d7 N). Mobile is moving to a **hybrid**:\n\n1. Seed known FIA/FCBH sets from the APK ([fluent-mobile#447](https://github.com/eten-tech-foundation/fluent-mobile/issues/447))\n2. Refresh / fetch unknown sets via **one set-level download** with conditional requests\n\nWeb can keep using the chapter route on demand. Mobile sync must not.\n\n## Goal\n\nAuthenticated (or same auth as `/pericope-sets`) endpoint that returns **all pericope groups for a set** (optional book filter), with **ETag / content version** so clients can send `If-None-Match` and receive **304** when unchanged.\n\n## Proposed contract\n\n| Method | Path | Notes |\n|--------|------|-------|\n| `GET` | `/pericope-sets/{id}` | Full set payload |\n| Optional | `?bookCode=MRK` | Book slice for very large sets |\n\nResponse: same group shape as chapter route (`pericopeNumber`, `pericopeTitle`, `verses[]` with possible cross-chapter refs), aggregated for the set (or book).\n\nHeaders: strong `ETag` (or documented `version` / `contentHash` field + ETag). Support `If-None-Match` \u2192 304.\n\nPrefer compressible JSON. Do not require N chapter round-trips.\n\n## Out of scope\n\n- Mobile schema/sync/UI (fluent-mobile #438 / #447 / #408)\n- Changing chapter route behavior for web\n- Bulk-by-assigned-chapters POST (not needed if set-level exists)\n\n## Acceptance criteria\n\n- [ ] `GET /pericope-sets/{id}` returns full set groups (or empty if unknown id \u2014 documented)\n- [ ] Optional book filter works when implemented\n- [ ] ETag (or equivalent) + 304 on conditional revalidate\n- [ ] OpenAPI + tests\n- [ ] Mobile #438 can hydrate a set in one request\n\n## Related\n\n- Blocks network half of: [fluent-mobile#438](https://github.com/eten-tech-foundation/fluent-mobile/issues/438)\n- Complements assets: [fluent-mobile#447](https://github.com/eten-tech-foundation/fluent-mobile/issues/447)\n- Existing domain: `src/domains/pericopes/`\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/447#issuecomment-5530006557"
+    },
+    {
+      "id": 5530032690,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-03T18:08:57Z",
+      "updated_at": "2026-09-03T18:08:57Z",
+      "body": "**Sibling fluent-api ticket:** [eten-tech-foundation/fluent-api#309](https://github.com/eten-tech-foundation/fluent-api/issues/309) \u2014 set-level download + ETag (network refresh when set is not in the APK / version mismatches).\n\nSync consumer: [#438](https://github.com/eten-tech-foundation/fluent-mobile/issues/438).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/447#issuecomment-5530032690"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

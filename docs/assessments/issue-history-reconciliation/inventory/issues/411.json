@@ -1,0 +1,56 @@
+{
+  "issue_number": 411,
+  "fetched_at_utc": "2026-10-20T00:36:40Z",
+  "issue": {
+    "number": 411,
+    "title": "Implement Cross-Granularity Playback with Stitching and Labeling",
+    "state": "closed",
+    "body": "When a translator switches display mode, existing recordings may have been made at the other granularity. Rather than blocking playback, the app always plays what exists: verse recordings are stitched together for pericope-level playback, and a pericope recording viewed at verse level is labeled to show the range it covers. This ticket implements that cross-granularity playback behavior.\n\n## Functional Requirements\n\n### Verse-to-Pericope Playback\n- When a project's recordings were made verse-by-verse and the user switches to pericope view, stitch the consecutive verse recordings together for pericope-level playback.\n- Label the stitched row's take card subtitle \"Take [N] - Stitched - vv. [X]-[Y]\", in place of the plain granularity tag from #410.\n- A stitched recording only takes up on recording slot.\n- A stitched recording cannot be deleted from pericope view.\n\n### Pericope-to-Verse Playback\n- When a pericope take exists and the user switches to verse view, show that take on every verse row it covers, using the take card subtitle already defined in #410 (\"Take [N] - Pericope - vv. [X]-[Y]\").\n- Always state the pericope's true verse range in full in that subtitle, never truncated, even when the range extends beyond the verses currently visible.\n- This full-range label is sufficient on its own; no separate \"partial\" indicator is needed here, since a pericope take by definition covers its whole range once it exists.\n\n### Playback Behavior\n- Play the full recording whenever a stitched or labeled recording is tapped; no partial or segmented playback.\n- When a pericope has only some of its verses recorded, play the recorded verses in order and stop, in pericope-mode playback.\n- Show a distinct \"partially recorded\" status indicator for a pericope with incomplete verse coverage, rather than the standard recorded checkmark.\n\n<img width=\"300\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/a5342524-7188-494a-95c8-ae12e3bb1085\" />\n\n> **Note:** The \"partially recorded\" indicator is built in #408.\n\n> **Note 2:** The take card subtitle format and its interaction with the 5-take cap are owned by #410 (Support Mixed-Mode Recording with Cross-Granularity Take Labeling) \u2014 this ticket's verse-row display depends on that labeling existing, and this ticket only adds the new \"Stitched\" label for pericope-view rows composed from verse takes.\n",
+    "user": "chadw-eten",
+    "created_at": "2026-08-27T18:19:10Z",
+    "updated_at": "2026-10-06T19:06:41Z",
+    "closed_at": "2026-10-06T19:06:40Z",
+    "labels": [],
+    "comments": 4,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/411",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5480396743,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-31T15:15:38Z",
+      "updated_at": "2026-08-31T15:15:38Z",
+      "body": "## Engineering context\n\n### Product intent\nWhen display mode doesn\u2019t match how takes were recorded, still play what exists: stitch consecutive verse takes for pericope-level playback (label `Take [N] - Stitched - vv. [X]-[Y]`); show pericope takes on each covered verse with the #410 subtitle (full range, never truncated); play full recordings (or recorded verses in order for partial coverage).\n\n### What exists today\n- Playback is per-take via `useVerseAudio` / playback engine \u2014 no stitch playlist helper.\n- No cross-granularity take model until #410.\n- Bible \u201cpartially recorded\u201d indicator is owned by **#408** (this ticket consumes that state for playback rules).\n\n### Alignment notes\n- Prefer client-side stitching of local verse take URIs (sequential play through the engine) over inventing a server-side stitch artifact.\n- Pericope-on-verse rows reuse #410 labeling; this ticket only **adds** the `Stitched` subtitle variant for synthetic pericope rows.\n- Partial coverage in pericope mode: play recorded verses in order and stop \u2014 not a separate \u201cpartial play\u201d scrubber.\n- Full-range subtitle even when the visible chapter is a subset \u2014 needs full pericope verse list (same API/sync gap as #408).\n\n### Suggested approach\n1. Depend on #410 take model + labels.\n2. Build a small pure helper: given mode + takes + pericope map \u2192 display rows (real takes vs stitched aggregates) + subtitle kind.\n3. Wire playback: single take play vs ordered stitch queue; stop cleanly between units.\n4. Hook partial indicator from #408 for Bible cards; Record list follows #410/#411 labels.\n\n### Dependencies\n- **Requires:** #410 (labels + cap + shared takes), #407, pericope sync, #408 indicator for Bible partial state.\n- Player baseline #412 is helpful for source audio but not required for draft-take stitching.\n\n### API\n- No new API required for **local** stitch playback.\n- Still inherits #410\u2019s need for range-take upload if pericope/stitched takes must sync to server.\n- Full-range labels inherit the chapter-pericopes full-span gap noted on #408.\n\n### Out of scope\n- Building the partial indicator chrome (#408)\n- 5-take cap rules (#410)\n- Settings toggle (#407)",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/411#issuecomment-5480396743"
+    },
+    {
+      "id": 5697429358,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-09-16T12:29:16Z",
+      "updated_at": "2026-09-16T12:29:16Z",
+      "body": "@Roslin22, Nightly QA checklist \u2014 #411 Cross-granularity Stitched playback\nPR: https://github.com/eten-tech-foundation/fluent-mobile/pull/506\nChecklist generated with AI assistance.\n\nSetup\n- Project with a pericope set.\n- In Verse mode, record takes on at least vv. 3 and 4 of a chapter.\n- Settings \u2192 Drafting unit = Pericope \u2192 open Record on that chapter.\n\nChecklist\n1. Tap Play on the Stitched row; do not touch controls until playback ends (segments play in order).\n2. Play again; Pause during segment 1 \u2192 wait 5s \u2192 Play (stays in-segment; no auto-advance while paused).\n3. Play into segment 2; Pause during segment 2 \u2192 Play.\n4. Let playback finish; wave and timer reset to 0:00.\n5. Record or play a real Pericope take row (trash icon present); pause mid-playback, then resume. Wave freezes on pause.\n6. Verse mode regression: two verse takes \u2014 select, play, seek, delete.\n7. Play a pericope take row to completion (no cut-out / no stray stitched segments).\n8. Offline: stitch still plays from local takes.\n\nPass when: Stitched row is labeled like \u201cTake N - Stitched - vv. 3-4\u201d (play only; no trash/select). Segment progress resets at boundaries; pause/resume works across segments; verse mode unchanged; no crash on verse nav, record start, or delete during stitch.\n\nAlso from Matt\u2019s review on the PR:\n- Full matrix above: stitched pause/resume across segment boundaries, pericope take row vs Stitched row, verse-mode regression, delete/record while a segment load is in flight\n- Quick smoke if already in pericope mode: source-audio waveform ticks (out of #411 scope; plain scrubber OK when no verseTimestamps)",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/411#issuecomment-5697429358"
+    },
+    {
+      "id": 5728643290,
+      "user": "Roslin22",
+      "created_at": "2026-09-18T10:21:34Z",
+      "updated_at": "2026-09-18T10:21:34Z",
+      "body": "**Test Results : #411**\n\n- Verse-to-Pericope Playback: Verified that consecutive verse recordings are stitched together and played continuously in pericope mode. The stitched take is displayed with the \u201cTake [N] - Stitched - vv. [X]-[Y]\u201d label.\n- Stitched Recording Slot: Verified that the stitched recording occupies one recording slot and is not counted as multiple recordings.\n- Stitched Recording Deletion: Verified that the stitched recording cannot be deleted from pericope view.\n- Pericope-to-Verse Playback: Verified that a pericope recording is displayed on every verse it covers when switching to verse mode. The take is labeled with the complete pericope verse range.\n- Cross-Chapter Pericope: Verified that a pericope spanning a chapter boundary displays its full verse range in the take label, including verses from both chapters.\n- Full Playback: Verified that tapping a stitched or labeled recording plays the full available recording, rather than only the selected verse or a partial segment.\n- Partial Recording: Verified that when only some verses in a pericope are recorded, the available recordings play in order and the pericope shows a \u201cPartially Recorded\u201d status instead of the normal recorded checkmark.\n- Playback Duration: Verified the playback timer for stitched recordings.\n- Verified with different users in the same chapter. The playback displays correctly for different takes\n\n**Issue identified:** The playback timer resets to 0 when the stitched recording moves to the next verse. It should continue from the previous verse\u2019s time.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/411#issuecomment-5728643290"
+    },
+    {
+      "id": 5735438994,
+      "user": "chadw-eten",
+      "created_at": "2026-09-18T19:55:53Z",
+      "updated_at": "2026-09-18T19:55:53Z",
+      "body": "I am ok with the timer resetting to 0 since it is a stitched recording. That kind of reinforces that it is stitched. :white_check_mark:",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/411#issuecomment-5735438994"
+    }
+  ],
+  "comments_fetched_count": 4,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

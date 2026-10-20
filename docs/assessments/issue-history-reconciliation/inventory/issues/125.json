@@ -1,0 +1,26 @@
+{
+  "issue_number": 125,
+  "fetched_at_utc": "2026-10-20T00:34:57Z",
+  "issue": {
+    "number": 125,
+    "title": "Dependabot config + safe dependency merge workflow",
+    "state": "closed",
+    "body": "## Summary\n\nAdd **Dependabot configuration** and a documented **safe dependency merge workflow** for Fluent Mobile.\n\n## What shipped\n\n- `.github/dependabot.yml` \u2014 weekly npm + GitHub Actions update schedule.\n- A documented safe-merge workflow: merge **one** Dependabot PR at a time, rebase others after `main` CI is green (npm-only / `package-lock.json`).\n\n## Attribution\n\nDelivered by @mattrace-gloo in [PR #60](https://github.com/eten-tech-foundation/fluent-mobile/pull/60) (merged).\n\n## Status\n\n**Completed** \u2014 closing as completed. Tracking/credit issue.\n\nRefs #60.\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T07:35:08Z",
+    "updated_at": "2026-06-28T07:35:22Z",
+    "closed_at": "2026-06-28T07:35:22Z",
+    "labels": [
+      "documentation",
+      "dependencies"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/125",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

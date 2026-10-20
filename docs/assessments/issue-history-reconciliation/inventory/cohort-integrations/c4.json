@@ -1,0 +1,2929 @@
+{
+  "cohort": "c4",
+  "parent_agent": "bc-da4aa327-d86e-47fc-93c0-d7105af39497",
+  "reviewed_at_utc": "2026-10-20T00:42:26Z",
+  "repo": "/Users/matt/Documents/Development/gloo/fluent-mobile",
+  "cache_root": "docs/assessments/issue-history-reconciliation/inventory/issues",
+  "product_behavior_docs": [
+    "docs/product-behavior/README.md",
+    "docs/product-behavior/roles-and-permissions.md",
+    "docs/product-behavior/core-flows.md"
+  ],
+  "methodology": {
+    "read_only": true,
+    "wrote_only": [
+      "/tmp/fluent-issue-review-c4.json",
+      "/tmp/fluent-issue-review-c4.md"
+    ],
+    "substantive_rule": "No keyword-only substantive marks; each classification uses body+comments and living product-behavior labels; later explicit decisions win; Dev≠QA; agent debug ≠ Nightly signoff.",
+    "priority_focus": [
+      "roles",
+      "recording",
+      "resources",
+      "sync",
+      "decision"
+    ],
+    "id_disambiguation_required": true
+  },
+  "id_disambiguation": {
+    "mobile_368": "A+ @react-navigation audit — NOT fluent-api#368 draft seed engine",
+    "mobile_369": "A+ sync.ts unit tests — NOT fluent-api#369 confirm-gated reset",
+    "mobile_484": "Nightly schedule CI simplification — NOT QA assignment fixture 484 (1 Peter 5 peer_check)",
+    "qa_assignment_484": "Documented in docs/product-behavior as QA data fixture; linked to #721 Sync chronology — outside this issue's product AC"
+  },
+  "ids_expected": [
+    368,
+    369,
+    370,
+    371,
+    372,
+    373,
+    374,
+    375,
+    376,
+    377,
+    378,
+    379,
+    380,
+    404,
+    405,
+    407,
+    408,
+    409,
+    410,
+    411,
+    412,
+    417,
+    420,
+    422,
+    423,
+    424,
+    428,
+    435,
+    438,
+    442,
+    443,
+    446,
+    447,
+    448,
+    451,
+    452,
+    459,
+    464,
+    469,
+    470,
+    474,
+    476,
+    483,
+    484,
+    485,
+    486,
+    488,
+    489,
+    490,
+    491,
+    492,
+    493
+  ],
+  "ids_reviewed": [
+    368,
+    369,
+    370,
+    371,
+    372,
+    373,
+    374,
+    375,
+    376,
+    377,
+    378,
+    379,
+    380,
+    404,
+    405,
+    407,
+    408,
+    409,
+    410,
+    411,
+    412,
+    417,
+    420,
+    422,
+    423,
+    424,
+    428,
+    435,
+    438,
+    442,
+    443,
+    446,
+    447,
+    448,
+    451,
+    452,
+    459,
+    464,
+    469,
+    470,
+    474,
+    476,
+    483,
+    484,
+    485,
+    486,
+    488,
+    489,
+    490,
+    491,
+    492,
+    493
+  ],
+  "missing_cache": [],
+  "counts": {
+    "total": 52,
+    "reviewed": 52,
+    "retrieval_complete": 52,
+    "substantively_reviewed": 52,
+    "open": 10,
+    "closed": 42,
+    "priority_relevant": 34,
+    "priority_theme_hits": 30,
+    "qa_results_in_comments": 13,
+    "product_signoff_in_comments": 8,
+    "by_classification": {
+      "agreed_requirement": 20,
+      "engineering_chore": 17,
+      "known_gap": 3,
+      "open_product_decision_then_closed": 1,
+      "process_chore": 3,
+      "qa_process": 1,
+      "superseded_condensed": 3,
+      "test_infra": 2,
+      "test_infra_epic": 1,
+      "withdrawn": 1
+    },
+    "by_product_label": {
+      "Agreed requirement": 21,
+      "Known deviation": 3,
+      "Open product decision": 1,
+      "n/a (engineering)": 26,
+      "n/a (withdrawn)": 1
+    },
+    "by_review_status": {
+      "closed_mistake": 1,
+      "historical_done": 30,
+      "open_blocker_for_offline_images": 1,
+      "open_despite_passed_qa_comments": 1,
+      "open_device_bug": 1,
+      "open_devqa_hard_to_verify": 1,
+      "open_not_started": 2,
+      "open_optional": 2,
+      "open_qa_blocked": 1,
+      "open_with_residual_bugs": 1,
+      "reconciled_partial_ac": 1,
+      "reconciled_passed_qa": 8,
+      "reconciled_passed_qa_with_caveat": 1,
+      "reconciled_passed_qa_with_followups": 1
+    },
+    "by_theme": {
+      "architecture": 1,
+      "board": 3,
+      "ci": 8,
+      "comments": 1,
+      "decision": 13,
+      "docs": 2,
+      "infra": 12,
+      "maestro": 6,
+      "offline": 4,
+      "performance": 1,
+      "qa_process": 7,
+      "recording": 20,
+      "resources": 3,
+      "resources_adjacent": 1,
+      "roles": 7,
+      "session": 3,
+      "settings": 1,
+      "sync": 13,
+      "test_infra": 11,
+      "ui": 3
+    },
+    "priority_findings": 5,
+    "id_collision_flags": 3
+  },
+  "classifications": [
+    {
+      "issue": 368,
+      "state": "closed",
+      "title": "[A+] Audit @react-navigation direct dependencies (remove or document)",
+      "labels": [],
+      "created_at": "2026-08-25T14:17:13Z",
+      "closed_at": "2026-08-25T22:05:43Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/368",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "infra",
+        "architecture"
+      ],
+      "classification": "engineering_chore",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "not_covered",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [],
+      "discrepancy_flags": [
+        "id_collision_risk_api_368"
+      ],
+      "summary": "Mobile A+ chore to audit/remove or document direct @react-navigation deps under Expo Router policy. Closed with zero comments; engineering-only. CRITICAL DISAMBIGUATION: this is NOT fluent-api#368 (draft seed engine / QA unclaimed pool) cited in docs/product-behavior.",
+      "notes": "Do not conflate with fluent-api#368 seed/pool work. No product AC for roles/recording/resources/sync.",
+      "priority_relevant": false
+    },
+    {
+      "issue": 369,
+      "state": "closed",
+      "title": "[A+] Unit tests: sync.ts step orchestration beyond auth",
+      "labels": [],
+      "created_at": "2026-08-25T14:17:18Z",
+      "closed_at": "2026-08-25T22:03:43Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/369",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "sync",
+        "test_infra"
+      ],
+      "classification": "engineering_chore",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "supports_inferred",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#374"
+      ],
+      "discrepancy_flags": [
+        "id_collision_risk_api_369"
+      ],
+      "summary": "Mobile A+ unit-test ticket for sync.ts step orchestration beyond auth. Explicitly out-of-scope for switchUser product decision and Sync UI. CRITICAL DISAMBIGUATION: this is NOT fluent-api#369 (confirm-gated reset) cited in docs/product-behavior.",
+      "notes": "Product docs' API #369 is a different repo/ticket. Mobile #369 is test coverage only.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 370,
+      "state": "closed",
+      "title": "[A+] Unit tests: useVerseAudio hook",
+      "labels": [],
+      "created_at": "2026-08-25T14:17:23Z",
+      "closed_at": "2026-08-25T22:06:24Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/370",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "recording",
+        "test_infra"
+      ],
+      "classification": "engineering_chore",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "supports_inferred",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#371"
+      ],
+      "discrepancy_flags": [],
+      "summary": "A+ unit tests for useVerseAudio hook; engineering-only, no device QA. Strengthens recording path safety net without changing product AC.",
+      "notes": "Later offline-claim mock coverage referenced in product-behavior is related surface, not this ticket's AC.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 371,
+      "state": "closed",
+      "title": "[A+] Unit tests: useRecordingEngine hook",
+      "labels": [],
+      "created_at": "2026-08-25T14:17:29Z",
+      "closed_at": "2026-08-26T16:59:41Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/371",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "recording",
+        "test_infra"
+      ],
+      "classification": "engineering_chore",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "supports_inferred",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#370"
+      ],
+      "discrepancy_flags": [],
+      "summary": "A+ unit tests for useRecordingEngine lifecycle; engineering-only companion to #370.",
+      "notes": "",
+      "priority_relevant": true
+    },
+    {
+      "issue": 372,
+      "state": "closed",
+      "title": "[A+] Unit tests: Prepare Offline service/query modules",
+      "labels": [],
+      "created_at": "2026-08-25T14:17:34Z",
+      "closed_at": "2026-08-26T16:59:49Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/372",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "resources",
+        "test_infra"
+      ],
+      "classification": "engineering_chore",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "supports_inferred",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#417",
+        "#192",
+        "#201"
+      ],
+      "discrepancy_flags": [],
+      "summary": "A+ unit tests for Prepare Offline service/query modules (download/queue/inventory). Engineering-only; does not itself fix offline Images gating (#417).",
+      "notes": "Product Resources flow still depends on #417 for kind:image persistence.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 373,
+      "state": "closed",
+      "title": "[A+] Unit tests: useDeviceAccounts, useActiveAccountSummary, useSync",
+      "labels": [],
+      "created_at": "2026-08-25T14:17:38Z",
+      "closed_at": "2026-08-26T16:59:57Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/373",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "sync",
+        "session",
+        "test_infra"
+      ],
+      "classification": "engineering_chore",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "supports_inferred",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#374",
+        "#291"
+      ],
+      "discrepancy_flags": [],
+      "summary": "A+ unit tests for account/sync hooks (useDeviceAccounts, useActiveAccountSummary, useSync). Explicitly excludes switchUser stub product decision (#374).",
+      "notes": "",
+      "priority_relevant": true
+    },
+    {
+      "issue": 374,
+      "state": "closed",
+      "title": "[A+] Resolve sync.switchUser no-op stub (implement or remove)",
+      "labels": [],
+      "created_at": "2026-08-25T14:17:43Z",
+      "closed_at": "2026-08-26T17:00:05Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/374",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "sync",
+        "session",
+        "decision"
+      ],
+      "classification": "open_product_decision_then_closed",
+      "product_label": "Open product decision",
+      "review_status": "historical_done",
+      "living_doc_alignment": "supports_inferred",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#369",
+        "#291",
+        "#375"
+      ],
+      "discrepancy_flags": [
+        "needs_verify_impl_choice"
+      ],
+      "summary": "Resolve sync.switchUser no-op stub: implement correct switch-user sync OR remove/rename misleading API. Ticket itself framed a product-correct decision; closed. Living core-flows multi-account section still inferred + mock-backed.",
+      "notes": "If later docs claim switchUser syncs, verify against chosen impl. Needs QA only if user-visible sync behavior changed.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 375,
+      "state": "closed",
+      "title": "[A+] Shared-device multi-account nightly QA script",
+      "labels": [],
+      "created_at": "2026-08-25T14:17:49Z",
+      "closed_at": "2026-08-26T17:00:35Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/375",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "session",
+        "qa_process"
+      ],
+      "classification": "qa_process",
+      "product_label": "Agreed requirement",
+      "review_status": "historical_done",
+      "living_doc_alignment": "supports_agreed",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#291",
+        "#348",
+        "#488"
+      ],
+      "discrepancy_flags": [
+        "nightly_human_qa_required"
+      ],
+      "summary": "A+ shared-device multi-account nightly QA script/checklist. Product requirement for proving isolation on nightly APK, not unit-test-only.",
+      "notes": "Dev≠QA; agent emulator receipts do not satisfy this ticket's nightly run AC. Later Maestro #495 covers multi-account automation.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 376,
+      "state": "closed",
+      "title": "[A+] Document live required branch-protection checks in docs/ci.md",
+      "labels": [],
+      "created_at": "2026-08-25T14:17:54Z",
+      "closed_at": "2026-08-26T17:00:13Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/376",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "infra",
+        "docs"
+      ],
+      "classification": "engineering_chore",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "not_covered",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [],
+      "discrepancy_flags": [],
+      "summary": "Document live required branch-protection checks in docs/ci.md. Process/docs only.",
+      "notes": "",
+      "priority_relevant": false
+    },
+    {
+      "issue": 377,
+      "state": "closed",
+      "title": "[A+] Make Project 4 QA handoff Status updates reliable (board token)",
+      "labels": [],
+      "created_at": "2026-08-25T14:17:59Z",
+      "closed_at": "2026-08-25T22:08:46Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/377",
+      "retrieval_complete": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "comments_count_match": true,
+      "comment_users": [
+        "mattrace-gloo"
+      ],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "qa_process",
+        "board"
+      ],
+      "classification": "process_chore",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "supports_agreed",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#464"
+      ],
+      "discrepancy_flags": [],
+      "summary": "Make Project 4 QA handoff Status updates reliable (board token). Closed as manual epic hygiene without PR; handoff docs/token ownership noted.",
+      "notes": "Comment says waived agent PR per epic queue (#365).",
+      "priority_relevant": false
+    },
+    {
+      "issue": 378,
+      "state": "closed",
+      "title": "[A+] In QA column hygiene — approved change set only",
+      "labels": [],
+      "created_at": "2026-08-25T14:18:04Z",
+      "closed_at": "2026-08-25T22:08:48Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/378",
+      "retrieval_complete": true,
+      "comments_api": 4,
+      "comments_fetched": 4,
+      "comments_count_match": true,
+      "comment_users": [
+        "mattrace-gloo"
+      ],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "board",
+        "qa_process"
+      ],
+      "classification": "process_chore",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "not_covered",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [],
+      "discrepancy_flags": [],
+      "summary": "In QA column hygiene via named approved change set only. Executed Status moves recorded in comments; no Product-column edits.",
+      "notes": "Reinforces project-board hard rules used by this reconciliation.",
+      "priority_relevant": false
+    },
+    {
+      "issue": 379,
+      "state": "closed",
+      "title": "[A+] Align format vs format:check globs",
+      "labels": [],
+      "created_at": "2026-08-25T14:18:09Z",
+      "closed_at": "2026-08-26T17:28:09Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/379",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "infra"
+      ],
+      "classification": "engineering_chore",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "not_covered",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [],
+      "discrepancy_flags": [],
+      "summary": "Align format vs format:check globs. Engineering-only.",
+      "notes": "",
+      "priority_relevant": false
+    },
+    {
+      "issue": 380,
+      "state": "closed",
+      "title": "[A+] Dependabot one-at-a-time + doctor checklist",
+      "labels": [],
+      "created_at": "2026-08-25T14:18:13Z",
+      "closed_at": "2026-08-26T17:00:27Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/380",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "infra",
+        "docs"
+      ],
+      "classification": "engineering_chore",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "not_covered",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [],
+      "discrepancy_flags": [],
+      "summary": "Dependabot one-at-a-time + doctor checklist documentation. Engineering/docs only.",
+      "notes": "",
+      "priority_relevant": false
+    },
+    {
+      "issue": 404,
+      "state": "closed",
+      "title": "Fix Record Tab Scrolling to Move as One Page Instead of Independently Scrolling Sections",
+      "labels": [],
+      "created_at": "2026-08-27T12:32:11Z",
+      "closed_at": "2026-08-31T06:18:49Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/404",
+      "retrieval_complete": true,
+      "comments_api": 2,
+      "comments_fetched": 2,
+      "comments_count_match": true,
+      "comment_users": [
+        "Roslin22"
+      ],
+      "qa_results_in_comments": true,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "recording",
+        "ui"
+      ],
+      "classification": "agreed_requirement",
+      "product_label": "Agreed requirement",
+      "review_status": "reconciled_passed_qa",
+      "living_doc_alignment": "supports_inferred",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#485",
+        "#486"
+      ],
+      "discrepancy_flags": [
+        "spawned_followups_485_486"
+      ],
+      "summary": "Record tab single-page scroll (remove nested independent scrollers). Roslin passedQA on nightly; spawned #485 waveform shift and #486 pause/resume audio error.",
+      "notes": "Human nightly QA evidence present — not agent debug.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 405,
+      "state": "closed",
+      "title": "CI parity: SHA-pin all GitHub Actions and add the enforcement gate",
+      "labels": [
+        "DevQA",
+        "dependencies",
+        "github_actions"
+      ],
+      "created_at": "2026-08-27T16:06:36Z",
+      "closed_at": "2026-08-27T22:54:23Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/405",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "infra",
+        "ci"
+      ],
+      "classification": "engineering_chore",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "not_covered",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [],
+      "discrepancy_flags": [],
+      "summary": "CI parity: SHA-pin all GitHub Actions + enforcement gate. Security/process; DevQA/dependencies labels.",
+      "notes": "",
+      "priority_relevant": false
+    },
+    {
+      "issue": 407,
+      "state": "closed",
+      "title": "Add Verse/Pericope Toggle to Mobile Settings",
+      "labels": [],
+      "created_at": "2026-08-27T18:18:41Z",
+      "closed_at": "2026-09-02T08:51:53Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/407",
+      "retrieval_complete": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "comments_count_match": true,
+      "comment_users": [
+        "Roslin22"
+      ],
+      "qa_results_in_comments": true,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "recording",
+        "decision",
+        "settings"
+      ],
+      "classification": "agreed_requirement",
+      "product_label": "Agreed requirement",
+      "review_status": "reconciled_partial_ac",
+      "living_doc_alignment": "supports_agreed",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#408",
+        "#409",
+        "#438",
+        "#410",
+        "#411",
+        "#412"
+      ],
+      "discrepancy_flags": [
+        "partial_ship_settings_only",
+        "followups_408_409"
+      ],
+      "summary": "Add Verse/Pericope toggle to Settings as per-user preference. QA passed Settings toggle + persistence, explicitly noting Bible/Record display unit change NOT implemented yet — deferred to #408/#409. Later comments/engineering note account sync of preference deferred.",
+      "notes": "Later explicit decision: ship toggle first; tab rendering blocked on #438 pericope sync. Living core-flows recording section is still outline/inferred for mode toggle.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 408,
+      "state": "open",
+      "title": "Update Bible Tab for Verse/Pericope Toggle",
+      "labels": [],
+      "created_at": "2026-08-27T18:18:49Z",
+      "closed_at": null,
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/408",
+      "retrieval_complete": true,
+      "comments_api": 6,
+      "comments_fetched": 6,
+      "comments_count_match": true,
+      "comment_users": [
+        "JonathanSeehagen",
+        "Roslin22",
+        "chadw-eten",
+        "mattrace-gloo"
+      ],
+      "qa_results_in_comments": true,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "recording",
+        "resources_adjacent",
+        "decision"
+      ],
+      "classification": "agreed_requirement",
+      "product_label": "Agreed requirement",
+      "review_status": "open_with_residual_bugs",
+      "living_doc_alignment": "partially_covered",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#407",
+        "#412",
+        "#438",
+        "#411",
+        "#409"
+      ],
+      "discrepancy_flags": [
+        "still_open_after_qa",
+        "scrubbing_bug_product_concern",
+        "auto_select_waived"
+      ],
+      "summary": "Bible tab unit cards + source player must re-render at Verse/Pericope granularity. Still OPEN. Blocked historically on #438; QA verified many AC items but found auto-select gap (Chad unconcerned) and scrubbing restart bug (Chad: needs fix). Jonathan acknowledged scrubbing follow-up still pending in comments.",
+      "notes": "Open product/engineering residual: scrubbing. Do not treat closed siblings as closing this ticket. Dev QA receipts ≠ Nightly signoff for remaining scrubbing.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 409,
+      "state": "closed",
+      "title": "Update Record Tab for Verse/Pericope Toggle",
+      "labels": [],
+      "created_at": "2026-08-27T18:18:53Z",
+      "closed_at": "2026-09-17T11:47:08Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/409",
+      "retrieval_complete": true,
+      "comments_api": 5,
+      "comments_fetched": 5,
+      "comments_count_match": true,
+      "comment_users": [
+        "B3RN153",
+        "Roslin22",
+        "chadw-eten",
+        "mattrace-gloo"
+      ],
+      "qa_results_in_comments": true,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "recording",
+        "decision"
+      ],
+      "classification": "agreed_requirement",
+      "product_label": "Agreed requirement",
+      "review_status": "reconciled_passed_qa_with_followups",
+      "living_doc_alignment": "supports_agreed",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#407",
+        "#438",
+        "#410",
+        "#411",
+        "#540"
+      ],
+      "discrepancy_flags": [
+        "qa_found_nav_source_text_scrub_crossmode",
+        "followups_540_411_544"
+      ],
+      "summary": "Record tab Current Unit Title + draft waveform follow Verse/Pericope mode. Closed after QA; Roslin found pericope next-nav, incomplete source text, scrubbing, and cross-mode take visibility issues — Bernice moved fixes to #540/#544 and #411 for item 4.",
+      "notes": "Later decisions in follow-up tickets win for residual bugs. Chad required fixes before re-review.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 410,
+      "state": "closed",
+      "title": "Support Mixed-Mode Recording with Cross-Granularity Take Labeling",
+      "labels": [],
+      "created_at": "2026-08-27T18:19:01Z",
+      "closed_at": "2026-10-06T19:06:39Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/410",
+      "retrieval_complete": true,
+      "comments_api": 6,
+      "comments_fetched": 6,
+      "comments_count_match": true,
+      "comment_users": [
+        "JonathanSeehagen",
+        "Roslin22",
+        "chadw-eten",
+        "mattrace-gloo"
+      ],
+      "qa_results_in_comments": true,
+      "product_signoff_in_comments": true,
+      "themes": [
+        "recording",
+        "decision"
+      ],
+      "classification": "agreed_requirement",
+      "product_label": "Agreed requirement",
+      "review_status": "reconciled_passed_qa",
+      "living_doc_alignment": "supports_agreed",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#407",
+        "#409",
+        "#411",
+        "#71"
+      ],
+      "discrepancy_flags": [
+        "nav_gap_owned_by_409"
+      ],
+      "summary": "Mixed-mode recording + cross-granularity take labeling + shared 5-take cap. QA passed core AC; Chad questioned verse take visibility/nav in pericope mode — clarified as #409 navigation scope, then Chad ✅.",
+      "notes": "API upload still verse-keyed historically; range-take server support called out as soft dep in eng comments.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 411,
+      "state": "closed",
+      "title": "Implement Cross-Granularity Playback with Stitching and Labeling",
+      "labels": [],
+      "created_at": "2026-08-27T18:19:10Z",
+      "closed_at": "2026-10-06T19:06:40Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/411",
+      "retrieval_complete": true,
+      "comments_api": 4,
+      "comments_fetched": 4,
+      "comments_count_match": true,
+      "comment_users": [
+        "JonathanSeehagen",
+        "Roslin22",
+        "chadw-eten",
+        "mattrace-gloo"
+      ],
+      "qa_results_in_comments": true,
+      "product_signoff_in_comments": true,
+      "themes": [
+        "recording",
+        "decision"
+      ],
+      "classification": "agreed_requirement",
+      "product_label": "Agreed requirement",
+      "review_status": "reconciled_passed_qa",
+      "living_doc_alignment": "supports_agreed",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#410",
+        "#408",
+        "#407"
+      ],
+      "discrepancy_flags": [
+        "timer_reset_accepted_by_product"
+      ],
+      "summary": "Cross-granularity playback with stitching/labeling. QA passed; stitched timer reset-to-0 accepted by Chad as reinforcing stitch semantics (later decision wins over Roslin issue).",
+      "notes": "Partial indicator owned by #408 per ticket notes.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 412,
+      "state": "closed",
+      "title": "Build Source Audio Player for Bible Tab",
+      "labels": [],
+      "created_at": "2026-08-27T19:11:32Z",
+      "closed_at": "2026-09-10T20:28:02Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/412",
+      "retrieval_complete": true,
+      "comments_api": 3,
+      "comments_fetched": 3,
+      "comments_count_match": true,
+      "comment_users": [
+        "Roslin22",
+        "chadw-eten",
+        "mattrace-gloo"
+      ],
+      "qa_results_in_comments": true,
+      "product_signoff_in_comments": true,
+      "themes": [
+        "recording"
+      ],
+      "classification": "agreed_requirement",
+      "product_label": "Agreed requirement",
+      "review_status": "reconciled_passed_qa",
+      "living_doc_alignment": "supports_inferred",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#235",
+        "#408",
+        "fluent-api#282"
+      ],
+      "discrepancy_flags": [
+        "suggestion_deferred_design_overhaul"
+      ],
+      "summary": "Baseline source audio player for Bible+Record shell (verse mode, plain scrubber). QA passed; Roslin suggested verse-scoped audio on Record — Chad passed and deferred to upcoming design overhaul.",
+      "notes": "Ticks/mode switching owned by #408. Coordinate with #235 fetch wiring per eng write-up.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 417,
+      "state": "open",
+      "title": "Prepare Offline: persist Reference Images as kind:image in download_queue for Resources offline gating",
+      "labels": [
+        "bug"
+      ],
+      "created_at": "2026-08-28T02:49:11Z",
+      "closed_at": null,
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/417",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "resources",
+        "sync",
+        "offline"
+      ],
+      "classification": "known_gap",
+      "product_label": "Known deviation",
+      "review_status": "open_blocker_for_offline_images",
+      "living_doc_alignment": "aligns_resources_outline",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#348",
+        "#192",
+        "#201",
+        "#364"
+      ],
+      "discrepancy_flags": [
+        "open",
+        "blocks_offline_images_maps",
+        "parent_348_ac"
+      ],
+      "summary": "Prepare Offline persists Reference Images as kind:text, but Resources offline gating requires kind:image — so Images & Maps accordion disappears offline after 'completed' download. Still OPEN; clear root cause in queue mapping/types. Living Resources flow: empty vs 403 distinction; this ticket is offline inventory false-negative, not 403.",
+      "notes": "Priority resources finding. Device QA required when fixed. Do not treat mock 403 tests as covering this.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 420,
+      "state": "closed",
+      "title": "Deterministic PR CI + weekday Expo compatibility sync",
+      "labels": [
+        "enhancement",
+        "dependencies",
+        "chore",
+        "github_actions"
+      ],
+      "created_at": "2026-08-28T19:36:53Z",
+      "closed_at": "2026-09-02T21:03:19Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/420",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "infra",
+        "ci"
+      ],
+      "classification": "engineering_chore",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "not_covered",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#422",
+        "#423",
+        "#424"
+      ],
+      "discrepancy_flags": [],
+      "summary": "Deterministic PR CI + weekday Expo compatibility sync umbrella. Closed; children #422 closed, #423/#424 still open optional phases.",
+      "notes": "",
+      "priority_relevant": false
+    },
+    {
+      "issue": 422,
+      "state": "closed",
+      "title": "Weekday Expo compatibility sync job",
+      "labels": [
+        "enhancement",
+        "dependencies",
+        "chore",
+        "github_actions"
+      ],
+      "created_at": "2026-08-28T19:54:07Z",
+      "closed_at": "2026-09-10T17:16:12Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/422",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "infra",
+        "ci"
+      ],
+      "classification": "engineering_chore",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "not_covered",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#420"
+      ],
+      "discrepancy_flags": [],
+      "summary": "Weekday Expo compatibility sync job (Phase 2 of #420). Closed.",
+      "notes": "Aligns with docs/product-behavior pin note about scheduled Expo sync PR #422 — that is THIS mobile issue (CI), not a product journey.",
+      "priority_relevant": false
+    },
+    {
+      "issue": 423,
+      "state": "open",
+      "title": "Enable merge queue on main (optional)",
+      "labels": [
+        "enhancement",
+        "chore",
+        "github_actions"
+      ],
+      "created_at": "2026-08-28T19:54:12Z",
+      "closed_at": null,
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/423",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "infra",
+        "ci"
+      ],
+      "classification": "engineering_chore",
+      "product_label": "n/a (engineering)",
+      "review_status": "open_optional",
+      "living_doc_alignment": "not_covered",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#420"
+      ],
+      "discrepancy_flags": [
+        "open",
+        "optional_until_volume"
+      ],
+      "summary": "Enable merge queue on main (optional Phase 4). Still open; explicitly optional until required checks are real.",
+      "notes": "",
+      "priority_relevant": false
+    },
+    {
+      "issue": 424,
+      "state": "open",
+      "title": "Dependabot ownership split + limited auto-merge",
+      "labels": [
+        "enhancement",
+        "dependencies",
+        "chore",
+        "github_actions"
+      ],
+      "created_at": "2026-08-28T19:54:12Z",
+      "closed_at": null,
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/424",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "infra",
+        "ci"
+      ],
+      "classification": "engineering_chore",
+      "product_label": "n/a (engineering)",
+      "review_status": "open_optional",
+      "living_doc_alignment": "not_covered",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#420",
+        "#435"
+      ],
+      "discrepancy_flags": [
+        "open"
+      ],
+      "summary": "Dependabot ownership split + limited auto-merge (Phase 3). Still open.",
+      "notes": "",
+      "priority_relevant": false
+    },
+    {
+      "issue": 428,
+      "state": "closed",
+      "title": "Chapter assignment sync silently drops assigned_user_id / peer_checker_id for users not locally known.",
+      "labels": [
+        "bug"
+      ],
+      "created_at": "2026-08-31T04:46:36Z",
+      "closed_at": "2026-09-01T19:00:47Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/428",
+      "retrieval_complete": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "comments_count_match": true,
+      "comment_users": [
+        "Roslin22"
+      ],
+      "qa_results_in_comments": true,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "roles",
+        "sync",
+        "decision"
+      ],
+      "classification": "agreed_requirement",
+      "product_label": "Agreed requirement",
+      "review_status": "reconciled_passed_qa_with_caveat",
+      "living_doc_alignment": "critical_for_slot_ui",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#273",
+        "#335",
+        "#470",
+        "#476"
+      ],
+      "discrepancy_flags": [
+        "qa_sync_validation_incomplete",
+        "residuals_in_470"
+      ],
+      "summary": "Chapter assignment sync silently nulled assigned_user_id for users not in local users table (FK coalesce), making teammate-assigned chapters look unassigned and enabling false offline claims. Closed; Roslin passed QA but noted chapter assignment sync validation was not completed because sync was failing at test time. #470 later triages claim queue + silent FK skip visibility.",
+      "notes": "Living roles docs: grant≠slot; slot UI depends on assignedUserId/peerCheckerId surviving sync. This ticket is foundational for ownership/taken-banner correctness. Dev≠QA — QA note of incomplete sync validation is a residual risk flag.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 435,
+      "state": "closed",
+      "title": "Harden Dependabot: ignore unsafe bumps + align workflow docs",
+      "labels": [
+        "documentation",
+        "dependencies"
+      ],
+      "created_at": "2026-08-31T14:59:51Z",
+      "closed_at": "2026-09-10T17:39:55Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/435",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "infra",
+        "ci"
+      ],
+      "classification": "engineering_chore",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "not_covered",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#424"
+      ],
+      "discrepancy_flags": [],
+      "summary": "Harden Dependabot ignore rules + align workflow docs after unsafe bump queue. Closed.",
+      "notes": "",
+      "priority_relevant": false
+    },
+    {
+      "issue": 438,
+      "state": "closed",
+      "title": "Sync pericope boundaries to local SQLite (set-level hybrid, bandwidth-first)",
+      "labels": [
+        "enhancement",
+        "DevQA"
+      ],
+      "created_at": "2026-09-01T18:57:58Z",
+      "closed_at": "2026-09-08T20:10:54Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/438",
+      "retrieval_complete": true,
+      "comments_api": 3,
+      "comments_fetched": 3,
+      "comments_count_match": true,
+      "comment_users": [
+        "mattrace-gloo"
+      ],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "recording",
+        "sync",
+        "decision"
+      ],
+      "classification": "agreed_requirement",
+      "product_label": "Agreed requirement",
+      "review_status": "historical_done",
+      "living_doc_alignment": "supports_agreed",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#447",
+        "fluent-api#309",
+        "#407",
+        "#408",
+        "#409",
+        "#410",
+        "#411"
+      ],
+      "discrepancy_flags": [
+        "bandwidth_redesign_later_decision"
+      ],
+      "summary": "Sync pericope boundaries to local SQLite. Engineering Slack decision (set-level hybrid, bandwidth-first) rewrote AC on 2026-09-03 — later decision wins over earlier chapter-loop plan. Closed; unblocks Verse/Pericope UI chain.",
+      "notes": "Sibling API #309 + mobile #447 for seed. Production sync must not N-call chapter pericopes.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 442,
+      "state": "open",
+      "title": "Implement Implicit Peer Checker Assignment",
+      "labels": [],
+      "created_at": "2026-09-02T17:57:16Z",
+      "closed_at": null,
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/442",
+      "retrieval_complete": true,
+      "comments_api": 5,
+      "comments_fetched": 5,
+      "comments_count_match": true,
+      "comment_users": [
+        "JonathanSeehagen",
+        "Roslin22",
+        "chadw-eten",
+        "mattrace-gloo"
+      ],
+      "qa_results_in_comments": true,
+      "product_signoff_in_comments": true,
+      "themes": [
+        "roles",
+        "decision",
+        "recording"
+      ],
+      "classification": "agreed_requirement",
+      "product_label": "Agreed requirement",
+      "review_status": "open_despite_passed_qa_comments",
+      "living_doc_alignment": "aligns_living_open_peer",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "fluent-api#335",
+        "fluent-api#334",
+        "#476",
+        "#256",
+        "#607"
+      ],
+      "discrepancy_flags": [
+        "still_github_open_after_chad_check",
+        "api_dep_fluent_api_335",
+        "soft_dep_256_conflicts"
+      ],
+      "summary": "Implicit/open Peer Checker: unassigned peer_check is open to non-drafter peers; Send to Community Review assigns tapper. Eng write-up required API policy changes first (fluent-api#335 / PR #334). Roslin 2026-10-14 nightly-style results PASS; Chad ✅ — but GitHub issue remains OPEN. Living roles-and-permissions.md documents open peer as current API policy (prefer policy over stricter permissions.md).",
+      "notes": "Later living-doc statement of open peer wins over older 'nobody can edit when peerCheckerId null' API state described in early eng write-up. Do not conflate with fluent-api seed tickets. Board close / Done may be pending — flag for integrator.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 443,
+      "state": "closed",
+      "title": "Add Advanced and Complete Stage Progression",
+      "labels": [],
+      "created_at": "2026-09-02T17:57:26Z",
+      "closed_at": "2026-09-15T12:54:17Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/443",
+      "retrieval_complete": true,
+      "comments_api": 3,
+      "comments_fetched": 3,
+      "comments_count_match": true,
+      "comment_users": [
+        "Roslin22",
+        "chadw-eten",
+        "mattrace-gloo"
+      ],
+      "qa_results_in_comments": true,
+      "product_signoff_in_comments": true,
+      "themes": [
+        "roles",
+        "recording",
+        "decision"
+      ],
+      "classification": "agreed_requirement",
+      "product_label": "Agreed requirement",
+      "review_status": "reconciled_passed_qa",
+      "living_doc_alignment": "supports_agreed",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#258",
+        "#257",
+        "#542"
+      ],
+      "discrepancy_flags": [
+        "spawned_542_empty_recording_advance",
+        "mobile_confirm_sheet_intentional_vs_web"
+      ],
+      "summary": "Extend stage progression through linguist/theological/consultant/complete with one CTA + confirm sheet. QA passed; Chad confirmed mobile confirm sheet intentional vs web. Empty-recording advance filed as #542.",
+      "notes": "Living stage chain in roles-and-permissions matches this progression. Post-peer open-to-any-translator remains Open product decision for grant UI checks.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 446,
+      "state": "open",
+      "title": "Offline download queue keys on Aquifer contentId, so a re-uploaded recording (same id, new sourceUrl) is never re-fetched",
+      "labels": [
+        "DevQA"
+      ],
+      "created_at": "2026-09-03T16:41:34Z",
+      "closed_at": null,
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/446",
+      "retrieval_complete": true,
+      "comments_api": 2,
+      "comments_fetched": 2,
+      "comments_count_match": true,
+      "comment_users": [
+        "chadw-eten",
+        "mattrace-gloo"
+      ],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "resources",
+        "offline",
+        "sync"
+      ],
+      "classification": "known_gap",
+      "product_label": "Known deviation",
+      "review_status": "open_devqa_hard_to_verify",
+      "living_doc_alignment": "aligns_resources_outline",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [],
+      "discrepancy_flags": [
+        "open",
+        "ai_filed_needs_human_verify",
+        "devqa_not_qa_testable",
+        "impl_claimed_merged"
+      ],
+      "summary": "Offline download_queue keys on Aquifer contentId with ON CONFLICT DO NOTHING, so same id + new sourceUrl never re-fetches. AI-filed with disclosure; Matt moved to In QA claiming implementing PR merged; Chad marked DevQA — not realistically QA-testable without Aquifer content change.",
+      "notes": "Living Resources/offline outline does not yet encode re-upload invalidation. Priority resources/sync finding for stale offline media risk.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 447,
+      "state": "closed",
+      "title": "Bundle known FIA/FCBH pericope set JSON in the APK (bandwidth-first seed)",
+      "labels": [
+        "enhancement",
+        "DevQA"
+      ],
+      "created_at": "2026-09-03T18:06:33Z",
+      "closed_at": "2026-09-08T20:25:23Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/447",
+      "retrieval_complete": true,
+      "comments_api": 2,
+      "comments_fetched": 2,
+      "comments_count_match": true,
+      "comment_users": [
+        "mattrace-gloo"
+      ],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "recording",
+        "sync",
+        "offline"
+      ],
+      "classification": "agreed_requirement",
+      "product_label": "Agreed requirement",
+      "review_status": "historical_done",
+      "living_doc_alignment": "supports_agreed",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#438",
+        "fluent-api#309"
+      ],
+      "discrepancy_flags": [],
+      "summary": "Bundle known FIA/FCBH pericope set JSON in APK for zero-byte first paint seed. Closed; bandwidth-first companion to #438.",
+      "notes": "First comment body accidentally duplicates API ticket shape — still clearly mobile packaging ticket via title/AC.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 448,
+      "state": "open",
+      "title": "Clarify Record-tab messaging when source text is missing after sync",
+      "labels": [
+        "enhancement"
+      ],
+      "created_at": "2026-09-03T20:16:34Z",
+      "closed_at": null,
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/448",
+      "retrieval_complete": true,
+      "comments_api": 3,
+      "comments_fetched": 3,
+      "comments_count_match": true,
+      "comment_users": [
+        "Roslin22",
+        "chadw-eten",
+        "mattrace-gloo"
+      ],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "recording",
+        "sync"
+      ],
+      "classification": "agreed_requirement",
+      "product_label": "Agreed requirement",
+      "review_status": "open_qa_blocked",
+      "living_doc_alignment": "aligns_recording_outline",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#235",
+        "#469"
+      ],
+      "discrepancy_flags": [
+        "open",
+        "qa_lacks_repro_fixture",
+        "blocked_on_resources_download"
+      ],
+      "summary": "Clarify Record-tab messaging when bible text missing after sync settled (stop claiming 'still syncing'). Impl claimed merged + moved to In QA; Roslin asked for repro chapter; Chad told QA to hold until download resources work again.",
+      "notes": "Living recording flow expects honest empty/denied states. Distinct from source-audio-empty dock. Dev observation (project 432 Mark) is Dev≠QA.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 451,
+      "state": "open",
+      "title": "Build Comment Entry Points, Composer & Panel",
+      "labels": [],
+      "created_at": "2026-09-04T15:29:04Z",
+      "closed_at": null,
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/451",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "roles",
+        "comments",
+        "decision"
+      ],
+      "classification": "agreed_requirement",
+      "product_label": "Agreed requirement",
+      "review_status": "open_not_started",
+      "living_doc_alignment": "not_in_living_outline_yet",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#452"
+      ],
+      "discrepancy_flags": [
+        "open",
+        "depends_on_452_and_api_comments"
+      ],
+      "summary": "Build comment entry points, composer, panel (text/audio/emoji, one-level thread). Depends on backend comments + Observer identity + #452 Draft view. No comments on issue; still open product surface for community review feedback.",
+      "notes": "Living core-flows outline does not yet detail comments. Open product decision remains on mobile grant chrome vs server 403 for Observer.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 452,
+      "state": "open",
+      "title": "Build Observer Read-Only Draft View",
+      "labels": [],
+      "created_at": "2026-09-04T15:50:17Z",
+      "closed_at": null,
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/452",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "roles",
+        "decision"
+      ],
+      "classification": "agreed_requirement",
+      "product_label": "Agreed requirement",
+      "review_status": "open_not_started",
+      "living_doc_alignment": "aligns_open_observer_gap",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#451"
+      ],
+      "discrepancy_flags": [
+        "open",
+        "depends_on_api_observer_identity"
+      ],
+      "summary": "Observer read-only Draft view (Bible + Draft tabs; no Resources; no record/edit/stage controls). Prerequisite for Observer comments (#451). Explicitly excludes Resources for field community checkers. Still open; 0 comments.",
+      "notes": "Living roles docs: Project Observer may GET resources via project:view but must not edit/claim; mobile grant router absent. This ticket is the first real Observer product surface on mobile — priority roles finding.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 459,
+      "state": "closed",
+      "title": "Nightly APK schedule never builds — delayed cron dropped by drift window",
+      "labels": [
+        "bug",
+        "ci"
+      ],
+      "created_at": "2026-09-08T10:11:16Z",
+      "closed_at": "2026-09-08T10:21:46Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/459",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "infra",
+        "ci",
+        "qa_process"
+      ],
+      "classification": "engineering_chore",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "supports_qa_process",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#421",
+        "#484"
+      ],
+      "discrepancy_flags": [],
+      "summary": "Nightly APK schedule never builds — delayed cron dropped by drift window. Closed fix enabling nightly APK again for QA.",
+      "notes": "Infra enabling human Nightly QA; not a product journey AC.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 464,
+      "state": "closed",
+      "title": "Automate Project 4 ticket lifecycle (In Progress → In PR Review → In QA / Done)",
+      "labels": [
+        "documentation"
+      ],
+      "created_at": "2026-09-08T10:34:51Z",
+      "closed_at": "2026-09-10T20:28:33Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/464",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "board",
+        "qa_process"
+      ],
+      "classification": "process_chore",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "supports_agreed",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#377"
+      ],
+      "discrepancy_flags": [],
+      "summary": "Automate Project 4 ticket lifecycle (In Progress → In PR Review → In QA/Done). Closed process automation.",
+      "notes": "",
+      "priority_relevant": false
+    },
+    {
+      "issue": 469,
+      "state": "closed",
+      "title": "Bug: Local bible_texts.id does not match API verse id (upload sends wrong bibleTextId)",
+      "labels": [
+        "bug"
+      ],
+      "created_at": "2026-09-09T15:40:09Z",
+      "closed_at": "2026-09-09T16:36:29Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/469",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "recording",
+        "sync"
+      ],
+      "classification": "agreed_requirement",
+      "product_label": "Agreed requirement",
+      "review_status": "historical_done",
+      "living_doc_alignment": "critical_for_upload",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#470"
+      ],
+      "discrepancy_flags": [
+        "can_masquerade_as_403_permissions"
+      ],
+      "summary": "Local bible_texts.id used autoincrement instead of API verse id, so uploads sent wrong bibleTextId (often looking like permissions/403). Closed; foundational sync/recording identity fix.",
+      "notes": "Living upload/sync contract depends on correct bibleTextId. Do not reclassify historical 403s as role denials without checking this class of bug.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 470,
+      "state": "closed",
+      "title": "Bug: Sync Now triage — claim queue hardening + metadata error visibility",
+      "labels": [
+        "bug"
+      ],
+      "created_at": "2026-09-09T15:40:39Z",
+      "closed_at": "2026-09-10T17:07:35Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/470",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "sync",
+        "roles"
+      ],
+      "classification": "agreed_requirement",
+      "product_label": "Agreed requirement",
+      "review_status": "historical_done",
+      "living_doc_alignment": "aligns_sync_outline",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#469",
+        "#428",
+        "#177"
+      ],
+      "discrepancy_flags": [],
+      "summary": "Sync Now triage: harden claim queue (don't drop rows / abort whole metadata sync silently), surface metadata step errors on Sync page, verify #428/#177 residuals. Closed.",
+      "notes": "Living sync flow: 401 reauth, 403≠empty success. This ticket improves failure visibility.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 474,
+      "state": "closed",
+      "title": "Take card pericope subtitle truncates on Record tab",
+      "labels": [],
+      "created_at": "2026-09-09T20:30:11Z",
+      "closed_at": "2026-09-09T20:32:02Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/474",
+      "retrieval_complete": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "comments_count_match": true,
+      "comment_users": [
+        "JonathanSeehagen"
+      ],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "recording",
+        "ui"
+      ],
+      "classification": "withdrawn",
+      "product_label": "n/a (withdrawn)",
+      "review_status": "closed_mistake",
+      "living_doc_alignment": "not_covered",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#410"
+      ],
+      "discrepancy_flags": [
+        "opened_by_mistake"
+      ],
+      "summary": "Take card pericope subtitle truncation — closed as opened by mistake during #410 triage; may be re-created if needed.",
+      "notes": "No product decision residual unless refiled.",
+      "priority_relevant": false
+    },
+    {
+      "issue": 476,
+      "state": "closed",
+      "title": "Extend Assignment Indicator to Reflect Current-Stage Assignee",
+      "labels": [],
+      "created_at": "2026-09-10T17:06:29Z",
+      "closed_at": "2026-10-06T19:06:42Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/476",
+      "retrieval_complete": true,
+      "comments_api": 3,
+      "comments_fetched": 3,
+      "comments_count_match": true,
+      "comment_users": [
+        "Roslin22",
+        "chadw-eten",
+        "mattrace-gloo"
+      ],
+      "qa_results_in_comments": true,
+      "product_signoff_in_comments": true,
+      "themes": [
+        "roles",
+        "decision"
+      ],
+      "classification": "agreed_requirement",
+      "product_label": "Agreed requirement",
+      "review_status": "reconciled_passed_qa",
+      "living_doc_alignment": "aligns_living_open_peer",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#442",
+        "#267",
+        "#260"
+      ],
+      "discrepancy_flags": [
+        "conflict_icon_260_untested"
+      ],
+      "summary": "Stage-aware assignment indicator: Peer Check shows peerCheckerId only if PM-assigned; open peer shows no icon; post-peer stages clear icon. Soft-dep on #442 semantics. Roslin passed; conflict icon (#260) not tested; Chad ✅.",
+      "notes": "Living roles docs match open-peer no-icon behavior. Later #442 decision chain is authoritative for Peer Check.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 483,
+      "state": "open",
+      "title": "Projects tab fails with disk I/O error after full offline sync on physical device",
+      "labels": [
+        "bug"
+      ],
+      "created_at": "2026-09-10T17:44:36Z",
+      "closed_at": null,
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/483",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "sync",
+        "offline",
+        "performance"
+      ],
+      "classification": "known_gap",
+      "product_label": "Known deviation",
+      "review_status": "open_device_bug",
+      "living_doc_alignment": "not_covered",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [],
+      "discrepancy_flags": [
+        "open",
+        "physical_device_only",
+        "large_db"
+      ],
+      "summary": "Projects tab disk I/O error after full offline sync on physical device due to monolithic getProjectsWithSummary JOIN materializing chapter×verse. Integrity OK; My Work still works. Still OPEN.",
+      "notes": "Priority sync/offline scale finding. Agent emulator may not repro; Needs physical/nightly device QA when fixed.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 484,
+      "state": "closed",
+      "title": "Simplify nightly schedule: one cron + Slack on build complete",
+      "labels": [
+        "chore",
+        "ci"
+      ],
+      "created_at": "2026-09-10T17:50:13Z",
+      "closed_at": "2026-09-11T23:49:43Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/484",
+      "retrieval_complete": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "comments_count_match": true,
+      "comment_users": [
+        "mattrace-gloo"
+      ],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "infra",
+        "ci",
+        "qa_process"
+      ],
+      "classification": "engineering_chore",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "supports_qa_process",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#459",
+        "#421"
+      ],
+      "discrepancy_flags": [
+        "id_collision_risk_qa_assignment_484"
+      ],
+      "summary": "Simplify nightly schedule: one cron + Slack on build complete. Closed engineering-only (Needs QA? No) via PR #517. CRITICAL DISAMBIGUATION: this is NOT QA chapter-assignment id 484 (1 Peter 5 peer_check fixture) used throughout docs/product-behavior.",
+      "notes": "Product-behavior 'assignment 484' chronology (#721 Sync fail, warm tabs PASS, empty Resources UI) refers to a QA data fixture id, not this GitHub issue. Classify carefully as nightly CI schedule only.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 485,
+      "state": "closed",
+      "title": "Fix Waveform Shifting Left of Center When Recording Starts",
+      "labels": [
+        "bug"
+      ],
+      "created_at": "2026-09-10T17:50:38Z",
+      "closed_at": "2026-09-15T04:42:21Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/485",
+      "retrieval_complete": true,
+      "comments_api": 4,
+      "comments_fetched": 4,
+      "comments_count_match": true,
+      "comment_users": [
+        "B3RN153",
+        "Roslin22",
+        "chadw-eten"
+      ],
+      "qa_results_in_comments": true,
+      "product_signoff_in_comments": true,
+      "themes": [
+        "recording",
+        "ui"
+      ],
+      "classification": "agreed_requirement",
+      "product_label": "Agreed requirement",
+      "review_status": "reconciled_passed_qa",
+      "living_doc_alignment": "supports_inferred",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#404"
+      ],
+      "discrepancy_flags": [],
+      "summary": "Waveform shifts left on record start. Follow-up from #404 QA. Roslin passed on PR #525; Chad ✅.",
+      "notes": "",
+      "priority_relevant": true
+    },
+    {
+      "issue": 486,
+      "state": "closed",
+      "title": "Fix Audio Error When Resuming After Pause or Screen Lock",
+      "labels": [
+        "bug"
+      ],
+      "created_at": "2026-09-10T17:51:10Z",
+      "closed_at": "2026-09-16T04:15:04Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/486",
+      "retrieval_complete": true,
+      "comments_api": 2,
+      "comments_fetched": 2,
+      "comments_count_match": true,
+      "comment_users": [
+        "Roslin22",
+        "chadw-eten"
+      ],
+      "qa_results_in_comments": true,
+      "product_signoff_in_comments": true,
+      "themes": [
+        "recording"
+      ],
+      "classification": "agreed_requirement",
+      "product_label": "Agreed requirement",
+      "review_status": "reconciled_passed_qa",
+      "living_doc_alignment": "supports_inferred",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#404"
+      ],
+      "discrepancy_flags": [],
+      "summary": "Audio error when resuming after pause or screen lock. Follow-up from #404 QA. Roslin passed on PR #537; Chad ✅.",
+      "notes": "Recording resume reliability — human nightly evidence.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 488,
+      "state": "closed",
+      "title": "Android Maestro E2E program",
+      "labels": [],
+      "created_at": "2026-09-10T19:51:35Z",
+      "closed_at": "2026-09-11T21:38:07Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/488",
+      "retrieval_complete": true,
+      "comments_api": 3,
+      "comments_fetched": 3,
+      "comments_count_match": true,
+      "comment_users": [
+        "mattrace-gloo"
+      ],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "test_infra",
+        "maestro",
+        "qa_process"
+      ],
+      "classification": "test_infra_epic",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "supports_maestro_lane",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#489",
+        "#491",
+        "#495",
+        "#497"
+      ],
+      "discrepancy_flags": [],
+      "summary": "Android Maestro E2E program epic. Children shipped; epic closed. Maestro complements but does not replace human Nightly QA.",
+      "notes": "Living docs: agent Maestro ≠ Nightly signoff. Role coverage still 0 live grant allow/deny.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 489,
+      "state": "closed",
+      "title": "Maestro foundation: harness, selectors, agent loop",
+      "labels": [],
+      "created_at": "2026-09-10T19:51:59Z",
+      "closed_at": "2026-09-11T20:55:54Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/489",
+      "retrieval_complete": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "comments_count_match": true,
+      "comment_users": [
+        "mattrace-gloo"
+      ],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "test_infra",
+        "maestro"
+      ],
+      "classification": "test_infra",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "supports_maestro_lane",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#488",
+        "#490"
+      ],
+      "discrepancy_flags": [],
+      "summary": "Maestro foundation: harness, selectors, opt-in agent loop. Shipped in #500; closed. #490 selectors condensed into this.",
+      "notes": "",
+      "priority_relevant": false
+    },
+    {
+      "issue": 490,
+      "state": "closed",
+      "title": "Stable Maestro selectors (Home, lists, Settings testIDs)",
+      "labels": [],
+      "created_at": "2026-09-10T19:52:08Z",
+      "closed_at": "2026-09-10T19:54:17Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/490",
+      "retrieval_complete": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "comments_count_match": true,
+      "comment_users": [
+        "mattrace-gloo"
+      ],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "test_infra",
+        "maestro"
+      ],
+      "classification": "superseded_condensed",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "supports_maestro_lane",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#489",
+        "#488"
+      ],
+      "discrepancy_flags": [
+        "condensed_into_489"
+      ],
+      "summary": "Stable Maestro selectors ticket condensed into #489 foundation. Closed as duplicate/condensed scope.",
+      "notes": "",
+      "priority_relevant": false
+    },
+    {
+      "issue": 491,
+      "state": "closed",
+      "title": "Maestro smokes: auth, navigation, record, sync/offline, edges",
+      "labels": [],
+      "created_at": "2026-09-10T19:52:12Z",
+      "closed_at": "2026-09-11T20:53:07Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/491",
+      "retrieval_complete": true,
+      "comments_api": 0,
+      "comments_fetched": 0,
+      "comments_count_match": true,
+      "comment_users": [],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "test_infra",
+        "maestro",
+        "recording",
+        "sync"
+      ],
+      "classification": "test_infra",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "supports_maestro_lane",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#488",
+        "#492",
+        "#493"
+      ],
+      "discrepancy_flags": [],
+      "summary": "Maestro smokes suite (auth/nav/record/sync/offline/edges). Closed; #492/#493 condensed into this.",
+      "notes": "Does not prove role grants or close product gaps like #417/#442 board state.",
+      "priority_relevant": true
+    },
+    {
+      "issue": 492,
+      "state": "closed",
+      "title": "Maestro smoke: Home + drafting navigation",
+      "labels": [],
+      "created_at": "2026-09-10T19:52:19Z",
+      "closed_at": "2026-09-10T19:54:15Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/492",
+      "retrieval_complete": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "comments_count_match": true,
+      "comment_users": [
+        "mattrace-gloo"
+      ],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "test_infra",
+        "maestro"
+      ],
+      "classification": "superseded_condensed",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "supports_maestro_lane",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#491",
+        "#488"
+      ],
+      "discrepancy_flags": [
+        "condensed_into_491"
+      ],
+      "summary": "Maestro Home+drafting nav smoke condensed into #491. Closed.",
+      "notes": "",
+      "priority_relevant": false
+    },
+    {
+      "issue": 493,
+      "state": "closed",
+      "title": "Maestro smoke: Record happy path (mic, capture, playback)",
+      "labels": [],
+      "created_at": "2026-09-10T19:52:28Z",
+      "closed_at": "2026-09-10T19:54:17Z",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/493",
+      "retrieval_complete": true,
+      "comments_api": 1,
+      "comments_fetched": 1,
+      "comments_count_match": true,
+      "comment_users": [
+        "mattrace-gloo"
+      ],
+      "qa_results_in_comments": false,
+      "product_signoff_in_comments": false,
+      "themes": [
+        "test_infra",
+        "maestro",
+        "recording"
+      ],
+      "classification": "superseded_condensed",
+      "product_label": "n/a (engineering)",
+      "review_status": "historical_done",
+      "living_doc_alignment": "supports_maestro_lane",
+      "substantive_review": "yes",
+      "evidence_basis": {
+        "body_read": true,
+        "comments_read": true,
+        "product_behavior_consulted": true,
+        "keyword_only": false,
+        "docs_checked": [
+          "docs/product-behavior/README.md",
+          "docs/product-behavior/roles-and-permissions.md",
+          "docs/product-behavior/core-flows.md"
+        ],
+        "impl_checked": false,
+        "linked_prs_followed": false
+      },
+      "decision_chain": [
+        "#491",
+        "#488"
+      ],
+      "discrepancy_flags": [
+        "condensed_into_491"
+      ],
+      "summary": "Maestro Record happy-path smoke condensed into #491. Closed.",
+      "notes": "",
+      "priority_relevant": false
+    }
+  ],
+  "priority_findings": [
+    {
+      "rank": 1,
+      "severity": "critical",
+      "issues": [
+        368,
+        369,
+        484
+      ],
+      "themes": [
+        "decision",
+        "roles",
+        "sync",
+        "qa_process"
+      ],
+      "finding": "ID collision hazards in this cohort: mobile #368/#369 are A+ eng chores, NOT fluent-api#368/#369 seed/reset tickets cited in docs/product-behavior; mobile #484 is nightly CI schedule simplification, NOT QA assignment fixture 484 (1 Peter 5 peer_check) used in living QA chronology.",
+      "evidence": "Cache titles/bodies for #368 (react-navigation audit), #369 (sync unit tests), #484 (nightly cron+Slack). product-behavior/README.md Tickets table lists fluent-api#368/#369 and separately documents assignment 484 chronology + #721.",
+      "recommendation": "Integrator must keep cross-repo and fixture-id namespaces explicit in the ledger; never keyword-merge mobile issue numbers with API tickets or QA assignment ids."
+    },
+    {
+      "rank": 2,
+      "severity": "high",
+      "issues": [
+        442,
+        476
+      ],
+      "themes": [
+        "roles",
+        "decision",
+        "recording"
+      ],
+      "finding": "Open Peer Check decision chain is product-authoritative and reflected in living roles docs, but mobile #442 remains GitHub-open after Roslin PASS + Chad ✅ (2026-10-14). #476 stage-aware ownership icon closed against #442 semantics.",
+      "evidence": "#442 body AC + eng write-up (API blocker fluent-api#335/#334) + QA checklist + Roslin/Chad comments; roles-and-permissions.md open-peer policy rows; #476 AC + QA results for no-icon on unassigned peer_check.",
+      "recommendation": "Treat living open-peer policy as current; resolve #442 board/GitHub closure separately from re-opening product debate. Pair any residual env gaps with API deploy proof (Dev≠QA)."
+    },
+    {
+      "rank": 3,
+      "severity": "high",
+      "issues": [
+        417,
+        446,
+        448
+      ],
+      "themes": [
+        "resources",
+        "offline",
+        "sync",
+        "recording"
+      ],
+      "finding": "Resources/offline integrity cluster still open: #417 kind:image queue bug blocks Images & Maps offline gating; #446 Aquifer same-id URL refresh never re-fetches (DevQA / hard to verify); #448 honest missing-text messaging is In QA but blocked awaiting resources download + repro fixture.",
+      "evidence": "#417 root-cause file pointers + AC; #446 conflict DO NOTHING analysis + Chad DevQA; #448 Roslin/Chad hold comments; core-flows Resources empty-vs-403 guidance (QA 484 empty UI is unrelated fixture).",
+      "recommendation": "Prioritize #417 for offline Resources AC; keep #446 as eng/DevQA; do not ask Nightly QA to sign #448 without a named chapter fixture. Do not infer HTTP 403 from empty Resources UI (living doc)."
+    },
+    {
+      "rank": 4,
+      "severity": "high",
+      "issues": [
+        428,
+        469,
+        470
+      ],
+      "themes": [
+        "roles",
+        "sync",
+        "recording"
+      ],
+      "finding": "Assignment + bibleTextId sync integrity chain: #428 fixed silent dropping of teammate assignee ids (QA passed with incomplete sync-validation caveat); #469 fixed local vs API bible_texts.id (upload wrong id masquerading as 403); #470 hardened claim queue + metadata error visibility and residual checks.",
+      "evidence": "#428 impact table (View Project unassigned, false offline claim, repair loop); Roslin caveat; #469 current-vs-expected identity; #470 AC tying residuals to #428/#177; living sync/roles docs.",
+      "recommendation": "When reconciling historical 'permission denied' upload reports, check bibleTextId identity era before concluding role denials. Retain #428 QA caveat as residual risk until proven on a healthy sync path."
+    },
+    {
+      "rank": 5,
+      "severity": "high",
+      "issues": [
+        408,
+        452,
+        451,
+        483
+      ],
+      "themes": [
+        "recording",
+        "roles",
+        "decision",
+        "sync"
+      ],
+      "finding": "Open product surfaces with decision weight: #408 Bible Verse/Pericope still open with product-concern scrubbing residual (auto-select waived); #452/#451 Observer Draft view + comments not started (first real Observer mobile surfaces); #483 Projects tab disk I/O after large offline sync on physical devices.",
+      "evidence": "#408 Chad scrubbing concern + open state; #452/#451 FR bodies (Observer restrictions, no Resources tab); #483 op-sqlite disk I/O root-cause write-up; living roles open questions on Observer QA accounts / grant chrome.",
+      "recommendation": "Keep #408 open until scrubbing residual dispositioned; sequence #452 before #451; treat #483 as physical-device scale bug not emulator-dismissible. Living open questions on Observer accounts remain unsettled."
+    }
+  ]
+}

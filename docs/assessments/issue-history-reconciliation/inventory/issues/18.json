@@ -1,0 +1,56 @@
+{
+  "issue_number": 18,
+  "fetched_at_utc": "2026-10-20T00:33:52Z",
+  "issue": {
+    "number": 18,
+    "title": "Inline sync status UI",
+    "state": "closed",
+    "body": "## Context\n\n- Part of the mobile sync epic: #14\n- Depends on: #17 \n\n## Background\nShow sync state inline on the home screen using values already stored\nin MMKV. No new API calls or SQLite reads needed \u2014 purely UI.\n\n## UI spec\nA single row sits between the \"fluent\" header and the Projects button.\nIt shows the current sync state on the left and a \u21bb tap target on the right.\nThe row changes appearance based on state \u2014 no separate components needed.\n\n### States\n\n**Normal**\n- Background: default surface\n- Left: \"Last synced: X mins ago\" in muted text\n- Right: \u21bb in muted text\n\n**Syncing**\n- Background: blue tint (`#e6f1fb`, border `#b5d4f4`)\n- Left: \"Syncing...\" in blue\n- Right: \u27f3 in blue\n\n**Never synced**\n- Background: default surface\n- Left: \"Never synced\" in muted text\n- Right: \u21bb in muted text\n\n**Error**\n- Background: red tint (`#fcebeb`, border `#f7c1c1`)\n- Left: \"Sync failed: <step name>\" in red\n- Right: \u21bb in red\n\n## Tasks\n- [x] Add the sync row between the header and Projects button\n- [x] Read `last_synced_at` from MMKV and compute relative time\n      e.g. \"5 mins ago\", \"2 hours ago\"\n- [x] Show \"Never synced\" if `last_synced_at` is not set\n- [x] Show \"Syncing...\" while sync is in progress\n- [x] Check `sync_error_<step>` keys in MMKV \u2014 if any exist,\n      show the error state with the step name\n- [x] Tapping \u21bb triggers the sync sequence (delegates to #XX Sync trigger)\n\n## Acceptance criteria\n- [x] All 4 states render correctly\n- [x] Row sits between header and Projects button\n- [x] Tapping \u21bb in any state triggers sync\n- [x] Error state shows which step failed, not a generic message\n- [x] No global error toast is shown anywhere",
+    "user": "Joel-Joseph-George",
+    "created_at": "2026-04-13T07:01:47Z",
+    "updated_at": "2026-07-02T19:51:23Z",
+    "closed_at": "2026-05-07T06:42:13Z",
+    "labels": [],
+    "comments": 4,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/18",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4234511551,
+      "user": "Joel-Joseph-George",
+      "created_at": "2026-04-13T07:15:58Z",
+      "updated_at": "2026-04-13T07:15:58Z",
+      "body": "This is not the accurate mockup , this is just to get the idea of how the sync button will be placed and how its different states will be .\n\n\n<img width=\"1100\" height=\"500\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/63875c9a-a378-4a4f-a5ee-bc38d45c0bc1\" />",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/18#issuecomment-4234511551"
+    },
+    {
+      "id": 4245134048,
+      "user": "chadw-eten",
+      "created_at": "2026-04-14T15:29:27Z",
+      "updated_at": "2026-04-14T15:29:27Z",
+      "body": "@Joel-Joseph-George This looks good to me for now I would not spend too much time on it though. I don't think we are planning to show that detailed of sync information for the MVP.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/18#issuecomment-4245134048"
+    },
+    {
+      "id": 4303257094,
+      "user": "B3RN153",
+      "created_at": "2026-04-23T09:25:54Z",
+      "updated_at": "2026-04-23T09:32:13Z",
+      "body": "**SP6**\n1. Implementation - (ET 4hrs) \n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/18#issuecomment-4303257094"
+    },
+    {
+      "id": 4303297724,
+      "user": "B3RN153",
+      "created_at": "2026-04-23T09:32:20Z",
+      "updated_at": "2026-04-23T09:32:20Z",
+      "body": "Used op-sqlite kv storage in place of MMKV.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/18#issuecomment-4303297724"
+    }
+  ],
+  "comments_fetched_count": 4,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

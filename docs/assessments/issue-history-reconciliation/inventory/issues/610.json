@@ -1,0 +1,34 @@
+{
+  "issue_number": 610,
+  "fetched_at_utc": "2026-10-20T00:38:24Z",
+  "issue": {
+    "number": 610,
+    "title": "Surface offline claim conflicts when a PM assigned the chapter or the offline window exceeds 5 minutes [Offline chapter assignment Audit]",
+    "state": "closed",
+    "body": "Found during the offline chapter assignment audit (#533, epic #526).\n\n**Severity:** High  \n**Launch blocker:** To be decided with product  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), local debug build of `main` @ `fb634e5`, `dev.api.fluent.bible` (scenarios D.8, E.5\u2013E.8)\n\n## Summary\n\nThe claim API (fluent-api `chapterAssignmentPolicy.claim`) flags a conflict only when the chapter is `draft`, has no peer checker, and was updated within `CLAIM_RACE_WINDOW_MS` (5 minutes). Otherwise the auth middleware returns 404 \"Chapter assignment not found\", and the policy comment expects the client to detect reconnect conflicts during the assignment pull. Mobile has no such check and treats the 404 as transient (`src/services/chapterClaimSync.ts:53`):\n\n- the `chapter_claim_queue` row stays pending; every full sync retries it 3 times and stores \"Failed to sync N pending chapter claim(s)\" while still reporting success;\n- the assignment pull turns the row \"other\" (gray), with no conflict indicator or Record banner, and the chapter leaves the translator's My Work;\n- the translator's takes can never upload, and deleting them does not clear the claim, which keeps failing on every sync. There is no UI to clear it.\n\nBecause web assignment sets a peer checker, a PM assignment never produces a conflict, even inside the 5-minute window (D.8). A longer offline window, the usual case, never produces one either (E). The conflict works only for a translator-vs-translator race pushed within 5 minutes (D.3\u2013D.7 passed).\n\n## Expected\n\nPer #271 (\"another translator claimed or was assigned\"): the chapter shows the conflict state (`li:users` + `li:triangle-alert`) on My Work / View Project and the Record banner, it is not auto-resolved, and the pending claim stops retrying.\n\n## Actual\n\nClaim 404 \u00d73 on every sync; \"Failed to sync 1 pending chapter claim(s)\"; row gray, Draft; no conflict; take stuck; the claim survives take deletion. The only recovery is the PM assigning the chapter to the claimant, then a full sync (sign out and in).\n\n## Steps to reproduce\n\n1. Translator A: airplane mode, record the first take on an unassigned Not Started chapter W. W shows \"mine\".\n2. PM on web: assign W to translator B.\n3. A: Wi-Fi on \u2192 Sync \u2192 Sync Now (inside or after 5 minutes).\n4. Check the Sync page, the chapter row and Record. Tap Sync Now again. Delete the take and sync again.\n\n## Acceptance criteria\n\n- [ ] A pending offline claim whose chapter is now held by another user (claim 404, or pulled assignee \u2260 claimant) sets the local conflict state and resolves the queue row, regardless of peer checker and elapsed time.\n- [ ] The conflict indicator shows on My Work / View Project and the Record banner, and persists until PM resolution (#271).\n- [ ] No repeated chapter-claims sync error for this case; deleting the takes does not leave an orphan claim.\n- [ ] If the fix needs API changes (e.g. flag a conflict instead of 404 for a reconnecting claimant), the developer opens the fluent-api issue at implementation time and links it here.\n- [ ] Unit tests: `syncPendingChapterClaims` 404 / held-by-other path; assignment pull vs pending claim.\n- [ ] Android device QA: steps above (PM assignment, and more than 5 minutes), plus the translator-vs-translator race within 5 minutes still conflicts.\n\n## Related\n\n- Parent audit: #533 (epic #526)\n- #271, #470, #260, #269; fluent-api#272 (policy `claim`, `CLAIM_RACE_WINDOW_MS`)\n- #611 (claims not pushed first; shortens the window further)\n- Assessment: `docs/assessments/offline-chapter-assignment/README.md` (PR #609)\n\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-29T19:01:23Z",
+    "updated_at": "2026-10-08T20:48:31Z",
+    "closed_at": "2026-10-08T20:48:31Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/610",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 6047910995,
+      "user": "mattrace-gloo",
+      "created_at": "2026-10-07T22:13:33Z",
+      "updated_at": "2026-10-07T22:13:33Z",
+      "body": "Opened fluent-api follow-up so reconnecting claimants get a typed conflict instead of 404: https://github.com/eten-tech-foundation/fluent-api/issues/376\n\nMobile slice in progress: treat claim 404 as local `has_conflict` + resolve queue row; after assignment pull, conflict when pending claimant \u2260 pulled assignee.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/610#issuecomment-6047910995"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

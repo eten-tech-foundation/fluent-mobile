@@ -1,0 +1,32 @@
+{
+  "issue_number": 490,
+  "fetched_at_utc": "2026-10-20T00:37:11Z",
+  "issue": {
+    "number": 490,
+    "title": "Stable Maestro selectors (Home, lists, Settings testIDs)",
+    "state": "closed",
+    "body": "## Summary / context\n\nParent: #488.\n\nMaestro should prefer `testID` / `id:` over visible copy. Auth, Record, Sync, and Prepare-for-Offline already have strong coverage; Home tabs, project/chapter lists, and Settings rows are thin.\n\n## Current vs expected\n\n**Current:** Login/record/sync/offline `testID`s exist; Home `TabBar`, project/chapter rows, many Settings rows rely on a11y labels or text only.\n\n**Expected:** Semantic kebab-case `testID`s on every surface a smoke flow will tap or assert. Treat IDs as a **stable API** (rename only with flow updates).\n\n## Scope\n\n**In scope**\n- Home: `home-screen`, My Work / Projects tab ids, sync header entry\n- Lists: project row, chapter row (stable enough for Maestro)\n- Drafting: ensure Bible / Resources / Record tab ids if missing\n- Settings: row ids for Prepare Offline, cellular, drafting unit, add user, log out\n- Drawer: gear / menu content already partially covered \u2014 fill gaps\n- Brief convention note in code comment or short docs stub (playbook expands later)\n\n**Out of scope**\n- Writing Maestro YAML (later children)\n- Visual redesign\n- iOS\n\n## Acceptance criteria\n\n- [ ] Cold launch / post-login screens used by planned smokes have root + primary CTA `testID`s\n- [ ] Home tabs and at least one project/chapter open path selectable by id\n- [ ] Settings primary rows selectable by id\n- [ ] No reliance on product marketing copy for primary paths\n- [ ] Unit/component tests updated only where existing patterns already assert a11y/testIDs\n\n## Verification / test plan\n\n1. Manual inspect on emulator (or Maestro MCP later) that ids appear in hierarchy\n2. `npm test -- --ci` green if tests touched\n\n## Links\n\n- Refs #488\n- Depends on harness (# child) being usable, but selector PR can land independently\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-10T19:52:08Z",
+    "updated_at": "2026-09-10T19:54:47Z",
+    "closed_at": "2026-09-10T19:54:17Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/490",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5624594279,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-10T19:54:47Z",
+      "updated_at": "2026-09-10T19:54:47Z",
+      "body": "Condensed into #489 (foundation includes selectors + agent loop).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/490#issuecomment-5624594279"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

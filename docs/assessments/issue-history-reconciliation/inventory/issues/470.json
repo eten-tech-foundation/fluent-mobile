@@ -1,0 +1,25 @@
+{
+  "issue_number": 470,
+  "fetched_at_utc": "2026-10-20T00:37:01Z",
+  "issue": {
+    "number": 470,
+    "title": "Bug: Sync Now triage \u2014 claim queue hardening + metadata error visibility",
+    "state": "closed",
+    "body": "## Summary\n\nFollow-up to #469 (BibleText ID identity). Sync Now can still look \"broken\" for reasons other than wrong `bibleTextId`:\n\n1. Pending claim sync can abort the whole metadata sync or drop queue rows on ambiguous API responses.\n2. Sync page surfaces upload chrome but not metadata step failures from `useSync` (`SYNC_ERROR_*` / `displayText`).\n3. Silent chapter-assignment FK skips can leave My Work empty while sync \"succeeds\".\n4. Residuals of #428 / #177 should be verified, not re-implemented wholesale.\n\n## Acceptance criteria\n\n- [ ] Pending claim sync: do not delete queue rows on ambiguous API responses; do not abort entire metadata sync on a single claim failure without clear Sync-page surfacing.\n- [ ] Sync page shows metadata step failures from `useSync` (`displayText` / `SYNC_ERROR_*`), not only upload chrome.\n- [ ] Verify residuals of #428 / #177; log or surface silent chapter-assignment FK skips if they still starve My Work.\n- [ ] Unit / hook tests for the new Sync page metadata error path and claim-queue hardenings.\n\n## Out of scope\n\n- #469 BibleText ID identity (handled separately).\n- #152 notification chrome, #256 conflict tokens, #271 claim-conflict product UX, #257 stage queue.\n\n## Related\n\n- Refs #469 for the upload identity fix.\n- Discord #mobile discussion (Roslin / Chad Sync Now blockers).\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-09T15:40:39Z",
+    "updated_at": "2026-09-10T17:07:35Z",
+    "closed_at": "2026-09-10T17:07:35Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/470",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

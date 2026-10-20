@@ -1,0 +1,48 @@
+{
+  "issue_number": 513,
+  "fetched_at_utc": "2026-10-20T00:37:27Z",
+  "issue": {
+    "number": 513,
+    "title": "Align Maestro CI/docs with Expo MCP + Maestro official guidance",
+    "state": "closed",
+    "body": "## Summary / context\n\nFollow-up after #497 / #510. Audit via Expo MCP + Maestro docs showed our informational GHA path is intentional (#497) but under-documented vs Expo\u2019s canonical EAS Workflows `maestro` job.\n\n## Scope\n\n**In scope**\n- Document Expo-canonical path (EAS Workflows + `e2e-test` profile) vs chosen GHA informational runner, with links\n- Align CI Maestro CLI flags with official docs (`--test-output-dir` / `--debug-output` / JUnit)\n- Keep Android-only; do **not** add merge gates or iOS\n\n**Out of scope (separate ticket if wanted)**\n- Migrating CI to EAS Workflows `type: maestro`\n- Adding `e2e-test` EAS profile + `.eas/workflows/`\n\n## Acceptance criteria\n\n- [ ] `docs/guides/maestro.md` cites Expo MCP E2E pages + Maestro CLI/docs and states intentional GHA deviation (#497)\n- [ ] `scripts/maestro-ci-emulator.sh` uses Maestro-documented report/artifact flags\n- [ ] No required PR gate; Android-only preserved\n\n## Links\n\n- Refs #497 #510 #488\n- Expo: https://docs.expo.dev/eas/workflows/examples/e2e-tests/\n- Expo: https://docs.expo.dev/tutorial/cicd/e2e-tests/\n- Maestro: https://docs.maestro.dev/\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-11T22:18:01Z",
+    "updated_at": "2026-09-11T23:40:29Z",
+    "closed_at": "2026-09-11T23:40:29Z",
+    "labels": [],
+    "comments": 3,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/513",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5641853588,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-11T23:36:40Z",
+      "updated_at": "2026-09-11T23:36:40Z",
+      "body": "Merged via #514 (Expo/Maestro docs sources + CI notes).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/513#issuecomment-5641853588"
+    },
+    {
+      "id": 5641854816,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-11T23:36:52Z",
+      "updated_at": "2026-09-11T23:36:52Z",
+      "body": "Reopened until #514 merges (closed prematurely).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/513#issuecomment-5641854816"
+    },
+    {
+      "id": 5641877798,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-11T23:40:28Z",
+      "updated_at": "2026-09-11T23:40:28Z",
+      "body": "Merged via #514.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/513#issuecomment-5641877798"
+    }
+  ],
+  "comments_fetched_count": 3,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

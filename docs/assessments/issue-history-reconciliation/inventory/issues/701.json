@@ -1,0 +1,23 @@
+{
+  "issue_number": 701,
+  "fetched_at_utc": "2026-10-20T00:38:48Z",
+  "issue": {
+    "number": 701,
+    "title": "Implement Sync of Selected Take Changes",
+    "state": "open",
+    "body": "Changing which take is selected for a verse or passage on mobile does not currently count as a change that needs to sync, so the new selection stays on the device and never reaches the server. This ticket makes a selected take change sync back to the server like any other local change.\n\n## Functional Requirements\n\n### Change Detection\n- Treat a change to the selected take as a pending change that needs to sync.\n- Mark the change as pending whether the selection is made online or offline.\n- Mark the change as pending when the selection moves from one take to another, including a take recorded by a different account on the device.\n\n### Sync Behavior\n- Send the pending selected take change to the server on the next sync.\n- Include the selected take change in the same sync that uploads the chapter's other pending changes.\n- Sync a selected take change even when no new audio has been recorded since the last sync.\n- Clear the pending state once the server confirms the change.\n- Keep the change pending and retry on the next sync if the sync fails.\n\n### Server State\n- Make the server's selected take match the device after a successful sync.\n- When the selection changes more than once before syncing, send only the latest selection.\n\nNote: Replaces the earlier behavior in #279, where a canonical designation did not trigger a sync on its own and was sent only when the owning account synced.\n",
+    "user": "chadw-eten",
+    "created_at": "2026-10-14T20:34:22Z",
+    "updated_at": "2026-10-19T16:47:35Z",
+    "closed_at": null,
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/701",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

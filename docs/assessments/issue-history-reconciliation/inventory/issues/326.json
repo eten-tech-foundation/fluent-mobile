@@ -1,0 +1,23 @@
+{
+  "issue_number": 326,
+  "fetched_at_utc": "2026-10-20T00:36:10Z",
+  "issue": {
+    "number": 326,
+    "title": "Forward habitual yarn CLI to npm (keep npm as source of truth)",
+    "state": "closed",
+    "body": "Stay on **npm** (`package-lock.json`). Do not migrate to Yarn or pnpm.\n\nPeople who hop between Yarn-default repos type `yarn` / `yarn install` / `yarn start` here by habit. `preinstall` + `only-allow npm` already fails, but the error is generic and does not map commands to npm. Accidental Yarn PnP still breaks Expo (see #148).\n\n## Acceptance criteria\n\n- [ ] Typing `yarn` (or common Yarn CLI: `install`, `add`, `start`, `android`, `test`) in this repo runs the **npm equivalent** (or prints a one-line forward) and does **not** write `yarn.lock` / PnP files.\n- [ ] If Yarn still reaches install without the shim (e.g. Yarn Classic ignoring `yarn-path`), `preinstall` fails with a **command map** (`yarn` \u2192 `npm install`, `yarn android` \u2192 `npm run android`, \u2026) instead of a generic `only-allow` line.\n- [ ] `pnpm install` remains blocked, with the same clear npm map.\n- [ ] README troubleshooting documents the shim and the recovery steps if someone already generated PnP files.\n- [ ] Source of truth stays npm: CI, Dependabot, and `packageManager` unchanged.\n\n## Out of scope\n\n- Switching the lockfile to Yarn or pnpm\n- Isolated `node_modules` / Yarn Berry PnP\n",
+    "user": "mattrace",
+    "created_at": "2026-08-13T03:42:48Z",
+    "updated_at": "2026-08-13T17:31:12Z",
+    "closed_at": "2026-08-13T17:31:12Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/326",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

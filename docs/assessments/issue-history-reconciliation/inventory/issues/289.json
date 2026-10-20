@@ -1,0 +1,25 @@
+{
+  "issue_number": 289,
+  "fetched_at_utc": "2026-10-20T00:35:58Z",
+  "issue": {
+    "number": 289,
+    "title": "Preview-build: binary APKs only, comment linked ticket, move to In QA",
+    "state": "closed",
+    "body": "## Summary\n\nWhen the `preview-build` label runs [`.github/workflows/preview-build.yml`](https://github.com/eten-tech-foundation/fluent-mobile/blob/main/.github/workflows/preview-build.yml):\n\n1. Always build a **fresh Android preview APK** (binary only \u2014 **never** OTA / shared `preview` channel), so multiple QA builds can exist at once.\n2. Post (or replace) the same bot install comment on the **PR** and each **linked Project 4 ticket**.\n3. Best-effort move linked tickets to Project 4 Status **`In QA`**.\n\n## Current vs expected\n\n- **Before:** JS-only PRs published OTA to a shared `preview` channel (one active update clobbered others); comments only on the PR.\n- **Expected:** Every labeled PR gets its own internal APK (Updates disabled on `preview` profile). Same install comment on PR + linked issues. Linked cards move to **`In QA`** when safe.\n\n## Scope\n\n**In scope**\n- Remove JS-only / OTA path from `preview-build.yml`; always `FORCE_NEW_BUILD` APK.\n- Disable Expo Updates for EAS profile `preview` (keep production Updates).\n- Upsert ticket comments + Project 4 `In QA` handoff.\n- Docs: QA guide, CI / EAS / onboarding READMEs.\n\n**Out of scope**\n- Nightly Slack flow.\n- Side-by-side installs on one device (same package id).\n\n## Acceptance criteria\n\n- [ ] `preview-build` always produces a fresh Android APK (no `eas update`).\n- [ ] Preview profile has Expo Updates disabled so concurrent QA APKs are not overwritten by a channel.\n- [ ] Successful preview posts/updates build info on linked ticket(s), not only the PR.\n- [ ] Linked ticket(s) move to Project 4 Status **`In QA`** when previously in an allowed eng status.\n- [ ] Product-owned / terminal statuses are not overwritten.\n- [ ] PRs with no linked issues still work (PR comment only; no hard failure).\n- [ ] Docs describe binary-only preview + ticket comment + `In QA` handoff.\n\n## File pointers\n\n- `.github/workflows/preview-build.yml`\n- `.github/scripts/eas-resolve-android-build.sh` (`FORCE_NEW_BUILD`)\n- `.github/scripts/preview-notify-linked-issues.js`\n- `app.config.ts` / `eas.json`\n- `docs/guides/qa-preview-testing.md`\n\n## Links\n\n- Board: https://github.com/orgs/eten-tech-foundation/projects/4/views/9",
+    "user": "mattrace-buildmidwestern",
+    "created_at": "2026-07-31T06:39:33Z",
+    "updated_at": "2026-07-31T07:06:15Z",
+    "closed_at": "2026-07-31T07:06:15Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/289",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

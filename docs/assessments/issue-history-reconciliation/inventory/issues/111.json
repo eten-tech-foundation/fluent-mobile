@@ -1,0 +1,25 @@
+{
+  "issue_number": 111,
+  "fetched_at_utc": "2026-10-20T00:34:43Z",
+  "issue": {
+    "number": 111,
+    "title": "Expo test infra (jest-expo mocks, gate fluent-api.test.ts)",
+    "state": "closed",
+    "body": "> **Scope note:** The jest-expo base setup was **already done on main**. This ticket stays **open** because the remaining scope is genuinely not done: the new module mocks (`expo-audio`, `expo-file-system`, `expo-secure-store`) + gating the live-network `fluent-api.test.ts`. Assigned to @mattrace-gloo.\n\n### Current state on main\n\n- `jest.config.cjs`:\n\n```js\nmodule.exports = {\n preset: 'jest-expo',\n setupFiles: ['<rootDir>/jest.env.cjs'],\n testPathIgnorePatterns: ['/node_modules/', '/android/', '/ios/'],\n};\n```\n\n- `jest.env.cjs` defaults `EXPO_PUBLIC_API_BASE_URL=http://localhost:9999`.\n- ESLint already exempts tests from `no-console` and allows `any` (`eslint.config.js`); `jest/no-focused-tests` is an error.\n- **`src/services/fluent-api.test.ts` performs a live `fetch` to `https://dev.api.fluent.bible/languages`** \u2014 it is network-dependent and flaky offline.\n- No mocks exist yet for `expo-audio` / `expo-file-system` / `expo-secure-store` (those modules are added by #89/#94/#95/#96).\n\n### Problems / why\n\n- A1/A2/B/C tickets introduce native Expo modules; without jest mocks their unit tests can't run under jest-expo.\n- `fluent-api.test.ts` makes CI depend on an external host and a network path \u2014 it should be gated/skipped by default (offline CI) and only run intentionally.\n\n### Target design\n\n- Add module mocks (in `__mocks__/` or `jest.config.cjs` `setupFilesAfterEnv`/`moduleNameMapper`) for:\n - `expo-secure-store` \u2014 in-memory map (`setItemAsync`/`getItemAsync`/`deleteItemAsync`).\n - `expo-file-system` \u2014 virtual fs (`getInfoAsync`, `makeDirectoryAsync`, `deleteAsync`, `documentDirectory`).\n - `expo-audio` \u2014 stub recorder/player with controllable status.\n- Gate `fluent-api.test.ts`: skip by default (e.g. `describe.skip` or guard on an env flag like `RUN_LIVE_API_TESTS`) so offline CI is green; document how to run it intentionally.\n\n### Implementation steps\n\n1. Create `__mocks__/expo-secure-store.ts`, `__mocks__/expo-file-system.ts`, `__mocks__/expo-audio.ts` (or register via `jest.config.cjs`).\n2. Wire them so `import * as SecureStore from 'expo-secure-store'` etc. resolve to mocks in tests.\n3. Gate `src/services/fluent-api.test.ts` behind an env flag (default skipped); add a comment explaining how to run it.\n4. Verify A2/B/C unit tests can rely on these mocks.\n5. Confirm `npm test -- --ci` is fully offline-deterministic.\n\n### Acceptance criteria\n\n- [ ] jest mocks exist for `expo-secure-store`, `expo-file-system`, `expo-audio` and are usable by unit tests.\n- [ ] `fluent-api.test.ts` no longer hits the network in default CI runs (gated/skipped), with documented opt-in.\n- [ ] `npm test -- --ci` passes offline with no external network dependency.\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Tests default `EXPO_PUBLIC_API_BASE_URL=http://localhost:9999` via `jest.env.cjs`; **no live API required** after gating.\n- Do **not** use `FLUENT_USER_EMAIL` (obsolete).\n\n### Out of scope\n\n- The features that consume the mocks (#89/#94/#95/#96/#100).\n\n### Links\n\n- Epic: #120\n- Supports: #89, #94, #95, #96, #97, #100\n\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:46:17Z",
+    "updated_at": "2026-07-09T18:14:56Z",
+    "closed_at": "2026-07-09T18:14:56Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/111",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

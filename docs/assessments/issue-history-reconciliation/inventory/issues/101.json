@@ -1,0 +1,26 @@
+{
+  "issue_number": 101,
+  "fetched_at_utc": "2026-10-20T00:34:32Z",
+  "issue": {
+    "number": 101,
+    "title": "Sync status surfaced in UI",
+    "state": "closed",
+    "body": "### Current state on main\n\n- `src/hooks/useSyncStatus.ts` composes `useConnectivity` + `usePendingUploads` + `deriveSyncStatus`.\n- `src/hooks/usePendingUploads.ts` reads `getPendingUploadCount()` (`queries.ts:355`) and re-runs only when `refreshKey` changes (`:29`) \u2014 **no live updates** while an upload runs.\n- `src/utils/syncStatusState.ts` derives `online_synced | online_syncing | online_pending | offline_synced | offline_pending` with labels (`:34`).\n- Icons exist: `src/components/ui/RecordingCloudIcon.tsx`, `ChapterSyncIndicator.tsx`, `CloudSyncStatusIcon.tsx` (+ test), `SyncIndicator.tsx`.\n- Per-chapter/project recording aggregates come from `queries.ts` (`recording_count`, `pending_count`) \u2014 currently broken by the `chapter_assignment_id` join (fixed in #98).\n\n### Problems / why\n\n- `usePendingUploads` only refreshes on a manual `refreshKey` bump \u2192 the pending badge does not update as the upload worker (#100) transitions rows.\n- There is **no retry affordance**: a user with `failed` uploads cannot trigger a re-run from the UI.\n- `deriveSyncStatus` models `pending` generally but not **upload progress** (e.g. `3 uploading\u2026`) or a **failed** state.\n\n### Target design\n\n- Subscribe upload-related UI to worker progress: have `recordingSync` (#100) emit events (reuse `src/services/syncEvents.ts`) for start/progress/complete; `usePendingUploads`/`useSyncStatus` refresh on those events instead of only `refreshKey`.\n- Extend `SyncStatus`/labels to represent upload progress and a `failed` state (e.g. `online_uploading` with counts, `online_failed`).\n- Add a **retry affordance** (button/row) that calls `syncPendingRecordings(token)` (#100) and reflects in-flight + result; show `upload_error` summaries where appropriate.\n- Keep the existing icon components; add states/props as needed.\n\n### Implementation steps\n\n1. Emit upload lifecycle events from `recordingSync.ts` (#100) via `syncEvents`.\n2. Update `usePendingUploads` to also refresh on those events; expose `failedCount` alongside `pendingCount`.\n3. Extend `syncStatusState.ts` with upload-progress/failed states + labels (+ update its unit test `syncStatusState.test.ts`).\n4. Add a retry control wired to `syncPendingRecordings`; disable while in-flight.\n5. Ensure aggregates are correct after the #98 join fix.\n6. Tests: hook refresh on event; status derivation for uploading/failed; retry triggers the worker.\n\n### Acceptance criteria\n\n- [ ] Pending/upload UI updates live as the worker transitions recordings (no manual refresh required).\n- [ ] Upload progress and a `failed` state are representable and labeled.\n- [ ] A retry affordance re-runs the upload worker and reflects in-flight + outcome.\n- [ ] `syncStatusState` changes covered by updated unit tests.\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Tests default `EXPO_PUBLIC_API_BASE_URL=http://localhost:9999` via `jest.env.cjs`; **no live API required**.\n- Do **not** use `FLUENT_USER_EMAIL`.\n\n### Out of scope\n\n- The upload worker itself (#100) and server contract (#102).\n\n### Links\n\n- Epic: #117\n- Related: #100 (worker + events), #98 (aggregate join fix)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:46:03Z",
+    "updated_at": "2026-07-27T05:06:06Z",
+    "closed_at": "2026-07-27T05:06:06Z",
+    "labels": [
+      "enhancement",
+      "SP 1"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/101",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

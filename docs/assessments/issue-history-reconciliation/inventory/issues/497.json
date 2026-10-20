@@ -1,0 +1,42 @@
+{
+  "issue_number": 497,
+  "fetched_at_utc": "2026-10-20T00:37:18Z",
+  "issue": {
+    "number": 497,
+    "title": "Maestro playbook + informational CI (workflow_dispatch)",
+    "state": "closed",
+    "body": "## Summary / context\n\nParent: #488.\n\nDocs playbook mapping QA checklists \u2192 Maestro flows (and residual manual), plus optional **informational** `workflow_dispatch` Android CI \u2014 **not** a merge gate. Needs QA? / `@Roslin22` nightly handoff unchanged.\n\n## Current vs expected\n\n**Current:** QA process docs; onboarding says no E2E; no Maestro workflow.\n\n**Expected:** `docs/guides/maestro.md` + links from QA/onboarding/ci; manual Actions smoke with secrets + artifacts.\n\n## Scope\n\n**In scope**\n- Playbook: eng vs QA how-to-run; journey \u2192 flow map; residual manual (exploratory, hardware, uncovered)\n- Update AGENT_ONBOARDING / qa-process links when harness is on `main`\n- `.github/workflows/maestro-*.yml` (`workflow_dispatch` only; schedule off until stable)\n- Document secrets (`MAESTRO_EMAIL` / `MAESTRO_PASSWORD`, second account if needed)\n\n**Out of scope:** Required PR checks; replacing nightly human QA; iOS\n\n## Acceptance criteria\n\n- [ ] `docs/guides/maestro.md` landed with honest residual list\n- [ ] Linked from QA docs / onboarding\n- [ ] One green manual Actions run recorded (or blocker noted)\n- [ ] `docs/ci.md` lists workflow as informational\n\n## Verification / test plan\n\n1. Docs review against landed flows (#491 / #495)\n2. Dispatch workflow once smokes exist\n\n## Links\n\n- Refs #488\n- Absorbs former CI-only slice\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-10T19:53:06Z",
+    "updated_at": "2026-09-11T21:28:10Z",
+    "closed_at": "2026-09-11T21:24:19Z",
+    "labels": [
+      "documentation"
+    ],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/497",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5640808311,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-11T21:24:18Z",
+      "updated_at": "2026-09-11T21:24:18Z",
+      "body": "Shipped in https://github.com/eten-tech-foundation/fluent-mobile/pull/509 (merged).\n\n**AC note \u2014 green Actions run:** `workflow_dispatch` only registers after the workflow is on the default branch. Dispatching `harness` on `main` next; will follow up with the run URL (or document a blocker if the emulator/build job fails).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/497#issuecomment-5640808311"
+    },
+    {
+      "id": 5640843098,
+      "user": "mattrace-gloo",
+      "created_at": "2026-09-11T21:28:10Z",
+      "updated_at": "2026-09-11T21:28:10Z",
+      "body": "**Harness CI blocker (AC: green run or blocker noted)**\n\nDispatched after merge: https://github.com/eten-tech-foundation/fluent-mobile/actions/runs/34649217854 (`suite=harness`).\n\n- Prebuild + Maestro install succeeded\n- **Failed** at `Build APK + run Maestro on emulator` (exit 2) \u2014 no `app-release.apk` / test_output artifacts produced\n- Likely Gradle `assembleRelease` (or emulator-runner script) on `ubuntu-latest`; needs a follow-up ticket to stabilize informational CI (signing/SDK/emulator). Cron remains off until then.\n\nPlaybook + workflow are on `main` via #509; local Maestro path unchanged.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/497#issuecomment-5640843098"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

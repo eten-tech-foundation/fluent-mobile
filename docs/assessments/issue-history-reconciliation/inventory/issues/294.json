@@ -1,0 +1,42 @@
+{
+  "issue_number": 294,
+  "fetched_at_utc": "2026-10-20T00:36:03Z",
+  "issue": {
+    "number": 294,
+    "title": "Pass per-request auth tokens; stop mutating global authToken in sync",
+    "state": "closed",
+    "body": "## Summary\n\n`syncAllUsers` mutates the single module-global `authToken` per user in a loop while the upload orchestrator may run concurrently for the authenticated session. An upload (or other request) can go out with another account's bearer. The resulting 401 is attributed to the **active** user and (today) can wipe the wrong credentials.\n\n## Current vs expected\n\n**Current:** Global `authToken.set(creds.token)` inside multi-user sync; restore only at loop end / catch.\n\n**Expected:** Authenticated HTTP helpers accept an optional explicit `token`. Sync passes per-user tokens. Global `authToken` remains the **active user only** and is never swapped mid-loop.\n\n## Scope\n\n**In scope**\n- Optional `token` override on `buildHeaders` / `authedRequest` / `authedMultipartRequest`\n- Thread through `FluentAPI` methods used by sync (or thin `withToken` wrapper)\n- `syncAllUsers` / `syncAllData` pass per-user token; no mid-loop `authToken.set`\n- Keep upload path loading owner credentials explicitly (already partially true in `recordingSync`)\n\n**Out of scope**\n- Soft reauth policy (#292)\n- Durable login (#291)\n- Multi-account UX / silent restore switch (#293)\n\n## Acceptance criteria\n\n- [ ] Multi-user sync does not call `authToken.set` per user in the loop\n- [ ] Concurrent upload for active user A while syncing user B keeps A's Authorization header\n- [ ] Unit tests cover token override and assert no per-user global swap during `syncAllUsers`\n- [ ] Light device smoke: sync + pending upload together without unexpected logout\n\n## Verification / test plan\n\n1. Unit: extend `sync.auth.test.ts` / `httpClient` tests for explicit token\n2. Device smoke: multi-account device, sync all users with pending uploads\n\n## File pointers & approach\n\n1. `src/services/httpClient.ts`\n2. `src/services/api.ts`\n3. `src/services/sync.ts` (`syncAllUsers` ~490\u2013585)\n4. `src/services/recordingSync.ts` if needed\n\n## Related series (suggested order)\n\n1. **#291** \u2014 Persist auth credentials at login (**P0**)\n2. **#292** \u2014 Soft reauth / no wipe on 401 (**P0**)\n3. **#294** \u2014 Per-request auth tokens (**P1**) \u2014 this ticket\n4. **#293** \u2014 Multi-account session safety (**P1**)\n\n## Links\n\n- Pairs with #292 so spurious 401s are non-destructive even before this lands\n- Project board: [Fluent Mobile Board](https://github.com/orgs/eten-tech-foundation/projects/4/views/9) \u2014 please set Status **Backlog**, Priority **P1** (agent lacked project write permission)\n",
+    "user": "mattrace-buildmidwestern",
+    "created_at": "2026-07-31T07:09:16Z",
+    "updated_at": "2026-08-06T18:45:36Z",
+    "closed_at": "2026-08-06T18:45:36Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/294",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5140440498,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-31T07:27:36Z",
+      "updated_at": "2026-07-31T07:27:36Z",
+      "body": "## API readiness note (board audit)\n\n**Status on fluent-api `main`:** Not required \u2014 pass per-request bearer tokens through existing `FluentAPI` / sync callers. Endpoints already accept Bearer auth.\n\n**Implement with:** Client HTTP/header changes only. No mock API.\n\n### Follow up with fluent-api team\nWhen you pick this up, please ask the fluent-api team:\n1. Is the needed feature planned / in progress?\n2. Expected ETA (or \u201cnot scheduled\u201d)?\n3. Is there already an open fluent-api GitHub issue or PR? If yes, link it here; if no, ask them to file one (or file it yourself and link it).\n\nChecked against local fluent-api `main` @ `3ef4025` (2026-07-31).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/294#issuecomment-5140440498"
+    },
+    {
+      "id": 5208307038,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-06T18:45:35Z",
+      "updated_at": "2026-08-06T18:45:35Z",
+      "body": "Closing as **duplicate of #291**.\n\nAuth session durability is tracked as one board ticket per tech-lead preference (big ticket + tech notes as comments, not sibling slices).\n\nCanonical: https://github.com/eten-tech-foundation/fluent-mobile/issues/291",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/294#issuecomment-5208307038"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

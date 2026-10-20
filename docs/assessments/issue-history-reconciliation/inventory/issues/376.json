@@ -1,0 +1,23 @@
+{
+  "issue_number": 376,
+  "fetched_at_utc": "2026-10-20T00:36:29Z",
+  "issue": {
+    "number": 376,
+    "title": "[A+] Document live required branch-protection checks in docs/ci.md",
+    "state": "closed",
+    "body": "## Summary / context\n\nPart of **A+ Process / CI**. `docs/ci.md` describes workflows but required branch-protection checks are **aspirational** (\u201cmay change over time\u201d).\n\n## Current vs expected\n\n**Current:** No dated snapshot of what `main` actually requires.\n\n**Expected:** `docs/ci.md` lists the live required checks (names matching GitHub), with date + owner note. Align with local order: format:check \u2192 lint \u2192 typecheck \u2192 test --ci (+ quality-gates as required if configured).\n\n## Scope\n\n**In scope**\n- Read GitHub branch protection / rulesets for `main`\n- Update `docs/ci.md` only (no workflow redesign unless a check is missing and agreed)\n\n**Out of scope**\n- Changing QA merge policy\n- Implementing new workflows without a separate ticket\n\n## Acceptance criteria\n\n- [ ] Documented list matches GitHub settings at time of PR\n- [ ] Discrepancies called out (missing required check \u2192 follow-up issue)\n- [ ] Engineering/docs only \u2014 no Needs QA\n\n## Verification / test plan\n\n1. Compare docs \u2194 GitHub UI/API\n2. Link screenshot or `gh api` excerpt in PR\n\n## Links\n\n- `docs/ci.md`, `.github/workflows/*`\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-08-25T14:17:54Z",
+    "updated_at": "2026-08-26T17:00:13Z",
+    "closed_at": "2026-08-26T17:00:13Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/376",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

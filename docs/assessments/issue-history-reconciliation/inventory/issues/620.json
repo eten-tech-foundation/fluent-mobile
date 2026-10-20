@@ -1,0 +1,25 @@
+{
+  "issue_number": 620,
+  "fetched_at_utc": "2026-10-20T00:38:31Z",
+  "issue": {
+    "number": 620,
+    "title": "Do not treat SQLite read errors as zero pending uploads [Returning online and sync changes Audit]",
+    "state": "closed",
+    "body": "Found during the returning online and synchronizing changes audit (#530, epic #526). Deferred from PR #563 (CodeRabbit review thread on `src/db/queries.ts`, still open).\n\n**Severity:** Medium  \n**Launch blocker:** No  \n**Confirmed on:** code review of `main` (not reproducible on device without forcing a database read failure)\n\n## Summary\n\nThe pending-upload queries swallow database errors and return zero: `getPendingUploadCount()` (`src/db/queries.ts:639`) and `getUnuploadablePendingSummary()` (`:677`) catch and return `0` / an empty summary, and `loadPendingUploadCount()` (`src/hooks/usePendingUploads.ts:24`) does the same for the log-out guard. When a read fails, the Sync page derives `uploadComplete` and shows \"All synced\", and log out skips the unsynced-work warning. PR #606 moves the hook into a shared store but does not change the queries, so the store receives `0` as a valid count.\n\n## Expected\n\nA failed read is shown as unknown or error, never as \"All synced\", and the log-out guard does not treat it as \"nothing pending\".\n\n## Actual\n\nA failed read is indistinguishable from zero pending uploads.\n\n## Acceptance criteria\n\n- [ ] Pending-count queries propagate failures (or return an explicit unknown state) instead of `0`.\n- [ ] The Sync page does not show \"All synced\" or `uploadComplete` when counts are unknown.\n- [ ] The log-out guard treats an unknown count as \"may have unsynced work\".\n- [ ] Unit tests: query failure \u2192 no `uploadComplete`, and the log-out warning is shown.\n\n## Related\n\n- Parent audit: #530 (epic #526)\n- PR #563 (deferral), #603 / PR #606 (shared store)\n- Assessment: `docs/assessments/returning-online-and-sync/README.md` (PR #598)\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-30T18:20:06Z",
+    "updated_at": "2026-10-08T20:25:09Z",
+    "closed_at": "2026-10-08T20:25:09Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/620",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

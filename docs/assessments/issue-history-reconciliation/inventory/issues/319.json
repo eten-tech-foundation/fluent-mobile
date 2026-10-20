@@ -1,0 +1,40 @@
+{
+  "issue_number": 319,
+  "fetched_at_utc": "2026-10-20T00:36:08Z",
+  "issue": {
+    "number": 319,
+    "title": "Add pr-demo-video agent skill for Cursor and Claude Code",
+    "state": "closed",
+    "body": "## Summary\n\nAdd the shared `pr-demo-video` agent skill so Cursor and Claude Code can record polished PR demo screencasts (Playwright + overlay cursor/captions + ffmpeg postprocess).\n\n## Acceptance criteria\n\n- [ ] Skill lives in-repo for both Cursor (`.cursor/skills/pr-demo-video/`) and Claude Code (`.claude/skills/pr-demo-video/`)\n- [ ] Core skill files match the shared skill (SKILL.md, overlay.js, postprocess.sh, record_ui_flow.py, record_agent_flow.py)\n- [ ] Demo output directory (`.playwright-mcp/`) is gitignored\n- [ ] Brief pointer in agent onboarding/docs so agents discover the skill\n- [ ] Runtime deps (playwright, ffmpeg) documented as required only when recording \u2014 not for install\n\n## Notes\n\nExample recorder scripts are SkyPortal-oriented; adapt CONFIG/FLOW per PR / per app at usage time. Fluent Mobile is Android-native \u2014 browser UI recording applies when demoing a web surface or adapting selectors for the target under test.",
+    "user": "mattrace",
+    "created_at": "2026-08-11T22:38:27Z",
+    "updated_at": "2026-08-11T22:49:12Z",
+    "closed_at": "2026-08-11T22:49:12Z",
+    "labels": [],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/319",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5259685983,
+      "user": "mattrace",
+      "created_at": "2026-08-11T22:40:04Z",
+      "updated_at": "2026-08-11T22:40:04Z",
+      "body": "Branch started: `mrace/chore/319-pr-demo-video-skill` (from `main`).\n\nSkill installed for both agents:\n- Cursor: `.cursor/skills/pr-demo-video/` (+ personal `~/.cursor/skills/pr-demo-video/`)\n- Claude Code: `.claude/skills/pr-demo-video/` (+ personal `~/.claude/skills/pr-demo-video/`)\n\n**Board:** could not auto-add to Project 4 \u2014 `gh` token missing `read:project` / `project` scopes. Please add this issue to [Fluent Mobile Board](https://github.com/orgs/eten-tech-foundation/projects/4/views/9) and set Status to **In Progress (Dev)**.\n\n**Recording deps (when using the skill, not for install):** `pip install playwright openai` + `playwright install chromium`, and `brew install ffmpeg`.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/319#issuecomment-5259685983"
+    },
+    {
+      "id": 5259752403,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-11T22:49:12Z",
+      "updated_at": "2026-08-11T22:49:12Z",
+      "body": "Closing as not planned: the shared Playwright PR demo-video skill cannot drive or record this Android-only React Native/Expo app. Revisit only if we build an emulator/device-oriented demo skill (Maestro, adb screenrecord, etc.).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/319#issuecomment-5259752403"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

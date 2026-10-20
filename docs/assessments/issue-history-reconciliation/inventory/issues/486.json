@@ -1,0 +1,42 @@
+{
+  "issue_number": 486,
+  "fetched_at_utc": "2026-10-20T00:37:08Z",
+  "issue": {
+    "number": 486,
+    "title": "Fix Audio Error When Resuming After Pause or Screen Lock",
+    "state": "closed",
+    "body": "When a user pauses an active recording for a few seconds, or locks the screen while a recording is paused, an audio error appears when they try to resume, and the user is prevented from continuing the recording. This blocks translators from completing a take any time they pause briefly or the device locks, forcing them to restart the recording.\n\n## Functional Requirements\n\n### Recording Resume\n- Resuming a paused recording after a few seconds must not trigger an audio error.\n- Resuming a paused recording after the screen locks and unlocks must not trigger an audio error.\n- The user must be able to continue recording into the same take after a pause or screen lock without restarting.\n\n<img width=\"389\" height=\"410\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/781ef1ef-08bb-4ba0-8663-55894bc8cd44\" />",
+    "user": "chadw-eten",
+    "created_at": "2026-09-10T17:51:10Z",
+    "updated_at": "2026-09-17T11:52:47Z",
+    "closed_at": "2026-09-16T04:15:04Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/486",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5711274256,
+      "user": "Roslin22",
+      "created_at": "2026-09-17T08:21:22Z",
+      "updated_at": "2026-09-17T08:21:22Z",
+      "body": "**Test Results:#486 Tested on Pr: #537**\n\n- Recording resumed successfully after a short pause without any audio error.\n- Recording resumed successfully after locking and unlocking the screen while paused.\n- User was able to continue recording in the same take without restarting.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/486#issuecomment-5711274256"
+    },
+    {
+      "id": 5713884134,
+      "user": "chadw-eten",
+      "created_at": "2026-09-17T11:52:47Z",
+      "updated_at": "2026-09-17T11:52:47Z",
+      "body": ":white_check_mark:",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/486#issuecomment-5713884134"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

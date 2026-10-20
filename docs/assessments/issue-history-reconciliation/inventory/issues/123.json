@@ -1,0 +1,25 @@
+{
+  "issue_number": 123,
+  "fetched_at_utc": "2026-10-20T00:34:55Z",
+  "issue": {
+    "number": 123,
+    "title": "Agent onboarding docs, PR workflow tooling & Android-only scope",
+    "state": "closed",
+    "body": "## Summary\n\nEstablish agent/contributor onboarding documentation, PR workflow tooling, and formalize the **Android-only** scope for Fluent Mobile.\n\n## What shipped\n\n- **Agent onboarding docs** (`docs/AGENT_ONBOARDING.md`) covering setup, architecture, risks, and common tasks.\n- **PR workflow tooling** \u2014 slash commands / PR helpers and team PR conventions (`[TICKET-ID]: Description`).\n- **Android-only scope** documented and reflected across config and docs.\n\n## Attribution\n\nDelivered by @mattrace-gloo across [PR #43](https://github.com/eten-tech-foundation/fluent-mobile/pull/43) and [PR #56](https://github.com/eten-tech-foundation/fluent-mobile/pull/56) (both merged).\n\n## Status\n\n**Completed** \u2014 closing as completed. Tracking/credit issue.\n\nRefs #43, #56.\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T07:34:56Z",
+    "updated_at": "2026-06-28T07:35:20Z",
+    "closed_at": "2026-06-28T07:35:20Z",
+    "labels": [
+      "documentation"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/123",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

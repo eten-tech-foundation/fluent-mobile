@@ -1,0 +1,48 @@
+{
+  "issue_number": 257,
+  "fetched_at_utc": "2026-10-20T00:35:41Z",
+  "issue": {
+    "number": 257,
+    "title": "Implement Local Stage Advancement Queue for Offline Sync",
+    "state": "open",
+    "body": "Stage advancement must survive app closes and connectivity loss. When a user advances a chapter while offline, the change is written to a local queue and synced to the server on reconnect. This follows the same offline-first model as audio upload queuing. This ticket covers the queue write, chapter sync state indicator for pending stage changes, the sync trigger, and server rejection handling. The UI action that produces stage changes is covered in MStage-Implement-Stage-Advancement-Action (not yet in GitHub).\n\n## Functional Requirements\n\n### Queue Write on Advancement\n\n- When the user confirms stage advancement, record the stage change locally immediately, regardless of connectivity state.\n- The chapter's stage updates in the UI at confirmation time; the user does not wait for server confirmation.\n\n### Pending Sync State on Chapter Rows\n\n- Any chapter with unsynced local data \u2014 audio, stage change, or both \u2014 displays `li:cloud-upload` in yellow (`#FBBF24`) on its My Work row as defined and implemented in #32.\n- Once all pending data is confirmed by the server, the row displays `li:cloud-check` in green (`#16A34A`).\n- Chapters with no recorded work display no sync indicator.\n- This replaces the gray `li:cloud` \"saved on device only\" state defined in #31 with a unified pending upload state, aligning My Work with the Projects tab indicator in #32.\n\n### Sync on Reconnect\n\n- When connectivity is restored, the sync engine processes queued stage changes before audio uploads.\n- Send queued stage changes to the server in the order they were queued.\n- On successful server confirmation, remove the event from the local queue and transition the chapter row to the synced state.\n\n### Server Rejection Handling\n\n- If the server rejects a queued stage change because another device has already submitted a conflicting advancement, resolve the conflict automatically by retaining whichever stage value is lower.\n- Update the local chapter state to the resolved stage silently; no indicator or notification is shown to the user.",
+    "user": "chadw-eten",
+    "created_at": "2026-07-24T18:08:25Z",
+    "updated_at": "2026-09-28T16:59:07Z",
+    "closed_at": null,
+    "labels": [],
+    "comments": 3,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/257",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5273627839,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-12T22:42:13Z",
+      "updated_at": "2026-08-12T22:42:13Z",
+      "body": "Queue itself is mobile work (same idea as pending audio uploads). Hitting the server on reconnect should use `PATCH /chapter-assignments/{id}/submit` \u2014 same endpoint web already uses online.\n\nHeads up: rejection responses are pretty thin right now (basically a message + bad transition). If you need \u201cserver is already past this stage\u201d style handling, derive it from a fresh assignment pull after failure rather than expecting a fancy conflict payload. Also don\u2019t let a later assignment sync wipe a pending local advance \u2014 that one\u2019s easy to get wrong on shared devices.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/257#issuecomment-5273627839"
+    },
+    {
+      "id": 5815444391,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-09-24T13:53:04Z",
+      "updated_at": "2026-09-24T14:03:19Z",
+      "body": "**Gap found during the #529 audit (Going offline, epic #526): Gap 7 \u2014 \"After an offline 'Send to Peer Check', the chapter leaves My Work with no pending state\"**\n\nWhile verifying the going offline feature, the audit found this gap. **This issue closes Gap 7** once it is implemented; no PR is open for it yet. No separate issue was filed for it.\n\nDevice: Xiaomi Redmi Note 9 Pro, Android 10 (API 29), nightly `1.0.0` of `main` @ `d5b9e64`, `dev.api.fluent.bible`.\n\nWhat the device showed (**G.30**, airplane mode):\n\n- \"Send to Peer Check\" appears only on the last verse once every verse is recorded, as #542 / PR #550 intend.\n- After Send, the local stage update works: the Projects tab shows the chapter at Peer Check (`src/services/stageAdvance.ts:18-31` updates SQLite and skips the submit while offline).\n- The chapter **disappears from the translator's My Work at once**, so the pending-sync row indicator this issue defines has nowhere to show. The translator has no sign that the stage change still needs to sync.\n\n#258 says that after advancement \"the chapter transitions to the pending upload sync state until the stage change syncs\", and it only describes removal from My Work for Peer Check \u2192 Community Review.\n\nSuggested additional AC for this issue (product to confirm):\n\n- [ ] After an offline Drafting \u2192 Peer Check advance, the chapter stays in the translator's My Work with the pending-sync indicator until the stage change syncs, then leaves on the next refresh (or product confirms another surface for the pending state, e.g. with #505).\n\nAssessment: `docs/assessments/going-offline/` (PR #577).\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/257#issuecomment-5815444391"
+    },
+    {
+      "id": 5874705843,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-09-28T16:59:07Z",
+      "updated_at": "2026-09-28T16:59:07Z",
+      "body": "Finding from the returning online and synchronizing changes audit (#530, epic #526), Gap 8. **Severity:** High \u00b7 **Launch blocker:** To be decided with product.\n\n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), local debug build of `09ff2fd` (PR #559 head), `https://dev.api.fluent.bible` (scenario G.22).\n\n**What happened:** in airplane mode, \"Send to Peer Check\" on a fully recorded chapter moved it to Peer Check locally (it left My Work; Projects showed Peer Check). After turning Wi-Fi on, a sync ran on its own and the chapter went back to **Draft** in My Work, with the Send to Peer Check button again. The web app also shows Draft, and the Sync page shows nothing pending. The handoff to the peer checker is lost with no warning.\n\n**Code cause:** the submit is skipped offline and never retried (`src/services/stageAdvance.ts:18-40`), and the next chapter-assignment pull overwrites the local `status` unconditionally (`src/db/repository.ts:317-331`).\n\n**Suggested extra AC:**\n\n- [ ] A stage change confirmed offline reaches the server on reconnect without user action (before audio, per this issue).\n- [ ] A chapter-assignment pull does not overwrite a local stage change that is still queued.\n- [ ] While queued, the chapter shows a pending sync state (see #529 Gap 7).\n- [ ] Unit test for pull-while-queued; Android device QA (offline Send \u2192 reconnect \u2192 web shows the new stage).\n\nAssessment: `docs/assessments/returning-online-and-sync/README.md` (PR #598)\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/257#issuecomment-5874705843"
+    }
+  ],
+  "comments_fetched_count": 3,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

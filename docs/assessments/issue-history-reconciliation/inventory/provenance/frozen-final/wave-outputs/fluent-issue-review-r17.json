@@ -1,0 +1,561 @@
+{
+  "reviewer": "r17",
+  "wave": 4,
+  "domain": "late-gap-final",
+  "ids": [
+    694,
+    695,
+    696,
+    701,
+    702,
+    703,
+    704,
+    707,
+    716,
+    718,
+    719,
+    720
+  ],
+  "reviewed_at_utc": "2026-10-20T01:25:00Z",
+  "corpus": "docs/assessments/issue-history-reconciliation/inventory/issues/<id>.json",
+  "contract": "docs/assessments/issue-history-reconciliation/inventory/complete-row-contract.md",
+  "skip": {
+    "721": "Sync lead \u2014 out of scope for this reviewer"
+  },
+  "recommend_complete_count": 12,
+  "recommend_complete_false_count": 0,
+  "issues": [
+    {
+      "issue": 694,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Waveform (Verse chips + Wave bars, virtualized, playhead ~1/3), PageDots (14pt current / 10pt rest), LevelWave short/long, TalkBack announcements, gallery Listen+Record demos, unit tests; figma-component holds PRs until asked.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/694"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/gallery/entries/index.ts",
+          "lines": "16-40",
+          "fact": "Gallery registers only Key, Switch, Round button \u2014 no Waveform, PageDots, LevelWave, or Verse chip entries."
+        },
+        {
+          "path": "src/components/ui/PlaybackProgressBar.tsx",
+          "lines": "125",
+          "fact": "Legacy static placeholder waveform (#96), not Next Waveform component from #694."
+        },
+        {
+          "path": "src/app/gallery/ComponentGalleryScreen.tsx",
+          "lines": "28-32",
+          "fact": "Gallery is Next UI review screen for shipped components; Waveform/PageDots/LevelWave not among registered entries."
+        }
+      ],
+      "material_pr_or_decision": null,
+      "material_pr_or_decision_na": {
+        "reason_not_applicable": "No implementing PR; issue open with 0 comments; AC checkboxes unchecked."
+      },
+      "source_vs_qa": {
+        "working_tree": "Next Waveform/PageDots/LevelWave components absent from gallery and components/ui.",
+        "device_evidence": "none in corpus"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Audit complete: OPEN_TICKET_UNRESOLVED \u2014 Next Listen/Recorder waveform suite not on HEAD; gallery still Key/Switch/RoundButton only. Complete \u2260 QA pass."
+    },
+    {
+      "issue": 695,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "controlSizes.icon20 on theme (Legacy-first); HardwarePanel with KeyDeck + Mode toggle + speaker grill; modeLocked for whole take; gesture-bar padding + narrow-screen grill; gallery Listen/Record key swap + latch/lock; unit tests incl. haptic/lock.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/695"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/theme/nextFoundation.ts",
+          "lines": "28",
+          "fact": "nextControlSizes has icon24 and icon32 only \u2014 no icon20 (Figma Icon/md)."
+        },
+        {
+          "path": "src/theme/legacy.ts",
+          "lines": "32",
+          "fact": "Legacy controlSizes likewise icon24/icon32 only."
+        },
+        {
+          "path": "src/app/gallery/entries/index.ts",
+          "lines": "16-31",
+          "fact": "Gallery has Key and Switch \u00b7 Mode toggle demos but no HardwarePanel entry wrapping KeyDeck + grill."
+        },
+        {
+          "path": "src/components/ui/Key.tsx",
+          "lines": "21-39",
+          "fact": "Key presentational component exists as a building block; panel composition (#695) not shipped."
+        }
+      ],
+      "material_pr_or_decision": null,
+      "material_pr_or_decision_na": {
+        "reason_not_applicable": "No implementing PR; issue open, 0 comments; AC unchecked."
+      },
+      "source_vs_qa": {
+        "working_tree": "icon20 missing; HardwarePanel component absent; Key/Switch precursors only.",
+        "device_evidence": "none in corpus"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Audit complete: OPEN_TICKET_UNRESOLVED \u2014 Hardware panel AC unmet on HEAD (no icon20, no HardwarePanel)."
+    },
+    {
+      "issue": 696,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "theme.type has all 9 named styles (reading\u2026meta) with Figma sizes/weights/includeFontPadding/uppercase; theme.typeTelugu + fontScale.readingMax 1.3\u00d7; Android 500/600 weights; Legacy-first; docs/audit/skill updated.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/696"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/theme/nextFoundation.ts",
+          "lines": "66-72",
+          "fact": "nextTypeStyles encodes only 4 styles (reading, title, label, overline) \u2014 not theme.type with 9 styles."
+        },
+        {
+          "path": "docs/features/next-ui-redesign/theme-figma-audit.md",
+          "lines": "59-70",
+          "fact": "Living audit: Missing styles reading-strong/heading/lead/body/meta and all telugu/*; includeFontPadding not in code."
+        },
+        {
+          "path": "docs/guides/figma-to-component.md",
+          "lines": "366-374",
+          "fact": "Skill documents includeFontPadding/Telugu rules as Figma gotchas, not as shipped theme.type keys."
+        }
+      ],
+      "material_pr_or_decision": null,
+      "material_pr_or_decision_na": {
+        "reason_not_applicable": "No implementing PR; issue open, 0 comments; audit doc still lists typography as open."
+      },
+      "source_vs_qa": {
+        "working_tree": "No theme.type / typeTelugu / readingMax; partial nextTypeStyles only.",
+        "device_evidence": "none (Needs QA? No)"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Audit complete: OPEN_TICKET_UNRESOLVED \u2014 named type styles AC not on HEAD; audit explicitly still open."
+    },
+    {
+      "issue": 701,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Selected-take changes are pending sync (online/offline; cross-account takes); sent on next sync even without new audio; clear on server confirm / retry on fail; latest selection wins; replaces #279 canonical-only-with-owning-account behavior.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/701"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/recordingsRepository.ts",
+          "lines": "531-598",
+          "fact": "selectRecordingTake updates local is_selected only; no pending-selection / sync_status mutation for selection-as-change."
+        },
+        {
+          "path": "src/db/queries.ts",
+          "lines": "798-801",
+          "fact": "UPLOADABLE_PENDING_WHERE requires is_selected=1 and sync_status not uploaded \u2014 selection of an already-uploaded take creates no upload work."
+        },
+        {
+          "path": "src/db/recordingsRepository.ts",
+          "lines": "480-518",
+          "fact": "setCanonicalTake is local DB only; no sync queue for designation (#279-era gap #701 replaces)."
+        }
+      ],
+      "material_pr_or_decision": null,
+      "material_pr_or_decision_na": {
+        "reason_not_applicable": "No implementing PR; issue open, 0 comments; FR still agreed unmet."
+      },
+      "source_vs_qa": {
+        "working_tree": "Selection/canonical stay device-local; no selected-take change sync path.",
+        "device_evidence": "none in corpus"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Audit complete: OPEN_TICKET_UNRESOLVED \u2014 selected-take sync FR not implemented; selectRecordingTake is local-only."
+    },
+    {
+      "issue": 702,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Download controls stay visible on chapter select/deselect; available resources downloadable; unavailable selections explained; verify Matthew/Mark/Luke QA scenario on Android.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/702"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "OPEN_TICKET_UNRESOLVED",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/app/screens/PrepareForOfflineScreen.tsx",
+          "lines": "143-146",
+          "fact": "showDownloadFooter = !loading && !error \u2014 footer no longer gated on manifestLoading/manifestError (#702)."
+        },
+        {
+          "path": "src/app/screens/PrepareForOfflineScreen.tsx",
+          "lines": "148-164",
+          "fact": "selectionFooterMessage surfaces loading / load-error / empty-catalog hints instead of hiding controls."
+        },
+        {
+          "path": "src/app/screens/PrepareForOfflineScreen.test.tsx",
+          "lines": "476-532",
+          "fact": "Tests keep download footer+button visible while manifest loading or failed."
+        },
+        {
+          "path": "src/constants/messages.ts",
+          "lines": "83-93",
+          "fact": "PREPARE_OFFLINE_* copy for #702 loading/error/empty selection."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/705",
+        "fact": "Merged 2026-10-19 [#702]: keep Total download/Download visible across select/deselect; hints in footer."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "Footer visibility fix on HEAD via #705.",
+        "device_evidence": "Corpus Oct 14 2026 Slack/QA video of pre-fix disappear; post-merge Nightly QA not in corpus \u2014 complete \u2260 QA pass."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Source fix on HEAD via #705; issue still open for QA. Reconciliation complete \u2260 device QA pass."
+    },
+    {
+      "issue": 703,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "My Work chapter rows show comment count with li:message-square and li:message-square-check when current user has commented (reads #451 comments; rows from #505).",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/703"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/ui/MyWorkRow.tsx",
+          "lines": "33-67",
+          "fact": "Row renders title, cloud sync, conflict/ownership, workflow badge, activity, progress ring \u2014 no comment count or commented marker."
+        },
+        {
+          "path": "src/components/ui/MyWorkRow.tsx",
+          "lines": "1-12",
+          "fact": "Imports omit message-square icons; no comment props on MyWorkRowProps."
+        }
+      ],
+      "material_pr_or_decision": null,
+      "material_pr_or_decision_na": {
+        "reason_not_applicable": "No implementing PR; issue open, 0 comments."
+      },
+      "source_vs_qa": {
+        "working_tree": "Comment count/marker absent from MyWorkRow.",
+        "device_evidence": "none in corpus"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Audit complete: OPEN_TICKET_UNRESOLVED \u2014 My Work comment indicators not on HEAD."
+    },
+    {
+      "issue": 704,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Peer Check rows show icon-only li:cloud-off chip when draft audio missing; single-tap download selected-take draft text+audio only; progress ring \u2192 green cloud-check 10s then fade; do not block chapter entry; cleanup after Peer Check; reuse #508 download behavior.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/704"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/components/ui/MyWorkRow.tsx",
+          "lines": "33-67",
+          "fact": "No cloud-off download chip or progress-ring download affordance on Peer Check rows."
+        },
+        {
+          "path": "src/components/ui/CloudSyncStatusIcon.tsx",
+          "lines": "11-11",
+          "fact": "cloud-off SVG used for sync status (#38), not Peer Check draft-audio download chip (#704)."
+        },
+        {
+          "path": "src/components/ui/CloudSyncStatusIcon.tsx",
+          "lines": "297",
+          "fact": "offline_synced gray cloud-check is sync-state UI, not draft-download completion chip."
+        }
+      ],
+      "material_pr_or_decision": null,
+      "material_pr_or_decision_na": {
+        "reason_not_applicable": "No implementing PR; issue open, 0 comments; FR unmet."
+      },
+      "source_vs_qa": {
+        "working_tree": "Peer Check draft-audio download chip/flow absent.",
+        "device_evidence": "none in corpus"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Audit complete: OPEN_TICKET_UNRESOLVED \u2014 peer draft-audio download FR not on HEAD."
+    },
+    {
+      "issue": 707,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "On commit, AacRemuxModule strips ADTS headers and writes csd-0; first sample must not start with fff1; physical-device Play has sound + seekable scrub; emulator still plays; #567 pause/kill recovery unchanged.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/707"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "CONFIRMED_CURRENT_SOURCE",
+        "LATEST_EXPLICIT_DECISION",
+        "HISTORICAL_DEVICE_EVIDENCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "modules/aac-remux/android/src/main/java/expo/modules/aacremux/AacRemuxModule.kt",
+          "lines": "41-45",
+          "fact": "Module doc: ADTS header stripped per sample; AudioSpecificConfig stored as csd-0 (silence root cause called out)."
+        },
+        {
+          "path": "modules/aac-remux/android/src/main/java/expo/modules/aacremux/AacRemuxModule.kt",
+          "lines": "197-217",
+          "fact": "prepareRawAacFormat strips ADTS header size and writeAudioSpecificConfig into CSD_0."
+        },
+        {
+          "path": "modules/aac-remux/android/src/main/java/expo/modules/aacremux/AacRemuxModule.kt",
+          "lines": "319-340",
+          "fact": "aacAccessUnit advances buffer.position(headerSize) so muxed samples are raw AAC (no ADTS sync word)."
+        }
+      ],
+      "material_pr_or_decision": {
+        "url": "https://github.com/eten-tech-foundation/fluent-mobile/pull/709",
+        "fact": "Merged 2026-10-16 [#707]: strip ADTS + write csd-0; author notes physical Redmi Note 9 Pro pass; suggested QA plan on issue comment."
+      },
+      "material_pr_or_decision_na": null,
+      "source_vs_qa": {
+        "working_tree": "ADTS strip + csd-0 remux on HEAD.",
+        "device_evidence": "PR #709 manual physical-device pass 2026-10-16; corpus comment is suggested Nightly QA plan \u2014 not Nightly QA result. Residual decode proof \u2192 #719."
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Closed + remux fix on HEAD via #709. Complete \u2260 Nightly QA; automated non-silent proof remains #719."
+    },
+    {
+      "issue": 716,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Upload every take (not only selected) per account sync; on device delete, delete on server next sync (pending/retry/clear); 5-take cap device-only; selection sync follows #701; do not change sync triggers.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/716"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/queries.ts",
+          "lines": "798-808",
+          "fact": "Upload eligibility still requires r.is_selected = 1 \u2014 non-selected takes are not uploaded."
+        },
+        {
+          "path": "src/db/recordingsRepository.ts",
+          "lines": "610-650",
+          "fact": "deleteRecordingTake is local SQLite delete; no pending server-delete queue."
+        },
+        {
+          "path": "docs/guides/recordings-sync-contract.md",
+          "lines": "58-62",
+          "fact": "Contract lists DELETE /verse-audio/... as API surface; mobile worker docs focus on PUT upload \u2014 no implemented all-takes delete sync for #716."
+        },
+        {
+          "path": "src/hooks/useVerseAudio.ts",
+          "lines": "645-651",
+          "fact": "Device 5-take cap still enforced locally (aligned with FR; server cap not sent)."
+        }
+      ],
+      "material_pr_or_decision": null,
+      "material_pr_or_decision_na": {
+        "reason_not_applicable": "No implementing PR; issue open, 0 comments; paired with open #701."
+      },
+      "source_vs_qa": {
+        "working_tree": "Still selected-only upload; local delete without server delete pending.",
+        "device_evidence": "none in corpus"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Audit complete: OPEN_TICKET_UNRESOLVED \u2014 all-takes upload/delete sync not on HEAD."
+    },
+    {
+      "issue": 718,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Test opens real SQLite, runs runMigrations from older user_version to CURRENT_SCHEMA_VERSION, reads columns back; must fail if migration only works on fake driver. Refs #717.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/718"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/db/migrations.test.ts",
+          "lines": "36-43",
+          "fact": "createFakeDb is an in-memory stand-in (no native op-sqlite) \u2014 exact gap #718 names."
+        },
+        {
+          "path": "src/db/migrations.ts",
+          "lines": "23",
+          "fact": "CURRENT_SCHEMA_VERSION = 20 exists; real-DB migration proof test not present."
+        },
+        {
+          "path": "docs/guides/maestro.md",
+          "lines": "142",
+          "fact": "Living guide lists real SQLite migrations (#718) as below-UI follow-up, not done."
+        }
+      ],
+      "material_pr_or_decision": null,
+      "material_pr_or_decision_na": {
+        "reason_not_applicable": "No implementing PR; issue open, 0 comments; filed as #717 follow-up."
+      },
+      "source_vs_qa": {
+        "working_tree": "Migrations tested only via fake driver.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Audit complete: OPEN_TICKET_UNRESOLVED \u2014 real SQLite migration proof gap remains."
+    },
+    {
+      "issue": 719,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "Decode a remuxed take and fail if silent/unreadable; use known non-silent fixture (missing fixture = BLOCKED). Refs #717; #707 closed but mock call \u2260 audio proof.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/719"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "src/audio/aacRemux.test.ts",
+          "lines": "9-33",
+          "fact": "Tests mock AacRemux and only assert remuxAacToM4a invocation \u2014 no decode/silence check."
+        },
+        {
+          "path": "docs/guides/maestro.md",
+          "lines": "142",
+          "fact": "Lists non-silent remux audio (#719) as open below-UI follow-up after #707."
+        }
+      ],
+      "material_pr_or_decision": null,
+      "material_pr_or_decision_na": {
+        "reason_not_applicable": "No implementing PR; issue open, 0 comments; #707 closed remux bug but left this proof gap."
+      },
+      "source_vs_qa": {
+        "working_tree": "Mock-only remux unit test; no non-silent fixture decode.",
+        "device_evidence": "none"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Audit complete: OPEN_TICKET_UNRESOLVED \u2014 non-silent remux assertion still missing."
+    },
+    {
+      "issue": 720,
+      "requirement": [
+        {
+          "slice": "other",
+          "text": "After #717 has device evidence, name exact APK (build id+commit); run physical checklist on lower-end Android recording PASS/FAIL/BLOCKED; missing device = BLOCKED. Do not start while #717 has no device run.",
+          "source_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/720"
+        }
+      ],
+      "disposition": [
+        "AGREED_REQUIREMENT",
+        "OPEN_TICKET_UNRESOLVED",
+        "CONFIRMED_CURRENT_SOURCE",
+        "SHIPPING_MAIN_VS_QA"
+      ],
+      "code_docs_evidence": [
+        {
+          "path": "docs/guides/maestro.md",
+          "lines": "142",
+          "fact": "Proof status: agent emulator receipts \u2260 human Nightly; physical-device checklist (#720) still a follow-up."
+        },
+        {
+          "path": "docs/assessments/issue-history-reconciliation/inventory/issues/720.json",
+          "lines": "8",
+          "fact": "Corpus body: do not start while #717 still has no device run; AC unchecked."
+        }
+      ],
+      "material_pr_or_decision": null,
+      "material_pr_or_decision_na": {
+        "reason_not_applicable": "No implementing PR or checklist artifact; issue open, 0 comments; gated on #717 device evidence."
+      },
+      "source_vs_qa": {
+        "working_tree": "No named APK + physical checklist receipt for #720.",
+        "device_evidence": "none \u2014 missing device remains BLOCKED per AC"
+      },
+      "recommend_complete": true,
+      "blocker_if_incomplete": null,
+      "finding": "Audit complete: OPEN_TICKET_UNRESOLVED \u2014 physical readiness checklist not started; blocked on #717 device evidence."
+    }
+  ]
+}

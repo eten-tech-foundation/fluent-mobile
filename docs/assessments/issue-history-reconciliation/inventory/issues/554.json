@@ -1,0 +1,32 @@
+{
+  "issue_number": 554,
+  "fetched_at_utc": "2026-10-20T00:37:49Z",
+  "issue": {
+    "number": 554,
+    "title": "Fix role selector background in dark mode",
+    "state": "closed",
+    "body": "**Description:**\nIn dark mode, the role selector dropdown for **Existing User and Invite by Email** still appears with a white background instead of matching the dark theme.\nUpdate the dropdown styling to support dark mode.\nScreenshot: Attached.\n\n<img width=\"1470\" height=\"769\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/ce51015d-1075-4e58-b17c-9e0f2d7382a2\" />",
+    "user": "Roslin22",
+    "created_at": "2026-09-21T06:02:30Z",
+    "updated_at": "2026-09-21T06:12:17Z",
+    "closed_at": "2026-09-21T06:12:17Z",
+    "labels": [],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/554",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5756150019,
+      "user": "Roslin22",
+      "created_at": "2026-09-21T06:12:10Z",
+      "updated_at": "2026-09-21T06:12:10Z",
+      "body": "This ticket is related to fluent web app",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/554#issuecomment-5756150019"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

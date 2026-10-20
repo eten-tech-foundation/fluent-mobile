@@ -1,0 +1,51 @@
+{
+  "issue_number": 96,
+  "fetched_at_utc": "2026-10-20T00:34:27Z",
+  "issue": {
+    "number": 96,
+    "title": "Playback engine on expo-audio + waveform decision",
+    "state": "closed",
+    "body": "### Current state on main\n\n- `src/app/tabs/ViewChapter.tsx` renders a static \"recorded\" state (`:208`) with no actual playback or progress.\n- No `expo-audio` player and no waveform component exist; no audio metering.\n\n### Problems / why (anti-patterns to avoid)\n\n[PR #82](https://github.com/eten-tech-foundation/fluent-mobile/pull/82) couples playback to **`@simform_solutions/react-native-audio-waveform`** (`IWaveformRef`, `PlayerState`, `FinishMode`). That library:\n- Is **not Expo-friendly** (bare-RN native module; complicates CNG prebuild and EAS builds).\n- Ties playback control to a specific waveform widget and imperative refs.\n\n### Target design\n\n- **Playback:** use `expo-audio`'s player API (e.g. `useAudioPlayer` / `AudioPlayer`) for play/pause/seek and position/duration updates, reading the file at `recordings.local_file_path` (#94).\n- **Waveform decision (explicit):** **reject** `@simform_solutions/react-native-audio-waveform`. Choose one of:\n - **(Recommended) Lightweight visual:** render simple amplitude bars from `expo-audio` recording **metering** samples captured during recording (store a small downsampled array, or render a non-data-driven animated bar during playback). Zero extra native deps.\n - **(Alt) Static placeholder bars:** a purely decorative progress bar keyed to playback position if metering is not needed for v1.\n - Document the choice in the PR; if a third-party waveform is ever required, it must be Expo-config-plugin compatible.\n\n```ts\n// shape only\ntype PlayerApi = {\n status: 'idle' | 'playing' | 'paused';\n positionMs: number;\n durationMs: number;\n play(uri: string): Promise<void>;\n pause(): Promise<void>;\n seek(ms: number): Promise<void>;\n stop(): Promise<void>;\n};\n```\n\n### Implementation steps\n\n1. Implement a playback hook/service over `expo-audio` exposing play/pause/seek/stop + position/duration.\n2. Implement the chosen waveform/progress visualization (prefer `expo-audio` metering or a position-driven bar); no Simform.\n3. Integrate into `ViewChapter.tsx` to replace the mock \"recorded\" affordance with real playback controls.\n4. Add jest mock for `expo-audio` (#111); unit-test player state transitions and position/duration mapping.\n5. Document the waveform decision in the PR description.\n\n### Acceptance criteria\n\n- [ ] Playback built on `expo-audio`; no `@simform_solutions/react-native-audio-waveform`.\n- [ ] Play/pause/seek/stop with position + duration surfaced to the UI.\n- [ ] Waveform/progress approach implemented and the decision documented.\n- [ ] Player logic covered by mocked unit tests.\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Tests default `EXPO_PUBLIC_API_BASE_URL=http://localhost:9999` via `jest.env.cjs`; **no live API required**.\n- Real audio playback verified on a device build.\n- Do **not** use `FLUENT_USER_EMAIL`.\n\n### Out of scope\n\n- Recording capture (#95), state machine (#97), multi-take (#98), storage helpers (#94).\n\n### Links\n\n- Epic: #116\n- Anti-pattern: [PR #82](https://github.com/eten-tech-foundation/fluent-mobile/pull/82) (Simform waveform)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:45:57Z",
+    "updated_at": "2026-07-23T17:51:01Z",
+    "closed_at": "2026-07-23T17:51:01Z",
+    "labels": [
+      "enhancement",
+      "SP 1"
+    ],
+    "comments": 3,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/96",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5025016966,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-20T17:13:49Z",
+      "updated_at": "2026-07-20T17:13:49Z",
+      "body": "**Assignee cleared** \u2014 `fel-cesar` is no longer on the project.\n\nRelated recording PRs closed (do not merge): #158, #178, #184. Branches remain as reference/salvage only.\n\nThis issue stays open. Re-assign when someone intentionally picks it up; prefer thin PRs against current `main` rather than reviving the closed mega-diffs.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/96#issuecomment-5025016966"
+    },
+    {
+      "id": 5027836281,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-20T22:20:32Z",
+      "updated_at": "2026-07-20T22:20:32Z",
+      "body": "Status corrected: moved from In PR Review \u2192 Dev Ready. Closed Cesar PRs (#158/#178/#184) are not under review; this card is available to pick up as a thin PR from current main.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/96#issuecomment-5027836281"
+    },
+    {
+      "id": 5061609501,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-23T17:51:01Z",
+      "updated_at": "2026-07-23T17:51:01Z",
+      "body": "Closing as completed. Dedicated PR #226 was superseded (closed unmerged); the playback engine and `PlaybackProgressBar` landed on `main` via the recording/playback stack, primarily #229 (with related #225 / #227 / #228).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/96#issuecomment-5061609501"
+    }
+  ],
+  "comments_fetched_count": 3,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

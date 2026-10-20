@@ -1,0 +1,42 @@
+{
+  "issue_number": 446,
+  "fetched_at_utc": "2026-10-20T00:36:53Z",
+  "issue": {
+    "number": 446,
+    "title": "Offline download queue keys on Aquifer contentId, so a re-uploaded recording (same id, new sourceUrl) is never re-fetched",
+    "state": "open",
+    "body": "> **Disclosure:** this issue was written and filed by an AI coding agent with permission of @JEdward7777, who heard the description of the finding but has not independently reproduced it on a device. It was noticed while doing design work on the fluent-web audio playback cards (eten-tech-foundation/fluent-web #422\u2013#425), which touch the same Aquifer audio items the offline manifest ships. Please treat the code citations as the evidence and verify against your own understanding of the queue.\n\n## Summary\n\nThe offline download queue is keyed on the Aquifer content id, so if Aquifer re-uploads a recording under the same content id with a different `sourceUrl`, the device never fetches the new file \u2014 the completed row wins forever.\n\n## Where\n\n**fluent-api** (`main` @ `76e5d01`, from merged PR eten-tech-foundation/fluent-api#274) \u2014 the Prepare-Offline manifest item is built with the content id baked into the item id, alongside the URL:\n\n- `src/domains/translation-resources/translation-resources.service.ts:332`\n  `id: \\`aquifer-${searchItem.id}-${kind}\\``, with `sourceUrl` as a sibling field.\n\n**fluent-mobile** (`main` @ `8707f26`):\n\n- `src/utils/prepareOfflineQueueMapping.ts:13` \u2014 *\"Uses stable `item.id` as the queue primary key\"*; `:23` `id: item.id`.\n- `src/db/downloadQueueRepository.ts:96\u2013101` \u2014 `INSERT INTO download_queue (\u2026) \u2026 ON CONFLICT DO NOTHING`.\n\nSo a manifest item whose `id` is unchanged but whose `sourceUrl` has changed collides with the existing (possibly `completed`) row and is silently dropped.\n\n## Why the URL can change under a stable id\n\nAquifer's documentation describes versioned URLs for resource audio (a `_vNNN` suffix), but a probe on 2026-09-03 found live FIA audio URLs that carry **no** version suffix \u2014 so the URL scheme is not something the client can rely on either way, and a re-upload is best treated as \"same id, new URL\". Aquifer's own change signal is `GET /resources/updates`.\n\n## Also noticed\n\nOn current `main`, `prepareOfflineQueueMapping.ts:20` still draws `sourceUrl` from `getMockDownloadSource(item.kind)` rather than from the manifest item \u2014 so the real URL is not consumed yet. That makes this a good moment to settle the key design before the real URL is wired in, rather than a live bug today.\n\n## Possible fixes (either is enough)\n\n1. On conflict, compare the stored `sourceUrl` with the manifest's; if they differ, reset the row to pending (upsert) instead of `DO NOTHING`.\n2. Fold a hash of `sourceUrl` into the queue key so a changed URL is a new row (and let the old one be pruned).\n\n## Not asking for\n\nNo change to the fluent-api manifest shape is being requested here \u2014 the `id` is fine as an identity; the issue is only that the queue treats identity as \"contents unchanged\".\n",
+    "user": "JEdward7777",
+    "created_at": "2026-09-03T16:41:34Z",
+    "updated_at": "2026-10-14T13:16:32Z",
+    "closed_at": null,
+    "labels": [
+      "DevQA"
+    ],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/446",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 6087138628,
+      "user": "mattrace-gloo",
+      "created_at": "2026-10-09T18:46:01Z",
+      "updated_at": "2026-10-09T18:46:01Z",
+      "body": "Cleanup: implementing PR already merged; board was stuck on In PR Review. Moved to **In QA** for post-merge nightly verification (Needs QA? Yes).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/446#issuecomment-6087138628"
+    },
+    {
+      "id": 6169250103,
+      "user": "chadw-eten",
+      "created_at": "2026-10-14T13:16:25Z",
+      "updated_at": "2026-10-14T13:16:25Z",
+      "body": "@mattrace-gloo This is not something that QA can test since it depends on Aquifer changing a content id. Adding DevQA.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/446#issuecomment-6169250103"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

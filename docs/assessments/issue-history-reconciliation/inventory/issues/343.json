@@ -1,0 +1,23 @@
+{
+  "issue_number": 343,
+  "fetched_at_utc": "2026-10-20T00:36:14Z",
+  "issue": {
+    "number": 343,
+    "title": "Align Expo SDK 57 package versions so Quality Gates pass",
+    "state": "closed",
+    "body": "## Problem\n\nQuality Gates CI (`expo-doctor` and `npx expo install --check`) is failing on recent PRs because Expo SDK 57-managed packages on `main` have drifted from the versions Expo currently expects. Feature PRs (e.g. #341) applied `npx expo install --fix` as a side fix, but those PRs have not merged, so every new PR still fails the alignment gates.\n\n## Goal\n\nLand a **deps-only** PR so `npx expo install --check` and `npm run doctor` pass on `main` again. Do not mix this with product work.\n\n## Acceptance criteria\n\n- [ ] `npx expo install --fix` applied from current `main` (SDK 57 compatible versions only).\n- [ ] `npx expo install --check` passes.\n- [ ] `npm run doctor` (`expo-doctor`) passes.\n- [ ] `npm run format:check`, `npm run lint`, `npm run typecheck`, and `npm test -- --ci` pass.\n- [ ] Change set is limited to `package.json` / `package-lock.json` (and lockfile-adjacent metadata if Expo rewrites it). No product/feature code.\n\n## Notes\n\n- Android-only; do not add iOS config.\n- After merge, other open PRs should rebase onto `main` so they can drop duplicate `expo install --fix` commits.",
+    "user": "mattrace",
+    "created_at": "2026-08-18T20:50:17Z",
+    "updated_at": "2026-08-20T17:21:23Z",
+    "closed_at": "2026-08-20T17:21:23Z",
+    "labels": [],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/343",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

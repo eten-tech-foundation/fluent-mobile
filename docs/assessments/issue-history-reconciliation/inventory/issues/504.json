@@ -1,0 +1,40 @@
+{
+  "issue_number": 504,
+  "fetched_at_utc": "2026-10-20T00:37:22Z",
+  "issue": {
+    "number": 504,
+    "title": "Wire Tier 2/3 Resources to API in Customize Download",
+    "state": "open",
+    "body": "The Customize download section on the Prepare for Offline screen lists Tier 2 and Tier 3 entries such as Bible Commentary and Reference Images, but these are not currently backed by the resources API. Translators can select content that will never download. Customize download must retrieve Tier 2 and Tier 3 resource availability from the API for the selected project, and collapse away sections that have nothing to offer.\n\n## Functional Requirements\n\n### Resource Listing\n- Retrieve Tier 2 and Tier 3 resource availability from the API for the selected project.\n- List only resources the API returns as available; remove any static placeholder entries, including Bible Commentary, Reference Images, and Alternate Translations.\n\n### Empty Section Handling\n- Hide the Tier 3 section when the API returns no Tier 3 resources for the project.\n- Hide the Tier 2 section when the API returns no Tier 2 resources for the project.\n- Hide the entire Customize download control (`li:sliders-horizontal`) when the API returns no Tier 2 and no Tier 3 resources.\n\n<img width=\"379\" height=\"677\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/ffe01cb0-f566-427f-b4a4-3a0f75190696\" />\n\n> **Note:** Tier 1 resources are always included and are not affected by this change; they continue to display without a selector (see #51).",
+    "user": "chadw-eten",
+    "created_at": "2026-09-11T14:46:23Z",
+    "updated_at": "2026-10-19T16:47:35Z",
+    "closed_at": null,
+    "labels": [],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/504",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5815443171,
+      "user": "JonathanSeehagen",
+      "created_at": "2026-09-24T13:52:59Z",
+      "updated_at": "2026-09-24T14:03:13Z",
+      "body": "**Gap found during the #529 audit (Going offline, epic #526): Gap 5 \u2014 \"Prepare for Offline downloads mock fixtures, and a new chapter shows 'Download complete'\"**\n\nWhile verifying the going offline feature, the audit found this gap. **This issue closes Gap 5**, and the fix is in progress in PR #562. No separate issue was filed for it.\n\nDevice: Xiaomi Redmi Note 9 Pro, Android 10 (API 29), nightly `1.0.0` of `main` @ `d5b9e64` (plus a local debug build of the same commit for C.14), `dev.api.fluent.bible`.\n\nWhat the device showed:\n\n- **C.9:** the Tier 1 texts (Source Bible, Translation Notes) total 26 KB and the audio 17.1 MB. That is exactly 2 \u00d7 the mock PDF (13,264 B) and 2 \u00d7 the mock MP3 (8,945,229 B).\n- **C.14:** after a completed online download, `files/downloads/464/` holds 13 fixture files (6 \u00d7 `.mp3`, 6 \u00d7 `.pdf`, 1 \u00d7 `.png`, about 51 MiB) and no real content.\n- **C.13:** after a completed download, selecting another chapter updates the size, but the footer shows \"Download complete\" instead of the Download button. This is the case #51 QA reported on 2026-08-25.\n\nCode cause on `main`:\n\n- The catalog is `MOCK_PREPARE_OFFLINE_RESOURCE_MANIFEST` (`src/services/prepareOfflineResources.ts:28-33`), and every item downloads a fixed fixture (`src/utils/prepareOfflineQueueMapping.ts:20`). fluent-api `main` already serves `GET /projects/{id}/translation-resources/manifest` and `GET /projects/{id}/source-audio/manifest`.\n- The mock item ids have no chapter (`src/utils/prepareOfflineResourceId.ts:7-14`), so a newly selected chapter likely maps to queue rows that are already completed.\n- If enqueueing fails, `enqueuePrepareOfflineDownload` falls back to a silent simulation that shows progress with nothing written to disk (`src/services/prepareOfflineDownload.ts:41-52`).\n\nSuggested additional AC for this issue:\n\n- [ ] Tier 1 source audio is enqueued from the fluent-api source-audio manifest, not only the Tier 2/3 translation-resources manifest.\n- [ ] Download is available again for newly selected chapters after an earlier download completed (C.13).\n- [ ] The silent simulation fallback is removed; an enqueue failure shows an error.\n- [ ] Android device QA: `adb shell run-as com.eten.fluent ls -laR files/downloads/` shows real content after a download.\n\nRelated gaps from the same audit that depend on real downloads: #578 (Resources not read offline) and #579 (source audio not read offline).\n\nAssessment: `docs/assessments/going-offline/` (PR #577).\n",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/504#issuecomment-5815443171"
+    },
+    {
+      "id": 6272377571,
+      "user": "mattrace-gloo",
+      "created_at": "2026-10-19T16:47:34Z",
+      "updated_at": "2026-10-19T16:47:34Z",
+      "body": "Reopened: #562 was zero-file bookkeeping (merge `0fe8b2591ee2c47deb7b2bad4aa0286bfdba617f`). Code for #504 already landed via #676/#677; device/manual QA remains **pending** (not passed). Do not treat merge of #562 as QA complete.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/504#issuecomment-6272377571"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

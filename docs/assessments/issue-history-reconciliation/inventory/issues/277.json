@@ -1,0 +1,25 @@
+{
+  "issue_number": 277,
+  "fetched_at_utc": "2026-10-20T00:35:55Z",
+  "issue": {
+    "number": 277,
+    "title": "Document Project 4 board rules, Expo-first deps, and cross-tool agent entrypoints",
+    "state": "closed",
+    "body": "### Problem statement\n\n1. Agents reorganized Project 4 cards incorrectly (moved Dev Ready work, touched Product-owned columns). Board mutation rules need to live in repo docs/rules.\n2. Cursor-only rules leave Claude Code / other AI tools without the same contract.\n3. New dependencies should prefer Expo-maintained packages when an Expo option exists (e.g. Expo Router / Expo modules over community alternatives), consistent with SDK 56 CNG.\n\n### Scope\n\n- Document Project 4 board mutation do/don\u2019t rules (canonical in `docs/`, Cursor always-on pointer).\n- Add cross-tool entrypoints (`CLAUDE.md`, `AGENTS.md` updates).\n- Document Expo-first dependency preference for new work (navigation, modules, install via `npx expo install`).\n- Do not migrate the app off `@react-navigation` in this PR \u2014 policy only.\n\n### Acceptance criteria\n\n- [ ] Board mutation rules in committed docs + thin `.cursor/rules` pointer\n- [ ] Expo-first package preference documented + Cursor rule\n- [ ] `CLAUDE.md` / `AGENTS.md` point any agent tool at the same sources\n- [ ] No Product-column cards mutated by this PR; no app navigation migration\n\n### Verification\n\n- [ ] Docs-only PR; note gate waiver if no code changed",
+    "user": "mattrace-gloo",
+    "created_at": "2026-07-29T22:02:26Z",
+    "updated_at": "2026-07-30T16:36:26Z",
+    "closed_at": "2026-07-30T16:36:26Z",
+    "labels": [
+      "documentation"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/277",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,40 @@
+{
+  "issue_number": 170,
+  "fetched_at_utc": "2026-10-20T00:35:10Z",
+  "issue": {
+    "number": 170,
+    "title": "Clear orphaned/unresolvable paused recording takes",
+    "state": "closed",
+    "body": "## Summary\n\nIn `useRecordingRecovery` (`src/app/screens/hooks/useRecordingRecovery.ts`), when a persisted paused-take marker cannot be resolved to a verse (e.g. `getVerseDetailNavByChapterAssignment` returns `null`, or `take.verseNumber` is `undefined`), the code currently only logs a warning and leaves the marker and its segment files in storage. This marker is retried on every future app launch with no way for the user to discard it, since the recovery prompt (and its \"Discard\" action) never fires in this case.\n\n## Rationale\n\nOrphaned paused takes should not accumulate indefinitely in storage. This was flagged during review of #158 but intentionally deferred, since a more holistic solution is planned: a routine cache-clear mechanism plus an explicit \"clear cache\" option in app settings.\n\n## Affected areas\n\n- `src/app/screens/hooks/useRecordingRecovery.ts` (`promptRecovery` unresolved-take branch)\n- Related: `src/services/storage.ts` (`PausedTakeMarker`, `clearPausedTake`, `findPausedTake`)\n- Related: `src/services/recordingStorage.ts` (`deleteRecordingFile`)\n\n## Acceptance criteria\n\n- [ ] Design and implement a routine/periodic cache-clear mechanism for orphaned paused-take markers and segment files.\n- [ ] Add an explicit \"Clear cache\" option in app settings that also removes orphaned paused-take data.\n- [ ] Ensure unresolvable paused takes (verse/chapter assignment no longer resolvable) are eventually cleaned up without requiring a resolvable navigation target.\n\n## References\n\n- PR: https://github.com/eten-tech-foundation/fluent-mobile/pull/158\n- Review comment: https://github.com/eten-tech-foundation/fluent-mobile/pull/158#discussion_r3537946210\n- Requested by: @fel-cesar",
+    "user": "coderabbitai[bot]",
+    "created_at": "2026-07-07T17:06:15Z",
+    "updated_at": "2026-07-23T04:23:37Z",
+    "closed_at": "2026-07-23T04:23:37Z",
+    "labels": [],
+    "comments": 2,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/170",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5025017955,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-20T17:13:56Z",
+      "updated_at": "2026-07-20T17:13:56Z",
+      "body": "**Assignee cleared** \u2014 `fel-cesar` is no longer on the project.\n\nRelated recording PRs closed (do not merge): #158, #178, #184. Branches remain as reference/salvage only.\n\nThis issue stays open. Re-assign when someone intentionally picks it up; prefer thin PRs against current `main` rather than reviving the closed mega-diffs.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/170#issuecomment-5025017955"
+    },
+    {
+      "id": 5027836345,
+      "user": "mattrace-gloo",
+      "created_at": "2026-07-20T22:20:32Z",
+      "updated_at": "2026-07-20T22:20:32Z",
+      "body": "Status corrected: added to Project 4 as Dev Ready (was missing from the board after Cesar clearance). Closed Cesar PRs (#158/#178/#184) are not under review; this card is available to pick up as a thin PR from current main.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/170#issuecomment-5027836345"
+    }
+  ],
+  "comments_fetched_count": 2,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

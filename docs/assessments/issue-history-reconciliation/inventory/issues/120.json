@@ -1,0 +1,34 @@
+{
+  "issue_number": 120,
+  "fetched_at_utc": "2026-10-20T00:34:52Z",
+  "issue": {
+    "number": 120,
+    "title": "[Epic] Expo migration follow-ups & dev tooling",
+    "state": "closed",
+    "body": "### Summary\n\nEpic tracking Expo-migration follow-ups and dev tooling on the **Expo SDK 56 CNG (Android-only) baseline**: env validation, a real DB migration framework, jest-expo test mocks, onboarding docs, the API client standard, and lint guardrails. Several items are **already partly done on main** and are reframed to \"harden/extend\":\n- **F1 (#109)** env standardization \u2014 **done** (`apiBaseUrl.ts`, `env.d.ts`; no `@env`).\n- **F3 (#111)** jest-expo is already the preset \u2192 add native-module mocks + gate the live `fluent-api.test.ts`.\n- **F4 (#112)** EAS/preview docs \u2014 **done** (onboarding + preview-build loop documented).\n- **F6 (#114)** `no-console`/logger rule already exists \u2192 add guardrails for the #82 anti-patterns.\n\nGenuinely net-new: **F2 (#110)** migration framework, **F5 (#113)** API client standard.\n\n### Sub-issues\n- [x] #109\n- [x] #110\n- [x] #111\n- [x] #112\n- [x] #113\n- [x] #114\n\n### Dependency ordering\n- **#110 (F2)** is foundational and **blocks** C1 (#99) and D1 (#103) schema migrations \u2014 land early.\n- **#111 (F3)** mocks support A2/B/C unit tests \u2014 land alongside #110.\n- **#109 (F1)** \u2014 **done**.\n- **#113 (F5)** builds on A1 (#88).\n- **#112 (F4)** and **#114 (F6)** are smaller; can land independently.\n\n### Links\n- Anti-pattern reference only (not merging): [PR #82](https://github.com/eten-tech-foundation/fluent-mobile/pull/82)\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:46:35Z",
+    "updated_at": "2026-07-29T21:34:04Z",
+    "closed_at": "2026-07-29T21:34:04Z",
+    "labels": [
+      "enhancement"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/120",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5123591730,
+      "user": "mattrace-buildmidwestern",
+      "created_at": "2026-07-29T21:33:34Z",
+      "updated_at": "2026-07-29T21:33:34Z",
+      "body": "Closing as completed (tracker cleanup after repo audit).\n\nAll epic sub-issues are done and closed: #109\u2013#114 (env, migrations, jest mocks, EAS docs, API client standard, lint guardrails).",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/120#issuecomment-5123591730"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

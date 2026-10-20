@@ -1,0 +1,48 @@
+{
+  "issue_number": 412,
+  "fetched_at_utc": "2026-10-20T00:36:41Z",
+  "issue": {
+    "number": 412,
+    "title": "Build Source Audio Player for Bible Tab",
+    "state": "closed",
+    "body": "The Bible tab in the live app has no audio player today, though one was spec'd previously. The verse/pericope toggle work in this set assumes a working player to update, so the baseline player needs to be built first.\n\n## Functional Requirements\n\n### Source Audio Player\n- Add a persistent player bar at the shell level, visible above the tab content on both the Bible tab and Record tab.\n- Show a Play/Pause button with a minimum 48dp touch target.\n- Show the source audio waveform for the currently active unit, with continuous scrubbing to any position.\n- Show a unit counter label indicating position in the chapter (e.g., \"Verse 3 / 12\").\n- Load whichever unit is currently selected on the Bible tab into the player.\n\n<img width=\"300\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/f25afd04-d68a-438f-9de8-bf263ecd0d7e\" />\n\n> **Note:** This ticket builds the baseline, verse-mode player only, with a plain scrubber and no tick marks. Subdivision tick marks (in either mode, when timestamp data is available) and mode-driven counter switching are covered by #408, which depends on this ticket shipping first.",
+    "user": "chadw-eten",
+    "created_at": "2026-08-27T19:11:32Z",
+    "updated_at": "2026-09-15T14:29:24Z",
+    "closed_at": "2026-09-10T20:28:02Z",
+    "labels": [],
+    "comments": 3,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/412",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 5480391619,
+      "user": "mattrace-gloo",
+      "created_at": "2026-08-31T15:15:14Z",
+      "updated_at": "2026-08-31T15:15:14Z",
+      "body": "## Engineering context\n\n### Product intent\nShip a baseline source-audio player shared by Bible + Record (shell-level), verse mode only: play/pause (\u226548dp), continuous scrubber, unit counter (`Verse N / M`), load the Bible-tab selection. No tick marks and no mode switching here \u2014 those land in #408.\n\n### What exists today\n- Bible tab (`src/app/tabs/BibleTab.tsx`): verse list only; no player bar.\n- Record tab already mounts a **decorative** dock: `src/components/layout/SourceAudioPlayerBar.tsx` (stub play/seek/times; default empty until wired).\n- Real draft take playback lives in `usePlaybackEngine` / `createPlaybackEngine` \u2014 prefer reusing that for source audio rather than a second stack.\n- Shell: `src/app/screens/DraftingScreen.tsx` + `DraftingContext` (`selectedVerse`, `currentlyPlayingVerse` reserved but not driving source audio yet).\n\n### Alignment notes\n- Spec asks for a persistent bar on Bible **and** Record. Today the stub sits on Record only (bottom dock). Prefer one shared shell-owned player so Bible/Record stay in sync; avoid forking two docks.\n- Real fetch/play is already tracked as **#235**. Treat this ticket as shell placement + verse-mode chrome/counter + binding to the selected unit; coordinate with #235 so we don\u2019t ship a second stub. Prefer one PR/stack where practical.\n- Source/reference audio API is now available (fluent-api **#282** / PR **#293**): `GET /projects/{projectId}/source-audio/{bookCode}/{chapter}?bibleId=&languageCode=` \u2014 returns playable URLs + optional `verseTimestamps`. Distinct from translator `/verse-audio`. Mobile still needs a `FluentAPI` client + wiring (#235).\n\n### Suggested approach\n1. Lift (or share) the player into drafting shell so Bible + Record both see it.\n2. Wire selection from `DraftingContext.selectedVerse`; counter = `Verse {n} / {verses.length}`.\n3. Bind play/pause/seek to existing playback engine; loading / empty / error states already sketched on the dock.\n4. Keep scrubber plain (no ticks) \u2014 #408 owns ticks.\n5. Unit tests for counter + selection binding; Android QA for real playback (Needs QA).\n\n### Dependencies\n- **Pairs with #235** (real URI resolve + engine). API side unblocked.\n- Does **not** require #407 / pericope sync for verse-mode baseline.\n- Unblocks #408 player updates.\n\n### API\n- **No new API work** for baseline chapter source audio \u2014 use the fluent-api source-audio contract above.\n- If offline Prepare Offline Tier 1 source audio is required in the same slice, a manifest route exists on API; otherwise leave offline caching to Prepare Offline follow-ups.\n\n### Out of scope\n- Verse/pericope mode switching (#407/#408)\n- Tick marks (#408)\n- Draft take recording/list (#71 already shipped)",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/412#issuecomment-5480391619"
+    },
+    {
+      "id": 5679326417,
+      "user": "Roslin22",
+      "created_at": "2026-09-15T11:20:25Z",
+      "updated_at": "2026-09-15T11:20:25Z",
+      "body": "**Test Result \u2013 Issue #412: Build Source Audio Player for Bible Tab**\n\n- Player visibility and UI are working: The source audio player is displayed correctly above both the Bible and Record tab content, with the Play/Pause button, waveform, and unit counter visible.\n- Playback and scrubbing are working: Source audio plays, pauses, resumes, and can be scrubbed to different positions on the waveform without issues.\n- Unit selection is working: Selecting different verses updates the player with the correct source audio and unit counter. Sequential and rapid verse selection work correctly.\n- Persistent player behavior is working: The player remains available when switching between Bible \u2192 Record \u2192 Bible, and the selected unit/player state remains consistent.\n- Error handling and existing functionality are working: Missing/unavailable audio is handled without crashes, and the retry option appears when the network is unavailable. Bible navigation and scrolling continue to work normally. \n\n**Suggestion:** When the user is on the Record tab and recording in Verse mode, the source audio player should display only the audio for the currently selected verse, rather than the entire chapter audio.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/412#issuecomment-5679326417"
+    },
+    {
+      "id": 5681986766,
+      "user": "chadw-eten",
+      "created_at": "2026-09-15T14:29:24Z",
+      "updated_at": "2026-09-15T14:29:24Z",
+      "body": ":white_check_mark: I like the suggestion, but let's pass this one since the design team is going to overhaul the play back behavior soon. ",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/412#issuecomment-5681986766"
+    }
+  ],
+  "comments_fetched_count": 3,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

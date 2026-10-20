@@ -1,0 +1,25 @@
+{
+  "issue_number": 594,
+  "fetched_at_utc": "2026-10-20T00:38:12Z",
+  "issue": {
+    "number": 594,
+    "title": "Show caption and attribution for Images & Maps [Viewing and listening to resources Audit]",
+    "state": "open",
+    "body": "Found during the viewing and listening to resources audit (#531, epic #526).\n\n**Severity:** Medium  \n**Launch blocker:** To be decided with product (image licenses may require attribution)  \n**Confirmed on:** Xiaomi Redmi Note 9 Pro, Android 10 (API 29), local run of `main` @ `fb634e5`, `dev.api.fluent.bible` (scenarios D.10)\n\n## Summary\nImages & Maps thumbnails show a title only. #191 requires title/caption and attribution. fluent-api returns `id`, `title`, `localizedName`, `url`, `thumbnailUrl?`, `size?` (`src/types/api/translationResources.ts:31-38`), and `parseTranslationImageItem` keeps title and URL (`src/services/imagesMaps.ts:29-47`). The UI already renders caption and attribution when present (`src/app/tabs/resources/ImageThumbnail.tsx:92-95`). `thumbnailUrl` is also ignored, so thumbnails download the full image.\n\n## Expected\nEach thumbnail shows title/caption and attribution (#191).\n\n## Actual\nD.10: Mark 1 thumbnails show only a title (\"Locations in the Book of Mark\"); no caption or attribution. The fullscreen viewer shows the title next to Close.\n\n## Steps to reproduce\n1. Online, open a verse with images (e.g. one QA used for #191).\n2. Resources \u2192 Images & Maps.\n\n## Acceptance criteria\n- [ ] fluent-api returns caption and attribution for image items. The fluent-api issue is opened at implementation time and linked here.\n- [ ] Mobile maps them and shows them under each thumbnail.\n- [ ] Thumbnails use `thumbnailUrl` when present; fullscreen uses `url`.\n- [ ] Unit tests for the mapper.\n- [ ] Android device QA.\n\n## Related\n- Spec: #191\n- fluent-api #273 / PR #274\n- Parent audit: #531 (epic #526)\n- Related gap: #593 (also needs fluent-api translation-resources changes)\n- Assessment: `docs/assessments/viewing-and-listening-to-resources/README.md` (PR #590)\n",
+    "user": "JonathanSeehagen",
+    "created_at": "2026-09-25T21:13:53Z",
+    "updated_at": "2026-10-09T19:19:52Z",
+    "closed_at": null,
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/594",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

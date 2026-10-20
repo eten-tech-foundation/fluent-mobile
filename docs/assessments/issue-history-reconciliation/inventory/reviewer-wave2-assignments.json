@@ -1,0 +1,142 @@
+{
+  "created_utc": "2026-10-20T00:55:39Z",
+  "wave": 2,
+  "policy": "r1 quality bar verified; larger disjoint batches; READ-ONLY /tmp only; no bulk complete; skip #721; wait r2/r3 finish their IDs",
+  "r1_verification": {
+    "accepted_ids": [
+      16,
+      33,
+      41,
+      49
+    ],
+    "41_signout_localDB": "unverified_unwaived_divergence",
+    "41_401_clear_login": "unverified_soft_reauth_divergence",
+    "33_header": "integrated_333_552_explicit_not_drift",
+    "complete_vs_qa": "complete_audit_row_not_conformance_pass"
+  },
+  "batches": {
+    "r4": {
+      "domain": "early-mvp-nav-ci",
+      "ids": [
+        1,
+        2,
+        5,
+        6,
+        9,
+        10,
+        12,
+        14,
+        15,
+        17,
+        18,
+        23
+      ]
+    },
+    "r5": {
+      "domain": "auth-session-followons",
+      "ids": [
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98
+      ]
+    },
+    "r6": {
+      "domain": "sync-upload-ui-mid",
+      "ids": [
+        101,
+        103,
+        104,
+        105,
+        110,
+        117,
+        118,
+        146,
+        147,
+        151,
+        152,
+        176
+      ]
+    }
+  },
+  "still_running_wave1": {
+    "r2": [
+      102,
+      100,
+      253,
+      150
+    ],
+    "r3": [
+      529,
+      530,
+      717,
+      526
+    ]
+  },
+  "reviewers": {
+    "r4": {
+      "agent": "bc-0857352c-c752-551e-b104-c28da45f8863",
+      "ids": [
+        1,
+        2,
+        5,
+        6,
+        9,
+        10,
+        12,
+        14,
+        15,
+        17,
+        18,
+        23
+      ],
+      "status": "integrated"
+    },
+    "r5": {
+      "agent": "bc-359af0d2-dd4d-541e-a318-98048d9c220d",
+      "ids": [
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98
+      ],
+      "status": "integrated"
+    },
+    "r6": {
+      "agent": "bc-7613a717-a8fe-59b4-af41-a9b301845a00",
+      "ids": [
+        101,
+        103,
+        104,
+        105,
+        110,
+        117,
+        118,
+        146,
+        147,
+        151,
+        152,
+        176
+      ],
+      "status": "integrated"
+    }
+  },
+  "updated_utc": "2026-10-20T01:00:43Z",
+  "wave2_complete": true
+}

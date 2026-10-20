@@ -1,0 +1,35 @@
+{
+  "issue_number": 99,
+  "fetched_at_utc": "2026-10-20T00:34:30Z",
+  "issue": {
+    "number": 99,
+    "title": "Recordings linkage + restore chapter_assignment FK/index via migration",
+    "state": "closed",
+    "body": "### Current state on main\n\nGood `recordings` table (keep as-is) (`src/db/schema.ts:80`): `id TEXT PK`, `bible_text_id INTEGER NOT NULL REFERENCES bible_texts(id)`, `local_file_path`, `blob_key`, `duration_ms`, `file_size_bytes`, `take_number`, `is_latest`, `sync_status DEFAULT 'pending'`, `upload_error`, timestamps; indexes `idx_rec_verse`, `idx_rec_pending`.\n\nRegressions in `chapter_assignments` (`src/db/schema.ts:50`):\n\n```sql\nassigned_user_id INTEGER , -- lost: REFERENCES users(id)\n...\nstatus TEXT NOT NULL, -- lost: DEFAULT\n```\n\n- The `idx_ca_assigned_user` index is **absent** (only `idx_ca_project_unit` exists, `:66`). `getMyWorkChapters` filters `WHERE ca.assigned_user_id = ?` (`queries.ts:335`) with no supporting index.\n- Migrations are an **ad-hoc array** `chapterAssignmentMigrations` (`schema.ts:108`), run blindly in `db/index.ts:68` \u2014 not a versioned framework (#110).\n- Recordings have **no `chapter_assignment_id` and no user column**; `queries.ts` wrongly joins on `r.chapter_assignment_id` (fixed in #98).\n\n### Problems / why\n\n- Dropped FK on `assigned_user_id` removes referential integrity for the core \"my work\" relationship.\n- Missing `idx_ca_assigned_user` makes the My Work query do a full scan.\n- `status` losing its default means inserts that omit status will fail/insert nulls inconsistently (repository currently always passes a value, but the constraint should be defensive).\n- The upload worker (#100) needs a reliable way to attribute a recording to a verse (and, via #105, a user); the current schema/query mismatch blocks correct aggregates.\n\n### Target design\n\nExpress all changes as **versioned migration steps** (#110), not edits to `createTableQueries` (existing devices already have these tables):\n\n```sql\n-- restore integrity on chapter_assignments (via migration; SQLite needs table rebuild for FK/default)\n-- 1) create chapter_assignments_new with:\n-- assigned_user_id INTEGER REFERENCES users(id)\n-- status TEXT NOT NULL DEFAULT 'not_started'\n-- 2) copy data, drop old, rename\nCREATE INDEX IF NOT EXISTS idx_ca_assigned_user ON chapter_assignments(assigned_user_id);\n```\n\n- Recordings linkage: confirm verse-based linkage (`bible_text_id`) is sufficient for upload attribution; if a direct assignment reference is needed, add a nullable `chapter_assignment_id INTEGER REFERENCES chapter_assignments(id)` via migration. Prefer keeping `bible_text_id` as the canonical link (matches #98).\n- User attribution column is owned by #105 (D3) \u2014 coordinate, do not duplicate.\n\n### Coordination note (avoid duplication)\n\n- **#103 (D1)** owns the `chapter_assignments` / `user_projects` FK + index restoration migration. This ticket (#99) owns **recordings linkage** and references #103 for the `assigned_user_id` FK so the rebuild happens **once** in the F2 (#110) migration set.\n- **#110 (F2)** must land first to provide `user_version`-based migrations.\n- **#105 (D3)** owns any user-attribution column on recordings.\n\n### Implementation steps\n\n1. Depend on #110 migration framework.\n2. Add migration(s) to restore `assigned_user_id REFERENCES users(id)`, `status ... DEFAULT 'not_started'`, and `idx_ca_assigned_user` (implemented jointly with #103 \u2014 single migration).\n3. Decide & document recordings linkage (keep `bible_text_id`; optionally add nullable `chapter_assignment_id`).\n4. Update `repository.ts` insert (`insertChapterAssignmentTx`) to rely on the restored default where appropriate.\n5. Verify `PRAGMA foreign_keys = ON` (already set in `db/index.ts:62`) does not break existing inserts (order of table rebuild matters).\n6. Tests: migration brings an old-shape DB to the new shape; FK violation rejected; `idx_ca_assigned_user` present.\n\n### Acceptance criteria\n\n- [ ] `chapter_assignments.assigned_user_id` references `users(id)` again; `status` has `DEFAULT 'not_started'`; `idx_ca_assigned_user` exists \u2014 all via the #110 framework.\n- [ ] No destructive rewrite of `createTableQueries` that would wipe existing device data.\n- [ ] Recordings\u2194verse linkage documented and consistent with #98 (no `chapter_assignment_id` join unless a real column is added).\n- [ ] Migration tested from an old-shape DB; FK enforcement verified.\n\n### Test plan / verification\n\n```bash\nnpm run format:check && npm run lint && npm run typecheck && npm test -- --ci\n```\n\n- Tests default `EXPO_PUBLIC_API_BASE_URL=http://localhost:9999` via `jest.env.cjs`; **no live API required** \u2014 runs against local SQLite/mocked DB.\n- Do **not** use `FLUENT_USER_EMAIL`.\n\n### Out of scope\n\n- Migration framework itself (#110), user-attribution column (#105), upload worker (#100), multi-take repo logic (#98).\n\n### Links\n\n- Epic: #117\n- Related: #110 (F2 migrations), #103 (D1 \u2014 joint FK migration), #105 (D3 attribution), #98 (recordings join fix)\n- Anti-pattern: [PR #82](https://github.com/eten-tech-foundation/fluent-mobile/pull/82) `schema.ts` destructive rewrite \u2014 do not copy.\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-06-28T06:46:01Z",
+    "updated_at": "2026-07-27T05:08:47Z",
+    "closed_at": "2026-07-27T05:08:47Z",
+    "labels": [
+      "enhancement",
+      "SP 1"
+    ],
+    "comments": 1,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/99",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [
+    {
+      "id": 4825242300,
+      "user": "mattrace-gloo",
+      "created_at": "2026-06-28T07:25:42Z",
+      "updated_at": "2026-06-28T07:25:42Z",
+      "body": "Related: #121 \u2014 the three `recordings` joins in `src/db/queries.ts` reference a non-existent `chapter_assignment_id` column. The linkage decision in this ticket (add column vs join through `bible_texts`) determines the fix for #121.",
+      "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/99#issuecomment-4825242300"
+    }
+  ],
+  "comments_fetched_count": 1,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

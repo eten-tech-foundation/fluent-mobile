@@ -1,0 +1,25 @@
+{
+  "issue_number": 548,
+  "fetched_at_utc": "2026-10-20T00:37:45Z",
+  "issue": {
+    "number": 548,
+    "title": "Bug: Sync page does not show recordings.upload_error for failed takes",
+    "state": "closed",
+    "body": "## Summary\n\nFailed uploads show generic Sync chrome (\u201cN uploads failed\u2026\u201d) and the red cloud + up-arrow (`online_failed`), but the Sync page never displays `recordings.upload_error` even though the worker persists it via `markRecordingFailed`.\n\nThat blocks diagnosing real upload failures (API 503 storage unavailable, 404 masked assignment/auth, missing `projectUnitId`, terminal client errors, etc.) without Metro/logcat.\n\nConfirmed while investigating Chad\u2019s report: new recording \u2192 red up-arrow cloud on build `749d31f`.\n\n## Current vs expected\n\n**Current**\n- `markRecordingFailed(id, message)` writes `sync_status = 'failed'` + `upload_error`.\n- Sync UI uses `getFailedUploadCount()` + `formatSyncStatusLabel('online_failed', { failedCount })` only.\n- No screen/query surfaces `upload_error` text.\n\n**Expected**\n- Sync page (and ideally take / chapter row) shows the last failure reason for failed selected takes.\n- Retry via Sync Now clears or refreshes the message after a new attempt.\n\n## Acceptance criteria\n\n- [ ] Sync page shows the stored `upload_error` (or a safe summary) when `hasFailedUploads`.\n- [ ] Optional but preferred: take/chapter chrome that already shows the red failed glyph also exposes the reason (a11y label or secondary text).\n- [ ] After a successful retry, failed count / error copy clear appropriately.\n- [ ] Unit / component tests for the failed-upload error path.\n\n## Out of scope\n\n- Fixing Sync Now silent no-op / pending mismatches (separate ticket).\n- Changing fluent-api auth masking or R2 provisioning.\n\n## Related\n\n- Code: `src/db/repository.ts` (`markRecordingFailed`), `src/db/schema.ts` (`upload_error`), `src/app/screens/SyncScreen.tsx`, `src/utils/syncStatusState.ts`, `src/services/recordingSync.ts`, `src/services/verseAudioContract.ts` (503 \u2192 terminal failed).\n- fluent-api `main`: `PUT /verse-audio/...` returns 503 `\"Audio storage is unavailable\"` when R2 is unset/unreachable.\n",
+    "user": "mattrace-gloo",
+    "created_at": "2026-09-17T15:28:30Z",
+    "updated_at": "2026-09-22T23:49:35Z",
+    "closed_at": "2026-09-22T23:49:35Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/548",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}

@@ -1,0 +1,25 @@
+{
+  "issue_number": 564,
+  "fetched_at_utc": "2026-10-20T00:37:50Z",
+  "issue": {
+    "number": 564,
+    "title": "Restore Bible tab onOpenRecord (unit tap should open Record)",
+    "state": "closed",
+    "body": "## Summary\n\nFound during the drafting-page audit (#527). After the verse/pericope Bible tab rewrite (#408 / [PR #535](https://github.com/eten-tech-foundation/fluent-mobile/pull/535)), `BibleTab` ignores its `onOpenRecord` prop while `DraftingScreen` still passes `onOpenRecord={() => setActiveTab('record')}`.\n\n## Expected\n\nTapping a verse/unit on the Bible tab selects it **and** opens the Record tab (shell contract from #47).\n\n## Actual\n\n`BibleTab` is declared as `function BibleTab(_props: BibleTabProps = {})` and `handleUnitPress` only calls `setSelectedVerse` / expands pericopes \u2014 it never calls `onOpenRecord`.\n\n## Steps to reproduce\n\n1. Open a My Work chapter \u2192 drafting Bible tab.\n2. Tap verse `3` (or any unit card).\n3. Unit selects; Record tab does **not** activate.\n4. Manually open Record \u2192 selected verse is correct.\n\n## Acceptance criteria\n\n- [ ] `BibleTab` consumes `onOpenRecord` from props.\n- [ ] `handleUnitPress` invokes `onOpenRecord?.()` after selecting the unit (verse and pericope modes).\n- [ ] Unit test covers the callback.\n- [ ] Update `.maestro/flows/android/smoke-drafting.yaml` to assert Bible \u2192 Record without an extra tab tap once fixed.\n\n## Links\n\n- Audit: #527 / `docs/assessments/drafting-page/`\n- Task doc: `docs/assessments/drafting-page/tickets/restore-bible-onOpenRecord.md`\n- Historical: #47\n- Likely regression from: #408",
+    "user": "mattrace-buildmidwestern",
+    "created_at": "2026-09-22T23:49:43Z",
+    "updated_at": "2026-10-01T22:17:15Z",
+    "closed_at": "2026-10-01T22:17:15Z",
+    "labels": [
+      "bug"
+    ],
+    "comments": 0,
+    "html_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/564",
+    "milestone": null
+  },
+  "comments_pages": 1,
+  "comments": [],
+  "comments_fetched_count": 0,
+  "comments_count_match": true,
+  "retrieval_complete": true
+}
