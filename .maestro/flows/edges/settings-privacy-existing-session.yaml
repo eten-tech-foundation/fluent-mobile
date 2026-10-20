@@ -1,0 +1,31 @@
+# READ-ONLY: Home drawer → Privacy Policy → header back → Home.
+#
+# Preconditions: existing logged-in session; unblocked Home.
+# Distinct from edges/legal-pages.yaml (login footer links + ensure-on-login).
+# Uses privacy-policy-scroll-back (not system Back). No Terms accept, no
+# account controls, no login/clearState. Does not edit frozen Sync/PFO helpers.
+appId: com.eten.fluent
+tags:
+  - edges
+  - existing-session
+  - read-only
+---
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+- tapOn:
+    id: 'home-settings-button'
+- tapOn:
+    id: 'settings-menu-privacy-policy'
+- extendedWaitUntil:
+    visible:
+      id: 'privacy-policy-scroll'
+    timeout: 15000
+- tapOn:
+    id: 'privacy-policy-scroll-back'
+- runFlow: ../../shared/nav/goto-home.yaml
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertNotVisible:
+    id: 'login-email-input'
