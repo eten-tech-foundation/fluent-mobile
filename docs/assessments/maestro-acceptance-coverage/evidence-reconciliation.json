@@ -30,24 +30,24 @@
       "unresolved": 7
     },
     "canonical_live_status": {
-      "UNTESTED": 30,
-      "BLOCKED": 149,
-      "PASS": 23
+      "UNTESTED": 28,
+      "BLOCKED": 147,
+      "PASS": 27
     },
     "canonical_execution_coverage": {
-      "partial": 52,
-      "not_run": 127,
-      "complete_for_requirement": 23
+      "partial": 48,
+      "complete_for_requirement": 27,
+      "not_run": 127
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
       "UNTESTED": 7,
-      "BLOCKED": 59,
-      "PASS": 20
+      "BLOCKED": 58,
+      "PASS": 21
     },
     "eligible_current_atomic_execution_coverage": {
-      "partial": 19,
-      "complete_for_requirement": 20,
+      "partial": 18,
+      "complete_for_requirement": 21,
       "not_run": 47
     },
     "full_live_PASS_eligible_ids": [
@@ -56,6 +56,7 @@
       "A-0031-01",
       "B-0004-01",
       "C-0050-02",
+      "C-0050-03",
       "C-0146-02",
       "D-0188-01",
       "D-0188-02",
@@ -392,8 +393,8 @@
       "unit_review": "group",
       "additive_scope": "nonadditive_parent",
       "review_reason": "Header/tab-shell presence and preservation of selected state across tab changes are independently observable outcomes.",
-      "live_status": "UNTESTED",
-      "execution_coverage": "partial",
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
       "live_evidence": [
         {
           "receipt": "/Users/matt/Documents/Development/gloo/fluent-mobile/docs/assessments/maestro-acceptance-coverage/runtime-evidence.json",
@@ -425,22 +426,28 @@
           "commands": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-header-tab-background-first/2026-10-20_131959/b-peer11-header-tab-background-existing-session/commands.json",
           "commands_sha256": "6e1840232a921b54b1116c2017ecd3273b4857f93255ef2b9036231a326929f4",
           "reason": "Exact chapter header and Bible verse2\u2192Record2\u2192Resources2\u2192Bible2 selected assertions completed without re-tapping verse2. HOME/non-stopping launch then showed Prepare for Offline, so background tab/unit assertions were not reached. Full flow FAIL92.9s retained; cause remains under diagnosis, not a classified product failure. Cleanup Home online/radios0/1; final verse1 restoration assertion was not reached."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-single-account-header-first/result.json",
+          "case_id": "same_activity_recents_tab_unit_preservation",
+          "relation": "complete_combined_assertion_segments",
+          "process_outcome": "phase1_PASS56.1s_phase2_FAIL49.5s_cleanup_tail",
+          "reason": "Prior header/tab run completed exact1Peter1 header and Bible2\u2192Record2\u2192Resources2\u2192Bible2 selected without re-tap. Fresh phase1 retains selectedBible2. Genuine settled Recents card resumes same PID19927/activity8bc7405/task12; phase2 exact header, Bible selected and Verse2 selected assertions all COMPLETED. Original issue47 app-session background preservation is met; chapter leave/re-entry is not a source requirement. Full phase2 stillFAIL only at finalHome after stackBack, actualPFO; nativeBack recoveredHome, verse1restoration already completed. No full-flowPASS or PFOcause claim."
         }
       ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Idle app background/resume must preserve the active drafting tab and selected unit; current run resumed to Prepare for Offline before these assertions."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
-      "next_test": "Diagnose the retained HOME/non-stopping-launch route, then assert the remaining idle background/resume tab and unit preservation with a supported resume action; no new recording or repeated header/tab prefix needed.",
+      "next_test": null,
       "source_title": "Drafting shell exposes Bible/Resources/Record tabs",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/47",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/492"
       ],
       "domain": "identity_navigation",
-      "current_scope_execution_blocker": "Background resume route is under diagnosis; header and cross-tab selected-state prefix passed. Original issue47 does not require chapter leave/re-entry preservation."
+      "current_scope_execution_blocker": null,
+      "closure_scope_note": "Exact acceptance criteria only; earlier failures retained and full test-process outcomes remain distinct from completed assertion segments."
     },
     {
       "id": "A-0005-01",
@@ -1108,8 +1115,8 @@
       "unit_review": "group",
       "additive_scope": "nonadditive_parent",
       "review_reason": "Multiple-account indicator, tap action and single-account absence are distinct branches.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "partial",
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
       "live_evidence": [
         {
           "receipt": "/tmp/fluent-two-safe-gaps-batch.json",
@@ -1126,20 +1133,25 @@
           "relation": "partial",
           "attempt_outcome": "PASS",
           "reason": "Multiple-accountpositivebranchPASS: initialsopenactualpanelafterToolsdrag. Single-accountnegativebranchunproven."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-single-account-header-first/result.json",
+          "case_id": "single_account_header_absent_56.1s",
+          "relation": "complete_with_prior_positive_branch",
+          "reason": "Fresh B drawer shows only account11/active11; no other account rows, then exact drafting header has no initials. Phase1 fullPASS56.1s. Combined with retained three-account positive branch after Tools drag (initials tap opens actual account panel), both required branches proved. Later separate phase2 cleanupFAIL is retained and does not erase completed absence assertions."
         }
       ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Single-account absence of initials lacks a current live fixture; current three-account positive branch passed."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Drafting header initials when \u22652 accounts",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/85"
       ],
-      "domain": "identity_navigation"
+      "domain": "identity_navigation",
+      "closure_scope_note": "Exact acceptance criteria only; earlier failures retained and full test-process outcomes remain distinct from completed assertion segments."
     },
     {
       "id": "A-0020-01",
@@ -3412,8 +3424,8 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Assigned PFO pass exercises expansion and a nonzero count, but does not assert the initial selected chapter set equals assigned chapters.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "partial",
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
       "live_evidence": [
         {
           "receipt": "/Users/matt/Documents/Development/gloo/fluent-mobile/docs/assessments/maestro-acceptance-coverage/runtime-evidence.json",
@@ -3421,21 +3433,26 @@
           "flow": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/offline/pfo-download-button-persist.yaml",
           "relation": "partial",
           "reason": "Assigned project8 book-selection count changes and Download visibility across two toggles; no individual-circle/default-set/unassigned or byte-total proof."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch2-project12-selection-result.json",
+          "case_id": "project12_assigned_default_selection_50.237s",
+          "flow": ".maestro/flows/edges/project12-chapter-selection-prepared.yaml",
+          "relation": "complete",
+          "reason": "Fresh scoped native project12 rows show chapter1/1183 assigned10 and chapters2-5 unassigned. Prepared initial accordion/book collapsed with Assigned chapters1; opening reveals only chapter1 checked,2-5 unchecked. Full flow PASS50.237s restores chapter1-only and both collapsed. Catalogue error remains a separate blocker, not evidence against selection."
         }
       ],
       "isolated_status": "NOT_APPLICABLE",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "assigned accordion collapsed/preselected",
-        "Necessary safe fixture/authorization not established: assigned chapter fixture"
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Assigned chapters accordion collapsed and preselected",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/50"
       ],
-      "domain": "sync_offline"
+      "domain": "sync_offline",
+      "closure_scope_note": "Exact acceptance criteria only; earlier failures retained and full test-process outcomes remain distinct from completed assertion segments."
     },
     {
       "id": "C-0050-04",
@@ -3466,8 +3483,8 @@
       "unit_review": "group",
       "additive_scope": "nonadditive_parent",
       "review_reason": "Book bulk-selection and individual five-column chapter-circle selection are independent controls; existing pass covers bulk count transitions only.",
-      "live_status": "UNTESTED",
-      "execution_coverage": "partial",
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
       "live_evidence": [
         {
           "receipt": "/Users/matt/Documents/Development/gloo/fluent-mobile/docs/assessments/maestro-acceptance-coverage/runtime-evidence.json",
@@ -3475,29 +3492,29 @@
           "flow": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/offline/pfo-download-button-persist.yaml",
           "relation": "partial",
           "reason": "Assigned project8 book-selection count changes and Download visibility across two toggles; no individual-circle/default-set/unassigned or byte-total proof."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch2-project12-selection-result.json",
+          "case_id": "project12_bulk_individual_selection_50.237s",
+          "flow": ".maestro/flows/edges/project12-chapter-selection-prepared.yaml",
+          "relation": "complete",
+          "reason": "Individual chapter2 ON\u2192OFF preserves exact other checked states/counts1\u21922\u21921; book Select all checks all5 then clears all0; chapter1-only and collapsed state restored. Retained initial screenshot independently visually inspected: circles1-5 occupy one horizontal row/five columns. Download never pressed; catalogue/byte total not covered.",
+          "geometry_screenshot": "/tmp/maestro-project12-selection-1792528277954928000/2026-10-20_133119/project12-chapter-selection-prepared/takeScreenshot/project12-chapter-grid-initial-five-columns.png",
+          "geometry_sha256": "3f544003fc86e5cb25dfe039b3176b156c2ce46676f8947a70e15c16af0126ac",
+          "geometry_review": "PASS_visual_five_distinct_chapter_circles_in_one_row"
         }
       ],
       "isolated_status": "NOT_APPLICABLE",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "book select-all",
-        "chapter circle select"
-      ],
-      "executable_now": true,
-      "next_test": {
-        "kind": "selection_only_UI_partial_group",
-        "target": "known project8/1 Peter expanded chapter rows",
-        "assertions": [
-          "Individual chapter-circle checked state changes after a tap and reverses on second tap",
-          "Visible five-column layout from hierarchy bounds"
-        ],
-        "safety": "Ephemeral selection only, never Download; needs exact visible chapter selector confirmation before run."
-      },
+      "missing_assertions_or_fixture": [],
+      "executable_now": false,
+      "next_test": null,
       "source_title": "PFO book select-all and chapter circle free select",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/50"
       ],
-      "domain": "sync_offline"
+      "domain": "sync_offline",
+      "closure_scope_note": "Exact acceptance criteria only; earlier failures retained and full test-process outcomes remain distinct from completed assertion segments."
     },
     {
       "id": "C-0051-01",

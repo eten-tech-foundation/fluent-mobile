@@ -1,0 +1,225 @@
+# C0050-03 assigned default + C0050-05 grouped selection interaction support.
+# PREPARED PHASE ONLY: no old-catalogue retry or project picker navigation.
+# Required MAESTRO_PROJECT12_CHAPTER_SELECTION_VERIFIED=1 from root's fresh
+# active10/cache10,9,12 and actual project-row-12 preflight.1183/ch1 assigned10;
+#1184..1187/ch2..5 unassigned. Assigned chapters(1), accordion/book collapsed.
+# Six takes unchanged; selection is screen-local. Never Download, API, sync,
+# source/storage mutation, auth/account switch, capture, reset or delete.
+# Restores chapter1-only and book+accordion collapsed. Root handles cleanup on
+# strict failure. Screenshot enables separate native five-column geometry check;
+# this flow does not claim geometry from chapter labels alone.
+appId: com.eten.fluent
+tags:
+  - existing-session
+  - prepared-phase
+  - fixture-blocked
+  - chapter-selection
+---
+- runScript: ../../shared/scripts/project12-chapter-selection-context.js
+- assertVisible:
+    id: prepare-offline-screen
+- assertNotVisible:
+    id: login-email-input
+- assertVisible:
+    text: '^Assigned chapters \(1\)$'
+- assertNotVisible:
+    text: '^Chapter 1$'
+- assertNotVisible:
+    text: '^Chapter 2$'
+- assertNotVisible:
+    text: '^Chapter 3$'
+- assertNotVisible:
+    text: '^Chapter 4$'
+- assertNotVisible:
+    text: '^Chapter 5$'
+- assertNotVisible:
+    text: '^Select all chapters in 1 Peter$'
+- tapOn:
+    text: '^Assigned chapters \(1\)$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    text: '^Assigned chapters \(1\)$'
+- assertVisible:
+    text: '^1 Peter, 1 of 5 chapters selected$'
+- assertVisible:
+    text: '^Expand 1 Peter$'
+- assertNotVisible:
+    text: '^Chapter 1$'
+- assertNotVisible:
+    text: '^Chapter 2$'
+- assertNotVisible:
+    text: '^Chapter 3$'
+- assertNotVisible:
+    text: '^Chapter 4$'
+- assertNotVisible:
+    text: '^Chapter 5$'
+- tapOn:
+    text: '^Expand 1 Peter$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    text: '^Chapter 1$'
+    checked: true
+- assertVisible:
+    text: '^Chapter 2$'
+    checked: false
+- assertVisible:
+    text: '^Chapter 3$'
+    checked: false
+- assertVisible:
+    text: '^Chapter 4$'
+    checked: false
+- assertVisible:
+    text: '^Chapter 5$'
+    checked: false
+- takeScreenshot: project12-chapter-grid-initial-five-columns
+- tapOn:
+    text: '^Chapter 2$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    text: '^Assigned chapters \(2\)$'
+- assertVisible:
+    text: '^1 Peter, 2 of 5 chapters selected$'
+- assertVisible:
+    text: '^Chapter 1$'
+    checked: true
+- assertVisible:
+    text: '^Chapter 2$'
+    checked: true
+- assertVisible:
+    text: '^Chapter 3$'
+    checked: false
+- assertVisible:
+    text: '^Chapter 4$'
+    checked: false
+- assertVisible:
+    text: '^Chapter 5$'
+    checked: false
+- tapOn:
+    text: '^Chapter 2$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    text: '^Assigned chapters \(1\)$'
+- assertVisible:
+    text: '^1 Peter, 1 of 5 chapters selected$'
+- assertVisible:
+    text: '^Chapter 1$'
+    checked: true
+- assertVisible:
+    text: '^Chapter 2$'
+    checked: false
+- assertVisible:
+    text: '^Chapter 3$'
+    checked: false
+- assertVisible:
+    text: '^Chapter 4$'
+    checked: false
+- assertVisible:
+    text: '^Chapter 5$'
+    checked: false
+- tapOn:
+    text: '^Select all chapters in 1 Peter$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    text: '^Assigned chapters \(5\)$'
+- assertVisible:
+    text: '^1 Peter, 5 of 5 chapters selected$'
+- assertVisible:
+    text: '^Chapter 1$'
+    checked: true
+- assertVisible:
+    text: '^Chapter 2$'
+    checked: true
+- assertVisible:
+    text: '^Chapter 3$'
+    checked: true
+- assertVisible:
+    text: '^Chapter 4$'
+    checked: true
+- assertVisible:
+    text: '^Chapter 5$'
+    checked: true
+- tapOn:
+    text: '^Select all chapters in 1 Peter$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    text: '^Assigned chapters \(0\)$'
+- assertVisible:
+    text: '^1 Peter, 0 of 5 chapters selected$'
+- assertVisible:
+    text: '^Chapter 1$'
+    checked: false
+- assertVisible:
+    text: '^Chapter 2$'
+    checked: false
+- assertVisible:
+    text: '^Chapter 3$'
+    checked: false
+- assertVisible:
+    text: '^Chapter 4$'
+    checked: false
+- assertVisible:
+    text: '^Chapter 5$'
+    checked: false
+- tapOn:
+    text: '^Chapter 1$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    text: '^Assigned chapters \(1\)$'
+- assertVisible:
+    text: '^1 Peter, 1 of 5 chapters selected$'
+- assertVisible:
+    text: '^Chapter 1$'
+    checked: true
+- assertVisible:
+    text: '^Chapter 2$'
+    checked: false
+- assertVisible:
+    text: '^Chapter 3$'
+    checked: false
+- assertVisible:
+    text: '^Chapter 4$'
+    checked: false
+- assertVisible:
+    text: '^Chapter 5$'
+    checked: false
+- takeScreenshot: project12-chapter-grid-restored-one
+- tapOn:
+    text: '^Collapse 1 Peter$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    text: '^Assigned chapters \(1\)$'
+- assertVisible:
+    text: '^1 Peter, 1 of 5 chapters selected$'
+- assertNotVisible:
+    text: '^Chapter 1$'
+- assertNotVisible:
+    text: '^Chapter 2$'
+- assertNotVisible:
+    text: '^Chapter 3$'
+- assertNotVisible:
+    text: '^Chapter 4$'
+- assertNotVisible:
+    text: '^Chapter 5$'
+- assertVisible:
+    text: '^Expand 1 Peter$'
+- tapOn:
+    text: '^Assigned chapters \(1\)$'
+    waitToSettleTimeoutMs: 500
+- assertNotVisible:
+    text: '^Chapter 1$'
+- assertNotVisible:
+    text: '^Chapter 2$'
+- assertNotVisible:
+    text: '^Chapter 3$'
+- assertNotVisible:
+    text: '^Chapter 4$'
+- assertNotVisible:
+    text: '^Chapter 5$'
+- assertNotVisible:
+    text: '^Select all chapters in 1 Peter$'
+- assertNotVisible:
+    text: '^1 Peter, 1 of 5 chapters selected$'
+- assertVisible:
+    text: '^Assigned chapters \(1\)$'
+- assertVisible:
+    id: prepare-offline-screen
