@@ -1,0 +1,55 @@
+{
+  "serial": "emulator-5556",
+  "userId": 11,
+  "projectId": 12,
+  "milestoneId": 19,
+  "assignmentId": 1183,
+  "modeEvidence": "bible-verse-row-1/2 and resources-unit-1183-verse:1 / verse:2; no preference taps",
+  "verse1": {
+    "reference": "1 Peter 1:1",
+    "resourceUnitId": "resources-unit-1183-verse:1",
+    "noteId": "translation-note-tn-api-256982-0-toggle",
+    "title": "1 Peter 1:1 (#1)"
+  },
+  "verse2": {
+    "reference": "1 Peter 1:2",
+    "resourceUnitId": "resources-unit-1183-verse:2",
+    "noteId": "translation-note-tn-api-256989-0-toggle",
+    "title": "1 Peter 1:2 (#1)",
+    "body": "\"the foreknowledge of God the Father\"\nIf your language does not use an abstract noun for the idea of foreknowledge, you can express the same idea with a verbal phrase. Alternate translation: “what God the Father foreknew”\nSee: Abstract Nouns"
+  },
+  "freshDevicePreferenceProvenance": [
+    "Created new AVD from installed API33 image; no userdata/auth copy",
+    "Installed existing APK fresh; only requested user sign-in",
+    "No B preference taps or setUserPreferences operations since AVD creation",
+    "Visible restart reused same userdata with no wipe/snapshot",
+    "userPreferences.ts reads local-only pref_upload_over_cellular; missing/non-true maps to false"
+  ],
+  "kvAbsenceProof": "NOT_READ; no whole KV/auth-store extraction",
+  "deviceExecution": {
+    "overall": "HARNESS_TIMEOUT_NOT_FULL_FLOW_PASS",
+    "boundSeconds": 120,
+    "firstArtifactRoot": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-resource-active-unit-first/2026-10-20_125259/b-peer11-resource-active-unit-existing-session",
+    "completedBeforeTimeout": "All1→2→1 Bible→Recordreference→Resourcesunit+distinctactualnote assertions and screenshots; finalverse1collapsed",
+    "unreachedAtTimeout": "DraftingBack→Home→cellularOFF/VerseSettings→Home",
+    "continuation": {
+      "result": "PASS",
+      "runnerExit": 0,
+      "elapsedSeconds": 60.6,
+      "artifactRoot": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-resource-unit-unreached-tail/2026-10-20_125558/b-peer11-resource-unit-unreached-tail-existing-session",
+      "scope": "Only previously unreached returnHome/default-settings tail; no unit-case rerun"
+    },
+    "completedRequirementScope": "D-0188-02 observed1→2→1 Bible→Recordreference→Resourcesexactunit and distinctactualcontent assertions completed before original harness timeout",
+    "defaultCellularPredicate": {
+      "switchId": "settings-upload-cellular-switch",
+      "checked": false,
+      "modeId": "settings-drafting-unit-verse",
+      "selected": true,
+      "source": "src/services/userPreferences.ts local-only key pref_upload_over_cellular; true string only enables",
+      "freshHistory": "No B preference writes since independent fresh AVD creation; no userdata/auth copy",
+      "storageAbsenceProof": "NOT_READ; no auth/KV store extraction"
+    },
+    "finalState": "Home, active11; B paused for coordinated root DEV-hook integration; no running test"
+  },
+  "evidenceRoot": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-resource-active-unit-inspection"
+}

@@ -1,0 +1,254 @@
+# Cached rendering/unit-navigation delta, not repeated preference-persistence proof.
+# Root: active10/Home; cache10,9,12; exact cached oracle fixtures/cached-granularity-1183.json.
+# Required CONTEXT_VERIFIED=1 and MAESTRO_CACHED_UNIT_PHASE=full|prepared-content.
+# full requires initial Verse; prepared-content requires independent Pericope
+# attestation MAESTRO_CACHED_UNIT_PREPARED_PERICOPE_VERIFIED=1 and already expanded first Bible card.
+# Only full runs Settings/setup. Current prepared retry never repeats those actions.
+# Only temporary Verse→Pericope→Verse; no UiVersion/cellular/auth/stage/capture/playback.
+# On ANY failure root restores Verse and active12; no automatic modal/discard fallback.
+# D0540-01 next/previous and D0407 Bible/Record consistency; D0412 dock requires
+# ready source-audio marker+enabled button and exact captions, no listening claim.
+# D0540-02 markers+endword are PARTIAL; root may compare full source-body hierarchy
+# word sequence to retained complete DB-text oracle. Do not count title-only proof.
+appId: com.eten.fluent
+tags:
+  - existing-session
+  - fixture-blocked
+  - preference-mutation-approved
+  - cached-unit-content
+---
+- runScript: ../../shared/scripts/cached-granularity-context.js
+- assertNotVisible:
+    id: login-email-input
+- runFlow:
+    when:
+      'true': "${output.cachedUnitPhase === 'full'}"
+    commands:
+      - assertVisible:
+          id: home-tab-my-work
+      - tapOn:
+          waitToSettleTimeoutMs: 500
+          id: home-settings-button
+      - extendedWaitUntil:
+          visible:
+            id: settings-menu-active-10
+          timeout: 10000
+      - assertVisible:
+          id: settings-menu-account-9
+      - assertVisible:
+          id: settings-menu-account-12
+      - tapOn:
+          waitToSettleTimeoutMs: 500
+          id: settings-menu-more-settings
+      - scrollUntilVisible:
+          element:
+            id: settings-drafting-unit-verse
+          direction: DOWN
+          timeout: 10000
+      - assertVisible:
+          id: settings-drafting-unit-verse
+          selected: true
+      - tapOn:
+          waitToSettleTimeoutMs: 500
+          id: settings-drafting-unit-pericope
+      - assertVisible:
+          id: settings-drafting-unit-pericope
+          selected: true
+      - tapOn:
+          waitToSettleTimeoutMs: 500
+          id: stack-header-back
+      - assertVisible:
+          id: home-tab-my-work
+      - tapOn:
+          waitToSettleTimeoutMs: 500
+          id: home-tab-my-work
+      - scrollUntilVisible:
+          element:
+            id: ^my-work-row-1183$
+          direction: DOWN
+          timeout: 30000
+          speed: 70
+          centerElement: true
+      - tapOn:
+          waitToSettleTimeoutMs: 500
+          id: ^my-work-row-1183$
+      - extendedWaitUntil:
+          visible:
+            id: drafting-tab-bar
+          timeout: 15000
+      - assertNotVisible:
+          id: record-stop-button
+      - tapOn:
+          waitToSettleTimeoutMs: 500
+          id: drafting-tab-bible
+      - assertVisible:
+          id: '^bible-pericope-pericope:1:1$'
+      - assertVisible:
+          id: '^bible-pericope-pericope:2:1$'
+      - assertNotVisible:
+          id: bible-pericope-unavailable
+      - tapOn:
+          waitToSettleTimeoutMs: 500
+          id: '^bible-pericope-expand-pericope:1:1$'
+- assertVisible:
+    id: bible-tab
+- assertVisible:
+    id: ^bible-pericope-verse-1-1$
+    childOf:
+      id: bible-tab
+- assertVisible:
+    id: ^bible-pericope-verse-1-2$
+    childOf:
+      id: bible-tab
+- takeScreenshot: cached-unit-bible-pericope-first
+- tapOn:
+    waitToSettleTimeoutMs: 500
+    text: '^1 Peter 1:1–2$'
+    childOf:
+      id: bible-tab
+- assertVisible:
+    id: record-tab
+- assertVisible:
+    id: record-verse-reference
+    text: '^1 Peter 1:1–2$'
+- assertNotVisible:
+    id: record-pericope-unavailable
+- extendedWaitUntil:
+    visible:
+      id: source-audio-label
+      text: ^WEB Source Audio · Pericope 1 / 9$
+    timeout: 15000
+- assertVisible:
+    id: source-audio-paused
+- assertVisible:
+    id: source-audio-play
+    enabled: true
+- tapOn:
+    waitToSettleTimeoutMs: 500
+    id: record-source-toggle
+- assertVisible:
+    id: record-source-body
+- assertVisible:
+    id: ^bible-pericope-verse-1-1$
+- assertVisible:
+    id: ^bible-pericope-verse-1-2$
+- assertNotVisible:
+    id: ^bible-pericope-verse-1-3$
+- scrollUntilVisible:
+    element:
+      text: ^multiplied\.\s*$
+    direction: DOWN
+    timeout: 10000
+- takeScreenshot: cached-unit-record-pericope-source-partial
+- tapOn:
+    waitToSettleTimeoutMs: 500
+    id: record-source-toggle
+- tapOn:
+    waitToSettleTimeoutMs: 500
+    id: record-next-verse
+- assertVisible:
+    id: record-verse-reference
+    text: '^1 Peter 1:3–5$'
+- assertVisible:
+    id: source-audio-label
+    text: ^WEB Source Audio · Pericope 2 / 9$
+- tapOn:
+    waitToSettleTimeoutMs: 500
+    id: record-prev-verse
+- assertVisible:
+    id: record-verse-reference
+    text: '^1 Peter 1:1–2$'
+- assertVisible:
+    id: source-audio-label
+    text: ^WEB Source Audio · Pericope 1 / 9$
+- takeScreenshot: cached-unit-pericope-next-prev
+- tapOn:
+    waitToSettleTimeoutMs: 500
+    id: drafting-header-back
+- assertVisible:
+    id: home-tab-my-work
+- tapOn:
+    waitToSettleTimeoutMs: 500
+    id: home-settings-button
+- extendedWaitUntil:
+    visible:
+      id: settings-menu-active-10
+    timeout: 10000
+- assertVisible:
+    id: settings-menu-account-9
+- assertVisible:
+    id: settings-menu-account-12
+- tapOn:
+    waitToSettleTimeoutMs: 500
+    id: settings-menu-more-settings
+- scrollUntilVisible:
+    element:
+      id: settings-drafting-unit-verse
+    direction: DOWN
+    timeout: 10000
+- assertVisible:
+    id: settings-drafting-unit-pericope
+    selected: true
+- tapOn:
+    waitToSettleTimeoutMs: 500
+    id: settings-drafting-unit-verse
+- assertVisible:
+    id: settings-drafting-unit-verse
+    selected: true
+- tapOn:
+    waitToSettleTimeoutMs: 500
+    id: stack-header-back
+- assertVisible:
+    id: home-tab-my-work
+- tapOn:
+    waitToSettleTimeoutMs: 500
+    id: home-tab-my-work
+- scrollUntilVisible:
+    element:
+      id: ^my-work-row-1183$
+    direction: DOWN
+    timeout: 30000
+    speed: 70
+    centerElement: true
+- tapOn:
+    waitToSettleTimeoutMs: 500
+    id: ^my-work-row-1183$
+- extendedWaitUntil:
+    visible:
+      id: drafting-tab-bar
+    timeout: 15000
+- assertNotVisible:
+    id: record-stop-button
+- tapOn:
+    waitToSettleTimeoutMs: 500
+    id: drafting-tab-bible
+- scrollUntilVisible:
+    element:
+      id: ^bible-verse-row-6$
+    direction: DOWN
+    timeout: 15000
+    speed: 70
+    centerElement: true
+- assertNotVisible:
+    id: bible-pericope-unavailable
+- tapOn:
+    waitToSettleTimeoutMs: 500
+    id: ^bible-verse-row-6$
+- assertVisible:
+    id: record-verse-reference
+    text: '^1 Peter 1:6$'
+- extendedWaitUntil:
+    visible:
+      id: source-audio-label
+      text: ^WEB Source Audio · Verse 6 / 25$
+    timeout: 15000
+- assertVisible:
+    id: source-audio-paused
+- assertNotVisible:
+    id: record-stop-button
+- takeScreenshot: cached-unit-verse-restored-6
+- tapOn:
+    waitToSettleTimeoutMs: 500
+    id: drafting-header-back
+- assertVisible:
+    id: home-tab-my-work

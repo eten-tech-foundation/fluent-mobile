@@ -1,0 +1,36 @@
+{
+  "status": "UI_POPULATED_VERIFIED",
+  "serial": "emulator-5556",
+  "userId": 11,
+  "projectId": 12,
+  "milestoneId": 19,
+  "assignmentId": 1183,
+  "resourceUnitId": "resources-unit-1183-verse:1",
+  "verse": "1 Peter 1:1",
+  "translationNote": {
+    "id": "tn-api-256982-0",
+    "title": "1 Peter 1:1 (#1)",
+    "body": "\"Peter\"\nIn this culture, letter writers would give their own names first, and they would refer to themselves in the third person. If that would be confusing in your language, you could use the first person. If your language has a particular way of introducing the author of a letter, you could also use that. Alternate translation: “I, Peter, am writing this letter” or “From Peter”\nSee: First, Second or Third Person"
+  },
+  "translationQuestion": {
+    "id": "tq-api-165253-0",
+    "question": "Of whom was Peter an apostle?",
+    "answer": "Peter was an apostle of Jesus Christ."
+  },
+  "image": {
+    "id": "img-api-2788",
+    "title": "Göreme Valley In Cappadocia",
+    "renderedPhotoVerified": true,
+    "fullscreenObserved": true
+  },
+  "evidenceRoot": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-resource-inspection",
+  "deviceExecution": {
+    "result": "PASS",
+    "runnerExit": 0,
+    "elapsedSeconds": 73.7,
+    "attempts": 1,
+    "artifactRoot": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-populated-resources-first/2026-10-20_124651/b-peer11-populated-resources-existing-session",
+    "scope": "Exact note body, question answer, loaded image, fullscreen open/close, section collapse/unmount; no zoom gesture tested",
+    "restored": "All sections collapsed on resources-unit-1183-verse:1"
+  }
+}

@@ -1,0 +1,151 @@
+# A0018 nonadditive PARTIAL: real runtime mode switch + usable Home. No visual
+# reference-fidelity, component motion/haptic or86atomic promotion is claimed.
+# Root verifies active12/Home/cache10,9,12/six takes and initial absent=>Legacy.
+# Required CONTEXT_VERIFIED=1 and INITIAL_LEGACY_VERIFIED=1 (MAESTRO_CACHED_UI_*).
+# Normal restoration ends explicit pref_ui_version=legacy, rather than deleting
+# the previously absent key. Never directly reverse storage or force sync.
+# Gallery expectation is optional independently known present/absent; unverified
+# records no gallery acceptance. No gallery navigation/override or flag changes.
+# Root restores Legacy after ANY failed run; do not repeat passing prefix.
+appId: com.eten.fluent
+tags:
+  - existing-session
+  - fixture-blocked
+  - preference-mutation-approved
+  - cached-ui-version
+---
+- runScript: ../../shared/scripts/cached-ui-version-context.js
+- assertNotVisible:
+    id: login-email-input
+- assertVisible:
+    id: home-tab-my-work
+- tapOn:
+    id: home-settings-button
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: settings-menu-active-12
+    timeout: 10000
+- assertVisible:
+    id: settings-menu-account-10
+- assertVisible:
+    id: settings-menu-account-9
+- tapOn:
+    id: settings-menu-more-settings
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: settings-ui-version-legacy
+    timeout: 10000
+- assertVisible:
+    id: settings-ui-version-next
+- assertVisible:
+    id: settings-ui-version-legacy
+    selected: true
+- assertVisible:
+    id: settings-ui-version-next
+    selected: false
+- tapOn:
+    id: settings-ui-version-next
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-ui-version-next
+    selected: true
+- assertVisible:
+    id: settings-ui-version-legacy
+    selected: false
+- takeScreenshot: cached-ui-next-selected
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- tapOn:
+    id: home-tab-projects
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: home-tab-projects
+    selected: true
+- tapOn:
+    id: home-tab-my-work
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: home-tab-my-work
+    selected: true
+- assertNotVisible:
+    id: login-email-input
+- assertNotVisible:
+    text: '^Console Error$'
+- takeScreenshot: cached-ui-next-home-usable
+- tapOn:
+    id: home-settings-button
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: settings-menu-active-12
+    timeout: 10000
+- assertVisible:
+    id: settings-menu-account-10
+- assertVisible:
+    id: settings-menu-account-9
+- tapOn:
+    id: settings-menu-more-settings
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: settings-ui-version-legacy
+    timeout: 10000
+- assertVisible:
+    id: settings-ui-version-next
+- assertVisible:
+    id: settings-ui-version-next
+    selected: true
+- assertVisible:
+    id: settings-ui-version-legacy
+    selected: false
+- runFlow:
+    when:
+      true: ${output.cachedUiGalleryExpectation === 'present'}
+    commands:
+      - assertVisible:
+          id: settings-component-gallery
+      - assertVisible:
+          text: '^Review Next UI components in isolation$'
+- runFlow:
+    when:
+      true: ${output.cachedUiGalleryExpectation === 'absent'}
+    commands:
+      - assertNotVisible:
+          id: settings-component-gallery
+- takeScreenshot: cached-ui-next-settings-return
+- tapOn:
+    id: settings-ui-version-legacy
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-ui-version-legacy
+    selected: true
+- assertVisible:
+    id: settings-ui-version-next
+    selected: false
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- tapOn:
+    id: home-tab-projects
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: home-tab-projects
+    selected: true
+- tapOn:
+    id: home-tab-my-work
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: home-tab-my-work
+    selected: true
+- assertNotVisible:
+    id: login-email-input
+- assertNotVisible:
+    text: '^Console Error$'
+- takeScreenshot: cached-ui-legacy-restored-home
+- assertVisible:
+    id: home-tab-my-work
+- assertNotVisible:
+    id: record-stop-button

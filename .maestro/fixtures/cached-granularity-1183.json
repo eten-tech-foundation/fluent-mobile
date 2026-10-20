@@ -1,0 +1,76 @@
+{
+  "provenance": "/Users/matt/Documents/Codex/2026-10-19/task-10/cached-unit-fixture-data.json",
+  "source_sha256": "b43c020668432cb354f90eb23167800459992bb694ea5b9cdb7d367906a7f50a",
+  "project": 12,
+  "assignment": 1183,
+  "activeUser": 10,
+  "pericopeSet": 1,
+  "bible": 178,
+  "book": 60,
+  "chapter": 1,
+  "totalVerses": 25,
+  "totalPericopes": 9,
+  "first": {
+    "key": "pericope:1:1",
+    "verses": [
+      1,
+      2
+    ]
+  },
+  "next": {
+    "key": "pericope:2:1",
+    "verses": [
+      3,
+      4,
+      5
+    ]
+  },
+  "sourceTextOracle": [
+    {
+      "id": "34844",
+      "verse_number": "1",
+      "text": "Peter, an apostle of Jesus Christ, to the chosen ones who are living as foreigners in the Dispersion in Pontus, Galatia, Cappadocia, Asia, and Bithynia,"
+    },
+    {
+      "id": "34845",
+      "verse_number": "2",
+      "text": "according to the foreknowledge of God the Father, in sanctification of the Spirit, that you may obey Jesus Christ and be sprinkled with his blood: Grace to you and peace be multiplied."
+    },
+    {
+      "id": "34846",
+      "verse_number": "3",
+      "text": "Blessed be the God and Father of our Lord Jesus Christ, who according to his great mercy caused us to be born again to a living hope through the resurrection of Jesus Christ from the dead,"
+    },
+    {
+      "id": "34847",
+      "verse_number": "4",
+      "text": "to an incorruptible and undefiled inheritance that doesn\u2019t fade away, reserved in Heaven for you,"
+    },
+    {
+      "id": "34848",
+      "verse_number": "5",
+      "text": "who by the power of God are guarded through faith for a salvation ready to be revealed in the last time."
+    },
+    {
+      "id": "34849",
+      "verse_number": "6",
+      "text": "In this you greatly rejoice, though now for a little while, if need be, you have been grieved in various trials,"
+    },
+    {
+      "id": "34850",
+      "verse_number": "7",
+      "text": "that the proof of your faith, which is more precious than gold that perishes, even though it is tested by fire, may be found to result in praise, glory, and honor at the revelation of Jesus Christ\u2014"
+    },
+    {
+      "id": "34851",
+      "verse_number": "8",
+      "text": "whom, not having known, you love. In him, though now you don\u2019t see him, yet believing, you rejoice greatly with joy that is unspeakable and full of glory,"
+    },
+    {
+      "id": "34852",
+      "verse_number": "9",
+      "text": "receiving the result of your faith, the salvation of your souls."
+    }
+  ],
+  "claims": "UI markers/endword checks only partial full-text proof; compare complete hierarchy word sequence against this oracle before D0540-02 promotion."
+}

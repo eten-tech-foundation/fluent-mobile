@@ -31,24 +31,24 @@
     },
     "canonical_live_status": {
       "UNTESTED": 30,
-      "BLOCKED": 160,
-      "PASS": 12
+      "BLOCKED": 150,
+      "PASS": 22
     },
     "canonical_execution_coverage": {
-      "partial": 41,
-      "not_run": 149,
-      "complete_for_requirement": 12
+      "partial": 43,
+      "not_run": 137,
+      "complete_for_requirement": 22
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
       "UNTESTED": 7,
-      "BLOCKED": 68,
-      "PASS": 11
+      "BLOCKED": 60,
+      "PASS": 19
     },
     "eligible_current_atomic_execution_coverage": {
-      "partial": 16,
-      "complete_for_requirement": 11,
-      "not_run": 59
+      "partial": 17,
+      "complete_for_requirement": 19,
+      "not_run": 50
     },
     "full_live_PASS_eligible_ids": [
       "A-0015-01",
@@ -56,11 +56,19 @@
       "A-0031-01",
       "B-0004-01",
       "C-0050-02",
+      "C-0146-02",
       "D-0188-01",
+      "D-0188-02",
+      "D-0189-01",
       "D-0189-02",
+      "D-0190-01",
       "D-0190-02",
+      "D-0191-01",
       "D-0235-02",
       "D-0407-02",
+      "D-0412-01",
+      "D-0540-01",
+      "D-0540-02",
       "D-0564-01"
     ],
     "any_partial_live_evidence_candidate_ids": [
@@ -108,7 +116,9 @@
       "B-0001-01",
       "B-0004-01",
       "A-0031-01",
-      "A-0014-01"
+      "A-0014-01",
+      "D-0594-01",
+      "A-0018-01"
     ],
     "candidate_ids_with_isolated_evidence": [
       "A-0002-01",
@@ -1034,12 +1044,20 @@
       "additive_scope": "nonadditive_parent",
       "review_reason": "Runtime version toggle and unchanged Legacy visual fidelity are separate acceptance outcomes.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "/tmp/maestro-ui-version-1792526027996451000",
+          "case_id": "ui_version_switch_53.061s",
+          "flow": null,
+          "relation": "partial",
+          "reason": "Legacy\u2192NextusableHome\u2192Nextsettingspersist\u2192LegacyusableHome passed53.061s;visual fidelity remains unverified. Initial implicitdefaultLegacy now explicitlystoredlegacy through normal UI restoration."
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "No permitted version/preference toggle or reference-fidelity verification in this nonmutating runtime scope."
+        "Rendered Legacy/Next visual fidelity against approvedreference remains unverified;runtime switching/persistence alone does not close group."
       ],
       "executable_now": false,
       "next_test": null,
@@ -1048,7 +1066,8 @@
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/615",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/617"
       ],
-      "domain": "identity_navigation"
+      "domain": "identity_navigation",
+      "normal_restoration_note": "pref_ui_version explicitlegacy after initiallyabsentdefault;no directstorage reversal."
     },
     {
       "id": "A-0019-01",
@@ -3696,15 +3715,27 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Current toggle visibility/value does not prove factory default; default fixture would require known pristine preference without reset.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-resource-unit-unreached-tail/2026-10-20_125558/b-peer11-resource-unit-unreached-tail-existing-session/commands.json",
+          "case_id": "B_fresh_default_cellular_OFF",
+          "flow": ".maestro/flows/drafting/b-peer11-resource-unit-unreached-tail-existing-session.yaml",
+          "relation": "complete",
+          "reason": "Actual executed selector checked:false plus independent newAVD/freshAPK/no userdata/auth copy/no preference-write-sincecreation provenance;local-only pref_upload_over_cellular defaultsfalse unless exact true string. CurrentOFFalone is not the basis."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/fixtures/b-peer11-resource-unit.manifest.json",
+          "case_id": "B_retained_fixture_and_fresh_history",
+          "flow": null,
+          "relation": "supporting_provenance",
+          "reason": "Existing user11/serial5556 fixture manifest preserves exact resource IDs,firsttimeout andtailPASS statuses,freshAVD/no-copy/no-pref-write history. No publicKVabsence read or auth-store extraction performed."
+        }
+      ],
       "isolated_status": "NOT_APPLICABLE",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "settings toggle off by default",
-        "Necessary safe fixture/authorization not established: known default preference state"
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Settings cellular toggle present and off by default",
@@ -3712,7 +3743,8 @@
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/146",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/546"
       ],
-      "domain": "sync_offline"
+      "domain": "sync_offline",
+      "closure_scope_note": "Bounded exact requirement only;no whole originalflowPASS,audibleplayback,newauth/reset,APIdefault/servermirror or other unit/resource matrix claim."
     },
     {
       "id": "C-0146-03",
@@ -5037,21 +5069,35 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Current falsifiable criterion; all stated conditions must be demonstrated together.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-resource-active-unit-first/2026-10-20_125259/b-peer11-resource-active-unit-existing-session/commands.json",
+          "case_id": "B_resource_active_unit_1_2_1",
+          "flow": ".maestro/flows/drafting/b-peer11-resource-active-unit-existing-session.yaml",
+          "relation": "complete",
+          "reason": "Before preserved120s harness timeout,all exact Bible\u2192Record\u2192Resources1\u21922\u21921 headers/unit IDs and distinctTN256982/256989 presence/absence plus verse2body and finalcollapse completed. Later tailPASS60.6s onlyhandles previouslyunreached return/default state;not whole original flowPASS."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/fixtures/b-peer11-resource-unit.manifest.json",
+          "case_id": "B_retained_fixture_and_fresh_history",
+          "flow": null,
+          "relation": "supporting_provenance",
+          "reason": "Existing user11/serial5556 fixture manifest preserves exact resource IDs,firsttimeout andtailPASS statuses,freshAVD/no-copy/no-pref-write history. No publicKVabsence read or auth-store extraction performed."
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Need two units with distinct independently known resource markers and a resource-content change assertion."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Resources content follows active Bible/Record unit",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/188"
       ],
-      "domain": "reference_platform"
+      "domain": "reference_platform",
+      "closure_scope_note": "Bounded exact requirement only;no whole originalflowPASS,audibleplayback,newauth/reset,APIdefault/servermirror or other unit/resource matrix claim."
     },
     {
       "id": "D-0188-03",
@@ -5091,9 +5137,17 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Current falsifiable criterion; all stated conditions must be demonstrated together.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-populated-resources-first/2026-10-20_124651/b-peer11-populated-resources-existing-session/commands.json",
+          "case_id": "B_populated_resources_73.7s",
+          "flow": ".maestro/flows/drafting/b-peer11-populated-resources-existing-session.yaml",
+          "relation": "complete",
+          "reason": "Populated TN starts collapsed,expands to known payload,then collapses in actual B run."
+        }
+      ],
       "isolated_status": "PASS",
       "isolated_evidence": [
         {
@@ -5104,16 +5158,15 @@
           "scope_match": "supporting_dependency_only"
         }
       ],
-      "missing_assertions_or_fixture": [
-        "Need populated TN fixture and default-collapsed accordion assertion."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Translation Notes section accordion when notes exist",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/189"
       ],
-      "domain": "reference_platform"
+      "domain": "reference_platform",
+      "closure_scope_note": "Exact existing criterion only;issue-wide completion,allgesture states,audibleplayback andindependentserverproof not implied."
     },
     {
       "id": "D-0189-02",
@@ -5150,9 +5203,17 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Current falsifiable criterion; all stated conditions must be demonstrated together.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-populated-resources-first/2026-10-20_124651/b-peer11-populated-resources-existing-session/commands.json",
+          "case_id": "B_populated_resources_73.7s",
+          "flow": ".maestro/flows/drafting/b-peer11-populated-resources-existing-session.yaml",
+          "relation": "complete",
+          "reason": "Populated TQ starts collapsed,expands to known payload,then collapses in actual B run."
+        }
+      ],
       "isolated_status": "PASS",
       "isolated_evidence": [
         {
@@ -5163,16 +5224,15 @@
           "scope_match": "supporting_dependency_only"
         }
       ],
-      "missing_assertions_or_fixture": [
-        "Need populated TQ fixture and default-collapsed accordion assertion."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Translation Questions section accordion when questions exist",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/190"
       ],
-      "domain": "reference_platform"
+      "domain": "reference_platform",
+      "closure_scope_note": "Exact existing criterion only;issue-wide completion,allgesture states,audibleplayback andindependentserverproof not implied."
     },
     {
       "id": "D-0190-02",
@@ -5209,9 +5269,17 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Current falsifiable criterion; all stated conditions must be demonstrated together.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-populated-resources-first/2026-10-20_124651/b-peer11-populated-resources-existing-session/commands.json",
+          "case_id": "B_populated_resources_73.7s",
+          "flow": ".maestro/flows/drafting/b-peer11-populated-resources-existing-session.yaml",
+          "relation": "complete",
+          "reason": "PopulatedImages starts collapsed,expands to known payload,then collapses;this atomicaccordion criterion only,not full#191 gestures."
+        }
+      ],
       "isolated_status": "PASS",
       "isolated_evidence": [
         {
@@ -5222,16 +5290,15 @@
           "scope_match": "supporting_dependency_only"
         }
       ],
-      "missing_assertions_or_fixture": [
-        "Need populated Images/Maps fixture and default-collapsed accordion assertion."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Images & Maps section accordion when items exist",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/191"
       ],
-      "domain": "reference_platform"
+      "domain": "reference_platform",
+      "closure_scope_note": "Exact existing criterion only;issue-wide completion,allgesture states,audibleplayback andindependentserverproof not implied."
     },
     {
       "id": "D-0192-01",
@@ -5352,21 +5419,35 @@
       "unit_review": "group",
       "additive_scope": "nonadditive_parent",
       "review_reason": "Mode-change umbrella requires Bible and Record consistency across both modes; retain nonadditive to its display/navigation children.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
+      "live_evidence": [
+        {
+          "receipt": "/tmp/maestro-cached-units-1792525498136025000/2026-10-20_124459/cached-granularity-record-continuation-existing-session/commands.json",
+          "case_id": "cached_unit_continuation_84.285s",
+          "flow": ".maestro/flows/edges/cached-granularity-record-continuation-existing-session.yaml",
+          "relation": "complete",
+          "reason": "Settings selectedPericope/Verse and actual Bible/Record matching units proved both modes. Existing nonadditivegroup only."
+        },
+        {
+          "receipt": "/tmp/maestro-cached-units-1792524994634708000",
+          "case_id": "prior_setup_Bible_and_mode_assertions_before_ancestry_failure",
+          "flow": ".maestro/flows/edges/cached-granularity-content-existing-session.yaml",
+          "relation": "partial_supporting_prior_setup",
+          "reason": "Retained prior112.17s group failed later at ancestry;required initial mode/Bible observations combined with exact full-text native oracles and successful continuation;not full original flowPASS."
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Need controlled Verse and Pericope selections with both Bible and Record units asserted consistently."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Settings Verse/Pericope toggle changes Bible and Record display unit",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/407"
       ],
-      "domain": "reference_platform"
+      "domain": "reference_platform",
+      "closure_scope_note": "Exact existing criterion only;issue-wide completion,allgesture states,audibleplayback andindependentserverproof not implied."
     },
     {
       "id": "D-0407-02",
@@ -5558,21 +5639,28 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Current falsifiable criterion; all stated conditions must be demonstrated together.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
+      "live_evidence": [
+        {
+          "receipt": "/tmp/maestro-cached-units-1792525498136025000/2026-10-20_124459/cached-granularity-record-continuation-existing-session/commands.json",
+          "case_id": "cached_unit_continuation_84.285s",
+          "flow": ".maestro/flows/edges/cached-granularity-record-continuation-existing-session.yaml",
+          "relation": "complete",
+          "reason": "Ready source marker/enabledPlay and exactPericope1/9\u21922/9\u21921/9 plusVerse6/25 match retained native fixture;no listening/bytes claim."
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Need independently loaded source audio and exact active-unit caption assertion."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Shell source-audio shows Verse N/M (or unit) caption",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/412"
       ],
-      "domain": "reference_platform"
+      "domain": "reference_platform",
+      "closure_scope_note": "Exact existing criterion only;issue-wide completion,allgesture states,audibleplayback andindependentserverproof not implied."
     },
     {
       "id": "D-0417-01",
@@ -5714,21 +5802,28 @@
       "unit_review": "group",
       "additive_scope": "nonadditive_parent",
       "review_reason": "Accordion parent spans the distinct TN/TQ/Images section contracts; preserve the parent without adding another acceptance unit.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-populated-resources-first/2026-10-20_124651/b-peer11-populated-resources-existing-session/commands.json",
+          "case_id": "B_populated_resources_73.7s",
+          "flow": ".maestro/flows/drafting/b-peer11-populated-resources-existing-session.yaml",
+          "relation": "complete",
+          "reason": "TN/TQ/Images expand/collapse across populatedBfixture;nonadditiveparent only."
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Known fixture484 has no sections; need a populated section and both expanded and collapsed assertions."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Resources tab sections expand/collapse",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/531"
       ],
-      "domain": "reference_platform"
+      "domain": "reference_platform",
+      "closure_scope_note": "Exact existing criterion only;issue-wide completion,allgesture states,audibleplayback andindependentserverproof not implied."
     },
     {
       "id": "D-0540-01",
@@ -5736,21 +5831,28 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Current falsifiable criterion; all stated conditions must be demonstrated together.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
+      "live_evidence": [
+        {
+          "receipt": "/tmp/maestro-cached-units-1792525498136025000/2026-10-20_124459/cached-granularity-record-continuation-existing-session/commands.json",
+          "case_id": "cached_unit_continuation_84.285s",
+          "flow": ".maestro/flows/edges/cached-granularity-record-continuation-existing-session.yaml",
+          "relation": "complete",
+          "reason": "SelectedPericope first1:1\u20132\u2192next1:3\u20135\u2192previous1:1\u20132 actually asserted against known pericope keys."
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Need multiple known pericope units and exact next/previous pericope transitions; Verse1/2 navigation is not pericope proof."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Pericope mode next/prev advances by pericope",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/540"
       ],
-      "domain": "reference_platform"
+      "domain": "reference_platform",
+      "closure_scope_note": "Exact existing criterion only;issue-wide completion,allgesture states,audibleplayback andindependentserverproof not implied."
     },
     {
       "id": "D-0540-02",
@@ -5758,21 +5860,49 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Current falsifiable criterion; all stated conditions must be demonstrated together.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
+      "live_evidence": [
+        {
+          "receipt": "/tmp/maestro-cached-units-1792525498136025000/2026-10-20_124459/cached-granularity-record-continuation-existing-session/commands.json",
+          "case_id": "cached_unit_continuation_84.285s",
+          "flow": ".maestro/flows/edges/cached-granularity-record-continuation-existing-session.yaml",
+          "relation": "complete",
+          "reason": "Durable continuation markers/no3/endword plus TWO complete ordered59word native Bible andRecord comparisons match full DBverse1+2 oracle;not title/markers alone."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/cached-pericope-full-text-oracle.json",
+          "case_id": "Bible_ordered_full_pericope1_1_text",
+          "flow": null,
+          "relation": "complete_supporting_native_assertion",
+          "reason": "Full ordered59word rendered Bibletext equals retained DBv1+2;native comparison separate from Maestro outcome."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/cached-record-full-text-oracle.json",
+          "case_id": "Record_ordered_full_pericope1_1_text",
+          "flow": null,
+          "relation": "complete_supporting_native_assertion",
+          "reason": "Full ordered59word rendered Recordtext equals retained DBv1+2;native comparison separate from Maestro outcome."
+        },
+        {
+          "receipt": "/tmp/maestro-cached-units-1792524994634708000",
+          "case_id": "prior_setup_Bible_and_mode_assertions_before_ancestry_failure",
+          "flow": ".maestro/flows/edges/cached-granularity-content-existing-session.yaml",
+          "relation": "partial_supporting_prior_setup",
+          "reason": "Retained prior112.17s group failed later at ancestry;required initial mode/Bible observations combined with exact full-text native oracles and successful continuation;not full original flowPASS."
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Need a multi-verse pericope and complete displayed source-text set, not just first verse."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Source Bible text shows full pericope verse range",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/540"
       ],
-      "domain": "reference_platform"
+      "domain": "reference_platform",
+      "closure_scope_note": "Exact existing criterion only;issue-wide completion,allgesture states,audibleplayback andindependentserverproof not implied."
     },
     {
       "id": "D-0564-01",
@@ -6023,8 +6153,16 @@
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Current falsifiable criterion; all stated conditions must be demonstrated together.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-populated-resources-first/2026-10-20_124651/b-peer11-populated-resources-existing-session/commands.json",
+          "case_id": "B_populated_resources_73.7s",
+          "flow": ".maestro/flows/drafting/b-peer11-populated-resources-existing-session.yaml",
+          "relation": "partial_supporting_viewer_only",
+          "reason": "Populated thumbnail/fullscreenopen/Close passed. Source audit confirms#594 iscaption/attribution+thumbnailUrl,so viewer is not full#594acceptance;fullscreen+pinch/pan derivefrom#191."
+        }
+      ],
       "isolated_status": "PASS",
       "isolated_evidence": [
         {
@@ -6036,15 +6174,24 @@
         }
       ],
       "missing_assertions_or_fixture": [
-        "Need populated image thumbnail and a fullscreen-viewer assertion; payload preservation alone does not prove viewer behavior."
+        "Assert exact issue#594 caption/attribution and thumbnailUrl behavior against known populated fixture.",
+        "Retain related issue#191 pinch/pan/manualgesture behavior as owned unfinished scope;fullscreenopen/Close alone does not prove gestures."
       ],
       "executable_now": false,
       "next_test": null,
-      "source_title": "Images & Maps fullscreen open from Resources",
+      "source_title": "Images caption/attribution and thumbnailUrl (corrected source #594)",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/594"
       ],
-      "domain": "reference_platform"
+      "domain": "reference_platform",
+      "provenance_correction": {
+        "previous_source_title": "Images & Maps fullscreen open from Resources",
+        "verified_by": "Root inspected actual GitHub#594body and#191body;no broader reaudit",
+        "issue594": "caption/attribution +thumbnailUrl",
+        "issue191": "fullscreen +pinch/pan/manualgestures",
+        "issue594_closed": false,
+        "source_mismatch_retained": true
+      }
     },
     {
       "id": "D-0595-01",
@@ -6739,5 +6886,30 @@
     },
     "no_whole_app_percentage": true,
     "full_202_scope_unfinished": true
+  },
+  "latest_cached_resources_closure": {
+    "generated_utc": "2026-10-20T19:55:20.501944+00:00",
+    "atomic_complete": [
+      "D-0412-01",
+      "D-0540-01",
+      "D-0540-02",
+      "D-0189-01",
+      "D-0190-01",
+      "D-0191-01"
+    ],
+    "atomic_partial": [
+      "D-0594-01"
+    ],
+    "nonadditive_complete": [
+      "D-0407-01",
+      "D-0531-01"
+    ],
+    "eligible_atomic_counts": {
+      "partial": 17,
+      "complete_for_requirement": 17,
+      "not_run": 52
+    },
+    "scope": "86 bounded applicable atomic subset;202 canonical scope and compounds remain unfinished",
+    "source594_corrected": true
   }
 }

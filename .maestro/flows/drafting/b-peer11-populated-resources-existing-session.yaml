@@ -1,0 +1,128 @@
+# D-0189/0190/0191/0531/0594 scoped to actual UI-verified verse1 payload.
+# Starts and ends with all sections collapsed. No recording/download/settings/auth.
+# Initial first-entry default-collapsed receipt is b-resource-inspection/collapsed.xml.
+appId: com.eten.fluent
+tags:
+  - drafting
+  - existing-session
+  - read-only
+  - guard
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID ===
+    '11' && typeof MAESTRO_B_SERIAL !== 'undefined' && MAESTRO_B_SERIAL ===
+    'emulator-5556'}
+- assertVisible:
+    id: ^resources-unit-1183-verse:1$
+- assertVisible:
+    text: ^1 Peter 1:1$
+- assertNotVisible:
+    id: ^login-email-input$
+- assertVisible:
+    id: ^resources-section-translationNotes-toggle$
+- assertVisible:
+    id: ^resources-section-translationQuestions-toggle$
+- assertVisible:
+    id: ^resources-section-imagesMaps-toggle$
+- assertNotVisible:
+    id: ^translation-note-tn-api-256982-0-toggle$
+- assertNotVisible:
+    id: ^translation-question-tq-api-165253-0-toggle$
+- assertNotVisible:
+    id: ^images-maps-item-img-api-2788$
+- tapOn:
+    id: ^resources-section-translationNotes-toggle$
+- extendedWaitUntil:
+    visible:
+      id: ^translation-note-tn-api-256982-0-toggle$
+    timeout: 15000
+- assertVisible:
+    text: ^1 Peter 1:1 \(#1\)$
+- assertNotVisible:
+    id: ^translation-note-tn-api-256982-0-body$
+- tapOn:
+    id: ^translation-note-tn-api-256982-0-toggle$
+- assertVisible:
+    id: ^translation-note-tn-api-256982-0-body$
+- assertVisible:
+    text: >-
+      ^"Peter"
+
+      In this culture, letter writers would give their own names first, and they
+      would refer to themselves in the third person\. If that would be confusing
+      in your language, you could use the first person\. If your language has a
+      particular way of introducing the author of a letter, you could also use
+      that\. Alternate translation: “I, Peter, am writing this letter” or “From
+      Peter”
+
+      See: First, Second or Third Person$
+- takeScreenshot: b-populated-translation-note-body
+- tapOn:
+    id: ^resources-section-translationNotes-toggle$
+- assertNotVisible:
+    id: ^translation-note-tn-api-256982-0-toggle$
+- assertNotVisible:
+    id: ^translation-note-tn-api-256982-0-body$
+- tapOn:
+    id: ^resources-section-translationQuestions-toggle$
+- extendedWaitUntil:
+    visible:
+      id: ^translation-question-tq-api-165253-0-toggle$
+    timeout: 15000
+- assertVisible:
+    text: ^Of whom was Peter an apostle\?$
+- assertNotVisible:
+    text: ^Peter was an apostle of Jesus Christ\.$
+- tapOn:
+    id: ^translation-question-tq-api-165253-0-toggle$
+- assertVisible:
+    text: ^Peter was an apostle of Jesus Christ\.$
+- takeScreenshot: b-populated-translation-question-answer
+- tapOn:
+    id: ^resources-section-translationQuestions-toggle$
+- assertNotVisible:
+    id: ^translation-question-tq-api-165253-0-toggle$
+- assertNotVisible:
+    text: ^Peter was an apostle of Jesus Christ\.$
+- tapOn:
+    id: ^resources-section-imagesMaps-toggle$
+- extendedWaitUntil:
+    visible:
+      id: ^images-maps-item-img-api-2788$
+    timeout: 15000
+- assertVisible:
+    id: ^images-maps-zoom-img-api-2788$
+- assertVisible:
+    text: ^Göreme Valley In Cappadocia$
+- assertNotVisible:
+    id: ^images-maps-placeholder-img-api-2788$
+- extendedWaitUntil:
+    notVisible:
+      id: ^images-maps-image-loading-img-api-2788$
+    timeout: 15000
+- takeScreenshot: b-populated-image-thumbnail
+- tapOn:
+    id: ^images-maps-maximize-img-api-2788$
+- extendedWaitUntil:
+    visible:
+      id: ^images-maps-fullscreen$
+    timeout: 15000
+- assertVisible:
+    id: ^images-maps-fullscreen-zoom$
+- assertVisible:
+    text: ^Göreme Valley In Cappadocia$
+- takeScreenshot: b-populated-image-fullscreen
+- tapOn:
+    id: ^images-maps-fullscreen-close$
+- assertNotVisible:
+    id: ^images-maps-fullscreen$
+- assertVisible:
+    id: ^images-maps-maximize-img-api-2788$
+- tapOn:
+    id: ^resources-section-imagesMaps-toggle$
+- assertNotVisible:
+    id: ^images-maps-item-img-api-2788$
+- assertVisible:
+    id: ^resources-unit-1183-verse:1$
+- assertNotVisible:
+    id: ^login-email-input$
+- takeScreenshot: b-populated-resources-restored-collapsed

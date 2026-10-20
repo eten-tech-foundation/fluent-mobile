@@ -1,0 +1,59 @@
+# One harness continuation after preserved120s timeout.
+# Only unreached returnHome/defaultcellular state tail; no versecase rerun.
+appId: com.eten.fluent
+tags:
+  - drafting
+  - existing-session
+  - read-only
+  - guard
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID ===
+    '11' && typeof MAESTRO_B_SERIAL !== 'undefined' && MAESTRO_B_SERIAL ===
+    'emulator-5556' && typeof MAESTRO_B_FRESH_DEVICE_HISTORY !== 'undefined' &&
+    MAESTRO_B_FRESH_DEVICE_HISTORY === 'no-pref-write-since-create'}
+- assertVisible:
+    id: ^resources-unit-1183-verse:1$
+- tapOn:
+    id: ^drafting-header-back$
+- extendedWaitUntil:
+    visible:
+      id: ^chapter-row-1183$
+    timeout: 15000
+- tapOn:
+    id: ^stack-header-back$
+- extendedWaitUntil:
+    visible:
+      id: ^home-settings-button$
+    timeout: 15000
+- tapOn:
+    id: ^home-settings-button$
+- extendedWaitUntil:
+    visible:
+      id: ^settings-menu-active-11$
+    timeout: 15000
+- tapOn:
+    id: ^settings-menu-more-settings$
+- extendedWaitUntil:
+    visible:
+      id: ^settings-ui-version$
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: ^settings-upload-cellular-switch$
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: ^settings-upload-cellular-switch$
+    checked: false
+- assertVisible:
+    id: ^settings-drafting-unit-verse$
+    selected: true
+- takeScreenshot: b-fresh-default-cellular-off-verse-mode
+- tapOn:
+    id: ^stack-header-back$
+- extendedWaitUntil:
+    visible:
+      id: ^home-tab-projects$
+    timeout: 15000
+- assertNotVisible:
+    id: ^login-email-input$
