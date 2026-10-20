@@ -1,0 +1,65 @@
+# Single approved selector correction: ID-only container and exact text are separate nodes.
+# D0593 known whole-pericope range1:1–2, authoritative native boundary receipt.
+# Exact body markers retained from separate verse1/2 UI receipts; headings alone fail.
+# Caller owns original Verse/Home restoration in finally; no record/play/download writes.
+appId: com.eten.fluent
+tags: [drafting, existing-session, read-only, guard]
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID === '11' && typeof MAESTRO_B_SERIAL !== 'undefined' && MAESTRO_B_SERIAL === 'emulator-5556' && typeof MAESTRO_B_PERICOPE_REFS !== 'undefined' && MAESTRO_B_PERICOPE_REFS === '1:1,1:2'}
+- assertVisible:
+    id: '^resources-unit-1183-pericope:1:1$'
+- assertVisible: '^1 Peter 1:1–2$'
+- assertNotVisible:
+    id: '^translation-note-tn-api-256982-0-toggle$'
+- tapOn:
+    id: '^resources-section-translationNotes-toggle$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^translation-note-tn-api-256982-0-toggle$'
+    timeout: 15000
+- tapOn:
+    id: '^translation-note-tn-api-256982-0-toggle$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^translation-note-tn-api-256982-0-body$'
+- assertVisible:
+    text: "^\"Peter\"\\nIn\\ this\\ culture,\\ letter\\ writers\\ would\\ give\\ their\\ own\\ names\\ first,\\ and\\ they\\ would\\ refer\\ to\\ themselves\\ in\\ the\\ third\\ person\\.\\ If\\ that\\ would\\ be\\ confusing\\ in\\ your\\ language,\\ you\\ could\\ use\\ the\\ first\\ person\\.\\ If\\ your\\ language\\ has\\ a\\ particular\\ way\\ of\\ introducing\\ the\\ author\\ of\\ a\\ letter,\\ you\\ could\\ also\\ use\\ that\\.\\ Alternate\\ translation:\\ “I,\\ Peter,\\ am\\ writing\\ this\\ letter”\\ or\\ “From\\ Peter”\\nSee:\\ First,\\ Second\\ or\\ Third\\ Person$"
+- takeScreenshot: b-whole-pericope-resources-verse1-note-body
+- tapOn:
+    id: '^translation-note-tn-api-256982-0-toggle$'
+    waitToSettleTimeoutMs: 500
+- scrollUntilVisible:
+    element:
+      id: '^translation-note-tn-api-256989-0-toggle$'
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: '^translation-note-tn-api-256989-0-toggle$'
+    waitToSettleTimeoutMs: 500
+- scrollUntilVisible:
+    element:
+      id: '^translation-note-tn-api-256989-0-body$'
+    direction: DOWN
+    timeout: 10000
+- assertVisible:
+    id: '^translation-note-tn-api-256989-0-body$'
+- assertVisible:
+    text: "^\"the\\ foreknowledge\\ of\\ God\\ the\\ Father\"\\nIf\\ your\\ language\\ does\\ not\\ use\\ an\\ abstract\\ noun\\ for\\ the\\ idea\\ of\\ foreknowledge,\\ you\\ can\\ express\\ the\\ same\\ idea\\ with\\ a\\ verbal\\ phrase\\.\\ Alternate\\ translation:\\ “what\\ God\\ the\\ Father\\ foreknew”\\nSee:\\ Abstract\\ Nouns$"
+- takeScreenshot: b-whole-pericope-resources-verse2-note-body
+- scrollUntilVisible:
+    element:
+      id: '^resources-section-translationNotes-toggle$'
+    direction: UP
+    timeout: 15000
+- tapOn:
+    id: '^resources-section-translationNotes-toggle$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^resources-unit-1183-pericope:1:1$'
+- assertVisible: '^1 Peter 1:1–2$'
+- assertNotVisible:
+    id: '^translation-note-tn-api-256982-0-body$'
+- assertNotVisible:
+    id: '^translation-note-tn-api-256989-0-body$'
+- takeScreenshot: b-whole-pericope-range-with-both-verse-bodies-proven

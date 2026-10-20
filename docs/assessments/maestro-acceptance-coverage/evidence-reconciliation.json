@@ -31,24 +31,24 @@
     },
     "canonical_live_status": {
       "UNTESTED": 27,
-      "BLOCKED": 141,
-      "PASS": 34
+      "BLOCKED": 140,
+      "PASS": 35
     },
     "canonical_execution_coverage": {
       "partial": 47,
-      "complete_for_requirement": 34,
-      "not_run": 121
+      "complete_for_requirement": 35,
+      "not_run": 120
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
       "UNTESTED": 7,
-      "BLOCKED": 53,
-      "PASS": 26
+      "BLOCKED": 52,
+      "PASS": 27
     },
     "eligible_current_atomic_execution_coverage": {
       "partial": 18,
-      "complete_for_requirement": 26,
-      "not_run": 42
+      "complete_for_requirement": 27,
+      "not_run": 41
     },
     "full_live_PASS_eligible_ids": [
       "A-0015-01",
@@ -76,7 +76,8 @@
       "D-0540-02",
       "D-0564-01",
       "D-0579-02",
-      "D-0588-01"
+      "D-0588-01",
+      "D-0593-01"
     ],
     "any_partial_live_evidence_candidate_ids": [
       "A-0001-01",
@@ -6665,21 +6666,28 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Current falsifiable criterion; all stated conditions must be demonstrated together.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch3-D0593-full-range-reconciliation.json",
+          "case_id": "B_whole_pericope_resources_41.7s",
+          "flow": ".maestro/flows/drafting/b-user11-whole-pericope-resources-existing-session.yaml",
+          "relation": "complete_exact_range_and_every_verse_content",
+          "reason": "Scoped boundary query proves activepericope1:1 comprises1Peter1:1\u20132. Exact range header and same resourceunit1183-pericope:1:1 before/after; full exact known TN256982verse1 and TN256989verse2 bodies read within it, not headings alone. CorrectedCLI PASS41.7s, cleanup total73.4s Verse/Home11/radios0/1. First55.5s selector-container failure retained; one concrete ID/text-node correction, no criterion weakened. No downloaded-file or API/bundle provenance claim."
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Need pericope fixture with known resources across every verse and exact range header."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Resources cover whole pericope range in pericope mode",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/593"
       ],
-      "domain": "reference_platform"
+      "domain": "reference_platform",
+      "closure_scope_note": "Exact current Resources range/header and known content for every verse of this multi-verse pericope only; no global resource corpus or delivery mechanism claim."
     },
     {
       "id": "D-0594-01",
