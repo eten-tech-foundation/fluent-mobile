@@ -1243,4 +1243,223 @@ describe('uploadOrchestrator', () => {
       h.orchestrator.stop();
     }
   });
+
+  it('lets a restarted lifecycle finish fresh work before an old transport probe settles', async () => {
+    type Transport = {
+      isOnline: boolean;
+      isWifi: boolean;
+      connectionType: string;
+    };
+    let finishOldProbe!: (value: Transport) => void;
+    const oldProbe = new Promise<Transport>(resolve => {
+      finishOldProbe = resolve;
+    });
+    const online = { isOnline: true, isWifi: true, connectionType: 'wifi' };
+    const getSessionTransportSnapshot = jest
+      .fn<Promise<Transport>, []>()
+      .mockImplementationOnce(() => oldProbe)
+      .mockResolvedValue(online);
+    const firstFresh = { bookId: 9, chapterNumber: 1 };
+    const secondFresh = { bookId: 9, chapterNumber: 2 };
+    const h = createHarness({
+      chapters: [firstFresh],
+      getSessionTransportSnapshot,
+    });
+    try {
+      h.emitConnectivity(true, true);
+      await h.waitFor(
+        () => getSessionTransportSnapshot.mock.calls.length === 1,
+      );
+      h.orchestrator.stop();
+      h.orchestrator.start();
+      h.emitConnectivity(true, true);
+      await h.flush();
+      await h.flush();
+      expect(h.uploaded).toEqual([firstFresh]);
+
+      finishOldProbe({
+        isOnline: false,
+        isWifi: false,
+        connectionType: 'none',
+      });
+      await h.flush();
+      h.setChapters([secondFresh]);
+      h.orchestrator.notifyPendingWork();
+      await h.flush();
+      await h.flush();
+      expect(h.uploaded).toEqual([firstFresh, secondFresh]);
+      expect(h.events.filter(event => event.type === 'complete')).toHaveLength(
+        2,
+      );
+      expect(h.orchestrator.getSnapshot().phase).toBe('idle');
+      expect(h.pendingTimers()).toEqual([]);
+    } finally {
+      finishOldProbe(online);
+      h.orchestrator.stop();
+      await h.flush();
+    }
+  });
+
+  it('lets a restarted lifecycle drain fresh work without waiting for an old pending-queue read', async () => {
+    let finishOldRead!: (chapters: PendingUploadChapter[]) => void;
+    const oldRead = new Promise<PendingUploadChapter[]>(resolve => {
+      finishOldRead = resolve;
+    });
+    const fresh = { bookId: 9, chapterNumber: 3 };
+    let calls = 0;
+    const getPendingUploadChapters = jest.fn(
+      async (): Promise<PendingUploadChapter[]> => {
+        calls += 1;
+        if (calls === 1) return oldRead;
+        return h.uploaded.length === 0 ? [fresh] : [];
+      },
+    );
+    const h: ReturnType<typeof createHarness> = createHarness({
+      chapters: [fresh],
+      getPendingUploadChapters,
+    });
+    try {
+      h.emitConnectivity(true, true);
+      await h.waitFor(() => getPendingUploadChapters.mock.calls.length === 1);
+      h.orchestrator.stop();
+      h.orchestrator.start();
+      h.emitConnectivity(true, true);
+      await h.flush();
+      await h.flush();
+      expect(h.uploaded).toEqual([fresh]);
+      const completedEvents = [...h.events];
+
+      finishOldRead([{ bookId: 1, chapterNumber: 99 }]);
+      await h.flush();
+      await h.flush();
+      expect(h.uploaded).toEqual([fresh]);
+      expect(h.events).toEqual(completedEvents);
+      expect(h.events.filter(event => event.type === 'complete')).toHaveLength(
+        1,
+      );
+      expect(h.orchestrator.getSnapshot()).toMatchObject({
+        phase: 'idle',
+        completedChapters: 0,
+        totalChapters: 0,
+      });
+      expect(h.pendingTimers()).toEqual([]);
+    } finally {
+      finishOldRead([]);
+      h.orchestrator.stop();
+      await h.flush();
+    }
+  });
+
+  it('does not let an old preflight finalizer unlock a restarted lifecycle still probing', async () => {
+    type Transport = {
+      isOnline: boolean;
+      isWifi: boolean;
+      connectionType: string;
+    };
+    let finishOld!: (value: Transport) => void;
+    let finishFresh!: (value: Transport) => void;
+    const old = new Promise<Transport>(resolve => {
+      finishOld = resolve;
+    });
+    const fresh = new Promise<Transport>(resolve => {
+      finishFresh = resolve;
+    });
+    const online = { isOnline: true, isWifi: true, connectionType: 'wifi' };
+    const getSessionTransportSnapshot = jest
+      .fn<Promise<Transport>, []>()
+      .mockImplementationOnce(() => old)
+      .mockImplementationOnce(() => fresh)
+      .mockResolvedValue(online);
+    const chapter = { bookId: 9, chapterNumber: 4 };
+    const h = createHarness({
+      chapters: [chapter],
+      getSessionTransportSnapshot,
+    });
+    try {
+      h.emitConnectivity(true, true);
+      await h.waitFor(
+        () => getSessionTransportSnapshot.mock.calls.length === 1,
+      );
+      h.orchestrator.stop();
+      h.orchestrator.start();
+      h.emitConnectivity(true, true);
+      await h.flush();
+      expect(getSessionTransportSnapshot).toHaveBeenCalledTimes(2);
+
+      finishOld(online);
+      await h.flush();
+      h.orchestrator.notifyPendingWork();
+      h.emitConnectivity(true, true);
+      await h.flush();
+      expect(getSessionTransportSnapshot).toHaveBeenCalledTimes(2);
+      expect(h.uploaded).toEqual([]);
+      expect(h.events.some(event => event.type === 'start')).toBe(false);
+
+      finishFresh(online);
+      await h.flush();
+      await h.flush();
+      expect(h.uploaded).toEqual([chapter]);
+      expect(h.events.filter(event => event.type === 'start')).toHaveLength(1);
+      expect(h.events.filter(event => event.type === 'complete')).toHaveLength(
+        1,
+      );
+      expect(h.pendingTimers()).toEqual([]);
+    } finally {
+      finishOld(online);
+      finishFresh(online);
+      h.orchestrator.stop();
+      await h.flush();
+    }
+  });
+
+  it('ignores an old post-upload queue read instead of publishing progress into a restarted session', async () => {
+    const oldChapter = { bookId: 1, chapterNumber: 1 };
+    const freshChapters = [
+      { bookId: 9, chapterNumber: 2 },
+      { bookId: 9, chapterNumber: 3 },
+    ];
+    let finishOldRead!: (chapters: PendingUploadChapter[]) => void;
+    const oldRead = new Promise<PendingUploadChapter[]>(resolve => {
+      finishOldRead = resolve;
+    });
+    const getPendingUploadChapters = jest
+      .fn<Promise<PendingUploadChapter[]>, []>()
+      .mockResolvedValueOnce([oldChapter])
+      .mockImplementationOnce(() => oldRead)
+      .mockResolvedValue(freshChapters);
+    const h = createHarness({
+      chapters: [oldChapter],
+      getPendingUploadChapters,
+      holdChapterNumber: 2,
+    });
+    try {
+      h.emitConnectivity(true, true);
+      await h.waitFor(() => getPendingUploadChapters.mock.calls.length === 2);
+      h.orchestrator.stop();
+      h.orchestrator.start();
+      h.emitConnectivity(true, true);
+      await h.waitFor(() => h.uploaded.length === 2);
+      expect(h.orchestrator.getSnapshot()).toMatchObject({
+        phase: 'syncing',
+        completedChapters: 0,
+        totalChapters: 2,
+      });
+      const freshEvents = [...h.events];
+
+      finishOldRead([]);
+      await h.flush();
+      await h.flush();
+      expect(h.orchestrator.getSnapshot()).toMatchObject({
+        phase: 'syncing',
+        completedChapters: 0,
+        totalChapters: 2,
+      });
+      expect(h.events).toEqual(freshEvents);
+      expect(h.uploaded).toEqual([oldChapter, freshChapters[0]]);
+    } finally {
+      finishOldRead([]);
+      h.orchestrator.stop();
+      await h.flush();
+    }
+  });
 });
