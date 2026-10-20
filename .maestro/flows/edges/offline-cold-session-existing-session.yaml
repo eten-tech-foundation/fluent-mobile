@@ -1,0 +1,84 @@
+# A0011 offline cold-session restore, observer acceptance only.
+# Required MAESTRO_OFFLINE_COLD_SESSION_VERIFIED=1: root native preflight
+# active12/Home/cache10,9,12; six persisted takes; no active capture/playback/
+# upload/download. Emulator offline; wrapper finally restores original radio0/1
+# and verifies identical six-take metadata + active12/cached10,9,12 afterward.
+# Installed Maestro2.10 YamlStopApp.parse(String), YamlLaunchApp.getClearState()
+# and getStopApp() support the explicit data-preserving restart below.
+# Single attempt only: dev-client/Metro bundle cannot load offline => environment
+# blocker, not product failure; retain hierarchy and stop, no auth/reset/deeplink.
+# No login, switch, Sync Now, toggle, storage reversal, delete or reinstall.
+appId: com.eten.fluent
+tags:
+  - existing-session
+  - offline
+  - cold-session
+  - fixture-blocked
+---
+- runScript: ../../shared/scripts/offline-cold-session-context.js
+- assertNotVisible:
+    id: login-email-input
+- assertVisible:
+    id: home-tab-my-work
+- stopApp: com.eten.fluent
+- launchApp:
+    appId: com.eten.fluent
+    clearState: false
+    stopApp: false
+- extendedWaitUntil:
+    visible:
+      id: home-tab-my-work
+    timeout: 45000
+- assertNotVisible:
+    id: login-email-input
+- assertVisible:
+    id: home-settings-button
+- tapOn:
+    id: home-tab-my-work
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: my-work-empty
+    timeout: 15000
+- assertVisible:
+    text: '^You don''t have any chapters to work on right now\. Check the Milestones tab to find available work\.$'
+- assertNotVisible:
+    id: 'my-work-row-\d+$'
+- extendedWaitUntil:
+    visible:
+      id: home-sync-button
+      text: '^Offline · nothing pending\. Open Sync page\.$'
+    timeout: 15000
+- takeScreenshot: offline-cold-session-home-empty12
+- tapOn:
+    id: home-settings-button
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: settings-drawer-content
+    timeout: 15000
+- assertVisible:
+    id: settings-menu-active-12
+- assertVisible:
+    id: settings-menu-account-12
+- assertVisible:
+    id: settings-menu-account-10
+- assertVisible:
+    id: settings-menu-account-9
+- assertVisible:
+    id: settings-menu-inactive-10
+- assertVisible:
+    id: settings-menu-inactive-9
+- assertNotVisible:
+    id: login-email-input
+- takeScreenshot: offline-cold-session-cached-accounts
+# Android Back closes the open drawer; no account row is pressed.
+- pressKey: Back
+- assertNotVisible:
+    id: settings-drawer-content
+- assertVisible:
+    id: home-tab-my-work
+- assertVisible:
+    id: my-work-empty
+- assertNotVisible:
+    id: login-email-input

@@ -415,21 +415,32 @@
           "flow": ".maestro/flows/drafting/bible-verse-opens-record-existing-session.yaml",
           "relation": "partial",
           "reason": "Bible verse opens Record at exact ref; no general tab-state preservation claim."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-header-tab-background-first/result.json",
+          "case_id": "header_tab_prefix_pass_background_route_blocked_92.9s",
+          "flow": ".maestro/flows/drafting/b-peer11-header-tab-background-existing-session.yaml",
+          "relation": "partial_completed_prefix_only",
+          "process_outcome": "FAIL",
+          "commands": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-header-tab-background-first/2026-10-20_131959/b-peer11-header-tab-background-existing-session/commands.json",
+          "commands_sha256": "6e1840232a921b54b1116c2017ecd3273b4857f93255ef2b9036231a326929f4",
+          "reason": "Exact chapter header and Bible verse2\u2192Record2\u2192Resources2\u2192Bible2 selected assertions completed without re-tapping verse2. HOME/non-stopping launch then showed Prepare for Offline, so background tab/unit assertions were not reached. Full flow FAIL92.9s retained; cause remains under diagnosis, not a classified product failure. Cleanup Home online/radios0/1; final verse1 restoration assertion was not reached."
         }
       ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "No executed assertions cover book/chapter header plus state persistence across all Bible/Resources/Record switches."
+        "Idle app background/resume must preserve the active drafting tab and selected unit; current run resumed to Prepare for Offline before these assertions."
       ],
-      "executable_now": true,
-      "next_test": null,
+      "executable_now": false,
+      "next_test": "Diagnose the retained HOME/non-stopping-launch route, then assert the remaining idle background/resume tab and unit preservation with a supported resume action; no new recording or repeated header/tab prefix needed.",
       "source_title": "Drafting shell exposes Bible/Resources/Record tabs",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/47",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/492"
       ],
-      "domain": "identity_navigation"
+      "domain": "identity_navigation",
+      "current_scope_execution_blocker": "Background resume route is under diagnosis; header and cross-tab selected-state prefix passed. Original issue47 does not require chapter leave/re-entry preservation."
     },
     {
       "id": "A-0005-01",
@@ -836,22 +847,33 @@
           "flow": null,
           "relation": "partial",
           "reason": "Historical receipt inspected; supporting observation only, not a PASS assertion."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/a-cold-offline-first/result.json",
+          "case_id": "cold_offline_environment_blocked_59.201s",
+          "flow": ".maestro/flows/edges/offline-cold-session-existing-session.yaml",
+          "relation": "failed_attempt_environment_blocked",
+          "process_outcome": "FAIL",
+          "commands": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/a-cold-offline-first/2026-10-20_132032/offline-cold-session-existing-session/commands.json",
+          "commands_sha256": "9c8c4f0ad0dae67ddec8fb6e6eaa84686e1b54fa92d8cb5198e396b4e3ad350d",
+          "reason": "Data-preserving stop/launch did not reach Home; retained screenshot shows Expo development launcher recent-server UI. This blocks app bootstrap before offline-auth assertions, not an offline-auth product failure. Original radios0/1, active12/cached10,9,12 and all six take metadata restored/preserved; root selected observed existing public Metro recent-server entry after radio restoration and verified final Home."
         }
       ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "Cold kill/relaunch and offline fixture are outside preserved-session execution scope; no matching runtime receipt."
+        "Supported offline-capable application bootstrap must reach app Home before cold authenticated-session restoration can be verified; current development launcher attempt did not enter the app."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Resolve supported offline app bootstrap with retained launcher evidence; then verify exact saved identity on cold offline launch. Do not repeat the unchanged development-launcher path.",
       "source_title": "Cold launch restores authenticated session without network",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/93",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/291",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/293"
       ],
-      "domain": "identity_navigation"
+      "domain": "identity_navigation",
+      "current_scope_execution_blocker": "Expo development launcher recent-server UI after data-preserving launch; no offline-auth product failure verdict."
     },
     {
       "id": "A-0012-01",
