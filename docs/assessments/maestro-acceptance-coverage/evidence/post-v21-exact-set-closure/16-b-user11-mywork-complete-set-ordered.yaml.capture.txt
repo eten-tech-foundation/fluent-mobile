@@ -1,0 +1,127 @@
+appId: com.eten.fluent
+tags: [ordered-readonly, existing-session, exact-set]
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID === '11' && MAESTRO_B_SERIAL === 'emulator-5556'}
+- assertVisible:
+    id: '^home-settings-button$'
+- tapOn:
+    id: '^home-tab-my-work$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^home-tab-my-work$'
+    selected: true
+- scrollUntilVisible:
+    element:
+      id: '^my-work-row-1$'
+    direction: UP
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^my-work-row-1$'
+- scrollUntilVisible:
+    element:
+      id: '^my-work-row-3$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^my-work-row-3$'
+- scrollUntilVisible:
+    element:
+      id: '^my-work-row-4$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^my-work-row-4$'
+- scrollUntilVisible:
+    element:
+      id: '^my-work-row-6$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^my-work-row-6$'
+- scrollUntilVisible:
+    element:
+      id: '^my-work-row-993$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^my-work-row-993$'
+- scrollUntilVisible:
+    element:
+      id: '^my-work-row-994$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^my-work-row-994$'
+- scrollUntilVisible:
+    element:
+      id: '^my-work-row-747$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^my-work-row-747$'
+- scrollUntilVisible:
+    element:
+      id: '^my-work-row-909$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^my-work-row-909$'
+- scrollUntilVisible:
+    element:
+      id: '^my-work-row-570$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^my-work-row-570$'
+- scrollUntilVisible:
+    element:
+      id: '^my-work-row-571$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^my-work-row-571$'
+- scrollUntilVisible:
+    element:
+      id: '^my-work-row-575$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^my-work-row-575$'
+- scrollUntilVisible:
+    element:
+      id: '^my-work-row-695$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^my-work-row-695$'
+- scrollUntilVisible:
+    element:
+      id: '^my-work-row-1184$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^my-work-row-1184$'
+- scrollUntilVisible:
+    element:
+      id: '^my-work-list-end$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^my-work-list-end$'
+- assertVisible:
+    id: '^my-work-list-count-13$'
+- takeScreenshot: b-fullset-mywork-footer-count-13

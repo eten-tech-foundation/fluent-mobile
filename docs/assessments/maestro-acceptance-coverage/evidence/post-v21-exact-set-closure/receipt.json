@@ -1,0 +1,210 @@
+{
+  "schema": "fluent-post-v21-exact-active-list-set-closure/v1",
+  "generated_utc": "2026-10-20T23:48:11.049074+00:00",
+  "PDF_v21_frozen_counts": "31complete/16partial/39notrun; no PDF/regeneration action",
+  "case_units": {
+    "B": "ONEorderedCLI24.5s/37.3total,2childfragments,66completedcommandrecords; not66cases",
+    "A12Projects": "17.45s PASS;15flowcommands parsergate/16commandrecordsCOMPLETE; rawreusedemptylabelretained+qualifiedresult",
+    "A12MyWork": "Prior22.292s exactemptyknownsetPASS retained in canonical evidence/a12-empty-set/receipt.json"
+  },
+  "set_equality_proof": {
+    "B_mywork": "All13 expecteduniqueID asserts +loadedpositiveend/count13 +freshstage-correctbefore/afterCSVhashesequal; foreign1183excluded",
+    "B_milestones": "All9 expectedmembershipproject-to-milestoneIDs +loadedpositiveend/count9 +before/afterCSVhashesequal",
+    "A12Projects": "Exactmembershipmilestone17/project11labels+positiveend/count1+foreign19absence; freshmembershiprequerymatched",
+    "A12MyWork": "Knowneligibleempty before/after, noANYnumericMyWorkrow"
+  },
+  "cleanup": "BHome11/Legacy/Verse/OFF/radios/mic/1183+1184zero guardunchanged; AHome12/emptyMyWork/cache10,9,12/all9row+fileSHAsunchanged",
+  "criterion_decision": "ExistingA0001/A0002 missingwhole-current-visible-set equality is now directlydemonstrated. Counts corroborateeveryexpecteduniqueID+positiveend; counts alone wouldnotproveclosure. Noadditionalorgrole/grantmatrixgateintroduced; that isA0029scope.",
+  "closure_limits": [
+    "Current observed cached active-account assignment and membership projection only, not universalfutureaccount/security certification",
+    "Footer codeloaded proven; exactwholebundle revision remainsUNATTESTED and otherintegratedfixesnotretrospectivelylivecertified",
+    "Previousfailures/partials/rawstatuslabels retained",
+    "No performancegain/newcapture/serverupload/audioqualityclaim"
+  ],
+  "files": [
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-ordered-fullset/first-run/result.json",
+      "snapshot": "00-result.json",
+      "sha256": "80874adeb4fb1b435d81ebb885d220fbb14a7d3f56b943b35d44eb2012d191f5"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-ordered-fullset/first-run/command-proof-readback.json",
+      "snapshot": "01-command-proof-readback.json",
+      "sha256": "1c6b2a14de9bec3a32717504e9424c25d7d67a3f6a4eeb232205789958342cd6"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-ordered-fullset/first-run/cli/2026-10-20_164506/Ordered Fluent journey/commands.json",
+      "snapshot": "02-commands.json",
+      "sha256": "1ca9c0e4c68fc16fe0bfca595bb6b6ca79cae16291033519f6359981a3438624"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-ordered-fullset/first-run/before-mywork.csv",
+      "snapshot": "03-before-mywork.csv",
+      "sha256": "3e9e2f0f64573bfaf0fd3e9984380ec21a11592e3234034e6738b66ebc33231a"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-ordered-fullset/first-run/after-mywork.csv",
+      "snapshot": "04-after-mywork.csv",
+      "sha256": "3e9e2f0f64573bfaf0fd3e9984380ec21a11592e3234034e6738b66ebc33231a"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-ordered-fullset/first-run/before-milestones.csv",
+      "snapshot": "05-before-milestones.csv",
+      "sha256": "1fbf0836d0f2295146d920002b7b346d6984ddb015e9e63ebf267aa04f75fc9d"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-ordered-fullset/first-run/after-milestones.csv",
+      "snapshot": "06-after-milestones.csv",
+      "sha256": "1fbf0836d0f2295146d920002b7b346d6984ddb015e9e63ebf267aa04f75fc9d"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-ordered-fullset/first-run/before-excluded-milestones.csv",
+      "snapshot": "07-before-excluded-milestones.csv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-ordered-fullset/first-run/after-excluded-milestones.csv",
+      "snapshot": "08-after-excluded-milestones.csv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-projects-root-guard/a12-projects-executed/qualified-result.json",
+      "snapshot": "09-qualified-result.json",
+      "sha256": "5dbe5b6b37c52b69bb369475d1108c4233b18063df238ab838d61794fd569cb7"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-projects-root-guard/a12-projects-executed/result.json",
+      "snapshot": "10-result.json",
+      "sha256": "a07c2100e4d5704798e17921c35e123a5175b2519c7bf94957d84d5a4354dc87"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-projects-root-guard/a12-projects-executed/native-before.json",
+      "snapshot": "11-native-before.json",
+      "sha256": "b84117e1883cd5b0983a33392e7b68a4b46e0f3c0ee439fa25d91b975cccd4ec"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-projects-root-guard/a12-projects-executed/native-after.json",
+      "snapshot": "12-native-after.json",
+      "sha256": "b84117e1883cd5b0983a33392e7b68a4b46e0f3c0ee439fa25d91b975cccd4ec"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-projects-root-guard/a12-projects-executed/cli/2026-10-20_164514/a12-projects-exact-set-prepared/commands.json",
+      "snapshot": "13-commands.json",
+      "sha256": "27434c1942ac3e9bb56801f44ec27fe518d58557c8acd10d5d1ca501e61f0094"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-projects-root-guard/a12-projects-executed/parser-proof.log",
+      "snapshot": "14-parser-proof.log",
+      "sha256": "2b35174a68b8afdc6bbbe208527c8a7e2b825a8dd17ddac39368d76bfa79e583"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-projects-root-guard/a12-projects-executed/executed-wrapper.py",
+      "snapshot": "15-executed-wrapper.py",
+      "sha256": "558838dc6d85fbb3a85932a0777af3a76c5cfa32328a140c45e9f2f2a8441132"
+    },
+    {
+      "source": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/navigation/b-user11-mywork-complete-set-ordered.yaml",
+      "snapshot": "16-b-user11-mywork-complete-set-ordered.yaml",
+      "sha256": "3f28a519ea80dabc6e9bb64a241f932481762b663071e2bf1db4bdb6dd8f2caa"
+    },
+    {
+      "source": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/navigation/b-user11-milestones-complete-set-ordered.yaml",
+      "snapshot": "17-b-user11-milestones-complete-set-ordered.yaml",
+      "sha256": "7c73718b44d9faf7220298fefbb949f006c1edf2e2688e3357ee0b9cdae1cd18"
+    }
+  ],
+  "new_runs_by_reconciler": 0,
+  "canonical_application": "Root approved exact two-row promotion with guarded summary;33complete14partial39notrun. PDFv21 remains frozen31/16/39.",
+  "durable_repo_snapshots": [
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/post-v21-exact-set-closure/00-result.json",
+      "sha256": "80874adeb4fb1b435d81ebb885d220fbb14a7d3f56b943b35d44eb2012d191f5",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-ordered-fullset/first-run/result.json"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/post-v21-exact-set-closure/01-command-proof-readback.json",
+      "sha256": "1c6b2a14de9bec3a32717504e9424c25d7d67a3f6a4eeb232205789958342cd6",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-ordered-fullset/first-run/command-proof-readback.json"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/post-v21-exact-set-closure/02-commands.json",
+      "sha256": "1ca9c0e4c68fc16fe0bfca595bb6b6ca79cae16291033519f6359981a3438624",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-ordered-fullset/first-run/cli/2026-10-20_164506/Ordered Fluent journey/commands.json"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/post-v21-exact-set-closure/03-before-mywork.csv",
+      "sha256": "3e9e2f0f64573bfaf0fd3e9984380ec21a11592e3234034e6738b66ebc33231a",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-ordered-fullset/first-run/before-mywork.csv"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/post-v21-exact-set-closure/04-after-mywork.csv",
+      "sha256": "3e9e2f0f64573bfaf0fd3e9984380ec21a11592e3234034e6738b66ebc33231a",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-ordered-fullset/first-run/after-mywork.csv"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/post-v21-exact-set-closure/05-before-milestones.csv",
+      "sha256": "1fbf0836d0f2295146d920002b7b346d6984ddb015e9e63ebf267aa04f75fc9d",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-ordered-fullset/first-run/before-milestones.csv"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/post-v21-exact-set-closure/06-after-milestones.csv",
+      "sha256": "1fbf0836d0f2295146d920002b7b346d6984ddb015e9e63ebf267aa04f75fc9d",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-ordered-fullset/first-run/after-milestones.csv"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/post-v21-exact-set-closure/07-before-excluded-milestones.csv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-ordered-fullset/first-run/before-excluded-milestones.csv"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/post-v21-exact-set-closure/08-after-excluded-milestones.csv",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-ordered-fullset/first-run/after-excluded-milestones.csv"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/post-v21-exact-set-closure/09-qualified-result.json",
+      "sha256": "5dbe5b6b37c52b69bb369475d1108c4233b18063df238ab838d61794fd569cb7",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-projects-root-guard/a12-projects-executed/qualified-result.json"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/post-v21-exact-set-closure/10-result.json",
+      "sha256": "a07c2100e4d5704798e17921c35e123a5175b2519c7bf94957d84d5a4354dc87",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-projects-root-guard/a12-projects-executed/result.json"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/post-v21-exact-set-closure/11-native-before.json",
+      "sha256": "b84117e1883cd5b0983a33392e7b68a4b46e0f3c0ee439fa25d91b975cccd4ec",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-projects-root-guard/a12-projects-executed/native-before.json"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/post-v21-exact-set-closure/12-native-after.json",
+      "sha256": "b84117e1883cd5b0983a33392e7b68a4b46e0f3c0ee439fa25d91b975cccd4ec",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-projects-root-guard/a12-projects-executed/native-after.json"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/post-v21-exact-set-closure/13-commands.json",
+      "sha256": "27434c1942ac3e9bb56801f44ec27fe518d58557c8acd10d5d1ca501e61f0094",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-projects-root-guard/a12-projects-executed/cli/2026-10-20_164514/a12-projects-exact-set-prepared/commands.json"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/post-v21-exact-set-closure/14-parser-proof.log",
+      "sha256": "2b35174a68b8afdc6bbbe208527c8a7e2b825a8dd17ddac39368d76bfa79e583",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-projects-root-guard/a12-projects-executed/parser-proof.log"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/post-v21-exact-set-closure/15-executed-wrapper.py.capture.txt",
+      "sha256": "558838dc6d85fbb3a85932a0777af3a76c5cfa32328a140c45e9f2f2a8441132",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-projects-root-guard/a12-projects-executed/executed-wrapper.py"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/post-v21-exact-set-closure/16-b-user11-mywork-complete-set-ordered.yaml.capture.txt",
+      "sha256": "3f28a519ea80dabc6e9bb64a241f932481762b663071e2bf1db4bdb6dd8f2caa",
+      "source": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/navigation/b-user11-mywork-complete-set-ordered.yaml"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/post-v21-exact-set-closure/17-b-user11-milestones-complete-set-ordered.yaml.capture.txt",
+      "sha256": "7c73718b44d9faf7220298fefbb949f006c1edf2e2688e3357ee0b9cdae1cd18",
+      "source": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/navigation/b-user11-milestones-complete-set-ordered.yaml"
+    }
+  ]
+}

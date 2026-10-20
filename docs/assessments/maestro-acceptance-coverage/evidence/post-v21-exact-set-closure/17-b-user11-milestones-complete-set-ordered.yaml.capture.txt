@@ -1,0 +1,95 @@
+appId: com.eten.fluent
+tags: [ordered-readonly, existing-session, exact-set]
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID === '11' && MAESTRO_B_SERIAL === 'emulator-5556'}
+- assertVisible:
+    id: '^home-settings-button$'
+- tapOn:
+    id: '^home-tab-projects$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^home-tab-projects$'
+    selected: true
+- scrollUntilVisible:
+    element:
+      id: '^milestone-row-19$'
+    direction: UP
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^milestone-row-19$'
+- scrollUntilVisible:
+    element:
+      id: '^milestone-row-1$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^milestone-row-1$'
+- scrollUntilVisible:
+    element:
+      id: '^milestone-row-2$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^milestone-row-2$'
+- scrollUntilVisible:
+    element:
+      id: '^milestone-row-18$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^milestone-row-18$'
+- scrollUntilVisible:
+    element:
+      id: '^milestone-row-15$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^milestone-row-15$'
+- scrollUntilVisible:
+    element:
+      id: '^milestone-row-16$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^milestone-row-16$'
+- scrollUntilVisible:
+    element:
+      id: '^milestone-row-10$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^milestone-row-10$'
+- scrollUntilVisible:
+    element:
+      id: '^milestone-row-11$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^milestone-row-11$'
+- scrollUntilVisible:
+    element:
+      id: '^milestone-row-17$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^milestone-row-17$'
+- scrollUntilVisible:
+    element:
+      id: '^milestone-list-end$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^milestone-list-end$'
+- assertVisible:
+    id: '^milestone-list-count-9$'
+- takeScreenshot: b-fullset-milestones-footer-count-9

@@ -1,0 +1,97 @@
+{
+  "serial": "emulator-5556",
+  "userId": 11,
+  "sourceFreezeParentReported": "d2da6fece7e5b7e0bc0dd8cb19836ec992db36b1",
+  "runtimeExactRevision": "UNATTESTED",
+  "newFooterCodeLoadedVerified": true,
+  "purpose": "NEW_MYWORK_AND_MILESTONES_COMPLETE_SET_ONE_ORDERED_CLI",
+  "capturePlayStageTaps": 0,
+  "actualLoadedMarkers": {
+    "mywork": {
+      "footer": "my-work-list-end",
+      "count": "my-work-list-count-13",
+      "actualNativeIdsObserved": true
+    },
+    "milestones": {
+      "footer": "milestone-list-end",
+      "count": "milestone-list-count-9",
+      "actualNativeIdsObserved": true
+    }
+  },
+  "originalRadios": {
+    "airplane_mode_on": "0",
+    "wifi_on": "1"
+  },
+  "originalMic": [
+    "android.permission.RECORD_AUDIO: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+  ],
+  "beforeOracleHashes": {
+    "mywork": "3e9e2f0f64573bfaf0fd3e9984380ec21a11592e3234034e6738b66ebc33231a",
+    "milestones": "1fbf0836d0f2295146d920002b7b346d6984ddb015e9e63ebf267aa04f75fc9d",
+    "excluded-milestones": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "sourceHashes": {
+    "src/app/tabs/MyWorkTab.tsx": "5e045cb2a8ea29ef1e103231fa613beab4a282b1b86de34aed7d4e5f87cd8933",
+    "src/app/tabs/ProjectsTab.tsx": "231cea5311d73ca9ce42b66c4375a726735ad289362de8efe5b9763ab3c8b43b",
+    "scripts/maestro-test.sh": "8faa0371d97316cbe8cd0cd52f4bff9be3b7f7718cbc49e09767b102bac7be37",
+    "scripts/maestro-test-qa.sh": "255d962b9a5ad820a2ac3aa01423878f9933d697cf9d9917b8f894a5a6167509",
+    "scripts/maestro-fixture-guard.cjs": "81224f22c2fec918d4bc0b7dfea1cbf64a673325fc484388db2181b835ce641a"
+  },
+  "expectedMyWorkIds": [
+    1,
+    3,
+    4,
+    6,
+    993,
+    994,
+    747,
+    909,
+    570,
+    571,
+    575,
+    695,
+    1184
+  ],
+  "expectedMilestoneIds": [
+    19,
+    1,
+    2,
+    18,
+    15,
+    16,
+    10,
+    11,
+    17
+  ],
+  "fragments": {
+    "mywork": {
+      "path": ".maestro/flows/navigation/b-user11-mywork-complete-set-ordered.yaml",
+      "sha256": "3f28a519ea80dabc6e9bb64a241f932481762b663071e2bf1db4bdb6dd8f2caa",
+      "expectedCount": 13
+    },
+    "milestones": {
+      "path": ".maestro/flows/navigation/b-user11-milestones-complete-set-ordered.yaml",
+      "sha256": "7c73718b44d9faf7220298fefbb949f006c1edf2e2688e3357ee0b9cdae1cd18",
+      "expectedCount": 9
+    }
+  },
+  "cliPid": 88349,
+  "cliExit": 0,
+  "cliElapsedSeconds": 24.5,
+  "finalHome11LegacyVerseCellularOffVerified": true,
+  "finalRadios": {
+    "airplane_mode_on": "0",
+    "wifi_on": "1"
+  },
+  "finalMic": [
+    "android.permission.RECORD_AUDIO: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+  ],
+  "afterOracleHashes": {
+    "mywork": "3e9e2f0f64573bfaf0fd3e9984380ec21a11592e3234034e6738b66ebc33231a",
+    "milestones": "1fbf0836d0f2295146d920002b7b346d6984ddb015e9e63ebf267aa04f75fc9d",
+    "excluded-milestones": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "final1184AndTakeGuard": "1184|11|10|draft|25|0\n0",
+  "cleanupComplete": true,
+  "totalElapsedSeconds": 37.3
+}

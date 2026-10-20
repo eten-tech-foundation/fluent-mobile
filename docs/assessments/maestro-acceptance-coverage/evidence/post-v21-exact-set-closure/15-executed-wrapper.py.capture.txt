@@ -1,0 +1,48 @@
+from pathlib import Path
+import subprocess,json,shlex,csv,io,os,time,hashlib,fcntl,signal,re,xml.etree.ElementTree as E
+P=Path('/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-projects-root-guard');OUT=P/'a12-projects-executed';OUT.mkdir(exist_ok=False)
+REPO='/Users/matt/Documents/Development/gloo/fluent-mobile';FLOW=Path('/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-projects-exact-set-prepared.yaml');A=['/opt/homebrew/Caskroom/android-platform-tools/37.0.1/platform-tools/adb','-H','127.0.0.1','-P','5037','-s','emulator-5554']
+lock=open('/tmp/fluent-device-owner.lock','a');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+def adb(*args):return subprocess.run(A+list(args),capture_output=True,text=True,check=True,timeout=20).stdout.strip()
+def q(sql,db='databases/default/fluent.db'):return list(csv.DictReader(io.StringIO(adb('shell','run-as','com.eten.fluent','sqlite3','-readonly','-header','-csv',db,shlex.quote(sql)))))
+SQL="SELECT ca.id,ca.status,ca.assigned_user_id,ca.peer_checker_id FROM chapter_assignments ca JOIN books b ON b.id=ca.book_id JOIN project_units pu ON pu.id=ca.project_unit_id JOIN projects p ON p.id=pu.project_id WHERE (ca.status IN ('not_started','draft') AND ca.assigned_user_id=12) OR (ca.status='peer_check' AND ca.peer_checker_id=12) ORDER BY ca.id"
+def state():
+ rows=q('SELECT id,bible_text_id,recorded_by_user_id,project_unit_id,duration_ms,file_size_bytes,sync_status,local_file_path FROM recordings ORDER BY id');assert len(rows)==9
+ files={}
+ for r in rows:
+  path=r['local_file_path'][7:];assert re.fullmatch('/data/user/0/com.eten.fluent/files/recordings/rec_[a-z0-9]+_[a-z0-9]+.m4a',path);files[r['id']]=adb('shell','run-as','com.eten.fluent','sha256sum',path).split()[0]
+ accounts={r['key']:r['value'] for r in q("SELECT key,value FROM storage WHERE key IN ('active_user_id','known_user_ids','paused_take_markers_v1')",'databases/kv/__opsqlite_storage.sqlite')};assert accounts=={'active_user_id':'12','known_user_ids':'10,9,12','paused_take_markers_v1':'[]'}
+ assert q(SQL)==[]
+ return {'accounts':accounts,'records':rows,'fileHashes':files,'myWorkExpected':[]}
+java=P/'ReadOnlyParserGate.java';java.write_text('''import java.nio.file.*;import maestro.js.*;import maestro.orchestra.*;import maestro.orchestra.yaml.YamlCommandReader;public class ReadOnlyParserGate{public static void main(String[]a)throws Exception{try(GraalJsEngine e=new GraalJsEngine()){e.putEnv("MAESTRO_A12_PROJECTS_EXACT_SET_VERIFIED","1");int n=0;for(MaestroCommand c:YamlCommandReader.INSTANCE.readCommands(Path.of(a[0]))){if(c.getRunScriptCommand()!=null||c.getEvalScriptCommand()!=null||c.getRunFlowCommand()!=null)throw new AssertionError("Unexpected script/dependency");c.evaluateScripts(e);n++;}System.out.println("INSTALLED_MAESTRO_PARSE_AND_INTERPOLATION_PASS commands="+n);}}}''')
+subprocess.run(['javac','-cp','/Users/matt/.maestro/lib/*',str(java)],check=True,capture_output=True,text=True)
+gate=subprocess.run(['java','-Dpolyglot.engine.WarnInterpreterOnly=false','-cp','/Users/matt/.maestro/lib/*:'+str(P),'ReadOnlyParserGate',str(FLOW)],check=True,capture_output=True,text=True);(OUT/'parser-proof.log').write_text(gate.stdout)
+before=state();(OUT/'native-before.json').write_text(json.dumps(before,indent=2)+'\n');report={'criterion':'A-0002-01 account12 exact one member milestone17/project11 only','originalFlowSha':hashlib.sha256(FLOW.read_bytes()).hexdigest(),'parserGate':gate.stdout.strip()}
+expected=q("SELECT DISTINCT pu.id AS milestone_id,pu.project_id,pu.name,p.name AS project_name FROM user_projects up JOIN projects p ON p.id=up.project_id JOIN project_units pu ON pu.project_id=p.id WHERE up.user_id=12 ORDER BY pu.id")
+assert expected==[{'milestone_id':'17','project_id':'11','name':'The Beginning','project_name':'TTS Configuration Test'}]
+report['expectedMilestones']=expected
+# Supported R refresh was explicitly approved; no reset/reinstall/Dev tests.
+report['reloadIntent']='ONE supported KEYCODE_R for Fluent only';(OUT/'reload-intent.json').write_text(json.dumps(report,indent=2)+'\n');adb('shell','input','keyevent','KEYCODE_R')
+deadline=time.monotonic()+30;ready=False
+for _ in range(4):
+ remain=deadline-time.monotonic()
+ if remain<=0:break
+ try:
+  r=subprocess.run(A+['exec-out','uiautomator','dump','--compressed','/dev/tty'],capture_output=True,text=True,check=True,timeout=min(10,remain));raw=r.stdout
+  if '<?xml' not in raw:continue
+  root=E.fromstring(raw[raw.index('<?xml'):raw.rfind('</hierarchy>')+12]);ns=list(root.iter('node'));ids={n.get('resource-id') for n in ns}
+  if 'home-settings-button' in ids:ready=True;break
+  if 'prepare-offline-screen' in ids:
+   n=next(n for n in ns if n.get('resource-id')=='stack-header-back');assert n.get('clickable')=='true';a,b,c,d=map(int,re.findall(r'\d+',n.get('bounds')));adb('shell','input','tap',str((a+c)//2),str((b+d)//2))
+ except subprocess.TimeoutExpired:continue
+assert ready,'ReloadHomeReadinessBlocked_noRepeatR'
+report['reloadHomeVerified']=True
+
+env=os.environ.copy();env.update({'ANDROID_SERIAL':'emulator-5554','ADB_SERVER_SOCKET':'tcp:127.0.0.1:5037','MAESTRO_ENV_FILE':REPO+'/.env.maestro.qa'})
+start=time.monotonic()
+with (OUT/'runner.log').open('w') as log:
+ p=subprocess.Popen(['bash','scripts/maestro-test-qa.sh','--test-output-dir',str(OUT/'cli'),'-e','MAESTRO_A12_PROJECTS_EXACT_SET_VERIFIED=1',str(FLOW)],cwd=REPO,env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+ try:code=p.wait(timeout=70);timed=False
+ except subprocess.TimeoutExpired:os.killpg(p.pid,signal.SIGTERM);code=p.wait(timeout=8);timed=True
+report.update(exitCode=code,timedOut=timed,elapsedSeconds=round(time.monotonic()-start,3))
+after=state();assert q("SELECT DISTINCT pu.id AS milestone_id,pu.project_id,pu.name,p.name AS project_name FROM user_projects up JOIN projects p ON p.id=up.project_id JOIN project_units pu ON pu.project_id=p.id WHERE up.user_id=12 ORDER BY pu.id")==expected;(OUT/'native-after.json').write_text(json.dumps(after,indent=2)+'\n');report['nativeStateAndAllNineFilesUnchanged']=after==before;report['postFocusExpectedSetStillEmpty']=True;report['status']='PASS_EXACT_EMPTY_ACCOUNT12_ONLY' if code==0 and not timed and after==before else 'FAIL_OR_INCOMPLETE';(OUT/'result.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report))

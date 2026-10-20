@@ -31,27 +31,29 @@
       "unresolved": 6
     },
     "canonical_live_status": {
-      "UNTESTED": 26,
+      "PASS": 41,
       "BLOCKED": 137,
-      "PASS": 39
+      "UNTESTED": 24
     },
     "canonical_execution_coverage": {
-      "partial": 47,
-      "complete_for_requirement": 39,
+      "complete_for_requirement": 41,
+      "partial": 45,
       "not_run": 116
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
-      "UNTESTED": 6,
-      "BLOCKED": 49,
-      "PASS": 31
+      "PASS": 33,
+      "UNTESTED": 4,
+      "BLOCKED": 49
     },
     "eligible_current_atomic_execution_coverage": {
-      "partial": 16,
-      "complete_for_requirement": 31,
+      "complete_for_requirement": 33,
+      "partial": 14,
       "not_run": 39
     },
     "full_live_PASS_eligible_ids": [
+      "A-0001-01",
+      "A-0002-01",
       "A-0015-01",
       "A-0026-01",
       "A-0031-01",
@@ -265,14 +267,14 @@
     },
     "review_inventory_minus_gallery_count": 200,
     "review_inventory_minus_gallery_execution_statuses": {
-      "partial": 47,
-      "complete_for_requirement": 39,
+      "complete_for_requirement": 41,
+      "partial": 45,
       "not_run": 114
     },
     "review_inventory_minus_gallery_live_statuses": {
-      "UNTESTED": 25,
+      "PASS": 41,
       "BLOCKED": 136,
-      "PASS": 39
+      "UNTESTED": 23
     },
     "execution_scope_clarification": {
       "canonical_inventory": 202,
@@ -287,13 +289,13 @@
       "review_inventory_minus_gallery": 200,
       "review_inventory_200_is_execution_denominator": false,
       "current_review_execution_statuses_nonadditive": {
-        "partial": 45,
-        "complete_for_requirement": 39,
+        "complete_for_requirement": 41,
+        "partial": 43,
         "not_run": 91
       },
       "atomic_execution_statuses": {
-        "partial": 16,
-        "complete_for_requirement": 31,
+        "complete_for_requirement": 33,
+        "partial": 14,
         "not_run": 39
       },
       "rationale": "175 applicable current rows +21 excluded +6 unresolved =202 retained inventory. The200 comparison only subtracts2 Gallery rows and still includes19 previously out-of-scope and6 unresolved rows; it is not required execution scope. Neither175 nor200 is an additive whole-app completion percentage."
@@ -313,8 +315,8 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "One observable active-user assignment-set invariant; assigned/peer-check and non-complete are filter conditions, not independent features.",
-      "live_status": "UNTESTED",
-      "execution_coverage": "partial",
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
       "live_evidence": [
         {
           "receipt": "/tmp/fluent-pm-qa-final.md",
@@ -350,22 +352,28 @@
           "flow": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-mywork-empty-set-prepared.yaml",
           "relation": "partial_exact_empty_set_equality_pass",
           "reason": "Freshstage-specificsource-matchedSQLbefore/aftereligibleIDsetempty; active12/MyWorkempty/noANYnumericmy-work-row MaestroPASS22.292s. Nativebefore/after9rows+fileshashunchanged; knownemptybranch complete. Nonemptypopulatedassigned/peer-stagefilterlist-equality andallroleclaimsnotexecuted; overallrowpartial."
+        },
+        {
+          "receipt": "evidence/post-v21-exact-set-closure/receipt.json",
+          "case_id": "post_v21_A0001_A0002_exact_full_sets",
+          "flow": ".maestro/flows/navigation/b-user11-mywork-complete-set-ordered.yaml",
+          "relation": "complete_for_exact_active_list_set_criterion",
+          "reason": "All13 expecteduniqueID asserts +loadedpositiveend/count13 +freshstage-correctbefore/afterCSVhashesequal; foreign1183excluded; A12 complementaryempty/narrowmembershipproof retained. OneorderedCLI24.5s, exactrestoration; no unaskedrolematrixgate orwholebundleattestationclaim."
         }
       ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Account12 exact EMPTY eligible-set equality is now verified. A populated active-user complete My Work ID-set comparison, including positive assigned/peer-stage eligibility and absence of foreign/completed rows, remains unexecuted."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
-      "next_test": "Use an existing verified populated account and fresh source-matched complete eligible-assignment ID set, then assert exact full visible/scrollable My Work set equality and absence of foreign/completed rows. Preserve all9takes/cache10,9,12; no fixture writes or additional login needed. Do not repeat the passed account12 empty branch.",
+      "next_test": null,
       "source_title": "My Work shows active-user assignments",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/31",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/104"
       ],
       "domain": "identity_navigation",
-      "current_scope_execution_blocker": "Empty-account12 metadata and UI collectors succeeded; remaining populated-set oracle and exhaustive UI collector have not been executed/verified in this checkpoint."
+      "current_scope_execution_blocker": null,
+      "closure_scope_note": "Exactcurrentset equality fromfreshindependentlocalmetadata anddurableUIIDs+positiveend/count, populated11 andempty/narrow12. Notallrole/securitybehavior; wholebundleunattested."
     },
     {
       "id": "A-0002-01",
@@ -373,8 +381,8 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "One membership-projection invariant; chapter slots and email suffixes are explicitly not alternative membership authorities.",
-      "live_status": "UNTESTED",
-      "execution_coverage": "partial",
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
       "live_evidence": [
         {
           "receipt": "/tmp/fluent-pm-qa-final.md",
@@ -396,6 +404,13 @@
           "flow": ".maestro/flows/navigation/home-tabs-existing-session.yaml",
           "relation": "partial",
           "reason": "Actual Home tabs reachable in both directions; populated row existence is not set equality."
+        },
+        {
+          "receipt": "evidence/post-v21-exact-set-closure/receipt.json",
+          "case_id": "post_v21_A0001_A0002_exact_full_sets",
+          "flow": ".maestro/flows/navigation/b-user11-milestones-complete-set-ordered.yaml",
+          "relation": "complete_for_exact_active_list_set_criterion",
+          "reason": "All9 expectedmembershipproject-to-milestoneIDs +loadedpositiveend/count9 +before/afterCSVhashesequal; A12 complementaryempty/narrowmembershipproof retained. OneorderedCLI24.5s, exactrestoration; no unaskedrolematrixgate orwholebundleattestationclaim."
         }
       ],
       "isolated_status": "UNTESTED",
@@ -407,9 +422,7 @@
           "reason": "Source assertion covers membership payload reconciliation only; no matching isolated execution receipt supplied for this exact suite in this lane."
         }
       ],
-      "missing_assertions_or_fixture": [
-        "No exhaustive Projects/milestone set equality against independently known user_projects; role grant matrix is separate A-0029."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Projects/Milestones list is membership-scoped",
@@ -419,7 +432,8 @@
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/104"
       ],
       "domain": "identity_navigation",
-      "current_scope_execution_blocker": "Requires independently verified complete membership/project-set oracle; current UI samples and role suffixes are insufficient."
+      "current_scope_execution_blocker": null,
+      "closure_scope_note": "Exactcurrentset equality fromfreshindependentlocalmetadata anddurableUIIDs+positiveend/count, populated11 andempty/narrow12. Notallrole/securitybehavior; wholebundleunattested."
     },
     {
       "id": "A-0003-01",

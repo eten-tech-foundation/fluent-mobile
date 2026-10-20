@@ -1,0 +1,21 @@
+{
+  "criterion": "A-0002-01 account12 exact one member milestone17/project11 only",
+  "originalFlowSha": "4c4ef52afc7713fa05409618b23fc50dc1b02ab70aaafc24d3d092762eacb7ab",
+  "parserGate": "INSTALLED_MAESTRO_PARSE_AND_INTERPOLATION_PASS commands=15",
+  "expectedMilestones": [
+    {
+      "milestone_id": "17",
+      "project_id": "11",
+      "name": "The Beginning",
+      "project_name": "TTS Configuration Test"
+    }
+  ],
+  "reloadIntent": "ONE supported KEYCODE_R for Fluent only",
+  "reloadHomeVerified": true,
+  "exitCode": 0,
+  "timedOut": false,
+  "elapsedSeconds": 17.45,
+  "nativeStateAndAllNineFilesUnchanged": true,
+  "postFocusExpectedSetStillEmpty": true,
+  "status": "PASS_EXACT_EMPTY_ACCOUNT12_ONLY"
+}

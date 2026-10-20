@@ -1,0 +1,22 @@
+{
+  "status": "PASS_EXACT_ACCOUNT12_PROJECTS_SET",
+  "criterion": "A-0002-01",
+  "rawReceiptSha256": "a07c2100e4d5704798e17921c35e123a5175b2519c7bf94957d84d5a4354dc87",
+  "rawCopiedStatusLabelQualification": "Raw status retains the reused empty-MyWork label; its criterion, executed15commands and milestone oracle prove Projects membership-set case. No raw receipt overwritten.",
+  "expectedMilestones": [
+    {
+      "milestone_id": "17",
+      "project_id": "11",
+      "name": "The Beginning",
+      "project_name": "TTS Configuration Test"
+    }
+  ],
+  "positiveEndAndExactCount": 1,
+  "foreign19Absent": true,
+  "postFocusMilestonesRequeryMatchedBefore": "assertion in exact executed wrapper completed exit0",
+  "returnedMyWorkEmpty": true,
+  "allNineRowsAndFileHashesUnchanged": true,
+  "runtimeWholeBundleHashAttested": false,
+  "newFooterCodeExposureVerified": true,
+  "cliSeconds": 17.45
+}
