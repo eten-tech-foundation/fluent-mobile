@@ -120,6 +120,57 @@
       "pass_after": "22existing+3new=25PASS;staticchecksPASS",
       "status": "Locallyfixed;liveofflinependinglabelverifiedbygroupedMaestro;notpushedmerged",
       "receipt": "issue733-live/summary.json"
+    },
+    {
+      "issue": 734,
+      "commits": [
+        "7fa5e69b3c22df8b180a5448035d3a4ac0706e78"
+      ],
+      "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/734",
+      "failure": "Batch resource deletion captured active account once; account replacement/signout during first awaited deletion did not protect subsequent original-owner rows/files.",
+      "fail_before": {
+        "existing_PASS": 9,
+        "new_FAIL": 2
+      },
+      "pass_after": {
+        "existing_PASS": 9,
+        "new_PASS": 2,
+        "total_PASS": 11
+      },
+      "status": "fixed locally at checkpoint7fa5e69; isolated regression verified; live account-switch deletion not tested; no push/merge claim",
+      "evidence": [
+        {
+          "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/offline-storage-account-change-result.json",
+          "sha256": "162a3d2a4910efa5eb6e6040354c29b996b4652e88ab9d25e84e322bb1957bef",
+          "classification": "isolated mocked/in-memory regression"
+        },
+        {
+          "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/offline-storage-before.json",
+          "sha256": "0d9a990237a664c63ff05eba18f61ea6d091fde6b8b38131841e898da9c986f6",
+          "classification": "isolated mocked/in-memory regression"
+        },
+        {
+          "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/offline-storage-after.json",
+          "sha256": "1d25303c3abc4aafe089a7564896118db8333027c9088390262b593b6e4a76dd",
+          "classification": "isolated mocked/in-memory regression"
+        },
+        {
+          "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/offline-storage-lint.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "classification": "isolated mocked/in-memory regression"
+        },
+        {
+          "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/offline-storage-typecheck.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "classification": "isolated mocked/in-memory regression"
+        }
+      ],
+      "limitations": [
+        "Mocked queue/repository deletion and in-memory Expo filesystem; no SQLite/disk/live account switch proof.",
+        "Already-started first deletion completes; later resource authorization is rechecked.",
+        "No account-generation/away-and-back detection guarantee.",
+        "Needs QA Yes; broad CI not performed in this reconciliation lane."
+      ]
     }
   ],
   "combined_sync_validation": {
@@ -241,5 +292,106 @@
     "Populated resource fixture and verified additional role states remain required"
   ],
   "latest_direct_and_Maestro_receipt": "issue733-live/summary.json",
-  "audio_integrity_receipt": "saved-audio-digital-analysis.json"
+  "audio_integrity_receipt": "saved-audio-digital-analysis.json",
+  "background_v5_bounded_evidence": {
+    "fixture": {
+      "project": 12,
+      "assignment": 1183,
+      "verse": 5,
+      "user": 10
+    },
+    "classification": "Direct prepared native state plus separate Maestro UI assertion checkpoint; nonadditive partial evidence",
+    "native_observed": {
+      "paused_marker_session": "1183:5",
+      "elapsed_ms": 2688,
+      "segment_bytes_at_diagnostic": 32849,
+      "UI_duration": "0:02",
+      "UI_resume_present": true,
+      "UI_pause_absent": true
+    },
+    "maestro": {
+      "outcome": "PASS",
+      "exit_code": 0,
+      "elapsed_s": 13.562,
+      "phase": "background-paused",
+      "scope": "Already prepared paused state, exact frozen rendered duration and controls; flow did NOT create capture or background app."
+    },
+    "save": {
+      "take": "rec_mvh163w0_gs1x0vp9",
+      "duration_ms": 2695,
+      "bytes": 35276,
+      "status_at_cleanup": "pending",
+      "marker_cleared_after_save": true,
+      "all_five_takes_preserved": true
+    },
+    "cleanup": {
+      "active_user": 12,
+      "cached_users": [
+        10,
+        9,
+        12
+      ],
+      "capture_playback_active": false,
+      "wifi_connected": true,
+      "host_QA_health_HTTP200": true,
+      "app_QA_health_unreachable": true
+    },
+    "failed_assertion": {
+      "claim": "foreground segment hash equals initial pre-foreground hash",
+      "status": "FAILED per root retained trusted execution report",
+      "script": {
+        "path": "/tmp/fluent-background-autopause.py",
+        "sha256": "22d28a537a2a9e74558c89c8f1aa6d454201be8adb326dbe630d77e2fd9586f7",
+        "classification": "native script/proposed assertions only; root reports failed foreground hash assertion; NOT a PASS receipt"
+      },
+      "missing_raw_failure_receipt": true,
+      "must_remain_visible": true,
+      "interpretation": "Do not claim immutable bytes across foreground. Script abort means trailing PID/marker equality and full native PASS output are NOT established by that script. No underlying audio-loss defect conclusion without further evidence."
+    },
+    "diagnostic_limit": "Diagnostic later before/after size32849/hash e8bfa664490dc80fc19c7fe4902aad07b70b20ea70048fc409b817e9e75f2158 match for that later window only; this does NOT erase failed earlier foreground assertion.",
+    "excluded": [
+      "No new lifecycle result included; parent will provide it separately.",
+      "No waveform provenance or audible playback claim.",
+      "No drawer/Settings-specific lock proof.",
+      "No inferred resumed recording/byte immutability across foreground from frozen UI alone.",
+      "Do not add a second Maestro PASS for native preparation; retain exactly the one assertion checkpoint receipt."
+    ],
+    "evidence": [
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/background-batch/fluent-background-current-diagnostic.json",
+        "sha256": "80fec77e06f901b2cb4fabbf9af7b7bd946acc19aa1ca8604662967800ff7c0b",
+        "classification": "retained direct-device/native checkpoint"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/background-batch/fluent-background-maestro-result.json",
+        "sha256": "b3b4220f7c58ee076b585a009d7d6764f50e49921601acc551c6798238f1742f",
+        "classification": "Maestro assertion-only PASS, native preparation separate"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/background-batch/fluent-background-save-outcome.json",
+        "sha256": "d2217ba4e0c1e4a4cf2b382842af9f2cc5b24c88ddf3defe4415702f7149b333",
+        "classification": "retained direct-device/native checkpoint"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/background-batch/fluent-background-cleanup.json",
+        "sha256": "54106dcf89b7b6e32a5ca5c4cf34b6ddf6a71b79a21743d0b277770b5a4f0355",
+        "classification": "retained direct-device/native checkpoint"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/background-batch/fluent-background-sync-pending.json",
+        "sha256": "be2370e1123fe5614b22bdee5f868ca8419a92f9450775cf5b31044bf944aec0",
+        "classification": "retained direct-device/native checkpoint"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/background-batch/fluent-background-current-connectivity.json",
+        "sha256": "3135be1f21b86162964b1f947826aa409caa9d1c42948468e087012794bf3f3e",
+        "classification": "retained direct-device/native checkpoint"
+      },
+      {
+        "path": "/tmp/maestro-background-1792521629953658000/2026-10-20_114031/disposable-capture-recovery-existing-session/commands.json",
+        "sha256": "26153a7dbc279db6a52b5b3dc2ce897222ca92fad6395d398673eee1f138e062",
+        "classification": "retained Maestro command results; assertion phase only"
+      }
+    ]
+  }
 }

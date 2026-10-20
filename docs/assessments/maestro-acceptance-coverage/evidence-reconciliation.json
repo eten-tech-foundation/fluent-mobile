@@ -30,37 +30,38 @@
       "unresolved": 7
     },
     "canonical_live_status": {
-      "BLOCKED": 161,
-      "PASS": 11,
-      "UNTESTED": 30
+      "UNTESTED": 30,
+      "BLOCKED": 160,
+      "PASS": 12
     },
     "canonical_execution_coverage": {
-      "partial": 40,
-      "not_run": 151,
-      "complete_for_requirement": 11
+      "partial": 41,
+      "not_run": 149,
+      "complete_for_requirement": 12
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
-      "BLOCKED": 69,
-      "PASS": 10,
-      "UNTESTED": 7
+      "UNTESTED": 7,
+      "BLOCKED": 68,
+      "PASS": 11
     },
     "eligible_current_atomic_execution_coverage": {
-      "complete_for_requirement": 10,
-      "partial": 15,
-      "not_run": 61
+      "partial": 16,
+      "complete_for_requirement": 11,
+      "not_run": 59
     },
     "full_live_PASS_eligible_ids": [
       "A-0015-01",
       "A-0026-01",
+      "A-0031-01",
+      "B-0004-01",
       "C-0050-02",
       "D-0188-01",
       "D-0189-02",
       "D-0190-02",
       "D-0235-02",
       "D-0407-02",
-      "D-0564-01",
-      "B-0004-01"
+      "D-0564-01"
     ],
     "any_partial_live_evidence_candidate_ids": [
       "A-0001-01",
@@ -105,7 +106,9 @@
       "C-0267-01",
       "C-0483-01",
       "B-0001-01",
-      "B-0004-01"
+      "B-0004-01",
+      "A-0031-01",
+      "A-0014-01"
     ],
     "candidate_ids_with_isolated_evidence": [
       "A-0002-01",
@@ -884,15 +887,31 @@
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Standalone recovery route is one route contract; success/error view ownership remains part of its completion condition.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "relation": "partial",
+          "reason": "Standalone recovery entry, exact body, local invalid/empty errors and Back to Login executed. Sent/resend and API failure ownership remain unverified.",
+          "receipt": {
+            "device": "emulator-5556",
+            "revision": "9af88a3a272da803205befabf0dc998f6b401f98",
+            "flow": ".maestro/flows/auth/loggedout-forgot-password-local-existing-session.yaml",
+            "commands_path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/batch1-b-forgot/2026-10-20_121058/loggedout-forgot-password-local-existing-session/commands.json",
+            "commands_sha256": "9ab59359e883e11bf42a6764a7af6d2af515a17d05b7966f943319ee269f9e30",
+            "commands_completed": 38,
+            "elapsed_seconds": 59.1,
+            "outcome": "PASS",
+            "classification": "live Maestro; fresh logged-out device; client-local inputs only"
+          }
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "Requires Login/recovery request fixture not available under preserved authenticated sessions; no matching execution."
+        "Success/sent/resend and API failure screen behavior require a safe disposable reset request/inbox or supported controlled API failure."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Use verified disposable reset fixture to assert sent/resend and API failure states; do not resend to unknown inbox.",
       "source_title": "Forgot-password is standalone navigable screen",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/91"
@@ -1429,16 +1448,30 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "One client validation contract with multiple required input cases; existence of a validation flow is not execution.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
+      "live_evidence": [
+        {
+          "relation": "complete_for_requirement",
+          "reason": "All current client validation branches executed: empty email, malformed email and empty password; exact inline errors, empty password and remaining Login asserted. Does not cover authenticated login, API rejection or network recovery.",
+          "receipt": {
+            "device": "emulator-5556",
+            "revision": "9af88a3a272da803205befabf0dc998f6b401f98",
+            "flow": ".maestro/flows/auth/loggedout-local-validation-existing-session.yaml",
+            "commands_path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/batch-b-first/2026-10-20_120405/loggedout-local-validation-existing-session/commands.json",
+            "commands_sha256": "3662d418718f11648523905697bdecb9606974255a39b9cd5802e25c58ba5394",
+            "commands_completed": 28,
+            "elapsed_seconds": 37.8,
+            "outcome": "PASS",
+            "classification": "live Maestro; fresh logged-out device; client-local inputs only"
+          }
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Login-state empty/malformed field fixtures unavailable without leaving preserved session."
-      ],
-      "executable_now": false,
-      "next_test": null,
+      "missing_assertions_or_fixture": [],
+      "executable_now": true,
+      "next_test": "Retain this exact local-validation regression; credential rejection/loading/auth outcomes remain separate requirements.",
       "source_title": "Login client-side validation errors",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/90"
@@ -2152,6 +2185,48 @@
           "receipt": "evidence/process-network/summary.json",
           "relation": "partial",
           "reason": "Actualsafelypersistedpausedcapture recoveredafterappOSprocessstop/relaunch andsavedsame66646ms; backgroundautopauseanddrawerSettingsvariantsremainunverified."
+        },
+        {
+          "receipt": "workspace live-results/20261020/background-batch/fluent-background-maestro-result.json",
+          "relation": "partial",
+          "reason": "Prepared v5 paused UI/frozen0:02 assertion checkpoint PASS13.562s; native background preparation separate. Foreground byte-immutability assertion failed; no full native background PASS.",
+          "evidence": [
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/background-batch/fluent-background-current-diagnostic.json",
+              "sha256": "80fec77e06f901b2cb4fabbf9af7b7bd946acc19aa1ca8604662967800ff7c0b",
+              "classification": "retained direct-device/native checkpoint"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/background-batch/fluent-background-maestro-result.json",
+              "sha256": "b3b4220f7c58ee076b585a009d7d6764f50e49921601acc551c6798238f1742f",
+              "classification": "Maestro assertion-only PASS, native preparation separate"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/background-batch/fluent-background-save-outcome.json",
+              "sha256": "d2217ba4e0c1e4a4cf2b382842af9f2cc5b24c88ddf3defe4415702f7149b333",
+              "classification": "retained direct-device/native checkpoint"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/background-batch/fluent-background-cleanup.json",
+              "sha256": "54106dcf89b7b6e32a5ca5c4cf34b6ddf6a71b79a21743d0b277770b5a4f0355",
+              "classification": "retained direct-device/native checkpoint"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/background-batch/fluent-background-sync-pending.json",
+              "sha256": "be2370e1123fe5614b22bdee5f868ca8419a92f9450775cf5b31044bf944aec0",
+              "classification": "retained direct-device/native checkpoint"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/background-batch/fluent-background-current-connectivity.json",
+              "sha256": "3135be1f21b86162964b1f947826aa409caa9d1c42948468e087012794bf3f3e",
+              "classification": "retained direct-device/native checkpoint"
+            },
+            {
+              "path": "/tmp/maestro-background-1792521629953658000/2026-10-20_114031/disposable-capture-recovery-existing-session/commands.json",
+              "sha256": "26153a7dbc279db6a52b5b3dc2ce897222ca92fad6395d398673eee1f138e062",
+              "classification": "retained Maestro command results; assertion phase only"
+            }
+          ]
         }
       ],
       "isolated_status": "PASS",
@@ -2170,7 +2245,8 @@
         }
       ],
       "missing_assertions_or_fixture": [
-        "Backgroundauto-pause anddrawerSettingsspecificguards remainunverified; processrestartrecovery nowdirectPASS."
+        "Drawer/Settings-specific active/paused lock remains unverified; no supported Drawer button from active Drafting.",
+        "Background foreground byte-immutability assertion failed; retain failure and investigate separately. Already prepared paused UI checkpoint alone does not prove full background lifecycle."
       ],
       "executable_now": true,
       "next_test": "Background an active disposable capture and verify auto-pause; use a confirmed drawer-specific gesture/menu route for guard matrix.",
@@ -3328,8 +3404,41 @@
       "live_status": "BLOCKED",
       "execution_coverage": "not_run",
       "live_evidence": [],
-      "isolated_status": "NOT_APPLICABLE",
-      "isolated_evidence": [],
+      "isolated_status": "PASS",
+      "isolated_evidence": [
+        {
+          "file": "src/services/prepareOfflineStorageManagement.test.ts",
+          "relation": "partial",
+          "reason": "#734 two account-change/signout deletion regression cases FAIL before, PASS after7fa5e69;9existing+2new=11. Existing isolated service over in-memory FS/mocked queue, not live Manage Storage acceptance.",
+          "evidence": [
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/offline-storage-account-change-result.json",
+              "sha256": "162a3d2a4910efa5eb6e6040354c29b996b4652e88ab9d25e84e322bb1957bef",
+              "classification": "isolated mocked/in-memory regression"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/offline-storage-before.json",
+              "sha256": "0d9a990237a664c63ff05eba18f61ea6d091fde6b8b38131841e898da9c986f6",
+              "classification": "isolated mocked/in-memory regression"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/offline-storage-after.json",
+              "sha256": "1d25303c3abc4aafe089a7564896118db8333027c9088390262b593b6e4a76dd",
+              "classification": "isolated mocked/in-memory regression"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/offline-storage-lint.log",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "classification": "isolated mocked/in-memory regression"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/offline-storage-typecheck.log",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "classification": "isolated mocked/in-memory regression"
+            }
+          ]
+        }
+      ],
       "missing_assertions_or_fixture": [
         "Delete Selected + confirm dialog",
         "other-project accordion select",
@@ -6607,5 +6716,28 @@
       "Mid-uploadPauseRetryDrop requirescontrolledlongertransferwindow; emulatornetspeedcapabilityexistsbutWiFiapplicabilityunverified",
       "Independentserverreadback remainsunverified"
     ]
+  },
+  "bounded_734_background_v5_reconciliation": {
+    "atomic_counts_changed": false,
+    "atomic_counts": {
+      "complete": 10,
+      "partial": 15,
+      "absent": 61
+    },
+    "live_C0053_changed": false,
+    "background_group_stays_partial": true,
+    "new_lifecycle_excluded": true
+  },
+  "latest_auth_requirement_closure": {
+    "utc": "2026-10-20T19:27:44.916276+00:00",
+    "A-0031-01": "absent -> complete, client validation only",
+    "A-0014-01": "absent -> partial, recovery navigation/local errors",
+    "counts": {
+      "partial": 16,
+      "complete_for_requirement": 11,
+      "not_run": 59
+    },
+    "no_whole_app_percentage": true,
+    "full_202_scope_unfinished": true
   }
 }

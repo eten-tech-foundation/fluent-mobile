@@ -1137,6 +1137,54 @@
       "validation": "3newred->25green;lint/typecheck/formatPASS;liveofflinependingMaestroPASS",
       "dependencies": "No semantic dependency on other core fixes; sharedscreenfile contextualbase must be reviewed",
       "separate_QA_commit": "abbad55 belongs717, do not bundle unrelatedharnessinto733PR"
+    },
+    {
+      "issue": 734,
+      "title": "Revalidate active account between offline resource deletions",
+      "commits": [
+        {
+          "commit": "7fa5e69b3c22df8b180a5448035d3a4ac0706e78",
+          "selection": "entire isolated issue commit",
+          "files": [
+            "src/services/prepareOfflineStorageManagement.ts",
+            "src/services/prepareOfflineStorageManagement.test.ts"
+          ]
+        }
+      ],
+      "tests": [
+        "preserves later resources when active account changes to99 during deletion",
+        "preserves later resources when active account changes tonull during deletion"
+      ],
+      "dependencies": [],
+      "validation": "9existing+2new=11PASS isolated; explicit fail-before2; targetedstaticPASS",
+      "scope": "OnePR #734, not grouped with717. Already-started deletion cannot cancel; no ABA guard claim.",
+      "evidence": [
+        {
+          "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/offline-storage-account-change-result.json",
+          "sha256": "162a3d2a4910efa5eb6e6040354c29b996b4652e88ab9d25e84e322bb1957bef",
+          "classification": "isolated mocked/in-memory regression"
+        },
+        {
+          "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/offline-storage-before.json",
+          "sha256": "0d9a990237a664c63ff05eba18f61ea6d091fde6b8b38131841e898da9c986f6",
+          "classification": "isolated mocked/in-memory regression"
+        },
+        {
+          "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/offline-storage-after.json",
+          "sha256": "1d25303c3abc4aafe089a7564896118db8333027c9088390262b593b6e4a76dd",
+          "classification": "isolated mocked/in-memory regression"
+        },
+        {
+          "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/offline-storage-lint.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "classification": "isolated mocked/in-memory regression"
+        },
+        {
+          "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/offline-storage-typecheck.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "classification": "isolated mocked/in-memory regression"
+        }
+      ]
     }
   ],
   "issue725": {
@@ -1159,5 +1207,65 @@
   "future_per_pr_validation": "After authorized clean PR construction: exact staged review/secret check, focused issue suites, typecheck/lint/format; applicable repository CI before ready claim. Existing branch results are supporting evidence, not clean split validation. No runs performed for this plan.",
   "remaining_uncertainty": "Existing commit list is a bounded inspected separation map, not a whole-branch audit. Root reconciles later workspace-only evidence files and publication metadata before final QA packet.",
   "latest_live_evidence": "issue733-live/summary.json",
-  "no_push_merge": true
+  "no_push_merge": true,
+  "background_v5_QA_packet_evidence": {
+    "belongs_to_issue": 717,
+    "product_fix_dependency": null,
+    "evidence": [
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/background-batch/fluent-background-current-diagnostic.json",
+        "sha256": "80fec77e06f901b2cb4fabbf9af7b7bd946acc19aa1ca8604662967800ff7c0b",
+        "classification": "retained direct-device/native checkpoint"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/background-batch/fluent-background-maestro-result.json",
+        "sha256": "b3b4220f7c58ee076b585a009d7d6764f50e49921601acc551c6798238f1742f",
+        "classification": "Maestro assertion-only PASS, native preparation separate"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/background-batch/fluent-background-save-outcome.json",
+        "sha256": "d2217ba4e0c1e4a4cf2b382842af9f2cc5b24c88ddf3defe4415702f7149b333",
+        "classification": "retained direct-device/native checkpoint"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/background-batch/fluent-background-cleanup.json",
+        "sha256": "54106dcf89b7b6e32a5ca5c4cf34b6ddf6a71b79a21743d0b277770b5a4f0355",
+        "classification": "retained direct-device/native checkpoint"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/background-batch/fluent-background-sync-pending.json",
+        "sha256": "be2370e1123fe5614b22bdee5f868ca8419a92f9450775cf5b31044bf944aec0",
+        "classification": "retained direct-device/native checkpoint"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/background-batch/fluent-background-current-connectivity.json",
+        "sha256": "3135be1f21b86162964b1f947826aa409caa9d1c42948468e087012794bf3f3e",
+        "classification": "retained direct-device/native checkpoint"
+      },
+      {
+        "path": "/tmp/maestro-background-1792521629953658000/2026-10-20_114031/disposable-capture-recovery-existing-session/commands.json",
+        "sha256": "26153a7dbc279db6a52b5b3dc2ce897222ca92fad6395d398673eee1f138e062",
+        "classification": "retained Maestro command results; assertion phase only"
+      }
+    ],
+    "limits": [
+      "No new lifecycle result included; parent will provide it separately.",
+      "No waveform provenance or audible playback claim.",
+      "No drawer/Settings-specific lock proof.",
+      "No inferred resumed recording/byte immutability across foreground from frozen UI alone.",
+      "Do not add a second Maestro PASS for native preparation; retain exactly the one assertion checkpoint receipt."
+    ],
+    "failed_foreground_hash_assertion": {
+      "claim": "foreground segment hash equals initial pre-foreground hash",
+      "status": "FAILED per root retained trusted execution report",
+      "script": {
+        "path": "/tmp/fluent-background-autopause.py",
+        "sha256": "22d28a537a2a9e74558c89c8f1aa6d454201be8adb326dbe630d77e2fd9586f7",
+        "classification": "native script/proposed assertions only; root reports failed foreground hash assertion; NOT a PASS receipt"
+      },
+      "missing_raw_failure_receipt": true,
+      "must_remain_visible": true,
+      "interpretation": "Do not claim immutable bytes across foreground. Script abort means trailing PID/marker equality and full native PASS output are NOT established by that script. No underlying audio-loss defect conclusion without further evidence."
+    }
+  }
 }

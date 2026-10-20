@@ -1,0 +1,55 @@
+{
+  "schema": "fluent-fast-track-ownership/v1",
+  "generated_utc": "2026-10-20T19:02:06.684320+00:00",
+  "served_code_freeze": "9af88a3",
+  "latest_HEAD_note": "docs/setup only per lead;no reload authorized",
+  "owners": {
+    "integration_lead": {
+      "device": "emulator-5554",
+      "files": [
+        "shared runner/config",
+        "Metro/build/integration checkout",
+        "master evidence-reconciliation.json"
+      ],
+      "fixture": "project12/milestone19/assignment1183;preserve5takes;pendingverse5single take"
+    },
+    "emulator_capacity": {
+      "device": "emulator-5556",
+      "files": [
+        "B-only newly assigned Maestro flows"
+      ],
+      "fixture": "separate B disposable fixture;fresh supported auth only;no session copy"
+    },
+    "coverage_map_report": {
+      "device": null,
+      "files": [
+        "docs/assessments/maestro-acceptance-coverage/FAST_TRACK_QUEUE.json",
+        "docs/assessments/maestro-acceptance-coverage/evidence/fast-track-ownership.json"
+      ],
+      "later_packaging": "#730/#731 only after assigned isolated worktree;not started"
+    },
+    "theme_isolation": {
+      "device": null,
+      "files": [],
+      "assignment": "future isolated screen/component/theme files;exact allowlist pending lead"
+    },
+    "core_fix_owner": {
+      "device": null,
+      "files": [],
+      "assignment": "future isolated service/test files;exact allowlist pending lead"
+    },
+    "browser_fixture_owner": {
+      "device": null,
+      "files": [],
+      "fixture": "verified dedicated Chrome tab/B-onlyfixture;no global input/emulator mutation"
+    }
+  },
+  "invariants": [
+    "A and B fixture mutation disjoint",
+    "Root alone shared runner/Metro/5554",
+    "No simultaneous served-source edits;integration only at batch boundaries",
+    "Unassigned future files are not blanket ownership",
+    "One issue per local PR/patch;734independent;no push/publish/merge implied"
+  ],
+  "queue": "docs/assessments/maestro-acceptance-coverage/FAST_TRACK_QUEUE.json"
+}

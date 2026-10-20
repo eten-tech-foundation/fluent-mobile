@@ -1,0 +1,58 @@
+# B-only fresh isolated device: login validation, no authentication request.
+# Caller must attest fresh userdata, zero known accounts and explicit serial.
+# No launch/reset/logout/auth helper; password stays empty throughout.
+# useLogin.handleLogin returns before mutate when email/password invalid.
+appId: com.eten.fluent
+tags:
+  - auth
+  - existing-session
+  - local-validation
+  - guard
+---
+- assertTrue: ${typeof MAESTRO_FRESH_LOGGEDOUT_ATTESTATION !== 'undefined' && MAESTRO_FRESH_LOGGEDOUT_ATTESTATION === 'fresh-userdata-no-auth-copy'}
+- assertTrue: ${typeof MAESTRO_KNOWN_ACCOUNT_COUNT !== 'undefined' && MAESTRO_KNOWN_ACCOUNT_COUNT === '0'}
+- assertTrue: ${typeof MAESTRO_VALIDATION_SERIAL !== 'undefined' && MAESTRO_VALIDATION_SERIAL === 'emulator-5556'}
+- assertVisible:
+    text: '^Log in to continue to Fluent\.$'
+- assertVisible:
+    id: '^login-email-input$'
+- assertVisible:
+    id: '^login-password-input$'
+    text: '^Password\*$'
+- assertVisible:
+    id: '^login-submit-button$'
+- assertNotVisible:
+    id: '^home-tab-my-work$'
+- tapOn:
+    id: '^login-email-input$'
+- eraseText
+- hideKeyboard
+- assertVisible:
+    id: '^login-email-input$'
+    text: '^Email address\*$'
+- tapOn:
+    id: '^login-submit-button$'
+- assertVisible:
+    text: '^Please enter an email address$'
+- assertVisible:
+    text: '^Password is required$'
+- takeScreenshot: loggedout-empty-validation
+- tapOn:
+    id: '^login-email-input$'
+- inputText: invalid
+- hideKeyboard
+- assertVisible:
+    id: '^login-password-input$'
+    text: '^Password\*$'
+- tapOn:
+    id: '^login-submit-button$'
+- assertVisible:
+    text: '^Please enter a valid email address$'
+- assertVisible:
+    text: '^Password is required$'
+- assertVisible:
+    id: '^login-email-input$'
+    text: '^invalid$'
+- assertNotVisible:
+    id: '^home-tab-my-work$'
+- takeScreenshot: loggedout-invalid-email-validation

@@ -1,0 +1,37 @@
+{
+  "schema": "fluent-auth-live-closure/v1",
+  "evidence": [
+    {
+      "device": "emulator-5556",
+      "revision": "9af88a3a272da803205befabf0dc998f6b401f98",
+      "flow": ".maestro/flows/auth/loggedout-local-validation-existing-session.yaml",
+      "commands_path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/batch-b-first/2026-10-20_120405/loggedout-local-validation-existing-session/commands.json",
+      "commands_sha256": "3662d418718f11648523905697bdecb9606974255a39b9cd5802e25c58ba5394",
+      "commands_completed": 28,
+      "elapsed_seconds": 37.8,
+      "outcome": "PASS",
+      "classification": "live Maestro; fresh logged-out device; client-local inputs only"
+    },
+    {
+      "device": "emulator-5556",
+      "revision": "9af88a3a272da803205befabf0dc998f6b401f98",
+      "flow": ".maestro/flows/auth/loggedout-forgot-password-local-existing-session.yaml",
+      "commands_path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/batch1-b-forgot/2026-10-20_121058/loggedout-forgot-password-local-existing-session/commands.json",
+      "commands_sha256": "9ab59359e883e11bf42a6764a7af6d2af515a17d05b7966f943319ee269f9e30",
+      "commands_completed": 38,
+      "elapsed_seconds": 59.1,
+      "outcome": "PASS",
+      "classification": "live Maestro; fresh logged-out device; client-local inputs only"
+    }
+  ],
+  "utc": "2026-10-20T19:27:44.916276+00:00",
+  "A-0031-01": "absent -> complete, client validation only",
+  "A-0014-01": "absent -> partial, recovery navigation/local errors",
+  "counts": {
+    "partial": 16,
+    "complete_for_requirement": 11,
+    "not_run": 59
+  },
+  "no_whole_app_percentage": true,
+  "full_202_scope_unfinished": true
+}
