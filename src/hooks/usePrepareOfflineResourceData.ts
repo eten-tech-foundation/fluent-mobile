@@ -17,6 +17,8 @@ import {
   PrepareOfflineManifestContext,
 } from '../utils/buildManifestContexts';
 import { logger } from '../utils/logger';
+import { ApiError } from '../types/api/errors';
+import { AuthError } from '../services/authError';
 
 const log = logger.create('usePrepareOfflineResourceData');
 
@@ -63,6 +65,7 @@ export function usePrepareOfflineResourceData(
     async function loadManifest() {
       setLoading(true);
       setError(null);
+      let failureStage = 'local_context';
 
       try {
         const projectContext = await getPrepareOfflineProjectContext(
@@ -72,12 +75,14 @@ export function usePrepareOfflineResourceData(
           throw new Error(`No source language found for project ${projectId}`);
         }
 
+        failureStage = 'chapter_context';
         const contexts = buildManifestContexts(
           chapters,
           selectedIds,
           projectContext.sourceLanguageCode,
         );
 
+        failureStage = 'manifest';
         const responses = await Promise.all(
           contexts.map(ctx => fetchPrepareOfflineManifest(projectId!, ctx)),
         );
@@ -92,6 +97,39 @@ export function usePrepareOfflineResourceData(
         }
       } catch (err) {
         if (!cancelled) {
+          if ((globalThis as { __DEV__?: boolean }).__DEV__) {
+            const exceptionName =
+              err instanceof AuthError
+                ? 'AuthError'
+                : err instanceof ApiError
+                ? 'ApiError'
+                : err instanceof TypeError
+                ? 'TypeError'
+                : err instanceof Error
+                ? 'Error'
+                : 'Unknown';
+            const apiStatus =
+              err instanceof ApiError &&
+              Number.isInteger(err.status) &&
+              (err.status === 0 || (err.status >= 100 && err.status <= 599))
+                ? err.status
+                : undefined;
+            // Never forward the error, its name/code, or arbitrary string fields.
+            log.warn('Prepare Offline manifest load failed', {
+              timestamp: new Date().toISOString(),
+              event: 'prepare_offline_manifest_failure',
+              projectId,
+              selectedChapterCount: selectedIds.size,
+              exceptionName,
+              classification:
+                err instanceof Error &&
+                err.message ===
+                  `[prepareOfflineResources] manifest truncated for project ${projectId}`
+                  ? 'truncated_manifest'
+                  : failureStage,
+              ...(apiStatus !== undefined ? { apiStatus } : {}),
+            });
+          }
           setError(err);
           setManifest([]);
           setManifestContexts([]);
