@@ -1,0 +1,101 @@
+# #724 conditional Next cached-account menu/persistence; no role or visual parity claim.
+appId: com.eten.fluent
+tags: [existing-session, reversible-preference]
+---
+- assertTrue: ${MAESTRO_A_NEXT_CACHED_VERIFIED === '1'}
+- assertVisible:
+    id: home-settings-button
+- tapOn:
+    id: home-settings-button
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-menu-active-12
+- tapOn:
+    id: settings-menu-more-settings
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-ui-version-legacy
+    selected: true
+- tapOn:
+    id: settings-ui-version-next
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-ui-version-next
+    selected: true
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- tapOn:
+    id: home-settings-button
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-menu-active-12
+- assertVisible:
+    id: settings-menu-account-10
+- assertVisible:
+    id: settings-menu-account-9
+- assertVisible:
+    id: settings-menu-account-12
+- assertVisible:
+    id: settings-menu-account-limit
+    text: "^You've reached the 3-account limit[.]$"
+- assertNotVisible:
+    id: settings-menu-add-user
+- takeScreenshot: a-next-three-cached-accounts-cap
+- tapOn:
+    id: settings-menu-account-9
+    waitToSettleTimeoutMs: 500
+- repeat:
+    times: 2
+    while:
+      visible:
+        id: prepare-offline-screen
+    commands:
+      - tapOn:
+          id: stack-header-back
+          waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: home-settings-button
+    timeout: 15000
+- tapOn:
+    id: home-settings-button
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-menu-active-9
+- assertVisible:
+    id: settings-menu-account-10
+- assertVisible:
+    id: settings-menu-account-12
+- assertVisible:
+    id: settings-menu-account-limit
+- tapOn:
+    id: settings-menu-more-settings
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-ui-version-next
+    selected: true
+- takeScreenshot: a-next-persists-cached-account9-settings
+- tapOn:
+    id: settings-ui-version-legacy
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-ui-version-legacy
+    selected: true
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- tapOn:
+    id: home-settings-button
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-menu-active-9
+- tapOn:
+    id: settings-menu-account-12
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: home-tab-my-work
+    timeout: 15000
+- assertNotVisible:
+    id: login-email-input

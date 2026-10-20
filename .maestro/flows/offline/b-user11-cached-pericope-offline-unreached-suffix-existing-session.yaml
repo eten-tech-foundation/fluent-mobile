@@ -1,0 +1,49 @@
+# ONLY unreached suffix. Earlier Bible/source prefix not rerun; failures retained.
+# Empty offline Resources intentionally omits range/unit header (source early return).
+# Caller prepares offline Resources, native-attests FULL final expanded Bible words,
+# then restores original radios/Verse/Legacy/cellularOFF/Home/11 in finally.
+appId: com.eten.fluent
+tags: [offline, existing-session, read-only, guard]
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID === '11' && typeof MAESTRO_B_SERIAL !== 'undefined' && MAESTRO_B_SERIAL === 'emulator-5556' && typeof MAESTRO_B_PROJECT12_DOWNLOAD_ROWS !== 'undefined' && MAESTRO_B_PROJECT12_DOWNLOAD_ROWS === '0'}
+- assertVisible:
+    id: '^resources-tab$'
+- assertVisible: '^No resources are on this device yet\. Download them from Prepare for Offline\.$'
+- assertNotVisible:
+    id: '^resources-unit-1183-pericope:1:1$'
+- assertNotVisible:
+    id: '^resources-tab-loading$'
+- assertNotVisible:
+    id: '^resources-section-translationNotes-toggle$'
+- assertNotVisible:
+    id: '^resources-section-translationQuestions-toggle$'
+- assertNotVisible:
+    id: '^resources-section-imagesMaps-toggle$'
+- takeScreenshot: b-offline-pericope-empty-resources-source-contract
+- tapOn:
+    id: '^drafting-tab-record$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^record-verse-reference$'
+    text: '^1 Peter 1:1–2$'
+- assertNotVisible:
+    id: '^record-pericope-unavailable$'
+- assertNotVisible:
+    id: '^record-stop-button$'
+- takeScreenshot: b-offline-pericope-record-cached-range-no-capture
+- tapOn:
+    id: '^drafting-tab-bible$'
+    waitToSettleTimeoutMs: 500
+- runFlow:
+    when:
+      notVisible:
+        id: '^bible-pericope-verse-1-1$'
+    commands:
+      - tapOn:
+          id: '^bible-pericope-expand-pericope:1:1$'
+          waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^bible-pericope-verse-1-1$'
+- assertVisible:
+    id: '^bible-pericope-verse-1-2$'
+- takeScreenshot: b-offline-pericope-full-native-word-attestation-ready

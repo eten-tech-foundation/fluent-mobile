@@ -717,6 +717,13 @@
           "relation": "partial_three_account_cap_branch_only",
           "reason": "Settings Add user disabled with exact3-account cap copy, all3cachedrows visible. This supplements capped branch only; under-limit add/auth matrix remains unverified.",
           "runtime_provenance": "Static8a3564 revision tag stale; parent attests servedsource c4a1425e+DEVdiag; runtime hash unattested and no #735 live race verdict."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch3-closeout-support-reconciliation.json",
+          "case_id": "A_Next_cached3_switch9_50.438s",
+          "flow": ".maestro/flows/edges/next-cached-accounts-existing-session.yaml",
+          "relation": "partial_functional_mode_and_capped_switch_only",
+          "reason": "Next actual3cachedrows/cap/AddUserabsent, switch9 and persistedNextSettings PASS50.438s; restoreLegacy/account12/Verse10/cellularOFF/sixmetadata/radios0/1/mobile1. No supplied visual-fidelity, underlimitAddAccount or role-semantic proof."
         }
       ],
       "isolated_status": "PASS",
@@ -1150,6 +1157,13 @@
           "flow": ".maestro/flows/edges/b-user11-next-functional-existing-session.yaml",
           "relation": "partial_functional_runtime_switch_only",
           "reason": "Nextselected persists after Homeheader/tabs and milestone19chapterlist; no1183entry. FullPASS69.7s/cleanup91.6s restoresLegacy/Verse/cellularOFF/Home11/r0,1. Actual rendered baseline colors observed; no Lovable/reference-fidelity or whole-theme proof."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch3-closeout-support-reconciliation.json",
+          "case_id": "A_Next_cached3_switch9_50.438s",
+          "flow": ".maestro/flows/edges/next-cached-accounts-existing-session.yaml",
+          "relation": "partial_functional_mode_and_capped_switch_only",
+          "reason": "Next actual3cachedrows/cap/AddUserabsent, switch9 and persistedNextSettings PASS50.438s; restoreLegacy/account12/Verse10/cellularOFF/sixmetadata/radios0/1/mobile1. No supplied visual-fidelity, underlimitAddAccount or role-semantic proof."
         }
       ],
       "isolated_status": "UNTESTED",
@@ -6418,6 +6432,13 @@
           "flow": ".maestro/flows/edges/cached-granularity-content-existing-session.yaml",
           "relation": "partial_supporting_prior_setup",
           "reason": "Retained prior112.17s group failed later at ancestry;required initial mode/Bible observations combined with exact full-text native oracles and successful continuation;not full original flowPASS."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch3-closeout-support-reconciliation.json",
+          "case_id": "B_offline_cached_full_pericope_text_artifact",
+          "flow": ".maestro/flows/offline/b-user11-cached-pericope-offline-unreached-suffix-existing-session.yaml",
+          "relation": "additional_offline_state_support",
+          "reason": "Retained offline full verse1/2 text in nativeXML:58word sibling nodes under selectedpericopecard geometry match both cached strings exactly; SHAverified artifact-only reparse. CLI suffixPASS60.9s but original wrapper parserempty/matchfalse retained. FirstpathFAIL0.4s and wholeflowFAIL78.4s remain failures; no full originalflowPASS/new atomic count."
         }
       ],
       "isolated_status": "UNTESTED",
@@ -6489,6 +6510,13 @@
           "flow": null,
           "relation": "supporting_cleanup",
           "reason": "Exactoriginalairplane0/WiFi1,actualWiFienabled,HomeOnline restored. TransientWiFi2settled;cleanupguardabortedbeforewrite;no additionalnetworktoggles."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch3-closeout-support-reconciliation.json",
+          "case_id": "B_offline_cached_pericope_unavailable_resources_suffix",
+          "flow": ".maestro/flows/offline/b-user11-cached-pericope-offline-unreached-suffix-existing-session.yaml",
+          "relation": "partial_unavailable_branch_state_variant_only",
+          "reason": "Source-correct emptyResources explanation/noheader/noloading/nosections asserted in offlinePericope suffixPASS60.9s; cachedRecordrange and expandedBible retained. No downloaded TN/TQ/Images/local-payload proof. Prior incorrect emptyheader expectationFAIL78.4s retained; no fullflowPASS."
         }
       ],
       "isolated_status": "UNTESTED",
