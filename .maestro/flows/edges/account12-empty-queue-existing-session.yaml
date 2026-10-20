@@ -1,0 +1,74 @@
+# B0009 observer queue-isolation support only; no server/no-exfil proof.
+# Required MAESTRO_ACCOUNT12_EMPTY_QUEUE_VERIFIED=1: root freshly verified
+# active12/Home, cached10/9/12, owner12 pending0 and known owner10 v5/v6 pending.
+# Root independently verifies no capture/recovery and safe Home Sync press point.
+# Single relative press90%,50% is outside the observed Expo FAB bounds.
+# No Sync Now, toggles, pause/resume, upload, account switch or storage actions.
+# On failure retain exact assertion/hierarchy: unknown counts or metadata errors
+# are health blockers, not proof of owner10 queue leakage. Pending copy/progress
+# contradicts expected owner12 empty UI, but attribution requires native owner
+# rows/current-account preflight and counts; never infer exfiltration from UI.
+# Root owns safe Home cleanup if any strict assertion fails.
+appId: com.eten.fluent
+tags:
+  - existing-session
+  - read-only
+  - account-isolation
+  - fixture-blocked
+---
+- runScript: ../../shared/scripts/account12-empty-queue-context.js
+- assertNotVisible:
+    id: login-email-input
+- assertVisible:
+    id: home-tab-my-work
+- assertVisible:
+    id: home-sync-button
+- tapOn:
+    id: home-sync-button
+    point: '90%,50%'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: sync-screen
+    timeout: 15000
+# Explicit health assertions distinguish unknown/error state from queue mismatch.
+- assertNotVisible:
+    text: "^Couldn't check pending uploads$"
+- assertNotVisible:
+    id: sync-metadata-error
+- assertNotVisible:
+    id: sync-retry-error
+- assertNotVisible:
+    id: sync-failed-error
+- assertNotVisible:
+    id: sync-unuploadable-error
+- assertNotVisible:
+    text: '^(Online|Offline) · upload pending$'
+- assertNotVisible:
+    text: "^(Online|Offline) · some takes can't upload$"
+- assertNotVisible:
+    text: '^Connected to Fluent\. Work will upload shortly\.$'
+- assertNotVisible:
+    text: '^Saved on this device\. Will sync when Fluent is reachable\.$'
+- assertNotVisible:
+    text: '^These recordings stay on this device until they can be uploaded\.$'
+- assertNotVisible:
+    id: sync-action-pause
+- assertNotVisible:
+    id: sync-action-resume
+- assertNotVisible:
+    text: '^Uploading$'
+- assertNotVisible:
+    text: '^[0-9]+ of [0-9]+ chapters uploaded$'
+- assertVisible:
+    text: '^(Online · all synced|Offline · nothing pending)$'
+- takeScreenshot: account12-empty-queue-owner10-pending
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: home-tab-my-work
+    timeout: 15000
+- assertNotVisible:
+    id: login-email-input

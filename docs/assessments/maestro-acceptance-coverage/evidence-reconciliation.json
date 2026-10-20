@@ -2280,6 +2280,14 @@
               "classification": "retained direct/native/file observation; no new execution"
             }
           ]
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch2-account12-empty-queue-support.json",
+          "case_id": "account12_empty_queue_owner10_pending_24.181s",
+          "flow": ".maestro/flows/edges/account12-empty-queue-existing-session.yaml",
+          "relation": "partial_active_account_queue_display_only",
+          "reason": "Native preflight active12 has pending0 while owner10 has pending2; healthy empty Sync UI excludes pending/progress/pause/resume and metadata errors, then returns Home. Supports sampled active-account queue display isolation only, not take-view ownership, foreign-mutation denial, transport/server or exfiltration behavior.",
+          "commands_sha256": "7ac0d04c0b9573af06170c82a50a0a7d991bf2249631831bbc26a5ab17032b44"
         }
       ],
       "isolated_status": "UNTESTED",
