@@ -36,8 +36,9 @@ Recording follow-up: wire source audio dock to real fetch + playback ([#235](htt
 | Path | Purpose |
 |------|---------|
 | [`index.js`](../index.js) | Entry: gesture-handler + `expo-router/entry` |
-| [`src/routes/`](../src/routes/) | Expo Router layouts/routes (auth + app groups, drawer) |
+| [`src/routes/`](../src/routes/) | Expo Router layouts/routes (auth + app groups, drawer; `v2/` tree for the Next UI version) |
 | [`src/app/screens/`](../src/app/screens/) | Screen components: Home, Settings, Sync, Drafting, PrepareForOffline |
+| [`src/app/v2/screens/`](../src/app/v2/screens/) | v2 screens (Next UI version only) |
 | [`src/app/tabs/`](../src/app/tabs/) | Nested surfaces: ProjectsTab, MyWorkTab, BibleTab, RecordTab, auth/legal |
 | [`src/components/`](../src/components/) | Shared `layout/` + `ui/` |
 | [`src/theme/`](../src/theme/) | Design tokens — static `theme` is Legacy-pinned; import `useTheme()` / `useThemedStyles()` from [`src/theme/useTheme`](../src/theme/useTheme.ts) for runtime Legacy/Next ([ui-version-theming.md](guides/ui-version-theming.md)) |
@@ -174,7 +175,7 @@ flowchart TD
   end
 ```
 
-**Launch (actual):** `index.js` → Expo Router `src/routes/_layout.tsx` → `AuthSessionProvider` (`initializeDatabase()` → `restoreSession()`) → protected `(auth)` / `(app)` groups. **Sync is not automatic on every cold start**; it runs after successful login (`syncAllData`) and when the user/manual sync hooks call `syncAllUsers`.
+**Launch (actual):** `index.js` → Expo Router `src/routes/_layout.tsx` → `AuthSessionProvider` (`initializeDatabase()` → `restoreSession()`) → protected `(auth)` / `(app)` groups, plus the `v2` tree when the UI version is Next. **Sync is not automatic on every cold start**; it runs after successful login (`syncAllData`) and when the user/manual sync hooks call `syncAllUsers`.
 
 **Layer rules (do not bypass):**
 
@@ -215,6 +216,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 | Task | Start here |
 |------|------------|
 | New stack screen | Add a file under `src/routes/(app)/(stack)/` (or auth group), implement UI in `src/app/screens/` / `src/app/tabs/`, add an `hrefs` helper if needed |
+| New v2 screen | Add a file under `src/routes/v2/`, implement UI in `src/app/v2/screens/` on the same hooks Legacy uses, add an `hrefs` helper |
 | Nested drafting/list UI | `src/app/tabs/` or `src/components/` |
 | New API endpoint | `FluentAPI` in `api.ts`, then `sync.ts` step + `repository.ts` |
 | New table / column | `schema.ts` → prefer versioned migrations (`#110`) → repository inserts → queries → types |

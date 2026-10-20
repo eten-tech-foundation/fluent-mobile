@@ -18,6 +18,7 @@ import {
   useAuthSession,
 } from '../navigation/AuthSessionProvider';
 import { E2eDevMenuGuard } from '../navigation/E2eDevMenuGuard';
+import { LaunchRecoveryPrompt } from '../navigation/LaunchRecoveryPrompt';
 import { useUploadSyncNotificationTap } from '../navigation/useUploadSyncNotificationTap';
 import {
   classifyRouteGroups,
@@ -27,6 +28,11 @@ import {
 function UploadSyncNotificationTap() {
   useUploadSyncNotificationTap();
   return null;
+}
+
+function SignedInLaunchRecovery() {
+  const { isAuthenticated, isLoading } = useAuthSession();
+  return isAuthenticated && !isLoading ? <LaunchRecoveryPrompt /> : null;
 }
 
 function RootNavigator() {
@@ -89,6 +95,7 @@ function RootLayoutNav() {
       <AuthSessionProvider>
         <E2eDevMenuGuard />
         <UploadSyncNotificationTap />
+        <SignedInLaunchRecovery />
         <RootNavigator />
       </AuthSessionProvider>
     </ThemeProvider>

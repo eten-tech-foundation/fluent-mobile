@@ -49,10 +49,12 @@ describe('V2HomeScreen', () => {
     );
   });
 
-  it('shows the gallery link only when the gallery flag is on', () => {
+  it('hides the gallery link when the flag is off', () => {
     render(<V2HomeScreen />);
     expect(screen.queryByTestId('v2-home-gallery')).toBeNull();
+  });
 
+  it('opens the gallery when the flag is on', () => {
     mockGalleryEnabled = true;
     render(<V2HomeScreen />);
     fireEvent.press(screen.getByTestId('v2-home-gallery'));
