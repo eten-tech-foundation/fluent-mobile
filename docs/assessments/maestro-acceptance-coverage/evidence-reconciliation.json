@@ -31,12 +31,12 @@
     },
     "canonical_live_status": {
       "UNTESTED": 27,
-      "BLOCKED": 146,
-      "PASS": 29
+      "BLOCKED": 145,
+      "PASS": 30
     },
     "canonical_execution_coverage": {
-      "partial": 47,
-      "complete_for_requirement": 29,
+      "partial": 46,
+      "complete_for_requirement": 30,
       "not_run": 126
     },
     "eligible_current_atomic_count": 86,
@@ -456,8 +456,8 @@
       "unit_review": "group",
       "additive_scope": "nonadditive_parent",
       "review_reason": "Settings reachability, PFO entry, Sign Out presence and historical cellular-default behavior form an umbrella, not one additive atom.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "partial",
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
       "live_evidence": [
         {
           "receipt": "/tmp/fluent-maestro-existing-session-pfo.md",
@@ -486,13 +486,19 @@
           "flow": ".maestro/flows/offline/pfo-download-button-persist.yaml",
           "relation": "partial",
           "reason": "Actual Settings/PFO project selection and header-back journey; selection only, no download."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch2-account12-settings-result-corrected.json",
+          "case_id": "account12_settings_readonly_31.417s",
+          "flow": ".maestro/flows/edges/account12-settings-readonly-existing-session.yaml",
+          "relation": "complete_with_fresh_default_receipt",
+          "reason": "Home/Settings reachable; PFO enabled and Log out visible/enabled, BackHome; current cellular OFF checked. Independent already-complete C0146-02 fresh no-pref-write B fixture proves defaultOFF. Combined exact Settings presence/default umbrella criteria met; no logout/auth mutation or animation/visual-fidelity claim.",
+          "runtime_provenance": "Static8a3564 revision tag stale; parent attests servedsource c4a1425e+DEVdiag; runtime hash unattested and no #735 live race verdict."
         }
       ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "No proof of initial cellular preference default under a fresh permitted fixture; current session preference must be preserved."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Settings reachable; Prepare Offline and Sign Out present",
@@ -501,7 +507,8 @@
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/193",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/255"
       ],
-      "domain": "identity_navigation"
+      "domain": "identity_navigation",
+      "closure_scope_note": "Bounded Settings reachability/row presence and independently proven default only; shared-drawer animation, auth transitions and visual fidelity stay owned elsewhere."
     },
     {
       "id": "A-0006-01",
@@ -692,6 +699,14 @@
           "relation": "partial",
           "attempt_outcome": "PASS",
           "reason": "ThreecachedaccountsbranchPASS: exactnames/initials,activeindicator,capcopy,noAdd/remove,dismisswithoutsessionchange. Under-limitvariantsremainoutsidecurrentlivefixture."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch2-account12-settings-result-corrected.json",
+          "case_id": "account12_settings_readonly_31.417s",
+          "flow": ".maestro/flows/edges/account12-settings-readonly-existing-session.yaml",
+          "relation": "partial_three_account_cap_branch_only",
+          "reason": "Settings Add user disabled with exact3-account cap copy, all3cachedrows visible. This supplements capped branch only; under-limit add/auth matrix remains unverified.",
+          "runtime_provenance": "Static8a3564 revision tag stale; parent attests servedsource c4a1425e+DEVdiag; runtime hash unattested and no #735 live race verdict."
         }
       ],
       "isolated_status": "PASS",

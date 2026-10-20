@@ -1,0 +1,129 @@
+# A0005 Settings umbrella: reachability + PFO/Log out presence, not logout proof.
+# Settings Add user disabled at three cached accounts is branch support only.
+# Required MAESTRO_ACCOUNT12_SETTINGS_CONTEXT_VERIFIED=1: active12/Home,
+# cache10,9,12, cellular OFF, no capture/recovery or active transfer.
+# Optional MAESTRO_ACCOUNT12_SETTINGS_LEGACY_VERSE_VERIFIED=1 enables exact
+# existing Legacy/Verse assertions after independent preflight (default0=no claim).
+# Never tap Log out, Clear cache, Add user, PFO, switches or preference segments.
+# Three navigation taps only; bounded scrolls. Root caps run90s/owns failure cleanup.
+# Source SettingsScreen has no screen/header testID: actual titleSettings and
+# stack-header-back identify the header; real row/switch/segment IDs below.
+appId: com.eten.fluent
+tags:
+  - existing-session
+  - read-only
+  - settings
+  - fixture-blocked
+---
+- runScript: ../../shared/scripts/account12-settings-readonly-context.js
+- assertNotVisible:
+    id: login-email-input
+- assertVisible:
+    id: home-tab-my-work
+- tapOn:
+    id: home-settings-button
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: settings-menu-active-12
+    timeout: 10000
+- assertVisible:
+    id: settings-menu-account-12
+- assertVisible:
+    id: settings-menu-account-10
+- assertVisible:
+    id: settings-menu-account-9
+- tapOn:
+    id: settings-menu-more-settings
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: settings-ui-version-legacy
+    timeout: 10000
+- assertVisible:
+    text: '^Settings$'
+- assertVisible:
+    id: stack-header-back
+- runFlow:
+    when:
+      true: ${output.account12SettingsVerifyLegacyVerse}
+    commands:
+      - assertVisible:
+          id: settings-ui-version-legacy
+          selected: true
+      - assertVisible:
+          id: settings-ui-version-next
+          selected: false
+- scrollUntilVisible:
+    element:
+      id: settings-prepare-offline
+    direction: DOWN
+    timeout: 10000
+    speed: 70
+    centerElement: true
+- assertVisible:
+    id: settings-prepare-offline
+    enabled: true
+- assertVisible:
+    text: '^Prepare for Offline$'
+- scrollUntilVisible:
+    element:
+      id: settings-upload-cellular-switch
+    direction: DOWN
+    timeout: 10000
+    speed: 70
+    centerElement: true
+- assertVisible:
+    id: settings-upload-cellular-switch
+    checked: false
+- runFlow:
+    when:
+      true: ${output.account12SettingsVerifyLegacyVerse}
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: settings-drafting-unit-verse
+          direction: DOWN
+          timeout: 10000
+          speed: 70
+          centerElement: true
+      - assertVisible:
+          id: settings-drafting-unit-verse
+          selected: true
+      - assertVisible:
+          id: settings-drafting-unit-pericope
+          selected: false
+- scrollUntilVisible:
+    element:
+      id: settings-add-user
+    direction: DOWN
+    timeout: 10000
+    speed: 70
+    centerElement: true
+- assertVisible:
+    id: settings-add-user
+    enabled: false
+- assertVisible:
+    text: "^You've reached the 3-account limit$"
+- scrollUntilVisible:
+    element:
+      id: settings-log-out
+    direction: DOWN
+    timeout: 10000
+    speed: 70
+    centerElement: true
+- assertVisible:
+    id: settings-log-out
+    enabled: true
+- assertVisible:
+    text: '^Log out$'
+- takeScreenshot: account12-settings-readonly-account-controls
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: home-tab-my-work
+    timeout: 10000
+- assertNotVisible:
+    id: login-email-input
