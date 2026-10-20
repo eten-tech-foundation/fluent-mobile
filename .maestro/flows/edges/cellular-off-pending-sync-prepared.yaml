@@ -1,0 +1,81 @@
+# C0146-04/C0151-04 precise cellular-OFF pending gate observer, no transfer.
+# Required MAESTRO_CELLULAR_OFF_PENDING_SYNC_VERIFIED=1: active10/Sync/cache10,9,12,
+# six takes/two known pending intact, no active transfer. Root verified Android
+# WiFi0/mobile-data1 AND Android default MOBILE CONNECTED/CELLULAR/VALIDATED/INTERNET.
+# Exact app waiting_wifi hint agrees with the source gate; no direct JS NetInfo
+# instrumentation/read was performed. Cellular preferenceOFF.
+# Root finally restores originalWiFi1 + active12, native metadata checks separate.
+# Source transportPolicy: connected non-WiFi/non-ethernet + prefOFF=>waiting_wifi.
+# SyncScreen hint priority: unsettled=>nohint; linkoffline=>internet hint;
+# waiting_wifi=>cellular hint even if Fluent health is unreachable. Caption uses
+# effectivelyOnline including transfer gate, so Offline·uploadpending is expected.
+# No Pause/Resume/Retry/Sync Now/toggle/network/account/download/recording actions.
+# One Back only; source-bound exact explanation, not server reachability proof.
+appId: com.eten.fluent
+tags:
+  - existing-session
+  - prepared-phase
+  - read-only
+  - cellular-gate
+---
+- runScript: ../../shared/scripts/cellular-off-pending-sync-context.js
+- assertVisible:
+    id: sync-screen
+- assertNotVisible:
+    id: login-email-input
+- assertVisible:
+    text: '^Offline · upload pending$'
+- assertVisible:
+    id: sync-action-controls-pending
+- assertVisible:
+    id: sync-action-sync-now
+    enabled: false
+- extendedWaitUntil:
+    visible:
+      id: sync-action-sync-now-disabled-hint
+      text: '^Connect to WiFi to upload and download\. Or use Upload/Download over cellular \(toggle below or in Settings\)\.$'
+    timeout: 10000
+- assertNotVisible:
+    id: sync-action-pause
+- assertNotVisible:
+    id: sync-action-resume
+- assertNotVisible:
+    id: sync-action-cancel
+- assertNotVisible:
+    text: '^Uploading$'
+- assertNotVisible:
+    text: '^[0-9]+ of [0-9]+ chapters uploaded$'
+- scrollUntilVisible:
+    element:
+      id: sync-upload-cellular-switch
+    direction: DOWN
+    timeout: 10000
+    speed: 70
+    centerElement: true
+- assertVisible:
+    id: sync-upload-cellular-switch
+    checked: false
+- takeScreenshot: cellular-off-pending-sync-toggle-off
+- scrollUntilVisible:
+    element:
+      id: sync-action-sync-now-disabled-hint
+    direction: UP
+    timeout: 10000
+    speed: 70
+    centerElement: true
+- assertVisible:
+    id: sync-action-sync-now
+    enabled: false
+- assertVisible:
+    id: sync-action-sync-now-disabled-hint
+    text: '^Connect to WiFi to upload and download\. Or use Upload/Download over cellular \(toggle below or in Settings\)\.$'
+- takeScreenshot: cellular-off-pending-sync-disabled-explanation
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: home-tab-my-work
+    timeout: 10000
+- assertNotVisible:
+    id: login-email-input

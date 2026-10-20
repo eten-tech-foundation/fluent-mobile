@@ -31,24 +31,24 @@
     },
     "canonical_live_status": {
       "UNTESTED": 27,
-      "BLOCKED": 144,
-      "PASS": 31
+      "BLOCKED": 142,
+      "PASS": 33
     },
     "canonical_execution_coverage": {
       "partial": 48,
-      "complete_for_requirement": 31,
-      "not_run": 123
+      "complete_for_requirement": 33,
+      "not_run": 121
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
       "UNTESTED": 7,
-      "BLOCKED": 56,
-      "PASS": 23
+      "BLOCKED": 54,
+      "PASS": 25
     },
     "eligible_current_atomic_execution_coverage": {
       "partial": 19,
-      "complete_for_requirement": 23,
-      "not_run": 44
+      "complete_for_requirement": 25,
+      "not_run": 42
     },
     "full_live_PASS_eligible_ids": [
       "A-0015-01",
@@ -59,6 +59,8 @@
       "C-0050-03",
       "C-0050-04",
       "C-0146-02",
+      "C-0146-04",
+      "C-0151-04",
       "D-0188-01",
       "D-0188-02",
       "D-0189-01",
@@ -4247,15 +4249,20 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Cellular-only blocked start with exact explanation needs a controlled transport/pending-work fixture.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch3-cellular-off-gate-reconciliation.json",
+          "case_id": "cellular_OFF_pending_disabled_sync_18.777s",
+          "flow": ".maestro/flows/edges/cellular-off-pending-sync-prepared.yaml",
+          "relation": "complete_exact_pending_cellular_off_gate",
+          "reason": "Active10/two pending takes; Android default mobile connected/validated, cellular preferenceOFF. Exact disabled SyncNow and WiFi/cellular explanation passed18.777s; no Pause/Resume/Cancel/Uploading/progress, no SyncNow/toggle press, no take metadata changes. Android network observation plus source-bound hint supports transport classification; no directJSNetInfo read. Restored originalradios0/1/mobile1 and active12/cached10,9,12. No server reachability or enabled-cellular upload claim."
+        }
+      ],
       "isolated_status": "NOT_APPLICABLE",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "cellular-only + toggle off blocks Sync Now with copy",
-        "Necessary safe fixture/authorization not established: cellular-only network control; pending uploads"
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Cellular-off blocks Sync Now / upload with explanation",
@@ -4263,7 +4270,8 @@
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/146",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/546"
       ],
-      "domain": "sync_offline"
+      "domain": "sync_offline",
+      "closure_scope_note": "Exact visible blocked-start/explanation condition only. Shares one executed evidence group with the other canonical gate row; not two distinct runs or whole Sync PASS."
     },
     {
       "id": "C-0146-05",
@@ -4458,15 +4466,20 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Pending Sync Now must be disabled with copy on cellular-off; no independently proven pending/transport combination.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch3-cellular-off-gate-reconciliation.json",
+          "case_id": "cellular_OFF_pending_disabled_sync_18.777s",
+          "flow": ".maestro/flows/edges/cellular-off-pending-sync-prepared.yaml",
+          "relation": "complete_exact_pending_cellular_off_gate",
+          "reason": "Active10/two pending takes; Android default mobile connected/validated, cellular preferenceOFF. Exact disabled SyncNow and WiFi/cellular explanation passed18.777s; no Pause/Resume/Cancel/Uploading/progress, no SyncNow/toggle press, no take metadata changes. Android network observation plus source-bound hint supports transport classification; no directJSNetInfo read. Restored originalradios0/1/mobile1 and active12/cached10,9,12. No server reachability or enabled-cellular upload claim."
+        }
+      ],
       "isolated_status": "NOT_APPLICABLE",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Pending cellular-disabled Sync Now + explanation",
-        "Necessary safe fixture/authorization not established: cellular-only + pending + toggle off"
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Pending Sync Now with cellular-off disabled explanation",
@@ -4474,7 +4487,8 @@
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/151",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/253"
       ],
-      "domain": "sync_offline"
+      "domain": "sync_offline",
+      "closure_scope_note": "Exact visible blocked-start/explanation condition only. Shares one executed evidence group with the other canonical gate row; not two distinct runs or whole Sync PASS."
     },
     {
       "id": "C-0151-05",
