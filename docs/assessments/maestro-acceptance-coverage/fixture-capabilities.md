@@ -6,6 +6,8 @@ This note distinguishes supported fixture paths from source or deployed-UI limit
 
 The web repository has real `/legal/privacy` and `/legal/terms` routes with substantive short documents (`PrivacyPolicyPage.tsx` and `TermsOfUsePage.tsx`). Mobile mirrors that short content. A missing-link failure or replacement blank legal page is not justified by this source. Current deployed rendering and overflow are separate checks; do not force overflow by changing viewport/font settings or authoring new legal content.
 
+The Privacy Policy source nevertheless contains mutually exclusive model-training alternatives joined by an unresolved “OR” in both mobile and web. [Issue #725](https://github.com/eten-tech-foundation/fluent-mobile/issues/725) records this concrete copy defect. Existing #92 explicitly assigns legal wording to product/legal. An approved wording decision is required before replacement; this source finding does not establish a fresh deployed-render failure.
+
 ## What pericope seed means
 
 Project membership, the selected pericope set and ordinary project data come from the server. Mobile additionally bundles FIA/FCBH pericope JSON and date/version markers as bootstrap data. The loader hydrates the selected set/book into local SQLite; when a bundled set/book is absent, sync can fetch it through `FluentAPI.getPericopeSet`.

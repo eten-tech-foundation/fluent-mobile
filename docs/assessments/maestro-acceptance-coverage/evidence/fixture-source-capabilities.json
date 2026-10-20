@@ -13,7 +13,15 @@
     "privacy_component": "src/features/legal/components/PrivacyPolicyPage.tsx",
     "terms_component": "src/features/legal/components/TermsOfUsePage.tsx",
     "result": "Both real legal routes and substantive short text exist in web source; mobile mirrors that short content. Do not manufacture missing-link or forced-overflow failure, and do not author legal content.",
-    "limitation": "Current deployed QA Create form differs from local web source; source presence is not a fresh deployed legal render check."
+    "limitation": "Current deployed QA Create form differs from local web source; source presence is not a fresh deployed legal render check.",
+    "content_defect": {
+      "issue": "https://github.com/eten-tech-foundation/fluent-mobile/issues/725",
+      "status": "Source-confirmed contradictory model-training alternatives joined by OR; no fresh deployed-render assertion",
+      "mobile_source": "src/app/tabs/PrivacyPolicyPage.tsx:16-17",
+      "web_source": "src/features/legal/components/PrivacyPolicyPage.tsx",
+      "required_decision": "Product/legal approved replacement wording; #92 explicitly excludes authoring legal policy from implementation scope",
+      "product_content_edited": false
+    }
   },
   "seed": {
     "loader": "src/services/pericopeSets.ts:58",
