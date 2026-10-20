@@ -1509,6 +1509,32 @@ describe('RecordTab', () => {
       });
     });
 
+    it('keeps review scrubbing available at Complete while new recording is locked', async () => {
+      const take = makeTake({ durationMs: 13000 });
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [take],
+        selectedTake: take,
+        playingTakeId: null,
+        loadedTakeId: take.id,
+      });
+
+      renderTab(undefined, { chapterData: completeChapter });
+      await waitForCaptureReady();
+      expect(screen.getByTestId('record-new-take-button')).toBeDisabled();
+
+      const scrubber = screen.getByLabelText('Draft waveform scrubber');
+      fireEvent(scrubber, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
+      });
+      fireEvent(scrubber, 'responderGrant', {
+        nativeEvent: { locationX: 50 },
+      });
+
+      expect(idleAudio.seek).toHaveBeenCalledWith(6500);
+    });
+
     it('keeps delete, select and record enabled one stage earlier (consultant_check)', async () => {
       const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isSelected: false });
       const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isSelected: true });

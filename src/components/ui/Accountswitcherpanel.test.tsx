@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, waitFor, within } from '@testing-library/react-native';
 import { AccountSwitcherPanel } from './AccountSwitcherPanel';
 
 const mockPush = jest.fn();
@@ -252,5 +252,43 @@ describe('AccountSwitcherPanel', () => {
 
     expect(getByText(/3-account limit/i)).toBeTruthy();
     expect(queryByTestId('account-switcher-add-account')).toBeNull();
+  });
+
+  it('closes a capped three-account panel without changing the active session or navigation', () => {
+    const thirdAccount = {
+      userId: 'third-3',
+      displayName: 'Third User',
+      email: 'third@example.com',
+      initials: 'TU',
+      isActive: false,
+    };
+    const accounts = [activeAccount, otherAccount, thirdAccount];
+    setDeviceAccountsResult({ accounts, hasAccountLimit: true });
+
+    const { getByText, getByTestId, getByLabelText, queryByTestId, queryByRole } =
+      render(<AccountSwitcherPanel visible onClose={onClose} />);
+
+    for (const account of accounts) {
+      const row = getByTestId(`account-switcher-row-${account.userId}`);
+      expect(within(row).getByText(account.displayName)).toBeTruthy();
+      expect(within(row).getByText(account.initials)).toBeTruthy();
+      expect(row.props.accessibilityState.selected).toBe(account.isActive);
+    }
+    expect(getByText("You've reached the 3-account limit.")).toBeTruthy();
+    expect(queryByTestId('account-switcher-add-account')).toBeNull();
+    expect(
+      queryByRole('button', { name: /remove|delete|forget|sign out|log out/i }),
+    ).toBeNull();
+
+    fireEvent.press(getByLabelText('Close account switcher'));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(mockGetCredentials).not.toHaveBeenCalled();
+    expect(mockAuthTokenSet).not.toHaveBeenCalled();
+    expect(mockSwitchActiveUser).not.toHaveBeenCalled();
+    expect(mockNotifyUserSwitched).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(mockDismissAll).not.toHaveBeenCalled();
   });
 });
