@@ -1,0 +1,92 @@
+# REVIEW-ONLY V7 DRAFT; do not execute without fresh root native preflight.
+# ONE capture only. Root verifies account10/Home, cached10/9/12, project12,
+# milestone/unit19, assignment1183 draft owner10 peer11; empty verse7; host mic off.
+# Root hard command budget130s; preserve first failure and take/native evidence.
+# No network/auth/reset/recovery/reload/delete/stage actions. No retry after Start.
+# Generated take ID is bound by root native postflight, not inferred from badge text.
+appId: com.eten.fluent
+tags:
+  - record
+  - existing-session
+  - fixture-blocked
+  - mutating
+  - disposable-lifecycle
+---
+- runScript: /Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/disposable-lifecycle-v7-values.js
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+- runFlow: /Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/shared/nav/open-fixture-chapter-from-milestone.yaml
+- tapOn:
+    id: 'drafting-tab-bible'
+- scrollUntilVisible:
+    element:
+      id: 'bible-verse-row-7'
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: 'bible-verse-row-7'
+- extendedWaitUntil:
+    visible:
+      id: 'record-start-button'
+    timeout: 10000
+- assertVisible:
+    id: 'record-verse-reference'
+    text: ${output.lifecycleReferenceRe}
+- assertNotVisible:
+    id: ${output.lifecycleTakeRowRe}
+- assertNotVisible:
+    id: 'record-resume-button'
+- assertTrue: ${Date.now() - output.lifecycleSetupStartedAt <= 60000}
+- tapOn:
+    id: 'record-start-button'
+- extendedWaitUntil:
+    visible:
+      id: 'record-pause-button'
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: 'record-duration'
+      text: '^(0:(0[1-9]|[1-5][0-9])|[1-9][0-9]?:[0-5][0-9])$'
+    timeout: 5000
+- runFlow:
+    file: /Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/recording/disposable-background-return-existing-session.yaml
+    env:
+      # Legacy shared guard phase validates context only; child asserts ACTIVE
+      # capture before HOME, then copies actual frozen time after return.
+      MAESTRO_DISPOSABLE_PHASE: paused-before-reload
+- assertVisible:
+    id: 'record-verse-reference'
+    text: ${output.lifecycleReferenceRe}
+- assertVisible:
+    id: 'record-resume-button'
+- assertVisible:
+    id: 'record-duration'
+    text: ${output.disposablePausedTimeRe}
+- tapOn:
+    id: 'record-stop-button'
+- extendedWaitUntil:
+    visible:
+      id: ${output.lifecycleTakeRowRe}
+    timeout: 15000
+- assertVisible:
+    id: ${output.lifecycleTakeRowRe}
+    index: 0
+- assertNotVisible:
+    id: ${output.lifecycleTakeRowRe}
+    index: 1
+- assertVisible:
+    id: ${output.lifecycleTakeSyncRe}
+    text: '^(pending|uploaded)$'
+- copyTextFrom:
+    id: ${output.lifecycleTakeSyncRe}
+- evalScript: ${output.lifecycleSavedSyncStatus = String(maestro.copiedText)}
+- assertTrue: ${/^(pending|uploaded)$/.test(output.lifecycleSavedSyncStatus)}
+- assertVisible:
+    id: 'record-new-take-button'
+- assertNotVisible:
+    id: 'record-stop-button'
+- assertNotVisible:
+    id: 'record-pause-button'
+- takeScreenshot: disposable-1183-verse7-lifecycle-saved

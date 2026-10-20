@@ -1,0 +1,109 @@
+{
+  "status": "REVIEW_ONLY_NOT_EXECUTED",
+  "materialCorrection": "Replaces redundant MyWork scroll + old56.82s backtracking helper with941f894 exact milestone helper; target7 instead of already-used6",
+  "files": [
+    "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/disposable-recording-lifecycle-v7-review-only.yaml",
+    "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/disposable-lifecycle-v7-values.js"
+  ],
+  "originalFlowPreserved": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/recording/disposable-recording-lifecycle-existing-session.yaml",
+  "originalFailure": "live-results/20261020/lifecycle-batch/fluent-lifecycle-result.json:130.126s timeout, INCOMPLETE",
+  "oldCauseReceipt": "live-results/20261020/lifecycle-batch/timing-diagnosis.json",
+  "pin": {
+    "project": 12,
+    "milestoneUnit": 19,
+    "assignment": 1183,
+    "owner": 10,
+    "peer": 11,
+    "stage": "draft",
+    "verse": 7,
+    "cached": "10,9,12"
+  },
+  "remainingFreshPreflight": [
+    "Root attests hostmicOFF immediately beforeStart; old a-pericope-capture-preflight.json21:24:18UTC hostmicOFFresponseOK is historical only",
+    "Exact verse7 bible_text row +zero retained recordings for unit19/verse7; do not infer BibleTextID",
+    "Original6 takeIDs/durations/bytes/files retained, activeaccount10/cached10,9,12; owner/peer/stage exact",
+    "No active capture/playback/upload/download; no navigation modal; both device owners confirm idle boundary",
+    "Original radio state and final restoration account recorded; no network/auth changes for this test"
+  ],
+  "executionBudget": {
+    "outerSeconds": 130,
+    "preStartDeadlineSeconds": 60,
+    "rule": "No Start if freshpreflight/readiness/pinnednavigation incomplete by60s; reserve remaining70s for soleStart/background/paused/soleSave and native postflight. Not a measured duration guarantee."
+  },
+  "cleanup": [
+    "After any error or uncertain Start outcome do not repeat Start or rerun flow",
+    "Root reads actual capture/native state; if capture active/paused, use existing safeSave recovery at most once when state unambiguous; do not discard/delete/reset",
+    "Retain timeout/firstfailure; bind actual newrecID from nativepostflight, verify original6 unchanged and expected only1 new owner10/unit19/v7 take with duration/file",
+    "Restore original activeaccount/radios/preferences through root-owned cleanup; no opportunisticupload/download/fixturewrite"
+  ],
+  "assertionsPreserved": [
+    "Exact7 reference",
+    "No take/resume beforeStart",
+    "Exactly1Start, nonzero running duration",
+    "HOME+launchAppstopAppfalse, paused sameunit/time",
+    "Exactly1Save, exactly1take row +pending/uploaded only",
+    "No recordstop/pause afterSave"
+  ],
+  "notProven": [
+    "Successful future lifecycle",
+    "Runtime integrated source attestation",
+    "Physical audible recording",
+    "OS coldrestart/kill-safe persistence; this uses HOME and no-stop relaunch"
+  ],
+  "hostMicReceipt": "a-pericope-capture-preflight.json historical21:24:18UTC hostmic_off_response=OK; no known current read-only mic route attested in this lane",
+  "hashes": {
+    "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/recording/disposable-recording-lifecycle-existing-session.yaml": "678a088dadb4040e68aae308479351a7637bfa8795b4a8a1a4ef6b09737c1bbc",
+    "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/shared/scripts/disposable-lifecycle-values.js": "fb7adaa23e32caa4bfcf20579aaa6b22ff9ced30cc43fb4deadfa0725f4e255f",
+    "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/disposable-recording-lifecycle-v7-review-only.yaml": "73ee9d26a007c9736ec288b737f807b0a4473a7337d11346f22c7042daa748bc",
+    "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/disposable-lifecycle-v7-values.js": "5f1ee5e6263ea415bd4199248b944f2b2a83791a685d59073463c8d7f45dc18b"
+  },
+  "artifactOnlyValidation": {
+    "fixtureGuardCLI": "PASS exit0; actual canonical941f894 helper resolves; project12allowlist12deny944/chapter1183/milestone19",
+    "valuesSyntax": "node --check PASS exit0",
+    "maestroNotExecuted": true
+  },
+  "rootOnlyCandidateInvocation": {
+    "cwd": "/Users/matt/Documents/Development/gloo/fluent-mobile",
+    "wrapper": "bash scripts/maestro-test-qa.sh",
+    "flow": "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/disposable-recording-lifecycle-v7-review-only.yaml",
+    "requiresExistingAuthorizedQAEnvFile": "Root-owned existing .env.maestro.qa; do not copy/read credentials",
+    "shellGuardEnv": {
+      "MAESTRO_FIXTURE_PROJECT_ID": "12",
+      "MAESTRO_FIXTURE_PROJECT_ALLOWLIST": "12",
+      "MAESTRO_FIXTURE_PROJECT_DENYLIST": "944",
+      "MAESTRO_FIXTURE_MILESTONE_ID": "19",
+      "MAESTRO_FIXTURE_CHAPTER_ID": "1183"
+    },
+    "maestroExplicitPrimitiveEnv": {
+      "MAESTRO_DISPOSABLE_PROJECT_ID": "12",
+      "MAESTRO_DISPOSABLE_ASSIGNMENT_ID": "1183",
+      "MAESTRO_DISPOSABLE_USER_ID": "10",
+      "MAESTRO_DISPOSABLE_CACHED_IDS": "10,9,12",
+      "MAESTRO_DISPOSABLE_CONTEXT_VERIFIED": "1",
+      "MAESTRO_DISPOSABLE_VERSE": "7",
+      "MAESTRO_HOST_MIC_DISABLED_VERIFIED": "1",
+      "MAESTRO_DISPOSABLE_EMPTY_VERSE_VERIFIED": "1",
+      "MAESTRO_FIXTURE_PROJECT_ID": "12",
+      "MAESTRO_FIXTURE_MILESTONE_ID": "19",
+      "MAESTRO_FIXTURE_CHAPTER_ID": "1183"
+    },
+    "authorization": "Review-only candidate. Root may execute once only after fresh nativepreflight and explicit deviceowner gate. Do not treat scalar1 as independent verification."
+  },
+  "rootExecutor": {
+    "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/root-v7-executor.py",
+    "status": "ARTIFACT_ONLY_NOT_EXECUTED",
+    "validation": "Python compile + --help only; zero adb/device/CLI test execution",
+    "inputHashes": "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/executor-reviewed-input-hashes.json",
+    "requiresFlag": "--execute-root-reviewed-v7",
+    "requiresRootArguments": [
+      "--qa-env-file EXISTING_ROOT_OWNED_PATH_ENDING_.env.maestro.qa",
+      "--out NEW_UNIQUE_WORKSPACE_DIRECTORY"
+    ],
+    "preflight": "Fresh baseline account12/sixfilesSHA+bytes/relationship/all-owner v7empty/markers0/transfers0; known hostmicoff OK route; no credentials/env contents read",
+    "network": "Save original airplane/WiFi/mobile_data. Disable onlyWiFi+data; verifyOfflineUI before soleCLI; switch12 BEFORE restoring radios",
+    "cleanup": "Stopmetadataattempt/parsefailure/timeout uncertain => NO additionalSave. Sole recoveryStop allowed only non-timeout validmetadata proves noStop, noDBrow, exactv7+active/pausedStopvisible. Persist recoveryStop intent beforetap. Anyuncertainty preservesoffline/account10 and reports pending rootinspection",
+    "limits": "130s CLI cap; flowroot-added60s preStartguard. No Start outsideflow, no repeatCLI, no delete/discard/reset/processkill/appkill. CLI process-group termination only at130s retains app state.",
+    "historicalHostMicRouteSource": "/tmp/fluent-background-autopause.py: adb emu avd hostmicoff; enforce command in fresh preflight, not stalehistoricalclaim",
+    "after": "BindnewrecID fromread-onlyDB, expectedone owner10/unit19/v7 pending row/file; preserve6row+fileSHA/bytes; PID/appops/markers beforeafter; no coldrestart/physicalaudibility/sourceversionattestation claim"
+  }
+}

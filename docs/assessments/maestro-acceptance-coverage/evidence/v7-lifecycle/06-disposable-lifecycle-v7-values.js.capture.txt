@@ -1,0 +1,76 @@
+// Native/session facts are verified independently by root; these are execution guards.
+function required(name, value, expected) {
+  if (String(value) !== expected)
+    throw new Error('Requires ' + name + '=' + expected);
+}
+required(
+  'project',
+  typeof MAESTRO_DISPOSABLE_PROJECT_ID === 'undefined'
+    ? ''
+    : MAESTRO_DISPOSABLE_PROJECT_ID,
+  '12',
+);
+required(
+  'assignment',
+  typeof MAESTRO_DISPOSABLE_ASSIGNMENT_ID === 'undefined'
+    ? ''
+    : MAESTRO_DISPOSABLE_ASSIGNMENT_ID,
+  '1183',
+);
+required(
+  'fixture chapter',
+  typeof MAESTRO_FIXTURE_CHAPTER_ID === 'undefined'
+    ? ''
+    : MAESTRO_FIXTURE_CHAPTER_ID,
+  '1183',
+);
+required(
+  'user',
+  typeof MAESTRO_DISPOSABLE_USER_ID === 'undefined'
+    ? ''
+    : MAESTRO_DISPOSABLE_USER_ID,
+  '10',
+);
+required(
+  'cached',
+  typeof MAESTRO_DISPOSABLE_CACHED_IDS === 'undefined'
+    ? ''
+    : MAESTRO_DISPOSABLE_CACHED_IDS,
+  '10,9,12',
+);
+required(
+  'context',
+  typeof MAESTRO_DISPOSABLE_CONTEXT_VERIFIED === 'undefined'
+    ? ''
+    : MAESTRO_DISPOSABLE_CONTEXT_VERIFIED,
+  '1',
+);
+required(
+  'verse',
+  typeof MAESTRO_DISPOSABLE_VERSE === 'undefined'
+    ? ''
+    : MAESTRO_DISPOSABLE_VERSE,
+  '7',
+);
+required(
+  'host mic disabled',
+  typeof MAESTRO_HOST_MIC_DISABLED_VERIFIED === 'undefined'
+    ? ''
+    : MAESTRO_HOST_MIC_DISABLED_VERIFIED,
+  '1',
+);
+required(
+  'empty verse',
+  typeof MAESTRO_DISPOSABLE_EMPTY_VERSE_VERIFIED === 'undefined'
+    ? ''
+    : MAESTRO_DISPOSABLE_EMPTY_VERSE_VERIFIED,
+  '1',
+);
+output.lifecycleReferenceRe = '^1 Peter 1:7$';
+output.lifecycleTakeRowRe = '^record-take-row-rec_[a-z0-9]+_[a-z0-9]+$';
+output.lifecycleTakeSyncRe = '^record-take-sync-rec_[a-z0-9]+_[a-z0-9]+$';
+
+required('milestone', typeof MAESTRO_FIXTURE_MILESTONE_ID === 'undefined' ? '' : MAESTRO_FIXTURE_MILESTONE_ID, '19');
+required('fixture project', typeof MAESTRO_FIXTURE_PROJECT_ID === 'undefined' ? '' : MAESTRO_FIXTURE_PROJECT_ID, '12');
+
+output.lifecycleSetupStartedAt = Date.now();

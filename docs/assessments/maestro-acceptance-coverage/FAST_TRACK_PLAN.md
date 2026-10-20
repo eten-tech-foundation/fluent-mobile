@@ -148,3 +148,12 @@ Full completion requires disposition of the entire audited candidate scope, deco
 - Report meaningful batch completions, material blockers and final results promptly. No one-assertion updates and no repeated PDF replacement. If a batch runs long, say what is complete and what remains.
 
 Immediate instruction: execute Batch 0 now, then consume this queue in order. Only safety, a verified dependency, a newly found critical defect or the user's changed instruction may reorder it. Record the reason once and continue; do not redesign the plan after each test.
+
+
+### Current recording preservation baseline (V7 postflight)
+
+Preserve all seven owner10 takes: four uploaded and three pending at V7 postflight.
+Read the current device state before every admission; six-take guards are historical
+and must not authorize new work. Verse7 is now populated and is not an empty capture
+fixture. Keep the original six metadata/file-hash receipts and all earlier failures.
+The guest runtime revision remains unattested.

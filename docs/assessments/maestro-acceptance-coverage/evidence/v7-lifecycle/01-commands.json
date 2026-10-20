@@ -1,0 +1,4443 @@
+[ {
+  "command" : {
+    "defineVariablesCommand" : {
+      "env" : {
+        "MAESTRO_DISPOSABLE_PROJECT_ID" : "12",
+        "MAESTRO_DISPOSABLE_ASSIGNMENT_ID" : "1183",
+        "MAESTRO_DISPOSABLE_USER_ID" : "10",
+        "MAESTRO_DISPOSABLE_CACHED_IDS" : "10,9,12",
+        "MAESTRO_DISPOSABLE_CONTEXT_VERIFIED" : "1",
+        "MAESTRO_DISPOSABLE_VERSE" : "7",
+        "MAESTRO_HOST_MIC_DISABLED_VERIFIED" : "1",
+        "MAESTRO_DISPOSABLE_EMPTY_VERSE_VERIFIED" : "1",
+        "MAESTRO_FIXTURE_PROJECT_ID" : "12",
+        "MAESTRO_FIXTURE_PROJECT_ALLOWLIST" : "12",
+        "MAESTRO_FIXTURE_PROJECT_DENYLIST" : "944",
+        "MAESTRO_FIXTURE_MILESTONE_ID" : "19",
+        "MAESTRO_FIXTURE_CHAPTER_ID" : "1183",
+        "MAESTRO_EXPECT_EXPO_DEV_MENU_ABSENT" : "1",
+        "MAESTRO_ENV_LANE" : "qa",
+        "MAESTRO_EMAIL_2" : "[REDACTED]",
+        "MAESTRO_LAUNCH_MODE" : "metro",
+        "MAESTRO_TRANSLATOR2_EMAIL" : "qa+fluentqa-translator2@fluent.local",
+        "MAESTRO_DEV_CLIENT_URL" : "exp+fluent-mobile://expo-development-client/?url=http%3A%2F%2F10.0.2.2%3A8081%3FdisableOnboarding%3D1&disableFab=1&disableAutoLaunch=1",
+        "MAESTRO_EMAIL_3" : "qa+fluentqa-om@fluent.local",
+        "MAESTRO_ENV_FILE" : "/Users/matt/Documents/Development/gloo/fluent-mobile/.env.maestro.qa",
+        "MAESTRO_TRANSLATOR_EMAIL" : "[REDACTED]",
+        "MAESTRO_EMAIL" : "[REDACTED]",
+        "MAESTRO_PM_EMAIL" : "[REDACTED]",
+        "MAESTRO_FILENAME" : "disposable-recording-lifecycle-v7-review-only",
+        "MAESTRO_DEVICE_UDID" : "emulator-5554",
+        "MAESTRO_SHARD_ID" : "1",
+        "MAESTRO_SHARD_INDEX" : "0"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536502655,
+    "duration" : 5,
+    "sequenceNumber" : 0,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "defineVariablesCommand" : {
+        "env" : {
+          "MAESTRO_DISPOSABLE_PROJECT_ID" : "12",
+          "MAESTRO_DISPOSABLE_ASSIGNMENT_ID" : "1183",
+          "MAESTRO_DISPOSABLE_USER_ID" : "10",
+          "MAESTRO_DISPOSABLE_CACHED_IDS" : "10,9,12",
+          "MAESTRO_DISPOSABLE_CONTEXT_VERIFIED" : "1",
+          "MAESTRO_DISPOSABLE_VERSE" : "7",
+          "MAESTRO_HOST_MIC_DISABLED_VERIFIED" : "1",
+          "MAESTRO_DISPOSABLE_EMPTY_VERSE_VERIFIED" : "1",
+          "MAESTRO_FIXTURE_PROJECT_ID" : "12",
+          "MAESTRO_FIXTURE_PROJECT_ALLOWLIST" : "12",
+          "MAESTRO_FIXTURE_PROJECT_DENYLIST" : "944",
+          "MAESTRO_FIXTURE_MILESTONE_ID" : "19",
+          "MAESTRO_FIXTURE_CHAPTER_ID" : "1183",
+          "MAESTRO_EXPECT_EXPO_DEV_MENU_ABSENT" : "1",
+          "MAESTRO_ENV_LANE" : "qa",
+          "MAESTRO_EMAIL_2" : "[REDACTED]",
+          "MAESTRO_LAUNCH_MODE" : "metro",
+          "MAESTRO_TRANSLATOR2_EMAIL" : "qa+fluentqa-translator2@fluent.local",
+          "MAESTRO_DEV_CLIENT_URL" : "exp+fluent-mobile://expo-development-client/?url=http%3A%2F%2F10.0.2.2%3A8081%3FdisableOnboarding%3D1&disableFab=1&disableAutoLaunch=1",
+          "MAESTRO_EMAIL_3" : "qa+fluentqa-om@fluent.local",
+          "MAESTRO_ENV_FILE" : "/Users/matt/Documents/Development/gloo/fluent-mobile/.env.maestro.qa",
+          "MAESTRO_TRANSLATOR_EMAIL" : "[REDACTED]",
+          "MAESTRO_EMAIL" : "[REDACTED]",
+          "MAESTRO_PM_EMAIL" : "[REDACTED]",
+          "MAESTRO_FILENAME" : "disposable-recording-lifecycle-v7-review-only",
+          "MAESTRO_DEVICE_UDID" : "emulator-5554",
+          "MAESTRO_SHARD_ID" : "1",
+          "MAESTRO_SHARD_INDEX" : "0"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "applyConfigurationCommand" : {
+      "config" : {
+        "appId" : "com.eten.fluent",
+        "tags" : [ "record", "existing-session", "fixture-blocked", "mutating", "disposable-lifecycle" ]
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536502662,
+    "duration" : 3,
+    "sequenceNumber" : 1,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "applyConfigurationCommand" : {
+        "config" : {
+          "appId" : "com.eten.fluent",
+          "tags" : [ "record", "existing-session", "fixture-blocked", "mutating", "disposable-lifecycle" ]
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "runScriptCommand" : {
+      "script" : "// Native/session facts are verified independently by root; these are execution guards.\nfunction required(name, value, expected) {\n  if (String(value) !== expected)\n    throw new Error('Requires ' + name + '=' + expected);\n}\nrequired(\n  'project',\n  typeof MAESTRO_DISPOSABLE_PROJECT_ID === 'undefined'\n    ? ''\n    : MAESTRO_DISPOSABLE_PROJECT_ID,\n  '12',\n);\nrequired(\n  'assignment',\n  typeof MAESTRO_DISPOSABLE_ASSIGNMENT_ID === 'undefined'\n    ? ''\n    : MAESTRO_DISPOSABLE_ASSIGNMENT_ID,\n  '1183',\n);\nrequired(\n  'fixture chapter',\n  typeof MAESTRO_FIXTURE_CHAPTER_ID === 'undefined'\n    ? ''\n    : MAESTRO_FIXTURE_CHAPTER_ID,\n  '1183',\n);\nrequired(\n  'user',\n  typeof MAESTRO_DISPOSABLE_USER_ID === 'undefined'\n    ? ''\n    : MAESTRO_DISPOSABLE_USER_ID,\n  '10',\n);\nrequired(\n  'cached',\n  typeof MAESTRO_DISPOSABLE_CACHED_IDS === 'undefined'\n    ? ''\n    : MAESTRO_DISPOSABLE_CACHED_IDS,\n  '10,9,12',\n);\nrequired(\n  'context',\n  typeof MAESTRO_DISPOSABLE_CONTEXT_VERIFIED === 'undefined'\n    ? ''\n    : MAESTRO_DISPOSABLE_CONTEXT_VERIFIED,\n  '1',\n);\nrequired(\n  'verse',\n  typeof MAESTRO_DISPOSABLE_VERSE === 'undefined'\n    ? ''\n    : MAESTRO_DISPOSABLE_VERSE,\n  '7',\n);\nrequired(\n  'host mic disabled',\n  typeof MAESTRO_HOST_MIC_DISABLED_VERIFIED === 'undefined'\n    ? ''\n    : MAESTRO_HOST_MIC_DISABLED_VERIFIED,\n  '1',\n);\nrequired(\n  'empty verse',\n  typeof MAESTRO_DISPOSABLE_EMPTY_VERSE_VERIFIED === 'undefined'\n    ? ''\n    : MAESTRO_DISPOSABLE_EMPTY_VERSE_VERIFIED,\n  '1',\n);\noutput.lifecycleReferenceRe = '^1 Peter 1:7$';\noutput.lifecycleTakeRowRe = '^record-take-row-rec_[a-z0-9]+_[a-z0-9]+$';\noutput.lifecycleTakeSyncRe = '^record-take-sync-rec_[a-z0-9]+_[a-z0-9]+$';\n\nrequired('milestone', typeof MAESTRO_FIXTURE_MILESTONE_ID === 'undefined' ? '' : MAESTRO_FIXTURE_MILESTONE_ID, '19');\nrequired('fixture project', typeof MAESTRO_FIXTURE_PROJECT_ID === 'undefined' ? '' : MAESTRO_FIXTURE_PROJECT_ID, '12');\n\noutput.lifecycleSetupStartedAt = Date.now();\n",
+      "sourceDescription" : "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/disposable-lifecycle-v7-values.js",
+      "optional" : false,
+      "scriptDir" : "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft"
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536502666,
+    "duration" : 482,
+    "sequenceNumber" : 2,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "runScriptCommand" : {
+        "script" : "// Native/session facts are verified independently by root; these are execution guards.\nfunction required(name, value, expected) {\n  if (String(value) !== expected)\n    throw new Error('Requires ' + name + '=' + expected);\n}\nrequired(\n  'project',\n  typeof MAESTRO_DISPOSABLE_PROJECT_ID === 'undefined'\n    ? ''\n    : MAESTRO_DISPOSABLE_PROJECT_ID,\n  '12',\n);\nrequired(\n  'assignment',\n  typeof MAESTRO_DISPOSABLE_ASSIGNMENT_ID === 'undefined'\n    ? ''\n    : MAESTRO_DISPOSABLE_ASSIGNMENT_ID,\n  '1183',\n);\nrequired(\n  'fixture chapter',\n  typeof MAESTRO_FIXTURE_CHAPTER_ID === 'undefined'\n    ? ''\n    : MAESTRO_FIXTURE_CHAPTER_ID,\n  '1183',\n);\nrequired(\n  'user',\n  typeof MAESTRO_DISPOSABLE_USER_ID === 'undefined'\n    ? ''\n    : MAESTRO_DISPOSABLE_USER_ID,\n  '10',\n);\nrequired(\n  'cached',\n  typeof MAESTRO_DISPOSABLE_CACHED_IDS === 'undefined'\n    ? ''\n    : MAESTRO_DISPOSABLE_CACHED_IDS,\n  '10,9,12',\n);\nrequired(\n  'context',\n  typeof MAESTRO_DISPOSABLE_CONTEXT_VERIFIED === 'undefined'\n    ? ''\n    : MAESTRO_DISPOSABLE_CONTEXT_VERIFIED,\n  '1',\n);\nrequired(\n  'verse',\n  typeof MAESTRO_DISPOSABLE_VERSE === 'undefined'\n    ? ''\n    : MAESTRO_DISPOSABLE_VERSE,\n  '7',\n);\nrequired(\n  'host mic disabled',\n  typeof MAESTRO_HOST_MIC_DISABLED_VERIFIED === 'undefined'\n    ? ''\n    : MAESTRO_HOST_MIC_DISABLED_VERIFIED,\n  '1',\n);\nrequired(\n  'empty verse',\n  typeof MAESTRO_DISPOSABLE_EMPTY_VERSE_VERIFIED === 'undefined'\n    ? ''\n    : MAESTRO_DISPOSABLE_EMPTY_VERSE_VERIFIED,\n  '1',\n);\noutput.lifecycleReferenceRe = '^1 Peter 1:7$';\noutput.lifecycleTakeRowRe = '^record-take-row-rec_[a-z0-9]+_[a-z0-9]+$';\noutput.lifecycleTakeSyncRe = '^record-take-sync-rec_[a-z0-9]+_[a-z0-9]+$';\n\nrequired('milestone', typeof MAESTRO_FIXTURE_MILESTONE_ID === 'undefined' ? '' : MAESTRO_FIXTURE_MILESTONE_ID, '19');\nrequired('fixture project', typeof MAESTRO_FIXTURE_PROJECT_ID === 'undefined' ? '' : MAESTRO_FIXTURE_PROJECT_ID, '12');\n\noutput.lifecycleSetupStartedAt = Date.now();\n",
+        "sourceDescription" : "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/disposable-lifecycle-v7-values.js",
+        "optional" : false,
+        "scriptDir" : "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft"
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "idRegex" : "login-email-input",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536503149,
+    "duration" : 666,
+    "sequenceNumber" : 3,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "notVisible" : {
+            "idRegex" : "login-email-input",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "home-tab-my-work",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536503816,
+    "duration" : 157,
+    "sequenceNumber" : 4,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "home-tab-my-work",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "runFlowCommand" : {
+      "commands" : [ {
+        "applyConfigurationCommand" : {
+          "config" : {
+            "appId" : "com.eten.fluent"
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "scriptCondition" : "${typeof MAESTRO_FIXTURE_MILESTONE_ID !== 'undefined' && /^[1-9][0-9]*$/.test(String(MAESTRO_FIXTURE_MILESTONE_ID))}"
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "scriptCondition" : "${typeof MAESTRO_FIXTURE_CHAPTER_ID !== 'undefined' && /^[1-9][0-9]*$/.test(String(MAESTRO_FIXTURE_CHAPTER_ID))}"
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "notVisible" : {
+              "idRegex" : "login-email-input",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "idRegex" : "home-tab-my-work",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "idRegex" : "home-tab-projects",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "tapOnElement" : {
+          "selector" : {
+            "idRegex" : "home-tab-projects",
+            "optional" : false
+          },
+          "retryIfNoChange" : false,
+          "waitUntilVisible" : false,
+          "longPress" : false,
+          "optional" : false
+        }
+      }, {
+        "scrollUntilVisible" : {
+          "selector" : {
+            "idRegex" : "^milestone-row-${MAESTRO_FIXTURE_MILESTONE_ID}$",
+            "optional" : false
+          },
+          "direction" : "DOWN",
+          "scrollDuration" : "40",
+          "visibilityPercentage" : 100,
+          "timeout" : "15000",
+          "centerElement" : false,
+          "originalSpeedValue" : "40",
+          "optional" : false,
+          "visibilityPercentageNormalized" : 1.0
+        }
+      }, {
+        "tapOnElement" : {
+          "selector" : {
+            "idRegex" : "^milestone-row-${MAESTRO_FIXTURE_MILESTONE_ID}$",
+            "optional" : false
+          },
+          "retryIfNoChange" : false,
+          "waitUntilVisible" : false,
+          "longPress" : false,
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "idRegex" : "chapter-row-.*",
+              "optional" : false
+            }
+          },
+          "timeout" : "15000",
+          "optional" : false
+        }
+      }, {
+        "scrollUntilVisible" : {
+          "selector" : {
+            "idRegex" : "^chapter-row-${MAESTRO_FIXTURE_CHAPTER_ID}$",
+            "optional" : false
+          },
+          "direction" : "DOWN",
+          "scrollDuration" : "40",
+          "visibilityPercentage" : 100,
+          "timeout" : "15000",
+          "centerElement" : false,
+          "originalSpeedValue" : "40",
+          "optional" : false,
+          "visibilityPercentageNormalized" : 1.0
+        }
+      }, {
+        "tapOnElement" : {
+          "selector" : {
+            "idRegex" : "^chapter-row-${MAESTRO_FIXTURE_CHAPTER_ID}$",
+            "optional" : false
+          },
+          "retryIfNoChange" : false,
+          "waitUntilVisible" : false,
+          "longPress" : false,
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "idRegex" : "drafting-tab-bar",
+              "optional" : false
+            }
+          },
+          "timeout" : "15000",
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "idRegex" : "drafting-tab-bar",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "notVisible" : {
+              "idRegex" : "login-email-input",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      } ],
+      "sourceDescription" : "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/shared/nav/open-fixture-chapter-from-milestone.yaml",
+      "config" : {
+        "appId" : "com.eten.fluent"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536503974,
+    "duration" : 10070,
+    "sequenceNumber" : 5,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "runFlowCommand" : {
+        "commands" : [ {
+          "applyConfigurationCommand" : {
+            "config" : {
+              "appId" : "com.eten.fluent"
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "scriptCondition" : "${typeof MAESTRO_FIXTURE_MILESTONE_ID !== 'undefined' && /^[1-9][0-9]*$/.test(String(MAESTRO_FIXTURE_MILESTONE_ID))}"
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "scriptCondition" : "${typeof MAESTRO_FIXTURE_CHAPTER_ID !== 'undefined' && /^[1-9][0-9]*$/.test(String(MAESTRO_FIXTURE_CHAPTER_ID))}"
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "notVisible" : {
+                "idRegex" : "login-email-input",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "idRegex" : "home-tab-my-work",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "idRegex" : "home-tab-projects",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "tapOnElement" : {
+            "selector" : {
+              "idRegex" : "home-tab-projects",
+              "optional" : false
+            },
+            "retryIfNoChange" : false,
+            "waitUntilVisible" : false,
+            "longPress" : false,
+            "optional" : false
+          }
+        }, {
+          "scrollUntilVisible" : {
+            "selector" : {
+              "idRegex" : "^milestone-row-${MAESTRO_FIXTURE_MILESTONE_ID}$",
+              "optional" : false
+            },
+            "direction" : "DOWN",
+            "scrollDuration" : "40",
+            "visibilityPercentage" : 100,
+            "timeout" : "15000",
+            "centerElement" : false,
+            "originalSpeedValue" : "40",
+            "optional" : false,
+            "visibilityPercentageNormalized" : 1.0
+          }
+        }, {
+          "tapOnElement" : {
+            "selector" : {
+              "idRegex" : "^milestone-row-${MAESTRO_FIXTURE_MILESTONE_ID}$",
+              "optional" : false
+            },
+            "retryIfNoChange" : false,
+            "waitUntilVisible" : false,
+            "longPress" : false,
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "idRegex" : "chapter-row-.*",
+                "optional" : false
+              }
+            },
+            "timeout" : "15000",
+            "optional" : false
+          }
+        }, {
+          "scrollUntilVisible" : {
+            "selector" : {
+              "idRegex" : "^chapter-row-${MAESTRO_FIXTURE_CHAPTER_ID}$",
+              "optional" : false
+            },
+            "direction" : "DOWN",
+            "scrollDuration" : "40",
+            "visibilityPercentage" : 100,
+            "timeout" : "15000",
+            "centerElement" : false,
+            "originalSpeedValue" : "40",
+            "optional" : false,
+            "visibilityPercentageNormalized" : 1.0
+          }
+        }, {
+          "tapOnElement" : {
+            "selector" : {
+              "idRegex" : "^chapter-row-${MAESTRO_FIXTURE_CHAPTER_ID}$",
+              "optional" : false
+            },
+            "retryIfNoChange" : false,
+            "waitUntilVisible" : false,
+            "longPress" : false,
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "idRegex" : "drafting-tab-bar",
+                "optional" : false
+              }
+            },
+            "timeout" : "15000",
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "idRegex" : "drafting-tab-bar",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "notVisible" : {
+                "idRegex" : "login-email-input",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        } ],
+        "sourceDescription" : "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/shared/nav/open-fixture-chapter-from-milestone.yaml",
+        "config" : {
+          "appId" : "com.eten.fluent"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "applyConfigurationCommand" : {
+      "config" : {
+        "appId" : "com.eten.fluent"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536503982,
+    "duration" : 0,
+    "sequenceNumber" : 6,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "applyConfigurationCommand" : {
+        "config" : {
+          "appId" : "com.eten.fluent"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "scriptCondition" : "${typeof MAESTRO_FIXTURE_MILESTONE_ID !== 'undefined' && /^[1-9][0-9]*$/.test(String(MAESTRO_FIXTURE_MILESTONE_ID))}"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536503983,
+    "duration" : 0,
+    "sequenceNumber" : 7,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "scriptCondition" : "${typeof MAESTRO_FIXTURE_MILESTONE_ID !== 'undefined' && /^[1-9][0-9]*$/.test(String(MAESTRO_FIXTURE_MILESTONE_ID))}"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "scriptCondition" : "${typeof MAESTRO_FIXTURE_CHAPTER_ID !== 'undefined' && /^[1-9][0-9]*$/.test(String(MAESTRO_FIXTURE_CHAPTER_ID))}"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536503983,
+    "duration" : 1,
+    "sequenceNumber" : 8,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "scriptCondition" : "${typeof MAESTRO_FIXTURE_CHAPTER_ID !== 'undefined' && /^[1-9][0-9]*$/.test(String(MAESTRO_FIXTURE_CHAPTER_ID))}"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "idRegex" : "login-email-input",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536503984,
+    "duration" : 703,
+    "sequenceNumber" : 9,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "notVisible" : {
+            "idRegex" : "login-email-input",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "home-tab-my-work",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536504688,
+    "duration" : 116,
+    "sequenceNumber" : 10,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "home-tab-my-work",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "home-tab-projects",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536504806,
+    "duration" : 167,
+    "sequenceNumber" : 11,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "home-tab-projects",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "tapOnElement" : {
+      "selector" : {
+        "idRegex" : "home-tab-projects",
+        "optional" : false
+      },
+      "retryIfNoChange" : false,
+      "waitUntilVisible" : false,
+      "longPress" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536504974,
+    "duration" : 2684,
+    "sequenceNumber" : 12,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "tapOnElement" : {
+        "selector" : {
+          "idRegex" : "home-tab-projects",
+          "optional" : false
+        },
+        "retryIfNoChange" : false,
+        "waitUntilVisible" : false,
+        "longPress" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "scrollUntilVisible" : {
+      "selector" : {
+        "idRegex" : "^milestone-row-${MAESTRO_FIXTURE_MILESTONE_ID}$",
+        "optional" : false
+      },
+      "direction" : "DOWN",
+      "scrollDuration" : "40",
+      "visibilityPercentage" : 100,
+      "timeout" : "15000",
+      "centerElement" : false,
+      "originalSpeedValue" : "40",
+      "optional" : false,
+      "visibilityPercentageNormalized" : 1.0
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536507659,
+    "duration" : 92,
+    "sequenceNumber" : 13,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "scrollUntilVisible" : {
+        "selector" : {
+          "idRegex" : "^milestone-row-19$",
+          "optional" : false
+        },
+        "direction" : "DOWN",
+        "scrollDuration" : "601",
+        "visibilityPercentage" : 100,
+        "timeout" : "15000",
+        "centerElement" : false,
+        "originalSpeedValue" : "40",
+        "optional" : false,
+        "visibilityPercentageNormalized" : 1.0
+      }
+    }
+  }
+}, {
+  "command" : {
+    "tapOnElement" : {
+      "selector" : {
+        "idRegex" : "^milestone-row-${MAESTRO_FIXTURE_MILESTONE_ID}$",
+        "optional" : false
+      },
+      "retryIfNoChange" : false,
+      "waitUntilVisible" : false,
+      "longPress" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536507752,
+    "duration" : 2545,
+    "sequenceNumber" : 14,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "tapOnElement" : {
+        "selector" : {
+          "idRegex" : "^milestone-row-19$",
+          "optional" : false
+        },
+        "retryIfNoChange" : false,
+        "waitUntilVisible" : false,
+        "longPress" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "chapter-row-.*",
+          "optional" : false
+        }
+      },
+      "timeout" : "15000",
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536510298,
+    "duration" : 74,
+    "sequenceNumber" : 15,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "chapter-row-.*",
+            "optional" : false
+          }
+        },
+        "timeout" : "15000",
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "scrollUntilVisible" : {
+      "selector" : {
+        "idRegex" : "^chapter-row-${MAESTRO_FIXTURE_CHAPTER_ID}$",
+        "optional" : false
+      },
+      "direction" : "DOWN",
+      "scrollDuration" : "40",
+      "visibilityPercentage" : 100,
+      "timeout" : "15000",
+      "centerElement" : false,
+      "originalSpeedValue" : "40",
+      "optional" : false,
+      "visibilityPercentageNormalized" : 1.0
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536510372,
+    "duration" : 82,
+    "sequenceNumber" : 16,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "scrollUntilVisible" : {
+        "selector" : {
+          "idRegex" : "^chapter-row-1183$",
+          "optional" : false
+        },
+        "direction" : "DOWN",
+        "scrollDuration" : "601",
+        "visibilityPercentage" : 100,
+        "timeout" : "15000",
+        "centerElement" : false,
+        "originalSpeedValue" : "40",
+        "optional" : false,
+        "visibilityPercentageNormalized" : 1.0
+      }
+    }
+  }
+}, {
+  "command" : {
+    "tapOnElement" : {
+      "selector" : {
+        "idRegex" : "^chapter-row-${MAESTRO_FIXTURE_CHAPTER_ID}$",
+        "optional" : false
+      },
+      "retryIfNoChange" : false,
+      "waitUntilVisible" : false,
+      "longPress" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536510454,
+    "duration" : 1655,
+    "sequenceNumber" : 17,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "tapOnElement" : {
+        "selector" : {
+          "idRegex" : "^chapter-row-1183$",
+          "optional" : false
+        },
+        "retryIfNoChange" : false,
+        "waitUntilVisible" : false,
+        "longPress" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "drafting-tab-bar",
+          "optional" : false
+        }
+      },
+      "timeout" : "15000",
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536512110,
+    "duration" : 1284,
+    "sequenceNumber" : 18,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "drafting-tab-bar",
+            "optional" : false
+          }
+        },
+        "timeout" : "15000",
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "drafting-tab-bar",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536513395,
+    "duration" : 70,
+    "sequenceNumber" : 19,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "drafting-tab-bar",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "idRegex" : "login-email-input",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536513465,
+    "duration" : 579,
+    "sequenceNumber" : 20,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "notVisible" : {
+            "idRegex" : "login-email-input",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "tapOnElement" : {
+      "selector" : {
+        "idRegex" : "drafting-tab-bible",
+        "optional" : false
+      },
+      "retryIfNoChange" : false,
+      "waitUntilVisible" : false,
+      "longPress" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536514045,
+    "duration" : 1748,
+    "sequenceNumber" : 21,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "tapOnElement" : {
+        "selector" : {
+          "idRegex" : "drafting-tab-bible",
+          "optional" : false
+        },
+        "retryIfNoChange" : false,
+        "waitUntilVisible" : false,
+        "longPress" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "scrollUntilVisible" : {
+      "selector" : {
+        "idRegex" : "bible-verse-row-7",
+        "optional" : false
+      },
+      "direction" : "DOWN",
+      "scrollDuration" : "40",
+      "visibilityPercentage" : 100,
+      "timeout" : "10000",
+      "centerElement" : false,
+      "originalSpeedValue" : "40",
+      "optional" : false,
+      "visibilityPercentageNormalized" : 1.0
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536515795,
+    "duration" : 2416,
+    "sequenceNumber" : 22,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "scrollUntilVisible" : {
+        "selector" : {
+          "idRegex" : "bible-verse-row-7",
+          "optional" : false
+        },
+        "direction" : "DOWN",
+        "scrollDuration" : "601",
+        "visibilityPercentage" : 100,
+        "timeout" : "10000",
+        "centerElement" : false,
+        "originalSpeedValue" : "40",
+        "optional" : false,
+        "visibilityPercentageNormalized" : 1.0
+      }
+    }
+  }
+}, {
+  "command" : {
+    "tapOnElement" : {
+      "selector" : {
+        "idRegex" : "bible-verse-row-7",
+        "optional" : false
+      },
+      "retryIfNoChange" : false,
+      "waitUntilVisible" : false,
+      "longPress" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536518211,
+    "duration" : 2625,
+    "sequenceNumber" : 23,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "tapOnElement" : {
+        "selector" : {
+          "idRegex" : "bible-verse-row-7",
+          "optional" : false
+        },
+        "retryIfNoChange" : false,
+        "waitUntilVisible" : false,
+        "longPress" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "record-start-button",
+          "optional" : false
+        }
+      },
+      "timeout" : "10000",
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536520837,
+    "duration" : 48,
+    "sequenceNumber" : 24,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "record-start-button",
+            "optional" : false
+          }
+        },
+        "timeout" : "10000",
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "textRegex" : "${output.lifecycleReferenceRe}",
+          "idRegex" : "record-verse-reference",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536520885,
+    "duration" : 114,
+    "sequenceNumber" : 25,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "textRegex" : "^1 Peter 1:7$",
+            "idRegex" : "record-verse-reference",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "idRegex" : "${output.lifecycleTakeRowRe}",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536520999,
+    "duration" : 799,
+    "sequenceNumber" : 26,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "notVisible" : {
+            "idRegex" : "^record-take-row-rec_[a-z0-9]+_[a-z0-9]+$",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "idRegex" : "record-resume-button",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536521798,
+    "duration" : 628,
+    "sequenceNumber" : 27,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "notVisible" : {
+            "idRegex" : "record-resume-button",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "scriptCondition" : "${Date.now() - output.lifecycleSetupStartedAt <= 60000}"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536522428,
+    "duration" : 7,
+    "sequenceNumber" : 28,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "scriptCondition" : "true"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "tapOnElement" : {
+      "selector" : {
+        "idRegex" : "record-start-button",
+        "optional" : false
+      },
+      "retryIfNoChange" : false,
+      "waitUntilVisible" : false,
+      "longPress" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536522435,
+    "duration" : 12076,
+    "sequenceNumber" : 29,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "tapOnElement" : {
+        "selector" : {
+          "idRegex" : "record-start-button",
+          "optional" : false
+        },
+        "retryIfNoChange" : false,
+        "waitUntilVisible" : false,
+        "longPress" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "record-pause-button",
+          "optional" : false
+        }
+      },
+      "timeout" : "10000",
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536534513,
+    "duration" : 708,
+    "sequenceNumber" : 30,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "record-pause-button",
+            "optional" : false
+          }
+        },
+        "timeout" : "10000",
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "textRegex" : "^(0:(0[1-9]|[1-5][0-9])|[1-9][0-9]?:[0-5][0-9])$",
+          "idRegex" : "record-duration",
+          "optional" : false
+        }
+      },
+      "timeout" : "5000",
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536535222,
+    "duration" : 694,
+    "sequenceNumber" : 31,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "textRegex" : "^(0:(0[1-9]|[1-5][0-9])|[1-9][0-9]?:[0-5][0-9])$",
+            "idRegex" : "record-duration",
+            "optional" : false
+          }
+        },
+        "timeout" : "5000",
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "runFlowCommand" : {
+      "commands" : [ {
+        "defineVariablesCommand" : {
+          "env" : {
+            "MAESTRO_DISPOSABLE_PHASE" : "paused-before-reload"
+          },
+          "optional" : false
+        }
+      }, {
+        "applyConfigurationCommand" : {
+          "config" : {
+            "appId" : "com.eten.fluent",
+            "tags" : [ "record", "existing-session", "fixture-blocked", "disposable-checkpoint", "background-driver" ]
+          },
+          "optional" : false
+        }
+      }, {
+        "runScriptCommand" : {
+          "script" : "// Root supplies these values only after independently verifying the existing session.\n// These guards constrain execution; they do not independently prove DB identity.\nvar env = {\n  project:\n    typeof MAESTRO_DISPOSABLE_PROJECT_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PROJECT_ID),\n  assignment:\n    typeof MAESTRO_DISPOSABLE_ASSIGNMENT_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_ASSIGNMENT_ID),\n  user:\n    typeof MAESTRO_DISPOSABLE_USER_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_USER_ID),\n  cached:\n    typeof MAESTRO_DISPOSABLE_CACHED_IDS === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_CACHED_IDS),\n  phase:\n    typeof MAESTRO_DISPOSABLE_PHASE === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PHASE),\n  verse:\n    typeof MAESTRO_DISPOSABLE_VERSE === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_VERSE),\n  take:\n    typeof MAESTRO_DISPOSABLE_TAKE_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_TAKE_ID),\n  pausedTime:\n    typeof MAESTRO_DISPOSABLE_PAUSED_TIME === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PAUSED_TIME),\n  consent:\n    typeof MAESTRO_DISPOSABLE_CONTEXT_VERIFIED === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_CONTEXT_VERIFIED),\n};\nif (\n  env.project !== '12' ||\n  env.assignment !== '1183' ||\n  env.user !== '10' ||\n  env.cached !== '10,9,12' ||\n  env.consent !== '1'\n)\n  throw new Error(\n    'Requires independently verified project12/assignment1183/user10/cache10,9,12; non944 only',\n  );\nif (!/^[1-9][0-9]*$/.test(env.verse) || Number(env.verse) > 25)\n  throw new Error('Requires exact 1 Peter1 verse1..25');\nvar phases = [\n  'paused-before-reload',\n  'recovery-prompt',\n  'paused-after-reload',\n  'background-paused',\n  'saved',\n  'offline-pending',\n  'uploading',\n  'uploaded',\n];\nif (phases.indexOf(env.phase) < 0)\n  throw new Error('Unsupported disposable assertion phase');\nif (\n  ['saved', 'uploaded'].indexOf(env.phase) >= 0 &&\n  !/^rec_[a-z0-9]+_[a-z0-9]+$/.test(env.take)\n)\n  throw new Error('Requires exact saved take ID');\nif (\n  env.phase === 'background-paused' &&\n  (!/^(0|[1-9][0-9]?):[0-5][0-9]$/.test(env.pausedTime) ||\n    Number(env.pausedTime.split(':')[0]) > 59 ||\n    env.pausedTime === '0:00')\n)\n  throw new Error(\n    'Requires exact nonzero frozen paused time m:ss, below 60 minutes',\n  );\noutput.disposablePausedTimeRe =\n  '^' + env.pausedTime.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '$';\noutput.disposablePhase = env.phase;\noutput.disposableReferenceRe = '^1 Peter 1:' + env.verse + '$';\noutput.disposableTakeSyncRe = '^record-take-sync-' + env.take + '$';\noutput.disposableScreenshot = 'disposable-1183-' + env.phase;\n",
+          "sourceDescription" : "../../shared/scripts/disposable-session-values.js",
+          "optional" : false,
+          "scriptDir" : "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/shared/scripts"
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "scriptCondition" : "${output.disposablePhase === 'paused-before-reload'}"
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "notVisible" : {
+              "idRegex" : "login-email-input",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "idRegex" : "record-tab",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "textRegex" : "${output.disposableReferenceRe}",
+              "idRegex" : "record-verse-reference",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "idRegex" : "record-pause-button",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "idRegex" : "record-stop-button",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "notVisible" : {
+              "idRegex" : "record-resume-button",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "pressKeyCommand" : {
+          "code" : "HOME",
+          "optional" : false
+        }
+      }, {
+        "launchAppCommand" : {
+          "appId" : "com.eten.fluent",
+          "clearState" : false,
+          "clearKeychain" : false,
+          "stopApp" : false,
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "idRegex" : "record-resume-button",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "idRegex" : "record-stop-button",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "notVisible" : {
+              "idRegex" : "record-pause-button",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "copyTextCommand" : {
+          "selector" : {
+            "idRegex" : "record-duration",
+            "optional" : false
+          },
+          "optional" : false
+        }
+      }, {
+        "evalScriptCommand" : {
+          "scriptString" : "${output.backgroundFrozenTime = (typeof maestro.copiedText === 'undefined' || maestro.copiedText === null) ? '' : String(maestro.copiedText)}",
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "scriptCondition" : "${/^(0|[1-9][0-9]?):[0-5][0-9]$/.test(output.backgroundFrozenTime) && output.backgroundFrozenTime !== '0:00'}"
+          },
+          "optional" : false
+        }
+      }, {
+        "runFlowCommand" : {
+          "commands" : [ {
+            "defineVariablesCommand" : {
+              "env" : {
+                "MAESTRO_DISPOSABLE_PHASE" : "background-paused",
+                "MAESTRO_DISPOSABLE_PAUSED_TIME" : "${output.backgroundFrozenTime}"
+              },
+              "optional" : false
+            }
+          }, {
+            "applyConfigurationCommand" : {
+              "config" : {
+                "appId" : "com.eten.fluent",
+                "tags" : [ "existing-session", "fixture-blocked", "disposable-checkpoint", "record" ]
+              },
+              "optional" : false
+            }
+          }, {
+            "runScriptCommand" : {
+              "script" : "// Root supplies these values only after independently verifying the existing session.\n// These guards constrain execution; they do not independently prove DB identity.\nvar env = {\n  project:\n    typeof MAESTRO_DISPOSABLE_PROJECT_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PROJECT_ID),\n  assignment:\n    typeof MAESTRO_DISPOSABLE_ASSIGNMENT_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_ASSIGNMENT_ID),\n  user:\n    typeof MAESTRO_DISPOSABLE_USER_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_USER_ID),\n  cached:\n    typeof MAESTRO_DISPOSABLE_CACHED_IDS === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_CACHED_IDS),\n  phase:\n    typeof MAESTRO_DISPOSABLE_PHASE === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PHASE),\n  verse:\n    typeof MAESTRO_DISPOSABLE_VERSE === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_VERSE),\n  take:\n    typeof MAESTRO_DISPOSABLE_TAKE_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_TAKE_ID),\n  pausedTime:\n    typeof MAESTRO_DISPOSABLE_PAUSED_TIME === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PAUSED_TIME),\n  consent:\n    typeof MAESTRO_DISPOSABLE_CONTEXT_VERIFIED === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_CONTEXT_VERIFIED),\n};\nif (\n  env.project !== '12' ||\n  env.assignment !== '1183' ||\n  env.user !== '10' ||\n  env.cached !== '10,9,12' ||\n  env.consent !== '1'\n)\n  throw new Error(\n    'Requires independently verified project12/assignment1183/user10/cache10,9,12; non944 only',\n  );\nif (!/^[1-9][0-9]*$/.test(env.verse) || Number(env.verse) > 25)\n  throw new Error('Requires exact 1 Peter1 verse1..25');\nvar phases = [\n  'paused-before-reload',\n  'recovery-prompt',\n  'paused-after-reload',\n  'background-paused',\n  'saved',\n  'offline-pending',\n  'uploading',\n  'uploaded',\n];\nif (phases.indexOf(env.phase) < 0)\n  throw new Error('Unsupported disposable assertion phase');\nif (\n  ['saved', 'uploaded'].indexOf(env.phase) >= 0 &&\n  !/^rec_[a-z0-9]+_[a-z0-9]+$/.test(env.take)\n)\n  throw new Error('Requires exact saved take ID');\nif (\n  env.phase === 'background-paused' &&\n  (!/^(0|[1-9][0-9]?):[0-5][0-9]$/.test(env.pausedTime) ||\n    Number(env.pausedTime.split(':')[0]) > 59 ||\n    env.pausedTime === '0:00')\n)\n  throw new Error(\n    'Requires exact nonzero frozen paused time m:ss, below 60 minutes',\n  );\noutput.disposablePausedTimeRe =\n  '^' + env.pausedTime.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '$';\noutput.disposablePhase = env.phase;\noutput.disposableReferenceRe = '^1 Peter 1:' + env.verse + '$';\noutput.disposableTakeSyncRe = '^record-take-sync-' + env.take + '$';\noutput.disposableScreenshot = 'disposable-1183-' + env.phase;\n",
+              "sourceDescription" : "../../shared/scripts/disposable-session-values.js",
+              "optional" : false,
+              "scriptDir" : "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/shared/scripts"
+            }
+          }, {
+            "assertConditionCommand" : {
+              "condition" : {
+                "notVisible" : {
+                  "idRegex" : "login-email-input",
+                  "optional" : false
+                }
+              },
+              "optional" : false
+            }
+          }, {
+            "assertConditionCommand" : {
+              "condition" : {
+                "scriptCondition" : "${['paused-before-reload','recovery-prompt','paused-after-reload','background-paused','saved'].indexOf(output.disposablePhase) >= 0}"
+              },
+              "optional" : false
+            }
+          }, {
+            "runFlowCommand" : {
+              "commands" : [ {
+                "assertConditionCommand" : {
+                  "condition" : {
+                    "visible" : {
+                      "textRegex" : "Recovered recording",
+                      "optional" : false
+                    }
+                  },
+                  "optional" : false
+                }
+              }, {
+                "assertConditionCommand" : {
+                  "condition" : {
+                    "visible" : {
+                      "textRegex" : "A paused recording was recovered. Resume it or discard it?",
+                      "optional" : false
+                    }
+                  },
+                  "optional" : false
+                }
+              }, {
+                "assertConditionCommand" : {
+                  "condition" : {
+                    "visible" : {
+                      "textRegex" : "^RESUME$",
+                      "idRegex" : "android:id/button1",
+                      "optional" : false
+                    }
+                  },
+                  "optional" : false
+                }
+              }, {
+                "assertConditionCommand" : {
+                  "condition" : {
+                    "visible" : {
+                      "textRegex" : "^DISCARD$",
+                      "idRegex" : "android:id/button2",
+                      "optional" : false
+                    }
+                  },
+                  "optional" : false
+                }
+              } ],
+              "condition" : {
+                "scriptCondition" : "${output.disposablePhase === 'recovery-prompt'}"
+              },
+              "optional" : false
+            }
+          }, {
+            "runFlowCommand" : {
+              "commands" : [ {
+                "assertConditionCommand" : {
+                  "condition" : {
+                    "visible" : {
+                      "idRegex" : "record-tab",
+                      "optional" : false
+                    }
+                  },
+                  "optional" : false
+                }
+              }, {
+                "assertConditionCommand" : {
+                  "condition" : {
+                    "visible" : {
+                      "textRegex" : "${output.disposableReferenceRe}",
+                      "idRegex" : "record-verse-reference",
+                      "optional" : false
+                    }
+                  },
+                  "optional" : false
+                }
+              } ],
+              "condition" : {
+                "scriptCondition" : "${output.disposablePhase !== 'recovery-prompt'}"
+              },
+              "optional" : false
+            }
+          }, {
+            "runFlowCommand" : {
+              "commands" : [ {
+                "assertConditionCommand" : {
+                  "condition" : {
+                    "visible" : {
+                      "idRegex" : "record-resume-button",
+                      "optional" : false
+                    }
+                  },
+                  "optional" : false
+                }
+              }, {
+                "assertConditionCommand" : {
+                  "condition" : {
+                    "visible" : {
+                      "idRegex" : "record-stop-button",
+                      "optional" : false
+                    }
+                  },
+                  "optional" : false
+                }
+              }, {
+                "assertConditionCommand" : {
+                  "condition" : {
+                    "notVisible" : {
+                      "idRegex" : "record-pause-button",
+                      "optional" : false
+                    }
+                  },
+                  "optional" : false
+                }
+              }, {
+                "assertConditionCommand" : {
+                  "condition" : {
+                    "notVisible" : {
+                      "idRegex" : "record-start-button",
+                      "optional" : false
+                    }
+                  },
+                  "optional" : false
+                }
+              }, {
+                "assertConditionCommand" : {
+                  "condition" : {
+                    "notVisible" : {
+                      "idRegex" : "record-new-take-button",
+                      "optional" : false
+                    }
+                  },
+                  "optional" : false
+                }
+              } ],
+              "condition" : {
+                "scriptCondition" : "${['paused-before-reload','paused-after-reload','background-paused'].indexOf(output.disposablePhase) >= 0}"
+              },
+              "optional" : false
+            }
+          }, {
+            "runFlowCommand" : {
+              "commands" : [ {
+                "assertConditionCommand" : {
+                  "condition" : {
+                    "visible" : {
+                      "idRegex" : "${output.disposableTakeSyncRe}",
+                      "optional" : false
+                    }
+                  },
+                  "optional" : false
+                }
+              }, {
+                "assertConditionCommand" : {
+                  "condition" : {
+                    "visible" : {
+                      "idRegex" : "record-new-take-button",
+                      "optional" : false
+                    }
+                  },
+                  "optional" : false
+                }
+              }, {
+                "assertConditionCommand" : {
+                  "condition" : {
+                    "notVisible" : {
+                      "idRegex" : "record-stop-button",
+                      "optional" : false
+                    }
+                  },
+                  "optional" : false
+                }
+              } ],
+              "condition" : {
+                "scriptCondition" : "${output.disposablePhase === 'saved'}"
+              },
+              "optional" : false
+            }
+          }, {
+            "runFlowCommand" : {
+              "commands" : [ {
+                "assertConditionCommand" : {
+                  "condition" : {
+                    "visible" : {
+                      "textRegex" : "${output.disposablePausedTimeRe}",
+                      "idRegex" : "record-duration",
+                      "optional" : false
+                    }
+                  },
+                  "optional" : false
+                }
+              } ],
+              "condition" : {
+                "scriptCondition" : "${output.disposablePhase === 'background-paused'}"
+              },
+              "optional" : false
+            }
+          }, {
+            "takeScreenshotCommand" : {
+              "path" : "${output.disposableScreenshot}",
+              "optional" : false
+            }
+          } ],
+          "sourceDescription" : "disposable-capture-recovery-existing-session.yaml",
+          "config" : {
+            "appId" : "com.eten.fluent",
+            "tags" : [ "existing-session", "fixture-blocked", "disposable-checkpoint", "record" ]
+          },
+          "optional" : false
+        }
+      } ],
+      "sourceDescription" : "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/recording/disposable-background-return-existing-session.yaml",
+      "config" : {
+        "appId" : "com.eten.fluent",
+        "tags" : [ "record", "existing-session", "fixture-blocked", "disposable-checkpoint", "background-driver" ]
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536535917,
+    "duration" : 13884,
+    "sequenceNumber" : 32,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "runFlowCommand" : {
+        "commands" : [ {
+          "defineVariablesCommand" : {
+            "env" : {
+              "MAESTRO_DISPOSABLE_PHASE" : "paused-before-reload"
+            },
+            "optional" : false
+          }
+        }, {
+          "applyConfigurationCommand" : {
+            "config" : {
+              "appId" : "com.eten.fluent",
+              "tags" : [ "record", "existing-session", "fixture-blocked", "disposable-checkpoint", "background-driver" ]
+            },
+            "optional" : false
+          }
+        }, {
+          "runScriptCommand" : {
+            "script" : "// Root supplies these values only after independently verifying the existing session.\n// These guards constrain execution; they do not independently prove DB identity.\nvar env = {\n  project:\n    typeof MAESTRO_DISPOSABLE_PROJECT_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PROJECT_ID),\n  assignment:\n    typeof MAESTRO_DISPOSABLE_ASSIGNMENT_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_ASSIGNMENT_ID),\n  user:\n    typeof MAESTRO_DISPOSABLE_USER_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_USER_ID),\n  cached:\n    typeof MAESTRO_DISPOSABLE_CACHED_IDS === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_CACHED_IDS),\n  phase:\n    typeof MAESTRO_DISPOSABLE_PHASE === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PHASE),\n  verse:\n    typeof MAESTRO_DISPOSABLE_VERSE === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_VERSE),\n  take:\n    typeof MAESTRO_DISPOSABLE_TAKE_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_TAKE_ID),\n  pausedTime:\n    typeof MAESTRO_DISPOSABLE_PAUSED_TIME === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PAUSED_TIME),\n  consent:\n    typeof MAESTRO_DISPOSABLE_CONTEXT_VERIFIED === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_CONTEXT_VERIFIED),\n};\nif (\n  env.project !== '12' ||\n  env.assignment !== '1183' ||\n  env.user !== '10' ||\n  env.cached !== '10,9,12' ||\n  env.consent !== '1'\n)\n  throw new Error(\n    'Requires independently verified project12/assignment1183/user10/cache10,9,12; non944 only',\n  );\nif (!/^[1-9][0-9]*$/.test(env.verse) || Number(env.verse) > 25)\n  throw new Error('Requires exact 1 Peter1 verse1..25');\nvar phases = [\n  'paused-before-reload',\n  'recovery-prompt',\n  'paused-after-reload',\n  'background-paused',\n  'saved',\n  'offline-pending',\n  'uploading',\n  'uploaded',\n];\nif (phases.indexOf(env.phase) < 0)\n  throw new Error('Unsupported disposable assertion phase');\nif (\n  ['saved', 'uploaded'].indexOf(env.phase) >= 0 &&\n  !/^rec_[a-z0-9]+_[a-z0-9]+$/.test(env.take)\n)\n  throw new Error('Requires exact saved take ID');\nif (\n  env.phase === 'background-paused' &&\n  (!/^(0|[1-9][0-9]?):[0-5][0-9]$/.test(env.pausedTime) ||\n    Number(env.pausedTime.split(':')[0]) > 59 ||\n    env.pausedTime === '0:00')\n)\n  throw new Error(\n    'Requires exact nonzero frozen paused time m:ss, below 60 minutes',\n  );\noutput.disposablePausedTimeRe =\n  '^' + env.pausedTime.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '$';\noutput.disposablePhase = env.phase;\noutput.disposableReferenceRe = '^1 Peter 1:' + env.verse + '$';\noutput.disposableTakeSyncRe = '^record-take-sync-' + env.take + '$';\noutput.disposableScreenshot = 'disposable-1183-' + env.phase;\n",
+            "sourceDescription" : "../../shared/scripts/disposable-session-values.js",
+            "optional" : false,
+            "scriptDir" : "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/shared/scripts"
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "scriptCondition" : "${output.disposablePhase === 'paused-before-reload'}"
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "notVisible" : {
+                "idRegex" : "login-email-input",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "idRegex" : "record-tab",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "textRegex" : "${output.disposableReferenceRe}",
+                "idRegex" : "record-verse-reference",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "idRegex" : "record-pause-button",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "idRegex" : "record-stop-button",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "notVisible" : {
+                "idRegex" : "record-resume-button",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "pressKeyCommand" : {
+            "code" : "HOME",
+            "optional" : false
+          }
+        }, {
+          "launchAppCommand" : {
+            "appId" : "com.eten.fluent",
+            "clearState" : false,
+            "clearKeychain" : false,
+            "stopApp" : false,
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "idRegex" : "record-resume-button",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "idRegex" : "record-stop-button",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "notVisible" : {
+                "idRegex" : "record-pause-button",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "copyTextCommand" : {
+            "selector" : {
+              "idRegex" : "record-duration",
+              "optional" : false
+            },
+            "optional" : false
+          }
+        }, {
+          "evalScriptCommand" : {
+            "scriptString" : "${output.backgroundFrozenTime = (typeof maestro.copiedText === 'undefined' || maestro.copiedText === null) ? '' : String(maestro.copiedText)}",
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "scriptCondition" : "${/^(0|[1-9][0-9]?):[0-5][0-9]$/.test(output.backgroundFrozenTime) && output.backgroundFrozenTime !== '0:00'}"
+            },
+            "optional" : false
+          }
+        }, {
+          "runFlowCommand" : {
+            "commands" : [ {
+              "defineVariablesCommand" : {
+                "env" : {
+                  "MAESTRO_DISPOSABLE_PHASE" : "background-paused",
+                  "MAESTRO_DISPOSABLE_PAUSED_TIME" : "${output.backgroundFrozenTime}"
+                },
+                "optional" : false
+              }
+            }, {
+              "applyConfigurationCommand" : {
+                "config" : {
+                  "appId" : "com.eten.fluent",
+                  "tags" : [ "existing-session", "fixture-blocked", "disposable-checkpoint", "record" ]
+                },
+                "optional" : false
+              }
+            }, {
+              "runScriptCommand" : {
+                "script" : "// Root supplies these values only after independently verifying the existing session.\n// These guards constrain execution; they do not independently prove DB identity.\nvar env = {\n  project:\n    typeof MAESTRO_DISPOSABLE_PROJECT_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PROJECT_ID),\n  assignment:\n    typeof MAESTRO_DISPOSABLE_ASSIGNMENT_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_ASSIGNMENT_ID),\n  user:\n    typeof MAESTRO_DISPOSABLE_USER_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_USER_ID),\n  cached:\n    typeof MAESTRO_DISPOSABLE_CACHED_IDS === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_CACHED_IDS),\n  phase:\n    typeof MAESTRO_DISPOSABLE_PHASE === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PHASE),\n  verse:\n    typeof MAESTRO_DISPOSABLE_VERSE === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_VERSE),\n  take:\n    typeof MAESTRO_DISPOSABLE_TAKE_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_TAKE_ID),\n  pausedTime:\n    typeof MAESTRO_DISPOSABLE_PAUSED_TIME === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PAUSED_TIME),\n  consent:\n    typeof MAESTRO_DISPOSABLE_CONTEXT_VERIFIED === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_CONTEXT_VERIFIED),\n};\nif (\n  env.project !== '12' ||\n  env.assignment !== '1183' ||\n  env.user !== '10' ||\n  env.cached !== '10,9,12' ||\n  env.consent !== '1'\n)\n  throw new Error(\n    'Requires independently verified project12/assignment1183/user10/cache10,9,12; non944 only',\n  );\nif (!/^[1-9][0-9]*$/.test(env.verse) || Number(env.verse) > 25)\n  throw new Error('Requires exact 1 Peter1 verse1..25');\nvar phases = [\n  'paused-before-reload',\n  'recovery-prompt',\n  'paused-after-reload',\n  'background-paused',\n  'saved',\n  'offline-pending',\n  'uploading',\n  'uploaded',\n];\nif (phases.indexOf(env.phase) < 0)\n  throw new Error('Unsupported disposable assertion phase');\nif (\n  ['saved', 'uploaded'].indexOf(env.phase) >= 0 &&\n  !/^rec_[a-z0-9]+_[a-z0-9]+$/.test(env.take)\n)\n  throw new Error('Requires exact saved take ID');\nif (\n  env.phase === 'background-paused' &&\n  (!/^(0|[1-9][0-9]?):[0-5][0-9]$/.test(env.pausedTime) ||\n    Number(env.pausedTime.split(':')[0]) > 59 ||\n    env.pausedTime === '0:00')\n)\n  throw new Error(\n    'Requires exact nonzero frozen paused time m:ss, below 60 minutes',\n  );\noutput.disposablePausedTimeRe =\n  '^' + env.pausedTime.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '$';\noutput.disposablePhase = env.phase;\noutput.disposableReferenceRe = '^1 Peter 1:' + env.verse + '$';\noutput.disposableTakeSyncRe = '^record-take-sync-' + env.take + '$';\noutput.disposableScreenshot = 'disposable-1183-' + env.phase;\n",
+                "sourceDescription" : "../../shared/scripts/disposable-session-values.js",
+                "optional" : false,
+                "scriptDir" : "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/shared/scripts"
+              }
+            }, {
+              "assertConditionCommand" : {
+                "condition" : {
+                  "notVisible" : {
+                    "idRegex" : "login-email-input",
+                    "optional" : false
+                  }
+                },
+                "optional" : false
+              }
+            }, {
+              "assertConditionCommand" : {
+                "condition" : {
+                  "scriptCondition" : "${['paused-before-reload','recovery-prompt','paused-after-reload','background-paused','saved'].indexOf(output.disposablePhase) >= 0}"
+                },
+                "optional" : false
+              }
+            }, {
+              "runFlowCommand" : {
+                "commands" : [ {
+                  "assertConditionCommand" : {
+                    "condition" : {
+                      "visible" : {
+                        "textRegex" : "Recovered recording",
+                        "optional" : false
+                      }
+                    },
+                    "optional" : false
+                  }
+                }, {
+                  "assertConditionCommand" : {
+                    "condition" : {
+                      "visible" : {
+                        "textRegex" : "A paused recording was recovered. Resume it or discard it?",
+                        "optional" : false
+                      }
+                    },
+                    "optional" : false
+                  }
+                }, {
+                  "assertConditionCommand" : {
+                    "condition" : {
+                      "visible" : {
+                        "textRegex" : "^RESUME$",
+                        "idRegex" : "android:id/button1",
+                        "optional" : false
+                      }
+                    },
+                    "optional" : false
+                  }
+                }, {
+                  "assertConditionCommand" : {
+                    "condition" : {
+                      "visible" : {
+                        "textRegex" : "^DISCARD$",
+                        "idRegex" : "android:id/button2",
+                        "optional" : false
+                      }
+                    },
+                    "optional" : false
+                  }
+                } ],
+                "condition" : {
+                  "scriptCondition" : "${output.disposablePhase === 'recovery-prompt'}"
+                },
+                "optional" : false
+              }
+            }, {
+              "runFlowCommand" : {
+                "commands" : [ {
+                  "assertConditionCommand" : {
+                    "condition" : {
+                      "visible" : {
+                        "idRegex" : "record-tab",
+                        "optional" : false
+                      }
+                    },
+                    "optional" : false
+                  }
+                }, {
+                  "assertConditionCommand" : {
+                    "condition" : {
+                      "visible" : {
+                        "textRegex" : "${output.disposableReferenceRe}",
+                        "idRegex" : "record-verse-reference",
+                        "optional" : false
+                      }
+                    },
+                    "optional" : false
+                  }
+                } ],
+                "condition" : {
+                  "scriptCondition" : "${output.disposablePhase !== 'recovery-prompt'}"
+                },
+                "optional" : false
+              }
+            }, {
+              "runFlowCommand" : {
+                "commands" : [ {
+                  "assertConditionCommand" : {
+                    "condition" : {
+                      "visible" : {
+                        "idRegex" : "record-resume-button",
+                        "optional" : false
+                      }
+                    },
+                    "optional" : false
+                  }
+                }, {
+                  "assertConditionCommand" : {
+                    "condition" : {
+                      "visible" : {
+                        "idRegex" : "record-stop-button",
+                        "optional" : false
+                      }
+                    },
+                    "optional" : false
+                  }
+                }, {
+                  "assertConditionCommand" : {
+                    "condition" : {
+                      "notVisible" : {
+                        "idRegex" : "record-pause-button",
+                        "optional" : false
+                      }
+                    },
+                    "optional" : false
+                  }
+                }, {
+                  "assertConditionCommand" : {
+                    "condition" : {
+                      "notVisible" : {
+                        "idRegex" : "record-start-button",
+                        "optional" : false
+                      }
+                    },
+                    "optional" : false
+                  }
+                }, {
+                  "assertConditionCommand" : {
+                    "condition" : {
+                      "notVisible" : {
+                        "idRegex" : "record-new-take-button",
+                        "optional" : false
+                      }
+                    },
+                    "optional" : false
+                  }
+                } ],
+                "condition" : {
+                  "scriptCondition" : "${['paused-before-reload','paused-after-reload','background-paused'].indexOf(output.disposablePhase) >= 0}"
+                },
+                "optional" : false
+              }
+            }, {
+              "runFlowCommand" : {
+                "commands" : [ {
+                  "assertConditionCommand" : {
+                    "condition" : {
+                      "visible" : {
+                        "idRegex" : "${output.disposableTakeSyncRe}",
+                        "optional" : false
+                      }
+                    },
+                    "optional" : false
+                  }
+                }, {
+                  "assertConditionCommand" : {
+                    "condition" : {
+                      "visible" : {
+                        "idRegex" : "record-new-take-button",
+                        "optional" : false
+                      }
+                    },
+                    "optional" : false
+                  }
+                }, {
+                  "assertConditionCommand" : {
+                    "condition" : {
+                      "notVisible" : {
+                        "idRegex" : "record-stop-button",
+                        "optional" : false
+                      }
+                    },
+                    "optional" : false
+                  }
+                } ],
+                "condition" : {
+                  "scriptCondition" : "${output.disposablePhase === 'saved'}"
+                },
+                "optional" : false
+              }
+            }, {
+              "runFlowCommand" : {
+                "commands" : [ {
+                  "assertConditionCommand" : {
+                    "condition" : {
+                      "visible" : {
+                        "textRegex" : "${output.disposablePausedTimeRe}",
+                        "idRegex" : "record-duration",
+                        "optional" : false
+                      }
+                    },
+                    "optional" : false
+                  }
+                } ],
+                "condition" : {
+                  "scriptCondition" : "${output.disposablePhase === 'background-paused'}"
+                },
+                "optional" : false
+              }
+            }, {
+              "takeScreenshotCommand" : {
+                "path" : "${output.disposableScreenshot}",
+                "optional" : false
+              }
+            } ],
+            "sourceDescription" : "disposable-capture-recovery-existing-session.yaml",
+            "config" : {
+              "appId" : "com.eten.fluent",
+              "tags" : [ "existing-session", "fixture-blocked", "disposable-checkpoint", "record" ]
+            },
+            "optional" : false
+          }
+        } ],
+        "sourceDescription" : "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/recording/disposable-background-return-existing-session.yaml",
+        "config" : {
+          "appId" : "com.eten.fluent",
+          "tags" : [ "record", "existing-session", "fixture-blocked", "disposable-checkpoint", "background-driver" ]
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "defineVariablesCommand" : {
+      "env" : {
+        "MAESTRO_DISPOSABLE_PHASE" : "paused-before-reload"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536535921,
+    "duration" : 0,
+    "sequenceNumber" : 33,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "defineVariablesCommand" : {
+        "env" : {
+          "MAESTRO_DISPOSABLE_PHASE" : "paused-before-reload"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "applyConfigurationCommand" : {
+      "config" : {
+        "appId" : "com.eten.fluent",
+        "tags" : [ "record", "existing-session", "fixture-blocked", "disposable-checkpoint", "background-driver" ]
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536535921,
+    "duration" : 1,
+    "sequenceNumber" : 34,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "applyConfigurationCommand" : {
+        "config" : {
+          "appId" : "com.eten.fluent",
+          "tags" : [ "record", "existing-session", "fixture-blocked", "disposable-checkpoint", "background-driver" ]
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "runScriptCommand" : {
+      "script" : "// Root supplies these values only after independently verifying the existing session.\n// These guards constrain execution; they do not independently prove DB identity.\nvar env = {\n  project:\n    typeof MAESTRO_DISPOSABLE_PROJECT_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PROJECT_ID),\n  assignment:\n    typeof MAESTRO_DISPOSABLE_ASSIGNMENT_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_ASSIGNMENT_ID),\n  user:\n    typeof MAESTRO_DISPOSABLE_USER_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_USER_ID),\n  cached:\n    typeof MAESTRO_DISPOSABLE_CACHED_IDS === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_CACHED_IDS),\n  phase:\n    typeof MAESTRO_DISPOSABLE_PHASE === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PHASE),\n  verse:\n    typeof MAESTRO_DISPOSABLE_VERSE === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_VERSE),\n  take:\n    typeof MAESTRO_DISPOSABLE_TAKE_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_TAKE_ID),\n  pausedTime:\n    typeof MAESTRO_DISPOSABLE_PAUSED_TIME === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PAUSED_TIME),\n  consent:\n    typeof MAESTRO_DISPOSABLE_CONTEXT_VERIFIED === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_CONTEXT_VERIFIED),\n};\nif (\n  env.project !== '12' ||\n  env.assignment !== '1183' ||\n  env.user !== '10' ||\n  env.cached !== '10,9,12' ||\n  env.consent !== '1'\n)\n  throw new Error(\n    'Requires independently verified project12/assignment1183/user10/cache10,9,12; non944 only',\n  );\nif (!/^[1-9][0-9]*$/.test(env.verse) || Number(env.verse) > 25)\n  throw new Error('Requires exact 1 Peter1 verse1..25');\nvar phases = [\n  'paused-before-reload',\n  'recovery-prompt',\n  'paused-after-reload',\n  'background-paused',\n  'saved',\n  'offline-pending',\n  'uploading',\n  'uploaded',\n];\nif (phases.indexOf(env.phase) < 0)\n  throw new Error('Unsupported disposable assertion phase');\nif (\n  ['saved', 'uploaded'].indexOf(env.phase) >= 0 &&\n  !/^rec_[a-z0-9]+_[a-z0-9]+$/.test(env.take)\n)\n  throw new Error('Requires exact saved take ID');\nif (\n  env.phase === 'background-paused' &&\n  (!/^(0|[1-9][0-9]?):[0-5][0-9]$/.test(env.pausedTime) ||\n    Number(env.pausedTime.split(':')[0]) > 59 ||\n    env.pausedTime === '0:00')\n)\n  throw new Error(\n    'Requires exact nonzero frozen paused time m:ss, below 60 minutes',\n  );\noutput.disposablePausedTimeRe =\n  '^' + env.pausedTime.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '$';\noutput.disposablePhase = env.phase;\noutput.disposableReferenceRe = '^1 Peter 1:' + env.verse + '$';\noutput.disposableTakeSyncRe = '^record-take-sync-' + env.take + '$';\noutput.disposableScreenshot = 'disposable-1183-' + env.phase;\n",
+      "sourceDescription" : "../../shared/scripts/disposable-session-values.js",
+      "optional" : false,
+      "scriptDir" : "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/shared/scripts"
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536535922,
+    "duration" : 97,
+    "sequenceNumber" : 35,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "runScriptCommand" : {
+        "script" : "// Root supplies these values only after independently verifying the existing session.\n// These guards constrain execution; they do not independently prove DB identity.\nvar env = {\n  project:\n    typeof MAESTRO_DISPOSABLE_PROJECT_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PROJECT_ID),\n  assignment:\n    typeof MAESTRO_DISPOSABLE_ASSIGNMENT_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_ASSIGNMENT_ID),\n  user:\n    typeof MAESTRO_DISPOSABLE_USER_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_USER_ID),\n  cached:\n    typeof MAESTRO_DISPOSABLE_CACHED_IDS === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_CACHED_IDS),\n  phase:\n    typeof MAESTRO_DISPOSABLE_PHASE === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PHASE),\n  verse:\n    typeof MAESTRO_DISPOSABLE_VERSE === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_VERSE),\n  take:\n    typeof MAESTRO_DISPOSABLE_TAKE_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_TAKE_ID),\n  pausedTime:\n    typeof MAESTRO_DISPOSABLE_PAUSED_TIME === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PAUSED_TIME),\n  consent:\n    typeof MAESTRO_DISPOSABLE_CONTEXT_VERIFIED === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_CONTEXT_VERIFIED),\n};\nif (\n  env.project !== '12' ||\n  env.assignment !== '1183' ||\n  env.user !== '10' ||\n  env.cached !== '10,9,12' ||\n  env.consent !== '1'\n)\n  throw new Error(\n    'Requires independently verified project12/assignment1183/user10/cache10,9,12; non944 only',\n  );\nif (!/^[1-9][0-9]*$/.test(env.verse) || Number(env.verse) > 25)\n  throw new Error('Requires exact 1 Peter1 verse1..25');\nvar phases = [\n  'paused-before-reload',\n  'recovery-prompt',\n  'paused-after-reload',\n  'background-paused',\n  'saved',\n  'offline-pending',\n  'uploading',\n  'uploaded',\n];\nif (phases.indexOf(env.phase) < 0)\n  throw new Error('Unsupported disposable assertion phase');\nif (\n  ['saved', 'uploaded'].indexOf(env.phase) >= 0 &&\n  !/^rec_[a-z0-9]+_[a-z0-9]+$/.test(env.take)\n)\n  throw new Error('Requires exact saved take ID');\nif (\n  env.phase === 'background-paused' &&\n  (!/^(0|[1-9][0-9]?):[0-5][0-9]$/.test(env.pausedTime) ||\n    Number(env.pausedTime.split(':')[0]) > 59 ||\n    env.pausedTime === '0:00')\n)\n  throw new Error(\n    'Requires exact nonzero frozen paused time m:ss, below 60 minutes',\n  );\noutput.disposablePausedTimeRe =\n  '^' + env.pausedTime.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '$';\noutput.disposablePhase = env.phase;\noutput.disposableReferenceRe = '^1 Peter 1:' + env.verse + '$';\noutput.disposableTakeSyncRe = '^record-take-sync-' + env.take + '$';\noutput.disposableScreenshot = 'disposable-1183-' + env.phase;\n",
+        "sourceDescription" : "../../shared/scripts/disposable-session-values.js",
+        "optional" : false,
+        "scriptDir" : "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/shared/scripts"
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "scriptCondition" : "${output.disposablePhase === 'paused-before-reload'}"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536536020,
+    "duration" : 2,
+    "sequenceNumber" : 36,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "scriptCondition" : "true"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "idRegex" : "login-email-input",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536536022,
+    "duration" : 1440,
+    "sequenceNumber" : 37,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "notVisible" : {
+            "idRegex" : "login-email-input",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "record-tab",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536537463,
+    "duration" : 1270,
+    "sequenceNumber" : 38,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "record-tab",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "textRegex" : "${output.disposableReferenceRe}",
+          "idRegex" : "record-verse-reference",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536538734,
+    "duration" : 602,
+    "sequenceNumber" : 39,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "textRegex" : "^1 Peter 1:7$",
+            "idRegex" : "record-verse-reference",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "record-pause-button",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536539337,
+    "duration" : 656,
+    "sequenceNumber" : 40,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "record-pause-button",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "record-stop-button",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536539994,
+    "duration" : 657,
+    "sequenceNumber" : 41,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "record-stop-button",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "idRegex" : "record-resume-button",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536540653,
+    "duration" : 1391,
+    "sequenceNumber" : 42,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "notVisible" : {
+            "idRegex" : "record-resume-button",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "pressKeyCommand" : {
+      "code" : "HOME",
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536542045,
+    "duration" : 1080,
+    "sequenceNumber" : 43,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "pressKeyCommand" : {
+        "code" : "HOME",
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "launchAppCommand" : {
+      "appId" : "com.eten.fluent",
+      "clearState" : false,
+      "clearKeychain" : false,
+      "stopApp" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536543126,
+    "duration" : 1576,
+    "sequenceNumber" : 44,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "launchAppCommand" : {
+        "appId" : "com.eten.fluent",
+        "clearState" : false,
+        "clearKeychain" : false,
+        "stopApp" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "record-resume-button",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536544703,
+    "duration" : 811,
+    "sequenceNumber" : 45,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "record-resume-button",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "record-stop-button",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536545515,
+    "duration" : 138,
+    "sequenceNumber" : 46,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "record-stop-button",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "idRegex" : "record-pause-button",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536545654,
+    "duration" : 927,
+    "sequenceNumber" : 47,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "notVisible" : {
+            "idRegex" : "record-pause-button",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "copyTextCommand" : {
+      "selector" : {
+        "idRegex" : "record-duration",
+        "optional" : false
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536546582,
+    "duration" : 93,
+    "sequenceNumber" : 48,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "copyTextCommand" : {
+        "selector" : {
+          "idRegex" : "record-duration",
+          "optional" : false
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "evalScriptCommand" : {
+      "scriptString" : "${output.backgroundFrozenTime = (typeof maestro.copiedText === 'undefined' || maestro.copiedText === null) ? '' : String(maestro.copiedText)}",
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536546676,
+    "duration" : 5,
+    "sequenceNumber" : 49,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "evalScriptCommand" : {
+        "scriptString" : "${output.backgroundFrozenTime = (typeof maestro.copiedText === 'undefined' || maestro.copiedText === null) ? '' : String(maestro.copiedText)}",
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "scriptCondition" : "${/^(0|[1-9][0-9]?):[0-5][0-9]$/.test(output.backgroundFrozenTime) && output.backgroundFrozenTime !== '0:00'}"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536546681,
+    "duration" : 0,
+    "sequenceNumber" : 50,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "scriptCondition" : "${/^(0|[1-9][0-9]?):[0-5][0-9]$/.test(output.backgroundFrozenTime) && output.backgroundFrozenTime !== '0:00'}"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "runFlowCommand" : {
+      "commands" : [ {
+        "defineVariablesCommand" : {
+          "env" : {
+            "MAESTRO_DISPOSABLE_PHASE" : "background-paused",
+            "MAESTRO_DISPOSABLE_PAUSED_TIME" : "${output.backgroundFrozenTime}"
+          },
+          "optional" : false
+        }
+      }, {
+        "applyConfigurationCommand" : {
+          "config" : {
+            "appId" : "com.eten.fluent",
+            "tags" : [ "existing-session", "fixture-blocked", "disposable-checkpoint", "record" ]
+          },
+          "optional" : false
+        }
+      }, {
+        "runScriptCommand" : {
+          "script" : "// Root supplies these values only after independently verifying the existing session.\n// These guards constrain execution; they do not independently prove DB identity.\nvar env = {\n  project:\n    typeof MAESTRO_DISPOSABLE_PROJECT_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PROJECT_ID),\n  assignment:\n    typeof MAESTRO_DISPOSABLE_ASSIGNMENT_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_ASSIGNMENT_ID),\n  user:\n    typeof MAESTRO_DISPOSABLE_USER_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_USER_ID),\n  cached:\n    typeof MAESTRO_DISPOSABLE_CACHED_IDS === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_CACHED_IDS),\n  phase:\n    typeof MAESTRO_DISPOSABLE_PHASE === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PHASE),\n  verse:\n    typeof MAESTRO_DISPOSABLE_VERSE === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_VERSE),\n  take:\n    typeof MAESTRO_DISPOSABLE_TAKE_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_TAKE_ID),\n  pausedTime:\n    typeof MAESTRO_DISPOSABLE_PAUSED_TIME === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PAUSED_TIME),\n  consent:\n    typeof MAESTRO_DISPOSABLE_CONTEXT_VERIFIED === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_CONTEXT_VERIFIED),\n};\nif (\n  env.project !== '12' ||\n  env.assignment !== '1183' ||\n  env.user !== '10' ||\n  env.cached !== '10,9,12' ||\n  env.consent !== '1'\n)\n  throw new Error(\n    'Requires independently verified project12/assignment1183/user10/cache10,9,12; non944 only',\n  );\nif (!/^[1-9][0-9]*$/.test(env.verse) || Number(env.verse) > 25)\n  throw new Error('Requires exact 1 Peter1 verse1..25');\nvar phases = [\n  'paused-before-reload',\n  'recovery-prompt',\n  'paused-after-reload',\n  'background-paused',\n  'saved',\n  'offline-pending',\n  'uploading',\n  'uploaded',\n];\nif (phases.indexOf(env.phase) < 0)\n  throw new Error('Unsupported disposable assertion phase');\nif (\n  ['saved', 'uploaded'].indexOf(env.phase) >= 0 &&\n  !/^rec_[a-z0-9]+_[a-z0-9]+$/.test(env.take)\n)\n  throw new Error('Requires exact saved take ID');\nif (\n  env.phase === 'background-paused' &&\n  (!/^(0|[1-9][0-9]?):[0-5][0-9]$/.test(env.pausedTime) ||\n    Number(env.pausedTime.split(':')[0]) > 59 ||\n    env.pausedTime === '0:00')\n)\n  throw new Error(\n    'Requires exact nonzero frozen paused time m:ss, below 60 minutes',\n  );\noutput.disposablePausedTimeRe =\n  '^' + env.pausedTime.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '$';\noutput.disposablePhase = env.phase;\noutput.disposableReferenceRe = '^1 Peter 1:' + env.verse + '$';\noutput.disposableTakeSyncRe = '^record-take-sync-' + env.take + '$';\noutput.disposableScreenshot = 'disposable-1183-' + env.phase;\n",
+          "sourceDescription" : "../../shared/scripts/disposable-session-values.js",
+          "optional" : false,
+          "scriptDir" : "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/shared/scripts"
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "notVisible" : {
+              "idRegex" : "login-email-input",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "scriptCondition" : "${['paused-before-reload','recovery-prompt','paused-after-reload','background-paused','saved'].indexOf(output.disposablePhase) >= 0}"
+          },
+          "optional" : false
+        }
+      }, {
+        "runFlowCommand" : {
+          "commands" : [ {
+            "assertConditionCommand" : {
+              "condition" : {
+                "visible" : {
+                  "textRegex" : "Recovered recording",
+                  "optional" : false
+                }
+              },
+              "optional" : false
+            }
+          }, {
+            "assertConditionCommand" : {
+              "condition" : {
+                "visible" : {
+                  "textRegex" : "A paused recording was recovered. Resume it or discard it?",
+                  "optional" : false
+                }
+              },
+              "optional" : false
+            }
+          }, {
+            "assertConditionCommand" : {
+              "condition" : {
+                "visible" : {
+                  "textRegex" : "^RESUME$",
+                  "idRegex" : "android:id/button1",
+                  "optional" : false
+                }
+              },
+              "optional" : false
+            }
+          }, {
+            "assertConditionCommand" : {
+              "condition" : {
+                "visible" : {
+                  "textRegex" : "^DISCARD$",
+                  "idRegex" : "android:id/button2",
+                  "optional" : false
+                }
+              },
+              "optional" : false
+            }
+          } ],
+          "condition" : {
+            "scriptCondition" : "${output.disposablePhase === 'recovery-prompt'}"
+          },
+          "optional" : false
+        }
+      }, {
+        "runFlowCommand" : {
+          "commands" : [ {
+            "assertConditionCommand" : {
+              "condition" : {
+                "visible" : {
+                  "idRegex" : "record-tab",
+                  "optional" : false
+                }
+              },
+              "optional" : false
+            }
+          }, {
+            "assertConditionCommand" : {
+              "condition" : {
+                "visible" : {
+                  "textRegex" : "${output.disposableReferenceRe}",
+                  "idRegex" : "record-verse-reference",
+                  "optional" : false
+                }
+              },
+              "optional" : false
+            }
+          } ],
+          "condition" : {
+            "scriptCondition" : "${output.disposablePhase !== 'recovery-prompt'}"
+          },
+          "optional" : false
+        }
+      }, {
+        "runFlowCommand" : {
+          "commands" : [ {
+            "assertConditionCommand" : {
+              "condition" : {
+                "visible" : {
+                  "idRegex" : "record-resume-button",
+                  "optional" : false
+                }
+              },
+              "optional" : false
+            }
+          }, {
+            "assertConditionCommand" : {
+              "condition" : {
+                "visible" : {
+                  "idRegex" : "record-stop-button",
+                  "optional" : false
+                }
+              },
+              "optional" : false
+            }
+          }, {
+            "assertConditionCommand" : {
+              "condition" : {
+                "notVisible" : {
+                  "idRegex" : "record-pause-button",
+                  "optional" : false
+                }
+              },
+              "optional" : false
+            }
+          }, {
+            "assertConditionCommand" : {
+              "condition" : {
+                "notVisible" : {
+                  "idRegex" : "record-start-button",
+                  "optional" : false
+                }
+              },
+              "optional" : false
+            }
+          }, {
+            "assertConditionCommand" : {
+              "condition" : {
+                "notVisible" : {
+                  "idRegex" : "record-new-take-button",
+                  "optional" : false
+                }
+              },
+              "optional" : false
+            }
+          } ],
+          "condition" : {
+            "scriptCondition" : "${['paused-before-reload','paused-after-reload','background-paused'].indexOf(output.disposablePhase) >= 0}"
+          },
+          "optional" : false
+        }
+      }, {
+        "runFlowCommand" : {
+          "commands" : [ {
+            "assertConditionCommand" : {
+              "condition" : {
+                "visible" : {
+                  "idRegex" : "${output.disposableTakeSyncRe}",
+                  "optional" : false
+                }
+              },
+              "optional" : false
+            }
+          }, {
+            "assertConditionCommand" : {
+              "condition" : {
+                "visible" : {
+                  "idRegex" : "record-new-take-button",
+                  "optional" : false
+                }
+              },
+              "optional" : false
+            }
+          }, {
+            "assertConditionCommand" : {
+              "condition" : {
+                "notVisible" : {
+                  "idRegex" : "record-stop-button",
+                  "optional" : false
+                }
+              },
+              "optional" : false
+            }
+          } ],
+          "condition" : {
+            "scriptCondition" : "${output.disposablePhase === 'saved'}"
+          },
+          "optional" : false
+        }
+      }, {
+        "runFlowCommand" : {
+          "commands" : [ {
+            "assertConditionCommand" : {
+              "condition" : {
+                "visible" : {
+                  "textRegex" : "${output.disposablePausedTimeRe}",
+                  "idRegex" : "record-duration",
+                  "optional" : false
+                }
+              },
+              "optional" : false
+            }
+          } ],
+          "condition" : {
+            "scriptCondition" : "${output.disposablePhase === 'background-paused'}"
+          },
+          "optional" : false
+        }
+      }, {
+        "takeScreenshotCommand" : {
+          "path" : "${output.disposableScreenshot}",
+          "optional" : false
+        }
+      } ],
+      "sourceDescription" : "disposable-capture-recovery-existing-session.yaml",
+      "config" : {
+        "appId" : "com.eten.fluent",
+        "tags" : [ "existing-session", "fixture-blocked", "disposable-checkpoint", "record" ]
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536546682,
+    "duration" : 3119,
+    "sequenceNumber" : 51,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "runFlowCommand" : {
+        "commands" : [ {
+          "defineVariablesCommand" : {
+            "env" : {
+              "MAESTRO_DISPOSABLE_PHASE" : "background-paused",
+              "MAESTRO_DISPOSABLE_PAUSED_TIME" : "${output.backgroundFrozenTime}"
+            },
+            "optional" : false
+          }
+        }, {
+          "applyConfigurationCommand" : {
+            "config" : {
+              "appId" : "com.eten.fluent",
+              "tags" : [ "existing-session", "fixture-blocked", "disposable-checkpoint", "record" ]
+            },
+            "optional" : false
+          }
+        }, {
+          "runScriptCommand" : {
+            "script" : "// Root supplies these values only after independently verifying the existing session.\n// These guards constrain execution; they do not independently prove DB identity.\nvar env = {\n  project:\n    typeof MAESTRO_DISPOSABLE_PROJECT_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PROJECT_ID),\n  assignment:\n    typeof MAESTRO_DISPOSABLE_ASSIGNMENT_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_ASSIGNMENT_ID),\n  user:\n    typeof MAESTRO_DISPOSABLE_USER_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_USER_ID),\n  cached:\n    typeof MAESTRO_DISPOSABLE_CACHED_IDS === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_CACHED_IDS),\n  phase:\n    typeof MAESTRO_DISPOSABLE_PHASE === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PHASE),\n  verse:\n    typeof MAESTRO_DISPOSABLE_VERSE === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_VERSE),\n  take:\n    typeof MAESTRO_DISPOSABLE_TAKE_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_TAKE_ID),\n  pausedTime:\n    typeof MAESTRO_DISPOSABLE_PAUSED_TIME === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PAUSED_TIME),\n  consent:\n    typeof MAESTRO_DISPOSABLE_CONTEXT_VERIFIED === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_CONTEXT_VERIFIED),\n};\nif (\n  env.project !== '12' ||\n  env.assignment !== '1183' ||\n  env.user !== '10' ||\n  env.cached !== '10,9,12' ||\n  env.consent !== '1'\n)\n  throw new Error(\n    'Requires independently verified project12/assignment1183/user10/cache10,9,12; non944 only',\n  );\nif (!/^[1-9][0-9]*$/.test(env.verse) || Number(env.verse) > 25)\n  throw new Error('Requires exact 1 Peter1 verse1..25');\nvar phases = [\n  'paused-before-reload',\n  'recovery-prompt',\n  'paused-after-reload',\n  'background-paused',\n  'saved',\n  'offline-pending',\n  'uploading',\n  'uploaded',\n];\nif (phases.indexOf(env.phase) < 0)\n  throw new Error('Unsupported disposable assertion phase');\nif (\n  ['saved', 'uploaded'].indexOf(env.phase) >= 0 &&\n  !/^rec_[a-z0-9]+_[a-z0-9]+$/.test(env.take)\n)\n  throw new Error('Requires exact saved take ID');\nif (\n  env.phase === 'background-paused' &&\n  (!/^(0|[1-9][0-9]?):[0-5][0-9]$/.test(env.pausedTime) ||\n    Number(env.pausedTime.split(':')[0]) > 59 ||\n    env.pausedTime === '0:00')\n)\n  throw new Error(\n    'Requires exact nonzero frozen paused time m:ss, below 60 minutes',\n  );\noutput.disposablePausedTimeRe =\n  '^' + env.pausedTime.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '$';\noutput.disposablePhase = env.phase;\noutput.disposableReferenceRe = '^1 Peter 1:' + env.verse + '$';\noutput.disposableTakeSyncRe = '^record-take-sync-' + env.take + '$';\noutput.disposableScreenshot = 'disposable-1183-' + env.phase;\n",
+            "sourceDescription" : "../../shared/scripts/disposable-session-values.js",
+            "optional" : false,
+            "scriptDir" : "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/shared/scripts"
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "notVisible" : {
+                "idRegex" : "login-email-input",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "scriptCondition" : "${['paused-before-reload','recovery-prompt','paused-after-reload','background-paused','saved'].indexOf(output.disposablePhase) >= 0}"
+            },
+            "optional" : false
+          }
+        }, {
+          "runFlowCommand" : {
+            "commands" : [ {
+              "assertConditionCommand" : {
+                "condition" : {
+                  "visible" : {
+                    "textRegex" : "Recovered recording",
+                    "optional" : false
+                  }
+                },
+                "optional" : false
+              }
+            }, {
+              "assertConditionCommand" : {
+                "condition" : {
+                  "visible" : {
+                    "textRegex" : "A paused recording was recovered. Resume it or discard it?",
+                    "optional" : false
+                  }
+                },
+                "optional" : false
+              }
+            }, {
+              "assertConditionCommand" : {
+                "condition" : {
+                  "visible" : {
+                    "textRegex" : "^RESUME$",
+                    "idRegex" : "android:id/button1",
+                    "optional" : false
+                  }
+                },
+                "optional" : false
+              }
+            }, {
+              "assertConditionCommand" : {
+                "condition" : {
+                  "visible" : {
+                    "textRegex" : "^DISCARD$",
+                    "idRegex" : "android:id/button2",
+                    "optional" : false
+                  }
+                },
+                "optional" : false
+              }
+            } ],
+            "condition" : {
+              "scriptCondition" : "${output.disposablePhase === 'recovery-prompt'}"
+            },
+            "optional" : false
+          }
+        }, {
+          "runFlowCommand" : {
+            "commands" : [ {
+              "assertConditionCommand" : {
+                "condition" : {
+                  "visible" : {
+                    "idRegex" : "record-tab",
+                    "optional" : false
+                  }
+                },
+                "optional" : false
+              }
+            }, {
+              "assertConditionCommand" : {
+                "condition" : {
+                  "visible" : {
+                    "textRegex" : "${output.disposableReferenceRe}",
+                    "idRegex" : "record-verse-reference",
+                    "optional" : false
+                  }
+                },
+                "optional" : false
+              }
+            } ],
+            "condition" : {
+              "scriptCondition" : "${output.disposablePhase !== 'recovery-prompt'}"
+            },
+            "optional" : false
+          }
+        }, {
+          "runFlowCommand" : {
+            "commands" : [ {
+              "assertConditionCommand" : {
+                "condition" : {
+                  "visible" : {
+                    "idRegex" : "record-resume-button",
+                    "optional" : false
+                  }
+                },
+                "optional" : false
+              }
+            }, {
+              "assertConditionCommand" : {
+                "condition" : {
+                  "visible" : {
+                    "idRegex" : "record-stop-button",
+                    "optional" : false
+                  }
+                },
+                "optional" : false
+              }
+            }, {
+              "assertConditionCommand" : {
+                "condition" : {
+                  "notVisible" : {
+                    "idRegex" : "record-pause-button",
+                    "optional" : false
+                  }
+                },
+                "optional" : false
+              }
+            }, {
+              "assertConditionCommand" : {
+                "condition" : {
+                  "notVisible" : {
+                    "idRegex" : "record-start-button",
+                    "optional" : false
+                  }
+                },
+                "optional" : false
+              }
+            }, {
+              "assertConditionCommand" : {
+                "condition" : {
+                  "notVisible" : {
+                    "idRegex" : "record-new-take-button",
+                    "optional" : false
+                  }
+                },
+                "optional" : false
+              }
+            } ],
+            "condition" : {
+              "scriptCondition" : "${['paused-before-reload','paused-after-reload','background-paused'].indexOf(output.disposablePhase) >= 0}"
+            },
+            "optional" : false
+          }
+        }, {
+          "runFlowCommand" : {
+            "commands" : [ {
+              "assertConditionCommand" : {
+                "condition" : {
+                  "visible" : {
+                    "idRegex" : "${output.disposableTakeSyncRe}",
+                    "optional" : false
+                  }
+                },
+                "optional" : false
+              }
+            }, {
+              "assertConditionCommand" : {
+                "condition" : {
+                  "visible" : {
+                    "idRegex" : "record-new-take-button",
+                    "optional" : false
+                  }
+                },
+                "optional" : false
+              }
+            }, {
+              "assertConditionCommand" : {
+                "condition" : {
+                  "notVisible" : {
+                    "idRegex" : "record-stop-button",
+                    "optional" : false
+                  }
+                },
+                "optional" : false
+              }
+            } ],
+            "condition" : {
+              "scriptCondition" : "${output.disposablePhase === 'saved'}"
+            },
+            "optional" : false
+          }
+        }, {
+          "runFlowCommand" : {
+            "commands" : [ {
+              "assertConditionCommand" : {
+                "condition" : {
+                  "visible" : {
+                    "textRegex" : "${output.disposablePausedTimeRe}",
+                    "idRegex" : "record-duration",
+                    "optional" : false
+                  }
+                },
+                "optional" : false
+              }
+            } ],
+            "condition" : {
+              "scriptCondition" : "${output.disposablePhase === 'background-paused'}"
+            },
+            "optional" : false
+          }
+        }, {
+          "takeScreenshotCommand" : {
+            "path" : "${output.disposableScreenshot}",
+            "optional" : false
+          }
+        } ],
+        "sourceDescription" : "disposable-capture-recovery-existing-session.yaml",
+        "config" : {
+          "appId" : "com.eten.fluent",
+          "tags" : [ "existing-session", "fixture-blocked", "disposable-checkpoint", "record" ]
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "defineVariablesCommand" : {
+      "env" : {
+        "MAESTRO_DISPOSABLE_PHASE" : "background-paused",
+        "MAESTRO_DISPOSABLE_PAUSED_TIME" : "${output.backgroundFrozenTime}"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536546682,
+    "duration" : 2,
+    "sequenceNumber" : 52,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "defineVariablesCommand" : {
+        "env" : {
+          "MAESTRO_DISPOSABLE_PHASE" : "background-paused",
+          "MAESTRO_DISPOSABLE_PAUSED_TIME" : "0:17"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "applyConfigurationCommand" : {
+      "config" : {
+        "appId" : "com.eten.fluent",
+        "tags" : [ "existing-session", "fixture-blocked", "disposable-checkpoint", "record" ]
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536546684,
+    "duration" : 0,
+    "sequenceNumber" : 53,
+    "depth" : 2,
+    "evaluatedCommand" : {
+      "applyConfigurationCommand" : {
+        "config" : {
+          "appId" : "com.eten.fluent",
+          "tags" : [ "existing-session", "fixture-blocked", "disposable-checkpoint", "record" ]
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "runScriptCommand" : {
+      "script" : "// Root supplies these values only after independently verifying the existing session.\n// These guards constrain execution; they do not independently prove DB identity.\nvar env = {\n  project:\n    typeof MAESTRO_DISPOSABLE_PROJECT_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PROJECT_ID),\n  assignment:\n    typeof MAESTRO_DISPOSABLE_ASSIGNMENT_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_ASSIGNMENT_ID),\n  user:\n    typeof MAESTRO_DISPOSABLE_USER_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_USER_ID),\n  cached:\n    typeof MAESTRO_DISPOSABLE_CACHED_IDS === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_CACHED_IDS),\n  phase:\n    typeof MAESTRO_DISPOSABLE_PHASE === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PHASE),\n  verse:\n    typeof MAESTRO_DISPOSABLE_VERSE === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_VERSE),\n  take:\n    typeof MAESTRO_DISPOSABLE_TAKE_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_TAKE_ID),\n  pausedTime:\n    typeof MAESTRO_DISPOSABLE_PAUSED_TIME === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PAUSED_TIME),\n  consent:\n    typeof MAESTRO_DISPOSABLE_CONTEXT_VERIFIED === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_CONTEXT_VERIFIED),\n};\nif (\n  env.project !== '12' ||\n  env.assignment !== '1183' ||\n  env.user !== '10' ||\n  env.cached !== '10,9,12' ||\n  env.consent !== '1'\n)\n  throw new Error(\n    'Requires independently verified project12/assignment1183/user10/cache10,9,12; non944 only',\n  );\nif (!/^[1-9][0-9]*$/.test(env.verse) || Number(env.verse) > 25)\n  throw new Error('Requires exact 1 Peter1 verse1..25');\nvar phases = [\n  'paused-before-reload',\n  'recovery-prompt',\n  'paused-after-reload',\n  'background-paused',\n  'saved',\n  'offline-pending',\n  'uploading',\n  'uploaded',\n];\nif (phases.indexOf(env.phase) < 0)\n  throw new Error('Unsupported disposable assertion phase');\nif (\n  ['saved', 'uploaded'].indexOf(env.phase) >= 0 &&\n  !/^rec_[a-z0-9]+_[a-z0-9]+$/.test(env.take)\n)\n  throw new Error('Requires exact saved take ID');\nif (\n  env.phase === 'background-paused' &&\n  (!/^(0|[1-9][0-9]?):[0-5][0-9]$/.test(env.pausedTime) ||\n    Number(env.pausedTime.split(':')[0]) > 59 ||\n    env.pausedTime === '0:00')\n)\n  throw new Error(\n    'Requires exact nonzero frozen paused time m:ss, below 60 minutes',\n  );\noutput.disposablePausedTimeRe =\n  '^' + env.pausedTime.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '$';\noutput.disposablePhase = env.phase;\noutput.disposableReferenceRe = '^1 Peter 1:' + env.verse + '$';\noutput.disposableTakeSyncRe = '^record-take-sync-' + env.take + '$';\noutput.disposableScreenshot = 'disposable-1183-' + env.phase;\n",
+      "sourceDescription" : "../../shared/scripts/disposable-session-values.js",
+      "optional" : false,
+      "scriptDir" : "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/shared/scripts"
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536546685,
+    "duration" : 14,
+    "sequenceNumber" : 54,
+    "depth" : 2,
+    "evaluatedCommand" : {
+      "runScriptCommand" : {
+        "script" : "// Root supplies these values only after independently verifying the existing session.\n// These guards constrain execution; they do not independently prove DB identity.\nvar env = {\n  project:\n    typeof MAESTRO_DISPOSABLE_PROJECT_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PROJECT_ID),\n  assignment:\n    typeof MAESTRO_DISPOSABLE_ASSIGNMENT_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_ASSIGNMENT_ID),\n  user:\n    typeof MAESTRO_DISPOSABLE_USER_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_USER_ID),\n  cached:\n    typeof MAESTRO_DISPOSABLE_CACHED_IDS === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_CACHED_IDS),\n  phase:\n    typeof MAESTRO_DISPOSABLE_PHASE === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PHASE),\n  verse:\n    typeof MAESTRO_DISPOSABLE_VERSE === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_VERSE),\n  take:\n    typeof MAESTRO_DISPOSABLE_TAKE_ID === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_TAKE_ID),\n  pausedTime:\n    typeof MAESTRO_DISPOSABLE_PAUSED_TIME === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_PAUSED_TIME),\n  consent:\n    typeof MAESTRO_DISPOSABLE_CONTEXT_VERIFIED === 'undefined'\n      ? ''\n      : String(MAESTRO_DISPOSABLE_CONTEXT_VERIFIED),\n};\nif (\n  env.project !== '12' ||\n  env.assignment !== '1183' ||\n  env.user !== '10' ||\n  env.cached !== '10,9,12' ||\n  env.consent !== '1'\n)\n  throw new Error(\n    'Requires independently verified project12/assignment1183/user10/cache10,9,12; non944 only',\n  );\nif (!/^[1-9][0-9]*$/.test(env.verse) || Number(env.verse) > 25)\n  throw new Error('Requires exact 1 Peter1 verse1..25');\nvar phases = [\n  'paused-before-reload',\n  'recovery-prompt',\n  'paused-after-reload',\n  'background-paused',\n  'saved',\n  'offline-pending',\n  'uploading',\n  'uploaded',\n];\nif (phases.indexOf(env.phase) < 0)\n  throw new Error('Unsupported disposable assertion phase');\nif (\n  ['saved', 'uploaded'].indexOf(env.phase) >= 0 &&\n  !/^rec_[a-z0-9]+_[a-z0-9]+$/.test(env.take)\n)\n  throw new Error('Requires exact saved take ID');\nif (\n  env.phase === 'background-paused' &&\n  (!/^(0|[1-9][0-9]?):[0-5][0-9]$/.test(env.pausedTime) ||\n    Number(env.pausedTime.split(':')[0]) > 59 ||\n    env.pausedTime === '0:00')\n)\n  throw new Error(\n    'Requires exact nonzero frozen paused time m:ss, below 60 minutes',\n  );\noutput.disposablePausedTimeRe =\n  '^' + env.pausedTime.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '$';\noutput.disposablePhase = env.phase;\noutput.disposableReferenceRe = '^1 Peter 1:' + env.verse + '$';\noutput.disposableTakeSyncRe = '^record-take-sync-' + env.take + '$';\noutput.disposableScreenshot = 'disposable-1183-' + env.phase;\n",
+        "sourceDescription" : "../../shared/scripts/disposable-session-values.js",
+        "optional" : false,
+        "scriptDir" : "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/shared/scripts"
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "idRegex" : "login-email-input",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536546699,
+    "duration" : 681,
+    "sequenceNumber" : 55,
+    "depth" : 2,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "notVisible" : {
+            "idRegex" : "login-email-input",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "scriptCondition" : "${['paused-before-reload','recovery-prompt','paused-after-reload','background-paused','saved'].indexOf(output.disposablePhase) >= 0}"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536547381,
+    "duration" : 3,
+    "sequenceNumber" : 56,
+    "depth" : 2,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "scriptCondition" : "true"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "runFlowCommand" : {
+      "commands" : [ {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "textRegex" : "Recovered recording",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "textRegex" : "A paused recording was recovered. Resume it or discard it?",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "textRegex" : "^RESUME$",
+              "idRegex" : "android:id/button1",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "textRegex" : "^DISCARD$",
+              "idRegex" : "android:id/button2",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      } ],
+      "condition" : {
+        "scriptCondition" : "${output.disposablePhase === 'recovery-prompt'}"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "SKIPPED",
+    "timestamp" : 1792536547384,
+    "duration" : 2,
+    "sequenceNumber" : 57,
+    "depth" : 2,
+    "evaluatedCommand" : {
+      "runFlowCommand" : {
+        "commands" : [ {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "textRegex" : "Recovered recording",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "textRegex" : "A paused recording was recovered. Resume it or discard it?",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "textRegex" : "^RESUME$",
+                "idRegex" : "android:id/button1",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "textRegex" : "^DISCARD$",
+                "idRegex" : "android:id/button2",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        } ],
+        "condition" : {
+          "scriptCondition" : "false"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "runFlowCommand" : {
+      "commands" : [ {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "idRegex" : "record-tab",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "textRegex" : "${output.disposableReferenceRe}",
+              "idRegex" : "record-verse-reference",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      } ],
+      "condition" : {
+        "scriptCondition" : "${output.disposablePhase !== 'recovery-prompt'}"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536547386,
+    "duration" : 167,
+    "sequenceNumber" : 58,
+    "depth" : 2,
+    "evaluatedCommand" : {
+      "runFlowCommand" : {
+        "commands" : [ {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "idRegex" : "record-tab",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "textRegex" : "${output.disposableReferenceRe}",
+                "idRegex" : "record-verse-reference",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        } ],
+        "condition" : {
+          "scriptCondition" : "true"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "record-tab",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536547387,
+    "duration" : 77,
+    "sequenceNumber" : 59,
+    "depth" : 3,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "record-tab",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "textRegex" : "${output.disposableReferenceRe}",
+          "idRegex" : "record-verse-reference",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536547465,
+    "duration" : 87,
+    "sequenceNumber" : 60,
+    "depth" : 3,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "textRegex" : "^1 Peter 1:7$",
+            "idRegex" : "record-verse-reference",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "runFlowCommand" : {
+      "commands" : [ {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "idRegex" : "record-resume-button",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "idRegex" : "record-stop-button",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "notVisible" : {
+              "idRegex" : "record-pause-button",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "notVisible" : {
+              "idRegex" : "record-start-button",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "notVisible" : {
+              "idRegex" : "record-new-take-button",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      } ],
+      "condition" : {
+        "scriptCondition" : "${['paused-before-reload','paused-after-reload','background-paused'].indexOf(output.disposablePhase) >= 0}"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536547553,
+    "duration" : 1965,
+    "sequenceNumber" : 61,
+    "depth" : 2,
+    "evaluatedCommand" : {
+      "runFlowCommand" : {
+        "commands" : [ {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "idRegex" : "record-resume-button",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "idRegex" : "record-stop-button",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "notVisible" : {
+                "idRegex" : "record-pause-button",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "notVisible" : {
+                "idRegex" : "record-start-button",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "notVisible" : {
+                "idRegex" : "record-new-take-button",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        } ],
+        "condition" : {
+          "scriptCondition" : "true"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "record-resume-button",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536547556,
+    "duration" : 76,
+    "sequenceNumber" : 62,
+    "depth" : 3,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "record-resume-button",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "record-stop-button",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536547633,
+    "duration" : 65,
+    "sequenceNumber" : 63,
+    "depth" : 3,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "record-stop-button",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "idRegex" : "record-pause-button",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536547698,
+    "duration" : 603,
+    "sequenceNumber" : 64,
+    "depth" : 3,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "notVisible" : {
+            "idRegex" : "record-pause-button",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "idRegex" : "record-start-button",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536548301,
+    "duration" : 604,
+    "sequenceNumber" : 65,
+    "depth" : 3,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "notVisible" : {
+            "idRegex" : "record-start-button",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "idRegex" : "record-new-take-button",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536548906,
+    "duration" : 611,
+    "sequenceNumber" : 66,
+    "depth" : 3,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "notVisible" : {
+            "idRegex" : "record-new-take-button",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "runFlowCommand" : {
+      "commands" : [ {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "idRegex" : "${output.disposableTakeSyncRe}",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "idRegex" : "record-new-take-button",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "notVisible" : {
+              "idRegex" : "record-stop-button",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      } ],
+      "condition" : {
+        "scriptCondition" : "${output.disposablePhase === 'saved'}"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "SKIPPED",
+    "timestamp" : 1792536549518,
+    "duration" : 2,
+    "sequenceNumber" : 67,
+    "depth" : 2,
+    "evaluatedCommand" : {
+      "runFlowCommand" : {
+        "commands" : [ {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "idRegex" : "${output.disposableTakeSyncRe}",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "idRegex" : "record-new-take-button",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "notVisible" : {
+                "idRegex" : "record-stop-button",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        } ],
+        "condition" : {
+          "scriptCondition" : "false"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "runFlowCommand" : {
+      "commands" : [ {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "textRegex" : "${output.disposablePausedTimeRe}",
+              "idRegex" : "record-duration",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      } ],
+      "condition" : {
+        "scriptCondition" : "${output.disposablePhase === 'background-paused'}"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536549520,
+    "duration" : 86,
+    "sequenceNumber" : 68,
+    "depth" : 2,
+    "evaluatedCommand" : {
+      "runFlowCommand" : {
+        "commands" : [ {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "textRegex" : "${output.disposablePausedTimeRe}",
+                "idRegex" : "record-duration",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        } ],
+        "condition" : {
+          "scriptCondition" : "true"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "textRegex" : "${output.disposablePausedTimeRe}",
+          "idRegex" : "record-duration",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536549522,
+    "duration" : 84,
+    "sequenceNumber" : 69,
+    "depth" : 3,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "textRegex" : "^0:17$",
+            "idRegex" : "record-duration",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "takeScreenshotCommand" : {
+      "path" : "${output.disposableScreenshot}",
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536549606,
+    "duration" : 195,
+    "sequenceNumber" : 70,
+    "depth" : 2,
+    "evaluatedCommand" : {
+      "takeScreenshotCommand" : {
+        "path" : "disposable-1183-background-paused",
+        "optional" : false
+      }
+    },
+    "artifacts" : [ {
+      "type" : "TAKE_SCREENSHOT",
+      "path" : "takeScreenshot/disposable-1183-background-paused.png"
+    } ]
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "textRegex" : "${output.lifecycleReferenceRe}",
+          "idRegex" : "record-verse-reference",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536549801,
+    "duration" : 78,
+    "sequenceNumber" : 71,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "textRegex" : "^1 Peter 1:7$",
+            "idRegex" : "record-verse-reference",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "record-resume-button",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536549879,
+    "duration" : 91,
+    "sequenceNumber" : 72,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "record-resume-button",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "textRegex" : "${output.disposablePausedTimeRe}",
+          "idRegex" : "record-duration",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536549970,
+    "duration" : 76,
+    "sequenceNumber" : 73,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "textRegex" : "^0:17$",
+            "idRegex" : "record-duration",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "tapOnElement" : {
+      "selector" : {
+        "idRegex" : "record-stop-button",
+        "optional" : false
+      },
+      "retryIfNoChange" : false,
+      "waitUntilVisible" : false,
+      "longPress" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536550046,
+    "duration" : 2646,
+    "sequenceNumber" : 74,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "tapOnElement" : {
+        "selector" : {
+          "idRegex" : "record-stop-button",
+          "optional" : false
+        },
+        "retryIfNoChange" : false,
+        "waitUntilVisible" : false,
+        "longPress" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "${output.lifecycleTakeRowRe}",
+          "optional" : false
+        }
+      },
+      "timeout" : "15000",
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536552692,
+    "duration" : 86,
+    "sequenceNumber" : 75,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "^record-take-row-rec_[a-z0-9]+_[a-z0-9]+$",
+            "optional" : false
+          }
+        },
+        "timeout" : "15000",
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "${output.lifecycleTakeRowRe}",
+          "index" : "0",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536552779,
+    "duration" : 78,
+    "sequenceNumber" : 76,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "^record-take-row-rec_[a-z0-9]+_[a-z0-9]+$",
+            "index" : "0",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "idRegex" : "${output.lifecycleTakeRowRe}",
+          "index" : "1",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536552857,
+    "duration" : 613,
+    "sequenceNumber" : 77,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "notVisible" : {
+            "idRegex" : "^record-take-row-rec_[a-z0-9]+_[a-z0-9]+$",
+            "index" : "1",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "textRegex" : "^(pending|uploaded)$",
+          "idRegex" : "${output.lifecycleTakeSyncRe}",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536553471,
+    "duration" : 84,
+    "sequenceNumber" : 78,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "textRegex" : "^(pending|uploaded)$",
+            "idRegex" : "^record-take-sync-rec_[a-z0-9]+_[a-z0-9]+$",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "copyTextCommand" : {
+      "selector" : {
+        "idRegex" : "${output.lifecycleTakeSyncRe}",
+        "optional" : false
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536553555,
+    "duration" : 65,
+    "sequenceNumber" : 79,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "copyTextCommand" : {
+        "selector" : {
+          "idRegex" : "^record-take-sync-rec_[a-z0-9]+_[a-z0-9]+$",
+          "optional" : false
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "evalScriptCommand" : {
+      "scriptString" : "${output.lifecycleSavedSyncStatus = String(maestro.copiedText)}",
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536553621,
+    "duration" : 1,
+    "sequenceNumber" : 80,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "evalScriptCommand" : {
+        "scriptString" : "${output.lifecycleSavedSyncStatus = String(maestro.copiedText)}",
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "scriptCondition" : "${/^(pending|uploaded)$/.test(output.lifecycleSavedSyncStatus)}"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536553623,
+    "duration" : 0,
+    "sequenceNumber" : 81,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "scriptCondition" : "${/^(pending|uploaded)$/.test(output.lifecycleSavedSyncStatus)}"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "record-new-take-button",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536553623,
+    "duration" : 67,
+    "sequenceNumber" : 82,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "record-new-take-button",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "idRegex" : "record-stop-button",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536553690,
+    "duration" : 672,
+    "sequenceNumber" : 83,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "notVisible" : {
+            "idRegex" : "record-stop-button",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "idRegex" : "record-pause-button",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536554363,
+    "duration" : 569,
+    "sequenceNumber" : 84,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "notVisible" : {
+            "idRegex" : "record-pause-button",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "takeScreenshotCommand" : {
+      "path" : "disposable-1183-verse7-lifecycle-saved",
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1792536554934,
+    "duration" : 141,
+    "sequenceNumber" : 85,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "takeScreenshotCommand" : {
+        "path" : "disposable-1183-verse7-lifecycle-saved",
+        "optional" : false
+      }
+    },
+    "artifacts" : [ {
+      "type" : "TAKE_SCREENSHOT",
+      "path" : "takeScreenshot/disposable-1183-verse7-lifecycle-saved.png"
+    } ]
+  }
+} ]

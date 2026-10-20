@@ -995,8 +995,8 @@
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "All unsynced, nonselected and pericope take counting branches require exact separately owned fixtures; existing two pending Verse takes prove only sampled warning condition.",
-        "Actual confirmed sign-out/credential clearing and recoverable reauthentication remain unexecuted; use a separately owned isolated QA session while preserving cached10/9/12 and six takes."
+        "All unsynced, nonselected and pericope take counting branches require exact separately owned fixtures; historical two-pending-Verse-take receipt proves only that sampled warning condition; current inventory has three pending takes.",
+        "Actual confirmed sign-out/credential clearing and recoverable reauthentication remain unexecuted; use a separately owned isolated QA session while preserving cached10/9/12 and seven takes."
       ],
       "executable_now": false,
       "next_test": "Use separately owned verified unsynced/pericope counting fixtures to cover remaining count branches; confirmed signout/credential-clearing proof requires an isolated recoverable QA session. Do not repeat already-proven warning/Cancel parity or use preserved owner10 work as destructive test data.",
@@ -1877,6 +1877,13 @@
               "classification": "retained direct/native/file observation; no new execution"
             }
           ]
+        },
+        {
+          "receipt": "evidence/v7-lifecycle/receipt.json",
+          "case_id": "A_V7_one_Start_background_autopause_one_Save_61.936s",
+          "flow": "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/disposable-recording-lifecycle-v7-review-only.yaml",
+          "relation": "supporting_exact_lifecycle_segments_only",
+          "reason": "One guarded Maestro PASS61.936s + native postflight: Start/nonzero\u2192HOME/nonstoppingreturn\u2192autopause/frozen\u2192oneSave/onependingtake. SamePID, AppOpsnotrunning afterSave, markers0, original6row/fileSHAsunchanged; total7. Resume visible notpressed. No audio/kill/repeatability/runtimehash claim; priorfailures retained."
         }
       ],
       "isolated_status": "PASS",
@@ -1896,10 +1903,10 @@
       ],
       "missing_assertions_or_fixture": [
         "Full capture-to-audible-playback flow and required repeatability remain incomplete; preserve navigation and lifecycle timeouts.",
-        "Matt must make a NEW recording on physical Android with the current fix build, after verifying the intended QA account, project, assignment and recording ownership/fixture. Verify audible output/playback and seek quality on that new take. Earlier six emulator takes remain preserved and do not satisfy this physical new-take acceptance; no automation or Samsung R9 device action is requested."
+        "Matt must make a NEW recording on physical Android with the current fix build, after verifying the intended QA account, project, assignment and recording ownership/fixture. Verify audible output/playback and seek quality on that new take. Current seven emulator takes remain preserved and do not satisfy this physical new-take acceptance; no automation or Samsung R9 device action is requested."
       ],
       "executable_now": false,
-      "next_test": "Matt must make a NEW recording on physical Android with the current fix build, after verifying the intended QA account, project, assignment and recording ownership/fixture. Verify audible output/playback and seek quality on that new take. Earlier six emulator takes remain preserved and do not satisfy this physical new-take acceptance; no automation or Samsung R9 device action is requested.",
+      "next_test": "Matt must make a NEW recording on physical Android with the current fix build, after verifying the intended QA account, project, assignment and recording ownership/fixture. Verify audible output/playback and seek quality on that new take. Current seven emulator takes remain preserved and do not satisfy this physical new-take acceptance; no automation or Samsung R9 device action is requested.",
       "source_title": "Record and play local draft audio",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/23",
@@ -1984,13 +1991,20 @@
               "classification": "retained direct/native/file observation; no new execution"
             }
           ]
+        },
+        {
+          "receipt": "evidence/v7-lifecycle/receipt.json",
+          "case_id": "A_V7_one_Start_background_autopause_one_Save_61.936s",
+          "flow": "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/disposable-recording-lifecycle-v7-review-only.yaml",
+          "relation": "supporting_exact_lifecycle_segments_only",
+          "reason": "One guarded Maestro PASS61.936s + native postflight: Start/nonzero\u2192HOME/nonstoppingreturn\u2192autopause/frozen\u2192oneSave/onependingtake. SamePID, AppOpsnotrunning afterSave, markers0, original6row/fileSHAsunchanged; total7. Resume visible notpressed. No audio/kill/repeatability/runtimehash claim; priorfailures retained."
         }
       ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
         "All required waveform/review/source-accordion expanded/collapsed layout assertions are not demonstrated together.",
-        "Complete durable state-matrix Maestro flow and required clean rerun remain absent; initial navigation and lifecycle flow timeouts retained."
+        "V7 bounded capture/background-autopause/Save flow now passed once; full state matrix and required clean repeatability remain absent. Earlier navigation/lifecycle timeouts remain historical failures."
       ],
       "executable_now": false,
       "next_test": "Use retained screenshots/command evidence for unasserted source-accordion/layout states; schedule only the exact remaining supported state assertion, not repeated capture setup.",
@@ -2107,6 +2121,13 @@
               "classification": "retained direct/native/file observation; no new execution"
             }
           ]
+        },
+        {
+          "receipt": "evidence/v7-lifecycle/receipt.json",
+          "case_id": "A_V7_one_Start_background_autopause_one_Save_61.936s",
+          "flow": "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/disposable-recording-lifecycle-v7-review-only.yaml",
+          "relation": "supporting_exact_lifecycle_segments_only",
+          "reason": "One guarded Maestro PASS61.936s + native postflight: Start/nonzero\u2192HOME/nonstoppingreturn\u2192autopause/frozen\u2192oneSave/onependingtake. SamePID, AppOpsnotrunning afterSave, markers0, original6row/fileSHAsunchanged; total7. Resume visible notpressed. No audio/kill/repeatability/runtimehash claim; priorfailures retained."
         }
       ],
       "isolated_status": "PASS",
@@ -2125,11 +2146,11 @@
         }
       ],
       "missing_assertions_or_fixture": [
-        "Mic release/absence-of-native-side-effects oracle remains unproved; saved duration does not prove release.",
-        "Full lifecycle driver timed out; preserve that failure rather than treating later manual save as full-flow PASS."
+        "Explicit paused\u2192Resume action and subsequent engine status transitions remain unexecuted in this durable V7 flow. Resume visibility is not Resume execution.",
+        "V7 AppOps shows RECORD_AUDIO inactive after Save, supporting microphone release for this observed save path. Engine-level no-DB/no-UI-side-effect contract and full required repeatability remain separate. Earlier130.126s lifecycle timeout retained."
       ],
       "executable_now": false,
-      "next_test": "Check the specific microphone-release/native-side-effect oracle on existing retained stop evidence before any further capture; full-driver repeat remains a separate scheduled execution.",
+      "next_test": "Review existing engine/native receipts for the exact missing explicit Resume and engine-only side-effect contract. Do not create a new capture or rerun now-nonempty verse7 merely to replace the earlier failure.",
       "source_title": "Recording engine start/pause/resume/stop",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/95"
@@ -2306,10 +2327,10 @@
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
         "Direct native remux invocation/causal trace and forced-remux-failure AAC fallback remain unverified.",
-        "Matt must make a NEW recording on physical Android with the current fix build, after verifying the intended QA account, project, assignment and recording ownership/fixture. Verify audible output/playback and seek quality on that new take. Earlier six emulator takes remain preserved and do not satisfy this physical new-take acceptance; no automation or Samsung R9 device action is requested."
+        "Matt must make a NEW recording on physical Android with the current fix build, after verifying the intended QA account, project, assignment and recording ownership/fixture. Verify audible output/playback and seek quality on that new take. Current seven emulator takes remain preserved and do not satisfy this physical new-take acceptance; no automation or Samsung R9 device action is requested."
       ],
       "executable_now": false,
-      "next_test": "Matt must make a NEW recording on physical Android with the current fix build, after verifying the intended QA account, project, assignment and recording ownership/fixture. Verify audible output/playback and seek quality on that new take. Earlier six emulator takes remain preserved and do not satisfy this physical new-take acceptance; no automation or Samsung R9 device action is requested. Native remux invocation and forced-failure AAC fallback remain separately unverified.",
+      "next_test": "Matt must make a NEW recording on physical Android with the current fix build, after verifying the intended QA account, project, assignment and recording ownership/fixture. Verify audible output/playback and seek quality on that new take. Current seven emulator takes remain preserved and do not satisfy this physical new-take acceptance; no automation or Samsung R9 device action is requested. Native remux invocation and forced-failure AAC fallback remain separately unverified.",
       "source_title": "Committed AAC remuxed to seekable M4A",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/176",
@@ -2359,10 +2380,10 @@
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
         "Known input provenance and native-remux causal trace remain absent.",
-        "Matt must make a NEW recording on physical Android with the current fix build, after verifying the intended QA account, project, assignment and recording ownership/fixture. Verify audible output/playback and seek quality on that new take. Earlier six emulator takes remain preserved and do not satisfy this physical new-take acceptance; no automation or Samsung R9 device action is requested."
+        "Matt must make a NEW recording on physical Android with the current fix build, after verifying the intended QA account, project, assignment and recording ownership/fixture. Verify audible output/playback and seek quality on that new take. Current seven emulator takes remain preserved and do not satisfy this physical new-take acceptance; no automation or Samsung R9 device action is requested."
       ],
       "executable_now": false,
-      "next_test": "Matt must make a NEW recording on physical Android with the current fix build, after verifying the intended QA account, project, assignment and recording ownership/fixture. Verify audible output/playback and seek quality on that new take. Earlier six emulator takes remain preserved and do not satisfy this physical new-take acceptance; no automation or Samsung R9 device action is requested.",
+      "next_test": "Matt must make a NEW recording on physical Android with the current fix build, after verifying the intended QA account, project, assignment and recording ownership/fixture. Verify audible output/playback and seek quality on that new take. Current seven emulator takes remain preserved and do not satisfy this physical new-take acceptance; no automation or Samsung R9 device action is requested.",
       "source_title": "Remuxed take must not be silent",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/707",
@@ -2472,16 +2493,23 @@
               "classification": "retained direct/native/file observation; no new execution"
             }
           ]
+        },
+        {
+          "receipt": "evidence/v7-lifecycle/receipt.json",
+          "case_id": "A_V7_one_Start_background_autopause_one_Save_61.936s",
+          "flow": "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/disposable-recording-lifecycle-v7-review-only.yaml",
+          "relation": "supporting_exact_lifecycle_segments_only",
+          "reason": "One guarded Maestro PASS61.936s + native postflight: Start/nonzero\u2192HOME/nonstoppingreturn\u2192autopause/frozen\u2192oneSave/onependingtake. SamePID, AppOpsnotrunning afterSave, markers0, original6row/fileSHAsunchanged; total7. Resume visible notpressed. No audio/kill/repeatability/runtimehash claim; priorfailures retained."
         }
       ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "Microphone release after Stop remains unproved by a native release oracle.",
-        "Durable full requirement flow/repeatability remains incomplete; keep lifecycle timeout."
+        "V7 proves Bible\u2192Record, nonzero saved duration and native microphone inactive after Save; actual playback real-duration behavior/full mixed requirement and required repeatability remain unverified.",
+        "Prior lifecycle timeout remains historical evidence; new bounded V7 pass does not erase it."
       ],
       "executable_now": false,
-      "next_test": "Use retained stop/save timestamps and a supported native release signal to close only microphone release; do not repeat already-proven Bible-to-Record entry.",
+      "next_test": "Use existing saved-take/playback receipts for exact real-duration behavior if sufficient; human audible playback still requires Matt\u2019s NEW physical Android recording/current fix build. No unchanged capture rerun.",
       "source_title": "Record tab loads; verse opens Record; mic released on stop",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/236"
@@ -2529,16 +2557,23 @@
           "relation": "partial_active_account_queue_display_only",
           "reason": "Native preflight active12 has pending0 while owner10 has pending2; healthy empty Sync UI excludes pending/progress/pause/resume and metadata errors, then returns Home. Supports sampled active-account queue display isolation only, not take-view ownership, foreign-mutation denial, transport/server or exfiltration behavior.",
           "commands_sha256": "7ac0d04c0b9573af06170c82a50a0a7d991bf2249631831bbc26a5ab17032b44"
+        },
+        {
+          "receipt": "evidence/v7-lifecycle/receipt.json",
+          "case_id": "A_V7_one_Start_background_autopause_one_Save_61.936s",
+          "flow": "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/disposable-recording-lifecycle-v7-review-only.yaml",
+          "relation": "supporting_exact_lifecycle_segments_only",
+          "reason": "One guarded Maestro PASS61.936s + native postflight: Start/nonzero\u2192HOME/nonstoppingreturn\u2192autopause/frozen\u2192oneSave/onependingtake. SamePID, AppOpsnotrunning afterSave, markers0, original6row/fileSHAsunchanged; total7. Resume visible notpressed. No audio/kill/repeatability/runtimehash claim; priorfailures retained."
         }
       ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
         "Need separately owned verified second-author takes/fixture plus own/default view, non-demotion and foreign-mutation denial checks.",
-        "Existing six takes all belong to owner10; preserve them and do not use foreign deletion/selection as an unsafe probe."
+        "Existing seven takes all belong to owner10; preserve them and do not use foreign deletion/selection as an unsafe probe."
       ],
       "executable_now": false,
-      "next_test": "Use the separately owned B fixture/verified second-author prerequisites for remaining isolation matrix; do not infer role semantics from account names or current six-take inventory.",
+      "next_test": "Use the separately owned B fixture/verified second-author prerequisites for remaining isolation matrix; do not infer role semantics from account names or current seven-take inventory.",
       "source_title": "Active-user take isolation on shared device",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/259",
@@ -2800,6 +2835,13 @@
               "classification": "retained direct/native/file observation; no new execution"
             }
           ]
+        },
+        {
+          "receipt": "evidence/v7-lifecycle/receipt.json",
+          "case_id": "A_V7_one_Start_background_autopause_one_Save_61.936s",
+          "flow": "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/disposable-recording-lifecycle-v7-review-only.yaml",
+          "relation": "supporting_exact_lifecycle_segments_only",
+          "reason": "One guarded Maestro PASS61.936s + native postflight: Start/nonzero\u2192HOME/nonstoppingreturn\u2192autopause/frozen\u2192oneSave/onependingtake. SamePID, AppOpsnotrunning afterSave, markers0, original6row/fileSHAsunchanged; total7. Resume visible notpressed. No audio/kill/repeatability/runtimehash claim; priorfailures retained."
         }
       ],
       "isolated_status": "PASS",
@@ -2818,12 +2860,12 @@
         }
       ],
       "missing_assertions_or_fixture": [
-        "Drawer/Settings-specific active/paused lock remains unverified; edge gestures observed Android Back and are not drawer proof.",
-        "Background foreground byte-immutability assertion failed; retain and investigate from existing evidence, no full background PASS.",
-        "Full lifecycle flow timed out (130.126s), initial capture navigation flow timed out (157.915s); manual completion does not erase failures."
+        "Drawer/Settings-specific active/paused lock, force-stop/coldrestart/lock recovery and actual Resume/Discard transitions remain unverified by V7.",
+        "Earlier background foreground byte-immutability assertion failed and remains retained. V7 original6 unchanged hashes verify preservation of those files, not resolution of that earlier active-recording hash window.",
+        "Earlier130.126s lifecycle and157.915s navigation timeouts retained. New V7 passes only bounded HOME/nonstoppingreturn auto-pause/frozen-time/Save segments; no whole kill-safe recovery closure."
       ],
       "executable_now": false,
-      "next_test": "Investigate the retained background hash failure and identify a supported drawer-specific route; do not retry unchanged blocked flow or recapture merely to replace the failure.",
+      "next_test": "Review retained background hash failure and existing recovery receipts for exact missing drawer/kill/lock/Resume branches. Do not repeat unchanged blocked paths or recapture on now-nonempty verse7.",
       "source_title": "Kill-safe pause recovery and leave prompt",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/567",
@@ -4089,7 +4131,7 @@
       ],
       "missing_assertions_or_fixture": [
         "Known disposable populated downloaded resources across projects for inventory selection and correct byte totals.",
-        "Delete Selected confirmation/cancel/success and retained unselected resources remain unverified; existing six takes must stay untouched."
+        "Delete Selected confirmation/cancel/success and retained unselected resources remain unverified; all seven current takes must stay untouched."
       ],
       "executable_now": false,
       "next_test": "Use a verified separately owned populated resource catalogue/local-file fixture to verify selection and Delete Selected confirmation/cancel then scoped deletion outcome. Catalogue project12 truncated_manifest/API431 currently blocks downloads; empty summary proof needs no rerun.",
@@ -7668,5 +7710,25 @@
     "first_preparation_failure_retained": true,
     "selection_correction_not_capture_proof": true,
     "new_atomic_completions": 0
+  },
+  "current_operational_recording_admission": {
+    "receipt": "evidence/v7-lifecycle/receipt.json",
+    "minimum_preserved_take_count": 7,
+    "owner10_pending_count_at_postflight": 3,
+    "all_known_ids": [
+      "rec_mvgyi6ut_qg018vsu",
+      "rec_mvh032ch_05antbde",
+      "rec_mvh0ef5x_qaz9pxhq",
+      "rec_mvh0ps18_z1xxf0n7",
+      "rec_mvh163w0_gs1x0vp9",
+      "rec_mvh2cd4t_cur1vxdc",
+      "rec_mvh9zald_ts5k8ma8"
+    ],
+    "no_rerun_on_now_nonempty_verse7": true,
+    "current_state_must_be_read_fresh": true,
+    "uploaded_count_at_postflight": 4,
+    "current_state_must_be_reread": true,
+    "historical_six_take_receipts_preserved": true,
+    "runtime_revision_attested": false
   }
 }

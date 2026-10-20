@@ -1,0 +1,378 @@
+{
+  "schema": "fluent-v7-lifecycle-exact-support/v1",
+  "generated_utc": "2026-10-20T22:52:59.829473+00:00",
+  "status": "PASS_WITH_NATIVE_POSTFLIGHT",
+  "result": {
+    "status": "PASS_WITH_NATIVE_POSTFLIGHT",
+    "serial": "emulator-5554",
+    "runtime_revision_attested": false,
+    "events": [
+      {
+        "utc": "2026-10-20T22:48:04.443457+00:00",
+        "event": "fresh_preflight",
+        "relation": {
+          "id": "1183",
+          "project_unit_id": "19",
+          "bible_id": "178",
+          "book_id": "60",
+          "chapter_number": "1",
+          "assigned_user_id": "10",
+          "peer_checker_id": "11",
+          "status": "draft",
+          "project_id": "12"
+        },
+        "verse": {
+          "id": "34850",
+          "bible_id": "178",
+          "book_id": "60",
+          "chapter_number": "1",
+          "verse_number": "7"
+        },
+        "baselineSix": {
+          "rec_mvgyi6ut_qg018vsu": {
+            "row": {
+              "id": "rec_mvgyi6ut_qg018vsu",
+              "bible_text_id": "34844",
+              "recorded_by_user_id": "10",
+              "project_unit_id": "19",
+              "duration_ms": "95675",
+              "file_size_bytes": "1168949",
+              "sync_status": "uploaded",
+              "local_file_path": "file:///data/user/0/com.eten.fluent/files/recordings/rec_mvgyi6ut_qg018vsu.m4a"
+            },
+            "file": {
+              "sha256": "ec8ff815e8242521a9c6ad0886310f966e62dc7fe2999e8f97357032b0318df0",
+              "bytes": 1168949
+            }
+          },
+          "rec_mvh032ch_05antbde": {
+            "row": {
+              "id": "rec_mvh032ch_05antbde",
+              "bible_text_id": "34845",
+              "recorded_by_user_id": "10",
+              "project_unit_id": "19",
+              "duration_ms": "36999",
+              "file_size_bytes": "453302",
+              "sync_status": "uploaded",
+              "local_file_path": "file:///data/user/0/com.eten.fluent/files/recordings/rec_mvh032ch_05antbde.m4a"
+            },
+            "file": {
+              "sha256": "66a49ccda656e7d28324ee1b6cf3e1fb05de3a847290af1e41ea2cc0afe8a248",
+              "bytes": 453302
+            }
+          },
+          "rec_mvh0ef5x_qaz9pxhq": {
+            "row": {
+              "id": "rec_mvh0ef5x_qaz9pxhq",
+              "bible_text_id": "34846",
+              "recorded_by_user_id": "10",
+              "project_unit_id": "19",
+              "duration_ms": "66646",
+              "file_size_bytes": "815929",
+              "sync_status": "uploaded",
+              "local_file_path": "file:///data/user/0/com.eten.fluent/files/recordings/rec_mvh0ef5x_qaz9pxhq.m4a"
+            },
+            "file": {
+              "sha256": "14533f4f74d22d2301d0eca70838bf055419f245cefd2a43c6562e8b5e78c6fd",
+              "bytes": 815929
+            }
+          },
+          "rec_mvh0ps18_z1xxf0n7": {
+            "row": {
+              "id": "rec_mvh0ps18_z1xxf0n7",
+              "bible_text_id": "34847",
+              "recorded_by_user_id": "10",
+              "project_unit_id": "19",
+              "duration_ms": "24192",
+              "file_size_bytes": "297851",
+              "sync_status": "uploaded",
+              "local_file_path": "file:///data/user/0/com.eten.fluent/files/recordings/rec_mvh0ps18_z1xxf0n7.m4a"
+            },
+            "file": {
+              "sha256": "74aba912a643e735d7b6bc4b31744b167d7121047d69d821216166ea78999cf2",
+              "bytes": 297851
+            }
+          },
+          "rec_mvh163w0_gs1x0vp9": {
+            "row": {
+              "id": "rec_mvh163w0_gs1x0vp9",
+              "bible_text_id": "34848",
+              "recorded_by_user_id": "10",
+              "project_unit_id": "19",
+              "duration_ms": "2695",
+              "file_size_bytes": "35276",
+              "sync_status": "pending",
+              "local_file_path": "file:///data/user/0/com.eten.fluent/files/recordings/rec_mvh163w0_gs1x0vp9.m4a"
+            },
+            "file": {
+              "sha256": "8f383230f5c012360b190750079f1f56a0a5765c36318edab691f0ee7f055cef",
+              "bytes": 35276
+            }
+          },
+          "rec_mvh2cd4t_cur1vxdc": {
+            "row": {
+              "id": "rec_mvh2cd4t_cur1vxdc",
+              "bible_text_id": "34849",
+              "recorded_by_user_id": "10",
+              "project_unit_id": "19",
+              "duration_ms": "17339",
+              "file_size_bytes": "215885",
+              "sync_status": "pending",
+              "local_file_path": "file:///data/user/0/com.eten.fluent/files/recordings/rec_mvh2cd4t_cur1vxdc.m4a"
+            },
+            "file": {
+              "sha256": "137ea03e9a954307eaa7225d2090ece80785119ffd67b67bb16b0dc306556d13",
+              "bytes": 215885
+            }
+          }
+        },
+        "radios": {
+          "airplane_mode_on": "0",
+          "wifi_on": "1",
+          "mobile_data": "1"
+        },
+        "native": {
+          "pid": "2804",
+          "appopsRecordAudio": "Uid mode: RECORD_AUDIO: foreground\nRECORD_AUDIO: allow; time=+3h33m30s663ms ago; duration=+50s783ms",
+          "pausedMarkerCount": 0,
+          "recordAudioPermission": "android.permission.RECORD_AUDIO: granted=true, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+        },
+        "hostMicOffAck": "OK"
+      },
+      {
+        "utc": "2026-10-20T22:48:07.598050+00:00",
+        "event": "observed_selector_tap",
+        "id": "home-settings-button"
+      },
+      {
+        "utc": "2026-10-20T22:48:10.437910+00:00",
+        "event": "observed_selector_tap",
+        "id": "settings-menu-account-10"
+      },
+      {
+        "utc": "2026-10-20T22:48:14.437029+00:00",
+        "event": "offline_account10_ready",
+        "baselinePreserved": true
+      },
+      {
+        "utc": "2026-10-20T22:48:14.437681+00:00",
+        "event": "sole_cli_dispatch",
+        "hardBudgetSeconds": 130,
+        "noStartOutsideFlow": true
+      },
+      {
+        "utc": "2026-10-20T22:49:17.010583+00:00",
+        "event": "native_postflight",
+        "newId": "rec_mvh9zald_ts5k8ma8",
+        "newRow": {
+          "id": "rec_mvh9zald_ts5k8ma8",
+          "bible_text_id": "34850",
+          "recorded_by_user_id": "10",
+          "project_unit_id": "19",
+          "duration_ms": "17594",
+          "file_size_bytes": "217581",
+          "sync_status": "pending",
+          "local_file_path": "file:///data/user/0/com.eten.fluent/files/recordings/rec_mvh9zald_ts5k8ma8.m4a"
+        },
+        "newFile": {
+          "sha256": "46fc0ff1cde164dc4cec9247d20767c74338a2f86458b85d1fb154c4e66052ef",
+          "bytes": 217581
+        },
+        "originalSixUnchanged": true,
+        "native": {
+          "pid": "2804",
+          "appopsRecordAudio": "Uid mode: RECORD_AUDIO: foreground\nRECORD_AUDIO: allow; time=+12s319ms ago; duration=+6s848ms",
+          "pausedMarkerCount": 0
+        },
+        "recoveryStopAttempted": false
+      },
+      {
+        "utc": "2026-10-20T22:49:19.144323+00:00",
+        "event": "observed_selector_tap",
+        "id": "drafting-header-back"
+      },
+      {
+        "utc": "2026-10-20T22:49:21.280358+00:00",
+        "event": "observed_selector_tap",
+        "id": "stack-header-back"
+      },
+      {
+        "utc": "2026-10-20T22:49:23.338570+00:00",
+        "event": "observed_selector_tap",
+        "id": "home-settings-button"
+      },
+      {
+        "utc": "2026-10-20T22:49:26.039995+00:00",
+        "event": "observed_selector_tap",
+        "id": "settings-menu-account-12"
+      }
+    ],
+    "originalsPreserved": true,
+    "captureOutcome": "MAESTRO_PASS_SAVED",
+    "rootOnly": true,
+    "noRawAudioOrCredentialsRead": true,
+    "productSourceFreeze": "d2f27fe82bef307e062844716a0c8d0fa5105420",
+    "cli": {
+      "exitCode": 0,
+      "timedOut": false,
+      "elapsedSeconds": 61.936,
+      "stopMetadata": "STOP_ATTEMPTED_OR_UNCERTAIN"
+    },
+    "restoredAccount12Home": true,
+    "nativeAfterCleanup": {
+      "pid": "2804",
+      "appopsRecordAudio": "Uid mode: RECORD_AUDIO: foreground\nRECORD_AUDIO: allow; time=+26s777ms ago; duration=+6s848ms",
+      "pausedMarkerCount": 0
+    },
+    "restoredRadios": {
+      "airplane_mode_on": "0",
+      "wifi_on": "1",
+      "mobile_data": "1"
+    }
+  },
+  "commands_statuses": {
+    "COMPLETED": 84,
+    "SKIPPED": 2
+  },
+  "conditional_skips": "Two conditional route/driver branches; no criterion assertion skipped",
+  "input_hashes_all10_match": true,
+  "source_provenance": "Exact executed bytes copied unchanged. Original proposal status REVIEW_ONLY_NOT_EXECUTED is historical before root execution; final result supersedes execution-status only, not limitations.",
+  "exact_observed_delta": [
+    "One Start; positive nonzero running duration",
+    "HOME and launch stopApp:false; same PID and same unit returned auto-paused with frozen time",
+    "Resume control visible but NOT pressed",
+    "One Save/record-stop control, exactly one new saved take row and nonzero file, pending",
+    "After Save native AppOps has completed RECORD_AUDIO duration, no running marker; marker count0",
+    "Original6 metadata+file hashes unchanged; one newowner10/unit19/BibleText34850 take; total7,4uploaded3pending",
+    "Home12/cached10,9,12/Legacy/Verse/OFF/radios0/1/mobile1 restored"
+  ],
+  "remaining": [
+    "Explicit pause\u2192Resume transition not executed by this flow",
+    "No force-stop/processkill/coldrestart/lock recovery/Discard test",
+    "No audio-quality/audibility/seek-quality claim; host micOFF syntheticdata",
+    "Engine API/noDB-sideeffects contract not established by UI integration",
+    "Native AppOps release observed after Save, not a continuous instantaneous microphone-release trace",
+    "Earlier lifecycle130.126s/157.915s timeouts, backgroundhash failure and stale-six executor attempts retained",
+    "Guest runtime revision remains UNATTESTED"
+  ],
+  "new_take": {
+    "id": "rec_mvh9zald_ts5k8ma8",
+    "bible_text_id": "34850",
+    "recorded_by_user_id": "10",
+    "project_unit_id": "19",
+    "duration_ms": "17594",
+    "file_size_bytes": "217581",
+    "sync_status": "pending",
+    "local_file_path": "file:///data/user/0/com.eten.fluent/files/recordings/rec_mvh9zald_ts5k8ma8.m4a"
+  },
+  "new_file": {
+    "sha256": "46fc0ff1cde164dc4cec9247d20767c74338a2f86458b85d1fb154c4e66052ef",
+    "bytes": 217581
+  },
+  "conservative_wrapper_stop_metadata": "STOP_ATTEMPTED_OR_UNCERTAIN",
+  "stop_metadata_qualification": "Stop intent metadata is conservative. Completed CLI plus native single saved row/no recoveryStop provide observed outcome; no second Start/Stop/Save performed.",
+  "future_A_admission": {
+    "minimum_preserved_take_count": 7,
+    "owner10_pending_count_at_postflight": 3,
+    "all_known_ids": [
+      "rec_mvgyi6ut_qg018vsu",
+      "rec_mvh032ch_05antbde",
+      "rec_mvh0ef5x_qaz9pxhq",
+      "rec_mvh0ps18_z1xxf0n7",
+      "rec_mvh163w0_gs1x0vp9",
+      "rec_mvh2cd4t_cur1vxdc",
+      "rec_mvh9zald_ts5k8ma8"
+    ],
+    "no_rerun_on_now_nonempty_verse7": true,
+    "current_state_must_be_read_fresh": true
+  },
+  "files": [
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/final-v7-lifecycle/result.json",
+      "snapshot": "00-result.json",
+      "sha256": "dabfe961e37b1b87d9e9d498d99437ab429a26e985c7f4e4b795a6ecc63c4ade"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/final-v7-lifecycle/cli/2026-10-20_154815/disposable-recording-lifecycle-v7-review-only/commands.json",
+      "snapshot": "01-commands.json",
+      "sha256": "7bc75687b92c0864907c1ab5a526e3289252f3fb23ea558b55b2c3aa2ef63656"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/proposal.json",
+      "snapshot": "02-proposal.json",
+      "sha256": "0d56b7b3876f1adda682d58dc5a9d0ba8fb097db7724928ac601a566272a6b20"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/executor-reviewed-input-hashes.json",
+      "snapshot": "03-executor-reviewed-input-hashes.json",
+      "sha256": "b8d2fc7a37d79baec4700732a283d88f96b24a965bdcaa28d8c3d0d00c1b2668"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/root-v7-executor.py",
+      "snapshot": "04-root-v7-executor.py",
+      "sha256": "13120c8b2f21d9eb60655d5fcb9cad0dbac8c992a1a1a339d2bcde247510e895"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/disposable-recording-lifecycle-v7-review-only.yaml",
+      "snapshot": "05-disposable-recording-lifecycle-v7-review-only.yaml",
+      "sha256": "022068836c23a6db867a1e7ea6e68746acb5bd9571b482aad7b1e4a86e5ced27"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/disposable-lifecycle-v7-values.js",
+      "snapshot": "06-disposable-lifecycle-v7-values.js",
+      "sha256": "928f1786847b921669bdc8e4c61d9f512cf09242d8d4c9ee5602f385d37985ef"
+    }
+  ],
+  "new_runs_by_reconciler": 0,
+  "canonical_scope_application": {
+    "approved_by": "Root reviewed six guarded supporting-evidence row deltas; statuses unchanged",
+    "baseline_sha256": "87b41a15f8aa87c498c84d8a618980f2720fc2cf513f8a178ee7dff645243474",
+    "counts_promoted": false,
+    "additional_changes": "Current operational preserve6 wording updated to7; historical receipts untouched"
+  },
+  "durable_repo_snapshots": [
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/final-v7-lifecycle/result.json",
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/v7-lifecycle/00-result.json",
+      "sha256": "dabfe961e37b1b87d9e9d498d99437ab429a26e985c7f4e4b795a6ecc63c4ade",
+      "workspace_staged": "/Users/matt/Documents/Codex/2026-10-19/task-10/v7-checkpoint-staging/00-result.json"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/final-v7-lifecycle/cli/2026-10-20_154815/disposable-recording-lifecycle-v7-review-only/commands.json",
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/v7-lifecycle/01-commands.json",
+      "sha256": "7bc75687b92c0864907c1ab5a526e3289252f3fb23ea558b55b2c3aa2ef63656",
+      "workspace_staged": "/Users/matt/Documents/Codex/2026-10-19/task-10/v7-checkpoint-staging/01-commands.json"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/proposal.json",
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/v7-lifecycle/02-proposal.json",
+      "sha256": "0d56b7b3876f1adda682d58dc5a9d0ba8fb097db7724928ac601a566272a6b20",
+      "workspace_staged": "/Users/matt/Documents/Codex/2026-10-19/task-10/v7-checkpoint-staging/02-proposal.json"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/executor-reviewed-input-hashes.json",
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/v7-lifecycle/03-executor-reviewed-input-hashes.json",
+      "sha256": "b8d2fc7a37d79baec4700732a283d88f96b24a965bdcaa28d8c3d0d00c1b2668",
+      "workspace_staged": "/Users/matt/Documents/Codex/2026-10-19/task-10/v7-checkpoint-staging/03-executor-reviewed-input-hashes.json"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/root-v7-executor.py",
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/v7-lifecycle/04-root-v7-executor.py.capture.txt",
+      "sha256": "13120c8b2f21d9eb60655d5fcb9cad0dbac8c992a1a1a339d2bcde247510e895",
+      "workspace_staged": "/Users/matt/Documents/Codex/2026-10-19/task-10/v7-checkpoint-staging/04-root-v7-executor.py.capture.txt"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/disposable-recording-lifecycle-v7-review-only.yaml",
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/v7-lifecycle/05-disposable-recording-lifecycle-v7-review-only.yaml.capture.txt",
+      "sha256": "022068836c23a6db867a1e7ea6e68746acb5bd9571b482aad7b1e4a86e5ced27",
+      "workspace_staged": "/Users/matt/Documents/Codex/2026-10-19/task-10/v7-checkpoint-staging/05-disposable-recording-lifecycle-v7-review-only.yaml.capture.txt"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/lifecycle-v7-review-draft/disposable-lifecycle-v7-values.js",
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/v7-lifecycle/06-disposable-lifecycle-v7-values.js.capture.txt",
+      "sha256": "928f1786847b921669bdc8e4c61d9f512cf09242d8d4c9ee5602f385d37985ef",
+      "workspace_staged": "/Users/matt/Documents/Codex/2026-10-19/task-10/v7-checkpoint-staging/06-disposable-lifecycle-v7-values.js.capture.txt"
+    }
+  ],
+  "scope_warning": "ExecutedV7fixture is now nonempty. This is historicalproof, not a rerunnable capture invitation. All future A admission must preserve7 current takes."
+}

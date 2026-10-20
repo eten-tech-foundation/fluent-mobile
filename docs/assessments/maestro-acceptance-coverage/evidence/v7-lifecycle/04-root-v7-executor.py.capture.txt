@@ -1,0 +1,330 @@
+#!/usr/bin/env python3
+"""Root-only candidate. Import/--help never contacts devices. No retry of Start.
+Fresh owner approval and --execute-root-reviewed-v7 are required.
+"""
+import argparse, csv, datetime, fcntl, hashlib, io, json, os
+from pathlib import Path
+import re, shlex, signal, subprocess, time
+import xml.etree.ElementTree as ET
+
+BASE = Path(__file__).resolve().parent
+REPO = Path('/Users/matt/Documents/Development/gloo/fluent-mobile')
+FLOW = BASE / 'disposable-recording-lifecycle-v7-review-only.yaml'
+VALUES = BASE / 'disposable-lifecycle-v7-values.js'
+ADB = ['/opt/homebrew/Caskroom/android-platform-tools/37.0.1/platform-tools/adb',
+       '-H', '127.0.0.1', '-P', '5037', '-s', 'emulator-5554']
+DB = 'databases/default/fluent.db'
+KV = 'databases/kv/__opsqlite_storage.sqlite'
+EXPECTED_IDS = {
+ 'rec_mvgyi6ut_qg018vsu', 'rec_mvh032ch_05antbde', 'rec_mvh0ef5x_qaz9pxhq',
+ 'rec_mvh0ps18_z1xxf0n7', 'rec_mvh163w0_gs1x0vp9', 'rec_mvh2cd4t_cur1vxdc'}
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument('--execute-root-reviewed-v7', action='store_true')
+    ap.add_argument('--qa-env-file', type=Path, required=True)
+    ap.add_argument('--out', type=Path, required=True)
+    args = ap.parse_args()
+    if not args.execute_root_reviewed_v7:
+        ap.error('Artifact only; root must explicitly authorize execution')
+    assert args.qa_env_file.name == '.env.maestro.qa' and args.qa_env_file.is_file()
+    args.out.mkdir(parents=True, exist_ok=False)
+    lock = open('/tmp/fluent-device-owner.lock', 'a')
+    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    report = {'status': 'PREFLIGHT', 'serial': 'emulator-5554',
+              'runtime_revision_attested': False, 'events': [],
+              'originalsPreserved': False, 'captureOutcome': 'NOT_STARTED',
+              'rootOnly': True, 'noRawAudioOrCredentialsRead': True}
+    radios = baseline = verse_id = None
+    offline_changed = False
+    runner_started = False
+    recovery_stop_attempted = False
+    cleanup_capture_safe = True
+
+    def save():
+        (args.out / 'result.json').write_text(json.dumps(report, indent=2) + '\n')
+
+    def event(name, **data):
+        report['events'].append({'utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                                 'event': name, **data})
+        save()
+
+    def adb(*parts, timeout=15):
+        return subprocess.run(ADB + list(parts), text=True, capture_output=True,
+                              check=True, timeout=timeout).stdout.strip()
+
+    def query(sql, database=DB):
+        raw = adb('shell', 'run-as', 'com.eten.fluent', 'sqlite3', '-readonly',
+                  '-header', '-csv', database, shlex.quote(sql))
+        return list(csv.DictReader(io.StringIO(raw)))
+
+    def accounts():
+        return {r['key']: r['value'] for r in query(
+            "SELECT key,value FROM storage WHERE key IN ('active_user_id','known_user_ids')", KV)}
+
+    def markers():
+        rows = query("SELECT value FROM storage WHERE key='paused_take_markers_v1'", KV)
+        return json.loads(rows[0]['value']) if rows else []
+
+    def transfers():
+        return {'uploading': int(query("SELECT count(*) AS n FROM recordings WHERE sync_status IN ('uploading','syncing')")[0]['n']),
+                'downloading': int(query("SELECT count(*) AS n FROM download_queue WHERE status='downloading'")[0]['n'])}
+
+    def recordings():
+        return query('SELECT id,bible_text_id,recorded_by_user_id,project_unit_id,duration_ms,'
+                     'file_size_bytes,sync_status,local_file_path FROM recordings '
+                     'WHERE recorded_by_user_id=10 AND project_unit_id=19 ORDER BY id')
+
+    def file_info(row):
+        path = row['local_file_path']
+        assert path.startswith('file:///data/user/0/com.eten.fluent/files/recordings/')
+        path = path[7:]
+        assert re.fullmatch(r'rec_[a-z0-9]+_[a-z0-9]+\.m4a', Path(path).name)
+        digest = adb('shell', 'run-as', 'com.eten.fluent', 'sha256sum', path).split()[0]
+        assert re.fullmatch('[a-f0-9]{64}', digest)
+        size = int(adb('shell', 'run-as', 'com.eten.fluent', 'stat', '-c', '%s', path))
+        assert size == int(row['file_size_bytes']) and size > 0
+        return {'sha256': digest, 'bytes': size}
+
+    def six_snapshot(rows):
+        return {r['id']: {'row': r, 'file': file_info(r)} for r in rows if r['id'] in EXPECTED_IDS}
+
+    def sensor_snapshot():
+        return {'pid': adb('shell', 'pidof', 'com.eten.fluent'),
+                'appopsRecordAudio': adb('shell', 'cmd', 'appops', 'get', 'com.eten.fluent', 'RECORD_AUDIO'),
+                'pausedMarkerCount': len(markers())}
+
+    def dump(timeout=15):
+        raw = adb('exec-out', 'uiautomator', 'dump', '--compressed', '/dev/tty', timeout=timeout)
+        return list(ET.fromstring(raw[raw.index('<?xml'):raw.rfind('</hierarchy>') + 12]).iter('node'))
+
+    def has(ns, rid):
+        return any(n.get('resource-id') == rid for n in ns)
+
+    def ready(rid, tries=3):
+        deadline = time.monotonic() + 20
+        for _ in range(tries):
+            remain = deadline - time.monotonic()
+            assert remain > 0, 'UI readiness deadline exceeded'
+            ns = dump(timeout=min(15, remain))
+            if has(ns, rid):
+                return ns
+        raise AssertionError('Missing positive UI marker: ' + rid)
+
+    def tap(ns, rid):
+        # Start is owned exclusively by the sole Maestro flow.
+        assert rid not in ['record-start-button', 'record-new-take-button', 'source-audio-play']
+        nodes = [n for n in ns if n.get('resource-id') == rid]
+        assert len(nodes) == 1 and nodes[0].get('enabled') == 'true'
+        assert nodes[0].get('clickable') == 'true'
+        x1, y1, x2, y2 = map(int, re.findall(r'\d+', nodes[0].get('bounds', '')))
+        assert x2 > x1 and y2 > y1
+        adb('shell', 'input', 'tap', str((x1+x2)//2), str((y1+y2)//2), timeout=8)
+        event('observed_selector_tap', id=rid)
+
+    def no_capture(ns):
+        return not any(has(ns, x) for x in ['record-stop-button', 'record-pause-button',
+                                           'record-resume-button', 'source-audio-playing'])
+
+    def home_without_active_capture():
+        ns = dump()
+        assert no_capture(ns), 'Do not navigate away from live/uncertain capture'
+        if has(ns, 'drafting-header-back'):
+            tap(ns, 'drafting-header-back'); ns = ready('stack-header-back')
+        if not has(ns, 'home-settings-button') and has(ns, 'stack-header-back'):
+            tap(ns, 'stack-header-back'); ns = ready('home-settings-button')
+        assert has(ns, 'home-settings-button') and no_capture(ns)
+        return ns
+
+    def switch_account(target):
+        ns = home_without_active_capture()
+        tap(ns, 'home-settings-button'); ns = ready('settings-menu-active-' + accounts()['active_user_id'])
+        assert has(ns, 'settings-menu-account-' + target)
+        tap(ns, 'settings-menu-account-' + target)
+        ns = ready('home-settings-button')
+        assert accounts() == {'active_user_id': target, 'known_user_ids': '10,9,12'}
+        return ns
+
+    def row7():
+        assert verse_id is not None and re.fullmatch('[1-9][0-9]*', verse_id)
+        return query('SELECT id,bible_text_id,recorded_by_user_id,project_unit_id,duration_ms,'
+                     'file_size_bytes,sync_status,local_file_path FROM recordings '
+                     'WHERE project_unit_id=19 AND bible_text_id=' + verse_id + ' ORDER BY id')
+
+    def wait_row7():
+        # Read-only bounded queries; never another Save while awaiting persistence.
+        deadline = time.monotonic() + 15
+        for _ in range(5):
+            rows = row7()
+            if rows:
+                assert len(rows) == 1
+                return rows[0]
+            if time.monotonic() >= deadline:
+                break
+            time.sleep(1)
+        return None
+
+    def stop_attempt_from_metadata(cli_dir, timed_out):
+        paths = list(cli_dir.rglob('commands.json'))
+        if not paths:
+            return 'UNCERTAIN_NO_METADATA'
+        start_seen = False
+        for path in paths:
+            try:
+                entries = json.loads(path.read_text())
+                assert isinstance(entries, list)
+            except Exception:
+                return 'UNCERTAIN_TRUNCATED_METADATA'
+            for entry in entries:
+                cmd = entry.get('command', {}).get('tapOnElement', {})
+                rid = cmd.get('selector', {}).get('idRegex', '')
+                if rid.strip('^$') == 'record-stop-button':
+                    return 'STOP_ATTEMPTED_OR_UNCERTAIN'
+                if rid.strip('^$') == 'record-start-button':
+                    start_seen = True
+        # A timeout can leave otherwise valid but stale command metadata.
+        if timed_out:
+            return 'UNCERTAIN_TIMEOUT'
+        return 'STOP_NOT_ATTEMPTED' if start_seen else 'UNCERTAIN_START'
+
+    try:
+        expected = json.loads((BASE / 'executor-reviewed-input-hashes.json').read_text())
+        for path, digest in expected.items():
+            assert hashlib.sha256(Path(path).read_bytes()).hexdigest() == digest, path
+        freeze_manifest = json.loads((BASE.parent / 'integrated-validation-2230/unit-integration-execution.json').read_text())
+        for path, digest in freeze_manifest['productSourceHashes'].items():
+            assert hashlib.sha256((REPO / path).read_bytes()).hexdigest() == digest, path
+        report['productSourceFreeze'] = freeze_manifest['productSourceFreeze']
+        assert accounts() == {'active_user_id': '12', 'known_user_ids': '10,9,12'}
+        assert no_capture(ready('home-settings-button'))
+        relation = query('SELECT c.id,c.project_unit_id,c.bible_id,c.book_id,c.chapter_number,'
+                         'c.assigned_user_id,c.peer_checker_id,c.status,u.project_id '
+                         'FROM chapter_assignments c JOIN project_units u ON u.id=c.project_unit_id WHERE c.id=1183')
+        assert relation == [{'id':'1183','project_unit_id':'19','bible_id':'178','book_id':'60',
+                             'chapter_number':'1','assigned_user_id':'10','peer_checker_id':'11',
+                             'status':'draft','project_id':'12'}]
+        verse = query('SELECT id,bible_id,book_id,chapter_number,verse_number FROM bible_texts '
+                      'WHERE bible_id=178 AND book_id=60 AND chapter_number=1 AND verse_number=7')
+        assert len(verse) == 1 and re.fullmatch('[1-9][0-9]*', verse[0]['id'])
+        verse_id = verse[0]['id']
+        rows = recordings(); assert {r['id'] for r in rows} == EXPECTED_IDS and not row7()
+        assert markers() == [] and transfers() == {'uploading':0,'downloading':0}
+        baseline = six_snapshot(rows); assert len(baseline) == 6
+        before = sensor_snapshot()
+        permission_lines = [line.strip() for line in adb('shell','dumpsys','package','com.eten.fluent').splitlines()
+                            if 'android.permission.RECORD_AUDIO: granted=' in line]
+        assert len(permission_lines) == 1 and 'granted=true' in permission_lines[0], 'Existing mic permission required; never grant it here'
+        before['recordAudioPermission'] = permission_lines[0]
+        radios = {k: adb('shell','settings','get','global',k) for k in ['airplane_mode_on','wifi_on','mobile_data']}
+        assert radios['airplane_mode_on'] == '0' and all(radios[k] in ['0','1'] for k in ['wifi_on','mobile_data'])
+        mic_ack = adb('emu','avd','hostmicoff'); assert mic_ack == 'OK'
+        event('fresh_preflight', relation=relation[0], verse=verse[0], baselineSix=baseline,
+              radios=radios, native=before, hostMicOffAck=mic_ack)
+        offline_changed = True
+        adb('shell','svc','wifi','disable'); adb('shell','svc','data','disable')
+        assert adb('shell','settings','get','global','wifi_on') == '0'
+        assert adb('shell','settings','get','global','mobile_data') == '0'
+        ns = switch_account('10')
+        assert any(n.get('resource-id') == 'home-sync-button' and
+                   n.get('content-desc','').startswith('Offline') for n in ns)
+        assert row7() == [] and markers() == [] and transfers() == {'uploading':0,'downloading':0}
+        assert six_snapshot(recordings()) == baseline
+        event('offline_account10_ready', baselinePreserved=True)
+        vals = {'MAESTRO_DISPOSABLE_PROJECT_ID':'12','MAESTRO_DISPOSABLE_ASSIGNMENT_ID':'1183',
+                'MAESTRO_DISPOSABLE_USER_ID':'10','MAESTRO_DISPOSABLE_CACHED_IDS':'10,9,12',
+                'MAESTRO_DISPOSABLE_CONTEXT_VERIFIED':'1','MAESTRO_DISPOSABLE_VERSE':'7',
+                'MAESTRO_HOST_MIC_DISABLED_VERIFIED':'1','MAESTRO_DISPOSABLE_EMPTY_VERSE_VERIFIED':'1',
+                'MAESTRO_FIXTURE_PROJECT_ID':'12','MAESTRO_FIXTURE_PROJECT_ALLOWLIST':'12',
+                'MAESTRO_FIXTURE_PROJECT_DENYLIST':'944','MAESTRO_FIXTURE_MILESTONE_ID':'19',
+                'MAESTRO_FIXTURE_CHAPTER_ID':'1183','MAESTRO_EXPECT_EXPO_DEV_MENU_ABSENT':'1'}
+        env = dict(os.environ)
+        env.update(vals)
+        env.update({'ANDROID_SERIAL':'emulator-5554','ADB_SERVER_SOCKET':'tcp:127.0.0.1:5037',
+                    'MAESTRO_ENV_FILE':str(args.qa_env_file),
+                    'PATH':'/Users/matt/.nvm/versions/node/v24.14.0/bin:/opt/homebrew/Caskroom/android-platform-tools/37.0.1/platform-tools:'+env.get('PATH','')})
+        cli_dir = args.out / 'cli'
+        cmd = ['bash',str(REPO/'scripts/maestro-test-qa.sh'),'--test-output-dir',str(cli_dir)]
+        for k,v in vals.items(): cmd += ['-e', k+'='+v]
+        cmd += [str(FLOW)]
+        start = time.monotonic(); timed_out = False; runner_started = True
+        event('sole_cli_dispatch', hardBudgetSeconds=130, noStartOutsideFlow=True)
+        with (args.out/'runner.log').open('w') as log:
+            proc = subprocess.Popen(cmd,cwd=REPO,env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+            try: code = proc.wait(timeout=130)
+            except subprocess.TimeoutExpired:
+                timed_out = True; os.killpg(proc.pid, signal.SIGTERM)
+                try: code = proc.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    os.killpg(proc.pid, signal.SIGKILL); code=proc.wait(timeout=3)
+        stop_state = stop_attempt_from_metadata(cli_dir, timed_out)
+        report['cli'] = {'exitCode':code,'timedOut':timed_out,
+                         'elapsedSeconds':round(time.monotonic()-start,3),'stopMetadata':stop_state}
+        saved = wait_row7()
+        if saved is None:
+            ns = dump()
+            exact = [n.get('text') for n in ns if n.get('resource-id') == 'record-verse-reference'] == ['1 Peter 1:7']
+            if stop_state == 'STOP_NOT_ATTEMPTED' and exact and has(ns,'record-stop-button') and (
+                    has(ns,'record-resume-button') or has(ns,'record-pause-button')):
+                # Persist intent BEFORE dispatch; any exception thereafter forbids another Stop.
+                recovery_stop_attempted = True
+                event('sole_recovery_stop_intent', neverRepeat=True)
+                tap(ns,'record-stop-button')
+                saved = wait_row7()
+            if saved is None:
+                cleanup_capture_safe = False
+                raise RuntimeError('Capture/save uncertain; preserve offline state, no further Save/navigation/reset')
+        assert saved['recorded_by_user_id'] == '10' and saved['project_unit_id'] == '19'
+        assert int(saved['duration_ms']) > 0 and saved['sync_status'] == 'pending'
+        new_file = file_info(saved)
+        assert saved['id'] not in EXPECTED_IDS and len(recordings()) == 7
+        assert six_snapshot(recordings()) == baseline
+        assert markers() == []
+        report['captureOutcome'] = 'MAESTRO_PASS_SAVED' if code == 0 and not timed_out else 'FLOW_INCOMPLETE_NATIVE_ROW_RETAINED'
+        event('native_postflight', newId=saved['id'], newRow=saved, newFile=new_file,
+              originalSixUnchanged=True, native=sensor_snapshot(), recoveryStopAttempted=recovery_stop_attempted)
+    except Exception as exc:
+        report['error'] = {'type':type(exc).__name__, 'message':str(exc)}
+        report['captureOutcome'] = 'BLOCKED_OR_INCOMPLETE'
+        # Do not infer no capture from a Python exception after CLI dispatch.
+        if runner_started and report.get('captureOutcome') != 'MAESTRO_PASS_SAVED':
+            try:
+                ns = dump()
+                cleanup_capture_safe = (no_capture(ns) and markers() == [] and
+                                        verse_id is not None and len(row7()) in [0, 1])
+            except Exception:
+                cleanup_capture_safe = False
+        event('failure_preserved', cleanupCaptureSafe=cleanup_capture_safe)
+    finally:
+        try:
+            if cleanup_capture_safe and offline_changed:
+                if accounts()['active_user_id'] != '12': switch_account('12')
+                assert accounts() == {'active_user_id':'12','known_user_ids':'10,9,12'}
+                if baseline is not None:
+                    assert six_snapshot(recordings()) == baseline
+                    report['originalsPreserved'] = True
+                report['restoredAccount12Home'] = has(ready('home-settings-button'),'home-settings-button')
+                report['nativeAfterCleanup'] = sensor_snapshot()
+            elif not offline_changed:
+                report['preflightStoppedWithoutSessionOrRadioMutation'] = True
+            else:
+                report['cleanupPending'] = 'Uncertain capture/save: preserve capture/account10 for root inspection; no repeat Save, reset, discard, kill or forced account navigation. Original radios restored separately.'
+        except Exception as exc:
+            report['cleanupError'] = {'type':type(exc).__name__,'message':str(exc)}
+        finally:
+            if offline_changed and radios:
+                try:
+                    adb('shell','svc','wifi','enable' if radios['wifi_on']=='1' else 'disable')
+                    adb('shell','svc','data','enable' if radios['mobile_data']=='1' else 'disable')
+                    actual={k:adb('shell','settings','get','global',k) for k in radios}
+                    assert actual == radios
+                    report['restoredRadios'] = actual
+                except Exception as exc:
+                    report['networkRestoreError'] = {'type':type(exc).__name__,'message':str(exc)}
+        report['status'] = 'PASS_WITH_NATIVE_POSTFLIGHT' if report['captureOutcome']=='MAESTRO_PASS_SAVED' and report.get('restoredAccount12Home') and report.get('originalsPreserved') and report.get('restoredRadios') == radios and not report.get('cleanupError') and not report.get('networkRestoreError') else 'PARTIAL_OR_BLOCKED_RETAIN_EVIDENCE'
+        save()
+        print(json.dumps({k:report[k] for k in ['status','captureOutcome','originalsPreserved']}))
+        fcntl.flock(lock,fcntl.LOCK_UN)
+
+if __name__ == '__main__':
+    main()

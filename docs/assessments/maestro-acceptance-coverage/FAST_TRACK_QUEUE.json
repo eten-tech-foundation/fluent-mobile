@@ -11757,5 +11757,25 @@
       },
       "rationale": "175 applicable current rows +21 excluded +6 unresolved =202 retained inventory. The200 comparison only subtracts2 Gallery rows and still includes19 previously out-of-scope and6 unresolved rows; it is not required execution scope. Neither175 nor200 is an additive whole-app completion percentage."
     }
+  },
+  "current_operational_recording_admission": {
+    "receipt": "evidence/v7-lifecycle/receipt.json",
+    "minimum_preserved_take_count": 7,
+    "owner10_pending_count_at_postflight": 3,
+    "all_known_ids": [
+      "rec_mvgyi6ut_qg018vsu",
+      "rec_mvh032ch_05antbde",
+      "rec_mvh0ef5x_qaz9pxhq",
+      "rec_mvh0ps18_z1xxf0n7",
+      "rec_mvh163w0_gs1x0vp9",
+      "rec_mvh2cd4t_cur1vxdc",
+      "rec_mvh9zald_ts5k8ma8"
+    ],
+    "no_rerun_on_now_nonempty_verse7": true,
+    "current_state_must_be_read_fresh": true,
+    "uploaded_count_at_postflight": 4,
+    "current_state_must_be_reread": true,
+    "historical_six_take_receipts_preserved": true,
+    "runtime_revision_attested": false
   }
 }

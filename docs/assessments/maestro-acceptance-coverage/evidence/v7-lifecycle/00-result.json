@@ -1,0 +1,228 @@
+{
+  "status": "PASS_WITH_NATIVE_POSTFLIGHT",
+  "serial": "emulator-5554",
+  "runtime_revision_attested": false,
+  "events": [
+    {
+      "utc": "2026-10-20T22:48:04.443457+00:00",
+      "event": "fresh_preflight",
+      "relation": {
+        "id": "1183",
+        "project_unit_id": "19",
+        "bible_id": "178",
+        "book_id": "60",
+        "chapter_number": "1",
+        "assigned_user_id": "10",
+        "peer_checker_id": "11",
+        "status": "draft",
+        "project_id": "12"
+      },
+      "verse": {
+        "id": "34850",
+        "bible_id": "178",
+        "book_id": "60",
+        "chapter_number": "1",
+        "verse_number": "7"
+      },
+      "baselineSix": {
+        "rec_mvgyi6ut_qg018vsu": {
+          "row": {
+            "id": "rec_mvgyi6ut_qg018vsu",
+            "bible_text_id": "34844",
+            "recorded_by_user_id": "10",
+            "project_unit_id": "19",
+            "duration_ms": "95675",
+            "file_size_bytes": "1168949",
+            "sync_status": "uploaded",
+            "local_file_path": "file:///data/user/0/com.eten.fluent/files/recordings/rec_mvgyi6ut_qg018vsu.m4a"
+          },
+          "file": {
+            "sha256": "ec8ff815e8242521a9c6ad0886310f966e62dc7fe2999e8f97357032b0318df0",
+            "bytes": 1168949
+          }
+        },
+        "rec_mvh032ch_05antbde": {
+          "row": {
+            "id": "rec_mvh032ch_05antbde",
+            "bible_text_id": "34845",
+            "recorded_by_user_id": "10",
+            "project_unit_id": "19",
+            "duration_ms": "36999",
+            "file_size_bytes": "453302",
+            "sync_status": "uploaded",
+            "local_file_path": "file:///data/user/0/com.eten.fluent/files/recordings/rec_mvh032ch_05antbde.m4a"
+          },
+          "file": {
+            "sha256": "66a49ccda656e7d28324ee1b6cf3e1fb05de3a847290af1e41ea2cc0afe8a248",
+            "bytes": 453302
+          }
+        },
+        "rec_mvh0ef5x_qaz9pxhq": {
+          "row": {
+            "id": "rec_mvh0ef5x_qaz9pxhq",
+            "bible_text_id": "34846",
+            "recorded_by_user_id": "10",
+            "project_unit_id": "19",
+            "duration_ms": "66646",
+            "file_size_bytes": "815929",
+            "sync_status": "uploaded",
+            "local_file_path": "file:///data/user/0/com.eten.fluent/files/recordings/rec_mvh0ef5x_qaz9pxhq.m4a"
+          },
+          "file": {
+            "sha256": "14533f4f74d22d2301d0eca70838bf055419f245cefd2a43c6562e8b5e78c6fd",
+            "bytes": 815929
+          }
+        },
+        "rec_mvh0ps18_z1xxf0n7": {
+          "row": {
+            "id": "rec_mvh0ps18_z1xxf0n7",
+            "bible_text_id": "34847",
+            "recorded_by_user_id": "10",
+            "project_unit_id": "19",
+            "duration_ms": "24192",
+            "file_size_bytes": "297851",
+            "sync_status": "uploaded",
+            "local_file_path": "file:///data/user/0/com.eten.fluent/files/recordings/rec_mvh0ps18_z1xxf0n7.m4a"
+          },
+          "file": {
+            "sha256": "74aba912a643e735d7b6bc4b31744b167d7121047d69d821216166ea78999cf2",
+            "bytes": 297851
+          }
+        },
+        "rec_mvh163w0_gs1x0vp9": {
+          "row": {
+            "id": "rec_mvh163w0_gs1x0vp9",
+            "bible_text_id": "34848",
+            "recorded_by_user_id": "10",
+            "project_unit_id": "19",
+            "duration_ms": "2695",
+            "file_size_bytes": "35276",
+            "sync_status": "pending",
+            "local_file_path": "file:///data/user/0/com.eten.fluent/files/recordings/rec_mvh163w0_gs1x0vp9.m4a"
+          },
+          "file": {
+            "sha256": "8f383230f5c012360b190750079f1f56a0a5765c36318edab691f0ee7f055cef",
+            "bytes": 35276
+          }
+        },
+        "rec_mvh2cd4t_cur1vxdc": {
+          "row": {
+            "id": "rec_mvh2cd4t_cur1vxdc",
+            "bible_text_id": "34849",
+            "recorded_by_user_id": "10",
+            "project_unit_id": "19",
+            "duration_ms": "17339",
+            "file_size_bytes": "215885",
+            "sync_status": "pending",
+            "local_file_path": "file:///data/user/0/com.eten.fluent/files/recordings/rec_mvh2cd4t_cur1vxdc.m4a"
+          },
+          "file": {
+            "sha256": "137ea03e9a954307eaa7225d2090ece80785119ffd67b67bb16b0dc306556d13",
+            "bytes": 215885
+          }
+        }
+      },
+      "radios": {
+        "airplane_mode_on": "0",
+        "wifi_on": "1",
+        "mobile_data": "1"
+      },
+      "native": {
+        "pid": "2804",
+        "appopsRecordAudio": "Uid mode: RECORD_AUDIO: foreground\nRECORD_AUDIO: allow; time=+3h33m30s663ms ago; duration=+50s783ms",
+        "pausedMarkerCount": 0,
+        "recordAudioPermission": "android.permission.RECORD_AUDIO: granted=true, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+      },
+      "hostMicOffAck": "OK"
+    },
+    {
+      "utc": "2026-10-20T22:48:07.598050+00:00",
+      "event": "observed_selector_tap",
+      "id": "home-settings-button"
+    },
+    {
+      "utc": "2026-10-20T22:48:10.437910+00:00",
+      "event": "observed_selector_tap",
+      "id": "settings-menu-account-10"
+    },
+    {
+      "utc": "2026-10-20T22:48:14.437029+00:00",
+      "event": "offline_account10_ready",
+      "baselinePreserved": true
+    },
+    {
+      "utc": "2026-10-20T22:48:14.437681+00:00",
+      "event": "sole_cli_dispatch",
+      "hardBudgetSeconds": 130,
+      "noStartOutsideFlow": true
+    },
+    {
+      "utc": "2026-10-20T22:49:17.010583+00:00",
+      "event": "native_postflight",
+      "newId": "rec_mvh9zald_ts5k8ma8",
+      "newRow": {
+        "id": "rec_mvh9zald_ts5k8ma8",
+        "bible_text_id": "34850",
+        "recorded_by_user_id": "10",
+        "project_unit_id": "19",
+        "duration_ms": "17594",
+        "file_size_bytes": "217581",
+        "sync_status": "pending",
+        "local_file_path": "file:///data/user/0/com.eten.fluent/files/recordings/rec_mvh9zald_ts5k8ma8.m4a"
+      },
+      "newFile": {
+        "sha256": "46fc0ff1cde164dc4cec9247d20767c74338a2f86458b85d1fb154c4e66052ef",
+        "bytes": 217581
+      },
+      "originalSixUnchanged": true,
+      "native": {
+        "pid": "2804",
+        "appopsRecordAudio": "Uid mode: RECORD_AUDIO: foreground\nRECORD_AUDIO: allow; time=+12s319ms ago; duration=+6s848ms",
+        "pausedMarkerCount": 0
+      },
+      "recoveryStopAttempted": false
+    },
+    {
+      "utc": "2026-10-20T22:49:19.144323+00:00",
+      "event": "observed_selector_tap",
+      "id": "drafting-header-back"
+    },
+    {
+      "utc": "2026-10-20T22:49:21.280358+00:00",
+      "event": "observed_selector_tap",
+      "id": "stack-header-back"
+    },
+    {
+      "utc": "2026-10-20T22:49:23.338570+00:00",
+      "event": "observed_selector_tap",
+      "id": "home-settings-button"
+    },
+    {
+      "utc": "2026-10-20T22:49:26.039995+00:00",
+      "event": "observed_selector_tap",
+      "id": "settings-menu-account-12"
+    }
+  ],
+  "originalsPreserved": true,
+  "captureOutcome": "MAESTRO_PASS_SAVED",
+  "rootOnly": true,
+  "noRawAudioOrCredentialsRead": true,
+  "productSourceFreeze": "d2f27fe82bef307e062844716a0c8d0fa5105420",
+  "cli": {
+    "exitCode": 0,
+    "timedOut": false,
+    "elapsedSeconds": 61.936,
+    "stopMetadata": "STOP_ATTEMPTED_OR_UNCERTAIN"
+  },
+  "restoredAccount12Home": true,
+  "nativeAfterCleanup": {
+    "pid": "2804",
+    "appopsRecordAudio": "Uid mode: RECORD_AUDIO: foreground\nRECORD_AUDIO: allow; time=+26s777ms ago; duration=+6s848ms",
+    "pausedMarkerCount": 0
+  },
+  "restoredRadios": {
+    "airplane_mode_on": "0",
+    "wifi_on": "1",
+    "mobile_data": "1"
+  }
+}
