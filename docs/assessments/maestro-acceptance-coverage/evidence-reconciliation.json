@@ -31,24 +31,24 @@
     },
     "canonical_live_status": {
       "UNTESTED": 30,
-      "BLOCKED": 150,
-      "PASS": 22
+      "BLOCKED": 149,
+      "PASS": 23
     },
     "canonical_execution_coverage": {
-      "partial": 43,
-      "not_run": 137,
-      "complete_for_requirement": 22
+      "partial": 51,
+      "not_run": 128,
+      "complete_for_requirement": 23
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
       "UNTESTED": 7,
-      "BLOCKED": 60,
-      "PASS": 19
+      "BLOCKED": 59,
+      "PASS": 20
     },
     "eligible_current_atomic_execution_coverage": {
-      "partial": 17,
-      "complete_for_requirement": 19,
-      "not_run": 50
+      "partial": 18,
+      "complete_for_requirement": 20,
+      "not_run": 48
     },
     "full_live_PASS_eligible_ids": [
       "A-0015-01",
@@ -69,7 +69,8 @@
       "D-0412-01",
       "D-0540-01",
       "D-0540-02",
-      "D-0564-01"
+      "D-0564-01",
+      "D-0579-02"
     ],
     "any_partial_live_evidence_candidate_ids": [
       "A-0001-01",
@@ -118,7 +119,16 @@
       "A-0031-01",
       "A-0014-01",
       "D-0594-01",
-      "A-0018-01"
+      "A-0018-01",
+      "B-0002-02",
+      "B-0004-02",
+      "B-0004-03",
+      "B-0006-01",
+      "B-0006-02",
+      "B-0009-01",
+      "B-0015-01",
+      "B-0018-01",
+      "D-0578-01"
     ],
     "candidate_ids_with_isolated_evidence": [
       "A-0002-01",
@@ -1631,6 +1641,41 @@
           "receipt": "evidence/device-completion-summary.json",
           "relation": "partial",
           "reason": "Real Android capture/pause marker/save/play/pause/seek observed on disposable assignment1183; silence does not prove audible acceptance."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/device-completion-summary.json",
+          "relation": "partial",
+          "reason": "Saved take exists at the exact DB path, playback advanced0:02/1:35 and paused, midpoint seek displayed0:47. Recovered verse2 strictly decoded as AAC/M4A with nonzero signal; original blanket synthetic-silence label is not a measured digital-silence finding. Six owner10 takes remain preserved. Audible quality/input provenance and durable complete Maestro acceptance are not proved.",
+          "device_serial": "emulator-5554",
+          "fixture": {
+            "project": 12,
+            "milestone": 19,
+            "assignment": 1183,
+            "capture_owner": 10
+          },
+          "runtime_qualification": "Observed existing Android development build; source/config presence is not exact runtime instrumentation acknowledgement. Lifecycle timeout receipt records source revision9af88a3a; do not infer uniform final revision or patched behavior from source alone.",
+          "evidence": [
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/device-completion-summary.json",
+              "sha256": "fef94f040e242ee3b5027e9cda5f56e148ea9f7cf11b46482da46729ed797390",
+              "classification": "retained direct/native/file observation; no new execution"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/saved-take-path-verification.json",
+              "sha256": "1c50828c75dde8e6246df5f12235280286eee345d78038dd6b476495993409a2",
+              "classification": "retained direct/native/file observation; no new execution"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/media-analysis/synthetic-recovered-verse2.analysis.json",
+              "sha256": "53cf10b54901b0294527be218216e8e950ad35dff4a3fffa28360674363f7e9c",
+              "classification": "retained direct/native/file observation; no new execution"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch2-primary-safe-checkpoint.json",
+              "sha256": "43b8b03e748d6d2636ef0cb383c395ff0731e885b190cf5feda2d0899780c193",
+              "classification": "retained direct/native/file observation; no new execution"
+            }
+          ]
         }
       ],
       "isolated_status": "PASS",
@@ -1649,10 +1694,11 @@
         }
       ],
       "missing_assertions_or_fixture": [
-        "Known non-silent audio input and audible playback still unverified; preserved take is synthetic silence."
+        "Matt must listen to preserved audio and assess playback/seek feel; decoded nonzero signal does not prove audible or intended input quality.",
+        "Full capture-to-audible-playback flow and required repeatability remain incomplete; preserve navigation and lifecycle timeouts."
       ],
       "executable_now": false,
-      "next_test": "Use permitted non-silent input on a separately authorized disposable capture; verify audible playback.",
+      "next_test": "Matt to verify audible playback on an existing preserved take; automation must not create another take or retry pending uploads to replace that human check.",
       "source_title": "Record and play local draft audio",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/23",
@@ -1689,15 +1735,47 @@
       "additive_scope": "nonadditive_parent",
       "review_reason": "Idle/recording/paused/review plus waveform/source expansion is a state/layout group overlapping lifecycle children.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/fluent-live1183-batch.json",
+          "relation": "partial",
+          "reason": "Existing direct device receipts show idle Record entry, running capture, paused controls/timer, resume, saved review/take list and source-toggle presence on disposable1183. These are partial state observations, not an executed complete layout/waveform/source-accordion matrix.",
+          "device_serial": "emulator-5554",
+          "fixture": {
+            "project": 12,
+            "milestone": 19,
+            "assignment": 1183,
+            "capture_owner": 10
+          },
+          "runtime_qualification": "Observed existing Android development build; source/config presence is not exact runtime instrumentation acknowledgement. Lifecycle timeout receipt records source revision9af88a3a; do not infer uniform final revision or patched behavior from source alone.",
+          "evidence": [
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/fluent-live1183-batch.json",
+              "sha256": "4c46304d3dbcbfbf926e8786e6ec172c2702c83d73b9b624c9a6080687828eb8",
+              "classification": "retained direct/native/file observation; no new execution"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/followup-batch/summary.json",
+              "sha256": "44b1bef4d0d2c3a6703d5acfd966b839df5d31f9dd0f473e4833a5a033b0dcc0",
+              "classification": "retained direct/native/file observation; no new execution"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/lifecycle-batch/fluent-lifecycle-save.json",
+              "sha256": "9ebe545fc3f0e9ca487f4ee39e5a8443809c45e24dc82fd059816aec3037e59c",
+              "classification": "retained direct/native/file observation; no new execution"
+            }
+          ]
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "Safe disposable capture target; each lifecycle state and source accordion layout."
+        "All required waveform/review/source-accordion expanded/collapsed layout assertions are not demonstrated together.",
+        "Complete durable state-matrix Maestro flow and required clean rerun remain absent; initial navigation and lifecycle flow timeouts retained."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Use retained screenshots/command evidence for unasserted source-accordion/layout states; schedule only the exact remaining supported state assertion, not repeated capture setup.",
       "source_title": "Record Tab capture states and Review chrome",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/49"
@@ -1775,8 +1853,44 @@
       "additive_scope": "nonadditive_parent",
       "review_reason": "Four lifecycle transitions and absence of UI/DB side effects form an engine contract group, not one additive behavior.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/device-completion-summary.json",
+          "relation": "partial",
+          "reason": "Real Android capture start/pause/resume/save occurred; recovered v2 saved36999ms/453302bytes, v3 saved66646ms/815929bytes after actual OS process stop/relaunch, v6 saved17339ms/215885bytes after interrupted driver. No broad absence-of-side-effects or complete native lifecycle PASS is claimed.",
+          "device_serial": "emulator-5554",
+          "fixture": {
+            "project": 12,
+            "milestone": 19,
+            "assignment": 1183,
+            "capture_owner": 10
+          },
+          "runtime_qualification": "Observed existing Android development build; source/config presence is not exact runtime instrumentation acknowledgement. Lifecycle timeout receipt records source revision9af88a3a; do not infer uniform final revision or patched behavior from source alone.",
+          "evidence": [
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/device-completion-summary.json",
+              "sha256": "fef94f040e242ee3b5027e9cda5f56e148ea9f7cf11b46482da46729ed797390",
+              "classification": "retained direct/native/file observation; no new execution"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/followup-batch/summary.json",
+              "sha256": "44b1bef4d0d2c3a6703d5acfd966b839df5d31f9dd0f473e4833a5a033b0dcc0",
+              "classification": "retained direct/native/file observation; no new execution"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/process-network-batch/summary.json",
+              "sha256": "d296bd0cdf1ebb02fa608028827096df3ef36d94da1b8e0e03a7b8ae50fa3e30",
+              "classification": "retained direct/native/file observation; no new execution"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/lifecycle-batch/fluent-lifecycle-save.json",
+              "sha256": "9ebe545fc3f0e9ca487f4ee39e5a8443809c45e24dc82fd059816aec3037e59c",
+              "classification": "retained direct/native/file observation; no new execution"
+            }
+          ]
+        }
+      ],
       "isolated_status": "PASS",
       "isolated_evidence": [
         {
@@ -1793,10 +1907,11 @@
         }
       ],
       "missing_assertions_or_fixture": [
-        "Real Android microphone lifecycle plus side-effect verification; capture currently unsafe."
+        "Mic release/absence-of-native-side-effects oracle remains unproved; saved duration does not prove release.",
+        "Full lifecycle driver timed out; preserve that failure rather than treating later manual save as full-flow PASS."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Check the specific microphone-release/native-side-effect oracle on existing retained stop evidence before any further capture; full-driver repeat remains a separate scheduled execution.",
       "source_title": "Recording engine start/pause/resume/stop",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/95"
@@ -1810,8 +1925,34 @@
       "additive_scope": "nonadditive_parent",
       "review_reason": "Play/pause/seek/stop and position/duration span independently observable engine outcomes.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/device-completion-summary.json",
+          "relation": "partial",
+          "reason": "Saved native take playback advanced to0:02/1:35, pause observed, midpoint scrub displayed0:47/1:35 and returned Play draft. This establishes sampled play/pause/seek position behavior, not audible quality, every stop/end state or repeatable durable engine acceptance.",
+          "device_serial": "emulator-5554",
+          "fixture": {
+            "project": 12,
+            "milestone": 19,
+            "assignment": 1183,
+            "capture_owner": 10
+          },
+          "runtime_qualification": "Observed existing Android development build; source/config presence is not exact runtime instrumentation acknowledgement. Lifecycle timeout receipt records source revision9af88a3a; do not infer uniform final revision or patched behavior from source alone.",
+          "evidence": [
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/device-completion-summary.json",
+              "sha256": "fef94f040e242ee3b5027e9cda5f56e148ea9f7cf11b46482da46729ed797390",
+              "classification": "retained direct/native/file observation; no new execution"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/fluent-live1183-batch.json",
+              "sha256": "4c46304d3dbcbfbf926e8786e6ec172c2702c83d73b9b624c9a6080687828eb8",
+              "classification": "retained direct/native/file observation; no new execution"
+            }
+          ]
+        }
+      ],
       "isolated_status": "PASS",
       "isolated_evidence": [
         {
@@ -1828,10 +1969,11 @@
         }
       ],
       "missing_assertions_or_fixture": [
-        "Existing safe take with native playback/seek or disposable capture target; no cached takes."
+        "Matt owns audible playback, scrub feel and seek-quality assessment on preserved takes.",
+        "Stop/end-of-file and position/duration matrix plus durable flow/repeatability remain incompletely asserted."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Matt to listen/scrub a preserved take; obtain only missing supported stop/end assertions later, preserving the existing sampled seek proof.",
       "source_title": "Playback engine play/pause/seek/stop",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/96"
@@ -1909,15 +2051,47 @@
       "additive_scope": "nonadditive_parent",
       "review_reason": "Native remux success, seekability and playable-AAC fallback are distinct conditional outcomes; physical close-quality is a separate evidence gate.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/saved-take-path-verification.json",
+          "relation": "partial",
+          "reason": "Android-produced saved .m4a exists with exact DB file-size agreement; recovered v2 probes as AAC-LC in M4A, decodes successfully and its duration is36.919728s versus36999ms DB. Native playback/midpoint seek were observed on v1. This is output/seek evidence, not direct proof of the native remux call or its fallback branch.",
+          "device_serial": "emulator-5554",
+          "fixture": {
+            "project": 12,
+            "milestone": 19,
+            "assignment": 1183,
+            "capture_owner": 10
+          },
+          "runtime_qualification": "Observed existing Android development build; source/config presence is not exact runtime instrumentation acknowledgement. Lifecycle timeout receipt records source revision9af88a3a; do not infer uniform final revision or patched behavior from source alone.",
+          "evidence": [
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/saved-take-path-verification.json",
+              "sha256": "1c50828c75dde8e6246df5f12235280286eee345d78038dd6b476495993409a2",
+              "classification": "retained direct/native/file observation; no new execution"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/media-analysis/synthetic-recovered-verse2.analysis.json",
+              "sha256": "53cf10b54901b0294527be218216e8e950ad35dff4a3fffa28360674363f7e9c",
+              "classification": "retained direct/native/file observation; no new execution"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/device-completion-summary.json",
+              "sha256": "fef94f040e242ee3b5027e9cda5f56e148ea9f7cf11b46482da46729ed797390",
+              "classification": "retained direct/native/file observation; no new execution"
+            }
+          ]
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "Safe non-944 capture target; loaded/called native remux, file output, seek and fallback evidence."
+        "Direct native remux invocation/causal trace and forced-remux-failure AAC fallback remain unverified.",
+        "Matt must assess physical audible/seek quality; file container/decoding and UI position alone do not establish it."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Reconcile any already-retained native remux call trace if available; otherwise keep invocation/fallback blocked until a supported assigned check, with Matt handling listening.",
       "source_title": "Committed AAC remuxed to seekable M4A",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/176",
@@ -1932,15 +2106,37 @@
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Decoded non-silent remux output is a distinct measurable audio property, not satisfied by class presence or mock invocation.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/media-analysis/synthetic-recovered-verse2.analysis.json",
+          "relation": "partial",
+          "reason": "Recovered Android verse2 M4A strictly decodes with nonzero digital signal:1628160 samples, RMS-3.043506dBFS, no decoder errors and no >=0.1s silence interval at-60dB. Input provenance remains unknown despite host microphone reported disabled. This is partial file evidence; not an audible or known-input remux acceptance PASS.",
+          "device_serial": "emulator-5554",
+          "fixture": {
+            "project": 12,
+            "milestone": 19,
+            "assignment": 1183,
+            "capture_owner": 10
+          },
+          "runtime_qualification": "Observed existing Android development build; source/config presence is not exact runtime instrumentation acknowledgement. Lifecycle timeout receipt records source revision9af88a3a; do not infer uniform final revision or patched behavior from source alone.",
+          "evidence": [
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/media-analysis/synthetic-recovered-verse2.analysis.json",
+              "sha256": "53cf10b54901b0294527be218216e8e950ad35dff4a3fffa28360674363f7e9c",
+              "classification": "retained direct/native/file observation; no new execution"
+            }
+          ]
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "Known non-silent Android input/output; native decode/listen proof, not desktop synthetic."
+        "Known input provenance and native-remux causal trace remain absent.",
+        "Matt must verify audible output/quality; do not equate host-mic-off with measured digital silence or nonzero PCM with audibility."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Matt to listen to existing preserved recovered audio; retain digital nonzero measurements without inventing input provenance or active thresholds.",
       "source_title": "Remuxed take must not be silent",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/707",
@@ -1999,15 +2195,51 @@
           "flow": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/recording/verse-bounds-existing-session.yaml",
           "relation": "partial",
           "reason": "Record pane and verse boundary navigation asserted; no microphone or saved take interaction."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/device-completion-summary.json",
+          "relation": "partial",
+          "reason": "Existing Bible-to-Record navigation evidence is supplemented by real saved take durations/sizes and exact file verification; six retained owner10 takes disprove the old no-take/capture-unsafe prerequisite. No independent microphone-release proof follows from successful save.",
+          "device_serial": "emulator-5554",
+          "fixture": {
+            "project": 12,
+            "milestone": 19,
+            "assignment": 1183,
+            "capture_owner": 10
+          },
+          "runtime_qualification": "Observed existing Android development build; source/config presence is not exact runtime instrumentation acknowledgement. Lifecycle timeout receipt records source revision9af88a3a; do not infer uniform final revision or patched behavior from source alone.",
+          "evidence": [
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/device-completion-summary.json",
+              "sha256": "fef94f040e242ee3b5027e9cda5f56e148ea9f7cf11b46482da46729ed797390",
+              "classification": "retained direct/native/file observation; no new execution"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/saved-take-path-verification.json",
+              "sha256": "1c50828c75dde8e6246df5f12235280286eee345d78038dd6b476495993409a2",
+              "classification": "retained direct/native/file observation; no new execution"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/lifecycle-batch/fluent-lifecycle-save.json",
+              "sha256": "9ebe545fc3f0e9ca487f4ee39e5a8443809c45e24dc82fd059816aec3037e59c",
+              "classification": "retained direct/native/file observation; no new execution"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch2-primary-safe-checkpoint.json",
+              "sha256": "43b8b03e748d6d2636ef0cb383c395ff0731e885b190cf5feda2d0899780c193",
+              "classification": "retained direct/native/file observation; no new execution"
+            }
+          ]
         }
       ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "Mic-release and real saved-duration proof remain absent; do not repeat already passed Bible-to-Record navigation."
+        "Microphone release after Stop remains unproved by a native release oracle.",
+        "Durable full requirement flow/repeatability remains incomplete; keep lifecycle timeout."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Use retained stop/save timestamps and a supported native release signal to close only microphone release; do not repeat already-proven Bible-to-Record entry.",
       "source_title": "Record tab loads; verse opens Record; mic released on stop",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/236"
@@ -2021,15 +2253,42 @@
       "additive_scope": "nonadditive_parent",
       "review_reason": "Attribution, default own-take view, non-demotion, and prohibiting foreign mutations are an isolation matrix; account-switch chrome does not prove it.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch2-primary-safe-checkpoint.json",
+          "relation": "partial",
+          "reason": "Six saved rows are attributed to owner10 and survive restoration to active12 with cached10/9/12. This proves sampled capture attribution/preservation only. All six share one owner; account12 restoration is not a second-author take or foreign-mutation-denial test.",
+          "device_serial": "emulator-5554",
+          "fixture": {
+            "project": 12,
+            "milestone": 19,
+            "assignment": 1183,
+            "capture_owner": 10
+          },
+          "runtime_qualification": "Observed existing Android development build; source/config presence is not exact runtime instrumentation acknowledgement. Lifecycle timeout receipt records source revision9af88a3a; do not infer uniform final revision or patched behavior from source alone.",
+          "evidence": [
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch2-primary-safe-checkpoint.json",
+              "sha256": "43b8b03e748d6d2636ef0cb383c395ff0731e885b190cf5feda2d0899780c193",
+              "classification": "retained direct/native/file observation; no new execution"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/followup-batch/summary.json",
+              "sha256": "44b1bef4d0d2c3a6703d5acfd966b839df5d31f9dd0f473e4833a5a033b0dcc0",
+              "classification": "retained direct/native/file observation; no new execution"
+            }
+          ]
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "At least two attributed authors/takes and safe write target; current cached recordings count is zero."
+        "Need separately owned verified second-author takes/fixture plus own/default view, non-demotion and foreign-mutation denial checks.",
+        "Existing six takes all belong to owner10; preserve them and do not use foreign deletion/selection as an unsafe probe."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Use the separately owned B fixture/verified second-author prerequisites for remaining isolation matrix; do not infer role semantics from account names or current six-take inventory.",
       "source_title": "Active-user take isolation on shared device",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/259",
@@ -2246,6 +2505,46 @@
               "classification": "retained Maestro command results; assertion phase only"
             }
           ]
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/followup-batch/summary.json",
+          "relation": "partial",
+          "reason": "Existing direct pause/resume and leave-prompt preservation, Metro reload recovery and actual OS process-stop recovery followed by save are retained. Sixth take saved after incomplete lifecycle driver, not as full-flow PASS. Background v5 paused-UI checkpoint remains partial with earlier foreground-hash assertion failure preserved.",
+          "device_serial": "emulator-5554",
+          "fixture": {
+            "project": 12,
+            "milestone": 19,
+            "assignment": 1183,
+            "capture_owner": 10
+          },
+          "runtime_qualification": "Observed existing Android development build; source/config presence is not exact runtime instrumentation acknowledgement. Lifecycle timeout receipt records source revision9af88a3a; do not infer uniform final revision or patched behavior from source alone.",
+          "evidence": [
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/followup-batch/summary.json",
+              "sha256": "44b1bef4d0d2c3a6703d5acfd966b839df5d31f9dd0f473e4833a5a033b0dcc0",
+              "classification": "retained direct/native/file observation; no new execution"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/process-network-batch/summary.json",
+              "sha256": "d296bd0cdf1ebb02fa608028827096df3ef36d94da1b8e0e03a7b8ae50fa3e30",
+              "classification": "retained direct/native/file observation; no new execution"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/lifecycle-batch/fluent-lifecycle-save.json",
+              "sha256": "9ebe545fc3f0e9ca487f4ee39e5a8443809c45e24dc82fd059816aec3037e59c",
+              "classification": "retained direct/native/file observation; no new execution"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/fluent-live1183-maestro.json",
+              "sha256": "99ee4e3988c3eb3c34f398f375846ebdc9a0e7d24f4d7732b30065245f131e57",
+              "classification": "retained direct/native/file observation; no new execution"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/lifecycle-batch/fluent-lifecycle-result.json",
+              "sha256": "8750104f34b81b7a3f2c1ac14e7b647421480c4216473dc248256b8ba8f4fd8d",
+              "classification": "retained direct/native/file observation; no new execution"
+            }
+          ]
         }
       ],
       "isolated_status": "PASS",
@@ -2264,11 +2563,12 @@
         }
       ],
       "missing_assertions_or_fixture": [
-        "Drawer/Settings-specific active/paused lock remains unverified; no supported Drawer button from active Drafting.",
-        "Background foreground byte-immutability assertion failed; retain failure and investigate separately. Already prepared paused UI checkpoint alone does not prove full background lifecycle."
+        "Drawer/Settings-specific active/paused lock remains unverified; edge gestures observed Android Back and are not drawer proof.",
+        "Background foreground byte-immutability assertion failed; retain and investigate from existing evidence, no full background PASS.",
+        "Full lifecycle flow timed out (130.126s), initial capture navigation flow timed out (157.915s); manual completion does not erase failures."
       ],
-      "executable_now": true,
-      "next_test": "Background an active disposable capture and verify auto-pause; use a confirmed drawer-specific gesture/menu route for guard matrix.",
+      "executable_now": false,
+      "next_test": "Investigate the retained background hash failure and identify a supported drawer-specific route; do not retry unchanged blocked flow or recapture merely to replace the failure.",
       "source_title": "Kill-safe pause recovery and leave prompt",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/567",
@@ -2329,8 +2629,34 @@
       "additive_scope": "nonadditive_parent",
       "review_reason": "Record-start centering, scrub location accuracy and stitched-row alignment are separate geometry/playback outcomes.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/device-completion-summary.json",
+          "relation": "partial",
+          "reason": "Native v1 take midpoint scrub displayed0:47/1:35 from a tapped waveform progress region and returned Play draft. This is one sampled mapping only; it does not prove start centering, arbitrary scrub accuracy or stitched-row alignment.",
+          "device_serial": "emulator-5554",
+          "fixture": {
+            "project": 12,
+            "milestone": 19,
+            "assignment": 1183,
+            "capture_owner": 10
+          },
+          "runtime_qualification": "Observed existing Android development build; source/config presence is not exact runtime instrumentation acknowledgement. Lifecycle timeout receipt records source revision9af88a3a; do not infer uniform final revision or patched behavior from source alone.",
+          "evidence": [
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/device-completion-summary.json",
+              "sha256": "fef94f040e242ee3b5027e9cda5f56e148ea9f7cf11b46482da46729ed797390",
+              "classification": "retained direct/native/file observation; no new execution"
+            },
+            {
+              "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/fluent-live1183-batch.json",
+              "sha256": "4c46304d3dbcbfbf926e8786e6ec172c2702c83d73b9b624c9a6080687828eb8",
+              "classification": "retained direct/native/file observation; no new execution"
+            }
+          ]
+        }
+      ],
       "isolated_status": "PASS",
       "isolated_evidence": [
         {
@@ -2341,10 +2667,11 @@
         }
       ],
       "missing_assertions_or_fixture": [
-        "Safe take and seek/native position oracles; actual waveform-start capture fixture."
+        "Waveform start-centering and stitched-row geometry/alignment remain unverified.",
+        "Matt owns perceived scrub/seek quality; one sampled timestamp is not full geometric/native accuracy proof."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Matt to assess existing take scrub/seek feel; use exact remaining centering/stitched-layout assertions later without repeating the midpoint sample.",
       "source_title": "Waveform centered; scrub seeks to tap",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/404",
@@ -5939,15 +6266,38 @@
       "additive_scope": "nonadditive_parent",
       "review_reason": "Explicit acceptance group with multiple independent conditions; excluded from additive atomic scope.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-offline-no-download-first/2026-10-20_130613/b-peer11-no-download-offline-existing-session/commands.json",
+          "case_id": "B_offline_no_download_unavailable_52.3s",
+          "flow": ".maestro/flows/offline/b-peer11-no-download-offline-existing-session.yaml",
+          "relation": "partial_unavailable_branch_only",
+          "reason": "Exact no-download Resources explanation,notloading,andallTN/TQ/Images sectionsabsent assertedoffline. Availableprepared-content/local-read/no-fetch matrix not exercised."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-offline-no-download-first/preconditions.json",
+          "case_id": "B_native_readonly_no_download_precondition",
+          "flow": null,
+          "relation": "supporting_native_precondition",
+          "reason": "ScopedreadonlySQLcountsonuser11/project12;no DBcopy/auth/KV extraction. StartedHomebeforeoffline newsourcehookmount,notreusedonlineURI."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-offline-no-download-first/result.json",
+          "case_id": "B_network_restoration",
+          "flow": null,
+          "relation": "supporting_cleanup",
+          "reason": "Exactoriginalairplane0/WiFi1,actualWiFienabled,HomeOnline restored. TransientWiFi2settled;cleanupguardabortedbeforewrite;no additionalnetworktoggles."
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "Need prepared TN/TQ/Images inventory, offline state, local-content/no-fetch proof, and no-download unavailable branch."
+        "Known populated downloadableTN/TQ/Images catalogue with exactresourceIDs,sizes and preparedlocalinventory provenance.",
+        "Actual download then offline reopen asserting complete expectedcontent fromlocalpreparedfiles withoutnetworkfetch,followedbyreconnect."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "After verified catalogue/download prerequisites are available,prepare owned resourcefiles,retain completedinventory/path provenance,thenoffline reopenTN/TQ/Images andassertknowncontentwithoutfetch;reconnectandpreservefixtures.",
       "source_title": "Offline: Resources read Prepare-for-Offline download without network",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/578",
@@ -5956,7 +6306,8 @@
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/192",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/591"
       ],
-      "domain": "reference_platform"
+      "domain": "reference_platform",
+      "current_scope_execution_blocker": "Available populateddownload/catalogue/local-file provenance not established. CurrentPASS covers no-download unavailable branch only;PFOerror behavior remainsunproven."
     },
     {
       "id": "D-0579-01",
@@ -5986,21 +6337,42 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Current falsifiable criterion; all stated conditions must be demonstrated together.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-offline-no-download-first/2026-10-20_130613/b-peer11-no-download-offline-existing-session/commands.json",
+          "case_id": "B_offline_no_download_unavailable_52.3s",
+          "flow": ".maestro/flows/offline/b-peer11-no-download-offline-existing-session.yaml",
+          "relation": "complete",
+          "reason": "Knownuser11inventoryhas0completedlocalfile rows;project12has0queue rows. Freshshellopenedoffline fromHome;exactNoSourceAudio +no loading/play/Retry/error asserts passedwithinbounded20swait."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-offline-no-download-first/preconditions.json",
+          "case_id": "B_native_readonly_no_download_precondition",
+          "flow": null,
+          "relation": "supporting_native_precondition",
+          "reason": "ScopedreadonlySQLcountsonuser11/project12;no DBcopy/auth/KV extraction. StartedHomebeforeoffline newsourcehookmount,notreusedonlineURI."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-offline-no-download-first/result.json",
+          "case_id": "B_network_restoration",
+          "flow": null,
+          "relation": "supporting_cleanup",
+          "reason": "Exactoriginalairplane0/WiFi1,actualWiFienabled,HomeOnline restored. TransientWiFi2settled;cleanupguardabortedbeforewrite;no additionalnetworktoggles."
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Need verified offline/no-local-source state and unavailable/no-indefinite-spinner assertions."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Offline without downloaded source audio shows unavailable (not spinner)",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/579"
       ],
-      "domain": "reference_platform"
+      "domain": "reference_platform",
+      "closure_scope_note": "Exact no-downloaded-source unavailable/not-spinner atom only;no downloadedlocalfile playback,decoder,listening,serveragreement or sourcebytes claim."
     },
     {
       "id": "D-0585-01",

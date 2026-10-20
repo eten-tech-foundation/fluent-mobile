@@ -1,0 +1,68 @@
+# D-0579-02 and D-0578 no-download offline branch only (partial matrix).
+# Wrapper proves user11 completedlocalfiles=0, originalnetwork0/1, toggles B only,
+# restores original connectivity in finally even on failure. New shell offline
+# avoids reusing an in-memory online source URL as a downloaded-file claim.
+appId: com.eten.fluent
+tags:
+  - offline
+  - existing-session
+  - read-only
+  - guard
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID === '11' && typeof MAESTRO_B_SERIAL !== 'undefined' && MAESTRO_B_SERIAL === 'emulator-5556' && typeof MAESTRO_B_COMPLETED_LOCAL_FILES !== 'undefined' && MAESTRO_B_COMPLETED_LOCAL_FILES === '0'}
+- assertVisible:
+    id: '^home-tab-projects$'
+- assertNotVisible:
+    id: '^drafting-tab-bar$'
+- assertNotVisible:
+    id: '^login-email-input$'
+- extendedWaitUntil:
+    visible:
+      id: '^home-sync-button$'
+      text: '^Offline.*$'
+    timeout: 20000
+- tapOn:
+    id: '^milestone-row-19$'
+- extendedWaitUntil:
+    visible:
+      id: '^chapter-row-1183$'
+    timeout: 15000
+- tapOn:
+    id: '^chapter-row-1183$'
+- extendedWaitUntil:
+    visible:
+      id: '^drafting-tab-bible$'
+    timeout: 15000
+- tapOn:
+    id: '^drafting-tab-bible$'
+- extendedWaitUntil:
+    visible:
+      id: '^source-audio-label$'
+      text: '^No source audio$'
+    timeout: 20000
+- assertNotVisible:
+    id: '^source-audio-loading$'
+- assertNotVisible:
+    id: '^source-audio-play$'
+- assertNotVisible:
+    text: '^Retry loading source audio$'
+- assertNotVisible:
+    text: "^Couldn't load source audio$"
+- takeScreenshot: b-offline-no-downloaded-source-not-spinner
+- tapOn:
+    id: '^drafting-tab-resources$'
+- extendedWaitUntil:
+    visible:
+      id: '^resources-tab$'
+    timeout: 15000
+- assertVisible:
+    text: '^No resources are on this device yet\. Download them from Prepare for Offline\.$'
+- assertNotVisible:
+    id: '^resources-tab-loading$'
+- assertNotVisible:
+    id: '^resources-section-translationNotes-toggle$'
+- assertNotVisible:
+    id: '^resources-section-translationQuestions-toggle$'
+- assertNotVisible:
+    id: '^resources-section-imagesMaps-toggle$'
+- takeScreenshot: b-offline-no-downloaded-resources
