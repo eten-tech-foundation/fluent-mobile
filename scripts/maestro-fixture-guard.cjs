@@ -46,6 +46,11 @@ function assertProjectAllowed(projectId, allowlistRaw, denylistRaw) {
 }
 
 const FIXTURE_CHAPTER_HELPER = 'open-my-work-chapter.yaml';
+const nodePath = require('path');
+const MILESTONE_FIXTURE_HELPER = nodePath.resolve(
+  __dirname,
+  '../.maestro/shared/nav/open-fixture-chapter-from-milestone.yaml',
+);
 
 const VALUE_FLAGS = new Set([
   '--config',
@@ -87,6 +92,23 @@ function referencesFixtureChapter(yaml) {
   return String(yaml).includes(FIXTURE_CHAPTER_HELPER);
 }
 
+// This alternative accepts only an actual unconditional scalar runFlow command
+// resolving to the repository helper, never a filename in comments or strings.
+function referencesMilestoneFixture(yaml, flowPath) {
+  const body = String(yaml).split(/^---\s*$/m)[1] || '';
+  return body.split(/\r?\n/).some(line => {
+    const command = line.match(
+      /^- runFlow:\s+(?:"([^"\r\n]+)"|'([^'\r\n]+)'|([^\s#'"]+))\s*$/,
+    );
+    if (!command) return false;
+    const target = command[1] || command[2] || command[3];
+    return (
+      nodePath.resolve(nodePath.dirname(flowPath), target) ===
+      MILESTONE_FIXTURE_HELPER
+    );
+  });
+}
+
 function flowSelected(tags, includeTags, excludeTags) {
   if (excludeTags.some(tag => tags.includes(tag))) return false;
   if (includeTags.length === 0) return true;
@@ -104,7 +126,8 @@ function parseMaestroInvocation(argv) {
     const inline = arg.match(/^--([^=]+)=(.*)$/);
     if (inline) {
       const flag = `--${inline[1]}`;
-      if (flag === '--include-tags') includeTags.push(...parseTagArg(inline[2]));
+      if (flag === '--include-tags')
+        includeTags.push(...parseTagArg(inline[2]));
       else if (flag === '--exclude-tags') {
         excludeTags.push(...parseTagArg(inline[2]));
       }
@@ -114,7 +137,8 @@ function parseMaestroInvocation(argv) {
       const value = args[i + 1];
       i += 1;
       if (arg === '--include-tags') includeTags.push(...parseTagArg(value));
-      else if (arg === '--exclude-tags') excludeTags.push(...parseTagArg(value));
+      else if (arg === '--exclude-tags')
+        excludeTags.push(...parseTagArg(value));
       continue;
     }
     if (arg.startsWith('-')) continue;
@@ -125,6 +149,7 @@ function parseMaestroInvocation(argv) {
 
 function evaluateChapterPreflight({
   chapterId,
+  milestoneId,
   projectId,
   allowlist,
   denylist,
@@ -135,12 +160,15 @@ function evaluateChapterPreflight({
   const include = includeTags || [];
   const exclude = excludeTags || [];
   const needingChapter = [];
+  const needingMilestone = [];
   const mutating = [];
   const unpinned = [];
   for (const flow of flows || []) {
     const tags = parseFlowTags(flow.yaml);
     if (!flowSelected(tags, include, exclude)) continue;
-    const pinned = referencesFixtureChapter(flow.yaml);
+    const milestonePinned = referencesMilestoneFixture(flow.yaml, flow.path);
+    const pinned = referencesFixtureChapter(flow.yaml) || milestonePinned;
+    if (milestonePinned) needingMilestone.push(flow.path);
     if (pinned) needingChapter.push(flow.path);
     if (!tags.includes('mutating')) continue;
     mutating.push(flow.path);
@@ -169,6 +197,19 @@ function evaluateChapterPreflight({
       flows: needingChapter,
     };
   }
+  if (
+    needingMilestone.length > 0 &&
+    (!/^[1-9][0-9]*$/.test(String(milestoneId ?? '')) ||
+      !/^[1-9][0-9]*$/.test(String(chapterId ?? '')))
+  ) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason:
+        'milestone fixture requires positive MAESTRO_FIXTURE_MILESTONE_ID and MAESTRO_FIXTURE_CHAPTER_ID',
+      flows: needingMilestone,
+    };
+  }
   return { ok: true, status: 'PASS', reason: '', flows: needingChapter };
 }
 
@@ -184,7 +225,12 @@ function collectYamlFiles(target, fs, path) {
   const stat = fs.statSync(target);
   if (stat.isFile()) {
     const yaml = target.endsWith('.yaml') || target.endsWith('.yml');
-    return { ok: true, status: 'PASS', reason: '', files: yaml ? [target] : [] };
+    return {
+      ok: true,
+      status: 'PASS',
+      reason: '',
+      files: yaml ? [target] : [],
+    };
   }
   const files = [];
   for (const entry of fs.readdirSync(target, { withFileTypes: true })) {
@@ -206,6 +252,7 @@ function collectYamlFiles(target, fs, path) {
 
 function preflightFromArgv({
   chapterId,
+  milestoneId,
   projectId,
   allowlist,
   denylist,
@@ -229,6 +276,7 @@ function preflightFromArgv({
   }
   return evaluateChapterPreflight({
     chapterId,
+    milestoneId,
     projectId,
     allowlist,
     denylist,
@@ -244,6 +292,7 @@ function runPreflightCli(argv, env, io) {
   const args = argv[0] === '--' ? argv.slice(1) : argv;
   const result = preflightFromArgv({
     chapterId: env.MAESTRO_FIXTURE_CHAPTER_ID,
+    milestoneId: env.MAESTRO_FIXTURE_MILESTONE_ID,
     projectId: env.MAESTRO_FIXTURE_PROJECT_ID,
     allowlist: env.MAESTRO_FIXTURE_PROJECT_ALLOWLIST,
     denylist: env.MAESTRO_FIXTURE_PROJECT_DENYLIST,

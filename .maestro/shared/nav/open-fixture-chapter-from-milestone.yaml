@@ -1,0 +1,41 @@
+# Exact fixture navigation from ALREADY settled Home; no fallback/backtracking.
+# Root independently verifies project/milestone/chapter/user linkage before run.
+# Runner retains mutating project allowlist/denylist and exact chapter pin checks.
+appId: com.eten.fluent
+---
+- assertTrue: ${typeof MAESTRO_FIXTURE_MILESTONE_ID !== 'undefined' && /^[1-9][0-9]*$/.test(String(MAESTRO_FIXTURE_MILESTONE_ID))}
+- assertTrue: ${typeof MAESTRO_FIXTURE_CHAPTER_ID !== 'undefined' && /^[1-9][0-9]*$/.test(String(MAESTRO_FIXTURE_CHAPTER_ID))}
+- assertNotVisible:
+    id: login-email-input
+- assertVisible:
+    id: home-tab-my-work
+- assertVisible:
+    id: home-tab-projects
+- tapOn:
+    id: home-tab-projects
+- scrollUntilVisible:
+    element:
+      id: '^milestone-row-${MAESTRO_FIXTURE_MILESTONE_ID}$'
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: '^milestone-row-${MAESTRO_FIXTURE_MILESTONE_ID}$'
+- extendedWaitUntil:
+    visible:
+      id: chapter-row-.*
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: '^chapter-row-${MAESTRO_FIXTURE_CHAPTER_ID}$'
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: '^chapter-row-${MAESTRO_FIXTURE_CHAPTER_ID}$'
+- extendedWaitUntil:
+    visible:
+      id: drafting-tab-bar
+    timeout: 15000
+- assertVisible:
+    id: drafting-tab-bar
+- assertNotVisible:
+    id: login-email-input

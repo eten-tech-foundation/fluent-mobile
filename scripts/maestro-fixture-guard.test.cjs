@@ -225,10 +225,14 @@ describe('checked-in chapter navigation', () => {
     }
   });
 
-  it('leaves read-only smoke chapter flows on the first row', () => {
+  it('leaves read-only smoke chapter flows on their existing navigation helpers', () => {
     for (const file of smokeChapterFlows) {
       const yaml = fs.readFileSync(path.join(root, file), 'utf8');
-      expect(yaml).toContain('open-any-chapter.yaml');
+      expect(yaml).toContain(
+        file === '.maestro/flows/drafting/resources-sections.yaml'
+          ? 'open-fixture-chapter.yaml'
+          : 'open-any-chapter.yaml',
+      );
       expect(yaml).not.toContain('open-my-work-chapter.yaml');
       expect(yaml).toMatch(/\n  - smoke\n/);
     }
@@ -372,5 +376,92 @@ describe('checked-in chapter navigation', () => {
       ],
     });
     expect(result.ok).toBe(true);
+  });
+});
+
+describe('exact milestone fixture helper', () => {
+  const flowPath = path.join(
+    root,
+    '.maestro/flows/recording/fixture-capture.yaml',
+  );
+  const command =
+    '- runFlow: ../../shared/nav/open-fixture-chapter-from-milestone.yaml';
+  const yaml = `tags:\n  - record\n  - mutating\n---\n${command}\n`;
+  const input = {
+    chapterId: '1183',
+    milestoneId: '19',
+    projectId: '12',
+    allowlist: '12',
+    denylist: '5',
+    flows: [{ path: flowPath, yaml }],
+  };
+
+  it('accepts the actual named unconditional runFlow helper', () => {
+    expect(evaluateChapterPreflight(input).ok).toBe(true);
+  });
+
+  it('accepts an absolute canonical helper call from a temporary flow', () => {
+    const target = path.join(
+      root,
+      '.maestro/shared/nav/open-fixture-chapter-from-milestone.yaml',
+    );
+    expect(
+      evaluateChapterPreflight({
+        ...input,
+        flows: [
+          {
+            path: '/tmp/authorized-capture.yaml',
+            yaml: `tags:\n  - mutating\n---\n- runFlow: '${target}'\n`,
+          },
+        ],
+      }).ok,
+    ).toBe(true);
+  });
+
+  it.each([
+    ['missing chapter', { chapterId: '' }],
+    ['missing milestone', { milestoneId: '' }],
+    ['non-positive milestone', { milestoneId: '0' }],
+    ['denied project', { denylist: '12' }],
+    ['unallowlisted project', { allowlist: '13' }],
+    ['missing project', { projectId: '' }],
+  ])('blocks %s', (_name, overrides) => {
+    expect(evaluateChapterPreflight({ ...input, ...overrides }).ok).toBe(false);
+  });
+
+  it.each([
+    `# ${command}`,
+    '- evalScript: "open-fixture-chapter-from-milestone.yaml"',
+    `- runFlow:\n    when:\n      visible: home-tab-projects\n    commands:\n      ${command}`,
+    '- runFlow: ../../untrusted/open-fixture-chapter-from-milestone.yaml',
+  ])(
+    'rejects comments, strings, conditional or different-path lookalikes: %s',
+    body => {
+      expect(
+        evaluateChapterPreflight({
+          ...input,
+          flows: [
+            { path: flowPath, yaml: `tags:\n  - mutating\n---\n${body}\n` },
+          ],
+        }).ok,
+      ).toBe(false);
+    },
+  );
+
+  it('keeps the new helper navigation-only and pinned to exact IDs', () => {
+    const helper = fs.readFileSync(
+      path.join(
+        root,
+        '.maestro/shared/nav/open-fixture-chapter-from-milestone.yaml',
+      ),
+      'utf8',
+    );
+    expect(helper).toContain('^milestone-row-${MAESTRO_FIXTURE_MILESTONE_ID}$');
+    expect(helper).toContain('^chapter-row-${MAESTRO_FIXTURE_CHAPTER_ID}$');
+    expect(helper).toContain('id: home-tab-my-work');
+    expect(helper).toContain('id: drafting-tab-bar');
+    expect(helper).not.toMatch(
+      /goto-home|ensure-no-modal|clearState|record-start-button|record-new-take-button/,
+    );
   });
 });
