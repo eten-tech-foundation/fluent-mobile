@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { BookOpen, ListChecks, LucideIcon } from 'lucide-react-native';
-import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
+import { iconSizes, listIconStrokeWidth } from '../../theme';
+import { useTheme, useThemedStyles } from '../../theme/useTheme';
 
 export type HomeTab = 'myWork' | 'projects';
 
@@ -23,6 +24,8 @@ const TAB_TEST_IDS: Record<HomeTab, string> = {
 const TAB_INDICATOR = 2;
 
 export function TabBar({ activeTab, onTabChange }: TabBarProps) {
+  const theme = useTheme();
+  const styles = useStyles();
   return (
     <View style={styles.container}>
       {TABS.map(({ id, label, Icon }) => {
@@ -53,31 +56,32 @@ export function TabBar({ activeTab, onTabChange }: TabBarProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.tabBarBackground,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.sm,
-    // Bottom indicator sits inside the box — pad extra below so content stays centered.
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.md + TAB_INDICATOR,
-    borderBottomWidth: TAB_INDICATOR,
-    borderBottomColor: 'transparent',
-  },
-  activeTab: {
-    borderBottomColor: theme.colors.primary,
-  },
-  label: {
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.weights.medium,
-    includeFontPadding: false,
-  },
-});
+const useStyles = () =>
+  useThemedStyles(theme => ({
+    container: {
+      flexDirection: 'row',
+      backgroundColor: theme.colors.tabBarBackground,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    tab: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: theme.spacing.sm,
+      // Bottom indicator sits inside the box — pad extra below so content stays centered.
+      paddingTop: theme.spacing.md,
+      paddingBottom: theme.spacing.md + TAB_INDICATOR,
+      borderBottomWidth: TAB_INDICATOR,
+      borderBottomColor: 'transparent',
+    },
+    activeTab: {
+      borderBottomColor: theme.colors.primary,
+    },
+    label: {
+      fontSize: theme.typography.sizes.sm,
+      fontWeight: theme.typography.weights.medium,
+      includeFontPadding: false,
+    },
+  }));

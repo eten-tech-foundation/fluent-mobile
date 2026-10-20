@@ -1,8 +1,18 @@
 import React from 'react';
-import { Alert } from 'react-native';
+import {
+  Alert,
+  StyleSheet,
+  View,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 import { UserSettingsMenu } from './UserSettingsMenu';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { hrefs } from '../../navigation/hrefs';
+import { UiVersionOverride } from '../../theme/useTheme';
+import { resolveTheme } from '../../theme/uiVersion';
+import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
 import {
   RECORDING_IN_PROGRESS_MESSAGE,
   RECORDING_IN_PROGRESS_TITLE,
@@ -51,7 +61,10 @@ jest.mock('expo-router/drawer', () => {
       icon,
       focused,
       activeTintColor,
+      inactiveTintColor,
       activeBackgroundColor,
+      labelStyle,
+      style,
     }: {
       label: string;
       onPress: () => void;
@@ -59,7 +72,10 @@ jest.mock('expo-router/drawer', () => {
       accessibilityLabel?: string;
       focused?: boolean;
       activeTintColor?: string;
+      inactiveTintColor?: string;
       activeBackgroundColor?: string;
+      labelStyle?: StyleProp<TextStyle>;
+      style?: StyleProp<ViewStyle>;
       icon?: (props: {
         color: string;
         size: number;
@@ -73,6 +89,9 @@ jest.mock('expo-router/drawer', () => {
         // Surface focused styling props for assertions (RN Pressable ignores unknowns).
         {...{
           activeTintColor,
+          inactiveTintColor,
+          labelStyle,
+          style,
           activeBackgroundColor:
             activeBackgroundColor === undefined
               ? 'DEFAULT_ALPHA_PRIMARY'
@@ -81,7 +100,9 @@ jest.mock('expo-router/drawer', () => {
         onPress={onPress}
       >
         {icon?.({
-          color: focused ? '#1a6ef5' : '#333',
+          color: focused
+            ? activeTintColor ?? '#1a6ef5'
+            : inactiveTintColor ?? '#333',
           size: 18,
           focused: !!focused,
         })}
@@ -93,6 +114,7 @@ jest.mock('expo-router/drawer', () => {
 
 const mockGetActiveUserId = jest.fn();
 jest.mock('../../services/storage', () => ({
+  kvStorage: { getItemSync: jest.fn(), setItemSync: jest.fn() },
   getActiveUserId: (...args: unknown[]) => mockGetActiveUserId(...args),
   getKnownUserIds: jest.fn(),
   MAX_DEVICE_ACCOUNTS: 3,
@@ -184,6 +206,7 @@ describe('UserSettingsMenu', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    mockPreferenceStore();
     resetRecordCaptureGateForTests();
     mockDrawerStatus = 'closed';
     mockReload.mockResolvedValue(undefined);
@@ -475,5 +498,143 @@ describe('UserSettingsMenu', () => {
       RECORDING_IN_PROGRESS_MESSAGE,
       [{ text: 'OK' }],
     );
+  });
+
+  it('scopes drawer colors, label weights and spacing while preserving Legacy and account behavior', () => {
+    const legacy = resolveTheme('legacy');
+    const next = resolveTheme('next');
+    const colors = next.colors as {
+      cardBackground: string;
+      foreground: string;
+      primary: string;
+      border: string;
+      destructive: string;
+    };
+    const weights = next.typography.weights as {
+      regular: string;
+      semibold: string;
+    };
+    const lineHeights = next.typography.lineHeights as { tight: number };
+    const spacing = next.spacing as { xs: number };
+    const original = {
+      colors: { ...colors },
+      weights: { ...weights },
+      lineHeight: lineHeights.tight,
+      spacing: spacing.xs,
+    };
+    const props = { ...drawerProps, state: { ...drawerProps.state, index: 1 } };
+    const menu = (version: 'legacy' | 'next') => (
+      <UiVersionOverride value={version}>
+        <UserSettingsMenu
+          {...props}
+          onSignOut={onSignOut}
+          onUserSwitched={onUserSwitched}
+        />
+      </UiVersionOverride>
+    );
+    try {
+      Object.assign(colors, {
+        cardBackground: '#123456',
+        foreground: '#234567',
+        primary: '#345678',
+        border: '#456789',
+        destructive: '#56789a',
+      });
+      weights.regular = '300';
+      weights.semibold = '800';
+      lineHeights.tight = 27;
+      spacing.xs = 13;
+      const view = render(menu('legacy'));
+      const more = () => view.getByTestId('settings-menu-more-settings');
+      const label = (id: string) =>
+        StyleSheet.flatten(view.getByTestId(id).props.labelStyle);
+      const footer = () => {
+        const footers = view
+          .UNSAFE_getAllByType(View)
+          .map(node => StyleSheet.flatten(node.props.style))
+          .filter(
+            style =>
+              style?.backgroundColor !== undefined &&
+              typeof style?.paddingBottom === 'number',
+          );
+        expect(footers).toHaveLength(1);
+        return footers[0];
+      };
+      expect(view.getByTestId('settings-drawer-content')).toHaveStyle({
+        backgroundColor: legacy.colors.cardBackground,
+      });
+      expect(more().props.activeTintColor).toBe(legacy.colors.primary);
+      expect(label('settings-menu-more-settings')).toMatchObject({
+        fontSize: 14,
+        fontWeight: legacy.typography.weights.semibold,
+        lineHeight: legacy.typography.lineHeights.tight,
+      });
+      expect(footer()).toMatchObject({
+        backgroundColor: legacy.colors.cardBackground,
+        paddingBottom: legacy.spacing.xs,
+      });
+      view.rerender(menu('next'));
+      expect(view.getByTestId('settings-drawer-content')).toHaveStyle({
+        backgroundColor: '#123456',
+      });
+      expect(more().props.activeTintColor).toBe('#345678');
+      expect(more().props.inactiveTintColor).toBe('#234567');
+      expect(label('settings-menu-more-settings')).toMatchObject({
+        fontSize: 14,
+        fontWeight: '800',
+        lineHeight: 27,
+      });
+      expect(label('settings-menu-privacy-policy')).toMatchObject({
+        fontWeight: '300',
+        lineHeight: 27,
+      });
+      expect(label('settings-menu-account-active-1')).toMatchObject({
+        fontWeight: '800',
+      });
+      expect(
+        view.getByTestId('settings-menu-account-active-1').props
+          .activeBackgroundColor,
+      ).toBe('DEFAULT_ALPHA_PRIMARY');
+      expect(view.getByTestId('settings-menu-legal-divider')).toHaveStyle({
+        backgroundColor: '#456789',
+      });
+      expect(view.getByText('Accounts')).toHaveStyle({
+        color: '#999',
+        fontSize: 11,
+      });
+      expect(
+        view.getByTestId('settings-menu-sign-out').props.inactiveTintColor,
+      ).toBe('#56789a');
+      expect(label('settings-menu-sign-out')).toMatchObject({
+        color: '#d32f2f',
+        fontWeight: '300',
+      });
+      expect(footer()).toMatchObject({
+        backgroundColor: '#123456',
+        paddingBottom: 13,
+      });
+      view.rerender(menu('legacy'));
+      expect(view.getByTestId('settings-drawer-content')).toHaveStyle({
+        backgroundColor: legacy.colors.cardBackground,
+      });
+      expect(more().props.activeTintColor).toBe(legacy.colors.primary);
+      expect(label('settings-menu-more-settings')).toMatchObject({
+        fontSize: 14,
+        fontWeight: legacy.typography.weights.semibold,
+        lineHeight: legacy.typography.lineHeights.tight,
+      });
+      expect(footer()).toMatchObject({ paddingBottom: legacy.spacing.xs });
+      expect(mockSwitchToDeviceAccount).not.toHaveBeenCalled();
+      expect(mockSignOutCurrentDeviceAccount).not.toHaveBeenCalled();
+      expect(mockNavigate).not.toHaveBeenCalled();
+      expect(mockCloseDrawer).not.toHaveBeenCalled();
+      expect(mockPush).not.toHaveBeenCalled();
+      expect(mockReplace).not.toHaveBeenCalled();
+    } finally {
+      Object.assign(colors, original.colors);
+      Object.assign(weights, original.weights);
+      lineHeights.tight = original.lineHeight;
+      spacing.xs = original.spacing;
+    }
   });
 });

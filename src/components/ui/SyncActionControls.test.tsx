@@ -1,11 +1,25 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent, render, within } from '@testing-library/react-native';
 import {
   SYNC_NOW_CELLULAR_DISABLED_MESSAGE,
   SYNC_NOW_OFFLINE_MESSAGE,
   SyncActionControls,
 } from './SyncActionControls';
 import { TRANSFER_OFFLINE_MESSAGE } from '../../constants/messages';
+import { UiVersionOverride } from '../../theme/useTheme';
+import { resolveTheme } from '../../theme/uiVersion';
+import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
+
+jest.mock('../../services/storage', () => ({
+  kvStorage: { getItemSync: jest.fn(), setItemSync: jest.fn() },
+}));
+jest.mock('lucide-react-native', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const Icon = (props: Record<string, unknown>) =>
+    React.createElement(View, { ...props, testID: 'sync-action-test-icon' });
+  return { Pause: Icon, Play: Icon, X: Icon };
+});
 
 describe('SyncActionControls', () => {
   const onPause = jest.fn();
@@ -15,6 +29,7 @@ describe('SyncActionControls', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    mockPreferenceStore();
   });
 
   function renderControls(
@@ -202,5 +217,135 @@ describe('SyncActionControls', () => {
 
     fireEvent.press(getByTestId('sync-action-sync-now'));
     expect(onSyncNow).not.toHaveBeenCalled();
+  });
+
+  it('isolates Next controls while controlled busy and status changes keep their semantics', () => {
+    const legacy = resolveTheme('legacy');
+    const next = resolveTheme('next');
+    const colors = next.colors as {
+      cardBackground: string;
+      foreground: string;
+      primary: string;
+      primaryForeground: string;
+      mutedForeground: string;
+      border: string;
+    };
+    const spacing = next.spacing as { sm: number };
+    const radius = next.radius as { lg: number };
+    const original = {
+      colors: { ...colors },
+      spacing: spacing.sm,
+      radius: radius.lg,
+    };
+    const tree = (
+      version: 'legacy' | 'next',
+      overrides: Partial<React.ComponentProps<typeof SyncActionControls>> = {},
+    ) => (
+      <UiVersionOverride value={version}>
+        <SyncActionControls
+          status="pending"
+          onPause={onPause}
+          onResume={onResume}
+          onCancel={onCancel}
+          onSyncNow={onSyncNow}
+          {...overrides}
+        />
+      </UiVersionOverride>
+    );
+    try {
+      Object.assign(colors, {
+        cardBackground: '#123456',
+        foreground: '#234567',
+        primary: '#345678',
+        primaryForeground: '#456789',
+        mutedForeground: '#56789a',
+        border: '#6789ab',
+      });
+      spacing.sm = 19;
+      radius.lg = 23;
+      const view = render(tree('legacy'));
+      const button = () => view.getByTestId('sync-action-sync-now');
+      const iconColor = (id: string) =>
+        within(view.getByTestId(id)).getByTestId('sync-action-test-icon').props
+          .color;
+      expect(button()).toHaveStyle({
+        backgroundColor: legacy.colors.primary,
+        borderRadius: legacy.radius.lg,
+        paddingVertical: legacy.spacing.sm,
+      });
+      expect(view.getByText('Sync Now')).toHaveStyle({
+        color: legacy.colors.primaryForeground,
+      });
+      view.rerender(tree('next'));
+      expect(button()).toHaveStyle({
+        backgroundColor: '#345678',
+        borderColor: '#345678',
+        borderRadius: 23,
+        paddingVertical: 19,
+      });
+      expect(view.getByText('Sync Now')).toHaveStyle({ color: '#456789' });
+      expect(iconColor('sync-action-sync-now')).toBe('#456789');
+      view.rerender(
+        tree('next', {
+          busy: true,
+          syncNowDisabled: true,
+          syncNowDisabledHint: TRANSFER_OFFLINE_MESSAGE,
+        }),
+      );
+      expect(button().props.accessibilityState.disabled).toBe(true);
+      expect(view.getByText('Sync Now')).toHaveStyle({ color: '#56789a' });
+      expect(
+        view.getByTestId('sync-action-sync-now-disabled-hint'),
+      ).toHaveStyle({ color: '#56789a' });
+      expect(iconColor('sync-action-sync-now')).toBe('#56789a');
+      fireEvent.press(button());
+      expect(onSyncNow).not.toHaveBeenCalled();
+      view.rerender(tree('next', { status: 'paused', busy: true }));
+      expect(
+        view.getByTestId('sync-action-resume').props.accessibilityState
+          .disabled,
+      ).toBe(false);
+      expect(view.getByText('Resume')).toHaveStyle({ color: '#234567' });
+      expect(view.getByTestId('sync-action-resume')).toHaveStyle({
+        backgroundColor: '#123456',
+        borderColor: '#6789ab',
+      });
+      fireEvent.press(view.getByTestId('sync-action-resume'));
+      expect(onResume).toHaveBeenCalledTimes(1);
+      view.rerender(tree('next', { status: 'paused', controlPending: true }));
+      expect(
+        view.getByTestId('sync-action-resume').props.accessibilityState
+          .disabled,
+      ).toBe(true);
+      expect(view.getByText('Resume')).toHaveStyle({ color: '#56789a' });
+      fireEvent.press(view.getByTestId('sync-action-resume'));
+      expect(onResume).toHaveBeenCalledTimes(1);
+      view.rerender(tree('next', { status: 'syncing', busy: true }));
+      expect(view.queryByTestId('sync-action-sync-now')).toBeNull();
+      expect(
+        view.getByTestId('sync-action-pause').props.accessibilityState.disabled,
+      ).toBe(false);
+      expect(view.getByText('Pause')).toHaveStyle({ color: '#234567' });
+      expect(iconColor('sync-action-pause')).toBe('#234567');
+      fireEvent.press(view.getByTestId('sync-action-pause'));
+      expect(onPause).toHaveBeenCalledTimes(1);
+      view.rerender(tree('legacy', { status: 'syncing', busy: true }));
+      expect(view.getByTestId('sync-action-pause')).toHaveStyle({
+        backgroundColor: legacy.colors.cardBackground,
+        borderColor: legacy.colors.border,
+        borderRadius: legacy.radius.lg,
+        paddingVertical: legacy.spacing.sm,
+      });
+      expect(view.getByText('Pause')).toHaveStyle({
+        color: legacy.colors.foreground,
+      });
+      expect(iconColor('sync-action-pause')).toBe(legacy.colors.foreground);
+      view.rerender(tree('legacy', { status: 'allComplete' }));
+      expect(view.toJSON()).toBeNull();
+    } finally {
+      Object.assign(colors, original.colors);
+      spacing.sm = original.spacing;
+      radius.lg = original.radius;
+    }
   });
 });
