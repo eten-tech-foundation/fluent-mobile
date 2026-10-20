@@ -1509,8 +1509,8 @@ describe('uploadOrchestrator', () => {
           control === 'pause'
             ? 'paused'
             : control === 'offline'
-              ? 'offline'
-              : 'idle',
+            ? 'offline'
+            : 'idle',
         );
 
         if (control === 'pause') {
