@@ -1,0 +1,28 @@
+{
+  "serial": "emulator-5556",
+  "userId": 11,
+  "productFreezeParentReported": "d2f27fe",
+  "runtimeRevision": "UNATTESTED",
+  "claimBoundary": "Functional regression only, not integrated-repair proof",
+  "profiles": [],
+  "scope": "ONE supported MyWork metadata refresh; fresh1184 role/zero-coverage guard, no capture/play/permission/stage/assignmentwrites",
+  "purpose": "NEW_FIXTURE_READINESS_ONLY",
+  "supportedSyncOnce": "MyWork remount/focus\u2192useMyWorkChapters.refreshChapterMetadataIfOnline; no SyncNowuploadcontrols",
+  "fixtureSql": "SELECT ca.id,pu.project_id,ca.project_unit_id,ca.bible_id,ca.book_id,ca.chapter_number,ca.assigned_user_id,ca.peer_checker_id,ca.status,ca.total_verses,ca.completed_verses FROM chapter_assignments ca JOIN project_units pu ON pu.id=ca.project_unit_id WHERE ca.id IN (1183,1184) ORDER BY ca.id;",
+  "fixtureRows": "1183|12|19|178|60|1|10|11|draft|0|0\n1184|12|19|178|60|2|11|10|draft|25|0",
+  "emptinessSql": "SELECT 'chapter2_bible_verses',COUNT(*) FROM bible_texts WHERE bible_id=178 AND book_id=60 AND chapter_number=2; SELECT 'chapter2_recordings',COUNT(*) FROM recordings r JOIN bible_texts bt ON bt.id=r.bible_text_id WHERE bt.bible_id=178 AND bt.book_id=60 AND bt.chapter_number=2; SELECT 'user11_recordings',COUNT(*) FROM recordings WHERE recorded_by_user_id=11; SELECT 'chapter2_downloads',COUNT(*) FROM download_queue WHERE user_id=11 AND project_id=12 AND book_code='1PE' AND start_chapter=2; SELECT 'user11_pending_claims',COUNT(*) FROM chapter_claim_queue WHERE user_id=11;",
+  "emptinessRows": "chapter2_bible_verses|25\nchapter2_recordings|0\nuser11_recordings|0\nchapter2_downloads|0\nuser11_pending_claims|0",
+  "membershipSnapshot": {
+    "path": "active11-membership-chapter-stage-snapshot.txt",
+    "sql": "SELECT project_id FROM user_projects WHERE user_id=11 ORDER BY project_id; SELECT ca.id,pu.project_id,ca.project_unit_id,ca.bible_id,ca.book_id,ca.chapter_number,ca.assigned_user_id,ca.peer_checker_id,ca.status,ca.total_verses,ca.completed_verses FROM chapter_assignments ca JOIN project_units pu ON pu.id=ca.project_unit_id JOIN user_projects up ON up.project_id=pu.project_id WHERE up.user_id=11 ORDER BY pu.project_id,ca.project_unit_id,ca.id;",
+    "sha256": "eb622691e6a4eb696026e5b5d7c836b3662a0a95efde2ed41828a5080b83cd63"
+  },
+  "preflightReady": true,
+  "sourceHashes": {
+    "src/hooks/useMyWorkChapters.ts": "c95fb7f0a4111a2be93a212c152e8a36d3d104876d55b9706e3aa247197285c0",
+    "src/app/tabs/RecordTab.tsx": "6e96ecf0556f93c62f8e60e069292b51d6ed2c92f569c8f8385a97543f8914eb",
+    "src/utils/stageAdvancement.ts": "078d7a58cba219a15134f6c84ef6c5bd25e7e5076e84a742f12bad57cd922a95",
+    "scripts/maestro-test-qa.sh": "255d962b9a5ad820a2ac3aa01423878f9933d697cf9d9917b8f894a5a6167509"
+  },
+  "elapsedSeconds": 15.5
+}

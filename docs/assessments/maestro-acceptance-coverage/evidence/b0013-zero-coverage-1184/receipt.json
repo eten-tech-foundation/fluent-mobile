@@ -1,0 +1,70 @@
+{
+  "schema": "fluent-B0013-1184-zero-Verse-coverage-support/v1",
+  "generated_utc": "2026-10-20T23:30:42.580511+00:00",
+  "scope": "Zero-coverage Verse-mode final-unit negative advancement guard only",
+  "case_PASS_cli_s": 46.7,
+  "with_cleanup_s": 60.4,
+  "fixture": "User11owns1184draft, project12/unit19/Bible178/1Peter2;25verses,0recordings; peer10",
+  "verified": [
+    "MyWork1184presence and ownRecordStartenabled/noTakenWarning",
+    "Biblepositive/tab traversal then Record1Peter2:25",
+    "Nextdisabled/Previousenabled; StageAdvancebutton andsheetabsent",
+    "NoStart/Play/stageadvance taps; 0takes/claims/downloads and1183/1184 rowsunchanged",
+    "Home11/Legacy/Verse/OFF/radios0/1/micdeniedexactflags restored"
+  ],
+  "not_verified": [
+    "PartiallyrecordedVersecoverage (A9of25 stillseparatequeued)",
+    "FullyrecordedVersepositiveadvanceavailability",
+    "Pericopeincomplete/completecoverage matrix",
+    "ActualSend/stagewrite/backenddenial",
+    "MyWorkcompleteIDset equality orA0001closure",
+    "Integratedruntimecodehash/rolegrantmatrix"
+  ],
+  "runtime_revision_attested": false,
+  "files": [
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-user11-fixture1184/batch-first/result.json",
+      "snapshot": "00-result.json",
+      "sha256": "1a989e08c547a052c52577fc452012798c6f5757e5770210d6353586819f0edf"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-user11-fixture1184/batch-first/own-role-and-lastverse-incomplete/2026-10-20_162835/b-user11-own1184-incomplete-lastverse-existing-session/commands.json",
+      "snapshot": "01-commands.json",
+      "sha256": "a4114256f9f610cad0e8ee8d6307b19bcf97fe2035d76b15dcd2585c1337769a"
+    },
+    {
+      "source": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/recording/b-user11-own1184-incomplete-lastverse-existing-session.yaml",
+      "snapshot": "02-b-user11-own1184-incomplete-lastverse-existing-session.yaml",
+      "sha256": "31363e95d43ac7eeff301b58757adc08744a61277a96e4e9595a28b361dc9c11"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-user11-fixture1184/preflight-result.json",
+      "snapshot": "03-preflight-result.json",
+      "sha256": "0aceab40a4b00bac946cffb6ff3ccbb454ada5b93a58948d2e1713000447865a"
+    }
+  ],
+  "new_runs_by_reconciler": 0,
+  "canonical_application": "Root reviewed B0013 not_run\u2192partial only. No livePASS or complete promotion; counts31/16/39.",
+  "durable_repo_snapshots": [
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/b0013-zero-coverage-1184/00-result.json",
+      "sha256": "1a989e08c547a052c52577fc452012798c6f5757e5770210d6353586819f0edf",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-user11-fixture1184/batch-first/result.json"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/b0013-zero-coverage-1184/01-commands.json",
+      "sha256": "a4114256f9f610cad0e8ee8d6307b19bcf97fe2035d76b15dcd2585c1337769a",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-user11-fixture1184/batch-first/own-role-and-lastverse-incomplete/2026-10-20_162835/b-user11-own1184-incomplete-lastverse-existing-session/commands.json"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/b0013-zero-coverage-1184/02-b-user11-own1184-incomplete-lastverse-existing-session.yaml.capture.txt",
+      "sha256": "31363e95d43ac7eeff301b58757adc08744a61277a96e4e9595a28b361dc9c11",
+      "source": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/recording/b-user11-own1184-incomplete-lastverse-existing-session.yaml"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/b0013-zero-coverage-1184/03-preflight-result.json",
+      "sha256": "0aceab40a4b00bac946cffb6ff3ccbb454ada5b93a58948d2e1713000447865a",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-user11-fixture1184/preflight-result.json"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "serial": "emulator-5556",
+  "userId": 11,
+  "productFreezeParentReported": "d2f27fe",
+  "runtimeRevision": "UNATTESTED",
+  "claimBoundary": "Functional regression only, not integrated-repair proof",
+  "profiles": [
+    {
+      "profile": "own-role-and-lastverse-incomplete",
+      "flow": ".maestro/flows/recording/b-user11-own1184-incomplete-lastverse-existing-session.yaml",
+      "pid": 78392,
+      "exit": 0,
+      "elapsedSeconds": 46.7
+    }
+  ],
+  "purpose": "NEW_OWN1184_READONLY_ROLE_AND_LASTVERSE_ZERO_COVERAGE_GUARD",
+  "assignmentId": 1184,
+  "captureStartTaps": 0,
+  "playTaps": 0,
+  "stageAdvanceTaps": 0,
+  "originalRadios": {
+    "airplane_mode_on": "0",
+    "wifi_on": "1"
+  },
+  "originalMic": [
+    "android.permission.RECORD_AUDIO: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+  ],
+  "freshFixtureRows": "1183|12|19|178|60|1|10|11|draft|0|0\n1184|12|19|178|60|2|11|10|draft|25|0",
+  "sourceHashes": {
+    "src/hooks/useMyWorkChapters.ts": "c95fb7f0a4111a2be93a212c152e8a36d3d104876d55b9706e3aa247197285c0",
+    "src/app/tabs/RecordTab.tsx": "6e96ecf0556f93c62f8e60e069292b51d6ed2c92f569c8f8385a97543f8914eb",
+    "src/utils/stageAdvancement.ts": "078d7a58cba219a15134f6c84ef6c5bd25e7e5076e84a742f12bad57cd922a95",
+    "scripts/maestro-test-qa.sh": "255d962b9a5ad820a2ac3aa01423878f9933d697cf9d9917b8f894a5a6167509"
+  },
+  "flowSha256": "31363e95d43ac7eeff301b58757adc08744a61277a96e4e9595a28b361dc9c11",
+  "finalHome11OriginalPreferencesVerified": true,
+  "finalRadios": {
+    "airplane_mode_on": "0",
+    "wifi_on": "1"
+  },
+  "finalMic": [
+    "android.permission.RECORD_AUDIO: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+  ],
+  "finalFixtureRows": "1183|12|19|178|60|1|10|11|draft|0|0\n1184|12|19|178|60|2|11|10|draft|25|0",
+  "finalEmptinessRows": "chapter2_bible_verses|25\nchapter2_recordings|0\nuser11_recordings|0\nchapter2_downloads|0\nuser11_pending_claims|0",
+  "cleanupComplete": true,
+  "totalElapsedSeconds": 60.4
+}

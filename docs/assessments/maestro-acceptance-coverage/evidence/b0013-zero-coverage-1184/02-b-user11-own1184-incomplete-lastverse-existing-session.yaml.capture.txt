@@ -1,0 +1,108 @@
+# New fixture1184 drafter11/peer10, Draft25verses/zero recordings. Readonly.
+# Fresh native DB role/zero-coverage receipt required by owner driver.
+appId: com.eten.fluent
+tags: [record, existing-session, read-only, guard]
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID === '11' && MAESTRO_B_SERIAL === 'emulator-5556' && MAESTRO_B_CHAPTER_ID === '1184' && MAESTRO_B_ZERO_COVERAGE_ATTESTATION === 'draft-25-zero-drafter11-peer10'}
+- assertVisible:
+    id: '^home-tab-my-work$'
+    selected: true
+- scrollUntilVisible:
+    element:
+      id: '^my-work-row-1184$'
+    direction: DOWN
+    speed: 80
+    timeout: 20000
+- assertVisible:
+    id: '^my-work-row-title-1184$'
+    text: '^1 Peter 2$'
+- takeScreenshot: b-own1184-mywork-visible
+- tapOn:
+    id: '^my-work-row-1184$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^drafting-tab-bar$'
+    timeout: 15000
+- assertVisible: '^1 Peter 2$'
+- tapOn:
+    id: '^drafting-tab-bible$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^bible-tab$'
+    timeout: 15000
+- assertVisible:
+    id: '^drafting-tab-bible$'
+    selected: true
+- assertVisible:
+    id: '^bible-verse-row-1$'
+- tapOn:
+    id: '^drafting-tab-resources$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^resources-tab$'
+    timeout: 15000
+- assertVisible:
+    id: '^drafting-tab-resources$'
+    selected: true
+- assertNotVisible:
+    id: '^resources-loading$'
+- tapOn:
+    id: '^drafting-tab-record$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^record-tab$'
+    timeout: 15000
+- assertVisible:
+    id: '^record-verse-reference$'
+    text: '^1 Peter 2:1$'
+- assertVisible:
+    id: '^record-start-button$'
+    enabled: true
+- assertNotVisible:
+    id: '^record-taken-warning$'
+- assertNotVisible:
+    id: '^record-stop-button$'
+- tapOn:
+    id: '^drafting-tab-bible$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^bible-tab$'
+    timeout: 15000
+- assertVisible:
+    id: '^drafting-tab-bible$'
+    selected: true
+- scrollUntilVisible:
+    element:
+      id: '^bible-verse-row-25$'
+    direction: DOWN
+    speed: 80
+    timeout: 20000
+- tapOn:
+    id: '^bible-verse-row-25$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^record-verse-reference$'
+      text: '^1 Peter 2:25$'
+    timeout: 15000
+- assertVisible:
+    id: '^record-next-verse$'
+    enabled: false
+- assertVisible:
+    id: '^record-prev-verse$'
+    enabled: true
+- assertVisible:
+    id: '^record-start-button$'
+    enabled: true
+- assertNotVisible:
+    id: '^record-stop-button$'
+- assertNotVisible:
+    id: '^stage-advance-button$'
+- assertNotVisible:
+    id: '^stage-advance-confirm-sheet$'
+- takeScreenshot: b-own1184-lastverse25-zero-coverage-no-stage-advance

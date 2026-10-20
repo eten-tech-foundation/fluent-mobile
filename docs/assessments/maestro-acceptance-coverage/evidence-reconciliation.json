@@ -36,9 +36,9 @@
       "PASS": 39
     },
     "canonical_execution_coverage": {
-      "partial": 46,
+      "partial": 47,
       "complete_for_requirement": 39,
-      "not_run": 117
+      "not_run": 116
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
@@ -47,9 +47,9 @@
       "PASS": 31
     },
     "eligible_current_atomic_execution_coverage": {
-      "partial": 15,
+      "partial": 16,
       "complete_for_requirement": 31,
-      "not_run": 40
+      "not_run": 39
     },
     "full_live_PASS_eligible_ids": [
       "A-0015-01",
@@ -145,7 +145,8 @@
       "A-0034-01",
       "C-0053-01",
       "A-0012-01",
-      "B-0002-01"
+      "B-0002-01",
+      "B-0013-01"
     ],
     "candidate_ids_with_isolated_evidence": [
       "A-0002-01",
@@ -264,9 +265,9 @@
     },
     "review_inventory_minus_gallery_count": 200,
     "review_inventory_minus_gallery_execution_statuses": {
-      "partial": 46,
+      "partial": 47,
       "complete_for_requirement": 39,
-      "not_run": 115
+      "not_run": 114
     },
     "review_inventory_minus_gallery_live_statuses": {
       "UNTESTED": 25,
@@ -286,14 +287,14 @@
       "review_inventory_minus_gallery": 200,
       "review_inventory_200_is_execution_denominator": false,
       "current_review_execution_statuses_nonadditive": {
-        "partial": 44,
+        "partial": 45,
         "complete_for_requirement": 39,
-        "not_run": 92
+        "not_run": 91
       },
       "atomic_execution_statuses": {
-        "partial": 15,
+        "partial": 16,
         "complete_for_requirement": 31,
-        "not_run": 40
+        "not_run": 39
       },
       "rationale": "175 applicable current rows +21 excluded +6 unresolved =202 retained inventory. The200 comparison only subtracts2 Gallery rows and still includes19 previously out-of-scope and6 unresolved rows; it is not required execution scope. Neither175 nor200 is an additive whole-app completion percentage."
     }
@@ -2674,20 +2675,29 @@
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Full coverage as a prerequisite for advancement is one predicate applied to verse/pericope modes, requiring both mode fixtures.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "evidence/b0013-zero-coverage-1184/receipt.json",
+          "case_id": "B_own1184_zero_Verse_lastunit_guard_46.7s",
+          "flow": ".maestro/flows/recording/b-user11-own1184-incomplete-lastverse-existing-session.yaml",
+          "relation": "partial_zero_coverage_Verse_negative_guard_PASS",
+          "reason": "Fresh1184owner11draft/25verses/0takes; strictMaestroRecord2:25Nextdisabled/PrevEnabled +NOStageAdvancebutton/sheet PASS46.7s. NoStart/Play/advance; native1183/1184/0takesclaimsdownloads unchanged; cleanupHome11/prefs/mic/radios exact. Full/partialVerse andPericope predicatepositive/negative matrix notverified; runtimehashunattested."
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "Partially and fully recorded verse/pericope units; no recordings in cache or safe capture target."
+        "Zero-coverage Verse-mode last-unit advancement absence is now verified on1184. Nonzero partial and full recorded Verse coverage and incomplete/full Pericope coverage remain unverified; all are conditions of the same full-coverage prerequisite."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Use separately verified existing partial/full coverage fixtures to assert only remaining Verse/Pericope advancement availability predicates without stage writes. A current9-of25fixture is being prepared separately; do not rerun passed zero-coverage1184 or infer full coverage from last-verse navigation.",
       "source_title": "Chapter advance requires full verse/pericope coverage",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/542"
       ],
-      "domain": "recording_review"
+      "domain": "recording_review",
+      "current_scope_execution_blocker": "Remaining partial/full Verse and Pericope fixtures and exact coverage counts must be independently verified before their bounded read-only UI checks."
     },
     {
       "id": "B-0014-01",
