@@ -1,0 +1,23 @@
+# D0409 focused remaining range-title variant; cached pericope_title is NULL.
+# Not positive supplied-subtitle, waveform or capture proof. No resource rerun.
+# Driver finally restores original Verse/Home/active11.
+appId: com.eten.fluent
+tags: [drafting, existing-session, read-only, guard]
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID === '11' && typeof MAESTRO_B_SERIAL !== 'undefined' && MAESTRO_B_SERIAL === 'emulator-5556' && typeof MAESTRO_B_PERICOPE_REFS !== 'undefined' && MAESTRO_B_PERICOPE_REFS === '1:1,1:2'}
+- assertVisible:
+    id: '^record-tab$'
+- assertVisible:
+    id: '^drafting-tab-record$'
+    selected: true
+- assertVisible:
+    id: '^record-verse-reference$'
+    text: '^1 Peter 1:1–2$'
+- assertNotVisible:
+    id: '^record-verse-reference-subtitle$'
+- assertNotVisible: '^Pericope [0-9]+ of [0-9]+$'
+- assertNotVisible:
+    id: '^record-pericope-unavailable$'
+- assertNotVisible:
+    id: '^record-stop-button$'
+- takeScreenshot: b-pericope-record-exact-range-no-title-subtitle-no-counter

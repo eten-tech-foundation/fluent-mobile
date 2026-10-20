@@ -31,23 +31,23 @@
     },
     "canonical_live_status": {
       "UNTESTED": 27,
-      "BLOCKED": 139,
-      "PASS": 36
+      "BLOCKED": 138,
+      "PASS": 37
     },
     "canonical_execution_coverage": {
-      "partial": 47,
-      "complete_for_requirement": 36,
+      "partial": 46,
+      "complete_for_requirement": 37,
       "not_run": 119
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
       "UNTESTED": 7,
-      "BLOCKED": 51,
-      "PASS": 28
+      "BLOCKED": 50,
+      "PASS": 29
     },
     "eligible_current_atomic_execution_coverage": {
-      "partial": 18,
-      "complete_for_requirement": 28,
+      "partial": 17,
+      "complete_for_requirement": 29,
       "not_run": 40
     },
     "full_live_PASS_eligible_ids": [
@@ -72,6 +72,7 @@
       "D-0191-01",
       "D-0235-02",
       "D-0407-02",
+      "D-0409-01",
       "D-0412-01",
       "D-0540-01",
       "D-0540-02",
@@ -6078,8 +6079,8 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Current falsifiable criterion; all stated conditions must be demonstrated together.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "partial",
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
       "live_evidence": [
         {
           "receipt": "/tmp/fluent-bible-record-direct-batch.json",
@@ -6087,20 +6088,31 @@
           "flow": ".maestro/flows/drafting/bible-verse-opens-record-existing-session.yaml",
           "relation": "partial",
           "reason": "My Work\u2192fixture484 drafting and direct Bible-row\u2192Record exact verse reference passed; Projects route, audio non-autoplay, and pericope title matrix are not asserted."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch3-D0409-title-reconciliation.json",
+          "case_id": "B_pericope_Record_range_title_31.2s",
+          "flow": ".maestro/flows/drafting/b-user11-pericope-record-title-existing-session.yaml",
+          "relation": "complete_required_title_forms_with_prior_Verse_receipt",
+          "reason": "ExactRecordselected1Peter1:1\u20132, no PericopeNofM/warning/stop; cached pericope_titleNULL and subtitle absent. FullCLI PASS31.2s/cleanup59.8s restoresVerse/Home11/radios0/1. Prior exactVerse reference supplies other title form. Source subtitle is optional; positive populated-subtitle rendering remains UNVERIFIED, not implied by this title-form closure."
         }
       ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Exact Verse reference passed; Pericope range/subtitle and forbidden Pericope N of M title checks remain unexecuted."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Record unit title shows verse ref or pericope range (never N of M)",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/409"
       ],
-      "domain": "reference_platform"
+      "domain": "reference_platform",
+      "closure_scope_note": "Required Verse-reference/Pericope-range title forms and no counter title only; optional populated-subtitle positive rendering remains owned/unverified with nonempty-title fixture dependency.",
+      "remaining_visual_matrix": {
+        "positive_populated_subtitle": "UNVERIFIED",
+        "next_check": "Render a verified pericope with a supplied nonempty title and assert exact subtitle",
+        "blocked_by": "Known populated title fixture; no title created/mutated for this run"
+      }
     },
     {
       "id": "D-0409-02",
