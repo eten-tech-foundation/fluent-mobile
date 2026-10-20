@@ -1,0 +1,55 @@
+# C-0050-02: exact header and instruction, existing user10/project8 fixture.
+# No project selection, checkbox, Download, preference, sync or auth actions.
+# Source PrepareForOfflineScreen.tsx INSTRUCTION + StackScreenHeader.
+appId: com.eten.fluent
+tags:
+  - offline
+  - existing-session
+  - read-only
+  - fixture-blocked
+---
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-active-10'
+- tapOn:
+    id: 'settings-menu-more-settings'
+- scrollUntilVisible:
+    element:
+      id: 'settings-prepare-offline'
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: 'settings-prepare-offline'
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-screen'
+    timeout: 15000
+- assertNotVisible:
+    text: '^Console Error$'
+- assertNotVisible:
+    text: '^.*\[HTTP\].*API error.*$'
+- assertVisible:
+    id: 'project-row-8'
+- assertVisible:
+    text: '^Prepare for Offline$'
+- assertVisible:
+    text: '^Download project resources to work without a connection\.$'
+- assertVisible:
+    id: 'stack-header-back'
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 15000
+- assertNotVisible:
+    id: 'login-email-input'

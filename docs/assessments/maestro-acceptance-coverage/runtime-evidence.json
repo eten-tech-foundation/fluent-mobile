@@ -1,9 +1,9 @@
 {
   "schema": "fluent-runtime-milestone/v1",
-  "generated_utc": "2026-10-20T06:56:24.158014+00:00",
-  "scope": "13 focused live variants across nine flow files; historical21caseledger separate; no whole-app percentage",
-  "runtime_pass_flow_files": 9,
-  "live_case_variants_pass": 13,
+  "generated_utc": "2026-10-20T08:10:08.596574+00:00",
+  "scope": "14 focused live variants across ten flow files; historical21caseledger separate; no whole-app percentage",
+  "runtime_pass_flow_files": 10,
+  "live_case_variants_pass": 14,
   "passes": [
     {
       "source_receipt": "fluent-independent-home-tabs-user10-result.json",
@@ -466,6 +466,43 @@
         "COMPLETED": 38
       },
       "failed": []
+    },
+    {
+      "id": "empty_resources_tab_relative_order_first_execution",
+      "path": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/drafting/empty-resources-tab-order-existing-session.yaml",
+      "cap_s": 100,
+      "outcome": "PASS",
+      "identity_before": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "exit_code": 0,
+      "elapsed_s": 31.827,
+      "timed_out": false,
+      "kills": [],
+      "artifact_dir": "/tmp/maestro-efficient-empty_resources_tab_relative_order_first_execution",
+      "identity_after": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "commands_artifact": "/tmp/maestro-efficient-empty_resources_tab_relative_order_first_execution/2026-10-20_010833/empty-resources-tab-order-existing-session/commands.json",
+      "command_counts": {
+        "COMPLETED": 26
+      },
+      "UI_assertions": {
+        "COMPLETED": 19
+      },
+      "failed": [],
+      "source_receipt": "fluent-resources-order-only-batch.json",
+      "flow_sha256": "9e67a10758b2a8e4dc5546af4b484e6da6b0bb85bc752fca67935c8c5ebbc3a4"
     }
   ],
   "final_identity": {
@@ -533,12 +570,77 @@
     "fluent-distinct-behavior-batch.json": "1165fd09c3fb0a3155187065ba4c50fb91bbbca4bd67df27c121d39e37234d8f",
     "fluent-ownership-state-batch.json": "1c90b996140516cd552164ac1a12b9aa2a770896dd42d135edf94de33c06a389",
     "fluent-bible-record-direct-batch.json": "87c056de2ee12f87b0794f65f0a4934696dd43ed5179d37a1316387813c0628f",
-    "fluent-after-tools-drag-batch.json": "738e13c2e46e7d671ffbaed372bbda96918dda6dae7c97052b2d23762148543b"
+    "fluent-after-tools-drag-batch.json": "738e13c2e46e7d671ffbaed372bbda96918dda6dae7c97052b2d23762148543b",
+    "/tmp/fluent-resources-order-only-batch.json": "ac2391d5b872017624e179393b5d06d26e88ab050cc4bd2e362c5d503ec1da4f",
+    "/tmp/fluent-resources-order-preflight-aborted.json": "8afafb9356a36e0f194a376a1fe8062e5545776e448167ac5565104de624da81",
+    "/tmp/fluent-next-assertion-batch.json": "bf9aa905597e300a1e425ee136b0c6e4a85832616fe27eb5bba5d4595dfee0bd"
   },
-  "latest_finished_utc": "2026-10-20T07:52:36.214460+00:00",
+  "latest_finished_utc": "2026-10-20T08:09:59.149949+00:00",
   "developer_overlay_fix": {
     "method": "ObservedUI drag only from1010,170 to1010,560",
     "settings_product_auth_changes": false,
     "receipt": "/tmp/fluent-tools-drag-receipt.json"
+  },
+  "latest_assertion_batch": "/tmp/fluent-resources-order-only-batch.json",
+  "nonpassing_attempts_latest": [
+    {
+      "id": "pfo_exact_header_instruction",
+      "path": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/offline/pfo-header-copy-existing-session.yaml",
+      "cap_s": 90,
+      "outcome": "FAIL",
+      "identity_before": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "exit_code": 1,
+      "elapsed_s": 36.942,
+      "timed_out": false,
+      "kills": [],
+      "artifact_dir": "/tmp/maestro-efficient-pfo_exact_header_instruction",
+      "identity_after": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "commands_artifact": "/tmp/maestro-efficient-pfo_exact_header_instruction/2026-10-20_010536/pfo-header-copy-existing-session/commands.json",
+      "command_counts": {
+        "COMPLETED": 18,
+        "FAILED": 1
+      },
+      "UI_assertions": {
+        "COMPLETED": 11,
+        "FAILED": 1
+      },
+      "failed": [
+        {
+          "command": {
+            "assertConditionCommand": {
+              "condition": {
+                "visible": {
+                  "idRegex": "settings-prepare-offline",
+                  "optional": false
+                }
+              },
+              "timeout": "15000",
+              "optional": false
+            }
+          },
+          "message": "Assertion is false: id: settings-prepare-offline is visible"
+        }
+      ]
+    }
+  ],
+  "pfo_return_harness_correction": {
+    "reason": "Captured hierarchy showed Home after PFO Back; replace incorrect Settings-row wait with Home assertion",
+    "rerun": false,
+    "current_sha256": "f530406d721d5197b4f95b2688ea8b1a6832060c3e5751744599bcb1b3b9c0b8",
+    "executed_sha256": "bd5078ae03230d7732ddb8394421668e1dc8091bb0fd596c2b5295e25a1b9f7e"
   }
 }

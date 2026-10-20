@@ -1,6 +1,6 @@
 {
   "schema": "fluent-acceptance-evidence-reconciliation/v1",
-  "generated_utc": "2026-10-20T07:20:48.494152+00:00",
+  "generated_utc": "2026-10-20T08:10:08.596574+00:00",
   "scope": "Bounded reconciliation of existing issue-derived candidate ledger, not fresh complete acceptance extraction or app-wide denominator",
   "summary": {
     "raw_candidates_reviewed": 204,
@@ -30,31 +30,34 @@
       "unresolved": 7
     },
     "canonical_live_status": {
-      "PASS": 6,
-      "BLOCKED": 161,
-      "UNTESTED": 35
+      "BLOCKED": 162,
+      "PASS": 9,
+      "UNTESTED": 31
     },
     "canonical_execution_coverage": {
-      "partial": 41,
+      "complete_for_requirement": 9,
       "not_run": 155,
-      "complete_for_requirement": 6
+      "partial": 38
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
-      "PASS": 5,
       "BLOCKED": 70,
-      "UNTESTED": 11
+      "PASS": 8,
+      "UNTESTED": 8
     },
     "eligible_current_atomic_execution_coverage": {
-      "complete_for_requirement": 5,
+      "complete_for_requirement": 8,
       "not_run": 64,
-      "partial": 17
+      "partial": 14
     },
     "full_live_PASS_eligible_ids": [
       "A-0015-01",
       "A-0026-01",
+      "C-0050-02",
+      "D-0188-01",
       "D-0189-02",
       "D-0190-02",
+      "D-0235-02",
       "D-0564-01"
     ],
     "any_partial_live_evidence_candidate_ids": [
@@ -123,10 +126,10 @@
       "D-0594-01"
     ],
     "new_selected_live_cases": {
-      "latest_PASS": 13,
-      "flow_files": 9,
+      "latest_PASS": 14,
+      "flow_files": 10,
       "repeat_green_cases_this_reconciliation": 0,
-      "new_executions_this_reconciliation": 1,
+      "new_executions_this_reconciliation": 2,
       "frozen_initial_milestone_PASS": 11
     },
     "new_isolated_contract_cases": {
@@ -162,9 +165,9 @@
       "cleanup": "PASS single502Dismiss/Home28.086s + cached12restore23.863s"
     },
     "new_attempts_since_11_PASS_milestone": {
-      "attempts": 6,
-      "PASS": 2,
-      "FAIL": 4,
+      "attempts": 8,
+      "PASS": 3,
+      "FAIL": 5,
       "notes": "Earlierfailed viewport/error-obstructed attempts andguardedretry retained. Latestcap+CompleteattemptsPASSafterobserveddebugoverlaydrag. Helpers/prep/cleanupnotcasecounts."
     },
     "additional_guarded_retry": {
@@ -179,12 +182,28 @@
       "complete_idle_lock_branch": "PASS",
       "full_atomic_counts_changed": false,
       "reason": "These are specific branches in compound groups, which remain excluded from86atomiccount"
+    },
+    "next_missing_assertion_milestone": {
+      "new_cases_PASS": 1,
+      "PFO_required_assertions_PASS_but_return_check_FAIL": true,
+      "requirements_upgraded": 3,
+      "no_repeat_green_cases": true,
+      "remaining_UNTESTED_with_explicit_scope_limits": {
+        "A-0001-01": "Requires independently verified current complete assignment-set oracle; no fixture hunting or backend extraction authorized in this batch.",
+        "A-0002-01": "Requires independently verified complete membership/project-set oracle; current UI samples and role suffixes are insufficient.",
+        "A-0006-01": "Current preserved viewport overflow remains unproven; no viewport/font changes or forced scroll loops.",
+        "C-0038-01": "Sole-entry/obsolete-inline absence lacks a defined exhaustive UI oracle; existing one-press Sync entry proof does not establish exclusivity.",
+        "D-0188-03": "Centered geometry and independently established online-empty response precondition remain missing.",
+        "D-0407-02": "Preference persistence needs a preference change, outside current read-only UI scope.",
+        "D-0447-01": "Installed APK bundled-seed provenance cannot be established by Metro source/unit tests; no rebuild authorized. Existing isolated lookup tests cover defined version behavior; hash validation is not an implemented contract.",
+        "D-0702-01": "Available download or explanatory unavailable path needs a known resource-catalog oracle; no fixture hunting or download authorized."
+      }
     }
   },
   "source_sha256": {
     "/Users/matt/Documents/Development/gloo/fluent-mobile/docs/assessments/maestro-acceptance-coverage/coverage.json": "e07d044693a4dfa69bfdc2758e12f7d0a23b4d9d75f990b306990a1cda70e746",
     "/Users/matt/Documents/Development/gloo/fluent-mobile/docs/assessments/maestro-acceptance-coverage/unit-review.json": "04271677a4ee7cb2d44a10662b002d3fa3f17c3b4ccde14e6efd9eecd16ab1c4",
-    "/Users/matt/Documents/Development/gloo/fluent-mobile/docs/assessments/maestro-acceptance-coverage/runtime-evidence.json": "fcc203c2f61b344f967410de5c0770d31cde4d3eea7860c61cbec60def8be542",
+    "/Users/matt/Documents/Development/gloo/fluent-mobile/docs/assessments/maestro-acceptance-coverage/runtime-evidence.json": "e7c254fe3297f8c7abd7e57de6a06325dac4b5d131fdbd1d2223ef60c316bcad",
     "/tmp/fluent-resource-take-contract-result.json": "c51e1552923d56c385df534292d26391043ebf5cda8d250fe8a0c6c5b26e560c",
     "/tmp/fluent-visual-page-state-inventory.json": "3cb2b07b78cf2bb7c92a12b5c9607d508a7973ef9d3e4f3310acd8ea49c627d4"
   },
@@ -232,14 +251,15 @@
       "missing_assertions_or_fixture": [
         "Complete visible My Work ID set must equal independently known active-user assignment set, including absence of foreign/completed rows."
       ],
-      "executable_now": true,
+      "executable_now": false,
       "next_test": null,
       "source_title": "My Work shows active-user assignments",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/31",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/104"
       ],
-      "domain": "identity_navigation"
+      "domain": "identity_navigation",
+      "current_scope_execution_blocker": "Requires independently verified current complete assignment-set oracle; no fixture hunting or backend extraction authorized in this batch."
     },
     {
       "id": "A-0002-01",
@@ -284,7 +304,7 @@
       "missing_assertions_or_fixture": [
         "No exhaustive Projects/milestone set equality against independently known user_projects; role grant matrix is separate A-0029."
       ],
-      "executable_now": true,
+      "executable_now": false,
       "next_test": null,
       "source_title": "Projects/Milestones list is membership-scoped",
       "source_issue_urls": [
@@ -292,7 +312,8 @@
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/32",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/104"
       ],
-      "domain": "identity_navigation"
+      "domain": "identity_navigation",
+      "current_scope_execution_blocker": "Requires independently verified complete membership/project-set oracle; current UI samples and role suffixes are insufficient."
     },
     {
       "id": "A-0003-01",
@@ -469,7 +490,8 @@
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/92"
       ],
-      "domain": "identity_navigation"
+      "domain": "identity_navigation",
+      "current_scope_execution_blocker": "Current preserved viewport overflow remains unproven; no viewport/font changes or forced scroll loops."
     },
     {
       "id": "A-0007-01",
@@ -2734,7 +2756,8 @@
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/149",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/721"
       ],
-      "domain": "sync_offline"
+      "domain": "sync_offline",
+      "current_scope_execution_blocker": "Sole-entry/obsolete-inline absence lacks a defined exhaustive UI oracle; existing one-press Sync entry proof does not establish exclusivity."
     },
     {
       "id": "C-0039-01",
@@ -2816,8 +2839,8 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Exact header plus its instructional subtitle form one screen-copy outcome; existing entry pass asserts screen identity but not these strings.",
-      "live_status": "UNTESTED",
-      "execution_coverage": "partial",
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
       "live_evidence": [
         {
           "receipt": "/tmp/fluent-maestro-existing-session-pfo.md",
@@ -2825,23 +2848,22 @@
           "flow": ".maestro/flows/offline/prepare-offline-entry-existing-session.yaml",
           "relation": "partial",
           "reason": "Verified screen entry/back only; no exact title/subtitle or profile-matrix assertions."
+        },
+        {
+          "receipt": "/tmp/fluent-next-assertion-batch.json",
+          "test_process_outcome": "FAIL",
+          "case_id": "pfo_exact_header_instruction",
+          "flow": ".maestro/flows/offline/pfo-header-copy-existing-session.yaml",
+          "commands_artifact": "/tmp/maestro-efficient-pfo_exact_header_instruction/2026-10-20_010536/pfo-header-copy-existing-session/commands.json",
+          "relation": "full",
+          "reason": "Exact header/instruction assertions completed in commands artifact. Flow process FAIL at later return check expecting Settings row; failure hierarchy proves Home, not a required-copy failure. Current Home return correction not rerun. No project selection/download."
         }
       ],
       "isolated_status": "NOT_APPLICABLE",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "assert Prepare for Offline header + instruction copy"
-      ],
-      "executable_now": true,
-      "next_test": {
-        "kind": "read_only_UI",
-        "target": "existing project8 PFO entry",
-        "assertions": [
-          "Exact Prepare for Offline header",
-          "Exact instructional subtitle"
-        ],
-        "safety": "No Download, toggle, capture, sync or preference change; reuse existing signed-in session."
-      },
+      "missing_assertions_or_fixture": [],
+      "executable_now": false,
+      "next_test": null,
       "source_title": "PFO header and instructional line",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/50"
@@ -4791,8 +4813,8 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Current falsifiable criterion; all stated conditions must be demonstrated together.",
-      "live_status": "UNTESTED",
-      "execution_coverage": "partial",
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
       "live_evidence": [
         {
           "receipt": "/tmp/fluent-efficient-batch.json",
@@ -4800,13 +4822,20 @@
           "flow": ".maestro/flows/drafting/resources-empty-existing-session.yaml",
           "relation": "partial",
           "reason": "Fixture484 Resources panel, exact empty copy and absent sections asserted; no centered bounds, tab order, independently observed empty API response, or complete switch matrix asserted."
+        },
+        {
+          "receipt": "/tmp/fluent-resources-order-only-batch.json",
+          "test_process_outcome": "PASS",
+          "case_id": "empty_resources_tab_relative_order_first_execution",
+          "flow": ".maestro/flows/drafting/empty-resources-tab-order-existing-session.yaml",
+          "commands_artifact": "/tmp/maestro-efficient-empty_resources_tab_relative_order_first_execution/2026-10-20_010833/empty-resources-tab-order-existing-session/commands.json",
+          "relation": "full",
+          "reason": "Fixture484 Resources visible with exact empty message and no resource sections; Bible left of Resources, Resources between Bible and Record, Record right of Resources all directly asserted."
         }
       ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Resource tab/panel presence is observed, but full Bible/Resources/Record order including Resources second is not asserted."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Resources tab remains visible as second drafting tab when empty",
@@ -4866,7 +4895,8 @@
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/188",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/591"
       ],
-      "domain": "reference_platform"
+      "domain": "reference_platform",
+      "current_scope_execution_blocker": "Centered geometry and independently established online-empty response precondition remain missing."
     },
     {
       "id": "D-0189-01",
@@ -5074,8 +5104,8 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Current falsifiable criterion; all stated conditions must be demonstrated together.",
-      "live_status": "UNTESTED",
-      "execution_coverage": "partial",
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
       "live_evidence": [
         {
           "receipt": "/tmp/fluent-bible-record-direct-batch.json",
@@ -5083,15 +5113,23 @@
           "flow": ".maestro/flows/drafting/bible-verse-opens-record-existing-session.yaml",
           "relation": "partial",
           "reason": "My Work\u2192fixture484 drafting and direct Bible-row\u2192Record exact verse reference passed; Projects route, audio non-autoplay, and pericope title matrix are not asserted."
+        },
+        {
+          "receipt": "/tmp/fluent-d0235-latest-evidence-review.json",
+          "case_id": "both_existing_navigation_routes",
+          "relation": "full",
+          "reason": "Existing requirement asks Home\u2192My Work or Projects\u2192chapter\u2192visible drafting tabs using preserved session. Prior My Work fixture484 execution establishes that branch. Latest successful Complete flow explicitly enters Home Projects, selects milestone and chapter487, asserts drafting-tab-bar then Record, returns to Home and preserves identity. Together both named routes meet the existing condition. It does not require exact rendered chapter-header labels, editable chapter state, every chapter, or every role. No additional run is needed.",
+          "supporting_receipts": [
+            "/tmp/fluent-after-tools-drag-batch.json",
+            "/tmp/fluent-bible-record-direct-batch.json"
+          ]
         }
       ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "My Work opens fixture484 into drafting; Projects-to-drafting branch is not asserted by ownership chapter-list navigation."
-      ],
-      "executable_now": true,
-      "next_test": "Use cached user10 and Projects\u2192Milestone Testing 2\u21921 Peter\u2192fixture484\u2192drafting; assert exact chapter identity and drafting panel. Return Home and restore account12.",
+      "missing_assertions_or_fixture": [],
+      "executable_now": false,
+      "next_test": null,
       "source_title": "Navigate My Work / Projects into drafting without auth wipe",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/717"
@@ -5163,7 +5201,8 @@
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/407"
       ],
-      "domain": "reference_platform"
+      "domain": "reference_platform",
+      "current_scope_execution_blocker": "Preference persistence needs a preference change, outside current read-only UI scope."
     },
     {
       "id": "D-0407-03",
@@ -5406,7 +5445,8 @@
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/447"
       ],
-      "domain": "reference_platform"
+      "domain": "reference_platform",
+      "current_scope_execution_blocker": "Installed APK bundled-seed provenance cannot be established by Metro source/unit tests; no rebuild authorized. Existing isolated lookup tests cover defined version behavior; hash validation is not an implemented contract."
     },
     {
       "id": "D-0469-01",
@@ -5907,7 +5947,8 @@
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/702"
       ],
-      "domain": "reference_platform"
+      "domain": "reference_platform",
+      "current_scope_execution_blocker": "Available download or explanatory unavailable path needs a known resource-catalog oracle; no fixture hunting or download authorized."
     }
   ],
   "proposed_additional_exact_aliases": [],
@@ -6389,5 +6430,40 @@
     "cap_test": "PASS44.217s39UIassertions",
     "complete_test": "PASS58.195s38UIassertions afterhealthyHome11.286s"
   },
-  "after_tools_drag_receipt": "/tmp/fluent-after-tools-drag-batch.json"
+  "after_tools_drag_receipt": "/tmp/fluent-after-tools-drag-batch.json",
+  "latest_missing_assertion_batch": "/tmp/fluent-next-assertion-batch.json",
+  "navigation_requirement_review": "/tmp/fluent-d0235-latest-evidence-review.json",
+  "seed_contract_gap_assessment": "No useful independent test gap; existing pericopeSets.test.ts covers lookup/version; no test rerun. No installed-bundle or runtime hash-validation claim.",
+  "prioritized_unblock_inputs": [
+    {
+      "priority": 1,
+      "requirement": "D-0407-02",
+      "input": "Authorize local user10 drafting-unit preference Verse\u2192Pericope, leave/reopen same-user drafting to verify persistence, then restore Verse and active user12. No recording or shared-QA writes."
+    },
+    {
+      "priority": 2,
+      "requirements": [
+        "A-0001-01",
+        "A-0002-01"
+      ],
+      "input": "Provide a current authoritative complete assignment-ID set and membership/project-ID set for existing cached user10, timestamped for comparison; no role changes or new logins."
+    },
+    {
+      "priority": 3,
+      "requirements": [
+        "D-0188-03",
+        "D-0702-01"
+      ],
+      "input": "Provide known QA fixture IDs and expected resource/catalog response markers proving online-empty or explanatory unavailable/available-download state; no download or fixture mutation."
+    },
+    {
+      "priority": 4,
+      "requirements": [
+        "D-0447-01",
+        "A-0006-01",
+        "C-0038-01"
+      ],
+      "input": "Provide verified installed-release APK seed/version provenance; a legal document known to overflow the preserved viewport; and explicit obsolete/alternative Home Sync entry labels for exhaustive negative assertions. No rebuild or viewport changes."
+    }
+  ]
 }

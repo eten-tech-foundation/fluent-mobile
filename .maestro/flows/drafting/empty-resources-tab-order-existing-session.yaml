@@ -1,0 +1,75 @@
+# D-0188-01: Resources remains second among Bible/Resources/Record when empty.
+# Existing user10 assignment484; exact none-for-verse fixture already proven.
+# Adds the missing relative-position assertion; no record/play/resource actions.
+appId: com.eten.fluent
+tags:
+  - drafting
+  - existing-session
+  - read-only
+  - fixture-blocked
+---
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+- tapOn:
+    id: 'home-tab-my-work'
+- scrollUntilVisible:
+    element:
+      id: '^my-work-row-484$'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: '^my-work-row-484$'
+- extendedWaitUntil:
+    visible:
+      id: 'drafting-tab-bar'
+    timeout: 20000
+- assertNotVisible:
+    text: '^Console Error$'
+- assertNotVisible:
+    text: '^.*\[HTTP\].*API error.*$'
+- assertVisible:
+    id: 'drafting-tab-bible'
+- assertVisible:
+    id: 'drafting-tab-resources'
+- assertVisible:
+    id: 'drafting-tab-record'
+- tapOn:
+    id: 'drafting-tab-resources'
+- extendedWaitUntil:
+    notVisible:
+      id: 'resources-tab-loading'
+    timeout: 30000
+- assertVisible:
+    id: 'resources-tab'
+- assertVisible:
+    text: '^No resources available for this verse$'
+- assertNotVisible:
+    id: 'resources-section-.*'
+- assertVisible:
+    id: 'drafting-tab-bible'
+    leftOf:
+      id: 'drafting-tab-resources'
+- assertVisible:
+    id: 'drafting-tab-resources'
+    rightOf:
+      id: 'drafting-tab-bible'
+    leftOf:
+      id: 'drafting-tab-record'
+- assertVisible:
+    id: 'drafting-tab-record'
+    rightOf:
+      id: 'drafting-tab-resources'
+- assertNotVisible:
+    text: '^Console Error$'
+- assertNotVisible:
+    text: '^.*\[HTTP\].*API error.*$'
+- tapOn:
+    id: 'drafting-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 15000
+- assertNotVisible:
+    id: 'login-email-input'

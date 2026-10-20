@@ -1,6 +1,6 @@
 # Maestro acceptance coverage — runtime receipt
 
-Dated runtime record for the existing-session flow packet. Scope is 13 live case variants across nine new flow files. This receipt is separate from the historical 21-case ledger and from setup/assertion counts. It is **not** a whole-app coverage percentage, a live grant, audio-fidelity, human Nightly, or disposable-target claim.
+Dated runtime record for the existing-session flow packet. Scope is 14 live case variants across ten new flow files. This receipt is separate from the historical 21-case ledger and from setup/assertion counts. It is **not** a whole-app coverage percentage, a live grant, audio-fidelity, human Nightly, or disposable-target claim.
 
 Sources (read-only verified receipts):
 
@@ -104,3 +104,9 @@ Expo's floating Tools control was dragged from the header hit area (1010, 170) t
 After explicit authorization, three-account cap/dismissal passed in 44.217s with 39 UI assertions. A healthy Home/error-absence check passed in 11.286s before the Complete-stage idle lock passed in 58.195s with 38 UI assertions. No record, play, claim, or stage controls were tapped. Source: `/tmp/fluent-after-tools-drag-batch.json`. Final Home cleanup passed in 18.181s; restoring cached account 12 passed in 24.896s. PID 7152 and cached accounts 10/9/12 were preserved. Earlier failed attempts remain in the reconciliation. Neither passing case was repeated.
 
 These add two live variants and two flow files. Broader compound role, stage, and native playback requirements remain incomplete, so the 86-current-atomic subset stays at 5 complete, 17 partial, and 64 absent. Two additional isolated mock contracts (account dismissal and Complete-stage scrubbing) passed focused runs of 11/11 and 75/75 tests; local checkpoint `d3f2274` preserves those additions. Mock evidence remains separate from live behavior.
+
+## Missing-assertion milestone
+
+Two new read-only cases each ran once: PFO flow FAIL after exact header/instruction assertions completed; incorrect return-to-Settings check failed because captured hierarchy showed Home. Elapsed 36.942s (11 UI assertions); empty Resources relative tab order PASS 31.827s (19 UI assertions). Sources `/tmp/fluent-next-assertion-batch.json` (PFO) and `/tmp/fluent-resources-order-only-batch.json` (Resources); frozen hashes and exact commands paths retained in runtime-evidence.json. PFO required-copy evidence is complete despite the separate harness return failure. Corrected flow now asserts Home after Back; correction was not rerun. Resources ran only after safe cleanup and account restoration. No download, recording, playback, preference, credential or shared-state changes. Final Home cleanup and cached12 restoration PASS; PID 7152, cached 10/9/12 preserved. Relocated Expo Tools control remains clear of header.
+
+D-0235-02 also upgrades using already successful Projects and My Work navigation evidence, with no new run. Current bounded 86 candidates: 8 complete, 14 partial, 64 absent; 8 PASS / 70 BLOCKED / 8 UNTESTED. Historical 5/17/64 above describes the earlier milestone. The remaining eight UNTESTED rows retain explicit oracle/scope limits in evidence-reconciliation.json; no app-wide percentage. Existing pericope seed contracts already cover lookup/version behavior, so no duplicate isolated test was added or rerun.
