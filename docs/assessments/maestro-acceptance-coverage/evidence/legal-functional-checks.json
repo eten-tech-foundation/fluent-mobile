@@ -1,0 +1,211 @@
+{
+  "schema": "fluent-legal-functional-checks/v1",
+  "generated_utc": "2026-10-20T16:07:44.932177+00:00",
+  "scope": "Legal reachability, actual body text and header-back behavior independently of wording correctness; no scroll/whole-app/whole-requirement PASS promotion",
+  "component_checkpoint": "9bcf837",
+  "component_tests": {
+    "distinct_PASS": 12,
+    "suites": 3,
+    "kind": "isolated rendered components and mocked navigation callbacks",
+    "product_copy_unchanged": true
+  },
+  "direct_device_checks": [
+    {
+      "schema": "fluent-legal-native-diagnostic/v1",
+      "started_utc": "2026-10-20T16:03:27.912844+00:00",
+      "scope": "Single Privacy native selector-resolved tap after Maestro timeout; direct device evidence only, no desktop input or Maestro PASS",
+      "identity_before": {
+        "active_user_id": "12",
+        "known_user_ids": "10,9,12"
+      },
+      "assertions": [
+        {
+          "check": "Privacy scroll surface",
+          "pass": true
+        },
+        {
+          "check": "First body paragraph",
+          "pass": true
+        },
+        {
+          "check": "Final body paragraph",
+          "pass": true
+        },
+        {
+          "check": "Header back",
+          "pass": true
+        }
+      ],
+      "tap_sent_once": true,
+      "privacy_page_opened": true,
+      "policy_copy_unchanged_known_issue725": true,
+      "header_back_sent_once": true,
+      "returned_home": true,
+      "outcome": "PASS direct-device body/navigation",
+      "identity_after": {
+        "active_user_id": "12",
+        "known_user_ids": "10,9,12"
+      },
+      "identity_unchanged": true,
+      "finished_utc": "2026-10-20T16:03:37.288872+00:00"
+    },
+    {
+      "schema": "fluent-terms-native-functional/v1",
+      "started_utc": "2026-10-20T16:04:49.591944+00:00",
+      "scope": "Terms missing body checks via native selector-resolved device taps; no desktop input, no policy mutation, no Maestro PASS",
+      "identity_before": {
+        "active_user_id": "12",
+        "known_user_ids": "10,9,12"
+      },
+      "assertions": [
+        {
+          "check": "Terms document surface",
+          "pass": true
+        },
+        {
+          "check": "First body paragraph",
+          "pass": true
+        },
+        {
+          "check": "Final body paragraph",
+          "pass": true
+        },
+        {
+          "check": "Review responsibility paragraph",
+          "pass": true
+        },
+        {
+          "check": "Accuracy warning bullet",
+          "pass": true
+        },
+        {
+          "check": "Responsibility bullet",
+          "pass": true
+        },
+        {
+          "check": "Endorsement bullet",
+          "pass": true
+        },
+        {
+          "check": "Header back",
+          "pass": true
+        }
+      ],
+      "terms_tap_sent_once": true,
+      "visible_body_markers": [
+        "Fluent provides optional tools that use artificial intelligence (\u201cAI\u201d) to generate initial translation drafts or text suggestions. These drafts are provided solely to assist translators and do not constitute authoritative or verified translations.",
+        "All final translation responsibility rests with the user or translation team.",
+        "If AI services are provided by third parties, the processing of text data will comply with Fluent\u2019s Privacy Policy, which describes what data may be transmitted and how it is protected."
+      ],
+      "terms_page_opened": true,
+      "overflow_claim": "Not claimed; no scroll gesture or viewport/font mutation",
+      "body_screenshot": "/tmp/fluent-terms-native-body.png",
+      "header_back_sent_once": true,
+      "returned_home": true,
+      "outcome": "PASS direct-device body/navigation",
+      "identity_after": {
+        "active_user_id": "12",
+        "known_user_ids": "10,9,12"
+      },
+      "identity_unchanged": true,
+      "finished_utc": "2026-10-20T16:05:01.969007+00:00"
+    }
+  ],
+  "Maestro_delta_attempt": {
+    "schema": "fluent-legal-text-delta/v1",
+    "started_utc": "2026-10-20T15:55:42.317138+00:00",
+    "state": "FINISHED",
+    "scope": "Only missing Privacy/Terms body rendering assertions plus required navigation. Existing open/back receipts reused; no scroll/wording correctness claim. ADB device scoped; no desktop/global keyboard input.",
+    "cases": [
+      {
+        "id": "privacy_body_delta",
+        "outcome": "TIMEOUT",
+        "cap_s": 65,
+        "elapsed_s_approx": 65,
+        "exit_code": "not persisted before artifact-parser error",
+        "artifact_dir": "/tmp/maestro-legal-text-privacy_body_delta-1792511742902579000",
+        "commands_artifact": "/tmp/maestro-legal-text-privacy_body_delta-1792511742902579000/2026-10-20_085545/settings-privacy-existing-session/commands.json",
+        "command_counts": {
+          "COMPLETED": 5,
+          "RUNNING": 1
+        },
+        "UI_assertions": {
+          "COMPLETED": 2
+        },
+        "tap_progress": [],
+        "body_assertions_executed": false,
+        "parser_note": "Runner attempted JSON parse while killed process artifact was still settling; file now valid. This receipt reconstructed without rerun.",
+        "cleanup": "No further UI while exclusive web owner active; legal/menu state inspection pending after release."
+      }
+    ],
+    "frozen_hashes": {
+      "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/edges/settings-privacy-existing-session.yaml": "fb69b585a8f651a55411147f49696ae5413a0b8a4ccc04f6b36271054e436b23",
+      "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/edges/settings-terms-existing-session.yaml": "abe3de3cf65eb843ff218a4e5456c539e1062ad0632349dc2f641f6ff6ca7e4b",
+      "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/shared/nav/goto-home.yaml": "050a2a0a55ae557c3f9e3f14069750319f853dde7ee88aebf336783dba2d71c2",
+      "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/shared/ensure/ensure-no-modal.yaml": "83cb2b862be5ec50499a67b1afa4cc3c2a5a7cd3d55a98e73b20bffa69da311b",
+      "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/helpers/dismiss-expo-dev-menu.yaml": "92a8d3ba881a899e60fcec17425ab5b5e9943001551d50d31c823e56ef1d478a"
+    },
+    "identity_before": {
+      "pid": "7152",
+      "selected_kv": {
+        "10:drafting_unit": "verse",
+        "10:drafting_unit_dirty": "true",
+        "active_user_id": "12",
+        "known_user_ids": "10,9,12"
+      },
+      "no_database_copy": true
+    },
+    "error": "Expecting value: line 1 column 1 (char 0)",
+    "identity_final": {
+      "pid": "7152",
+      "selected_kv": {
+        "10:drafting_unit": "verse",
+        "10:drafting_unit_dirty": "true",
+        "active_user_id": "12",
+        "known_user_ids": "10,9,12"
+      },
+      "no_database_copy": true
+    },
+    "finished_utc": "2026-10-20T15:56:48.378167+00:00",
+    "artifact_reconciliation": "Not PASS; legal body assertions never reached; Terms not attempted",
+    "harness_budget_finding": {
+      "wrapper_start_utc": "2026-10-20T15:55:42.317138+00:00",
+      "first_command_log_device_local": "08:56:43.053",
+      "device_log_offset": "UTC-7 observed in same run",
+      "approx_startup_before_commands_s": 61,
+      "whole_process_cap_s": 65,
+      "finding": "Whole-process cap was nearly consumed before flow commands. No product body-rendering failure demonstrated. Startup delay cause unproven.",
+      "local_runner_fix": "Separate75sstartup and65scommand budgets; hard140swall cap; artifact parse error retained rather than dropping case",
+      "fix_runtime_verified": false,
+      "passing_direct_checks_not_repeated": true
+    }
+  },
+  "wording": {
+    "status": "KNOWN_FAILURE",
+    "issue": "https://github.com/eten-tech-foundation/fluent-mobile/issues/725",
+    "observed_in_direct_Privacy_UI": true,
+    "alternatives_preserved": true,
+    "fix_dependency": "Product/legal approved model-training wording; functional checks continue independently"
+  },
+  "overflow": {
+    "status": "NOT_DEMONSTRATED",
+    "current_observation": "First and final paragraphs are visible at preserved viewport; no scroll gesture was executed",
+    "next_check": "When genuine content exceeds preserved viewport, verify changed top/lower content and stable header then back; do not change viewport/fonts or fabricate content"
+  },
+  "count_policy": {
+    "Maestro_live_PASS_variants": 15,
+    "Maestro_live_PASS_files": 11,
+    "direct_device_legal_functional_checks_PASS": 2,
+    "atomic_complete": 9,
+    "atomic_partial": 14,
+    "atomic_absent": 63,
+    "whole_app_percentage": null
+  },
+  "source_sha256": {
+    "/tmp/fluent-legal-native-diagnostic.json": "7dbfc79e6cdad0846988f576ca54e5b3dbbbdbaeb6837d524b2048e464cc5efc",
+    "/tmp/fluent-terms-native-functional.json": "49a08a4c3843c1f0fc757e620fc271102e8c69bf3f57f4959a5a801adb9e0c67",
+    "/tmp/fluent-legal-components-result.json": "9fafcada111935eb9468b4f0b1a4242a7b7acb2f34b12567c5a801f363f82dae",
+    "/tmp/fluent-legal-text-delta-batch.json": "92d21944dfe85602db465601839db82004f5e2ce4813f3e2269c3900cc91882b"
+  },
+  "harness_fix_scope": "Localboundedrunner only; separate startup/command caps and retain settling-artifact parse errors. Syntax checked, no rerun or product change."
+}

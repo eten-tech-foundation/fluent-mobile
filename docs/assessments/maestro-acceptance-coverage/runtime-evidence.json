@@ -695,5 +695,21 @@
     "dirty_flag": "true",
     "note": "Effective Verse restored via UI; initially absent override becomes explicit verse and normal dirty flag. No direct storage edits or other setting changes.",
     "other_cached_user_preferences_unchanged": true
+  },
+  "latest_legal_functional_receipt": "evidence/legal-functional-checks.json",
+  "direct_device_legal_checks": {
+    "PASS": 2,
+    "not_Maestro_variants": true,
+    "privacy": "page/body/back/Home",
+    "terms": "page/body/3bullets/back/Home",
+    "identity": "active12 known10,9,12 unchanged",
+    "wording_failure_separate": "#725 open, source unchanged",
+    "actual_scroll_not_claimed": true
+  },
+  "legal_component_tests": {
+    "PASS": 12,
+    "suites": 3,
+    "checkpoint": "9bcf837",
+    "isolated_only": true
   }
 }

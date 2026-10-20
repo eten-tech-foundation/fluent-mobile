@@ -350,3 +350,9 @@ bash scripts/maestro-test-qa.sh --config .maestro/config.yaml \
 - No broad suite mutation runbooks; no seed/reset instructions.
 - No runtime workers, public index edits, or git ops from this lane.
 - No claim that syntax-clean YAML or “11 flows authored” equals acceptance PASS.
+
+## Legal functional verification — 2026-10-20
+
+[Durable legal receipt](evidence/legal-functional-checks.json): **Privacy and Terms page/body/header-back→Home PASS via direct device UI**, with active12 and cached10/9/12 unchanged. These two checks are separate from the15 Maestro PASS variants/11files. Twelve component tests across three suites pass at `9bcf837`; they are isolated evidence. The Privacy Maestro body delta timed out at drawer entry before body assertions; Terms was not attempted through Maestro. Its raw timeout is retained and is not a product failure.
+
+Privacy wording remains a separate [known issue #725](https://github.com/eten-tech-foundation/fluent-mobile/issues/725); no policy text changed. Current text fits the preserved viewport; actual scroll movement is unproven and remains an owned conditional next check when genuine overflow exists. No viewport/font/content manipulation or whole-requirement PASS promotion.

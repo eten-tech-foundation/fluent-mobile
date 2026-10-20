@@ -472,18 +472,25 @@
           "flow": null,
           "relation": "partial",
           "reason": "Historical receipt inspected; retained at partial relation unless all current requirement outcomes are asserted."
+        },
+        {
+          "receipt": "evidence/legal-functional-checks.json",
+          "case_id": "privacy_direct_native_body_navigation",
+          "relation": "partial",
+          "method": "direct emulator native selector-resolved taps + UI hierarchy assertions; not Maestro",
+          "reason": "Privacy page, first/final body and header back\u2192Home PASS with active12/cached10,9,12 unchanged; no scroll gesture or overflow proof."
         }
       ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "settings-privacy-existing-session.yaml contains no scroll command or assertion of changed document position/content.",
-        "Overflow at current preserved viewport is not established; content may fit. Do not force viewport/font changes."
+        "Actual changed document position/content after scroll is not demonstrated because current first/final text fits preserved viewport.",
+        "Run conditional scroll check when real content overflows; reuse direct-device body/navigation and isolated component receipts."
       ],
       "executable_now": false,
       "next_test": {
-        "scope": "Actual document-scroll delta, not another open/back baseline",
-        "preconditions": "Existing signed-in session; legal document accessible through drawer",
+        "scope": "Conditional natural-overflow delta only; reuse completed reachability/body/back results",
+        "preconditions": "Actual legal document exceeds preserved viewport; existing authorized session. Current first/final body fits; do not manufacture overflow.",
         "assertions": [
           "Capture known top document content/position",
           "Bounded scroll within legal content",
@@ -497,7 +504,16 @@
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/92"
       ],
       "domain": "identity_navigation",
-      "current_scope_execution_blocker": "Current preserved viewport overflow remains unproven; no viewport/font changes or forced scroll loops."
+      "current_scope_execution_blocker": "Only genuine overflow/scroll delta remains outside verified functional subchecks; no viewport/font changes or fabricated policy content.",
+      "functional_subchecks": {
+        "reachability": "PASS direct-device; earlier Maestro open/back evidence retained",
+        "body_rendering": "PASS direct-device first/final body; Terms also all3bullets",
+        "header_back_to_home": "PASS direct-device",
+        "component_routes_and_callbacks": "PASS isolated;12testsacross3suites; notliveauthnavigation",
+        "policy_wording": "KNOWN_FAILURE #725; separate from functionality",
+        "overflow_scrolling": "NOT_DEMONSTRATED; current document fits preserved viewport; execute only with genuine overflow"
+      },
+      "whole_requirement_scope_note": "Navigation/body/back subchecks now PASS. Existing whole atomic count/status is not promoted because its issue-derived scroll outcome remains undemonstrated; this is owned unfinished conditional work, not a permanent exclusion."
     },
     {
       "id": "A-0007-01",
@@ -521,17 +537,25 @@
           "flow": ".maestro/flows/edges/settings-terms-scroll-existing-session.yaml",
           "relation": "partial",
           "reason": "Exit1 in33.628s at declared offscreen-bottom precondition; all document content fits current viewport. This is viewport fixture blockage, not a product acceptance failure or PASS."
+        },
+        {
+          "receipt": "evidence/legal-functional-checks.json",
+          "case_id": "terms_direct_native_body_navigation",
+          "relation": "partial",
+          "method": "direct emulator native selector-resolved taps + UI hierarchy assertions; not Maestro",
+          "reason": "Terms page, first/final body and header back\u2192Home PASS with active12/cached10,9,12 unchanged; no scroll gesture or overflow proof."
         }
       ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "Strict scroll-delta viewport precondition failed: the final Terms paragraph is already visible. No viewport/font/device changes authorized; no scroll executed."
+        "Actual changed document position/content after scroll is not demonstrated because current first/final text fits preserved viewport.",
+        "Run conditional scroll check when real content overflows; reuse direct-device body/navigation and isolated component receipts."
       ],
       "executable_now": false,
       "next_test": {
-        "scope": "Actual document-scroll delta, not another open/back baseline",
-        "preconditions": "Existing signed-in session; legal document accessible through drawer",
+        "scope": "Conditional natural-overflow delta only; reuse completed reachability/body/back results",
+        "preconditions": "Actual legal document exceeds preserved viewport; existing authorized session. Current first/final body fits; do not manufacture overflow.",
         "assertions": [
           "Capture known top document content/position",
           "Bounded scroll within legal content",
@@ -544,7 +568,17 @@
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/92"
       ],
-      "domain": "identity_navigation"
+      "domain": "identity_navigation",
+      "functional_subchecks": {
+        "reachability": "PASS direct-device; earlier Maestro open/back evidence retained",
+        "body_rendering": "PASS direct-device first/final body; Terms also all3bullets",
+        "header_back_to_home": "PASS direct-device",
+        "component_routes_and_callbacks": "PASS isolated;12testsacross3suites; notliveauthnavigation",
+        "policy_wording": "Preserved source; not legal-content approval",
+        "overflow_scrolling": "NOT_DEMONSTRATED; current document fits preserved viewport; execute only with genuine overflow"
+      },
+      "whole_requirement_scope_note": "Navigation/body/back subchecks now PASS. Existing whole atomic count/status is not promoted because its issue-derived scroll outcome remains undemonstrated; this is owned unfinished conditional work, not a permanent exclusion.",
+      "current_scope_execution_blocker": "Only genuine overflow/scroll delta remains outside verified functional subchecks; no viewport/font changes or fabricated policy content."
     },
     {
       "id": "A-0008-01",
@@ -6474,5 +6508,11 @@
       "input": "Provide verified installed-release APK seed/version provenance; a legal document known to overflow the preserved viewport; and explicit obsolete/alternative Home Sync entry labels for exhaustive negative assertions. No rebuild or viewport changes."
     }
   ],
-  "latest_preference_receipt": "/tmp/fluent-preference-persistence-batch.json"
+  "latest_preference_receipt": "/tmp/fluent-preference-persistence-batch.json",
+  "latest_legal_functional_receipt": "evidence/legal-functional-checks.json",
+  "latest_legal_functional_counts": {
+    "direct_device_PASS": 2,
+    "isolated_component_tests_PASS": 12,
+    "new_Maestro_flow_PASS": 0
+  }
 }

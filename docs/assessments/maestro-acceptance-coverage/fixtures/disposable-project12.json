@@ -1,6 +1,6 @@
 {
   "schema": "fluent-disposable-qa-fixture/v1",
-  "captured_utc": "2026-10-20T15:35:16.577642+00:00",
+  "captured_utc": "2026-10-20T16:07:44.932177+00:00",
   "environment": {
     "web": "https://qa.app.fluent.bible",
     "api": "https://qa.api.fluent.bible"
@@ -54,19 +54,18 @@
     "identity_source": "Supported ordinary GET/users Response; no auth Headers/storage",
     "candidate_email": "qa+fluentqa-translator@fluent.local",
     "role_requested_only_for_new_fixture": "Project Translator",
-    "membership_saved": true,
-    "membership_verification": "Supported project12 Team UI: qa-t1 Translator, following exact user10 approval and one accepted retry"
+    "membership_saved": null,
+    "membership_verification": "Current background ProjectTeam accessibility tree includes qa-t1; role and durable server grant unverified. Earlier UI save confirmation lacks retained saved-team/server200 evidence.",
+    "project_team_row_present": true,
+    "approval_received": "Exact project12-only ProjectTranslator approval received; check current state before any retry"
   },
   "recording_ready": false,
   "recording_actions_started_by_audit": 0,
   "current_blocker": {
-    "action": "Open Assign dialog for selected new chapter1183",
-    "target": "https://qa.app.fluent.bible/projects/12/milestones/19",
-    "state": "UI_DISABLED_NO_SAVE_ATTEMPT",
-    "observed": "Only first chapter checkbox value1, other4value0; Assign enabledfalse; project12 has exactly1Translator qa-t1",
-    "source_explanation": "fluent-web/src/features/projects/components/ProjectDetailPage.tsx:473-478 disables Assign when project translators count<2",
-    "scope": "No confirmed product-defect verdict. Distinct drafter/peer workflow may require2translators. No disabled-control or directAPI bypass attempted.",
-    "approval_state": "Second named QA translator membership approval pending; no Save Users attempted for that account"
+    "state": "READBACK_REQUIRED_BEFORE_ANY_RETRY",
+    "action": "Inspect current qa-t1 project12 role and ordinary project-user GET response for id10/role5; verify translator2 full exact email before approved save/pair1183",
+    "reason": "Earlier certainty lacked retained membership response; current row exists but scoped role/server persistence not yet proven. Foreground lease ended after guard failure before input.",
+    "safe_next_step": "On exact QAproject12, inspect qa-t1 role control and ordinary project-user response, no auth Headers/storage; no blind repeat save"
   },
   "existing_projects_modified": false,
   "global_roles_modified": false,
@@ -77,8 +76,8 @@
     "checked_utc": "2026-10-20T15:28:59.551397+00:00",
     "method": "Direct on-device readonly selected-column SQLite; no DB or credential copies"
   },
-  "source_manifest_sha256": "1dcf71913d9afd517bea4a97b130ee511bb25df44ed4fc8c61dfbe1ab49c49d2",
-  "fixture_mutations": "Created only new project12 and its single-book milestone; saved user10 as project12 Translator after exact approval; no chapter assignment, drafter, peer or stage mutation yet",
+  "source_manifest_sha256": "9650dbb2dbe7f39ac18e698adc74f478c035c4cbb1e5275dfb7d2a5faeafaa02",
+  "fixture_mutations": "Created new project12 and milestone19; user10 SaveUsers retry was reported clicked once but durable role grant remains unverified. No translator2 save or assignment/drafter/peer/stage mutation.",
   "assignment_bible_id": 178,
   "membership_denial_history": {
     "action": "Save Users once in Add Project User dialog, qa-t1(id10),Translator role, newly created project12",
@@ -87,7 +86,18 @@
     "reason": "This persists a project Translator role grant for user10, a shared-service permission change; the user explicitly prohibited role changes and did not authorize this exact membership save.",
     "retry_performed": true,
     "retry_basis": "New exact user Approved to persistent ProjectTranslator user10 only in disposable project12; trustedparent delegation",
-    "retry_outcome": "Accepted; Save Users clicked exactly once; ProjectTeam UI now qa-t1 Translator"
+    "retry_outcome": "Accepted; Save Users clicked exactly once; ProjectTeam UI now qa-t1 Translator",
+    "retry_outcome_evidence_status": "Historical worker assertion, not retained saved-team or server200 proof; current qa-t1 UI row is present, role/server grant unverified"
   },
-  "second_translator_membership_save_attempted": false
+  "second_translator_membership_save_attempted": false,
+  "second_translator": {
+    "id": 11,
+    "username": "qa-t2",
+    "candidate_email": "qa+fluentqa-translator2@fluent.local",
+    "exact_email_verified": false,
+    "existing_role_observed": "Project Translator role5, projects8/1/11",
+    "project12_membership_save_attempted": false,
+    "exact_project12_membership_and_pairing_approval_received": true
+  },
+  "do_not_blindly_retry_save": true
 }

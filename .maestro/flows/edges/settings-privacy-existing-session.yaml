@@ -22,6 +22,11 @@ tags:
     visible:
       id: 'privacy-policy-scroll'
     timeout: 15000
+# Body rendering only; policy correctness is tracked separately in #725.
+- assertVisible:
+    text: '(?s).*Fluent offers an AI-generated draft feature.*'
+- assertVisible:
+    text: '(?s).*By continuing, you agree.*'
 - tapOn:
     id: 'privacy-policy-scroll-back'
 - runFlow: ../../shared/nav/goto-home.yaml

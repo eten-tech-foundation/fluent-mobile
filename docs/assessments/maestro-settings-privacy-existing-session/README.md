@@ -32,3 +32,7 @@ maestro test .maestro/flows/edges/settings-privacy-existing-session.yaml
 | Not done | Terms route (sibling unproven but stopped after one legal check); no accept/account/login |
 
 Debug (not git): `/tmp/maestro-privacy-out/`, `/tmp/maestro-privacy-run.log`
+
+## Body-rendering follow-up — 2026-10-20
+
+The earlier Maestro open/back PASS above remains historical evidence. The current flow adds first/final body-text assertions; its new Maestro body variant is **not PASS** (Privacy timed out at drawer entry; Terms not attempted). Separately, [direct-device functional checks](../maestro-acceptance-coverage/evidence/legal-functional-checks.json) verify this page opens, its body renders, and header Back returns Home while preserving active12/cached10,9,12. Component tests verify body text and router callbacks independently. Policy wording is unchanged; #725 is a separate Privacy copy defect. No actual scroll delta is claimed.
