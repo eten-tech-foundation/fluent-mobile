@@ -128,6 +128,7 @@ jest.mock('../../db/queries', () => ({
 
 jest.mock('../../services/storage', () => ({
   getActiveUserId: () => mockGetActiveUserId(),
+  kvStorage: { getItemSync: jest.fn(), setItemSync: jest.fn() },
 }));
 
 jest.mock('../../services/uploadOrchestrator', () => ({
@@ -278,6 +279,8 @@ describe('SyncScreen', () => {
   it('calls cancel when Cancel is pressed during syncing', async () => {
     mockPageStatus = 'syncing';
     render(<SyncScreen />);
+    expect(screen.getByText('Uploading')).toBeTruthy();
+    expect(screen.getByText('0 of 3 chapters uploaded')).toBeTruthy();
 
     fireEvent.press(screen.getByTestId('sync-action-cancel'));
 
@@ -368,6 +371,29 @@ describe('SyncScreen', () => {
     expect(mockSyncNowFromHook).not.toHaveBeenCalled();
     expect(mockTriggerSync).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['offline transport', false, false],
+    ['unreachable Fluent', false, true],
+    ['online idle queue', true, true],
+  ] as const)(
+    'does not describe pending work as Uploading with no active session: %s',
+    (_label, isOnline, isLinkOnline) => {
+      mockIsOnline = isOnline;
+      mockIsLinkOnline = isLinkOnline;
+      render(<SyncScreen />);
+
+      expect(
+        screen.getByText(
+          isOnline ? 'Online · upload pending' : 'Offline · upload pending',
+        ),
+      ).toBeTruthy();
+      expect(screen.queryByText('Uploading')).toBeNull();
+      expect(screen.queryByText('0%')).toBeNull();
+      expect(screen.queryByText(/of .* chapters uploaded/)).toBeNull();
+      expect(mockSyncNowFromHook).not.toHaveBeenCalled();
+    },
+  );
 
   it('does not show the transport-offline hint when only Fluent health is down', () => {
     mockIsOnline = false;
