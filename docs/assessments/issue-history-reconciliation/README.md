@@ -1,6 +1,6 @@
 # Issue history reconciliation (exclusive audit workspace)
 
-**Status: FINAL-frozen** (`2026-10-20T01:40:25Z`). Ledger **308/308**. Independent delta **PASS**. Complete≠Nightly.
+**Status: FINAL-frozen** (auth lineage correction `2026-10-20T01:59:31Z` — #41 401 slice superseded by #291/#292+PR342; see FINAL §3.1b; prior freeze `2026-10-20T01:40:25Z` historical). Ledger **308/308**. Independent delta **PASS** (historical). Complete≠Nightly.
 **FINAL report:** [`FINAL-report.md`](./FINAL-report.md) · Executive packet: [`EXECUTIVE-FINDINGS.md`](./EXECUTIVE-FINDINGS.md) + [`inventory/executive-findings.json`](./inventory/executive-findings.json). Issue-ID refresh (`mattrace-gloo`): **308≡308**.
 **HEAD (frozen):** `5334ff6aa69ae4227332ad2304fa3f8a0c70e7f9`.
 

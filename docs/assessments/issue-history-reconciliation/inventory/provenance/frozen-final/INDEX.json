@@ -1,5 +1,5 @@
 {
-  "frozen_utc": "2026-10-20T01:41:50Z",
+  "frozen_utc": "2026-10-20T01:59:31Z",
   "head": "5334ff6aa69ae4227332ad2304fa3f8a0c70e7f9",
   "integrator": "bc-da4aa327-d86e-47fc-93c0-d7105af39497",
   "ledger_issues": 308,
@@ -17,5 +17,15 @@
   "final_report": "../../FINAL-report.md",
   "no_nightly_claim": true,
   "no_secrets_copied": true,
-  "factual_correction": "356_is_total_issue_comments_not_timing_scope"
+  "factual_correction": "356_is_total_issue_comments_not_timing_scope",
+  "auth_lineage_correction": {
+    "utc": "2026-10-20T01:59:31Z",
+    "tmp_correction": "/tmp/fluent-auth-report-correction.md",
+    "tmp_final_receipt": "/tmp/fluent-auth-report-correction-final.md",
+    "independent_gap_review": "/tmp/fluent-gap-mapping-review.md",
+    "supersession": "41_hard_401_SUPERSEDED_by_292_291_PR342;_622_PR658_retention_context",
+    "prior_freeze_historical": true,
+    "publication_still_paused": true
+  },
+  "correction_note": "FINAL/executive corrected after final-delta missed #291/#292/#622 lineage; not an unqualified perfect/exhaustive conformance claim"
 }

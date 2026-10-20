@@ -1,5 +1,5 @@
 {
-  "updated_utc": "2026-10-20T01:40:25Z",
+  "updated_utc": "2026-10-20T01:59:31Z",
   "head": "5334ff6aa69ae4227332ad2304fa3f8a0c70e7f9",
   "evidence_basis": "accepted_coverage_csv_rows_and_existing_receipts_only",
   "ledger": {
@@ -11,12 +11,13 @@
     ]
   },
   "freeze": {
-    "status": "FINAL",
+    "status": "FINAL_with_auth_lineage_correction",
     "final_report": "FINAL-report.md",
     "delta_pass_receipt": "/tmp/fluent-audit-final-review.md",
     "readiness_receipt": "/tmp/fluent-audit-final-corrections.md",
     "frozen_receipt": "/tmp/fluent-audit-frozen-final.md",
-    "frozen_utc": "2026-10-20T01:40:25Z"
+    "frozen_utc": "2026-10-20T01:40:25Z",
+    "auth_lineage_correction_utc": "2026-10-20T01:59:31Z"
   },
   "expected_behavior": [
     {
@@ -87,10 +88,34 @@
     },
     {
       "issue": 41,
-      "finding": "named_unwaived_divergence_logout_DB_wipe_and_hard_401_to_Login",
-      "current": "per_user_retained_DB_clearCredentials_soft_reauth_banner",
-      "not": "invented_new_bug",
-      "material_pr": "https://github.com/eten-tech-foundation/fluent-mobile/pull/46"
+      "finding": "401_hard_clear_to_Login_POLICY_SUPERSEDED_by_291_292",
+      "supersession": {
+        "from_issue": 292,
+        "canonical_issue": 291,
+        "duplicate_comment": "https://github.com/eten-tech-foundation/fluent-mobile/issues/292#issuecomment-5208306644",
+        "delivery_pr": 342,
+        "policy": [
+          "soft_reauth_on_sync_401",
+          "keep_token_and_sqlite",
+          "no_forced_logout"
+        ]
+      },
+      "signout_retention_context": {
+        "issue": 622,
+        "pr": 658,
+        "documents": [
+          "recordings_retained_after_signout",
+          "same_account_recovery",
+          "unsynced_warning_UX"
+        ],
+        "not": [
+          "new_db_wipe_bug",
+          "blanket_retention_policy_waiver_beyond_622"
+        ]
+      },
+      "material_pr_initial": "https://github.com/eten-tech-foundation/fluent-mobile/pull/46",
+      "qa": "soft_reauth_device_checks_unproven_neq_Nightly",
+      "not": "named_unwaived_divergence_no_later_decision"
     },
     {
       "issue": 599,
@@ -178,16 +203,34 @@
       ],
       "parent_still_open": 271,
       "classification": "slice_closed_parent_open"
+    },
+    {
+      "from": 41,
+      "slice": "hard_401_clear_to_Login",
+      "superseded_by": [
+        292,
+        291
+      ],
+      "duplicate_comment": "https://github.com/eten-tech-foundation/fluent-mobile/issues/292#issuecomment-5208306644",
+      "prs": [
+        342
+      ],
+      "classification": "POLICY_SUPERSEDED_not_unwaived"
+    },
+    {
+      "from": 41,
+      "slice": "signout_local_DB_wipe_as_open_divergence",
+      "documented_by": [
+        622
+      ],
+      "prs": [
+        658
+      ],
+      "classification": "documented_retention_and_warning_context_not_new_wipe_bug",
+      "not": "blanket_retention_waiver_beyond_622"
     }
   ],
   "named_unwaived_divergences": [
-    {
-      "issue": 41,
-      "slices": [
-        "signout_DB_wipe",
-        "401_exact_clear_to_Login"
-      ]
-    },
     {
       "issue": 4,
       "note": "no_client_role_branch_neq_unfiltered_server"
@@ -222,8 +265,9 @@
       "state": "unknown_project_grant_vs_chapter_only"
     },
     {
-      "topic": "41_DB_wipe_hard_401_Login",
-      "state": "no_waive_found_named_divergence_unknown_later_decision"
+      "topic": "41_hard_401_Login",
+      "state": "SUPERSEDED_by_291_292_PR342_soft_reauth",
+      "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/291"
     }
   ],
   "live_evidence_gaps": [
@@ -301,5 +345,11 @@
       "not": "infer_unimplemented_from_open_status_alone",
       "wave": "r17"
     }
-  ]
+  ],
+  "auth_lineage_correction": {
+    "utc": "2026-10-20T01:59:31Z",
+    "note": "final_freeze_missed_291_292_622_lineage",
+    "prior_freeze_historical": true,
+    "no_exhaustive_conformance_claim": true
+  }
 }

@@ -1,12 +1,12 @@
 # Issue-history reconciliation — FINAL report
 
-**Status: FINAL-frozen.** Ledger **308/308** contract-marked. Independent delta **PASS** (`/tmp/fluent-audit-final-review.md`). Complete ≠ Nightly.
+**Status: FINAL-frozen** (auth lineage **correction** `2026-10-20T01:59:31Z` — see §3.1b / executive). Prior freeze receipts historical. Ledger **308/308** contract-marked. Independent delta **PASS** (`/tmp/fluent-audit-final-review.md`). Complete ≠ Nightly.
 
 | Field | Value |
 | --- | --- |
 | Integrator | `bc-da4aa327-d86e-47fc-93c0-d7105af39497` |
 | Draft UTC | `2026-10-20T01:35:00Z` |
-| Frozen UTC | `2026-10-20T01:41:50Z` |
+| Frozen UTC | `2026-10-20T01:59:31Z` (auth correction) |
 | HEAD | `5334ff6aa69ae4227332ad2304fa3f8a0c70e7f9` |
 | Ledger | `reconciliation_complete` **308 / 308** |
 | Issue-ID refresh | `inventory/issue-id-refresh-mattrace.json` — `mattrace-gloo` 308≡308 |
@@ -62,6 +62,17 @@ No PM blame. No inferred intent beyond cited comments/PRs/source.
 | Delivery | [#176](https://github.com/eten-tech-foundation/fluent-mobile/issues/176) via [PR #252](https://github.com/eten-tech-foundation/fluent-mobile/pull/252); [#233](https://github.com/eten-tech-foundation/fluent-mobile/issues/233) via [PR #254](https://github.com/eten-tech-foundation/fluent-mobile/pull/254) → main with #252 | CONFIRMED_CURRENT_SOURCE on HEAD (`ensureSeekableTakeUri` + `modules/aac-remux`) |
 | Ledger hygiene | Accepted #49 row updated: scrub-deferred wording = **HISTORICAL waiver**, not current open requirement | Complete ≠ Nightly scrub QA |
 
+### 3.1b Auth 401 / sign-out — `#41` → `#292`/`#291` + `#622` (correction)
+
+| Step | Citation | Classification |
+| --- | --- | --- |
+| Original AC | [#41](https://github.com/eten-tech-foundation/fluent-mobile/issues/41) hard 401 clear→Login; sign-out clear DB/caches | Historical AC |
+| Delivery | [PR #46](https://github.com/eten-tech-foundation/fluent-mobile/pull/46) Better-Auth login/sign-out | Partial CONFIRMED_CURRENT_SOURCE |
+| 401 supersession | [#292](https://github.com/eten-tech-foundation/fluent-mobile/issues/292) closed duplicate of [#291](https://github.com/eten-tech-foundation/fluent-mobile/issues/291) ([comment 5208306644](https://github.com/eten-tech-foundation/fluent-mobile/issues/292#issuecomment-5208306644)); #291 Outcomes require soft reauth / keep token+SQLite / no forced logout; [PR #342](https://github.com/eten-tech-foundation/fluent-mobile/pull/342) | **POLICY SUPERSEDED** — remove “unwaived / no later decision” for this slice |
+| Sign-out retention context | [#622](https://github.com/eten-tech-foundation/fluent-mobile/issues/622) + [PR #658](https://github.com/eten-tech-foundation/fluent-mobile/pull/658) | Documented retained recordings + warn UX; **not** new wipe bug; **not** blanket waiver beyond #622 |
+| QA | #291 device checks | **QA unproven** / ≠ Nightly — distinct from policy change |
+| Correction | `2026-10-20T01:59:31Z` | Final freeze missed this lineage; prior freeze historical |
+
 ### 3.2 Source audio stub — `#235` → `#449`
 
 | Step | Citation | Classification |
@@ -84,7 +95,7 @@ No PM blame. No inferred intent beyond cited comments/PRs/source.
 | ID | Finding | Classification | Cite |
 | --- | --- | --- | --- |
 | **#4** | Server-filtered `/self/projects` at API pin `4336602` (project grant **or** org-scoped role ≠ Org Member). Mobile has no Manager/Translator client branch — **≠** unfiltered-server / invented client bug. Remaining unknown: “assigned” = project grant vs chapter-assignment-only | Actual source + wording unknown | coverage #4; fluent-api `self-projects.route.ts` / `projects.repository.ts` @ `4336602` |
-| **#41** | Original AC: logout DB wipe + 401→Login. Current: per-user retained DB + `clearCredentials` + soft reauth banner — **named unwaived divergence / unknown later decision**, not an invented new bug | Named divergence | coverage #41; PR #46 |
+| **#41** | Original hard 401 clear→Login **POLICY SUPERSEDED** by [#292](https://github.com/eten-tech-foundation/fluent-mobile/issues/292)→[#291](https://github.com/eten-tech-foundation/fluent-mobile/issues/291) ([comment 5208306644](https://github.com/eten-tech-foundation/fluent-mobile/issues/292#issuecomment-5208306644)); delivered [PR #342](https://github.com/eten-tech-foundation/fluent-mobile/pull/342) (soft reauth; keep token+SQLite; no forced logout). Sign-out retention/warning documented [#622](https://github.com/eten-tech-foundation/fluent-mobile/issues/622)+[PR #658](https://github.com/eten-tech-foundation/fluent-mobile/pull/658) — **not** a new DB-wipe bug; do not infer broader waiver beyond #622. Soft-reauth **QA unproven** ≠ Nightly | Policy superseded + documented retention context | coverage #41; PR #46; #291/#292; PR #342; #622; PR #658 |
 | **#176** | Remux/scrub **code** on HEAD via PR #252/#254; PR #252 said do not auto-close until Android device QA — **explicit Android QA-before-close evidence missing** | Live evidence gap (code delivered) | coverage #176 |
 | **#599** | Foreground upload crash AC **OPEN**; mitigations in source (`UploadSyncForegroundModule.kt`, orchestrator session guard) ≠ closed; cause + **current QA unproven** (Dev historical) — **OPEN_BUG**, not “unimplemented” | OPEN_BUG / current QA unproven | coverage #599 |
 
@@ -159,7 +170,8 @@ Accounts are **not** required to finish the source/history audit.
 | P1_provisional | Sync entry automation | Live QA unproven / cause unisolated | [#721](https://github.com/eten-tech-foundation/fluent-mobile/issues/721); Stage_D receipts (~61s PASS) |
 | P1_provisional | Upload foreground crash | OPEN_BUG; mitigations present; cause + current QA unproven | [#599](https://github.com/eten-tech-foundation/fluent-mobile/issues/599) |
 | — | #176 Android QA-before-close | Code delivered; QA evidence missing | [#176](https://github.com/eten-tech-foundation/fluent-mobile/issues/176) / PR #252 |
-| — | #41 logout DB wipe / hard 401→Login | Named unwaived divergence | [#41](https://github.com/eten-tech-foundation/fluent-mobile/issues/41) |
+| — | #41 hard 401→Login | **Superseded** by #291/#292 + PR #342; soft-reauth QA unproven | [#291](https://github.com/eten-tech-foundation/fluent-mobile/issues/291) / [#292](https://github.com/eten-tech-foundation/fluent-mobile/issues/292) |
+| — | Sign-out recording retention / warn UX | Documented #622 + PR #658 (not new wipe bug) | [#622](https://github.com/eten-tech-foundation/fluent-mobile/issues/622) |
 | — | #4 assignment wording | Unknown project-grant vs chapter-only (server filtered) | [#4](https://github.com/eten-tech-foundation/fluent-mobile/issues/4) |
 | P1_provisional | Observer entry / offline draft download | Open AC + source_gap (accepted row) | [#505](https://github.com/eten-tech-foundation/fluent-mobile/issues/505), [#508](https://github.com/eten-tech-foundation/fluent-mobile/issues/508) |
 | P1_provisional | Fixture/seed blockers | OPEN_followup + API seed deps | [#607](https://github.com/eten-tech-foundation/fluent-mobile/issues/607), [#717](https://github.com/eten-tech-foundation/fluent-mobile/issues/717); do not conflate mobile #368/#369 with fluent-api seeds |
