@@ -1,26 +1,35 @@
-# Home → Sync screen via header sync button.
-# Local Debug+Metro: Expo Dev Menu can steal the sync tap — dismiss and retry.
+# Home → Sync via header sync button (testID home-sync-button).
+#
+# Evidence (Maestro 2.10 debug 2026-10-19_174838 / #721):
+# - Plain `tapOn: id: home-sync-button` selected the Button and aimed
+#   hierarchyBasedTap at center (985, 168) — same point as a later successful
+#   `adb shell input tap 985 168` that opened sync-screen.
+# - Maestro still marked COMPLETED after "Something has changed in the UI"
+#   (TouchableOpacity activeOpacity), while sync-screen never appeared.
+# - Prior `repeat: times: 4 while notVisible sync-screen` masked that false
+#   settle signal; not a causal fix.
+#
+# Correction (automation-only, Maestro 2.10 YamlElementSelector):
+# - dismiss Expo Dev Menu when present
+# - waitForAnimationToEnd before the press (avoid mid-opacity settle)
+# - one `tapOn` with `point: "50%,50%"` (supported YAML field; maps to mid-element
+#   relative press — not hardcoded device pixels)
+# - single extendedWaitUntil for sync-screen (no tap retry loop)
 appId: com.eten.fluent
 ---
 - runFlow: goto-home.yaml
 - runFlow: ../../helpers/dismiss-expo-dev-menu.yaml
-- repeat:
-    times: 4
-    while:
-      notVisible:
-        id: 'sync-screen'
-    commands:
-      - runFlow: ../../helpers/dismiss-expo-dev-menu.yaml
-      - runFlow:
-          when:
-            visible:
-              id: 'home-sync-button'
-          commands:
-            - tapOn:
-                id: 'home-sync-button'
-      - waitForAnimationToEnd:
-          timeout: 2000
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible:
+      id: 'home-sync-button'
+    timeout: 10000
+- tapOn:
+    id: 'home-sync-button'
+    point: '50%,50%'
+    waitUntilVisible: true
 - extendedWaitUntil:
     visible:
       id: 'sync-screen'
-    timeout: 30000
+    timeout: 15000
