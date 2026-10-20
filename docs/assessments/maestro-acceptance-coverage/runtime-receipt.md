@@ -1,6 +1,6 @@
 # Maestro acceptance coverage — runtime receipt
 
-Dated runtime record for the existing-session flow packet. Scope is 11 live case variants across seven new flow files. This receipt is separate from the historical 21-case ledger and from setup/assertion counts. It is **not** a whole-app coverage percentage, a live grant, audio-fidelity, human Nightly, or disposable-target claim.
+Dated runtime record for the existing-session flow packet. Scope is 13 live case variants across nine new flow files. This receipt is separate from the historical 21-case ledger and from setup/assertion counts. It is **not** a whole-app coverage percentage, a live grant, audio-fidelity, human Nightly, or disposable-target claim.
 
 Sources (read-only verified receipts):
 
@@ -96,3 +96,11 @@ Sync status is tagged `fixture-blocked` so ordinary sweeps exclude it until its 
 D-0564-01 (D-0408-03 alias counted once): `drafting/bible-verse-opens-record-existing-session.yaml` PASS, exit 0 in 53.167s with 23 UI assertions. Assignment 484 / verse 2 / exact `1 Peter 5:2`: tapped the Bible verse row and Record opened directly; no Record-tab tap or capture/playback. Source receipt: `/tmp/fluent-bible-record-direct-batch.json`; aggregate above includes this eleventh variant and seventh flow file. Home cleanup and cached-account-12 restore PASS; PID 7152 and cached 10/9/12 retained.
 
 Separately, four new isolated contract cases passed in a focused 55-test / two-suite run (Node 24.14.0, 3.988s): populated notes/questions/images pass-through, and late previous-verse All Takes response isolation. These do not prove populated live Resources or multi-recorder fixtures. No broad PR gates were run.
+
+## Developer-overlay correction and two subsequent live branches
+
+Expo's floating Tools control was dragged from the header hit area (1010, 170) to the clear right edge (1010, 560), with before/after screenshots. No settings, product, or auth changes were made.
+
+After explicit authorization, three-account cap/dismissal passed in 44.217s with 39 UI assertions. A healthy Home/error-absence check passed in 11.286s before the Complete-stage idle lock passed in 58.195s with 38 UI assertions. No record, play, claim, or stage controls were tapped. Source: `/tmp/fluent-after-tools-drag-batch.json`. Final Home cleanup passed in 18.181s; restoring cached account 12 passed in 24.896s. PID 7152 and cached accounts 10/9/12 were preserved. Earlier failed attempts remain in the reconciliation. Neither passing case was repeated.
+
+These add two live variants and two flow files. Broader compound role, stage, and native playback requirements remain incomplete, so the 86-current-atomic subset stays at 5 complete, 17 partial, and 64 absent. Two additional isolated mock contracts (account dismissal and Complete-stage scrubbing) passed focused runs of 11/11 and 75/75 tests; local checkpoint `d3f2274` preserves those additions. Mock evidence remains separate from live behavior.

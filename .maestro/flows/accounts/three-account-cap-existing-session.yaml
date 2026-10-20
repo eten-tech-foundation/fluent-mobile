@@ -1,0 +1,143 @@
+# Drafting Accounts panel: saved three-account cap + close without switching.
+# A-0008-01 missing branch, not a repetition of cached account switching.
+# Source: AccountSwitcherPanel.tsx / AccountInitialsButton.tsx.
+# Preconditions: settled Home, active user10, cached10/9/12, My Work fixture484.
+# Root prepares user10 and owns bounded execution plus before/after KV checks.
+# No generic goto-home: the operator must settle Home before this flow starts.
+# No account row tap, Add Account, logout/remove/login/reset, preference,
+# network, capture/playback, claim or sync mutation. Only view/open/close/back.
+# Row-scoped exact names/initial Q use existing read-only user9/10/12 fixture.
+# Accessibility labels and initials are identity chrome, never grant proof.
+appId: com.eten.fluent
+tags:
+  - accounts
+  - existing-session
+  - read-only
+  - guard
+---
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+- tapOn:
+    id: 'home-tab-my-work'
+- scrollUntilVisible:
+    element:
+      id: '^my-work-row-484$'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: '^my-work-row-484$'
+- extendedWaitUntil:
+    visible:
+      id: 'drafting-tab-bar'
+    timeout: 20000
+- assertVisible:
+    id: 'drafting-account-initials'
+# Reject the observed developer error overlay/toast before the interaction.
+# This is a strict healthy-UI precondition, never a dismissal or silent skip.
+- assertNotVisible:
+    text: '^Console Error$'
+- assertNotVisible:
+    text: '^.*\[HTTP\].*API error.*$'
+- tapOn:
+    id: 'drafting-account-initials'
+- extendedWaitUntil:
+    visible:
+      text: '^Accounts on this device$'
+    timeout: 15000
+- assertVisible:
+    text: '^Close account switcher$'
+- assertVisible:
+    id: '^account-switcher-row-10$'
+    text: '^Switch to qa-t1$'
+- assertVisible:
+    text: '^qa-t1$'
+    childOf:
+      id: '^account-switcher-row-10$'
+- assertVisible:
+    text: '^Q$'
+    childOf:
+      id: '^account-switcher-row-10$'
+- assertVisible:
+    id: '^account-switcher-row-9$'
+    text: '^Switch to qa-pm$'
+- assertVisible:
+    text: '^qa-pm$'
+    childOf:
+      id: '^account-switcher-row-9$'
+- assertVisible:
+    text: '^Q$'
+    childOf:
+      id: '^account-switcher-row-9$'
+- assertVisible:
+    id: '^account-switcher-row-12$'
+    text: '^Switch to qa-obs$'
+- assertVisible:
+    text: '^qa-obs$'
+    childOf:
+      id: '^account-switcher-row-12$'
+- assertVisible:
+    text: '^Q$'
+    childOf:
+      id: '^account-switcher-row-12$'
+- assertVisible:
+    id: '^account-switcher-active-10$'
+- assertNotVisible:
+    id: '^account-switcher-active-9$'
+- assertNotVisible:
+    id: '^account-switcher-active-12$'
+- assertVisible:
+    text: '^You''ve reached the 3-account limit\.$'
+- assertNotVisible:
+    id: 'account-switcher-add-account'
+- assertNotVisible:
+    text: '^Add Account$'
+# No Remove control exists in the panel source. Check exposed control copy,
+# not a hypothetical/remove testID whose absence would be vacuous.
+- assertNotVisible:
+    text: '(?i)^.*(remove|delete|forget|sign out|log out).*$'
+- assertNotVisible:
+    id: 'account-switcher-error'
+- tapOn:
+    text: '^Close account switcher$'
+- extendedWaitUntil:
+    notVisible:
+      text: '^Accounts on this device$'
+    timeout: 10000
+- assertNotVisible:
+    text: '^Close account switcher$'
+- assertNotVisible:
+    id: '^account-switcher-row-(10|9|12)$'
+- assertVisible:
+    id: 'drafting-tab-bar'
+- assertVisible:
+    id: 'drafting-account-initials'
+- tapOn:
+    id: 'drafting-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 15000
+# Retained active identity and all saved account rows, without account taps.
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 10000
+- assertVisible:
+    id: 'settings-menu-active-10'
+- assertVisible:
+    id: 'settings-menu-account-10'
+- assertVisible:
+    id: 'settings-menu-account-9'
+- assertVisible:
+    id: 'settings-menu-account-12'
+- back
+- assertNotVisible:
+    id: 'settings-drawer-content'
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertNotVisible:
+    id: 'login-email-input'

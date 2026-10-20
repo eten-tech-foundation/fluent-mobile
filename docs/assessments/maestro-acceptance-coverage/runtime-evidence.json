@@ -1,9 +1,9 @@
 {
   "schema": "fluent-runtime-milestone/v1",
   "generated_utc": "2026-10-20T06:56:24.158014+00:00",
-  "scope": "11 focused live variants across seven flow files, separate from historical21 cases; no global percentage",
-  "runtime_pass_flow_files": 7,
-  "live_case_variants_pass": 11,
+  "scope": "13 focused live variants across nine flow files; historical21caseledger separate; no whole-app percentage",
+  "runtime_pass_flow_files": 9,
+  "live_case_variants_pass": 13,
   "passes": [
     {
       "source_receipt": "fluent-independent-home-tabs-user10-result.json",
@@ -393,6 +393,79 @@
         "COMPLETED": 23
       },
       "failed": []
+    },
+    {
+      "source_receipt": "fluent-after-tools-drag-batch.json",
+      "id": "three_account_cap_after_tools_drag",
+      "path": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/accounts/three-account-cap-existing-session.yaml",
+      "cap_s": 115,
+      "outcome": "PASS",
+      "identity_before": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "exit_code": 0,
+      "elapsed_s": 44.217,
+      "timed_out": false,
+      "kills": [],
+      "artifact_dir": "/tmp/maestro-efficient-three_account_cap_after_tools_drag",
+      "identity_after": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "commands_artifact": "/tmp/maestro-efficient-three_account_cap_after_tools_drag/2026-10-20_004959/three-account-cap-existing-session/commands.json",
+      "command_counts": {
+        "COMPLETED": 49
+      },
+      "UI_assertions": {
+        "COMPLETED": 39
+      },
+      "failed": []
+    },
+    {
+      "source_receipt": "fluent-after-tools-drag-batch.json",
+      "id": "complete_idle_lock_after_clear_navigation",
+      "path": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/recording/complete-idle-lock-existing-session.yaml",
+      "cap_s": 110,
+      "outcome": "PASS",
+      "identity_before": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "exit_code": 0,
+      "elapsed_s": 58.195,
+      "timed_out": false,
+      "kills": [],
+      "artifact_dir": "/tmp/maestro-efficient-complete_idle_lock_after_clear_navigation",
+      "identity_after": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "commands_artifact": "/tmp/maestro-efficient-complete_idle_lock_after_clear_navigation/2026-10-20_005055/complete-idle-lock-existing-session/commands.json",
+      "command_counts": {
+        "COMPLETED": 80,
+        "SKIPPED": 15
+      },
+      "UI_assertions": {
+        "COMPLETED": 38
+      },
+      "failed": []
     }
   ],
   "final_identity": {
@@ -459,7 +532,13 @@
     "fluent-affected-retry-batch.json": "af277bfa679546ef7291c9ffc1bbd71bff27fe4ecf1b25066a570b4b3e610e28",
     "fluent-distinct-behavior-batch.json": "1165fd09c3fb0a3155187065ba4c50fb91bbbca4bd67df27c121d39e37234d8f",
     "fluent-ownership-state-batch.json": "1c90b996140516cd552164ac1a12b9aa2a770896dd42d135edf94de33c06a389",
-    "fluent-bible-record-direct-batch.json": "87c056de2ee12f87b0794f65f0a4934696dd43ed5179d37a1316387813c0628f"
+    "fluent-bible-record-direct-batch.json": "87c056de2ee12f87b0794f65f0a4934696dd43ed5179d37a1316387813c0628f",
+    "fluent-after-tools-drag-batch.json": "738e13c2e46e7d671ffbaed372bbda96918dda6dae7c97052b2d23762148543b"
   },
-  "latest_finished_utc": "2026-10-20T07:03:04.661646+00:00"
+  "latest_finished_utc": "2026-10-20T07:52:36.214460+00:00",
+  "developer_overlay_fix": {
+    "method": "ObservedUI drag only from1010,170 to1010,560",
+    "settings_product_auth_changes": false,
+    "receipt": "/tmp/fluent-tools-drag-receipt.json"
+  }
 }

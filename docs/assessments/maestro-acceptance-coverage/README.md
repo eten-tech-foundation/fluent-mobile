@@ -2,7 +2,7 @@
 
 **Living implementation packet** · dated **2026-10-20** (UTC) · live repo only.
 
-Operator / reviewer guide for the **12 new `*-existing-session` flows** authored in this wave (includes **resources-populated**, already written and `fixture-blocked`). This is **not** a freeze of historical PASS notes and **does not** replace older assessment folders.
+Operator / reviewer guide for the **15 new `*-existing-session` flows** authored in this wave (includes **resources-populated**, already written and `fixture-blocked`). This is **not** a freeze of historical PASS notes and **does not** replace older assessment folders.
 
 | Sibling (frozen / prior — do not duplicate here) | Path |
 | --- | --- |
@@ -11,7 +11,7 @@ Operator / reviewer guide for the **12 new `*-existing-session` flows** authored
 | Settings Privacy | `docs/assessments/maestro-settings-privacy-existing-session/README.md` |
 | Settings Terms | `docs/assessments/maestro-settings-terms-existing-session/README.md` |
 
-**Out of this packet’s 12:** `prepare-offline-entry-existing-session`, `settings-privacy-existing-session`, `settings-terms-existing-session` (documented above).
+**Out of this packet’s 15:** `prepare-offline-entry-existing-session`, `settings-privacy-existing-session`, `settings-terms-existing-session` (documented above).
 
 ---
 
@@ -21,7 +21,7 @@ Operator / reviewer guide for the **12 new `*-existing-session` flows** authored
 | --- | --- | --- |
 | [`coverage.json`](./coverage.json) | Provisional local acceptance→flow mapping | **Local working evidence** — not a final denominator |
 | [`BACKLOG.md`](./BACKLOG.md) | Provisional local candidate backlog | **Local working evidence** — not a final denominator |
-| [`runtime-receipt.md`](./runtime-receipt.md) | **B** (sole device owner) runtime receipt — 11 live variants across seven flow files, plus recorded failed attempts | **Written** — see receipt for scope; not a whole-app coverage claim |
+| [`runtime-receipt.md`](./runtime-receipt.md) | **B** (sole device owner) runtime receipt — 13 live variants across nine flow files, plus recorded failed attempts | **Written** — see receipt for scope; not a whole-app coverage claim |
 
 The runtime receipt and its [durable JSON aggregate](runtime-evidence.json) preserve this milestone. Mapping/backlog files remain a separate provisional workstream.
 
@@ -29,10 +29,12 @@ The runtime receipt and its [durable JSON aggregate](runtime-evidence.json) pres
 
 ## Coverage honesty (no false % )
 
-- Raw / canonical candidate requirement counts from the acceptance map (**204 raw / 202 canonical** after exact aliases) are **provisional** and **will change** under D-refinement. They are **not** a global atomic denominator.
+Current bounded [evidence reconciliation](evidence-reconciliation.json): 204 raw rows / 202 canonical candidates under the inherited alias policy; 86 current atomic candidates, with 5 complete, 17 partial, and 64 absent live execution evidence. Whole-requirement status: 5 PASS, 70 BLOCKED, 11 UNTESTED. Excluded from additive counting: 90 compound/parent groups, 19 outside current scope, 7 unresolved. The alias wording caveat is retained in the ledger. These are mapped-candidate counts; whole-app scope and percentage remain unestablished.
+
+- Raw / canonical candidate requirement counts from the acceptance map (**204 raw / 202 canonical** under the inherited alias policy) are **provisional** and **will change** under D-refinement. They are **not** a global atomic denominator.
 - **Do not** report a whole-app or suite coverage percentage from this packet.
 - Authoring + official `check-syntax` ≠ runtime PASS. Closed issues / shipped source ≠ current device PASS.
-- This packet documents **12 flows**. It does **not** claim full acceptance coverage.
+- This packet documents **15 flows**. It does **not** claim full acceptance coverage.
 
 ---
 
@@ -43,7 +45,7 @@ The runtime receipt and its [durable JSON aggregate](runtime-evidence.json) pres
 | **Official syntax** | `maestro check-syntax <flow.yaml>` and/or `require('js-yaml').loadAll` parse the YAML | Device behavior, fixture truth, QA API state |
 | **Runtime** | A dated device execution under the QA entrypoint with linked receipt | Authoring completeness alone |
 
-**Current runtime:** 11 live case variants across seven distinct new flows have a recorded PASS in [`runtime-receipt.md`](./runtime-receipt.md) (Home-tabs, Resources-empty, PFO viewport-fixed, cached-switch viewport-fixed, verse-boundary, ownership peer-checker mine, and direct Bible-verse-to-Record). Navigation/tabs YAMLs remain migration/static-check only. **Do not infer PASS** from authoring freeze, parser OK, or this README.
+**Current runtime:** 13 live case variants across nine distinct new flows have a recorded PASS in [`runtime-receipt.md`](./runtime-receipt.md) (Home-tabs, Resources-empty, PFO viewport-fixed, cached-switch viewport-fixed, verse-boundary, ownership peer-checker mine, direct Bible-verse-to-Record, three-account cap/dismissal, and Complete-stage idle lock). Navigation/tabs YAMLs remain migration/static-check only. **Do not infer PASS** from authoring freeze, parser OK, or this README.
 
 ---
 
@@ -71,7 +73,7 @@ Authoring-only flows stay `not_run` + no PASS. `fixture-blocked` flows stay **BL
 
 ## Session preservation + 944 hold
 
-**Preserve cached / manual QA sessions.** These 12 flows are written for an **already signed-in** session:
+**Preserve cached / manual QA sessions.** These 15 flows are written for an **already signed-in** session:
 
 - **Do not** run smoke / auth / harness / `ensure-on-login` / `login-*` / `ensure-warm-session` / `ensure-warm-home` against a session you must keep.
 - **Do not** run `npm run maestro:fixtures:seed` or `maestro:fixtures:reset` for this packet.
