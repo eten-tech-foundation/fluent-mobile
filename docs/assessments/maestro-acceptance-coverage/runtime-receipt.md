@@ -1,6 +1,6 @@
 # Maestro acceptance coverage — runtime receipt
 
-Dated runtime record for the existing-session flow packet. Scope is 10 live case variants across six new flow files. This receipt is separate from the historical 21-case ledger and from setup/assertion counts. It is **not** a whole-app coverage percentage, a live grant, audio-fidelity, human Nightly, or disposable-target claim.
+Dated runtime record for the existing-session flow packet. Scope is 11 live case variants across seven new flow files. This receipt is separate from the historical 21-case ledger and from setup/assertion counts. It is **not** a whole-app coverage percentage, a live grant, audio-fidelity, human Nightly, or disposable-target claim.
 
 Sources (read-only verified receipts):
 
@@ -90,3 +90,9 @@ Note: the efficient-batch PFO hash (`5e53c0c5…`) is the pre-fix file and is su
 ## Checkpoint metadata
 
 Sync status is tagged `fixture-blocked` so ordinary sweeps exclude it until its required state is independently established. No runtime verdict is inferred. No production files changed. Full PR gates were not run for this local harness checkpoint; this is not a PR-ready or completed-AC claim.
+
+## Subsequent distinct Bible-to-Record case
+
+D-0564-01 (D-0408-03 alias counted once): `drafting/bible-verse-opens-record-existing-session.yaml` PASS, exit 0 in 53.167s with 23 UI assertions. Assignment 484 / verse 2 / exact `1 Peter 5:2`: tapped the Bible verse row and Record opened directly; no Record-tab tap or capture/playback. Source receipt: `/tmp/fluent-bible-record-direct-batch.json`; aggregate above includes this eleventh variant and seventh flow file. Home cleanup and cached-account-12 restore PASS; PID 7152 and cached 10/9/12 retained.
+
+Separately, four new isolated contract cases passed in a focused 55-test / two-suite run (Node 24.14.0, 3.988s): populated notes/questions/images pass-through, and late previous-verse All Takes response isolation. These do not prove populated live Resources or multi-recorder fixtures. No broad PR gates were run.

@@ -1,9 +1,9 @@
 {
   "schema": "fluent-runtime-milestone/v1",
   "generated_utc": "2026-10-20T06:56:24.158014+00:00",
-  "scope": "10 focused live variants across six flow files, separate from historical 21-case ledger; no global conformance percentage",
-  "runtime_pass_flow_files": 6,
-  "live_case_variants_pass": 10,
+  "scope": "11 focused live variants across seven flow files, separate from historical21 cases; no global percentage",
+  "runtime_pass_flow_files": 7,
+  "live_case_variants_pass": 11,
   "passes": [
     {
       "source_receipt": "fluent-independent-home-tabs-user10-result.json",
@@ -356,6 +356,43 @@
         "COMPLETED": 23
       },
       "failed": []
+    },
+    {
+      "source_receipt": "fluent-bible-record-direct-batch.json",
+      "id": "bible_verse_direct_record_first_execution",
+      "path": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/drafting/bible-verse-opens-record-existing-session.yaml",
+      "cap_s": 100,
+      "outcome": "PASS",
+      "identity_before": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "exit_code": 0,
+      "elapsed_s": 53.167,
+      "timed_out": false,
+      "kills": [],
+      "artifact_dir": "/tmp/maestro-efficient-bible_verse_direct_record_first_execution",
+      "identity_after": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "commands_artifact": "/tmp/maestro-efficient-bible_verse_direct_record_first_execution/2026-10-20_000124/bible-verse-opens-record-existing-session/commands.json",
+      "command_counts": {
+        "COMPLETED": 65,
+        "SKIPPED": 15
+      },
+      "UI_assertions": {
+        "COMPLETED": 23
+      },
+      "failed": []
     }
   ],
   "final_identity": {
@@ -421,6 +458,8 @@
     "fluent-efficient-batch.json": "cc8a4da8726401d0d6c87f0e92ba44200d9bd69017368503b7aebe346a4a7efe",
     "fluent-affected-retry-batch.json": "af277bfa679546ef7291c9ffc1bbd71bff27fe4ecf1b25066a570b4b3e610e28",
     "fluent-distinct-behavior-batch.json": "1165fd09c3fb0a3155187065ba4c50fb91bbbca4bd67df27c121d39e37234d8f",
-    "fluent-ownership-state-batch.json": "1c90b996140516cd552164ac1a12b9aa2a770896dd42d135edf94de33c06a389"
-  }
+    "fluent-ownership-state-batch.json": "1c90b996140516cd552164ac1a12b9aa2a770896dd42d135edf94de33c06a389",
+    "fluent-bible-record-direct-batch.json": "87c056de2ee12f87b0794f65f0a4934696dd43ed5179d37a1316387813c0628f"
+  },
+  "latest_finished_utc": "2026-10-20T07:03:04.661646+00:00"
 }
