@@ -248,22 +248,11 @@
       "case_elapsed_s": 68.111,
       "restored_verse_and_active12": true
     },
-    "required_product_QA_candidate_count": 200,
     "excluded_user_scope_candidate_count": 2,
     "excluded_user_scope_candidate_ids": [
       "A-0030-01",
       "B-0024-01"
     ],
-    "required_product_QA_execution_coverage": {
-      "partial": 46,
-      "complete_for_requirement": 39,
-      "not_run": 115
-    },
-    "required_product_QA_live_status": {
-      "UNTESTED": 25,
-      "BLOCKED": 136,
-      "PASS": 39
-    },
     "component_gallery_scope_decision": {
       "source": "Trustedparentuserinstruction",
       "user_message_id": "Sentinel_45c17bb438e481919aeb33ed049a4036",
@@ -272,6 +261,41 @@
       "scope": "ComponentGallery only; designerdevelopmentworkspace. ProductionNexttemporaryLegacyplaceholder,Legacybehavior, themeisolation andcomponentbehaviorwhereusedinproduct remaininQA scope.",
       "not_a_PASS": true,
       "no_component_or_gallery_source_changed": true
+    },
+    "review_inventory_minus_gallery_count": 200,
+    "review_inventory_minus_gallery_execution_statuses": {
+      "partial": 46,
+      "complete_for_requirement": 39,
+      "not_run": 115
+    },
+    "review_inventory_minus_gallery_live_statuses": {
+      "UNTESTED": 25,
+      "BLOCKED": 136,
+      "PASS": 39
+    },
+    "execution_scope_clarification": {
+      "canonical_inventory": 202,
+      "applicable_current_candidates": 175,
+      "applicable_current_breakdown": {
+        "eligible_atomic": 86,
+        "nonadditive_parents": 89
+      },
+      "excluded_from_current_scope": 21,
+      "excluded_gallery_subset": 2,
+      "unresolved": 6,
+      "review_inventory_minus_gallery": 200,
+      "review_inventory_200_is_execution_denominator": false,
+      "current_review_execution_statuses_nonadditive": {
+        "partial": 44,
+        "complete_for_requirement": 39,
+        "not_run": 92
+      },
+      "atomic_execution_statuses": {
+        "partial": 15,
+        "complete_for_requirement": 31,
+        "not_run": 40
+      },
+      "rationale": "175 applicable current rows +21 excluded +6 unresolved =202 retained inventory. The200 comparison only subtracts2 Gallery rows and still includes19 previously out-of-scope and6 unresolved rows; it is not required execution scope. Neither175 nor200 is an additive whole-app completion percentage."
     }
   },
   "source_sha256": {

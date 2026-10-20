@@ -115,14 +115,38 @@
       "complete_for_requirement": 31,
       "not_run": 40
     },
-    "required_product_QA_candidate_count": 200,
-    "required_product_QA_execution_coverage": {
+    "review_inventory_minus_gallery_count": 200,
+    "review_inventory_minus_gallery_execution_statuses": {
       "partial": 46,
       "complete_for_requirement": 39,
       "not_run": 115
     }
   },
-  "delta_rationale": "TwoGalleryumbrella candidatesexcludedfromrequiredscope; neithercompleted/PASSpromoted.202inventoryunchanged;86atomicunchanged; nonadditive90\u219289,unresolved7\u21926,outscope19\u219221; requiredscope200notwholeappadditivedenominator.",
+  "delta_rationale": "Gallery2 excluded by user scope; zero PASS promotions. Inventory202 preserved. Applicable current175=86atomic+89nonadditive; excluded21; unresolved6. The200 inventory-minus-Gallery comparison is not an execution denominator. Atomic31/15/40 unchanged.",
   "product_themes_in_scope": true,
-  "source_runtime_publication_actions": 0
+  "source_runtime_publication_actions": 0,
+  "execution_scope_clarification": {
+    "canonical_inventory": 202,
+    "applicable_current_candidates": 175,
+    "applicable_current_breakdown": {
+      "eligible_atomic": 86,
+      "nonadditive_parents": 89
+    },
+    "excluded_from_current_scope": 21,
+    "excluded_gallery_subset": 2,
+    "unresolved": 6,
+    "review_inventory_minus_gallery": 200,
+    "review_inventory_200_is_execution_denominator": false,
+    "current_review_execution_statuses_nonadditive": {
+      "partial": 44,
+      "complete_for_requirement": 39,
+      "not_run": 92
+    },
+    "atomic_execution_statuses": {
+      "partial": 15,
+      "complete_for_requirement": 31,
+      "not_run": 40
+    },
+    "rationale": "175 applicable current rows +21 excluded +6 unresolved =202 retained inventory. The200 comparison only subtracts2 Gallery rows and still includes19 previously out-of-scope and6 unresolved rows; it is not required execution scope. Neither175 nor200 is an additive whole-app completion percentage."
+  }
 }

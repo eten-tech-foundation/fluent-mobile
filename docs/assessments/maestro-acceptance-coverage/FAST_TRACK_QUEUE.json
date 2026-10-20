@@ -11730,8 +11730,32 @@
       "B-0024-01"
     ],
     "canonical_inventory_count": 202,
-    "required_product_QA_candidates": 200,
     "batch_assignment_unchanged": true,
-    "original_frozen_dispositions_retained": true
+    "original_frozen_dispositions_retained": true,
+    "review_inventory_minus_gallery_count": 200,
+    "execution_scope_clarification": {
+      "canonical_inventory": 202,
+      "applicable_current_candidates": 175,
+      "applicable_current_breakdown": {
+        "eligible_atomic": 86,
+        "nonadditive_parents": 89
+      },
+      "excluded_from_current_scope": 21,
+      "excluded_gallery_subset": 2,
+      "unresolved": 6,
+      "review_inventory_minus_gallery": 200,
+      "review_inventory_200_is_execution_denominator": false,
+      "current_review_execution_statuses_nonadditive": {
+        "partial": 44,
+        "complete_for_requirement": 39,
+        "not_run": 92
+      },
+      "atomic_execution_statuses": {
+        "partial": 15,
+        "complete_for_requirement": 31,
+        "not_run": 40
+      },
+      "rationale": "175 applicable current rows +21 excluded +6 unresolved =202 retained inventory. The200 comparison only subtracts2 Gallery rows and still includes19 previously out-of-scope and6 unresolved rows; it is not required execution scope. Neither175 nor200 is an additive whole-app completion percentage."
+    }
   }
 }
