@@ -479,6 +479,13 @@
           "relation": "partial",
           "method": "direct emulator native selector-resolved taps + UI hierarchy assertions; not Maestro",
           "reason": "Privacy page, first/final body and header back\u2192Home PASS with active12/cached10,9,12 unchanged; no scroll gesture or overflow proof."
+        },
+        {
+          "receipt": "evidence/legal-functional-checks.json",
+          "case_id": "privacy_body_delta_settle_guard_validation",
+          "flow": ".maestro/flows/edges/settings-privacy-existing-session.yaml",
+          "relation": "partial",
+          "reason": "Maestro PASS45.967s/17UIassertions verifies page/first+finalbody/headerBack/Home after drawer-settle guard. No actual overflow/scroll proof; whole atomic scope not promoted."
         }
       ],
       "isolated_status": "UNTESTED",
@@ -506,9 +513,9 @@
       "domain": "identity_navigation",
       "current_scope_execution_blocker": "Only genuine overflow/scroll delta remains outside verified functional subchecks; no viewport/font changes or fabricated policy content.",
       "functional_subchecks": {
-        "reachability": "PASS direct-device; earlier Maestro open/back evidence retained",
-        "body_rendering": "PASS direct-device first/final body; Terms also all3bullets",
-        "header_back_to_home": "PASS direct-device",
+        "reachability": "PASS targetedMaestro and direct-device",
+        "body_rendering": "PASS targetedMaestro first/finalbody; prior direct-device receipt retained",
+        "header_back_to_home": "PASS targetedMaestro and direct-device",
         "component_routes_and_callbacks": "PASS isolated;12testsacross3suites; notliveauthnavigation",
         "policy_wording": "KNOWN_FAILURE #725; separate from functionality",
         "overflow_scrolling": "NOT_DEMONSTRATED; current document fits preserved viewport; execute only with genuine overflow"
@@ -6514,5 +6521,12 @@
     "direct_device_PASS": 2,
     "isolated_component_tests_PASS": 12,
     "new_Maestro_flow_PASS": 0
+  },
+  "latest_legal_Maestro_PASS": {
+    "receipt": "evidence/legal-functional-checks.json",
+    "case_id": "privacy_body_delta_settle_guard_validation",
+    "elapsed_s": 45.967,
+    "UI_assertions": 17,
+    "no_whole_atomic_promotion": true
   }
 }

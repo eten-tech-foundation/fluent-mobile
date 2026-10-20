@@ -122,3 +122,7 @@ Current bounded86: 9 complete / 14 partial / 63 absent; 9 PASS / 70 BLOCKED / 7 
 [Durable legal receipt](evidence/legal-functional-checks.json): **Privacy and Terms page/body/header-back→Home PASS via direct device UI**, with active12 and cached10/9/12 unchanged. These two checks are separate from the15 Maestro PASS variants/11files. Twelve component tests across three suites pass at `9bcf837`; they are isolated evidence. The Privacy Maestro body delta timed out at drawer entry before body assertions; Terms was not attempted through Maestro. Its raw timeout is retained and is not a product failure.
 
 Privacy wording remains a separate [known issue #725](https://github.com/eten-tech-foundation/fluent-mobile/issues/725); no policy text changed. Current text fits the preserved viewport; actual scroll movement is unproven and remains an owned conditional next check when genuine overflow exists. No viewport/font/content manipulation or whole-requirement PASS promotion.
+
+## Latest Privacy Maestro validation
+
+One specifically authorized run of the checkpoint47288d0 settle guard **PASS45.967s /17UIassertions**. Strict body/back/Home assertions passed; PID7152, active12, known10/9/12 and Verse/dirty preference state unchanged. Current total16Maestrovariants/12files; historical failures,2nativelegalchecks and12componenttests remain separate. No Terms rerun or actual overflow/scroll claim. [Durable receipt](evidence/legal-functional-checks.json).

@@ -21,7 +21,7 @@ Operator / reviewer guide for the **15 new `*-existing-session` flows** authored
 | --- | --- | --- |
 | [`coverage.json`](./coverage.json) | Provisional local acceptance→flow mapping | **Local working evidence** — not a final denominator |
 | [`BACKLOG.md`](./BACKLOG.md) | Provisional local candidate backlog | **Local working evidence** — not a final denominator |
-| [`runtime-receipt.md`](./runtime-receipt.md) | **B** (sole device owner) runtime receipt — 15 live variants across eleven flow files, plus recorded failed attempts | **Written** — see receipt for scope; not a whole-app coverage claim |
+| [`runtime-receipt.md`](./runtime-receipt.md) | **B** (sole device owner) runtime receipt — 16 live variants across twelve flow files, plus recorded failed attempts | **Written** — see receipt for scope; not a whole-app coverage claim |
 
 The runtime receipt and its [durable JSON aggregate](runtime-evidence.json) preserve this milestone. Mapping/backlog files remain a separate provisional workstream.
 
@@ -45,7 +45,7 @@ Current bounded [evidence reconciliation](evidence-reconciliation.json): 204 raw
 | **Official syntax** | `maestro check-syntax <flow.yaml>` and/or `require('js-yaml').loadAll` parse the YAML | Device behavior, fixture truth, QA API state |
 | **Runtime** | A dated device execution under the QA entrypoint with linked receipt | Authoring completeness alone |
 
-**Current runtime:** 15 live case variants across eleven distinct new flows have a recorded PASS in [`runtime-receipt.md`](./runtime-receipt.md) (Home-tabs, Resources-empty, PFO viewport-fixed, cached-switch viewport-fixed, verse-boundary, ownership peer-checker mine, direct Bible-verse-to-Record, three-account cap/dismissal, Complete-stage idle lock, empty Resources tab order, and user10 drafting preference persistence). Navigation/tabs YAMLs remain migration/static-check only. **Do not infer PASS** from authoring freeze, parser OK, or this README.
+**Current runtime:** 16 live case variants across twelve distinct flows have a recorded PASS in [`runtime-receipt.md`](./runtime-receipt.md) (Home-tabs, Resources-empty, PFO viewport-fixed, cached-switch viewport-fixed, verse-boundary, ownership peer-checker mine, direct Bible-verse-to-Record, three-account cap/dismissal, Complete-stage idle lock, empty Resources tab order, and user10 drafting preference persistence). Navigation/tabs YAMLs remain migration/static-check only. **Do not infer PASS** from authoring freeze, parser OK, or this README.
 
 ---
 
@@ -356,3 +356,7 @@ bash scripts/maestro-test-qa.sh --config .maestro/config.yaml \
 [Durable legal receipt](evidence/legal-functional-checks.json): **Privacy and Terms page/body/header-back→Home PASS via direct device UI**, with active12 and cached10/9/12 unchanged. These two checks are separate from the15 Maestro PASS variants/11files. Twelve component tests across three suites pass at `9bcf837`; they are isolated evidence. The Privacy Maestro body delta timed out at drawer entry before body assertions; Terms was not attempted through Maestro. Its raw timeout is retained and is not a product failure.
 
 Privacy wording remains a separate [known issue #725](https://github.com/eten-tech-foundation/fluent-mobile/issues/725); no policy text changed. Current text fits the preserved viewport; actual scroll movement is unproven and remains an owned conditional next check when genuine overflow exists. No viewport/font/content manipulation or whole-requirement PASS promotion.
+
+## Latest Privacy Maestro validation
+
+Checkpoint47288d0 drawer-settle guard was validated by one focused Privacy flow: **PASS45.967s,17UIassertions**, first/final body, headerBack and Home. Sessions/preferences unchanged. Current automated total is16variants/12files (baseline15/11 plus this legal variant); two direct-device checks and12component tests stay separate. Earlier failures remain retained; Terms guarded flow and actual overflow are not newly executed. Atomic counts remain9complete/14partial/63absent. Libraryv16 remains the prior frozen report until the next material milestone.

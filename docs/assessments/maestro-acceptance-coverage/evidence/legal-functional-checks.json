@@ -193,22 +193,28 @@
     "next_check": "When genuine content exceeds preserved viewport, verify changed top/lower content and stable header then back; do not change viewport/fonts or fabricate content"
   },
   "count_policy": {
-    "Maestro_live_PASS_variants": 15,
-    "Maestro_live_PASS_files": 11,
+    "Maestro_live_PASS_variants": 16,
+    "Maestro_live_PASS_files": 12,
     "direct_device_legal_functional_checks_PASS": 2,
     "atomic_complete": 9,
     "atomic_partial": 14,
     "atomic_absent": 63,
-    "whole_app_percentage": null
+    "whole_app_percentage": null,
+    "Maestro_baseline_PASS_variants": 15,
+    "Maestro_baseline_PASS_files": 11,
+    "additional_legal_Maestro_PASS_variants": 1,
+    "current_Maestro_PASS_variants": 16,
+    "current_Maestro_PASS_files": 12
   },
   "source_sha256": {
     "/tmp/fluent-legal-native-diagnostic.json": "7dbfc79e6cdad0846988f576ca54e5b3dbbbdbaeb6837d524b2048e464cc5efc",
     "/tmp/fluent-terms-native-functional.json": "49a08a4c3843c1f0fc757e620fc271102e8c69bf3f57f4959a5a801adb9e0c67",
     "/tmp/fluent-legal-components-result.json": "9fafcada111935eb9468b4f0b1a4242a7b7acb2f34b12567c5a801f363f82dae",
     "/tmp/fluent-legal-text-delta-batch.json": "92d21944dfe85602db465601839db82004f5e2ce4813f3e2269c3900cc91882b",
-    "/tmp/fluent-legal-budget-fix-once.json": "5e1637891508993d7d2c56a9f3b075dff6ba59dda342035dcf4072260bc03a3f"
+    "/tmp/fluent-legal-budget-fix-once.json": "5e1637891508993d7d2c56a9f3b075dff6ba59dda342035dcf4072260bc03a3f",
+    "/tmp/fluent-legal-settle-guard-once.json": "a412bc57aeb509068166734b8e087c9856b8258ee65028b6b1139482735ae890"
   },
-  "harness_fix_scope": "Budget/parser correction validated by retained57.22sFAIL result. New drawer-settle guard syntax-reviewed but NOT rerun. No product/copy change.",
+  "harness_fix_scope": "Budget/parser and bounded drawer-settle corrections validated by one45.967sPASS; older failures retained; no product/copy changes.",
   "Maestro_budget_fix_validation": {
     "schema": "fluent-legal-text-delta/v1",
     "started_utc": "2026-10-20T16:14:18.004401+00:00",
@@ -320,7 +326,70 @@
     "observed_failure": "privacy-policy-scroll not visible; body assertions not reached",
     "verdict": "Evidence supports harness tap before full drawer geometry; no product body failure demonstrated",
     "targeted_harness_fix": "Bounded waitForAnimationToEnd3000 plus visible legal text5000 after opening drawer in both existing-session legal flows",
-    "fix_reexecuted": false,
-    "one_targeted_run_only": true
+    "fix_reexecuted": true,
+    "one_targeted_run_only": true,
+    "fix_validation": "One specifically authorized Privacy run PASS45.967s/17UIassertions; strict body/back/Home; sessions/preferences unchanged"
+  },
+  "Maestro_settle_guard_validation": {
+    "schema": "fluent-legal-text-delta/v1",
+    "started_utc": "2026-10-20T16:22:12.251746+00:00",
+    "state": "FINISHED",
+    "scope": "Exactly one authorized Privacy Maestro run validating checkpoint47288d0 drawer-settle guard, strict body/back assertions and preserved sessions. No Terms/broad rerun or desktop input.",
+    "cases": [
+      {
+        "id": "privacy_body_delta_settle_guard_validation",
+        "flow": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/edges/settings-privacy-existing-session.yaml",
+        "outcome": "PASS",
+        "exit_code": 0,
+        "elapsed_s": 45.967,
+        "artifact_dir": "/tmp/maestro-legal-text-privacy_body_delta_settle_guard_validation-1792513332966063000",
+        "identity_after": {
+          "pid": "7152",
+          "selected_kv": {
+            "10:drafting_unit": "verse",
+            "10:drafting_unit_dirty": "true",
+            "active_user_id": "12",
+            "known_user_ids": "10,9,12"
+          },
+          "no_database_copy": true
+        },
+        "commands_artifact": "/tmp/maestro-legal-text-privacy_body_delta_settle_guard_validation-1792513332966063000/2026-10-20_092214/settings-privacy-existing-session/commands.json",
+        "command_counts": {
+          "COMPLETED": 41,
+          "SKIPPED": 11
+        },
+        "UI_assertions": {
+          "COMPLETED": 17
+        },
+        "failed_commands": []
+      }
+    ],
+    "frozen_hashes": {
+      "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/edges/settings-privacy-existing-session.yaml": "5ee8fd89c6a94306b188e0a22b8e939a43c0d17c06b183fea8e050ac5be2004c",
+      "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/shared/nav/goto-home.yaml": "050a2a0a55ae557c3f9e3f14069750319f853dde7ee88aebf336783dba2d71c2",
+      "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/shared/ensure/ensure-no-modal.yaml": "83cb2b862be5ec50499a67b1afa4cc3c2a5a7cd3d55a98e73b20bffa69da311b",
+      "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/helpers/dismiss-expo-dev-menu.yaml": "92a8d3ba881a899e60fcec17425ab5b5e9943001551d50d31c823e56ef1d478a"
+    },
+    "identity_before": {
+      "pid": "7152",
+      "selected_kv": {
+        "10:drafting_unit": "verse",
+        "10:drafting_unit_dirty": "true",
+        "active_user_id": "12",
+        "known_user_ids": "10,9,12"
+      },
+      "no_database_copy": true
+    },
+    "identity_final": {
+      "pid": "7152",
+      "selected_kv": {
+        "10:drafting_unit": "verse",
+        "10:drafting_unit_dirty": "true",
+        "active_user_id": "12",
+        "known_user_ids": "10,9,12"
+      },
+      "no_database_copy": true
+    },
+    "finished_utc": "2026-10-20T16:22:59.061294+00:00"
   }
 }
