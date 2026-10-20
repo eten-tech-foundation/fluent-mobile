@@ -179,18 +179,19 @@ export function createUploadOrchestrator(
   };
 
   const abortActiveSession = async (): Promise<void> => {
-    if (sessionAbort) {
-      sessionAbort.abort();
-    }
-    if (sessionPromise) {
+    const abort = sessionAbort;
+    const promise = sessionPromise;
+    abort?.abort();
+    if (promise) {
       try {
-        await sessionPromise;
+        await promise;
       } catch {
         // aborted / failed sessions are expected
       }
     }
-    sessionAbort = null;
-    sessionPromise = null;
+    // A stopped lifecycle may already have been replaced while this unwinds.
+    if (sessionAbort === abort) sessionAbort = null;
+    if (sessionPromise === promise) sessionPromise = null;
   };
 
   const applyFreshTransportSnapshot = async (): Promise<void> => {
@@ -408,8 +409,12 @@ export function createUploadOrchestrator(
             if (abort.signal.aborted) {
               return;
             }
+            const pending = await deps.getPendingUploadChapters();
+            if (abort.signal.aborted || version !== lifecycleVersion) {
+              return;
+            }
             const before = completedChapters;
-            applyPendingChapters(await deps.getPendingUploadChapters());
+            applyPendingChapters(pending);
             if (completedChapters > before) {
               deps.emit({
                 type: 'progress',
@@ -464,15 +469,18 @@ export function createUploadOrchestrator(
 
       await sessionPromise;
     } finally {
-      sessionOpen = false;
-      const shouldRerun = rerunAfterSession;
-      rerunAfterSession = false;
-      const retryArmed =
-        sessionResult.followUp === 'retry' ? scheduleSessionRetry() : false;
-      // A retry timer already covers work saved during the session. If the
-      // budget is spent, that timer is not armed — still start the save.
-      if (shouldRerun && !retryArmed) {
-        evaluateAuto();
+      // Late preflight results must not unlock or schedule a newer lifecycle.
+      if (version === lifecycleVersion) {
+        sessionOpen = false;
+        const shouldRerun = rerunAfterSession;
+        rerunAfterSession = false;
+        const retryArmed =
+          sessionResult.followUp === 'retry' ? scheduleSessionRetry() : false;
+        // A retry timer already covers work saved during the session. If the
+        // budget is spent, that timer is not armed — still start the save.
+        if (shouldRerun && !retryArmed) {
+          evaluateAuto();
+        }
       }
     }
   };
@@ -592,6 +600,10 @@ export function createUploadOrchestrator(
       sessionFailures = 0;
       rerunAfterSession = false;
       void abortActiveSession();
+      // Detach the old lifecycle immediately, including unresolved preflight.
+      sessionAbort = null;
+      sessionPromise = null;
+      sessionOpen = false;
       phase = 'idle';
       log.info('Upload orchestrator stopped');
     },
