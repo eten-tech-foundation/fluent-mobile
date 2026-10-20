@@ -1,0 +1,91 @@
+# B-0010-01 PARTIAL: assigned-other warning + enabled idle Record control.
+# Never starts recording; successful capture on a taken chapter remains unproved.
+# Required MAESTRO_TAKEN_480_CONTEXT_VERIFIED=1 attests fresh native preflight:
+# active10/Home, cache10/9/12 preserved, no capture/recovery; QA project8/unit11,
+# chapter480/1 Peter 1, draft, drafter23, Bible text available. Not Complete/944.
+# Fixture provenance: output/pdf/evidence/fluent-ownership-state-batch.json,
+# ownership_480_other PASS41.859s; root must revalidate current data before run.
+# Start/finish Home active10. Root restores active12 separately. No auth/session,
+# stage/claim/sync/network changes, recording, playback, reset or delete actions.
+appId: com.eten.fluent
+tags:
+  - ownership
+  - existing-session
+  - read-only
+  - fixture-blocked
+---
+- runScript: ../../shared/scripts/taken-record-enabled-context.js
+- assertNotVisible:
+    id: login-email-input
+- assertVisible:
+    id: home-tab-my-work
+- tapOn:
+    id: home-tab-projects
+    waitToSettleTimeoutMs: 500
+- scrollUntilVisible:
+    element:
+      text: '^Milestone Testing 2$'
+    direction: DOWN
+    timeout: 30000
+    speed: 70
+    centerElement: true
+- tapOn:
+    text: '^Milestone Testing 2$'
+    waitToSettleTimeoutMs: 500
+- scrollUntilVisible:
+    element:
+      id: chapter-row-480
+    direction: DOWN
+    timeout: 30000
+    speed: 70
+    centerElement: true
+- assertVisible:
+    id: chapter-row-480
+    containsDescendants:
+      - text: '^1 Peter 1$'
+      - id: chapter-ownership-other
+      - text: '^Assigned to another translator$'
+- assertNotVisible:
+    id: chapter-row-480
+    containsDescendants:
+      - id: chapter-conflict-indicator
+- tapOn:
+    id: chapter-row-480
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: drafting-tab-bar
+    timeout: 30000
+- tapOn:
+    id: drafting-tab-record
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: record-tab
+- assertVisible:
+    id: record-taken-warning
+- assertVisible:
+    text: '^This chapter is assigned to another translator\.$'
+- assertNotVisible:
+    id: record-conflict-warning
+- extendedWaitUntil:
+    visible:
+      id: record-start-button
+      enabled: true
+    timeout: 15000
+- takeScreenshot: taken-480-warning-record-enabled
+- tapOn:
+    id: drafting-header-back
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: chapter-row-480
+    timeout: 15000
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: home-tab-my-work
+    timeout: 15000
+- assertNotVisible:
+    id: login-email-input

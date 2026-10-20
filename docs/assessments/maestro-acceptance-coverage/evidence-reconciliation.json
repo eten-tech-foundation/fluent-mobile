@@ -35,8 +35,8 @@
       "PASS": 23
     },
     "canonical_execution_coverage": {
-      "partial": 51,
-      "not_run": 128,
+      "partial": 52,
+      "not_run": 127,
       "complete_for_requirement": 23
     },
     "eligible_current_atomic_count": 86,
@@ -46,9 +46,9 @@
       "PASS": 20
     },
     "eligible_current_atomic_execution_coverage": {
-      "partial": 18,
+      "partial": 19,
       "complete_for_requirement": 20,
-      "not_run": 48
+      "not_run": 47
     },
     "full_live_PASS_eligible_ids": [
       "A-0015-01",
@@ -128,7 +128,8 @@
       "B-0009-01",
       "B-0015-01",
       "B-0018-01",
-      "D-0578-01"
+      "D-0578-01",
+      "B-0010-01"
     ],
     "candidate_ids_with_isolated_evidence": [
       "A-0002-01",
@@ -2303,22 +2304,27 @@
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Warn-without-blocking on a taken chapter is one conditional policy; actual capture still needs a disposable target.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch2-taken-role-result.json",
+          "case_id": "taken_480_warning_enabled_62.013s",
+          "flow": ".maestro/flows/edges/taken-record-enabled-existing-session.yaml",
+          "relation": "partial_warning_and_enabled_control_only",
+          "reason": "Exact assigned-other chapter480/1 Peter1 warning and enabled idle Start control passed; Start was never tapped and no recording/playback occurred. Returned Home and restored active12/cached10,9,12. Actual record success on a taken chapter remains unverified.",
+          "commands": "/tmp/maestro-taken-480-1792527078098419000/2026-10-20_131119/taken-record-enabled-existing-session/commands.json",
+          "commands_sha256": "401ec0facedaac75376d6699be9bc9c4a556249666923254f37a712ab4e68c17",
+          "runtime_qualification": "8a3564e2a8ff43b551a575ccdf1942d67a74b7d8 + uncommitted DEV-only PFO diagnostic",
+          "cleanup_qualification": "UIAutomator returned no XML;fresh screenshot verified correct account row before tap"
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "Warning plus enabled idle button can be checked safely; actual permitted recording remains target-blocked."
+        "Actual successful permitted recording on a separately owned verified disposable taken chapter remains unverified; warning and enabled idle Start control alone do not establish it."
       ],
-      "executable_now": true,
-      "next_test": {
-        "requirement_id": "B-0010-01",
-        "scope": "partial policy UI only; no recording",
-        "fixture": "cached user10, project8/unit11, chapter480 1 Peter1; drafter23, not user10",
-        "next_test": "Use existing ownership-status flow other + MAESTRO_EXPECT_RECORD_WARNING=taken; add strict enabled:true assertion for idle record-start-button, never tap it. Return Home and restore12. Prior PASS variants all used warning=none.",
-        "expected_missing_after": "Actual record success still needs a disposable target.",
-        "safe": true
-      },
+      "executable_now": false,
+      "next_test": "Verify successful recording only on a separately owned verified disposable taken chapter when assigned; preserve existing takes and avoid repeating the already-proven warning/enabled-control branch.",
       "source_title": "Warn but allow record on taken chapters",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/269"
