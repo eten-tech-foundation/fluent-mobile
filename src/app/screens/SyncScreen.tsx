@@ -476,7 +476,8 @@ function renderSecondaryContent(
       );
 
     case 'pending':
-      if (!hasPendingUploads && !hasFailedUploads) {
+      // Queued rows are not active transfers (including offline pending work).
+      if (!isUploading || (!hasPendingUploads && !hasFailedUploads)) {
         return null;
       }
       return (
