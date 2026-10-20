@@ -214,6 +214,7 @@ async function uploadOneRecording(
 
   let lastMessage = 'Upload failed';
   let didMarkUploaded = false;
+  let didAcceptCleanResponse = false;
   let didMarkConflicted = false;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -230,6 +231,8 @@ async function uploadOneRecording(
       const baseVersionToken = await getLatestVersionToken(
         recording.bibleTextId,
       );
+      // Cancellation can arrive while local preflight is awaiting the DB.
+      throwIfAborted(signal);
 
       const response = await FluentAPI.uploadVerseAudio(
         {
@@ -268,6 +271,8 @@ async function uploadOneRecording(
       }
 
       const blobKey = blobKeyFromVerseAudioResponse(response);
+      // Server acceptance is distinct from the following local acknowledgement.
+      didAcceptCleanResponse = true;
       await markRecordingUploaded(recording.id, blobKey, response.versionToken);
       didMarkUploaded = true;
       log.info('Recording uploaded', {
@@ -301,14 +306,14 @@ async function uploadOneRecording(
         throw error;
       }
 
-      // After successful conflict response, DB transaction failures are NOT retryable.
-      // Upload was already accepted by server; retrying would create duplicate takes.
-      if (didMarkConflicted) {
+      // Accepted responses must not be resent because local persistence failed.
+      // Leave local state for later reconciliation instead of replaying this PUT.
+      if (didAcceptCleanResponse || didMarkConflicted) {
         const message =
           error instanceof Error
             ? error.message
-            : 'Failed to persist conflict state locally';
-        log.error('DB transaction failed after conflict response', {
+            : 'Failed to persist accepted upload locally';
+        log.error('DB transaction failed after accepted upload response', {
           recordingId: recording.id,
           error: message,
         });

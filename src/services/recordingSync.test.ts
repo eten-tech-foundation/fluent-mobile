@@ -879,4 +879,105 @@ describe('recordingSync', () => {
     expect(JSON.stringify(call)).not.toMatch(/recordings\/sync/);
     expect(JSON.stringify(call)).not.toMatch(/R2_/);
   });
+
+  it('does not send a PUT when cancellation arrives during the local version-token lookup', async () => {
+    const controller = new AbortController();
+    let finishVersion!: (value: number) => void;
+    const version = new Promise<number>(resolve => {
+      finishVersion = resolve;
+    });
+    mockGetLatestVersionToken.mockImplementationOnce(() => version);
+    const pass = syncPendingRecordings('pass-token', {
+      delay,
+      signal: controller.signal,
+    });
+    await waitFor(() =>
+      expect(mockGetLatestVersionToken).toHaveBeenCalledTimes(1),
+    );
+    controller.abort();
+    finishVersion(2);
+
+    await expect(pass).rejects.toMatchObject({ name: 'AbortError' });
+    expect(mockUploadVerseAudio).not.toHaveBeenCalled();
+    expect(mockSetRecordingSyncStatus).toHaveBeenCalledWith('rec-1', 'pending');
+    expect(mockMarkRecordingUploaded).not.toHaveBeenCalled();
+    expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+  });
+
+  it('does not retry a server-accepted conflict when its local atomic marker fails', async () => {
+    mockUploadVerseAudio.mockResolvedValue(
+      successResponse({ conflictStatus: 'conflict', versionToken: 4 }),
+    );
+    mockMarkRecordingAndChapterConflicted.mockRejectedValueOnce(
+      new Error('local transaction unavailable'),
+    );
+
+    const result = await syncPendingRecordings('pass-token', { delay });
+
+    expect(result).toEqual({ uploaded: 0, conflicted: 0, failed: 1 });
+    expect(mockUploadVerseAudio).toHaveBeenCalledTimes(1);
+    expect(mockMarkRecordingAndChapterConflicted).toHaveBeenCalledTimes(1);
+    expect(delay).not.toHaveBeenCalled();
+    expect(mockMarkRecordingUploaded).not.toHaveBeenCalled();
+    expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+  });
+
+  it('keeps each capture owner token across retry while the active account changes between takes', async () => {
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ id: 'owner-seven', recordedByUserId: 7 }),
+      pendingRecording({
+        id: 'owner-eleven',
+        bibleTextId: 43,
+        recordedByUserId: 11,
+      }),
+    ]);
+    mockGetCredentials.mockImplementation(async (id: string) => ({
+      token: id === '7' ? 'owner-seven-token' : 'owner-eleven-token',
+    }));
+    mockUploadVerseAudio
+      .mockRejectedValueOnce(new ApiError(500, 'temporary server failure'))
+      .mockResolvedValueOnce(successResponse({ uploadedBy: 7 }))
+      .mockResolvedValueOnce(
+        successResponse({ bibleTextId: 43, uploadedBy: 11 }),
+      );
+    const switchingDelay = jest.fn(async () => {
+      mockGetActiveUserId.mockReturnValue('99');
+    });
+
+    const result = await syncPendingRecordings('original-pass-token', {
+      delay: switchingDelay,
+    });
+
+    expect(result).toEqual({ uploaded: 2, conflicted: 0, failed: 0 });
+    expect(mockUploadVerseAudio.mock.calls.map(call => call[1])).toEqual([
+      'owner-seven-token',
+      'owner-seven-token',
+      'owner-eleven-token',
+    ]);
+    expect(mockGetCredentials.mock.calls.map(call => call[0])).toEqual([
+      '7',
+      '11',
+    ]);
+    expect(switchingDelay).toHaveBeenCalledWith(500);
+    expect(mockMarkRecordingUploaded.mock.calls.map(call => call[0])).toEqual([
+      'owner-seven',
+      'owner-eleven',
+    ]);
+    expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+    expect(mockSetReauthRequired).not.toHaveBeenCalled();
+  });
+
+  it('does not repeat an accepted clean PUT when the local uploaded marker fails', async () => {
+    mockMarkRecordingUploaded.mockRejectedValue(
+      new Error('local uploaded marker unavailable'),
+    );
+
+    const result = await syncPendingRecordings('pass-token', { delay });
+
+    expect(result).toEqual({ uploaded: 0, conflicted: 0, failed: 1 });
+    expect(mockUploadVerseAudio).toHaveBeenCalledTimes(1);
+    expect(mockMarkRecordingUploaded).toHaveBeenCalledTimes(1);
+    expect(delay).not.toHaveBeenCalled();
+    expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+  });
 });
