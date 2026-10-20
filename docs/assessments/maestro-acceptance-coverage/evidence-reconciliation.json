@@ -35,9 +35,9 @@
       "PASS": 37
     },
     "canonical_execution_coverage": {
-      "partial": 46,
+      "partial": 47,
       "complete_for_requirement": 37,
-      "not_run": 119
+      "not_run": 118
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
@@ -140,7 +140,8 @@
       "D-0578-01",
       "B-0010-01",
       "A-0034-01",
-      "C-0053-01"
+      "C-0053-01",
+      "A-0012-01"
     ],
     "candidate_ids_with_isolated_evidence": [
       "A-0002-01",
@@ -914,15 +915,24 @@
       "additive_scope": "nonadditive_parent",
       "review_reason": "Warning parity, all unsynced/pericope take counting and credential clearing after confirm are independently falsifiable.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch3-pending-logout-cancel-reconciliation.json",
+          "case_id": "A_Settings_Drawer_pending_warning_Cancel_41.981s",
+          "flow": ".maestro/flows/edges/pending-logout-cancel-prepared.yaml",
+          "relation": "partial_warning_parity_and_cancel_only",
+          "reason": "Owner10pending2: both SettingsLogOut and DrawerSignOut show exact same unsynced warning, destructiveLogOut and Cancel. OnlyCancel pressed both; preserved auth/Home. FullPASS41.981s; temporaryWiFiOFF prevents background upload, restoreactive12/cache10,9,12/r0,1/mobile1/pref10Verse and all6metadata4uploaded2pending. No confirmedsignout/credentialclearing/pericope-count matrix or orphan-marker proof."
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "No approved pending/pericope recording fixture; logout/credential clearing forbidden in preserved-session scope."
+        "All unsynced, nonselected and pericope take counting branches require exact separately owned fixtures; existing two pending Verse takes prove only sampled warning condition.",
+        "Actual confirmed sign-out/credential clearing and recoverable reauthentication remain unexecuted; use a separately owned isolated QA session while preserving cached10/9/12 and six takes."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Use separately owned verified unsynced/pericope counting fixtures to cover remaining count branches; confirmed signout/credential-clearing proof requires an isolated recoverable QA session. Do not repeat already-proven warning/Cancel parity or use preserved owner10 work as destructive test data.",
       "source_title": "Drawer Sign Out warns on unsynced recordings like Settings",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/40",
