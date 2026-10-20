@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { type PropsWithChildren } from 'react';
 import {
   fireEvent,
   render,
@@ -8,18 +8,31 @@ import {
 import LoginScreen from './LoginScreen';
 import { FluentAPI } from '../../services/api';
 import { beginLoginSession } from '../../services/authSession';
-import { QueryClientTestWrapper } from '../../test/queryClientWrapper';
+import {
+  createTestQueryClient,
+  QueryClientTestWrapper,
+} from '../../test/queryClientWrapper';
+
+let testClient: ReturnType<typeof createTestQueryClient>;
+function LoginTestWrapper({ children }: PropsWithChildren) {
+  return (
+    <QueryClientTestWrapper client={testClient}>
+      {children}
+    </QueryClientTestWrapper>
+  );
+}
 
 const renderLoginScreen = () =>
   render(<LoginScreen onLoginSuccess={onLoginSuccess} />, {
-    wrapper: QueryClientTestWrapper,
+    wrapper: LoginTestWrapper,
   });
 
 let onLoginSuccess: jest.Mock;
 
+const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
   useRouter: () => ({
-    push: jest.fn(),
+    push: mockPush,
   }),
 }));
 
@@ -51,8 +64,17 @@ jest.mock('../../services/authSession', () => ({
 
 describe('LoginScreen', () => {
   beforeEach(() => {
+    testClient = createTestQueryClient();
+    testClient.setDefaultOptions({
+      queries: { retry: false, gcTime: Infinity },
+      mutations: { retry: false, gcTime: Infinity },
+    });
     onLoginSuccess = jest.fn();
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    testClient.clear();
   });
 
   it('shows validation errors for empty fields', async () => {
@@ -118,12 +140,38 @@ describe('LoginScreen', () => {
         initialEmail="t@fluent.local"
         variant="reauth"
       />,
-      { wrapper: QueryClientTestWrapper },
+      { wrapper: LoginTestWrapper },
     );
 
     expect(screen.queryByTestId('login-forgot-password-link')).toBeNull();
     expect(screen.queryByTestId('login-privacy-link')).toBeNull();
     expect(screen.queryByTestId('login-terms-link')).toBeNull();
     expect(screen.getByText('Sign in again')).toBeTruthy();
+    expect(mockPush).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['auth', 'default', '/(auth)/privacy-policy', '/(auth)/terms-of-use'],
+    ['app', 'addAccount', '/(app)/privacy-policy', '/(app)/terms-of-use'],
+  ] as const)(
+    'routes legal footer links to the %s group for %s login',
+    (legalLinksGroup, variant, privacy, terms) => {
+      render(
+        <LoginScreen
+          onLoginSuccess={onLoginSuccess}
+          legalLinksGroup={legalLinksGroup}
+          variant={variant}
+        />,
+        { wrapper: LoginTestWrapper },
+      );
+      fireEvent.press(screen.getByTestId('login-privacy-link'));
+      fireEvent.press(screen.getByTestId('login-terms-link'));
+      expect(mockPush).toHaveBeenCalledTimes(2);
+      expect(mockPush).toHaveBeenNthCalledWith(1, privacy);
+      expect(mockPush).toHaveBeenNthCalledWith(2, terms);
+      expect(FluentAPI.signIn).not.toHaveBeenCalled();
+      expect(beginLoginSession).not.toHaveBeenCalled();
+      expect(onLoginSuccess).not.toHaveBeenCalled();
+    },
+  );
 });
