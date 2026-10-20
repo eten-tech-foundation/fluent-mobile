@@ -31,24 +31,24 @@
     },
     "canonical_live_status": {
       "UNTESTED": 27,
-      "BLOCKED": 140,
-      "PASS": 35
+      "BLOCKED": 139,
+      "PASS": 36
     },
     "canonical_execution_coverage": {
       "partial": 47,
-      "complete_for_requirement": 35,
-      "not_run": 120
+      "complete_for_requirement": 36,
+      "not_run": 119
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
       "UNTESTED": 7,
-      "BLOCKED": 52,
-      "PASS": 27
+      "BLOCKED": 51,
+      "PASS": 28
     },
     "eligible_current_atomic_execution_coverage": {
       "partial": 18,
-      "complete_for_requirement": 27,
-      "not_run": 41
+      "complete_for_requirement": 28,
+      "not_run": 40
     },
     "full_live_PASS_eligible_ids": [
       "A-0015-01",
@@ -62,6 +62,7 @@
       "C-0146-03",
       "C-0146-04",
       "C-0151-04",
+      "C-0151-05",
       "D-0188-01",
       "D-0188-02",
       "D-0189-01",
@@ -4503,15 +4504,20 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Control absence requires independently established complete phase; zero database rows alone cannot prove orchestrator phase.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch3-all-complete-controls-reconciliation.json",
+          "case_id": "A_allComplete_controls_hidden_16.8s",
+          "flow": ".maestro/flows/edges/all-complete-controls-prepared.yaml",
+          "relation": "complete_exact_allComplete_control_absence",
+          "reason": "PASS16.8s: rendered All synced establishes allComplete independently of owner12pending0 preflight. All actiongroups/SyncNow/Pause/Resume/Cancel and Uploading absent; BackHome. Source SyncActionControls complete branches return null. No metadata-fullsync/serverhealth/time metric proof; #533zero-pending SyncNow policy ambiguity remains separate. Servedsource24a4a23, runtimehashunattested; no radio/prefchanges."
+        }
+      ],
       "isolated_status": "NOT_APPLICABLE",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "hide controls on All Complete",
-        "Necessary safe fixture/authorization not established: settled complete upload state"
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Upload/All Complete hides action controls",
@@ -4519,7 +4525,8 @@
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/151",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/253"
       ],
-      "domain": "sync_offline"
+      "domain": "sync_offline",
+      "closure_scope_note": "Exact allComplete reserved-slot control absence only; not successful sync, complete phase-transition matrix or independent server agreement."
     },
     {
       "id": "C-0152-01",

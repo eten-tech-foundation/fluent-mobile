@@ -1,0 +1,36 @@
+# C0151-05 allComplete upload phase only; not metadata-sync success/server agreement.
+# Root verified active12, pending/failed owner12=0, no active uploads/downloads;
+# exact All synced is rendered ONLY by SyncScreen allComplete branch.
+# Does not settle #533 zero-pending metadata Sync Now acceptance ambiguity.
+appId: com.eten.fluent
+tags:
+  - prepared-phase
+  - read-only
+---
+- assertTrue: ${typeof MAESTRO_A_ALL_COMPLETE_VERIFIED !== 'undefined' && MAESTRO_A_ALL_COMPLETE_VERIFIED === '1'}
+- assertVisible:
+    id: sync-screen
+- assertVisible:
+    text: '^All synced$'
+- assertNotVisible:
+    id: 'sync-action-controls-(pending|paused|syncing)'
+- assertNotVisible:
+    id: sync-action-sync-now
+- assertNotVisible:
+    id: sync-action-pause
+- assertNotVisible:
+    id: sync-action-resume
+- assertNotVisible:
+    id: sync-action-cancel
+- assertNotVisible:
+    text: '^Uploading$'
+- takeScreenshot: owner12-all-complete-controls-absent
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: home-tab-my-work
+    timeout: 10000
+- assertNotVisible:
+    id: login-email-input
